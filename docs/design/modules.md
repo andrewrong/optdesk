@@ -25,9 +25,12 @@ rows above name every other top-level path of the planned tree.
   Editing an entry file is an interface change (AGENTS.md): the issue carries a Design line.
 - **depends** is the only source of module dependencies. `arch.toml` (go-arch-lint) is derived from this column
   by a script of the repo module; a check in `checks.yml` fails when `arch.toml` and this column disagree.
-  The derivation: every directory `internal/<name>/` that a row owns is one go-arch-lint component `<name>`.
-  For a row named `<name>` the component may import the components named in the row's depends cell, the
-  standard library and external modules; nothing else. The one directory whose name differs from its row is
+  The derivation: for a row named `<name>`, the root package `internal/<name>` (its `api.go`, the interface) is the
+  go-arch-lint component `<name>`, and each sub-package `internal/<name>/<sub>` is its own component `<name>/<sub>`;
+  `internal/<name>/**` is never one component. The component `<name>` may import the root components named in the
+  row's depends cell, the standard library and external modules; a sub-package component `<name>/<sub>` may import
+  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. No component may import a sub-package component of another row, so other
+  modules import only the root package (the interface) of a module; the one exception is `ot`, below. The one directory whose name differs from its row is
   `internal/profile/`, owned by repo: its component `profile` has an empty import list (standard library and
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
   The row `ot` (path `cmd/**`) is marked as the composition root of the program, as point 5 of the design rules provides: the one
@@ -58,7 +61,7 @@ rows above name every other top-level path of the planned tree.
   `pnpm-lock.yaml`, `pnpm-workspace.yaml` (pnpm 10.x pinned in `packageManager`) and `docs/adr/0034-frontend-stack.md` belong to web (every other ADR belongs to docs);
   `contracts/**`, `docs/contracts/00-protocol.md`, `docs/contracts/datasets/**`, `docs/contracts/figures/**`,
   `docs/contracts/page-schemas.md` and the code generated from contracts (`internal/contracts/gen/**`,
-  `web/src/generated/**`, `pyside/gen/**`) belong to contracts, so a source and its output are one module;
+  `internal/contracts/genpb/**`, `web/src/generated/**`, `pyside/gen/**`) belong to contracts, so a source and its output are one module;
   each other `docs/contracts/<module>.md` belongs to its module; the migration runner and `migrations/**`
   belong to store; `web/tests/**` belongs to web; `tests/**` (tests of the repo scripts) belongs to repo;
   `cmd/**` belongs to ot (the composition root); `scripts/check-frontend-deps.mjs` and `frontend-whitelist.json` belong to web (the web row comes before the `scripts/**` of repo); `pyproject.toml` and `uv.lock` of Python live under `pyside/` (the

@@ -44,7 +44,7 @@ Store and pages provide library functions; the subcommands of `cmd/ot` that call
 ## Interface
 
 Types, functions and protocols the modules agree on. Each has exactly one owning module and lives in that
-module's interface file (declarations only: types, constants, aliases, interfaces, signatures). Each interface file may import the standard library and the `api.go` of the modules in the depends cell of its row of `docs/design/modules.md`, and nothing else of the repository; the one exception is `internal/contracts/api.go`, which also imports its own generated package `internal/contracts/gen`. That package is generated only (type declarations and the methods the generator emits, no hand-written code) and imports nothing of the repository. The actual imports, per file: `internal/contracts/api.go` imports `internal/contracts/gen` (the aliases `type SessionDay = gen.SessionDay`); `internal/clock/api.go`, `internal/store/api.go`: `internal/contracts`; `internal/sources/api.go`: `internal/contracts` and `internal/clock`; `internal/runner/api.go`: `internal/contracts`, `internal/clock`, `internal/store`; `internal/jobs/api.go`: `internal/contracts`, `internal/clock`, `internal/sources`, `internal/store`; `internal/pages/api.go`: `internal/contracts`, `internal/store`; `internal/profile/api.go`: none.
+module's interface file (declarations only: types, constants, aliases, interfaces, signatures). Each interface file may import the standard library and the `api.go` of the modules in the depends cell of its row of `docs/design/modules.md`, and nothing else of the repository; the one exception is `internal/contracts/api.go`, which also imports its own generated package `internal/contracts/gen`. That package is generated only (type declarations and the methods the generator emits, no hand-written code) and imports nothing of the repository. The Go output of protoc-gen-go (issue 4) has package-level variables and an `init` function, so it goes to its own package `internal/contracts/genpb` (owned by contracts, generated only, imports nothing of the repository, imported by no `api.go` in week 1), never into `gen`. The actual imports, per file: `internal/contracts/api.go` imports `internal/contracts/gen` (the aliases `type SessionDay = gen.SessionDay`); `internal/clock/api.go`, `internal/store/api.go`: `internal/contracts`; `internal/sources/api.go`: `internal/contracts` and `internal/clock`; `internal/runner/api.go`: `internal/contracts`, `internal/clock`, `internal/store`; `internal/jobs/api.go`: `internal/contracts`, `internal/clock`, `internal/sources`, `internal/store`; `internal/pages/api.go`: `internal/contracts`, `internal/store`; `internal/profile/api.go`: none.
 Issue 1 lands all of them; no module issue of this design edits an interface file; `web/src/generated/index.ts` (generated from contracts) is a stub of issue 1 that the follow-up design regenerates.
 Only names that a week-1 issue calls are frozen: `OpsLedger` is called by the runner (issue 10) and implemented
 by store (issue 8); `Reconciler` is implemented by the runner (10) and called by the wiring (follow-up design); `Registry` is
@@ -127,19 +127,21 @@ tool allows that use.
 
 ## Issues
 
-Waves. Wave 0 is the two interface-level issues: issue 1 (the interface files, the generated records, the
+Waves. Wave 0 is three issues landed in this order: issue 1 (the interface files, the generated records, the
 datasets, the macro_rates page schema with its input and golden fixtures, the migration numbering in
-`## Interface`) and issue 2 (the repo skeleton: scripts, profile, subcommand registry, lint and arch files).
-Wave 1 is issues 3 to 12, 14 and 17: each needs only landed wave-0 work (the interface files, the shared inputs
-named above) and tests against fakes; none needs the output of a sibling of wave 1. Issues of wave 1 that change go.mod or
+`## Interface`), issue 2 (the repo skeleton: scripts, profile, subcommand registry, lint and arch files) and issue 3 (the
+workflows ci-go, ci-web, hygiene and checks, owner-merged). Wave 1 is issues 4 to 12, 14 and 17: each needs only landed wave-0 work (the interface files, the shared inputs
+named above, the workflows) and tests against fakes; none needs the output of a sibling of wave 1. Issues of wave 1 that change go.mod or
 go.sum (the serialised set of `## Modules`) are serialised by the dispatcher because of rebases, not because one needs the other's
-output. There is no wave 2: what would need the merged output of wave 1 is cut by a follow-up design (see Left out). owner_only (the owner merges): 3 (`.github/`) and 4
+output. There is no wave 2: what would need the merged output of wave 1 is cut by a follow-up design (see Left out). owner_only (the owner merges): 3 (`.github/`, wave 0, so every wave-1 issue starts after it) and 4
 (`contracts/proto/`, the whole pull request). Several steps need the owner (owner-first items, Probe 0 of the
-advisor list, the private-repository copies of 14 and 17); the chain 1, 2 and 14 is the web slot's long pole.
+advisor list, the private-repository copies of 14 and 17); the chain 1, 2, 3 and 14 is the web slot's long pole.
 
 Items marked [CI] run `go build`, `go vet`, `go test`, `go list`, `go run`, `node`, `pnpm` or a pg-tagged test. A sandboxed
 verify has no network, no module cache, no pnpm store and no live service, so those items are decided by the
-GitHub CI of the head commit (ci-go, ci-web, the pg job; pg-tagged tests run only there, AGENTS.md). Every [CI]
+GitHub CI of the head commit (ci-go, ci-web, the pg job; pg-tagged tests run only there, AGENTS.md). Those
+workflows exist from the landing of issue 3, which every wave-1 issue depends on. Issues 1, 2 and 3 land before them: for
+those three the offline substitute alone decides a [CI] item. Every [CI]
 item carries an offline substitute that verify can run: a grep or a file read named in the item (for a test result, `grep -n 'func TestName'` of the named function in the named test file) or, where none is
 named, `grep -c 't.Parallel()'` on the named test files (at least 1) and `gofmt -l` on the Go files named in
 Files (prints nothing). Items not marked are file reads and greps. Owner steps and pull-request-description
@@ -152,7 +154,7 @@ requests are notes below the acceptance list, not acceptance items.
   Files: go.mod, go.sum, migrations/0001_master_session_day.sql, internal/contracts/page_schema_test.go, contracts/generate.sh, contracts/schemas/page.macro_rates.v1.json, contracts/fixtures/page.macro_rates.v1.input.json, contracts/fixtures/page.macro_rates.v1.golden.json, contracts/fixtures/MANIFEST.synthetic-v1.json, contracts/datasets/master.session_day.r1.json, contracts/datasets/obs.series_point.r1.json, contracts/gendoc/main.go, contracts/gendoc/main_test.go, docs/contracts/datasets/master.session_day.md, docs/contracts/datasets/obs.series_point.md, internal/contracts/gen/records.go, web/src/generated/index.ts, internal/contracts/api.go, internal/contracts/api_test.go, internal/clock/api.go, internal/clock/api_test.go, internal/store/api.go, internal/store/api_test.go, internal/sources/api.go, internal/sources/api_test.go, internal/runner/api.go, internal/runner/api_test.go, internal/jobs/api.go, internal/jobs/api_test.go, internal/pages/api.go, internal/pages/api_test.go, internal/profile/api.go, internal/profile/api_test.go.
   Design: docs/design/week1.md#interface-skeleton; own implementation (contracts/gendoc), because no maintained library renders our dataset page template from a dataset schema
   Acceptance:
-  - [CI for build, vet and test; the greps are offline] Dependencies: `grep -cE 'jonboulle/clockwork v|omissis/go-jsonschema v|santhosh-tekuri/jsonschema/v6 v' go.mod` prints 3 (all pinned to a version, go-jsonschema also in a `tool` directive) and `grep -E '^\s*github.com\S* v[0-9]' go.mod | grep -vc '// indirect'` prints 3 (the three modules above, which are the direct requirements issue 1 adds; only lines with a version are counted, so `tool` lines without one are not, and the transitive requirements are `// indirect` lines and are not counted). Each requirement is used: `internal/contracts/page_schema_test.go` imports santhosh-tekuri/jsonschema/v6 (`grep -c 'tekuri/jsonschema/v6' internal/contracts/page_schema_test.go` is at least 1) and `internal/clock/api_test.go`, the interface test of clock, imports clockwork for its fake (`grep -c 'jonboulle/clockwork' internal/clock/api_test.go` is at least 1), so `go mod tidy` keeps both. The checks that need modules from the network (`go build ./... && go vet ./...` and `go test`) are decided by `ci-go` on the head, not by a sandboxed verify (see the note on [CI] items at the top of this section); the offline substitute is `gofmt -l internal contracts` printing nothing.
+  - [CI for build, vet and test; the greps are offline] Dependencies: `grep -cE 'jonboulle/clockwork v|omissis/go-jsonschema v|santhosh-tekuri/jsonschema/v6 v' go.mod` prints 3 (all pinned to a version, go-jsonschema also in a `tool` directive) and `grep -E '^\s*github.com\S* v[0-9]' go.mod | grep -vc '// indirect'` prints 3 (the three modules above, which are the direct requirements issue 1 adds; only lines with a version are counted, so `tool` lines without one are not, and the transitive requirements are `// indirect` lines and are not counted). Each requirement is used: `internal/contracts/page_schema_test.go` imports santhosh-tekuri/jsonschema/v6 (`grep -c 'tekuri/jsonschema/v6' internal/contracts/page_schema_test.go` is at least 1) and `internal/clock/api_test.go`, the interface test of clock, imports clockwork for its fake (`grep -c 'jonboulle/clockwork' internal/clock/api_test.go` is at least 1), so `go mod tidy` keeps both. The checks that need modules from the network (`go build ./... && go vet ./...` and `go test`) are not decided by a sandboxed verify (see the note on [CI] items at the top of this section; issue 1 lands before `ci-go`, so the offline substitute alone decides); the offline substitute is `gofmt -l internal contracts` printing nothing.
   - `master.session_day r1` has columns calendar_id text, session_day date, is_session boolean, open_at timestamptz, close_at timestamptz, early_close boolean, primary key (calendar_id, session_day); session_day is the market-zone date, not a UTC date. `obs.series_point r1` has the columns series_id text, observation_date date, realtime_start date, realtime_end date, value numeric (nullable), status text, unit (a `series_unit` enum of percent, ratio, ccy_amount and count [guess]), currency text (not null when unit is ccy_amount), published_at timestamptz, source text, source_revision text; primary key (series_id, observation_date, realtime_start). Each dataset file has `additionalProperties: false`.
   - [CI] `sh contracts/generate.sh` (go tools only, no `npx`, no download) rewrites `internal/contracts/gen/records.go` and the two dataset pages and leaves `git diff --exit-code` clean; `gen/records.go` carries a generated header (offline: `grep -c 'DO NOT EDIT' internal/contracts/gen/records.go` prints 1); `grep -n 'type SessionDay = \|type SeriesPoint = ' internal/contracts/api.go` prints two lines and no struct named so is declared by hand.
   - `internal/contracts/gen` imports nothing of the repository: `grep -rn 'optdesk/internal' internal/contracts/gen` prints nothing; and holds no package-level variable: `grep -rnE '^var ' internal/contracts/gen` prints nothing.
@@ -176,7 +178,7 @@ requests are notes below the acceptance list, not acceptance items.
   Design: docs/design/week1.md#repo-skeleton; own implementation (scripts/arch, scripts/ratchet, scripts/hygiene), because no maintained library derives go-arch-lint configuration from the module table, reads docs/design/ratchet.json, or checks this repository's account-id, path and fixture-manifest rules (go-arch-lint and golangci-lint are used for the rest)
   Acceptance:
   - [CI] `go build ./... && go vet ./...` pass; `go run ./cmd/ot version` prints a version; a unit test shows `ot` with no `$OT_HOME` selects profile `demo` and reads no environment variable except `OT_HOME` and `OT_PROFILE` (offline: `grep -n 'func TestDemoProfile' cmd/ot/main_test.go` finds the function and `grep -c 't.Parallel()' cmd/ot/main_test.go` is at least 1).
-  - [CI] `go run ./scripts/arch --check` exits 0 on the committed `arch.toml` and `.go-arch-lint.yml` and exits 1 when a test copy of `docs/design/modules.md` gains a depends edge the files lack; the test uses a temporary directory. The component `ot` is generated with exactly the eight implementation packages listed in the text of `docs/design/modules.md` (the test compares the generated list with the list it reads from that text; no package named there has to exist), and a test builds in its `t.TempDir()` a scratch module tree (`cmd/ot`, `internal/store/migrate`, `internal/store/sessionday` and scratch interface packages) and shows that a `cmd/ot` file importing `internal/store/migrate` fails the generated go-arch-lint configuration and one importing `internal/store/sessionday` passes. A test shows that the component `profile` is generated with an empty import list (the rule at `internal/profile` in modules.md) and that a scratch package of the same temporary tree importing a forbidden edge makes the generated go-arch-lint configuration fail. go-arch-lint and golangci-lint are `tool` directives of go.mod, pinned. Offline: `grep -n 'func TestArchCheck' scripts/arch/main_test.go` finds the functions and `grep -c 't.Parallel()' scripts/arch/main_test.go` is at least 1.
+  - [CI] `go run ./scripts/arch --check` exits 0 on the committed `arch.toml` and `.go-arch-lint.yml` and exits 1 when a test copy of `docs/design/modules.md` gains a depends edge the files lack; the test uses a temporary directory. The component `ot` is generated with exactly the eight implementation packages listed in the text of `docs/design/modules.md` (the test compares the generated list with the list it reads from that text; no package named there has to exist), and a test builds in its `t.TempDir()` a scratch module tree (`cmd/ot`, `internal/store/migrate`, `internal/store/sessionday` and scratch interface packages) and shows that a `cmd/ot` file importing `internal/store/migrate` fails the generated go-arch-lint configuration and one importing `internal/store/sessionday` passes. The same tree shows that a scratch sub-package of `jobs` importing a sub-package of `store` fails, and one importing the root package of `store` passes (each sub-package is its own component, as the derivation of modules.md states). A test shows that the component `profile` is generated with an empty import list (the rule at `internal/profile` in modules.md) and that a scratch package of the same temporary tree importing a forbidden edge makes the generated go-arch-lint configuration fail. go-arch-lint and golangci-lint are `tool` directives of go.mod, pinned. Offline: `grep -n 'func TestArchCheck' scripts/arch/main_test.go` finds the functions and `grep -c 't.Parallel()' scripts/arch/main_test.go` is at least 1.
   - [CI for the test run] `scripts/ratchet` reads `docs/design/ratchet.json` (owner-only; a missing file is an empty map): it counts source files only (extensions .go .py .ts .tsx .js .mjs .sh) and skips lockfiles, JSON, TOML and Markdown data and any file whose first five lines carry a generated-code header, so generated types, schemas, fixtures and lockfiles are not counted; it applies the size rule of `docs/design/modules.md`: it fails on a source file new in the change over 600 lines (copies count as new), on a file of the base revision over 800 lines that `ratchet.json` does not list, on a listed file over its ceiling, and on a ceiling higher than in the base revision; each case has a test with a temporary repo (offline: `grep -n 'func TestRatchet' scripts/ratchet/main_test.go` finds one function per case, `TestRatchetNewFileOver600`, `TestRatchetUnlistedOver800`, `TestRatchetOverCeiling`, `TestRatchetCeilingRaised`, and `grep -c 't.Parallel()' scripts/ratchet/main_test.go` is at least 1). This replaces size.toml.
   - `cmd/ot/main.go` holds a subcommand registry (`register(name, fn)`); every later subcommand file of `cmd/ot` registers itself in an `init()`, so no later issue edits `main.go`; the module packages are called only through their interface files and the constructors of the wiring table in `## Interface`.
   - `.golangci.yml` enables depguard (only `internal/store` may import pgx), noctx, contextcheck, forbidigo (bans `time.Sleep` and `time.Now` outside `internal/clock`), exhaustive, gocyclo, funlen, lll.
@@ -201,7 +203,7 @@ requests are notes below the acceptance list, not acceptance items.
   - `hygiene.yml` also runs gitleaks over the commits of the pull request, pinned and with `--redact` so that no secret is printed: the pinned version string appears (`grep -nE 'gitleaks' .github/workflows/hygiene.yml` finds the step and `grep -cE 'v8\.[0-9]+\.[0-9]+' .github/workflows/hygiene.yml` is at least 1 for a release binary, which is verified by its checksum, or the action is pinned by a 40-hex commit SHA); `grep -c -- '--redact' .github/workflows/hygiene.yml` is at least 1.
   - `hygiene.yml` asserts no `OT_*` or DSN variable in the environment; the repository has zero repository secrets (the file reads none: `grep -rn 'secrets\.' .github` prints nothing).
   - Dependabot covers gomod, npm, github-actions. Secret scanning and push protection are owner settings, not files.
-  Depends on: 2 (an interface-level issue, landed). Order: after 2.
+  Depends on: 2 (an interface-level issue, landed). Order: after 2, the last of wave 0.
   Note: every item above is decided by reading the workflow files; the workflows' own results are the CI of the head commit.
   Size: M
 
@@ -209,15 +211,15 @@ requests are notes below the acceptance list, not acceptance items.
 
 4. Contracts tree: the proto file and its generation (owner_only: the whole pull request is merged by the owner).
   Goal: Create `contracts/proto/` with exactly one proto file in week 1 (pyside waits) and its generated Go; generated files land in the same pull request as their source. This entry is the judged cut crossing contracts and repo: it adds Go dependencies and tools, so it lists go.mod and go.sum.
-  Files: go.mod, go.sum, contracts/proto/ibkr/v1/session.proto, buf.yaml, buf.gen.yaml, contracts/generate-proto.sh, contracts/README.md, internal/contracts/gen/session.pb.go, docs/contracts/00-protocol.md.
+  Files: go.mod, go.sum, contracts/proto/ibkr/v1/session.proto, buf.yaml, buf.gen.yaml, contracts/generate-proto.sh, contracts/README.md, internal/contracts/genpb/session.pb.go, docs/contracts/00-protocol.md.
   Design: docs/design/week1.md#contracts-tree
   Acceptance:
   - Exactly one `.proto` file exists under `contracts/proto/` (`find contracts/proto -name '*.proto' | wc -l` prints 1); it defines one rpc `Ping` and no account, symbol or order message and no order-placing rpc (`grep -inE 'order|account|symbol' contracts/proto/ibkr/v1/session.proto` prints nothing).
-  - [CI; offline: `grep -nE '^tool|^\s+github.com/bufbuild/buf|protobuf/cmd/protoc-gen-go' go.mod` shows both tools, `grep -c 'DO NOT EDIT' internal/contracts/gen/session.pb.go` prints 1, `grep -n 'go tool buf lint' contracts/generate-proto.sh` finds the line] `buf` and `protoc-gen-go` are `tool` directives of go.mod, pinned; `sh contracts/generate-proto.sh` (called by `contracts/generate.sh` of issue 1) runs `go tool buf generate`, rewrites `internal/contracts/gen/session.pb.go` (generated header present) and leaves `git diff --exit-code` clean; `contracts/generate-proto.sh` runs `go tool buf lint` before it generates, and the lint passes; no `buf breaking` step; no `npx`.
+  - [CI; offline: `grep -nE '^tool|^\s+github.com/bufbuild/buf|protobuf/cmd/protoc-gen-go' go.mod` shows both tools, `grep -c 'DO NOT EDIT' internal/contracts/genpb/session.pb.go` prints 1, `grep -n 'go tool buf lint' contracts/generate-proto.sh` finds the line] `buf` and `protoc-gen-go` are `tool` directives of go.mod, pinned; `sh contracts/generate-proto.sh` (called by `contracts/generate.sh` of issue 1) runs `go tool buf generate`, rewrites `internal/contracts/genpb/session.pb.go` (generated header present; `grep -n 'internal/contracts/genpb' buf.gen.yaml` finds the output path and `grep -rn 'optdesk/internal' internal/contracts/genpb` prints nothing) and leaves `git diff --exit-code` clean; `contracts/generate-proto.sh` runs `go tool buf lint` before it generates, and the lint passes; no `buf breaking` step; no `npx`.
   - `docs/contracts/00-protocol.md` holds the one-paragraph version rule: record rN, page schema vN, proto v1, job manifest version; any incompatible or additive change bumps the version in its own issue.
   - This issue adds no workflow file: its Files line names no path under `.github/`. [CI] `go build ./...` passes; offline substitute: `gofmt -l internal` prints nothing.
   Note (not acceptance): the `Contracts:` line of the pull request reads `ibkr.v1 (new)`.
-  Depends on: 1, 2. Order: after 1, 2.
+  Depends on: 1, 2, 3. Order: after 1, 2, 3.
   Size: S
 
 ### week1-schemas
@@ -233,7 +235,7 @@ requests are notes below the acceptance list, not acceptance items.
   - [CI] `go test ./internal/contracts/...` validates each dataset fixture against its dataset schema with santhosh-tekuri/jsonschema/v6 (the golden file is validated by issue 1), and checks that a copy with an unknown extra field fails; every test calls `t.Parallel()`; offline substitute: `grep -n 'func TestDatasetFixtures' internal/contracts/schema_test.go` finds the function and `grep -c 't.Parallel()' internal/contracts/schema_test.go` is at least 1.
   - [CI] Every JSON file parses (`python3 -m json.tool` on each prints no error); `sh contracts/generate.sh` leaves `git diff --exit-code` clean.
   Note (not acceptance): the owner approves the symbol list (owner-first item 3); the `Contracts:` line of the pull request reads `master.session_day r1 (new), obs.series_point r1 (new), page.macro_rates v1 (new)` for issue 1 and `unchanged` for this one.
-  Depends on: 1. Order: after 1.
+  Depends on: 1, 3. Order: after 1, 3.
   Size: M
 
 ### store-session-day
@@ -249,7 +251,7 @@ requests are notes below the acceptance list, not acceptance items.
   - Offline: `grep -rl 'jackc/pgx' --include=*.go .` lists only files under `internal/store/`; depguard still bans pgx elsewhere.
   - `docs/contracts/store.md` has the eight headings of the contract-document rule in `## Interface` (`grep -cE '^## (Responsibility|Inputs|Outputs|Invariants|Version history|Contract tests|Jobs and slots|Forbidden)$' docs/contracts/store.md` prints 8), and its `## Inputs` names `master.session_day r1` (`grep -c 'master.session_day r1' docs/contracts/store.md` is at least 1).
   Note (not acceptance): if this issue lands before 8, its pull request description names pgx and goose with their licences (`### Libraries` in this design).
-  Depends on: 1. Order: after 1.
+  Depends on: 1, 3. Order: after 1, 3.
   Size: M
 
 ### clock-reader
@@ -266,7 +268,7 @@ requests are notes below the acceptance list, not acceptance items.
   - Every test calls `t.Parallel()`; no `time.Sleep` and no `time.Now` in the package (`grep -rn 'time.Sleep\|time.Now' internal/clock --include=*.go` prints nothing outside the one real-clock adapter file `clock.go`).
   - `docs/contracts/clock.md` has the eight headings of the contract-document rule in `## Interface` (`grep -cE '^## (Responsibility|Inputs|Outputs|Invariants|Version history|Contract tests|Jobs and slots|Forbidden)$' docs/contracts/clock.md` prints 8).
   - The wiring constructors exist with their declared types: `grep -n 'var _ NewClockFunc = NewReal\|var _ NewCalendarFunc = NewCalendar' internal/clock/*_test.go` prints two lines.
-  Depends on: 1. Order: after 1.
+  Depends on: 1, 3. Order: after 1, 3.
   Size: S
 
 ### store-series-ops
@@ -285,7 +287,7 @@ requests are notes below the acceptance list, not acceptance items.
   - The wiring constructors exist with their declared types: `grep -rn 'var _ store.OpenSeriesFunc\|var _ store.OpenLedgerFunc\|var _ store.SetupFunc' internal/store` prints three lines.
   Owner's word: given 2026-11-05 (writing generated passwords into `$OT_HOME/.env` allowed). After the follow-up wiring lands the owner runs `ot setup pg` once on the owner's machine; it generates passwords and writes them into `$OT_HOME/.env`; this design does not run it and no test touches a real `$OT_HOME`. `$OT_HOME/.env` holds secrets only: the PG DSNs this command writes, FRED_API_KEY (week 1) and IB_FLEX_TOKEN (week 5); gateway host/port/client id, Flex query ids, account aliases, limits and pools are settings (code defaults until the settings page exists), not lines of `.env` (relayed owner ruling, 2026-11-05).
   Note (not acceptance): if this issue lands before 6, its pull request description names pgx and goose with their licences (`### Libraries` in this design).
-  Depends on: 1. Order: after 1.
+  Depends on: 1, 3. Order: after 1, 3.
   Size: M
 
 ### sources-fred
@@ -304,7 +306,7 @@ requests are notes below the acceptance list, not acceptance items.
   - [CI for `go list`; offline: `grep -rhE '"[^"]*/internal/' internal/sources/fred --include=*.go | grep -vE 'internal/(contracts|clock|sources)"'` prints nothing] `go list -deps ./internal/sources/fred` shows no `internal/` package other than contracts, clock and sources (arch check of issue 2 passes); every test calls `t.Parallel()`.
   - `docs/contracts/sources.md` has the eight headings of the contract-document rule in `## Interface` (`grep -cE '^## (Responsibility|Inputs|Outputs|Invariants|Version history|Contract tests|Jobs and slots|Forbidden)$' docs/contracts/sources.md` prints 8).
   Owner's word: given 2026-11-05 (network and FRED_API_KEY allowed). This issue makes no live call; the owner decides when the first real call is made and puts the key in `$OT_HOME/.env` themselves.
-  Depends on: 1 (interface files). Order: after 1.
+  Depends on: 1 (interface files), 3. Order: after 1, 3.
   Size: S
 
 ### runner-window
@@ -321,7 +323,7 @@ requests are notes below the acceptance list, not acceptance items.
   - [CI for `go list`; offline: `grep -rn 'jackc/pgx\|internal/jobs' internal/runner` prints nothing] `go list -deps ./internal/runner` contains no `internal/jobs` and no pgx; every test calls `t.Parallel()`.
   - `docs/contracts/runner.md` has the eight headings of the contract-document rule in `## Interface` (`grep -cE '^## (Responsibility|Inputs|Outputs|Invariants|Version history|Contract tests|Jobs and slots|Forbidden)$' docs/contracts/runner.md` prints 8) and its `## Invariants` names the state machine and the window rule (`grep -ci 'state machine' docs/contracts/runner.md` and `grep -ci 'window rule' docs/contracts/runner.md` are each at least 1).
   - The wiring constructor exists with its declared type: `grep -n 'var _ NewFunc = New' internal/runner/*_test.go` prints one line.
-  Depends on: 1. Order: after 1.
+  Depends on: 1, 3. Order: after 1, 3.
   Size: M
 
 ### jobs-fred-series
@@ -339,7 +341,7 @@ requests are notes below the acceptance list, not acceptance items.
   - The wiring constructor exists with its declared type: `grep -rn 'var _ jobs.NewFredSeriesFunc = New' internal/jobs/fredseries` prints one line.
   - `go.mod` requires go-toml (`grep -c 'pelletier/go-toml/v2 v' go.mod` prints 1) and `internal/jobs/fredseries/plan.go` imports it (`grep -c 'pelletier/go-toml/v2' internal/jobs/fredseries/plan.go` is at least 1).
   Note (not acceptance): the pull request description names go-toml with its licence (`### Libraries` in this design).
-  Depends on: 1. Order: after 1.
+  Depends on: 1, 3. Order: after 1, 3.
   Size: M
 
 ### pages-macro-rates
@@ -356,14 +358,14 @@ requests are notes below the acceptance list, not acceptance items.
   - [CI] Injector test: Go renders the index with a view-model; the element `<script id="vm" type="application/json">` holds JSON equal to the input; a `</script>` sequence inside a string value is escaped. The element is the one place the page reads the data from: `grep -c 'id="vm"' internal/pages/embed/inject.go` is at least 1 and `grep -c 'id="vm"' internal/pages/embed/dist/index.html` prints 1 (the stub that the test renders). Offline substitute: `grep -n 'func TestInjectEscapes' internal/pages/embed/inject_test.go` finds the function (and `grep -c 't.Parallel()' internal/pages/embed/inject_test.go` is at least 1).
   - [CI] `macro_rates.Build` on in-memory demo data returns the JSON (a test compares it with the golden file); `embed.Handler` serves the stub `dist/index.html` with the view-model (smoke test with httptest, no browser). The subcommands `ot page` and `ot serve` that call them belong to the follow-up design. Offline substitute: `grep -n 'func TestBuildDemo' internal/pages/macro_rates/builder_test.go` finds the function (and `grep -c 't.Parallel()' internal/pages/macro_rates/builder_test.go` is at least 1).
   - `docs/contracts/pages.md` has the eight headings of the contract-document rule in `## Interface` (`grep -cE '^## (Responsibility|Inputs|Outputs|Invariants|Version history|Contract tests|Jobs and slots|Forbidden)$' docs/contracts/pages.md` prints 8).
-  Depends on: 1 (the page schema and its fixtures are landed there). Order: after 1.
+  Depends on: 1 (the page schema and its fixtures are landed there), 3. Order: after 1, 3.
   Size: M
 
 ### web-migrate
 
 14. Web: migrate the front end from the old repository.
   Goal: Move `web/` over, by copy allow-list. Pages make no request: each reads the view-model from `<script id="vm" type="application/json">`. Stack is ADR 0034 and unchanged. The workspace is `pnpm-workspace.yaml` at the root with one lockfile `pnpm-lock.yaml`; `scripts/check-frontend-deps.mjs` checks `package.json` against `frontend-whitelist.json`. Page components keep the local view-model types of the old repository; they move to the generated types in a later issue.
-  Files: web/package.json, web/index.html, web/vite.config.ts, web/vitest.config.ts, web/tsconfig.json, web/eslint.config.js, web/components.json, web/src/main.tsx, web/src/vm.ts, web/src/pages/, web/src/components/, web/src/lib/, package.json, pnpm-workspace.yaml, pnpm-lock.yaml, frontend-whitelist.json, scripts/check-frontend-deps.mjs, web/no-compute-allow.txt, web/deps-allowlist.txt, web/copy-manifest.sha256, web/src/pages/household/HouseholdPage.test.tsx, web/src/pages/household/__snapshots__/HouseholdPage.test.tsx.snap, docs/adr/0034-frontend-stack.md.
+  Files: web/package.json, web/index.html, web/vite.config.ts, web/vitest.config.ts, web/tsconfig.json, web/eslint.config.js, web/components.json, web/src/main.tsx, web/src/vm.ts, web/src/pages/, web/src/components/, web/src/lib/, package.json, pnpm-workspace.yaml, pnpm-lock.yaml, frontend-whitelist.json, scripts/check-frontend-deps.mjs, web/no-compute-allow.txt, web/deps-allowlist.txt, web/copy-manifest.sha256, docs/adr/0034-frontend-stack.md.
   Design: docs/design/week1.md#web-migrate; own implementation (scripts/check-frontend-deps.mjs), because the check reads the whitelist revision format of the frontend stack and no library knows it
   Libraries (frontend-stack; every version is the pin of rules/frontend-stack.md, whatever the old lockfile had):
   - 按 frontend-stack：用 shadcn 做 UI 组件。
@@ -390,13 +392,12 @@ requests are notes below the acceptance list, not acceptance items.
   - Old HTML pages are not copied (React only): `find web -name '*.html' -not -path '*/node_modules/*'` prints only `web/index.html`.
   - `web/copy-manifest.sha256` holds one line `<sha256>  docs/adr/0034-frontend-stack.md`, and `sha256sum -c web/copy-manifest.sha256` exits 0 (the committed file matches the recorded hash).
   Note (not acceptance): the recorded hash is that of the ADR in the old clone at b00b4ed, so the ADR is a byte copy; the pull request description states this provenance.
-  - [CI] `go run ./scripts/hygiene` and `go run ./scripts/ratchet` (issue 2) exit 0 on the copied set (offline substitute: see the note below). The size rule of `docs/design/modules.md` applies, and the copied files are new files. Offline: `find web -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \) -not -path '*/node_modules/*' -not -path 'web/src/generated/*' | xargs wc -l` shows no file over 600 lines.
-  - This issue splits `HouseholdPage.tsx` by extracting sub-components into sibling files of `web/src/pages/household/`: `wc -l web/src/pages/household/*.tsx` shows every file at 600 lines or fewer; `web/src/pages/household/HouseholdPage.test.tsx` renders the page from an inline fixture of its view-model and compares it with the committed snapshot `__snapshots__/HouseholdPage.test.tsx.snap`, (`grep -c 'toMatchSnapshot' web/src/pages/household/HouseholdPage.test.tsx` is at least 1; [CI] `vitest run` decides it); no ceiling entry and no owner step is needed.
+  - [CI] `go run ./scripts/hygiene` and `go run ./scripts/ratchet` (issue 2) exit 0 on the copied set (offline substitute: see the note below). The size rule of `docs/design/modules.md` applies, and the copied files are new files, so no copied source file ends over 600 lines. Offline: `find web -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \) -not -path '*/node_modules/*' -not -path 'web/src/generated/*' | xargs wc -l` shows no file over 600 lines (the `total` line aside). A copied file over 600 lines is split inside this issue, by extracting sub-components or helpers into sibling files of its directory; no ceiling entry and no owner step is needed.
   - `web/no-compute-allow.txt` lists, one per line, every hit of `grep -rnE 'Math\.(round|floor|ceil|sum)|\.reduce\(' web/src` (the allow-list is empty when the grep prints nothing): `diff <(grep -rnE 'Math\.(round|floor|ceil|sum)|\.reduce\(' web/src | cut -d: -f1,2 | sort) <(cut -d: -f1,2 web/no-compute-allow.txt | sort)` prints nothing. Note (not acceptance): that the front end computes nothing beyond the listed lines is judged by the reviewer.
-  Note (not acceptance): the split changes no behaviour and no rendered output; the author records the snapshot from the unsplit file before the split, and a reviewer reads the rest. Size measures of the old clone, taken at its checkout 4704569 and to be re-measured at b00b4ed: `web/src/pages/household/HouseholdPage.tsx` is the only source file over 600 lines (617); `web/src/generated/report_page.v2.types.ts` (889) and `home_page.v1.types.ts` (726) are generated, `pnpm-lock.yaml` (6348) is a lockfile; none of these three is counted by the ratchet.
+  Note (not acceptance): a split changes no behaviour and no rendered output; the author runs the tests of the file before and after it and a reviewer reads the rest. The design states no measured size of the source: the find above measures the copied set.
   Owner's word: given 2026-11-05 — copy `web/` from the old clone (origin/main b00b4ed) by the allow-list of the privacy scan: `web/**` except `web/src/generated/**` (owned by contracts, stubbed by issue 1); the scan (715 files) found no account id, key, token, e-mail, chat id, local path or IP, and every fixture value synthetic.
   Note (not acceptance): before the pull request is opened the author runs the hygiene scan on the copied set (offline substitute for the hygiene item above: `grep -rnE '[DU]U?[0-9]{6,8}|/Users/|/Volumes/' <copied paths>` prints nothing), and the pull request description names the source commit b00b4ed of the old clone, the copy allow-list (the path globs copied) and the files copied.
-  Depends on: 1, 2 (the hygiene and ratchet scripts). Runs in the frontend slot in parallel with 4-12. Order: after 1, 2.
+  Depends on: 1, 2 (the hygiene and ratchet scripts), 3 (ci-web). Runs in the frontend slot in parallel with 4-12. Order: after 1, 2, 3.
   Size: L
 
 ### docs-carryover
@@ -414,7 +415,7 @@ requests are notes below the acceptance list, not acceptance items.
   - `docs/carryover-notes.md` has one `## ` heading per copied file, each naming a path of the Files line (`grep -c '^## ' docs/carryover-notes.md` prints 6) and the phrase `Python sends` occurs in none of it. Note (not acceptance): that the notes list each sentence removed or restated, by section and not quoted, is checked by the owner against the diff; the old source is not in this repository.
   - `go run ./scripts/hygiene` (issue 2) exits 0 on the copied set [CI]; offline substitute: `grep -rnE '[DU]U?[0-9]{6,8}|/Users/|/Volumes/' <copied paths>` prints nothing.
   Note (not acceptance): whether a copied sentence is personal is judged by the owner in `docs/carryover-notes.md` and the diff; a rule that depended on such a sentence is restated without it. Before the pull request is opened the author runs the hygiene scan on the copied set, and the pull request description names the source commit b00b4ed, the copy allow-list and the files copied.
-  Depends on: 2 (the hygiene script). Order: after 2. Size: S
+  Depends on: 2 (the hygiene script), 3. Order: after 2, 3. Size: S
 
 ## Left out
 
@@ -445,7 +446,7 @@ requests are notes below the acceptance list, not acceptance items.
 - Hand-written records beside generated ones: adopted. Issue 1 generates the records and `api.go` aliases them; no drift test.
 - The synthetic-v1 marker field against `additionalProperties: false`: adopted. The marker moved to `MANIFEST.synthetic-v1.json` per fixtures directory (issues 1, 5, 9).
 - "Independent after issue 1" was false because of go.mod: adopted. Issue 1 holds the shared tools; the issues that list go.mod never run together (see `## Modules`).
-- Serial chain with owner merges: partly adopted. Issue 14 does not wait for the owner-merged workflows (issue 3); its checks are local commands.
+- Serial chain with owner merges: adopted for wave 0 (1, 2, 3). Issue 14 waits for the owner-merged workflows (issue 3, wave 0), so its [CI] items have a workflow to be decided by.
 - Checks that need the network: adopted. Items marked [CI] carry an offline grep substitute (see `## Issues`); no `npx`, action pins checked by a counting grep (issue 3).
 - Pyside layout against the owner_only path: moved to Left out, settled with the owner before week 2.
 - Generated TS entry file: issue 1 stubs `web/src/generated/index.ts`; the follow-up design regenerates it under a Design line.
