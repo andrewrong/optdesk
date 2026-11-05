@@ -32,7 +32,7 @@ rows above name every other top-level path of the planned tree.
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
   The row `ot` (path `cmd/**`) is the composition root, the one `package main` of the binary. It is a group of files of one
   package, so, as the design rules provide for such a group, it has no interface file (its entry cell names `cmd/ot/main.go`), no
-  module depends on it, and its depends cell is documentation. The reason it is not held to interface-only imports: Go cannot construct an
+  module depends on it, and its depends cell is read for one purpose only: the root packages of the listed rows that it may import (below). The reason it is not held to interface-only imports: Go cannot construct an
   implementation without importing the implementation's package, so a composition root must name those packages; `ot` is not a module that
   other modules use, and it holds no logic beyond wiring (flag parsing, the subcommand registry, the constructors of the wiring table in
   `docs/design/week1.md#interface`). The interface-only rule therefore binds the library modules (every row with an interface file in
@@ -45,8 +45,8 @@ rows above name every other top-level path of the planned tree.
   the component `ot` for `cmd/ot`.
 - **Layers** (plan 2): data = contracts, clock, broker, sources, store, compute (in that order);
   scheduling = runner, jobs, notify; front = pages, web. Within a layer a module may depend only on a module
-  listed before it in its layer; across layers only scheduling to data and front to data are allowed. Nothing
-  depends on the front, on ci or docs, and only `ot` depends on repo (its `internal/profile`).
+  listed before it in its layer; across layers only scheduling to data and front to data are allowed. No layer
+  module depends on the front, on ci or docs (only `ot`, outside the layers, depends on the front), and only `ot` depends on repo (its `internal/profile`).
 - The pyside row names no interface or test file yet: AGENTS.md puts a Python interface at `src/<pkg>/<module>/api.py`
   while the declaration's owner_only list names `pyside/ibkr/transport.py`; the owner settles the layout before
   pyside gets its first issue (docs/design/week1.md, Left out). `pyside/tools/**` (the calendar generator and its
@@ -55,7 +55,7 @@ rows above name every other top-level path of the planned tree.
 - Ownership of shared paths, decided here: of the root files, `Makefile`, `go.mod`, `go.sum`, `arch.toml`, `.go-arch-lint.yml`,
   `.golangci.yml`, `.gitignore`, `AGENTS.md`, `README.md` and `LICENSE` belong to repo (the root paths of its row), so an issue that adds a Go
   dependency is a judged two-module entry (its module and repo) and names `go.mod` and `go.sum`; `package.json`,
-  `pnpm-lock.yaml`, `pnpm-workspace.yaml` (pnpm 10.x pinned in `packageManager`) belong to web;
+  `pnpm-lock.yaml`, `pnpm-workspace.yaml` (pnpm 10.x pinned in `packageManager`) and `docs/adr/0034-frontend-stack.md` belong to web (every other ADR belongs to docs);
   `contracts/**`, `docs/contracts/00-protocol.md`, `docs/contracts/datasets/**`, `docs/contracts/figures/**`,
   `docs/contracts/page-schemas.md` and the code generated from contracts (`internal/contracts/gen/**`,
   `web/src/generated/**`, `pyside/gen/**`) belong to contracts, so a source and its output are one module;
