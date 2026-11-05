@@ -30,9 +30,9 @@ rows above name every other top-level path of the planned tree.
   standard library and external modules; nothing else. The one directory whose name differs from its row is
   `internal/profile/`, owned by repo: its component `profile` has an empty import list (standard library and
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
-  The row `ot` (path `cmd/**`) is the composition root, the one `package main` of the binary. It is a group of files of one
-  package, so, as the design rules provide for such a group, it has no interface file (its entry cell names `cmd/ot/main.go`), no
-  module depends on it, and its depends cell is read for one purpose only: the root packages of the listed rows that it may import (below). The reason it is not held to interface-only imports: Go cannot construct an
+  The row `ot` (path `cmd/**`) is marked as the composition root of the program, as point 5 of the design rules provides: the one
+  `package main` of the binary, which may import the implementation packages its row lists, and which no module imports; the program has
+  no other such row. Its entry cell names `cmd/ot/main.go`; its depends cell lists the rows whose root packages it may import (below). The reason it is not held to interface-only imports: Go cannot construct an
   implementation without importing the implementation's package, so a composition root must name those packages; `ot` is not a module that
   other modules use, and it holds no logic beyond wiring (flag parsing, the subcommand registry, the constructors of the wiring table in
   `docs/design/week1.md#interface`). The interface-only rule therefore binds the library modules (every row with an interface file in
@@ -114,5 +114,5 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | ci | outside the layers | the repo | workflows, Dependabot | secrets in files | none |
 | deploy | outside the layers | host service definitions (owner-only) | deployment files | secrets in files; no week-1 issue | none |
 | repo | outside the layers | none | profile, scripts, lint and arch configuration | business logic | README.md |
-| ot | outside the layers | the modules (their interface files, and the eight packages named above for construction) and profile | the `ot` binary | any logic beyond wiring | none |
+| ot | composition root, outside the layers | the modules (their interface files, and the eight packages named above for construction) and profile | the `ot` binary | any logic beyond wiring | none |
 | docs | outside the layers | design and decisions | design files, ADRs, ratchet (docs/design/ratchet.json is owner-only) | none | none |

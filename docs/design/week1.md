@@ -56,7 +56,7 @@ function body; each constructor is therefore declared there as a function type, 
 function of exactly that type in the package named in the last column. `cmd/ot` calls a module through its interface
 file and, for construction, through the one function of this table, and uses no other name of those packages. The
 owner's issue holds the check `var _ <module>.<Type> = <pkg>.<Func>` in a test (compile-time, so a drift fails
-`go build`), and the follow-up design assigns each function to its type in `cmd/ot/wire.go`. `cmd/ot` is the go-arch-lint component `ot` of `docs/design/modules.md`, whose allowed imports are exactly the eight implementation packages of this table (a checked exception) and the interface files.
+`go build`), and the follow-up design assigns each function to its type in `cmd/ot/wire.go`. `cmd/ot` is the go-arch-lint component `ot` of `docs/design/modules.md`, whose allowed imports are exactly the eight implementation packages of this table (the composition root's list, checked) and the interface files.
 
 | type (interface file) | signature | implemented in | function |
 |---|---|---|---|
