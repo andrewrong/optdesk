@@ -1,0 +1,26 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: AGENTS.md exists
+        run: test -s AGENTS.md
+      - name: no CRLF in text files
+        run: |
+          bad=$(git ls-files -z | xargs -0 grep -lI $'\r' || true)
+          if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
+      - name: no file over 1 MB
+        run: |
+          bad=$(git ls-files -z | xargs -0 -I{} find {} -type f -size +1048576c)
+          if [ -n "$bad" ]; then echo "files over 1 MB:"; echo "$bad"; exit 1; fi
