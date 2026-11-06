@@ -59,10 +59,12 @@ jobs:
              ! printf '%s\n' "$line" | grep -qE "^Contracts: $entry(, $entry)*(; .+)?$"; then
             echo "Contracts line must be 'Contracts: unchanged' or name each contract as '<id> rN->rN+1', '<id> rN (new)' or '<id> vN amended before first consumer'"; exit 1
           fi
-          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- contracts/)
+          # Only the files that define a contract revision count; fixtures, gendoc,
+          # generate.sh and READMEs under contracts/ change no revision.
+          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- contracts/schemas contracts/datasets contracts/proto)
           if [ -n "$changed" ] && [ "$line" = "Contracts: unchanged" ]; then
-            echo "contracts/ changed but body says unchanged:"; echo "$changed"; exit 1
+            echo "contracts/schemas, contracts/datasets or contracts/proto changed but body says unchanged:"; echo "$changed"; exit 1
           fi
           if [ -z "$changed" ] && [ "$line" != "Contracts: unchanged" ]; then
-            echo "no contracts/ change but body names a contract"; exit 1
+            echo "no contracts/schemas, contracts/datasets or contracts/proto change but body names a contract"; exit 1
           fi
