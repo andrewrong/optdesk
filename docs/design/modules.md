@@ -35,7 +35,7 @@ rows above name every other top-level path of the planned tree.
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
   The row `ot` (path `cmd/**`) is marked as the composition root of the program, as point 5 of the design rules provides: the one
   `package main` of the binary, which may import the implementation packages its row lists, and which no module imports; the program has
-  no other such row. Its entry cell names `cmd/ot/main.go`; its depends cell lists the rows whose root packages it may import (below). The reason it is not held to interface-only imports: Go cannot construct an
+  no other such row. Its entry cell is empty (no row depends on `ot`, and `main.go` holds behaviour, so it is no interface file); its depends cell lists the rows whose root packages it may import (below). The reason it is not held to interface-only imports: Go cannot construct an
   implementation without importing the implementation's package, so a composition root must name those packages; `ot` is not a module that
   other modules use, and it holds no logic beyond wiring (flag parsing, the subcommand registry, the constructors of the wiring table in
   `docs/design/week1.md#interface`). The interface-only rule therefore binds the library modules (every row with an interface file in
@@ -91,7 +91,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** | cmd/ot/main.go | cmd/ot/main_test.go | contracts clock sources store runner jobs pages repo |
+| ot | cmd/** |  | cmd/ot/main_test.go | contracts clock sources store runner jobs pages repo |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
