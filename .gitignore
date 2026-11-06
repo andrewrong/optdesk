@@ -1,0 +1,15 @@
+# build output
+/bin/
+/ot
+*.test
+*.out
+
+# local environment: secrets live in $OT_HOME, never in the tree
+.env
+.env.*
+
+# tools
+node_modules/
+.venv/
+__pycache__/
+.DS_Store

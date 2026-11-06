@@ -1,0 +1,208 @@
+package main
+
+import (
+	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("no go.mod above the test directory")
+		}
+		dir = parent
+	}
+}
+
+func modulesText(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "design", "modules.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func runArch(t *testing.T, args ...string) (int, string) {
+	t.Helper()
+	var out, errb bytes.Buffer
+	code := run(args, &out, &errb)
+	return code, out.String() + errb.String()
+}
+
+func write(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestArchCheckCommittedFiles(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	code, out := runArch(t, "--check", "--modules", filepath.Join(root, "docs/design/modules.md"), "--root", root)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+}
+
+func TestArchCheckFailsOnNewEdge(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules.md")
+	text := modulesText(t)
+	write(t, modules, text)
+	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 0 {
+		t.Fatalf("generate: exit %d: %s", code, out)
+	}
+	if code, out := runArch(t, "--check", "--modules", modules, "--root", dir); code != 0 {
+		t.Fatalf("fresh files: exit %d: %s", code, out)
+	}
+	edge := strings.Replace(text, "| internal/clock/api_test.go | contracts |", "| internal/clock/api_test.go | contracts store |", 1)
+	if edge == text {
+		t.Fatal("the clock row was not found")
+	}
+	write(t, modules, edge)
+	code, out := runArch(t, "--check", "--modules", modules, "--root", dir)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1: %s", code, out)
+	}
+}
+
+func TestArchCheckOTListsElevenPackages(t *testing.T) {
+	t.Parallel()
+	text := modulesText(t)
+	// The list as the text states it: backticked internal/a/b paths after "these eleven".
+	_, after, _ := strings.Cut(text, "these eleven")
+	list, _, _ := strings.Cut(after, "Any other import")
+	var want []string
+	for _, m := range regexp.MustCompile("`internal/([a-z0-9_]+/[a-z0-9_]+)`").FindAllStringSubmatch(list, -1) {
+		want = append(want, m[1])
+	}
+	if len(want) != 11 {
+		t.Fatalf("the text lists %d packages, want 11", len(want))
+	}
+	toml, _, err := generate(text, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`(?s)\[component\."ot"\]\nin = "cmd/ot"\nmay_import = \[([^\]]*)\]`).FindSubmatch(toml)
+	if m == nil {
+		t.Fatalf("no component ot in:\n%s", toml)
+	}
+	var got []string
+	for _, q := range regexp.MustCompile(`"([^"]+)"`).FindAllSubmatch(m[1], -1) {
+		if strings.Contains(string(q[1]), "/") {
+			got = append(got, string(q[1]))
+		}
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("ot imports %v, text lists %v", got, want)
+	}
+	for _, root := range []string{"contracts", "clock", "sources", "store", "runner", "jobs", "pages", "profile"} {
+		if !strings.Contains(string(m[1]), `"`+root+`"`) {
+			t.Errorf("ot lacks root component %s", root)
+		}
+	}
+}
+
+func TestArchCheckProfileHasNoImports(t *testing.T) {
+	t.Parallel()
+	toml, yml, err := generate(modulesText(t), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(toml), "[component.\"profile\"]\nin = \"internal/profile\"\nmay_import = []\n") {
+		t.Fatalf("profile is not generated with an empty import list:\n%s", toml)
+	}
+	if strings.Contains(string(yml), "\n  profile:\n    mayDependOn") {
+		t.Fatal("profile has a mayDependOn entry")
+	}
+}
+
+// scratch writes a module tree of interface packages plus the given files.
+func scratch(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "go.mod"), "module example.com/s\n\ngo 1.24\n")
+	pkgs := map[string]string{
+		"internal/contracts": "contracts", "internal/clock": "clock", "internal/sources": "sources",
+		"internal/store": "store", "internal/runner": "runner", "internal/jobs": "jobs",
+		"internal/pages": "pages", "internal/profile": "profile",
+		"internal/store/migrate": "migrate", "internal/store/sessionday": "sessionday",
+		"cmd/ot": "main",
+	}
+	for p, name := range pkgs {
+		src := "package " + name + "\n"
+		if name == "main" {
+			src += "\nfunc main() {}\n"
+		}
+		write(t, filepath.Join(dir, p, "x.go"), src)
+	}
+	for p, src := range files {
+		write(t, filepath.Join(dir, p), src)
+	}
+	_, yml, err := generate(modulesText(t), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, ymlFile), string(yml))
+	return dir
+}
+
+func imports(pkg, path string) string {
+	return "package " + pkg + "\n\nimport _ \"example.com/s/" + path + "\"\n"
+}
+
+// lint runs the pinned go-arch-lint on a scratch tree and reports whether it passed.
+func lint(t *testing.T, dir string) (bool, string) {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), "go", "tool", "go-arch-lint", "check", "--project-path", dir, "--output-color=false")
+	cmd.Dir = repoRoot(t)
+	out, err := cmd.CombinedOutput()
+	return err == nil, string(out)
+}
+
+func TestArchCheckScratchTree(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		file string
+		src  string
+		pass bool
+	}{
+		{"ot imports a store sub-package outside the eleven", "cmd/ot/main2.go", imports("main", "internal/store/migrate"), false},
+		{"ot imports a listed implementation package", "cmd/ot/main2.go", imports("main", "internal/store/sessionday"), true},
+		{"a jobs sub-package imports a store sub-package", "internal/jobs/fred/j.go", imports("fred", "internal/store/sessionday"), false},
+		{"a jobs sub-package imports the store root", "internal/jobs/fred/j.go", imports("fred", "internal/store"), true},
+		{"profile imports another module", "internal/profile/p.go", imports("profile", "internal/store"), false},
+		{"clock imports a module that its row does not list", "internal/clock/c.go", imports("clock", "internal/runner"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := scratch(t, map[string]string{tc.file: tc.src})
+			ok, out := lint(t, dir)
+			if ok != tc.pass {
+				t.Fatalf("pass = %v, want %v:\n%s", ok, tc.pass, out)
+			}
+		})
+	}
+}
