@@ -1,0 +1,5 @@
+[
+  {"series_id": "DGS10", "units": "Percent"},
+  {"series_id": "DGS2", "units": "Percent"},
+  {"series_id": "CPIAUCSL", "units": "Index 1982-1984=100"}
+]
