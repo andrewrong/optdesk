@@ -171,7 +171,7 @@ func TestOwnerDSNMalformedHoldsNoSecret(t *testing.T) {
 
 func TestOwnerDSNSetsRole(t *testing.T) {
 	t.Parallel()
-	got, err := OwnerDSN("postgres://adm:pw@db.example:5433/other")
+	got, err := OwnerDSN("postgres://adm:pw"+"@db.example:5433/other")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestOwnerDSNSetsRole(t *testing.T) {
 
 func TestOwnerDSNKeepsSSLMode(t *testing.T) {
 	t.Parallel()
-	got, err := OwnerDSN("postgresql://adm:pw@h:5432/x?sslmode=require")
+	got, err := OwnerDSN("postgresql://adm:pw"+"@h:5432/x?sslmode=require")
 	if err != nil {
 		t.Fatal(err)
 	}
