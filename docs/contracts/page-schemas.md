@@ -46,7 +46,20 @@ The schema ids with the `const` of their `schema_version`:
 | page.structures_list.v1 | 1 |
 | page.tracking.v1 | 1 |
 
+Also `common.v1` (`contracts/schemas/common.v1.json`, `$id` `https://optdesk.invalid/schemas/common.v1.json`): only `$defs` `Id`, `Timestamp`, `RunStatus`, `SourceTime`, `StaleLabel`, `Gap`, `UsdFigure`, `PercentFigure`, `SharePercentFigure`, `UsdSignedFigure`, used as `common.v1.json#/$defs/<Name>`.
+
 ## Invariants
+
+Conventions of every file of the v2 line (`page.<name>.v2.json`, checked by `TestPageV2Conventions`):
+
+1. `schema_version` is `{"const": 2}` with `"type": "integer"`, the number being that of the file name.
+2. `stale_after` is an optional top-level property, `$ref` `Timestamp`: declared, not in `required`.
+3. The page uses the shared defs of `common.v1` by `$ref` and has no local def of the same name, except the local `Gap` of `options_summary`.
+4. No def name contains `__`; a def named `option_trader__viewmodels__<module>__<Name>` is renamed `<ModulePascal><Name>`, and one with a counterpart in `common.v1` becomes the `$ref`.
+5. `ROUND_HALF_UP` does not occur; every `x-rounding` value is `ROUND_HALF_EVEN`. A money value stays a JSON number.
+6. Every `x-timezone` value is `owner`.
+
+Invariants of the carried files:
 
 - The 29 copies are unchanged except the `x-timezone` substitution (every value is `owner`, checked by the test); the hash of each edited copy is in the manifest, and `internal/contracts/carryover_test.go` fails on a file without a line, a line without a file, or a hash that differs.
 - The keywords `x-decimals`, `x-timezone` and `x-rounding` are unknown to the compiler and ignored.
@@ -57,3 +70,4 @@ The schema ids with the `const` of their `schema_version`:
 ## Version history
 
 - v1: the 29 carried schemas (`page.macro_rates.v1` was added before them), the manifest and the fixture validation test.
+- v2 line: `common.v1` is added; the `page.<name>.v2.json` files of the five summaries and `home_page` are added by later issues, and the existing files are unchanged.

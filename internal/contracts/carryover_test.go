@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -80,7 +81,7 @@ func carriedFiles(t *testing.T) []string {
 	var names []string
 	for _, p := range paths {
 		n := filepath.Base(p)
-		if n == "page.macro_rates.v1.json" {
+		if n == "page.macro_rates.v1.json" || slices.Contains(pageV2Files, n) {
 			continue
 		}
 		names = append(names, n)
