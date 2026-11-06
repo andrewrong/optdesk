@@ -5,7 +5,7 @@ Source: the advisor goal "the calendar generator that populates master.session_d
 workflow"; `docs/design/week1-run.md` (`## Left out`: the generator and its yearly files follow `pyside-layout.md`) and
 `docs/design/pyside-layout.md` (`calendar` is a module of clock; ci-pyside must land before any calendar issue).
 
-Goal (scope: the calendar XNYS only): the owner runs one command offline and gets a file that `ot calendar load` accepts, with its provenance header filled by the
+Goal (scope: the calendar XNYS only): the owner runs one command offline and gets a file in the format `ot calendar load` reads (this cut proves it with the Python copy of the gate; see `## Left out`), with its provenance header filled by the
 generator, and every later pyside issue has a CI that runs `uv sync --locked`, `ruff check`, `mypy --strict` and `pytest -n auto`.
 No broker, no secret, no network at test time; no trading hour is written by hand anywhere.
 
@@ -52,7 +52,7 @@ Why: `pyside/tests/calendar/**` joins clock so the issue that writes the generat
 otherwise belongs to the pyside row); the entry and tests cells gain the calendar interface and its contract test, as
 `pyside-layout.md` promised. `depends` is unchanged: the generator imports no generated code (it writes JSON). `scripts/arch`
 generates `arch.toml` and `.go-arch-lint.yml` from the depends column only, so neither file changes; `go run ./scripts/arch --check`
-prints `arch: ok`. The ot row (`cmd/**`) already covers the Go sample test of `calendar-sample-load`.
+prints `arch: ok`. No ot file is changed by this design.
 
 ## Interface
 
@@ -68,8 +68,8 @@ Declarations (frozen dataclasses and Protocols; no function with a body, so the 
 - `GenerateError(Exception)`: an id outside the supported set, an id the library rejects, a bad range or a duplicate id.
 - `Builder` (Protocol, `__call__`): `(calendar_ids: Sequence[str], first: date, last: date, generated_at: datetime) -> CalendarFile`.
   Raises `GenerateError`. `generated_at` is an argument, so a test needs no clock.
-- `Renderer` (Protocol, `__call__`): `(file: CalendarFile) -> str`, the JSON text of the file format, keys in the order of the
-  model, instants as RFC 3339 with the suffix `Z`, one row per line, a final newline.
+- `Renderer` (Protocol, `__call__`): `(file: CalendarFile) -> str`, the JSON text of the file format, keys in the order of `contracts/datasets/master.session_day.r1.json` (`calendar_id`, `session_day`, `is_session`, `open_at`,
+  `close_at`, `early_close`; the synthetic fixture orders them differently, and the loader reads by name), instants as RFC 3339 with the suffix `Z`, one row per line, a final newline.
 - `Command` (Protocol, `__call__`): `(argv: Sequence[str], now: Callable[[], datetime], out: TextIO, err: TextIO) -> int`, the
   command line `python -m optdesk.calendar --calendar ID [--calendar ID ...] --from YYYY-MM-DD --to YYYY-MM-DD --out PATH`;
   returns 0, 2 for a usage or range error (including a repeated `--calendar`, an id outside the supported set), 1 otherwise.
@@ -138,10 +138,14 @@ the tagged release is checked by the reviewer at the pull request; making the ch
 
 ### calendar-interface (interface)
 
-Goal: the calendar interface and its contract test exist, so the dependency and the generator are built against them.
-Files: pyside/src/optdesk/calendar/__init__.py, pyside/src/optdesk/calendar/api.py, pyside/tests/contracts/test_calendar_api.py
+Goal: the calendar interface, its contract test and the locked dependency `exchange_calendars` (with the mypy override) exist, so the
+generator needs nothing from a sibling issue.
+Files: pyside/src/optdesk/calendar/__init__.py, pyside/src/optdesk/calendar/api.py, pyside/tests/contracts/test_calendar_api.py, pyside/pyproject.toml, pyside/uv.lock
 Depends on: ci-pyside-workflow
-Design: docs/design/pyside-calendar.md#interface
+Design: docs/design/pyside-calendar.md#interface. A judged two-module interface entry of clock (the first three files) and pyside
+(the last two), as `modules.md` treats an issue that adds a Go dependency (its module and repo with `go.mod` and `go.sum`); the
+dependency is part of the interface entry because the generator cannot import the library before the lock has merged. Own
+implementation of the library is not chosen, see `## Interface`, Dependency.
 Acceptance:
 1. `api.py` holds the declarations of `## Interface` and no logic, and imports only the standard library:
    `grep -E '^(import|from) ' pyside/src/optdesk/calendar/api.py` lists only `__future__`, `collections.abc`, `dataclasses`, `datetime`,
@@ -153,34 +157,24 @@ Acceptance:
    returns, that `GenerateError` carries a message, that `SUPPORTED_CALENDARS` is `("XNYS",)`, and that the text of the fake renderer
    decodes with `json.loads` to the keys `provenance` and `rows`. It imports nothing from `optdesk.calendar` but `api`, and it
    never calls the implementation.
-4. In a copy, `uv run ruff check`, `uv run mypy --strict src tests` and `uv run pytest -n auto` pass.
-Checked by CI: the same commands (ci-pyside).
-
-### calendar-dependency
-
-Goal: `exchange_calendars` is a locked runtime dependency, mypy knows it has no types, and nothing else changes.
-Files: pyside/pyproject.toml, pyside/uv.lock
-Depends on: calendar-interface
-Design: docs/design/pyside-calendar.md#interface (Dependency); own implementation is not chosen.
-Acceptance:
-1. `pyside/pyproject.toml` lists `exchange_calendars` once under `dependencies` with the lower bound `4` and an upper bound below `5`, and no other
-   direct dependency changes.
-2. `pyside/pyproject.toml` holds one `[[tool.mypy.overrides]]` block with `module = ["exchange_calendars"]` and
-   `ignore_missing_imports = true`, and no other mypy setting changes: `uv run mypy --strict src tests` still passes.
-3. `pyside/uv.lock` names `exchange-calendars` (`grep -c 'name = "exchange-calendars"' pyside/uv.lock` is at least 1).
-4. The pull request description names the dependency with its licence read by
-   `uv run python -c "import importlib.metadata as m; print(m.metadata('exchange_calendars')['License-Expression'])"`, lists every new
-   package of the lock (expected: numpy, pandas, python-dateutil, pyluach, korean-lunar-calendar, toolz, tzdata) with its licence, and
-   reports any difference from the claims of `## Interface`.
-5. `uv run python -c "import socket; socket.socket.connect = None; import exchange_calendars as x; print(len(x.get_calendar('XNYS').sessions))"`
+4. `pyside/pyproject.toml` lists `exchange_calendars` once under `dependencies` with the lower bound `4` and an upper bound below `5`, and
+   no other direct dependency changes; it holds one `[[tool.mypy.overrides]]` block with `module = ["exchange_calendars"]` and
+   `ignore_missing_imports = true`, and no other mypy setting changes.
+5. `pyside/uv.lock` names `exchange-calendars` (`grep -c 'name = "exchange-calendars"' pyside/uv.lock` is at least 1).
+6. `uv run python -c "import socket; socket.socket.connect = None; import exchange_calendars as x; print(len(x.get_calendar('XNYS').sessions))"`
    prints a number: loading a calendar needs no network.
-Checked by CI: `uv sync --locked` (a stale lock fails), `ruff check`, `mypy --strict`, `pytest -n auto`.
+7. In a copy, `uv run ruff check`, `uv run mypy --strict src tests` and `uv run pytest -n auto` pass.
+Note for the reviewer (not acceptance; the pull request description is not a file): the description names the dependency with its
+licence, printed by `uv run python -c "import importlib.metadata as m; print(m.metadata('exchange_calendars')['License-Expression'])"`,
+lists every new package of the lock (expected: numpy, pandas, python-dateutil, pyluach, korean-lunar-calendar, toolz, tzdata) with
+its licence, and reports any difference from the claims of `## Interface`.
+Checked by CI: `uv sync --locked` (a stale lock fails; locking needs the package index once), `ruff check`, `mypy --strict`, `pytest -n auto`.
 
 ### calendar-generator
 
 Goal: `python -m optdesk.calendar` writes a file that satisfies the rules of `## Interface`, from the library only, for XNYS.
 Files: pyside/src/optdesk/calendar/generate.py, pyside/src/optdesk/calendar/cli.py, pyside/src/optdesk/calendar/__main__.py, pyside/tests/calendar/test_calendar_generate.py, pyside/tests/calendar/test_calendar_cli.py
-Depends on: calendar-dependency
+Depends on: calendar-interface
 Design: docs/design/pyside-calendar.md#interface
 Acceptance:
 1. On the real library for `XNYS` over one full calendar year of the past (`test_calendar_generate.py`): every day has a row; a
@@ -203,38 +197,26 @@ Acceptance:
    and runs the item 1 build under it; `grep -n -E 'time\.sleep|datetime\.now|date\.today|utcnow' pyside/tests pyside/src/optdesk/calendar`
    lists only the one call in `__main__.py`.
 7. No time of day or zone literal in the source: `grep -c -E '[0-9]{1,2}:[0-9]{2}' pyside/src/optdesk/calendar/generate.py pyside/src/optdesk/calendar/cli.py pyside/src/optdesk/calendar/__main__.py`
-   prints 0 for each; the only zone name in the package is `UTC`.
+   prints 0 for each; `grep -n -E 'ZoneInfo|pytz|[A-Z][a-z]+/[A-Z][a-z_]+' pyside/src/optdesk/calendar/generate.py pyside/src/optdesk/calendar/cli.py pyside/src/optdesk/calendar/__main__.py`
+   lists nothing (the only zone name in the package is `UTC`, from `datetime.timezone.utc`).
 8. Tests write only under `tmp_path`, use no fixed path or port, share no state; `wc -l` of each new file is below 600;
    `uv run ruff check`, `uv run mypy --strict src tests` and `uv run pytest -n auto` pass without any change of
    `pyside/pyproject.toml`.
 Checked by CI: the same commands (ci-pyside).
-
-### calendar-sample-load
-
-Goal: `ot calendar load`'s own reader accepts a file the generator wrote, so the claim "a file `ot calendar load` accepts" is proved
-in Go and not only by the Python copy of the gate.
-Files: cmd/ot/calendar_generated_test.go, cmd/ot/testdata/calendar_xnys_sample.json
-Depends on: calendar-generator
-Design: docs/design/pyside-calendar.md#issues; the cut crosses a module border on purpose (the sample is data of ot's testdata, made
-by the generator command, and no ot source file changes). If the worker finds `readCalendarFile` needs a change, it reports it.
-Acceptance:
-1. `cmd/ot/testdata/calendar_xnys_sample.json` is the output of `python -m optdesk.calendar --calendar XNYS` over a range of about
-   five weeks that holds a weekend, a holiday and an early close, copied unchanged (the pull request description gives the command and the
-   range); `python3 -m json.tool` accepts it and its `provenance.generator` is `optdesk.calendar`.
-2. `TestCalendarLoadGeneratedSample` (parallel, fake store as in `calendar_test.go`) loads the sample through `ot calendar load`'s path and
-   the fake store holds one row per day of the range, with the non-session days having `is_session` false; the test types no hour.
-3. Every test of the new file calls `t.Parallel()`; `go test ./cmd/ot/...` passes; `grep -c -E '[0-9]{1,2}:[0-9]{2}' cmd/ot/calendar_generated_test.go` prints 0.
-Checked by CI: `go test` of the `test` check.
 
 ## Left out
 
 - Tokyo (XTKS): the calendar has a lunch break and `master.session_day` has one open and close per day, so one pair would silently
   cover the break; the project record also names a separate hours overlay for it. Tokyo needs a decision on the dataset (break
   columns, a contracts change) and is a later design, not "no new design".
-- Yearly data files are not committed except the small sample above: a file carries `generated_at`, and the owner runs the
+- Yearly data files are not committed: a file carries `generated_at`, and the owner runs the
   generator and `ot calendar load` (`week1-run.md`); which years is the owner's choice.
 - The contracts document of the file envelope (`week1-run.md` named it for this design) is a contracts file and a later contracts issue;
   so is the sentence of `docs/contracts/clock.md` that says a consumer reads only `is_session` of a closed day (rule 3).
+- The Go test that loads a file made by the generator through `ot calendar load`'s reader is a follow-up after the generator has
+  merged (it needs a sample produced by `python -m optdesk.calendar`, an output of an unmerged sibling, so it cannot be cut here).
+  Until then the acceptance of this cut proves only the Python copy of the gate (`check_like_loader`); the follow-up is an ot issue
+  whose sample is checked by rerunning `build_file` and `render_file` with the file's own `generated_at` and comparing bytes.
 - A cross-check of the library's hours against the broker's hours (the broker design, `modules.md` clock row) stays out.
 - Making ci-pyside a required check and branch protection are the owner's.
 - A JSON-schema validation of rows with `jsonschema` is not added: a second new dependency for a check the Go loader already makes.
@@ -243,17 +225,27 @@ Checked by CI: `go test` of the `test` check.
 
 Full answer: `adv-pyside-calendar.md` in the dispatcher scratchpad (a local path, kept out of this public file).
 
-1. Gap against the goal: adopted. `start` and `end` are passed to `get_calendar` (rule 5) and tested for a later year; the Go gate is
-   exercised by `calendar-sample-load`; Tokyo moves to `## Left out` with the lunch-break reason; the broker cross-check is listed there.
-2. Untyped library and the mypy fix: adopted. The override is in `calendar-dependency`, the owner of `pyproject.toml`; the generator
+1. Gap against the goal: adopted. `start` and `end` are passed to `get_calendar` (rule 5) and tested for a later year; the Go test of a generated sample is a
+   follow-up after the generator merges (`## Left out`), and this cut states that its acceptance proves only the Python copy of the gate; Tokyo moves to `## Left out` with the lunch-break reason; the broker cross-check is listed there.
+2. Untyped library and the mypy fix: adopted. The override is in the interface entry, which carries `pyproject.toml`; the generator
    issue changes no pyproject line (acceptance 8); the `Any` values go through one checked conversion.
 3. A simpler way: adopted in part. The `CalendarSource` seam and the `build`/`source` split are dropped (one `generate.py`, tests on the
    real library, which is offline and fast), and the skip-then-unskip dance is gone because the contract test uses fakes of Protocols.
-   Not adopted: merging dependency and interface into one issue, because `pyproject.toml` (pyside) and `api.py` (clock) are two modules.
+   Dependency and interface are merged into one judged two-module interface entry (clock and pyside), as the design review asked.
 4. Lock-in: adopted. `generator_version` is a hand-kept constant changed with the rules (rule 4, the package version is static); the
    closed-day sentinel is named as a sentinel with the consumer rule (rule 3); the names `generator` and the five keys are final.
 5. False claims: adopted. No stub is called; the licence is read from `License-Expression`; python-dateutil is listed; a repeated id is
    exit 2 and `GenerateError`; the stub-calling and early-close-comparison items are replaced.
 6. Slip causes: adopted. The interface and generator depend on `ci-pyside-workflow` (as `pyside-layout.md` requires), which is an
-   owner-merged entry; locking is under `Checked by CI`; the manual run item is replaced by the sample issue; the `tests/calendar`
+   owner-merged entry; locking is under `Checked by CI`; the manual run item is dropped; the `tests/calendar`
    layout was run once in a copy (`## Read at the base`).
+
+Design review of this pull request (head b8ca06d), answered:
+
+1. calendar-generator without the lock: adopted. The dependency moves into the interface entry as a two-module entry; the
+   generator depends only on it.
+2. calendar-sample-load needs an unmerged sibling: adopted. The issue is removed and listed under `## Left out`; the follow-up checks
+   its sample by rerunning the builder with the file's `generated_at`.
+3. Zone-name check: adopted, a named grep in generator acceptance 7.
+4. Licence check in the description: adopted as a note for the reviewer, with the command; the file items of the entry carry the decidable checks.
+5. Renderer key order: adopted, the order of the dataset schema is named.
