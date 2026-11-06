@@ -1,66 +1,32 @@
-# Week 1 wiring: cmd/ot, the other page schemas, fixture validation
+# Week 1 wiring: store DSN names, the other page schemas, fixture validation
 
-Author: advisor of optdesk (second draft)
+Author: advisor of optdesk (third draft, cut narrowed after the design review)
 Source: `## Left out` of `docs/design/week1.md` (the earlier issues 13 wire-run-once, 15 page-schemas-28, 16
-web-fixtures), cut against the code on origin/main at 9b6f5f0. Identifiers below were read there; a name marked
-[not landed] belongs to an issue of week1.md that has not merged (store-session-day, store-series-ops,
-jobs-fred-series) and is stated here as the design expects it.
+web-fixtures), cut against the code on origin/main at 9b6f5f0. The cut holds only what needs packages that are on
+origin/main; the `cmd/ot` wiring needs packages of store-session-day, store-series-ops and jobs-fred-series of week1.md,
+which have not merged, and is left out (see `## Left out`).
 
-Goal of the design: the pieces of week 1 are wired in `cmd/ot` and tested with fakes. They are wired, not run on
-real data: `master.session_day` stays empty on a real database (see Left out), so `ot run-once` on a real database
-ends in `UnknownCalendar` until a later issue fills the table. The other 29 page schemas are in `contracts/schemas`
-and every page fixture of `web/fixtures` is validated against them by a Go test.
+Goal of the design: the interface constants for the DSN names exist in `internal/store/api.go`, the other 29 page
+schemas are in `contracts/schemas`, and every page fixture of `web/fixtures` is validated against them by a Go test.
 
 ## Modules
 
-No change to `docs/design/modules.md`: every path below belongs to an existing row. Construction in `cmd/ot` is
-allowed by its row ("the eleven packages named above for construction", line 119 of modules.md, the list of
-`checks.yml` at line 43 of week1.md): `internal/clock/realclock`, `internal/clock/calendar`,
-`internal/store/sessionday`, `internal/store/series`, `internal/store/ops`, `internal/store/setup`,
-`internal/sources/fred`, `internal/jobs/fredseries`, `internal/runner/reconcile`, `internal/pages/macro_rates`,
-`internal/pages/embed`; the `ot` row's depends cell adds `repo` for `internal/profile`.
+No change to `docs/design/modules.md`: every path below belongs to an existing row.
 
 | issue | module |
 |---|---|
 | store-dsn-names | store (interface) |
 | schemas-28 | contracts |
-| contracts-fixture-validation | contracts |
-| store-wiring-support | store |
-| ot-run-once | ot |
-| ot-page-serve-setup | ot |
 
 Every entry lies in one module. `store-dsn-names` is the one entry marked (interface): it edits the interface file
-`internal/store/api.go`, which `cmd/ot` and `internal/store/setup` both use. `schemas-28` adds new files under
-`contracts/schemas`, which are not an interface file of the map; AGENTS.md calls the JSON schema of a page the
-TypeScript interface, so that issue carries a Design note and lands before any use (see its entry). No issue of this
-design edits `go.mod`, `go.sum`, `package.json` or `pnpm-lock.yaml`; the Go test uses the santhosh-tekuri library
-that is already a direct dependency.
+`internal/store/api.go`. `schemas-28` adds new files under `contracts/schemas`, which are not an interface file of the
+map; AGENTS.md calls the JSON schema of a page the TypeScript interface, so that issue carries a Design note and
+lands before any use (see its entry). No issue of this design edits `go.mod`, `go.sum`, `package.json` or
+`pnpm-lock.yaml`; the Go test uses the santhosh-tekuri library that is already a direct dependency.
 
 ## Interface
 
 Frozen names, each read on origin/main. The owner of a name is the module of its file.
-
-Landed and used as they are (no edit):
-
-| name | owner | file | signature as landed |
-|---|---|---|---|
-| `clock.NewClockFunc` | clock | internal/clock/api.go | `func() Clock`; implemented by `realclock.NewReal` |
-| `clock.NewCalendarFunc` | clock | internal/clock/api.go | `func(SessionSource) Calendar`; implemented by `calendar.NewCalendar` |
-| `clock.SessionSource` | clock | internal/clock/api.go | `SessionDays(ctx, calendarID string, from, to contracts.Day) ([]contracts.SessionDay, error)` |
-| `store.SessionDayReader` | store | internal/store/api.go | the same method, same parameters, same result as `SessionSource` |
-| `store.OpenSessionDayFunc`, `OpenSeriesFunc`, `OpenLedgerFunc`, `SetupFunc` | store | internal/store/api.go | `func(ctx, dsn string) (SessionDayStore / SeriesStore / OpsLedger, error)`; `func(ctx, SetupConfig) error`; the stores embed their Reader and Writer and have `Close() error` |
-| `store.SetupConfig` | store | internal/store/api.go | `AdminDSN string`, `Home string` |
-| `sources.NewFREDFunc`, `sources.FREDConfig` | sources | internal/sources/api.go | `func(FREDConfig) (Source, error)`; `FREDConfig{BaseURL, APIKey string; Clock clock.Clock}` |
-| `jobs.NewFredSeriesFunc`, `jobs.Registry` | jobs | internal/jobs/api.go | `func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error)`; `Registry` is `[]contracts.Job` |
-| `runner.NewFunc`, `runner.Reconciler` | runner | internal/runner/api.go | `func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job) Reconciler`; `Reconcile(ctx, day contracts.Day) error`; implemented by `reconcile.New` (the zero window rule: calendar `XNYS`, no offsets) |
-| `pages.BuildMacroRatesFunc`, `pages.NewHandlerFunc` | pages | internal/pages/api.go | as in the wiring table of week1.md; implemented by `macro_rates.Build` and `embed.Handler` |
-| `profile.LoadFunc`, `profile.NewLogHandlerFunc` | repo | internal/profile/api.go | already used by `newApp` in `cmd/ot/main.go` |
-| `app`, `command`, `register(name, run)`, `newApp(getenv, stdout, stderr)`, `run(args, getenv, stdout, stderr)` | ot | cmd/ot/main.go | `app` has the fields `profile`, `log`, `stdout`; `command` is `func(a *app, args []string) error`; subcommand files register in `init()` |
-
-Consequence of the table: `store.SessionDayReader` and `clock.SessionSource` have one identical method, so a
-`store.SessionDayStore` already satisfies `clock.SessionSource`. The adapter named in week1.md is therefore not a
-type: `cmd/ot` passes the store to `NewCalendar` and holds `var _ clock.SessionSource = store.SessionDayReader(nil)`
-as the compile-time check that the two stay equal.
 
 Added by `store-dsn-names` (the only interface issue of this design), in `internal/store/api.go`:
 
@@ -74,19 +40,13 @@ names and the `environment` job of `hygiene.yml` greps the environment of the ru
 be set in a workflow `env:` block; the pg tests build their DSN in the test from the `PG*` variables of the test-pg
 job.
 
-Names fixed here without a declaration, owned by `cmd/ot`: the key `FRED_API_KEY` of `$OT_HOME/.env` (owner ruling
-of week1.md, issue 8); the default FRED base URL, a constant of `cmd/ot` (`https://api.stlouisfed.org/fred`); the
-subcommands `run-once`, `setup`, `page` and `serve`; the flags `--day YYYY-MM-DD` (default: the New York date of
-`clock.Now()`), `--out` (page), `--addr` (serve, default `127.0.0.1:8080`) and the word `pg` after `setup`.
-
-Not frozen (Left out): `Page` and `Builder` of pages; any window rule.
+Not frozen (Left out): `Page` and `Builder` of pages; any window rule; the names of the `cmd/ot` subcommands, flags and
+the `.env` key of the FRED source.
 
 ## Issues
 
-Order by dependency. Wave A (nothing to wait for): `store-dsn-names`, `schemas-28`. Wave B: `contracts-fixture-validation`,
-`store-wiring-support`, `ot-run-once`. Wave C: `ot-page-serve-setup`. Items under "Checked by CI" are decided by the
-workflow of the head commit (ci-go, checks, hygiene, and the pg job for pg-tagged tests); the facts above them are
-read from the diff.
+Both issues are in wave A: nothing waits on a sibling. Items under "Checked by CI" are decided by the workflow of the
+head commit (ci-go, checks, hygiene); the facts above them are read from the diff.
 
 ### store-dsn-names
 
@@ -102,92 +62,38 @@ read from the diff.
   Depends on: none (everything it edits is landed).
   Size: S
 
+
 ### schemas-28
 
-The other page schemas of the old repository, copied unchanged, with a manifest of the copies.
-  Goal: The schemas the migrated front end already follows are in `contracts/schemas`, so their fixtures can be validated. This is the carry-over of week1.md#left-out, not the cleanup pass of week 2.
-  Files: contracts/schemas/page.advice_page.v1.json, page.companies_page.v1.json, page.full_scan.v1.json, page.held_companies_summary.v1.json, page.home_page.v1.json, page.household_page.v1.json, page.household_risk.v1.json, page.household_summary.v1.json, page.indicator_detail.v1.json, page.ledger_page.v1.json, page.macro_page.v1.json, page.macro_summary.v1.json, page.market_summary.v1.json, page.market_weather.v1.json, page.option_page.v1.json, page.option_result_page.v1.json, page.options_summary.v1.json, page.positions_page.v1.json, page.positions_page.v2.json, page.positions_page.v3.json, page.report_page.v1.json, page.report_page.v2.json, page.settings_page.v1.json, page.stock_option_page.v1.json, page.structure_detail.v1.json, page.structure_detail.v2.json, page.structure_detail.v3.json, page.structures_list.v1.json, page.tracking.v1.json (all under contracts/schemas/), contracts/schemas/carryover.sha256, internal/contracts/carryover_test.go, docs/contracts/page-schemas.md.
-  Design: docs/design/week1-wiring.md#schemas-28; interface note: no file of this issue is an interface file of `docs/design/modules.md`, but AGENTS.md calls the JSON schema of a page an interface, so the issue only adds files, edits no existing schema and lands before any issue that reads them; the content is the bytes of the source, so `$id` still names the old host (`option-trader.invalid`) and the manifest is deleted by the week-2 pass that renames it.
+The other page schemas of the old repository, copied unchanged, with a manifest of the copies, and a Go test that validates every page fixture of `web/fixtures` against them.
+  Goal: The schemas the migrated front end already follows are in `contracts/schemas`, and the 13 fixture directories copied by web-migrate are checked against them. This is the carry-over of week1.md#left-out, not the cleanup pass of week 2. Reading the files of the web module is a read, not an edit.
+  Files: contracts/schemas/page.advice_page.v1.json, page.companies_page.v1.json, page.full_scan.v1.json, page.held_companies_summary.v1.json, page.home_page.v1.json, page.household_page.v1.json, page.household_risk.v1.json, page.household_summary.v1.json, page.indicator_detail.v1.json, page.ledger_page.v1.json, page.macro_page.v1.json, page.macro_summary.v1.json, page.market_summary.v1.json, page.market_weather.v1.json, page.option_page.v1.json, page.option_result_page.v1.json, page.options_summary.v1.json, page.positions_page.v1.json, page.positions_page.v2.json, page.positions_page.v3.json, page.report_page.v1.json, page.report_page.v2.json, page.settings_page.v1.json, page.stock_option_page.v1.json, page.structure_detail.v1.json, page.structure_detail.v2.json, page.structure_detail.v3.json, page.structures_list.v1.json, page.tracking.v1.json (all under contracts/schemas/), contracts/schemas/carryover.sha256, internal/contracts/carryover_test.go, internal/contracts/fixtures_test.go, docs/contracts/page-schemas.md.
+  Design: docs/design/week1-wiring.md#schemas-28; interface note: no file of this issue is an interface file of `docs/design/modules.md`, but AGENTS.md calls the JSON schema of a page an interface, so the issue only adds files, edits no existing schema and lands before any issue that reads them; the content is the bytes of the source, so `$id` still names the old host (`option-trader.invalid`) and the manifest is deleted by the week-2 pass that renames it. The fixture test is a Go test with santhosh-tekuri/jsonschema/v6, already a direct dependency of go.mod, so there is no new dependency and no whitelist change; it is a Go file and not a vitest file because the front end only renders data (AGENTS.md). It sits in the same issue as the schemas because it reads them and both are in contracts.
   Acceptance:
-  - The Files line lists 29 new schema files, named `page.` plus the name of a file of `docs/schemas/` of the old repository (week1.md says 28; the list holds 29 and the pull request description names the file the earlier count left out).
+  - The Files line lists 29 new schema files, each named `page.<name>.v<N>.json` and listed once; week1.md says 28, the list here holds 29. `page.macro_rates.v1.json` is not among them.
   - `contracts/schemas/carryover.sha256` has one line per listed schema, in the order of the Files line, each line `<sha256>  contracts/schemas/<file>`; `page.macro_rates.v1.json` is not in it.
   - `carryover_test.go` computes the sha256 of every `page.*.json` of `contracts/schemas` except `page.macro_rates.v1.json`, compares it with the manifest, fails on a file missing from the manifest or a manifest line without a file, and compiles each schema with santhosh-tekuri/jsonschema/v6 (the `x-decimals`, `x-timezone` and `x-rounding` keywords are unknown keywords the compiler ignores). The expected hashes are in the manifest, not computed from the schemas the test checks.
+  - `fixtures_test.go` holds a table, typed by hand, from fixture directory to schema file: `advice-page`, `companies-page`, `full-scan`, `held-companies-summary`, `household-page`, `household-summary`, `macro-page`, `macro-summary`, `market-weather`, `option-page`, `structures-list`, `tracking` map to the `v1` schema of the same name with `-` as `_`, and `positions-page` maps to `page.positions_page.v3.json`; it fails when a directory of `web/fixtures` has no row.
+  - `fixtures_test.go` loops over every `*.json` file of every fixture directory, the five extra files of `market-weather` (`intraday*.json`, `mismatch.json`) included, and skips the `README.md` files. It holds a named list, a Go `var` in the test file, of the fixtures expected to fail; each entry gives the fixture path and the schema keyword it fails (for example `bad-version.json` files fail on `const` of `schema_version`). Every fixture not on that list validates against its mapped schema; each fixture on the list fails, and with the named keyword. The list may be empty. The test also fails on a list entry whose file does not exist.
+  - The schemas are compiled with the `x-decimals`, `x-timezone` and `x-rounding` keywords unknown (ignored); the fixture paths are relative to the test file (`../../web/fixtures`, `../../contracts/schemas`).
+  - `t.Parallel()` in each test and each subtest of `fixtures_test.go`; no write, no network, no sleep.
   - `docs/contracts/page-schemas.md` is created (it does not exist on origin/main) with the headings `## Responsibility`, `## Inputs`, `## Outputs`, `## Invariants`, `## Version history`; it lists the 30 schema ids with their `schema_version` const and says in a sentence that the copies are unchanged and the week-2 pass writes new versions only.
-  - `page.macro_rates.v1.json`, its fixtures and `MANIFEST.synthetic-v1.json` of `contracts/fixtures` are not in the diff.
-  - The pull request body has `Contracts: ` followed by one `page.<name>.vN (new)` entry per file, as the format check of `checks.yml` accepts.
-  - Checked by CI: ci-go (the test, which proves that each hash is that of the copy); checks (the Contracts line, generated code unchanged since nothing is generated from these files); hygiene (no account id, path or e-mail); the size rule (JSON data is not counted).
-  Depends on: none. Order: before contracts-fixture-validation.
-  Size: M
-
-### contracts-fixture-validation
-
-Every page fixture of `web/fixtures` is validated against the schemas by a Go test.
-  Goal: The 13 fixture directories were copied by web-migrate; nothing checks them against a schema yet. The test reads `contracts/schemas` and `web/fixtures` and makes the two sides agree. Reading the files of the web module is a read, not an edit; the pull request names it.
-  Files: internal/contracts/fixtures_test.go.
-  Design: docs/design/week1-wiring.md#contracts-fixture-validation; a Go test with santhosh-tekuri/jsonschema/v6, already a direct dependency of go.mod, so there is no new dependency and no whitelist change. The test is a Go file and not a vitest file because the front end only renders data (AGENTS.md).
-  Acceptance:
-  - The test holds a table, typed by hand, from fixture directory to schema file: `advice-page`, `companies-page`, `full-scan`, `held-companies-summary`, `household-page`, `household-summary`, `macro-page`, `macro-summary`, `market-weather`, `option-page`, `structures-list`, `tracking` map to the `v1` schema of the same name with `-` as `_`, and `positions-page` maps to `page.positions_page.v3.json`; it fails when a directory of `web/fixtures` has no row.
-  - It loops over every `*.json` file of every fixture directory, the five extra files of `market-weather` (`intraday*.json`, `mismatch.json`) included, and skips the `README.md` files; the files named `bad-version.json` must fail validation, with the error on `schema_version`; every other file must validate.
-  - The schema is compiled with the `x-decimals`, `x-timezone` and `x-rounding` keywords unknown (ignored); the paths are relative to the test file (`../../web/fixtures`, `../../contracts/schemas`).
-  - `t.Parallel()` in the test and in each subtest; no write, no network, no sleep.
-  - `web/fixtures` and its `MANIFEST.synthetic-v1.json` are not in the diff.
-  - Checked by CI: ci-go. If a fixture does not validate, the pull request reports the fixture and the schema path in its description and leaves both unchanged.
-  Depends on: schemas-28. Order: after schemas-28.
-  Size: S
-
-### store-wiring-support
-
-The runner role can read the calendar table, and `Setup` writes the DSN lines under the frozen names.
-  Goal: Two facts the wiring depends on and week1.md does not state: which role reads `master.session_day` (the roles of store-series-ops grant `ot_runner` SELECT on the series tables only), and that the lines of `.env` carry the names of `store-dsn-names`. `ot run-once` opens the session-day store with the runner DSN.
-  Files: migrations/0004_session_day_grant.sql, internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/sessionday/sessionday_pg_test.go, docs/contracts/store.md.
-  Design: docs/design/week1-wiring.md#store-wiring-support; one more role would need a new password line for no gain, so the existing runner role gets SELECT. It edits files of two unmerged issues (store-series-ops for `setup.go`, store-session-day for `sessionday_pg_test.go`) and therefore waits for both.
-  Acceptance:
-  - `migrations/0004_session_day_grant.sql` has an Up and a Down section for goose; Up grants SELECT on `master.session_day` to `ot_runner` and nothing else; Down revokes it.
-  - `setup.go` writes the three lines under `store.DSNEnvRunner`, `store.DSNEnvSeriesFred` and `store.DSNEnvPages` (the constants, not string literals) and reads the administrative DSN through nothing but `SetupConfig.AdminDSN`; `setup_test.go` asserts, in a `t.TempDir()`, that the three names appear in the file written, and, with a sentinel password injected, that the sentinel appears in no log line.
-  - `sessionday_pg_test.go` (build tag `pg`) builds the DSN of `ot_runner` in the test from generated parts and the `PG*` variables of the job (no literal `postgres://user:password@` string in the file), reads a typed row of `master.session_day`, and asserts that an INSERT as `ot_runner` fails.
-  - `docs/contracts/store.md` does not exist on origin/main: this issue creates it with the five headings of `docs/contracts/runner.md` up to `## Version history` if no landed issue has, and lists the three names under `## Inputs`; if the file exists it gains the same entries and no heading changes.
-  - Checked by CI: ci-go unit tests; the pg job for the grant (applied after 0001 to 0003).
-  Depends on: store-dsn-names, store-session-day [in flight], store-series-ops [not landed] (it edits their `setup.go` and test file). Order: after those three.
-  Size: S
-
-### ot-run-once
-
-`ot run-once`: reconcile one session day through the real modules.
-  Goal: The first subcommand that runs the slice: clock, calendar, ledger, FRED source, `fred_series` job and reconciler wired in `cmd/ot`. This issue also gives `app` the environment and the dependencies the other subcommands use.
-  Files: cmd/ot/main.go, cmd/ot/main_test.go, cmd/ot/wire.go, cmd/ot/env.go, cmd/ot/runonce.go, cmd/ot/wire_test.go, cmd/ot/env_test.go, cmd/ot/runonce_test.go.
-  Design: docs/design/week1-wiring.md#ot-run-once; `main.go` is edited because `app` has no environment and no dependencies today and a package-level `deps` would be shared state between parallel tests; own implementation (cmd/ot/env.go, about 30 lines), because it only reads `KEY=VALUE` lines of `$OT_HOME/.env` and the existing dotenv libraries load them into the process environment, which `profile.Load` forbids, and a library that touches secrets needs the owner's word.
-  Acceptance:
-  - `main.go`: `app` gains `getenv func(string) string` and `deps deps`; `newApp` keeps its signature and sets `getenv`; `run` sets `deps` from the one constructor of `wire.go`; no package-level variable holds dependencies; `TestDemoProfile` is unchanged and passes (the new environment reads happen only inside subcommands).
-  - `wire.go` declares one struct `deps` whose fields are the Func types of the wiring table (`clock.NewClockFunc`, `clock.NewCalendarFunc`, `store.OpenSessionDayFunc`, `store.OpenSeriesFunc`, `store.OpenLedgerFunc`, `store.SetupFunc`, `sources.NewFREDFunc`, `jobs.NewFredSeriesFunc`, `runner.NewFunc`, `pages.BuildMacroRatesFunc`, `pages.NewHandlerFunc`) and one function that fills it with `realclock.NewReal`, `calendar.NewCalendar`, `sessionday.Open`, `series.Open`, `ops.Open`, `setup.Setup`, `fred.New`, `fredseries.New`, `reconcile.New`, `macro_rates.Build`, `embed.Handler`; each assignment is typed, so a drift fails the build. It is the only file of `cmd/ot` that imports an implementation package.
-  - `env.go` reads `$OT_HOME/.env` (lines `KEY=VALUE`, `#` comments and blank lines skipped, optional surrounding quotes removed) and returns a map; a missing file is an error that names the path and no value.
-  - `runonce.go` registers `run-once` in an `init()`. The flow: refuse the `demo` profile; read the runner and series DSNs (by `store.DSNEnvRunner`, `store.DSNEnvSeriesFred`) and `FRED_API_KEY` from the `.env` map; build the clock; open the session-day store with the runner DSN and pass it to `NewCalendar`; open the ledger with the runner DSN and the series store with the series DSN; build the source with the default base URL, the key and the clock; build the job; call the reconciler with the day of `--day` or, by default, the New York date of `clock.Now()`; close the stores in all cases.
-  - One slog line per outcome through `a.log` with the day only; no DSN, key or password in a log line or an error text; an error built from a DSN or key names the variable, not the value.
-  - `cmd/ot` calls no function of the packages above other than those of the wiring table; `time.Now` and `time.Sleep` do not appear; `import _ "time/tzdata"` makes the New York zone available without a system database.
-  - Tests build `deps` from fakes in the test and `app` directly: the day flag reaches `Reconcile`; the default day is the New York date of a fake clock at 2026-11-06T02:00:00Z (that is 2026-11-05); a `demo` profile refuses with no store opened; a missing `FRED_API_KEY` stops before any store is opened; a ledger error carrying a sentinel DSN is returned with the sentinel absent from the error text and the log; `env_test.go` covers comments, quotes and a missing file. Every test calls `t.Parallel()` and uses `t.TempDir()` for any file; none opens a port or a database.
-  - Checked by CI: ci-go (build, vet, test, golangci-lint with depguard and forbidigo, go-arch-lint component `ot`); each file stays under 600 lines.
-  Depends on: store-dsn-names, store-session-day, store-series-ops, jobs-fred-series (`wire.go` imports `sessionday`, `series`, `ops`, `setup` and `fredseries`, which have not landed; the clock, fred, reconcile, macro_rates and embed packages are on origin/main; the grant of store-wiring-support is a run-time condition, not a dependency). Order: after those.
-  Size: M
-
-### ot-page-serve-setup
-
-`ot page` writes the macro_rates view model, `ot serve` serves it in the static page, `ot setup pg` calls `Setup`.
-  Goal: Calls of `pages.BuildMacroRatesFunc`, `pages.NewHandlerFunc` and `store.SetupFunc`. Pages stay free of a clock and a request: the caller passes `generatedAt` and the day. `ot setup pg` is the command the owner runs once; this design does not run it and no test touches a real `$OT_HOME`.
-  Files: cmd/ot/page.go, cmd/ot/serve.go, cmd/ot/demo.go, cmd/ot/setup.go, cmd/ot/page_test.go, cmd/ot/serve_test.go, cmd/ot/setup_test.go.
-  Design: docs/design/week1-wiring.md#ot-page-serve-setup; the three commands share the `deps` of `ot-run-once` and add three files of the same size class, so they are one pull request of seven acceptance items.
-  Acceptance:
-  - `page.go` registers `page`; it builds the JSON with `generatedAt = clock.Now().UTC()` and the day of `--day` (default as in run-once) and writes it to `--out` or standard output; with a real profile it opens the series store with `store.DSNEnvPages` from `.env` and reads through the `store.SeriesReader` interface only.
-  - `serve.go` registers `serve`; it listens on `--addr` (default `127.0.0.1:8080`, loopback), builds the view model anew for each request and answers through `deps.newHandler`; a build error is answered with 500 and logged without a DSN.
-  - `demo.go` is a `store.SeriesReader` over three literal points of DGS10 typed in the file, one with a nil value, used when the profile is `demo`; no file outside `cmd/ot` is read at run time.
-  - `setup.go` registers `setup`; the argument must be `pg`, else usage and an error; it builds `store.SetupConfig{AdminDSN: <process env store.AdminDSNEnv>, Home: <OT_HOME>}` and calls the `deps.setup` field; an empty administrative DSN or an unset `OT_HOME` is an error that names the variable; no flag takes the DSN; no value of the config appears in a log line or an error text.
-  - `page_test.go`, `serve_test.go`: with the fake builder the bytes of `page` are the bytes the builder returned; `serve` is exercised with `httptest.NewServer` (never a fixed port) and a fake handler constructor; a failing builder gives 500; the `demo` profile reaches the demo reader and opens no store.
-  - `setup_test.go`: a fake `store.SetupFunc` records its `SetupConfig`, with `OT_HOME` set to a `t.TempDir()`; the config has the two values; an unset variable stops before the fake is called; a fake that returns an error carrying a sentinel DSN makes the command return it with the sentinel absent from the text.
-  - Every test calls `t.Parallel()`; none sleeps; each file stays under 600 lines.
-  - Checked by CI: ci-go.
-  Depends on: ot-run-once, store-dsn-names. Order: after ot-run-once.
+  - `page.macro_rates.v1.json`, its fixtures and `MANIFEST.synthetic-v1.json` of `contracts/fixtures` are not in the diff; no file of `web/` is in the diff.
+  - Checked by CI: ci-go (the tests, which prove that each hash is that of the copy and that the fixtures validate as listed); checks (generated code unchanged since nothing is generated from these files); hygiene (no account id, path or e-mail); the size rule (JSON data is not counted).
+  Note for the pull request description (not an acceptance item): `Contracts: ` followed by one `page.<name>.vN (new)` entry per file, as the format check of `checks.yml` accepts; the description names the file that the earlier count of 28 left out, and any fixture that is on the expected-failure list with the reason.
+  Depends on: none.
   Size: M
 
 ## Left out
 
+- The `cmd/ot` wiring (issues `store-wiring-support`, `ot-run-once`, `ot-page-serve-setup` of the earlier draft): they need
+  packages of store-session-day, store-series-ops and jobs-fred-series of `docs/design/week1.md` that are not on origin/main.
+  Cut by a follow-up design written after those three issues land, re-reading the identifiers then.
+- `store-wiring-support` (the SELECT grant of `ot_runner` on `master.session_day`, `Setup` writing the DSN lines under the
+  frozen names, `docs/contracts/store.md`): cut by that follow-up design, after store-session-day and store-series-ops land.
+- `ot-run-once` (`app` environment and dependencies, `wire.go`, `.env` reader): cut by that follow-up design, after the
+  three issues land.
+- `ot-page-serve-setup` (`ot page`, `ot serve`, `ot setup pg`): cut by that follow-up design, after `ot-run-once`.
 - TypeScript type generation from the schemas (`json-schema-to-typescript`, a `gen:types` script, the TS step of
   `contracts/generate.sh`, the drift check of `.github/workflows/checks.yml`, `web/src/generated/*`): a later design
   gated by the owner. No consumer exists yet (the migrated pages keep their local types in `web/src/types/*`) and neither
@@ -216,6 +122,9 @@ The runner role can read the calendar table, and `Setup` writes the DSN lines un
 ## Adversarial
 
 Source: scratchpad file design-week1-wiring.adversarial.md of the dispatcher window.
+Note: the cut was narrowed after the design review; the entries below that name `ot-run-once`, `ot-page-serve-setup`,
+`store-wiring-support` or `contracts-fixture-validation` refer to the earlier draft, whose issues are left out or folded
+into `schemas-28`.
 
 - 1a `cmd/ot` cannot take the design (main.go, `app`, no getenv/deps): adopted; main.go and main_test.go are in `ot-run-once` Files and `app` gains `getenv` and `deps`.
 - 1b run-once fails on an empty calendar: adopted as wording; the goal says wired, not run on real data, and Left out names the population of `master.session_day`.
