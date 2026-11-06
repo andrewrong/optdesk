@@ -43,6 +43,8 @@ components:
     in: internal/runner/reconcile
   jobs:
     in: internal/jobs
+  jobs/fredseries:
+    in: internal/jobs/fredseries
   pages:
     in: internal/pages
   pages/embed:
@@ -118,6 +120,13 @@ deps:
       - clock
       - sources
       - store
+  jobs/fredseries:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - store
+      - jobs
   pages:
     mayDependOn:
       - contracts
@@ -150,6 +159,7 @@ deps:
       - store/ops
       - store/setup
       - sources/fred
+      - jobs/fredseries
       - pages/macro_rates
       - pages/embed
   store/migrate:

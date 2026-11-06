@@ -6,6 +6,7 @@ require (
 	github.com/atombender/go-jsonschema v0.16.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/jonboulle/clockwork v0.5.0
+	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	google.golang.org/protobuf v1.36.11
@@ -215,7 +216,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect

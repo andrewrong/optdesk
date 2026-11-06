@@ -1,0 +1,8 @@
+# Manifest of the fred_series job.
+version = 1
+id = "fred_series"
+series = ["DGS10"]
+
+[window]
+rule = "after_close"
+lateness_hours = 24
