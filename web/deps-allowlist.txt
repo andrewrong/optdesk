@@ -8,6 +8,7 @@ class-variance-authority
 clsx
 eslint
 jsdom
+json-schema-to-typescript
 lucide-react
 motion
 radix-ui

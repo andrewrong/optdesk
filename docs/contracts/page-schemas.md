@@ -63,7 +63,7 @@ Invariants of the carried files:
 
 - The 29 copies are unchanged except the `x-timezone` substitution (every value is `owner`, checked by the test); the hash of each edited copy is in the manifest, and `internal/contracts/carryover_test.go` fails on a file without a line, a line without a file, or a hash that differs.
 - The keywords `x-decimals`, `x-timezone` and `x-rounding` are unknown to the compiler and ignored.
-- Every fixture of `web/fixtures` validates against the schema that `internal/contracts/fixtures_test.go` maps its directory to (`positions-page` to `page.positions_page.v3.json`), except the 13 `bad-version.json` files, which fail at `/schema_version` with the keyword `const`.
+- Every fixture of `web/fixtures` validates against the schema that `internal/contracts/fixtures_test.go` maps its directory to (`positions-page` to `page.positions_page.v3.json`), except the 15 `bad-version.json` files, which fail at `/schema_version` with the keyword `const`.
 - No schema and no fixture is edited to make a fixture pass.
 - The `const` of `schema_version` is an integer in the copies and a string in `page.macro_rates.v1`; unifying it is for week 2.
 
@@ -71,3 +71,4 @@ Invariants of the carried files:
 
 - v1: the 29 carried schemas (`page.macro_rates.v1` was added before them), the manifest and the fixture validation test.
 - v2 line: `common.v1` is added; the `page.<name>.v2.json` files of the five summaries and `home_page` are added by later issues, and the existing files are unchanged.
+- v2 TypeScript types: the types of `page.market_summary.v2` and `page.options_summary.v2` are generated into `web/src/generated/` by the web script `generate:types` (`json-schema-to-typescript` 16.0.0), not by `contracts/generate.sh`; fixtures `web/fixtures/market-summary` and `web/fixtures/options-summary` are checked against these files.

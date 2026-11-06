@@ -1,0 +1,163 @@
+{
+  "schema": "market_summary",
+  "schema_version": 2,
+  "run_id": "run_fx_ms_001",
+  "build_id": "build_fx_001",
+  "scope": "market",
+  "generated_at": "2026-10-26T21:30:00Z",
+  "stale_after": "2026-10-27T21:00:00Z",
+  "data_times": [
+    {
+      "source": "fx_vol",
+      "data_time": "2026-10-23T21:00:00Z"
+    }
+  ],
+  "run_status": "partial",
+  "card": {
+    "title": "市场概览",
+    "say": "隐含波动率高于已实现，差 +2.0 个波动点。",
+    "subtitle": "示例数据",
+    "stale": {
+      "data_time": "2026-10-23T21:00:00Z",
+      "stale_after": "2026-10-27T21:00:00Z",
+      "text": "数据截至 10-23 收盘"
+    },
+    "chart": {
+      "points": [
+        {
+          "label": "10-20",
+          "close": 5.0,
+          "ma200": 5.0,
+          "band_low": 4.5,
+          "band_high": 5.5
+        },
+        {
+          "label": "10-21",
+          "close": 6.0,
+          "ma200": 5.5,
+          "band_low": 4.5,
+          "band_high": 5.5
+        },
+        {
+          "label": "10-22",
+          "close": 7.0,
+          "ma200": 6.0,
+          "band_low": 5.0,
+          "band_high": 6.5
+        },
+        {
+          "label": "10-23",
+          "close": 8.0,
+          "ma200": 6.5,
+          "band_low": 5.5,
+          "band_high": 7.0
+        },
+        {
+          "label": "10-24",
+          "close": null,
+          "ma200": null,
+          "band_low": null,
+          "band_high": null
+        }
+      ],
+      "series_names": [
+        "收盘",
+        "200日均线",
+        "区间"
+      ],
+      "end_labels": [
+        "10-20",
+        "10-24"
+      ],
+      "aria_text": "示例走势图，共五个交易日，最后一日缺数据"
+    },
+    "index_table": {
+      "columns": [
+        "指数",
+        "隐含波动率",
+        "20日已实现",
+        "差值"
+      ],
+      "rows": [
+        {
+          "name": "示例指数甲",
+          "iv": {
+            "value": 20.0,
+            "text": "20.0",
+            "unit": "vol_points"
+          },
+          "rv20": {
+            "value": 18.0,
+            "text": "18.0",
+            "unit": "vol_points"
+          },
+          "iv_minus_rv20": {
+            "value": 2.0,
+            "text": "+2.0",
+            "unit": "vol_points",
+            "tone": "up"
+          },
+          "source_text": "示例来源"
+        },
+        {
+          "name": "示例指数乙",
+          "iv": {
+            "reason": "no_data",
+            "text": "暂无隐含波动率"
+          },
+          "rv20": {
+            "value": 16.0,
+            "text": "16.0",
+            "unit": "vol_points"
+          },
+          "iv_minus_rv20": {
+            "reason": "no_data",
+            "text": "暂无差值"
+          }
+        }
+      ]
+    },
+    "vol_indices": [
+      {
+        "name": "VIX",
+        "level": {
+          "value": 18.2,
+          "text": "18.20",
+          "unit": "index_points"
+        },
+        "day": "10-23",
+        "source_text": "示例序列"
+      },
+      {
+        "name": "VXN",
+        "level": {
+          "value": 21.0,
+          "text": "21.00",
+          "unit": "index_points"
+        },
+        "day": "10-23",
+        "source_text": "示例序列"
+      },
+      {
+        "name": "RVX",
+        "level": {
+          "reason": "not_built",
+          "text": "RVX 尚未接入"
+        },
+        "day": "10-23",
+        "source_text": "示例序列"
+      }
+    ],
+    "vol_indices_note": "指数水平以发布方点数计，不并入表格。",
+    "notes": [
+      "示例数据，非真实行情"
+    ],
+    "gaps": [
+      {
+        "reason": "no_data",
+        "text": "示例指数乙缺隐含波动率"
+      }
+    ],
+    "data_times_text": "数据时间 10-23"
+  }
+}
