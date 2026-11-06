@@ -2,12 +2,12 @@
 
 Author: the optdesk dispatcher
 Owner approved: (pending)
-Revision: 2
+Revision: 3
 
 Source: `## Left out` of `docs/design/page-schemas-v2.md` ("Moving the front end to the new files", "Generated TypeScript from the
 schemas"), issues #76 and #77 (merged as #80 and #81), issue #97 (copies `json-schema-to-typescript` 16.0.0 into
 `frontend-whitelist.json`), `docs/adr/0034-frontend-stack.md`, `docs/contracts/00-protocol.md` (version rule). Read on origin/main
-at 39d263e.
+at fe71bc3 (one revision for every claim below, including the schema text of `## Interface`).
 
 ## What main holds today
 
@@ -15,7 +15,7 @@ at 39d263e.
   defs from `common.v1.json`, optional `stale_after`). The v1 files `page.market_summary.v1.json` and `page.options_summary.v1.json`
   stay, listed in `contracts/schemas/carryover.sha256`.
 - Files of `web/` that read a v1 shape of these two schemas: none. `git grep -n -E 'market_summary|options_summary' -- web`
-  finds nothing under `web/src` and finds only the stub name `OptionsSummaryCard` in `web/test/shell/pages.test.tsx`
+  finds nothing, and `git grep -n 'OptionsSummary' -- web` finds only the stub name `OptionsSummaryCard` in `web/test/shell/pages.test.tsx`
   (a module without a `registration`, which `discoverCards` skips). There is no `web/src/types/market_summary*.ts`, no
   `options_summary*.ts`, no card, no fixture directory for either schema. So the move is not a rewrite of readers: the two cards
   do not exist yet and are written against v2 from the start. The home card of the market today is `WeatherCard.tsx`, which reads
@@ -54,11 +54,16 @@ at 39d263e.
    issue edits `.github`. Until the owner adds it, the test `TestGeneratedSummaryTypes` and the acceptance greps are the guard.
 4. Module of each path (docs/design/modules.md, first glob wins): `web/src/generated/**`, `internal/contracts/**` and
    `docs/contracts/page-schemas.md` are `contracts`; `web/package.json`, `pnpm-lock.yaml`, `web/deps-allowlist.txt`, `web/fixtures/**`,
-   `web/src/**` (other than generated) and `web/test/**` are `web`. The cut: the dependency and the script are merged into one issue
-   because both are `web` files; the generated files, their Go tests and the fixtures with their rows are one issue, whose
-   cross-module set (`contracts` plus `web/fixtures/**`) this design licenses for a reason: `fixtures_test.go` fails on a fixture
-   directory without a row and on a row without its `bad-version.json`, so rows and fixture files must land in one pull request.
-   No further issue edits files of two modules.
+   `web/src/**` (other than generated) and `web/test/**` are `web`. The cut has one interface issue and two cards. The interface issue
+   carries a cross-module set that this design licenses (option (a) of the review): the generated files (`contracts`) together with
+   the dependency, the lockfile, the allowlist and the script `generate:types` (`web`), and with `web/fixtures/**` (`web`). Reasons:
+   (i) AGENTS.md says generated code is never edited by hand and that a change carries the source and the generated output together,
+   and the script and the devDependency are the source of the two generated files, so they land in one pull request; (ii) the
+   alternative (b), checked-in files without the generator and a Go-side drift check, would make the first version of the files
+   hand-made and leave a drift check with nothing to regenerate from; (iii) with a separate generator issue the interface issue
+   would be built only after a sibling merged, so the modules would not be buildable in parallel; (iv) `fixtures_test.go` fails on a
+   fixture directory without a row and on a row without its `bad-version.json`, so rows and fixture files also land in one pull
+   request. Nothing else edits files of two modules, and no issue edits `.github`.
 5. Scope of generation: the two v2 schemas only. The other 20-odd `web/src/types/*.v1.types.ts` copies stay until their pages get a
    v2 file.
 6. The `validate` function of a v2 page stays the placeholder check (`placeholderValidate` with `SUPPORTED_VERSIONS = [2]`) over the
@@ -81,15 +86,14 @@ No row is added or changed in `docs/design/modules.md`.
 
 | issue | module | paths |
 |---|---|---|
-| web-types-generator | web | `web/package.json`, `pnpm-lock.yaml`, `web/deps-allowlist.txt` |
-| generated-summary-types (interface) | contracts, plus `web/fixtures/**` of web (licensed, Decisions 4) | `web/src/generated/**`, `internal/contracts/**`, `docs/contracts/page-schemas.md`, the eight fixture files, two READMEs and the manifest |
+| generated-summary-types (interface) | contracts, plus `web/package.json`, `pnpm-lock.yaml`, `web/deps-allowlist.txt` and `web/fixtures/**` of web (licensed, Decision 4) | `web/src/generated/**`, `internal/contracts/**`, `docs/contracts/page-schemas.md`, the three web package files, the eight fixture files, two READMEs and the manifest |
 | web-market-summary-card | web | |
 | web-options-summary-card | web | |
 
-Order: `web-types-generator` (needs #97 merged), then `generated-summary-types` (its script needs the dependency), then the two cards,
-which are independent of each other (the manifest is edited by the interface issue, not by them). Needing a file outside an issue's
-Files (for example `web/src/shell/pages.tsx`, `contracts/schemas/*.json`, anything in `.github`) is reported in the pull request
-description, not edited.
+Order: `generated-summary-types` first (needs #97 merged; it holds the generator and its output, so nothing in the cut comes before
+it), then the two cards, which are independent of each other (the manifest is edited by the interface issue, not by them). Needing a
+file outside an issue's Files (for example `web/src/shell/pages.tsx`, `contracts/schemas/*.json`, anything in `.github`) is reported in
+the pull request description, not edited.
 
 ## Interface
 
@@ -97,7 +101,7 @@ Owner: contracts (the entry of the row is `web/src/generated/index.ts`). Frozen 
 
 - `web/src/generated/market_summary.v2.ts` and `web/src/generated/options_summary.v2.ts`: one file per schema file, made by the
   script of Decision 2. The top-level type is named by the schema `title`: `MarketSummary`, `OptionsSummary`.
-- Names of the inner types, read from the schemas at 882a4db: `page.market_summary.v2.json` takes its `Gap` from
+- Names of the inner types, read from the schemas at fe71bc3 (unchanged since 882a4db): `page.market_summary.v2.json` takes its `Gap` from
   `common.v1.json` (title `Gap`, the full reason list including `not_built`) and has no local `Gap`; `page.options_summary.v2.json`
   has a local `$defs/Gap` (title `Gap`, reasons `missing_quote`, `no_data`, `unsupported_currency`) and reaches no `Gap` of
   `common.v1.json` (its `UsdFigure` and `UsdSignedFigure` carry none). So each file holds exactly one interface named `Gap`, and the
@@ -109,31 +113,14 @@ Owner: contracts (the entry of the row is `web/src/generated/index.ts`). Frozen 
 
 ## Issues
 
-### web-types-generator
-
-Goal: `web` runs `json-schema-to-typescript` 16.0.0 from its lockfile through the script `generate:types`.
-  Files: web/package.json, pnpm-lock.yaml, web/deps-allowlist.txt
-  Design: docs/design/web-v2-types.md#decisions. New direct dependency: `json-schema-to-typescript` 16.0.0, license MIT, a build-time
-  devDependency that reads our schema files and touches no secret, network or sandbox. The script `generate:types` is a web file, so
-  it lives here though it writes under `web/src/generated/`.
-  Depends on: #97.
-  Acceptance:
-  1. `grep -n '"json-schema-to-typescript": "16.0.0"' web/package.json` finds one line in `devDependencies`, with no `^` or `~`.
-  2. `grep -n '^json-schema-to-typescript$' web/deps-allowlist.txt` finds one line.
-  3. `node scripts/check-frontend-deps.mjs` exits 0.
-  4. `grep -c 'json-schema-to-typescript@16.0.0' pnpm-lock.yaml` prints at least 1; `git diff -U0 web/package.json` shows the one added dependency line and the script lines only.
-  5. `grep -n '"generate:types"' web/package.json` finds one line that names `json2ts`, both schema paths `../contracts/schemas/page.market_summary.v2.json` and `../contracts/schemas/page.options_summary.v2.json`, `--cwd ../contracts/schemas`, `--bannerComment`, and the outputs `src/generated/market_summary.v2.ts` and `src/generated/options_summary.v2.ts`.
-  6. `grep -c 'generate.sh' web/package.json` prints 0 and `git diff --name-only` does not list `contracts/generate.sh` or anything under `.github/`.
-  Checked by CI: `pnpm install --frozen-lockfile` passes; the web workflow (`tsc`, `eslint`, `vitest`, build) is green.
-  Size: S
-
 ### generated-summary-types (interface)
 
-Goal: the two v2 summary schemas have checked-in generated TypeScript types, fixtures valid against them, and Go tests that guard both.
-  Files: web/src/generated/index.ts, web/src/generated/market_summary.v2.ts, web/src/generated/options_summary.v2.ts, internal/contracts/generated_ts_test.go, internal/contracts/fixtures_test.go, docs/contracts/page-schemas.md, web/fixtures/market-summary/ok.json, web/fixtures/market-summary/gap.json, web/fixtures/market-summary/stale.json, web/fixtures/market-summary/bad-version.json, web/fixtures/market-summary/README.md, web/fixtures/options-summary/ok.json, web/fixtures/options-summary/gap.json, web/fixtures/options-summary/stale.json, web/fixtures/options-summary/bad-version.json, web/fixtures/options-summary/README.md, web/fixtures/MANIFEST.synthetic-v1.json
-  Design: docs/design/web-v2-types.md#interface; the cross-module set (contracts and `web/fixtures/**`) is licensed by Decision 4. Note (not acceptance): the pull request body carries a `Contracts:` line naming the two v2 files as the source; the schemas themselves are unchanged. Lands after `web-types-generator` and before both cards.
-  Acceptance:
-  1. `pnpm --dir web run generate:types` (after the install of `web-types-generator`) rewrites the three files with no difference: `git diff --exit-code web/src/generated` exits 0 right after it.
+Goal: `web` runs `json-schema-to-typescript` 16.0.0 through the script `generate:types`; the two v2 summary schemas have the checked-in TypeScript types it writes, fixtures valid against them, and Go tests that guard both.
+  Files: web/package.json, pnpm-lock.yaml, web/deps-allowlist.txt, web/src/generated/index.ts, web/src/generated/market_summary.v2.ts, web/src/generated/options_summary.v2.ts, internal/contracts/generated_ts_test.go, internal/contracts/fixtures_test.go, docs/contracts/page-schemas.md, web/fixtures/market-summary/ok.json, web/fixtures/market-summary/gap.json, web/fixtures/market-summary/stale.json, web/fixtures/market-summary/bad-version.json, web/fixtures/market-summary/README.md, web/fixtures/options-summary/ok.json, web/fixtures/options-summary/gap.json, web/fixtures/options-summary/stale.json, web/fixtures/options-summary/bad-version.json, web/fixtures/options-summary/README.md, web/fixtures/MANIFEST.synthetic-v1.json
+  Design: docs/design/web-v2-types.md#interface; the cross-module set (contracts, the web package files and `web/fixtures/**`) is licensed by Decision 4. New direct dependency: `json-schema-to-typescript` 16.0.0, license MIT, a build-time devDependency that reads our schema files and touches no secret, network or sandbox; the script `generate:types` is a web file, so it lives here though it writes under `web/src/generated/`. Note (not acceptance): the pull request body carries a `Contracts:` line naming the two v2 files as the source; the schemas themselves are unchanged. Depends on: #97. Lands before both cards. The lockfile line is made by `pnpm install` with network on the implementer's machine; the offline checks below read text only.
+  Acceptance (offline, text and Go only):
+  1. `grep -n '"json-schema-to-typescript": "16.0.0"' web/package.json` finds one line in `devDependencies`, with no `^` or `~`; `grep -n '^json-schema-to-typescript$' web/deps-allowlist.txt` finds one line; `grep -c 'json-schema-to-typescript@16.0.0' pnpm-lock.yaml` prints at least 1; `node scripts/check-frontend-deps.mjs` exits 0.
+  1a. `grep -n '"generate:types"' web/package.json` finds one line that names `json2ts`, both schema paths `../contracts/schemas/page.market_summary.v2.json` and `../contracts/schemas/page.options_summary.v2.json`, `--cwd ../contracts/schemas`, `--bannerComment`, and the outputs `src/generated/market_summary.v2.ts` and `src/generated/options_summary.v2.ts`; `grep -c 'generate.sh' web/package.json` prints 0.
   2. `head -1 web/src/generated/market_summary.v2.ts`, the same for `options_summary.v2.ts`, and `head -1 web/src/generated/index.ts` each print `// Code generated from contracts/, DO NOT EDIT.`
   3. Type names: `grep -c '^export interface MarketSummary ' web/src/generated/market_summary.v2.ts` and `grep -c '^export interface OptionsSummary ' web/src/generated/options_summary.v2.ts` each print 1; `grep -c '^export interface Gap ' <file>` prints 1 for each of the two files; `grep -c 'Gap1' <file>` prints 0 for each. The `Gap` of options_summary is the local one: `grep -E 'missing_quote.*no_data.*unsupported_currency' web/src/generated/options_summary.v2.ts` finds one line and `grep -c 'not_built' web/src/generated/options_summary.v2.ts` prints 0. The `Gap` of market_summary is the common one: `grep -c 'not_built' web/src/generated/market_summary.v2.ts` prints at least 1.
   4. `grep -n 'schema_version' web/src/generated/market_summary.v2.ts web/src/generated/options_summary.v2.ts` finds `schema_version: 2` in each file.
@@ -143,8 +130,8 @@ Goal: the two v2 summary schemas have checked-in generated TypeScript types, fix
   8. `go test ./internal/contracts -run 'TestFixturesValidate|TestGeneratedSummaryTypes'` passes: `ok.json`, `gap.json` and `stale.json` of both directories validate against the v2 schemas, and `bad-version.json` fails at `/schema_version` with keyword `const`; no library is added to `go.mod` (`git diff go.mod go.sum` is empty).
   9. The fixtures hold invented data only; each README lists the hand-worked figures; the manifest lists the ten new paths (`grep -c -E 'market-summary/|options-summary/' web/fixtures/MANIFEST.synthetic-v1.json` prints 10); the `gap.json` of options-summary has one tile figure of reason `missing_quote` and one of `unsupported_currency`.
   10. `docs/contracts/page-schemas.md` keeps its five headings (`grep -c '^## ' docs/contracts/page-schemas.md` prints 5) and adds a Version history entry that says the TypeScript types of the two v2 files are generated by the web script `generate:types`.
-  11. `git diff --name-only` is limited to the Files above; no file under `contracts/schemas/`, no `contracts/generate.sh` and no file under `.github/` changes.
-  Checked by CI: ci-go (`TestFixturesValidate`, `TestGeneratedSummaryTypes`); the web workflow (`tsc`, `eslint` over the generated files); checks (`Contracts:` line); hygiene.
+  11. `git diff --name-only` is limited to the Files above; no file under `contracts/schemas/`, no `contracts/generate.sh` and no file under `.github/` changes; `git diff -U0 web/package.json` shows the one added dependency line and the script lines only.
+  Checked by CI (needs installed packages): `pnpm install --frozen-lockfile` passes; `pnpm --dir web run generate:types` rewrites the two generated files with no difference (`git diff --exit-code web/src/generated` exits 0 right after it; the check also covers `index.ts`); the web workflow (`tsc`, `eslint` over the generated files, `vitest`, build); ci-go (`TestFixturesValidate`, `TestGeneratedSummaryTypes`); checks (`Contracts:` line); hygiene.
   Size: L
 
 ### web-market-summary-card
@@ -157,12 +144,12 @@ Goal: a payload of schema `market_summary` v2 renders a card on the home page, a
   1. `grep -n "SUPPORTED_VERSIONS = \[2\]" web/src/types/market_summary.ts` finds one line, and the file imports `MarketSummary` from `@/generated` (`grep -n "@/generated" web/src/types/market_summary.ts`); it declares no payload shape of its own (`grep -c 'interface ' web/src/types/market_summary.ts` prints 0).
   2. `MarketSummaryCard.tsx` exports `registration = { schema: 'market_summary', page: page(validate, MarketSummaryCard) }`, so `discoverCards` finds it with no edit of `web/src/shell/pages.tsx`; `git diff --name-only` lists nothing under `web/src/shell/`.
   3. `grep -rn -E 'market_summary\.v1|options_summary\.v1' web/src web/test web/fixtures` prints nothing.
-  4. `bad-version.json` (`schema_version` 1) is rejected by `validate` with reason `unsupported_version`.
-  5. `web/test/pages/home/MarketSummaryCard.test.tsx` renders `ok.json` (read from `web/fixtures/market-summary` by `import.meta.dirname` paths) and asserts the texts of `card.title`, `card.say`, the `index_table` rows and `data_times_text` equal the strings read from the fixture (not literals of the component); renders `gap.json` and asserts a `Gap` figure shows its `text` and no digit is invented; renders `stale.json` and asserts `card.stale.text` is shown; renders `bad-version.json` and asserts the gap text is shown and no card body.
-  6. Shell test, in the same file: `App` rendered with a payload of another schema (the `market_weather` `ok.json` fixture) shows no `MarketSummaryCard` (no element with its title text from the market-summary fixture), and rendered with the `market_summary` `ok.json` shows it. The shell has no home view-model that lists cards; it dispatches on `payload.schema`, so the card is gated on payload presence and the test checks that.
+  4. [CI] `bad-version.json` (`schema_version` 1) is rejected by `validate` with reason `unsupported_version`.
+  5. [CI] `web/test/pages/home/MarketSummaryCard.test.tsx` renders `ok.json` (read from `web/fixtures/market-summary` by `import.meta.dirname` paths) and asserts the texts of `card.title`, `card.say`, the `index_table` rows and `data_times_text` equal the strings read from the fixture (not literals of the component); renders `gap.json` and asserts a `Gap` figure shows its `text` and no digit is invented; renders `stale.json` and asserts `card.stale.text` is shown; renders `bad-version.json` and asserts the gap text is shown and no card body.
+  6. [CI] Shell test, in the same file: `App` rendered with a payload of another schema (the `market_weather` `ok.json` fixture) shows no `MarketSummaryCard` (no element with its title text from the market-summary fixture), and rendered with the `market_summary` `ok.json` shows it. The shell has no home view-model that lists cards; it dispatches on `payload.schema`, so the card is gated on payload presence and the test checks that.
   7. The card does not read the clock: `grep -n -E 'Date\.now|new Date|performance\.now' web/src/pages/home/MarketSummaryCard.tsx` prints nothing, and no arithmetic is made on a payload figure (`pnpm --dir web lint` passes with `web/no-compute-allow.txt` unchanged).
   8. The test file uses no timer and no network; the new source files are under 600 lines.
-  Checked by CI: `tsc`, `eslint`, `vitest` and the build of `web/`; `pnpm install --frozen-lockfile` unchanged.
+  Checked by CI (items marked [CI] and the `pnpm --dir web lint` clause of item 7 need installed packages; a verify without network runs the grep items only): `tsc`, `eslint`, `vitest` and the build of `web/`; `pnpm install --frozen-lockfile` unchanged.
   Size: M
 
 ### web-options-summary-card
@@ -175,10 +162,10 @@ Goal: a payload of schema `options_summary` v2 renders a card on the home page, 
   1. `grep -n "SUPPORTED_VERSIONS = \[2\]" web/src/types/options_summary.ts` finds one line; the file imports `OptionsSummary` from `@/generated` and declares no `interface`.
   2. `OptionsSummaryCard.tsx` exports `registration = { schema: 'options_summary', page: page(validate, OptionsSummaryCard) }`; nothing under `web/src/shell/` is in `git diff --name-only`; the `./OptionsSummaryCard.tsx` stub name in `web/test/shell/pages.test.tsx` is left as it is.
   3. `grep -rn -E 'market_summary\.v1|options_summary\.v1' web/src web/test web/fixtures` prints nothing.
-  4. `bad-version.json` is rejected by `validate` with reason `unsupported_version`.
-  5. `web/test/pages/home/OptionsSummaryCard.test.tsx` asserts, for `ok.json` of `web/fixtures/options-summary`, the label, figure text and caption of each of the four `tiles` keys, the `premium_series_text` and `premium_series_caption`, with expected strings read from the fixture; a `Gap` tile shows its text and not a zero; `stale.json` shows `card.stale.text`; `bad-version.json` shows the gap text only; and `App` rendered with a payload of another schema shows no `OptionsSummaryCard` (payload-presence gating, as item 6 of `web-market-summary-card`).
+  4. [CI] `bad-version.json` is rejected by `validate` with reason `unsupported_version`.
+  5. [CI] `web/test/pages/home/OptionsSummaryCard.test.tsx` asserts, for `ok.json` of `web/fixtures/options-summary`, the label, figure text and caption of each of the four `tiles` keys, the `premium_series_text` and `premium_series_caption`, with expected strings read from the fixture; a `Gap` tile shows its text and not a zero; `stale.json` shows `card.stale.text`; `bad-version.json` shows the gap text only; and `App` rendered with a payload of another schema shows no `OptionsSummaryCard` (payload-presence gating, as item 6 of `web-market-summary-card`).
   6. Items 7 and 8 of `web-market-summary-card` hold for the new files.
-  Checked by CI: `tsc`, `eslint`, `vitest` and the build of `web/`.
+  Checked by CI (items marked [CI] need installed packages; the grep items are the offline check): `tsc`, `eslint`, `vitest` and the build of `web/`.
   Size: M
 
 ## Left out
@@ -207,7 +194,8 @@ Full answer: the dispatcher scratchpad file `web-v2-types.adversarial.md` (not i
 2. Biggest unnamed risk (no node regeneration in CI): adopted. Generation is the web script `generate:types`; the drift step belongs in
    `ci-web.yml`, which lacks it; named in `## Left out` as an owner change.
 3. Simpler way (drift check in ci-web, merge dependency and generation): adopted for the CI move and for merging the dependency with the
-   script. Not adopted for merging with the generated files: those are `contracts` and the script is `web`, so the issues stay two.
+   script. The first revision kept the generated files in a second issue; the design review made that wrong (see Review below), and the
+   generator now lands with its output.
 4. Lock-in (v2 freeze at first consumer; inner types by indexing): not adopted as a change. The freeze is the version rule, and
    re-exporting inner types would collide on `Gap` between the two files. A card may alias `MarketSummary['card']` locally.
 5. Most likely false claim (banner, `$ref` resolution, `Gap`/`Gap1`): adopted. The flags are pinned (`--bannerComment`, `--cwd`, outputs)
@@ -215,3 +203,15 @@ Full answer: the dispatcher scratchpad file `web-v2-types.adversarial.md` (not i
    behaviour of `json2ts` itself is unverified until the script runs.
 6. Likeliest slip (a card cannot pass ci-go without editing a contracts file): adopted, same fix as point 1; the cards no longer
    touch fixtures or the manifest.
+
+## Review
+
+Design review of revision 2 (verdict "changes", 4 points), all adopted in revision 3:
+
+1. Blocking, modules not buildable in parallel: `web-types-generator` is gone as an issue; the dependency, lockfile, allowlist and script
+   fold into the interface issue under the cross-module license of Decision 4 (option (a)), with the reasons stated there. The cut is
+   the interface issue, then two independent cards.
+2. "rewrites the three files": now "the two generated files"; `index.ts` is hand-written and is covered by the `git diff --exit-code` check.
+3. Items needing installed packages: listed under `Checked by CI` or marked [CI]; the offline acceptance is grep and Go only.
+4. One revision: origin/main at fe71bc3 for every claim, re-verified after merging origin/main (the branch was behind); the schemas
+   are unchanged since 882a4db.
