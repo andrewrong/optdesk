@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.series_point.r1.json",
+  "title": "SeriesPoint",
+  "description": "obs.series_point r1: one observation of a series as known from realtime_start.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["series_id", "observation_date", "realtime_start", "realtime_end", "value", "status", "unit", "currency", "published_at", "source", "source_revision"],
+  "x-dataset": "obs.series_point",
+  "x-revision": "r1",
+  "x-primary-key": ["series_id", "observation_date", "realtime_start"],
+  "properties": {
+    "series_id": {"type": "string", "description": "Series identifier, for example DGS10."},
+    "observation_date": {"type": "string", "format": "date", "description": "The date the observation refers to."},
+    "realtime_start": {"type": "string", "format": "date", "description": "First date this value was the published one."},
+    "realtime_end": {"type": "string", "format": "date", "description": "Last date this value was the published one."},
+    "value": {"type": ["number", "null"], "description": "The observation; null when the source has no value (nullable numeric)."},
+    "status": {"type": "string", "description": "Status of the observation, for example present or no_value."},
+    "unit": {"$ref": "#/$defs/series_unit"},
+    "currency": {"type": "string", "description": "Currency code; not empty when unit is ccy_amount, empty otherwise."},
+    "published_at": {"type": "string", "format": "date-time", "description": "Instant the source published the value."},
+    "source": {"type": "string", "description": "Source name, for example fred."},
+    "source_revision": {"type": "string", "description": "Revision label of the source."}
+  },
+  "if": {"properties": {"unit": {"const": "ccy_amount"}}, "required": ["unit"]},
+  "then": {"properties": {"currency": {"minLength": 1}}},
+  "$defs": {
+    "series_unit": {
+      "title": "SeriesUnit",
+      "type": "string",
+      "enum": ["percent", "ratio", "ccy_amount", "count"],
+      "description": "Unit of a series value."
+    }
+  }
+}
