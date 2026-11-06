@@ -42,7 +42,7 @@ rows above name every other top-level path of the planned tree.
   `internal/`), and for `ot` this map states the exact import list, which `scripts/arch` generates as go-arch-lint component `ot` and
   `checks.yml` compares with this text: the root packages of the rows in its depends cell, `internal/profile`, and these eleven
   implementation packages, one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/store/sessionday`, `internal/store/series`, `internal/store/ops`,
-  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/pages/macro_rates`, `internal/pages/embed`.
+  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/pages/macro_rates`, `internal/pages/embed`, and the two of the design `pages-registry`: `internal/pages/macro_page` (a page builder) and `internal/pages/registry` (the page set).
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
 - **Layers** (plan 2): data = contracts, clock, broker, sources, store, compute (in that order);
@@ -116,5 +116,5 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | ci | outside the layers | the repo | workflows, Dependabot | secrets in files | none |
 | deploy | outside the layers | host service definitions (owner-only) | deployment files | secrets in files; no week-1 issue | none |
 | repo | outside the layers | none | profile, scripts, lint and arch configuration | business logic | README.md |
-| ot | composition root, outside the layers | the modules (their interface files, and the eleven packages named above for construction) and profile | the `ot` binary | any logic beyond wiring | none |
+| ot | composition root, outside the layers | the modules (their interface files, and the implementation packages named above for construction) and profile | the `ot` binary | any logic beyond wiring | none |
 | docs | outside the layers | design and decisions | design files, ADRs, ratchet (docs/design/ratchet.json is owner-only) | none | none |
