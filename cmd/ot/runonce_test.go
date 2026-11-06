@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -65,7 +66,7 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newFredSeries: func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
-		newRunner: func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job) runner.Reconciler {
+		newRunner: func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Reconciler {
 			return recRunner{day}
 		},
 	}
@@ -181,5 +182,51 @@ func TestRunOnceFREDPathIsObservations(t *testing.T) {
 	_, _ = src.Fetch(t.Context(), sources.FetchPlan{SeriesIDs: []string{"DGS10"}, From: "2026-11-02", To: "2026-11-04"})
 	if path != "/fred/series/observations" {
 		t.Fatalf("FRED request path %q, want /fred/series/observations", path)
+	}
+}
+
+type windowJob struct{ contracts.Job }
+
+func (windowJob) Window() (string, time.Duration, time.Duration) { return "XNYS", 0, 24 * time.Hour }
+
+func recordRule(a *app, rule *runner.WindowRule, day *contracts.Day) {
+	a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, _ []contracts.Job, r runner.WindowRule) runner.Reconciler {
+		*rule = r
+		return recRunner{day}
+	}
+}
+
+func TestRunOnceRuleFromJob(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
+		return windowJob{}, nil
+	}
+	var rule runner.WindowRule
+	recordRule(a, &rule, &got)
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if want := (runner.WindowRule{CalendarID: "XNYS", CloseOffset: 24 * time.Hour}); rule != want {
+		t.Fatalf("rule %+v, want %+v", rule, want)
+	}
+}
+
+func TestRunOnceZeroRule(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	rule := runner.WindowRule{CalendarID: "unset"}
+	recordRule(a, &rule, &got)
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if rule != (runner.WindowRule{}) || got != "2026-03-04" {
+		t.Fatalf("rule %+v day %q", rule, got)
 	}
 }

@@ -33,7 +33,7 @@ type deps struct {
 	setup           store.SetupFunc
 	newFRED         sources.NewFREDFunc
 	newFredSeries   jobs.NewFredSeriesFunc
-	newRunner       runner.NewFunc
+	newRunner       runner.NewWithRuleFunc
 	buildMacroRates pages.BuildMacroRatesFunc
 	newHandler      pages.NewHandlerFunc
 	migrateUp       func(ctx context.Context, adminDSN string, fsys fs.FS) error
@@ -51,7 +51,7 @@ func newDeps() deps {
 		setup:           setup.Setup,
 		newFRED:         fred.New,
 		newFredSeries:   fredseries.New,
-		newRunner:       reconcile.New,
+		newRunner:       reconcile.NewWithRule,
 		buildMacroRates: macro_rates.Build,
 		newHandler:      embed.Handler,
 		migrateUp:       setup.MigrateUp,
