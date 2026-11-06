@@ -23,13 +23,14 @@ var _ store.SetupFunc = Setup
 // Database is the name of the database `Setup` creates.
 const Database = "optdesk"
 
-// The four roles of week 1. Their grants on tables are in migrations/0002_series.sql and 0003_ops_ledger.sql,
+// The roles. Their grants on tables are in migrations/0002_series.sql to 0005_session_day_loader.sql,
 // which goose runs as ot_owner; later issues add the other roles with their tables.
 const (
 	roleOwner      = "ot_owner"
 	roleRunner     = "ot_runner"
 	roleSeriesFred = "ot_w_series_fred"
 	roleRoPages    = "ot_ro_pages"
+	roleLoader     = "ot_loader"
 )
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
@@ -40,12 +41,13 @@ var roles = []roleSpec{
 	{roleRunner, store.DSNEnvRunner},
 	{roleSeriesFred, store.DSNEnvSeriesFred},
 	{roleRoPages, store.DSNEnvPages},
+	{roleLoader, store.DSNEnvLoader},
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the four roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the five roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -120,7 +122,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 		}
 	}
 	grant := "REVOKE ALL ON DATABASE " + ident(Database) + " FROM PUBLIC; GRANT CONNECT ON DATABASE " + ident(Database) +
-		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages)
+		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}
@@ -151,12 +153,14 @@ func ensureRole(ctx context.Context, conn *pgx.Conn, name, password string, rese
 	if err := conn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, name).Scan(&have); err != nil {
 		return fmt.Errorf("setup: look up role %s: %w", name, err)
 	}
+	// The statement carries a SCRAM-SHA-256 verifier, never the plain password: a server may log DDL text.
+	verifier := scramVerifier(password, newSalt())
 	var sql string
 	switch {
 	case !have:
-		sql = "CREATE ROLE " + ident(name) + " LOGIN PASSWORD " + literal(password)
+		sql = "CREATE ROLE " + ident(name) + " LOGIN PASSWORD " + literal(verifier)
 	case resetPassword:
-		sql = "ALTER ROLE " + ident(name) + " PASSWORD " + literal(password)
+		sql = "ALTER ROLE " + ident(name) + " PASSWORD " + literal(verifier)
 	default:
 		return nil
 	}

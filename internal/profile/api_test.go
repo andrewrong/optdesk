@@ -15,7 +15,7 @@ func TestProfileContract(t *testing.T) {
 	t.Parallel()
 	var load profile.LoadFunc = func(getenv func(string) string) (profile.Profile, error) {
 		if getenv("OT_HOME") == "" {
-			return profile.Profile{Name: "demo", LogFields: []string{"msg"}}, nil
+			return profile.Profile{Name: "demo", Zone: time.UTC, LogFields: []string{"msg"}}, nil
 		}
 		return profile.Profile{Name: "real"}, nil
 	}
@@ -25,6 +25,9 @@ func TestProfileContract(t *testing.T) {
 	p, err := load(func(string) string { return "" })
 	if err != nil || p.Name != "demo" {
 		t.Fatalf("profile %+v err %v", p, err)
+	}
+	if p.Zone != time.UTC {
+		t.Fatalf("zone = %v, want UTC", p.Zone)
 	}
 	var buf bytes.Buffer
 	h := wrap(p, slog.NewTextHandler(&buf, nil))
