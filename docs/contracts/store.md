@@ -22,10 +22,12 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - The SQL names the six columns of the table and never uses `SELECT *`.
 - `session_day` is the market-zone date, not a UTC date.
 - Only files under `internal/store/` import pgx.
+- `ot_runner` has SELECT on `master.session_day` and nothing else there (`migrations/0004_session_day_grant.sql`).
 
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
+- v2: `ot_runner` may read `master.session_day` (migration 0004).
 
 ## Contract tests
 
