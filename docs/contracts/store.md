@@ -8,7 +8,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.
 - A calendar id and two `contracts.Day` values (`YYYY-MM-DD`, market zone) to `SessionDays`.
-- A connection string to `sessionday.Open`; a `*sql.DB` or `driver.Connector` and an `fs.FS` of SQL files to `migrate`.
+- A connection string to `sessionday.Open`; a `*sql.DB` and an `fs.FS` of SQL files to `migrate`.
 
 ## Outputs
 
