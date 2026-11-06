@@ -11,9 +11,10 @@ table (`rule = "after_close"`, `lateness_hours = 24`) that `plan.go` decodes int
 over `d.newCalendar(sd)`, where `sd` is the session-day store opened with the runner DSN; that already is the read of
 `master.session_day` through the store `sessionday` reader, and this design leaves it as it is.
 
-Goal of the design: the rule of a real run comes from the job manifest instead of the zero rule, in three steps that
-three modules can land in any order after the interface: the rule type and a constructor type in `runner`, the reading
-of `[window]` in the job, and the use in `ot run-once`.
+Goal of the design: the rule of a real run comes from the job manifest instead of the zero rule. This design lands two of
+the three steps: the rule type and a constructor type in `runner`, and the reading of `[window]` in the job. The third,
+the use in `ot run-once`, is cut after issue 75 merges (see `## Left out`). Until then the two entries land inert: the
+real run still uses the zero rule.
 
 ## Modules
 
@@ -25,11 +26,9 @@ No change to `docs/design/modules.md`, `arch.toml` or `.go-arch-lint.yml`: no ne
 |---|---|---|
 | runner-window-rule (interface) | runner | first |
 | jobs-window-reader | jobs | any |
-| ot-run-once-window | ot | after runner-window-rule, and after open issue 75 is merged |
 
-No entry edits `go.mod`, `go.sum`, `contracts/` or `docs/design/modules.md`. The `ot` entry cannot start before issue
-75 (`ot migrate` and `ot calendar load`, not merged at the time of writing) lands, because both edit `cmd/ot/wire.go`;
-this design does not wait for 75's code: every test uses fakes.
+No entry edits `go.mod`, `go.sum`, `contracts/`, `cmd/` or `docs/design/modules.md`. The `ot` step is not an entry here: it edits
+`cmd/ot/wire.go`, which open issue 75 also edits, so it is cut by a follow-up after 75 merges.
 
 ## Interface
 
@@ -48,13 +47,17 @@ type WindowRule struct {
 type NewWithRuleFunc func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, WindowRule) Reconciler
 ```
 
-`reconcile.WindowRule` is replaced by `runner.WindowRule` (one type, no copy); `reconcile.NewWithRule` has the type
-`runner.NewWithRuleFunc`; `runner.NewFunc` and `reconcile.New` are unchanged.
+`runner.WindowRule` is the type only, with no methods (`api.go` holds declarations only). `reconcile.WindowRule` is
+removed, with no copy; its two methods become unexported functions of `internal/runner/reconcile/window.go`:
+`calendarIDOf(rule runner.WindowRule) string` and `windowFor(rule runner.WindowRule, datasetID string, s clock.Session)
+(store.Window, bool)`. `reconcile.NewWithRule` has the type `runner.NewWithRuleFunc`; `runner.NewFunc` and
+`reconcile.New` are unchanged.
 
 Not an interface change, so only one entry is marked: the job exposes its rule as an optional method of the value
 `fredseries.New` returns, `Window() (calendarID string, openOffset, closeOffset time.Duration)`. The method is not in
-`internal/jobs/api.go`, and `contracts.Job` is unchanged. `cmd/ot` asserts a local unexported one-method interface on
-the job; a job without the method gets the zero rule, which is today's behaviour.
+`internal/jobs/api.go`, and `contracts.Job` is unchanged. The follow-up `ot` step asserts a local one-method interface on
+the job; a job without the method gets the zero rule, because the existing `run-once` fakes have no such method and the
+zero rule is today's behaviour.
 
 The `[window]` table of `job.toml`:
 
@@ -81,9 +84,10 @@ The rule type and the constructor type in the runner interface, with `reconcile`
   Acceptance:
   1. `internal/runner/api.go` declares `type WindowRule struct` with exactly the fields `CalendarID string`, `OpenOffset time.Duration` and `CloseOffset time.Duration`, and `type NewWithRuleFunc func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, WindowRule) Reconciler`; the file has no function body (offline: `grep -c '^func ' internal/runner/api.go` prints 0).
   2. `TestWindowRuleContract` in `internal/runner/api_test.go` checks both sides: a fake `NewWithRuleFunc` records the rule it is given, and a caller passes `WindowRule{CalendarID: "X", OpenOffset: time.Minute, CloseOffset: time.Hour}` and reads the same values back.
-  3. `internal/runner/reconcile/window.go` no longer declares a `WindowRule` type (offline: `grep -c 'type WindowRule' internal/runner/reconcile/window.go` prints 0); `reconcile.go` has `NewWithRule(..., rule runner.WindowRule)` and `New` passes `runner.WindowRule{}`; `reconcile_test.go` holds `var _ runner.NewWithRuleFunc = NewWithRule` and `var _ runner.NewFunc = New`.
+  3. No copy of the type stays in `reconcile`: `grep -rc 'type WindowRule' internal/runner/reconcile` prints 0 for every file, and `grep -c 'func (r WindowRule)' internal/runner/reconcile/window.go` prints 0. `window.go` holds the unexported functions `calendarIDOf` and `windowFor` of `## Interface`, with the logic of the former methods `calendarID` and `Window`.
+  3a. The call sites use them: `reconcile.go` line `id := r.rule.calendarID()` of `sessions` becomes `calendarIDOf(r.rule)`, and the `r.rule.Window(k.DatasetID, s)` call of `reconcileDay` becomes `windowFor(r.rule, k.DatasetID, s)` (offline: `grep -c 'r.rule.calendarID\|r.rule.Window' internal/runner/reconcile/reconcile.go` prints 0 and `grep -c 'calendarIDOf(r.rule)\|windowFor(r.rule' internal/runner/reconcile/reconcile.go` prints 2); the field `rule` has the type `runner.WindowRule`; `NewWithRule(..., rule runner.WindowRule)`; `New` passes `runner.WindowRule{}`; `reconcile_test.go` holds `var _ runner.NewWithRuleFunc = NewWithRule` and `var _ runner.NewFunc = New`, and its `newRec` passes `runner.WindowRule{CalendarID: "XNYS"}`.
   4. The default calendar still applies: `TestNewWithRuleEmptyCalendar` in `reconcile_test.go` uses a fake calendar that records the id it is asked for and asserts it is `DefaultCalendarID` when the rule's `CalendarID` is empty and `"X"` when it is set to `X`.
-  5. The behaviour of the window is unchanged: `TestWindowThanksgivingAndEarlyClose` and `TestWindowRuleOffsets` of `window_test.go` keep their expectations and use `runner.WindowRule`.
+  5. The behaviour of the window is unchanged: in `window_test.go` the two calls `rule.Window("ds", s)` of `TestWindowRuleOffsets` (the session and the non-session day) become `windowFor(rule, "ds", s)`, `rule` is a `runner.WindowRule`, and `TestWindowThanksgivingAndEarlyClose` (which builds `rule` as `runner.WindowRule{CalendarID: "XNYS", CloseOffset: time.Hour}` and goes through `NewWithRule`) keeps its expectations; both tests pass with no changed expected value (offline: `git diff` of `window_test.go` shows no changed `want` or expected-time line).
   6. `docs/contracts/runner.md` names `runner.WindowRule` and `runner.NewWithRuleFunc` in its Inputs and no longer says the hook to `job.toml` belongs to a follow-up design (offline: `grep -c 'reconcile.WindowRule' docs/contracts/runner.md` prints 0).
   7. Every test added or changed calls `t.Parallel()`, none sleeps, and each non-test file stays under 600 lines.
   8. No file outside the seven listed is in the diff, and the result matches the `## Interface` part of `docs/design/window-rule.md`.
@@ -110,27 +114,10 @@ The `[window]` table of the fred_series manifest is validated and exposed as a m
   Depends on: none. Order: any.
   Size: S
 
-### ot-run-once-window
-
-`ot run-once` builds the reconciler with the rule of its job.
-  Goal: a real `ot run-once` reconciles with the calendar and offsets of the job's `[window]` table, reading session days from `master.session_day` through the store reader it already opens.
-  Files: cmd/ot/wire.go, cmd/ot/runonce.go, cmd/ot/runonce_test.go.
-  Design: docs/design/window-rule.md#interface; `wire.go` is edited, so this entry waits for issue 75, which edits the same file; the field count of `deps` does not change here (the field `newRunner` changes its type), so `wire_test.go` is not in the list and must stay as issue 75 leaves it.
-  Acceptance:
-  1. In `wire.go` the field `newRunner` has the type `runner.NewWithRuleFunc` and `newDeps()` assigns `reconcile.NewWithRule` to it (offline: `grep -c 'reconcile.NewWithRule' cmd/ot/wire.go` prints 1 and `grep -c 'reconcile\.New\b' cmd/ot/wire.go` prints 0); `wire.go` stays the one non-test file of `cmd/ot` that imports an implementation package.
-  2. `runonce.go` asserts a local unexported interface `windowed` with the one method `Window() (string, time.Duration, time.Duration)` on the built job; when the job implements it, `reconcileDay` passes `runner.WindowRule{CalendarID: c, OpenOffset: o, CloseOffset: x}` to `d.newRunner`; when not, it passes `runner.WindowRule{}`.
-  3. `TestRunOnceWindowRuleReachesRunner` in `runonce_test.go`: a fake job with the method `Window` returning `("TEST", time.Minute, 2*time.Hour)` and a fake `newRunner` that records its rule; after `run-once` the recorded rule equals `runner.WindowRule{CalendarID: "TEST", OpenOffset: time.Minute, CloseOffset: 2 * time.Hour}`.
-  4. `TestRunOnceNoWindowMethodZeroRule`: a fake job without the method gives the recorded rule `runner.WindowRule{}`.
-  5. `TestRunOnceReadsSessionDaysFromStore`: the fake `newCalendar` receives the same value the fake `openSessionDay` returned (a `clock.SessionSource`), and the fake `newRunner` receives the calendar `newCalendar` returned.
-  6. The existing tests of `runonce_test.go` (`TestRunOnceDayReachesReconcile`, `TestRunOnceDemoRefused`, `TestRunOnceMissingKey`, `TestRunOnceClosesStores`, `TestRunOnceSentinelDSN`) keep their expectations with the fake runner at its new type.
-  7. The rule is not logged with a DSN or key: the log line of `run-once` still carries the day and the status only (offline: `grep -c 'CalendarID' cmd/ot/runonce.go` prints 1, in the rule construction); every test calls `t.Parallel()`, none sleeps, calls `time.Now` or opens a store; each file stays under 600 lines.
-  8. No file outside the three listed is in the diff, and the result matches the `## Interface` part of `docs/design/window-rule.md`.
-  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `ot`).
-  Depends on: runner-window-rule (the one entry marked (interface)); issue 75 merged. Order: after both.
-  Size: S
-
 ## Left out
 
+- The `ot` step (`ot-run-once-window`): `deps.newRunner` in `cmd/ot/wire.go` changes to `runner.NewWithRuleFunc` (assigned `reconcile.NewWithRule`), and `runonce.go` asserts a local interface with `Window() (string, time.Duration, time.Duration)` on the job and passes `runner.WindowRule{...}`; a job without the method gets the zero rule, because the existing `run-once` fakes have no such method. It is cut by a follow-up once issue 75 (which edits `wire.go`) merges, because no sibling or unmerged issue may be a dependency. Until then the two entries of this design land inert and the real run still uses the zero rule.
+- `OpenOffset` is unused for now: the manifest never sets it (always 0) and the reconciler reads only the close instant of a window; `after_close` is carried by `CloseOffset = lateness_hours` alone.
 - A `WindowRule` in `contracts` or in `jobs/api.go` shared by runner and jobs: two interface entries are not allowed in one design, and `jobs` may not import `runner` (its depends cell in `modules.md`); plain values through an optional method cost one local interface in `ot`.
 - A method `Window` on `contracts.Job`: it would change every job and fake; one job exists, and the optional method can be promoted when a second job needs it.
 - Several jobs with different rules: the reconciler takes one rule for all jobs; run-once has one job. A per-dataset rule waits for the second job.
@@ -140,4 +127,11 @@ The `[window]` table of the fred_series manifest is validated and exposed as a m
 
 ## Adversarial
 
-pending
+Source: `window-rule.adversarial.md`, kept on the dispatcher's machine.
+
+1. Gap against the goal: adopted; the `ot` step needs `wire.go`, which issue 75 edits, so it is cut, and the document says the two entries land inert and the real run keeps the zero rule until the follow-up.
+2. Moving the type breaks its methods: adopted; `api.go` holds the type only, the logic moves to `calendarIDOf` and `windowFor`, and the acceptance names both call sites of `reconcile.go` and both test calls of `window_test.go`.
+3. A simpler way: not adopted; keeping `reconcile.WindowRule` would make `ot` name an implementation type, so the runner-owned type stays.
+4. Lock-in: adopted in part; `OpenOffset` unused and the optional three-value method are recorded in `## Left out`, and the method is not frozen because the `ot` step is deferred; one rule per reconciler stays named.
+5. Claims most likely false: adopted; the `ot` item that depended on the field count left with the entry, and the grep items for methods and the type copy were added.
+6. Likeliest slip: adopted; items 3 and 3a forbid a method body in `api.go` and a copy of the type, and the `ot` worker no longer starts before issue 75.
