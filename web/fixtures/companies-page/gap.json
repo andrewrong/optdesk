@@ -1,0 +1,37 @@
+{
+  "build_id": "build-demo-0001",
+  "changes": null,
+  "data_times": [],
+  "gaps": [
+    {
+      "reason": "no_data",
+      "text": "持仓：数据不足"
+    }
+  ],
+  "generated_at": "2026-10-16T21:00:00+08:00",
+  "glance": null,
+  "header": {
+    "data_day": "2026-10-16",
+    "title": "持有的公司"
+  },
+  "holdings": null,
+  "notes": [],
+  "run_id": "run-demo-0001",
+  "run_status": "partial",
+  "schema": "companies_page",
+  "schema_version": 1,
+  "scope": "companies-page",
+  "stale": {
+    "data_time": "2026-10-16T21:00:00+08:00",
+    "stale_after": "2026-10-18T09:00:00+08:00",
+    "text": "没有可读的数据"
+  },
+  "title": "持有的公司",
+  "unvalued": null,
+  "watch_list": {
+    "columns": [],
+    "rows": [],
+    "sentence": "关注名单还没有设置",
+    "title": "关注名单"
+  }
+}

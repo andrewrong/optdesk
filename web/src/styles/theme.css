@@ -1,0 +1,214 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/*
+ * The v2 design system on the shadcn Nova variables (ADR 0034, Theming; issue #1109). Source of truth:
+ * docs/design/v2/design-system-shadcn.html sections 2 and 3; where the boards are silent the colours are the
+ * ones of THEME in src/option_trader/reports/render.py. THEME-MAPPING.md lists every old variable, its new
+ * name, both values and the measured contrast. Dark mode is CSS only and follows the device setting.
+ */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warn: var(--warn);
+  --color-down: var(--down);
+  --color-ok: var(--ok);
+  --color-ok-foreground: var(--ok-foreground);
+  --color-hold: var(--hold);
+  --color-hold-foreground: var(--hold-foreground);
+  --color-unknown: var(--unknown);
+  --color-unknown-foreground: var(--unknown-foreground);
+  --color-banner-normal: var(--banner-normal);
+  --color-banner-normal-foreground: var(--banner-normal-foreground);
+  --color-banner-partial: var(--banner-partial);
+  --color-banner-partial-foreground: var(--banner-partial-foreground);
+  --color-banner-stopped: var(--banner-stopped);
+  --color-banner-stopped-foreground: var(--banner-stopped-foreground);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Sizing (ADR 0034, Accessibility): a 16 px body and 44 px targets over the Nova defaults. */
+@theme {
+  --text-xs: 1rem;
+  --text-xs--line-height: 1.5rem;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5rem;
+  --target-min: 2.75rem;
+  --content-column: 45rem;
+}
+
+:root {
+  color-scheme: light dark;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: hsl(0 0% 96.1%);
+  --muted-foreground: hsl(0 0% 42%);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: var(--down);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: hsl(0 0% 89.8%);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.55 0 0);
+  --chart-1: #155e9a;
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --success: hsl(142 64% 29%);
+  --warn: hsl(32 92% 33%);
+  --down: hsl(0 72% 46%);
+  --warning: var(--warn);
+  --ok: #e4ede8;
+  --ok-foreground: #21653c;
+  --hold: #f4e5e7;
+  --hold-foreground: #a52636;
+  --unknown: #f0eae0;
+  --unknown-foreground: #815400;
+  --banner-normal: #e3f2e8;
+  --banner-normal-foreground: #14472a;
+  --banner-partial: #fbefd0;
+  --banner-partial-foreground: #5c3b00;
+  --banner-stopped: #a52636;
+  --banner-stopped-foreground: #ffffff;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.55 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: hsl(0 0% 14.9%);
+    --muted-foreground: hsl(0 0% 66%);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: var(--down);
+    --destructive-foreground: oklch(0.145 0 0);
+    --border: hsl(0 0% 17%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: #8cc7fa;
+    --chart-2: oklch(0.87 0 0);
+    --chart-3: oklch(0.75 0 0);
+    --chart-4: oklch(0.65 0 0);
+    --chart-5: oklch(0.556 0 0);
+    --success: hsl(142 55% 52%);
+    --warn: hsl(38 92% 58%);
+    --down: hsl(0 80% 66%);
+    --warning: var(--warn);
+    --ok: #252f29;
+    --ok-foreground: #8bdbab;
+    --hold: #33292a;
+    --hold-foreground: #ffabb3;
+    --unknown: #312c22;
+    --unknown-foreground: #f0ca75;
+    --banner-normal: #173824;
+    --banner-normal-foreground: #bfeed2;
+    --banner-partial: #3d2f0a;
+    --banner-partial-foreground: #f6dc9c;
+    --banner-stopped: #6e1a26;
+    --banner-stopped-foreground: #ffe1e4;
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+/* The 44 px minimum target on the Nova components, by token and without editing their source. */
+@layer components {
+  [data-slot='button'],
+  [data-slot='toggle'],
+  [data-slot='tabs-trigger'],
+  [data-slot='accordion-trigger'] {
+    min-height: var(--target-min);
+    min-width: var(--target-min);
+  }
+  [data-slot='tabs-list'] {
+    min-height: calc(var(--target-min) + 0.5rem);
+  }
+}

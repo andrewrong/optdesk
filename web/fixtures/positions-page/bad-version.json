@@ -1,0 +1,1138 @@
+{
+  "build_id": "build-demo-0001",
+  "data_times": [
+    {
+      "data_time": "2026-10-28T09:28:00+08:00",
+      "source": "invented"
+    }
+  ],
+  "gaps": [],
+  "generated_at": "2026-10-28T09:30:00+08:00",
+  "notes": [
+    "全部为虚构示例，非真实持仓。期权数量为负表示卖出；成本和现价为每股权利金。"
+  ],
+  "run_id": "run-demo-0001",
+  "run_status": "ok",
+  "schema": "positions_page",
+  "schema_version": 4,
+  "scope": "positions-page",
+  "stale": {
+    "data_time": "2026-10-28T09:28:00+08:00",
+    "stale_after": "2026-10-28T10:28:00+08:00",
+    "text": "数据时间 2026-10-28 09:28（吉隆坡）"
+  },
+  "title": "持仓",
+  "views": [
+    {
+      "key": "me",
+      "label": "我",
+      "options": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "代码"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "名称"
+          },
+          {
+            "align": "left",
+            "id": "expiry",
+            "label": "到期日"
+          },
+          {
+            "align": "right",
+            "id": "days_left",
+            "label": "剩余天数"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "归属"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "成本（每股）"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "现价（每股）"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "当日盈亏"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "未实现盈亏"
+          },
+          {
+            "align": "right",
+            "id": "open_premium",
+            "label": "剩余权利金"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "XYZ 11-20 P100",
+              "value": "XYZ 11-20 P100"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$2.60",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 2.6
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$15.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -15.0
+            },
+            "days_left": {
+              "text": "23",
+              "unit": "days",
+              "value": 23
+            },
+            "expiry": {
+              "text": "2026-11-20",
+              "value": "2026-11-20"
+            },
+            "name": {
+              "text": "XYZ sell put",
+              "value": "XYZ sell put"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "$258.00",
+              "tone": "none",
+              "unit": "usd",
+              "value": 258.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$3.15",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 3.15
+            },
+            "quantity": {
+              "text": "−1",
+              "unit": "contracts",
+              "value": -1
+            },
+            "role": {
+              "text": "我",
+              "value": "我"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$55.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -55.0
+            }
+          }
+        ],
+        "title": "期权"
+      },
+      "sentence": "股票 2 行，期权 1 腿。",
+      "stocks": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "代码"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "名称"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "归属"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "成本（每股）"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "现价（每股）"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "当日盈亏"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "未实现盈亏"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AMD",
+              "value": "AMD"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$138.20",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 138.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$120.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 120.0
+            },
+            "name": {
+              "text": "示例甲公司",
+              "value": "示例甲公司"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$151.40",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 151.4
+            },
+            "quantity": {
+              "text": "200",
+              "unit": "shares",
+              "value": 200
+            },
+            "role": {
+              "text": "我",
+              "value": "我"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$2,640.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 2640.0
+            }
+          },
+          {
+            "code": {
+              "text": "JPA",
+              "value": "JPA"
+            },
+            "cost": {
+              "approx_usd": {
+                "text": "≈$82",
+                "unit": "USD",
+                "value": 82.0
+              },
+              "currency": "JPY",
+              "text": "¥12,300",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 12300.0
+            },
+            "day": {
+              "currency": "JPY",
+              "text": "+¥1,500",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 1500.0
+            },
+            "name": {
+              "text": "示例戊公司",
+              "value": "示例戊公司"
+            },
+            "price": {
+              "approx_usd": {
+                "text": "≈$83",
+                "unit": "USD",
+                "value": 83.0
+              },
+              "currency": "JPY",
+              "text": "¥12,450",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 12450.0
+            },
+            "quantity": {
+              "text": "10",
+              "unit": "shares",
+              "value": 10
+            },
+            "role": {
+              "text": "我",
+              "value": "我"
+            },
+            "unrealised": {
+              "currency": "JPY",
+              "text": "+¥2,250",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 2250.0
+            }
+          }
+        ],
+        "title": "股票"
+      },
+      "trades": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "time",
+            "label": "时间"
+          },
+          {
+            "align": "left",
+            "id": "account",
+            "label": "账户"
+          },
+          {
+            "align": "left",
+            "id": "action",
+            "label": "动作"
+          },
+          {
+            "align": "left",
+            "id": "instrument",
+            "label": "标的·结构"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "价格"
+          }
+        ],
+        "rows": [
+          {
+            "account": {
+              "text": "我",
+              "tone": "none"
+            },
+            "action": {
+              "text": "卖出开仓",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "XYZ 11-20 Put 100",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$2.60/股",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "1 张",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "成交时间未知"
+            }
+          }
+        ],
+        "title": "今日操作"
+      }
+    },
+    {
+      "key": "spouse",
+      "label": "配偶",
+      "options": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "代码"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "名称"
+          },
+          {
+            "align": "left",
+            "id": "expiry",
+            "label": "到期日"
+          },
+          {
+            "align": "right",
+            "id": "days_left",
+            "label": "剩余天数"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "归属"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "成本（每股）"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "现价（每股）"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "当日盈亏"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "未实现盈亏"
+          },
+          {
+            "align": "right",
+            "id": "open_premium",
+            "label": "剩余权利金"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "BBB 12-18 C50",
+              "value": "BBB 12-18 C50"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$1.20",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 1.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$10.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 10.0
+            },
+            "days_left": {
+              "text": "51",
+              "unit": "days",
+              "value": 51
+            },
+            "expiry": {
+              "text": "2026-12-18",
+              "value": "2026-12-18"
+            },
+            "name": {
+              "text": "BBB buy call",
+              "value": "BBB buy call"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "−$241.00",
+              "tone": "none",
+              "unit": "usd",
+              "value": -241.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$1.40",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 1.4
+            },
+            "quantity": {
+              "text": "2",
+              "unit": "contracts",
+              "value": 2
+            },
+            "role": {
+              "text": "配偶",
+              "value": "配偶"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$40.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 40.0
+            }
+          }
+        ],
+        "title": "期权"
+      },
+      "sentence": "股票 1 行，期权 1 腿。",
+      "stocks": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "代码"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "名称"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "归属"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "成本（每股）"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "现价（每股）"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "当日盈亏"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "未实现盈亏"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$40.00",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 40.0
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$25.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -25.0
+            },
+            "name": {
+              "text": "示例丙公司",
+              "value": "示例丙公司"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$38.00",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 38.0
+            },
+            "quantity": {
+              "text": "50",
+              "unit": "shares",
+              "value": 50
+            },
+            "role": {
+              "text": "配偶",
+              "value": "配偶"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$100.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -100.0
+            }
+          }
+        ],
+        "title": "股票"
+      },
+      "trades": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "time",
+            "label": "时间"
+          },
+          {
+            "align": "left",
+            "id": "account",
+            "label": "账户"
+          },
+          {
+            "align": "left",
+            "id": "action",
+            "label": "动作"
+          },
+          {
+            "align": "left",
+            "id": "instrument",
+            "label": "标的·结构"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "价格"
+          }
+        ],
+        "rows": [
+          {
+            "account": {
+              "text": "配偶",
+              "tone": "none"
+            },
+            "action": {
+              "text": "买股票",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "AAA 股票",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$40.00/股",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "50 股",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "成交时间未知"
+            }
+          }
+        ],
+        "title": "今日操作"
+      }
+    },
+    {
+      "key": "household",
+      "label": "家庭",
+      "options": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "代码"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "名称"
+          },
+          {
+            "align": "left",
+            "id": "expiry",
+            "label": "到期日"
+          },
+          {
+            "align": "right",
+            "id": "days_left",
+            "label": "剩余天数"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "归属"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "成本（每股）"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "现价（每股）"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "当日盈亏"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "未实现盈亏"
+          },
+          {
+            "align": "right",
+            "id": "open_premium",
+            "label": "剩余权利金"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "XYZ 11-20 P100",
+              "value": "XYZ 11-20 P100"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$2.60",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 2.6
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$15.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -15.0
+            },
+            "days_left": {
+              "text": "23",
+              "unit": "days",
+              "value": 23
+            },
+            "expiry": {
+              "text": "2026-11-20",
+              "value": "2026-11-20"
+            },
+            "name": {
+              "text": "XYZ sell put",
+              "value": "XYZ sell put"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "$258.00",
+              "tone": "none",
+              "unit": "usd",
+              "value": 258.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$3.15",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 3.15
+            },
+            "quantity": {
+              "text": "−1",
+              "unit": "contracts",
+              "value": -1
+            },
+            "role": {
+              "text": "我",
+              "value": "我"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$55.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -55.0
+            }
+          },
+          {
+            "code": {
+              "text": "BBB 12-18 C50",
+              "value": "BBB 12-18 C50"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$1.20",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 1.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$10.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 10.0
+            },
+            "days_left": {
+              "text": "51",
+              "unit": "days",
+              "value": 51
+            },
+            "expiry": {
+              "text": "2026-12-18",
+              "value": "2026-12-18"
+            },
+            "name": {
+              "text": "BBB buy call",
+              "value": "BBB buy call"
+            },
+            "open_premium": {
+              "currency": "USD",
+              "text": "−$241.00",
+              "tone": "none",
+              "unit": "usd",
+              "value": -241.0
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$1.40",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 1.4
+            },
+            "quantity": {
+              "text": "2",
+              "unit": "contracts",
+              "value": 2
+            },
+            "role": {
+              "text": "配偶",
+              "value": "配偶"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$40.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 40.0
+            }
+          }
+        ],
+        "title": "期权"
+      },
+      "sentence": "股票 3 行，期权 2 腿。",
+      "stocks": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "code",
+            "label": "代码"
+          },
+          {
+            "align": "left",
+            "id": "name",
+            "label": "名称"
+          },
+          {
+            "align": "left",
+            "id": "role",
+            "label": "归属"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "cost",
+            "label": "成本（每股）"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "现价（每股）"
+          },
+          {
+            "align": "right",
+            "id": "day",
+            "label": "当日盈亏"
+          },
+          {
+            "align": "right",
+            "id": "unrealised",
+            "label": "未实现盈亏"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AMD",
+              "value": "AMD"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$138.20",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 138.2
+            },
+            "day": {
+              "currency": "USD",
+              "text": "+$120.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 120.0
+            },
+            "name": {
+              "text": "示例甲公司",
+              "value": "示例甲公司"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$151.40",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 151.4
+            },
+            "quantity": {
+              "text": "200",
+              "unit": "shares",
+              "value": 200
+            },
+            "role": {
+              "text": "我",
+              "value": "我"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "+$2,640.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 2640.0
+            }
+          },
+          {
+            "code": {
+              "text": "JPA",
+              "value": "JPA"
+            },
+            "cost": {
+              "approx_usd": {
+                "text": "≈$82",
+                "unit": "USD",
+                "value": 82.0
+              },
+              "currency": "JPY",
+              "text": "¥12,300",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 12300.0
+            },
+            "day": {
+              "currency": "JPY",
+              "text": "+¥1,500",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 1500.0
+            },
+            "name": {
+              "text": "示例戊公司",
+              "value": "示例戊公司"
+            },
+            "price": {
+              "approx_usd": {
+                "text": "≈$83",
+                "unit": "USD",
+                "value": 83.0
+              },
+              "currency": "JPY",
+              "text": "¥12,450",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 12450.0
+            },
+            "quantity": {
+              "text": "10",
+              "unit": "shares",
+              "value": 10
+            },
+            "role": {
+              "text": "我",
+              "value": "我"
+            },
+            "unrealised": {
+              "currency": "JPY",
+              "text": "+¥2,250",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 2250.0
+            }
+          },
+          {
+            "code": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "cost": {
+              "currency": "USD",
+              "text": "$40.00",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 40.0
+            },
+            "day": {
+              "currency": "USD",
+              "text": "−$25.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -25.0
+            },
+            "name": {
+              "text": "示例丙公司",
+              "value": "示例丙公司"
+            },
+            "price": {
+              "currency": "USD",
+              "text": "$38.00",
+              "tone": "none",
+              "unit": "usd_per_share",
+              "value": 38.0
+            },
+            "quantity": {
+              "text": "50",
+              "unit": "shares",
+              "value": 50
+            },
+            "role": {
+              "text": "配偶",
+              "value": "配偶"
+            },
+            "unrealised": {
+              "currency": "USD",
+              "text": "−$100.00",
+              "tone": "down",
+              "unit": "usd_signed",
+              "value": -100.0
+            }
+          }
+        ],
+        "title": "股票"
+      },
+      "trades": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "time",
+            "label": "时间"
+          },
+          {
+            "align": "left",
+            "id": "account",
+            "label": "账户"
+          },
+          {
+            "align": "left",
+            "id": "action",
+            "label": "动作"
+          },
+          {
+            "align": "left",
+            "id": "instrument",
+            "label": "标的·结构"
+          },
+          {
+            "align": "right",
+            "id": "quantity",
+            "label": "数量"
+          },
+          {
+            "align": "right",
+            "id": "price",
+            "label": "价格"
+          }
+        ],
+        "rows": [
+          {
+            "account": {
+              "text": "我",
+              "tone": "none"
+            },
+            "action": {
+              "text": "卖出开仓",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "XYZ 11-20 Put 100",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$2.60/股",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "1 张",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "成交时间未知"
+            }
+          },
+          {
+            "account": {
+              "text": "配偶",
+              "tone": "none"
+            },
+            "action": {
+              "text": "买股票",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "AAA 股票",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$40.00/股",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "50 股",
+              "tone": "none"
+            },
+            "time": {
+              "reason": "flex_time_unknown",
+              "text": "成交时间未知"
+            }
+          }
+        ],
+        "title": "今日操作"
+      }
+    }
+  ]
+}

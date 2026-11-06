@@ -1,0 +1,75 @@
+{
+  "build_id": "build-demo-0001",
+  "data_times": [
+    {
+      "data_time": "2026-11-02T09:30:00+08:00",
+      "source": "advice"
+    }
+  ],
+  "day": "2026-11-01",
+  "generated_at": "2026-11-05T09:30:00+08:00",
+  "rows": [
+    {
+      "account": {
+        "text": "acct-a",
+        "value": "acct-a"
+      },
+      "acted": {
+        "badge": true,
+        "text": "已执行",
+        "value": "已执行"
+      },
+      "after_value": {
+        "text": "1.10",
+        "value": 1.1
+      },
+      "delta": {
+        "text": "-0.40",
+        "value": -0.4
+      },
+      "ref_value": {
+        "text": "1.50",
+        "value": 1.5
+      },
+      "sentence": {
+        "source": "紧急",
+        "text": "AAA 卖出的 50 看跌 买回平仓",
+        "value": "AAA 卖出的 50 看跌 买回平仓"
+      }
+    },
+    {
+      "account": {
+        "text": "acct-a",
+        "value": "acct-a"
+      },
+      "acted": {
+        "badge": true,
+        "text": "未执行",
+        "value": "未执行"
+      },
+      "after_value": {
+        "text": "0.95",
+        "value": 0.95
+      },
+      "delta": {
+        "text": "+0.10",
+        "value": 0.1
+      },
+      "ref_value": {
+        "text": "0.85",
+        "value": 0.85
+      },
+      "sentence": {
+        "text": "BBB 卖出的 30 看跌 继续持有",
+        "value": "BBB 卖出的 30 看跌 继续持有"
+      }
+    }
+  ],
+  "run_id": "run-demo-0001",
+  "run_status": "ok",
+  "schema": "advice_page",
+  "schema_version": 1,
+  "scope": "advice-page",
+  "sentence": "2026-11-01 报告里的建议，与下一个收盘后的值对比",
+  "title": "昨日建议"
+}

@@ -1,0 +1,326 @@
+{
+  "build_id": "build-demo-0001",
+  "changes": {
+    "lines": [
+      "AAA 回报降到国债线以下 · 10-16",
+      "AAA 3 天后财报 · 10-19"
+    ],
+    "title": "有什么变了"
+  },
+  "data_times": [
+    {
+      "data_time": "2026-10-16T20:00:00+08:00",
+      "source": "held_companies"
+    }
+  ],
+  "gaps": [],
+  "generated_at": "2026-10-19T21:00:00+08:00",
+  "glance": {
+    "tiles": [
+      {
+        "label": "低于价格线",
+        "text": "0 / 1"
+      },
+      {
+        "label": "高过国债的回报",
+        "text": "1 / 3"
+      },
+      {
+        "label": "没有估值的持仓",
+        "text": "1"
+      },
+      {
+        "label": "14 天内财报",
+        "text": "1"
+      }
+    ],
+    "title": "估值一眼"
+  },
+  "header": {
+    "data_day": "2026-10-16",
+    "held_count": 3,
+    "line": "10-16 · 家庭持有 3 家",
+    "title": "持有的公司"
+  },
+  "holdings": {
+    "columns": [
+      {
+        "numeric": false,
+        "text": "公司"
+      },
+      {
+        "numeric": true,
+        "text": "占净值"
+      },
+      {
+        "numeric": true,
+        "text": "价格"
+      },
+      {
+        "numeric": true,
+        "text": "你的价格线"
+      },
+      {
+        "numeric": true,
+        "text": "差距"
+      },
+      {
+        "numeric": true,
+        "text": "回报−10Y"
+      },
+      {
+        "numeric": true,
+        "text": "市场在赌的增长"
+      },
+      {
+        "numeric": true,
+        "text": "距高点"
+      },
+      {
+        "numeric": true,
+        "text": "下次财报"
+      },
+      {
+        "numeric": false,
+        "text": "波动"
+      },
+      {
+        "numeric": false,
+        "text": "五问"
+      }
+    ],
+    "rows": [
+      {
+        "cells": [
+          {
+            "text": "AAA",
+            "tone": "none"
+          },
+          {
+            "text": "14.0%",
+            "tone": "none"
+          },
+          {
+            "text": "$138.00",
+            "tone": "none"
+          },
+          {
+            "text": "$100.00",
+            "tone": "none"
+          },
+          {
+            "text": "贵 38%",
+            "tone": "none"
+          },
+          {
+            "text": "−1.9 点",
+            "tone": "down"
+          },
+          {
+            "text": "年 24.0% 10-15",
+            "tone": "none"
+          },
+          {
+            "text": "−13.8%",
+            "tone": "none"
+          },
+          {
+            "text": "3 天 · 10-19",
+            "tone": "none"
+          },
+          {
+            "text": "HV30（自有，口径 hv30_v1） 25.3% · IV30 31.9% · IVP 62.0% · 对账不一致",
+            "tone": "none"
+          },
+          {
+            "text": "缺",
+            "tone": "none"
+          }
+        ],
+        "moat": [
+          "护城河 网络效应",
+          "用户数：100 万",
+          "留存：90%",
+          "份额：40%",
+          "本季没变 · 十年后看不清",
+          "我错了的情形：利润率低于 40%（查看日 2027-02-01）",
+          "我错了的情形：对手降价（查看日 2027-05-01）",
+          "我错了的情形：流失高于 10%（查看日 2027-08-01）",
+          "填写人 owner · 2026-10-01"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "text": "CCC",
+            "tone": "none"
+          },
+          {
+            "text": "9.1%",
+            "tone": "none"
+          },
+          {
+            "text": "$1,234.50 10-15",
+            "tone": "none"
+          },
+          {
+            "text": "—",
+            "tone": "none"
+          },
+          {
+            "text": "—",
+            "tone": "none"
+          },
+          {
+            "text": "+0.8 点",
+            "tone": "up"
+          },
+          {
+            "text": "年 6.0% 10-15",
+            "tone": "none"
+          },
+          {
+            "text": "0.0%",
+            "tone": "none"
+          },
+          {
+            "text": "17 天 · 11-02",
+            "tone": "none"
+          },
+          {
+            "text": "HV30（自有，口径 hv30_v1） 暂无读数 · IV30 暂无读数 · IVP 暂无读数",
+            "tone": "none"
+          },
+          {
+            "text": "缺",
+            "tone": "none"
+          }
+        ],
+        "moat": [
+          "护城河记录未填"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "text": "7203",
+            "tone": "none"
+          },
+          {
+            "text": "6.2%",
+            "tone": "none"
+          },
+          {
+            "text": "¥2,610",
+            "tone": "none"
+          },
+          {
+            "text": "—",
+            "tone": "none"
+          },
+          {
+            "text": "—",
+            "tone": "none"
+          },
+          {
+            "text": "缺",
+            "tone": "none"
+          },
+          {
+            "text": "缺",
+            "tone": "none"
+          },
+          {
+            "text": "−29.0%",
+            "tone": "none"
+          },
+          {
+            "text": "22 天 · 11-07",
+            "tone": "none"
+          },
+          {
+            "text": "HV30（自有，口径 hv30_v1） 暂无读数 · 自有 IV30 仅美股 · 自有 IV30 仅美股",
+            "tone": "none"
+          },
+          {
+            "text": "缺",
+            "tone": "none"
+          }
+        ],
+        "moat": [
+          "护城河记录未填"
+        ]
+      }
+    ],
+    "volatility_note": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-16"
+  },
+  "notes": [
+    "† 仅显示，不影响建议",
+    "回报−10Y：按今天价格的年回报（最保守一档）减十年期国债，单位是百分点",
+    "市场在赌的增长：按 10% 折现率，现价要求公司的自由现金流每年增长多少；这不是预测。",
+    "价格线是你自己给每家公司定的价；系统只比较，不替你定。"
+  ],
+  "run_id": "run-demo-0001",
+  "run_status": "ok",
+  "schema": "companies_page",
+  "schema_version": 1,
+  "scope": "companies-page",
+  "stale": {
+    "data_time": "2026-10-16T20:00:00+08:00",
+    "stale_after": "2026-10-18T08:00:00+08:00",
+    "text": "数据已过期：数据时间 2026-10-16 20:00（吉隆坡）"
+  },
+  "title": "持有的公司",
+  "unvalued": "日本公司暂无反向 DCF：7203",
+  "watch_list": {
+    "columns": [
+      {
+        "numeric": false,
+        "text": "公司"
+      },
+      {
+        "numeric": true,
+        "text": "价格"
+      },
+      {
+        "numeric": true,
+        "text": "你的目标价"
+      },
+      {
+        "numeric": true,
+        "text": "还差"
+      },
+      {
+        "numeric": true,
+        "text": "到价后占比上限"
+      }
+    ],
+    "rows": [
+      {
+        "cells": [
+          {
+            "text": "BBB",
+            "tone": "none"
+          },
+          {
+            "text": "$582.00",
+            "tone": "none"
+          },
+          {
+            "text": "$520.00",
+            "tone": "none"
+          },
+          {
+            "text": "−11%",
+            "tone": "none"
+          },
+          {
+            "text": "6%",
+            "tone": "none"
+          }
+        ]
+      }
+    ],
+    "title": "关注名单"
+  }
+}

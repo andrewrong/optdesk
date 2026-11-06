@@ -1,0 +1,127 @@
+{
+  "build_id": "build-demo-0001",
+  "data_times": [
+    {
+      "data_time": "2026-10-23T00:00:00+08:00",
+      "source": "macro_ease"
+    }
+  ],
+  "ease": {
+    "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 34 到 66。",
+    "figure": {
+      "text": "56",
+      "unit": "index_points",
+      "value": 56.0
+    },
+    "marker_percent": {
+      "text": "56",
+      "unit": "percent_of_track",
+      "value": 56.0
+    },
+    "neutral_band": {
+      "high": {
+        "text": "66%",
+        "unit": "percent_of_track",
+        "value": 66.0
+      },
+      "low": {
+        "text": "34%",
+        "unit": "percent_of_track",
+        "value": 34.0
+      }
+    },
+    "reading_text": "中性，较上周 −0.2。",
+    "ticks": [
+      "0",
+      "25",
+      "50",
+      "75",
+      "100"
+    ],
+    "week_change": {
+      "text": "−0.2",
+      "unit": "index_points",
+      "value": -0.2
+    }
+  },
+  "ease_title": "松紧度",
+  "events": [
+    {
+      "date": "2026-10-28",
+      "name_text": "美国 CPI",
+      "previous": {
+        "reason": "no_data",
+        "text": "前值暂缺"
+      },
+      "when_text": "周三 10-28"
+    },
+    {
+      "date": "2026-11-06",
+      "name_text": "美国非农就业",
+      "previous": {
+        "reason": "no_data",
+        "text": "前值暂缺"
+      },
+      "when_text": "周五 11-06"
+    }
+  ],
+  "events_title": "本周与下周",
+  "gaps": [],
+  "generated_at": "2026-10-26T09:30:00+08:00",
+  "indicators": [
+    {
+      "detail_href": "/indicator/cpiaucsl",
+      "label": "及时",
+      "latest": {
+        "text": "2.9%",
+        "unit": "percent",
+        "value": 2.9
+      },
+      "name": "美国 CPI 同比",
+      "source_text": "演示来源 · 10-23",
+      "status": "good"
+    },
+    {
+      "detail_href": null,
+      "label": "缺",
+      "latest": {
+        "reason": "no_data",
+        "text": "数据源未接入"
+      },
+      "name": "中国 PMI",
+      "source_text": "尚无来源",
+      "status": "missing"
+    },
+    {
+      "detail_href": "/indicator/unrate",
+      "label": "迟到",
+      "latest": {
+        "text": "4.1%",
+        "unit": "percent",
+        "value": 4.1
+      },
+      "name": "美国失业率",
+      "source_text": "演示来源 · 09-04",
+      "status": "late"
+    }
+  ],
+  "indicators_title": "指标与时效",
+  "notes": [
+    "全部为虚构演示数据，不用于交易决策。",
+    "日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",
+    "前值是序列最新存储的一期，标注所属月份；没有存储或没有对应序列的标为暂缺。"
+  ],
+  "notes_title": "说明",
+  "run_id": "run-demo-0001",
+  "run_status": "partial",
+  "schema": "macro_page",
+  "schema_version": 1,
+  "scope": "macro-page",
+  "sentence": "本周关注美国 CPI，下周关注美国非农就业。",
+  "stale": {
+    "data_time": "2026-10-23T00:00:00+08:00",
+    "stale_after": "2026-10-27T09:30:00+08:00",
+    "text": "数据日 10-23"
+  },
+  "title": "宏观"
+}

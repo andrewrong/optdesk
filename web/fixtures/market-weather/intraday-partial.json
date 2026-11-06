@@ -1,0 +1,67 @@
+{
+  "footnote": "仅显示：不改变任何建议、数量、上限或期限",
+  "headline": "差 · 数据 10-19…10-21",
+  "intraday": {
+    "as_of": "盘中报价 10:28:00 ET（只含 VIX 与 VIX3M，趋势与信用为收盘）",
+    "expired_text": "已过期",
+    "expires_at": "2026-10-23T04:00:00+08:00",
+    "footnote": "仅显示：盘中试算不改变收盘天气、任何建议、数量、上限或期限",
+    "gauge": null,
+    "rows": [
+      {
+        "as_of": "10:28:00 ET",
+        "data_type": "live",
+        "label": "盘中",
+        "series": "VIX",
+        "stale": null,
+        "value": "25.00"
+      },
+      {
+        "as_of": "10:10:00 ET",
+        "data_type": "live",
+        "label": "盘中",
+        "series": "VIX3M",
+        "stale": {
+          "data_time": "2026-10-22T22:10:00+08:00",
+          "stale_after": "2026-10-22T22:25:00+08:00",
+          "text": "报价已过期：距今 20 分钟"
+        },
+        "value": "24.00"
+      }
+    ],
+    "status": "stale",
+    "status_line": "盘中读数过期或缺失，未更新",
+    "title": "盘中试算"
+  },
+  "mismatches": [],
+  "rows": [
+    {
+      "figure_text": "波动 VIX 26.40",
+      "first_ibkr_date": "2026-09-15",
+      "kind": "volatility",
+      "observed": "2026-10-19",
+      "source": "IBKR",
+      "verdict": "bad"
+    },
+    {
+      "figure_text": "趋势 标普占200日均线 98.10%",
+      "first_ibkr_date": "2026-09-15",
+      "kind": "trend",
+      "observed": "2026-10-20",
+      "source": "IBKR",
+      "verdict": "bad"
+    },
+    {
+      "figure_text": "信用 高收益利差 3.12%",
+      "first_ibkr_date": "2026-09-15",
+      "kind": "credit",
+      "observed": "2026-10-21",
+      "source": "IBKR",
+      "verdict": "ok"
+    }
+  ],
+  "schema": "market_weather",
+  "schema_version": 1,
+  "stale": null,
+  "state": "bad"
+}

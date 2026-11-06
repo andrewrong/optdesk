@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>option-trader</title>
+  </head>
+  <body>
+    <!-- Outside the React root: visible until the payload parsed and React committed (ADR 0034). -->
+    <div
+      id="fail-closed"
+      role="alert"
+      class="bg-destructive/10 p-4 text-center font-bold text-destructive"
+    >
+      page did not load, do not act<br />页面未加载,请勿据此操作
+    </div>
+    <noscript>page did not load, do not act<br />页面未加载,请勿据此操作</noscript>
+    <div id="root"></div>
+    <script type="application/json" id="vm">
+      { "schema": "_dev/hello", "schema_version": 1 }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

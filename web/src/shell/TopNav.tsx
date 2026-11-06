@@ -1,0 +1,37 @@
+import { Lightbulb, type LucideIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+// Live routes only (`_PROMOTED` in reports/listener.py). Fixed shell text: no payload field is read.
+const ITEMS: readonly { label: string; path: string; icon?: LucideIcon }[] = [
+  { label: '首页', path: '/home' },
+  { label: '家庭资产', path: '/household' },
+  { label: '持仓', path: '/positions' },
+  { label: '风险', path: '/risk' },
+  { label: '期权', path: '/options' },
+  { label: '建议', path: '/advice', icon: Lightbulb },
+]
+
+// The page being viewed: a trailing slash is ignored and `/` counts as `/home`.
+function currentPath(pathname: string): string {
+  const trimmed = pathname.replace(/\/+$/, '')
+  return trimmed === '' ? '/home' : trimmed
+}
+
+export function TopNav() {
+  const current = currentPath(window.location.pathname)
+  return (
+    <nav aria-label="主导航" className="flex gap-1 overflow-x-auto p-2">
+      {ITEMS.map(({ label, path, icon: Icon }) => {
+        const active = path === current
+        return (
+          <Button key={path} asChild variant={active ? 'secondary' : 'ghost'} className="shrink-0">
+            <a href={path} aria-current={active ? 'page' : undefined}>
+              {Icon ? <Icon aria-hidden /> : null}
+              {label}
+            </a>
+          </Button>
+        )
+      })}
+    </nav>
+  )
+}

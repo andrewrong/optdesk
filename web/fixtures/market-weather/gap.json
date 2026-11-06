@@ -1,0 +1,10 @@
+{
+  "footnote": "仅显示：不改变任何建议、数量、上限或期限",
+  "headline": "未知 · 天气数据缺：没有投票数据",
+  "mismatches": [],
+  "rows": [],
+  "schema": "market_weather",
+  "schema_version": 1,
+  "stale": null,
+  "state": "unknown"
+}
