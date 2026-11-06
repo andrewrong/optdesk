@@ -255,6 +255,21 @@ func TestCheckPageV2Helper(t *testing.T) {
 	checkPageV2In(t, dir, "page.tiny.v2.json", map[string]string{"^[A-Za-z0-9_-]{1,64}$": "run_1"})
 }
 
+// Each file of pageV2Files that exists passes the three outcomes of checkPageV2.
+func TestPageV2FilesCheck(t *testing.T) {
+	t.Parallel()
+	overrides := map[string]string{"^[A-Za-z0-9_-]{1,64}$": "id_1"}
+	for _, name := range pageV2Files {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := os.Stat(filepath.Join(schemasDir, name)); os.IsNotExist(err) {
+				t.Skip("file does not exist yet")
+			}
+			checkPageV2(t, name, overrides)
+		})
+	}
+}
+
 func TestCommonDefs(t *testing.T) {
 	t.Parallel()
 	raw := readRaw(t, schemasDir, "common.v1.json")
@@ -279,7 +294,11 @@ func TestCommonDefs(t *testing.T) {
 		{"Timestamp", `"2026-01-02T03:04:05Z"`, `20260102`},
 		{"RunStatus", `"partial"`, `"done"`},
 		{"SourceTime", `{"source":"s1","data_time":"2026-01-02T03:04:05+08:00"}`, `{"source":"bad id","data_time":"2026-01-02T03:04:05+08:00"}`},
-		{"StaleLabel", `{"data_time":"2026-01-02T03:04:05+08:00","stale_after":"2026-01-02T04:04:05+08:00","text":"old"}`, `{"data_time":"2026-01-02T03:04:05+08:00","text":"old"}`},
+		{
+			"StaleLabel",
+			`{"data_time":"2026-01-02T03:04:05+08:00","stale_after":"2026-01-02T04:04:05+08:00","text":"old"}`,
+			`{"data_time":"2026-01-02T03:04:05+08:00","text":"old"}`,
+		},
 		{"Gap", `{"reason":"stale_input","text":"late"}`, `{"reason":"bogus","text":"late"}`},
 		{"UsdFigure", `{"value":1.25,"text":"$1","unit":"USD"}`, `{"value":-1,"text":"$1","unit":"USD"}`},
 		{"PercentFigure", `{"value":2.1,"text":"+2.1%","unit":"percent"}`, `{"value":10001,"text":"x","unit":"percent"}`},
