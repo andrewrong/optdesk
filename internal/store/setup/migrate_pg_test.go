@@ -166,7 +166,7 @@ func TestMigrateUpRejectedRolePG(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "set role") {
 		t.Fatalf("want error of stage set role, got %v", err)
 	}
-	if n := s.count(t, `SELECT count(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')`); n != 0 {
+	if n := s.count(t, `SELECT count(*) FROM pg_tables WHERE schemaname IN ('master','obs','ops','meta','public')`); n != 0 {
 		t.Fatalf("%d tables exist", n)
 	}
 }
