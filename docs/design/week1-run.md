@@ -4,7 +4,7 @@ Author: advisor of optdesk (first draft)
 Source: `## Left out` of `docs/design/week1-ot.md` (applying the migrations and loading `master.session_day`), the clock
 row of `docs/design/modules.md` ("a yearly generated file, cross-checked against IBKR trading hours") and ADR 0004
 (open and close times come from a maintained calendar, never from hand-written times). Identifiers were read on main at
-164d783: `cmd/ot` has the subcommands `run-once`, `page`, `serve` and `setup pg`; `migrations/` holds 0001 to 0004
+3cdfdd1: `cmd/ot` has the subcommands `run-once`, `page`, `serve` and `setup pg`; `migrations/` holds 0001 to 0004
 (0004 is the grant of PR 61); `internal/store/setup` is on the import list of the row `ot` and already uses pgx.
 
 Goal of the design: after `ot setup pg`, the owner can run `ot migrate` and have `ot calendar load` ready for the
@@ -34,7 +34,10 @@ What was found on main, and what is still missing:
 ## Modules
 
 No change to `docs/design/modules.md`, `scripts/arch`, `arch.toml` or `.go-arch-lint.yml`: every path below belongs to an
-existing row, and `cmd/ot` imports only `internal/store/setup` of the store sub-packages, which is already on its list.
+existing row, and this design adds no import edge. `cmd/ot/wire.go` at main already imports `internal/store/setup`,
+`internal/store/sessionday`, `internal/store/series` and `internal/store/ops`, the four store sub-packages that the row
+`ot` lists, and the other implementation packages of that list; `internal/store/setup` is the only one whose use this
+design extends, and `wire.go` stays the one non-test file of `cmd/ot` that imports them.
 
 | issue | module | order |
 |---|---|---|
@@ -78,6 +81,12 @@ in all. The commands: `ot migrate [--dir DIR]` (default `migrations`, a path of 
 in `wire.go`. The owner's sequence is `ot setup pg`, `ot migrate`, `ot calendar load FILE...` (once a generated file
 exists), `ot run-once`.
 
+Owner of the file format: the rows are the `master.session_day r1` dataset, which belongs to contracts, so contracts is
+the owner and `cmd/ot` (the loader, row ot) is only a consumer, as the generator of `pyside/src/optdesk/calendar` (row
+clock) will only be a producer. The dataset document of contracts is under `docs/contracts/datasets/`, which is generated
+from `contracts/datasets/` and is a path of contracts; no entry of this cut is a contracts entry, so the format of the
+envelope is defined in this design, and the contracts document for it comes with the generator design (`## Left out`).
+
 File format read by `ot calendar load`: one JSON object `{"provenance": {...}, "rows": [...]}`. `rows` are
 `master.session_day r1` objects. `provenance` has five non-empty strings: `generator`, `generator_version`,
 `source_library`, `source_library_version`, `generated_at` (RFC 3339). The loader invents none of them.
@@ -96,11 +105,11 @@ diff, with an offline grep where it is about behaviour.
   Acceptance:
   - `migrate.go` declares `MigrateUp` and `OwnerDSN` with the signatures of `## Interface` (offline: `grep -c 'func MigrateUp' internal/store/setup/migrate.go` and `grep -c 'func OwnerDSN' internal/store/setup/migrate.go` print 1 each); it does not import `internal/store/migrate` (`grep -c 'store/migrate' internal/store/setup/migrate.go` prints 0) and `setup.go` is unchanged.
   - The session setup is one unexported function `ownerSession(ctx, conn execer, log *slog.Logger) error` whose first statement is `SET ROLE ot_owner`, then `SET search_path TO meta`; `MigrateUp` runs it as the after-connect step of every connection and opens the database with one open connection (offline: `grep -c 'SET ROLE' internal/store/setup/migrate.go` prints 1 and the line is the first `Exec` of `ownerSession`).
-  - Condition 1, `TestSetRoleFailureRunsNothing`: a fake `execer` rejects `SET ROLE`; the test asserts that the fake saw exactly that one statement, that the migration function passed in was not called, and that the returned error is of stage `set role` and never continues as the admin role. `TestSetRoleIsFirst`: the first statement a fake sees is `SET ROLE ot_owner` and the second is the `search_path` one. Both drive an unexported `migrateWith(ctx, open, up)` whose `open` and `up` the tests replace.
+  - Condition 1, `TestSetRoleFailureRunsNothing`: a fake `execer` rejects `SET ROLE`; the test asserts that the fake saw exactly that one statement, that the migration function passed in was not called, and that the returned error is of stage `set role` and never continues as the admin role. `TestSetRoleIsFirst`: the first statement a fake sees is `SET ROLE ot_owner` and the second is the `search_path` one. Both drive `migrateWith(ctx, open, up, fsys, log)`, where `open func(ctx, afterConnect) (*sql.DB, error)` and `up func(ctx, *sql.DB, fs.FS) error` are replaced by recording fakes.
   - The schema and the version table are made after the role switch: `TestSchemaAfterRole` asserts with the fake that `CREATE SCHEMA IF NOT EXISTS meta` comes after `SET ROLE ot_owner` and that no statement mentions `public`; offline `grep -c 'goose_db_version' internal/store/setup/migrate.go` prints 0 (the table name is goose's default under the `search_path`).
   - Condition 3, no DSN in an error or in the log: `TestMigrateUpMalformedDSNHoldsNoSecret` (a malformed DSN that contains a sentinel password), `TestMigrateUpUnreachableHoldsNoSecret` (a well-formed DSN with a sentinel password, a wrong user and the loopback interface with port 0, so the connection is refused offline: the stand-in for a wrong password) and `TestOwnerDSNMalformedHoldsNoSecret` each assert that the sentinel password and the DSN are absent from the returned error text and from the output of a `slog` logger writing to a buffer, which the tests pass to the unexported `migrateUp(ctx, adminDSN, fsys, log)` that `MigrateUp` calls with `slog.Default()`. `grep -c '%w' internal/store/setup/migrate.go` prints 1 (the goose error only).
   - `OwnerDSN` returns a `postgres://` URL for the database `optdesk` keeping host, port, user, password and `sslmode` of its argument and adding the option that sets the role `ot_owner` (`TestOwnerDSNSetsRole`, `TestOwnerDSNKeepsSSLMode`); the value is never logged (`grep -n 'log\.' internal/store/setup/migrate.go` lists no line that has a DSN variable as an argument).
-  - `migrate_pg_test.go` has the build tag `pg` on its first line; it creates the roles it needs when missing under the advisory lock that `internal/store/series/series_pg_test.go` takes (`grep -c 'pg_advisory_lock' internal/store/setup/migrate_pg_test.go` prints at least 1; it copies the private `ensureRoles` about 25 lines), creates a scratch database owned by `ot_owner`, and runs `MigrateUp`'s core as a role that is a member of `ot_owner` without being a superuser, not only as the superuser. Its functions: `TestMigrateUpAsOwnerPG` (applies 0001 to 0004 twice; asserts every table of schemas `master`, `obs` and `ops` has `tableowner` `ot_owner`, `meta.goose_db_version` exists and `public.goose_db_version` does not), `TestMigrateUpRejectedRolePG` (a login role that is not a member of `ot_owner`: error of stage `set role`, and no table exists afterwards), `TestMigrateUpWrongPasswordPG` (a wrong password: the error and the captured log lack the password). Offline: `grep -n 'func Test.*PG' internal/store/setup/migrate_pg_test.go` finds the three, and `grep -c 'postgres://[^"]*:[^"]*@' internal/store/setup/migrate_pg_test.go` prints 0 (DSNs are built from the `PG*` variables).
+  - `migrate_pg_test.go` has the build tag `pg` on its first line; it creates the roles it needs when missing under the advisory lock that `internal/store/series/series_pg_test.go` takes (`grep -c 'pg_advisory_lock' internal/store/setup/migrate_pg_test.go` prints at least 1; it copies the private `ensureRoles` about 25 lines), creates a scratch database owned by `ot_owner`, and calls the unexported `migrateWith(ctx, open, up, fsys, log)` that `MigrateUp` itself calls (offline: `grep -c 'migrateWith(' internal/store/setup/migrate.go` prints at least 2, the definition and the call in `migrateUp`), passing `open` as a function that connects to the scratch database (the `PG*` variables with the scratch database name) as a login role that is a member of `ot_owner` without being a superuser, and not only as the superuser, with the given after-connect step, and `up` as the package function `gooseUp` that `MigrateUp` also passes; so the real `ownerSession`, the real schema step and the real goose run are exercised, and only the database name and the login role differ from `MigrateUp`. Its functions: `TestMigrateUpAsOwnerPG` (applies 0001 to 0004 twice; asserts every table of schemas `master`, `obs` and `ops` has `tableowner` `ot_owner`, `meta.goose_db_version` exists and `public.goose_db_version` does not), `TestMigrateUpRejectedRolePG` (a login role that is not a member of `ot_owner`: error of stage `set role`, and no table exists afterwards), `TestMigrateUpWrongPasswordPG` (a wrong password: the error and the captured log lack the password). Offline: `grep -n 'func Test.*PG' internal/store/setup/migrate_pg_test.go` finds the three, and `grep -c 'postgres://[^"]*:[^"]*@' internal/store/setup/migrate_pg_test.go` prints 0 (DSNs are built from the `PG*` variables).
   - `docs/contracts/store.md` names `MigrateUp` and `OwnerDSN` under `## Inputs`, the version table `meta.goose_db_version` under `## Invariants`, and adds a `- v3:` line to `## Version history`; it keeps the line that says `internal/store/migrate` embeds no files; no heading changes.
   - Every test of `migrate_test.go` calls `t.Parallel()` (offline: `grep -c 't.Parallel()' internal/store/setup/migrate_test.go` is at least `grep -c 'func Test' internal/store/setup/migrate_test.go`); none sleeps or calls `time.Now` (`grep -c 'time\.Now\|time\.Sleep' internal/store/setup/migrate.go` prints 0); each new file stays under 600 lines; no file outside the four listed is in the diff.
   - Checked by CI: ci-go (build, vet, test, golangci-lint with depguard, go-arch-lint component `store/setup`); the `test-pg` job runs the three `PG` tests against a real server (offline substitutes: the greps above and the fake-connection tests).
@@ -147,7 +156,9 @@ Advisor: agrees (optdesk-advisor, Claude Fable 5.1, 2026-11-06) with ot migrate 
   a later design; so do the Python project, the years after the first, and the choice of calendars (the Tokyo calendar
   and the JPX overlay of ADR 0004 are separate work). The generator must write the format of `## Interface`: an object
   with `provenance` (`generator`, `generator_version`, `source_library`, `source_library_version`, `generated_at` in
-  RFC 3339) and `rows`; the loader refuses a file without all five.
+  RFC 3339) and `rows`; the loader refuses a file without all five. The dataset document for this envelope belongs to
+  contracts (`docs/contracts/datasets/`, generated from `contracts/datasets/`) and comes with the generator design;
+  until then the format is defined in this design only.
 - The cross-check against IBKR trading hours (clock row of `docs/design/modules.md`, ADR 0004 "at runtime IBKR
   `tradingHours` are the check"): it needs a broker connection, which `ot` never opens. Until then nothing marks the
   rows as cross-checked.
