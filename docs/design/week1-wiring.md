@@ -81,6 +81,7 @@ The other page schemas of the old repository, copied unchanged, with a manifest 
   - `page.macro_rates.v1.json`, its fixtures and `MANIFEST.synthetic-v1.json` of `contracts/fixtures` are not in the diff; no file of `web/` is in the diff.
   - Checked by CI: ci-go (the tests, which prove that each hash is that of the copy and that the fixtures validate as listed); checks (generated code unchanged since nothing is generated from these files); hygiene (no account id, path or e-mail); the size rule (JSON data is not counted).
   Note for the pull request description (not an acceptance item): `Contracts: ` followed by one `page.<name>.vN (new)` entry per file, as the format check of `checks.yml` accepts; the description names the file that the earlier count of 28 left out, and any fixture that is on the expected-failure list with the reason.
+  Note (not acceptance): the copies are byte copies except the substitutions the privacy gate requires: every `x-timezone` value became `owner` (see PR 53).
   Depends on: none.
   Size: M
 

@@ -299,6 +299,7 @@ requests are notes below the acceptance list, not acceptance items.
   - The wiring constructors exist with their declared types: `grep -rn 'var _ store.OpenSeriesFunc\|var _ store.OpenLedgerFunc\|var _ store.SetupFunc' internal/store` prints three lines.
   Owner's word: given 2026-11-05 (writing generated passwords into `$OT_HOME/.env` allowed). After the follow-up wiring lands the owner runs `ot setup pg` once on the owner's machine; it generates passwords and writes them into `$OT_HOME/.env`; this design does not run it and no test touches a real `$OT_HOME`. `$OT_HOME/.env` holds secrets only: the PG DSNs this command writes, FRED_API_KEY (week 1) and IB_FLEX_TOKEN (week 5); gateway host/port/client id, Flex query ids, account aliases, limits and pools are settings (code defaults until the settings page exists), not lines of `.env` (relayed owner ruling, 2026-11-05).
   Note (not acceptance): this issue lands after 6 and finds pgx and goose in go.mod (`### Libraries` in this design).
+  Note (not acceptance): go.mod and go.sum change only where `go mod tidy` demands, since pgx and goose landed with store-session-day.
   Depends on: 1, 3, 18. Order: after 1, 2, 3, 4, 6, 18.
   Size: M
 
