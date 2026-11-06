@@ -6,7 +6,7 @@ may_import = ["contracts/gen"]
 
 [component."contracts/gen"]
 in = "internal/contracts/gen"
-may_import = ["contracts"]
+may_import = []
 
 [component."contracts/genpb"]
 in = "internal/contracts/genpb"

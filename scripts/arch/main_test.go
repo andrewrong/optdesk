@@ -228,3 +228,20 @@ func TestArchDeriveContractsGenpb(t *testing.T) {
 		t.Fatalf("a package under internal/contracts/genpb fails the lint:\n%s", out)
 	}
 }
+
+func TestArchDeriveContractsGen(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, map[string]string{"internal/contracts/gen/g.go": "package gen\n"})
+	toml, _, err := generate(modulesText(t), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(toml), "[component.\"contracts/gen\"]\nin = \"internal/contracts/gen\"\nmay_import = []\n") {
+		t.Fatalf("contracts/gen is not derived with an empty import list:\n%s", toml)
+	}
+	_, rest, _ := strings.Cut(string(toml), "[component.\"contracts\"]\n")
+	block, _, _ := strings.Cut(rest, "\n[")
+	if !strings.Contains(block, "may_import = [\"contracts/gen\"]") {
+		t.Fatalf("contracts does not import contracts/gen:\n%s", block)
+	}
+}
