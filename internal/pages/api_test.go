@@ -26,7 +26,7 @@ func TestPagesContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	handler(vm).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	handler(vm).ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
 	body, _ := io.ReadAll(rec.Result().Body)
 	if string(body) != "2000-01-01T00:00:00Z" {
 		t.Fatalf("body = %q", body)
