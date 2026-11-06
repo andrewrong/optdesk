@@ -15,6 +15,8 @@ components:
     in: internal/contracts
   contracts/gen:
     in: internal/contracts/gen
+  contracts/genpb:
+    in: internal/contracts/genpb
   clock:
     in: internal/clock
   clock/calendar:
@@ -35,6 +37,10 @@ components:
     in: internal/jobs
   pages:
     in: internal/pages
+  pages/embed:
+    in: internal/pages/embed
+  pages/macro_rates:
+    in: internal/pages/macro_rates
   profile:
     in: internal/profile
   ot:
@@ -90,6 +96,16 @@ deps:
     mayDependOn:
       - contracts
       - store
+  pages/embed:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
+  pages/macro_rates:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
   ot:
     mayDependOn:
       - contracts
@@ -104,3 +120,5 @@ deps:
       - clock/calendar
       - runner/reconcile
       - sources/fred
+      - pages/macro_rates
+      - pages/embed
