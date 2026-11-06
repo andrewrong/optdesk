@@ -3,6 +3,7 @@ package fredseries
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -18,6 +19,9 @@ type job struct {
 	src sources.Source
 	w   store.SeriesWriter
 	clk clock.Clock
+
+	cal         string
+	open, close time.Duration
 }
 
 type typedError struct {
@@ -43,11 +47,19 @@ func New(src sources.Source, w store.SeriesWriter, clk clock.Clock) (contracts.J
 	if src == nil || w == nil || clk == nil {
 		return nil, errors.New("fredseries: source, writer and clock are required")
 	}
-	m, err := parseManifest(manifestBytes)
+	return build(manifestBytes, src, w, clk)
+}
+
+func build(data []byte, src sources.Source, w store.SeriesWriter, clk clock.Clock) (*job, error) {
+	m, err := parseManifest(data)
 	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, src: src, w: w, clk: clk}, nil
+	cal, open, closeOff, err := windowOf(m)
+	if err != nil {
+		return nil, err
+	}
+	return &job{m: m, src: src, w: w, clk: clk, cal: cal, open: open, close: closeOff}, nil
 }
 
 // ID is the job id of the manifest.
