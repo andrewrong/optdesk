@@ -1,0 +1,2446 @@
+{
+  "$defs": {
+    "BlockLink": {
+      "additionalProperties": false,
+      "description": "A link the home page shows: a route name (the browser holds the path) and its words.",
+      "properties": {
+        "route": {
+          "enum": [
+            "companies",
+            "us-close",
+            "jp-close",
+            "us-open",
+            "jp-open"
+          ],
+          "title": "Route",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "route",
+        "text"
+      ],
+      "title": "BlockLink",
+      "type": "object"
+    },
+    "Caption": {
+      "additionalProperties": false,
+      "description": "A plain small line under a figure.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Caption",
+      "type": "object"
+    },
+    "CashTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SharePercentFigure"
+            },
+            {
+              "$ref": "#/$defs/Caption"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "CashTile",
+      "type": "object"
+    },
+    "Chart": {
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Aria Text",
+          "type": "string"
+        },
+        "end_labels": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "End Labels",
+          "type": "array"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ChartPoint"
+          },
+          "maxItems": 120,
+          "title": "Points",
+          "type": "array"
+        },
+        "series_names": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Series Names",
+          "type": "array"
+        }
+      },
+      "required": [
+        "points",
+        "series_names",
+        "end_labels",
+        "aria_text"
+      ],
+      "title": "Chart",
+      "type": "object"
+    },
+    "ChartPoint": {
+      "additionalProperties": false,
+      "description": "One day: every level is a plain number or ``None`` (null) for a missing day.",
+      "properties": {
+        "band_high": {
+          "anyOf": [
+            {
+              "maximum": 1000000000.0,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Band High"
+        },
+        "band_low": {
+          "anyOf": [
+            {
+              "maximum": 1000000000.0,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Band Low"
+        },
+        "close": {
+          "anyOf": [
+            {
+              "maximum": 1000000000.0,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Close"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "ma200": {
+          "anyOf": [
+            {
+              "maximum": 1000000000.0,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ma200"
+        }
+      },
+      "required": [
+        "label",
+        "close",
+        "ma200",
+        "band_low",
+        "band_high"
+      ],
+      "title": "ChartPoint",
+      "type": "object"
+    },
+    "Column": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "company",
+            "earnings",
+            "day_change",
+            "five_day_change"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "CountFigure": {
+      "additionalProperties": false,
+      "description": "A displayed count of option structures (a short put, a spread: one structure each).",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "structures",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Value",
+          "type": "integer",
+          "x-decimals": 0
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "CountFigure",
+      "type": "object"
+    },
+    "CountTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CountFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__options_summary__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "title": "CountTile",
+      "type": "object"
+    },
+    "DayChangeTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "DayChangeTile",
+      "type": "object"
+    },
+    "EarningsCell": {
+      "additionalProperties": false,
+      "description": "A results date: ``date`` is the ISO day, ``text`` what is shown (``10-28`` or ``已公布 10-20``).",
+      "properties": {
+        "date": {
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+          "title": "Date",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "text"
+      ],
+      "title": "EarningsCell",
+      "type": "object"
+    },
+    "Ease": {
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Aria Text",
+          "type": "string"
+        },
+        "figure": {
+          "$ref": "#/$defs/IndexPointsFigure"
+        },
+        "marker_percent": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        },
+        "neutral_band": {
+          "$ref": "#/$defs/NeutralBand"
+        },
+        "reading_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reading Text",
+          "type": "string"
+        },
+        "ticks": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "Ticks",
+          "type": "array"
+        },
+        "week_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexPointsFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Week Change"
+        }
+      },
+      "required": [
+        "figure",
+        "week_change",
+        "marker_percent",
+        "neutral_band",
+        "ticks",
+        "reading_text",
+        "aria_text"
+      ],
+      "title": "Ease",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+          "title": "Date",
+          "type": "string"
+        },
+        "name_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name Text",
+          "type": "string"
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Previous"
+        },
+        "when_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "When Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "when_text",
+        "name_text",
+        "previous"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "HeldCompaniesSummary": {
+      "additionalProperties": false,
+      "description": "Envelope (ADR 0034) and card. No envelope currency: the names carry their own.",
+      "properties": {
+        "build_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Build Id",
+          "type": "string"
+        },
+        "card": {
+          "$ref": "#/$defs/option_trader__viewmodels__held_companies_summary__Card"
+        },
+        "data_times": {
+          "items": {
+            "$ref": "#/$defs/SourceTime"
+          },
+          "maxItems": 20,
+          "title": "Data Times",
+          "type": "array"
+        },
+        "generated_at": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Generated At",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_status": {
+          "enum": [
+            "ok",
+            "partial",
+            "failed"
+          ],
+          "title": "Run Status",
+          "type": "string"
+        },
+        "schema": {
+          "const": "held_companies_summary",
+          "title": "Schema",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "schema_version",
+        "run_id",
+        "build_id",
+        "scope",
+        "generated_at",
+        "data_times",
+        "run_status",
+        "card"
+      ],
+      "title": "HeldCompaniesSummary",
+      "type": "object"
+    },
+    "HouseholdSummary": {
+      "additionalProperties": false,
+      "description": "Envelope (ADR 0034) and card.",
+      "properties": {
+        "build_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Build Id",
+          "type": "string"
+        },
+        "card": {
+          "$ref": "#/$defs/option_trader__viewmodels__household_summary__Card"
+        },
+        "currency": {
+          "const": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "data_times": {
+          "items": {
+            "$ref": "#/$defs/SourceTime"
+          },
+          "maxItems": 20,
+          "title": "Data Times",
+          "type": "array"
+        },
+        "generated_at": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Generated At",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_status": {
+          "enum": [
+            "ok",
+            "partial",
+            "failed"
+          ],
+          "title": "Run Status",
+          "type": "string"
+        },
+        "schema": {
+          "const": "household_summary",
+          "title": "Schema",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "schema_version",
+        "run_id",
+        "build_id",
+        "scope",
+        "currency",
+        "generated_at",
+        "data_times",
+        "run_status",
+        "card"
+      ],
+      "title": "HouseholdSummary",
+      "type": "object"
+    },
+    "IndexLevelFigure": {
+      "additionalProperties": false,
+      "description": "The level of a published market index in index points as its publisher states it (a Cboe\nvolatility index: 18.20 is 18.20 points). Not the 0 to 100 ease scale of ``IndexPointsFigure``:\nthe level has no upper bound in practice, the cap here only rejects a corrupt value.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "index_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000.0,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "IndexLevelFigure",
+      "type": "object"
+    },
+    "IndexPointsFigure": {
+      "additionalProperties": false,
+      "description": "A position on the stored 0 to 100 ease scale, or a change in it.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "index_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "IndexPointsFigure",
+      "type": "object"
+    },
+    "IndexRow": {
+      "additionalProperties": false,
+      "properties": {
+        "iv": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Iv"
+        },
+        "iv_minus_rv20": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Iv Minus Rv20"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "rv20": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Rv20"
+        },
+        "source_text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Text"
+        }
+      },
+      "required": [
+        "name",
+        "iv",
+        "rv20",
+        "iv_minus_rv20"
+      ],
+      "title": "IndexRow",
+      "type": "object"
+    },
+    "IndexTable": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/IndexRow"
+          },
+          "maxItems": 10,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "IndexTable",
+      "type": "object"
+    },
+    "MacroSummary": {
+      "additionalProperties": false,
+      "description": "Envelope (ADR 0034) and card.",
+      "properties": {
+        "build_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Build Id",
+          "type": "string"
+        },
+        "card": {
+          "$ref": "#/$defs/option_trader__viewmodels__macro_summary__Card"
+        },
+        "data_times": {
+          "items": {
+            "$ref": "#/$defs/SourceTime"
+          },
+          "maxItems": 20,
+          "title": "Data Times",
+          "type": "array"
+        },
+        "generated_at": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Generated At",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_status": {
+          "enum": [
+            "ok",
+            "partial",
+            "failed"
+          ],
+          "title": "Run Status",
+          "type": "string"
+        },
+        "schema": {
+          "const": "macro_summary",
+          "title": "Schema",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "schema_version",
+        "run_id",
+        "build_id",
+        "scope",
+        "generated_at",
+        "data_times",
+        "run_status",
+        "card"
+      ],
+      "title": "MacroSummary",
+      "type": "object"
+    },
+    "MarketSummary": {
+      "additionalProperties": false,
+      "description": "Envelope (ADR 0034) and card.",
+      "properties": {
+        "build_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Build Id",
+          "type": "string"
+        },
+        "card": {
+          "$ref": "#/$defs/option_trader__viewmodels__market_summary__Card"
+        },
+        "data_times": {
+          "items": {
+            "$ref": "#/$defs/SourceTime"
+          },
+          "maxItems": 20,
+          "title": "Data Times",
+          "type": "array"
+        },
+        "generated_at": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Generated At",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_status": {
+          "enum": [
+            "ok",
+            "partial",
+            "failed"
+          ],
+          "title": "Run Status",
+          "type": "string"
+        },
+        "schema": {
+          "const": "market_summary",
+          "title": "Schema",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "schema_version",
+        "run_id",
+        "build_id",
+        "scope",
+        "generated_at",
+        "data_times",
+        "run_status",
+        "card"
+      ],
+      "title": "MarketSummary",
+      "type": "object"
+    },
+    "MonthToDateTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/Caption"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "MonthToDateTile",
+      "type": "object"
+    },
+    "NetWorthTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "$ref": "#/$defs/Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "NetWorthTile",
+      "type": "object"
+    },
+    "NeutralBand": {
+      "additionalProperties": false,
+      "description": "The ends of the neutral band on the track, ``percent_of_track``.",
+      "properties": {
+        "high": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        },
+        "low": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        }
+      },
+      "required": [
+        "low",
+        "high"
+      ],
+      "title": "NeutralBand",
+      "type": "object"
+    },
+    "OptionsSummary": {
+      "additionalProperties": false,
+      "description": "Envelope (ADR 0034) and card.",
+      "properties": {
+        "build_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Build Id",
+          "type": "string"
+        },
+        "card": {
+          "$ref": "#/$defs/option_trader__viewmodels__options_summary__Card"
+        },
+        "currency": {
+          "const": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "data_times": {
+          "items": {
+            "$ref": "#/$defs/SourceTime"
+          },
+          "maxItems": 20,
+          "title": "Data Times",
+          "type": "array"
+        },
+        "generated_at": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Generated At",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_status": {
+          "enum": [
+            "ok",
+            "partial",
+            "failed"
+          ],
+          "title": "Run Status",
+          "type": "string"
+        },
+        "schema": {
+          "const": "options_summary",
+          "title": "Schema",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "schema_version",
+        "run_id",
+        "build_id",
+        "scope",
+        "currency",
+        "generated_at",
+        "data_times",
+        "run_status",
+        "card"
+      ],
+      "title": "OptionsSummary",
+      "type": "object"
+    },
+    "PercentFigure": {
+      "additionalProperties": false,
+      "description": "A fraction times 100, signed (``+2.1%``).",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "percent",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 10000,
+          "minimum": -10000,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 4,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PercentFigure",
+      "type": "object"
+    },
+    "PercentOfTrackFigure": {
+      "additionalProperties": false,
+      "description": "A marker position on its track, 0 to 100.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "percent_of_track",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PercentOfTrackFigure",
+      "type": "object"
+    },
+    "Row": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "enum": [
+            "USD",
+            "JPY"
+          ],
+          "title": "Currency",
+          "type": "string"
+        },
+        "day_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Day Change"
+        },
+        "earnings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EarningsCell"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Earnings"
+        },
+        "five_day_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Five Day Change"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "volatility": {
+          "$ref": "#/$defs/VolatilityLine"
+        }
+      },
+      "required": [
+        "symbol",
+        "currency",
+        "earnings",
+        "day_change",
+        "five_day_change",
+        "volatility"
+      ],
+      "title": "Row",
+      "type": "object"
+    },
+    "SeriesPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "closed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__options_summary__Gap"
+            }
+          ],
+          "title": "Closed"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "month": {
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+          "title": "Month",
+          "type": "string"
+        },
+        "premium": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__options_summary__Gap"
+            }
+          ],
+          "title": "Premium"
+        }
+      },
+      "required": [
+        "month",
+        "premium",
+        "label",
+        "closed"
+      ],
+      "title": "SeriesPoint",
+      "type": "object"
+    },
+    "SharePercentFigure": {
+      "additionalProperties": false,
+      "description": "A share in whole percent, 0 to 100.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "share_percent",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 0,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "SharePercentFigure",
+      "type": "object"
+    },
+    "SignedUsdTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__options_summary__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "title": "SignedUsdTile",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "UsdFigure": {
+      "additionalProperties": false,
+      "description": "A displayed US-dollar amount (two decimals in ``value``, whole dollars in ``text``).",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "USD",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000.0,
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "UsdFigure",
+      "type": "object"
+    },
+    "UsdSignedFigure": {
+      "additionalProperties": false,
+      "description": "A signed US-dollar amount; ``text`` starts with ``+`` or ``−`` (U+2212).",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "usd_signed",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000.0,
+          "minimum": -1000000000.0,
+          "multipleOf": 0.01,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "UsdSignedFigure",
+      "type": "object"
+    },
+    "UsdTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UsdFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__options_summary__Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "title": "UsdTile",
+      "type": "object"
+    },
+    "VolIndexItem": {
+      "additionalProperties": false,
+      "description": "One Cboe volatility index (VIX, VXN, RVX): its level in index points as Cboe publishes it\n(18.20 is 18.20 points, not a fraction and not a percent), the data day ``mm-dd`` and the\nsource series. Never part of the IV cell of the index table: a Cboe index is a methodology of\nits own.",
+      "properties": {
+        "day": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Day",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexLevelFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Level"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "source_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "level",
+        "day",
+        "source_text"
+      ],
+      "title": "VolIndexItem",
+      "type": "object"
+    },
+    "VolPointsFigure": {
+      "additionalProperties": false,
+      "description": "Vol points (GLOSSARY \"Vol point\"), signed (``+2.1``).",
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "vol_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000,
+          "minimum": -1000,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_UP"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "VolPointsFigure",
+      "type": "object"
+    },
+    "VolatilityLine": {
+      "additionalProperties": false,
+      "description": "The tool's own HV30, IV30 and IV percentile of a name (ADR 0033 change 9). ``source`` is the short\nlabel (\"own\"), ``label`` names the conventions and the data day; the figures are percents without a\nsign or tone, a part that is not an ``ok`` reading of the day is a ``Gap``, and one of an earlier day\ncarries that day in its ``text``. ``reconciliation`` is the status the readings carry against IBKR's\nseries; no IBKR value is shown.",
+      "properties": {
+        "data_day": {
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+          "title": "Data Day",
+          "type": "string"
+        },
+        "hv30": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Hv30"
+        },
+        "iv30": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Iv30"
+        },
+        "ivp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Ivp"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "reconciliation": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reconciliation",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "label",
+        "data_day",
+        "hv30",
+        "iv30",
+        "ivp",
+        "reconciliation"
+      ],
+      "title": "VolatilityLine",
+      "type": "object"
+    },
+    "option_trader__viewmodels__common__Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "option_trader__viewmodels__held_companies_summary__Card": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Columns",
+          "type": "array"
+        },
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Row"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Rows"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "say",
+        "subtitle",
+        "stale",
+        "columns",
+        "rows",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "option_trader__viewmodels__household_summary__Card": {
+      "additionalProperties": false,
+      "properties": {
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "stale": {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "tiles": {
+          "$ref": "#/$defs/option_trader__viewmodels__household_summary__Tiles"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "subtitle",
+        "stale",
+        "tiles",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "option_trader__viewmodels__household_summary__Tiles": {
+      "additionalProperties": false,
+      "description": "The four tiles, under fixed keys.",
+      "properties": {
+        "cash": {
+          "$ref": "#/$defs/CashTile"
+        },
+        "day_change": {
+          "$ref": "#/$defs/DayChangeTile"
+        },
+        "month_to_date": {
+          "$ref": "#/$defs/MonthToDateTile"
+        },
+        "net_worth": {
+          "$ref": "#/$defs/NetWorthTile"
+        }
+      },
+      "required": [
+        "net_worth",
+        "day_change",
+        "month_to_date",
+        "cash"
+      ],
+      "title": "Tiles",
+      "type": "object"
+    },
+    "option_trader__viewmodels__macro_summary__Card": {
+      "additionalProperties": false,
+      "properties": {
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "ease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ease"
+            },
+            {
+              "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+            }
+          ],
+          "title": "Ease"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "maxItems": 8,
+          "title": "Events",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "say",
+        "stale",
+        "ease",
+        "events",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "option_trader__viewmodels__market_summary__Card": {
+      "additionalProperties": false,
+      "properties": {
+        "chart": {
+          "$ref": "#/$defs/Chart"
+        },
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/option_trader__viewmodels__common__Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "index_table": {
+          "$ref": "#/$defs/IndexTable"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "vol_indices": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/VolIndexItem"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vol Indices"
+        },
+        "vol_indices_note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vol Indices Note"
+        }
+      },
+      "required": [
+        "title",
+        "say",
+        "subtitle",
+        "stale",
+        "chart",
+        "index_table",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "option_trader__viewmodels__options_summary__Card": {
+      "additionalProperties": false,
+      "properties": {
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/option_trader__viewmodels__options_summary__Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "premium_series_6m": {
+          "items": {
+            "$ref": "#/$defs/SeriesPoint"
+          },
+          "maxItems": 6,
+          "minItems": 6,
+          "title": "Premium Series 6M",
+          "type": "array"
+        },
+        "premium_series_caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Premium Series Caption",
+          "type": "string"
+        },
+        "premium_series_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Premium Series Text",
+          "type": "string"
+        },
+        "say": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Say"
+        },
+        "stale": {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "tiles": {
+          "$ref": "#/$defs/option_trader__viewmodels__options_summary__Tiles"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "subtitle",
+        "stale",
+        "tiles",
+        "premium_series_6m",
+        "premium_series_text",
+        "premium_series_caption",
+        "notes",
+        "gaps"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "option_trader__viewmodels__options_summary__Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "option_trader__viewmodels__options_summary__Tiles": {
+      "additionalProperties": false,
+      "description": "The four tiles, under fixed keys.",
+      "properties": {
+        "max_loss_usd": {
+          "$ref": "#/$defs/UsdTile"
+        },
+        "open_premium_usd": {
+          "$ref": "#/$defs/UsdTile"
+        },
+        "premium_month_usd": {
+          "$ref": "#/$defs/SignedUsdTile"
+        },
+        "sold_count_month": {
+          "$ref": "#/$defs/CountTile"
+        }
+      },
+      "required": [
+        "sold_count_month",
+        "premium_month_usd",
+        "open_premium_usd",
+        "max_loss_usd"
+      ],
+      "title": "Tiles",
+      "type": "object"
+    }
+  },
+  "$id": "https://option-trader.invalid/schemas/home_page.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034), the joining texts and the five cards.",
+  "properties": {
+    "block_links": {
+      "items": {
+        "$ref": "#/$defs/BlockLink"
+      },
+      "maxItems": 10,
+      "title": "Block Links",
+      "type": "array"
+    },
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "companies": {
+      "$ref": "#/$defs/HeldCompaniesSummary"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "gap_line": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Gap Line",
+      "type": "string"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "household": {
+      "$ref": "#/$defs/HouseholdSummary"
+    },
+    "macro": {
+      "$ref": "#/$defs/MacroSummary"
+    },
+    "market": {
+      "$ref": "#/$defs/MarketSummary"
+    },
+    "options": {
+      "$ref": "#/$defs/OptionsSummary"
+    },
+    "report_links": {
+      "items": {
+        "$ref": "#/$defs/BlockLink"
+      },
+      "maxItems": 10,
+      "title": "Report Links",
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "say": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Say",
+      "type": "string"
+    },
+    "schema": {
+      "const": "home_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "say",
+    "gap_line",
+    "block_links",
+    "report_links",
+    "macro",
+    "market",
+    "household",
+    "companies",
+    "options"
+  ],
+  "title": "HomePage",
+  "type": "object"
+}

@@ -1,0 +1,865 @@
+{
+  "$defs": {
+    "Band": {
+      "additionalProperties": false,
+      "description": "The one-standard-deviation range of the underlying until expiry, with Python's wording.",
+      "properties": {
+        "high": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "High",
+          "type": "number"
+        },
+        "low": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Low",
+          "type": "number"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "low",
+        "high",
+        "text"
+      ],
+      "title": "Band",
+      "type": "object"
+    },
+    "Fill": {
+      "additionalProperties": false,
+      "properties": {
+        "action_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Action Text",
+          "type": "string"
+        },
+        "fee": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Fee"
+        },
+        "leg_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Leg Text",
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/$defs/Usd"
+        },
+        "quantity": {
+          "maximum": 1000,
+          "minimum": -1000,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "time_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Time Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_text",
+        "action_text",
+        "leg_text",
+        "quantity",
+        "price",
+        "fee"
+      ],
+      "title": "Fill",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "GreekFigure": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "greek",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000,
+          "minimum": -1000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "GreekFigure",
+      "type": "object"
+    },
+    "GreekRow": {
+      "additionalProperties": false,
+      "description": "One leg's Greeks (or the 合计 row): ``cells`` are Delta, Gamma, Theta, Vega in this order.",
+      "properties": {
+        "cells": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/GreekFigure"
+              },
+              {
+                "$ref": "#/$defs/Gap"
+              }
+            ]
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Cells",
+          "type": "array"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "cells"
+      ],
+      "title": "GreekRow",
+      "type": "object"
+    },
+    "GreeksBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "model_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model Text",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/GreekRow"
+          },
+          "maxItems": 9,
+          "minItems": 2,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_text",
+        "rows"
+      ],
+      "title": "GreeksBlock",
+      "type": "object"
+    },
+    "Leg": {
+      "additionalProperties": false,
+      "properties": {
+        "expiry_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Expiry Text",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "mark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Mark"
+        },
+        "pnl": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Pnl"
+        },
+        "price": {
+          "$ref": "#/$defs/Usd"
+        },
+        "quantity": {
+          "maximum": 1000,
+          "minimum": -1000,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "right_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Right Text",
+          "type": "string"
+        },
+        "side_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Side Text",
+          "type": "string"
+        },
+        "strike": {
+          "$ref": "#/$defs/Usd"
+        }
+      },
+      "required": [
+        "side_text",
+        "right_text",
+        "strike",
+        "expiry_text",
+        "quantity",
+        "price",
+        "label",
+        "mark",
+        "pnl"
+      ],
+      "title": "Leg",
+      "type": "object"
+    },
+    "LegsTotal": {
+      "additionalProperties": false,
+      "description": "The 合计 row of the legs table: the sum of the legs' ``pnl``, a Gap when any is a Gap.",
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "pnl": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Pnl"
+        }
+      },
+      "required": [
+        "label",
+        "pnl"
+      ],
+      "title": "LegsTotal",
+      "type": "object"
+    },
+    "Level": {
+      "additionalProperties": false,
+      "properties": {
+        "distance": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Distance"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/$defs/Usd"
+        }
+      },
+      "required": [
+        "name",
+        "price",
+        "note",
+        "distance"
+      ],
+      "title": "Level",
+      "type": "object"
+    },
+    "Payoff": {
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Aria Text",
+          "type": "string"
+        },
+        "band": {
+          "$ref": "#/$defs/Band"
+        },
+        "break_even": {
+          "$ref": "#/$defs/Usd"
+        },
+        "max_gain": {
+          "$ref": "#/$defs/Usd"
+        },
+        "max_loss": {
+          "$ref": "#/$defs/Usd"
+        },
+        "pnl_unit": {
+          "const": "usd",
+          "title": "Pnl Unit",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/PayoffPoint"
+          },
+          "maxItems": 200,
+          "minItems": 2,
+          "title": "Points",
+          "type": "array"
+        },
+        "price_unit": {
+          "const": "usd",
+          "title": "Price Unit",
+          "type": "string"
+        },
+        "spot": {
+          "$ref": "#/$defs/Usd"
+        }
+      },
+      "required": [
+        "points",
+        "price_unit",
+        "pnl_unit",
+        "spot",
+        "break_even",
+        "max_gain",
+        "max_loss",
+        "band",
+        "aria_text"
+      ],
+      "title": "Payoff",
+      "type": "object"
+    },
+    "PayoffPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "pnl": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Pnl",
+          "type": "number"
+        },
+        "price": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Price",
+          "type": "number"
+        }
+      },
+      "required": [
+        "price",
+        "pnl"
+      ],
+      "title": "PayoffPoint",
+      "type": "object"
+    },
+    "SharePercent": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "share_percent",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "SharePercent",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "Stage": {
+      "additionalProperties": false,
+      "properties": {
+        "date_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Date Text",
+          "type": "string"
+        },
+        "days_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Days Text",
+          "type": "string"
+        },
+        "elapsed": {
+          "$ref": "#/$defs/SharePercent"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "date_text",
+        "elapsed",
+        "days_text"
+      ],
+      "title": "Stage",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "Tile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Caption",
+          "type": "string"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "Tile",
+      "type": "object"
+    },
+    "Tiles": {
+      "additionalProperties": false,
+      "description": "The four tiles of board 24, in this order.",
+      "properties": {
+        "break_even": {
+          "$ref": "#/$defs/Tile"
+        },
+        "max_gain": {
+          "$ref": "#/$defs/Tile"
+        },
+        "max_loss": {
+          "$ref": "#/$defs/Tile"
+        },
+        "pnl": {
+          "$ref": "#/$defs/Tile"
+        }
+      },
+      "required": [
+        "pnl",
+        "max_gain",
+        "max_loss",
+        "break_even"
+      ],
+      "title": "Tiles",
+      "type": "object"
+    },
+    "Usd": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "usd",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "Usd",
+      "type": "object"
+    }
+  },
+  "$id": "https://option-trader.invalid/schemas/structure_detail.v3.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "fills": {
+      "items": {
+        "$ref": "#/$defs/Fill"
+      },
+      "maxItems": 50,
+      "title": "Fills",
+      "type": "array"
+    },
+    "fills_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Fills Title",
+      "type": "string"
+    },
+    "gaps": {
+      "items": {
+        "$ref": "#/$defs/Gap"
+      },
+      "maxItems": 20,
+      "title": "Gaps",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "greeks": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GreeksBlock"
+        },
+        {
+          "$ref": "#/$defs/Gap"
+        }
+      ],
+      "title": "Greeks"
+    },
+    "greeks_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Greeks Title",
+      "type": "string"
+    },
+    "key_levels": {
+      "items": {
+        "$ref": "#/$defs/Level"
+      },
+      "maxItems": 20,
+      "title": "Key Levels",
+      "type": "array"
+    },
+    "legs": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Leg"
+          },
+          {
+            "$ref": "#/$defs/Gap"
+          }
+        ]
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Legs",
+      "type": "array"
+    },
+    "legs_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Legs Title",
+      "type": "string"
+    },
+    "legs_total": {
+      "$ref": "#/$defs/LegsTotal"
+    },
+    "levels_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Levels Title",
+      "type": "string"
+    },
+    "payoff": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Payoff"
+        },
+        {
+          "$ref": "#/$defs/Gap"
+        }
+      ],
+      "title": "Payoff"
+    },
+    "payoff_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Payoff Title",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "structure_detail",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 3,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sentence": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "#/$defs/StaleLabel"
+    },
+    "subline": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Subline",
+      "type": "string"
+    },
+    "tiles": {
+      "$ref": "#/$defs/Tiles"
+    },
+    "timeline": {
+      "items": {
+        "$ref": "#/$defs/Stage"
+      },
+      "maxItems": 20,
+      "title": "Timeline",
+      "type": "array"
+    },
+    "timeline_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Timeline Title",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "subline",
+    "sentence",
+    "legs_title",
+    "payoff_title",
+    "greeks_title",
+    "levels_title",
+    "timeline_title",
+    "fills_title",
+    "tiles",
+    "legs",
+    "legs_total",
+    "payoff",
+    "greeks",
+    "key_levels",
+    "timeline",
+    "fills",
+    "gaps",
+    "stale"
+  ],
+  "title": "StructureDetail",
+  "type": "object"
+}

@@ -1,0 +1,331 @@
+{
+  "$defs": {
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "TrackingRow": {
+      "additionalProperties": false,
+      "description": "One evaluation. ``premium`` and ``underlying_move`` are the P&L split, or the same Gap\n(the outcome in words) when the row has no grade to split.",
+      "properties": {
+        "assigned": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Assigned"
+        },
+        "expiry_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Expiry Text",
+          "type": "string"
+        },
+        "outcome": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Outcome",
+          "type": "string"
+        },
+        "premium": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Premium"
+        },
+        "status": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        },
+        "strike": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Strike",
+          "type": "string"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "underlying_move": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Underlying Move"
+        }
+      },
+      "required": [
+        "symbol",
+        "expiry_text",
+        "strike",
+        "status",
+        "outcome",
+        "premium",
+        "underlying_move",
+        "assigned"
+      ],
+      "title": "TrackingRow",
+      "type": "object"
+    },
+    "Usd": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "usd",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "Usd",
+      "type": "object"
+    }
+  },
+  "$id": "https://option-trader.invalid/schemas/tracking.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "how": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "How",
+      "type": "array"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "pending": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Pending",
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/TrackingRow"
+      },
+      "maxItems": 2000,
+      "title": "Rows",
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "tracking",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sentence": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "#/$defs/StaleLabel"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "sentence",
+    "rows",
+    "how",
+    "pending",
+    "stale"
+  ],
+  "title": "Tracking",
+  "type": "object"
+}

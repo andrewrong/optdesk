@@ -1,0 +1,609 @@
+{
+  "$defs": {
+    "Cell": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "default": "none",
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
+    "ChangesBlock": {
+      "additionalProperties": false,
+      "description": "``lines`` are the changes; ``sentence`` is the one state sentence (近 7 天没有变化, or the\nreading is not usable); ``note`` is ``数据日 月-日`` when the reading is of an earlier day.",
+      "properties": {
+        "lines": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Lines",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "sentence": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sentence"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "lines"
+      ],
+      "title": "ChangesBlock",
+      "type": "object"
+    },
+    "Column": {
+      "additionalProperties": false,
+      "description": "A column head; ``numeric`` columns are right-aligned by the browser.",
+      "properties": {
+        "numeric": {
+          "title": "Numeric",
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "numeric"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "GlanceBlock": {
+      "additionalProperties": false,
+      "description": "``note`` is the price-lines state sentence, present only when the lines are not usable.",
+      "properties": {
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "tiles": {
+          "items": {
+            "$ref": "#/$defs/Tile"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Tiles",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "tiles"
+      ],
+      "title": "GlanceBlock",
+      "type": "object"
+    },
+    "Header": {
+      "additionalProperties": false,
+      "description": "``line`` is ``月-日 · 家庭持有 N 家``; ``held_count`` is N, None without a held reading.",
+      "properties": {
+        "data_day": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Data Day",
+          "type": "string"
+        },
+        "held_count": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Held Count"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "data_day"
+      ],
+      "title": "Header",
+      "type": "object"
+    },
+    "HoldingRow": {
+      "additionalProperties": false,
+      "description": "One held company: a cell per column, and its moat lines (the owner's record as written, or\n``护城河记录未填``).",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Cells",
+          "type": "array"
+        },
+        "moat": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Moat",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells",
+        "moat"
+      ],
+      "title": "HoldingRow",
+      "type": "object"
+    },
+    "HoldingsBlock": {
+      "additionalProperties": false,
+      "description": "``volatility_note`` is the label line of the 波动 column (the own series and the data day);\nabsent on a payload made before the column.",
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/HoldingRow"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        },
+        "volatility_note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Volatility Note"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "HoldingsBlock",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "Tile": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "text"
+      ],
+      "title": "Tile",
+      "type": "object"
+    },
+    "WatchBlock": {
+      "additionalProperties": false,
+      "description": "Rows, or one state sentence naming the file (not filled / unreadable) and no rows.",
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/WatchRow"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        },
+        "sentence": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sentence"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "columns",
+        "rows"
+      ],
+      "title": "WatchBlock",
+      "type": "object"
+    },
+    "WatchRow": {
+      "additionalProperties": false,
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Cells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells"
+      ],
+      "title": "WatchRow",
+      "type": "object"
+    }
+  },
+  "$id": "https://option-trader.invalid/schemas/companies_page.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "changes": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ChangesBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "gaps": {
+      "items": {
+        "$ref": "#/$defs/Gap"
+      },
+      "maxItems": 20,
+      "title": "Gaps",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "glance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GlanceBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "header": {
+      "$ref": "#/$defs/Header"
+    },
+    "holdings": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HoldingsBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "notes": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Notes",
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "companies_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "#/$defs/StaleLabel"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "unvalued": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Unvalued"
+    },
+    "watch_list": {
+      "$ref": "#/$defs/WatchBlock"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "header",
+    "changes",
+    "glance",
+    "holdings",
+    "unvalued",
+    "watch_list",
+    "notes",
+    "gaps",
+    "stale"
+  ],
+  "title": "CompaniesPage",
+  "type": "object"
+}

@@ -1,0 +1,1861 @@
+{
+  "$defs": {
+    "AccountMovesBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "accounts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Accounts"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Accounts"
+        },
+        "data_times": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times",
+          "type": "string"
+        },
+        "gap_text": {
+          "default": "没有缺口。",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gap Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "meters": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Meter"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Meters"
+        },
+        "movers": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Movers"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Movers"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "partial",
+            "gap"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "sub": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sub",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "say",
+        "sub",
+        "data_times",
+        "state",
+        "gaps",
+        "accounts",
+        "movers"
+      ],
+      "title": "AccountMovesBlock",
+      "type": "object"
+    },
+    "AccountRow": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Account"
+        },
+        "biggest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Biggest"
+        },
+        "day_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Day Amount"
+        },
+        "day_pct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Day Pct"
+        },
+        "net": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Net"
+        }
+      },
+      "required": [
+        "account",
+        "net",
+        "day_amount",
+        "day_pct",
+        "biggest"
+      ],
+      "title": "AccountRow",
+      "type": "object"
+    },
+    "Accounts": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/AccountRow"
+          },
+          "maxItems": 20,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "Accounts",
+      "type": "object"
+    },
+    "ActionsBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Candidates"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Candidates"
+        },
+        "data_times": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times",
+          "type": "string"
+        },
+        "gap_text": {
+          "default": "没有缺口。",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gap Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "partial",
+            "gap"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "sub": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sub",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "trades": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Trades"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Trades"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "say",
+        "sub",
+        "data_times",
+        "state",
+        "gaps",
+        "trades"
+      ],
+      "title": "ActionsBlock",
+      "type": "object"
+    },
+    "Banner": {
+      "additionalProperties": false,
+      "properties": {
+        "left": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Left",
+          "type": "string"
+        },
+        "right": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Right",
+          "type": "string"
+        }
+      },
+      "required": [
+        "left",
+        "right"
+      ],
+      "title": "Banner",
+      "type": "object"
+    },
+    "Blocks": {
+      "additionalProperties": false,
+      "description": "The five blocks under fixed keys (the writer sorts keys; ``in_order`` is the board order).",
+      "properties": {
+        "account_moves": {
+          "$ref": "#/$defs/AccountMovesBlock"
+        },
+        "actions": {
+          "$ref": "#/$defs/ActionsBlock"
+        },
+        "global_assets": {
+          "$ref": "#/$defs/GlobalAssetsBlock"
+        },
+        "market_watch": {
+          "$ref": "#/$defs/MarketWatchBlock"
+        },
+        "risks": {
+          "$ref": "#/$defs/RisksBlock"
+        }
+      },
+      "required": [
+        "actions",
+        "account_moves",
+        "risks",
+        "market_watch",
+        "global_assets"
+      ],
+      "title": "Blocks",
+      "type": "object"
+    },
+    "CandidateGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CandidateItem"
+          },
+          "maxItems": 50,
+          "title": "Items",
+          "type": "array"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "items"
+      ],
+      "title": "CandidateGroup",
+      "type": "object"
+    },
+    "CandidateItem": {
+      "additionalProperties": false,
+      "properties": {
+        "line1": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Line1",
+          "type": "string"
+        },
+        "line2": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Line2",
+          "type": "string"
+        },
+        "liquidity": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Liquidity",
+          "type": "string"
+        },
+        "structure": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Structure",
+          "type": "string"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "verdict": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "structure",
+        "verdict",
+        "line1",
+        "line2",
+        "liquidity"
+      ],
+      "title": "CandidateItem",
+      "type": "object"
+    },
+    "Candidates": {
+      "additionalProperties": false,
+      "properties": {
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/CandidateGroup"
+          },
+          "maxItems": 20,
+          "title": "Groups",
+          "type": "array"
+        },
+        "heading": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Heading",
+          "type": "string"
+        }
+      },
+      "required": [
+        "heading",
+        "groups"
+      ],
+      "title": "Candidates",
+      "type": "object"
+    },
+    "Cell": {
+      "additionalProperties": false,
+      "description": "One displayed table cell.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "enum": [
+                "USD",
+                "usd_signed",
+                "percent",
+                "share_percent",
+                "index_points",
+                "percent_of_track",
+                "vol_points",
+                "percentage_points"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000.0,
+              "minimum": -1000000000000.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "text",
+        "tone"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
+    "Chip": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Chip",
+      "type": "object"
+    },
+    "Companies": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/CompanyRow"
+          },
+          "maxItems": 50,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "Companies",
+      "type": "object"
+    },
+    "CompanyRow": {
+      "additionalProperties": false,
+      "properties": {
+        "day": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Day"
+        },
+        "news": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "News"
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Symbol"
+        }
+      },
+      "required": [
+        "symbol",
+        "day",
+        "news"
+      ],
+      "title": "CompanyRow",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "GlobalAssetsBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "chart_aria": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Chart Aria",
+          "type": "string"
+        },
+        "data_times": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times",
+          "type": "string"
+        },
+        "gap_text": {
+          "default": "没有缺口。",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gap Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "proxies": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Proxy"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Proxies"
+        },
+        "rotation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rotation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "sector": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sector"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Sector"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "partial",
+            "gap"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "sub": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sub",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "say",
+        "sub",
+        "data_times",
+        "state",
+        "gaps",
+        "proxies",
+        "chart_aria",
+        "sector"
+      ],
+      "title": "GlobalAssetsBlock",
+      "type": "object"
+    },
+    "IndexRow": {
+      "additionalProperties": false,
+      "properties": {
+        "close": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Close"
+        },
+        "day": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Day"
+        },
+        "five_day": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Five Day"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Name"
+        },
+        "source_text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Text"
+        }
+      },
+      "required": [
+        "name",
+        "close",
+        "day",
+        "five_day"
+      ],
+      "title": "IndexRow",
+      "type": "object"
+    },
+    "Indices": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/IndexRow"
+          },
+          "maxItems": 20,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "Indices",
+      "type": "object"
+    },
+    "Link": {
+      "additionalProperties": false,
+      "properties": {
+        "href": {
+          "pattern": "^(?:/|/[A-Za-z0-9_-][A-Za-z0-9_/-]*)$",
+          "title": "Href",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "href"
+      ],
+      "title": "Link",
+      "type": "object"
+    },
+    "MarketWatchBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "companies": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Companies"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Companies"
+        },
+        "data_times": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times",
+          "type": "string"
+        },
+        "gap_text": {
+          "default": "没有缺口。",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gap Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Indices"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Indices"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "muted_note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Muted Note"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "partial",
+            "gap"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "sub": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sub",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "say",
+        "sub",
+        "data_times",
+        "state",
+        "gaps",
+        "indices",
+        "companies"
+      ],
+      "title": "MarketWatchBlock",
+      "type": "object"
+    },
+    "Meter": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Account",
+          "type": "string"
+        },
+        "cash_after_assignment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Cash After Assignment"
+        },
+        "margin_buffer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Margin Buffer"
+        }
+      },
+      "required": [
+        "account",
+        "margin_buffer",
+        "cash_after_assignment"
+      ],
+      "title": "Meter",
+      "type": "object"
+    },
+    "MoverRow": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Account"
+        },
+        "day_amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Day Amount"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Note"
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Symbol"
+        }
+      },
+      "required": [
+        "symbol",
+        "account",
+        "day_amount",
+        "note"
+      ],
+      "title": "MoverRow",
+      "type": "object"
+    },
+    "Movers": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "heading": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Heading",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/MoverRow"
+          },
+          "maxItems": 50,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "heading",
+        "columns",
+        "rows"
+      ],
+      "title": "Movers",
+      "type": "object"
+    },
+    "Proxy": {
+      "additionalProperties": false,
+      "properties": {
+        "day": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Day"
+        },
+        "five_day": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Five Day"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "symbol",
+        "day",
+        "five_day"
+      ],
+      "title": "Proxy",
+      "type": "object"
+    },
+    "RiskItem": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "icon_key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Icon Key",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "level": {
+          "enum": [
+            "n",
+            "w",
+            "d"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "icon_key",
+        "level",
+        "title",
+        "detail"
+      ],
+      "title": "RiskItem",
+      "type": "object"
+    },
+    "RisksBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "data_times": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times",
+          "type": "string"
+        },
+        "gap_text": {
+          "default": "没有缺口。",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gap Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/RiskItem"
+              },
+              "maxItems": 50,
+              "type": "array"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Items"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "partial",
+            "gap"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "sub": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sub",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "say",
+        "sub",
+        "data_times",
+        "state",
+        "gaps",
+        "items"
+      ],
+      "title": "RisksBlock",
+      "type": "object"
+    },
+    "Rotation": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "detail"
+      ],
+      "title": "Rotation",
+      "type": "object"
+    },
+    "Sector": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "heading": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Heading",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/SectorRow"
+          },
+          "maxItems": 30,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "heading",
+        "columns",
+        "rows"
+      ],
+      "title": "Sector",
+      "type": "object"
+    },
+    "SectorRow": {
+      "additionalProperties": false,
+      "properties": {
+        "d1": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "D1"
+        },
+        "d20": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "D20"
+        },
+        "d5": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "D5"
+        },
+        "etf": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Etf"
+        },
+        "sector": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Sector"
+        }
+      },
+      "required": [
+        "sector",
+        "etf",
+        "d1",
+        "d5",
+        "d20"
+      ],
+      "title": "SectorRow",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "StatusLine": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "text"
+      ],
+      "title": "StatusLine",
+      "type": "object"
+    },
+    "TradeRow": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Account"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Action"
+        },
+        "instrument": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Instrument"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Price"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Quantity"
+        },
+        "time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Time"
+        }
+      },
+      "required": [
+        "time",
+        "account",
+        "action",
+        "instrument",
+        "quantity",
+        "price"
+      ],
+      "title": "TradeRow",
+      "type": "object"
+    },
+    "Trades": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "footnote": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Footnote"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/TradeRow"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "Trades",
+      "type": "object"
+    }
+  },
+  "$id": "https://option-trader.invalid/schemas/report_page.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "banner": {
+      "$ref": "#/$defs/Banner"
+    },
+    "blocks": {
+      "$ref": "#/$defs/Blocks"
+    },
+    "chips": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Chip"
+          },
+          "maxItems": 6,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Chips"
+    },
+    "design_note": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Design Note"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "market": {
+      "enum": [
+        "US",
+        "JP"
+      ],
+      "title": "Market",
+      "type": "string"
+    },
+    "say": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Say",
+      "type": "string"
+    },
+    "schema": {
+      "const": "report_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "session_date": {
+      "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+      "title": "Session Date",
+      "type": "string"
+    },
+    "slot": {
+      "enum": [
+        "open",
+        "close"
+      ],
+      "title": "Slot",
+      "type": "string"
+    },
+    "stale": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "status_lines": {
+      "items": {
+        "$ref": "#/$defs/StatusLine"
+      },
+      "maxItems": 20,
+      "title": "Status Lines",
+      "type": "array"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "market",
+    "slot",
+    "session_date",
+    "generated_at",
+    "title",
+    "say",
+    "banner",
+    "status_lines",
+    "blocks"
+  ],
+  "title": "ReportPage",
+  "type": "object"
+}

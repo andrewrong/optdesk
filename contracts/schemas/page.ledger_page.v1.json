@@ -1,0 +1,851 @@
+{
+  "$defs": {
+    "Cell": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 0,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "default": "none",
+          "enum": [
+            "gain",
+            "loss",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
+    "Chart": {
+      "additionalProperties": false,
+      "description": "The cumulative line of a section (six or more closed positions): the points in day order,\nthe first one on the first of the first month at 0, and the sentence that stands for the chart.",
+      "properties": {
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ChartPoint"
+          },
+          "maxItems": 2000,
+          "minItems": 2,
+          "title": "Points",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "points"
+      ],
+      "title": "Chart",
+      "type": "object"
+    },
+    "ChartPoint": {
+      "additionalProperties": false,
+      "description": "One step of the cumulative line: the day, the running total as text and as the number the\nchart draws.",
+      "properties": {
+        "day": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Day",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000000.0,
+          "minimum": -1000000000000.0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "day",
+        "text",
+        "value"
+      ],
+      "title": "ChartPoint",
+      "type": "object"
+    },
+    "ClosedRow": {
+      "additionalProperties": false,
+      "description": "``cells`` are the contract, the realized result (with its tone) and the end mark (may be\nempty); ``detail`` are the facts one tap down.",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Cells",
+          "type": "array"
+        },
+        "detail": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Detail",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells",
+        "detail"
+      ],
+      "title": "ClosedRow",
+      "type": "object"
+    },
+    "Dot": {
+      "additionalProperties": false,
+      "description": "One closed position of a strategy on its dot strip; ``delivered`` is drawn as a ring.",
+      "properties": {
+        "delivered": {
+          "title": "Delivered",
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000000.0,
+          "minimum": -1000000000000.0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "text",
+        "value",
+        "delivered"
+      ],
+      "title": "Dot",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "Header": {
+      "additionalProperties": false,
+      "description": "``through`` is ``Realized · 截至 \u003cday>``; ``fx_note`` names the USD.JPY rate, or says there is\nnone within 7 days; it is absent on a page without a JPY section.",
+      "properties": {
+        "fx_note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fx Note"
+        },
+        "through": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Through",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "through"
+      ],
+      "title": "Header",
+      "type": "object"
+    },
+    "Lead": {
+      "additionalProperties": false,
+      "description": "The headline total of a section and its caption (``Realized P&L · 2 closed``), or no total\nand the no-closed sentence.",
+      "properties": {
+        "caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Caption",
+          "type": "string"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "total",
+        "caption"
+      ],
+      "title": "Lead",
+      "type": "object"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Term",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "term",
+        "text"
+      ],
+      "title": "Note",
+      "type": "object"
+    },
+    "OpenRow": {
+      "additionalProperties": false,
+      "description": "An open position: its contract, the small line under it (strategy, DTE, status), the premium\n(unsigned, as the old page prints it) and the facts one tap down.",
+      "properties": {
+        "detail": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Detail",
+          "type": "array"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "premium": {
+          "$ref": "#/$defs/Cell"
+        },
+        "small": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Small",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "small",
+        "premium",
+        "detail"
+      ],
+      "title": "OpenRow",
+      "type": "object"
+    },
+    "OverviewRow": {
+      "additionalProperties": false,
+      "description": "``total`` is the closed total (``—`` when none is closed; absent on the Shares row);\n``count`` is ``N open`` or, on the Shares row, ``N held``.",
+      "properties": {
+        "count": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Count",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cell"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "total",
+        "count"
+      ],
+      "title": "OverviewRow",
+      "type": "object"
+    },
+    "SaleRow": {
+      "additionalProperties": false,
+      "description": "A sale summary: four cells (shares, how and at what price, average cost, result) and its\ndetail lines (the day, then the inflows).",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Cells",
+          "type": "array"
+        },
+        "detail": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "minItems": 1,
+          "title": "Detail",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells",
+        "detail"
+      ],
+      "title": "SaleRow",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "description": "One account and contract currency. ``lead`` is absent when ``nothing_closed`` of the page\nalready says no position is closed; ``totals_differ`` is present only when the chains and the\noption books disagree; ``more`` are the lines of the folded More block.",
+      "properties": {
+        "chart": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Chart"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "lead": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lead"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "more": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 500,
+          "title": "More",
+          "type": "array"
+        },
+        "open": {
+          "items": {
+            "$ref": "#/$defs/OpenRow"
+          },
+          "maxItems": 2000,
+          "title": "Open",
+          "type": "array"
+        },
+        "open_columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "title": "Open Columns",
+          "type": "array"
+        },
+        "open_title": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Open Title"
+        },
+        "strategies": {
+          "items": {
+            "$ref": "#/$defs/StrategyRow"
+          },
+          "maxItems": 20,
+          "title": "Strategies",
+          "type": "array"
+        },
+        "strategy_columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Strategy Columns",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "totals_differ": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Totals Differ"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "lead",
+        "totals_differ",
+        "chart",
+        "strategy_columns",
+        "strategies",
+        "open_title",
+        "open_columns",
+        "open",
+        "more"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "ShareRow": {
+      "additionalProperties": false,
+      "description": "A held or unreconciled row: symbol, shares, average cost (or the ``◦`` mark).",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Cells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells"
+      ],
+      "title": "ShareRow",
+      "type": "object"
+    },
+    "SharesSection": {
+      "additionalProperties": false,
+      "description": "The stock side of one account and currency. When the baseline was refused ``note`` holds the\nreason and there are no rows.",
+      "properties": {
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "lead": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lead"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/ShareRow"
+          },
+          "maxItems": 500,
+          "title": "Rows",
+          "type": "array"
+        },
+        "sales": {
+          "items": {
+            "$ref": "#/$defs/SaleRow"
+          },
+          "maxItems": 500,
+          "title": "Sales",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "lead",
+        "sales",
+        "rows"
+      ],
+      "title": "SharesSection",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "StrategyRow": {
+      "additionalProperties": false,
+      "description": "``cells`` are Strategy, Closed, Realized, Ann.; ``lines`` the sub lines; ``dots`` the strip\n(two or more closed positions); ``closed`` newest first.",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Cells",
+          "type": "array"
+        },
+        "closed": {
+          "items": {
+            "$ref": "#/$defs/ClosedRow"
+          },
+          "maxItems": 2000,
+          "title": "Closed",
+          "type": "array"
+        },
+        "dots": {
+          "items": {
+            "$ref": "#/$defs/Dot"
+          },
+          "maxItems": 2000,
+          "title": "Dots",
+          "type": "array"
+        },
+        "lines": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Lines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells",
+        "lines",
+        "dots",
+        "closed"
+      ],
+      "title": "StrategyRow",
+      "type": "object"
+    }
+  },
+  "$id": "https://option-trader.invalid/schemas/ledger_page.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "footer": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Footer",
+      "type": "array"
+    },
+    "gaps": {
+      "items": {
+        "$ref": "#/$defs/Gap"
+      },
+      "maxItems": 20,
+      "title": "Gaps",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "header": {
+      "$ref": "#/$defs/Header"
+    },
+    "notes": {
+      "items": {
+        "$ref": "#/$defs/Note"
+      },
+      "maxItems": 20,
+      "title": "Notes",
+      "type": "array"
+    },
+    "nothing_closed": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Nothing Closed"
+    },
+    "overview": {
+      "items": {
+        "$ref": "#/$defs/OverviewRow"
+      },
+      "maxItems": 60,
+      "title": "Overview",
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "ledger_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "maxItems": 60,
+      "title": "Sections",
+      "type": "array"
+    },
+    "shares": {
+      "items": {
+        "$ref": "#/$defs/SharesSection"
+      },
+      "maxItems": 60,
+      "title": "Shares",
+      "type": "array"
+    },
+    "stale": {
+      "$ref": "#/$defs/StaleLabel"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "header",
+    "nothing_closed",
+    "overview",
+    "sections",
+    "shares",
+    "notes",
+    "footer",
+    "gaps",
+    "stale"
+  ],
+  "title": "LedgerPage",
+  "type": "object"
+}
