@@ -29,7 +29,7 @@ rows above name every other top-level path of the planned tree.
   go-arch-lint component `<name>`, and each sub-package `internal/<name>/<sub>` is its own component `<name>/<sub>`;
   `internal/<name>/**` is never one component. The component `<name>` may import the root components named in the
   row's depends cell, the standard library and external modules; a sub-package component `<name>/<sub>` may import
-  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. No component may import a sub-package component of another row, so other
+  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. The generated sub-packages `contracts/gen` and `contracts/genpb` have empty import lists, so the only edge between them and their root is contracts to contracts/gen. `scripts/arch` and `arch.toml` do not follow this yet (`contracts/gen` still may import `contracts`); the follow-up repo issue "scripts/arch: generated sub-packages import nothing" brings them in line. No component may import a sub-package component of another row, so other
   modules import only the root package (the interface) of a module; the one exception is `ot`, below. The one directory whose name differs from its row is
   `internal/profile/`, owned by repo: its component `profile` has an empty import list (standard library and
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
