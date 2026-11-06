@@ -1,8 +1,9 @@
 package setup
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -12,24 +13,13 @@ import (
 // envLine is one KEY=VALUE line of the env file.
 type envLine struct{ key, value string }
 
-// readEnv returns the KEY=VALUE pairs of the file at path; a missing file gives an empty map.
-// Comments, blank lines and lines without '=' are skipped.
+// readEnv returns the KEY=VALUE pairs of the file at path through ReadEnv; a missing file gives an empty map.
 func readEnv(path string) (map[string]string, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // the path is $OT_HOME/.env, chosen by the owner
-	if os.IsNotExist(err) {
+	m, err := ReadEnv(path)
+	if errors.Is(err, fs.ErrNotExist) {
 		return map[string]string{}, nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("setup: read %s: %w", path, err)
-	}
-	out := map[string]string{}
-	sc := bufio.NewScanner(strings.NewReader(string(raw)))
-	for sc.Scan() {
-		if k, v, ok := splitLine(sc.Text()); ok {
-			out[k] = v
-		}
-	}
-	return out, sc.Err()
+	return m, err
 }
 
 func splitLine(line string) (key, value string, ok bool) {
@@ -59,8 +49,11 @@ func writeEnv(path string, set []envLine, log *slog.Logger) error {
 	for _, s := range set {
 		replaced := false
 		for i, l := range lines {
-			if k, _, ok := splitLine(l); ok && k == s.key {
-				lines[i], replaced = s.key+"="+s.value, true
+			if k, v, ok := splitLine(l); ok && k == s.key {
+				replaced = true
+				if unquoteValue(strings.TrimSpace(v)) != s.value {
+					lines[i] = s.key + "=" + s.value
+				}
 			}
 		}
 		if !replaced {

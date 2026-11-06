@@ -20,7 +20,7 @@ import (
 
 const migrationsDir = "../../../migrations"
 
-// ensureOwnerRoles creates the four roles of week 1 when missing, under an advisory lock because roles are shared
+// ensureOwnerRoles creates the roles of `roles` when missing, under an advisory lock because roles are shared
 // by every database of the server and the tests run in parallel.
 func ensureOwnerRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 	t.Helper()
@@ -28,7 +28,8 @@ func ensureOwnerRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`) }()
-	for _, r := range []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages"} {
+	for _, spec := range roles {
+		r := spec.name
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
@@ -181,5 +182,79 @@ func TestMigrateUpWrongPasswordPG(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), wrong) || strings.Contains(logs.String(), wrong) {
 		t.Fatalf("password leaks into error %q or log %q", err, logs.String())
+	}
+}
+
+// sentinelOpen returns an open function for migrateWith whose connection under test is the DSN dsn, as MigrateUp
+// builds it: a parsed pgx config and a ping that maps every failure to errConnect.
+func sentinelOpen(t *testing.T, dsn string) func(context.Context, func(context.Context, execer) error) (*sql.DB, error) {
+	t.Helper()
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal("parse config")
+	}
+	return func(ctx context.Context, after func(context.Context, execer) error) (*sql.DB, error) {
+		db := stdlib.OpenDB(*cfg, stdlib.OptionAfterConnect(func(ctx context.Context, c *pgx.Conn) error { return after(ctx, c) }))
+		db.SetMaxOpenConns(1)
+		if err := db.PingContext(ctx); err != nil {
+			_ = db.Close()
+			return nil, errConnect
+		}
+		return db, nil
+	}
+}
+
+// TestMigrateLogsNoSecret: with a sentinel DSN and password in the connection under test, the error and the log
+// hold neither; a log line carries only the message and a role or migration name, never connection data.
+func TestMigrateLogsNoSecret(t *testing.T) {
+	t.Parallel()
+	const dsn = "postgres://sentinel-user:sentinel-dsn-secret@127.0.0.1:1/x?connect_timeout=1"
+	var logs bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	err := migrateWith(context.Background(), sentinelOpen(t, dsn), gooseUp, os.DirFS(migrationsDir), log)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	s := newScratch(t, true)
+	const wrong = "wrong-S3NTINEL-pw"
+	errWrong := migrateWith(context.Background(), s.openAs(t, wrong), gooseUp, os.DirFS(migrationsDir), log)
+	if errWrong == nil {
+		t.Fatal("want an error for the wrong password")
+	}
+	for _, secret := range []string{wrong, dsn, "sentinel-dsn-secret", "sentinel-user", "127.0.0.1"} {
+		if strings.Contains(err.Error(), secret) || strings.Contains(errWrong.Error(), secret) || strings.Contains(logs.String(), secret) {
+			t.Fatalf("%q leaks into an error or the log %q", secret, logs.String())
+		}
+	}
+	// A run that succeeds logs names only.
+	logs.Reset()
+	ok := newScratch(t, true)
+	if err := migrateWith(context.Background(), ok.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), log); err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(logs.String()), "\n") {
+		for _, field := range strings.Fields(line) {
+			k, _, _ := strings.Cut(field, "=")
+			switch k {
+			case "time", "level", "msg", "role", "migration", "version":
+			default:
+				if strings.Contains(field, "=") {
+					t.Errorf("log line %q carries the field %q", line, field)
+				}
+			}
+		}
+		if strings.Contains(line, testPassword) || strings.Contains(line, "postgres://") || strings.Contains(line, ok.login) {
+			t.Errorf("log line %q holds connection data", line)
+		}
+	}
+}
+
+// TestMigrateLogsNoSentinelDSN: MigrateUp with an unreachable sentinel DSN returns an error without the secret.
+func TestMigrateLogsNoSentinelDSN(t *testing.T) {
+	t.Parallel()
+	const dsn = "postgres://sentinel-user:sentinel-dsn-secret@127.0.0.1:1/x?connect_timeout=1"
+	err := MigrateUp(context.Background(), dsn, os.DirFS(migrationsDir))
+	if err == nil || strings.Contains(err.Error(), "sentinel-dsn-secret") {
+		t.Fatalf("err = %v", err)
 	}
 }
