@@ -1,0 +1,177 @@
+# Store env: one reader of `$OT_HOME/.env` and a loader role for `ot calendar load`
+
+Author: the optdesk dispatcher
+Source: the `## Left out` of `docs/design/week1-run.md` ("a dedicated loader role (INSERT on `master.session_day` only) and a stored DSN for it"), the step after issues 74 and 75 (PR 94 and PR 102).
+Read on origin/main at 6b28e47 (after `git fetch`; the first draft was read at 2d8d48e and every item below was read again):
+
+- `internal/store/api.go` holds the line names `DSNEnvRunner`, `DSNEnvSeriesFred`, `DSNEnvPages` (`OT_PG_DSN_*`, "one per role") and `AdminDSNEnv` (`OT_PG_ADMIN_DSN`, "read from the process environment only, never from .env and never from a flag"). It imports `context`, `time` and `contracts`.
+- Two readers of the same file exist and differ. `cmd/ot/env.go` `readEnvFile` strips one pair of surrounding quotes and errors on a missing file with a text that names the path (`TestReadEnvFileComments`, `TestReadEnvFileQuotes`, `TestReadEnvFileMissing`); `page.go` and `runonce.go` reach it through `app.envFile()`. `internal/store/setup/envfile.go` `readEnv` does not strip quotes, returns an empty map for a missing file, and is used by `run` in `setup.go` to keep a role's password across runs (and by two tests). `writeEnv` writes unquoted values with mode 0600, so the two agree today only because nobody quotes.
+- `internal/store/setup/setup.go` creates four roles in the `roles` table (`ot_owner` without a line; `ot_runner`, `ot_w_series_fred`, `ot_ro_pages` with a line each) and `GRANT CONNECT` on the database to the three login roles (the statement at line 122 lists them by name). Table grants live in `migrations/0002` to `0004`; `0004` gives `ot_runner` SELECT on `master.session_day` and nothing more. No role may write `master.session_day`.
+- `ensureRole` (`setup.go`) runs `CREATE ROLE ... LOGIN PASSWORD '<password>'` or `ALTER ROLE ... PASSWORD '<password>'` with the plain password inside the statement text. `Setup` returns pgx errors wrapped with `%w` (`setup.go` lines 103, 135 and 164 and others). The commands of `cmd/ot` withhold the text of those errors (`cmd/ot/setup.go:24`, `docs/contracts/ot.md` under `## Outputs`).
+- `cmd/ot/calendar.go` (`ot calendar load`, PR 102) reads the administrative DSN from the process environment (line 38), asks `deps.ownerDSN` for a DSN whose login sets the role `ot_owner` (line 51), and opens the session-day store with it. So the loader today writes with the owner's full rights, and the administrative DSN is needed on every load. Its errors are of fixed text and name `OT_PG_ADMIN_DSN`; the logger is built in `newApp` (`main.go:47`) from the profile alone, before `newDeps()` and before any DSN is read.
+- The writer upserts with `INSERT ... ON CONFLICT (calendar_id, session_day) DO UPDATE SET is_session, open_at, close_at, early_close` (`internal/store/sessionday/writer.go:19`). `master.session_day` has the primary key `(calendar_id, session_day)` (`migrations/0001`). Schemas `obs`, `rd` and `ops` exist; `rd` holds no table yet.
+- `docs/design/week1-run.md` records the "loader role" as cut: "both commands run as `ot_owner` under the admin DSN, and a later store issue may add the role". That is this design. `docs/contracts/store.md` (v3) lists `ot_runner` as SELECT only on the table and has no loader role. `docs/contracts/ot.md` exists (PR 112) and says `ot calendar load` runs "as the owner role" and reads `OT_PG_ADMIN_DSN` (its lines 15, 36, 77 and 91); it belongs to the `ot` row of `docs/design/modules.md`, as `docs/contracts/store.md` belongs to the `store` row. `arch.toml` lets `store/setup` import `contracts` and `store` only; `cmd/ot/wire.go` is the one non-test file of `cmd/ot` that imports `internal/store/setup`.
+
+## Brief
+
+Goal: `ot calendar load` runs as a role that can write `master.session_day` and nothing else, with a DSN taken from `$OT_HOME/.env` that `ot setup pg` wrote. The administrative DSN is then needed by `ot setup pg` and `ot migrate` only. One function parses the env file for the whole repository. No credential reaches a log line or an error.
+
+What the design settles:
+
+1. Where connection settings come from. Role DSNs (`OT_PG_DSN_*`, including the new `OT_PG_DSN_LOADER`) come from the file `$OT_HOME/.env`, written only by `ot setup pg`. The administrative DSN comes from the process environment only (unchanged). `ot calendar load` has no fallback: if `OT_PG_DSN_LOADER` is missing it stops and names the line, and it never falls back to the administrative DSN or to `ot_owner`, because a fallback would silently restore the wide right this design removes.
+2. How a credential stays out of logs and errors. No redacting log handler is built (see `## Adversarial`, point 1). The guard is the rule that exists: an error of a connection, parse or role step at the command boundary is a new error of fixed text that names a stage and the line, and never wraps or prints the error of pgx or `net/url`. `ot-loader-dsn` keeps that rule for the loader DSN and tests it with a sentinel DSN and password in the error of a fake. Two further places are closed here: `ReadEnv` errors carry the path and the OS reason, never file bytes; and `Setup` stops putting the plain password into a SQL statement, which a server may log (point 4).
+3. The role grants. `ot_loader` (LOGIN, no other attribute): CONNECT on the database, USAGE on schema `master`, and on `master.session_day` SELECT, INSERT, and UPDATE on the four columns `is_session`, `open_at`, `close_at`, `early_close`. SELECT is there because `INSERT ... ON CONFLICT DO UPDATE` reads the conflicting row and its key; the table is a public calendar. The key columns `calendar_id` and `session_day` are not updatable, so an upsert can never rewrite a key. No DELETE, TRUNCATE, REFERENCES or TRIGGER. No grant on any other schema. The grant is a migration (`0005`), run as `ot_owner` like `0002` to `0004`; the role is made by `Setup`, as the other three are. Its Down part only REVOKEs and never drops the role.
+4. The password in the statement. `CREATE ROLE ... PASSWORD 'x'` is DDL; a server with `log_statement` set to `ddl` or `all`, or with `log_min_error_statement` at `error` or lower when the statement fails, writes the statement text, so the password would reach the server log. `Setup` therefore sends a SCRAM-SHA-256 verifier (`SCRAM-SHA-256$4096:<salt>$<StoredKey>:<ServerKey>`), which PostgreSQL stores as it is, instead of the plain password. The plain password stays in `.env` only. This applies to all four roles because `ensureRole` is one function; `ALTER ROLE` for the three existing login roles then logs a verifier, not a password. The verifier is computed with `crypto/pbkdf2`, `crypto/hmac` and `crypto/sha256` of the standard library (own implementation, about 30 lines, because pgx has no verifier function and a library would add a dependency). The alternative, `SET log_statement = 'none'` in the session, needs superuser, which the administrative DSN is not required to be.
+
+## Second opinion
+
+The advisor answered (optdesk-advisor, Claude Fable 5.1, claude-fable-5-1, 2026-11-06). Per the owner decision of 2026-10-29, no model of another vendor is used. The answer binds nothing, and the merge waits for the owner's word. Source: `store-env.second-opinion.md`, kept on the dispatcher's machine.
+
+This is a second-opinion case by two clauses: a new role, a new grant and a new credential (who may act with what permission), and a new write outside the repository (the line `OT_PG_DSN_LOADER`, with a generated password, in `$OT_HOME/.env`, mode 0600 as the other three lines).
+
+The advisor agrees under three conditions plus two more; all five are adopted:
+
+1. `ot_loader` has exactly the grants of `## Brief` item 3, and `ot calendar load` never falls back to a wider DSN (`TestCalendarLoadNeverFallsBack`; the grants by `TestLoaderGrantsPG`).
+2. The password is generated by `Setup` as for the other roles, kept across runs, and appears in no error, log line or fixture. The test is `TestSetupPG` (its log buffer and returned error hold neither the password nor the verifier) and, at the command, `TestCalendarLoadMalformedDSN` and `TestCalendarLoadWrongPasswordDSN` (rewritten for the loader line). The redacting handler of the first draft is dropped; the reason and the guard are in `## Adversarial`.
+3. The already written lines of `.env` are not touched by the reader change (`Setup` writes only the loader line when the other three exist; `TestSetupPG` compares the file).
+4. After `ot-loader-dsn`, `cmd/ot/calendar.go` references neither `ownerDSN` nor `AdminDSNEnv` (`grep -n 'ownerDSN\|AdminDSNEnv' cmd/ot/calendar.go` prints nothing).
+5. The pg test asserts the refused set by name: as `ot_loader`, DELETE and TRUNCATE on `master.session_day` and any SELECT on `obs`, `ops` and `rd` are refused. The advisor's narrowing of UPDATE is taken: `UPDATE ... SET calendar_id` is refused too.
+
+The advisor also agrees that the interface issue may carry the implementation in `internal/store/setup` (the `api.go` file stays free of function bodies, with a two-sided contract test), that `setup.OwnerDSN` and `deps.ownerDSN` stay (`ot migrate` needs them; a removal is a contracts v3 change of its own), and that the order `ot setup pg`, then `ot migrate` is right. Three more conditions, all adopted:
+
+- (a) The report to the owner names the new line `OT_PG_DSN_LOADER` and says `Setup` touched no other line. Each pull request of this design says so in its description, and `store-loader-role` carries it as acceptance 9.
+- (b) The Down part of `0005` only REVOKEs and never DROPs the role (acceptance 6 of `store-loader-role`).
+- (c) A smoke step for the owner: `ot calendar load <yearly file>`, run by the owner and reported (`## Rollout`).
+
+Not verified by the advisor: the full acceptance of `ot-loader-dsn`, and whether the error pgx returns for a refused login carries the DSN. The fixed-text rule does not depend on the answer: no pgx error text is returned or logged by the commands.
+
+## Modules
+
+No change to `docs/design/modules.md`, `arch.toml` or `.go-arch-lint.yml`: no new package and no new import edge (`internal/store/setup` already imports `store`; `cmd/ot` reaches the implementation only through `wire.go`, as `ot-migrate-load` set up). Every path below belongs to the first row whose glob matches: `internal/store/**`, `migrations/**` and `docs/contracts/store.md` to `store`; `cmd/**` and `docs/contracts/ot.md` to `ot`. Each issue edits files of one module.
+
+| issue | module | order |
+|---|---|---|
+| store-env-interface (interface) | store | first |
+| store-loader-role | store | after store-env-interface |
+| ot-loader-dsn | ot | after store-env-interface |
+
+The cut: the interface entry carries the declarations and `setup.ReadEnv`, so that `ot-loader-dsn` can assign it in `wire.go` and compile without any sibling. The two module entries then depend on the interface entry and on nothing else. They touch disjoint files (`docs/contracts/store.md` only in `store-loader-role`, `docs/contracts/ot.md` only in `ot-loader-dsn`), and `ot-loader-dsn` tests with fakes, never with the role or the migration of `store-loader-role`. They build in parallel once the interface entry has landed. No issue edits `go.mod`, `go.sum`, `contracts/`, `package.json` or `pnpm-lock.yaml`.
+
+## Interface
+
+Owner: `store` (`internal/store/api.go`), declarations only:
+
+```go
+// DSNEnvLoader names the line of $OT_HOME/.env that holds the DSN of the role ot_loader.
+const DSNEnvLoader = "OT_PG_DSN_LOADER"
+
+// ReadEnvFunc reads the KEY=VALUE lines of the env file at path (setup.ReadEnv). It does not touch the process
+// environment. A missing file is an error for which errors.Is(err, fs.ErrNotExist) holds; no error carries a value.
+type ReadEnvFunc func(path string) (map[string]string, error)
+```
+
+The real function is `setup.ReadEnv` in `internal/store/setup/envread.go`, which `ot` already imports in `wire.go`.
+
+Reading rules of `ReadEnv`, one parser for the repository: blank lines and `#` lines are skipped; a line without `=` is skipped; key and value are trimmed; one pair of matching surrounding quotes is removed; the first `=` splits. The error for a missing or unreadable file is `env file PATH cannot be read` with the OS reason of the `*fs.PathError` wrapped, never any byte of the file. The two callers keep their own policy for a missing file: `cmd/ot` reports it (the error as returned); `Setup` treats `fs.ErrNotExist` as an empty map, because the first run of `ot setup pg` makes the file.
+
+Names used as they are: `store.DSNEnvRunner`, `store.DSNEnvSeriesFred`, `store.DSNEnvPages`, `store.AdminDSNEnv`, `store.OpenSessionDayFunc`. `setup.OwnerDSN` stays for `ot migrate`'s session and for tests; `ot calendar load` stops using it (see `## Left out`).
+
+## Issues
+
+Items under `Checked by CI` are decided by the workflows of the head commit; every other item is a fact read from the diff, with an offline grep or a named test.
+
+### store-env-interface (interface)
+
+The line name `OT_PG_DSN_LOADER` and the env reader, behind one function type.
+  Goal: `cmd/ot` and `internal/store/setup` can name the line `OT_PG_DSN_LOADER` and the env reader through `internal/store/api.go` alone, and the real reader exists.
+  Files: internal/store/api.go, internal/store/api_test.go, internal/store/setup/envread.go, internal/store/setup/envread_test.go
+  Design: docs/design/store-env.md#interface; own implementation of the reader (about 40 lines) because the format is the one the existing writer produces and a dotenv library would add a dependency for an interpolating format we do not want.
+  Acceptance:
+  1. `api.go` declares `DSNEnvLoader` with the value `OT_PG_DSN_LOADER` and `ReadEnvFunc` as in `## Interface`; the file gains no function body (offline: `grep -c '^func ' internal/store/api.go` prints the same number as on origin/main) and `DSNEnvRunner`, `DSNEnvSeriesFred`, `DSNEnvPages` and `AdminDSNEnv` are unchanged.
+  2. `TestEnvContract` in `api_test.go` checks both sides: a fake `ReadEnvFunc` returns a map and a caller reads `DSNEnvLoader` from it; the real `setup.ReadEnv`, assigned to the type, returns the same value from a file in `t.TempDir()`.
+  3. `envread.go` declares `func ReadEnv(path string) (map[string]string, error)` with `var _ store.ReadEnvFunc = ReadEnv`. `TestReadEnv` is table driven over file bytes and covers: comments and blank lines, a line without `=`, spaces around key and value, `A="x y"`, `B='z'`, `C=""q""` giving `"q"`, `D="open` giving `"open`, a value that contains `=`, and an empty value. The expectations equal those of `TestReadEnvFileComments` and `TestReadEnvFileQuotes` in `cmd/ot/env_test.go`.
+  4. `TestReadEnvMissing` and `TestReadEnvUnreadable`: the error text names the path, `errors.Is(err, fs.ErrNotExist)` holds for the missing file, and a file whose lines hold a sentinel password produces no error that contains the sentinel (the unreadable file is a directory in `t.TempDir()`; a second case makes a file with the sentinel and mode 0000 where the platform allows, and is skipped otherwise).
+  5. Every test added calls `t.Parallel()`, none sleeps or reads the real environment, each file stays under 600 lines, and no file outside the four listed is in the diff.
+  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `store/setup`).
+  Depends on: none. Order: first.
+  Size: S
+
+### store-loader-role
+
+The role `ot_loader`, its line in `.env`, its grants, and a password that is not in a statement.
+  Goal: after `ot setup pg` and `ot migrate`, a login role exists whose DSN is in `.env` under `OT_PG_DSN_LOADER` and that can upsert `master.session_day` and do nothing else; `Setup` sends no plain password to the server.
+  Files: internal/store/setup/setup.go, internal/store/setup/scram.go, internal/store/setup/scram_test.go, internal/store/setup/envfile.go, internal/store/setup/setup_test.go, internal/store/setup/setup_pg_test.go, internal/store/setup/migrate_pg_test.go, internal/store/setup/loader_pg_test.go, migrations/0005_session_day_loader.sql, docs/contracts/store.md
+  Design: docs/design/store-env.md#brief; the role is made by `Setup` like the other three, the grant is a migration run as `ot_owner` like `0002` to `0004`; `readEnv` in `envfile.go` becomes a call to `ReadEnv` (from the interface entry) so the repository has one parser; own implementation of the SCRAM verifier (about 30 lines, standard library only) because pgx has no verifier function; UPDATE is narrowed to four columns so an upsert can never rewrite a key.
+  Acceptance:
+  1. `setup.go` declares `roleLoader = "ot_loader"` and the entry `{roleLoader, store.DSNEnvLoader}` in `roles`; the `GRANT CONNECT` statement lists `ot_loader` next to the other three login roles; `Setup` grants nothing on a table (offline: `grep -c 'GRANT' internal/store/setup/setup.go` prints the number it prints on origin/main).
+  2. `TestRolesTable` in `setup_test.go`: `roles` holds five entries, only `ot_owner` has an empty line key, and `ot_loader` has `store.DSNEnvLoader`.
+  3. `scram.go` declares `scramVerifier(password string, salt []byte) string` (SCRAM-SHA-256, 4096 iterations, standard library). `TestScramVerifierVector` uses the RFC 7677 example (password `pencil`, salt `W22ZaJ0SNY7soEsUEjb6gQ==`, 4096 iterations) and compares the two keys with values the test derives step by step by RFC 5802 (`SaltedPassword`, `ClientKey`, `StoredKey`, `ServerKey`), not by calling the function under test; `TestScramVerifierShape` checks the prefix `SCRAM-SHA-256$4096:`, the three base64 parts, and that the password does not occur in the result.
+  4. `ensureRole` sends the verifier in both statements and keeps the plain password out of SQL (offline: `grep -c 'literal(password)' internal/store/setup/setup.go` prints 0); the salt is 16 bytes from `crypto/rand`; the `existing role keeps its stored password` rule of `run` is unchanged.
+  5. `envfile.go`: `readEnv` calls `ReadEnv` and maps `fs.ErrNotExist` to an empty map, so `Setup` behaves as before for a new home; no other function of the file changes (offline: `git diff` of `envfile.go` shows only `readEnv` and its imports). `TestEnvfileQuotedValue` in `setup_test.go`: a line `OT_PG_DSN_RUNNER="postgres://u:p@h:1/d"` is read without the quotes, and `TestEnvfile` passes unchanged.
+  6. `migrations/0005_session_day_loader.sql` has `GRANT USAGE ON SCHEMA master TO ot_loader;`, `GRANT SELECT, INSERT ON master.session_day TO ot_loader;` and `GRANT UPDATE (is_session, open_at, close_at, early_close) ON master.session_day TO ot_loader;` in its Up part, and the matching `REVOKE` statements in its Down part, in the style of `0004`; the Down part holds no `DROP`; the file names no other schema or table (offline: `grep -c 'GRANT' migrations/0005_session_day_loader.sql` prints 3; `grep -ci 'delete\|truncate\|all privileges\|public\|drop' migrations/0005_session_day_loader.sql` prints 0).
+  7. `migrate_pg_test.go`: `ensureOwnerRoles` creates `ot_loader` with the other roles (its list is built from `roles` or names `ot_loader`), so that `TestMigrateUpAsOwnerPG`, which applies the real `migrations/` directory, still finds the role (offline: `grep -c 'ot_loader\|range roles' internal/store/setup/migrate_pg_test.go` prints 1 or more). `internal/store/migrate/migrate_test.go` is not edited: it runs a fake file system (`0001_one.sql`) and lists no real migration.
+  8. `docs/contracts/store.md` names `ReadEnv` and `DSNEnvLoader` under `## Inputs`; states under `## Invariants` the exact grants of `ot_loader` (the three statements of item 6), that the Down part never drops the role, that `Setup` sends a SCRAM-SHA-256 verifier and never a plain password, and that `ot setup pg` must run before `ot migrate` on a database made before `0005` (`0005` fails when the role is missing); and adds a `- v4:` line to `## Version history`; no heading changes.
+  9. The pull request description names the new line `OT_PG_DSN_LOADER` and says `Setup` touched no other line of `.env`.
+  10. Every test added calls `t.Parallel()` (a pg test takes the advisory lock 54 as the others do for shared roles), none sleeps, each file stays under 600 lines, and no file outside the ten listed is in the diff.
+  Checked by CI: ci-go; the `test-pg` job (build tag `pg` on the first line of each file, DSNs built from the `PG*` variables):
+  - `TestLoaderGrantsPG` in `loader_pg_test.go` creates its own scratch database with a name unique to the test run (`"ldr_" + randHex(t)`, as `newScratch` does; the fixed `Database` of `Setup` is not used), applies the migrations 0001 to 0005 with `migrateWith` over `os.DirFS(migrationsDir)`, connects as `ot_loader`, and asserts that the upsert `INSERT ... ON CONFLICT (calendar_id, session_day) DO UPDATE` of three synthetic rows succeeds, runs a second time, and changes `is_session` of a conflicting row. The refused set by name, each with a permission error: `DELETE FROM master.session_day`, `TRUNCATE master.session_day`, `UPDATE master.session_day SET calendar_id = 'x'`, `UPDATE master.session_day SET session_day = session_day`, `CREATE TABLE master.t (a int)`, `SELECT` on `obs.series_point` and on `ops.capture_run`, and `has_schema_privilege('ot_loader', s, 'USAGE')` false for `obs`, `ops` and `rd` (`rd` holds no table yet). `ot_runner` still has SELECT only on `master.session_day` (its INSERT is refused).
+  - `TestSetupPG` (extended): after `Setup` on a seeded `.env`, the file gains one `OT_PG_DSN_LOADER` line whose user is `ot_loader` and whose database is `optdesk`; the other lines and the comments are byte-equal; a second run changes nothing and keeps the loader password; every one of the four DSNs connects (this proves the verifier is accepted by a real server); `run` with a buffer logger and the returned error hold neither the loader password nor its verifier.
+  Depends on: store-env-interface (for `ReadEnv`, `DSNEnvLoader`). Order: after store-env-interface.
+  Size: L
+
+### ot-loader-dsn
+
+`ot calendar load` takes the loader DSN from `.env` and needs no administrative DSN.
+  Goal: the loader needs no administrative DSN and no owner session; one env parser serves all subcommands of `ot`.
+  Files: cmd/ot/calendar.go, cmd/ot/calendar_test.go, cmd/ot/env.go, cmd/ot/env_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, docs/contracts/ot.md
+  Design: docs/design/store-env.md#brief; the new `deps` field is typed by the function type of `api.go`, so this entry compiles against the interface entry alone and its tests use fakes; the reader in `env.go` becomes a call through `deps`; no redacting handler, because the guard is the fixed-text error (`## Adversarial`, point 1).
+  Acceptance:
+  1. `wire.go` adds the field `readEnv store.ReadEnvFunc`, assigned `setup.ReadEnv` in `newDeps()`; `TestNewDepsFilled` expects 14 fields (13 on origin/main at `wire_test.go:11`); `wire.go` stays the one non-test file of `cmd/ot` that imports `internal/store/setup` (offline: `grep -l 'internal/store/setup' cmd/ot/*.go` prints `cmd/ot/wire.go` and nothing else, the `_test` files aside).
+  2. `env.go`: `readEnvFile` is removed (offline: `grep -rn readEnvFile cmd` prints nothing); `app.envFile()` calls `a.deps.readEnv` on `$OT_HOME/.env`; `page.go` and `runonce.go` are not edited. `env_test.go` replaces the three `TestReadEnvFile*` cases, whose parsing now lives in `TestReadEnv` of the interface entry, by `TestEnvFileHomeUnset` (an error naming `OT_HOME`), `TestEnvFilePassesPath` (the fake `readEnv` receives `$OT_HOME/.env`) and `TestEnvFileReturnsReaderError` (the error of the fake comes back unchanged and holds no value).
+  3. `calendar.go`: `runCalendar` reads `store.DSNEnvLoader` from `a.envFile()`; an absent or empty line is an error that names the line and says `ot setup pg` creates it, and nothing is opened (`TestCalendarLoadNoLoaderLine`); it passes that value to `a.deps.openSessionDay` and never calls `a.deps.ownerDSN` or reads `store.AdminDSNEnv` (offline: `grep -n 'ownerDSN\|AdminDSNEnv' cmd/ot/calendar.go` prints nothing); every check of the file still comes before the env file is read (`TestCalendarLoadChecksBeforeEnv`: a file without provenance fails and the fake `readEnv` is not called).
+  4. `TestCalendarLoadNeverFallsBack`: with `OT_PG_DSN_LOADER` absent and `OT_PG_ADMIN_DSN` set in the fake `getenv`, the command fails and `openSessionDay` is not called.
+  5. The guard against a credential in an error or log: the errors of the open and load steps keep their fixed text and now say the text is withheld because it may hold `OT_PG_DSN_LOADER`; `TestCalendarLoadMalformedDSN` and `TestCalendarLoadWrongPasswordDSN` are rewritten for the loader line (a fake `openSessionDay` returns an error that holds a sentinel DSN and a sentinel password) and assert that neither the returned error nor the captured `slog` output holds either sentinel.
+  6. The changed tests of the 17 in `calendar_test.go`: the helper `newCalEnv` (it sets the fake `ownerDSN` and expects `"owner:admin-dsn"`) and `realCal` (it sets the admin variable) feed the loader line through a fake `readEnv` instead; `TestCalendarLoadUnsetDSN` (line 148) becomes the loader-line case of item 3, `TestCalendarLoadOwnerFailureWritesNothing` (line 157) becomes an open failure that writes nothing, and the two tests of item 5 change as stated. The tests of provenance, row order, hours, closed day, malformed and empty and missing files, idempotence, close and calendar feed keep their expectations (offline: `git diff` shows no edit of their assertion lines, only of the helper they use). The pull request reports the count printed by `grep -c 'func Test' cmd/ot/calendar_test.go`.
+  7. `ot migrate` is unchanged in behaviour: the existing `TestMigrate*` tests pass with no edited expectation (`cmd/ot/migrate_test.go` is not in the diff).
+  8. `docs/contracts/ot.md`: the `OT_PG_ADMIN_DSN` row of the environment table lists `ot setup pg` and `ot migrate` only; a new row `OT_PG_DSN_LOADER`, source `$OT_HOME/.env`, read by `ot calendar load`; the list of constants after the table names `store.DSNEnvLoader`; the `.env` rules heading names `setup.ReadEnv` in place of `readEnvFile`; the `ot calendar load` line under the subcommands and the invariant "opens the store with the owner DSN derived from `OT_PG_ADMIN_DSN`" say "with the DSN of `ot_loader` from `OT_PG_DSN_LOADER`"; the error-text sentence under `## Outputs` names the loader DSN too; a `- v2:` line is added to `## Version history`; no heading changes (offline: `grep -n 'calendar load' docs/contracts/ot.md` shows no line that names `OT_PG_ADMIN_DSN` or "owner").
+  9. The pull request description says that a real `ot calendar load` needs both siblings merged and `ot setup pg` then `ot migrate` run once more on an existing database; the tests of this entry do not.
+  10. No time of day is typed in code (`grep -c -E '[0-9]{1,2}:[0-9]{2}' cmd/ot/calendar.go` prints 0); no `WriteFile`, `os.Create` or `os.OpenFile` in `calendar.go` or `env.go`; every test calls `t.Parallel()`, none sleeps or calls `time.Now`, uses fakes and a temporary directory, and each file stays under 600 lines; no file outside the seven listed is in the diff.
+  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `ot`). Nothing here needs a real server; the role behaviour is `store-loader-role`.
+  Depends on: store-env-interface (the one entry marked (interface)). Order: after store-env-interface.
+  Size: M
+
+## Rollout
+
+For an existing database, in this order, by the owner:
+
+1. Merge the three issues.
+2. `ot setup pg` (creates `ot_loader`, appends `OT_PG_DSN_LOADER` to `$OT_HOME/.env`, keeps the three other lines and every other line of the file; idempotent).
+3. `ot migrate` (applies `0005`). Run before step 2 it fails at `0005` because the role is missing; the command withholds the error text, so the order is stated here and in `docs/contracts/store.md`, and nothing is half applied (goose runs the file in one transaction).
+4. Smoke step: the owner runs `ot calendar load <yearly file>` with `OT_PG_ADMIN_DSN` unset and reports the result. A second run of the same file changes no row. This is the only check that a real server accepts the loader DSN end to end outside CI; no agent runs it.
+
+The report of each pull request to the owner names the new line `OT_PG_DSN_LOADER` and says `Setup` touched no other line of `.env`.
+
+## Left out
+
+- Removing `setup.OwnerDSN`, `deps.ownerDSN` and `migrate`'s use of an owner session: `ot calendar load` stops using them, but `OwnerDSN` is part of contracts v3 and a removal is its own interface change. Deferred until no caller remains.
+- A redacting `slog` handler and a `Redact` function: dropped, see `## Adversarial` point 1. Revisit only if a command ever logs a value that can hold a DSN.
+- Rotating the password of `ot_loader`, or of any role: `Setup` keeps the password of a role whose line is in `.env`; a rotation command is a separate design.
+- A loader role for any other table (obs, ops, rd): the writer of each dataset has its own role already (`ot_w_series_fred`); this design adds the one that was missing for `master.session_day`.
+- A secret store or the system keychain instead of a file `.env` with mode 0600: no owner need yet; it would change where every DSN lives and is a separate decision for the owner.
+- Reading the administrative DSN from `.env`: stays process environment only (`store.AdminDSNEnv`), by design.
+- Moving `ReadEnv` out of `setup` into its own package: the import rule (`store/setup` may import `contracts` and `store` only) makes `setup` the home that `ot` can already reach; a package would need a `modules.md` and `arch.toml` change.
+- Masking secrets in the output of `ot` to the terminal: `ot` prints no DSN today.
+- A guard inside `0005` that skips or names a missing role: a silent skip would leave the role without its grant; a named failure would be withheld by the command anyway. The order is documented instead.
+- The Python side and the web front end: they hold no DSN.
+- The calendar generator and its yearly files: unchanged from `docs/design/week1-run.md`.
+
+## Adversarial
+
+Source: `store-env.adversarial.md`, kept on the dispatcher's machine. It was written against origin/main at 4dea17a; this revision re-read every claim at 6b28e47 (which added no change to the files named here).
+
+1. Gap against the goal: adopted. `docs/contracts/ot.md` is in the Files of `ot-loader-dsn` with its edits listed (acceptance 8) and the premise "does not exist" is corrected above. The one-reader claim is narrowed to one parser: `Setup` keeps its own missing-file policy through the shim in `envfile.go`, stated in `## Interface`. The logger gap is settled by dropping the handler: `newApp` builds the logger at `main.go:47`, before `newDeps()` and before any DSN is read, so wiring secrets into a handler would need a reorder of `main.go` or a mutable secret set shared with the logger, for a handler that adds almost nothing, because `calendar.go` returns and logs fixed text only and `ot` prints no DSN. The guard is the fixed-text error at the command boundary, tested with sentinels (`ot-loader-dsn` acceptance 5) and the password kept out of statements (`store-loader-role` acceptance 3 and 4). `Redact`, `NewRedactingHandler`, their function types and `main.go` leave the design; `api.go` gains one constant and one type.
+2. Biggest unnamed risk (CI red on `0005`, order on existing databases, password leaks): adopted. `migrate_pg_test.go` and its role list are in the Files of `store-loader-role` (acceptance 7); the order is in `## Rollout` and in the store contract (acceptance 8); the `%w` wrapping of pgx errors in `Setup` is stated as true in the premises, with the withholding at the command named as the guard; the `CREATE ROLE ... PASSWORD` statement-logging risk is named in `## Brief` item 4 and closed by sending a SCRAM verifier instead of the plain password; the handler's blindness to non-string values disappears with the handler.
+3. A simpler way (drop the handler and `Redact`, one exported function): adopted in part. The handler and `Redact` are dropped. The reader stays a `deps` field of `store.ReadEnvFunc` because `cmd/ot` may import an implementation package in `wire.go` only; the one type is the cost of that rule and is the smallest form of it.
+4. Lock-in: accepted as stated and reduced. `OT_PG_DSN_LOADER`, the role name `ot_loader` and the number `0005` are hard to undo and are the point of the design. The contract no longer fixes a `[redacted]` marker or three function types. The reader error rule (a missing file is an error) is kept in the contract; the `Setup` policy for a missing file is the caller's.
+5. Claim most likely false: adopted, all three. The migrate acceptance named `migrate_test.go`, but that file runs a fake file system and lists no real migration, so the item is replaced by the pg role list (acceptance 7). "The others of the 17 keep their expectations" was false: `TestCalendarLoadUnsetDSN` and `TestCalendarLoadOwnerFailureWritesNothing` assert the owner and administrative path and change, as does the helper (`ot-loader-dsn` acceptance 6). "Never wraps pgx" was false for `Setup` (lines 103, 135 and 164 wrap with `%w`) and is restated above. Also corrected: the draft's unit tests of `Setup` with "fake server objects" do not exist, because `run` opens pgx connections itself; the line, log and password checks are therefore in the pg test (`TestSetupPG`), and the offline items check the `roles` table, the verifier and the reader.
+6. Likeliest slip (Files outside the module, checks not offline): adopted. The files named in points 1 and 2 are in the Files lines. The pg test names its scratch database `"ldr_" + randHex(t)`, unique per test run, and does not use the fixed `Database` that `TestSetupPG` drops in parallel; the part of the check that needs `Setup` and the fixed name stays inside `TestSetupPG`. The interface entry is now four files and size S, so the serial gate is small, and the contract documents moved to the module entries. The grant decision itself is only decided in GitHub CI and sits under `Checked by CI`.
