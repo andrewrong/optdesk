@@ -29,7 +29,7 @@ rows above name every other top-level path of the planned tree.
   go-arch-lint component `<name>`, and each sub-package `internal/<name>/<sub>` is its own component `<name>/<sub>`;
   `internal/<name>/**` is never one component. The component `<name>` may import the root components named in the
   row's depends cell, the standard library and external modules; a sub-package component `<name>/<sub>` may import
-  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. No component may import a sub-package component of another row, so other
+  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. The generated sub-packages `contracts/gen` and `contracts/genpb` have empty import lists, so the only edge between them and their root is contracts to contracts/gen. `scripts/arch` and `arch.toml` do not follow this yet (`contracts/gen` still may import `contracts`); the follow-up repo issue "scripts/arch: generated sub-packages import nothing" brings them in line. No component may import a sub-package component of another row, so other
   modules import only the root package (the interface) of a module; the one exception is `ot`, below. The one directory whose name differs from its row is
   `internal/profile/`, owned by repo: its component `profile` has an empty import list (standard library and
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
@@ -49,10 +49,10 @@ rows above name every other top-level path of the planned tree.
   scheduling = runner, jobs, notify; front = pages, web. Within a layer a module may depend only on a module
   listed before it in its layer; across layers only scheduling to data and front to data are allowed. No layer
   module depends on the front, on ci or docs (only `ot`, outside the layers, depends on the front), and only `ot` depends on repo (its `internal/profile`).
-- The pyside row names no interface or test file yet: AGENTS.md puts a Python interface at `src/<pkg>/<module>/api.py`
-  while the declaration's owner_only list names `pyside/ibkr/transport.py`; the owner settles the layout before
-  pyside gets its first issue (docs/design/week1.md, Left out). `pyside/tools/**` (the calendar generator and its
-  tests) is a path of clock.
+- The pyside row follows the AGENTS.md layout (owner decision of 2026-11-06): the package is `optdesk`, the interface of a
+  Python module is `pyside/src/optdesk/<module>/api.py` and its contract test is `pyside/tests/contracts/test_<module>_api.py`
+  (docs/design/pyside-layout.md); the interface of contracts for Python is `pyside/src/optdesk/contracts/api.py` (it re-exports the generated package) and pyside imports only that file of contracts. The calendar generator is `pyside/src/optdesk/calendar/` and a path of clock (the clock row comes before the
+  pyside row, so first-glob-wins keeps it clock's); the Python generated from the proto, `pyside/src/optdesk/contracts/genpb/**`, is a path of contracts.
 - Size rule, one text: a source file that is new in a change, a copied file included, has at most 600 lines; a file of the base revision over 800 lines is listed in `docs/design/ratchet.json` with a ceiling and stays under it; a ceiling is never raised by an agent (the text of AGENTS.md). This map does not repeat ceilings.
 - Ownership of shared paths, decided here: of the root files, `Makefile`, `go.mod`, `go.sum`, `arch.toml`, `.go-arch-lint.yml`,
   `.golangci.yml`, `.gitignore`, `AGENTS.md`, `README.md` and `LICENSE` belong to repo (the root paths of its row), so an issue that adds a Go
@@ -60,13 +60,13 @@ rows above name every other top-level path of the planned tree.
   `pnpm-lock.yaml`, `pnpm-workspace.yaml` (pnpm 10.x pinned in `packageManager`) and `docs/adr/0034-frontend-stack.md` belong to web (every other ADR belongs to docs);
   `contracts/**`, `docs/contracts/00-protocol.md`, `docs/contracts/datasets/**`, `docs/contracts/figures/**`,
   `docs/contracts/page-schemas.md` and the code generated from contracts (`internal/contracts/gen/**`,
-  `internal/contracts/genpb/**`, `web/src/generated/**`, `pyside/gen/**`) belong to contracts, so a source and its output are one module;
+  `internal/contracts/genpb/**`, `web/src/generated/**`, `pyside/src/optdesk/contracts/genpb/**`) belong to contracts, so a source and its output are one module;
   each other `docs/contracts/<module>.md` belongs to its module; the migration runner and `migrations/**`
   belong to store; `web/tests/**` belongs to web; `tests/**` (tests of the repo scripts) belongs to repo;
   `cmd/**` belongs to ot (the composition root); `scripts/check-frontend-deps.mjs` and `frontend-whitelist.json` belong to web (the web row comes before the `scripts/**` of repo); `pyproject.toml` and `uv.lock` of Python live under `pyside/` (the
   pyside row); `deploy/**` has its own row and no week-1 issue.
 - Owner-only paths of the project declaration (an agent's pull request that touches one needs the owner's merge):
-  `.github/` (ci), `contracts/proto/` (contracts), `deploy/` (deploy), `pyside/ibkr/transport.py` (pyside),
+  `.github/` (ci), `contracts/proto/` (contracts), `deploy/` (deploy), `pyside/src/optdesk/ibkr/transport.py` (pyside),
   `docs/design/ratchet.json` (docs).
 - Modules not touched in week 1: broker, compute and notify keep their paths, entry and tests cells (crew refuses a depends on a row
   with no entry), but none of their files exists until the weeks named in the second table (broker 3-4, compute 8-9, notify 11).
@@ -76,8 +76,8 @@ rows above name every other top-level path of the planned tree.
 
 | module | paths | entry | tests | depends |
 |---|---|---|---|---|
-| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/gen/** docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go web/src/generated/index.ts | internal/contracts/api_test.go internal/contracts/schema_test.go |  |
-| clock | internal/clock/** docs/contracts/clock.md pyside/tools/** | internal/clock/api.go | internal/clock/api_test.go | contracts |
+| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/genpb/** docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go web/src/generated/index.ts pyside/src/optdesk/contracts/api.py | internal/contracts/api_test.go internal/contracts/schema_test.go pyside/tests/contracts/test_contracts_api.py |  |
+| clock | internal/clock/** docs/contracts/clock.md pyside/src/optdesk/calendar/** pyside/tests/contracts/test_calendar_api.py | internal/clock/api.go | internal/clock/api_test.go | contracts |
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
 | store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts |
@@ -87,7 +87,7 @@ rows above name every other top-level path of the planned tree.
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/tests/** | contracts |
-| pyside | pyside/** |  |  | contracts |
+| pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/ibkr/api.py | pyside/tests/contracts/test_ibkr_api.py | contracts |
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
