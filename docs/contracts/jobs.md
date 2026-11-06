@@ -2,11 +2,13 @@
 
 ## Responsibility
 
-The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRED series (DGS10) fetched through a `sources.Source` and written through a `store.SeriesWriter`. The job implements `contracts.Job`; the constructor has the type `jobs.NewFredSeriesFunc`.
+The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRED series (DGS10) fetched through a `sources.Source` and written through a `store.SeriesWriter`. The job implements `contracts.Job`; the constructor has the type `jobs.NewFredSeriesFunc`, and `jobs.Registry` lists the jobs the binary runs.
+
+`New` returns an error when the source, the writer or the clock is nil, and when the embedded manifest is invalid.
 
 ## Inputs
 
-- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 24`), read with github.com/pelletier/go-toml/v2.
+- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 24`), read with github.com/pelletier/go-toml/v2. The fields are `version`, `id`, `series` (the list of series ids) and the `[window]` table with `rule` and `lateness_hours`. A manifest without an id or without a series list fails with the error "fredseries: manifest needs an id and a series list".
 - A `sources.Source`, a `store.SeriesWriter` and a `clock.Clock`, passed to `New`.
 - A `contracts.Day` and, for `Run`, the keys of `Plan`.
 
@@ -14,7 +16,9 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 
 - `Plan(day)`: one `ExpectedKey{obs.series_point, <series id>}` per series, sorted by id, and the plan hash: the lowercase hex SHA-256 of the job id, the manifest version, the day and the sorted series ids, joined with a newline.
 - `Run`: a `JobResult`; `Returned` is the points the source gave, `Usable` those with a value. Points are written in one `InsertSeriesPoints` call; a `no_value` point keeps its nil value and status.
-- Errors are `contracts.TypedError`; one from the source is returned unchanged, nothing is written.
+- Errors of `Run` are `contracts.TypedError`, through `asTyped`, which returns an error unchanged when it is already typed and wraps it with a kind otherwise:
+  - a fetch error that is a `contracts.TypedError` is returned unchanged, else it is `Permanent`; nothing is written.
+  - a failed `InsertSeriesPoints` is `Retryable` unless the writer's error is already typed (`asTyped`), in which case its own kind is kept; `Usable` is 0 then.
 
 ## Invariants
 
@@ -29,9 +33,11 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 
 ## Contract tests
 
-- `internal/jobs/api_test.go`: the interface.
+- `internal/jobs/api_test.go`: `TestRegistryContract`, the interface.
 - `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
 - `internal/jobs/fredseries/run_test.go`: `TestRunWritesOnce`, `TestPlanLateRunRecovery`.
+
+There is no test yet: the wrapping of an untyped fetch error as `Permanent` and the `Retryable` kind of a failed `InsertSeriesPoints` have no test (the fake writer never fails and no test gives the source an untyped error).
 
 ## Jobs and slots
 
