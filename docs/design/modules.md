@@ -51,7 +51,7 @@ rows above name every other top-level path of the planned tree.
   module depends on the front, on ci or docs (only `ot`, outside the layers, depends on the front), and only `ot` depends on repo (its `internal/profile`).
 - The pyside row follows the AGENTS.md layout (owner decision of 2026-11-06): the package is `optdesk`, the interface of a
   Python module is `pyside/src/optdesk/<module>/api.py` and its contract test is `pyside/tests/contracts/test_<module>_api.py`
-  (docs/design/pyside-layout.md). The calendar generator is `pyside/src/optdesk/calendar/` and a path of clock (the clock row comes before the
+  (docs/design/pyside-layout.md); the interface of contracts for Python is `pyside/src/optdesk/contracts/api.py` (it re-exports the generated package) and pyside imports only that file of contracts. The calendar generator is `pyside/src/optdesk/calendar/` and a path of clock (the clock row comes before the
   pyside row, so first-glob-wins keeps it clock's); the Python generated from the proto, `pyside/src/optdesk/contracts/genpb/**`, is a path of contracts.
 - Size rule, one text: a source file that is new in a change, a copied file included, has at most 600 lines; a file of the base revision over 800 lines is listed in `docs/design/ratchet.json` with a ceiling and stays under it; a ceiling is never raised by an agent (the text of AGENTS.md). This map does not repeat ceilings.
 - Ownership of shared paths, decided here: of the root files, `Makefile`, `go.mod`, `go.sum`, `arch.toml`, `.go-arch-lint.yml`,
@@ -76,7 +76,7 @@ rows above name every other top-level path of the planned tree.
 
 | module | paths | entry | tests | depends |
 |---|---|---|---|---|
-| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/genpb/** docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go web/src/generated/index.ts | internal/contracts/api_test.go internal/contracts/schema_test.go |  |
+| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/genpb/** docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go web/src/generated/index.ts pyside/src/optdesk/contracts/api.py | internal/contracts/api_test.go internal/contracts/schema_test.go pyside/tests/contracts/test_contracts_api.py |  |
 | clock | internal/clock/** docs/contracts/clock.md pyside/src/optdesk/calendar/** pyside/tests/contracts/test_calendar_api.py | internal/clock/api.go | internal/clock/api_test.go | contracts |
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
@@ -87,7 +87,7 @@ rows above name every other top-level path of the planned tree.
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/tests/** | contracts |
-| pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/<module>/api.py | pyside/tests/contracts/test_<module>_api.py | contracts |
+| pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/ibkr/api.py | pyside/tests/contracts/test_ibkr_api.py | contracts |
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |

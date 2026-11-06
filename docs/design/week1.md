@@ -484,7 +484,7 @@ requests are notes below the acceptance list, not acceptance items.
 - "Independent after issue 1" was false because of go.mod: adopted. Issue 1 holds the shared tools; the issues that list go.mod never run together (see `## Modules`).
 - Serial chain with owner merges: adopted for wave 0 (1, 2, 3). Issue 14 waits for the owner-merged workflows (issue 3, wave 0), so its [CI] items have a workflow to be decided by.
 - Checks that need the network: adopted. Items marked [CI] carry an offline grep substitute (see `## Issues`); no `npx`, action pins checked by a counting grep (issue 3).
-- Pyside layout against the owner_only path: moved to Left out, settled with the owner before week 2.
+- Pyside layout against the owner_only path: settled by the owner decision of 2026-11-06 in docs/design/pyside-layout.md.
 - Generated TS entry file: issue 1 stubs `web/src/generated/index.ts`; the follow-up design regenerates it under a Design line.
 
 ### Amendment of 2026-11-06 (interface fix)
