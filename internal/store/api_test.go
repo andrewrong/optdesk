@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -213,5 +214,23 @@ func TestLedgerRuns(t *testing.T) {
 	}
 	if got, _ := l.Runs(ctx, day); len(got) != 2 {
 		t.Fatalf("two IDs: runs = %+v, want 2", got)
+	}
+}
+
+func TestDSNEnvNames(t *testing.T) {
+	t.Parallel()
+	roles := []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages}
+	seen := map[string]bool{}
+	for _, n := range roles {
+		if !strings.HasPrefix(n, "OT_PG_DSN_") {
+			t.Errorf("%q does not start with OT_PG_DSN_", n)
+		}
+		if seen[n] {
+			t.Errorf("%q is declared twice", n)
+		}
+		seen[n] = true
+	}
+	if seen[store.AdminDSNEnv] {
+		t.Errorf("AdminDSNEnv %q equals a role DSN name", store.AdminDSNEnv)
 	}
 }

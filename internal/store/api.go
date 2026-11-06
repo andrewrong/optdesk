@@ -59,6 +59,19 @@ const (
 	StatusNoValue PresentStatus = "no_value"
 )
 
+// The names of the lines `Setup` writes to $OT_HOME/.env and `cmd/ot` reads, one per role.
+const (
+	// DSNEnvRunner names the line that holds the DSN of the role ot_runner.
+	DSNEnvRunner = "OT_PG_DSN_RUNNER"
+	// DSNEnvSeriesFred names the line that holds the DSN of the role ot_w_series_fred.
+	DSNEnvSeriesFred = "OT_PG_DSN_SERIES_FRED"
+	// DSNEnvPages names the line that holds the DSN of the role ot_ro_pages.
+	DSNEnvPages = "OT_PG_DSN_PAGES"
+	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
+	// it is read from the process environment only, never from .env and never from a flag.
+	AdminDSNEnv = "OT_PG_ADMIN_DSN"
+)
+
 // Cursor is the day up to which the runner has reconciled.
 type Cursor struct {
 	Day contracts.Day
