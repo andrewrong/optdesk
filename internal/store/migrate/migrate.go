@@ -5,7 +5,6 @@ package migrate
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"fmt"
 	"io/fs"
 
@@ -23,15 +22,4 @@ func Up(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		return fmt.Errorf("migrate: up: %w", err)
 	}
 	return nil
-}
-
-// UpConnector is Up for a driver.Connector: it opens a database on c, migrates it and closes it.
-func UpConnector(ctx context.Context, c driver.Connector, fsys fs.FS) (err error) {
-	db := sql.OpenDB(c)
-	defer func() {
-		if cerr := db.Close(); err == nil && cerr != nil {
-			err = fmt.Errorf("migrate: close: %w", cerr)
-		}
-	}()
-	return Up(ctx, db, fsys)
 }

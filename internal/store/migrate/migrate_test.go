@@ -138,26 +138,6 @@ func TestUpRunsMigrationSQLThroughDriver(t *testing.T) {
 	}
 }
 
-func TestUpConnectorMigratesAndCloses(t *testing.T) {
-	t.Parallel()
-	fsys := fstest.MapFS{
-		"0001_one.sql": {Data: []byte("-- +goose Up\nCREATE TABLE one_marker (a int);\n-- +goose Down\nDROP TABLE one_marker;\n")},
-	}
-	d := &fakeDriver{}
-	if err := migrate.UpConnector(context.Background(), d, fsys); err != nil {
-		t.Fatalf("UpConnector: %v", err)
-	}
-	found := false
-	for _, c := range d.log() {
-		if strings.Contains(c, "CREATE TABLE one_marker") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("migration not executed: %q", d.log())
-	}
-}
-
 func TestUpEmptyFSIsAnError(t *testing.T) {
 	t.Parallel()
 	d := &fakeDriver{}
