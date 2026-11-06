@@ -7,18 +7,18 @@ row of `docs/design/modules.md` ("a yearly generated file, cross-checked against
 164d783: `cmd/ot` has the subcommands `run-once`, `page`, `serve` and `setup pg`; `migrations/` holds 0001 to 0004
 (0004 is the grant of PR 61); `internal/store/migrate.Up(ctx, *sql.DB, fs.FS)` exists.
 
-Goal of the design: after `ot setup pg`, the owner can run `ot migrate`, then `ot calendar load`, then `ot run-once`
-against a real PostgreSQL without applying a file by hand. `ot` never connects to a live broker: nothing here touches
+Goal of the design: after `ot setup pg`, the owner can run `ot migrate` and have `ot calendar load` ready for the
+generated calendar files (which land later) against a real PostgreSQL without applying a file by hand. `ot` never connects to a live broker: nothing here touches
 `internal/broker`, and every test uses fakes; a test that needs PostgreSQL carries the build tag `pg` and runs in
 GitHub CI only.
 
 What was found on main, and what is still missing:
 
-- No yearly calendar file is committed, and `pyside/` does not exist: `pyside/tools/calendar_table.py` (named in
-  `docs/design/modules.md` as the calendar generator) is not written. The only `master.session_day` rows in the
+- No yearly calendar file is committed and no generator exists: the only `master.session_day` rows in the
   repository are the six typed rows of `contracts/fixtures/master.session_day.r1.json`, which are test expectations.
-  So the data has to be generated and committed by this design, from the library ADR 0004 names for planning
-  (`exchange_calendars`, calendar XNYS).
+  The generator and its yearly files follow `docs/design/pyside-layout.md` (`pyside/src/optdesk/calendar`), a later
+  design. Until it lands there is no real calendar file, so a real `ot run-once` still ends in `UnknownCalendar`; this
+  design makes the loader ready and tests it with a small synthetic file.
 - `ot` cannot apply a migration alone: `migrate.Up` wants a `*sql.DB`, and only `internal/store` may import pgx. A
   function of `migrate` that takes a DSN is needed.
 - No role of week 1 may write `master.session_day` (`ot_runner` has SELECT only), and `setup.Setup` keeps the password
@@ -37,7 +37,6 @@ new import wait for it.
 | issue | module | order |
 |---|---|---|
 | ot-imports (interface) | docs and repo, the exact two-module Files set below | first |
-| calendar-table | clock | any, parallel to every other entry |
 | ot-migrate | store and ot, the exact two-module Files set below | after ot-imports |
 | ot-calendar-load | ot | any, parallel to every other entry |
 
@@ -45,7 +44,7 @@ Why `ot-migrate` is a two-module entry: `cmd/ot` calls `migrate.UpDSN`, which do
 not wait for a sibling that is not the (interface) entry. The function and its caller therefore land together; the
 store files and the ot files of that entry are listed in full. `ot-calendar-load` waits for nothing: it needs only
 `store.OpenSessionDayFunc` (already a field of `deps`) and `contracts.SessionDay`, both on main, and reads the rows from
-a path given on the command line, so it needs no output of `calendar-table`. The two ot entries edit disjoint files
+a path given on the command line, so it needs no generated file. The two ot entries edit disjoint files
 (only `ot-migrate` edits `wire.go`). No entry edits `go.mod`, `go.sum`, `package.json` or `pnpm-lock.yaml`.
 
 ## Interface
@@ -60,14 +59,13 @@ in an `api.go`:
 | `deps.migrateUp` | ot | cmd/ot/wire.go | a field of type `func(ctx context.Context, dsn string, fsys fs.FS) error`, assigned `migrate.UpDSN` by `newDeps()`; no Func type in `api.go` is added, because a Func type there would be an interface change |
 | `migrateDSNEnv` | ot | cmd/ot/migrate.go | the constant `OT_PG_MIGRATE_DSN`, a process variable, unexported |
 | `calendarDSNEnv` | ot | cmd/ot/calendar.go | the same string `OT_PG_MIGRATE_DSN` as its own constant, so the two ot entries share no identifier |
-| the file format | clock | internal/clock/calendar/data/XNYS-2026.json | a JSON array of `master.session_day r1` objects (the shape of `contracts/fixtures/master.session_day.r1.json`), one object per line, ascending by `session_day`, instants in UTC with the suffix `Z`; a day that is not a session has `open_at` equal to `close_at` equal to 00:00 UTC of that day and `early_close` false, as the fixture has |
+| the file format | ot | cmd/ot/testdata/calendar_synthetic.json (the format of a later generated file) | a JSON array of `master.session_day r1` objects (the shape of `contracts/fixtures/master.session_day.r1.json`), one object per line, ascending by `session_day`, instants in UTC with the suffix `Z`; a day that is not a session has `open_at` equal to `close_at` equal to 00:00 UTC of that day and `early_close` false, as the fixture has |
 
 Names used as they are: `contracts.SessionDay`, `store.SessionDayWriter.UpsertSessionDays`, `store.OpenSessionDayFunc`,
 `sessionday.Open`, `migrate.Up`.
 
 Commands fixed by this design, owned by `cmd/ot`: `ot migrate [--dir DIR]` (default `migrations`), and
-`ot calendar load FILE...` (at least one path). The owner's sequence is `ot setup pg`, `ot migrate`, `ot calendar load
-internal/clock/calendar/data/XNYS-2026.json internal/clock/calendar/data/XNYS-2027.json`, `ot run-once`.
+`ot calendar load FILE...` (at least one path). The owner's sequence is `ot setup pg`, `ot migrate`, `ot calendar load FILE...` (the generated files, once they exist), `ot run-once`.
 
 ## Issues
 
@@ -91,25 +89,6 @@ The module map lets `cmd/ot` import `internal/store/migrate`.
   Depends on: none. Order: first; `ot-migrate` waits for it.
   Size: S
 
-### calendar-table
-
-A generator for the yearly calendar file and the committed rows of 2026 and 2027.
-  Goal: `master.session_day` has a source that is generated, not typed: a standalone Python script produces one calendar-year file for XNYS from `exchange_calendars` (ADR 0004: library calendar for planning), and the files of 2026 and 2027 are committed so `ot calendar load` has something to load. The cross-check against IBKR hours of the clock row is a runtime check of ADR 0004 and needs a broker; it is not done here (see `## Left out`).
-  Files: pyside/tools/calendar_table.py, internal/clock/calendar/data/XNYS-2026.json, internal/clock/calendar/data/XNYS-2027.json, internal/clock/calendar/data_test.go, docs/contracts/clock.md.
-  Design: docs/design/week1-run.md#calendar-table; `pyside/` does not exist and has no `pyproject.toml`, so the script declares its dependency in a PEP 723 block (`uv run pyside/tools/calendar_table.py`) and needs no lockfile; the data lives next to the package that reads calendars (`internal/clock/calendar/data/`), a path of clock, so one module owns script, data and test; own implementation of nothing: the calendar library is the maintained one.
-  Acceptance:
-  - `pyside/tools/calendar_table.py` starts its dependency block with the line `# /// script`, names `exchange-calendars` with an exact pin (`==`) in it, takes `--calendar` (default `XNYS`), `--year` and `--out`, and writes the file format of `## Interface` (offline: `grep -c '^# /// script' pyside/tools/calendar_table.py` prints 1 and `grep -c 'exchange-calendars==' pyside/tools/calendar_table.py` prints 1).
-  - The script holds no hand-written time of day: `grep -c -E '[0-9]{1,2}:[0-9]{2}' pyside/tools/calendar_table.py` prints 0; open and close instants come from the library and are converted to UTC; a non-session day is written as the `## Interface` says.
-  - `internal/clock/calendar/data/XNYS-2026.json` and `internal/clock/calendar/data/XNYS-2027.json` each hold 365 objects, one per line, each with `"calendar_id":"XNYS"` (`grep -c '"calendar_id":"XNYS"' <file>` prints 365 for each file); each file has fewer than 400 lines.
-  - `internal/clock/calendar/data_test.go` holds `TestDataCoversEveryDay` (each file: every date of its year exactly once, ascending, calendar id XNYS), `TestDataClosedDayShape` (a non-session day has open equal to close at 00:00 UTC and `early_close` false), `TestDataSessionShape` (a session day closes after it opens, on the same UTC date, and an early close is before 19:00 UTC), `TestDataKnownDays` and `TestDataDST`; `grep -n 'func TestData' internal/clock/calendar/data_test.go` finds five functions and `grep -c 't.Parallel()' internal/clock/calendar/data_test.go` prints at least 5.
-  - `TestDataKnownDays` has typed expectations from the published NYSE schedule: 2026-11-26 closed; 2026-11-27 open with `early_close` true and close 18:00 UTC; 2026-12-25 closed; 2027-03-26 closed; 2027-07-05 closed; and `TestDataDST` has the open instants 2026-10-30 13:30 UTC, 2026-11-02 14:30 UTC and 2027-03-15 13:30 UTC. The expectations are tests only; no non-test Go file reads `internal/clock/calendar/data` (offline: `grep -rl 'calendar/data' --include=*.go . | grep -v _test.go` prints nothing). A mismatch between a data file and these expectations is settled by regenerating, never by editing a data file by hand.
-  - `data_test.go` reads the two files with `os.ReadFile` of a path relative to the package directory and holds no fixed port or absolute path; it neither sleeps nor calls `time.Now`.
-  - `docs/contracts/clock.md` names `pyside/tools/calendar_table.py` and `internal/clock/calendar/data/` under `## Inputs`, adds a `- v2:` line to `## Version history` and lists `data_test.go` under `## Contract tests`; no heading changes (offline: `grep -c 'calendar_table.py' docs/contracts/clock.md` prints at least 1).
-  - No file outside the five listed is in the diff; `internal/clock/api.go` and `internal/clock/calendar/calendar.go` are unchanged.
-  - Checked by CI: ci-go (the five tests run). Note (not acceptance): the data files are the output of the script, so an agent without `uv` or without network to fetch the library reports that in the pull request description and commits no data file; it never writes the rows by hand (ADR 0004).
-  Depends on: none. Order: any.
-  Size: M
-
 ### ot-migrate
 
 `ot migrate` applies the migrations through `internal/store/migrate`.
@@ -122,6 +101,7 @@ A generator for the yearly calendar file and the committed rows of 2026 and 2027
   - `dsn_pg_test.go` has the build tag `pg` on its first line, holds `TestUpDSNAppliesAllPG`, builds its DSN from the `PG*` variables and holds no `postgres://` literal with a password (offline: `head -1 internal/store/migrate/dsn_pg_test.go` prints the tag line, `grep -c 'postgres://[^"]*:[^"]*@' internal/store/migrate/dsn_pg_test.go` prints 0, `grep -n 'func TestUpDSNAppliesAllPG' internal/store/migrate/dsn_pg_test.go` finds it); it creates a scratch database and the four roles itself when missing, applies `os.DirFS` of the repository `migrations` directory twice, and asserts that `master.session_day`, `obs.series_point` and `ops.dataset_window` exist and that the second call changes nothing.
   - `cmd/ot/migrate.go` registers `migrate` in `init()` through `register`, takes `--dir` (default `migrations`), refuses the `demo` profile before anything is read, reads `migrateDSNEnv` through `a.getenv` (never a flag), and an empty value is an error that names the variable and calls nothing; it calls `a.deps.migrateUp` with `os.DirFS(dir)`; an error of `migrateUp` is replaced by a text that names the variable and drops the error text; one slog line on success carries the directory only.
   - `cmd/ot/migrate_test.go` holds `TestMigrateCallsUp` (the fake receives the DSN and an `fs.FS` that lists the files of a `t.TempDir()`), `TestMigrateDefaultDir`, `TestMigrateDemoRefused`, `TestMigrateUnsetDSN`, `TestMigrateSentinelDSN` (a fake that returns an error whose text holds a sentinel DSN; the sentinel is absent from the returned error and from the log output); `grep -c 'func TestMigrate' cmd/ot/migrate_test.go` prints 5 and `grep -c 't.Parallel()' cmd/ot/migrate_test.go` prints at least 5.
+  - The DSN is run-time input only: `ot` never writes it to any file and never logs it (offline: `grep -c 'WriteFile\|os.Create\|os.OpenFile' cmd/ot/migrate.go` prints 0), and no returned error holds it (`TestMigrateSentinelDSN`, which fails when the sentinel DSN appears in the error text or in the log output).
   - `cmd/ot/wire.go` has the field `migrateUp` of the type in `## Interface` and `newDeps()` assigns `migrate.UpDSN` to it; `TestNewDepsFilled` of `wire_test.go` expects 12 fields; `wire.go` stays the one non-test file of `cmd/ot` that imports an implementation package (offline: `grep -rl --include='*.go' 'internal/store/migrate' cmd/ot | grep -v _test.go` prints `cmd/ot/wire.go` only).
   - `docs/contracts/store.md` names `UpDSN` under `## Inputs`, adds a `- v3:` line to `## Version history`, and keeps the line that says migrate embeds nothing; no heading changes.
   - Neither `time.Now` nor `time.Sleep` appears in the new files (`grep -c 'time\.Now\|time\.Sleep' cmd/ot/migrate.go internal/store/migrate/dsn.go` prints 0 for each); each new file stays under 600 lines; no file outside the eight listed is in the diff.
@@ -132,21 +112,22 @@ A generator for the yearly calendar file and the committed rows of 2026 and 2027
 
 ### ot-calendar-load
 
-`ot calendar load FILE...` upserts generated calendar files into `master.session_day`.
-  Goal: the rows of the committed yearly files reach the table through `store.SessionDayWriter`, with the DSN of `OT_PG_MIGRATE_DSN` (the runner role may only read), so `ot run-once` finds its calendar instead of `UnknownCalendar`.
-  Files: cmd/ot/calendar.go, cmd/ot/calendar_test.go.
+`ot calendar load FILE...` upserts calendar files into `master.session_day`.
+  Goal: the rows of yearly files (generated later) reach the table through `store.SessionDayWriter`, with the DSN of `OT_PG_MIGRATE_DSN` (the runner role may only read), so `ot run-once` finds its calendar instead of `UnknownCalendar`.
+  Files: cmd/ot/calendar.go, cmd/ot/calendar_test.go, cmd/ot/testdata/calendar_synthetic.json.
   Design: docs/design/week1-run.md#interface; one file pair, nothing in `wire.go`, because `deps.openSessionDay` already exists, so the entry has no sibling to wait for; the file is read from a path argument with `os.ReadFile` and decoded as `[]contracts.SessionDay` with `encoding/json`, no new dependency; the identifier `calendar` is an import name in `wire.go`, so the file declares no package-level `calendar` and the command function is `runCalendar`.
   Acceptance:
   - `calendar.go` registers `calendar` in `init()` through `register`; the first argument must be `load` and at least one path must follow, else usage and an error (`TestCalendarUsage`); it refuses the `demo` profile before a file is read or a store is opened (`TestCalendarLoadDemoRefused`).
   - It reads `calendarDSNEnv` (the string `OT_PG_MIGRATE_DSN`) through `a.getenv`, never a flag; an empty value is an error that names the variable and opens nothing (`TestCalendarLoadUnsetDSN`).
   - Every file is read and decoded before the store is opened: a missing file, malformed JSON, an empty array and a row with an empty calendar id are errors that name the path and no row value (`TestCalendarLoadMalformed`, `TestCalendarLoadEmptyFile`, `TestCalendarLoadMissingFile`; the fake `openSessionDay` records that it was not called).
-  - With valid files it opens the store with `a.deps.openSessionDay`, calls `UpsertSessionDays` once per file with the rows in file order, and closes the store on every path (`TestCalendarLoadUpserts` with a file of two typed rows written to a `t.TempDir()`, `TestCalendarLoadClosesStore` on success and on an upsert error).
+  - With valid files it opens the store with `a.deps.openSessionDay`, calls `UpsertSessionDays` once per file with the rows in file order, and closes the store on every path (`TestCalendarLoadUpserts` reads `cmd/ot/testdata/calendar_synthetic.json`, a file of three synthetic typed rows with a made-up calendar id `TEST` and no real market hours; `TestCalendarLoadClosesStore` on success and on an upsert error).
   - An error from `openSessionDay` or from the upsert is replaced by a text that names the variable and drops the error text; `TestCalendarLoadSentinelDSN` makes the fake return an error whose text holds a sentinel DSN and asserts the sentinel is absent from the returned error and from the log output; one slog line per file carries the row count and no row value.
+  - The DSN is run-time input only: `ot` never writes it to any file and never logs it (offline: `grep -c 'WriteFile\|os.Create\|os.OpenFile' cmd/ot/calendar.go` prints 0), and no returned error holds it (`TestCalendarLoadSentinelDSN`, same assertion).
   - `grep -c 'func TestCalendar' cmd/ot/calendar_test.go` prints 9 and `grep -c 't.Parallel()' cmd/ot/calendar_test.go` prints at least 9; the tests use fakes and a temporary directory, open no store, and neither sleep nor call `time.Now`; `grep -c 'time\.Now\|time\.Sleep' cmd/ot/calendar.go` prints 0.
   - `calendar.go` imports no package of `internal/` other than `internal/contracts` and `internal/store` (offline: `grep -n 'internal/' cmd/ot/calendar.go` lists those two paths only); both are root packages of rows in the depends cell of `ot`.
-  - No file outside the two listed is in the diff (`wire.go`, `migrate.go` and the data files are untouched); each new file stays under 600 lines.
+  - No file outside the two listed is in the diff (`wire.go` and `migrate.go` are untouched); each new file stays under 600 lines.
   - Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `ot`). Nothing here needs a real server: the upsert is covered by the existing `sessionday_pg_test.go`.
-  Note (not acceptance): the committed files it loads come from `calendar-table`; this entry reads any path it is given, so it waits for nothing.
+  Note (not acceptance): no real calendar file exists until the generator of `docs/design/pyside-layout.md` lands; this entry reads any path it is given, so it waits for nothing.
   Depends on: none. Order: any.
   Size: S
 
@@ -155,12 +136,9 @@ A generator for the yearly calendar file and the committed rows of 2026 and 2027
 - The cross-check against IBKR trading hours (clock row of `docs/design/modules.md`, ADR 0004 "at runtime IBKR
   `tradingHours` are the check"): it needs a broker connection, which `ot` never opens, and the broker module is week 3-4.
   Until then the calendar is the library's alone; nothing marks the rows as cross-checked.
-- Calendars other than XNYS: the Tokyo calendar and the JPX option-hours overlay of ADR 0004 wait for the Japan
-  work. Years after 2027: the owner reruns the script (`uv run pyside/tools/calendar_table.py --year N --out ...`)
-  and a later issue commits the file; a check that the current year is covered is not designed here.
-- A `pyside/` Python project (`pyproject.toml`, `uv.lock`, ruff, mypy, pytest): the owner settles the Python layout
-  first (`docs/design/modules.md`, pyside row). The script is standalone with an inline dependency block and its output
-  is tested on the Go side; a Python test of the script comes with the project.
+- The calendar generator and its yearly data files follow `docs/design/pyside-layout.md` (pyside/src/optdesk/calendar),
+  a later design; so do the Python project, the years after the first, and the choice of calendars (the Tokyo calendar
+  and the JPX overlay of ADR 0004 are separate work).
 - Embedding `migrations/` or the calendar files in the `ot` binary: `docs/contracts/store.md` forbids embedding in
   `migrate`, and a Go package at the repository root would be a component the arch generator does not know. `ot migrate`
   and `ot calendar load` therefore read paths of the checkout, run from its root.
@@ -170,6 +148,8 @@ A generator for the yearly calendar file and the committed rows of 2026 and 2027
 - One command that runs setup, migrate and load in order, and a name for `OT_PG_MIGRATE_DSN` in the interface of
   store (`store.AdminDSNEnv` is the model): not chosen, to avoid an interface change; the two constants are unexported
   in `cmd/ot` and carry the same string.
+- `OT_PG_MIGRATE_DSN`: the owner supplies it at run time in the process environment; `ot` never writes it to any file,
+  never logs it, and no error text contains it (the scrub tests of `ot-migrate` and `ot-calendar-load`).
 - `ot setup pg` is not edited.
 
 ## Adversarial
