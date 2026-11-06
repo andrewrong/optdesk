@@ -4,10 +4,10 @@ import { ClipboardList, Info } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/generated/tracking'
+import type { Payload } from '@/types/tracking'
 import { StaleAlert } from '@/pages/home/StaleAlert'
-export { validate as validateTracking } from '@/generated/tracking'
-export type { Payload as TrackingPayload } from '@/generated/tracking'
+export { validate as validateTracking } from '@/types/tracking'
+export type { Payload as TrackingPayload } from '@/types/tracking'
 
 const COLUMNS: Column[] = [
   { id: 'symbol', label: '标的' },

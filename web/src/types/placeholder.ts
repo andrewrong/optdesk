@@ -1,4 +1,4 @@
-// TEMPORARY, hand-written: the stand-in for the validators that the week1-schemas issue generates from contracts/.
+// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
 // It checks what a page needs to refuse to render a payload it cannot read: the payload is an object and its
 // `schema_version` is one the page supports. It does not check the shape of the fields (the generated validators
 // will); the page types beside it are copies of the old repository's generated types.

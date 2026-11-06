@@ -5,11 +5,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import type { Payload } from '@/generated/macro_page'
+import type { Payload } from '@/types/macro_page'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
-export { validate as validateMacroPage } from '@/generated/macro_page'
-export type { Payload as MacroPagePayload } from '@/generated/macro_page'
+export { validate as validateMacroPage } from '@/types/macro_page'
+export type { Payload as MacroPagePayload } from '@/types/macro_page'
 
 const EVENTS: Column[] = [
   { id: 'date', label: '日期' },

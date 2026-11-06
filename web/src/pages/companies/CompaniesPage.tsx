@@ -9,11 +9,11 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/generated/companies_page'
+import type { Payload } from '@/types/companies_page'
 import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
-export { validate as validateCompaniesPage } from '@/generated/companies_page'
-export type { Payload as CompaniesPagePayload } from '@/generated/companies_page'
+export { validate as validateCompaniesPage } from '@/types/companies_page'
+export type { Payload as CompaniesPagePayload } from '@/types/companies_page'
 
 type Head = { numeric?: boolean; text: string }
 type Cells = { text: string; tone?: 'up' | 'down' | 'flat' | 'none' }[]

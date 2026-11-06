@@ -1,5 +1,5 @@
 // The local view-model types of the household page: aliases of the payload types that the blocks share.
-import type { Payload } from '@/generated/household_page'
+import type { Payload } from '@/types/household_page'
 
 export type Gap = NonNullable<Payload['overview']['gap']>
 export type Cell = Payload['overview']['rows'][number]['amount']

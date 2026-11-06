@@ -4,9 +4,9 @@ import { TriangleAlert } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/generated/advice_page'
-export { validate as validateAdvicePage } from '@/generated/advice_page'
-export type { Payload as AdvicePagePayload } from '@/generated/advice_page'
+import type { Payload } from '@/types/advice_page'
+export { validate as validateAdvicePage } from '@/types/advice_page'
+export type { Payload as AdvicePagePayload } from '@/types/advice_page'
 
 // Fixed column heads of the table: no payload field is read for them.
 const COLUMNS: Column[] = [

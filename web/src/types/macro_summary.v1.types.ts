@@ -1,4 +1,4 @@
-// TEMPORARY placeholder, copied from the old repository's generated types until the week1-schemas issue generates them.
+// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
 export type BuildId = string
 export type DataTimesText = string
 export type Ease = (Ease1 | Gap)

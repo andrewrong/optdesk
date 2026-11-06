@@ -1,4 +1,4 @@
-// TEMPORARY placeholder, copied from the old repository's generated types until the week1-schemas issue generates them.
+// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
 export type BuildId = string
 export type DataTimesText = string
 export type Reason = ("missing_quote" | "no_data" | "unsupported_currency" | "not_built" | "no_reader" | "no_news_source" | "no_rule" | "market_closed" | "stale" | "flex_time_unknown" | "jp_slice_missing" | "missing_input" | "stale_input")

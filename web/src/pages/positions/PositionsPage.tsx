@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable } from '@/components/data-table/data-table'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
-import type { Payload } from '@/generated/positions_page'
+import type { Payload } from '@/types/positions_page'
 
-export { validate as validatePositionsPage } from '@/generated/positions_page'
-export type { Payload as PositionsPagePayload } from '@/generated/positions_page'
+export { validate as validatePositionsPage } from '@/types/positions_page'
+export type { Payload as PositionsPagePayload } from '@/types/positions_page'
 
 type View = Payload['views'][number]
 

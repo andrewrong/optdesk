@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { page } from '@/shell/page'
-import { validate, type Payload } from '@/generated/market_weather'
+import { validate, type Payload } from '@/types/market_weather'
 import { StaleAlert } from './StaleAlert'
 import { WeatherIntraday } from './WeatherIntraday'
 

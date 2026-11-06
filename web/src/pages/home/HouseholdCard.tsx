@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { validate, type Payload } from '@/generated/household_summary'
+import { validate, type Payload } from '@/types/household_summary'
 import { cn } from '@/lib/utils'
 import { page } from '@/shell/page'
 import { CardNotes } from './CardNotes'

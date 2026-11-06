@@ -1,7 +1,7 @@
 // Maps blocks of the household_page payload to chart specs (ADR 0034, Charts). A pure mapping: every point,
 // label and text is a field of the payload; nothing is computed or formatted here.
 import type { ChartSpec } from '@/charts/spec'
-import type { Payload } from '@/generated/household_page'
+import type { Payload } from '@/types/household_page'
 
 type MoneyBlock = Payload['income']
 

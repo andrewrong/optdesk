@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
-import type { Payload } from '@/generated/option_page'
+import type { Payload } from '@/types/option_page'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 
-export { validate as validateOptionPage } from '@/generated/option_page'
-export type { Payload as OptionPagePayload } from '@/generated/option_page'
+export { validate as validateOptionPage } from '@/types/option_page'
+export type { Payload as OptionPagePayload } from '@/types/option_page'
 
 type Pane = Payload['markets'][number]
 type Opportunity = Pane['cards'][number]

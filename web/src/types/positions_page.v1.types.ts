@@ -1,4 +1,4 @@
-// TEMPORARY placeholder, copied from the old repository's generated types until the week1-schemas issue generates them.
+// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
 export type BuildId = string
 export type DataTime = string
 export type Source = string
@@ -20,7 +20,7 @@ export type Notes = string[]
 export type RunId = string
 export type RunStatus = ("ok" | "partial" | "failed")
 export type Schema = "positions_page"
-export type SchemaVersion = 2
+export type SchemaVersion = 1
 export type Scope = string
 export type DataTime1 = string
 export type StaleAfter = string
@@ -34,12 +34,12 @@ export type Views = [PositionsView, PositionsView, PositionsView]
 export type Key = ("me" | "spouse" | "household")
 export type Label = ("我" | "配偶" | "家庭")
 /**
- * @minItems 10
- * @maxItems 10
+ * @minItems 8
+ * @maxItems 8
  */
-export type Columns = [OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn]
+export type Columns = [Column, Column, Column, Column, Column, Column, Column, Column]
 export type Align = ("left" | "right")
-export type Id = ("code" | "name" | "expiry" | "days_left" | "role" | "quantity" | "cost" | "price" | "day" | "unrealised")
+export type Id = ("code" | "name" | "role" | "quantity" | "cost" | "price" | "day" | "unrealised")
 export type Label1 = string
 export type Text2 = string
 export type Value = string
@@ -52,66 +52,44 @@ export type Tone = (("up" | "down" | "flat" | "none") | null)
 export type Unit1 = ("usd" | "usd_per_share" | "usd_signed")
 export type Value2 = number
 export type Day = (MoneyCell | Gap)
-export type DaysLeft = (DaysCell | Gap)
-export type Text5 = string
-export type Unit2 = "days"
-export type Value3 = number
-export type Expiry = (TextCell | Gap)
 export type Price = (MoneyCell | Gap)
-export type Text6 = string
-export type Unit3 = ("shares" | "contracts")
-export type Value4 = number
-export type Text7 = ("我" | "配偶")
-export type Value5 = ("我" | "配偶")
+export type Text5 = string
+export type Unit2 = ("shares" | "contracts")
+export type Value3 = number
+export type Text6 = ("我" | "配偶")
+export type Value4 = ("我" | "配偶")
 export type Unrealised = (MoneyCell | Gap)
 /**
  * @minItems 0
  * @maxItems 200
  */
-export type Rows = OptionRow[]
+export type Rows = PositionRow[]
 export type Title1 = string
 export type Sentence = string
-/**
- * @minItems 8
- * @maxItems 8
- */
-export type Columns1 = [Column, Column, Column, Column, Column, Column, Column, Column]
-export type Align1 = ("left" | "right")
-export type Id1 = ("code" | "name" | "role" | "quantity" | "cost" | "price" | "day" | "unrealised")
-export type Label2 = string
-export type Day1 = (MoneyCell | Gap)
-export type Price1 = (MoneyCell | Gap)
-export type Unrealised1 = (MoneyCell | Gap)
-/**
- * @minItems 0
- * @maxItems 200
- */
-export type Rows1 = PositionRow[]
-export type Title2 = string
 /**
  * @minItems 6
  * @maxItems 6
  */
-export type Columns2 = [TradeColumn, TradeColumn, TradeColumn, TradeColumn, TradeColumn, TradeColumn]
-export type Align2 = ("left" | "right")
-export type Id2 = ("time" | "account" | "action" | "instrument" | "quantity" | "price")
-export type Label3 = string
+export type Columns1 = [TradeColumn, TradeColumn, TradeColumn, TradeColumn, TradeColumn, TradeColumn]
+export type Align1 = ("left" | "right")
+export type Id1 = ("time" | "account" | "action" | "instrument" | "quantity" | "price")
+export type Label2 = string
 export type Account = (Cell | Gap)
-export type Text8 = string
+export type Text7 = string
 export type Tone1 = ("up" | "down" | "flat" | "none")
-export type Unit4 = (("USD" | "usd_signed" | "percent" | "share_percent" | "index_points" | "percent_of_track" | "vol_points" | "percentage_points") | null)
-export type Value6 = (number | null)
+export type Unit3 = (("USD" | "usd_signed" | "percent" | "share_percent" | "index_points" | "percent_of_track" | "vol_points" | "percentage_points") | null)
+export type Value5 = (number | null)
 export type Action = (Cell | Gap)
 export type Instrument = (Cell | Gap)
-export type Price2 = (Cell | Gap)
+export type Price1 = (Cell | Gap)
 export type Quantity = (Cell | Gap)
 export type Time = (Cell | Gap)
 /**
  * @minItems 0
  * @maxItems 200
  */
-export type Rows2 = TradeRow[]
-export type Title3 = string
+export type Rows1 = TradeRow[]
+export type Title2 = string
 
 export interface PositionsPage {
 build_id: BuildId
@@ -153,31 +131,26 @@ text: Text1
 export interface PositionsView {
 key: Key
 label: Label
-options: OptionsTable
+options: PositionsTable
 sentence: Sentence
 stocks: PositionsTable
 trades?: (TradesTable | null)
 }
-export interface OptionsTable {
+export interface PositionsTable {
 columns: Columns
 gap?: (Gap | null)
 rows: Rows
 title: Title1
 }
-export interface OptionColumn {
+export interface Column {
 align: Align
 id: Id
 label: Label1
 }
-/**
- * A ``PositionRow`` with the expiry (ISO date) and the days left after the name.
- */
-export interface OptionRow {
+export interface PositionRow {
 code: TextCell
 cost: MoneyCell
 day: Day
-days_left: DaysLeft
-expiry: Expiry
 name: TextCell
 price: Price
 quantity: QuantityCell
@@ -207,66 +180,37 @@ text: Text3
 unit: Unit
 value: Value1
 }
-/**
- * Calendar days from the market's today to the expiry; negative once expired (issue #1448).
- */
-export interface DaysCell {
+export interface QuantityCell {
 text: Text5
 unit: Unit2
 value: Value3
-}
-export interface QuantityCell {
-text: Text6
-unit: Unit3
-value: Value4
 }
 /**
  * Closed role vocabulary: neither aliases nor account identifiers are accepted.
  */
 export interface RoleCell {
-text: Text7
-value: Value5
-}
-export interface PositionsTable {
-columns: Columns1
-gap?: (Gap | null)
-rows: Rows1
-title: Title2
-}
-export interface Column {
-align: Align1
-id: Id1
-label: Label2
-}
-export interface PositionRow {
-code: TextCell
-cost: MoneyCell
-day: Day1
-name: TextCell
-price: Price1
-quantity: QuantityCell
-role: RoleCell
-unrealised: Unrealised1
+text: Text6
+value: Value4
 }
 /**
  * Today's fills (issue #1445), the cells and wording of ``report_actions.TradeRow``.
  */
 export interface TradesTable {
-columns: Columns2
+columns: Columns1
 gap?: (Gap | null)
-rows: Rows2
-title: Title3
+rows: Rows1
+title: Title2
 }
 export interface TradeColumn {
-align: Align2
-id: Id2
-label: Label3
+align: Align1
+id: Id1
+label: Label2
 }
 export interface TradeRow {
 account: Account
 action: Action
 instrument: Instrument
-price: Price2
+price: Price1
 quantity: Quantity
 time: Time
 }
@@ -274,8 +218,8 @@ time: Time
  * One displayed table cell.
  */
 export interface Cell {
-text: Text8
+text: Text7
 tone: Tone1
-unit?: Unit4
-value?: Value6
+unit?: Unit3
+value?: Value5
 }

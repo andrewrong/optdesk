@@ -8,7 +8,7 @@ import { motion } from 'motion/react'
 import { useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/generated/market_weather'
+import type { Payload } from '@/types/market_weather'
 import { useClock } from './StaleAlert'
 
 const REREAD_MS = 60_000

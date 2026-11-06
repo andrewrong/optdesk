@@ -13,15 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Payload } from '@/generated/household_page'
+import type { Payload } from '@/types/household_page'
 import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
 import { AccountsSection, MoversSection, ScopeHeading, WhoseBadge } from './AccountsMovers'
 import { AllocationSection, Block, IncomeMonths, MoneySection } from './MoneySections'
 import type { MoneyBlock, Scope } from './householdTypes'
 import { incomeToSpec, monthChangeToSpec, trendToSpec } from './householdToSpec'
-export { validate as validateHouseholdPage } from '@/generated/household_page'
-export type { Payload as HouseholdPagePayload } from '@/generated/household_page'
+export { validate as validateHouseholdPage } from '@/types/household_page'
+export type { Payload as HouseholdPagePayload } from '@/types/household_page'
 
 const BADGE_VARIANT = {
   up: 'success',

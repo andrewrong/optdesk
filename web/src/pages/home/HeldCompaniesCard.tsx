@@ -6,7 +6,7 @@ import { DataTable, type Cell, type Column } from '@/components/data-table/data-
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { validate, type Payload } from '@/generated/held_companies_summary'
+import { validate, type Payload } from '@/types/held_companies_summary'
 import { page } from '@/shell/page'
 import { CardNotes } from './CardNotes'
 import { DataTimesFold } from './DataTimesFold'

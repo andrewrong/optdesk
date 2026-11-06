@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
-import type { Payload } from '@/generated/household_page'
+import type { Payload } from '@/types/household_page'
 import type { Cell, Gap, MoneyBlock, Shown } from './householdTypes'
 
 const figure = (cell: Cell) => ({

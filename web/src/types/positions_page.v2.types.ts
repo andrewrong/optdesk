@@ -1,4 +1,4 @@
-// TEMPORARY placeholder, copied from the old repository's generated types until the week1-schemas issue generates them.
+// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
 export type BuildId = string
 export type DataTime = string
 export type Source = string
@@ -20,7 +20,7 @@ export type Notes = string[]
 export type RunId = string
 export type RunStatus = ("ok" | "partial" | "failed")
 export type Schema = "positions_page"
-export type SchemaVersion = 3
+export type SchemaVersion = 2
 export type Scope = string
 export type DataTime1 = string
 export type StaleAfter = string
@@ -34,12 +34,12 @@ export type Views = [PositionsView, PositionsView, PositionsView]
 export type Key = ("me" | "spouse" | "household")
 export type Label = ("我" | "配偶" | "家庭")
 /**
- * @minItems 11
- * @maxItems 11
+ * @minItems 10
+ * @maxItems 10
  */
-export type Columns = [OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn]
+export type Columns = [OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn, OptionColumn]
 export type Align = ("left" | "right")
-export type Id = ("code" | "name" | "expiry" | "days_left" | "role" | "quantity" | "cost" | "price" | "day" | "unrealised" | "open_premium")
+export type Id = ("code" | "name" | "expiry" | "days_left" | "role" | "quantity" | "cost" | "price" | "day" | "unrealised")
 export type Label1 = string
 export type Text2 = string
 export type Value = string
@@ -57,19 +57,12 @@ export type Text5 = string
 export type Unit2 = "days"
 export type Value3 = number
 export type Expiry = (TextCell | Gap)
-export type OpenPremium = (PremiumCell | Gap)
-export type Currency1 = ("USD" | "JPY")
-export type Note = (string | null)
-export type Text6 = string
-export type Tone1 = (("up" | "down" | "flat" | "none") | null)
-export type Unit3 = ("usd" | "usd_per_share" | "usd_signed")
-export type Value4 = number
 export type Price = (MoneyCell | Gap)
-export type Text7 = string
-export type Unit4 = ("shares" | "contracts")
-export type Value5 = number
-export type Text8 = ("我" | "配偶")
-export type Value6 = ("我" | "配偶")
+export type Text6 = string
+export type Unit3 = ("shares" | "contracts")
+export type Value4 = number
+export type Text7 = ("我" | "配偶")
+export type Value5 = ("我" | "配偶")
 export type Unrealised = (MoneyCell | Gap)
 /**
  * @minItems 0
@@ -104,10 +97,10 @@ export type Align2 = ("left" | "right")
 export type Id2 = ("time" | "account" | "action" | "instrument" | "quantity" | "price")
 export type Label3 = string
 export type Account = (Cell | Gap)
-export type Text9 = string
-export type Tone2 = ("up" | "down" | "flat" | "none")
-export type Unit5 = (("USD" | "usd_signed" | "percent" | "share_percent" | "index_points" | "percent_of_track" | "vol_points" | "percentage_points") | null)
-export type Value7 = (number | null)
+export type Text8 = string
+export type Tone1 = ("up" | "down" | "flat" | "none")
+export type Unit4 = (("USD" | "usd_signed" | "percent" | "share_percent" | "index_points" | "percent_of_track" | "vol_points" | "percentage_points") | null)
+export type Value6 = (number | null)
 export type Action = (Cell | Gap)
 export type Instrument = (Cell | Gap)
 export type Price2 = (Cell | Gap)
@@ -186,7 +179,6 @@ day: Day
 days_left: DaysLeft
 expiry: Expiry
 name: TextCell
-open_premium: OpenPremium
 price: Price
 quantity: QuantityCell
 role: RoleCell
@@ -223,29 +215,17 @@ text: Text5
 unit: Unit2
 value: Value3
 }
-/**
- * A ``MoneyCell`` with a line under it: ``多笔 N`` when the sum is over more than one lot.
- */
-export interface PremiumCell {
-approx_usd?: (UsdFigure | null)
-currency: Currency1
-note?: Note
+export interface QuantityCell {
 text: Text6
-tone?: Tone1
 unit: Unit3
 value: Value4
-}
-export interface QuantityCell {
-text: Text7
-unit: Unit4
-value: Value5
 }
 /**
  * Closed role vocabulary: neither aliases nor account identifiers are accepted.
  */
 export interface RoleCell {
-text: Text8
-value: Value6
+text: Text7
+value: Value5
 }
 export interface PositionsTable {
 columns: Columns1
@@ -294,8 +274,8 @@ time: Time
  * One displayed table cell.
  */
 export interface Cell {
-text: Text9
-tone: Tone2
-unit?: Unit5
-value?: Value7
+text: Text8
+tone: Tone1
+unit?: Unit4
+value?: Value6
 }

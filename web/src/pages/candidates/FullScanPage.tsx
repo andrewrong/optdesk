@@ -5,12 +5,12 @@ import { DataTable, type Cell, type Column } from '@/components/data-table/data-
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/generated/full_scan'
+import type { Payload } from '@/types/full_scan'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 
-export { validate as validateFullScan } from '@/generated/full_scan'
-export type { Payload as FullScanPayload } from '@/generated/full_scan'
+export { validate as validateFullScan } from '@/types/full_scan'
+export type { Payload as FullScanPayload } from '@/types/full_scan'
 
 type Section = Payload['sections'][number]
 type PayloadTable = NonNullable<Section['table']>
