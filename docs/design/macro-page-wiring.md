@@ -30,7 +30,7 @@ in code until the owner-settings store exists; and the owner's zone is written i
   `.env`, never a flag), loads it with `time.LoadLocation`, and `Load` returns an error when it is unset, empty, `Local`, or not a
   name `time.LoadLocation` accepts. The error names the key and carries no value: `profile: OT_ZONE is not set`,
   `profile: OT_ZONE is not a valid zone name`. So the real binary refuses to start, for every command, without a valid `OT_ZONE`.
-- This is an interface change of the module `repo` (`internal/profile/api.go`): one `(interface)` entry, and it lands before the
+- This is an interface change of the module `repo` (`internal/profile/api.go`): one interface entry, and it lands before the
   issue that uses the field.
 - No zone literal other than `UTC` appears in any file the issues touch. `marketZone` stays for the default day only and is not
   reused for the page.
@@ -60,7 +60,7 @@ same diff as the text. The parser no longer counts (issue 115, merged: it reads 
 2. `ot-test-zone-env` (ot), landed in #128: every test of `cmd/ot` that builds a real profile sets `OT_ZONE=UTC` in its environment map. Green on the
    old `Load`, which ignores the variable. It must land before step 3, because step 3 makes `Load` refuse a real profile without
    the key, and without this step the tests of `cmd/ot` turn red on the merge of step 3.
-3. `profile-zone` (repo, `(interface)`): the field and the rule above. Green after step 2. It is cut after step 1 (its `Design:` line
+3. `profile-zone` (repo, an interface change): the field and the rule above. Green after step 2. It is cut after step 1 (its `Design:` line
    names this file) and can be built in parallel with step 2; only its merge waits.
 4. `ot-macro-page` (ot): the wiring. Needs steps 1 and 3 merged (the generated files allow the import, the field exists).
 
