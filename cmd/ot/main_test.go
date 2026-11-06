@@ -2,9 +2,40 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/clock"
 )
+
+// fakeClock is a clock fixed at one instant.
+type fakeClock struct{ t time.Time }
+
+func (c fakeClock) Now() time.Time { return c.t }
+
+var _ clock.Clock = fakeClock{}
+
+// testApp builds an app over a real-profile OT_HOME in a temp dir holding envBody as .env.
+// It returns the app and the log output.
+func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
+	t.Helper()
+	home := t.TempDir()
+	if envBody != "" {
+		if err := writeFile(home+"/.env", envBody); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env := map[string]string{"OT_HOME": home}
+	var out, errb bytes.Buffer
+	a, err := newApp(func(k string) string { return env[k] }, &out, &errb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.deps = deps{newClock: func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} }}
+	return a, &errb
+}
 
 func TestDemoProfile(t *testing.T) {
 	t.Parallel()
@@ -62,3 +93,7 @@ func TestBadProfileStopsStart(t *testing.T) {
 		t.Fatalf("exit %d, stdout %q", code, out.String())
 	}
 }
+
+func writeFile(path, body string) error { return os.WriteFile(path, []byte(body), 0o600) }
+
+func readFile(path string) ([]byte, error) { return os.ReadFile(path) }

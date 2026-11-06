@@ -19,6 +19,8 @@ type app struct {
 	profile profile.Profile
 	log     *slog.Logger
 	stdout  io.Writer
+	getenv  func(string) string
+	deps    deps
 }
 
 // command runs one subcommand with the arguments after its name.
@@ -43,7 +45,7 @@ func newApp(getenv func(string) string, stdout, stderr io.Writer) (*app, error) 
 		return nil, err
 	}
 	h := wrap(p, slog.NewTextHandler(stderr, nil))
-	return &app{profile: p, log: slog.New(h), stdout: stdout}, nil
+	return &app{profile: p, log: slog.New(h), stdout: stdout, getenv: getenv}, nil
 }
 
 func usage(stderr io.Writer) {
@@ -61,6 +63,7 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 		fmt.Fprintln(stderr, "ot:", err)
 		return 2
 	}
+	a.deps = newDeps()
 	if len(args) == 0 || commands[args[0]] == nil {
 		usage(stderr)
 		return 2
