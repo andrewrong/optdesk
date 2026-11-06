@@ -9,6 +9,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.
 - A calendar id and two `contracts.Day` values (`YYYY-MM-DD`, market zone) to `SessionDays`.
 - A connection string to `sessionday.Open`; a `*sql.DB` and an `fs.FS` of SQL files to `migrate`.
+- The administrative DSN and an `fs.FS` of SQL files to `setup.MigrateUp`, which applies them as `ot_owner` in the database `optdesk`; the administrative DSN to `setup.OwnerDSN`, which returns the DSN of that database with the startup option that sets the role `ot_owner`, for `sessionday.Open`.
 
 ## Outputs
 
@@ -23,11 +24,13 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `session_day` is the market-zone date, not a UTC date.
 - Only files under `internal/store/` import pgx.
 - `ot_runner` has SELECT on `master.session_day` and nothing else there (`migrations/0004_session_day_grant.sql`).
+- `setup.MigrateUp` keeps goose's version table in `meta.goose_db_version`, not `public`; the session sets the role `ot_owner` first and then `search_path` to `meta`, so the schema and the table belong to `ot_owner`. Its errors name a stage (`parse`, `connect`, `set role`, `schema`) and never hold the DSN.
 
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
 - v2: `ot_runner` may read `master.session_day` (migration 0004).
+- v3: `setup.MigrateUp` and `setup.OwnerDSN` (migrations and a session-day store as `ot_owner` from the administrative DSN); version table `meta.goose_db_version`.
 
 ## Contract tests
 
