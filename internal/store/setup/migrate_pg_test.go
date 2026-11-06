@@ -20,7 +20,7 @@ import (
 
 const migrationsDir = "../../../migrations"
 
-// ensureOwnerRoles creates the four roles of week 1 when missing, under an advisory lock because roles are shared
+// ensureOwnerRoles creates the roles of `roles` when missing, under an advisory lock because roles are shared
 // by every database of the server and the tests run in parallel.
 func ensureOwnerRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 	t.Helper()
@@ -28,7 +28,8 @@ func ensureOwnerRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`) }()
-	for _, r := range []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages"} {
+	for _, spec := range roles {
+		r := spec.name
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
@@ -181,5 +182,35 @@ func TestMigrateUpWrongPasswordPG(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), wrong) || strings.Contains(logs.String(), wrong) {
 		t.Fatalf("password leaks into error %q or log %q", err, logs.String())
+	}
+}
+
+// TestMigrateLogsNoSecret: with a sentinel password and DSN in the connection, the error and the log hold neither
+// sentinel; the log names migrations only.
+func TestMigrateLogsNoSecret(t *testing.T) {
+	t.Parallel()
+	s := newScratch(t, true)
+	const wrong, sentinelDSN = "wrong-S3NTINEL-pw", "postgres://sentinel-user:sentinel-dsn-secret@sentinel-host/x"
+	var logs bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logs, nil))
+	err := migrateWith(context.Background(), s.openAs(t, wrong), gooseUp, os.DirFS(migrationsDir), log)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	for _, secret := range []string{wrong, sentinelDSN, "sentinel-dsn-secret", "sentinel-host"} {
+		if strings.Contains(err.Error(), secret) || strings.Contains(logs.String(), secret) {
+			t.Fatalf("%q leaks into error %q or log %q", secret, err, logs.String())
+		}
+	}
+	// A run that succeeds logs migration names, not connection data.
+	logs.Reset()
+	ok := newScratch(t, true)
+	if err := migrateWith(context.Background(), ok.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), log); err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{testPassword, "postgres://", ok.login} {
+		if strings.Contains(logs.String(), secret) {
+			t.Errorf("%q is in the log %q", secret, logs.String())
+		}
 	}
 }

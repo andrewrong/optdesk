@@ -10,6 +10,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - A calendar id and two `contracts.Day` values (`YYYY-MM-DD`, market zone) to `SessionDays`.
 - A connection string to `sessionday.Open`; a `*sql.DB` and an `fs.FS` of SQL files to `migrate`.
 - The administrative DSN and an `fs.FS` of SQL files to `setup.MigrateUp`, which applies them as `ot_owner`; the administrative DSN to `setup.OwnerDSN`, which returns the DSN of the database `optdesk` whose login sets the role `ot_owner`, for `sessionday.Open`.
+- `setup.ReadEnv` reads a `$OT_HOME/.env` file; `store.DSNEnvLoader` (`OT_PG_DSN_LOADER`) names the line that holds the DSN of `ot_loader`.
 
 ## Outputs
 
@@ -25,12 +26,19 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - Only files under `internal/store/` import pgx.
 - `setup.MigrateUp` runs `SET ROLE ot_owner` as the first statement of its one connection, then `SET search_path TO meta` and `CREATE SCHEMA IF NOT EXISTS meta`; the goose version table is `meta.goose_db_version`, owned by `ot_owner`. Its errors for a parse, connect, role or schema step are of fixed text and hold no DSN.
 - `ot_runner` has SELECT on `master.session_day` and nothing else there (`migrations/0004_session_day_grant.sql`).
+- `ot_loader` (LOGIN, no other attribute) is made by `setup.Setup`; its grants are exactly `GRANT USAGE ON SCHEMA master TO ot_loader;`, `GRANT SELECT, INSERT ON master.session_day TO ot_loader;` and `GRANT UPDATE (is_session, open_at, close_at, early_close) ON master.session_day TO ot_loader;` (`migrations/0005_session_day_loader.sql`), plus CONNECT on the database. No key column is updatable, and there is no DELETE, TRUNCATE or grant on another schema.
+- The Down part of `0005` only REVOKEs; no migration drops the role.
+- `Setup` sends a SCRAM-SHA-256 verifier to the server and never a plain password; the plain password is only in `.env`.
+- The verifier is built with 16 random bytes of salt, 4096 iterations and no SASLprep (passwords are ASCII and made by `Setup`).
+- `setup.MigrateUp` logs migration names only, never the DSN, a password, a verifier or a pgx error.
+- On a database made before `0005`, `ot setup pg` must run before `ot migrate`: `0005` fails when the role `ot_loader` is missing.
 
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
 - v2: `ot_runner` may read `master.session_day` (migration 0004).
 - v3: `setup.MigrateUp` and `setup.OwnerDSN`: migrations and a session-day store as `ot_owner` from the administrative DSN; no new role, grant or credential.
+- v4: role `ot_loader` with the grants above and the new line `OT_PG_DSN_LOADER` in `$OT_HOME/.env`; `Setup` touches no other line of `.env`.
 
 ## Contract tests
 

@@ -3,7 +3,9 @@
 package setup
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -59,6 +61,15 @@ func TestSetupPG(t *testing.T) {
 	})
 
 	ensureRoles(ctx, t, admin)
+	// ot_loader is shared with TestLoaderGrantsPG, which connects with testPassword: hold lock 54 while Setup
+	// changes its password and put testPassword back before the lock goes.
+	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = admin.Exec(ctx, "ALTER ROLE "+ident(roleLoader)+" PASSWORD "+literal(scramVerifier(testPassword, newSalt())))
+		_, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
+	}()
 
 	home := t.TempDir()
 	seed := seedEnv(t, dsn)
@@ -68,10 +79,12 @@ func TestSetupPG(t *testing.T) {
 	}
 
 	cfg := store.SetupConfig{AdminDSN: dsn, Home: home}
-	if err := Setup(ctx, cfg); err != nil {
+	var logs bytes.Buffer
+	if err := run(ctx, cfg, extensions, slog.New(slog.NewTextHandler(&logs, nil))); err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
 	first, _ := os.ReadFile(envPath)
+	loaderPW := checkLoaderLine(t, seed, string(first), logs.String())
 	if err := Setup(ctx, cfg); err != nil {
 		t.Fatalf("second Setup: %v", err)
 	}
@@ -83,7 +96,10 @@ func TestSetupPG(t *testing.T) {
 	if err != nil || env["FRED_API_KEY"] != "kept" {
 		t.Fatalf("env = %v, %v", env, err)
 	}
-	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages} {
+	if again := passwordOf(env[store.DSNEnvLoader], roleLoader); again != loaderPW {
+		t.Error("the second run changed the loader password")
+	}
+	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader} {
 		c, err := pgx.Connect(ctx, env[key])
 		if err != nil {
 			t.Fatalf("connect with %s: %v", key, err)
@@ -127,7 +143,7 @@ func seedEnv(t *testing.T, dsn string) string {
 	var seed strings.Builder
 	seed.WriteString("FRED_API_KEY=kept\n")
 	for _, r := range roles {
-		if r.envKey == "" {
+		if r.envKey == "" || r.name == roleLoader {
 			continue
 		}
 		d, err := roleDSN(dsn, r.name, testPassword)
@@ -137,4 +153,47 @@ func seedEnv(t *testing.T, dsn string) string {
 		seed.WriteString(r.envKey + "=" + d + "\n")
 	}
 	return seed.String()
+}
+
+// TestSetupLogsNoSecret: run with a failing admin DSN holds no password, verifier or DSN in its error.
+func TestSetupLogsNoSecret(t *testing.T) {
+	t.Parallel()
+	const secret = "sentinel-admin-pw"
+	var logs bytes.Buffer
+	dsn := "postgres://admin:" + secret + "@127.0.0.1:1/postgres?connect_timeout=1"
+	err := run(context.Background(), store.SetupConfig{AdminDSN: dsn, Home: t.TempDir()}, extensions, slog.New(slog.NewTextHandler(&logs, nil)))
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	for _, s := range []string{secret, "SCRAM-SHA-256", dsn} {
+		if strings.Contains(err.Error(), s) {
+			t.Errorf("the error holds %q: %v", s, err)
+		}
+		if strings.Contains(logs.String(), s) {
+			t.Errorf("the log holds %q", s)
+		}
+	}
+}
+
+// checkLoaderLine asserts that Setup added exactly the loader line to the seed and kept every secret out of the
+// log; it returns the loader password.
+func checkLoaderLine(t *testing.T, seed, first, logs string) string {
+	t.Helper()
+	if !strings.HasPrefix(first, seed) {
+		t.Errorf("the seeded lines changed:\n%s", first)
+	}
+	loaderLine := strings.TrimPrefix(first, seed)
+	if strings.Count(loaderLine, "\n") != 1 || !strings.HasPrefix(loaderLine, store.DSNEnvLoader+"=") {
+		t.Fatalf("Setup added %q, want one %s line", loaderLine, store.DSNEnvLoader)
+	}
+	lu, err := url.Parse(strings.TrimSuffix(strings.TrimPrefix(loaderLine, store.DSNEnvLoader+"="), "\n"))
+	if err != nil || lu.User.Username() != roleLoader || lu.Path != "/"+Database {
+		t.Fatalf("loader DSN user/database wrong: %v", err)
+	}
+	loaderPW, _ := lu.User.Password()
+	if strings.Contains(logs, loaderPW) || strings.Contains(logs, loaderLine) ||
+		strings.Contains(logs, "SCRAM-SHA-256") {
+		t.Errorf("TestSetupLogsNoSecret: the log holds a secret: %s", logs)
+	}
+	return loaderPW
 }
