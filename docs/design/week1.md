@@ -33,9 +33,9 @@ Every other entry lies in one module. The entries that change the Go dependencie
 two-module entries because `go.mod` and `go.sum` belong to repo and the AGENTS.md rule is that the files that
 change are named; each says so, and each is the issue that first imports the dependency (issue 1 adds the
 test-kit clock, the generator tools and the runtime schema validator, so 5, 7, 9, 10 and 12 need no change of go.mod; 11 adds the TOML reader of `job.toml`; 6 and 8
-both use pgx and goose, and each lists go.mod and go.sum and requires them, so whichever lands second finds them
-there and its go.mod change is empty or a trivial rebase). Issues that list
-go.mod or go.sum (1, 2, 4, 6, 8, 11: the serialised set, listed here once) are never run at the same time, so their rebases do not conflict. The
+both use pgx and goose, and each lists go.mod and go.sum and requires them, so 8 lands after 6 and finds them
+there, and its go.mod change is empty or a trivial rebase). Issues that list
+go.mod or go.sum (1, 2, 4, 6, 8, 11: the serialised set, listed here once) land one after another in that order, each naming every earlier one in `Order: after`, so their rebases do not conflict. The
 advisor's original list is cut into the issues of `## Issues` (the numbers 13, 15 and 16 are left
 unused so that the anchors of the others stay stable; their work is in Left out). The interface skeleton is issue 1; the dataset slice
 (calendar contract, store and clock were one issue) is cut by module; the owner added the carry-over of the binding decisions (issue 17).
@@ -134,7 +134,7 @@ datasets, the macro_rates page schema with its input and golden fixtures, the mi
 `## Interface`), issue 2 (the repo skeleton: scripts, profile, subcommand registry, lint and arch files) and issue 3 (the
 workflows ci-go, ci-web, hygiene and checks, owner-merged). Wave 1 is issues 4 to 12, 14 and 17: each needs only landed wave-0 work (the interface files, the shared inputs
 named above, the workflows) and tests against fakes; none needs the output of a sibling of wave 1. Issues of wave 1 that change go.mod or
-go.sum (the serialised set of `## Modules`) are serialised by the dispatcher because of rebases, not because one needs the other's
+go.sum (the serialised set of `## Modules`) are ordered 4, 6, 8, 11 by their `Order: after` lines because of rebases, not because one needs the other's
 output. There is no wave 2: what would need the merged output of wave 1 is cut by a follow-up design (see Left out). owner_only (the owner merges): 3 (`.github/`, wave 0, so every wave-1 issue starts after it) and 4
 (`contracts/proto/`, the whole pull request). Several steps need the owner (owner-first items, Probe 0 of the
 advisor list, the private-repository copies of 14 and 17); the chain 1, 2, 3 and 14 is the web slot's long pole.
@@ -255,7 +255,7 @@ requests are notes below the acceptance list, not acceptance items.
   - Offline: `grep -rl 'jackc/pgx' --include=*.go .` lists only files under `internal/store/`; depguard still bans pgx elsewhere.
   - `docs/contracts/store.md` has the eight headings of the contract-document rule in `## Interface` (`grep -cE '^## (Responsibility|Inputs|Outputs|Invariants|Version history|Contract tests|Jobs and slots|Forbidden)$' docs/contracts/store.md` prints 8), and its `## Inputs` names `master.session_day r1` (`grep -c 'master.session_day r1' docs/contracts/store.md` is at least 1).
   Note (not acceptance): if this issue lands before 8, its pull request description names pgx and goose with their licences (`### Libraries` in this design).
-  Depends on: 1, 3. Order: after 1, 3.
+  Depends on: 1, 3. Order: after 1, 2, 3, 4.
   Size: M
 
 ### clock-reader
@@ -292,7 +292,7 @@ requests are notes below the acceptance list, not acceptance items.
   - The wiring constructors exist with their declared types: `grep -rn 'var _ store.OpenSeriesFunc\|var _ store.OpenLedgerFunc\|var _ store.SetupFunc' internal/store` prints three lines.
   Owner's word: given 2026-11-05 (writing generated passwords into `$OT_HOME/.env` allowed). After the follow-up wiring lands the owner runs `ot setup pg` once on the owner's machine; it generates passwords and writes them into `$OT_HOME/.env`; this design does not run it and no test touches a real `$OT_HOME`. `$OT_HOME/.env` holds secrets only: the PG DSNs this command writes, FRED_API_KEY (week 1) and IB_FLEX_TOKEN (week 5); gateway host/port/client id, Flex query ids, account aliases, limits and pools are settings (code defaults until the settings page exists), not lines of `.env` (relayed owner ruling, 2026-11-05).
   Note (not acceptance): if this issue lands before 6, its pull request description names pgx and goose with their licences (`### Libraries` in this design).
-  Depends on: 1, 3. Order: after 1, 3.
+  Depends on: 1, 3. Order: after 1, 2, 3, 4, 6.
   Size: M
 
 ### sources-fred
@@ -347,7 +347,7 @@ requests are notes below the acceptance list, not acceptance items.
   - The wiring constructor exists with its declared type: `grep -rn 'var _ jobs.NewFredSeriesFunc = New' internal/jobs/fredseries` prints one line.
   - `go.mod` requires go-toml (`grep -c 'pelletier/go-toml/v2 v' go.mod` prints 1) and `internal/jobs/fredseries/plan.go` imports it (`grep -c 'pelletier/go-toml/v2' internal/jobs/fredseries/plan.go` is at least 1).
   Note (not acceptance): the pull request description names go-toml with its licence (`### Libraries` in this design).
-  Depends on: 1, 3. Order: after 1, 3.
+  Depends on: 1, 3. Order: after 1, 2, 3, 4, 6, 8.
   Size: M
 
 ### pages-macro-rates
