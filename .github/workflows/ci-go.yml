@@ -89,6 +89,13 @@ jobs:
   test-pg:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: ci-only-throwaway
+      PGDATABASE: optdesk_test
+      PGSSLMODE: disable
     services:
       timescaledb:
         image: timescale/timescaledb:2.30.2-pg17@sha256:b346edcdb51a1fd6020e3965e0bd1c9f3406fa6d5fbce1e28f4852587ef934e2
