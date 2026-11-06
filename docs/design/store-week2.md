@@ -27,7 +27,9 @@ Read at the base (origin/main caacdb4, which includes #135; every item read or g
   a view in schema `rd`, owners and grants. `0003_ops_ledger.sql` gives `ot_w_series_fred` `REFERENCES, SELECT` on
   `ops.capture_run`.
 - `ops.capture_run` exists (0003) with `run_id text` as primary key and no `capture_id`, `kind` or `partial` column; its
-  `status` is text with only `running` and `done` used by the runner. No FK from an obs table can name a `capture_id` yet.
+  `status` is text with only `running` and `done` used by the runner. Schema v3 has `capture_id uuid` as its key, with
+  `kind`, `generation` and `attempt` columns; the table on main is a different shape, so a foreign key to `run_id` would
+  have to be redone.
 - `internal/store/setup/setup.go`: `roles` has five entries (`ot_owner`, `ot_runner`, `ot_w_series_fred`, `ot_ro_pages`,
   `ot_loader`), one `GRANT CONNECT` statement names the four login roles, `ensureRole` sends a SCRAM-SHA-256 verifier
   (`scramVerifier`), and `extensions` is `timescaledb`. `TestRolesTable` expects five roles.
@@ -65,8 +67,9 @@ Proposal.
   (`obs.quote_snapshot`).
 - Two new writer roles, `ot_w_option_eod` and `ot_w_quote_snapshot`, one `.env` line each, created by `Setup` with a SCRAM
   verifier like `ot_loader`; the password is only in `.env`.
-- Scope cut, stated: r1 stores every column of v3 and keeps the keys and identity fields, but (a) `capture_id` has no foreign
-  key yet because `ops.capture_run` has no `capture_id`; (b) the views `rd.option_eod_r1` and `rd.quote_snapshot_r1`
+- Scope cut, stated: r1 stores every column of v3 and keeps the keys and identity fields, but (a) `capture_id` is a uuid and part of
+  the v3 keys now, but has no foreign key yet: `ops.capture_run` on main has `run_id text` as its key, v3 has `capture_id
+  uuid` plus `kind`, `generation` and `attempt`, and a key on `run_id` now would be redone; (b) the views `rd.option_eod_r1` and `rd.quote_snapshot_r1`
   pass every row through instead of picking the best row per key, because the pick needs the capture ledger's status and
   finish time; (c) `underlying_id`, `instrument_id` and `terms_version_id` are plain `bigint` columns because the master
   tables do not exist. A follow-up design (`capture-ledger`, `## Left out`) adds the ledger columns, the three constraints
@@ -76,12 +79,30 @@ Questions for the reviewer and the owner.
 
 1. This is a second-opinion case: two new roles and two new credentials (generated passwords written to `$OT_HOME/.env`).
    The owner's word is needed before `store-week2-roles` merges.
-2. Theta: v3 names the sentinel rule for price, size, IV, gamma, vega and delta only. This design treats theta like delta (its
-   CHECK rejects NaN and infinities only, a -1 value is kept as data). Confirm.
-3. Are the chunk, compression and segment settings below (all guesses of the advisor) acceptable for a first migration?
-   `segmentby` and `orderby` cannot change once a table has data, so the pg tests compress a chunk of synthetic rows.
-4. The index IV job: `obs.quote_snapshot` has no IV column in v3; where the index IV figure is stored is not decided
-   here (`## Left out`).
+2. Theta: the CHECK of theta rejects NaN and infinities only, as for delta; the writer applies the same -1 to NULL screen
+   to theta as to delta, so a broker "no value" never lands as -1.0 (answered in `## Second opinion`).
+3. Storage: only the chunk interval and the compression delay are provisional; `segmentby` and `orderby` are fixed by
+   schema v3 and cannot change once a table has data, so the pg tests compress a chunk of synthetic rows as the proof.
+4. The index IV figure is neither on `obs.quote_snapshot` nor on `obs.option_eod`; it has its own follow-up design
+   (`## Left out`).
+
+## Second opinion
+
+The project advisor answered this design (model Claude Fable 5.1, 2026-11-06). The answer binds nothing and the merge
+waits for the owner's word. This is a second-opinion case by one clause: two new roles and two new credentials.
+
+1. Foreign keys and views. The reason to defer them is not that a key is impossible: `ops.capture_run` on main has
+   `run_id text` as its key while schema v3 has `capture_id uuid` with `kind`, `generation` and `attempt`, so a key to
+   `run_id` now would be redone. The tables keep `capture_id uuid` and the v3 primary keys now. `capture-ledger` is a
+   `Depends on` of the first job that writes real rows, so no live row references nothing.
+2. Theta. The CHECK stays at NaN and infinities only; the writer applies the same -1 to NULL screen to theta as to delta, so
+   a broker "no value" never lands as -1.0. The delta acceptance items cover theta.
+3. Storage. Only the chunk interval and the compression delay are provisional; `segmentby` and `orderby` are fixed by
+   schema v3. The pg compression test on synthetic rows stays the proof.
+4. Index IV. A follow-up design, not `obs.quote_snapshot` and not `obs.option_eod`; it defines `market.index_iv`, keyed
+   like the quote table.
+
+Advisor: agrees, with the conditions above, all adopted.
 
 ## Interface
 
@@ -103,7 +124,7 @@ The tables, in words (identifiers are the column names; every price, size, volum
   `theta_per_calendar_day`, `vega_per_vol_point`.
 - storage: a hypertable partitioned on `session_day` with one-month chunks; compression after 7 days, segmented by
   `underlying_id`, ordered by `session_day DESC, capture_id, instrument_id`; an index on `(instrument_id, session_day DESC)`;
-  no retention. These numbers are provisional.
+  no retention. Only the chunk interval and the compression delay are provisional; the segment and order columns are fixed.
 
 `obs.quote_snapshot` (a planned time slot of quotes):
 
@@ -117,12 +138,13 @@ CHECK rules (the contracts generate the numeric ones, the migration repeats them
 
 - price, size, volume, open interest, underlying price: NULL, or at least 0 and neither NaN nor an infinity.
 - `iv_*`, `gamma`, `vega_per_vol_point`: NULL, or not NaN, not an infinity and not -1.
-- `delta` and `theta_per_calendar_day`: NULL, or not NaN and not an infinity (-1 is a legal delta).
+- `delta` and `theta_per_calendar_day`: NULL, or not NaN and not an infinity (-1 is a legal value of both, so the CHECK
+  cannot reject it; the writer turns a -1 into NULL before the insert).
 - `status` between 1 and 5.
 
 Sentinel rule of the writer: the broker boundary turns a "no value" marker into NULL and sets the row status; the store
-writer is a second guard and does it per column. Every sentinel found (-1 in a column that rejects it, and a -1 delta;
-NaN or an infinity anywhere) is stored as NULL, the status of the row is left as the caller set it, and the other columns
+writer is a second guard and does it per column. Every sentinel found (-1 in any numeric column, delta and theta
+included, so a broker "no value" never lands as -1.0; NaN or an infinity anywhere) is stored as NULL, the status of the row is left as the caller set it, and the other columns
 of the row are kept. A row is never rejected or marked as a whole because one column was a sentinel.
 
 Retry rule: the key contains `capture_id`, and the insert is `ON CONFLICT DO NOTHING`. A retry of the same capture
@@ -248,8 +270,8 @@ The store declarations, the package with its shared seam, and the lint files for
   Acceptance:
   1. `api.go` declares the types and constants of `## Interface` and gains no function body (offline: `grep -c '^func ' internal/store/api.go` prints the same number as at caacdb4); it still imports only `context`, `time` and `contracts`.
   2. `api_test.go` has two halves: a fake in the test that implements both stores (a repeat of one key adds no row; a second capture with a new `capture_id` adds one; inclusive range; documented order), and a caller written against the interfaces only that reads the fixtures of `store-week2-schemas` through `contracts.OptionEod` and `contracts.QuoteSnapshot`. Tests `TestOptionEodStoreContract` and `TestQuoteSnapshotStoreContract`.
-  3. `snapshot/db.go` holds the `database` seam (InTx, Select, Close) with its pgx adapter, the typed-error helpers, and two screens: `screenSentinel(v *float64) *float64` (NULL for NaN, an infinity and -1; used for every column except theta, including delta) and `screenNonFinite(v *float64) *float64` (NULL for NaN and an infinity only; used for theta); it declares no `Open` function. Other negative numbers pass through and meet the CHECK of the table.
-  4. `db_test.go` is a table test of both screens on -1, NaN, +Inf, -Inf, 0, -0.5, 0.25 and nil, with the expected result for each (`screenNonFinite` keeps -1 and -0.5; `screenSentinel` keeps -0.5).
+  3. `snapshot/db.go` holds the `database` seam (InTx, Select, Close) with its pgx adapter, the typed-error helpers, and one screen, `screenSentinel(v *float64) *float64` (NULL for NaN, an infinity and -1), used for every numeric column including delta and theta; it declares no `Open` function. Other negative numbers pass through and meet the CHECK of the table.
+  4. `db_test.go` is a table test of `screenSentinel` on -1, NaN, +Inf, -Inf, 0, -0.5, 0.25 and nil, with the expected result for each (-0.5 passes through and meets the CHECK of the table).
   5. `arch.toml` and `.go-arch-lint.yml` are the output of `go run ./scripts/arch` (offline: `go run ./scripts/arch --check` prints nothing and exits 0; `grep -c 'store/snapshot' arch.toml` is 1 or more).
   6. The package imports `store` and `contracts` and no other module, reads no environment and no clock (offline: `grep -rn 'os.Getenv\|time.Now\|time.Sleep' internal/store/snapshot` prints nothing).
   7. No file outside the six listed is in the diff.
@@ -284,8 +306,8 @@ Migration 0006 and the writer and reader of `obs.option_eod`.
   1. `0006_option_eod.sql` creates `obs.option_eod` with the columns, types, primary key and CHECKs of `## Interface`, `NOT NULL` on the key, identity and `currency`, `underlying_ccy`, `status` columns, `create_hypertable` on `session_day` with a one-month chunk, the compression settings, a compression policy of 7 days, the index on `(instrument_id, session_day DESC)`, and no retention policy (offline: `grep -c 'create_hypertable\|add_compression_policy\|compress_segmentby\|compress_orderby' migrations/0006_option_eod.sql` is 4 or more, and `grep -c 'add_retention_policy' migrations/0006_option_eod.sql` prints 0).
   2. The same file creates `rd.option_eod_r1` naming every column; sets `OWNER TO ot_owner` on table and view; grants as in `## Interface` to `ot_w_option_eod`, `ot_runner` and `ot_ro_pages`; no UPDATE, DELETE or TRUNCATE to anyone but the owner; its Down part drops view then table.
   3. `optioneod.go` declares `OpenOptionEod(ctx, dsn) (store.OptionEodStore, error)` with `var _ store.OpenOptionEodFunc = OpenOptionEod`; the insert names every column and ends `ON CONFLICT DO NOTHING`; no `SELECT *` in the package.
-  4. `optioneod_test.go`, against a fake of the seam: the SQL strings; one transaction for several rows; no call for empty input; the context reaches every call; a table test where -1 in `bid`, `iv_decimal`, `gamma` and `delta`, NaN in `theta_per_calendar_day` and +Inf in `volume` each become NULL while every other column and the status of the row are unchanged, and a `theta_per_calendar_day` of -1 is kept; a database error is `Retryable`; a malformed day in the reader is `Permanent`; reader range and order.
-  Checked by CI: `optioneod_pg_test.go` (first line `//go:build pg`; scratch database with a random name, the Timescale extension, migrations 0001 to 0006, roles from the `roles` table under advisory lock 54): `TestOptionEodRoundTripPG` writes `contracts/fixtures/obs.option_eod.r1.json` and reads it back equal; `TestOptionEodRetryPG` inserts one key twice with other prices (first kept) and a second `capture_id` with the same contract (both kept); `TestOptionEodCompressPG` compresses a chunk of the fixture rows and reads them back equal; `TestOptionEodGrantsPG` shows UPDATE, DELETE and SELECT on the table refused for `ot_w_option_eod` and the base table refused but the view readable for `ot_ro_pages`; `TestOptionEodChecksPG` shows a direct INSERT of -1 into `bid` and of NaN into `delta` refused, and of -1 into `delta` accepted.
+  4. `optioneod_test.go`, against a fake of the seam: the SQL strings; one transaction for several rows; no call for empty input; the context reaches every call; a table test where -1 in `bid`, `iv_decimal`, `gamma` and `delta`, -1 and NaN in `theta_per_calendar_day` and +Inf in `volume` each become NULL while every other column and the status of the row are unchanged; a database error is `Retryable`; a malformed day in the reader is `Permanent`; reader range and order.
+  Checked by CI: `optioneod_pg_test.go` (first line `//go:build pg`; scratch database with a random name, the Timescale extension, migrations 0001 to 0006, roles from the `roles` table under advisory lock 54): `TestOptionEodRoundTripPG` writes `contracts/fixtures/obs.option_eod.r1.json` and reads it back equal; `TestOptionEodRetryPG` inserts one key twice with other prices (first kept) and a second `capture_id` with the same contract (both kept); `TestOptionEodCompressPG` compresses a chunk of the fixture rows and reads them back equal; `TestOptionEodGrantsPG` shows UPDATE, DELETE and SELECT on the table refused for `ot_w_option_eod` and the base table refused but the view readable for `ot_ro_pages`; `TestOptionEodChecksPG` shows a direct INSERT of -1 into `bid` and of NaN into `delta` refused, and of -1 into `delta` accepted by the table (the writer never sends it).
   Depends on: store-week2-interface, store-week2-roles. Order: after both; merges before store-quote-snapshot.
   Size: L
 
@@ -335,9 +357,13 @@ owner is told the two new `.env` lines. The two tables are hypertables, so the r
   once the interface has merged; until then each test file keeps its own fake, as `api_test.go` does for series.
 - The capture ledger and what depends on it: `capture_id`, `kind`, a finish time and the `complete`-style statuses on
   `ops.capture_run`, the foreign keys from both tables to it, the winner views that replace the pass-through views, and
-  `ops.job_event`: a follow-up design, `capture-ledger`.
+  `ops.job_event`: a follow-up design, `capture-ledger`. It is a `Depends on` of the first job that writes real rows
+  (weeks 3-4), so no live row holds a `capture_id` that references nothing.
 - The master tables and the foreign keys of `instrument_id`, `underlying_id` and `terms_version_id` to them.
-- Where the index IV figure is stored (v3 has no IV column on `obs.quote_snapshot`), the tick tables and wiring in `cmd/ot`.
+- The index IV figure: it is stored neither in `obs.quote_snapshot` nor in `obs.option_eod`. Schema v3 leaves it as an
+  open question under the name `market.index_iv` (a table whose rows can be fetched again). The design of the index IV job
+  defines that table, keyed like `obs.quote_snapshot` by `(session_day, capture_id, instrument_id)`.
+- The tick tables and wiring in `cmd/ot`.
 - Any ops table or row, any broker, sources or compute code.
 
 ## Adversarial
