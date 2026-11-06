@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/master.session_day.r1.json",
+  "title": "SessionDay",
+  "description": "master.session_day r1: one row per calendar and market-zone session day.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["calendar_id", "session_day", "is_session", "open_at", "close_at", "early_close"],
+  "x-dataset": "master.session_day",
+  "x-revision": "r1",
+  "x-primary-key": ["calendar_id", "session_day"],
+  "properties": {
+    "calendar_id": {"type": "string", "description": "Calendar identifier, for example XNYS."},
+    "session_day": {"type": "string", "format": "date", "description": "The market-zone date of the session (not a UTC date)."},
+    "is_session": {"type": "boolean", "description": "Whether the market trades on this day."},
+    "open_at": {"type": "string", "format": "date-time", "description": "Opening instant (timestamptz, UTC on the wire)."},
+    "close_at": {"type": "string", "format": "date-time", "description": "Closing instant (timestamptz, UTC on the wire)."},
+    "early_close": {"type": "boolean", "description": "Whether the session closes early."}
+  }
+}

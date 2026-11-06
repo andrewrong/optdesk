@@ -1,0 +1,6 @@
+{
+  "files": [
+    {"path": "page.macro_rates.v1.input.json", "sha256": "e9d774b175d2d79557c3088ed0df60d3be6a10102499070910bdaec9dc091f37"},
+    {"path": "page.macro_rates.v1.golden.json", "sha256": "1b0d6a53fd361ab7f064acd5663dd06efad7fdca7ce1d1e90a35ca6c05ba8f78"}
+  ]
+}

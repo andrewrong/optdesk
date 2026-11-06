@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.macro_rates.v1.json",
+  "title": "PageMacroRatesV1",
+  "description": "View model of the macro rates page.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "session_day", "series", "gaps"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "session_day": {"type": "string", "format": "date"},
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "unit", "points"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "unit": {"enum": ["percent", "ratio", "ccy_amount", "count"]},
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["date", "value"],
+              "properties": {
+                "date": {"type": "string", "format": "date"},
+                "value": {"type": ["number", "null"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason"],
+        "properties": {
+          "reason": {"enum": ["no_value", "missing", "source_error"]}
+        }
+      }
+    }
+  }
+}
