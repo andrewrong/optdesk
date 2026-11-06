@@ -20,7 +20,7 @@ function run(edit: (dir: string) => void = () => {}) {
   return spawnSync('node', [script, dir], { encoding: 'utf8' })
 }
 
-function editWebPackage(dir: string, change: (pkg: Record<string, Record<string, string>>) => void) {
+function editWebPackage(dir: string, change: (pkg: { dependencies: Record<string, string> }) => void) {
   const file = join(dir, 'web/package.json')
   const pkg = JSON.parse(readFileSync(file, 'utf8'))
   change(pkg)
