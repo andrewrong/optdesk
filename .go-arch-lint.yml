@@ -63,9 +63,6 @@ deps:
   contracts:
     mayDependOn:
       - contracts/gen
-  contracts/gen:
-    mayDependOn:
-      - contracts
   clock:
     mayDependOn:
       - contracts
