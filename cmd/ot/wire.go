@@ -38,7 +38,11 @@ type deps struct {
 	newHandler     pages.NewHandlerFunc
 	migrateUp      func(ctx context.Context, adminDSN string, fsys fs.FS) error
 	ownerDSN       func(adminDSN string) (string, error)
+	readEnv        store.ReadEnvFunc
 }
+
+// defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
+var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 
 // newDeps returns the real constructors.
 func newDeps() deps {
@@ -56,5 +60,6 @@ func newDeps() deps {
 		newHandler:     embed.Handler,
 		migrateUp:      setup.MigrateUp,
 		ownerDSN:       setup.OwnerDSN,
+		readEnv:        setup.ReadEnv,
 	}
 }

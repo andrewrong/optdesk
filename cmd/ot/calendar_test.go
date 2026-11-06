@@ -61,23 +61,30 @@ type calEnv struct {
 	log       *bytes.Buffer
 	store     *memStore
 	opens     int
-	ownerArgs []string
+	envLines  map[string]string
+	readPaths []string
 }
 
+// newCalEnv builds an app over the process environment env with a fake readEnv that serves e.envLines
+// (the .env lines) and a fake openSessionDay that accepts only the loader DSN.
 func newCalEnv(t *testing.T, env map[string]string, profileName string) *calEnv {
 	t.Helper()
 	var out bytes.Buffer
-	e := &calEnv{store: &memStore{rows: map[string]contracts.SessionDay{}}, log: &bytes.Buffer{}}
+	e := &calEnv{store: &memStore{rows: map[string]contracts.SessionDay{}}, log: &bytes.Buffer{},
+		envLines: map[string]string{store.DSNEnvLoader: "loader-dsn"}}
 	a, err := newApp(func(k string) string { return env[k] }, &out, e.log)
 	if err != nil {
 		t.Fatal(err)
 	}
 	a.profile.Name = profileName
 	a.deps = newDeps()
-	a.deps.ownerDSN = func(dsn string) (string, error) { e.ownerArgs = append(e.ownerArgs, dsn); return "owner:" + dsn, nil }
+	a.deps.readEnv = func(path string) (map[string]string, error) {
+		e.readPaths = append(e.readPaths, path)
+		return e.envLines, nil
+	}
 	a.deps.openSessionDay = func(_ context.Context, dsn string) (store.SessionDayStore, error) {
 		e.opens++
-		if dsn != "owner:admin-dsn" {
+		if dsn != "loader-dsn" {
 			return nil, fmt.Errorf("unexpected dsn %q", dsn)
 		}
 		return e.store, nil
@@ -88,7 +95,7 @@ func newCalEnv(t *testing.T, env map[string]string, profileName string) *calEnv 
 
 func realCal(t *testing.T) *calEnv {
 	t.Helper()
-	return newCalEnv(t, map[string]string{store.AdminDSNEnv: "admin-dsn"}, "real")
+	return newCalEnv(t, map[string]string{"OT_HOME": "home"}, "real")
 }
 
 const goodProv = `{"generator":"g","generator_version":"1","source_library":"s","source_library_version":"2","generated_at":"2026-01-01T00:00:00Z"}`
@@ -138,38 +145,55 @@ func TestCalendarUsage(t *testing.T) {
 
 func TestCalendarLoadDemoRefused(t *testing.T) {
 	t.Parallel()
-	e := newCalEnv(t, map[string]string{store.AdminDSNEnv: "admin-dsn"}, "demo")
+	e := newCalEnv(t, map[string]string{"OT_HOME": "home"}, "demo")
 	err := runCalendar(e.a, []string{"load", filepath.Join(t.TempDir(), "missing.json")})
 	if err == nil || strings.Contains(err.Error(), "missing.json") || e.opens != 0 {
 		t.Fatalf("err %v opens %d", err, e.opens)
 	}
 }
 
-func TestCalendarLoadUnsetDSN(t *testing.T) {
+func TestCalendarLoadNoLoaderLine(t *testing.T) {
 	t.Parallel()
-	e := newCalEnv(t, map[string]string{}, "real")
+	for name, lines := range map[string]map[string]string{"absent": {}, "empty": {store.DSNEnvLoader: ""}} {
+		e := realCal(t)
+		e.envLines = lines
+		err := runCalendar(e.a, []string{"load", syntheticFile})
+		if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || !strings.Contains(err.Error(), "ot setup pg") || e.opens != 0 {
+			t.Errorf("%s: err %v opens %d", name, err, e.opens)
+		}
+	}
+}
+
+func TestCalendarLoadNeverFallsBack(t *testing.T) {
+	t.Parallel()
+	e := newCalEnv(t, map[string]string{"OT_HOME": "home", store.AdminDSNEnv: "admin-dsn"}, "real")
+	e.envLines = map[string]string{}
 	err := runCalendar(e.a, []string{"load", syntheticFile})
-	if err == nil || !strings.Contains(err.Error(), store.AdminDSNEnv) || e.opens != 0 || len(e.ownerArgs) != 0 {
+	if err == nil || e.opens != 0 || len(e.store.batches) != 0 {
 		t.Fatalf("err %v opens %d", err, e.opens)
 	}
 }
 
-func TestCalendarLoadOwnerFailureWritesNothing(t *testing.T) {
+func TestCalendarLoadChecksBeforeEnv(t *testing.T) {
 	t.Parallel()
 	e := realCal(t)
-	e.a.deps.ownerDSN = func(string) (string, error) { return "", errors.New("owner-secret-text") }
-	err := runCalendar(e.a, []string{"load", syntheticFile})
-	if err == nil || strings.Contains(err.Error(), "owner-secret-text") || e.opens != 0 || len(e.store.batches) != 0 {
-		t.Fatalf("err %v opens %d", err, e.opens)
+	p := writeCal(t, "", rowJSON("TEST", "2026-03-02", true, false, "2026-03-02T14:30:00Z", "2026-03-02T21:00:00Z"))
+	err := runCalendar(e.a, []string{"load", p})
+	if err == nil || !strings.Contains(err.Error(), "provenance") || len(e.readPaths) != 0 || e.opens != 0 {
+		t.Fatalf("err %v reads %v opens %d", err, e.readPaths, e.opens)
 	}
-	e = realCal(t)
+}
+
+func TestCalendarLoadOpenFailureWritesNothing(t *testing.T) {
+	t.Parallel()
+	e := realCal(t)
 	e.a.deps.openSessionDay = func(context.Context, string) (store.SessionDayStore, error) {
 		e.opens++
 		return nil, errors.New("open-secret-text")
 	}
-	err = runCalendar(e.a, []string{"load", syntheticFile})
-	if err == nil || strings.Contains(err.Error(), "open-secret-text") || len(e.store.batches) != 0 || e.store.closed != 0 {
-		t.Fatalf("err %v", err)
+	err := runCalendar(e.a, []string{"load", syntheticFile})
+	if err == nil || strings.Contains(err.Error(), "open-secret-text") || e.opens != 1 || len(e.store.batches) != 0 || e.store.closed != 0 {
+		t.Fatalf("err %v opens %d", err, e.opens)
 	}
 }
 
@@ -384,18 +408,17 @@ func TestCalendarLoadFeedsCalendar(t *testing.T) {
 func calSentinel(t *testing.T, dsn string) {
 	t.Helper()
 	e := realCal(t)
-	e.a.deps.ownerDSN = func(string) (string, error) { return "", errors.New("bad " + dsn + " pw sentinel-pw") }
-	err := runCalendar(e.a, []string{"load", syntheticFile})
-	e.a.log.Error("command failed", "component", "ot", "err", err.Error())
-	e = realCal(t)
 	e.a.deps.openSessionDay = func(context.Context, string) (store.SessionDayStore, error) {
 		return nil, errors.New("dial " + dsn + " pw sentinel-pw")
 	}
-	err2 := runCalendar(e.a, []string{"load", syntheticFile})
-	e.a.log.Error("command failed", "component", "ot", "err", err2.Error())
+	err := runCalendar(e.a, []string{"load", syntheticFile})
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	e.a.log.Error("command failed", "component", "ot", "err", err.Error())
 	for _, s := range []string{dsn, "sentinel-pw"} {
-		if strings.Contains(err.Error(), s) || strings.Contains(err2.Error(), s) || strings.Contains(e.log.String(), s) {
-			t.Fatalf("secret %q leaked: %v / %v / %q", s, err, err2, e.log.String())
+		if strings.Contains(err.Error(), s) || strings.Contains(e.log.String(), s) {
+			t.Fatalf("secret %q leaked: %v / %q", s, err, e.log.String())
 		}
 	}
 }

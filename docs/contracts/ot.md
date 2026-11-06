@@ -12,7 +12,7 @@ The subcommands:
 - `ot setup pg`: sets up the PostgreSQL roles through `store.SetupFunc`, under the administrative DSN.
 - `ot version`: prints the version and the profile.
 - `ot migrate [--dir DIR]`: applies the migration files of a directory under the administrative DSN, as the owner role.
-- `ot calendar load FILE [FILE ...]`: reads session-day calendar files and upserts their rows through the session-day store, as the owner role.
+- `ot calendar load FILE [FILE ...]`: reads session-day calendar files and upserts their rows through the session-day store, with the DSN of `ot_loader` from `OT_PG_DSN_LOADER`.
 
 ## Inputs
 
@@ -31,17 +31,18 @@ Environment names (names only; no value is written in this document, in a log or
 
 | Name | Source | Read by |
 |---|---|---|
-| `OT_HOME` | process environment | the profile (all commands); `setup pg` (its home); the `.env` path of run-once, page, serve |
+| `OT_HOME` | process environment | the profile (all commands); `setup pg` (its home); the `.env` path of run-once, page, serve and calendar load |
 | `OT_PROFILE` | process environment | the profile (all commands) |
-| `OT_PG_ADMIN_DSN` | process environment | `ot setup pg`, `ot migrate`, `ot calendar load` |
+| `OT_PG_ADMIN_DSN` | process environment | `ot setup pg`, `ot migrate` |
 | `OT_PG_DSN_RUNNER` | `$OT_HOME/.env` | `ot run-once` (session-day store and ledger) |
 | `OT_PG_DSN_SERIES_FRED` | `$OT_HOME/.env` | `ot run-once` (series store) |
+| `OT_PG_DSN_LOADER` | `$OT_HOME/.env` | `ot calendar load` (session-day store) |
 | `OT_PG_DSN_PAGES` | `$OT_HOME/.env` | `ot page` and `ot serve` (series reader), real profile only |
 | `FRED_API_KEY` | `$OT_HOME/.env` | `ot run-once` (FRED source) |
 
-The `OT_PG_` names are the constants `store.AdminDSNEnv`, `store.DSNEnvRunner`, `store.DSNEnvSeriesFred` and `store.DSNEnvPages` of `internal/store/api.go`. A name that is unset or empty is an error that names the variable and no value (`OT_PG_ADMIN_DSN is not set`, `OT_PG_DSN_PAGES is missing in .env`).
+The `OT_PG_` names are the constants `store.AdminDSNEnv`, `store.DSNEnvRunner`, `store.DSNEnvSeriesFred` and `store.DSNEnvPages` and `store.DSNEnvLoader` of `internal/store/api.go`. A name that is unset or empty is an error that names the variable and no value (`OT_PG_ADMIN_DSN is not set`, `OT_PG_DSN_PAGES is missing in .env`).
 
-`.env` rules (`readEnvFile`):
+`.env` rules (`setup.ReadEnv`, called through `deps.readEnv`):
 
 - The file is `$OT_HOME/.env`; with `OT_HOME` unset the error is `OT_HOME is not set`.
 - Lines are `KEY=VALUE`; a line without `=` is skipped. Blank lines and lines starting with `#` are skipped. Key and value are trimmed of white space.
@@ -74,7 +75,9 @@ Row rules, checked for every file before anything is written:
 - `ot page` writes the page bytes the builder returned to standard output, or to the file of `--out` (mode 0644).
 - `ot serve` listens on `--addr` and logs `serve listening`. It builds the page per request: the view model is built anew for each request, with the day of `--day` or else today in the market zone at that request. When the build fails it answers 500 with the fixed text `internal error`; no error text reaches the client. A failed listen is an error that names the address. On interrupt it shuts down with a 5 second grace.
 - `ot run-once`, `ot setup pg`, `ot migrate` and `ot calendar load` write nothing to standard output; they log one line with `status=ok` on success.
-- Error texts of `ot migrate`, `ot calendar load` and `ot setup pg` withhold the underlying error, because it may hold `OT_PG_ADMIN_DSN`: the text says the error text is withheld. The calendar file errors name the path, and the row errors the row index and the rule, never a value.
+- Error texts of `ot migrate` and `ot setup pg` withhold the underlying error, because it may hold `OT_PG_ADMIN_DSN`: the text says the error text is withheld.
+- The error texts of the open and load steps of the calendar loader keep that fixed text and say it is withheld because it may hold `OT_PG_DSN_LOADER`.
+- An error at the command boundary never wraps a pgx error. This holds for every command that takes a DSN (`calendar`, `migrate`, `setup`, `page`, `run-once`, `serve`): the error is a new text of fixed wording that names a stage and a line, never the text of the connection error. The calendar file errors name the path, and the row errors the row index and the rule, never a value.
 
 Exit codes, each tied to its condition:
 
@@ -88,7 +91,7 @@ Exit codes, each tied to its condition:
 - Standard error carries logs and usage; standard output carries the output of the command only.
 - No value of a DSN, key or password appears in an error, a log line or this document.
 - `ot calendar load` reads and checks every file before it opens a store; a bad file writes nothing. It loads the files one after the other in the order given. The load is idempotent: loading a file twice gives the same rows.
-- `ot calendar load` opens the store with the owner DSN derived from `OT_PG_ADMIN_DSN` and closes it on every path.
+- `ot calendar load` opens the store with the DSN of `ot_loader` from `OT_PG_DSN_LOADER` and closes it on every path. It reads no administrative DSN and has no fallback: a missing or empty line is an error that names the line and says `ot setup pg` creates it. Every check of the files comes before `.env` is read.
 - `ot run-once` closes every store it opened on every path.
 - `ot page` and `ot serve` open no store in the demo profile.
 - `cmd/ot` calls constructors through the `deps` struct, which a test fills with fakes; no test connects to a live broker or database.
@@ -96,14 +99,15 @@ Exit codes, each tied to its condition:
 ## Version history
 
 - v1: the subcommands `run-once`, `page`, `serve`, `setup`, `version`, `migrate` and `calendar load`.
+- v2: `ot calendar load` takes the DSN of `ot_loader` from the line `OT_PG_DSN_LOADER` of `$OT_HOME/.env` and needs no administrative DSN, which only `ot setup pg` and `ot migrate` read; `.env` is read by one function, `setup.ReadEnv`, through `deps.readEnv`; the rule that an error at the command boundary never wraps a pgx error is written once under Outputs. `calendar_test.go` holds 19 tests after the change. A real `ot calendar load` needs `store-loader-role` merged and `ot setup pg` then `ot migrate` run once more on an existing database; the tests of this version need neither.
 
 ## Contract tests
 
 - `cmd/ot/main_test.go`: `TestDemoProfile` (the profile is demo without `OT_HOME` and only `OT_HOME` and `OT_PROFILE` are read), `TestUnknownCommandIsUsageError` (exit 2 and the list of commands), `TestVersionCommand`, `TestBadProfileStopsStart`.
 - `cmd/ot/serve_test.go`: `TestServeOnBuildError500`, `TestServeOnAnswersBuilderBytes`.
 - `cmd/ot/migrate_test.go`: `TestMigrateCallsUp`, `TestMigrateDefaultDir`, `TestMigrateDemoRefused`, `TestMigrateUnsetDSN`, `TestMigrateMalformedDSN`, `TestMigrateWrongPasswordDSN`.
-- `cmd/ot/calendar_test.go`: `TestCalendarLoadIdempotent`, `TestCalendarUsage`, `TestCalendarLoadDemoRefused`, `TestCalendarLoadProvenanceRequired`, `TestCalendarLoadProvenanceFields`, `TestCalendarLoadRowOrder`, `TestCalendarLoadRowHours`, `TestCalendarLoadClosedDayShape`, `TestCalendarLoadEmptyFile`.
-- `cmd/ot/env_test.go`: `TestReadEnvFileQuotes`, `TestReadEnvFileComments`, `TestReadEnvFileMissing`.
+- `cmd/ot/calendar_test.go`: `TestCalendarLoadIdempotent`, `TestCalendarUsage`, `TestCalendarLoadDemoRefused`, `TestCalendarLoadProvenanceRequired`, `TestCalendarLoadProvenanceFields`, `TestCalendarLoadRowOrder`, `TestCalendarLoadRowHours`, `TestCalendarLoadClosedDayShape`, `TestCalendarLoadEmptyFile`, `TestCalendarLoadNoLoaderLine`, `TestCalendarLoadNeverFallsBack`, `TestCalendarLoadChecksBeforeEnv`.
+- `cmd/ot/env_test.go`: `TestEnvFileHomeUnset`, `TestEnvFilePassesPath`, `TestEnvFileReturnsReaderError`, `TestEnvFileNilReaderFallsBack`, `TestNoCommandLeaksDSN`, `TestLeakTableCoversCommands`.
 - `cmd/ot/page_test.go`: `TestPageBytesAreBuilderBytes`, `TestPageDemoOpensNoStore`.
 - `cmd/ot/runonce_test.go`: `TestRunOnceDayReachesReconcile`, `TestRunOnceDemoRefused`, `TestRunOnceMissingKey`, `TestRunOnceClosesStores`.
 - `cmd/ot/setup_test.go`: `TestSetupPassesConfig`, `TestSetupArgumentMustBePg`.

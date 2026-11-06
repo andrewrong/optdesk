@@ -35,10 +35,6 @@ func runCalendar(a *app, args []string) error {
 	if a.profile.Name == "demo" {
 		return fmt.Errorf("calendar load needs a real profile; the demo profile opens no store")
 	}
-	dsn := a.getenv(store.AdminDSNEnv)
-	if dsn == "" {
-		return fmt.Errorf("%s is not set", store.AdminDSNEnv)
-	}
 	files := make([][]contracts.SessionDay, 0, len(args)-1)
 	for _, path := range args[1:] {
 		rows, err := readCalendarFile(path)
@@ -47,19 +43,23 @@ func runCalendar(a *app, args []string) error {
 		}
 		files = append(files, rows)
 	}
-	ctx := context.Background()
-	ownerDSN, err := a.deps.ownerDSN(dsn)
+	env, err := a.envFile()
 	if err != nil {
-		return fmt.Errorf("owner DSN from %s failed; the error text is withheld because it may hold %s", store.AdminDSNEnv, store.AdminDSNEnv)
+		return err
 	}
-	sd, err := a.deps.openSessionDay(ctx, ownerDSN)
+	dsn := env[store.DSNEnvLoader]
+	if dsn == "" {
+		return fmt.Errorf("%s is missing in .env; ot setup pg creates it", store.DSNEnvLoader)
+	}
+	ctx := context.Background()
+	sd, err := a.deps.openSessionDay(ctx, dsn)
 	if err != nil {
-		return fmt.Errorf("open session-day store with %s failed; the error text is withheld because it may hold %s", store.AdminDSNEnv, store.AdminDSNEnv)
+		return fmt.Errorf("open session-day store with %s failed; the error text is withheld because it may hold %s", store.DSNEnvLoader, store.DSNEnvLoader)
 	}
 	defer func() { _ = sd.Close() }()
 	for i, rows := range files {
 		if err := sd.UpsertSessionDays(ctx, rows); err != nil {
-			return fmt.Errorf("load %s failed; the error text is withheld because it may hold %s", args[1+i], store.AdminDSNEnv)
+			return fmt.Errorf("load %s failed; the error text is withheld because it may hold %s", args[1+i], store.DSNEnvLoader)
 		}
 		a.log.Info("calendar "+args[1+i]+" loaded", "component", "ot", "rows", len(rows), "status", "ok")
 	}
