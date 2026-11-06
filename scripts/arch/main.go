@@ -77,11 +77,11 @@ func parseModules(text string) ([]row, error) {
 }
 
 // parseImpl reads the implementation packages that the composition root may import:
-// the backticked internal/<a>/<b> paths between "these eleven" and "Any other import".
+// the backticked internal/<a>/<b> paths after "one constructor each" and before "Any other import".
 func parseImpl(text string) ([]string, error) {
-	_, rest, ok := strings.Cut(text, "these eleven")
+	_, rest, ok := strings.Cut(text, "one constructor each")
 	if !ok {
-		return nil, errors.New("no 'these eleven' list")
+		return nil, errors.New("no 'one constructor each' list")
 	}
 	list, _, _ := strings.Cut(rest, "Any other import")
 	var out []string
