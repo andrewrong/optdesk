@@ -2,9 +2,9 @@
 
 Author: advisor of optdesk (first draft)
 Source: `## Left out` of `docs/design/week1-wiring.md`, which promises this follow-up for the issues
-`store-wiring-support`, `ot-run-once` and `ot-page-serve-setup`. Identifiers were read on main at 9f457d2, except
-those of `internal/jobs/fredseries`, which are fixed by the entry `### jobs-fred-series` of `docs/design/week1.md`
-and by `internal/jobs/api.go` and are not merged yet.
+`store-wiring-support`, `ot-run-once` and `ot-page-serve-setup`. Identifiers were read on main at 006fde6;
+`jobs-fred-series` of `docs/design/week1.md` landed in PR 57 (#56), so `internal/jobs/fredseries` (`New`, with the
+compile-time check `var _ jobs.NewFredSeriesFunc = New`) is read there.
 
 Goal of the design: `cmd/ot` has the subcommands `run-once`, `page`, `serve` and `setup pg`, each wired through the
 function types of the interface files; the role `ot_runner` can read `master.session_day`. The slice is wired and
@@ -63,7 +63,7 @@ Names fixed by `ot-wiring`, owned by `cmd/ot` (unexported):
 
 ## Issues
 
-`store-wiring-support` waits for nothing. `ot-wiring` waits for `jobs-fred-series` of week1.md. Items under `Checked by
+`store-wiring-support` and `ot-wiring` wait for nothing: `jobs-fred-series` landed in PR 57 (#56). Items under `Checked by
 CI` are decided by the workflows of the head commit; every other item is a fact read from the diff, with an offline grep
 where it is about behaviour.
 
@@ -75,7 +75,7 @@ The runner role can read the calendar table.
   Design: docs/design/week1-ot.md#store-wiring-support
   Acceptance:
   - `migrations/0004_session_day_grant.sql` has a `-- +goose Up` and a `-- +goose Down` section; Up holds `GRANT USAGE ON SCHEMA master TO ot_runner` and `GRANT SELECT ON master.session_day TO ot_runner` and no other statement; Down revokes the same two.
-  - `sessionday_pg_test.go` (build tag `pg`) creates the four roles itself when missing, under an advisory lock, as `series_pg_test.go` does with its private `ensureRoles` (about 25 lines copied), and applies 0001 and 0004 itself; the file holds a function `TestRunnerReadsOnlyPG` and a `t.Parallel()` (offline: `grep -n 'func TestRunnerReadsOnlyPG' internal/store/sessionday/sessionday_pg_test.go` finds it, and `grep -c 'postgres://[^"]*:[^"]*@' internal/store/sessionday/sessionday_pg_test.go` prints 0, the DSN being built from the `PG*` variables).
+  - `sessionday_pg_test.go` (build tag `pg`) creates the four roles itself when missing, under an advisory lock, as `series_pg_test.go` does with its private `ensureRoles` (about 25 lines copied), and applies 0001, 0002, 0003 and 0004 itself, in that order; the file holds a function `TestRunnerReadsOnlyPG` and a `t.Parallel()` (offline: `grep -n 'func TestRunnerReadsOnlyPG' internal/store/sessionday/sessionday_pg_test.go` finds it, and `grep -c 'postgres://[^"]*:[^"]*@' internal/store/sessionday/sessionday_pg_test.go` prints 0, the DSN being built from the `PG*` variables).
   - `docs/contracts/store.md` names the grant in `## Invariants` (`ot_runner` has SELECT on `master.session_day` and nothing else there) and adds a line to `## Version history`; no heading changes.
   - No file outside the three listed is in the diff; `setup.go` is not edited (it already writes the three DSN lines under the constants of the interface).
   - Checked by CI: ci-go; the `test-pg` job runs `TestRunnerReadsOnlyPG`, which reads a typed row through the real Reader as `ot_runner` and asserts that an INSERT as `ot_runner` fails.
@@ -103,7 +103,7 @@ The `cmd/ot` scaffold and the subcommands `run-once`, `page`, `serve` and `setup
   - Every test of the listed test files calls `t.Parallel()` (offline: `grep -c 't.Parallel()'` of each `_test.go` file is at least the count of its `func Test` lines); none sleeps, and `time.Now` and `time.Sleep` do not appear in `cmd/ot`.
   - Checked by CI: ci-go (build, vet, test, golangci-lint with depguard, forbidigo, noctx and contextcheck, go-arch-lint component `ot`); each new file stays under 600 lines.
   Note (not acceptance): the grant of `store-wiring-support` is a run-time condition of a real database, not a dependency of the code.
-  Depends on: jobs-fred-series of week1.md (`wire.go` imports `internal/jobs/fredseries`). Order: after jobs-fred-series of week1.md.
+  Depends on: none (`jobs-fred-series` of week1.md landed in PR 57 (#56); `wire.go` imports `internal/jobs/fredseries`). Order: any.
   Size: L
 
 ## Left out
@@ -132,5 +132,5 @@ Source: the scratchpad file week1-ot.adversarial.md of the dispatcher window (ke
 - 2 biggest risk (unmerged jobs package, helper for the day): adopted; `dayOrDefault` is named in the scaffold and `marketZone` is a constant; the jobs coupling stays as the Order line and the identifiers follow week1.md and `internal/jobs/api.go`.
 - 3 simpler way (merge the two ot issues): adopted; one `ot-wiring` issue, split by file.
 - 4 lock-in: adopted in part; the second `.env` parser is recorded under `## Left out`; the shared `wire.go` hot spot and the grant on `ot_runner` are accepted as they are.
-- 5 false claims: adopted; the import sentence names the root packages and the eleven packages, and the pg claim says the test applies 0001 to 0004 and creates the roles itself.
+- 5 false claims: adopted; the import sentence names the root packages and the eleven packages, and the pg claim and the acceptance item both require the test to apply 0001 to 0004 (all four) and create the roles it needs.
 - 6 slip causes: adopted; no (interface) mark, test functions named with grep substitutes, pg items under Checked by CI, the DSN text dropped from errors, and `serveOn` takes a listener and a context.
