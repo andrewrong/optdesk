@@ -1,0 +1,50 @@
+# runner contract
+
+## Responsibility
+
+For each session day after the reconcile cursor, up to the requested day, the runner materialises the window of every dataset the registered jobs plan, reconciles expected keys against present keys, starts the repair and recovery runs, and advances the cursor over fully reconciled days. It talks to storage only through `store.OpsLedger`. Keys (`contracts.ExpectedKey`) are opaque; it never reads dataset content.
+
+## Inputs
+
+- `store.OpsLedger`, `clock.Calendar`, `clock.Clock` and the registered `[]contracts.Job` (`runner.NewFunc`, built by `internal/runner/reconcile.New`).
+- The day: `Reconcile(ctx, day)` with a `contracts.Day`.
+- A window rule: `reconcile.WindowRule` (calendar id, open offset, close offset). `New` uses the default rule (calendar `XNYS`, no offsets); `NewWithRule` takes one. Hooking the rule to `job.toml` belongs to the follow-up wiring design.
+- Per job: `Plan(ctx, day)` gives the expected keys and a plan hash.
+
+## Outputs
+
+- Through the ledger: the expected keys of a day (`PutExpected`, only when the merged plan hash changed), one `store.Window` per dataset and session day (`PutWindow`), the runs (`RecordRun`), the present keys (`MarkPresent`) and the cursor (`SetCursor`).
+- `Run.ID` is `day|dataset_id|subject_key|attempt`, deterministic.
+- Errors from the ledger or from `Plan` are returned; a gap is not an error, it holds the cursor.
+
+## Invariants
+
+- State machine of a key on a day: *missing* (no present row) → one repair run (attempt 1, `running` then `done`) → *present* or *no_value*; a run that returns nothing, or ends with a `NoValue` error, gives `no_value`; any other error leaves the key missing. A `running` run whose `LeaseUntil` is before the clock's now is crashed: it is closed (`done`, reason `crashed`) and re-run once (attempt 2). A `running` run with a live lease is pending: nothing is started. At most two runs per key and day; a key still missing after them is an unresolved gap.
+- Window rule: for a session day the window opens at the calendar's `OpenAt` plus the open offset and closes at the calendar's `CloseAt` plus the close offset; a non-session day (Thanksgiving) gets no window; an early close is carried by the calendar's `CloseAt` (13:00 ET). No open or close time is written in Go.
+- A run that starts after the window's `CloseAt` is late (reason `late`); its keys are reconciled all the same.
+- A day is fully reconciled when every expected key is `present` or `no_value`. The cursor advances only over fully reconciled days, in order, and stops at the first day with a gap or a pending run.
+- The run lease (`Acquire`/`Release`) is held for the whole `Reconcile` call.
+- No `time.Now` or `time.Sleep`: time comes from the injected `clock.Clock`.
+- The root package `internal/runner` holds only `api.go` and `api_test.go`; it depends on `contracts`, `clock` and `store` only, never `internal/jobs` or pgx.
+
+## Version history
+
+- v1: window materialisation, repair, crash re-run, cursor.
+
+## Contract tests
+
+- `internal/runner/api_test.go`: the interface from both sides.
+- `internal/runner/reconcile/window_test.go`: `TestWindowThanksgivingAndEarlyClose`, `TestWindowRuleOffsets`.
+- `internal/runner/reconcile/reconcile_test.go`: `TestReconcileRepairNoValueCrash`, `TestFullCycleLateRun`, `TestCursorHoldsOnGap`, and `var _ runner.NewFunc = reconcile.New`.
+
+## Jobs and slots
+
+None yet. The runner runs the registered jobs one key at a time on the calling goroutine; scheduling slots belong to the follow-up wiring design.
+
+## Forbidden
+
+- Reading dataset content or interpreting a key.
+- Importing `internal/jobs` or a database driver; touching ops tables except through `store.OpsLedger`.
+- Hand-written open or close times, holiday lists or half-day rules.
+- Reading the system time.
+- More than one repair run and one crash re-run per key and day.
