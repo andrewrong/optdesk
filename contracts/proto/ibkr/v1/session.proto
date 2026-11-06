@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// Session is the liveness probe of the broker transport.
+service SessionService {
+  // Ping asks the transport whether the broker session is up.
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+// PingRequest carries nothing: a Ping needs no arguments.
+message PingRequest {}
+
+// PingResponse tells whether the broker session is connected.
+message PingResponse {
+  // connected is true while the broker session is up.
+  bool connected = 1;
+}
