@@ -220,7 +220,8 @@ func TestArchDeriveContractsGenpb(t *testing.T) {
 	if !strings.Contains(string(yml), "  contracts/genpb:\n    in: internal/contracts/genpb\n") {
 		t.Fatalf("no contracts/genpb component in:\n%s", yml)
 	}
-	if strings.Contains(string(yml), "\n  contracts/genpb:\n    mayDependOn") {
+	_, depsPart, _ := strings.Cut(string(yml), "\ndeps:\n")
+	if strings.Contains(depsPart, "  contracts/genpb:\n") {
 		t.Fatal("contracts/genpb has a mayDependOn entry")
 	}
 	if ok, out := lint(t, dir); !ok {
