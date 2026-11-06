@@ -32,3 +32,32 @@ func TestPagesContract(t *testing.T) {
 		t.Fatalf("body = %q", body)
 	}
 }
+
+func TestPagesPageContract(t *testing.T) {
+	t.Parallel()
+	fake := func(tag string) pages.Builder {
+		return func(_ context.Context, _ store.SeriesReader, _ contracts.Day, _ time.Time) ([]byte, error) {
+			return []byte(tag), nil
+		}
+	}
+	list := []pages.Page{
+		{Meta: pages.Meta{Name: "a", Schema: "page.a.v1"}, Build: fake("bytes-a")},
+		{Meta: pages.Meta{Name: "b", Schema: "page.b.v1"}, Build: fake("bytes-b")},
+	}
+	var found *pages.Page
+	for i := range list {
+		if list[i].Meta.Name == "b" {
+			found = &list[i]
+		}
+	}
+	if found == nil {
+		t.Fatal("page b not found")
+	}
+	out, err := found.Build(context.Background(), nil, "2026-11-04", time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != "bytes-b" {
+		t.Fatalf("out = %q", out)
+	}
+}
