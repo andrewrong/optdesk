@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 type result struct {
@@ -61,5 +63,27 @@ func TestServeOnBuildError500(t *testing.T) {
 	got := serveAndGet(t, func(context.Context) ([]byte, error) { return nil, errors.New("dsn sentinel-secret") })
 	if got.status != 500 || strings.Contains(got.body, "sentinel") {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestServeUnknownNameBindsNoPort(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	var call pageCall
+	pageApp(a, &call)
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+		t.Error("a store was opened")
+		return nil, nil
+	}
+	var lc net.ListenConfig
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	_, want := findPage(a.deps.pageList, "nosuch")
+	err = runServe(a, []string{"--name", "nosuch", "--addr", ln.Addr().String()})
+	if err == nil || err.Error() != want.Error() {
+		t.Fatalf("err %v want %v", err, want)
 	}
 }

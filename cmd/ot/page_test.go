@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -19,9 +21,71 @@ type pageCall struct {
 }
 
 func pageApp(a *app, call *pageCall) {
-	a.deps.buildMacroRates = func(_ context.Context, r store.SeriesReader, d contracts.Day, at time.Time) ([]byte, error) {
-		*call = pageCall{r, d, at}
-		return []byte(`{"page":"x"}`), nil
+	a.deps.pageList = []pages.Page{{
+		Meta: pages.Meta{Name: "macro_rates"},
+		Build: func(_ context.Context, r store.SeriesReader, d contracts.Day, at time.Time) ([]byte, error) {
+			*call = pageCall{r, d, at}
+			return []byte(`{"page":"x"}`), nil
+		},
+	}}
+}
+
+func fakePage(name, body string) pages.Page {
+	return pages.Page{
+		Meta: pages.Meta{Name: name},
+		Build: func(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error) {
+			return []byte(body), nil
+		},
+	}
+}
+
+func TestFindPage(t *testing.T) {
+	t.Parallel()
+	list := []pages.Page{fakePage("alpha", "a"), fakePage("beta", "b")}
+	for _, n := range []string{"alpha", "beta"} {
+		p, err := findPage(list, n)
+		if err != nil || p.Meta.Name != n {
+			t.Fatalf("%s: got %q err %v", n, p.Meta.Name, err)
+		}
+	}
+	_, err := findPage(list, "nosuch")
+	if err == nil || !strings.Contains(err.Error(), "nosuch") || !strings.Contains(err.Error(), "alpha, beta") {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestPageUnknownNameOpensNoStore(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	var out bytes.Buffer
+	a.stdout = &out
+	var call pageCall
+	pageApp(a, &call)
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+		t.Error("a store was opened")
+		return nil, nil
+	}
+	_, want := findPage(a.deps.pageList, "nosuch")
+	err := runPage(a, []string{"--name", "nosuch"})
+	if err == nil || err.Error() != want.Error() || out.Len() != 0 {
+		t.Fatalf("err %v want %v out %q", err, want, out.String())
+	}
+}
+
+func TestPageNameSelectsEntry(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.profile.Name = "demo"
+	var out bytes.Buffer
+	a.stdout = &out
+	var call pageCall
+	pageApp(a, &call)
+	a.deps.pageList = append(a.deps.pageList, fakePage("second", "SECOND"))
+	if err := runPage(a, []string{"--name", "second"}); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "SECOND" || call.day != "" {
+		t.Fatalf("out %q call %+v", out.String(), call)
 	}
 }
 
