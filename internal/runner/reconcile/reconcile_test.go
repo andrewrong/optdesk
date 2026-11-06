@@ -12,7 +12,10 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-var _ runner.NewFunc = New
+var (
+	_ runner.NewFunc         = New
+	_ runner.NewWithRuleFunc = NewWithRule
+)
 
 var (
 	keyA = contracts.ExpectedKey{DatasetID: "ds", SubjectKey: "a"}
@@ -27,7 +30,7 @@ func oneDay() fakeCalendar {
 }
 
 func newRec(led *fakeLedger, clk clockwork.Clock, job *fakeJob) runner.Reconciler {
-	return NewWithRule(led, oneDay(), clk, []contracts.Job{job}, WindowRule{CalendarID: "XNYS"})
+	return NewWithRule(led, oneDay(), clk, []contracts.Job{job}, runner.WindowRule{CalendarID: "XNYS"})
 }
 
 func TestReconcileRepairNoValueCrash(t *testing.T) {
@@ -163,3 +166,42 @@ type kindErr struct{ kind contracts.ErrorKind }
 
 func (e kindErr) Error() string             { return string(e.kind) }
 func (e kindErr) Kind() contracts.ErrorKind { return e.kind }
+
+// idCalendar records the calendar ids it is asked for.
+type idCalendar struct {
+	fakeCalendar
+	ids *[]string
+}
+
+func (c idCalendar) Session(ctx context.Context, id string, day contracts.Day) (clock.Session, error) {
+	*c.ids = append(*c.ids, id)
+	return c.fakeCalendar.Session(ctx, id, day)
+}
+
+func TestNewWithRuleEmptyCalendar(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, set, want string }{
+		{"empty is default", "", DefaultCalendarID},
+		{"set is used", "X", "X"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var ids []string
+			cal := idCalendar{fakeCalendar: oneDay(), ids: &ids}
+			clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+			job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+			rec := NewWithRule(newLedger(), cal, clk, []contracts.Job{job}, runner.WindowRule{CalendarID: tc.set})
+			if err := rec.Reconcile(context.Background(), "2026-11-04"); err != nil {
+				t.Fatal(err)
+			}
+			if len(ids) == 0 {
+				t.Fatal("calendar never asked")
+			}
+			for _, id := range ids {
+				if id != tc.want {
+					t.Fatalf("calendar id = %q, want %q", id, tc.want)
+				}
+			}
+		})
+	}
+}

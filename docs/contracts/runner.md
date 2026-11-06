@@ -8,7 +8,7 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 
 - `store.OpsLedger`, `clock.Calendar`, `clock.Clock` and the registered `[]contracts.Job` (`runner.NewFunc`, built by `internal/runner/reconcile.New`).
 - The day: `Reconcile(ctx, day)` with a `contracts.Day`.
-- A window rule: `reconcile.WindowRule` (calendar id, open offset, close offset). `New` uses the default rule (calendar `XNYS`, no offsets); `NewWithRule` takes one. Hooking the rule to `job.toml` belongs to the follow-up wiring design.
+- A window rule: `runner.WindowRule` (calendar id, open offset, close offset), taken by `runner.NewWithRuleFunc` (built by `internal/runner/reconcile.NewWithRule`). `New` uses the default rule (calendar `XNYS`, no offsets).
 - Per job: `Plan(ctx, day)` gives the expected keys and a plan hash.
 
 ## Outputs
@@ -35,6 +35,7 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 
 - `internal/runner/api_test.go`: the interface from both sides.
 - `internal/runner/reconcile/window_test.go`: `TestWindowThanksgivingAndEarlyClose`, `TestWindowRuleOffsets`.
+- `internal/runner/api_test.go`: also `TestWindowRuleContract`; `reconcile_test.go`: also `TestNewWithRuleEmptyCalendar` and `var _ runner.NewWithRuleFunc = reconcile.NewWithRule`.
 - `internal/runner/reconcile/reconcile_test.go`: `TestReconcileRepairNoValueCrash`, `TestFullCycleLateRun`, `TestCursorHoldsOnGap`, and `var _ runner.NewFunc = reconcile.New`.
 
 ## Jobs and slots

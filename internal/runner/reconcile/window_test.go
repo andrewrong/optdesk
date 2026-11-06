@@ -7,6 +7,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -26,7 +27,7 @@ func TestWindowThanksgivingAndEarlyClose(t *testing.T) {
 		// 2026-11-26 is Thanksgiving: not a session.
 		{CalendarID: "XNYS", Day: "2026-11-27", IsSession: true, EarlyClose: true, OpenAt: utc("2026-11-27T14:30:00Z"), CloseAt: utc("2026-11-27T18:00:00Z")},
 	}}
-	rule := WindowRule{CalendarID: "XNYS", CloseOffset: time.Hour}
+	rule := runner.WindowRule{CalendarID: "XNYS", CloseOffset: time.Hour}
 	tests := []struct {
 		name    string
 		day     contracts.Day
@@ -68,12 +69,12 @@ func TestWindowThanksgivingAndEarlyClose(t *testing.T) {
 func TestWindowRuleOffsets(t *testing.T) {
 	t.Parallel()
 	s := clock.Session{Day: "2026-11-27", IsSession: true, OpenAt: utc("2026-11-27T14:30:00Z"), CloseAt: utc("2026-11-27T18:00:00Z")}
-	rule := WindowRule{OpenOffset: -30 * time.Minute}
-	w, ok := rule.Window("ds", s)
+	rule := runner.WindowRule{OpenOffset: -30 * time.Minute}
+	w, ok := windowFor(rule, "ds", s)
 	if !ok || w.OpenAt != utc("2026-11-27T14:00:00Z") || w.CloseAt != s.CloseAt || w.DatasetID != "ds" || w.Day != s.Day {
 		t.Fatalf("window = %+v ok=%v", w, ok)
 	}
-	if _, ok := rule.Window("ds", clock.Session{Day: "2026-11-26"}); ok {
+	if _, ok := windowFor(rule, "ds", clock.Session{Day: "2026-11-26"}); ok {
 		t.Fatal("non-session day got a window")
 	}
 }
