@@ -246,7 +246,7 @@ requests are notes below the acceptance list, not acceptance items.
   - [CI] `go test ./internal/contracts/...` validates each dataset fixture against its dataset schema with santhosh-tekuri/jsonschema/v6 (the golden file is validated by issue 1), and checks that a copy with an unknown extra field fails; every test calls `t.Parallel()`; offline substitute: `grep -n 'func TestDatasetFixtures' internal/contracts/schema_test.go` finds the function and `grep -c 't.Parallel()' internal/contracts/schema_test.go` is at least 1.
   - [CI] Every JSON file parses (`python3 -m json.tool` on each prints no error); `sh contracts/generate.sh` leaves `git diff --exit-code` clean.
   Note (not acceptance): the owner approves the symbol list (owner-first item 3); the `Contracts:` line of the pull request reads `master.session_day r1 (new), obs.series_point r1 (new), page.macro_rates v1 (new)` for issue 1 and `unchanged` for this one.
-  Depends on: 1, 3. Order: after 1, 3.
+  Depends on: 1, 3, 18. Order: after 1, 3, 18 (both edit contracts/fixtures/MANIFEST.synthetic-v1.json; 18 brings it to the manifest shape first).
   Size: M
 
 ### store-session-day
