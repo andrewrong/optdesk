@@ -1,6 +1,7 @@
 {
+  "marker": "synthetic-v1",
   "files": [
     {"path": "page.macro_rates.v1.input.json", "sha256": "e9d774b175d2d79557c3088ed0df60d3be6a10102499070910bdaec9dc091f37"},
-    {"path": "page.macro_rates.v1.golden.json", "sha256": "1b0d6a53fd361ab7f064acd5663dd06efad7fdca7ce1d1e90a35ca6c05ba8f78"}
+    {"path": "page.macro_rates.v1.golden.json", "sha256": "5095a03bc11d6b40fbcd2e18a758bfcbde2ae5bba199d2dbe21a12a1fcf860cb"}
   ]
 }

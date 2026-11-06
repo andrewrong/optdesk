@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -41,7 +42,19 @@ type memLedger struct {
 	present map[contracts.ExpectedKey]store.PresentStatus
 	cursor  store.Cursor
 	lease   *store.Lease
+	windows map[winKey]store.Window
+	runs    []store.Run
 }
+
+type winKey struct {
+	id  string
+	day contracts.Day
+}
+
+type noValueErr struct{}
+
+func (noValueErr) Error() string             { return "no window" }
+func (noValueErr) Kind() contracts.ErrorKind { return contracts.NoValue }
 
 func (l *memLedger) PutExpected(context.Context, contracts.Day, string, []contracts.ExpectedKey) error {
 	return nil
@@ -56,8 +69,39 @@ func (l *memLedger) MarkPresent(_ context.Context, _ contracts.Day, k contracts.
 func (l *memLedger) Present(context.Context, contracts.Day) (map[contracts.ExpectedKey]store.PresentStatus, error) {
 	return l.present, nil
 }
-func (l *memLedger) PutWindow(context.Context, store.Window) error { return nil }
-func (l *memLedger) Window(context.Context) (store.Window, error)  { return store.Window{}, nil }
+func (l *memLedger) PutWindow(_ context.Context, w store.Window) error {
+	if l.windows == nil {
+		l.windows = map[winKey]store.Window{}
+	}
+	l.windows[winKey{w.DatasetID, w.Day}] = w
+	return nil
+}
+func (l *memLedger) Window(_ context.Context, id string, day contracts.Day) (store.Window, error) {
+	w, ok := l.windows[winKey{id, day}]
+	if !ok {
+		return store.Window{}, noValueErr{}
+	}
+	return w, nil
+}
+func (l *memLedger) RecordRun(_ context.Context, r store.Run) error {
+	for i := range l.runs {
+		if l.runs[i].ID == r.ID {
+			l.runs[i] = r
+			return nil
+		}
+	}
+	l.runs = append(l.runs, r)
+	return nil
+}
+func (l *memLedger) Runs(_ context.Context, day contracts.Day) ([]store.Run, error) {
+	var out []store.Run
+	for _, r := range l.runs {
+		if r.Day == day {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
 func (l *memLedger) SetCursor(_ context.Context, c store.Cursor) error {
 	l.cursor = c
 	return nil
@@ -113,5 +157,61 @@ func TestLedgerContract(t *testing.T) {
 	_ = l.SetCursor(ctx, store.Cursor{Day: "2026-11-04"})
 	if c, _ := l.Cursor(ctx); c.Day != "2026-11-04" {
 		t.Fatalf("cursor = %v", c)
+	}
+}
+
+func TestLedgerWindowKey(t *testing.T) {
+	t.Parallel()
+	var l store.OpsLedger = &memLedger{}
+	ctx := context.Background()
+	at := func(h int) time.Time { return time.Date(2026, 11, 4, h, 0, 0, 0, time.UTC) }
+	ws := []store.Window{
+		{DatasetID: "a", Day: "2026-11-04", OpenAt: at(9), CloseAt: at(16)},
+		{DatasetID: "b", Day: "2026-11-04", OpenAt: at(10), CloseAt: at(17)},
+		{DatasetID: "a", Day: "2026-11-05", OpenAt: at(11), CloseAt: at(18)},
+	}
+	for _, w := range ws {
+		if err := l.PutWindow(ctx, w); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, w := range ws {
+		got, err := l.Window(ctx, w.DatasetID, w.Day)
+		if err != nil || got != w {
+			t.Fatalf("Window(%s, %s) = %+v, %v; want %+v", w.DatasetID, w.Day, got, err, w)
+		}
+	}
+	_, err := l.Window(ctx, "c", "2026-11-04")
+	var te contracts.TypedError
+	if !errors.As(err, &te) || te.Kind() != contracts.NoValue {
+		t.Fatalf("missing window: err = %v, want TypedError of kind NoValue", err)
+	}
+}
+
+func TestLedgerRuns(t *testing.T) {
+	t.Parallel()
+	var l store.OpsLedger = &memLedger{}
+	ctx := context.Background()
+	k := contracts.ExpectedKey{DatasetID: "d", SubjectKey: "s"}
+	day := contracts.Day("2026-11-04")
+	r := store.Run{ID: "r1", Day: day, Key: k, Status: store.RunRunning}
+	if err := l.RecordRun(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	r.Status, r.ReturnedN, r.UsableN = store.RunDone, 3, 2
+	if err := l.RecordRun(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := l.Runs(ctx, day)
+	if len(got) != 1 || got[0] != r {
+		t.Fatalf("same ID: runs = %+v, want only %+v", got, r)
+	}
+	r2 := r
+	r2.ID = "r2"
+	if err := l.RecordRun(ctx, r2); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := l.Runs(ctx, day); len(got) != 2 {
+		t.Fatalf("two IDs: runs = %+v, want 2", got)
 	}
 }
