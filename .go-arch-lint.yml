@@ -55,6 +55,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  pages/macro_page:
+    in: internal/pages/macro_page
   store/migrate:
     in: internal/store/migrate
 deps:
@@ -162,6 +164,11 @@ deps:
       - jobs/fredseries
       - pages/macro_rates
       - pages/embed
+  pages/macro_page:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
   store/migrate:
     mayDependOn:
       - contracts
