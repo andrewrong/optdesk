@@ -84,11 +84,11 @@ func TestEnvfileMissingFileIsCreated(t *testing.T) {
 
 func TestDSNFromAdmin(t *testing.T) {
 	t.Parallel()
-	got, err := roleDSN("postgres://postgres:adminpw@db.local:5433/postgres?sslmode=require&application_name=x", "ot_runner", "pw1")
+	got, err := roleDSN("postgres://postgres:adminpw@dbhost:5433/postgres?sslmode=require&application_name=x", "ot_runner", "pw1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "postgres://ot_runner:pw1@db.local:5433/optdesk?sslmode=require"; got != want {
+	if want := "postgres://ot_runner:pw1@dbhost:5433/optdesk?sslmode=require"; got != want {
 		t.Errorf("dsn = %q, want %q", got, want)
 	}
 	if _, err := roleDSN("host=db user=x", "ot_runner", "pw1"); err == nil {
@@ -98,10 +98,10 @@ func TestDSNFromAdmin(t *testing.T) {
 
 func TestPasswordFromDSN(t *testing.T) {
 	t.Parallel()
-	if pw := passwordOf("postgres://ot_runner:pw1@db.local:5433/optdesk", "ot_runner"); pw != "pw1" {
+	if pw := passwordOf("postgres://ot_runner:pw1@dbhost:5433/optdesk", "ot_runner"); pw != "pw1" {
 		t.Errorf("password = %q", pw)
 	}
-	if pw := passwordOf("postgres://someone_else:pw1@db.local/optdesk", "ot_runner"); pw != "" {
+	if pw := passwordOf("postgres://someone_else:pw1@dbhost/optdesk", "ot_runner"); pw != "" {
 		t.Errorf("password of another user = %q", pw)
 	}
 	if pw := passwordOf("garbage", "ot_runner"); pw != "" {
