@@ -1,0 +1,1719 @@
+{
+  "build_id": "build-demo-0001",
+  "data_times": [
+    {
+      "data_time": "2026-10-28T09:28:00+08:00",
+      "source": "quotes"
+    }
+  ],
+  "gaps": [
+    {
+      "reason": "missing_quote",
+      "text": "TGT 缺报价：Bid、Ask、成交量、持仓量无法给出"
+    }
+  ],
+  "generated_at": "2026-10-28T09:30:00+08:00",
+  "markets": [
+    {
+      "all_link": {
+        "target": "candidates-US",
+        "text": "全部 8 个机会"
+      },
+      "candidates": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "symbol",
+            "label": "标的"
+          },
+          {
+            "align": "left",
+            "id": "verdict",
+            "label": "判定"
+          },
+          {
+            "align": "right",
+            "id": "annualised",
+            "label": "年化"
+          },
+          {
+            "align": "left",
+            "id": "contract",
+            "label": "合约"
+          },
+          {
+            "align": "right",
+            "id": "bid",
+            "label": "Bid"
+          },
+          {
+            "align": "right",
+            "id": "ask",
+            "label": "Ask"
+          },
+          {
+            "align": "right",
+            "id": "iv",
+            "label": "IV"
+          },
+          {
+            "align": "right",
+            "hint": "按风险中性模型 N(-d2) 估计的到期在价内概率",
+            "id": "itm",
+            "label": "到期在价内概率"
+          },
+          {
+            "align": "right",
+            "id": "excess",
+            "label": "比现金"
+          },
+          {
+            "align": "right",
+            "id": "breakeven",
+            "label": "盈亏平衡"
+          },
+          {
+            "align": "right",
+            "id": "volume",
+            "label": "成交量"
+          },
+          {
+            "align": "right",
+            "id": "open_interest",
+            "label": "持仓量"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "AAA",
+                  "value": "AAA"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "18.6%",
+                  "unit": "percent",
+                  "value": 18.6
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "AAA 11/28 行权价 $48 Put",
+                  "value": "1128"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "28.4",
+                  "unit": "vol_points",
+                  "value": 28.4
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$47.38",
+                  "unit": "usd",
+                  "value": 47.38
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "1,240",
+                  "unit": "contracts",
+                  "value": 1240
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "5,310",
+                  "unit": "contracts",
+                  "value": 5310
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$0.62",
+                  "unit": "usd",
+                  "value": 0.62
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$0.66",
+                  "unit": "usd",
+                  "value": 0.66
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "aaa-1128"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "BBB",
+                  "value": "BBB"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "16.2%",
+                  "unit": "percent",
+                  "value": 16.2
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "BBB 11/21 行权价 $30 Put",
+                  "value": "1121"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "31.0",
+                  "unit": "vol_points",
+                  "value": 31.0
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$29.65",
+                  "unit": "usd",
+                  "value": 29.65
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "860",
+                  "unit": "contracts",
+                  "value": 860
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "4,120",
+                  "unit": "contracts",
+                  "value": 4120
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$0.35",
+                  "unit": "usd",
+                  "value": 0.35
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$0.37",
+                  "unit": "usd",
+                  "value": 0.37
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "bbb-1121"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "CCC",
+                  "value": "CCC"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "15.1%",
+                  "unit": "percent",
+                  "value": 15.1
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "CCC 12/19 行权价 $75 Put",
+                  "value": "1219"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "26.2",
+                  "unit": "vol_points",
+                  "value": 26.2
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$73.52",
+                  "unit": "usd",
+                  "value": 73.52
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "540",
+                  "unit": "contracts",
+                  "value": 540
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "2,980",
+                  "unit": "contracts",
+                  "value": 2980
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$1.48",
+                  "unit": "usd",
+                  "value": 1.48
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$1.55",
+                  "unit": "usd",
+                  "value": 1.55
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "ccc-1219"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "DDD",
+                  "value": "DDD"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "14.4%",
+                  "unit": "percent",
+                  "value": 14.4
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "DDD 11/21 行权价 $22 Put",
+                  "value": "1121"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "34.8",
+                  "unit": "vol_points",
+                  "value": 34.8
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$21.79",
+                  "unit": "usd",
+                  "value": 21.79
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "2,100",
+                  "unit": "contracts",
+                  "value": 2100
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "9,800",
+                  "unit": "contracts",
+                  "value": 9800
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$0.21",
+                  "unit": "usd",
+                  "value": 0.21
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$0.23",
+                  "unit": "usd",
+                  "value": 0.23
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "ddd-1121"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "EEE",
+                  "value": "EEE"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "勉强",
+                  "value": 1
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "9.8%",
+                  "unit": "percent",
+                  "value": 9.8
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "EEE 12/19 行权价 $120 Put",
+                  "value": "1219"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "22.5",
+                  "unit": "vol_points",
+                  "value": 22.5
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$117.90",
+                  "unit": "usd",
+                  "value": 117.9
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "95",
+                  "unit": "contracts",
+                  "value": 95
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "610",
+                  "unit": "contracts",
+                  "value": 610
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$2.10",
+                  "unit": "usd",
+                  "value": 2.1
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$2.30",
+                  "unit": "usd",
+                  "value": 2.3
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "eee-1219"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "FFF",
+                  "value": "FFF"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "勉强",
+                  "value": 1
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "8.7%",
+                  "unit": "percent",
+                  "value": 8.7
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "FFF 11/28 行权价 $55 Put",
+                  "value": "1128"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "24.1",
+                  "unit": "vol_points",
+                  "value": 24.1
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$54.60",
+                  "unit": "usd",
+                  "value": 54.6
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "70",
+                  "unit": "contracts",
+                  "value": 70
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "380",
+                  "unit": "contracts",
+                  "value": 380
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$0.40",
+                  "unit": "usd",
+                  "value": 0.4
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$0.46",
+                  "unit": "usd",
+                  "value": 0.46
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "fff-1128"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "GGG",
+                  "value": "GGG"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "待定",
+                  "value": 2
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "11.0%",
+                  "unit": "percent",
+                  "value": 11.0
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "GGG 12/19 行权价 $64 Put",
+                  "value": "1219"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "27.7",
+                  "unit": "vol_points",
+                  "value": 27.7
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "text": "$63.12",
+                  "unit": "usd",
+                  "value": 63.12
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "310",
+                  "unit": "contracts",
+                  "value": 310
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "1,500",
+                  "unit": "contracts",
+                  "value": 1500
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "text": "$0.88",
+                  "unit": "usd",
+                  "value": 0.88
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "text": "$0.94",
+                  "unit": "usd",
+                  "value": 0.94
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "ggg-1219"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "TGT",
+                  "value": "TGT"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "跳过",
+                  "value": 3
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "TGT 11/21 行权价 $85 Put",
+                  "value": "1121"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "30.2",
+                  "unit": "vol_points",
+                  "value": 30.2
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "tgt-1121"
+          }
+        ]
+      },
+      "candidates_title": "全部候选",
+      "cards": [
+        {
+          "annualised": {
+            "text": "18.6%",
+            "unit": "percent",
+            "value": 18.6
+          },
+          "annualised_text": "年化 18.6%",
+          "contract_line": "AAA 11/28 行权价 $48 Put",
+          "id": "aaa-1128",
+          "iv_line": "IV 28.4%",
+          "liquidity_line": "成交 1,240 · 持仓 5,310",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $47.38 · IV 28.4%",
+          "reason": "年化够高，成交活跃，离财报较远。",
+          "size_line": "1 张 · 占用现金 $4,800",
+          "symbol": "AAA",
+          "tags": [
+            "流动性好",
+            "财报后"
+          ],
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          }
+        },
+        {
+          "annualised": {
+            "text": "16.2%",
+            "unit": "percent",
+            "value": 16.2
+          },
+          "annualised_text": "年化 16.2%",
+          "contract_line": "BBB 11/21 行权价 $30 Put",
+          "id": "bbb-1121",
+          "iv_line": "IV 31.0%",
+          "liquidity_line": "成交 860 · 持仓 4,120",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $29.65 · IV 31.0%",
+          "reason": "年化够高，买卖价差窄。",
+          "size_line": "1 张 · 占用现金 $3,000",
+          "symbol": "BBB",
+          "tags": [
+            "流动性好"
+          ],
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          }
+        },
+        {
+          "annualised": {
+            "text": "15.1%",
+            "unit": "percent",
+            "value": 15.1
+          },
+          "annualised_text": "年化 15.1%",
+          "contract_line": "CCC 12/19 行权价 $75 Put",
+          "id": "ccc-1219",
+          "iv_line": "IV 26.2%",
+          "liquidity_line": "成交 540 · 持仓 2,980",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $73.52 · IV 26.2%",
+          "reason": "年化够高，行权价低于近期支撑。",
+          "size_line": "1 张 · 占用现金 $7,500",
+          "symbol": "CCC",
+          "tags": [
+            "支撑位下方"
+          ],
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          }
+        },
+        {
+          "annualised": {
+            "text": "14.4%",
+            "unit": "percent",
+            "value": 14.4
+          },
+          "annualised_text": "年化 14.4%",
+          "contract_line": "DDD 11/21 行权价 $22 Put",
+          "id": "ddd-1121",
+          "iv_line": "IV 34.8%",
+          "liquidity_line": "成交 2,100 · 持仓 9,800",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $21.79 · IV 34.8%",
+          "reason": "年化够高，持仓量大。",
+          "size_line": "1 张 · 占用现金 $2,200",
+          "symbol": "DDD",
+          "tags": [
+            "流动性好"
+          ],
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          }
+        },
+        {
+          "annualised": {
+            "text": "9.8%",
+            "unit": "percent",
+            "value": 9.8
+          },
+          "annualised_text": "年化 9.8%",
+          "contract_line": "EEE 12/19 行权价 $120 Put",
+          "id": "eee-1219",
+          "iv_line": "IV 22.5%",
+          "liquidity_line": "成交 95 · 持仓 610",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $117.90 · IV 22.5%",
+          "reason": "年化偏低，价差偏宽。",
+          "size_line": "1 张 · 占用现金 $12,000",
+          "symbol": "EEE",
+          "tags": [
+            "价差宽"
+          ],
+          "verdict": {
+            "key": "marginal",
+            "label": "勉强",
+            "tone": "warn"
+          }
+        },
+        {
+          "annualised": {
+            "text": "8.7%",
+            "unit": "percent",
+            "value": 8.7
+          },
+          "annualised_text": "年化 8.7%",
+          "contract_line": "FFF 11/28 行权价 $55 Put",
+          "id": "fff-1128",
+          "iv_line": "IV 24.1%",
+          "liquidity_line": "成交 70 · 持仓 380",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $54.60 · IV 24.1%",
+          "reason": "年化偏低，成交偏少。",
+          "size_line": "1 张 · 占用现金 $5,500",
+          "symbol": "FFF",
+          "tags": [
+            "成交少"
+          ],
+          "verdict": {
+            "key": "marginal",
+            "label": "勉强",
+            "tone": "warn"
+          }
+        }
+      ],
+      "cards_title": "今日机会",
+      "chain": {
+        "summary": "已选：AAA 11/28 行权价 $48 Put",
+        "table": {
+          "columns": [
+            {
+              "align": "left",
+              "id": "strike",
+              "label": "行权价"
+            },
+            {
+              "align": "right",
+              "id": "e1114",
+              "label": "11/14"
+            },
+            {
+              "align": "right",
+              "id": "e1121",
+              "label": "11/21"
+            },
+            {
+              "align": "right",
+              "id": "e1128",
+              "label": "11/28"
+            }
+          ],
+          "rows": [
+            {
+              "cells": [
+                {
+                  "cell": {
+                    "text": "$44",
+                    "unit": "usd",
+                    "value": 44.0
+                  },
+                  "column": "strike"
+                },
+                {
+                  "cell": {
+                    "text": "$0.12",
+                    "unit": "usd",
+                    "value": 0.12
+                  },
+                  "column": "e1114"
+                },
+                {
+                  "cell": {
+                    "text": "$0.21",
+                    "unit": "usd",
+                    "value": 0.21
+                  },
+                  "column": "e1121"
+                },
+                {
+                  "cell": {
+                    "text": "$0.30",
+                    "unit": "usd",
+                    "value": 0.3
+                  },
+                  "column": "e1128"
+                }
+              ],
+              "id": "k44"
+            },
+            {
+              "cells": [
+                {
+                  "cell": {
+                    "text": "$46",
+                    "unit": "usd",
+                    "value": 46.0
+                  },
+                  "column": "strike"
+                },
+                {
+                  "cell": {
+                    "text": "$0.25",
+                    "unit": "usd",
+                    "value": 0.25
+                  },
+                  "column": "e1114"
+                },
+                {
+                  "cell": {
+                    "text": "$0.38",
+                    "unit": "usd",
+                    "value": 0.38
+                  },
+                  "column": "e1121"
+                },
+                {
+                  "cell": {
+                    "text": "$0.47",
+                    "unit": "usd",
+                    "value": 0.47
+                  },
+                  "column": "e1128"
+                }
+              ],
+              "id": "k46"
+            },
+            {
+              "cells": [
+                {
+                  "cell": {
+                    "text": "$48",
+                    "unit": "usd",
+                    "value": 48.0
+                  },
+                  "column": "strike"
+                },
+                {
+                  "cell": {
+                    "text": "$0.41",
+                    "unit": "usd",
+                    "value": 0.41
+                  },
+                  "column": "e1114"
+                },
+                {
+                  "cell": {
+                    "text": "$0.55",
+                    "unit": "usd",
+                    "value": 0.55
+                  },
+                  "column": "e1121"
+                },
+                {
+                  "cell": {
+                    "source": "已选",
+                    "text": "$0.64",
+                    "unit": "usd",
+                    "value": 0.64
+                  },
+                  "column": "e1128"
+                }
+              ],
+              "id": "k48"
+            },
+            {
+              "cells": [
+                {
+                  "cell": {
+                    "text": "$50",
+                    "unit": "usd",
+                    "value": 50.0
+                  },
+                  "column": "strike"
+                },
+                {
+                  "cell": {
+                    "text": "$0.72",
+                    "unit": "usd",
+                    "value": 0.72
+                  },
+                  "column": "e1114"
+                },
+                {
+                  "cell": {
+                    "text": "$0.88",
+                    "unit": "usd",
+                    "value": 0.88
+                  },
+                  "column": "e1121"
+                },
+                {
+                  "cell": {
+                    "text": "$0.99",
+                    "unit": "usd",
+                    "value": 0.99
+                  },
+                  "column": "e1128"
+                }
+              ],
+              "id": "k50"
+            }
+          ]
+        },
+        "title": "AAA 期权链（Put，Mid）"
+      },
+      "currency": "USD",
+      "headline": "4 个值得看，2 个勉强。",
+      "label": "美股",
+      "market": "US"
+    },
+    {
+      "all_link": {
+        "target": "candidates-JP",
+        "text": "全部 3 个机会"
+      },
+      "candidates": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "symbol",
+            "label": "标的"
+          },
+          {
+            "align": "left",
+            "id": "verdict",
+            "label": "判定"
+          },
+          {
+            "align": "right",
+            "id": "annualised",
+            "label": "年化"
+          },
+          {
+            "align": "left",
+            "id": "contract",
+            "label": "合约"
+          },
+          {
+            "align": "right",
+            "id": "bid",
+            "label": "Bid"
+          },
+          {
+            "align": "right",
+            "id": "ask",
+            "label": "Ask"
+          },
+          {
+            "align": "right",
+            "id": "iv",
+            "label": "IV"
+          },
+          {
+            "align": "right",
+            "hint": "按风险中性模型 N(-d2) 估计的到期在价内概率",
+            "id": "itm",
+            "label": "到期在价内概率"
+          },
+          {
+            "align": "right",
+            "id": "excess",
+            "label": "比现金"
+          },
+          {
+            "align": "right",
+            "id": "breakeven",
+            "label": "盈亏平衡"
+          },
+          {
+            "align": "right",
+            "id": "volume",
+            "label": "成交量"
+          },
+          {
+            "align": "right",
+            "id": "open_interest",
+            "label": "持仓量"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "JPA",
+                  "value": "JPA"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "12.4%",
+                  "unit": "percent",
+                  "value": 12.4
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "JPA 11/21 行权价 ¥2,400 Put",
+                  "value": "1121"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "25.3",
+                  "unit": "vol_points",
+                  "value": 25.3
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "approx_usd": {
+                    "text": "≈$15.75",
+                    "unit": "usd",
+                    "value": 15.75
+                  },
+                  "text": "¥2,362",
+                  "unit": "jpy",
+                  "value": 2362.0
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "420",
+                  "unit": "contracts",
+                  "value": 420
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "2,300",
+                  "unit": "contracts",
+                  "value": 2300
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "approx_usd": {
+                    "text": "≈$0.25",
+                    "unit": "usd",
+                    "value": 0.25
+                  },
+                  "text": "¥38",
+                  "unit": "jpy",
+                  "value": 38.0
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "approx_usd": {
+                    "text": "≈$0.28",
+                    "unit": "usd",
+                    "value": 0.28
+                  },
+                  "text": "¥42",
+                  "unit": "jpy",
+                  "value": 42.0
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "jpa-1121"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "JPB",
+                  "value": "JPB"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "勉强",
+                  "value": 1
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "7.9%",
+                  "unit": "percent",
+                  "value": 7.9
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "JPB 12/12 行权价 ¥1,850 Put",
+                  "value": "1212"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "21.0",
+                  "unit": "vol_points",
+                  "value": 21.0
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "approx_usd": {
+                    "text": "≈$12.13",
+                    "unit": "usd",
+                    "value": 12.13
+                  },
+                  "text": "¥1,820",
+                  "unit": "jpy",
+                  "value": 1820.0
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "60",
+                  "unit": "contracts",
+                  "value": 60
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "410",
+                  "unit": "contracts",
+                  "value": 410
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "approx_usd": {
+                    "text": "≈$0.20",
+                    "unit": "usd",
+                    "value": 0.2
+                  },
+                  "text": "¥30",
+                  "unit": "jpy",
+                  "value": 30.0
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "approx_usd": {
+                    "text": "≈$0.23",
+                    "unit": "usd",
+                    "value": 0.23
+                  },
+                  "text": "¥34",
+                  "unit": "jpy",
+                  "value": 34.0
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "jpb-1212"
+          },
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "JPC",
+                  "value": "JPC"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "待定",
+                  "value": 2
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "10.2%",
+                  "unit": "percent",
+                  "value": 10.2
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "JPC 12/12 行权价 ¥3,100 Put",
+                  "value": "1212"
+                },
+                "column": "contract"
+              },
+              {
+                "cell": {
+                  "text": "23.8",
+                  "unit": "vol_points",
+                  "value": 23.8
+                },
+                "column": "iv"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "31.9%",
+                  "value": 3190
+                },
+                "column": "itm"
+              },
+              {
+                "cell": {
+                  "badge": true,
+                  "kind": "text",
+                  "text": "高 7.0%",
+                  "value": 700
+                },
+                "column": "excess"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "breakeven"
+              },
+              {
+                "cell": {
+                  "text": "150",
+                  "unit": "contracts",
+                  "value": 150
+                },
+                "column": "volume"
+              },
+              {
+                "cell": {
+                  "text": "900",
+                  "unit": "contracts",
+                  "value": 900
+                },
+                "column": "open_interest"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "bid"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "ask"
+              }
+            ],
+            "id": "jpc-1212"
+          }
+        ]
+      },
+      "candidates_title": "全部候选",
+      "cards": [
+        {
+          "annualised": {
+            "text": "12.4%",
+            "unit": "percent",
+            "value": 12.4
+          },
+          "annualised_text": "年化 12.4%",
+          "contract_line": "JPA 11/21 行权价 ¥2,400 Put",
+          "id": "jpa-1121",
+          "iv_line": "IV 25.3%",
+          "liquidity_line": "成交 420 · 持仓 2,300",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 ¥2,362 · IV 25.3%",
+          "reason": "年化够高，成交活跃。",
+          "size_line": "1 张 · 占用现金 ¥240,000（≈$1,600）",
+          "size_usd_approx": {
+            "text": "≈$1,600",
+            "unit": "usd",
+            "value": 1600.0
+          },
+          "symbol": "JPA",
+          "tags": [
+            "流动性好"
+          ],
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          }
+        },
+        {
+          "annualised": {
+            "text": "7.9%",
+            "unit": "percent",
+            "value": 7.9
+          },
+          "annualised_text": "年化 7.9%",
+          "contract_line": "JPB 12/12 行权价 ¥1,850 Put",
+          "id": "jpb-1212",
+          "iv_line": "IV 21.0%",
+          "liquidity_line": "成交 60 · 持仓 410",
+          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 ¥1,820 · IV 21.0%",
+          "reason": "年化偏低，成交偏少。",
+          "size_line": "1 张 · 占用现金 ¥185,000（≈$1,230）",
+          "size_usd_approx": {
+            "text": "≈$1,230",
+            "unit": "usd",
+            "value": 1230.0
+          },
+          "symbol": "JPB",
+          "tags": [
+            "成交少"
+          ],
+          "verdict": {
+            "key": "marginal",
+            "label": "勉强",
+            "tone": "warn"
+          }
+        }
+      ],
+      "cards_title": "今日机会",
+      "currency": "JPY",
+      "headline": "1 个值得看，1 个勉强。",
+      "label": "日股",
+      "market": "JP"
+    }
+  ],
+  "notes": [
+    "示例数据，非真实报价。判定与句子由 Python 写好，页面只显示。"
+  ],
+  "run_id": "run-demo-0001",
+  "run_status": "partial",
+  "schema": "option_page",
+  "schema_version": 1,
+  "scope": "option-page",
+  "stale": {
+    "data_time": "2026-10-28T09:28:00+08:00",
+    "stale_after": "2026-10-28T10:28:00+08:00",
+    "text": "数据时间 2026-10-28 09:28（吉隆坡）"
+  },
+  "title": "期权"
+}

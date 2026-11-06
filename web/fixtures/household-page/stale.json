@@ -1,0 +1,1166 @@
+{
+  "accounts": {
+    "columns": [
+      "账户",
+      "净清算值",
+      "现金",
+      "股票市值",
+      "期权市值",
+      "数据日"
+    ],
+    "meaning": "Flex 账户的净清算值、现金、股票与期权市值，取自日结单。",
+    "rows": [
+      {
+        "cash": {
+          "cell": {
+            "currency": "USD",
+            "text": "$5,000.00",
+            "unit": "usd",
+            "value": 5000.0
+          }
+        },
+        "data_day": "数据日 10-29",
+        "name": "Flex 账户（配偶）",
+        "net_liquidation": {
+          "cell": {
+            "currency": "USD",
+            "text": "$25,000.00",
+            "unit": "usd",
+            "value": 25000.0
+          }
+        },
+        "options": {
+          "cell": {
+            "currency": "USD",
+            "text": "$12,000.00",
+            "unit": "usd",
+            "value": 12000.0
+          }
+        },
+        "scope": "household",
+        "stock": {
+          "cell": {
+            "currency": "USD",
+            "text": "$8,000.00",
+            "unit": "usd",
+            "value": 8000.0
+          }
+        },
+        "whose": "配偶"
+      },
+      {
+        "cash": {
+          "cell": {
+            "currency": "USD",
+            "text": "$2,000.00",
+            "unit": "usd",
+            "value": 2000.0
+          }
+        },
+        "data_day": "数据日 10-29",
+        "name": "账户（女儿）",
+        "net_liquidation": {
+          "cell": {
+            "currency": "USD",
+            "text": "$20,000.00",
+            "unit": "usd",
+            "value": 20000.0
+          }
+        },
+        "options": {
+          "cell": {
+            "currency": "USD",
+            "text": "$0.00",
+            "unit": "usd",
+            "value": 0.0
+          }
+        },
+        "scope": "daughter",
+        "stock": {
+          "cell": {
+            "currency": "USD",
+            "text": "$18,000.00",
+            "unit": "usd",
+            "value": 18000.0
+          }
+        },
+        "whose": "女儿"
+      }
+    ],
+    "title": "账户"
+  },
+  "allocation": {
+    "heads": [
+      "类别",
+      "市值",
+      "占比",
+      "目标",
+      "差距"
+    ],
+    "meaning": "实际配置对比你定的目标。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$60,000.00",
+          "unit": "usd",
+          "value": 60000.0
+        },
+        "difference": {
+          "text": "+10.0",
+          "tone": "up",
+          "unit": "percentage_points",
+          "value": 10.0
+        },
+        "name": "股票",
+        "share": {
+          "text": "60%",
+          "unit": "share_percent",
+          "value": 60.0
+        },
+        "target": {
+          "text": "50%",
+          "unit": "share_percent",
+          "value": 50.0
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$40,000.00",
+          "unit": "usd",
+          "value": 40000.0
+        },
+        "difference": {
+          "text": "−10.0",
+          "tone": "down",
+          "unit": "percentage_points",
+          "value": -10.0
+        },
+        "name": "债券",
+        "share": {
+          "text": "40%",
+          "unit": "share_percent",
+          "value": 40.0
+        },
+        "target": {
+          "text": "50%",
+          "unit": "share_percent",
+          "value": 50.0
+        }
+      }
+    ],
+    "title": "配置",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$100,000.00",
+        "unit": "usd",
+        "value": 100000.0
+      }
+    ]
+  },
+  "build_id": "build-demo-0001",
+  "cash_after": {
+    "meaning": "假设被指派后各账户剩下的现金。",
+    "result": "两户指派后现金都在。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "+$8,000.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 8000.0
+        },
+        "name": "账户甲"
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "+$2,000.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 2000.0
+        },
+        "name": "账户乙"
+      }
+    ],
+    "title": "指派后现金",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "+$10,000.00",
+        "tone": "up",
+        "unit": "usd_signed",
+        "value": 10000.0
+      }
+    ]
+  },
+  "composition": {
+    "approx_usd_total": {
+      "text": "≈$120,000",
+      "unit": "USD",
+      "value": 120000.0
+    },
+    "heads": [
+      "类别",
+      "金额",
+      "占比"
+    ],
+    "meaning": "资产按类别的构成，占比按约合美元计算。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$60,000.00",
+          "unit": "usd",
+          "value": 60000.0
+        },
+        "name": "股票",
+        "share": {
+          "text": "50%",
+          "unit": "share_percent",
+          "value": 50.0
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$15,000.00",
+          "unit": "usd",
+          "value": 15000.0
+        },
+        "name": "期权",
+        "share": {
+          "text": "13%",
+          "unit": "share_percent",
+          "value": 13.0
+        }
+      },
+      {
+        "amount": {
+          "approx_usd": {
+            "text": "≈$30,000",
+            "unit": "USD",
+            "value": 30000.0
+          },
+          "currency": "JPY",
+          "text": "¥4,500,000",
+          "unit": "usd",
+          "value": 4500000.0
+        },
+        "name": "日股",
+        "share": {
+          "text": "25%",
+          "unit": "share_percent",
+          "value": 25.0
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$15,000.00",
+          "unit": "usd",
+          "value": 15000.0
+        },
+        "name": "现金",
+        "share": {
+          "text": "13%",
+          "unit": "share_percent",
+          "value": 13.0
+        }
+      }
+    ],
+    "title": "构成",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$90,000.00",
+        "unit": "usd",
+        "value": 90000.0
+      },
+      {
+        "approx_usd": {
+          "text": "≈$30,000",
+          "unit": "USD",
+          "value": 30000.0
+        },
+        "currency": "JPY",
+        "text": "¥4,500,000",
+        "unit": "usd",
+        "value": 4500000.0
+      }
+    ]
+  },
+  "concentration": {
+    "heads": [
+      "公司",
+      "占家庭净值",
+      "市值"
+    ],
+    "meaning": "最大的几项占净值的比例；各项按各自占净值计算，合计可以超过 100%。Flex 账户（配偶） 的数据日 10-29（Flex 日结单），其余按本页数据日。",
+    "result": "最大单一敞口 AAA 40%。",
+    "rows": [
+      {
+        "accounts": [
+          {
+            "amount": {
+              "currency": "USD",
+              "text": "$25,000.00",
+              "unit": "usd",
+              "value": 25000.0
+            },
+            "label": "账户（本人）",
+            "whose": "本人"
+          },
+          {
+            "amount": {
+              "currency": "USD",
+              "text": "$15,000.00",
+              "unit": "usd",
+              "value": 15000.0
+            },
+            "label": "Flex 账户（配偶）",
+            "whose": "配偶"
+          }
+        ],
+        "amount": {
+          "currency": "USD",
+          "text": "$40,000.00",
+          "unit": "usd",
+          "value": 40000.0
+        },
+        "name": "AAA",
+        "scope": "household",
+        "share": {
+          "text": "40%",
+          "unit": "share_percent",
+          "value": 40.0
+        }
+      },
+      {
+        "accounts": [
+          {
+            "amount": {
+              "currency": "USD",
+              "text": "$10,000.00",
+              "unit": "usd",
+              "value": 10000.0
+            },
+            "label": "Flex 账户（配偶）",
+            "whose": "配偶"
+          }
+        ],
+        "amount": {
+          "currency": "USD",
+          "text": "$10,000.00",
+          "unit": "usd",
+          "value": 10000.0
+        },
+        "name": "BBB",
+        "scope": "household",
+        "share": {
+          "text": "10%",
+          "unit": "share_percent",
+          "value": 10.0
+        }
+      }
+    ],
+    "scope_gaps": [
+      {
+        "gap": {
+          "reason": "missing_input",
+          "text": "无该账户的集中度读数"
+        },
+        "scope": "daughter"
+      }
+    ],
+    "title": "集中度",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$50,000.00",
+        "unit": "usd",
+        "value": 50000.0
+      }
+    ]
+  },
+  "data_times": [
+    {
+      "data_time": "2026-10-31T09:00:00+08:00",
+      "source": "oldest"
+    }
+  ],
+  "gaps": [],
+  "generated_at": "2026-11-03T10:00:00+08:00",
+  "income": {
+    "meaning": "每个月的收入，美元与日元分开列出。点开一个月，看它由哪些项目组成。",
+    "result": "本月截至 10-31 收入 $1,000.00。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$2,000.00",
+          "unit": "usd",
+          "value": 2000.0
+        },
+        "name": "2026-08"
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$2,500.00",
+          "unit": "usd",
+          "value": 2500.0
+        },
+        "name": "2026-09"
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$1,000.00",
+          "unit": "usd",
+          "value": 1000.0
+        },
+        "items": [
+          {
+            "account": {
+              "label": "账户（本人）",
+              "whose": "本人"
+            },
+            "amount": {
+              "currency": "USD",
+              "text": "+$700.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 700.0
+            },
+            "item": "AAA 11-20 P250 平仓",
+            "part": "期权"
+          },
+          {
+            "account": {
+              "label": "Flex 账户（配偶）",
+              "whose": "配偶"
+            },
+            "amount": {
+              "currency": "USD",
+              "text": "+$300.00",
+              "tone": "up",
+              "unit": "usd_signed",
+              "value": 300.0
+            },
+            "item": "BBB 股息",
+            "part": "股息"
+          }
+        ],
+        "name": "2026-10",
+        "summary": "含 2 项：期权 1 项、股息 1 项"
+      }
+    ],
+    "scope_gaps": [
+      {
+        "gap": {
+          "reason": "no_data",
+          "text": "女儿（单独计）没有按月明细，每月收入只算家庭"
+        },
+        "scope": "daughter"
+      }
+    ],
+    "title": "每月收入",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$5,500.00",
+        "unit": "usd",
+        "value": 5500.0
+      }
+    ]
+  },
+  "long_term": {
+    "meaning": "长期账户的金额。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$80,000.00",
+          "unit": "usd",
+          "value": 80000.0
+        },
+        "name": "养老账户"
+      }
+    ],
+    "title": "长期账户",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$80,000.00",
+        "unit": "usd",
+        "value": 80000.0
+      }
+    ]
+  },
+  "month_change": {
+    "meaning": "月初到月末的变化，一步一步看清楚。",
+    "result": "月初 $200,000.00，月末 $205,999.50。",
+    "rows": [
+      {
+        "base": {
+          "currency": "USD",
+          "text": "$0.00",
+          "unit": "usd",
+          "value": 0.0
+        },
+        "change": null,
+        "height": {
+          "currency": "USD",
+          "text": "$200,000.00",
+          "unit": "usd",
+          "value": 200000.0
+        },
+        "kind": "start",
+        "level": {
+          "currency": "USD",
+          "text": "$200,000.00",
+          "unit": "usd",
+          "value": 200000.0
+        },
+        "name": "月初",
+        "sentence": "月初的家庭资产合计，取 09-30 的日结单。"
+      },
+      {
+        "base": {
+          "currency": "USD",
+          "text": "$200,000.00",
+          "unit": "usd",
+          "value": 200000.0
+        },
+        "change": {
+          "currency": "USD",
+          "text": "+$3,000.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 3000.0
+        },
+        "height": {
+          "currency": "USD",
+          "text": "$3,000.00",
+          "unit": "usd",
+          "value": 3000.0
+        },
+        "kind": "step",
+        "level": {
+          "currency": "USD",
+          "text": "$203,000.00",
+          "unit": "usd",
+          "value": 203000.0
+        },
+        "name": "股票市值变动",
+        "sentence": "股票市值在这个月里的变化：取 09-30 与 10-30 两份日结单之差（10-31 没有日结单，月末用 10-30 的），日结单里的股票市值相减。"
+      },
+      {
+        "base": {
+          "currency": "USD",
+          "text": "$203,000.00",
+          "unit": "usd",
+          "value": 203000.0
+        },
+        "change": {
+          "currency": "USD",
+          "text": "+$5,000.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 5000.0
+        },
+        "height": {
+          "currency": "USD",
+          "text": "$5,000.00",
+          "unit": "usd",
+          "value": 5000.0
+        },
+        "kind": "step",
+        "level": {
+          "currency": "USD",
+          "text": "$208,000.00",
+          "unit": "usd",
+          "value": 208000.0
+        },
+        "name": "入金",
+        "sentence": "本月的入金，出金为负；取自现金流水。"
+      },
+      {
+        "base": {
+          "currency": "USD",
+          "text": "$205,999.50",
+          "unit": "usd",
+          "value": 205999.5
+        },
+        "change": {
+          "currency": "USD",
+          "text": "−$2,000.50",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -2000.5
+        },
+        "height": {
+          "currency": "USD",
+          "text": "$2,000.50",
+          "unit": "usd",
+          "value": 2000.5
+        },
+        "kind": "step",
+        "level": {
+          "currency": "USD",
+          "text": "$205,999.50",
+          "unit": "usd",
+          "value": 205999.5
+        },
+        "name": "其他",
+        "sentence": "月初到月末的总变化，减去上面各项之后剩下的：费用、汇率、以及日结单拆不出的部分。"
+      },
+      {
+        "base": {
+          "currency": "USD",
+          "text": "$0.00",
+          "unit": "usd",
+          "value": 0.0
+        },
+        "change": null,
+        "height": {
+          "currency": "USD",
+          "text": "$205,999.50",
+          "unit": "usd",
+          "value": 205999.5
+        },
+        "kind": "end",
+        "level": {
+          "currency": "USD",
+          "text": "$205,999.50",
+          "unit": "usd",
+          "value": 205999.5
+        },
+        "name": "月末",
+        "sentence": "月末的家庭资产合计，取 10-30 的日结单。"
+      }
+    ],
+    "title": "这个月为什么变了",
+    "total": {
+      "currency": "USD",
+      "text": "$205,999.50",
+      "unit": "usd",
+      "value": 205999.5
+    }
+  },
+  "movers": {
+    "columns": [
+      "名称",
+      "上个交易日",
+      "现价",
+      "带动"
+    ],
+    "meaning": "今天各项资产的变化，涨跌由大到小看谁在带动。",
+    "options": [
+      {
+        "account": {
+          "label": "账户（本人）",
+          "whose": "本人"
+        },
+        "amount": {
+          "currency": "USD",
+          "text": "+$50.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 50.0
+        },
+        "current": {
+          "currency": "USD",
+          "text": "2.5000",
+          "value": 2.5
+        },
+        "name": "AAA 11-20 P250/240 价差 ×1",
+        "previous": {
+          "currency": "USD",
+          "text": "3.0000",
+          "value": 3.0
+        },
+        "scope": "household"
+      }
+    ],
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "+$1,150.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 1150.0
+        },
+        "name": "其他",
+        "scope": "household"
+      }
+    ],
+    "scope_gaps": [
+      {
+        "gap": {
+          "reason": "missing_input",
+          "text": "无盘中价格（Flex）"
+        },
+        "scope": "household"
+      }
+    ],
+    "stocks": [
+      {
+        "account": {
+          "label": "账户（本人）",
+          "whose": "本人"
+        },
+        "amount": {
+          "currency": "USD",
+          "text": "−$200.00",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -200.0
+        },
+        "current": {
+          "currency": "USD",
+          "text": "48.0000",
+          "value": 48.0
+        },
+        "name": "AAA",
+        "previous": {
+          "currency": "USD",
+          "text": "50.0000",
+          "value": 50.0
+        },
+        "scope": "household"
+      },
+      {
+        "account": {
+          "label": "账户（女儿）",
+          "whose": "女儿"
+        },
+        "amount": {
+          "currency": "USD",
+          "text": "+$10.00",
+          "tone": "up",
+          "unit": "usd_signed",
+          "value": 10.0
+        },
+        "current": {
+          "currency": "USD",
+          "text": "21.0000",
+          "value": 21.0
+        },
+        "name": "BBB",
+        "previous": {
+          "currency": "USD",
+          "text": "20.0000",
+          "value": 20.0
+        },
+        "scope": "daughter"
+      }
+    ],
+    "title": "谁带动了今天",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "+$1,000.00",
+        "tone": "up",
+        "unit": "usd_signed",
+        "value": 1000.0
+      }
+    ]
+  },
+  "notes": [
+    "日元兑美元汇率 150.000。日元金额保留日元原值，约合美元只作参考，不与其他币种相加。"
+  ],
+  "obligations": {
+    "approx_usd_label": "合计 ≈USD（仅供参考）",
+    "approx_usd_total": {
+      "text": "≈$1,167",
+      "unit": "USD",
+      "value": 1167.0
+    },
+    "columns": [
+      "名称",
+      "到期",
+      "开仓价",
+      "金额"
+    ],
+    "meaning": "未来 30 天内到期、需要现金的义务。",
+    "rows": [
+      {
+        "amount": {
+          "approx_usd": {
+            "text": "≈$667",
+            "unit": "USD",
+            "value": 667.0
+          },
+          "currency": "JPY",
+          "text": "¥100,000",
+          "unit": "usd",
+          "value": 100000.0
+        },
+        "due": "2026-11-15",
+        "name": "房贷",
+        "note": "账户 账户乙，到期日 2026-11-15，15 天后",
+        "open_price": {
+          "reason": "missing_input",
+          "text": "缺开仓价"
+        }
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$500.00",
+          "unit": "usd",
+          "value": 500.0
+        },
+        "due": "2026-11-30",
+        "name": "保险",
+        "note": "账户 账户甲，到期日 2026-11-30，30 天后",
+        "open_price": {
+          "reason": "missing_input",
+          "text": "缺开仓价"
+        }
+      }
+    ],
+    "title": "下 30 天到期的义务",
+    "total_labels": [
+      "合计 USD",
+      "合计 JPY"
+    ],
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$500.00",
+        "unit": "usd",
+        "value": 500.0
+      },
+      {
+        "approx_usd": {
+          "text": "≈$667",
+          "unit": "USD",
+          "value": 667.0
+        },
+        "currency": "JPY",
+        "text": "¥100,000",
+        "unit": "usd",
+        "value": 100000.0
+      }
+    ]
+  },
+  "overview": {
+    "approx_usd_total": {
+      "text": "≈$145,001",
+      "unit": "USD",
+      "value": 145001.0
+    },
+    "meaning": "各账户合计的资产，美元与日元分开列出。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$100,000.00",
+          "unit": "usd",
+          "value": 100000.0
+        },
+        "name": "美元券商"
+      },
+      {
+        "amount": {
+          "approx_usd": {
+            "text": "≈$20,000",
+            "unit": "USD",
+            "value": 20000.0
+          },
+          "currency": "JPY",
+          "text": "¥3,000,000",
+          "unit": "usd",
+          "value": 3000000.0
+        },
+        "name": "日本券商"
+      },
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "$25,000.50",
+          "unit": "usd",
+          "value": 25000.5
+        },
+        "name": "现金"
+      }
+    ],
+    "title": "总览",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "$125,000.50",
+        "unit": "usd",
+        "value": 125000.5
+      },
+      {
+        "approx_usd": {
+          "text": "≈$20,000",
+          "unit": "USD",
+          "value": 20000.0
+        },
+        "currency": "JPY",
+        "text": "¥3,000,000",
+        "unit": "usd",
+        "value": 3000000.0
+      }
+    ]
+  },
+  "positions_link": "持仓",
+  "risk_link": "家庭风险",
+  "run_id": "run-demo-0001",
+  "run_status": "ok",
+  "schema": "household_page",
+  "schema_version": 1,
+  "scope": "household-page",
+  "scopes": [
+    {
+      "accounts": [
+        {
+          "label": "账户（本人）",
+          "whose": "本人"
+        },
+        {
+          "label": "Flex 账户（配偶）",
+          "whose": "配偶"
+        }
+      ],
+      "key": "household",
+      "label": "家庭（本人+配偶）"
+    },
+    {
+      "accounts": [
+        {
+          "label": "账户（女儿）",
+          "whose": "女儿"
+        }
+      ],
+      "key": "daughter",
+      "label": "女儿（单独计）"
+    }
+  ],
+  "sentence": "家庭资产：$125,000.50、¥3,000,000，合计≈$145,001。",
+  "stale": {
+    "data_time": "2026-10-31T09:00:00+08:00",
+    "stale_after": "2026-11-01T21:00:00+08:00",
+    "text": "数据已过期：数据时间 2026-10-31 09:00（吉隆坡）"
+  },
+  "stress": {
+    "approx_usd_total": {
+      "text": "≈−$15,000",
+      "unit": "USD",
+      "value": 15000.0
+    },
+    "meaning": "几种假设情形下的估算变化，仅供参考。",
+    "rows": [
+      {
+        "amount": {
+          "currency": "USD",
+          "text": "−$12,000.00",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -12000.0
+        },
+        "name": "股市下跌 10%"
+      },
+      {
+        "amount": {
+          "approx_usd": {
+            "text": "≈−$3,000",
+            "unit": "USD",
+            "value": 3000.0
+          },
+          "currency": "JPY",
+          "text": "−¥450,000",
+          "tone": "down",
+          "unit": "usd_signed",
+          "value": -450000.0
+        },
+        "name": "日元升值 10%"
+      }
+    ],
+    "title": "压力",
+    "totals": [
+      {
+        "currency": "USD",
+        "text": "−$12,000.00",
+        "tone": "down",
+        "unit": "usd_signed",
+        "value": -12000.0
+      },
+      {
+        "approx_usd": {
+          "text": "≈−$3,000",
+          "unit": "USD",
+          "value": 3000.0
+        },
+        "currency": "JPY",
+        "text": "−¥450,000",
+        "tone": "down",
+        "unit": "usd_signed",
+        "value": -450000.0
+      }
+    ]
+  },
+  "title": "家庭资产",
+  "trend": {
+    "change": {
+      "text": "+2.5%：最后一点比第一点",
+      "tone": "up",
+      "unit": "percent",
+      "value": 2.5
+    },
+    "meaning": "家庭资产按日的走势，变化是最后一个点对第一个点。",
+    "rows": [
+      {
+        "change": {
+          "text": "0.0%",
+          "tone": "flat",
+          "unit": "percent",
+          "value": 0.0
+        },
+        "day": "2026-10-01",
+        "value": {
+          "text": "$100,000",
+          "unit": "USD",
+          "value": 100000.0
+        }
+      },
+      {
+        "change": {
+          "text": "+1.0%",
+          "tone": "up",
+          "unit": "percent",
+          "value": 1.0
+        },
+        "day": "2026-10-02",
+        "value": {
+          "text": "$101,000",
+          "unit": "USD",
+          "value": 101000.0
+        }
+      },
+      {
+        "change": {
+          "text": "+2.5%",
+          "tone": "up",
+          "unit": "percent",
+          "value": 2.5
+        },
+        "day": "2026-10-03",
+        "value": {
+          "text": "$102,500",
+          "unit": "USD",
+          "value": 102500.0
+        }
+      }
+    ],
+    "series": [
+      {
+        "change": {
+          "text": "+2.5%：最后一点比第一点",
+          "tone": "up",
+          "unit": "percent",
+          "value": 2.5
+        },
+        "label": "家庭（本人+配偶）",
+        "rows": [
+          {
+            "change": {
+              "text": "0.0%",
+              "tone": "flat",
+              "unit": "percent",
+              "value": 0.0
+            },
+            "day": "2026-10-01",
+            "value": {
+              "text": "$100,000",
+              "unit": "USD",
+              "value": 100000.0
+            }
+          },
+          {
+            "change": {
+              "text": "+1.0%",
+              "tone": "up",
+              "unit": "percent",
+              "value": 1.0
+            },
+            "day": "2026-10-02",
+            "value": {
+              "text": "$101,000",
+              "unit": "USD",
+              "value": 101000.0
+            }
+          },
+          {
+            "change": {
+              "text": "+2.5%",
+              "tone": "up",
+              "unit": "percent",
+              "value": 2.5
+            },
+            "day": "2026-10-03",
+            "value": {
+              "text": "$102,500",
+              "unit": "USD",
+              "value": 102500.0
+            }
+          }
+        ],
+        "scope": "household",
+        "window": "2026-10-01 至 2026-10-03，最后一点对第一点"
+      },
+      {
+        "change": {
+          "text": "+2.0%：最后一点比第一点",
+          "tone": "up",
+          "unit": "percent",
+          "value": 2.0
+        },
+        "label": "女儿（单独计）",
+        "rows": [
+          {
+            "change": {
+              "text": "0.0%",
+              "tone": "flat",
+              "unit": "percent",
+              "value": 0.0
+            },
+            "day": "2026-10-01",
+            "value": {
+              "text": "$50,000",
+              "unit": "USD",
+              "value": 50000.0
+            }
+          },
+          {
+            "change": {
+              "text": "+2.0%",
+              "tone": "up",
+              "unit": "percent",
+              "value": 2.0
+            },
+            "day": "2026-10-03",
+            "value": {
+              "text": "$51,000",
+              "unit": "USD",
+              "value": 51000.0
+            }
+          }
+        ],
+        "scope": "daughter",
+        "window": "2026-10-01 至 2026-10-03，最后一点对第一点"
+      }
+    ],
+    "title": "走势",
+    "window": "2026-10-01 至 2026-10-03，最后一点对第一点"
+  }
+}

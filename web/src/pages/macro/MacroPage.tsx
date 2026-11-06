@@ -1,0 +1,111 @@
+// Board 8: all figures and prose are supplied by Python; tables only sort on demand.
+import { ChevronRight, Info } from 'lucide-react'
+import { DataTable, type Column } from '@/components/data-table/data-table'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Separator } from '@/components/ui/separator'
+import type { Payload } from '@/generated/macro_page'
+import { CardNotes } from '@/pages/home/CardNotes'
+import { StaleAlert } from '@/pages/home/StaleAlert'
+export { validate as validateMacroPage } from '@/generated/macro_page'
+export type { Payload as MacroPagePayload } from '@/generated/macro_page'
+
+const EVENTS: Column[] = [
+  { id: 'date', label: '日期' },
+  { id: 'name', label: '事件' },
+  { id: 'previous', label: '前值' },
+]
+const INDICATORS: Column[] = [
+  { id: 'name', label: '指标 · 时效' },
+  { id: 'latest', label: '最新' },
+  { id: 'source', label: '来源' },
+  { id: 'detail', label: '详情' },
+]
+
+export function MacroPage({ payload }: { payload: Payload }) {
+  const { ease } = payload
+  const events = payload.events.map((event) => ({
+    date: { text: event.when_text, value: event.date },
+    name: { text: event.name_text, value: event.name_text },
+    previous: typeof event.previous === 'string' ? { text: event.previous } : event.previous,
+  }))
+  const indicators = payload.indicators.map((indicator) => ({
+    name: {
+      text: indicator.name,
+      value: indicator.name,
+      source: indicator.label,
+      source_status: indicator.status,
+    },
+    latest:
+      'reason' in indicator.latest
+        ? indicator.latest
+        : { ...indicator.latest, tone: indicator.latest.tone ?? undefined },
+    source: { text: indicator.source_text },
+    ...(indicator.detail_href && { detail: { text: '详情', href: indicator.detail_href } }),
+  }))
+  return (
+    <div className="min-w-0 space-y-6" data-page="macro-page">
+      <header>
+        <h1 className="text-2xl font-semibold">{payload.title}</h1>
+        <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
+      </header>
+      <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
+      <Card>
+        <CardHeader>
+          <CardTitle>{payload.ease_title}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {'reason' in ease ? (
+            <Alert data-ease-gap>
+              <Info aria-hidden />
+              <AlertDescription>{ease.text}</AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="text-2xl font-semibold">{ease.figure.text}</div>
+              <Progress value={ease.marker_percent.value} aria-label={ease.aria_text} />
+              <div className="flex justify-between text-xs text-muted-foreground" data-ticks>
+                {ease.ticks.map((tick) => (
+                  <span key={tick}>{tick}</span>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground" data-neutral-band>
+                {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
+              </p>
+              <Separator />
+              <p>{ease.reading_text}</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <Card className="min-w-0" data-events>
+        <CardHeader>
+          <CardTitle>{payload.events_title}</CardTitle>
+        </CardHeader>
+        <CardContent className="min-w-0">
+          <DataTable columns={EVENTS} rows={events} />
+        </CardContent>
+      </Card>
+      <Card className="min-w-0" data-indicators>
+        <CardHeader>
+          <CardTitle>{payload.indicators_title}</CardTitle>
+        </CardHeader>
+        <CardContent className="min-w-0">
+          <DataTable columns={INDICATORS} rows={indicators} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardDescription className="flex items-center gap-2">
+            <ChevronRight aria-hidden />
+            {payload.notes_title}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <CardNotes notes={payload.notes} gaps={payload.gaps} />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

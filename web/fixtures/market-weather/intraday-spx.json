@@ -1,0 +1,86 @@
+{
+  "footnote": "仅显示：不改变任何建议、数量、上限或期限",
+  "headline": "差 · 数据 10-19…10-21",
+  "intraday": {
+    "as_of": "盘中报价 10:28:00 ET（含 VIX、VIX3M 与 SPX，信用为收盘）",
+    "expired_text": "已过期",
+    "expires_at": "2026-10-22T22:43:00+08:00",
+    "footnote": "仅显示：盘中试算不改变收盘天气、任何建议、数量、上限或期限",
+    "gauge": {
+      "carried": [
+        {
+          "close_date": "2026-10-21",
+          "label": "收盘",
+          "vote": "信用 高收益利差 3.12% · 好"
+        }
+      ],
+      "headline": "一般 · 盘中·延迟 10:30 ET",
+      "label": "盘中试算",
+      "ratio_text": "比值 1.0417",
+      "state": "mixed"
+    },
+    "rows": [
+      {
+        "as_of": "10:28:00 ET",
+        "data_type": "live",
+        "label": "盘中",
+        "series": "VIX",
+        "stale": null,
+        "value": "25.00"
+      },
+      {
+        "as_of": "10:28:00 ET",
+        "data_type": "live",
+        "label": "盘中",
+        "series": "VIX3M",
+        "stale": null,
+        "value": "24.00"
+      },
+      {
+        "as_of": "10:15:00 ET",
+        "baseline_through": "2026-10-21",
+        "data_type": "delayed",
+        "detail": "趋势 标普占200日均线 100.57% · 好",
+        "label": "盘中·延迟",
+        "series": "SPX",
+        "source_time": "2026-10-22T22:15:00+08:00",
+        "stale": null,
+        "value": "5,330.00"
+      }
+    ],
+    "status": "ok",
+    "status_line": "每 5 分钟读取 · 信用沿用收盘",
+    "title": "盘中试算"
+  },
+  "mismatches": [],
+  "rows": [
+    {
+      "figure_text": "波动 VIX 26.40",
+      "first_ibkr_date": "2026-09-15",
+      "kind": "volatility",
+      "observed": "2026-10-19",
+      "source": "IBKR",
+      "verdict": "bad"
+    },
+    {
+      "figure_text": "趋势 标普占200日均线 98.10%",
+      "first_ibkr_date": "2026-09-15",
+      "kind": "trend",
+      "observed": "2026-10-20",
+      "source": "IBKR",
+      "verdict": "bad"
+    },
+    {
+      "figure_text": "信用 高收益利差 3.12%",
+      "first_ibkr_date": "2026-09-15",
+      "kind": "credit",
+      "observed": "2026-10-21",
+      "source": "IBKR",
+      "verdict": "ok"
+    }
+  ],
+  "schema": "market_weather",
+  "schema_version": 1,
+  "stale": null,
+  "state": "bad"
+}

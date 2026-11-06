@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.log
+.DS_Store
+
+# Playwright reports and results
+playwright-report/
+test-results/
+blob-report/
+
+# Build output of the build-output test
+.build-test/
+.check-bundle-test/
+dist-sheet/
+.scratch/
