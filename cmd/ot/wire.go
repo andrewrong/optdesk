@@ -25,36 +25,36 @@ import (
 
 // deps holds the constructors the subcommands call; a test fills it with fakes.
 type deps struct {
-	newClock        clock.NewClockFunc
-	newCalendar     clock.NewCalendarFunc
-	openSessionDay  store.OpenSessionDayFunc
-	openSeries      store.OpenSeriesFunc
-	openLedger      store.OpenLedgerFunc
-	setup           store.SetupFunc
-	newFRED         sources.NewFREDFunc
-	newFredSeries   jobs.NewFredSeriesFunc
-	newRunner       runner.NewWithRuleFunc
-	buildMacroRates pages.BuildMacroRatesFunc
-	newHandler      pages.NewHandlerFunc
-	migrateUp       func(ctx context.Context, adminDSN string, fsys fs.FS) error
-	ownerDSN        func(adminDSN string) (string, error)
+	newClock       clock.NewClockFunc
+	newCalendar    clock.NewCalendarFunc
+	openSessionDay store.OpenSessionDayFunc
+	openSeries     store.OpenSeriesFunc
+	openLedger     store.OpenLedgerFunc
+	setup          store.SetupFunc
+	newFRED        sources.NewFREDFunc
+	newFredSeries  jobs.NewFredSeriesFunc
+	newRunner      runner.NewWithRuleFunc
+	pageList       []pages.Page
+	newHandler     pages.NewHandlerFunc
+	migrateUp      func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	ownerDSN       func(adminDSN string) (string, error)
 }
 
 // newDeps returns the real constructors.
 func newDeps() deps {
 	return deps{
-		newClock:        realclock.NewReal,
-		newCalendar:     calendar.NewCalendar,
-		openSessionDay:  sessionday.Open,
-		openSeries:      series.Open,
-		openLedger:      ops.Open,
-		setup:           setup.Setup,
-		newFRED:         fred.New,
-		newFredSeries:   fredseries.New,
-		newRunner:       reconcile.NewWithRule,
-		buildMacroRates: macro_rates.Build,
-		newHandler:      embed.Handler,
-		migrateUp:       setup.MigrateUp,
-		ownerDSN:        setup.OwnerDSN,
+		newClock:       realclock.NewReal,
+		newCalendar:    calendar.NewCalendar,
+		openSessionDay: sessionday.Open,
+		openSeries:     series.Open,
+		openLedger:     ops.Open,
+		setup:          setup.Setup,
+		newFRED:        fred.New,
+		newFredSeries:  fredseries.New,
+		newRunner:      reconcile.NewWithRule,
+		pageList:       []pages.Page{macro_rates.Page()},
+		newHandler:     embed.Handler,
+		migrateUp:      setup.MigrateUp,
+		ownerDSN:       setup.OwnerDSN,
 	}
 }

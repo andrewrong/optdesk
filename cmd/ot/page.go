@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
+	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -33,12 +35,30 @@ func seriesReader(ctx context.Context, a *app) (store.SeriesReader, func(), erro
 	return s, func() { _ = s.Close() }, nil
 }
 
+// findPage returns the entry of list whose Meta.Name is name; an unknown name is an error
+// that lists every known name in list order.
+func findPage(list []pages.Page, name string) (pages.Page, error) {
+	known := make([]string, 0, len(list))
+	for _, p := range list {
+		if p.Meta.Name == name {
+			return p, nil
+		}
+		known = append(known, p.Meta.Name)
+	}
+	return pages.Page{}, fmt.Errorf("unknown page %q; known pages: %s", name, strings.Join(known, ", "))
+}
+
 func runPage(a *app, args []string) error {
 	fs := flag.NewFlagSet("page", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
+	name := fs.String("name", "macro_rates", "page name")
 	out := fs.String("out", "", "file to write (default: standard output)")
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	page, err := findPage(a.deps.pageList, *name)
+	if err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -52,7 +72,7 @@ func runPage(a *app, args []string) error {
 		return err
 	}
 	defer closeFn()
-	b, err := a.deps.buildMacroRates(ctx, r, day, clk.Now().UTC())
+	b, err := page.Build(ctx, r, day, clk.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("page %s: %w", day, err)
 	}

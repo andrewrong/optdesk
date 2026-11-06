@@ -55,8 +55,13 @@ func runServe(a *app, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
+	name := fs.String("name", "macro_rates", "page name")
 	addr := fs.String("addr", "127.0.0.1:8080", "listen address")
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	page, err := findPage(a.deps.pageList, *name)
+	if err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -75,7 +80,7 @@ func runServe(a *app, args []string) error {
 		if err != nil {
 			return nil, err
 		}
-		b, err := a.deps.buildMacroRates(ctx, r, day, clk.Now().UTC())
+		b, err := page.Build(ctx, r, day, clk.Now().UTC())
 		if err != nil {
 			a.log.Error("serve build failed", "component", "ot", "status", "failed")
 		}
