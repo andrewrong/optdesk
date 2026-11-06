@@ -23,7 +23,10 @@ const allowed = new Set(
 
 const problems = []
 for (const file of ['package.json', 'web/package.json']) {
-  if (!existsSync(join(root, file))) continue
+  if (!existsSync(join(root, file))) {
+    problems.push(`${file}: missing`)
+    continue
+  }
   const pkg = JSON.parse(read(file))
   for (const section of ['dependencies', 'devDependencies']) {
     for (const [name, version] of Object.entries(pkg[section] ?? {})) {
