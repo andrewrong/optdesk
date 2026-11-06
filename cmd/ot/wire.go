@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"io/fs"
+
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/clock/calendar"
 	"github.com/andrewrong/optdesk/internal/clock/realclock"
@@ -33,6 +36,8 @@ type deps struct {
 	newRunner       runner.NewFunc
 	buildMacroRates pages.BuildMacroRatesFunc
 	newHandler      pages.NewHandlerFunc
+	migrateUp       func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	ownerDSN        func(adminDSN string) (string, error)
 }
 
 // newDeps returns the real constructors.
@@ -49,5 +54,7 @@ func newDeps() deps {
 		newRunner:       reconcile.New,
 		buildMacroRates: macro_rates.Build,
 		newHandler:      embed.Handler,
+		migrateUp:       setup.MigrateUp,
+		ownerDSN:        setup.OwnerDSN,
 	}
 }
