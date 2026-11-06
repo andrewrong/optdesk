@@ -1,4 +1,4 @@
-package reconcile_test
+package reconcile
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -27,7 +26,7 @@ func TestWindowThanksgivingAndEarlyClose(t *testing.T) {
 		// 2026-11-26 is Thanksgiving: not a session.
 		{CalendarID: "XNYS", Day: "2026-11-27", IsSession: true, EarlyClose: true, OpenAt: utc("2026-11-27T14:30:00Z"), CloseAt: utc("2026-11-27T18:00:00Z")},
 	}}
-	rule := reconcile.WindowRule{CalendarID: "XNYS", CloseOffset: time.Hour}
+	rule := WindowRule{CalendarID: "XNYS", CloseOffset: time.Hour}
 	tests := []struct {
 		name    string
 		day     contracts.Day
@@ -50,7 +49,7 @@ func TestWindowThanksgivingAndEarlyClose(t *testing.T) {
 			led.cursor = store.Cursor{Day: tc.cursor}
 			job := &fakeJob{keys: []contracts.ExpectedKey{{DatasetID: "ds", SubjectKey: "a"}}}
 			clk := clockwork.NewFakeClockAt(utc("2026-11-25T12:00:00Z"))
-			r := reconcile.NewWithRule(led, cal, clk, []contracts.Job{job}, rule)
+			r := NewWithRule(led, cal, clk, []contracts.Job{job}, rule)
 			if err := r.Reconcile(context.Background(), tc.day); err != nil {
 				t.Fatal(err)
 			}
@@ -69,7 +68,7 @@ func TestWindowThanksgivingAndEarlyClose(t *testing.T) {
 func TestWindowRuleOffsets(t *testing.T) {
 	t.Parallel()
 	s := clock.Session{Day: "2026-11-27", IsSession: true, OpenAt: utc("2026-11-27T14:30:00Z"), CloseAt: utc("2026-11-27T18:00:00Z")}
-	rule := reconcile.WindowRule{OpenOffset: -30 * time.Minute}
+	rule := WindowRule{OpenOffset: -30 * time.Minute}
 	w, ok := rule.Window("ds", s)
 	if !ok || w.OpenAt != utc("2026-11-27T14:00:00Z") || w.CloseAt != s.CloseAt || w.DatasetID != "ds" || w.Day != s.Day {
 		t.Fatalf("window = %+v ok=%v", w, ok)

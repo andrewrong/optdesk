@@ -1,4 +1,4 @@
-package reconcile_test
+package reconcile
 
 import (
 	"context"
@@ -8,12 +8,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
-	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
 
-var _ runner.NewFunc = reconcile.New
+var _ runner.NewFunc = New
 
 var (
 	keyA = contracts.ExpectedKey{DatasetID: "ds", SubjectKey: "a"}
@@ -28,7 +27,7 @@ func oneDay() fakeCalendar {
 }
 
 func newRec(led *fakeLedger, clk clockwork.Clock, job *fakeJob) runner.Reconciler {
-	return reconcile.NewWithRule(led, oneDay(), clk, []contracts.Job{job}, reconcile.WindowRule{CalendarID: "XNYS"})
+	return NewWithRule(led, oneDay(), clk, []contracts.Job{job}, WindowRule{CalendarID: "XNYS"})
 }
 
 func TestReconcileRepairNoValueCrash(t *testing.T) {
@@ -126,7 +125,7 @@ func TestCursorHoldsOnGap(t *testing.T) {
 	led.cursor = store.Cursor{Day: "2026-11-03"}
 	job := &fakeJob{
 		keys:    []contracts.ExpectedKey{keyA},
-		results: map[contracts.ExpectedKey]contracts.JobResult{keyA: {Err: noValueErr{kind: contracts.Retryable}}},
+		results: map[contracts.ExpectedKey]contracts.JobResult{keyA: {Err: kindErr{kind: contracts.Retryable}}},
 	}
 	rec := newRec(led, clk, job)
 	if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
@@ -160,7 +159,7 @@ func TestCursorHoldsOnGap(t *testing.T) {
 	}
 }
 
-type noValueErr struct{ kind contracts.ErrorKind }
+type kindErr struct{ kind contracts.ErrorKind }
 
-func (e noValueErr) Error() string             { return string(e.kind) }
-func (e noValueErr) Kind() contracts.ErrorKind { return e.kind }
+func (e kindErr) Error() string             { return string(e.kind) }
+func (e kindErr) Kind() contracts.ErrorKind { return e.kind }

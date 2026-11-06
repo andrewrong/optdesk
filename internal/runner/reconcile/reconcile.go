@@ -189,7 +189,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 		if _, ok := present[k]; ok {
 			continue
 		}
-		attempt, reason := r.nextAttempt(ctx, byKey[k], closeAt)
+		attempt, reason := r.nextAttempt(byKey[k], closeAt)
 		if attempt == 0 {
 			complete = false
 			continue
@@ -210,7 +210,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 
 // nextAttempt returns the attempt number to start for a missing key, or 0 when none
 // is allowed: a live run is pending, or the repair run and the crash re-run are spent.
-func (r *reconciler) nextAttempt(_ context.Context, runs []store.Run, closeAt time.Time) (int, string) {
+func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (int, string) {
 	reason := ""
 	if !closeAt.IsZero() && r.clk.Now().After(closeAt) {
 		reason = reasonLate
