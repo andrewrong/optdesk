@@ -86,19 +86,9 @@ func TestArchCheckFailsOnNewEdge(t *testing.T) {
 	}
 }
 
-func TestArchCheckOTListsElevenPackages(t *testing.T) {
-	t.Parallel()
-	text := modulesText(t)
-	// The list as the text states it: backticked internal/a/b paths after "these eleven".
-	_, after, _ := strings.Cut(text, "these eleven")
-	list, _, _ := strings.Cut(after, "Any other import")
-	var want []string
-	for _, m := range regexp.MustCompile("`internal/([a-z0-9_]+/[a-z0-9_]+)`").FindAllStringSubmatch(list, -1) {
-		want = append(want, m[1])
-	}
-	if len(want) != 11 {
-		t.Fatalf("the text lists %d packages, want 11", len(want))
-	}
+// otImports returns the sub-package imports (those with a slash) of component ot in the generated arch.toml.
+func otImports(t *testing.T, text string) ([]string, string) {
+	t.Helper()
 	toml, _, err := generate(text, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -113,13 +103,60 @@ func TestArchCheckOTListsElevenPackages(t *testing.T) {
 			got = append(got, string(q[1]))
 		}
 	}
+	return got, string(m[1])
+}
+
+func TestArchCheckOTListsImplPackages(t *testing.T) {
+	t.Parallel()
+	text := modulesText(t)
+	// The list as the text states it: backticked internal/a/b paths after the anchor.
+	_, after, _ := strings.Cut(text, "one constructor each")
+	list, _, _ := strings.Cut(after, "Any other import")
+	var want []string
+	for _, m := range regexp.MustCompile("`internal/([a-z0-9_]+/[a-z0-9_]+)`").FindAllStringSubmatch(list, -1) {
+		want = append(want, m[1])
+	}
+	got, all := otImports(t, text)
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("ot imports %v, text lists %v", got, want)
 	}
 	for _, root := range []string{"contracts", "clock", "sources", "store", "runner", "jobs", "pages", "profile"} {
-		if !strings.Contains(string(m[1]), `"`+root+`"`) {
+		if !strings.Contains(all, `"`+root+`"`) {
 			t.Errorf("ot lacks root component %s", root)
 		}
+	}
+}
+
+func TestArchOTListIsReadFromTheText(t *testing.T) {
+	t.Parallel()
+	text := modulesText(t)
+	const anchor = "one constructor each: "
+	longer := strings.Replace(text, anchor, anchor+"`internal/a/b`, ", 1)
+	if longer == text {
+		t.Fatal("the anchor was not found")
+	}
+	got, _ := otImports(t, longer)
+	found := false
+	for _, g := range got {
+		found = found || g == "a/b"
+	}
+	if !found {
+		t.Fatalf("ot imports %v, want a/b among them", got)
+	}
+}
+
+func TestArchRunFailsWithoutImplAnchor(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	modules := filepath.Join(dir, "modules.md")
+	text := modulesText(t)
+	cut := strings.Replace(text, "one constructor each", "", 1)
+	if cut == text {
+		t.Fatal("the anchor was not found")
+	}
+	write(t, modules, cut)
+	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 2 {
+		t.Fatalf("exit %d, want 2: %s", code, out)
 	}
 }
 
@@ -188,7 +225,7 @@ func TestArchCheckScratchTree(t *testing.T) {
 		src  string
 		pass bool
 	}{
-		{"ot imports a store sub-package outside the eleven", "cmd/ot/main2.go", imports("main", "internal/store/migrate"), false},
+		{"ot imports a store sub-package outside the list", "cmd/ot/main2.go", imports("main", "internal/store/migrate"), false},
 		{"ot imports a listed implementation package", "cmd/ot/main2.go", imports("main", "internal/store/sessionday"), true},
 		{"a jobs sub-package imports a store sub-package", "internal/jobs/fred/j.go", imports("fred", "internal/store/sessionday"), false},
 		{"a jobs sub-package imports the store root", "internal/jobs/fred/j.go", imports("fred", "internal/store"), true},
