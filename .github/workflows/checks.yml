@@ -50,13 +50,19 @@ jobs:
         run: |
           line=$(printf '%s\n' "$PR_BODY" | tr -d '\r' | grep -E '^Contracts: ' | head -n 1 || true)
           if [ -z "$line" ]; then echo "body has no 'Contracts:' line"; exit 1; fi
-          if ! printf '%s\n' "$line" | grep -qE '^Contracts: (unchanged|[A-Za-z0-9_.-]+ r[0-9]+->r[0-9]+)$'; then
-            echo "Contracts line must be 'Contracts: unchanged' or 'Contracts: <id> rN->rN+1'"; exit 1
+          # Accepted: 'Contracts: unchanged', or one or more '<id> rN->rN+1',
+          # '<id> rN (new)', '<id>.vN (new)', '<id> vN (new)' or
+          # '<id> vN amended before first consumer' entries, comma separated,
+          # optionally followed by '; <note>' (docs/design/week1.md, version rule).
+          entry='[A-Za-z0-9_.-]+( r[0-9]+->r[0-9]+| [rv][0-9]+ \(new\)| \(new\)| v[0-9]+ amended before first consumer)'
+          if [ "$line" != "Contracts: unchanged" ] && \
+             ! printf '%s\n' "$line" | grep -qE "^Contracts: $entry(, $entry)*(; .+)?$"; then
+            echo "Contracts line must be 'Contracts: unchanged' or name each contract as '<id> rN->rN+1', '<id> rN (new)' or '<id> vN amended before first consumer'"; exit 1
           fi
-          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- contracts/datasets contracts/schemas)
+          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- contracts/)
           if [ -n "$changed" ] && [ "$line" = "Contracts: unchanged" ]; then
-            echo "contracts changed but body says unchanged:"; echo "$changed"; exit 1
+            echo "contracts/ changed but body says unchanged:"; echo "$changed"; exit 1
           fi
           if [ -z "$changed" ] && [ "$line" != "Contracts: unchanged" ]; then
-            echo "no contracts/datasets or contracts/schemas change but body names a revision"; exit 1
+            echo "no contracts/ change but body names a contract"; exit 1
           fi
