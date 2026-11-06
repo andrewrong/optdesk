@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -84,6 +86,21 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 	if err != nil {
 		return fmt.Errorf("build fred_series job failed: %w", err)
 	}
-	rec := d.newRunner(ledger, d.newCalendar(sd), clk, []contracts.Job{job})
+	rec := d.newRunner(ledger, d.newCalendar(sd), clk, []contracts.Job{job}, ruleOf(job))
 	return rec.Reconcile(ctx, day)
+}
+
+// windowed is the optional method of a job that states its [window] table.
+type windowed interface {
+	Window() (calendarID string, openOffset, closeOffset time.Duration)
+}
+
+// ruleOf is the window rule the job states, or the zero rule when it states none.
+func ruleOf(j contracts.Job) runner.WindowRule {
+	w, ok := j.(windowed)
+	if !ok {
+		return runner.WindowRule{}
+	}
+	id, open, closeOff := w.Window()
+	return runner.WindowRule{CalendarID: id, OpenOffset: open, CloseOffset: closeOff}
 }
