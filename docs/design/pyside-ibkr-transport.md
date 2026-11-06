@@ -101,7 +101,7 @@ The advisor's answers to the brief: Q1 yes, with the guard assigned on the insta
 Contracts line is `ibkr.v1 amended before first consumer`. Q3 `QuoteStatus` and the code always, the IBKR text only on error statuses after the filter. Q4 acceptable; add a test that `nest_asyncio` is neither imported in `src` nor patched at run time. Q5 enough together with change 4. Q6 the proto is the one interface issue,
 `Gateway` stays private, `api.py` unchanged. Q7 no TCP: the socket of change 2. Also: a contract without a conId is `INVALID_ARGUMENT`; an ambiguous resolve is an error; `OT_IBKR_CLIENT_ID` from the environment with the code default 33; probe evidence recorded as lines (done above).
 
-Advisor: agrees once the four changes are in — all four adopted
+Advisor: agrees, Revision 2 re-checked 2026-11-07
 
 ## Modules
 
@@ -271,7 +271,7 @@ The three proto files, their Go output, the Python generator, the generated Pyth
   9. `pyside/tests/contracts/test_contracts_api.py` has, each found by `grep -n 'def test_'`: `test_api_exports_all_services` (every name in `__all__` resolves; three servicer base classes and three stubs exist), `test_caller_builds_snapshot_request` (a caller builds a `SnapshotRequest` of kind `QUOTE_KIND_OPTION_EOD` with one option `ContractSpec` carrying a `con_id` and reads the fields back), `test_fake_servicer_satisfies_base` (a subclass of the `ContractsService` servicer answers `ResolveContract` with `FOUND`) and `test_generated_python_is_current` (runs `grpc_tools.protoc` in process into `tmp_path` with the options of the script, applies the same rewrite, and asserts each file under `genpb` equals the committed one). No test sleeps, opens a port or a socket, or writes outside `tmp_path`.
   10. In `pyside/`, `uv run ruff check`, `uv run mypy --strict src tests` and `uv run pytest -n auto` pass with the generated tree present, with no `type: ignore` and no `disallow_untyped_calls` or `disallow_subclassing_any` relaxation anywhere (`grep -rnE 'type: ignore|disallow_untyped_calls|disallow_subclassing_any' pyside/pyproject.toml pyside/src pyside/tests` prints nothing).
   11. The pull request body carries `Contracts: ibkr.v1 amended before first consumer`, lists the three new files, and says the Go output holds messages only because no Go gRPC plugin is added (the Go client is a later design).
-  Checked by CI: ci-go and checks (`sh contracts/generate.sh` then `git diff --exit-code`), ci-pyside (the four Python checks).
+  Checked by CI: ci-go and checks (`sh contracts/generate.sh` then `git diff --exit-code`), ci-pyside (the four Python checks), which includes `test_generated_python_is_current` (item 9), the drift check of the generated Python).
   Depends on: ibkr-dependencies, ci-pyside-workflow.
   Size: M
 
