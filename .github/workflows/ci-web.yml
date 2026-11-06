@@ -1,0 +1,63 @@
+name: ci-web
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.npmrc'
+      - '.github/workflows/ci-web.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.npmrc'
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: guard for an empty or absent web/
+        id: guard
+        run: |
+          if [ -f package.json ] && [ -f pnpm-lock.yaml ] && [ -f web/package.json ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "no web package yet: nothing to check"
+          fi
+      # pnpm version comes from the packageManager field of the root package.json.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: steps.guard.outputs.run == 'true'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.guard.outputs.run == 'true'
+        with:
+          node-version: 24.22.2
+          cache: pnpm
+      - name: pnpm install
+        if: steps.guard.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: tsc
+        if: steps.guard.outputs.run == 'true'
+        run: pnpm --dir web exec tsc --noEmit
+      - name: eslint
+        if: steps.guard.outputs.run == 'true'
+        run: pnpm --dir web exec eslint .
+      - name: vitest
+        if: steps.guard.outputs.run == 'true'
+        run: pnpm --dir web exec vitest run
+      - name: build
+        if: steps.guard.outputs.run == 'true'
+        run: pnpm --dir web run build

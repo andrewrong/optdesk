@@ -11,9 +11,12 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: AGENTS.md exists
         run: test -s AGENTS.md
       - name: no CRLF in text files
@@ -24,3 +27,44 @@ jobs:
         run: |
           bad=$(git ls-files -z | xargs -0 -I{} find {} -type f -size +1048576c)
           if [ -n "$bad" ]; then echo "files over 1 MB:"; echo "$bad"; exit 1; fi
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: size ratchet
+        run: go run ./scripts/ratchet
+      - name: repository hygiene
+        run: go run ./scripts/hygiene
+      - name: arch.toml agrees with modules.md
+        run: go run ./scripts/arch --check
+      - name: generated code is current
+        run: |
+          sh contracts/generate.sh
+          git diff --exit-code
+          test -z "$(git status --porcelain)" || { git status --short; echo "untracked generated output"; exit 1; }
+      - name: pull request body carries a Contracts line
+        if: github.base_ref != ''
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          line=$(printf '%s\n' "$PR_BODY" | tr -d '\r' | grep -E '^Contracts: ' | head -n 1 || true)
+          if [ -z "$line" ]; then echo "body has no 'Contracts:' line"; exit 1; fi
+          # Accepted: 'Contracts: unchanged', or one or more '<id> rN->rN+1',
+          # '<id> rN (new)', '<id>.vN (new)', '<id> vN (new)' or
+          # '<id> vN amended before first consumer' entries, comma separated,
+          # optionally followed by '; <note>' (docs/design/week1.md, version rule).
+          entry='[A-Za-z0-9_.-]+( r[0-9]+->r[0-9]+| [rv][0-9]+ \(new\)| \(new\)| v[0-9]+ amended before first consumer)'
+          if [ "$line" != "Contracts: unchanged" ] && \
+             ! printf '%s\n' "$line" | grep -qE "^Contracts: $entry(, $entry)*(; .+)?$"; then
+            echo "Contracts line must be 'Contracts: unchanged' or name each contract as '<id> rN->rN+1', '<id> rN (new)' or '<id> vN amended before first consumer'"; exit 1
+          fi
+          # Only the files that define a contract revision count; fixtures, gendoc,
+          # generate.sh and READMEs under contracts/ change no revision.
+          changed=$(git diff --name-only "$BASE_SHA"...HEAD -- contracts/schemas contracts/datasets contracts/proto)
+          if [ -n "$changed" ] && [ "$line" = "Contracts: unchanged" ]; then
+            echo "contracts/schemas, contracts/datasets or contracts/proto changed but body says unchanged:"; echo "$changed"; exit 1
+          fi
+          if [ -z "$changed" ] && [ "$line" != "Contracts: unchanged" ]; then
+            echo "no contracts/schemas, contracts/datasets or contracts/proto change but body names a contract"; exit 1
+          fi

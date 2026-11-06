@@ -1,0 +1,50 @@
+name: hygiene
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  GITLEAKS_VERSION: 8.30.1
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+
+jobs:
+  environment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: no OT_* or DSN variable in the environment
+        run: |
+          bad=$(env | cut -d= -f1 | grep -E '^OT_|DSN' || true)
+          if [ -n "$bad" ]; then echo "forbidden variable names:"; echo "$bad"; exit 1; fi
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: install gitleaks v8.30.1 (checksum verified)
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/gl" && tar -xzf gitleaks.tgz -C "$RUNNER_TEMP/gl" gitleaks
+          rm gitleaks.tgz
+      - name: gitleaks over the commits of the change
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            range="$BASE_SHA..$HEAD_SHA"
+            "$RUNNER_TEMP/gl/gitleaks" git --redact --no-banner --exit-code 1 --log-opts "$range" .
+          else
+            "$RUNNER_TEMP/gl/gitleaks" git --redact --no-banner --exit-code 1 .
+          fi

@@ -1,0 +1,115 @@
+name: ci-go
+
+on:
+  pull_request:
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.golangci.yml'
+      - '.go-arch-lint.yml'
+      - 'arch.toml'
+      - 'contracts/**'
+      - 'migrations/**'
+      - '.github/workflows/ci-go.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # golangci-lint and go-arch-lint are tool directives of go.mod: go tool uses that pin.
+      - name: golangci-lint
+        run: go tool golangci-lint run ./...
+      - name: go-arch-lint
+        run: go tool go-arch-lint check
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: affected packages
+        id: affected
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mod=$(go list -m)
+          pkgs=./...
+          if [ "$EVENT" = pull_request ]; then
+            changed=$(git diff --name-only "$BASE_SHA"...HEAD)
+            if printf '%s\n' "$changed" | grep -qE '^(go\.mod|go\.sum|\.golangci\.yml|\.go-arch-lint\.yml|arch\.toml|contracts/|\.github/)'; then
+              pkgs=./...
+            else
+              printf '%s\n' "$changed" | grep -E '\.go$' | xargs -r -n1 dirname | sort -u | sed "s|^|$mod/|; s|/\.$||" > changed.txt
+              go list -f '{{.ImportPath}} {{join .Deps " "}} {{join .TestImports " "}} {{join .XTestImports " "}}' ./... > deps.txt
+              pkgs=$(awk 'NR==FNR { c[$1]=1; next } { for (i=1;i<=NF;i++) if ($i in c) { print $1; break } }' changed.txt deps.txt | sed "s|^$mod|.|" | sort -u | tr '\n' ' ')
+              rm -f changed.txt deps.txt
+            fi
+          fi
+          echo "packages: $pkgs"
+          echo "pkgs=$pkgs" >> "$GITHUB_OUTPUT"
+      # Only a pull request that changes go.mod or go.sum pays for this step.
+      - name: go.mod or go.sum changed - tidy and tool build
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ] || ! git diff --name-only "$BASE_SHA"...HEAD | grep -qE '^go\.(mod|sum)$'; then
+            echo "go.mod and go.sum unchanged; skipped"; exit 0
+          fi
+          go mod tidy -diff
+          go build -o /dev/null tool
+      - name: go test
+        if: steps.affected.outputs.pkgs != ''
+        env:
+          PKGS: ${{ steps.affected.outputs.pkgs }}
+        run: go test $PKGS
+
+  test-pg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      timescaledb:
+        image: timescale/timescaledb:2.30.2-pg17@sha256:b346edcdb51a1fd6020e3965e0bd1c9f3406fa6d5fbce1e28f4852587ef934e2
+        env:
+          POSTGRES_PASSWORD: ci-only-throwaway
+          POSTGRES_DB: optdesk_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Passes while no test carries the pg build tag.
+      - name: go test -tags pg
+        run: go test -tags pg ./...
