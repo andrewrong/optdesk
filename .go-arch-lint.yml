@@ -17,6 +17,10 @@ components:
     in: internal/contracts/gen
   clock:
     in: internal/clock
+  clock/calendar:
+    in: internal/clock/calendar
+  clock/realclock:
+    in: internal/clock/realclock
   sources:
     in: internal/sources
   sources/fred:
@@ -43,6 +47,14 @@ deps:
   clock:
     mayDependOn:
       - contracts
+  clock/calendar:
+    mayDependOn:
+      - contracts
+      - clock
+  clock/realclock:
+    mayDependOn:
+      - contracts
+      - clock
   sources:
     mayDependOn:
       - contracts
@@ -80,4 +92,6 @@ deps:
       - jobs
       - pages
       - profile
+      - clock/realclock
+      - clock/calendar
       - sources/fred
