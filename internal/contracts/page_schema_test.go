@@ -82,4 +82,22 @@ func TestPageSchema(t *testing.T) {
 			t.Fatalf("want a generated_at failure, got %v", err)
 		}
 	})
+	gapCase := func(name string, edit func(g map[string]any), wantOK bool) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			m := loadGolden(t)
+			edit(m["gaps"].([]any)[0].(map[string]any))
+			err := s.Validate(m)
+			if wantOK && err != nil {
+				t.Fatal(err)
+			}
+			if !wantOK && err == nil {
+				t.Fatal("want a failure")
+			}
+		})
+	}
+	gapCase("stale gap is valid", func(g map[string]any) { g["reason"] = "stale" }, true)
+	gapCase("unknown gap reason fails", func(g map[string]any) { g["reason"] = "bogus" }, false)
+	gapCase("gap without series_id fails", func(g map[string]any) { delete(g, "series_id") }, false)
+	gapCase("gap without date fails", func(g map[string]any) { delete(g, "date") }, false)
 }

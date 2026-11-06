@@ -39,9 +39,14 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["reason"],
+        "required": ["series_id", "date", "reason"],
         "properties": {
-          "reason": {"enum": ["no_value", "missing", "source_error"]}
+          "series_id": {"type": "string", "minLength": 1},
+          "date": {"type": "string", "format": "date"},
+          "reason": {
+            "description": "Why the point is missing. stale: the latest point of the series is older than the expected key's day by more than the freshness limit of the series.",
+            "enum": ["no_value", "missing", "source_error", "stale"]
+          }
         }
       }
     }
