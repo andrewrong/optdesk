@@ -25,7 +25,7 @@ func TestSetupPassesConfig(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()
 	var got store.SetupConfig
-	a, _ := setupApp(t, map[string]string{"OT_HOME": home, store.AdminDSNEnv: "dsn-x"},
+	a, _ := setupApp(t, map[string]string{"OT_HOME": home, "OT_ZONE": "UTC", store.AdminDSNEnv: "dsn-x"},
 		func(_ context.Context, c store.SetupConfig) error { got = c; return nil })
 	if err := runSetup(a, []string{"pg"}); err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestSetupUnsetStopsBeforeCall(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()
 	for name, env := range map[string]map[string]string{
-		store.AdminDSNEnv: {"OT_HOME": home},
+		store.AdminDSNEnv: {"OT_HOME": home, "OT_ZONE": "UTC"},
 		"OT_HOME":         {store.AdminDSNEnv: "d"},
 	} {
 		called := false
@@ -55,7 +55,7 @@ func TestSetupArgumentMustBePg(t *testing.T) {
 	t.Parallel()
 	for _, args := range [][]string{nil, {"mysql"}, {"pg", "x"}} {
 		called := false
-		a, _ := setupApp(t, map[string]string{"OT_HOME": t.TempDir(), store.AdminDSNEnv: "d"},
+		a, _ := setupApp(t, map[string]string{"OT_HOME": t.TempDir(), "OT_ZONE": "UTC", store.AdminDSNEnv: "d"},
 			func(context.Context, store.SetupConfig) error { called = true; return nil })
 		err := runSetup(a, args)
 		if err == nil || !strings.Contains(err.Error(), "usage") || called {
@@ -67,7 +67,7 @@ func TestSetupArgumentMustBePg(t *testing.T) {
 func TestSetupSentinelDSN(t *testing.T) {
 	t.Parallel()
 	const sentinel = "postgres://sentinel-user:sentinel-pw@h/db"
-	a, errb := setupApp(t, map[string]string{"OT_HOME": t.TempDir(), store.AdminDSNEnv: sentinel},
+	a, errb := setupApp(t, map[string]string{"OT_HOME": t.TempDir(), "OT_ZONE": "UTC", store.AdminDSNEnv: sentinel},
 		func(context.Context, store.SetupConfig) error { return errors.New("dial " + sentinel) })
 	err := runSetup(a, []string{"pg"})
 	if err == nil || strings.Contains(err.Error(), "sentinel") || strings.Contains(errb.String(), "sentinel") {
