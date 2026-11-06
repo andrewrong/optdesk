@@ -1,0 +1,109 @@
+// The 市场概览 card of the home page (market_summary v2). Every visible string and figure is a field of the
+// payload; this file formats, compares and computes nothing. `value` is used only by the table's user-started sort.
+import { Chart } from '@/charts/Chart'
+import type { ChartSpec } from '@/charts/spec'
+import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/market_summary'
+import { CardNotes } from './CardNotes'
+import { DataTimesFold } from './DataTimesFold'
+import { StaleAlert } from './StaleAlert'
+
+type Chart_ = Payload['card']['chart']
+
+function specOf(chart: Chart_): ChartSpec {
+  const [close, average, band] = chart.series_names
+  const line = (name: string, key: 'close' | 'ma200' | 'band_low' | 'band_high') => ({
+    name,
+    points: chart.points.map((point) => ({ value: point[key] })),
+  })
+  return {
+    kind: 'line',
+    categories: chart.points.map((point) => point.label),
+    series: [
+      line(close, 'close'),
+      line(average, 'ma200'),
+      line(band, 'band_low'),
+      line(band, 'band_high'),
+    ],
+  }
+}
+
+// Python sends the column names in order: name, iv, rv20, difference.
+function columnsOf(names: Payload['card']['index_table']['columns']): Column[] {
+  const [name, iv, rv20, diff] = names
+  return [
+    { id: 'name', label: name },
+    { id: 'iv', label: iv, align: 'right' },
+    { id: 'rv20', label: rv20, align: 'right' },
+    { id: 'diff', label: diff, align: 'right' },
+  ]
+}
+
+export function MarketSummaryCard({ payload }: { payload: Payload }) {
+  const { card } = payload
+  const rows = card.index_table.rows.map((row) => ({
+    name: {
+      text: row.name,
+      value: row.name,
+      note: row.source_text ?? null,
+    } as Cell,
+    iv: row.iv as Cell,
+    rv20: row.rv20 as Cell,
+    diff: row.iv_minus_rv20 as Cell,
+  }))
+  const [first, last] = card.chart.end_labels
+  return (
+    <Card data-card="market-summary">
+      <CardHeader>
+        <CardTitle>{card.title}</CardTitle>
+        <CardDescription>{card.say}</CardDescription>
+        <p className="text-xs text-muted-foreground" data-subtitle>
+          {card.subtitle}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <StaleAlert stale={card.stale} generatedAt={payload.generated_at} />
+        <div data-chart-block>
+          <Chart spec={specOf(card.chart)} ariaText={card.chart.aria_text} name="market-summary" />
+          <div className="flex justify-between text-xs text-muted-foreground" data-end-labels>
+            <span>{first}</span>
+            <span>{last}</span>
+          </div>
+        </div>
+        <div data-index-table>
+          <DataTable columns={columnsOf(card.index_table.columns)} rows={rows} />
+        </div>
+        {card.vol_indices ? (
+          <ul className="flex flex-wrap gap-2" data-vol-indices>
+            {card.vol_indices.map((item) => (
+              <li key={item.name} className="flex items-center gap-1 text-sm">
+                <span>{item.name}</span>
+                <Badge variant="secondary" className="h-auto whitespace-normal text-left">
+                  {item.level.text}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {item.day} {item.source_text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {card.vol_indices_note ? (
+          <p className="text-xs text-muted-foreground" data-vol-indices-note>
+            {card.vol_indices_note}
+          </p>
+        ) : null}
+        <CardNotes notes={[...card.notes]} gaps={[...card.gaps]} />
+        <DataTimesFold text={card.data_times_text} />
+      </CardContent>
+    </Card>
+  )
+}
+
+export const registration = {
+  schema: 'market_summary',
+  page: page<Payload>(validate, MarketSummaryCard),
+}
