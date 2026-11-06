@@ -104,7 +104,7 @@ func TestMigrateFailureStopsLoad(t *testing.T) {
 	// contacted): the one error line is the line main.run writes.
 	{
 		const dsn = "postgres://sentinel-user:sentinel-pw@127.0.0.1:0/optdesk"
-		env := map[string]string{"OT_HOME": t.TempDir(), store.AdminDSNEnv: dsn}
+		env := map[string]string{"OT_HOME": t.TempDir(), "OT_ZONE": "UTC", store.AdminDSNEnv: dsn}
 		var out, errb bytes.Buffer
 		code := run([]string{"migrate", "--dir", t.TempDir()}, func(k string) string { return env[k] }, &out, &errb)
 		if code != 1 {
