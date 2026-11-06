@@ -29,6 +29,8 @@ components:
     in: internal/sources/fred
   store:
     in: internal/store
+  store/sessionday:
+    in: internal/store/sessionday
   runner:
     in: internal/runner
   runner/reconcile:
@@ -45,6 +47,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  store/migrate:
+    in: internal/store/migrate
 deps:
   contracts:
     mayDependOn:
@@ -75,6 +79,10 @@ deps:
   store:
     mayDependOn:
       - contracts
+  store/sessionday:
+    mayDependOn:
+      - contracts
+      - store
   runner:
     mayDependOn:
       - contracts
@@ -119,6 +127,11 @@ deps:
       - clock/realclock
       - clock/calendar
       - runner/reconcile
+      - store/sessionday
       - sources/fred
       - pages/macro_rates
       - pages/embed
+  store/migrate:
+    mayDependOn:
+      - contracts
+      - store
