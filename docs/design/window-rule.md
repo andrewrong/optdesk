@@ -32,6 +32,8 @@ No entry edits `go.mod`, `go.sum`, `contracts/`, `cmd/` or `docs/design/modules.
 
 ## Interface
 
+Landed in #93
+
 Owner: `runner` (`internal/runner/api.go`), declarations only:
 
 ```go
