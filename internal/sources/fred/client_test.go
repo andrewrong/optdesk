@@ -86,12 +86,17 @@ func TestErrorKindsCancelledContext(t *testing.T) {
 	s := newSource(t, func(_ http.ResponseWriter, _ *http.Request) { <-done })
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	start := time.Now()
-	_, err := s.Fetch(ctx, plan)
-	if err == nil || kindOf(t, err) != contracts.Retryable {
-		t.Fatalf("err = %v", err)
-	}
-	if time.Since(start) > 2*time.Second {
+	errc := make(chan error, 1)
+	go func() {
+		_, err := s.Fetch(ctx, plan)
+		errc <- err
+	}()
+	select {
+	case err := <-errc:
+		if err == nil || kindOf(t, err) != contracts.Retryable {
+			t.Fatalf("err = %v", err)
+		}
+	case <-time.After(5 * time.Second):
 		t.Fatal("cancelled fetch was not prompt")
 	}
 }

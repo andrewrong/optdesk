@@ -19,6 +19,8 @@ components:
     in: internal/clock
   sources:
     in: internal/sources
+  sources/fred:
+    in: internal/sources/fred
   store:
     in: internal/store
   runner:
@@ -45,6 +47,11 @@ deps:
     mayDependOn:
       - contracts
       - clock
+  sources/fred:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
   store:
     mayDependOn:
       - contracts
@@ -73,3 +80,4 @@ deps:
       - jobs
       - pages
       - profile
+      - sources/fred
