@@ -23,6 +23,7 @@ const seriesDatasetID = "obs.series_point"
 type window struct {
 	Rule          string `toml:"rule"`
 	LatenessHours int    `toml:"lateness_hours"`
+	Calendar      string `toml:"calendar"`
 }
 
 type manifest struct {
