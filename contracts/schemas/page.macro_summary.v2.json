@@ -1,0 +1,345 @@
+{
+  "$defs": {
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "ease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ease"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Ease"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "maxItems": 8,
+          "title": "Events",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "common.v1.json#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "common.v1.json#/$defs/StaleLabel"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "say",
+        "stale",
+        "ease",
+        "events",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "Ease": {
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Aria Text",
+          "type": "string"
+        },
+        "figure": {
+          "$ref": "#/$defs/IndexPointsFigure"
+        },
+        "marker_percent": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        },
+        "neutral_band": {
+          "$ref": "#/$defs/NeutralBand"
+        },
+        "reading_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reading Text",
+          "type": "string"
+        },
+        "ticks": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "Ticks",
+          "type": "array"
+        },
+        "week_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndexPointsFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Week Change"
+        }
+      },
+      "required": [
+        "figure",
+        "week_change",
+        "marker_percent",
+        "neutral_band",
+        "ticks",
+        "reading_text",
+        "aria_text"
+      ],
+      "title": "Ease",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+          "title": "Date",
+          "type": "string"
+        },
+        "name_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name Text",
+          "type": "string"
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Previous"
+        },
+        "when_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "When Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "when_text",
+        "name_text",
+        "previous"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "IndexPointsFigure": {
+      "additionalProperties": false,
+      "description": "A position on the stored 0 to 100 ease scale, or a change in it.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tone"
+        },
+        "unit": {
+          "const": "index_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "IndexPointsFigure",
+      "type": "object"
+    },
+    "NeutralBand": {
+      "additionalProperties": false,
+      "description": "The ends of the neutral band on the track, ``percent_of_track``.",
+      "properties": {
+        "high": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        },
+        "low": {
+          "$ref": "#/$defs/PercentOfTrackFigure"
+        }
+      },
+      "required": [
+        "low",
+        "high"
+      ],
+      "title": "NeutralBand",
+      "type": "object"
+    },
+    "PercentOfTrackFigure": {
+      "additionalProperties": false,
+      "description": "A marker position on its track, 0 to 100.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "percent_of_track",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PercentOfTrackFigure",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.macro_summary.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034) and card.",
+  "properties": {
+    "build_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "card": {
+      "$ref": "#/$defs/Card"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "run_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "macro_summary",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "stale_after": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "card"
+  ],
+  "title": "MacroSummary",
+  "type": "object"
+}

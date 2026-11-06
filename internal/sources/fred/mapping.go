@@ -35,9 +35,20 @@ func parseDay(s string) (types.SerializableDate, error) {
 	return types.SerializableDate{Time: t}, nil
 }
 
+// seriesUnits states the unit of each configured series; a series absent here is refused.
+// Each row is checked against recorded FRED metadata in testdata/series_units.json.
+var seriesUnits = map[string]contracts.SeriesUnit{
+	"DGS10": contracts.SeriesUnit("percent"),
+	"DGS2":  "percent",
+}
+
 // mapObservations maps the body of a FRED series/observations response to records.
 // publishedAt is the instant the response was fetched: FRED gives no publication instant.
 func mapObservations(seriesID string, body []byte, publishedAt time.Time) ([]contracts.SeriesPoint, error) {
+	unit, ok := seriesUnits[seriesID]
+	if !ok {
+		return nil, fmt.Errorf("fred: no unit configured for series %s", seriesID)
+	}
 	var resp observationsResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("fred: undecodable response")
@@ -64,9 +75,8 @@ func mapObservations(seriesID string, body []byte, publishedAt time.Time) ([]con
 			PublishedAt:     publishedAt,
 			Source:          sourceName,
 			SourceRevision:  o.RealtimeStart,
-			// Conversion boundary: FRED values are bare numbers; the unit is stated here and
-			// nowhere else. The series of this client (DGS10) are quoted in percent.
-			Unit: contracts.SeriesUnit("percent"),
+			// Conversion boundary: FRED values are bare numbers; the unit comes from seriesUnits.
+			Unit: unit,
 		}
 		if o.Value == noValueToken {
 			p.Status = statusNoVal

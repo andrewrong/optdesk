@@ -108,7 +108,7 @@ The other page schemas of the old repository, copied with a manifest of the copi
   by week1.md); loading `contracts/fixtures/master.session_day.r1.json` through `store.SessionDayWriter` is one more `ot`
   subcommand and would take the design over the size of this wave. Until then `ot run-once` on a real database returns
   `UnknownCalendar`; its tests use fakes only.
-- `docs/contracts/jobs.md`: not touched here; it does not exist on origin/main either.
+- `docs/contracts/jobs.md`: not touched here (it exists on origin/main since the jobs issue; `docs/design/contract-docs.md` completes it).
 - Fixtures for the 17 schemas that have no fixture directory (and fixtures regenerated for the carried schemas): the old ones
   are written by a Python registry that is not in this repository.
 - The moves of the migrated pages from `web/src/types/*` to generated types, and the week-2 cleanup pass over the schemas.

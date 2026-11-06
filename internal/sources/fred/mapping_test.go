@@ -1,7 +1,10 @@
 package fred
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -106,5 +109,80 @@ func TestFixtureMapping(t *testing.T) {
 	}
 	if withValue != 2 {
 		t.Errorf("with value = %d", withValue)
+	}
+}
+
+func TestMappingUnconfiguredSeries(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"observations":[
+	  {"realtime_start":"2024-02-01","realtime_end":"2024-02-02","date":"2024-01-03","value":"1.5"}]}`)
+	got, err := mapObservations("CPIAUCSL", body, time.Time{})
+	if err == nil || got != nil {
+		t.Fatalf("got %v, err %v", got, err)
+	}
+	if !strings.Contains(err.Error(), "CPIAUCSL") {
+		t.Errorf("error does not name the series: %v", err)
+	}
+}
+
+type seriesMeta struct {
+	SeriesID string `json:"series_id"`
+	Units    string `json:"units"`
+}
+
+// compareUnits reports every disagreement between a unit table and recorded FRED metadata.
+func compareUnits(table map[string]contracts.SeriesUnit, meta []seriesMeta) []string {
+	var fails []string
+	recorded := map[string]string{}
+	for _, m := range meta {
+		recorded[m.SeriesID] = m.Units
+	}
+	for id, u := range table {
+		units, ok := recorded[id]
+		switch {
+		case !ok:
+			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
+		case units != "Percent" && u == contracts.SeriesUnit("percent"):
+			fails = append(fails, fmt.Sprintf("%s: table says percent, recorded units %q", id, units))
+		}
+	}
+	for id, units := range recorded {
+		if u, ok := table[id]; ok && units == "Percent" && u != contracts.SeriesUnit("percent") {
+			fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
+		}
+	}
+	return fails
+}
+
+func loadMeta(t *testing.T) []seriesMeta {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/series_units.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var meta []seriesMeta
+	if err := json.Unmarshal(raw, &meta); err != nil {
+		t.Fatal(err)
+	}
+	return meta
+}
+
+func TestSeriesUnitsMatchMetadata(t *testing.T) {
+	t.Parallel()
+	for _, f := range compareUnits(seriesUnits, loadMeta(t)) {
+		t.Error(f)
+	}
+}
+
+func TestSeriesUnitsDetectsWrongClaim(t *testing.T) {
+	t.Parallel()
+	table := map[string]contracts.SeriesUnit{}
+	for k, v := range seriesUnits {
+		table[k] = v
+	}
+	table["CPIAUCSL"] = contracts.SeriesUnit("percent")
+	fails := compareUnits(table, loadMeta(t))
+	if len(fails) != 1 || !strings.Contains(fails[0], "CPIAUCSL") {
+		t.Errorf("fails = %v", fails)
 	}
 }
