@@ -99,6 +99,26 @@ func TestMigrateFailureStopsLoad(t *testing.T) {
 	if strings.Contains(errb.String(), "boom-text") || strings.Contains(errb.String(), "status=ok") {
 		t.Fatalf("log %q", errb.String())
 	}
+
+	// the real dispatcher with the real migrateUp against a refused loopback port (no server is
+	// contacted): the one error line is the line main.run writes.
+	{
+		const dsn = "postgres://sentinel-user:sentinel-pw@127.0.0.1:0/optdesk"
+		env := map[string]string{"OT_HOME": t.TempDir(), store.AdminDSNEnv: dsn}
+		var out, errb bytes.Buffer
+		code := run([]string{"migrate", "--dir", t.TempDir()}, func(k string) string { return env[k] }, &out, &errb)
+		if code != 1 {
+			t.Fatalf("exit code %d, log %q", code, errb.String())
+		}
+		if n := strings.Count(errb.String(), "level=ERROR"); n != 1 {
+			t.Fatalf("%d error lines in %q", n, errb.String())
+		}
+		for _, s := range []string{dsn, "sentinel-pw", "sentinel-user"} {
+			if strings.Contains(errb.String(), s) {
+				t.Fatalf("secret %q in log %q", s, errb.String())
+			}
+		}
+	}
 }
 
 func migrateSentinel(t *testing.T, dsn string) {
