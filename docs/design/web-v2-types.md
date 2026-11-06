@@ -212,7 +212,7 @@ Design review of revision 2 (verdict "changes", 4 points), all adopted in revisi
 1. Blocking, modules not buildable in parallel: `web-types-generator` is gone as an issue; the dependency, lockfile, allowlist and script
    fold into the interface issue under the cross-module license of Decision 4 (option (a)), with the reasons stated there. The cut is
    the interface issue, then two independent cards.
-2. "rewrites the three files": now "the two generated files"; `index.ts` is hand-written and is covered by the `git diff --exit-code` check.
+2. "rewrites the three files": now "the two generated files"; `index.ts` is hand-written, `generate:types` never rewrites it, so no diff step can cover it; its re-exports are guarded by `TestGeneratedSummaryTypes` (Decision 3).
 3. Items needing installed packages: listed under `Checked by CI` or marked [CI]; the offline acceptance is grep and Go only.
 4. One revision: origin/main at fe71bc3 for every claim, re-verified after merging origin/main (the branch was behind); the schemas
    are unchanged since 882a4db.
