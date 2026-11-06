@@ -55,3 +55,7 @@ optdesk is written in three languages: Go (services and the command line), Pytho
   A scheduled workflow runs everything.
 - Commit with the identity the history uses. No secrets, API keys, account ids, tokens, broker credentials,
   chat ids or personal data in code, commits, configuration or fixtures.
+- The pull request body carries a line starting `Contracts: ` from the moment the pull request is opened
+  (`Contracts: unchanged` when no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto`
+  changes). The `test` check reads the body of the event that started the run, so a body edited later is not
+  seen until a new commit is pushed.
