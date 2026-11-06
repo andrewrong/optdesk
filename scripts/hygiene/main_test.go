@@ -96,8 +96,13 @@ func TestHygieneExemptSkipped(t *testing.T) {
 		"docs/design/a.md":                    id + "\n",
 		"scripts/hygiene/x_test.go":           id + "\n",
 		"go.sum":                              id + "\n",
-		"pyside/uv.lock":                      id + "\n",
-		"web/pnpm-lock.yaml":                  id + "\n",
+		"uv.lock":                             id + "\n",
+		"pnpm-lock.yaml":                      id + "\n",
 		"fixtures/MANIFEST.synthetic-v1.json": `{"files":[]}` + id,
 	})
+}
+
+func TestHygieneNestedGoSumIsScanned(t *testing.T) {
+	t.Parallel()
+	mustFind(t, map[string]string{"internal/x/go.sum": "U" + "1234567\n"}, "internal/x/go.sum:1: account id")
 }

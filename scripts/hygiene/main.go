@@ -37,8 +37,11 @@ var (
 
 // exempt reports whether a path is not scanned.
 func exempt(p string) bool {
-	switch path.Base(p) {
-	case "pnpm-lock.yaml", "go.sum", "uv.lock", manifestName:
+	switch p {
+	case "pnpm-lock.yaml", "go.sum", "uv.lock":
+		return true // the root files only
+	}
+	if path.Base(p) == manifestName {
 		return true
 	}
 	return strings.HasPrefix(p, "docs/design/") || strings.HasPrefix(p, "scripts/hygiene/")
