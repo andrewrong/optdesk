@@ -145,7 +145,7 @@ func TestCalendarUsage(t *testing.T) {
 
 func TestCalendarLoadDemoRefused(t *testing.T) {
 	t.Parallel()
-	e := newCalEnv(t, map[string]string{"OT_HOME": "home"}, "demo")
+	e := newCalEnv(t, map[string]string{"OT_HOME": "home", "OT_ZONE": "UTC"}, "demo")
 	err := runCalendar(e.a, []string{"load", filepath.Join(t.TempDir(), "missing.json")})
 	if err == nil || strings.Contains(err.Error(), "missing.json") || e.opens != 0 {
 		t.Fatalf("err %v opens %d", err, e.opens)
