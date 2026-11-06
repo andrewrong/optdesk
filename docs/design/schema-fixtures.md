@@ -18,7 +18,7 @@ What was counted on main at c63cbb4:
 - The helper `minimal` of `internal/contracts/common_test.go` builds a value from `required`. It was tried on all 16 files
   with a table of sample strings for patterns: every one builds and validates. Two limits of the existing `checkPageV2`
   keep it from being used as it is: it sets `schema_version` to 3, which is valid for the v3 files, and it needs an
-  override for every pattern (the 16 files use 10 distinct patterns in all, 29 files share two of them).
+  override for every pattern (the 30 page files and `common.v1.json` use 10 distinct patterns in all, and two of them occur in nearly every file).
 - All 30 carried files have `schema_version` as an integer `const` (1, 2 or 3) and none has `stale_after`.
 
 Goal of the design: each of the 16 schemas has a test that builds the smallest valid instance in memory, validates it, and
@@ -88,7 +88,7 @@ The positions and structure-detail schemas before the last version.
   Acceptance:
   1. `grep -n 'func TestMinimalPositions' internal/contracts/minimal_positions_test.go` finds one test function.
   2. The file names exactly `page.positions_page.v1.json`, `page.positions_page.v2.json`, `page.structure_detail.v1.json` and
-     `page.structure_detail.v2.json`, each once (`grep -c 'page\.' ` of the file counts 4 string literals), and no other schema.
+     `page.structure_detail.v2.json`, each once (four string literals), and no other schema.
   3. Each name is run through `t.Run` with `t.Parallel()` in the subtest and in the test, and checked by `checkMinimal(t, file)`.
   4. The file contains no JSON fixture text: `grep -c '"schema_version"' internal/contracts/minimal_positions_test.go` is 0,
      and it writes no file (`grep -c 'os.WriteFile'` is 0).
