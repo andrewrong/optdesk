@@ -93,7 +93,7 @@ describe('OptionsSummaryCard', () => {
   it('shows card.stale.text for stale.json', async () => {
     const stale = os('stale.json')
     await showCard(stale)
-    expect(host.querySelector('[data-stale]')?.textContent).toBe(stale.card.stale.text)
+    expect(host.querySelector('[data-stale-label]')?.textContent).toBe(stale.card.stale.text)
   })
 })
 
@@ -121,5 +121,28 @@ describe('App with options_summary', () => {
     expect(host.querySelector('[data-card=options-summary]')).toBeNull()
     expect(host.textContent).toBe('')
     expect(gap.ok ? '' : gap.gap.text).toMatch(/Unsupported schema_version/)
+  })
+})
+
+describe('OptionsSummaryCard and the clock', () => {
+  it('renders the same stale tone whatever the device clock says', async () => {
+    const ok = os('ok.json')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date(Date.parse(ok.card.stale.stale_after) - 1000))
+      await showCard(ok)
+      // the chart carries generated ids, so compare the stale label and the tiles
+      const outside = () =>
+        ['[data-stale-label]', '[data-tiles]'].map((sel) => host.querySelector(sel)?.outerHTML)
+      const before = outside()
+      await act(async () => root?.unmount())
+      document.body.innerHTML = ''
+      vi.setSystemTime(new Date(Date.parse(ok.card.stale.stale_after) + 1000))
+      await showCard(ok)
+      expect(outside()).toEqual(before)
+      expect(host.querySelector('[data-clock-skew]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

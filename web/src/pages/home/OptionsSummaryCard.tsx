@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/options_summary'
 import { CardNotes } from './CardNotes'
-import { StaleAlert } from './StaleAlert'
+import { Info } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 type Tiles = Payload['card']['tiles']
 const TILE_KEYS = [
@@ -17,9 +18,9 @@ const TILE_KEYS = [
   'max_loss_usd',
 ] as const satisfies readonly (keyof Tiles)[]
 
-type Figure = { text: string } & ({ reason: string } | { value: number })
+type Tile = Tiles[(typeof TILE_KEYS)[number]]
 
-function Tile({ tileKey, tile }: { tileKey: string; tile: { label: string; caption?: string | null; figure: Figure } }) {
+function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
   const gap = 'reason' in tile.figure
   return (
     <div className="space-y-1" data-tile={tileKey}>
@@ -67,10 +68,13 @@ export function OptionsSummaryCard({ payload }: { payload: Payload }) {
         <CardDescription>{card.say ?? card.subtitle}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <StaleAlert stale={card.stale} generatedAt={payload.generated_at} />
+        <Alert data-stale-label>
+          <Info aria-hidden />
+          <AlertDescription>{card.stale.text}</AlertDescription>
+        </Alert>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-tiles>
           {TILE_KEYS.map((key) => (
-            <Tile key={key} tileKey={key} tile={card.tiles[key]} />
+            <TileBlock key={key} tileKey={key} tile={card.tiles[key]} />
           ))}
         </div>
         <div className="space-y-1" data-premium-series>
