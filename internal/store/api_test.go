@@ -234,3 +234,21 @@ func TestDSNEnvNames(t *testing.T) {
 		t.Errorf("AdminDSNEnv %q equals a role DSN name", store.AdminDSNEnv)
 	}
 }
+
+// TestEnvContract checks the fake side of ReadEnvFunc and a caller that reads DSNEnvLoader from it.
+func TestEnvContract(t *testing.T) {
+	t.Parallel()
+	var read store.ReadEnvFunc = func(path string) (map[string]string, error) {
+		return map[string]string{store.DSNEnvLoader: "postgres://ot_loader@h/d", "PATH_SEEN": path}, nil
+	}
+	m, err := read("/x/.env")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.DSNEnvLoader != "OT_PG_DSN_LOADER" {
+		t.Fatalf("line name %q", store.DSNEnvLoader)
+	}
+	if got := m[store.DSNEnvLoader]; got != "postgres://ot_loader@h/d" {
+		t.Fatalf("loader dsn %q", got)
+	}
+}

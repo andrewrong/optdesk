@@ -67,6 +67,8 @@ const (
 	DSNEnvSeriesFred = "OT_PG_DSN_SERIES_FRED"
 	// DSNEnvPages names the line that holds the DSN of the role ot_ro_pages.
 	DSNEnvPages = "OT_PG_DSN_PAGES"
+	// DSNEnvLoader names the line of $OT_HOME/.env that holds the DSN of the role ot_loader.
+	DSNEnvLoader = "OT_PG_DSN_LOADER"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -141,6 +143,10 @@ type OpsLedger interface {
 	Release(ctx context.Context, l Lease) error
 	Close() error
 }
+
+// ReadEnvFunc reads the KEY=VALUE lines of the env file at path (setup.ReadEnv). It does not touch the process
+// environment. A missing file is an error for which errors.Is(err, fs.ErrNotExist) holds; no error carries a value.
+type ReadEnvFunc func(path string) (map[string]string, error)
 
 // OpenSessionDayFunc opens the session day store (internal/store/sessionday.Open).
 type OpenSessionDayFunc func(ctx context.Context, dsn string) (SessionDayStore, error)
