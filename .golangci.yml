@@ -1,0 +1,51 @@
+version: "2"
+run:
+  tests: true
+linters:
+  default: standard
+  enable:
+    - depguard
+    - noctx
+    - contextcheck
+    - forbidigo
+    - exhaustive
+    - gocyclo
+    - funlen
+    - lll
+  settings:
+    depguard:
+      rules:
+        pgx:
+          files:
+            - $all
+            - "!**/internal/store/**"
+          deny:
+            - pkg: github.com/jackc/pgx
+              desc: only internal/store may import pgx
+    forbidigo:
+      forbid:
+        - pattern: ^time\.Sleep$
+          msg: a test never sleeps and code waits on a clock; use internal/clock
+        - pattern: ^time\.Now$
+          msg: time comes from internal/clock
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*os.File).Close
+    gocyclo:
+      min-complexity: 20
+    funlen:
+      lines: 80
+      statements: 50
+    lll:
+      line-length: 160
+  exclusions:
+    rules:
+      - path: internal/clock/
+        linters:
+          - forbidigo
+      - path: _test\.go
+        linters:
+          - funlen
