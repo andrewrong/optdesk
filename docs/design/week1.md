@@ -466,8 +466,7 @@ requests are notes below the acceptance list, not acceptance items.
 - Hand-written Go records in `api.go` with a drift test against the generated ones. Not chosen: two sources of truth; issue 1 generates the records and `api.go` aliases them.
 - Putting `go.mod` in every module that adds a dependency. Not possible: a path belongs to one row; the issues that list go.mod (see `## Modules`) list it, are two-module entries where they leave their module, and do not run at the same time.
 - Wiring the web build output into `internal/pages/embed/dist` (embedding the real build). Not chosen for week 1: it needs a build step that writes into the pages module. Issue 12 serves a stub; a later issue of the pages module adds the copy step.
-- The calendar generator `pyside/tools/calendar_table.py` (clock) and any population of `master.session_day` outside fixtures: later weeks; week 1 reads the table only from fixtures and tests.
-- The pyside layout: AGENTS.md says `src/<pkg>/<module>/api.py`, the declaration's owner_only list names `pyside/ibkr/transport.py`. They disagree; settled with the owner before week 2. The pyside row of modules.md is minimal until then (no interface or test file named).
+- The calendar generator `pyside/src/optdesk/calendar/` (clock) and any population of `master.session_day` outside fixtures: later weeks; week 1 reads the table only from fixtures and tests.
 - The generated TS types for the page components of the migrated front end (they keep local types in issue 14).
 - The broker, compute and notify modules and their interface files: later weeks.
 - The `Page` and `Builder` names of pages (a page id and version; `Build(ctx, day)` returning the vN JSON bytes): no week-1 issue calls them, since issue 12 uses only the two constructor types of the wiring table; the follow-up design freezes them when it needs them.
@@ -485,7 +484,7 @@ requests are notes below the acceptance list, not acceptance items.
 - "Independent after issue 1" was false because of go.mod: adopted. Issue 1 holds the shared tools; the issues that list go.mod never run together (see `## Modules`).
 - Serial chain with owner merges: adopted for wave 0 (1, 2, 3). Issue 14 waits for the owner-merged workflows (issue 3, wave 0), so its [CI] items have a workflow to be decided by.
 - Checks that need the network: adopted. Items marked [CI] carry an offline grep substitute (see `## Issues`); no `npx`, action pins checked by a counting grep (issue 3).
-- Pyside layout against the owner_only path: moved to Left out, settled with the owner before week 2.
+- Pyside layout against the owner_only path: settled by the owner decision of 2026-11-06 in docs/design/pyside-layout.md.
 - Generated TS entry file: issue 1 stubs `web/src/generated/index.ts`; the follow-up design regenerates it under a Design line.
 
 ### Amendment of 2026-11-06 (interface fix)
