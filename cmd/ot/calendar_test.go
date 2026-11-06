@@ -95,7 +95,7 @@ func newCalEnv(t *testing.T, env map[string]string, profileName string) *calEnv 
 
 func realCal(t *testing.T) *calEnv {
 	t.Helper()
-	return newCalEnv(t, map[string]string{"OT_HOME": "home"}, "real")
+	return newCalEnv(t, map[string]string{"OT_HOME": "home", "OT_ZONE": "UTC"}, "real")
 }
 
 const goodProv = `{"generator":"g","generator_version":"1","source_library":"s","source_library_version":"2","generated_at":"2026-01-01T00:00:00Z"}`
@@ -166,7 +166,7 @@ func TestCalendarLoadNoLoaderLine(t *testing.T) {
 
 func TestCalendarLoadNeverFallsBack(t *testing.T) {
 	t.Parallel()
-	e := newCalEnv(t, map[string]string{"OT_HOME": "home", store.AdminDSNEnv: "admin-dsn"}, "real")
+	e := newCalEnv(t, map[string]string{"OT_HOME": "home", "OT_ZONE": "UTC", store.AdminDSNEnv: "admin-dsn"}, "real")
 	e.envLines = map[string]string{}
 	err := runCalendar(e.a, []string{"load", syntheticFile})
 	if err == nil || e.opens != 0 || len(e.store.batches) != 0 {

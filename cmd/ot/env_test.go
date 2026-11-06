@@ -24,6 +24,9 @@ func envApp(t *testing.T, home string, rd store.ReadEnvFunc) *app {
 		if k == "OT_HOME" {
 			return home
 		}
+		if k == "OT_ZONE" {
+			return "UTC"
+		}
 		return ""
 	}, &out, &errb)
 	if err != nil {
@@ -90,7 +93,7 @@ func leakErr() error { return fmt.Errorf("dial %s pw %s verifier %s", sentDSN, s
 // leakApp builds an app whose env, .env and every opener hold or return the sentinels.
 func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 	t.Helper()
-	env := map[string]string{"OT_HOME": "home", store.AdminDSNEnv: sentDSN, "OT_PG_PASSWORD": sentPassword}
+	env := map[string]string{"OT_HOME": "home", "OT_ZONE": "UTC", store.AdminDSNEnv: sentDSN, "OT_PG_PASSWORD": sentPassword}
 	var out, errb bytes.Buffer
 	a, err := newApp(func(k string) string { return env[k] }, &out, &errb)
 	if err != nil {
