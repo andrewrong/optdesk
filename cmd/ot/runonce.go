@@ -15,15 +15,15 @@ import (
 func init() { register("run-once", runOnce) }
 
 // runOnceConfig is what run-once needs from $OT_HOME/.env; its values are never printed.
-type runOnceConfig struct{ runnerDSN, seriesDSN, key string }
+type runOnceConfig struct{ runnerDSN, seriesDSN, fredKey string }
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) {
 	env, err := a.envFile()
 	if err != nil {
 		return runOnceConfig{}, err
 	}
-	c := runOnceConfig{runnerDSN: env[store.DSNEnvRunner], seriesDSN: env[store.DSNEnvSeriesFred], key: env["FRED_API_KEY"]}
-	for name, v := range map[string]string{store.DSNEnvRunner: c.runnerDSN, store.DSNEnvSeriesFred: c.seriesDSN, "FRED_API_KEY": c.key} {
+	c := runOnceConfig{runnerDSN: env[store.DSNEnvRunner], seriesDSN: env[store.DSNEnvSeriesFred], fredKey: env["FRED_API_KEY"]}
+	for name, v := range map[string]string{store.DSNEnvRunner: c.runnerDSN, store.DSNEnvSeriesFred: c.seriesDSN, "FRED_API_KEY": c.fredKey} {
 		if v == "" {
 			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", name)
 		}
@@ -76,7 +76,7 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return fmt.Errorf("open series store with %s failed", store.DSNEnvSeriesFred)
 	}
 	defer func() { _ = ser.Close() }()
-	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.key, Clock: clk})
+	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
 	if err != nil {
 		return fmt.Errorf("build FRED source failed")
 	}

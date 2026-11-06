@@ -77,7 +77,7 @@ func runServe(a *app, args []string) error {
 		}
 		b, err := a.deps.buildMacroRates(ctx, r, day, clk.Now().UTC())
 		if err != nil {
-			a.log.Error("serve build failed", "component", "ot", "status", "failed", "err", err.Error())
+			a.log.Error("serve build failed", "component", "ot", "status", "failed")
 		}
 		return b, err
 	}

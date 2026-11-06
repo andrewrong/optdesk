@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -11,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -146,5 +150,36 @@ func TestRunOnceSentinelDSN(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), store.DSNEnvRunner) {
 		t.Fatalf("error does not name the variable: %v", err)
+	}
+}
+
+func TestRunOnceFREDPathIsObservations(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	var cfg sources.FREDConfig
+	a.deps.newFRED = func(c sources.FREDConfig) (sources.Source, error) { cfg = c; return nil, nil }
+	if err := runOnce(a, nil); err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(cfg.BaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var path string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		_, _ = w.Write([]byte(`{"observations":[]}`))
+	}))
+	defer srv.Close()
+	src, err := fred.New(sources.FREDConfig{BaseURL: srv.URL + u.Path, APIKey: "k", Clock: cfg.Clock})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = src.Fetch(t.Context(), sources.FetchPlan{SeriesIDs: []string{"DGS10"}, From: "2026-11-02", To: "2026-11-04"})
+	if path != "/fred/series/observations" {
+		t.Fatalf("FRED request path %q, want /fred/series/observations", path)
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// fredBaseURL is the FRED API root.
-const fredBaseURL = "https://api.stlouisfed.org/fred"
+// fredBaseURL is the FRED host; the source appends /fred/series/observations itself.
+const fredBaseURL = "https://api.stlouisfed.org"
 
 // readEnvFile reads KEY=VALUE lines of path into a map and does not touch the process
 // environment. Blank lines and # lines are skipped; one pair of surrounding quotes is removed.
