@@ -2,19 +2,20 @@
 
 Author: the optdesk dispatcher (revision 2, after the adversarial review and the advisor)
 Source: the `macro_page` lines of `## Left out` of `docs/design/pages-registry.md` and of issue 109.
-Read on origin/main at 6b28e47 (the one sha every fact below is read at; PR 113 is merged there and `docs/contracts/ot.md` exists).
+Read on origin/main at 95c5f1b (the one sha every fact below is read at; PRs 113, 117, 125 and 128 are merged there).
 
-Facts on 6b28e47. `internal/pages/macro_page` exists: `NewPage(c Config) pages.Page` returns `Meta{Name: "macro_page",
+Facts on 95c5f1b. `internal/pages/macro_page` exists: `NewPage(c Config) pages.Page` returns `Meta{Name: "macro_page",
 Schema: "page.macro_page.v1"}`, and `Config` is `RunID`, `BuildID`, `Scope` (each must match `^[A-Za-z0-9_-]{1,64}$`),
-`Zone *time.Location` (nil is an error) and `Indicators`. `cmd/ot/wire.go` has 14 `deps` fields on main 5960e45 (13 on 6b28e47, before `readEnv` of #123), among them
+`Zone *time.Location` (nil is an error) and `Indicators`. `cmd/ot/wire.go` has 14 `deps` fields (`readEnv` is the last), among them
 `pageList []pages.Page` holding `macro_rates.Page()`; `findPage(list, name)` in `cmd/ot/page.go` lists only the names of the list
-it is given; `runPage` and `runServe` take `--name` (default `macro_rates`). `docs/design/modules.md` (lines 43-45) lists "these
-eleven" implementation packages that `cmd/ot` may import and `internal/pages/macro_page` is not one of them; `scripts/arch/main.go`
-(`parseImpl`) cuts the text at `these eleven` and `TestArchCheckOTListsElevenPackages` requires 11 names. `arch.toml` has no
-component `pages/macro_page`; `.go-arch-lint.yml` has it but not in the `ot` list. `internal/profile` holds `Name` and `LogFields`;
-`Load` reads `OT_HOME` and `OT_PROFILE` only. `cmd/ot/day.go` has `marketZone`, the zone of the exchange, used only for the default
-`--day`. `docs/contracts/ot.md` has the table of environment names (`OT_HOME`, `OT_PROFILE`, `OT_PG_ADMIN_DSN`, ...) and the profile
-rules. `checks.yml` runs `go run ./scripts/arch --check` on every pull request and push to main, without a paths filter.
+it is given; `runPage` and `runServe` take `--name` (default `macro_rates`). The text of `modules.md` and the generated files already
+allow the import (PR 117): the implementation list after `one constructor each` names `internal/pages/macro_page`, `arch.toml` and
+`.go-arch-lint.yml` hold the component `pages/macro_page`, and `parseImpl` of `scripts/arch/main.go` reads that list without a count.
+`internal/profile` holds `Name` and `LogFields`; `Load` reads `OT_HOME` and `OT_PROFILE` only. `cmd/ot/day.go` has `marketZone`, the
+zone of the exchange, used only for the default `--day`. `docs/contracts/ot.md` has the table of environment names (`OT_HOME`,
+`OT_PROFILE`, `OT_PG_ADMIN_DSN`, ...) and the profile rules. `checks.yml` runs `go run ./scripts/arch --check` without a paths filter.
+In `cmd/ot` tests, `testApp` (`main_test.go`) builds its app through `newApp` and so through `profile.Load`, with a real-profile
+`OT_HOME`; it sets only `deps.newClock` (a `fakeClock`). The tests of `page` and `serve` and of `runonce` build their app with it.
 
 Goal of the design: `ot page --name macro_page` and `ot serve --name macro_page` build the macro page in the owner's zone, with a
 fixed run id, scope and one indicator, and `macro_rates` stays the default and keeps working.
@@ -36,9 +37,9 @@ in code until the owner-settings store exists; and the owner's zone is written i
 
 ## Modules
 
-`docs/design/modules.md` changes in this design's own diff, and `arch.toml` and `.go-arch-lint.yml` are regenerated in the same
+Landed in #117: `docs/design/modules.md` changed in that design's own diff, and `arch.toml` and `.go-arch-lint.yml` were regenerated in the same
 diff (source and generated output travel together, AGENTS.md "Interfaces"). The proposed text of `modules.md` is the file
-`modules.proposed.md`; three places differ from 6b28e47:
+`modules.proposed.md`; three places differ from the text before #117:
 
 1. The implementation list of the row `ot` gains `internal/pages/macro_page`, after `internal/pages/macro_rates`: twelve packages.
 2. The marker words `these eleven` become `these implementation packages`, so the next package is one more name and no word of the
@@ -54,9 +55,9 @@ table order. Neither file is edited by hand, and no claim is made about how many
 Each merge is green: `checks.yml` runs `go run ./scripts/arch --check` on every pull request, so the generated files must be in the
 same diff as the text. The parser no longer counts (issue 115, merged: it reads the list after the phrase `one constructor each`).
 
-1. This design's pull request: `docs/design/modules.md`, `arch.toml`, `.go-arch-lint.yml` and this file. Its head needs the design
+1. Landed in #117, this design's pull request: `docs/design/modules.md`, `arch.toml`, `.go-arch-lint.yml` and this file. Its head needs the design
    verdict and the normal review. The design review is started by the crew daemon, not by hand.
-2. `ot-test-zone-env` (ot): every test of `cmd/ot` that builds a real profile sets `OT_ZONE=UTC` in its environment map. Green on the
+2. `ot-test-zone-env` (ot), landed in #128: every test of `cmd/ot` that builds a real profile sets `OT_ZONE=UTC` in its environment map. Green on the
    old `Load`, which ignores the variable. It must land before step 3, because step 3 makes `Load` refuse a real profile without
    the key, and without this step the tests of `cmd/ot` turn red on the merge of step 3.
 3. `profile-zone` (repo, `(interface)`): the field and the rule above. Green after step 2. It is cut after step 1 (its `Design:` line
@@ -120,13 +121,20 @@ offline grep or a named test. Every issue edits the files of one module only (`d
 ### ot-test-zone-env
 
 The tests of `cmd/ot` that build a real profile set `OT_ZONE=UTC`
+  Landed in #128 (commit 95c5f1b).
   Goal: the tests of `cmd/ot` stay green when `profile.Load` starts to refuse a real profile without `OT_ZONE`.
-  Files: cmd/ot/main_test.go, cmd/ot/migrate_test.go, cmd/ot/setup_test.go
+  Files: cmd/ot/main_test.go, cmd/ot/migrate_test.go, cmd/ot/setup_test.go, cmd/ot/calendar_test.go, cmd/ot/env_test.go
   Design: docs/design/macro-page-wiring.md#order
-  Acceptance:
-  1. Every environment map of these three files that holds `OT_HOME` also holds `OT_ZONE` with the value `UTC` (offline: `grep -c '"OT_HOME"' f` and `grep -c '"OT_ZONE"' f` print the same number for each of the three files, and a helper may carry the pair once instead).
+  Read at the base (offline: `grep -c '"OT_HOME"' cmd/ot/*_test.go`): these five files are the only ones that write an environment
+  map or a getenv function with `OT_HOME`. The other test files (`day`, `page`, `serve`, `runonce`, `wire`) build their app through
+  `testApp` of `main_test.go` and carry no `OT_HOME` of their own.
+  Acceptance (all met in #128):
+  1. Every environment map or getenv function of these five files that builds a real profile also gives `OT_ZONE` the value `UTC`
+     (a helper may carry the pair once). Check: in each file, every line that holds `"OT_HOME"` also holds `"OT_ZONE"`, or the
+     function around it holds `"OT_ZONE"` (`envApp` of `env_test.go` does so with a `k == "OT_ZONE"` branch); the counts of the two
+     strings are not compared.
   2. `TestDemoProfile` still passes unchanged: the demo profile reads only `OT_HOME` and `OT_PROFILE`.
-  3. `go test ./cmd/ot/` passes; no file outside the three is in the diff, and no file of `cmd/ot` that is not a test is touched.
+  3. `go test ./cmd/ot/` passes; no file outside the five is in the diff, and no file of `cmd/ot` that is not a test is touched.
   4. Every test added or changed calls `t.Parallel()`, uses `t.TempDir()` for any file, and none sleeps.
   Checked by CI: ci-go.
   Depends on: none (merged work only).
@@ -161,7 +169,7 @@ The profile carries the owner's zone
   4. `TestPageNamedUnknown`: with a fake `pageList` of two fake pages the error contains both fake names, in order, and then `macro_page`; `TestPageMacroPage` (in `page_test.go`): the fake `deps.macroPage` records the zone and build id, `runPage --name macro_page` writes the bytes of the fake page, and the zone recorded is the pointer of `a.profile.Zone`; `TestPageMacroRatesIgnoresZone`: `--name macro_rates` succeeds and the fake `macroPage` is not called. A nil-zone case checks the error of item 2 and that `openSeries` is never called.
   5. `TestServeMacroPage` (in `serve_test.go`) builds through the same `pageNamed`; an unknown name binds no port (the technique of `TestServeUnknownNameBindsNoPort`).
   6. A real build, not a fake: `TestMacroPageRealBuild` (in `pagelist_test.go`) calls `newDeps().macroPage(time.UTC, "dev")` and its `Build` over a fake `store.SeriesReader` with one `DGS10` point and a fixed `generatedAt`; the output is valid JSON with `"schema"` equal to `page.macro_page.v1`, `run_id` equal to `ot-page`, `scope` equal to `macro` and `build_id` equal to `dev`. No network, no store, no clock.
-  7. Demo golden in UTC: `TestMacroPageDemoGolden` (in `page_test.go`) runs `runPage --name macro_page --day 2026-11-05` over a demo app (`OT_HOME` unset, so `Zone` is UTC) with the fake clock of `testApp`, and compares the bytes with `cmd/ot/testdata/macro_page_demo.golden.json`; the file is written by the test with a `-update` flag, never by hand, and holds no zone other than UTC.
+  7. Demo golden in UTC: `TestMacroPageDemoGolden` (in `page_test.go`) runs `runPage --name macro_page --day 2026-11-05` over a demo app that the test builds itself, not with `testApp` (which loads a real profile and lives in `main_test.go`, a file this issue does not edit): `newApp` with a getenv that returns "" for every key, so `profile.Load` gives the demo profile and `Zone` is `time.UTC`, then `a.deps` set in `page_test.go` with a clock literal of the test and the `macroPage` function, and compares the bytes with `cmd/ot/testdata/macro_page_demo.golden.json`; the file is written by the test with a `-update` flag, never by hand, and holds no zone other than UTC.
   8. `docs/contracts/ot.md`: the table of environment names gains the row `OT_ZONE | process environment | the profile (real profile only; unset or invalid stops the start)`; the profile rules say that `Load` reads `OT_ZONE` for the real profile and that the demo profile has `UTC`; the subcommand part says `--name` accepts `macro_page`; the contract-test list names the new tests. The sentence of `TestDemoProfile` stays true (the demo profile reads only `OT_HOME` and `OT_PROFILE`).
   9. Ledger: `grep -c 'internal/store/ops' cmd/ot/page.go cmd/ot/serve.go cmd/ot/pagelist.go` prints 0 for each file, so the fixed run id reaches no ledger row.
   10. No zone literal is added: `git diff origin/main -- '*.go' | grep -E '^\+.*"[A-Z][a-z]+/[A-Za-z_]+"'` prints nothing (the whole-tree grep of the advisor would print `marketZone` of `day.go`, which is the exchange's zone, is old, and is unchanged; so the check reads the diff). The only zone-like names in added lines are `UTC`, the key `OT_ZONE` and `no/such/zone`.
