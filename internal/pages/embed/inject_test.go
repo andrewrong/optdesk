@@ -55,7 +55,7 @@ func TestHandlerServesStub(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Handler([]byte(`{"k":"v"}`)).ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
 	res := rec.Result()
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	body, _ := io.ReadAll(res.Body)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", res.StatusCode)
