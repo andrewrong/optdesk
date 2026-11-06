@@ -29,6 +29,8 @@ components:
     in: internal/store
   runner:
     in: internal/runner
+  runner/reconcile:
+    in: internal/runner/reconcile
   jobs:
     in: internal/jobs
   pages:
@@ -72,6 +74,12 @@ deps:
       - contracts
       - clock
       - store
+  runner/reconcile:
+    mayDependOn:
+      - contracts
+      - clock
+      - store
+      - runner
   jobs:
     mayDependOn:
       - contracts
@@ -94,4 +102,5 @@ deps:
       - profile
       - clock/realclock
       - clock/calendar
+      - runner/reconcile
       - sources/fred
