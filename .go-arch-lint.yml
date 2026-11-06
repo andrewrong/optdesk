@@ -29,8 +29,14 @@ components:
     in: internal/sources/fred
   store:
     in: internal/store
+  store/ops:
+    in: internal/store/ops
+  store/series:
+    in: internal/store/series
   store/sessionday:
     in: internal/store/sessionday
+  store/setup:
+    in: internal/store/setup
   runner:
     in: internal/runner
   runner/reconcile:
@@ -79,7 +85,19 @@ deps:
   store:
     mayDependOn:
       - contracts
+  store/ops:
+    mayDependOn:
+      - contracts
+      - store
+  store/series:
+    mayDependOn:
+      - contracts
+      - store
   store/sessionday:
+    mayDependOn:
+      - contracts
+      - store
+  store/setup:
     mayDependOn:
       - contracts
       - store
@@ -128,6 +146,9 @@ deps:
       - clock/calendar
       - runner/reconcile
       - store/sessionday
+      - store/series
+      - store/ops
+      - store/setup
       - sources/fred
       - pages/macro_rates
       - pages/embed
