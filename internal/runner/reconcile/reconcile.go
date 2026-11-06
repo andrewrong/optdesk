@@ -31,16 +31,16 @@ type reconciler struct {
 	cal    clock.Calendar
 	clk    clock.Clock
 	jobs   []contracts.Job
-	rule   WindowRule
+	rule   runner.WindowRule
 }
 
 // New builds the reconciler with the default window rule (DefaultCalendarID, no offsets).
 func New(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job) runner.Reconciler {
-	return NewWithRule(l, cal, clk, jobs, WindowRule{})
+	return NewWithRule(l, cal, clk, jobs, runner.WindowRule{})
 }
 
 // NewWithRule builds the reconciler with an explicit window rule.
-func NewWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule WindowRule) runner.Reconciler {
+func NewWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule runner.WindowRule) runner.Reconciler {
 	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule}
 }
 
@@ -79,7 +79,7 @@ func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) error {
 // sessions lists the session days after from up to and including to. With no cursor
 // (empty from) only day to itself is considered.
 func (r *reconciler) sessions(ctx context.Context, from, to contracts.Day) ([]clock.Session, error) {
-	id := r.rule.calendarID()
+	id := calendarIDOf(r.rule)
 	if from == "" {
 		s, err := r.cal.Session(ctx, id, to)
 		if err != nil || !s.IsSession {
@@ -161,7 +161,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			continue
 		}
 		seen[k.DatasetID] = true
-		w, ok := r.rule.Window(k.DatasetID, s)
+		w, ok := windowFor(r.rule, k.DatasetID, s)
 		if !ok {
 			continue
 		}
