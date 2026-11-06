@@ -8,6 +8,10 @@ may_import = ["contracts/gen"]
 in = "internal/contracts/gen"
 may_import = ["contracts"]
 
+[component."contracts/genpb"]
+in = "internal/contracts/genpb"
+may_import = []
+
 [component."clock"]
 in = "internal/clock"
 may_import = ["contracts"]

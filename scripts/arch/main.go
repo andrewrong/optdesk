@@ -107,7 +107,7 @@ func rootName(r row) (name, dir string) {
 }
 
 // derive builds the components from the table alone (arch.toml): the root of each row,
-// the implementation packages named in the text and contracts/gen.
+// the implementation packages named in the text, contracts/gen and contracts/genpb.
 func derive(rows []row, impl []string) ([]component, error) {
 	byRow := map[string]string{}
 	for _, r := range rows {
@@ -139,8 +139,12 @@ func derive(rows []row, impl []string) ([]component, error) {
 		if name == "ot" {
 			continue
 		}
-		for _, sub := range subsOf(name, append(append([]string{}, impl...), "internal/contracts/gen")) {
-			out = append(out, component{name + "/" + sub, dir + "/" + sub, subDeps(deps, name)})
+		for _, sub := range subsOf(name, append(append([]string{}, impl...), "internal/contracts/gen", "internal/contracts/genpb")) {
+			subs := subDeps(deps, name)
+			if name == "contracts" && sub == "genpb" {
+				subs = nil // generated protobuf output imports no component of the repository
+			}
+			out = append(out, component{name + "/" + sub, dir + "/" + sub, subs})
 		}
 	}
 	return out, nil

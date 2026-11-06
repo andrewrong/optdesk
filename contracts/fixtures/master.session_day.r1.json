@@ -1,0 +1,8 @@
+[
+{"calendar_id":"XNYS","session_day":"2026-10-30","is_session":true,"open_at":"2026-10-30T13:30:00Z","close_at":"2026-10-30T20:00:00Z","early_close":false},
+{"calendar_id":"XNYS","session_day":"2026-11-02","is_session":true,"open_at":"2026-11-02T14:30:00Z","close_at":"2026-11-02T21:00:00Z","early_close":false},
+{"calendar_id":"XNYS","session_day":"2026-11-06","is_session":true,"open_at":"2026-11-06T14:30:00Z","close_at":"2026-11-06T21:00:00Z","early_close":false},
+{"calendar_id":"XNYS","session_day":"2026-11-26","is_session":false,"open_at":"2026-11-26T00:00:00Z","close_at":"2026-11-26T00:00:00Z","early_close":false},
+{"calendar_id":"XNYS","session_day":"2026-11-27","is_session":true,"open_at":"2026-11-27T14:30:00Z","close_at":"2026-11-27T18:00:00Z","early_close":true},
+{"calendar_id":"XNYS","session_day":"2026-12-25","is_session":false,"open_at":"2026-12-25T00:00:00Z","close_at":"2026-12-25T00:00:00Z","early_close":false}
+]
