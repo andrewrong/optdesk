@@ -1,0 +1,44 @@
+# jobs contract
+
+## Responsibility
+
+The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRED series (DGS10) fetched through a `sources.Source` and written through a `store.SeriesWriter`. The job implements `contracts.Job`; the constructor has the type `jobs.NewFredSeriesFunc`.
+
+## Inputs
+
+- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 24`), read with github.com/pelletier/go-toml/v2.
+- A `sources.Source`, a `store.SeriesWriter` and a `clock.Clock`, passed to `New`.
+- A `contracts.Day` and, for `Run`, the keys of `Plan`.
+
+## Outputs
+
+- `Plan(day)`: one `ExpectedKey{obs.series_point, <series id>}` per series, sorted by id, and the plan hash: the lowercase hex SHA-256 of the job id, the manifest version, the day and the sorted series ids, joined with a newline.
+- `Run`: a `JobResult`; `Returned` is the points the source gave, `Usable` those with a value. Points are written in one `InsertSeriesPoints` call; a `no_value` point keeps its nil value and status.
+- Errors are `contracts.TypedError`; one from the source is returned unchanged, nothing is written.
+
+## Invariants
+
+- The source gets a `FetchPlan` with the series ids of the keys and `From` and `To` equal to the day.
+- No write happens when the fetch fails or returns no points.
+- The window rule is carried, not applied; the runner hookup belongs to the follow-up design.
+- The package imports contracts, clock, sources, store and the `jobs` root only.
+
+## Version history
+
+- v1: `fred_series`, manifest version 1.
+
+## Contract tests
+
+- `internal/jobs/api_test.go`: the interface.
+- `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
+- `internal/jobs/fredseries/run_test.go`: `TestRunWritesOnce`, `TestPlanLateRunRecovery`.
+
+## Jobs and slots
+
+`fred_series`, manifest version 1, window rule `after_close` with 24 hours lateness. Slots are assigned by the runner.
+
+## Forbidden
+
+- Importing another jobs package or pgx.
+- `time.Sleep`, or reading the system time.
+- Writing a missing value as 0.
