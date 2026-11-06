@@ -69,6 +69,17 @@ jobs:
           fi
           echo "packages: $pkgs"
           echo "pkgs=$pkgs" >> "$GITHUB_OUTPUT"
+      # Only a pull request that changes go.mod or go.sum pays for this step.
+      - name: go.mod or go.sum changed - tidy and tool build
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ] || ! git diff --name-only "$BASE_SHA"...HEAD | grep -qE '^go\.(mod|sum)$'; then
+            echo "go.mod and go.sum unchanged; skipped"; exit 0
+          fi
+          go mod tidy -diff
+          go build -o /dev/null tool
       - name: go test
         if: steps.affected.outputs.pkgs != ''
         env:
