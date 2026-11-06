@@ -91,7 +91,8 @@ func TestMacroPageRealBuild(t *testing.T) {
 	}
 	// The body's "schema" is the const "macro_page" of contracts/schemas/page.macro_page.v1.json;
 	// "page.macro_page.v1" is the name of that schema file, carried by Meta.Schema.
-	if m["schema"] != "macro_page" || m["schema_version"] != float64(1) || p.Meta.Schema != "page.macro_page.v1" || m["run_id"] != "ot-page" || m["scope"] != "macro" || m["build_id"] != "dev" {
+	if m["schema"] != "macro_page" || m["schema_version"] != float64(1) || p.Meta.Schema != "page.macro_page.v1" ||
+		m["run_id"] != "ot-page" || m["scope"] != "macro" || m["build_id"] != "dev" {
 		t.Fatalf("meta %+v page %s", p.Meta, b)
 	}
 }
