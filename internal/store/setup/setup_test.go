@@ -108,3 +108,49 @@ func TestPasswordFromDSN(t *testing.T) {
 		t.Errorf("password = %q", pw)
 	}
 }
+
+func TestRolesTable(t *testing.T) {
+	t.Parallel()
+	if len(roles) != 5 {
+		t.Fatalf("%d roles, want 5", len(roles))
+	}
+	var loader string
+	for _, r := range roles {
+		if r.envKey == "" && r.name != roleOwner {
+			t.Errorf("role %s has no line key", r.name)
+		}
+		if r.name == roleLoader {
+			loader = r.envKey
+		}
+	}
+	if loader != store.DSNEnvLoader {
+		t.Errorf("ot_loader line = %q", loader)
+	}
+}
+
+func TestEnvfileQuotedValue(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), ".env")
+	orig := "# c\n" + store.DSNEnvRunner + "=\"postgres://u:p@h:1/d\"\nB=2\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := readEnv(path)
+	if err != nil || m[store.DSNEnvRunner] != "postgres://u:p@h:1/d" {
+		t.Fatalf("readEnv = %v, %v", m, err)
+	}
+	log := slog.New(slog.DiscardHandler)
+	if err := writeEnv(path, []envLine{{store.DSNEnvRunner, "postgres://u:p@h:1/d"}}, log); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != orig {
+		t.Errorf("file changed: %q", got)
+	}
+	if err := writeEnv(path, []envLine{{store.DSNEnvRunner, "postgres://u:q@h:1/d"}}, log); err != nil {
+		t.Fatal(err)
+	}
+	want := "# c\n" + store.DSNEnvRunner + "=postgres://u:q@h:1/d\nB=2\n"
+	if got, _ := os.ReadFile(path); string(got) != want {
+		t.Errorf("file = %q, want %q", got, want)
+	}
+}
