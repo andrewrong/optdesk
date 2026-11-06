@@ -4,6 +4,15 @@
 
 Build the view model of a page from stored values and serve it inside a static page. `macro_rates.Build` reads the series Reader and emits `page.macro_rates.v1` JSON; `embed.Handler` writes that JSON into the page at serve time. Pages make no request: the one place a page reads its data from is `<script id="vm" type="application/json">`.
 
+## Interface
+
+- `pages.Meta{Name, Schema}`: `Schema` is informational; no code reads it and it is not the JSON field `schema`.
+- `pages.Builder`: `func(ctx, store.SeriesReader, contracts.Day, generatedAt time.Time) ([]byte, error)`.
+- `pages.Page{Meta, Build}`.
+- `macro_rates.Page()` returns `Meta{macro_rates, page.macro_rates.v1}` with the package `Build`.
+- `macro_page.NewPage(c)` returns `Meta{macro_page, page.macro_page.v1}`; its `Build` uses a copy of `c` whose `Indicators` is copied at construction.
+- Zone rule: no pages code names a zone; `macro_page.Config.Zone` is given by the caller.
+
 ## Inputs
 
 - A `store.SeriesReader` (`SeriesPoints(ctx, seriesID, from, to)`), nothing else from `internal/store`.
@@ -27,10 +36,14 @@ Build the view model of a page from stored values and serve it inside a static p
 ## Version history
 
 - v1: `page.macro_rates.v1` builder and the embed injector.
+- v2: `Meta`, `Builder` and `Page` names; `macro_rates.Page` and `macro_page.NewPage`.
 
 ## Contract tests
 
 - `internal/pages/api_test.go`: the interface from both sides.
+- `internal/pages/api_test.go`: `TestPagesPageContract`.
+- `internal/pages/macro_rates/page_test.go`: `TestPage`.
+- `internal/pages/macro_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`.
 - `internal/pages/macro_rates/builder_test.go`: `TestBuildGolden`, `TestGapsAndStale`, `TestBuildDemo`, `TestBuildErrors`.
 - `internal/pages/embed/inject_test.go`: `TestInjectEscapes`, `TestHandlerServesStub`, `TestRenderRejectsBadJSON`, `TestHandlerBadViewModel`.
 
