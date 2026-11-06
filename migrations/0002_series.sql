@@ -53,8 +53,9 @@ GRANT SELECT ON obs.series_definition, obs.series_point TO ot_runner;
 GRANT INSERT ON obs.series_definition, obs.series_point TO ot_w_series_fred;
 
 -- Read-only: the pages read the view and nothing else.
-GRANT USAGE ON SCHEMA rd TO ot_ro_pages;
-GRANT SELECT ON rd.series_point_r1 TO ot_ro_pages;
+-- The Reader of internal/store/series reads the view, so ot_runner may read it too.
+GRANT USAGE ON SCHEMA rd TO ot_ro_pages, ot_runner;
+GRANT SELECT ON rd.series_point_r1 TO ot_ro_pages, ot_runner;
 
 -- +goose Down
 DROP VIEW rd.series_point_r1;

@@ -12,7 +12,7 @@ import (
 
 const selectSQL = `SELECT series_id, observation_date, realtime_start, realtime_end, value, status, unit, currency, ` +
 	`published_at, source, source_revision ` +
-	`FROM obs.series_point ` +
+	`FROM rd.series_point_r1 ` +
 	`WHERE series_id = $1 AND observation_date >= $2 AND observation_date <= $3 ` +
 	`ORDER BY observation_date, realtime_start`
 

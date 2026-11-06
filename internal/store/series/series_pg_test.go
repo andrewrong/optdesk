@@ -274,3 +274,27 @@ func TestChecksAndRolesPG(t *testing.T) {
 	}
 	mustFail(t, connectAs(t, name, "ot_runner"), `INSERT INTO obs.series_point SELECT * FROM obs.series_point`)
 }
+
+func TestPagesRoleCanUseReaderPG(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	fred := connectAs(t, name, "ot_w_series_fred")
+	if _, err := fred.Exec(ctx, `INSERT INTO obs.series_definition VALUES ('Y','percent','')`); err != nil {
+		t.Fatal(err)
+	}
+	const good = `INSERT INTO obs.series_point VALUES ` +
+		`('Y','2026-11-04','2026-11-05','9999-12-31',4.1,'present','percent','',now(),'fred','r1')`
+	if _, err := fred.Exec(ctx, good); err != nil {
+		t.Fatal(err)
+	}
+	r, err := Open(ctx, connURL(t, name, "ot_ro_pages"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = r.Close() })
+	got, err := r.SeriesPoints(ctx, "Y", "2026-11-01", "2026-11-30")
+	if err != nil || len(got) != 1 {
+		t.Fatalf("pages reader: %v, %v", got, err)
+	}
+}
