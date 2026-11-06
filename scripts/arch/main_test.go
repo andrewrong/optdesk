@@ -206,3 +206,25 @@ func TestArchCheckScratchTree(t *testing.T) {
 		})
 	}
 }
+
+func TestArchDeriveContractsGenpb(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, map[string]string{"internal/contracts/genpb/session.pb.go": "package genpb\n"})
+	toml, yml, err := generate(modulesText(t), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(toml), "[component.\"contracts/genpb\"]\nin = \"internal/contracts/genpb\"\nmay_import = []\n") {
+		t.Fatalf("contracts/genpb is not derived with an empty import list:\n%s", toml)
+	}
+	if !strings.Contains(string(yml), "  contracts/genpb:\n    in: internal/contracts/genpb\n") {
+		t.Fatalf("no contracts/genpb component in:\n%s", yml)
+	}
+	_, depsPart, _ := strings.Cut(string(yml), "\ndeps:\n")
+	if strings.Contains(depsPart, "  contracts/genpb:\n") {
+		t.Fatal("contracts/genpb has a mayDependOn entry")
+	}
+	if ok, out := lint(t, dir); !ok {
+		t.Fatalf("a package under internal/contracts/genpb fails the lint:\n%s", out)
+	}
+}
