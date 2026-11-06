@@ -1,6 +1,8 @@
 package contracts_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -82,4 +84,55 @@ func TestPageSchema(t *testing.T) {
 			t.Fatalf("want a generated_at failure, got %v", err)
 		}
 	})
+	gapCase := func(name string, edit func(g map[string]any), wantOK bool) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			m := loadGolden(t)
+			edit(m["gaps"].([]any)[0].(map[string]any))
+			err := s.Validate(m)
+			if wantOK && err != nil {
+				t.Fatal(err)
+			}
+			if !wantOK && err == nil {
+				t.Fatal("want a failure")
+			}
+		})
+	}
+	gapCase("stale gap is valid", func(g map[string]any) { g["reason"] = "stale" }, true)
+	gapCase("unknown gap reason fails", func(g map[string]any) { g["reason"] = "bogus" }, false)
+	gapCase("gap without series_id fails", func(g map[string]any) { delete(g, "series_id") }, false)
+	gapCase("gap without date fails", func(g map[string]any) { delete(g, "date") }, false)
+}
+
+// TestFixtureManifest checks that every file the manifest lists has the sha256 it records.
+func TestFixtureManifest(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("..", "..", "contracts", "fixtures")
+	b, err := os.ReadFile(filepath.Join(dir, "MANIFEST.synthetic-v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Marker string `json:"marker"`
+		Files  []struct {
+			Path   string `json:"path"`
+			SHA256 string `json:"sha256"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Marker != "synthetic-v1" || len(m.Files) == 0 {
+		t.Fatalf("marker %q, %d files", m.Marker, len(m.Files))
+	}
+	for _, f := range m.Files {
+		data, err := os.ReadFile(filepath.Join(dir, f.Path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != f.SHA256 {
+			t.Errorf("%s: sha256 %s, manifest records %s", f.Path, got, f.SHA256)
+		}
+	}
 }

@@ -70,10 +70,36 @@ type Lease struct {
 	ExpiresAt time.Time
 }
 
-// Window is the dataset window: the open and close instants.
+// Window is the window of one dataset on one day: its key and the open and close instants.
+// A zero time.Time in OpenAt or CloseAt is stored as NULL and read back as the zero value.
 type Window struct {
-	OpenAt  time.Time
-	CloseAt time.Time
+	DatasetID string
+	Day       contracts.Day
+	OpenAt    time.Time
+	CloseAt   time.Time
+}
+
+// RunStatus is the status of a run.
+type RunStatus string
+
+// The statuses of a run. A crashed run is a running run whose LeaseUntil is before the caller's now.
+const (
+	RunRunning RunStatus = "running"
+	RunDone    RunStatus = "done"
+)
+
+// Run is one attempt of the runner on a day and an expected key.
+// A zero time.Time in LeaseUntil, HeartbeatAt or FinishedAt is stored as NULL and read back as the zero value.
+// ErrorCode holds a contracts.ErrorKind string and ReasonCode a reason string of the runner.
+type Run struct {
+	// ID is minted by the runner: a deterministic string from the day, the expected key and the attempt number.
+	ID                                  string
+	Day                                 contracts.Day
+	Key                                 contracts.ExpectedKey
+	Status                              RunStatus
+	LeaseUntil, HeartbeatAt, FinishedAt time.Time
+	ReturnedN, UsableN                  int
+	ErrorCode, ReasonCode               string
 }
 
 // OpsLedger is the only way the runner touches the ops tables.
@@ -86,9 +112,14 @@ type OpsLedger interface {
 	MarkPresent(ctx context.Context, day contracts.Day, key contracts.ExpectedKey, status PresentStatus) error
 	// Present returns the present keys of day with their status.
 	Present(ctx context.Context, day contracts.Day) (map[contracts.ExpectedKey]PresentStatus, error)
-	// PutWindow stores the dataset window; Window reads it back.
+	// PutWindow stores the window under its DatasetID and Day, replacing an earlier one with the same key.
 	PutWindow(ctx context.Context, w Window) error
-	Window(ctx context.Context) (Window, error)
+	// Window reads the window of datasetID on day; with none it returns a contracts.TypedError of kind NoValue.
+	Window(ctx context.Context, datasetID string, day contracts.Day) (Window, error)
+	// RecordRun inserts r, or updates the run with the same ID.
+	RecordRun(ctx context.Context, r Run) error
+	// Runs returns the runs of day.
+	Runs(ctx context.Context, day contracts.Day) ([]Run, error)
 	// SetCursor stores the reconcile cursor; Cursor reads it back.
 	SetCursor(ctx context.Context, c Cursor) error
 	Cursor(ctx context.Context) (Cursor, error)

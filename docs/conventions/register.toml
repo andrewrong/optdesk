@@ -1,0 +1,1509 @@
+# The figure conventions register (ADR 0039): the original document of the rule of each figure.
+# A change to the code of `implemented_by` fails tests/conventions/test_register.py until this entry
+# is updated with the advisor's agreement (a version bump for a semantic change, a history line
+# "hash refreshed, semantics unchanged" for a refactor). Part A records today's behaviour.
+
+[[figure]]
+id = "home.options_summary.monthly_premium"
+version = 1
+title_zh = "首页期权摘要：每月权利金（近 6 个月柱图）"
+pages = ["options_summary.card.premium_series_6m.premium"]
+formula = """
+One bar per calendar month, six months ending with the month of the session day. A month's figure is \
+the premium taken in (本月新收): the sum, over the household's accounts, of the opening cash of the \
+month's book A openings (sold and protective) net of the opening commission and tax, signed. The \
+month of an opening is its US Eastern date. The current month runs through the session day; a past \
+month runs through its last day. A roll adds the new opening only; closing cost is not netted."""
+inputs = """
+Flex trade openings (one record per execution, the highest revision of equal account and trade id); \
+the stored Flex statement span of each account (coverage); the stored JPY per USD rate of the \
+opening's US Eastern date for a JPY-base account; the accounts the adapter holds for review."""
+period_date = "Calendar month by the US Eastern (America/New_York) date of the opening; the current month through the session day, a past month through its last day."
+currency = """
+Base currency of the figure: USD. An opening of a USD-base account is cash x fxRateToBase; of a \
+JPY-base account cash x fxRateToBase / (JPY per USD of the opening's US Eastern date). Full \
+precision, summed per account, rounded half-even to 2 places; the household is the sum of the \
+computable accounts' rounded amounts."""
+excludes = """
+Closing cost of a roll; a position's later shrinking, assignment or expiry; an account not covered \
+by a statement span through the month (a past month needs a span from its first day to the day after \
+its last); an account held for review; an account without a zone or a usable rate."""
+gap_text = """
+No account computable: a no_data gap, '<MM> 月暂无数据：成交记录未覆盖' when every account is not \
+covered, else '<MM> 月暂无数据：账户待核对或缺日元汇率'. Some accounts left out: a no_data gap \
+'<MM> 月仅部分账户有数据' for a past month. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.options_figures._series",
+  "option_trader.readings.premium_received.premium_received",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: bootstrap from the code as it is; no figure changed."]
+
+[[figure]]
+id = "home.options_summary.monthly_closed"
+version = 1
+title_zh = "首页期权摘要：每月已了结（柱旁数字）"
+pages = ["options_summary.card.premium_series_6m.closed"]
+formula = """
+Shown beside the bar of each of the six months and never added to or subtracted from it. A month's \
+figure is the closing cash of the month netted, as net paid: the sum of Closing.closing_cash over \
+every lot (sold and protective legs) of the household's Flex structures whose closing falls in the \
+month, with the sign reversed (a buy-to-close is cash out, a long-leg sale cash in). Synthetic: 9,400 \
+bought to close with 8,650 of long-leg sales shows $750 paid; a net received shows a minus sign. The \
+month of a closing is its US Eastern trade date; the current month runs through the session day."""
+inputs = """
+The Flex structures of the household accounts (lots and their closings, closing cash signed from the \
+account); the stored JPY per USD rate of the session day for a JPY account; the premium figure of the \
+same month, whose gap decides a month the premium cannot show."""
+period_date = "Calendar month by the US Eastern (America/New_York) trade date of the closing; the current month through the session day, a past month through its last day."
+currency = """
+Base currency of the figure: USD. A USD closing is cash as the broker gives it; a JPY closing is \
+divided by the DEXJPUS of the session day (JPY per USD). Full precision, summed, rounded to the \
+cent half up, shown in whole dollars."""
+excludes = """
+Openings and their fees (they are the bar, not this figure); the share delivery of an assignment or \
+exercise; the books' result (this is cash, not profit); an account not in the household."""
+gap_text = """
+A month the premium shows as a gap (not covered by a statement span, or only some accounts) is the \
+same gap here, so the partial-account rule of the premium holds. A JPY closing in the month without \
+a stored rate: a no_data gap '已了结暂无数据：缺日元汇率 DEXJPUS', never a smaller sum. A month with no \
+closing is $0, not a gap."""
+implemented_by = [
+  "option_trader.viewmodels.options_figures._closed_series",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: owner decision 留; display beside the bar, 口径 of the bar unchanged."]
+
+[[figure]]
+id = "household.month_change"
+version = 1
+title_zh = "家庭页：月度资产变化（瀑布）"
+pages = ["household_page.month_change"]
+formula = """
+From the household total at the start of a calendar month to the total at its end, one line per step: \
+月初 (start, the Flex household total). 入金 (deposits; named 出金 when negative): the sum of the \
+household day deposits. 已平仓期权结果 (premium): the result of options closed in the month, expiry \
+included, by close day; contracts still open are left out. 股息 (dividends): received dividends net of \
+withholding tax (tax that cannot be told from dividend or interest counts as dividend). 利息 \
+(interest): broker and bond interest, received positive, paid negative. 汇率 (fx): the currency \
+effect (no per-currency history, so it stays empty inside 其他). 股票市值变动 (stock): the stock \
+market value at the end minus at the start, from the statements. 期权市值变动 (options): the open \
+options market value at the end minus at the start, from the statements. 其他 (rest): the total \
+change minus all the steps above, the remainder. 月末 (end) is the start plus the steps."""
+inputs = """
+Closed option parts; cash-report rows (deposits, dividends, interest); net-asset-value rows (stock and \
+option market value); the statement coverage of each account; the group file for the household \
+members. Start and end are the statements of the last day of the previous month and of the month's \
+last day, or the nearest earlier statement (the page says which day was used)."""
+period_date = "Calendar month; start and end read from statements by report date, the page names a day that is not the calendar end."
+currency = """
+Base currency of the figure: USD as the broker gives it, no rate of this system. A JPY page shows \
+the yen block with a display-only ≈USD beside it (rate stored with the snapshot). Rounded half-even \
+to 2 places."""
+excludes = """
+Open contracts (no mark-to-market in 已平仓期权结果; their change is in 期权市值变动); position \
+transfers and deposit-rate moves apply as the glossary's known holes say; fees and what the \
+statements cannot split stay in 其他."""
+gap_text = """
+No month data: the block has no rows and a named gap. A month without a start or an end statement \
+has no row set. A JPY block without a rate carries a count gap for the ≈USD figures. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._waterfall_block",
+  "option_trader.readings.month_change._readings",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = [
+  "2026-11-03 v1: bootstrap from the code as it is; no figure changed.",
+  "2026-11-03 v1: hash refreshed, semantics unchanged (base/height/result added to the waterfall).",
+]
+
+[[figure]]
+id = "household.obligations"
+version = 1
+title_zh = "家庭页：未来 30 天到期的义务"
+pages = ["household_page.obligations"]
+formula = """
+One row per short option contract group of the household's held positions that expires from the \
+page's local date through 30 calendar days after it (both inclusive), sorted by expiry, \
+account and name. A short put needs its gross put notional (strike x multiplier x contracts, plain \
+arithmetic); a vertical is a row of its own paired contracts with the spread width. A call delivers \
+shares and needs no cash. The block's totals are one per currency; nothing is converted or added \
+across currencies, and ≈USD is display only."""
+inputs = """
+The latest complete account snapshots of the household members (positions, ledger cash); the group \
+file; the open price per share of a leg when stored; the JPY per USD rate for the display-only ≈USD."""
+period_date = "Window from today's local date to 30 days after, by the expiry date of the contract."
+currency = """
+Each row in its own currency (USD or JPY), cents; totals per currency; a display-only ≈USD total \
+only when a JPY row and a rate exist. Rounded half-even."""
+excludes = """
+Working orders (not held); calls (no cash needed); expiries outside the window; stock covering a \
+short put (no cross-account cover)."""
+gap_text = """
+No obligations data: the block carries a named gap and no rows. A row whose open price is not stored \
+shows the gap words in the 开仓价 column. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._obligations_block",
+  "option_trader.readings.obligations.household_obligations",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: bootstrap from the code as it is; no figure changed."]
+
+[[figure]]
+id = "home.household.net_worth"
+version = 1
+title_zh = "首页家庭卡：净值（大字与 USD 小字）"
+pages = ["home_page.household.card.tiles.net_worth", "household_summary.card.tiles.net_worth"]
+formula = """
+The sum over the household members of the broker's net liquidation value (NetLiquidation, USD), taken from the newest complete after-close snapshot of the household (the newest ok reading of household.net_liquidation, which may be of an earlier day than the page's). Shown in whole dollars half up ($412,300); the stored value to the cent. The text carries a leading ≈ when some member holds non-USD stock (a country row other than US with a positive value), because the converted part is the broker's ledger rate. The small line is the word USD. A negative net worth is not shown. Nothing is recomputed in the browser.
+"""
+inputs = """
+The household.net_liquidation readings of the store (members' account snapshots, summed by the reading); the allocation header and country rows (for the ≈ mark); the group file and the Flex-only members (counted in the member count and, through their nav_day rows, in the reading).
+"""
+period_date = """
+The US session day of the page; the figure is of the newest ok reading's day, named in the card's data_times_text and subtitle (数据日 MM-DD).
+"""
+currency = """
+Base currency of the figure: USD, as the broker gives it. Non-USD stock is converted at the broker's ledger rate inside the reading, which the ≈ mark states. Whole dollars half up in the text, cents half up in the value.
+"""
+excludes = """
+Working orders and unrealised changes after the snapshot; a member without a snapshot (the figure then shows the newest day that is whole, with a separate gap naming the member); any rate of this system for a non-USD holding.
+"""
+gap_text = """
+No ok reading: the reading's reason in the page's words (no record: '还没有记录'; a member without a snapshot: '缺 <roles> 的快照'; snapshots too far apart: '两个账户的快照相隔 N 分钟，未合计'; price or rate missing: '汇率或价格缺失'; otherwise '没有数字'), reason kinds no_data, missing_input or stale_input. A negative net worth: missing_input '净值为负，暂不显示'. When an older figure is shown because a member's snapshot is missing: missing_input '缺 <roles> 的账户快照，净值取自 MM-DD'. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.household_summary_builder._net_worth_tile",
+  "option_trader.viewmodels.household_summary_builder.usd_figure",
+  "option_trader.reports.home_household_publish.household_block_text",
+  "option_trader.reports.home_household_publish._dated",
+  "option_trader.reports.home_household_publish._gap",
+  "option_trader.reports.home_household_publish._words",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.household.net_worth_parts"
+version = 1
+title_zh = "首页家庭卡：净值分项（家庭（本人+配偶）与女儿（单独计））"
+pages = ["home_page.household.card.notes", "household_summary.card.notes"]
+formula = """
+The same reading as home.household.net_worth, split by account group: 女儿（单独计） = sum of her accounts' values half-even to cents; 家庭（本人+配偶） = total minus the daughter's part, so the parts sum to the shown total exactly; a member whose value is a gap makes that part a gap and the total keeps its own gap rule. Each part is shown in whole dollars half up ($150,000, $12,346) as one line of the card's notes; the total itself is not changed. Nothing is recomputed in the browser.
+"""
+inputs = """
+The net-worth reading's per-account rows (the Flex-only daughter's nav_day total) and the account group settings (the group file and the allow-list groups).
+"""
+period_date = """
+The same as home.household.net_worth: the US session day of the page; the total is of the newest ok reading's day.
+"""
+currency = """
+Base currency of the figure: USD, as home.household.net_worth. The daughter's part to the cent half-even, the 家庭 part the total minus it; text in whole dollars half up.
+"""
+excludes = """
+Any change of the total, the day change, the month change or the cash share; a part for any member other than the daughter; a zero in place of a missing part.
+"""
+gap_text = """
+A daughter member without a total: '女儿（单独计）：暂无数字'. A total that is a gap: '家庭（本人+配偶）：暂无数字', and the total keeps its own gap rule. Without a daughter member neither line is added. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.household_summary_builder._part_notes",
+  "option_trader.viewmodels.household_summary_builder.usd_figure",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: created; owner 17:53: the total includes the daughter, the split is display only"]
+
+[[figure]]
+id = "home.household.day_change"
+version = 1
+title_zh = "首页家庭卡：上一交易日变化（金额与百分比小字）"
+pages = ["home_page.household.card.tiles.day_change", "household_summary.card.tiles.day_change"]
+formula = """
+Amount: the newest report day's Flex household total minus the previous report day's total, summed over the members, USD, signed (+$1,860). It includes the day's deposits, withdrawals and position transfers: it is not a pure return. Percent (the caption): the amount divided by the household Flex total of the immediately preceding US session (the session before the amount's day), times 100, half up to 0.01 percentage point (+0.45%); a tiny fall that rounds to zero shows 0.00%, never -0. The percent is not shown when that total is missing or not positive.
+"""
+inputs = """
+The household.flex_day_change reading (amount and its day); the household.flex_net_value readings (the total of the previous US session, found by stepping back over weekends and market holidays with the session calendar).
+"""
+period_date = """
+The report day of the newest Flex day change; the denominator is the total of the US session before that day.
+"""
+currency = """
+Base currency of the figure: USD as the Flex statements give it, no rate of this system. Amount rounded half up to the cent (text in whole dollars), percent half up to 0.01.
+"""
+excludes = """
+The pure return (deposits and transfers stay in); the day's moves after the report; a percent against any total other than the previous session's.
+"""
+gap_text = """
+No ok Flex day change: the reading's reason in the page's words (same words as net worth, '还没有记录' when none), kinds no_data, missing_input or stale_input; the same Gap stands in the amount and the percent. Amount present but the previous total missing or not positive: the percent is missing_input '上一交易日的总值缺失，百分比不显示'. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.household_summary_builder._day_change_tile",
+  "option_trader.viewmodels.household_summary_builder.day_change_percent",
+  "option_trader.viewmodels.household_summary_builder.usd_signed_figure",
+  "option_trader.reports.home_household_publish.household_block_text",
+  "option_trader.reports.home_household_publish._previous_session",
+  "option_trader.reports.home_household_publish._dated",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.household.month_to_date"
+version = 1
+title_zh = "首页家庭卡：本月至今（金额与百分比或无基数小字）"
+pages = ["home_page.household.card.tiles.month_to_date", "household_summary.card.tiles.month_to_date"]
+formula = """
+Amount: the month-to-date change of the household, from the newest ok household.monthly_change reading of the card's month: the stored value, end minus start minus deposits (so deposits and withdrawals are out), simple method, not time-weighted; USD, signed. Percent (the caption): that change divided by the month's start row, times 100, half up to 0.01 percentage point. When the start is not positive the caption is the word 无基数, not a gap. An earlier month's reading is never this month's.
+"""
+inputs = """
+The household.monthly_change readings with their start and end rows (stored); the day of the newest ok reading is the day of the figure (the card says 本月至今 截至 MM-DD).
+"""
+period_date = """
+Calendar month of the card's session day; the figure runs to the report day of the newest ok monthly change.
+"""
+currency = """
+Base currency of the figure: USD as the Flex statements give it, no rate of this system. Amount half up to the cent, percent half up to 0.01.
+"""
+excludes = """
+Deposits and withdrawals (deducted); the order of deposits within the month; time weighting; any reading of an earlier month.
+"""
+gap_text = """
+No monthly change reading in the month: missing_input '本月还没有日结单'. A reading that is not ok: its reason in words ('缺 <roles> 的日结单', '月初没有日结单', '本月还没有日结单', the not-USD note, otherwise '没有数字'). Start or end row missing: missing_input '月初或月末的数字缺失'. The same Gap stands in the amount and the caption. A start of zero or less gives the caption 无基数, never a division. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.household_summary_builder._month_tile",
+  "option_trader.viewmodels.household_summary_builder.day_change_percent",
+  "option_trader.viewmodels.household_summary_builder.usd_signed_figure",
+  "option_trader.reports.home_household_publish._month",
+  "option_trader.reports.home_household_publish._gap",
+  "option_trader.reports.home_household_publish._words",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.household.cash_share"
+version = 1
+title_zh = "首页家庭卡：现金占比（大字）与现金金额（小字）"
+pages = ["home_page.household.card.tiles.cash", "household_summary.card.tiles.cash"]
+formula = """
+Caption: the household's cash, the sum of the members' broker cash (TotalCashValue, USD), signed (+$156,700; a debit is negative). Figure: the cash share of the net worth in whole percent, half up (0.38 is 38%), from the cash actual of compare_allocation (cash divided by net worth, a fraction the adapter passes on and the builder does not recompute). The share needs the cash, the net worth and the allocation country rows to be of the same day. Cash below zero is margin borrowing: the label becomes 融资借款, the figure is the word 融资中 and no share is shown. A share outside 0 to 100% is not shown.
+"""
+inputs = """
+The household.cash, household.net_liquidation and household allocation readings and their country rows (US and JP values), all of one day; compare_allocation turns them into the actual cash fraction.
+"""
+period_date = """
+The US session day of the readings; the share is shown only when cash, net worth and allocation are of one and the same day.
+"""
+currency = """
+Base currency of the figure: USD. The share is a dimensionless fraction shown in whole percent half up; the amount half up to the cent, text in whole dollars.
+"""
+excludes = """
+A share built from readings of different days; the margin borrowing share (shown as 融资中); any target or advice.
+"""
+gap_text = """
+Cash reading not ok: its reason in the page's words, in both figure and caption. Share not computable: missing_input '缺同一天的国家分布，现金占比暂不显示'. Share outside 0 to 1: missing_input '现金占比不在 0 到 100% 之间，不显示'. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.household_summary_builder._cash_tile",
+  "option_trader.viewmodels.household_summary_builder.share_figure",
+  "option_trader.viewmodels.household_summary_builder.usd_signed_figure",
+  "option_trader.reports.home_household_publish.household_block_text",
+  "option_trader.owner_plans.target_allocation.compare_allocation",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.options.premium_month"
+version = 1
+title_zh = "首页期权卡：本月权利金"
+pages = ["home_page.options.card.tiles.premium_month_usd", "options_summary.card.tiles.premium_month_usd"]
+formula = """
+The premium taken in (本月新收) of the month of the session day, through the session day: the same rule as the current month's bar (entry home.options_summary.monthly_premium): the sum over the household's accounts of the opening cash of book A openings (sold and protective) net of the opening commission and tax, signed. A roll adds the new opening only; closing cost is not netted. The small line is '已收；含移仓新仓，不扣平仓支出，非盈亏'; when some accounts are left out it is '部分，N 个账户未算入'.
+"""
+inputs = """
+Flex trade openings; the stored Flex statement span of each account; the JPY per USD rate of the opening's US Eastern date for a JPY account; the accounts held for review.
+"""
+period_date = """
+Calendar month by the US Eastern date of the opening, through the session day (the oldest statement coverage of the members).
+"""
+currency = """
+Base currency of the figure: USD, full precision summed per account, rounded half-even to 2 places per account (see the bar's entry); text in whole dollars.
+"""
+excludes = """
+Closing cost of a roll; later shrinking, assignment or expiry; an account not covered through the session day, held for review, or without a zone or usable rate.
+"""
+gap_text = """
+No account computable: no_data '本月权利金暂无数据：成交记录未覆盖' when every account is not covered, else '本月权利金暂无数据：账户待核对或缺日元汇率'. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.options_figures._premium_tile",
+  "option_trader.viewmodels.options_figures._premium",
+  "option_trader.viewmodels.options_figures._why_none",
+  "option_trader.readings.premium_received.premium_received",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.options.open_premium"
+version = 1
+title_zh = "首页期权卡：未平仓结构的开仓权利金"
+pages = ["home_page.options.card.tiles.open_premium_usd", "options_summary.card.tiles.open_premium_usd"]
+formula = """
+The sum of the net opening cash of every sold-side structure (sold puts and sold calls) of the household that is not closed, the original opening net of the structure and including the part already closed (so a partly closed structure counts whole), converted to USD. Accounts held for review or not covered through the session day are left out. The small line is '全部持仓；原始开仓净额，含已平仓份额', with '；含日股 N 组' for JPY structures and '；含部分平仓 N 组' for partly closed ones, or '部分，N 个账户未算入' when accounts are left out. A net paid total is not shown.
+"""
+inputs = """
+The Flex structures of the household accounts (net_opening_cash, currency, closed_on, lots and closings); the statement coverage and held accounts of the openings; the JPY per USD rate of the session day for a JPY structure.
+"""
+period_date = """
+All open structures as of the session day; not limited to the month.
+"""
+currency = """
+Base currency of the figure: USD. A USD structure is its cash as it is; a JPY structure is divided by the DEXJPUS of the session day (JPY per USD). Summed at full precision, text in whole dollars half up.
+"""
+excludes = """
+Closed structures; protective-only structures; accounts held or not covered; the share delivery of an assignment; profit (this is premium, not result).
+"""
+gap_text = """
+Every account left out: no_data '未平仓结构的开仓权利金暂无数据：账户待核对或成交记录未覆盖'. A JPY structure without a stored rate: no_data '未平仓结构的开仓权利金暂无数据：缺日元汇率 DEXJPUS'. Total below zero: no_data '未平仓结构的开仓权利金为净付，暂不显示'. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.options_figures._open_tile",
+  "option_trader.viewmodels.options_figures._convert",
+  "option_trader.viewmodels.options_figures._left_out",
+  "option_trader.viewmodels.options_figures._all_left_out",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.options.max_loss"
+version = 1
+title_zh = "首页期权卡：最大亏损风险"
+pages = ["home_page.options.card.tiles.max_loss_usd", "options_summary.card.tiles.max_loss_usd"]
+formula = """
+The sum, over the household's held option structures read from the current account snapshots, of the largest loss of each structure that has a bounded amount: a structure whose money line kind is max_loss, bound or width_only gives that amount; a single short put gives (strike - the premium credit per share) x contracts x multiplier; all converted to USD. Structures with an unbounded loss (naked calls, synthetic shorts) make the figure the word 无上限, with the bounded part in the small line ('有界部分 $X；含裸卖购 N 组；含合成空头 N 组'). Structures that have no loss number (covered, collars and the like, or unreadable option rows) are counted and named in the small line; the figure then reads '至少 $X' and the line says it is not a total cap. The small line starts '全部持仓' and adds '；含日股 N 组' for JPY structures.
+"""
+inputs = """
+The gateways' current account snapshots of every household member (positions, premiums per contract); the open structures recognised from them; the JPY per USD rate of the session day.
+"""
+period_date = """
+The latest account snapshot, at most 24 hours old at build time; structures as of the session day.
+"""
+currency = """
+Base currency of the figure: USD. A JPY amount is divided by the DEXJPUS of the session day. Summed at full precision, text in whole dollars half up.
+"""
+excludes = """
+Gain and break-even; naked calls and synthetic shorts (named, not summed); structures without a loss number (named); working orders; any stress or margin figure.
+"""
+gap_text = """
+A member without a snapshot: no_data '最大亏损暂无数据：缺账户持仓快照'. A snapshot older than 24 hours: no_data '最大亏损暂无数据：持仓快照已超过 24 小时'. A JPY amount without a rate: no_data '最大亏损暂无数据：缺日元汇率 DEXJPUS'. A premium at or above the strike: no_data '最大亏损暂无数据：权利金超过行权价，请核对单位'. Never a zero.
+"""
+implemented_by = [
+  "option_trader.viewmodels.options_figures._max_loss_tile",
+  "option_trader.viewmodels.options_figures._snapshots",
+  "option_trader.viewmodels.options_figures._unreadable_options",
+  "option_trader.viewmodels.options_figures._convert",
+  "option_trader.reports.held_build.held_positions",
+  "option_trader.accounts.open_structures.recognise_household",
+  "option_trader.accounts.structure_loss.money_line",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "home.options.sold_count_month"
+version = 1
+title_zh = "首页期权卡：本月卖出（结构数）"
+pages = ["home_page.options.card.tiles.sold_count_month", "options_summary.card.tiles.sold_count_month"]
+formula = """
+The number of sold-side structures (sold puts and sold calls) of the household whose earliest sold lot was opened in the month of the session day, through the session day, by the US Eastern date of its fill; a roll's new structure counts as a new one. An account held for review, not covered through the session day, or having a sold lot whose opening time is unknown is left out whole. The small line is '结构数', or '部分，N 个账户未算入' when accounts are left out.
+"""
+inputs = """
+The Flex structures of the household (lots and transaction ids); the Flex trade openings (fill times); the statement coverage and held accounts.
+"""
+period_date = """
+Calendar month by the US Eastern date of the opening fill, through the session day.
+"""
+currency = """
+A count of structures; no currency.
+"""
+excludes = """
+Protective-only structures; structures opened in other months; accounts held, not covered or with an unknown opening time.
+"""
+gap_text = """
+Every account left out: no_data '本月卖出暂无数据：账户待核对或成交记录未覆盖' with the small line '部分，N 个账户未算入'. Never a zero for a household whose accounts are all left out.
+"""
+implemented_by = [
+  "option_trader.viewmodels.options_figures._count_tile",
+  "option_trader.viewmodels.options_figures.sold_count",
+  "option_trader.viewmodels.options_figures._left_out",
+  "option_trader.viewmodels.options_figures._all_left_out",
+  "option_trader.viewmodels.options_figures._structures",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B1"]
+
+[[figure]]
+id = "household.trend"
+version = 1
+title_zh = "家庭页：走势（家庭与女儿各一条线，百分比）"
+pages = [
+  "household_page.trend",
+]
+formula = """
+One series per scope (家庭（本人+配偶）, 女儿（单独计）). A point's dollar level is the scope's net \
+value of the day: the household from the stored household total, a scope of accounts the sum of its \
+members' Flex net values on each day all of them have one. Each point also carries its percent \
+change against the first point of the same series: (level - first) / first x 100, rounded half up to \
+one decimal, signed (zero reads 0.0%). The period change of a series is the last point against the \
+first, same rounding, worded '最后一点比第一点'. The chart draws the percent points, the dollar level \
+stays beside them as text."""
+inputs = """
+The stored household net-value history; the Flex net values of the members of each scope by day; \
+the group file for the scopes."""
+period_date = "Daily points; a series runs from its first stored day to its last, the page names both days."
+currency = """
+USD, as the broker gives it. Percent figures are ratios of two levels of one series, so no \
+currency is involved. Levels rounded half-even to 2 places, shown whole-dollar; percent half up to 1 place."""
+excludes = """
+Days a scope has no point for (the line skips them, nothing is filled); scopes whose members do not \
+all have a value on a day (that day is left out of the scope)."""
+gap_text = """
+No data: a named gap and no point. One point, or a first level of zero or below: the points carry no \
+percent and the series keeps a '走势点不足或起点不为正，无法算变化' gap. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._trend_series",
+  "option_trader.viewmodels.household_page_builder._since_first",
+  "option_trader.viewmodels.household_page_builder._scope_trend",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered with the percent-since-first series added the same day."]
+
+[[figure]]
+id = "household.overview"
+version = 1
+title_zh = "家庭页：总览（家庭净值）"
+pages = ["household_page.overview"]
+formula = """
+One row, 净值, and its total: the household net liquidation of the newest day with an ok \
+household.net_liquidation reading (the data day of the page; an earlier ok day when the newest is \
+not ok). The reading is the sum of the broker's NetLiquidation of the expected household members, \
+each rounded half-even to 2 places, plus the Flex net value of a Flex-only member, as the reading \
+household_levels defines it; it is never the sum of the members that happen to be there. The row \
+keeps its own currency (USD today); the total is one cell per currency, a plain sum of the \
+rounded amounts. A JPY cell keeps its yen and carries a display-only ≈USD beside it: the yen \
+divided by the JPY per USD rate, whole dollars half up; approx_usd_total is the same over all \
+rows. The page sentence is built from this block."""
+inputs = """
+The household.net_liquidation reading (stored readings, newest ok on or before the data day); the \
+newest ok fx.usdjpy reading no older than the rate look-back at the build time, for the \
+display-only ≈USD."""
+period_date = "The data day: the newest day of the stored household readings (an earlier ok day when the newest is not ok). The rate is the newest within the look-back of the build time (the configured local zone clock of the page)."
+currency = """
+Base currency of the figure: USD as the broker gives it, no rate of this system. USD rounded \
+half-even to the cent, JPY half-even to the yen; ≈USD (JPY only) whole dollars half up, display \
+only, never added into a total of another currency."""
+excludes = """
+Cash, stock and option value as separate rows (the net liquidation already holds them); an account \
+of a group the group file does not count in the household; a day whose reading is not ok."""
+gap_text = """
+No reading: a missing_input gap '没有读到「总览」的数据'; a reading with no row: a no_data gap \
+'「总览」没有可显示的内容'. A JPY row without a rate: a missing_input gap '<n> 笔日元金额缺少日元兑美元汇率，\
+未折算为约美元' and no ≈USD. With a rate the page note reads '日元兑美元汇率 <rate to 3 places>（<KL date>）。\
+日元金额保留日元原值，约合美元只作参考，不与其他币种相加。'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.viewmodels.household_page_builder._totals",
+  "option_trader.viewmodels.household_page_builder._cell",
+  "option_trader.viewmodels.household_page_builder._usd_figure",
+  "option_trader.viewmodels.household_page_builder._empty_gap",
+  "option_trader.viewmodels.household_page_builder._count_gap",
+  "option_trader.viewmodels.household_page_builder._note_fx",
+  "option_trader.reports.household_page_publish._overview",
+  "option_trader.reports.household_page_publish._levels",
+  "option_trader.readings.household.household_levels",
+  "option_trader.readings.household.household_sum",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.composition"
+version = 1
+title_zh = "家庭页：构成（按国家）"
+pages = ["household_page.composition"]
+formula = """
+One row per country row of the household.allocation reading (label as stored, US or JP): the sum, \
+in USD, of the market value of the household members' stock positions with a positive quantity \
+listed in that country (a USD name is US, a JPY name is JP), each position converted with the \
+ledger exchange rate of the same snapshot, values summed and rounded half-even to 2 places, rows by \
+value descending then label. The total is one cell per currency (USD). A row's share is its ≈USD \
+over the ≈USD of all rows, in whole percent, half up. Same rule over a grouping as 集中度 and \
+长期账户 for the money shape (_money_block); the grouping is the country."""
+inputs = """
+The household.allocation reading and its rows (newest ok on or before the data day); the JPY per USD \
+rate for a JPY row (none today: the rows are USD)."""
+period_date = "The data day: the newest ok day of the stored household.allocation reading on or before the newest household day."
+currency = """
+USD: positions converted to USD by the ledger rate of the snapshot at reading time, rounded \
+half-even to the cent. Shares are ratios of ≈USD amounts, whole percent half up; the displayed \
+percents may not add to exactly 100."""
+excludes = """
+Short and zero positions, options, cash; the sector, company and currency dimensions of the same \
+reading (not shown here); a member outside the household."""
+gap_text = """
+No reading: a missing_input gap '没有读到「构成」的数据'; a reading with no country row: a no_data gap \
+'「构成」没有可显示的内容'. A negative row or a base of zero or below: no share and a no_rule gap \
+'有负数金额或合计不为正，占比无法计算'. A JPY row without a rate: '<n> 笔日元金额缺少日元兑美元汇率，\
+未折算为约美元'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.viewmodels.household_page_builder._shares",
+  "option_trader.viewmodels.household_page_builder._share_figure",
+  "option_trader.viewmodels.household_page_builder._totals",
+  "option_trader.reports.household_page_publish._composition",
+  "option_trader.readings.allocation.household_allocation",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.movers"
+version = 1
+title_zh = "家庭页：谁带动了今天"
+pages = ["household_page.movers"]
+formula = """
+Two tables, 股票 and 期权, each line under its scope (the household or another group) with its \
+account's tag, and one 其他 line in the household scope. A line's 带动 is q_prev x multiplier x \
+(price today - price at the previous snapshot) of a position held in both snapshots, from the \
+broker's portfolio marks of the account snapshots, converted to USD with the ledger rate of today's \
+snapshot, rounded half-even to 2 places; an option is shown by its contract (AAA 11-20 P250, a \
+vertical AAA 11-20 P250/240 价差 ×1). 其他 is the household net liquidation change less the sum of \
+the listed lines: cash, rates, positions opened or closed between the snapshots, deposits. The \
+total is the household scope's lines plus 其他, signed; the lines of another scope are in no total. \
+The previous and current marks are shown to 4 places, half-even. The meaning sentence states the \
+basis: from the previous snapshot day to the data day, brokers' valuation, not close to close."""
+inputs = """
+The household.day_contributions reading, version 2, and its rows (newest ok on or before the data \
+day); the allow-list with groups and the group file for scope and tag; the JPY per USD rate."""
+period_date = "From the snapshot of the previous day with an ok household.net_liquidation (the reading's since) to the snapshot of the data day; the page compares the data day with today's local date and names it when they differ."
+currency = """
+USD: every line converted by the ledger rate of today's snapshot, rounded half-even to the cent, \
+shown signed; ≈USD only when a JPY row exists. Marks are in the position's own currency."""
+excludes = """
+Cash, interest, rate changes, positions opened or closed between the two snapshots, deposits (they \
+are in 其他); the lines of an account outside the allow-list; the daughter's lines in the total."""
+gap_text = """
+No reading: a missing_input gap '没有读到「谁带动了今天」的数据'; nothing to show: a no_data gap \
+'「谁带动了今天」没有可显示的内容'. A mark missing: the price cell is a missing_quote gap '缺上个交易日价格' \
+or '缺现价', never a 0; a line without a rate: no amount and the note '缺汇率，未折算为美元'. A scope with an \
+account without intraday prices: a scope gap '无盘中价格（Flex）'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._movers_block",
+  "option_trader.viewmodels.household_page_builder._mover_row",
+  "option_trader.viewmodels.household_page_builder._mover_name",
+  "option_trader.viewmodels.household_page_builder._price_cell",
+  "option_trader.viewmodels.household_page_builder._totals",
+  "option_trader.reports.household_page_publish._movers",
+  "option_trader.reports.household_page_publish._movers_rest",
+  "option_trader.reports.household_page_publish._movers_since",
+  "option_trader.reports.household_page_publish._contributions",
+  "option_trader.readings.contribution.day_contributions",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.stress"
+version = 1
+title_zh = "家庭页：压力（到期情景下的损失）"
+pages = ["household_page.stress"]
+formula = """
+One row and its total: the household.stress_loss reading, the sum over the household members of \
+each account's expiry-scenario change (an expiry payoff by plain arithmetic, no pricing model, with \
+the underlying down by the drop and the yen up by the shock of the sizing stress parameters), each \
+account rounded half-even to 2 places, negative for a loss, shown signed. The label names the two \
+parameters in percent: 到期情景下的损失（标的跌 <drop>%，日元升 <shock>%）. Display only."""
+inputs = """
+The household.stress_loss reading (newest ok on or before the data day); the sizing stress \
+parameter file (accounts/params/sizing_stress_v1.toml) for the label; the JPY per USD rate."""
+period_date = "The data day: the newest ok day of the stored household.stress_loss reading on or before the newest household day."
+currency = """
+The reading's own currency (USD), rounded half-even to the cent, signed; a JPY reading would keep \
+its yen with a display-only ≈USD."""
+excludes = """
+An account outside the household; a scenario that is unknown for an account (the reading is then \
+not ok and nothing is shown); a margin band (separate reading); any pricing-model loss."""
+gap_text = """
+No ok reading: a missing_input gap '没有读到「压力」的数据'. A JPY row without a rate: '<n> 笔日元金额缺少日元兑美元汇率，\
+未折算为约美元'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.viewmodels.household_page_builder._totals",
+  "option_trader.reports.household_page_publish._stress",
+  "option_trader.reports.household_page_publish._stress_params",
+  "option_trader.reports.household_page_publish._percent",
+  "option_trader.readings.stress.stress_losses",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.income"
+version = 1
+title_zh = "家庭页：每月收入"
+pages = ["household_page.income"]
+formula = """
+One row per calendar month, the latest six months of the household.monthly_income reading, version \
+2 (the later day of a month replaces the earlier; only ok readings; a window of 400 days before the \
+data day). A month's figure is the sum of three parts over the household members: 期权 (the \
+base-currency result of the closed parts of book A by the day recognised, expiry included), 股息 \
+(received dividends, net of withholding tax) and 利息 (interest, received positive, paid \
+negative), each cash row as amount x fxRateToBase, each part rounded half-even to 2 places. A row \
+opens to its items (期权 '<contract> 平仓', 股息 '<symbol> 股息', 利息) each with its account's tag \
+and a signed amount, and a sentence '含 <n> 项：期权 a 项、股息 b 项、利息 c 项' (or '这个月没有可展开的明细项'). \
+The total is the plain sum of the months shown. Same money shape as 总览; the grouping is the month."""
+inputs = """
+The household.monthly_income reading, version 2, its rows (stored Flex trade parts, cash-report and \
+net-asset-value rows, the statement coverage) and the allow-list for tags and scopes."""
+period_date = "Calendar months; a month's reading day is the earlier of its last calendar day and the last covered Flex day among the members; the page shows the six latest months to the data day."
+currency = """
+USD: Flex amounts x fxRateToBase of the broker, no rate of this system; members whose newest \
+nav_day row is not USD make the reading not ok. Rounded half-even to the cent."""
+excludes = """
+Open contracts (only closed parts count); a month without an ok reading; position results of \
+book B; a scope outside the household has no month detail; an item of an account outside the \
+allow-list."""
+gap_text = """
+No reading: a missing_input gap '没有读到「每月收入」的数据'; no month: a no_data gap \
+'「每月收入」没有可显示的内容'. Each scope outside the household: a scope gap '<scope label>没有按月明细，\
+每月收入只算家庭'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._income_block",
+  "option_trader.viewmodels.household_page_builder._income_summary",
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.reports.household_page_publish._income",
+  "option_trader.reports.household_page_publish._items",
+  "option_trader.readings.income.monthly_income_item_readings",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.cash_after"
+version = 1
+title_zh = "家庭页：指派后现金"
+pages = ["household_page.cash_after"]
+formula = """
+One row per household member and currency from the household.assignment_shortfalls reading, \
+version 2: cash less the gross put notional (strike x multiplier x contracts, plain arithmetic) \
+if every short put were assigned, in the row's own currency, each rounded half-even to 2 places, \
+signed (a negative is a shortfall). Only counted rows (those with a known cash and put notional) are \
+shown; the label is '<account> <currency>'. Nothing is converted or added across accounts or \
+currencies: the total is one cell per currency, a plain sum of the shown rows, and ≈USD is display \
+only."""
+inputs = """
+The household.assignment_shortfalls reading and its rows (newest ok on or before the data day); \
+the JPY per USD rate for the display-only ≈USD."""
+period_date = "The data day: the newest ok day of the stored household.assignment_shortfalls reading on or before the newest household day."
+currency = """
+Each row in its own currency (USD or JPY), USD to the cent and JPY to the yen, half-even; a JPY \
+cell keeps its yen with a display-only ≈USD (JPY / rate, whole dollars half up)."""
+excludes = """
+Rows that are not counted (a cash or put notional that cannot be given); calls (they deliver \
+shares and need no cash); margin; a member outside the household."""
+gap_text = """
+No ok reading: a missing_input gap '没有读到「指派后现金」的数据'; no counted row: a no_data gap \
+'「指派后现金」没有可显示的内容'. A JPY row without a rate: '<n> 笔日元金额缺少日元兑美元汇率，\
+未折算为约美元'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.viewmodels.household_page_builder._totals",
+  "option_trader.reports.household_page_publish._cash_after",
+  "option_trader.readings.assignment.assignment_shortfalls",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.concentration"
+version = 1
+title_zh = "家庭页：集中度"
+pages = ["household_page.concentration"]
+formula = """
+One row per name (symbol) of the household.largest_exposure_share reading, version 2, by total \
+descending: the household total of stock, short-put notional and buys of the name, in USD, each \
+account's part rounded half-even to 2 places. Each row carries the accounts of the household that \
+hold the name with their own amounts, and its share: the stored share (total over the household \
+net liquidation, 6 places) x 100, whole percent half up; shares are each on its own base and may \
+add to more than 100. The total row is the plain sum of the household rows. The rows of an account \
+of another group come after, under that group's scope, outside the total. The meaning sentence \
+adds, for a Flex-only member whose data day is not the page's, '<label> 的数据日 <day>（Flex 日结单），\
+其余按本页数据日'."""
+inputs = """
+The household.largest_exposure_share reading, version 2, with its rows (newest ok on or before the \
+data day); the allow-list with groups and the group file; the JPY per USD rate; for a Flex-only member, her Flex positions statement read in the after-close run."""
+period_date = "The data day: the newest ok day of the stored reading on or before the newest household day; a Flex-only member is on her own data day, named in the meaning."
+currency = """
+USD (the reading converts each name by the ledger rate or the Flex rate of its report), half-even \
+to the cent; shares are whole percent half up."""
+excludes = """
+A name left out because a member's stock, puts or buys is unknown (the row is not counted and has \
+no total); other scopes in the total; names the issuer cap does not concern are still listed."""
+gap_text = """
+No ok reading: a missing_input gap '没有读到「集中度」的数据'; no row: a no_data gap \
+'「集中度」没有可显示的内容'. A scope that holds no row: a scope gap, missing_input, '无该账户的集中度读数'; a scope of a Flex-only member with no concentration line: a scope gap, \
+missing_input, '无该账户的 Flex 持仓报表，集中度无从读起'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._concentration_block",
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.viewmodels.household_page_builder._flex_day_sentences",
+  "option_trader.reports.household_page_publish._concentration",
+  "option_trader.readings.exposure.household_exposure",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = [
+  "2026-11-03 v1: registered, part B2; no figure changed.",
+  "2026-11-03 hash refreshed, formula unchanged; gap text and Flex-only input added",
+]
+
+[[figure]]
+id = "household.allocation"
+version = 1
+title_zh = "家庭页：配置（对比目标）"
+pages = ["household_page.allocation"]
+formula = """
+Three rows: 美股 and 日股 (the US and JP country rows of the household.allocation reading, USD) and \
+现金 (the household.cash reading). A row's share is its USD amount over the household net \
+liquidation (household.net_liquidation, USD), unrounded, shown in whole percent half up; it may be \
+negative or above 100. The target is the owner's target file value of the row (a fraction) x 100, \
+whole percent half up, absent when the file is not ok or holds no value. The difference is the \
+exact share less the exact target in percentage points, one decimal half up, signed, only when \
+both exist. The total is the plain sum of the rows in USD; no share total."""
+inputs = """
+The household.allocation, household.cash and household.net_liquidation readings (newest ok on or \
+before the data day); the target allocation file."""
+period_date = "The data day: the newest ok day of the stored readings on or before the newest household day."
+currency = """
+USD, half-even to the cent; shares and targets whole percent half up; the difference one decimal \
+of a percentage point half up."""
+excludes = """
+Rows other than US stocks, JP stocks and cash (options, bonds and other assets are in the net \
+liquidation only); an account outside the household."""
+gap_text = """
+No allocation reading: a missing_input gap '没有读到「配置」的数据'; no row: a no_data gap \
+'「配置」没有可显示的内容'. A net liquidation missing or not above zero: no share and no difference \
+and a no_rule gap '净值缺失或不为正，占比无法计算'. A row without a target has no target and no difference. \
+Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._allocation_block",
+  "option_trader.viewmodels.household_page_builder._net_shares",
+  "option_trader.viewmodels.household_page_builder._net_share_figure",
+  "option_trader.viewmodels.household_page_builder._difference",
+  "option_trader.reports.household_page_publish._allocation",
+  "option_trader.reports.household_page_publish._allocation_net",
+  "option_trader.readings.allocation.household_allocation",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.long_term"
+version = 1
+title_zh = "家庭页：长期账户"
+pages = ["household_page.long_term"]
+formula = """
+The block has the shape of 总览 (rows, a total per currency, a display-only ≈USD) but no figure \
+feeds it yet: the page builder's input for it is not read (None), so the block is always empty \
+with its gap. A row that a later part feeds will be a named amount in its own currency, summed per \
+currency without conversion, as _money_block does for 总览."""
+inputs = """
+Nothing is read for this block today; the publisher sets its input to None."""
+period_date = "None: no figure is shown, so there is no date."
+currency = """
+Not applicable while empty; once fed, each row in its own currency (USD to the cent, JPY to the \
+yen, half-even) with a display-only ≈USD."""
+excludes = """
+Everything: no reading of long-term accounts exists in the page's inputs."""
+gap_text = """
+Always a missing_input gap '没有读到「长期账户」的数据', no row and no total. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._money_block",
+  "option_trader.viewmodels.household_page_builder._empty_gap",
+  "option_trader.reports.household_page_publish._inputs",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "household.accounts"
+version = 1
+title_zh = "家庭页：账户表与范围"
+pages = [
+  "household_page.accounts",
+  "household_page.scopes",
+]
+formula = """
+One row per allow-listed member that has Flex readings (and every Flex-only member), grouped under \
+its scope in the order household, then each other group. The cells are the member's stored Flex \
+figures of its newest ok report day on or before the data day: 净清算值 (account.flex_net_value), \
+现金, 股票市值, 期权市值 (account.flex_cash, flex_stock, flex_options of the same report day), USD to \
+the cent, no conversion and no ≈USD. 数据日 is the member's own report day ('数据日 MM-DD', the \
+year shown when it is not the page's). A member is named by role, never by alias: '账户（本人）', \
+'Flex 账户（配偶）', numbered when several read the same. The scopes are 家庭（<roles joined by +>） \
+and, for another group, '<role>（单独计）', each with its accounts' tags. No total is made."""
+inputs = """
+The allow-list with groups and sources; the group file for which groups are the household; the \
+stored account.flex_net_value, flex_cash, flex_stock and flex_options readings; whether a live \
+member took her Flex day (account.net_liquidation no_snapshot while the household one is ok)."""
+period_date = "Each member's own newest ok Flex report day on or before the data day, shown in the 数据日 cell."
+currency = """
+USD as the Flex statement gives it, rounded half-even to the cent; nothing converted."""
+excludes = """
+A live member with no Flex reading (no row); any total or share; an alias (never shown)."""
+gap_text = """
+A figure not read: the cell is empty with the words '缺（Flex 未提供）'. For live members whose line is \
+their Flex day the meaning adds '无当日账户快照。'. No row is not a gap. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.household_page_builder._accounts_block",
+  "option_trader.viewmodels.household_page_builder._account_figure",
+  "option_trader.viewmodels.household_page_builder._scopes",
+  "option_trader.viewmodels.household_page_builder._scope_key",
+  "option_trader.viewmodels.household_page_builder._labels",
+  "option_trader.reports.household_page_publish._members",
+  "option_trader.reports.household_page_publish._flex_account",
+  "option_trader.reports.household_page_publish._flex_balance",
+  "option_trader.reports.household_page_publish._took_flex_day",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered, part B2; no figure changed."]
+
+[[figure]]
+id = "companies.volatility.hv30"
+version = 1
+title_zh = "持仓公司行：自有 HV30"
+pages = [
+  "held_companies_summary.card.rows.volatility.hv30",
+  "home_page.companies.card.rows.volatility.hv30",
+]
+formula = """
+The tool's own 30-day historical volatility of a name (convention hv30_v1, ADR 0033): close-to-close \
+log returns of consecutive stored closes, their sample standard deviation (ddof 1) over the last 30 \
+returns (window 30, read from the hv30_v1 parameter file volatility/params/hv30_v1.toml), times the \
+square root of 252 (trading days per year, same file). Shown as a percent with the reconciliation \
+word against IBKR's HV30 (a mismatch is recorded, no IBKR value is shown)."""
+inputs = """
+The stored daily closes of the name (usable closes, oldest first), the last 31 of them; the hv30_v1 \
+parameter file (window, trading days, reconciliation tolerance); IBKR's HV30 of the day for the \
+reconciliation word only."""
+period_date = "The last of the stored closes: the data day of the reading; a reading of an earlier day carries that day in its text."
+currency = "None: a percent per year (a fraction times 100 on the page); no currency conversion."
+excludes = """
+IBKR's HV30 as a figure (it only drives the reconciliation word); a series with fewer than 31 closes \
+or a missing or non-positive close among the last 31; any fill or extrapolation."""
+gap_text = """
+A reading that is not ok (no full window of closes) is a Gap, never a zero; a reading of an earlier \
+day shows that day in its text."""
+implemented_by = [
+  "option_trader.volatility.own_hv.hv30_from_closes",
+  "option_trader.readings.hv30_own.hv30_own_reading",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered from the code as it is (window 30); no figure changed."]
+
+[[figure]]
+id = "companies.volatility.iv30"
+version = 1
+title_zh = "持仓公司行：自有 IV30"
+pages = [
+  "held_companies_summary.card.rows.volatility.iv30",
+  "home_page.companies.card.rows.volatility.iv30",
+]
+formula = """
+The tool's own 30-day implied volatility of a name (convention iv30_v1, ADR 0033), taken from the \
+snap_1510 capture (labelled snap_1510, shown as 'IV30 15:10'). Slot as the code has it: \
+pre-close slot 15:10-15:25 ET, held names first, per-row capture time stored; a capture after 15:25 \
+is 'other' and excluded. The late limit of the slot is 15 minutes after the target 15:10 ET (12:10 on \
+an early close). The figure is the 30-day interpolation of the at-the-money implied volatility of the \
+captured chain (volatility.own_iv.iv30_from_atm), with the rate series and interpolation of the \
+iv30 parameter file. Shown as a percent with the reconciliation word against IBKR's IV30."""
+inputs = """
+The option_daily rows of the name's chain from the snap_1510 capture (the captured_at of each row is \
+stored), the risk-free rate series of the iv30 parameter file, the capture plan (held names first, \
+then the candidate pool), IBKR's IV30 of the day for the reconciliation word only."""
+period_date = "The session date (US Eastern) of the capture; a reading of an earlier day carries that day in its text."
+currency = "None: a percent per year (a fraction times 100 on the page); no currency conversion."
+excludes = """
+A capture that starts after 15:25 ET (label other); the close_1600 capture; IBKR's IV30 as a figure \
+(reconciliation word only); IVP and IVR (ivp_v1, not covered here)."""
+gap_text = """
+A reading with no value (missing input, with its stored reason) is a Gap, never a zero; a reading of \
+an earlier day shows that day in its text."""
+implemented_by = [
+  "option_trader.volatility.own_iv.iv30_from_atm",
+  "option_trader.readings.iv_own.iv30_own_reading",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered from the code as it is (slot as the code has it); no figure changed."]
+
+[[figure]]
+id = "structure.leg_pnl"
+version = 1
+title_zh = "持仓结构页：每条腿的盈亏、标记价（Mid）与合计"
+pages = ["structure_detail.legs.pnl", "structure_detail.legs.mark", "structure_detail.legs_total.pnl"]
+formula = """
+The profit of one leg now, in USD, signed: signed quantity (contracts, short negative) x multiplier x (Mid - opening price). Mid is the stored snapshot market price per share of the leg (the gateway's market_price), not a bid/ask midpoint. The 合计 row is the sum of the legs' profits at full precision, rounded half up to the cent, and equals the 浮盈亏 tile of the same page. Synthetic: short put 1 x 100 x (1.00 - 1.50) = +50; long put 1 x 100 x (0.40 - 0.50) = -10; 合计 +40."""
+inputs = """
+The legs of the structure with signed quantity and multiplier from the instrument master; the opening price per share and the stored snapshot market price per share of each leg from the household gateways' newest complete snapshots."""
+period_date = "The newest complete snapshot of each gateway at build time; the opening price is the position's cost basis per share."
+currency = "USD. A leg in another currency is not converted: it has no profit figure until FX is wired."
+excludes = """
+Fees and commissions; assignment, exercise and expiry; any bid/ask midpoint; an unresolved leg of the book (the whole 合计 is then a Gap)."""
+gap_text = """
+A leg without a stored mark: no_data '缺少标记价' in Mid and in 盈亏, and 合计 (and the tile) the existing no_data '缺少持仓标记价，浮盈亏无法计算'. A JPY leg: no_data '日元腿暂不计盈亏' in 盈亏 and 合计. An unresolved leg: 合计 is no_data '有腿未解析，无法按已知的腿计算'. A partial sum is never shown; never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structure_detail_builder._leg_pnl",
+  "option_trader.viewmodels.structure_detail_builder._total_pnl",
+  "option_trader.viewmodels.structure_detail_builder._pnl_figure",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: agrees."]
+
+[[figure]]
+id = "structure.level_distance"
+version = 1
+title_zh = "持仓结构页：关键价位的距现价"
+pages = ["structure_detail.key_levels.distance"]
+formula = """
+(price - spot) / spot x 100, as a signed percent with one decimal, rounded half up (away from zero on a tie): '+0.6%', '-4.4%'; a result that rounds to zero is '0.0%'. The 现价 row itself shows '—'. The 盈亏平衡 tile caption uses the same figure for the break-even: '现价下方 P%' or '现价上方 P%' (P the absolute value). Synthetic: spot 52, strike 50 gives -3.8%, strike 45 gives -13.5%, break-even 49 gives -5.8%."""
+inputs = """
+The price of the level (a strike of a leg or the break-even of the expiry payoff) and the stored underlying close of the legs' newest common session."""
+period_date = "The stored underlying close of the newest session on which every leg has one."
+currency = "None: a ratio of two USD prices, shown as a percent."
+excludes = """
+Any intraday price; the one-standard-deviation band; a spot of zero or less (treated as no spot)."""
+gap_text = """
+No stored underlying close: every cell of the column is the same no_data '无收盘价，距现价无法计算' and the 盈亏平衡 caption is '无收盘价'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structure_detail_builder._distance",
+  "option_trader.viewmodels.structure_detail_builder._break_even_caption",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: agrees."]
+
+[[figure]]
+id = "option.candidates.earnings_date"
+version = 1
+title_zh = "期权页：全部候选的 E 列（财报日）"
+pages = [
+  "option_page.markets.candidates.rows.cells.cell",
+  "full_scan.sections.table.rows.cells.cell",
+]
+formula = """
+KNOWN shown as the date; VENDOR as the date marked 估; ESTIMATED shown only when its window is \
+qualified (both bounds), as the window marked 估; UNKNOWN and unqualified estimates stay the gap 缺"""
+inputs = """
+The earnings state stored with the scan of each candidate (kind, next date, ADR 0016 window, \
+qualified flag)."""
+period_date = "The stored scan's data day; dates are calendar dates, shown as mm-dd."
+currency = "None: a date, not an amount."
+excludes = """
+A confirmed date for a US stock (the US scan never produces KNOWN); the vendor's time of day; any \
+date computed in the browser."""
+gap_text = """
+UNKNOWN, NOT_APPLICABLE, an unqualified ESTIMATED, or a KNOWN state without a next date: a no_data \
+gap, the word 缺."""
+implemented_by = [
+  "option_trader.viewmodels.option_page_builder._earnings",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered; before this, the page showed KNOWN only (JP-only), so every US row was 缺"]
+
+[[figure]]
+id = "market.spx_close"
+version = 1
+title_zh = "首页市场卡：SPX 收盘"
+pages = ["market_summary.card.chart.points.close"]
+formula = """
+close = the stored IBKR SPX daily close (weather-closes); days before the IBKR series = FRED SP500, \
+labelled fallback (source fred_sp500); the 200-day line = simple mean of the last 200 such closes, \
+both sources spliced. From the first IBKR day on only IBKR is drawn; a session with no IBKR bar is a \
+missing day (a null point), never filled from FRED. On a day both sources hold, the two closes must \
+agree within 0.05% of the IBKR close; a day outside is a named gap '两源收盘不一致 mm-dd' and the IBKR \
+value is drawn."""
+inputs = """
+The bar_daily closes of SPX (USD, variant '1 day|TRADES|RTH', index points as stored, source-native, \
+unadjusted); the FRED SP500 series of the macro dataset for the days before the first IBKR bar."""
+period_date = "The US session date of the close; the card's data day is the newest drawn close."
+currency = "None: index points."
+excludes = """
+FRED as the primary source (it lags its sister series by 2 to 4 sessions by its own publication); \
+any intraday price; a date with no US session."""
+gap_text = """
+No close at all: a no_data gap 'SPX 日线暂无数据：没有存储的收盘'. Two sources disagreeing on a day: \
+a missing_input gap '两源收盘不一致 mm-dd'. A missing session is a null point, never a zero."""
+implemented_by = [
+  "option_trader.reports.home_market_publish.merge_spx_closes",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: source IBKR SPX close, FRED back-fill only (ask 1863: FRED lagged 4 sessions)"]
+
+[[figure]]
+id = "market.sp500_vs_200d"
+version = 1
+title_zh = "首页市场卡：SPX 与 200 日线的差"
+pages = ["market_summary.card.say"]
+formula = """
+close = the stored IBKR SPX daily close (weather-closes); days before the IBKR series = FRED SP500, \
+labelled fallback; the 200-day line = simple mean of the last 200 such closes, both sources spliced. \
+The difference is the newest close over the 200-day line, minus 1, shown as a percent with one \
+decimal, half up. With no IBKR bar stored the card shows the stored reading market.sp500_vs_200d \
+(FRED SP500 alone) as before."""
+inputs = """
+The merged SPX closes of the market.spx_close entry, the newest 200 of them (the newest close \
+included); every one of the 200 must be present."""
+period_date = "The data day of the newest drawn close."
+currency = "None: a fraction of the 200-day line, shown as a percent."
+excludes = """
+A window with a missing close; the stored FRED reading when IBKR bars exist."""
+gap_text = """
+Fewer than 200 closes or a missing one among them: the sentence says 'SPX 与 200 日线的差暂无数据' \
+and the card carries the no_data gap. Never a zero."""
+implemented_by = [
+  "option_trader.reports.home_market_publish._trend_vs_200d",
+  "option_trader.viewmodels.market_summary_builder._say",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: source IBKR SPX close, FRED back-fill only (ask 1863: FRED lagged 4 sessions)"]
+
+[[figure]]
+id = "structure.max_loss"
+version = 1
+title_zh = "持仓结构页与结构列表：最大亏损"
+pages = ["structure_detail.tiles.max_loss.figure", "structure_detail.payoff.max_loss", "structures_list.groups.rows.max_loss"]
+formula = """
+The worst expiry profit of the structure in USD, signed (a loss is negative), for one position: the minimum, over the corners of the expiry payoff (underlying price 0 and every strike of the legs), of sum(signed quantity x multiplier x (intrinsic value at that price - opening price)), rounded half up to the cent. Intrinsic value is max(strike - price, 0) for a put and max(price - strike, 0) for a call; the payoff is linear between corners and flat above the top strike, so the minimum is at a corner. A structure whose payoff is unbounded above (net short calls) has no figure and is not built. The list page copies this figure from each structure's detail page and orders its rows by it, the most negative first. Synthetic: short put 50 at 1.50 and long put 45 at 0.50, one contract each, multiplier 100: (5 - 1.00) x 100 = -400.00; a single short put 90 at 3.00: 300 - 9,000 = -8,700.00."""
+inputs = """
+The legs of the structure with signed quantity, strike, right and multiplier from the instrument master; the opening price per share of each leg from the household gateways' newest complete snapshots."""
+period_date = "At expiry of the legs; the opening prices are those of the newest complete snapshot of each gateway at build time."
+currency = "USD. A structure in another currency is not built."
+excludes = """
+Fees and commissions; assignment and early exercise; the current mark (this is the expiry result, not the profit now); any stress or margin figure."""
+gap_text = """
+A structure the page cannot express (legs of different expiries, an unbounded payoff, no break-even, no opening price, no stored implied volatility with a spot) is not built and not listed; the list says once how many were left out. A structure with an unresolved leg: no_data '有腿未解析，无法按已知的腿计算'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structure_detail_builder.expiry_pnl",
+  "option_trader.viewmodels.structure_detail_builder._intrinsic",
+  "option_trader.viewmodels.structure_detail_builder._payoff_extremes",
+  "option_trader.viewmodels.structures_list.build_structures_list",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed."]
+
+[[figure]]
+id = "structure.max_gain"
+version = 1
+title_zh = "持仓结构页与结构列表：最大盈利"
+pages = ["structure_detail.tiles.max_gain.figure", "structure_detail.payoff.max_gain", "structures_list.groups.rows.max_gain"]
+formula = """
+The best expiry profit of the structure in USD, signed, for one position: the maximum, over the corners of the expiry payoff (underlying price 0 and every strike of the legs), of sum(signed quantity x multiplier x (intrinsic value at that price - opening price)), rounded half up to the cent. The list page copies this figure from each structure's detail page. Synthetic: short put 50 at 1.50 and long put 45 at 0.50, one contract each, multiplier 100: (1.50 - 0.50) x 100 = +100.00."""
+inputs = """
+The legs of the structure with signed quantity, strike, right and multiplier from the instrument master; the opening price per share of each leg from the household gateways' newest complete snapshots."""
+period_date = "At expiry of the legs; the opening prices are those of the newest complete snapshot of each gateway at build time."
+currency = "USD. A structure in another currency is not built."
+excludes = """
+Fees and commissions; assignment and early exercise; the current mark; any probability of reaching the figure."""
+gap_text = """
+As structure.max_loss: a structure the page cannot express is not built and not listed; an unresolved leg gives no_data '有腿未解析，无法按已知的腿计算'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structure_detail_builder.expiry_pnl",
+  "option_trader.viewmodels.structure_detail_builder._intrinsic",
+  "option_trader.viewmodels.structure_detail_builder._payoff_extremes",
+  "option_trader.viewmodels.structures_list.build_structures_list",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed."]
+
+[[figure]]
+id = "structure.unrealized_pnl"
+version = 1
+title_zh = "持仓结构页与结构列表：浮盈亏"
+pages = ["structure_detail.tiles.pnl.figure", "structures_list.groups.rows.pnl"]
+formula = """
+The profit of the structure now, in USD, signed: the sum over its legs of signed quantity (contracts, short negative) x multiplier x (stored mark per share - opening price per share), rounded half up to the cent. It equals the 合计 row of the legs table (structure.leg_pnl). The list page copies this figure from each structure's detail page. Synthetic: short put 1 x 100 x (1.00 - 1.50) = +50; long put 1 x 100 x (0.40 - 0.50) = -10; total +40."""
+inputs = """
+The legs of the structure with signed quantity and multiplier from the instrument master; the opening price per share and the stored snapshot market price per share of each leg from the household gateways' newest complete snapshots."""
+period_date = "The newest complete snapshot of each gateway at build time."
+currency = "USD. A structure with a leg in another currency has no figure."
+excludes = """
+Fees and commissions; assignment, exercise and expiry; any bid/ask midpoint."""
+gap_text = """
+A leg without a stored mark: no_data '缺少持仓标记价，浮盈亏无法计算' in the cell, on the list the same Gap. A JPY leg: no_data '日元腿暂不计盈亏'. An unresolved leg: no_data '有腿未解析，无法按已知的腿计算'. A partial sum is never shown; never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structure_detail_builder._leg_pnl",
+  "option_trader.viewmodels.structure_detail_builder._total_pnl",
+  "option_trader.viewmodels.structure_detail_builder._pnl_figure",
+  "option_trader.viewmodels.structures_list.build_structures_list",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed."]
+
+[[figure]]
+id = "structure.earned_share"
+version = 1
+title_zh = "结构列表：已赚 %（已收权利金中已落袋的比例）"
+pages = ["structures_list.groups.rows.earned"]
+formula = """
+(credit - buyback) / credit x 100, as a percent with one decimal, rounded half up (away from zero on a tie): '60.0%', '-20.0%'; negative when buying back costs more than was received. credit is the opening price per share of the nearest short leg (earliest expiry, the lower strike on a tie) and buyback its stored snapshot mark per share, as structure.leg_pnl v1 reads them. The arithmetic is held_actions.earned_share, the same function that tests the held-alert captured share. Synthetic: credit 1.50, mark 0.60 gives 60.0%; credit 2.00, mark 1.50 gives 25.0%; credit 1.00, mark 1.20 gives -20.0%."""
+inputs = """
+The opening price per share and the stored snapshot market price per share of the nearest short leg, from the household gateways' newest complete snapshots."""
+period_date = "The newest complete snapshot of each gateway at build time."
+currency = "None: a ratio of two USD prices of one leg, shown as a percent."
+excludes = """
+The long legs of the structure; fees; any bid/ask midpoint; the 50% profit-take threshold (a later issue with owner parameters)."""
+gap_text = """
+No stored mark, or a credit that is not positive, or a JPY leg: no_data '无报价，已赚无法计算' in the cell and once in the list note. A structure with no short leg: no_data '无卖出腿，已赚无法计算'. Never a zero."""
+implemented_by = [
+  "option_trader.reports.held_actions.earned_share",
+  "option_trader.viewmodels.structure_detail_builder.earned_text",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-04"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees."]
+
+[[figure]]
+id = "structure.expiry_distance"
+version = 1
+title_zh = "结构列表：距现价（最近到期的卖出腿行权价）"
+pages = ["structures_list.groups.rows.distance"]
+formula = """
+structure.level_distance v1 applied to the strike of the nearest short leg (earliest expiry, the lower strike on a tie): (strike - spot) / spot x 100, a signed percent with one decimal, rounded half up: '-3.8%', '+5.0%'. Synthetic: spot 52, strike 50 gives -3.8%; spot 100, strike 105 gives +5.0%."""
+inputs = """
+The strike of the nearest short leg and the stored underlying close of the legs' newest common session."""
+period_date = "The stored underlying close of the newest session on which every leg has one."
+currency = "None: a ratio of two USD prices, shown as a percent."
+excludes = """
+Any intraday price; the long legs; a spot of zero or less (treated as no spot)."""
+gap_text = """
+No stored underlying close: no_data '无收盘价，距现价无法计算' in the cell and once in the list note. A structure with no short leg: no_data '无卖出腿，距现价无法计算'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structure_detail_builder._distance",
+  "option_trader.viewmodels.structure_detail_builder.leg_distance",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-04"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees."]
+
+[[figure]]
+id = "option.candidates.iv_context"
+version = 1
+title_zh = "期权页：今日机会卡的 IV 对自有 HV30 与 IV 分位"
+pages = ["option_page.markets.cards.iv_line"]
+formula = """
+The line shows the stored contract IV of the candidate (fraction x 100, whole percent, half up), \
+then the own HV30 (fraction x 100, whole percent) and, for a US stock only, the own IV percentile \
+(whole percent) with its sample size (252 valid sessions), each as the reading store holds it. \
+A JP stock shows the contract IV against the own HV30 only. Nothing is computed beyond the \
+formatting."""
+inputs = """
+The own HV30 (convention hv30_v1, window 30) of the stock, and for a US stock the own IV30 \
+(iv30_v1, written by OwnIv30Step) and the own IV percentile (ivp_v1, over 252 valid sessions), \
+read at build time for the session day of the scan through the reading store (the newest ok row \
+when the day has none); the stored contract IV of the scan row. IBKR's HV30 and IVP are never \
+read."""
+period_date = "The session day of the scan; an earlier day's reading is shown as the reader gives it."
+currency = "None: a share of a year's volatility, not an amount."
+excludes = """
+IBKR's HV30 and IVP (never used, never a fallback); an own IV30 or IVP for a JP stock (not \
+derivable); any figure computed in the browser."""
+gap_text = """
+A missing part is the word 缺, never 0. One pane gap says what is missing once however many cards: \
+美股 HV30 或 IV 分位暂无当日自有读数; 日股 HV30 暂无自有读数; 日股 IV 分位暂无自有读数. A store that \
+cannot be read shows the contract IV only."""
+implemented_by = [
+  "option_trader.viewmodels.option_page_builder._iv_line",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered; Advisor: agrees"]
+
+[[figure]]
+id = "option.tracking.pnl_split"
+version = 1
+title_zh = "期权跟踪页：权利金与标的变动（到期）"
+pages = ["tracking.rows.premium", "tracking.rows.underlying_move"]
+formula = """
+For a scanned short put graded at its expiry, per structure in the contract's currency. 权利金 (premium) \
+is the credit of the grade terms: the net premium received for one contract, that is the credit per \
+share times the multiplier. 标的变动 (underlying move) is minus the intrinsic value of the put at the \
+expiry close, -max(strike - close, 0) x multiplier, the same intrinsic that strategies.grading pays out \
+of the credit (expiry_intrinsic), rounded half up to the cent. 指派 is a state flag, 在价内到期, taken \
+from the grade (any grade but OTM); it is not a P&L term and is not added to either figure. The two \
+figures are not summed on the page. Synthetic: strike 50, credit 1.50 per share, multiplier 100: close \
+46.00 gives 权利金 150.00, 标的变动 -400.00 and the flag (150 - 400 = -250.00 if held); close 52.00 \
+gives 150.00, 0.00 and no flag."""
+inputs = """
+The stored evaluation of the scan (its legs and the net premium that the grader reads through \
+short_put.expiry_terms); the current grade of that evaluation (grade_current: the newest, never a \
+superseded row) for its status, grade and expiry close."""
+period_date = "At the expiry date of the leg; the day the grade was decided on is the grade's own."
+currency = "The contract's currency (a US put: USD), per structure; no conversion."
+excludes = """
+Fees of closing and of assignment, early assignment, the stock after an assignment (it belongs to the \
+held structure), an exit before expiry, and any sum of the two figures as a result."""
+gap_text = """
+An evaluation before its expiry day is past: 未到期; past expiry with no expiry close stored: the \
+grade's own reason in Chinese (到期日没有收盘价); a VOID_CORPORATE_ACTION grade: its reason and no \
+split; a missing or non-positive credit: the no_entry_credit reason and no split; a strategy with no \
+grade path: 暂无评分路径. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.tracking._outcome",
+  "option_trader.strategies.grading.expiry_intrinsic",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: new entry; premium = credit x multiplier, underlying move = -max(strike - close, 0) x multiplier as in grading.py, assignment a flag; Advisor: agrees."]
+
+[[figure]]
+id = "market.index_iv"
+version = 1
+title_zh = "指数隐含波动 (IV)"
+pages = ["home_page.market.card.index_table.rows.iv", "market_summary.card.index_table.rows.iv"]
+formula = """
+The stored IBKR option implied volatility (generic tick 106) of the index: US (SPX, NDX, RUT) = \
+15:50 ET pre-close read, not the close (12:50 ET on an early close), a live read inside the \
+session; JP (N225) = the 15:55 JST read named beside it. Shown in volatility points as stored, \
+no recomputation; the same formula as before, only the input time of the US read moved."""
+inputs = """
+The stored tick 106 point of the series (SPX_IV, NDX_IV, RUT_IV) of the newest US session date, \
+stored with its capture time (recorded_at); the N225 point of the JP job."""
+period_date = "The session date the point is stored under; a US point is read at 15:50 ET of that day."
+currency = "None: volatility points."
+excludes = """
+The official close of the index option IV; any backfill or splice with older close-time points \
+(the stored series has none from before 2026-10-20); an IV computed here."""
+gap_text = """
+No stored reading: a no_data gap; a reading older than the age limit: a stale gap naming its day."""
+implemented_by = [
+  "option_trader.volatility.index_iv.capture",
+  "option_trader.reports.home_market_publish._rows",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered; US read moved from close + 25 minutes to 15:50 ET (same formula, different input time)"]
+
+[[figure]]
+id = "option.candidates.itm_probability"
+version = 1
+title_zh = "期权页与全部候选：到期在价内概率"
+pages = [
+  "option_page.markets.candidates.columns.hint",
+  "option_page.markets.candidates.rows.cells.cell",
+  "full_scan.sections.table.rows.cells.cell",
+]
+formula = """
+The stored risk-neutral probability N(-d2) that the put expires in the money, as evaluate_put \
+(candidates/puts.py) stores it in itm_probability, shown as a percent to one place, half up \
+(0.3192 shows 31.9%); the sort key is the fraction in hundredths of a percent (3192). It is an \
+estimate from the model, not an assignment probability: the page never calls it that."""
+inputs = """
+The itm_probability of the stored scan row (ShortPutFacts), read through the stored-scan reader; \
+no spot or no cash rate leaves it empty."""
+period_date = "The stored scan's data day."
+currency = "None: a probability, not an amount."
+excludes = """
+An assignment probability (delta is not one, GLOSSARY); any figure computed in the browser; a \
+recomputation from spot, strike or volatility."""
+gap_text = """
+A missing value is the word 缺 in its part of the card line and in its table cell, never 0%."""
+implemented_by = [
+  "option_trader.viewmodels.option_page_builder._itm_text",
+  "option_trader.viewmodels.option_page_builder._itm",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered; Advisor: agrees"]
+
+[[figure]]
+id = "option.candidates.excess_yield"
+version = 1
+title_zh = "期权页与全部候选：比现金高/低"
+pages = [
+  "option_page.markets.cards.premium_line",
+  "option_page.markets.candidates.rows.cells.cell",
+  "full_scan.sections.table.rows.cells.cell",
+]
+formula = """
+The stored excess yield of the put, as evaluate_put (candidates/puts.py, line 357) stores it: the \
+annual yield minus the cash rate, rounded to 6 places. It is shown as 高 or 低 with the size as a \
+percent to one place, half up; the stored sign decides (excess >= 0 is 高, so zero reads 高 0.0%); \
+the sort key is the signed value in hundredths of a percent (0.0700 gives 700, -0.0120 gives -120). \
+For a JP put the stored figure is the annual yield minus the higher of the USD cash rate and the \
+JPY borrowing rate: JpShortPut.evaluate (short_put_jp.py, line 81) runs ShortPut().evaluate with \
+item.short_put(item.higher_rate), where higher_rate = max(usd_cash_rate, jpy_borrow_rate). \
+Synthetic: annual 0.09, USD 0.04, JPY 0.015 stores 0.05 and the page shows 高 5.0%. The page shows \
+the stored value and never recomputes it from the rates."""
+inputs = """
+The excess_yield of the stored scan row (ShortPutFacts), read through the stored-scan reader."""
+period_date = "The stored scan's data day."
+currency = "None: a share of a year's yield, not an amount."
+excludes = """
+A recomputation from the annual yield and a rate in the page or the browser; a rate comparison of \
+its own; fees and taxes."""
+gap_text = """
+A missing value is the word 缺 in its part of the card line and in its table cell, never 0%."""
+implemented_by = [
+  "option_trader.viewmodels.option_page_builder._excess_text",
+  "option_trader.viewmodels.option_page_builder._excess",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered; Advisor: agrees"]
+
+[[figure]]
+id = "structure.close_cost"
+version = 1
+title_zh = "结构列表：平仓成本（标记价）"
+pages = ["structures_list.groups.rows.compare.close_cost"]
+formula = """
+The stored snapshot mark per share of the nearest short leg (earliest expiry, the lower strike on a tie) x multiplier x contracts, the market price structure.leg_pnl v1 uses, in the contract currency; the label says 标记价, not Mid. Gross: no fee is deducted and the owner is not asked for one. Synthetic: mark 0.60, multiplier 100, one contract gives $60.00."""
+inputs = """
+The stored snapshot market price per share of the nearest short leg from the household gateways' newest complete snapshots; the leg's multiplier and signed contracts from the instrument master and the book."""
+period_date = "The newest complete snapshot of each gateway at build time."
+currency = "The contract currency: $ for USD, JPY for yen; nothing is converted and a yen cell carries no USD figure."
+excludes = """
+Fees and commissions; any bid/ask midpoint; the long legs of the structure."""
+gap_text = """
+No stored mark: no_data '无标记价，平仓成本无法计算'. A structure with no short leg: no_data '无卖出腿，平仓成本无法计算'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structures_list.close_cost",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees."]
+
+[[figure]]
+id = "structure.roll_credit"
+version = 1
+title_zh = "结构列表：滚仓净收（下月同行权价）"
+pages = ["structures_list.groups.rows.compare.roll_net"]
+formula = """
+Roll credit minus 平仓成本 (structure.close_cost). The roll credit is the per-share bid (the evaluation's facts.bid, gross) the stored scan gives for the same symbol, right and strike at the next monthly expiry after the short leg's expiry (third-Friday rule for US, every listed JP expiry), x multiplier x contracts; the roll contract is named in the cell (for example 11月20日 50 put). Gross: no fee is deducted. Synthetic: bid 1.10 x 100 x 1 = 110.00; 110.00 - 60.00 = +$50.00."""
+inputs = """
+The stored short-put and covered-call scans of the market (read_stored_scan): the listed expiries of the symbol and the per-share bid of the contract with the same right and strike; the 平仓成本 of the structure; the multiplier and contracts of its short leg."""
+period_date = "The newest stored scan of the session day or the day before."
+currency = "The contract currency, as structure.close_cost."
+excludes = """
+Fees and commissions; premium_net of the scan (per contract and net of the opening fee); any live quote (nothing is fetched); a structure with more than one short leg."""
+gap_text = """
+The stored scan holds no such contract: no_data '扫描中无下月同行权价合约'. The contract has no bid: no_data '扫描中下月同行权价合约无买价'. No stored scan: no_data '无候选扫描，滚仓净收无法计算'. 平仓成本 is a gap: no_data '平仓成本缺失，滚仓净收无法计算'. More than one short leg: no_data '仅单卖腿结构可比较'. Never a zero."""
+implemented_by = [
+  "option_trader.viewmodels.structures_list.roll_net",
+  "option_trader.viewmodels.structures_list.next_monthly",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees.", "2026-11-04 v1: the roll credit is the stored scan's per-share bid (facts.bid) as the owner decided; premium_net is per contract and net of the opening fee, so it is not used."]
+
+[[figure]]
+id = "structure.recent_commission"
+version = 1
+title_zh = "结构列表：最近佣金（IBKR 每张）"
+pages = ["structures_list.groups.rows.compare.recent_commission"]
+formula = """
+The absolute ibCommission divided by the absolute quantity of the newest stored Flex option trade (levelOfDetail EXECUTION, assetCategory OPT, newest by dateTime) whose currency equals the market's (USD for US, JPY for JP) and whose ibCommissionCurrency equals that currency; shown as its own figure with its trade date in the text, for example $0.65/张（11-02）. Flex reports ibCommission negative for a charge and per trade row, not per contract. Synthetic: quantity 1, ibCommission -0.65 on 2026-11-02 gives $0.65/张（11-02）."""
+inputs = """
+The stored Flex trade rows: dateTime, tradeDate, quantity, ibCommission, currency, ibCommissionCurrency, levelOfDetail and assetCategory."""
+period_date = "The trade date of the newest matching row, in the text of the cell."
+currency = "The market's currency: $ for USD, JPY for yen; nothing is converted."
+excludes = """
+Any fee in 平仓成本 or 滚仓净收 (those stay gross); the fee of this structure's own fills; a row whose commission currency differs from its currency."""
+gap_text = """
+No matching stored row: no_data '无IBKR佣金记录'. Never a zero."""
+implemented_by = [
+  "option_trader.reports.structure_detail_publish.recent_commission",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-03"
+agreed_in = "carried over from option-trader"
+history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees."]

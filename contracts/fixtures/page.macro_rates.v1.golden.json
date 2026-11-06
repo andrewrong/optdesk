@@ -14,6 +14,6 @@
     }
   ],
   "gaps": [
-    {"reason": "no_value"}
+    {"series_id": "DGS10", "date": "2026-11-03", "reason": "no_value"}
   ]
 }
