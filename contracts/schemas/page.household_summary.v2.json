@@ -1,0 +1,389 @@
+{
+  "$defs": {
+    "Caption": {
+      "additionalProperties": false,
+      "description": "A plain small line under a figure.",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Caption",
+      "type": "object"
+    },
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "common.v1.json#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "stale": {
+          "$ref": "common.v1.json#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "tiles": {
+          "$ref": "#/$defs/Tiles"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "subtitle",
+        "stale",
+        "tiles",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "CashTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/SharePercentFigure"
+            },
+            {
+              "$ref": "#/$defs/Caption"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "CashTile",
+      "type": "object"
+    },
+    "DayChangeTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "DayChangeTile",
+      "type": "object"
+    },
+    "MonthToDateTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "#/$defs/Caption"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "MonthToDateTile",
+      "type": "object"
+    },
+    "NetWorthTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "$ref": "#/$defs/Caption"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "figure": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/UsdFigure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure",
+        "caption"
+      ],
+      "title": "NetWorthTile",
+      "type": "object"
+    },
+    "Tiles": {
+      "additionalProperties": false,
+      "description": "The four tiles, under fixed keys.",
+      "properties": {
+        "cash": {
+          "$ref": "#/$defs/CashTile"
+        },
+        "day_change": {
+          "$ref": "#/$defs/DayChangeTile"
+        },
+        "month_to_date": {
+          "$ref": "#/$defs/MonthToDateTile"
+        },
+        "net_worth": {
+          "$ref": "#/$defs/NetWorthTile"
+        }
+      },
+      "required": [
+        "net_worth",
+        "day_change",
+        "month_to_date",
+        "cash"
+      ],
+      "title": "Tiles",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.household_summary.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034) and card.",
+  "properties": {
+    "build_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "card": {
+      "$ref": "#/$defs/Card"
+    },
+    "currency": {
+      "const": "USD",
+      "title": "Currency",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "run_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "household_summary",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "stale_after": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "currency",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "card"
+  ],
+  "title": "HouseholdSummary",
+  "type": "object"
+}
