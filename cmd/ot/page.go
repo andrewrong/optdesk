@@ -57,7 +57,7 @@ func runPage(a *app, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	page, err := findPage(a.deps.pageList, *name)
+	page, err := pageNamed(a, *name)
 	if err != nil {
 		return err
 	}
