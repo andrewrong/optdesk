@@ -27,7 +27,7 @@ func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
 			t.Fatal(err)
 		}
 	}
-	env := map[string]string{"OT_HOME": home}
+	env := map[string]string{"OT_HOME": home, "OT_ZONE": "UTC"}
 	var out, errb bytes.Buffer
 	a, err := newApp(func(k string) string { return env[k] }, &out, &errb)
 	if err != nil {
