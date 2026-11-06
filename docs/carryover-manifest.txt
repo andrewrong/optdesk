@@ -1,0 +1,6 @@
+GLOSSARY.md b00b4ed 7c16bd78d4af58f194ae4793f71b2784b75112b6860203b9b42a7ec2de5c6cf1  docs/GLOSSARY.md
+docs/engineering.md b00b4ed 7592aa32eadb753f343f1f035d8a0f9be13ce9781e0f4d40618c141d77e4056e  docs/engineering.md
+docs/adr/0003-market-data-architecture.md b00b4ed 2d9ba5fcd4bbaf9118ed739067dcaa65b2440ba6aa457567cc9a6bef9bb6bbcc  docs/adr/0003-market-data-architecture.md
+docs/adr/0004-markets-calendars-fx.md b00b4ed ceeecffb5effa23c2d6bf94208a9093c24f00b2eaf0aed526f027966d1c39f7b  docs/adr/0004-markets-calendars-fx.md
+docs/adr/0010-reports-and-delivery.md b00b4ed f966747c7e3399ee251ea43138eab35208188358192ba8aa92adf35e48c313be  docs/adr/0010-reports-and-delivery.md
+src/option_trader/conventions/register.toml b00b4ed 01288b2e181e430ac84d618e5dc8d5011fd64c8ba25fa14b9db3ad848b38da2a  docs/conventions/register.toml
