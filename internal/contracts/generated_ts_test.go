@@ -40,6 +40,7 @@ func TestGeneratedSummaryTypes(t *testing.T) {
 		{"held_companies_summary.v2.ts", "./held_companies_summary.v2", "HeldCompaniesSummary"},
 		{"macro_summary.v2.ts", "./macro_summary.v2", "MacroSummary"},
 		{"macro_rates.v2.ts", "./macro_rates.v2", "MacroRates"},
+		{"report_page.v2.ts", "./report_page.v2", "ReportPage"},
 	}
 	index := read("index.ts")
 	if got := firstLine(index); got != generatedBanner {

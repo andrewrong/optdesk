@@ -12,3 +12,4 @@ export type { HouseholdSummary } from './household_summary.v2';
 export type { HeldCompaniesSummary } from './held_companies_summary.v2';
 export type { MacroSummary } from './macro_summary.v2';
 export type { MacroRates } from './macro_rates.v2';
+export type { ReportPage } from './report_page.v2';
