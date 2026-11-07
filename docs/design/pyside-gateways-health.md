@@ -175,21 +175,6 @@ The runbook rewritten to this design
   Depends on: pyside-two-gateways (it documents what the entries above deliver). Order: after 2 (the two share no file; the order is prose).
   Size: S
 
-## Proposed services.toml entry`, and the two sockets.
-  Files: docs/deploy/pyside.md
-  Design: docs/design/pyside-gateways-health.md#proposed-servicestoml-entry
-  Acceptance:
-  1. `grep -c -E 'boot += +false' docs/deploy/pyside.md` and `grep -c -E 'boot += +true' docs/deploy/pyside.md` print at least 1 and 0; `grep -c -E 'health += +"http://localhost:' docs/deploy/pyside.md` prints at least 1.
-  2. `grep -c -F -e OT_IBKR_GATEWAY_B_PORT -e OT_IBKR_HEALTH_PORT -e OT_IBKR_GATEWAY_B_CLIENT_ID -e OT_IBKR_GATEWAY_B_MARKET_DATA_TYPE docs/deploy/pyside.md` prints at least 4, and `grep -c -F -e ibkr-b.sock -e 'GET /health' docs/deploy/pyside.md` prints at least 2.
-  3. `grep -c -F 'crew cap --apply optdesk-pyside deploy' docs/deploy/pyside.md` and `grep -c -F 'crew cap --apply optdesk-pyside restart' docs/deploy/pyside.md` each print at least 1, and `grep -c -F 'deploy --apply' docs/deploy/pyside.md` prints 0.
-  4. `grep -c -i -F -e not_logged_in -e session_lost docs/deploy/pyside.md` prints at least 2, and `grep -c -i -E 'non-2xx|until A connects' docs/deploy/pyside.md` prints at least 1 (the first poll may fail until gateway A connects).
-  5. `grep -c -E '/Users/|/Volumes/' docs/deploy/pyside.md` prints 0, `grep -c -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' docs/deploy/pyside.md` prints 0, and `git diff --name-only origin/main` equals the Files line.
-  6. The result matches the `## Proposed services.toml entry` and `## Decisions` 5 to 9 of docs/design/pyside-gateways-health.md.
-  Checked by CI: hygiene and the `test` check.
-  Pull request body: `Contracts: unchanged`.
-  Depends on: pyside-two-gateways (prose: it documents what the two entries above deliver and lands after them; it shares no file with them)
-  Size: S
-
 ## Proposed services.toml entry
 
 The file is owner-only in agent-crew and is not changed here; the entry is the owner's to add, with the runbook `docs/deploy/pyside.md` (rewritten by the third entry). Values in angle brackets are
