@@ -100,10 +100,14 @@ may_import = ["contracts", "store", "pages"]
 in = "internal/pages/macro_rates"
 may_import = ["contracts", "store", "pages"]
 
+[component."pages/option_data_page"]
+in = "internal/pages/option_data_page"
+may_import = ["contracts", "store", "pages"]
+
 [component."profile"]
 in = "internal/profile"
 may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "store", "runner", "jobs", "pages", "profile", "clock/realclock", "clock/calendar", "runner/reconcile", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "pages/macro_rates", "pages/macro_page", "pages/embed"]
+may_import = ["contracts", "clock", "sources", "store", "runner", "jobs", "pages", "profile", "clock/realclock", "clock/calendar", "runner/reconcile", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed"]
