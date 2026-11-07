@@ -116,10 +116,7 @@ schema `master`. The grant is a change of who may read what: the issue carries t
 
 ## Issues
 
-1. option-live-interface (interface), starts the day this design merges.
-2. option-terms-written, Order: after 1 (it edits `internal/store/migrate/migrate_test.go` and `docs/contracts/store.md` after 1, and migration 0011 follows 0010).
-3. option-names-reader, Order: after 1 (it fills the stub `names.go` of 1); no shared file with 2 or 4.
-4. option-page-live-ot, Order: after 1 (it binds the stub `instrument.OpenInstrumentNames` of 1, which is enough for `TestNewDepsFilled`); no shared file with 2 or 3.
+Entry 1, option-live-interface (interface), starts the day this design merges. Entries 2, 3 and 4 each carry their own `Order:` line below.
 
 Entries 2, 3 and 4 need only entry 1 and none needs another's output; they run together once 1 has merged. What is shown end to end (a real database, the service deployed, the page filled) needs
 all four merged and the collection running, and is the owner's check: no test proves the owner-visible goal before the service runs.
@@ -151,6 +148,8 @@ Module: store. This issue carries a grant (`INSERT` on `master.option_terms` to 
 
 Files: migrations/0011_option_terms_writer.sql, internal/store/instrument/resolve.go, internal/store/instrument/osi.go, internal/store/instrument/osi_test.go, internal/store/instrument/resolve_test.go, internal/store/instrument/terms_pg_test.go, internal/store/migrate/migrate_test.go, docs/contracts/store.md
 
+Order: after 1 (it edits `internal/store/migrate/migrate_test.go` and `docs/contracts/store.md` after 1, and migration 0011 follows 0010).
+
 Design: docs/design/option-page-live.md#decisions
 
 Acceptance:
@@ -174,6 +173,8 @@ Module: store.
 
 Files: internal/store/instrument/names.go, internal/store/instrument/names_test.go, internal/store/instrument/names_pg_test.go
 
+Order: after 1 (it fills the stub `names.go` of 1); no shared file with 2 or 4.
+
 Design: docs/design/option-page-live.md#interface
 
 Acceptance:
@@ -191,6 +192,8 @@ Checked by CI: `TestInstrumentNamesPG`.
 Module: ot.
 
 Files: cmd/ot/site.go, cmd/ot/wire.go, cmd/ot/demo_option.go, cmd/ot/site_test.go, cmd/ot/wire_test.go, docs/contracts/ot.md
+
+Order: after 1 (it binds the stub `instrument.OpenInstrumentNames` of 1, which is enough for `TestNewDepsFilled`); no shared file with 2 or 3.
 
 Design: docs/design/option-page-live.md#decisions
 
