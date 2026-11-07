@@ -32,7 +32,7 @@ def test_caller_reads_connected() -> None:
 def test_session_status_is_frozen() -> None:
     status = SessionStatus(connected=False)
     with pytest.raises(dataclasses.FrozenInstanceError):
-        status.connected = True  # type: ignore[misc]
+        delattr(status, "connected")
 
 
 def test_api_declares_only() -> None:

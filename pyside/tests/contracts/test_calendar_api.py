@@ -169,4 +169,4 @@ def test_command_through_protocol() -> None:
 def test_dataclasses_are_frozen() -> None:
     row = _build(["XNYS"], FIRST, FIRST).rows[0]
     with pytest.raises(dataclasses.FrozenInstanceError):
-        row.is_session = True  # type: ignore[misc]
+        delattr(row, "is_session")
