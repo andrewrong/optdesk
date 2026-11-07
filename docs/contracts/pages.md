@@ -37,6 +37,7 @@ Build the view model of a page from stored values and serve it inside a static p
 
 - v1: `page.macro_rates.v1` builder and the embed injector.
 - v2: `Meta`, `Builder` and `Page` names; `macro_rates.Page` and `macro_page.NewPage`.
+- v3: `internal/pages/option_data_page`: `NewPage(Config)` and `Build` for `page.option_data_page.v1`; `Config` is `RunID`, `BuildID`, `Scope`, `Zone`, `UnderlyingID`, `Label`, `Eod` (`store.OptionEodReader`) and `Quotes` (`store.QuoteSnapshotReader`) and `Notes` (texts of the page notes, at most 20); the series reader the caller passes is ignored.
 
 ## Contract tests
 
@@ -44,6 +45,8 @@ Build the view model of a page from stored values and serve it inside a static p
 - `internal/pages/api_test.go`: `TestPagesPageContract`.
 - `internal/pages/macro_rates/page_test.go`: `TestPage`.
 - `internal/pages/macro_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`.
+- `internal/pages/option_data_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`, `TestNewPageCopiesNotes`.
+- `internal/pages/option_data_page/builder_test.go`: `TestBuildValidates`, `TestBuildGolden`, `TestBuildSelection`, `TestBuildGaps`.
 - `internal/pages/macro_rates/builder_test.go`: `TestBuildGolden`, `TestGapsAndStale`, `TestBuildDemo`, `TestBuildErrors`.
 - `internal/pages/embed/inject_test.go`: `TestInjectEscapes`, `TestHandlerServesStub`, `TestRenderRejectsBadJSON`, `TestHandlerBadViewModel`.
 

@@ -57,6 +57,8 @@ components:
     in: internal/pages/macro_page
   pages/macro_rates:
     in: internal/pages/macro_rates
+  pages/option_data_page:
+    in: internal/pages/option_data_page
   profile:
     in: internal/profile
   ot:
@@ -174,6 +176,12 @@ deps:
       - store
       - pages
       - contracts/genpb
+  pages/option_data_page:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
+      - contracts/genpb
   ot:
     mayDependOn:
       - contracts
@@ -196,6 +204,7 @@ deps:
       - jobs/fredseries
       - pages/macro_rates
       - pages/macro_page
+      - pages/option_data_page
       - pages/embed
   broker/grpcbroker:
     mayDependOn:
