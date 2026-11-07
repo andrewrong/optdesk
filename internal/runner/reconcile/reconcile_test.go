@@ -205,3 +205,141 @@ func TestNewWithRuleEmptyCalendar(t *testing.T) {
 		})
 	}
 }
+
+func empty() map[contracts.ExpectedKey]contracts.JobResult {
+	return map[contracts.ExpectedKey]contracts.JobResult{keyA: {}}
+}
+
+func TestEmptyBeforeCloseStaysMissing(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: empty()}
+	rec := newRec(led, clk, job)
+	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, "2026-11-04")
+	if _, ok := present[keyA]; ok || led.cursor.Day != "2026-11-03" {
+		t.Fatalf("present=%v cursor=%s", present, led.cursor.Day)
+	}
+	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	if len(job.calls) != 2 {
+		t.Fatalf("calls = %d, want 2", len(job.calls))
+	}
+	job.mu.Lock()
+	job.results = nil
+	job.mu.Unlock()
+	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ = led.Present(ctx, "2026-11-04")
+	if present[keyA] != store.StatusPresent || led.cursor.Day != "2026-11-04" {
+		t.Fatalf("present=%v cursor=%s", present, led.cursor.Day)
+	}
+	ids := map[string]bool{}
+	for _, r := range led.runs["2026-11-04"] {
+		if ids[r.ID] {
+			t.Fatalf("duplicate run id %s", r.ID)
+		}
+		ids[r.ID] = true
+	}
+}
+
+func TestEmptyBeforeCloseDoesNotExhaustCap(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: empty()}
+	rec := newRec(led, clk, job)
+	for i := 1; i <= 3; i++ {
+		if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
+			t.Fatal(err)
+		}
+		if len(job.calls) != i {
+			t.Fatalf("after call %d: %d runs", i, len(job.calls))
+		}
+	}
+	clk.Advance(time.Hour) // at the close instant
+	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, "2026-11-04")
+	if present[keyA] != store.StatusNoValue || len(job.calls) != 4 {
+		t.Fatalf("present=%v calls=%d", present, len(job.calls))
+	}
+}
+
+func TestNoValueErrorFinalBeforeClose(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA},
+		results: map[contracts.ExpectedKey]contracts.JobResult{keyA: {Err: kindErr{kind: contracts.NoValue}}}}
+	if err := newRec(led, clk, job).Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, "2026-11-04")
+	if present[keyA] != store.StatusNoValue || led.cursor.Day != "2026-11-04" {
+		t.Fatalf("present=%v cursor=%s", present, led.cursor.Day)
+	}
+}
+
+func TestEmptyAtOrAfterCloseNoValue(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, now string }{
+		{"at close", "2026-11-04T21:00:00Z"},
+		{"after close", "2026-11-04T22:00:00Z"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			clk := clockwork.NewFakeClockAt(utc(tc.now))
+			led := newLedger()
+			led.cursor = store.Cursor{Day: "2026-11-03"}
+			job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: empty()}
+			if err := newRec(led, clk, job).Reconcile(ctx, "2026-11-04"); err != nil {
+				t.Fatal(err)
+			}
+			present, _ := led.Present(ctx, "2026-11-04")
+			if present[keyA] != store.StatusNoValue || led.cursor.Day != "2026-11-04" {
+				t.Fatalf("present=%v cursor=%s", present, led.cursor.Day)
+			}
+		})
+	}
+}
+
+func TestNonEmptyFetchUnchanged(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+	if err := newRec(led, clk, job).Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, "2026-11-04")
+	if present[keyA] != store.StatusPresent || led.cursor.Day != "2026-11-04" {
+		t.Fatalf("present=%v cursor=%s", present, led.cursor.Day)
+	}
+	led2 := newLedger()
+	led2.cursor = store.Cursor{Day: "2026-11-03"}
+	job2 := &fakeJob{keys: []contracts.ExpectedKey{keyA},
+		results: map[contracts.ExpectedKey]contracts.JobResult{keyA: {Err: kindErr{kind: contracts.Retryable}}}}
+	if err := newRec(led2, clk, job2).Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ = led2.Present(ctx, "2026-11-04")
+	if _, ok := present[keyA]; ok || led2.cursor.Day != "2026-11-03" {
+		t.Fatalf("present=%v cursor=%s", present, led2.cursor.Day)
+	}
+}

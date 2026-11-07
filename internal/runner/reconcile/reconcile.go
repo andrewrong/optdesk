@@ -24,6 +24,9 @@ const (
 
 	reasonCrashed = "crashed"
 	reasonLate    = "late"
+	// reasonEmptyBeforeClose marks a finished run that came back empty before the window
+	// close: the key stays missing and the run does not count toward the two-run cap.
+	reasonEmptyBeforeClose = "empty_before_close"
 )
 
 type reconciler struct {
@@ -154,7 +157,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			return false, err
 		}
 	}
-	var closeAt time.Time
+	closes := map[string]time.Time{}
 	seen := map[string]bool{}
 	for _, k := range p.keys {
 		if seen[k.DatasetID] {
@@ -165,7 +168,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 		if !ok {
 			continue
 		}
-		closeAt = w.CloseAt
+		closes[k.DatasetID] = w.CloseAt
 		if err := r.ledger.PutWindow(ctx, w); err != nil {
 			return false, err
 		}
@@ -189,17 +192,18 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 		if _, ok := present[k]; ok {
 			continue
 		}
-		attempt, reason := r.nextAttempt(byKey[k], closeAt)
-		if attempt == 0 {
+		closeAt := closes[k.DatasetID]
+		crashed, start, reason := r.nextAttempt(byKey[k], closeAt)
+		if !start {
 			complete = false
 			continue
 		}
-		if attempt > 1 {
-			if err := r.markCrashed(ctx, byKey[k][0]); err != nil {
+		if crashed != nil {
+			if err := r.markCrashed(ctx, *crashed); err != nil {
 				return false, err
 			}
 		}
-		ok, err := r.run(ctx, p.job[k], day, k, attempt, reason)
+		ok, err := r.run(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, reason)
 		if err != nil {
 			return false, err
 		}
@@ -208,22 +212,36 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 	return complete, nil
 }
 
-// nextAttempt returns the attempt number to start for a missing key, or 0 when none
-// is allowed: a live run is pending, or the repair run and the crash re-run are spent.
-func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (int, string) {
-	reason := ""
-	if !closeAt.IsZero() && r.clk.Now().After(closeAt) {
+// nextAttempt decides whether a run starts for a missing key. Runs that ended empty before
+// the window close do not count toward the cap of two (repair and crash re-run). A running
+// run with a live lease is pending: nothing starts. An expired one is returned as crashed
+// and re-run once. closeAt is the close of the key's dataset window, zero when it has none.
+func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
+	now := r.clk.Now()
+	if !closeAt.IsZero() && now.After(closeAt) {
 		reason = reasonLate
 	}
-	switch len(runs) {
-	case 0:
-		return 1, reason
-	case 1:
-		if runs[0].Status == store.RunRunning && runs[0].LeaseUntil.Before(r.clk.Now()) {
-			return 2, reason
+	counted := 0
+	var running *store.Run
+	for i, run := range runs {
+		if run.ReasonCode == reasonEmptyBeforeClose {
+			continue
+		}
+		counted++
+		if run.Status == store.RunRunning {
+			running = &runs[i]
 		}
 	}
-	return 0, ""
+	switch {
+	case running != nil:
+		if counted == 1 && running.LeaseUntil.Before(now) {
+			return running, true, reason
+		}
+		return nil, false, ""
+	case counted == 0:
+		return nil, true, reason
+	}
+	return nil, false, ""
 }
 
 func (r *reconciler) markCrashed(ctx context.Context, run store.Run) error {
@@ -234,11 +252,11 @@ func (r *reconciler) markCrashed(ctx context.Context, run store.Run) error {
 	return r.ledger.RecordRun(ctx, run)
 }
 
-// run starts one attempt of k, records it and marks the key; it reports whether k is now present.
-func (r *reconciler) run(ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, attempt int, reason string) (bool, error) {
+// run starts run number seq of k, records it and marks the key; it reports whether k is now present.
+func (r *reconciler) run(ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt time.Time, reason string) (bool, error) {
 	now := r.clk.Now()
 	rec := store.Run{
-		ID:          fmt.Sprintf("%s|%s|%s|%d", day, k.DatasetID, k.SubjectKey, attempt),
+		ID:          fmt.Sprintf("%s|%s|%s|%d", day, k.DatasetID, k.SubjectKey, seq),
 		Day:         day,
 		Key:         k,
 		Status:      store.RunRunning,
@@ -261,6 +279,9 @@ func (r *reconciler) run(ctx context.Context, job contracts.Job, day contracts.D
 		rec.ErrorCode = string(res.Err.Kind())
 	case res.Usable > 0:
 		status = store.StatusPresent
+	case !closeAt.IsZero() && r.clk.Now().Before(closeAt):
+		// An empty answer is no explanation: retry until the window closes.
+		rec.ReasonCode = reasonEmptyBeforeClose
 	default:
 		status = store.StatusNoValue
 	}
