@@ -86,12 +86,13 @@ Width: one entry. The `deps` struct, `newDeps`, the shared `reconcileDay` and th
 7. A `--dataset` filter and `ot backfill` of the option datasets (`backfill.md` composes its own `deps`): a follow-up of the backfill entry.
 8. The pyside serving of `QUOTE_KIND_SNAPSHOT` (`ibkr-service`): until it lands the snapshot job writes nothing.
 9. A per-job calendar (`runner-window.md`, Left out): all three jobs use the calendar of the reconciler.
+10. Alternatives weighed and not chosen: a separate `collect` command, a logged no-op for a day at or before the cursor, optional `.env` lines instead of all-or-nothing, and a closer stack instead of one `defer` per resource; the reasons are in Adversarial 3 and 4.
 
 ## Adversarial
 
 The full answer of the adversarial review is in the author's scratchpad. The six points, each answered:
 
-1. Gap against the goal (nothing drives the slots): adopted. The runs inside the day are several `ot run-once` calls a day by the owner's scheduler, the slot times are option-jobs settings and the plist is the owner's; the cursor holds while a slot key is open. The ledger growth is stated (Left out 5). The dial no longer stops FRED, and the counts of lines and fields are one text now (six lines, three new; 21 fields).
+1. Gap against the goal (nothing drives the slots): adopted. The runs inside the day are several `ot run-once` calls a day by the owner's scheduler, the slot times are option-jobs settings and the plist is the owner's; the cursor holds while a slot key is open. The ledger growth is stated (Left out 5). The dial no longer stops FRED, and the counts of lines and fields are one text now (six lines, three new; 22 fields: 16 today plus six new).
 2. One retryable run freezes the cursor: adopted. Issue #209 is a hard prerequisite in `Depends on`, and Left out 1 gives the reason. The claim of the older text that same-day backfill repairs it is dropped.
 3. Simpler way (put the jobs into `run-once`): adopted, there is no `collect` command and the old Left out about retiring `run-once` is gone. Not adopted: turning "day at or before the cursor" into a logged no-op; the refusal stays as `run-once` has it, and the owner's schedule stops calling after the last pass.
 4. What it locks in: adopted in part. The shared cursor stops being a trap with one command; the socket path length is checked (104 bytes or more refused by name); the per-job window follows `runner-window.md` (the zero fallback rule, `Windowed` in each job). Not adopted: `.env` all-or-nothing stays (a missing line is a configuration error, the six lines are required), and the reverse-order closing stays a `defer` per resource, as `runonce.go` does today, not a closer stack.
