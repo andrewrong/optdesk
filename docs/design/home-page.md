@@ -77,7 +77,7 @@ reachable only after the builders and a route land, each its own design.
 
 None changed. Every path below belongs to a row of `docs/design/modules.md` as it stands: `contracts/**`, `internal/contracts/**`,
 `docs/contracts/page-schemas.md` and `web/src/generated/**` to `contracts`; `internal/pages/**` to `pages`; `web/**` to `web`. A new Go package
-`internal/pages/home_page` makes `scripts/arch` add a component (Generated output of `home-page-compose`).
+`internal/pages/home_page` is covered by `internal/pages/**`, and `arch.toml` derives from `docs/design/modules.md` only, so `go run ./scripts/arch` leaves `arch.toml` unchanged (Generated output of `home-page-compose`).
 
 | issue | module | order |
 |---|---|---|
@@ -146,7 +146,7 @@ Checked by CI: `pnpm --dir web run generate:types` with `git diff --exit-code we
   `Say`, `GapLine`, `BlockLinks`, `ReportLinks` (a slice of `Link{Href, Text string}`) and the five members as `[]byte` fields `Household`, `Companies`, `Macro`, `Market`, `Options`.
   `generated_at` is `generatedAt` written in `Zone`, as `macro_page` does; a nil `Zone` is an error. The package reads no clock, no store and no file outside tests, and imports only the standard library
   (`go.mod` is not edited). The five testdata files are hand-written, smallest valid instances of the five member schemas with the run identity `run-test`, `build-test`, `scope-test`.
-- Generated output: the new package `internal/pages/home_page` makes `scripts/arch` add a component to `arch.toml` and `.go-arch-lint.yml` (the same as `internal/pages/macro_page` in `docs/design/pages-builders.md`); the entry carries the regenerated files and no hand edit. Those two files are in the Files line (as in `docs/design/pages-builders.md`).
+- Generated output: `arch.toml` derives from `docs/design/modules.md` only, where `internal/pages/**` already covers the new package `internal/pages/home_page`, so `go run ./scripts/arch` leaves `arch.toml` unchanged; it appears in the diff only if that command changed it. The entry carries any regenerated file and no hand edit. `arch.toml` and `.go-arch-lint.yml` stay in the Files line as the design lists them.
 
 Acceptance:
 
@@ -156,7 +156,7 @@ Acceptance:
 4. `TestComposeRunStatus` checks the worst-of rule on three cases (all `ok`; one `partial`; one `partial` and one `failed`); `TestComposeDataTimes` checks the order, the dropped repeat and the error past 20 entries; `TestComposeStaleAfter` checks the earliest of two, and the omission when no member has one.
 5. `TestComposeKeepsMembers` checks that each member in the output is byte-equal, after JSON compaction, to its input.
 6. `grep -c "internal/store\|time.Now\|os.ReadFile" internal/pages/home_page/compose.go` prints 0; `wc -l internal/pages/home_page/compose.go` shows under 600; `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go internal/pages/api_test.go cmd go.mod go.sum` is empty.
-7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line and no other path.
+7. `git diff --name-only $(git merge-base HEAD origin/main)` lists only paths of the Files line, and every path of it except `arch.toml`, which appears only if `go run ./scripts/arch` changed it.
 
 Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint, the `arch.toml` against `modules.md` check); the privacy scan; the design verdict (the result matches Decisions 5 and 6 of `docs/design/home-page.md`, a judgement of the code).
 
