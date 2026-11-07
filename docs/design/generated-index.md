@@ -52,7 +52,13 @@ Owner: contracts. The contract of the generated TypeScript types, replacing the 
   differs from the exported name, fails the contract test.
 - The set of schemas written in this repository (`pageNewFiles` of `carryover_test.go`) is derived, not listed: every
   `page.*.json` that is not in `carryover.sha256`, not in `pageV2Files`, not in `pageV3Files` and not `page.macro_rates.v1.json`
-  is new. A new schema touches no shared list in a Go test.
+  is new. A new schema touches no shared list in a Go test. Derivation alone would make every file fall into some set, so a new schema has a
+  positive test that does not read the manifest: its `$id` is `https://optdesk.invalid/schemas/page.<name>.json` (the carried copies keep
+  `https://option-trader.invalid/`). A carried copy whose manifest line was deleted therefore fails on its `$id`, and the count of 29
+  carried files and the hash of every manifest line stay as checks.
+- The v3 body checks (no `null`, every property, const and enum value) run for every `*.v3.ts` file whose schema is not in `carryover.sha256`:
+  today `market_summary.v3` and `options_summary.v3`, the two named in the v3 line of `docs/contracts/page-schemas.md`. The carried
+  `structure_detail.v3.ts` is not checked by that body (it is not in the v3 line, and nothing here asserts it would pass); the choice is recorded in `## Left out`.
 - An offline sandbox has no `web/node_modules`, so a worker there cannot run the command and may write the generated file by hand,
   to match what `json2ts` prints (line 1 the banner, line 2 `/* eslint-disable */`). Whether the bytes match is decided by CI only:
   the `type drift` step of `ci-web.yml`, listed under `## Checked by CI` below.
@@ -82,10 +88,14 @@ Delete the hand-written index, make the contract tests read the directory, and m
   3. `grep -c -E 'household_summary|market_summary\.v2|macro_summary' internal/contracts/generated_ts_test.go` prints 0 and
      `grep -c 'files := \[\]struct\|pairs := \[\]struct' internal/contracts/generated_ts_test.go` prints 0.
   4. `TestGeneratedV3Types` keeps its body (banner, exported name, no `null`, every property name, const and enum value of the schema and of the
-     `common.v2.json` defs it reaches) and runs it once for every `*.v3.ts` file found in the directory; a subtest per file with `t.Parallel()`.
+     `common.v2.json` defs it reaches) and runs it once for every `*.v3.ts` file of the directory whose `page.<name>.json` is not in `carryover.sha256`
+     (a subtest per file with `t.Parallel()`); the subtests are exactly `market_summary.v3.ts` and `options_summary.v3.ts` at the head, and
+     `structure_detail.v3.ts` has none (it is a carried copy).
   5. In `internal/contracts/carryover_test.go` the variable `pageNewFiles` is gone as a literal list: the schemas it named are derived from the
      directory by the rule of the Interface part (`grep -c 'page.option_data_page.v1.json' internal/contracts/carryover_test.go` prints 0), and the
-     test that every carried file is in `carryover.sha256` and every other file is known still fails for a file in neither set.
+     test fails for a `page.*.json` file that is neither carried (in `carryover.sha256`) nor new: a derived-new file whose `$id` is not
+     `https://optdesk.invalid/schemas/page.<name>.json` fails (test: a copy of a carried schema with its manifest line removed is rejected), and
+     `TestCarryoverManifest` keeps the count of 29 carried files and the sha256 of each manifest line.
   6. The test files have no `time.Sleep`, no network call and no fixed path other than the constants `generatedDir` and `schemasDir`; `wc -l` of each is under 600.
   7. `docs/contracts/page-schemas.md`: `grep -c -E 'Thirty|13 directories|15 .bad-version' docs/contracts/page-schemas.md` prints 0; the figure "29 copies"
      and the table of schema ids are unchanged; a sentence states the contract of `## Interface` of this design and
@@ -104,7 +114,7 @@ Delete the hand-written index, make the contract tests read the directory, and m
      shell string), from the directory `web`.
   12. The diff holds the six listed files and no other, and the result matches the Interface part of `docs/design/generated-index.md`.
   ## Checked by CI
-  - ci-go runs `go test ./internal/contracts/...` with the existing 14 generated files and passes.
+  - ci-go runs `go test ./internal/contracts/...` with the generated files at the head (the figure is not stated: the three designs ordered before this entry add some) and passes: the v3 body runs on `market_summary.v3.ts` and `options_summary.v3.ts` only, the same two as today.
   - ci-web (tsc, eslint, vitest, build) passes without the index; its `type drift` step (`pnpm --dir web run generate:types`, then
     `git diff --exit-code web/src/generated` and no untracked file) passes, so the script reproduces the committed files byte for byte, and any
     generated file written by hand matches `json2ts`.
@@ -131,6 +141,7 @@ Delete the hand-written index, make the contract tests read the directory, and m
   ordered after them, deletes the lists and takes what the three added into the directory rule. If one of them changes the lists after this
   entry's cut, a rebase decides.
 - The table and the "Also `page.<name>`" paragraphs of `docs/contracts/page-schemas.md` stay, named as the residual rebase-level conflict (Interface).
+- The v3 body check on the carried `structure_detail.v3.ts`: not run, because the v3 line of `docs/contracts/page-schemas.md` does not name it and passing is not shown; the gate is the manifest, not the file name. Considered and not chosen.
 - Row `pairs` for versions other than v3 in `TestGeneratedV3Types`: that body is specific to the v3 conventions; a v2 or v1 type needs no row.
 - Splitting the entry into contracts, script and modules entries: rejected for the reason in Modules.
 
@@ -143,4 +154,5 @@ Answer: `generated-index.adversarial.md`, in the dispatcher's scratchpad.
 3. Three entries versus one two-module interface entry: adopted. One entry, precedent `pages-types-wave-2`; the `modules.md` cell edit moves into this PR.
 4. Lock-in of the name regex and the v3 gate: noted in Decisions, not changed.
 5. Script acceptance grepped `index` and a false premise about counts kept by other designs: adopted. The grep is `index.ts`; the premise is dropped.
+6. Design-session points (earlier finding 1, `structure_detail.v3.ts` in the v3 gate, new-schema `$id` test against the dead 'neither set' check, the 14-file count): applied.
 Net time (the dispatcher's point e): adopted; the three open designs are not made to depend on this one (Decisions, Left out).
