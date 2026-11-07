@@ -6,8 +6,8 @@
 
 The subcommands:
 
-- `ot run-once [--day DAY]`: opens the stores, wires the `fred_series` job and reconciles the day (`Reconcile`). Real profile only. A day at or before the day of the ledger cursor is an error (exit 1) that names both days and logs no `status=ok`: `Reconcile` walks only days after the cursor, so there is nothing to reconcile; the error adds the hint `use ot backfill --day <day>`.
-- `ot backfill --day DAY [--dataset ID]`: opens the stores, wires the `fred_series` job and calls `Backfill` for DAY: it re-runs the keys of that day that are missing or marked `no_value`, and moves neither the cursor, a plan nor a window. `--day` is required. Real profile only (the demo profile is refused with `backfill needs a real profile; the demo profile opens no store`). A day ahead of the cursor is refused with `day <day> is ahead of the cursor <cursor>: use run-once` (the cursor is `(none)` when empty); a day with no stored plan is refused. The error text of the runner is withheld because it may hold a DSN or a key.
+- `ot run-once [--day DAY]`: opens the stores and the broker, wires the three jobs `fred_series`, `option_eod` and `quote_snapshot` and reconciles the day (`Reconcile`) with them, in one call; `ot` passes the zero `runner.WindowRule{}` and each job states its window through `runner.Windowed`. Real profile only. A day at or before the day of the ledger cursor is an error (exit 1) that names both days and logs no `status=ok`: `Reconcile` walks only days after the cursor, so there is nothing to reconcile; the error adds the hint `use ot backfill --day <day>`.
+- `ot backfill --day DAY [--dataset ID]`: opens the stores and the broker, wires the same three jobs and calls `Backfill` for DAY: it re-runs the keys of that day that are missing or marked `no_value`, and moves neither the cursor, a plan nor a window. `--day` is required. Real profile only (the demo profile is refused with `backfill needs a real profile; the demo profile opens no store`). A day ahead of the cursor is refused with `day <day> is ahead of the cursor <cursor>: use run-once` (the cursor is `(none)` when empty); a day with no stored plan is refused. The error text of the runner is withheld because it may hold a DSN or a key.
 - `ot page [--day DAY] [--out FILE]`: builds the macro rates page once and writes its bytes.
 - `ot serve [--day DAY] [--addr ADDR]`: serves the macro rates page over HTTP until interrupted.
 - `ot setup pg`: sets up the PostgreSQL roles through `store.SetupFunc`, under the administrative DSN.
@@ -39,9 +39,16 @@ Environment names (names only; no value is written in this document, in a log or
 | `OT_PG_ADMIN_DSN` | process environment | `ot setup pg`, `ot migrate` |
 | `OT_PG_DSN_RUNNER` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (session-day store and ledger) |
 | `OT_PG_DSN_SERIES_FRED` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (series store) |
+| `OT_PG_DSN_OPTION_EOD` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (option_eod writer) |
+| `OT_PG_DSN_QUOTE_SNAPSHOT` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (quote_snapshot writer) |
+| `OT_PG_DSN_MASTER` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (instrument store) |
 | `OT_PG_DSN_LOADER` | `$OT_HOME/.env` | `ot calendar load` (session-day store) |
 | `OT_PG_DSN_PAGES` | `$OT_HOME/.env` | `ot page` and `ot serve` (series reader), real profile only |
 | `FRED_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (FRED source) |
+
+All six lines read by `ot run-once` and `ot backfill` (the three above, `OT_PG_DSN_RUNNER`, `OT_PG_DSN_SERIES_FRED` and `FRED_API_KEY`) are required; a missing one is an error that names the line.
+
+The broker socket is `$OT_HOME/run/ibkr.sock`, created by the pyside service; `ot` only connects to it and creates, writes and chmods nothing there. A path of 104 bytes or more is refused before any store is opened with the error `socket path too long` (the text holds no path). The dial is made once, before `Reconcile`; when it fails, `ot` logs the failure once (step name only) and the two option jobs get a stand-in broker whose every call answers a retryable error `broker is not reachable`, so the option keys end retryable while `fred_series` still runs. The runs inside a day are several calls of `ot run-once` a day by the owner's scheduler; the cursor holds while a slot key is open.
 
 The `OT_PG_` names are the constants `store.AdminDSNEnv`, `store.DSNEnvRunner`, `store.DSNEnvSeriesFred` and `store.DSNEnvPages` and `store.DSNEnvLoader` of `internal/store/api.go`. A name that is unset or empty is an error that names the variable and no value (`OT_PG_ADMIN_DSN is not set`, `OT_PG_DSN_PAGES is missing in .env`).
 
@@ -103,6 +110,8 @@ Exit codes, each tied to its condition:
 
 ## Version history
 
+- v4: `ot run-once` and `ot backfill` build `fred_series`, `option_eod` and `quote_snapshot`, need the lines `OT_PG_DSN_OPTION_EOD`, `OT_PG_DSN_QUOTE_SNAPSHOT` and `OT_PG_DSN_MASTER`, dial `$OT_HOME/run/ibkr.sock` and pass `runner.WindowRule{}`.
+
 - v1: the subcommands `run-once`, `page`, `serve`, `setup`, `version`, `migrate` and `calendar load`.
 - v3: `ot backfill` and the hint in the cursor error of `run-once`.
 - v2: `ot calendar load` takes the DSN of `ot_loader` from the line `OT_PG_DSN_LOADER` of `$OT_HOME/.env` and needs no administrative DSN, which only `ot setup pg` and `ot migrate` read; `.env` is read by one function, `setup.ReadEnv`, through `deps.readEnv`; the rule that an error at the command boundary never wraps a pgx error is written once under Outputs. `calendar_test.go` holds 19 tests after the change. A real `ot calendar load` needs `store-loader-role` merged and `ot setup pg` then `ot migrate` run once more on an existing database; the tests of this version need neither.
@@ -116,7 +125,7 @@ Exit codes, each tied to its condition:
 - `cmd/ot/calendar_test.go`: `TestCalendarLoadIdempotent`, `TestCalendarUsage`, `TestCalendarLoadDemoRefused`, `TestCalendarLoadProvenanceRequired`, `TestCalendarLoadProvenanceFields`, `TestCalendarLoadRowOrder`, `TestCalendarLoadRowHours`, `TestCalendarLoadClosedDayShape`, `TestCalendarLoadEmptyFile`, `TestCalendarLoadNoLoaderLine`, `TestCalendarLoadNeverFallsBack`, `TestCalendarLoadChecksBeforeEnv`.
 - `cmd/ot/env_test.go`: `TestEnvFileHomeUnset`, `TestEnvFilePassesPath`, `TestEnvFileReturnsReaderError`, `TestEnvFileNilReaderFallsBack`, `TestNoCommandLeaksDSN`, `TestLeakTableCoversCommands`.
 - `cmd/ot/page_test.go`: `TestPageBytesAreBuilderBytes`, `TestPageDemoOpensNoStore`, `TestPageMacroPage`, `TestPageMacroRatesIgnoresZone`, `TestPageMacroPageNilZoneOpensNoStore`, `TestMacroPageDemoGolden`.
-- `cmd/ot/runonce_test.go`: `TestRunOnceDayReachesReconcile`, `TestRunOnceDemoRefused`, `TestRunOnceMissingKey`, `TestRunOnceClosesStores`.
+- `cmd/ot/runonce_test.go`: `TestRunOnceDayReachesReconcile`, `TestRunOnceDemoRefused`, `TestRunOnceMissingKey`, `TestRunOnceClosesStores`; `cmd/ot/runonce_option_test.go`: `TestRunOnceWiresOptionJobs`, `TestRunOnceRule`, `TestRunOnceCloses`, `TestRunOnceErrors`, `TestRunOnceErrorsRefused`, `TestRunOnceDialFails`, `TestRunOnceSocketPathLength`.
 - `cmd/ot/backfill_test.go`: `TestBackfillFlags`, `TestBackfillCallsRunner`, `TestBackfillErrors`, `TestBackfillNoSecretInErrors`.
 - `cmd/ot/setup_test.go`: `TestSetupPassesConfig`, `TestSetupArgumentMustBePg`.
 - `cmd/ot/day_test.go`: `TestDayDefaultIsNewYork`, `TestDayFlagWins`, `TestDayMalformed`.

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
+	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -19,7 +19,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n"
+const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
+	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n"
 
 type fakeSD struct {
 	store.SessionDayStore
@@ -42,6 +43,28 @@ func (f fakeLedger) Cursor(context.Context) (store.Cursor, error) {
 	return store.Cursor{Day: f.cursorDay}, f.cursorErr
 }
 func (f fakeSeries) Close() error { f.n.Add(1); return nil }
+
+type fakeInstr struct {
+	store.InstrumentStore
+	n *atomic.Int32
+}
+type fakeEod struct {
+	store.OptionEodStore
+	n *atomic.Int32
+}
+type fakeSnap struct {
+	store.QuoteSnapshotStore
+	n *atomic.Int32
+}
+type fakeBrk struct {
+	broker.Broker
+	n *atomic.Int32
+}
+
+func (f fakeInstr) Close() error { f.n.Add(1); return nil }
+func (f fakeEod) Close() error   { f.n.Add(1); return nil }
+func (f fakeSnap) Close() error  { f.n.Add(1); return nil }
+func (f fakeBrk) Close() error   { f.n.Add(1); return nil }
 
 type fakeJob struct{ contracts.Job }
 
@@ -69,6 +92,28 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		},
 		newFRED: func(sources.FREDConfig) (sources.Source, error) { return nil, nil },
 		newFredSeries: func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
+			return fakeJob{}, nil
+		},
+		dialBroker: func(context.Context, string, broker.Options) (broker.Broker, error) {
+			opened.Add(1)
+			return fakeBrk{n: closed}, nil
+		},
+		openInstrument: func(context.Context, string) (store.InstrumentStore, error) {
+			opened.Add(1)
+			return fakeInstr{n: closed}, nil
+		},
+		openOptionEod: func(context.Context, string) (store.OptionEodStore, error) {
+			opened.Add(1)
+			return fakeEod{n: closed}, nil
+		},
+		openQuoteSnapshot: func(context.Context, string) (store.QuoteSnapshotStore, error) {
+			opened.Add(1)
+			return fakeSnap{n: closed}, nil
+		},
+		newOptionEod: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+			return fakeJob{}, nil
+		},
+		newQuoteSnapshot: func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
 		newRunner: func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Reconciler {
@@ -109,7 +154,7 @@ func TestRunOnceDemoRefused(t *testing.T) {
 
 func TestRunOnceMissingKey(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_PG_DSN_RUNNER=r\nOT_PG_DSN_SERIES_FRED=s\n")
+	a, _ := testApp(t, "OT_PG_DSN_RUNNER=r\nOT_PG_DSN_SERIES_FRED=s\nOT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n")
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -125,7 +170,7 @@ func TestRunOnceClosesStores(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, nil); err != nil || opened.Load() != 3 || closed.Load() != 3 {
+	if err := runOnce(a, nil); err != nil || opened.Load() != 7 || closed.Load() != 7 {
 		t.Fatalf("err %v opened %d closed %d", err, opened.Load(), closed.Load())
 	}
 	// A failure after two stores are open closes them too.
@@ -140,7 +185,8 @@ func TestRunOnceClosesStores(t *testing.T) {
 func TestRunOnceSentinelDSN(t *testing.T) {
 	t.Parallel()
 	const sentinel = "postgres://sentinel-user:sentinel-pw@h/db"
-	a, errb := testApp(t, "OT_PG_DSN_RUNNER="+sentinel+"\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n")
+	a, errb := testApp(t, "OT_PG_DSN_RUNNER="+sentinel+"\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n"+
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n")
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -187,52 +233,6 @@ func TestRunOnceFREDPathIsObservations(t *testing.T) {
 	_, _ = src.Fetch(t.Context(), sources.FetchPlan{SeriesIDs: []string{"DGS10"}, From: "2026-11-02", To: "2026-11-04"})
 	if path != "/fred/series/observations" {
 		t.Fatalf("FRED request path %q, want /fred/series/observations", path)
-	}
-}
-
-type windowJob struct{ contracts.Job }
-
-func (windowJob) Window() (string, time.Duration, time.Duration) { return "XNYS", 0, 24 * time.Hour }
-
-func recordRule(a *app, rule *runner.WindowRule, day *contracts.Day) {
-	a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, _ []contracts.Job, r runner.WindowRule) runner.Reconciler {
-		*rule = r
-		return recRunner{day}
-	}
-}
-
-func TestRunOnceRuleFromJob(t *testing.T) {
-	t.Parallel()
-	a, _ := testApp(t, fullEnv)
-	var opened, closed atomic.Int32
-	var got contracts.Day
-	runOnceFakes(a, &opened, &closed, &got)
-	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
-		return windowJob{}, nil
-	}
-	var rule runner.WindowRule
-	recordRule(a, &rule, &got)
-	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
-		t.Fatal(err)
-	}
-	if want := (runner.WindowRule{CalendarID: "XNYS", CloseOffset: 24 * time.Hour}); rule != want {
-		t.Fatalf("rule %+v, want %+v", rule, want)
-	}
-}
-
-func TestRunOnceZeroRule(t *testing.T) {
-	t.Parallel()
-	a, _ := testApp(t, fullEnv)
-	var opened, closed atomic.Int32
-	var got contracts.Day
-	runOnceFakes(a, &opened, &closed, &got)
-	rule := runner.WindowRule{CalendarID: "unset"}
-	recordRule(a, &rule, &got)
-	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
-		t.Fatal(err)
-	}
-	if rule != (runner.WindowRule{}) || got != "2026-03-04" {
-		t.Fatalf("rule %+v day %q", rule, got)
 	}
 }
 

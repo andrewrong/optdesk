@@ -1,0 +1,435 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/store"
+)
+
+// events is a goroutine-safe list of the steps a rig saw.
+type events struct {
+	mu sync.Mutex
+	l  []string
+}
+
+func (e *events) add(s string) { e.mu.Lock(); e.l = append(e.l, s); e.mu.Unlock() }
+func (e *events) list() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return slices.Clone(e.l)
+}
+
+// evc closes by recording "close <name>".
+type evc struct {
+	name string
+	ev   *events
+}
+
+func (c evc) close() error { c.ev.add("close " + c.name); return nil }
+
+type evSD struct {
+	store.SessionDayStore
+	c evc
+}
+type evLedger struct {
+	store.OpsLedger
+	c evc
+	d contracts.Day
+}
+type evSeries struct {
+	store.SeriesStore
+	c evc
+}
+type evEod struct {
+	store.OptionEodStore
+	c evc
+}
+type evSnap struct {
+	store.QuoteSnapshotStore
+	c evc
+}
+type evInstr struct {
+	store.InstrumentStore
+	c evc
+}
+type evBroker struct {
+	broker.Broker
+	c evc
+}
+
+func (f evSD) Close() error     { return f.c.close() }
+func (f evLedger) Close() error { return f.c.close() }
+func (f evLedger) Cursor(context.Context) (store.Cursor, error) {
+	return store.Cursor{Day: f.d}, nil
+}
+func (f evSeries) Close() error { return f.c.close() }
+func (f evEod) Close() error    { return f.c.close() }
+func (f evSnap) Close() error   { return f.c.close() }
+func (f evInstr) Close() error  { return f.c.close() }
+func (f evBroker) Close() error { return f.c.close() }
+
+// brokerJob is a job whose Run asks the broker it was built with, as the option jobs do.
+type brokerJob struct {
+	contracts.Job
+	b broker.Broker
+}
+
+func (j brokerJob) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
+	_, err := j.b.Snapshot(ctx, broker.KindSnapshot, nil)
+	var te contracts.TypedError
+	if err != nil {
+		te, _ = err.(contracts.TypedError)
+	}
+	return contracts.JobResult{Err: te}
+}
+
+type namedJob struct {
+	contracts.Job
+	id string
+}
+
+func (j namedJob) ID() string { return j.id }
+func (namedJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
+	return contracts.JobResult{}
+}
+
+// rig fills every constructor of an app with a fake that records into ev.
+type rig struct {
+	a          *app
+	ev         *events
+	log        *bytes.Buffer
+	fail       map[string]error // step name -> error; "reconcile" fails Reconcile
+	dsn        map[string]string
+	socket     string
+	jobs       []contracts.Job
+	rule       runner.WindowRule
+	backRule   runner.WindowRule
+	instr      store.InstrumentStore
+	eodRes     store.InstrumentResolver
+	snapRes    store.InstrumentResolver
+	eod        store.OptionEodStore
+	snap       store.QuoteSnapshotStore
+	eodW       store.OptionEodWriter
+	snapW      store.QuoteSnapshotWriter
+	cursor     contracts.Day
+	reconciled int
+}
+
+type recReconciler struct{ r *rig }
+
+func (c recReconciler) Reconcile(context.Context, contracts.Day) error {
+	c.r.reconciled++
+	c.r.ev.add("reconcile")
+	return c.r.fail["reconcile"]
+}
+
+func newRig(t *testing.T, env string) *rig {
+	t.Helper()
+	a, log := testApp(t, env)
+	r := &rig{a: a, ev: &events{}, log: log, fail: map[string]error{}, dsn: map[string]string{}}
+	step := func(name, dsn string) error {
+		r.ev.add("open " + name)
+		r.dsn[name] = dsn
+		return r.fail[name]
+	}
+	d := &r.a.deps
+	d.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} }
+	d.newCalendar = func(clock.SessionSource) clock.Calendar { return nil }
+	d.openSessionDay = func(_ context.Context, dsn string) (store.SessionDayStore, error) {
+		if err := step("sd", dsn); err != nil {
+			return nil, err
+		}
+		return evSD{c: evc{"sd", r.ev}}, nil
+	}
+	d.openLedger = func(_ context.Context, dsn string) (store.OpsLedger, error) {
+		if err := step("ledger", dsn); err != nil {
+			return nil, err
+		}
+		return evLedger{c: evc{"ledger", r.ev}, d: r.cursor}, nil
+	}
+	d.openSeries = func(_ context.Context, dsn string) (store.SeriesStore, error) {
+		if err := step("series", dsn); err != nil {
+			return nil, err
+		}
+		return evSeries{c: evc{"series", r.ev}}, nil
+	}
+	d.openOptionEod = func(_ context.Context, dsn string) (store.OptionEodStore, error) {
+		if err := step("eod", dsn); err != nil {
+			return nil, err
+		}
+		r.eod = evEod{c: evc{"eod", r.ev}}
+		return r.eod, nil
+	}
+	d.openQuoteSnapshot = func(_ context.Context, dsn string) (store.QuoteSnapshotStore, error) {
+		if err := step("snap", dsn); err != nil {
+			return nil, err
+		}
+		r.snap = evSnap{c: evc{"snap", r.ev}}
+		return r.snap, nil
+	}
+	d.openInstrument = func(_ context.Context, dsn string) (store.InstrumentStore, error) {
+		if err := step("instr", dsn); err != nil {
+			return nil, err
+		}
+		r.instr = evInstr{c: evc{"instr", r.ev}}
+		return r.instr, nil
+	}
+	d.dialBroker = func(_ context.Context, path string, _ broker.Options) (broker.Broker, error) {
+		r.ev.add("open broker")
+		r.socket = path
+		if err := r.fail["broker"]; err != nil {
+			return nil, err
+		}
+		return evBroker{c: evc{"broker", r.ev}}, nil
+	}
+	d.newFRED = func(sources.FREDConfig) (sources.Source, error) { return nil, nil }
+	d.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
+		return namedJob{id: "fred_series"}, r.fail["fredjob"]
+	}
+	d.newOptionEod = func(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, _ clock.Clock) (contracts.Job, error) {
+		r.eodRes, r.eodW = res, w
+		return brokerJob{Job: namedJob{id: "option_eod"}, b: b}, r.fail["eodjob"]
+	}
+	d.newQuoteSnapshot = func(b broker.Broker, res store.InstrumentResolver, w store.QuoteSnapshotWriter, _ clock.Clock) (contracts.Job, error) {
+		r.snapRes, r.snapW = res, w
+		return brokerJob{Job: namedJob{id: "quote_snapshot"}, b: b}, r.fail["snapjob"]
+	}
+	d.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, rule runner.WindowRule) runner.Reconciler {
+		r.jobs, r.rule = js, rule
+		return recReconciler{r}
+	}
+	d.newBackfiller = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, rule runner.WindowRule) runner.Backfiller {
+		r.jobs, r.backRule = js, rule
+		return &fakeBackfiller{}
+	}
+	return r
+}
+
+func TestRunOnceWiresOptionJobs(t *testing.T) {
+	t.Parallel()
+	env := "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
+		"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n"
+	r := newRig(t, env)
+	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"sd": "run-dsn", "ledger": "run-dsn", "series": "ser-dsn", "eod": "eod-dsn", "snap": "snap-dsn", "instr": "master-dsn"}
+	for k, v := range want {
+		if r.dsn[k] != v {
+			t.Errorf("store %s opened with %q, want %q", k, r.dsn[k], v)
+		}
+	}
+	if r.eodRes != store.InstrumentResolver(r.instr) || r.snapRes != store.InstrumentResolver(r.instr) {
+		t.Error("the instrument store is not the resolver of both jobs")
+	}
+	if r.eodW != store.OptionEodWriter(r.eod) || r.snapW != store.QuoteSnapshotWriter(r.snap) {
+		t.Error("a writer is not the store of its own job")
+	}
+	if want := filepath.Join(r.a.getenv("OT_HOME"), "run", "ibkr.sock"); r.socket != want {
+		t.Errorf("dialled %q, want %q", r.socket, want)
+	}
+	var ids []string
+	for _, j := range r.jobs {
+		ids = append(ids, j.ID())
+	}
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot"}) {
+		t.Errorf("jobs %v", ids)
+	}
+}
+
+func TestRunOnceRule(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	r.rule = runner.WindowRule{CalendarID: "unset"}
+	r.backRule = runner.WindowRule{CalendarID: "unset"}
+	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 3 {
+		t.Fatalf("rules %+v %+v, jobs %d", r.rule, r.backRule, len(r.jobs))
+	}
+}
+
+func TestRunOnceCloses(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	for _, tc := range []struct {
+		name string
+		fail string
+		env  string
+	}{
+		{"success", "", fullEnv},
+		{"missing line", "", "OT_PG_DSN_RUNNER=r\n"},
+		{"sd", "sd", fullEnv}, {"ledger", "ledger", fullEnv}, {"series", "series", fullEnv},
+		{"eod", "eod", fullEnv}, {"snap", "snap", fullEnv}, {"instr", "instr", fullEnv},
+		{"dial", "broker", fullEnv}, {"fred job", "fredjob", fullEnv}, {"eod job", "eodjob", fullEnv},
+		{"snap job", "snapjob", fullEnv}, {"reconcile", "reconcile", fullEnv},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newRig(t, tc.env)
+			if tc.fail != "" {
+				r.fail[tc.fail] = boom
+			}
+			_ = runOnce(r.a, nil)
+			var opened, closed []string
+			for _, e := range r.ev.list() {
+				switch {
+				case strings.HasPrefix(e, "open "):
+					n := strings.TrimPrefix(e, "open ")
+					if r.fail[n] == nil { // an open that failed holds nothing to close
+						opened = append(opened, n)
+					}
+				case strings.HasPrefix(e, "close "):
+					closed = append(closed, strings.TrimPrefix(e, "close "))
+				}
+			}
+			slices.Reverse(opened)
+			if !slices.Equal(opened, closed) {
+				t.Fatalf("opened (reversed) %v, closed %v", opened, closed)
+			}
+		})
+	}
+}
+
+func TestRunOnceErrors(t *testing.T) {
+	t.Parallel()
+	const sentinel = "sentinel-secret"
+	env := "OT_PG_DSN_RUNNER=" + sentinel + "-r\nOT_PG_DSN_SERIES_FRED=" + sentinel + "-s\nFRED_API_KEY=" + sentinel + "-k\n" +
+		"OT_PG_DSN_OPTION_EOD=" + sentinel + "-e\nOT_PG_DSN_QUOTE_SNAPSHOT=" + sentinel + "-q\nOT_PG_DSN_MASTER=" + sentinel + "-m\n"
+	for _, line := range []string{"OT_PG_DSN_OPTION_EOD", "OT_PG_DSN_QUOTE_SNAPSHOT", "OT_PG_DSN_MASTER"} {
+		t.Run("missing "+line, func(t *testing.T) {
+			var kept []string
+			for _, l := range strings.Split(env, "\n") {
+				if !strings.HasPrefix(l, line+"=") {
+					kept = append(kept, l)
+				}
+			}
+			r := newRig(t, strings.Join(kept, "\n"))
+			err := runOnce(r.a, nil)
+			if err == nil || !strings.Contains(err.Error(), line) || strings.Contains(err.Error(), sentinel) || len(r.ev.list()) != 0 {
+				t.Fatalf("err %v events %v", err, r.ev.list())
+			}
+		})
+	}
+	for _, tc := range []struct{ step, line string }{
+		{"eod", "OT_PG_DSN_OPTION_EOD"}, {"snap", "OT_PG_DSN_QUOTE_SNAPSHOT"}, {"instr", "OT_PG_DSN_MASTER"},
+	} {
+		t.Run("open "+tc.step, func(t *testing.T) {
+			r := newRig(t, env)
+			r.fail[tc.step] = errors.New("pgx dial " + sentinel + " " + r.a.getenv("OT_HOME"))
+			err := runOnce(r.a, nil)
+			if err == nil || !strings.Contains(err.Error(), tc.line) || strings.Contains(err.Error(), sentinel) ||
+				strings.Contains(err.Error(), r.a.getenv("OT_HOME")) || r.reconciled != 0 {
+				t.Fatalf("err %v", err)
+			}
+		})
+	}
+}
+
+func TestRunOnceErrorsRefused(t *testing.T) {
+	t.Parallel()
+	const sentinel = "sentinel-secret"
+	env := fullEnv
+	t.Run("bad day", func(t *testing.T) {
+		r := newRig(t, env)
+		if err := runOnce(r.a, []string{"--day", "04/11/2026"}); err == nil || len(r.ev.list()) != 0 {
+			t.Fatalf("err %v events %v", err, r.ev.list())
+		}
+	})
+	t.Run("demo", func(t *testing.T) {
+		r := newRig(t, env)
+		r.a.profile.Name = "demo"
+		if err := runOnce(r.a, nil); err == nil || len(r.ev.list()) != 0 {
+			t.Fatalf("err %v events %v", err, r.ev.list())
+		}
+	})
+	for _, day := range []string{"2026-11-03", "2026-11-04"} {
+		t.Run("cursor "+day, func(t *testing.T) {
+			r := newRig(t, env)
+			r.cursor = "2026-11-04"
+			err := runOnce(r.a, []string{"--day", day})
+			if err == nil || !strings.Contains(err.Error(), "2026-11-04") || r.reconciled != 0 || strings.Contains(err.Error(), sentinel) {
+				t.Fatalf("err %v", err)
+			}
+		})
+	}
+}
+
+func TestRunOnceDialFails(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	r.fail["broker"] = errors.New("dial unix secret-dial-text")
+	r.fail["reconcile"] = errors.New("from reconcile")
+	err := runOnce(r.a, []string{"--day", "2026-11-04"})
+	if err == nil || !strings.Contains(err.Error(), "from reconcile") {
+		t.Fatalf("err %v, want what Reconcile returned", err)
+	}
+	if len(r.jobs) != 3 {
+		t.Fatalf("Reconcile got %d jobs", len(r.jobs))
+	}
+	for _, j := range r.jobs[1:] {
+		res := j.Run(t.Context(), "2026-11-04", nil)
+		if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+			t.Fatalf("%s: err %v", j.ID(), res.Err)
+		}
+		if strings.Contains(res.Err.Error(), r.socket) || strings.Contains(res.Err.Error(), "secret-dial-text") {
+			t.Fatalf("%s: text %q", j.ID(), res.Err.Error())
+		}
+	}
+	if res := r.jobs[0].Run(t.Context(), "2026-11-04", nil); res.Err != nil {
+		t.Fatalf("fred job: %v", res.Err)
+	}
+	if n := strings.Count(r.log.String(), "dial broker"); n != 1 || strings.Contains(r.log.String(), "secret-dial-text") {
+		t.Fatalf("log %q", r.log.String())
+	}
+}
+
+func TestRunOnceSocketPathLength(t *testing.T) {
+	t.Parallel()
+	const tail = "/run/ibkr.sock"
+	for _, tc := range []struct {
+		n  int
+		ok bool
+	}{{103, true}, {104, false}, {150, false}} {
+		r := newRig(t, fullEnv)
+		home := "/" + strings.Repeat("h", tc.n-len(tail)-1)
+		r.a.getenv = func(k string) string {
+			if k == "OT_HOME" {
+				return home
+			}
+			return ""
+		}
+		r.a.deps.readEnv = func(string) (map[string]string, error) {
+			return map[string]string{
+				"OT_PG_DSN_RUNNER": "a", "OT_PG_DSN_SERIES_FRED": "a", "FRED_API_KEY": "a",
+				"OT_PG_DSN_OPTION_EOD": "a", "OT_PG_DSN_QUOTE_SNAPSHOT": "a", "OT_PG_DSN_MASTER": "a",
+			}, nil
+		}
+		err := runOnce(r.a, nil)
+		if tc.ok {
+			if err != nil || len(r.socket) != tc.n {
+				t.Fatalf("%d bytes: err %v, dialled %d", tc.n, err, len(r.socket))
+			}
+			continue
+		}
+		if err == nil || !strings.Contains(err.Error(), "socket path too long") || strings.Contains(err.Error(), home) || len(r.ev.list()) != 0 {
+			t.Fatalf("%d bytes: err %v events %v", tc.n, err, r.ev.list())
+		}
+	}
+}

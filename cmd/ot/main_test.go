@@ -51,7 +51,13 @@ func fakeNewBackfiller(f *fakeBackfiller) runner.NewBackfillerWithRuleFunc {
 // It returns the app and the log output.
 func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
 	t.Helper()
-	home := t.TempDir()
+	// A short directory: a Unix socket path under the home must stay below 104 bytes, and t.TempDir
+	// names are long on macOS.
+	home, err := os.MkdirTemp("", "ot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(home) })
 	if envBody != "" {
 		if err := writeFile(home+"/.env", envBody); err != nil {
 			t.Fatal(err)
