@@ -55,6 +55,8 @@ components:
     in: internal/pages/macro_page
   pages/macro_rates:
     in: internal/pages/macro_rates
+  pages/option_data_page:
+    in: internal/pages/option_data_page
   profile:
     in: internal/profile
   ot:
@@ -153,6 +155,11 @@ deps:
       - contracts
       - store
       - pages
+  pages/option_data_page:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
   ot:
     mayDependOn:
       - contracts
@@ -175,6 +182,7 @@ deps:
       - jobs/fredseries
       - pages/macro_rates
       - pages/macro_page
+      - pages/option_data_page
       - pages/embed
   store/instrument:
     mayDependOn:
