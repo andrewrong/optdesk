@@ -44,7 +44,7 @@ serves (by alias) and which information is collected through each come from a co
    - `required` (default false): whether this gateway's connection decides health (decision 6).
    - `default` (top level, optional): the name of the gateway that is also served on `ibkr.sock` (decision 4).
    Validation: at least one `[[gateway]]`; at least one with `required = true` (else "the service works" would mean nothing); no unknown key (a typo is an error, not a silent default); no duplicate name;
-   no duplicate `(host, port, client_id)`; `default`, when given, names an entry whose `collect` holds `market_data`. A failure is `ConfigError` with a message that names the table (by name or position) and the key and
+   no duplicate `(host, port, client_id)`; the entry that answers on `ibkr.sock` (the one `default` names, or the first entry when `default` is absent) has `market_data` in `collect`. A failure is `ConfigError` with a message that names the table (by name or position) and the key and
    never the value; the process exits with status 2, as for a bad env key. `OT_IBKR_LINES`, `OT_IBKR_SNAPSHOTS` and `OT_HOME` stay env keys and apply to every gateway.
 3. No file, no change. When `OT_IBKR_GATEWAYS` is unset the process reads the existing keys (`OT_IBKR_GATEWAY_PORT` required, `OT_IBKR_GATEWAY_HOST`, `OT_IBKR_CLIENT_ID`, `OT_IBKR_MARKET_DATA_TYPE`) and runs the one
    gateway it runs today: one entry, named `default`, `collect = ["market_data"]`, `required = true`, served on `ibkr.sock` only. When the file key is set, the single-gateway keys are ignored (the runbook says so).
@@ -72,10 +72,11 @@ serves (by alias) and which information is collected through each come from a co
    optdesk-pyside deploy` and of `restart` polls the same URL and a non-2xx fails the action, so the required gateways are logged in before the deploy. Because a failed settle after an automatic deploy is rolled
    back, the entry carries `deploy = "owner"` (the optdesk project has no automatic deploy; the rule keeps it so for this service). Alternative rejected: 200 whenever the process and supervisors are alive, with the
    state only in the body (no Faults, no rollback, but the health would not reflect the gateway).
-8. How health reads the gateways, so `supervise` is not edited. `health.py` takes a mapping from name to a pair: `required` and a callable `() -> bool`. `serve` builds each callable as
-   `asyncio.run_coroutine_threadsafe(gateway.status(), loop).result(timeout)` of `.connected`, with a timeout of 2 s (under crew's 3 s); a timeout or any exception counts as "not connected". This also covers a
-   wedged event loop: the answer then is 503, not a stale 200. `Supervised`, `supervise` and its log lines are unchanged. No `gateway` name is added to log fields (the whitelist `FIELDS` of the owner-only
-   `transport.py` would drop it); a field for it is a later change of `transport.py`.
+8. How health reads the gateways, so `supervise` is not edited. `health.py` takes a mapping from name to a pair: `required` and a plain callable `() -> bool`, and owns the one deadline, `PROBE_DEADLINE_S = 2.0`
+   (under crew's 3 s). On each request the probes run concurrently (one worker thread per probe, `concurrent.futures.wait` with the deadline for all of them together), so any number of hanging probes costs one
+   deadline, not one each; a probe that raises or has not answered at the deadline counts as "not connected". `serve` builds each callable as `asyncio.run_coroutine_threadsafe(gateway.status(), loop).result(PROBE_DEADLINE_S)`
+   of `.connected` (the constant is imported from `health.py`, so the number lives in one place). A wedged event loop therefore gives 503, not a stale 200. `Supervised`, `supervise` and its log lines are unchanged. No
+   `gateway` name is added to log fields (the whitelist `FIELDS` of the owner-only `transport.py` would drop it); a field for it is a later change of `transport.py`.
 9. The listener. `http.server.ThreadingHTTPServer` on a thread, in a subclass that overrides `server_bind` to skip `socket.getfqdn` (it can stall for seconds on macOS) and `log_message` to write nothing (crew's poll
    would otherwise write a stderr line every 30 s). It binds the literal name `localhost` with an IPv4 socket (the name crew's `health` URL uses, which resolves to the loopback interface; the host is a constant of the
    code, not a setting; a name rather than a numeric address keeps the repository free of address shapes). `GET /health` answers JSON; any other path 404 and any other method 405. Own implementation, because the
@@ -84,7 +85,7 @@ serves (by alias) and which information is collected through each come from a co
 10. The example. `pyside/examples/gateways.example.toml` is a template with two sample entries (names `first` and `second`, aliases `alias_one` and `alias_two`). It must parse through the real loader, so its ports
     are the placeholder numbers 1 and 2 with a comment "replace with the port of your gateway"; no real port is written. A test reads it through the loader (no network) and asserts it is valid. The runbook (last
     entry) explains copying it to the service config directory and filling it in.
-11. Seams and shutdown. `start_health(probes, port)` returns a `HealthServer` with `port` (the bound port; `port=0` is allowed in this call so a test binds a free port, the config rejects 0) and a blocking `stop()`:
+11. Seams and shutdown. `start_health(probes, port, wait=concurrent.futures.wait)` (the `wait` argument is the seam a test replaces; it is never set outside tests) returns a `HealthServer` with `port` (the bound port; `port=0` is allowed in this call so a test binds a free port, the config rejects 0) and a blocking `stop()`:
     `shutdown()` (it returns once `serve_forever` ends), `server_close()`, then `join()` of the thread (daemon threads for the request handlers). `serve` gains keyword parameters `make_gateway` (a factory
     `(spec: GatewaySpec) -> Gateway`; the default builds `IbGateway` with `install_guard`, the lines and snapshots of the config and the clock), `stop` (an `asyncio.Event`; when given, `serve` waits on it and installs no
     signal handler) and `on_ready` (called with the bound health port or None once the servers have started). `Config` holds `gateways: tuple[GatewaySpec, ...]`, `default: str` and `health_port: int | None`, so a test builds
@@ -92,106 +93,79 @@ serves (by alias) and which information is collected through each come from a co
 12. Start and stop. `boot = false`: the owner logs into the gateways, then runs `crew cap --apply optdesk-pyside deploy` (the flag before the service name; apply needs a terminal and is the owner's). A first deploy needs
     the required gateways logged in (decision 7). After that, because the supervisors retry for ever, the service may run with a non-required gateway not logged in: health stays 2xx and its key is `false`. The first
     health poll after a plain start can be non-2xx until the required gateways connect.
-13. Failure of a bind. A port already in use for the health listener, or a file that is not a socket at any socket path, is a `ConfigError` at start (exit status 2, as for the existing socket), not a silent skip.
-    A stale socket file of the right kind is removed, as `prepare_socket` does. The 104-byte limit of a socket path (macOS) is a failure of the bind that already exists; no new length check is added for any gateway.
+13. Failure of a bind. A file that is not a socket at a socket path is a `ConfigError` raised by `prepare_socket`, and a health port already in use is the `OSError` of the bind; both end `serve` as the existing
+    socket errors do on main (a traceback, no silent skip). This design adds no exit-status promise for them: status 2 stays what `main` gives for an error of `load_config`, which now includes every error of the
+    gateways file. A stale socket file of the right kind is removed, as `prepare_socket` does. The 104-byte limit of a socket path (macOS) is a failure of the bind that already exists; no new length check is added.
 
 ## Modules
 
-No row of `docs/design/modules.md` changes, and no module is added. Pyside paths (the row `pyside/**`): `pyside/src/optdesk/ibkr/gateways.py` (new), `pyside/tests/ibkr/test_gateways.py` (new),
-`pyside/examples/gateways.example.toml` (new), `pyside/src/optdesk/ibkr/health.py` (new), `pyside/tests/ibkr/test_health.py` (new), `pyside/src/optdesk/ibkr/server.py` and `pyside/tests/ibkr/test_server.py`.
+No row of `docs/design/modules.md` changes, and no module is added. Pyside paths (the row `pyside/**`): `pyside/src/optdesk/ibkr/gateways.py` (new), `pyside/src/optdesk/ibkr/health.py` (new),
+`pyside/src/optdesk/ibkr/server.py`, `pyside/tests/ibkr/test_gateways.py` (new), `pyside/tests/ibkr/test_health.py` (new), `pyside/tests/ibkr/test_server.py` and `pyside/examples/gateways.example.toml` (new).
 Docs path (the row `docs/**`): `docs/deploy/pyside.md`, the runbook merged as issue 262, rewritten by the last entry. Not touched: `pyside/src/optdesk/ibkr/transport.py` (owner-only),
 `pyside/src/optdesk/ibkr/api.py` and `pyside/tests/contracts/test_ibkr_api.py` (the interface), `contracts/**` (contracts), `cmd/**` (ot), `pyside/pyproject.toml` and `pyside/uv.lock` (no new dependency).
-Entries 1 and 2 share no file with each other; entry 3 writes `server.py` and its test and imports the other two files.
+Cut: the three Python pieces (the file loader, the health endpoint, the wiring in `server.py`) are one pyside entry. They are one module, they share the types `GatewaySpec` and the probe signature, and no
+interface file of the module (`api.py`, declarations of the gRPC `Session`) carries them: an interface entry would have to edit `api.py` for types that are not part of the service interface, and a split into
+siblings leaves the wiring entry unable to be written or verified without the unmerged code of the others. The runbook is a second module (docs) and follows the first entry.
 
 ## Interface
 
-No interface file changes: `api.py` unchanged, `contracts/proto` unchanged, so there is no (interface) entry. The contracts a caller, crew or the owner can see are these, all outside the interface files:
+No interface file changes: `api.py` unchanged, `contracts/proto` unchanged, so there is no (interface) entry. The pieces below are internal to the pyside module (owned by it, used by no other module) and are
+built in the one entry; the contracts a caller, crew or the owner can see are:
 
 - The environment keys: `OT_IBKR_GATEWAYS` (path of the TOML file; unset gives the single-gateway behaviour of main), `OT_IBKR_HEALTH_PORT` (a whole number above zero; unset means no listener); the existing keys keep
   their meaning (`OT_IBKR_GATEWAY_PORT` and its companions only when `OT_IBKR_GATEWAYS` is unset). A key that is set and is not usable is a `ConfigError` naming the key only.
 - The gateways file of decision 2: `default`, and `[[gateway]]` with `name`, `port`, `host`, `client_id`, `market_data_type`, `account`, `collect`, `required`. Code: `gateways.py` with `GatewaySpec` (a frozen
   dataclass of those fields), `load_gateways(path) -> tuple[tuple[GatewaySpec, ...], str]` (the specs and the default name) and `from_env(env) -> tuple[GatewaySpec, ...]` for the no-file case.
 - The sockets: `$OT_HOME/run/ibkr-<name>.sock` per entry with `market_data`, and `$OT_HOME/run/ibkr.sock` for the default entry (or the only gateway of the no-file case); directory mode 0700, files 0600.
-- `GET /health`, decisions 6 and 9: status 200 or 503 is the contract; the body is `{"gateways": {"<name>": true|false}}`. Code: `health.py` with `render(states, required)` returning the status code and the body
-  bytes, and `start_health(probes, port)` returning the `HealthServer` of decision 11.
+- `GET /health`, decisions 6, 8 and 9: status 200 or 503 is the contract; the body is `{"gateways": {"<name>": true|false}}`. Code: `health.py` with `PROBE_DEADLINE_S`, `render(states, required)` returning the
+  status code and the body bytes, and `start_health(probes, port, wait=...)` returning the `HealthServer` of decision 11.
 
 ## Issues
 
-Which entries run when: 1 and 2 together (no shared file), then 3, then 4 (`Order: after`). Items are offline: a named test run from `pyside/` after `uv sync --locked`, or a grep, without network, a live gateway or a
-fixed port. Tests use `pytest -n auto`, a fake clock and, for a socket, `kit.sockdir.short_socket_dir` (a `tmp_path` is too long for a Unix socket on macOS); a file the test writes goes in `tmp_path`; none sleeps; none
-connects to a live broker; a test that starts the health server binds port 0.
+Which entries run when: 1, then 2 (`Order: after 1`; the runbook documents what entry 1 delivers and shares no file with it). Items are offline: a named test run from `pyside/` after `uv sync --locked`, or a grep, without network,
+a live gateway or a fixed port. Tests use `pytest -n auto`, a fake clock and, for a socket, `kit.sockdir.short_socket_dir` (a `tmp_path` is too long for a Unix socket on macOS); a file the test writes goes in `tmp_path`; none
+sleeps; none connects to a live broker; a test that starts the health server binds port 0.
 
-### pyside-gateways-config
+### pyside-gateways
 
-The gateways file: its loader, its validation and the example
-  Goal: `gateways.py` reads and validates the file of decision 2 and builds the no-file entry of decision 3; `pyside/examples/gateways.example.toml` is a valid template; `server.py` is not touched.
-  Files: pyside/src/optdesk/ibkr/gateways.py, pyside/tests/ibkr/test_gateways.py, pyside/examples/gateways.example.toml
+The gateways file, one supervisor and socket per gateway, and the health endpoint
+  Goal: `gateways.py` reads and validates the file of decision 2 and builds the no-file entry of decision 3; `health.py` holds the handler and listener of decisions 6, 8, 9 and 11; `serve` builds one gateway and one supervisor per entry, serves the
+  sockets of decision 4, starts the health listener over the probes of decision 8 and stops it on shutdown; `load_config` reads the file named by `OT_IBKR_GATEWAYS` or, when unset, the existing keys; with neither the file key nor the health key set nothing differs from main; `pyside/examples/gateways.example.toml` is a valid template.
+  Files: pyside/src/optdesk/ibkr/gateways.py, pyside/src/optdesk/ibkr/health.py, pyside/src/optdesk/ibkr/server.py, pyside/tests/ibkr/test_gateways.py, pyside/tests/ibkr/test_health.py, pyside/tests/ibkr/test_server.py, pyside/examples/gateways.example.toml
   Design: docs/design/pyside-gateways-health.md#decisions
   Acceptance:
-  1. From `pyside/`, `uv run pytest tests/ibkr/test_gateways.py -n auto` passes, and `uv run ruff check` and `uv run mypy --strict src tests` print no error.
+  1. From `pyside/`, `uv run pytest tests/ibkr -n auto` passes, and `uv run ruff check` and `uv run mypy --strict src tests` print no error.
   2. `test_gateways.py` has `test_two_entries_with_defaults` (host `localhost`, client id 33, market data type 1, `required` false), `test_first_entry_is_default_without_key`, `test_default_key_names_an_entry`,
-     `test_default_without_market_data_is_error` and `test_from_env_is_one_default_entry` (the existing keys give one entry named `default`, `market_data`, required; a missing port names `OT_IBKR_GATEWAY_PORT`).
+     `test_default_without_market_data_is_error`, `test_first_entry_without_market_data_and_no_default_is_error` and `test_from_env_is_one_default_entry` (the existing keys give one entry named `default`, `market_data`,
+     required; a missing port names `OT_IBKR_GATEWAY_PORT`).
   3. `test_gateways.py` has one test per failure, each asserting a `ConfigError` whose message holds the key and not the value: `test_unknown_key`, `test_no_gateway`, `test_none_required`, `test_duplicate_name`,
-     `test_duplicate_host_port_client`, `test_bad_name_slug`, `test_bad_port` (zero, text, negative), `test_bad_collect_word`, `test_empty_collect`, `test_account_shaped_like_an_id` (the shape built from two string
-     pieces at run time so no file carries it) and `test_missing_account`.
-  4. `test_gateways.py` has `test_example_file_is_valid` (reads `pyside/examples/gateways.example.toml` through `load_gateways`: two entries, one `required`).
-  5. `grep -c -E 'import (aiohttp|tomli|yaml)' pyside/src/optdesk/ibkr/gateways.py` prints 0 (tomllib only); `git diff --stat origin/main -- pyside/pyproject.toml pyside/uv.lock pyside/src/optdesk/ibkr/server.py` prints
-     nothing; `git diff --name-only origin/main` lists exactly the three files of the Files line; each source file is under 600 lines.
-  6. The result matches decisions 2, 3 and 10 and the interface part of docs/design/pyside-gateways-health.md.
+     `test_duplicate_host_port_client`, `test_bad_name_slug`, `test_bad_port` (zero, text, negative), `test_bad_collect_word`, `test_empty_collect`, `test_account_shaped_like_an_id` (the shape built from two string pieces at
+     run time so no file carries it) and `test_missing_account`; and `test_example_file_is_valid` (reads `pyside/examples/gateways.example.toml` through `load_gateways`: two entries, one `required`).
+  4. `test_health.py` has `test_all_required_connected_gives_200`, `test_a_required_down_gives_503`, `test_not_required_never_changes_the_code` (a not-required gateway up and down, with the required one up gives 200 and
+     with it down gives 503), `test_body_has_one_key_per_gateway`, `test_body_holds_no_port_host_or_alias` and `test_probe_that_raises_counts_as_down`.
+  5. `test_health.py` has `test_probes_run_concurrently` (two probes that each wait on a two-party barrier with a timeout: they pass only if both run at once) and `test_blocked_probe_counts_down_at_the_deadline` (a probe
+     blocked on an event the test sets only at the end, and a `wait` argument that returns every probe as not done at once, as the deadline would: the answer is 503 and the gateway is `false`; no sleep).
+  6. `test_health.py` has `test_other_path_is_404`, `test_other_method_is_405`, `test_listener_binds_localhost_only` (the bound address is the loopback interface, port 0 asked) and `test_stop_ends_the_thread` (after
+     `stop()` the thread is not alive and a new connection is refused), each over a real request to the started server on a port the OS chose.
+  7. `test_server.py` has `test_load_config_without_file_is_unchanged` (the existing keys give one gateway `default` on `ibkr.sock`; the existing assertions of the config tests hold for its fields),
+     `test_load_config_reads_the_file` (`OT_IBKR_GATEWAYS` in `tmp_path`; `OT_IBKR_GATEWAY_PORT` is then not required), `test_bad_health_key_names_only_the_key` (zero, text and a negative number) and
+     `test_main_exits_2_on_a_bad_gateways_file` (through `main`, with a file that has no gateway).
+  8. `test_server.py` has `test_serve_sockets_per_name_and_default` (two entries: `ibkr-<name>.sock` for each and `ibkr.sock` for the default; with no `default` key the first entry answers on it; an entry without
+     `market_data` has no socket; directory mode 0700, files 0600; a stale socket is replaced; a file that is not a socket at a socket path is a `ConfigError`), run through `serve` with `make_gateway` returning fakes, a
+     fake clock, the `stop` event and an `OT_HOME` made with `kit.sockdir.short_socket_dir`; `test_one_supervisor_per_entry` (three entries with fake gateways: each fake gets `open_session` called); and
+     `test_not_required_down_does_not_stop_the_others` (a fake whose connect always fails, a second that connects: health is 200 with that key `false`, and `serve` keeps running until `stop`).
+  9. `test_server.py` has `test_serve_starts_and_stops_health` (a `Config` with `health_port=0`; `on_ready` gives the port; a real GET of `/health` answers 200 with the required fake connected and 503 with it down; after
+     `stop` is set and `serve` returns the thread is gone and the port refuses a connection), `test_serve_without_health_port_starts_no_listener` and `test_every_gateway_gets_the_guard` (the factory is called per
+     entry and the install function passed is `install_guard`; a fake client with `send` and `sendMsg`, passed through it, refuses an order id for each of two entries).
+  10. `grep -v '^[[:space:]]*#' pyside/src/optdesk/ibkr/health.py | grep -c getfqdn` prints 0, `grep -c -E 'def log_message' pyside/src/optdesk/ibkr/health.py` prints 1, `grep -c -E '^(import|from) (aiohttp|fastapi|flask|starlette|uvicorn|tomli|yaml)' pyside/src/optdesk/ibkr/health.py pyside/src/optdesk/ibkr/gateways.py` prints 0 for each file,
+      `grep -c -E 'reqPositions|reqAccount|reqExecutions|managedAccounts' pyside/src/optdesk/ibkr/server.py` prints 0, and `grep -c -E 'OT_IBKR_GATEWAY_B' pyside/src/optdesk/ibkr/server.py pyside/tests/ibkr/test_server.py` prints 0 for each file.
+  11. `git diff origin/main --stat -- pyside/pyproject.toml pyside/uv.lock pyside/src/optdesk/ibkr/transport.py pyside/src/optdesk/ibkr/api.py contracts` prints nothing; `git diff --name-only origin/main` lists exactly the
+      seven files of the Files line; each new file and `server.py` stay under 600 lines.
+  12. The result matches decisions 1 to 13 and the interface part of docs/design/pyside-gateways-health.md, judged from the code and docs/design/pyside-gateways-health.md.
   Checked by CI: ci-pyside (ruff, mypy --strict, pytest -n auto), hygiene, and the `test` check.
-  Pull request body: `Contracts: unchanged`; no new dependency (`tomllib` is the standard library).
+  Pull request body: `Contracts: unchanged`; no new dependency (`tomllib` and `http.server` are the standard library). Size L, stated here: seven files, one module, because the pieces share their types (see `## Modules`).
   Depends on: none.
-  Size: S
-
-### pyside-health-endpoint
-
-The `/health` handler and the listener
-  Goal: `health.py` holds `render`, the server subclass and `start_health` / `HealthServer` as in decisions 6, 8, 9 and 11; `server.py` is not touched.
-  Files: pyside/src/optdesk/ibkr/health.py, pyside/tests/ibkr/test_health.py
-  Design: docs/design/pyside-gateways-health.md#decisions
-  Acceptance:
-  1. From `pyside/`, `uv run pytest tests/ibkr/test_health.py -n auto` passes, and `uv run ruff check` and `uv run mypy --strict src tests` print no error.
-  2. `test_health.py` has `test_all_required_connected_gives_200`, `test_a_required_down_gives_503`, `test_not_required_never_changes_the_code` (a not-required gateway up and down, with the required one up gives
-     200 and with it down gives 503), `test_body_has_one_key_per_gateway`, `test_probe_error_counts_as_down` (a callable that raises or exceeds the timeout gives false) and `test_body_holds_no_port_host_or_alias`.
-  3. `test_health.py` has `test_other_path_is_404`, `test_other_method_is_405`, `test_listener_binds_localhost_only` (the bound address is the loopback interface, port 0 asked) and `test_stop_ends_the_thread`
-     (after `stop()` the thread is not alive and a new connection is refused), each over a real request to the started server on a port the OS chose.
-  4. `grep -v '^[[:space:]]*#' pyside/src/optdesk/ibkr/health.py | grep -c getfqdn` prints 0, `grep -c -E 'def log_message' pyside/src/optdesk/ibkr/health.py` prints 1, and
-     `grep -c -E '^(import|from) (aiohttp|fastapi|flask|starlette|uvicorn)' pyside/src/optdesk/ibkr/health.py` prints 0.
-  5. `git diff --stat origin/main -- pyside/pyproject.toml pyside/uv.lock pyside/src/optdesk/ibkr/server.py` prints nothing, `git diff --name-only origin/main` lists exactly the two files of the Files line, and each is under 600 lines.
-  6. The result matches decisions 6 and 8 to 11 of docs/design/pyside-gateways-health.md.
-  Checked by CI: ci-pyside, hygiene, and the `test` check.
-  Pull request body: `Contracts: unchanged`; no new dependency (the standard library only).
-  Depends on: none.
-  Size: S
-
-### pyside-gateways-serve
-
-One supervisor and one socket per gateway, the health listener started by serve
-  Goal: `serve` builds one gateway and one supervisor per entry, serves the sockets of decision 4, starts the health listener over the probes of decision 8 and stops it on shutdown; `load_config` reads the file named
-  by `OT_IBKR_GATEWAYS` or, when unset, the existing keys; with neither the file key nor the health key set nothing differs from main.
-  Files: pyside/src/optdesk/ibkr/server.py, pyside/tests/ibkr/test_server.py
-  Design: docs/design/pyside-gateways-health.md#decisions
-  Acceptance:
-  1. From `pyside/`, `uv run pytest tests/ibkr/test_server.py -n auto` passes, with `uv run ruff check` and `uv run mypy --strict src tests` printing no error.
-  2. `test_server.py` has `test_load_config_without_file_is_unchanged` (the existing keys give one gateway `default` on `ibkr.sock`; the existing assertions of the config tests hold for its fields),
-     `test_load_config_reads_the_file` (`OT_IBKR_GATEWAYS` in `tmp_path`; `OT_IBKR_GATEWAY_PORT` is then not required) and `test_bad_health_key_names_only_the_key` (zero, text and a negative number).
-  3. `test_server.py` has `test_serve_sockets_per_name_and_default` (two entries: `ibkr-<name>.sock` for each and `ibkr.sock` for the default; with no `default` key the first entry answers on it; an entry without `market_data`
-     has no socket; directory mode 0700, files 0600; a stale socket is replaced; a file that is not a socket at a socket path is a `ConfigError`), run through `serve` with `make_gateway` returning fakes, a fake clock, the `stop`
-     event and an `OT_HOME` made with `kit.sockdir.short_socket_dir`.
-  4. `test_server.py` has `test_one_supervisor_per_entry` (three entries with fake gateways: each fake gets `open_session` called) and `test_not_required_down_does_not_stop_the_others` (a fake whose connect always fails, a
-     second that connects: health is 200 with that key `false`, and `serve` keeps running until `stop`).
-  5. `test_server.py` has `test_serve_starts_and_stops_health` (a `Config` with `health_port=0`; `on_ready` gives the port; a real GET of `/health` answers 200 with the required fake connected and 503 with it down;
-     after `stop` is set and `serve` returns the thread is gone and the port refuses a connection) and `test_serve_without_health_port_starts_no_listener`.
-  6. `test_server.py` has `test_every_gateway_gets_the_guard` (the factory is called per entry and the install function passed is `install_guard`; a fake client with `send` and `sendMsg`, passed through it, refuses an
-     order id for each of two entries).
-  7. `grep -c -E 'reqPositions|reqAccount|reqExecutions|managedAccounts' pyside/src/optdesk/ibkr/server.py` prints 0; `grep -c -E 'OT_IBKR_GATEWAY_B' pyside/src/optdesk/ibkr/server.py pyside/tests/ibkr/test_server.py` prints 0
-     for each file; `git diff origin/main --stat -- pyside/src/optdesk/ibkr/transport.py pyside/src/optdesk/ibkr/api.py contracts` prints nothing; `git diff --name-only origin/main` lists exactly the two files of the Files line;
-     `server.py` stays under 600 lines.
-  8. The result matches decisions 1, 3 to 8 and 11 to 13 of docs/design/pyside-gateways-health.md.
-  Checked by CI: ci-pyside, hygiene, and the `test` check.
-  Pull request body: `Contracts: unchanged`; no new dependency.
-  Depends on: pyside-gateways-config and pyside-health-endpoint. Order: after 1, 2 (`server.py` imports `gateways.py` and `health.py`).
-  Size: M
+  Size: L
 
 ### pyside-runbook-gateways
 
@@ -208,10 +182,10 @@ The runbook rewritten to this design
   4. `grep -c -F -e session_lost -e connect_failed docs/deploy/pyside.md` prints at least 2, `grep -c -i -E 'before.*(deploy|apply)' docs/deploy/pyside.md` prints at least 1 (the required gateways are logged in before the
      deploy, because the settle needs 2xx), and `grep -c -i -E 'non-2xx|until the required|Fault' docs/deploy/pyside.md` prints at least 2.
   5. `grep -c -E '/Users/|/Volumes/' docs/deploy/pyside.md` prints 0, `grep -c -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' docs/deploy/pyside.md` prints 0, and `git diff --name-only origin/main` equals the Files line.
-  6. The result matches the `## Proposed services.toml entry` and decisions 2 to 4, 6, 7 and 12 of docs/design/pyside-gateways-health.md.
+  6. The result matches the `## Proposed services.toml entry` and decisions 2 to 4, 6, 7 and 12 of docs/design/pyside-gateways-health.md, judged from the code and docs/design/pyside-gateways-health.md.
   Checked by CI: hygiene and the `test` check.
   Pull request body: `Contracts: unchanged`.
-  Depends on: pyside-gateways-serve (it documents what the entries above deliver). Order: after 3 (no shared file; the order is prose).
+  Depends on: pyside-gateways (it documents what that entry delivers). Order: after 1 (no shared file; the order is prose).
   Size: S
 
 ## Proposed services.toml entry
@@ -273,22 +247,27 @@ port is a value of the entry (it must differ from every other port on the machin
 
 Read: `adversarial-gwh.md`, kept in the dispatcher's scratchpad (not in the repository), against the commit 16b2719 of this design.
 
-1. Gap against the goal (the wiring of health in `serve` untestable, no gateway factory seam, thread shutdown unspecified). Adopted: decision 10 names `make_gateway`, `stop`, `on_ready` and `Config.health_port`
-   (a test passes 0, the environment cannot), says how the thread ends (`shutdown`, `server_close`, `join`, through `asyncio.to_thread`), and entry 2 has `test_serve_starts_and_stops_health`.
+1. Gap against the goal (the wiring of health in `serve` untestable, no gateway factory seam, thread shutdown unspecified). Adopted: decision 11 names `make_gateway`, `stop`, `on_ready` and `Config.health_port`
+   (a test passes 0, the environment cannot), says how the thread ends (`shutdown`, `server_close`, `join`, through `asyncio.to_thread`), and entry 1 has `test_serve_starts_and_stops_health`.
 2. Biggest unnamed risk (a weekly logout of A giving 503; the false claim that crew restarts). Adopted in part: decision 7 is corrected to what `health_poll.go` and `cap_host.go` do (a Fault after 3
    failures in 5 minutes, no restart; a settle that fails on non-2xx) and the entry carries `deploy = "owner"`; the runbook says to log in gateway A before the deploy. Not adopted: the reviewer's option of
    200 whenever the process is alive; the owner wants the health to reflect the gateway, so a Fault on A's logout is the wanted signal. The stale-200 risk of a wedged loop is closed by probing through the
-   loop with a timeout (decision 8); `getfqdn` and the per-poll log line are removed (decision 9). The port collision is a start error (decision 12).
+   loop with a timeout (decision 8); `getfqdn` and the per-poll log line are removed (decision 9). The port collision is a start error (decision 13).
 3. A simpler way (a body of two booleans; health reads status through callables). Adopted: decisions 6 and 8; `supervise` is not edited and the two entries share no file. The state words, generation and
    last-connect time are dropped; the log lines carry the distinction.
-4. Lock-in (socket per gateway, `B` key names, body keys). Accepted and stated in decision 3; the cost is low and a later account design can serve both sockets.
+4. Lock-in (socket per gateway, `B` key names, body keys). Accepted and stated in decision 4; the cost is low and a later account design can serve both sockets.
 5. Claims most likely false (crew restarts on a failed poll; "the runbook draft"; the 104-byte check against "nothing differs from main"). Adopted: decision 7 and the line of `## What main holds today` now say what
-   crew does and name the merged runbook; decision 12 adds no length check, so nothing differs from main for A, and the old acceptance item that refused long paths for both is gone.
+   crew does and name the merged runbook; decision 13 adds no length check, so nothing differs from main for A, and the old acceptance item that refused long paths for both is gone.
 6. Likeliest slip in the drives (numbering and order; long socket paths; the guard test; fragile name-only diff; the `boot = true` grep; the dropped `gateway` log field). Adopted: the entries are `###` items that
-   crew numbers by position, entry 2 says `Order: after 1` and entry 3 `Order: after 2`; the tests use `kit.sockdir.short_socket_dir`; the guard test uses a fake client with `send` and `sendMsg`; entry 3 says the old
+   crew numbers by position, the runbook entry says `Order: after 1`; the tests use `kit.sockdir.short_socket_dir`; the guard test uses a fake client with `send` and `sendMsg`; entry 2 says the old
    `boot` line is replaced and not quoted; decision 8 states that the `gateway` log field is dropped, with the reason. Not changed: the `git diff --name-only` check stays, since each entry names files that its change must touch.
 
 Owner decision optdesk-617 (2026-11-07), after this review: nothing about gateways is hard-coded. It replaced the fixed gateway A and gateway B of the first version: the `OT_IBKR_GATEWAY_B_*` keys, the single
 `ibkr-b.sock`, the `{"a": ..., "b": ...}` body and the "A decides health" rule are gone; the gateways, their accounts (by alias), what each collects and whether each decides health come from the file of decision 2
 (decisions 2, 4 and 6), and no file keeps today's single gateway (decision 3). Answers 1 to 3 and 5 stand with that change: the seams, the probes through the event loop, the `deploy = "owner"` entry and the
-corrected crew facts apply to every gateway; the entries are now four, ordered by `Order: after`. Account summary and position serving remains the next design.
+corrected crew facts apply to every gateway; the entries are now two (the pyside entry, then the runbook with `Order: after 1`). Account summary and position serving remains the next design.
+
+Review of PR 275 at a31ba94 (verdict of the design session, kept in the dispatcher's scratchpad): adopted. The three non-interface pyside siblings are one entry (`## Modules` says why this cut and not an interface entry);
+the probe deadline lives in `health.py`, runs all probes concurrently under one deadline and has a named test with a blocked probe and one with a barrier (decision 8); the socket-serving default must hold `market_data`,
+also when it is the first entry (decision 2, a named test); decision 13 drops the exit-status promise and `main`'s status 2 for a bad file is tested; the numbers of this section are renumbered; the last item of the entry reads
+"judged from the code and the design file".
