@@ -4,3 +4,7 @@ plugins:
     out: internal/contracts/genpb
     opt:
       - module=github.com/andrewrong/optdesk/internal/contracts/genpb
+  - local: ["go", "tool", "protoc-gen-go-grpc"]
+    out: internal/contracts/genpb
+    opt:
+      - module=github.com/andrewrong/optdesk/internal/contracts/genpb
