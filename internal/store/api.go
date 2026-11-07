@@ -88,6 +88,50 @@ type InstrumentStore interface {
 	Close() error
 }
 
+// OptionEodLatest is an underlying that has at least one option_eod row and the greatest session_day it has.
+type OptionEodLatest struct {
+	UnderlyingID int64
+	SessionDay   contracts.Day
+}
+
+// OptionEodCatalog lists the underlyings with rows of option_eod.
+type OptionEodCatalog interface {
+	// OptionEodLatest returns one entry per underlying_id with a row of session_day on or after since, ordered by
+	// UnderlyingID. since is a session_day date (YYYY-MM-DD); an empty since means no lower bound. No row gives
+	// an empty list, not an error.
+	OptionEodLatest(ctx context.Context, since contracts.Day) ([]OptionEodLatest, error)
+}
+
+// OptionEodCatalogStore is the catalog of option_eod and Close.
+type OptionEodCatalogStore interface {
+	OptionEodCatalog
+	Close() error
+}
+
+// OptionTerms is the current version of the terms of one option. Right is C or P; Strike and Multiplier are decimal text.
+type OptionTerms struct {
+	TermsVersionID, InstrumentID       int64
+	Right                              string
+	Strike, StrikeCurrency, Multiplier string
+	ExpirationDate                     contracts.Day
+	ExerciseStyle, SettlementType      string
+	ValidFrom                          time.Time
+}
+
+// OptionTermsReader reads the current terms of options by instrument id.
+type OptionTermsReader interface {
+	// OptionTerms returns the version with valid_to IS NULL of each id, ordered by InstrumentID; an id without a
+	// current version is absent from the answer; an empty list gives an empty answer; more than 500 ids is a
+	// Permanent error.
+	OptionTerms(ctx context.Context, instrumentIDs []int64) ([]OptionTerms, error)
+}
+
+// OptionTermsStore is the reader of the option terms and Close.
+type OptionTermsStore interface {
+	OptionTermsReader
+	Close() error
+}
+
 // SessionDayStore is the Reader and the Writer of master.session_day.
 type SessionDayStore interface {
 	SessionDayReader
@@ -236,6 +280,12 @@ type OpenSeriesFunc func(ctx context.Context, dsn string) (SeriesStore, error)
 
 // OpenOptionEodFunc opens the option end-of-day store (internal/store/snapshot.OpenOptionEod).
 type OpenOptionEodFunc func(ctx context.Context, dsn string) (OptionEodStore, error)
+
+// OpenOptionEodCatalogFunc opens the option end-of-day catalog (internal/store/snapshot.OpenOptionEodCatalog).
+type OpenOptionEodCatalogFunc func(ctx context.Context, dsn string) (OptionEodCatalogStore, error)
+
+// OpenOptionTermsFunc opens the option terms store (internal/store/instrument.OpenOptionTerms).
+type OpenOptionTermsFunc func(ctx context.Context, dsn string) (OptionTermsStore, error)
 
 // OpenQuoteSnapshotFunc opens the quote snapshot store (internal/store/snapshot.OpenQuoteSnapshot).
 type OpenQuoteSnapshotFunc func(ctx context.Context, dsn string) (QuoteSnapshotStore, error)

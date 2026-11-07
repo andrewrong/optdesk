@@ -76,3 +76,12 @@ const (
 // NewBackfillerWithRuleFunc is the constructor of the backfiller with an explicit
 // window rule (internal/runner/reconcile.NewBackfillerWithRule).
 type NewBackfillerWithRuleFunc func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, WindowRule) Backfiller
+
+// Windowed is the optional method of a job: the window rule of every dataset the job plans.
+// The values are plain so that a job package need not import runner. The window opens
+// openOffset after the session open and closes closeOffset after the session close; an empty
+// calendarID means the calendar of the reconciler. A job without this method gets the rule
+// the reconciler was built with.
+type Windowed interface {
+	Window() (calendarID string, openOffset, closeOffset time.Duration)
+}
