@@ -17,5 +17,5 @@ required = true
 name = "second"
 port = 2                 # replace with the port of your gateway
 account = "alias_two"
-collect = ["market_data", "account_summary", "positions"]
+collect = ["account_summary", "positions"]
 required = false

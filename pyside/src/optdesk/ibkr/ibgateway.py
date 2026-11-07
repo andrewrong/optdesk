@@ -18,7 +18,14 @@ from typing import Any
 from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
-from optdesk.ibkr.model import ChainRow, QuoteRow, ResolveResult, SessionState
+from optdesk.ibkr.accounts import read_account
+from optdesk.ibkr.model import (
+    AccountRows,
+    ChainRow,
+    QuoteRow,
+    ResolveResult,
+    SessionState,
+)
 from optdesk.ibkr.pacing import (
     DEFAULT_LINES,
     DEFAULT_SNAPSHOTS,
@@ -133,6 +140,7 @@ class IbGateway:
         self._data_type = 0
         self._jobs: set[_Job] = set()
         self._lost = asyncio.Event()
+        self._account_lock = asyncio.Lock()
 
     # --- session ----------------------------------------------------------
 
@@ -287,6 +295,23 @@ class IbGateway:
             trading_class=found.tradingClass,
             multiplier=found.multiplier,
         )
+
+    # --- account ----------------------------------------------------------
+
+    async def account(self, *, summary: bool, positions: bool) -> AccountRows:
+        """Read the summary and the positions of the one account; calls are serialized."""
+        async with self._account_lock:
+            ib, generation = self._session()
+            return await self._until_lost(
+                read_account(
+                    ib,
+                    self._pacer,
+                    self._clock,
+                    generation=generation,
+                    summary=summary,
+                    positions=positions,
+                )
+            )
 
     # --- quotes -----------------------------------------------------------
 

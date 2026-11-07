@@ -12,12 +12,14 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any, cast
 
+import grpc
 import pytest
 from kit.fakeclock import FakeClock
 from kit.sockdir import short_socket_dir
 
+from optdesk.contracts import api as pb
 from optdesk.ibkr.gateways import ConfigError, GatewaySpec
-from optdesk.ibkr.model import Gateway, SessionState
+from optdesk.ibkr.model import AccountRows, AccountValueRow, Gateway, SessionState
 from optdesk.ibkr.server import (
     BACKOFF_CAP_S,
     Config,
@@ -295,7 +297,11 @@ def test_serve_sockets_per_name_and_default() -> None:
     with short_socket_dir() as home:
         only = spec("c", 3, collect=("positions",))
         asyncio.run(
-            scenario(home, make_config(home, a, only), {"ibkr-a.sock", "ibkr.sock"})
+            scenario(
+                home,
+                make_config(home, a, only),
+                {"ibkr-a.sock", "ibkr-c.sock", "ibkr.sock"},
+            )
         )
     with short_socket_dir() as home:
         path = socket_path(home, "a")
@@ -396,3 +402,46 @@ def test_every_gateway_gets_the_guard() -> None:
         with pytest.raises(Exception):  # noqa: B017 - the guard's refusal type is its own
             client.send(3, 1)  # an order id
         assert client.sent == []
+
+
+class AccountFake(FakeGateway):
+    async def account(self, *, summary: bool, positions: bool) -> AccountRows:
+        return AccountRows(1, (AccountValueRow("Cushion", "0.5", "USD"),), ())
+
+
+def test_account_only_gateway_has_a_socket() -> None:
+    home_box: list[Path] = []
+
+    async def check(_: int | None) -> None:
+        home = home_box[0]
+        assert (home / "run" / "ibkr-b.sock").exists()
+        target = f"unix:{socket_path(home, 'b')}"
+        async with grpc.aio.insecure_channel(target) as channel:
+            reply = await pb.AccountServiceStub(channel).Account(pb.AccountRequest())
+            assert reply.account == "x" and reply.generation == 1
+            assert [v.tag for v in reply.values] == ["Cushion"]
+            with pytest.raises(grpc.aio.AioRpcError) as raised:
+                async for _ in pb.MarketDataServiceStub(channel).Snapshot(
+                    pb.SnapshotRequest()
+                ):
+                    pass
+            assert raised.value.code() == grpc.StatusCode.UNIMPLEMENTED
+
+    with short_socket_dir() as home:
+        home_box.append(home)
+        both = spec("b", 2, collect=("account_summary", "positions"))
+        config = make_config(home, spec("a", 1), both)
+        fakes = {"a": FakeGateway(), "b": AccountFake()}
+        asyncio.run(run_serve(config, fakes, check))
+
+
+def test_default_socket_still_needs_market_data() -> None:
+    async def check(_: int | None) -> None:
+        run = home_box[0] / "run"
+        assert {p.name for p in run.iterdir()} == {"ibkr-b.sock"}
+
+    home_box: list[Path] = []
+    with short_socket_dir() as home:
+        home_box.append(home)
+        only = spec("b", 2, collect=("account_summary",))
+        asyncio.run(run_serve(make_config(home, only), {"b": AccountFake()}, check))

@@ -107,3 +107,59 @@ class Gateway(Protocol):
     ) -> None:
         """Call on_quote once per contract, in the order answers complete."""
         ...
+
+
+@dataclass(frozen=True)
+class AccountValueRow:
+    """One summary figure: a tag of the fixed list, a decimal text and a currency."""
+
+    tag: str
+    value: str
+    currency: str
+
+
+@dataclass(frozen=True)
+class PositionRow:
+    """One open position, without the account it belongs to.
+
+    sec_type is the TWS word ("STK", "OPT"); quantity and avg_cost are decimal text.
+    """
+
+    sec_type: str
+    symbol: str
+    con_id: int
+    exchange: str
+    currency: str
+    expiry: str
+    strike: str
+    right: str
+    multiplier: str
+    trading_class: str
+    quantity: str
+    avg_cost: str
+
+
+@dataclass(frozen=True)
+class AccountRows:
+    """Rows of one account read in one call; a list that was not asked for is empty."""
+
+    generation: int
+    values: tuple[AccountValueRow, ...] = ()
+    positions: tuple[PositionRow, ...] = ()
+
+
+class MultipleAccounts(Exception):
+    """The login reports no account or more than one; carries no count and no id."""
+
+    word = "multiple_accounts"
+
+    def __init__(self) -> None:
+        super().__init__("the login does not report exactly one account")
+
+
+class AccountGateway(Protocol):
+    """A broker that serves the summary and the positions of its one account."""
+
+    async def account(self, *, summary: bool, positions: bool) -> AccountRows:
+        """Read the asked lists in one call; raise MultipleAccounts for a login of several."""
+        ...
