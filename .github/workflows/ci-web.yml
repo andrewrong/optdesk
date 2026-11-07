@@ -9,6 +9,7 @@ on:
       - 'pnpm-workspace.yaml'
       - '.npmrc'
       - '.github/workflows/ci-web.yml'
+      - 'contracts/schemas/**'
   push:
     branches: [main]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.npmrc'
+      - 'contracts/schemas/**'
 
 permissions:
   contents: read
@@ -49,6 +51,11 @@ jobs:
       - name: pnpm install
         if: steps.guard.outputs.run == 'true'
         run: pnpm install --frozen-lockfile
+      # Generated types are never edited by hand (AGENTS.md): regenerate and fail on any drift,
+      # tracked or untracked (docs/design/web-fixtures-vn1.md, Left out).
+      - name: type drift
+        if: steps.guard.outputs.run == 'true'
+        run: pnpm --dir web run generate:types && git diff --exit-code web/src/generated && test -z "$(git status --porcelain web/src/generated)"
       - name: tsc
         if: steps.guard.outputs.run == 'true'
         run: pnpm --dir web exec tsc --noEmit
