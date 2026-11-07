@@ -34,31 +34,32 @@ import (
 
 // deps holds the constructors the subcommands call; a test fills it with fakes.
 type deps struct {
-	newClock          clock.NewClockFunc
-	newCalendar       clock.NewCalendarFunc
-	openSessionDay    store.OpenSessionDayFunc
-	openSeries        store.OpenSeriesFunc
-	openLedger        store.OpenLedgerFunc
-	setup             store.SetupFunc
-	newFRED           sources.NewFREDFunc
-	newFredSeries     jobs.NewFredSeriesFunc
-	newRunner         runner.NewWithRuleFunc
-	newBackfiller     runner.NewBackfillerWithRuleFunc
-	dialBroker        broker.DialFunc
-	openInstrument    store.OpenInstrumentFunc
-	openOptionEod     store.OpenOptionEodFunc
-	openQuoteSnapshot store.OpenQuoteSnapshotFunc
-	openOptionCatalog store.OpenOptionEodCatalogFunc
-	openOptionTerms   store.OpenOptionTermsFunc
-	newOptionEod      jobs.NewOptionEodFunc
-	newQuoteSnapshot  jobs.NewQuoteSnapshotFunc
-	pageList          []pages.Page
-	newHandler        pages.NewHandlerFunc
-	migrateUp         func(ctx context.Context, adminDSN string, fsys fs.FS) error
-	ownerDSN          func(adminDSN string) (string, error)
-	readEnv           store.ReadEnvFunc
-	macroPage         func(zone *time.Location, buildID string) pages.Page
-	optionDataPage    func(zone *time.Location, buildID string, in sitePageInput) pages.Page
+	newClock           clock.NewClockFunc
+	newCalendar        clock.NewCalendarFunc
+	openSessionDay     store.OpenSessionDayFunc
+	openSeries         store.OpenSeriesFunc
+	openLedger         store.OpenLedgerFunc
+	setup              store.SetupFunc
+	newFRED            sources.NewFREDFunc
+	newFredSeries      jobs.NewFredSeriesFunc
+	newRunner          runner.NewWithRuleFunc
+	newBackfiller      runner.NewBackfillerWithRuleFunc
+	dialBroker         broker.DialFunc
+	openInstrument     store.OpenInstrumentFunc
+	openOptionEod      store.OpenOptionEodFunc
+	openQuoteSnapshot  store.OpenQuoteSnapshotFunc
+	openOptionCatalog  store.OpenOptionEodCatalogFunc
+	openOptionTerms    store.OpenOptionTermsFunc
+	openInstrumentName store.OpenInstrumentNameFunc
+	newOptionEod       jobs.NewOptionEodFunc
+	newQuoteSnapshot   jobs.NewQuoteSnapshotFunc
+	pageList           []pages.Page
+	newHandler         pages.NewHandlerFunc
+	migrateUp          func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	ownerDSN           func(adminDSN string) (string, error)
+	readEnv            store.ReadEnvFunc
+	macroPage          func(zone *time.Location, buildID string) pages.Page
+	optionDataPage     func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 }
 
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
@@ -67,31 +68,32 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 // newDeps returns the real constructors.
 func newDeps() deps {
 	return deps{
-		newClock:          realclock.NewReal,
-		newCalendar:       calendar.NewCalendar,
-		openSessionDay:    sessionday.Open,
-		openSeries:        series.Open,
-		openLedger:        ops.Open,
-		setup:             setup.Setup,
-		newFRED:           fred.New,
-		newFredSeries:     fredseries.New,
-		newRunner:         reconcile.NewWithRule,
-		newBackfiller:     reconcile.NewBackfillerWithRule,
-		dialBroker:        grpcbroker.Dial,
-		openInstrument:    instrument.Open,
-		openOptionEod:     snapshot.OpenOptionEod,
-		openQuoteSnapshot: snapshot.OpenQuoteSnapshot,
-		openOptionCatalog: snapshot.OpenOptionEodCatalog,
-		openOptionTerms:   instrument.OpenOptionTerms,
-		newOptionEod:      optioneod.New,
-		newQuoteSnapshot:  quotesnapshot.New,
-		pageList:          []pages.Page{macro_rates.Page()},
-		newHandler:        embed.Handler,
-		migrateUp:         setup.MigrateUp,
-		ownerDSN:          setup.OwnerDSN,
-		readEnv:           setup.ReadEnv,
-		macroPage:         newMacroPage,
-		optionDataPage:    newOptionDataPage,
+		newClock:           realclock.NewReal,
+		newCalendar:        calendar.NewCalendar,
+		openSessionDay:     sessionday.Open,
+		openSeries:         series.Open,
+		openLedger:         ops.Open,
+		setup:              setup.Setup,
+		newFRED:            fred.New,
+		newFredSeries:      fredseries.New,
+		newRunner:          reconcile.NewWithRule,
+		newBackfiller:      reconcile.NewBackfillerWithRule,
+		dialBroker:         grpcbroker.Dial,
+		openInstrument:     instrument.Open,
+		openOptionEod:      snapshot.OpenOptionEod,
+		openQuoteSnapshot:  snapshot.OpenQuoteSnapshot,
+		openOptionCatalog:  snapshot.OpenOptionEodCatalog,
+		openOptionTerms:    instrument.OpenOptionTerms,
+		openInstrumentName: instrument.OpenInstrumentNames,
+		newOptionEod:       optioneod.New,
+		newQuoteSnapshot:   quotesnapshot.New,
+		pageList:           []pages.Page{macro_rates.Page()},
+		newHandler:         embed.Handler,
+		migrateUp:          setup.MigrateUp,
+		ownerDSN:           setup.OwnerDSN,
+		readEnv:            setup.ReadEnv,
+		macroPage:          newMacroPage,
+		optionDataPage:     newOptionDataPage,
 	}
 }
 
@@ -110,8 +112,8 @@ func newMacroPage(zone *time.Location, buildID string) pages.Page {
 	return macro_page.NewPage(cfg)
 }
 
-// newOptionDataPage builds the page option_data_page of one underlying in zone; the symbol is left empty
-// because no store the page role reads holds one.
+// newOptionDataPage builds the page option_data_page of one underlying in zone; the symbol and the notes come
+// from the site.
 func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pages.Page {
 	choices := make([]option_data_page.Choice, 0, len(in.Choices))
 	for _, c := range in.Choices {
@@ -124,6 +126,8 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 		Zone:         zone,
 		UnderlyingID: in.UnderlyingID,
 		Label:        in.Label,
+		Symbol:       in.Symbol,
+		Notes:        in.Notes,
 		Eod:          in.Eod,
 		Quotes:       in.Quotes,
 		Terms:        in.Terms,

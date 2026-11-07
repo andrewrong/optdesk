@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +20,11 @@ const pagesDSNName = store.DSNEnvPages
 
 const (
 	siteRoot       = "options/data"
-	siteCatalogDay = 7 // days; the window option_data_page reads before the build day (its lookbackDays)
+	siteCatalogDay = 7  // days; the window option_data_page reads before the build day (its lookbackDays)
+	siteNameIDs    = 50 // ids of one name read
+
+	emptyStoreNote    = "No option data is stored yet; collection has not run."
+	noUnderlyingLabel = "No underlying yet"
 )
 
 // siteChoice is one underlying the page links to.
@@ -32,26 +37,29 @@ type siteChoice struct {
 type sitePageInput struct {
 	UnderlyingID int64
 	Label        string
+	Symbol       string   // the name of the underlying; empty when unknown
+	Notes        []string // texts the page shows as notes
 	Eod          store.OptionEodReader
 	Quotes       store.QuoteSnapshotReader
 	Terms        store.OptionTermsReader
 	Choices      []siteChoice
 }
 
-// siteReaders are the four readers the site builds the page from.
+// siteReaders are the five readers the site builds the page from.
 type siteReaders struct {
 	eod     store.OptionEodReader
 	quotes  store.QuoteSnapshotReader
 	catalog store.OptionEodCatalog
 	terms   store.OptionTermsReader
+	names   store.InstrumentNameReader
 }
 
-// openSiteReaders returns the demo readers with the demo profile, else the four stores opened once
+// openSiteReaders returns the demo readers with the demo profile, else the five stores opened once
 // with the one .env line of the pages role, and a function that closes them.
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
-		return siteReaders{d, d, d, d}, func() {}, nil
+		return siteReaders{d, d, d, d, d}, func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -92,7 +100,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return siteReaders{}, nil, fail
 	}
 	closers = append(closers, terms.Close)
-	rd = siteReaders{eod, quotes, catalog, terms}
+	names, err := a.deps.openInstrumentName(ctx, dsn)
+	if err != nil {
+		closeAll()
+		return siteReaders{}, nil, fail
+	}
+	closers = append(closers, names.Close)
+	rd = siteReaders{eod, quotes, catalog, terms, names}
 	return rd, closeAll, nil
 }
 
@@ -151,23 +165,74 @@ func buildSite(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd 
 	if err != nil {
 		return nil, err
 	}
-	choices := make([]siteChoice, 0, len(entries))
-	var best *store.OptionEodLatest
-	for i, e := range entries {
-		choices = append(choices, siteChoice{
-			ID: e.UnderlyingID, Label: fmt.Sprintf("Underlying %d", e.UnderlyingID),
-			Href: "/" + siteRoot + "/" + strconv.FormatInt(e.UnderlyingID, 10),
-		})
-		if best == nil || e.SessionDay > best.SessionDay || (e.SessionDay == best.SessionDay && e.UnderlyingID < best.UnderlyingID) {
-			best = &entries[i]
+	if !byID && len(entries) > 0 {
+		id = bestOf(entries)
+	}
+	label, symbol := fmt.Sprintf("Underlying %d", id), ""
+	var notes []string
+	labels := map[int64]string{}
+	if len(entries) == 0 {
+		notes = []string{emptyStoreNote}
+		if id == 0 {
+			label = noUnderlyingLabel
+		}
+	} else {
+		names, err := readSiteNames(ctx, rd.names, id, entries)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range names {
+			if n.Type != "option" && n.Name != "" {
+				labels[n.InstrumentID] = n.Name
+			}
+		}
+		if n, ok := labels[id]; ok {
+			label, symbol = n, n
 		}
 	}
-	if !byID && best != nil {
-		id = best.UnderlyingID
+	choices := make([]siteChoice, 0, len(entries))
+	for _, e := range entries {
+		l, ok := labels[e.UnderlyingID]
+		if !ok {
+			l = fmt.Sprintf("Underlying %d", e.UnderlyingID)
+		}
+		choices = append(choices, siteChoice{
+			ID: e.UnderlyingID, Label: l,
+			Href: "/" + siteRoot + "/" + strconv.FormatInt(e.UnderlyingID, 10),
+		})
 	}
 	page := a.deps.optionDataPage(a.profile.Zone, buildIDOf(version), sitePageInput{
-		UnderlyingID: id, Label: fmt.Sprintf("Underlying %d", id),
+		UnderlyingID: id, Label: label, Symbol: symbol, Notes: notes,
 		Eod: rd.eod, Quotes: rd.quotes, Terms: rd.terms, Choices: choices,
 	})
 	return page.Build(ctx, nil, day, clk.Now().UTC())
+}
+
+// bestOf is the underlying with the greatest latest day, the lowest id on a tie; entries is not empty.
+func bestOf(entries []store.OptionEodLatest) int64 {
+	best := entries[0]
+	for _, e := range entries[1:] {
+		if e.SessionDay > best.SessionDay || (e.SessionDay == best.SessionDay && e.UnderlyingID < best.UnderlyingID) {
+			best = e
+		}
+	}
+	return best.UnderlyingID
+}
+
+// readSiteNames reads, in one call, the names of the chosen id (when positive) and of the first entries,
+// at most siteNameIDs ids in all.
+func readSiteNames(ctx context.Context, r store.InstrumentNameReader, id int64, entries []store.OptionEodLatest) ([]store.InstrumentName, error) {
+	ids := make([]int64, 0, siteNameIDs)
+	if id > 0 {
+		ids = append(ids, id)
+	}
+	for _, e := range entries {
+		if len(ids) >= siteNameIDs {
+			break
+		}
+		if !slices.Contains(ids, e.UnderlyingID) {
+			ids = append(ids, e.UnderlyingID)
+		}
+	}
+	return r.InstrumentNames(ctx, ids)
 }

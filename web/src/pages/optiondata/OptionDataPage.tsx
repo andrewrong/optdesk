@@ -2,6 +2,7 @@
 import { Info, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { page } from '@/shell/page'
 import { validate, type Payload, type Result } from '@/types/option_data_page'
 import { ChainTable } from './ChainTable'
 import { QuoteChart } from './QuoteChart'
@@ -100,4 +101,9 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
       </section>
     </div>
   )
+}
+
+export const registration = {
+  schema: 'option_data_page',
+  page: page<Payload>(validateOptionDataPage, OptionDataPage),
 }

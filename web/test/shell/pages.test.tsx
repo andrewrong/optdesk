@@ -105,7 +105,8 @@ describe('discoverCards', () => {
     ).toThrow(/Duplicate page schema "x_page"/)
   })
 
-  it('registers every page file by its glob: the ten pages and the five cards are in the registry', () => {
+  // No page is explicit: all 13 schemas, option_data_page included, come from the glob of the page files.
+  it('registers every page file by its glob: no page is explicit', () => {
     for (const schema of [
       'macro_page', 'household_page', 'companies_page', 'advice_page', 'macro_summary',
       'full_scan', 'option_page', 'tracking', 'positions_page', 'structures_list',
