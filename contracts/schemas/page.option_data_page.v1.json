@@ -86,6 +86,12 @@
     },
     "stale_after": {
       "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "underlyings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/UnderlyingChoice"
+      }
     }
   },
   "required": [
@@ -110,6 +116,31 @@
     "quote_series"
   ],
   "$defs": {
+    "UnderlyingChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "href": {
+          "type": "string",
+          "pattern": "^/[A-Za-z0-9/_-]{1,100}$"
+        },
+        "current": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "href",
+        "current"
+      ]
+    },
     "Text": {
       "type": "string",
       "minLength": 1,
