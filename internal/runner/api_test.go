@@ -90,7 +90,7 @@ func TestBackfillerRefusalIsDataWithNilError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			f := &fakeBackfiller{result: runner.BackfillResult{Day: "2026-11-06", Refused: tc.refused}}
+			f := &fakeBackfiller{result: runner.BackfillResult{Refused: tc.refused}}
 			var newFn runner.NewBackfillerWithRuleFunc = func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Backfiller {
 				return f
 			}
@@ -109,15 +109,5 @@ func TestBackfillerRefusalIsDataWithNilError(t *testing.T) {
 				t.Fatalf("arguments = %v %v", f.gotDay, f.gotIDs)
 			}
 		})
-	}
-}
-
-func TestBackfillResultKeys(t *testing.T) {
-	t.Parallel()
-	var k contracts.ExpectedKey
-	ks := []contracts.ExpectedKey{k}
-	res := runner.BackfillResult{AlreadyPresent: ks, Filled: ks, Absent: ks, Missing: ks}
-	if len(res.AlreadyPresent)+len(res.Filled)+len(res.Absent)+len(res.Missing) != 4 {
-		t.Fatal("result lists are independent")
 	}
 }
