@@ -111,3 +111,42 @@ func TestBackfillerRefusalIsDataWithNilError(t *testing.T) {
 		})
 	}
 }
+
+// fakeWindowed is a job-side type: it declares its window with plain values.
+type fakeWindowed struct {
+	calendarID  string
+	openOffset  time.Duration
+	closeOffset time.Duration
+}
+
+func (f fakeWindowed) Window() (string, time.Duration, time.Duration) {
+	return f.calendarID, f.openOffset, f.closeOffset
+}
+
+var _ runner.Windowed = fakeWindowed{}
+
+func TestWindowedContract(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		job  fakeWindowed
+	}{
+		{"all set", fakeWindowed{"XNYS", time.Minute, 5 * time.Hour}},
+		{"empty calendar and negative open offset", fakeWindowed{"", -30 * time.Minute, 96 * time.Hour}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var job any = tc.job
+			w, ok := job.(runner.Windowed)
+			if !ok {
+				t.Fatal("job does not satisfy runner.Windowed")
+			}
+			cal, open, closeOff := w.Window()
+			if cal != tc.job.calendarID || open != tc.job.openOffset || closeOff != tc.job.closeOffset {
+				t.Fatalf("Window() = %q %v %v, want %q %v %v", cal, open, closeOff,
+					tc.job.calendarID, tc.job.openOffset, tc.job.closeOffset)
+			}
+		})
+	}
+}
