@@ -244,7 +244,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		if run.ReasonCode == reasonEmptyBeforeClose {
 			continue
 		}
-		if open && run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && run.ReasonCode != reasonCrashed {
+		if open && endedRetryable(run) {
 			continue
 		}
 		counted++
@@ -270,7 +270,13 @@ func lastRetryable(runs []store.Run) (store.Run, bool) {
 		return store.Run{}, false
 	}
 	last := runs[len(runs)-1]
-	return last, last.Status == store.RunDone && last.ErrorCode == string(contracts.Retryable)
+	return last, endedRetryable(last)
+}
+
+// endedRetryable reports whether a run finished with a retryable error of the job. A crashed
+// run also carries the code, but it is not a vendor answer: it keeps counting and is never expired.
+func endedRetryable(run store.Run) bool {
+	return run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && run.ReasonCode != reasonCrashed
 }
 
 // expireIfClosed makes the absence of k final when its last run ended retryable and the window

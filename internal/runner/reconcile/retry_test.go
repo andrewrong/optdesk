@@ -214,3 +214,34 @@ func TestExpiredDayCompletesCursorAdvances(t *testing.T) {
 		}
 	})
 }
+
+func TestCrashedRunIsNotExpired(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	const day = contracts.Day("2026-11-04")
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	for _, id := range []string{"2026-11-04|ds|a|1", "2026-11-04|ds|a|2"} {
+		led.runs[day] = append(led.runs[day], store.Run{
+			ID: id, Day: day, Key: keyA, Status: store.RunDone,
+			ErrorCode: string(contracts.Retryable), ReasonCode: reasonCrashed,
+		})
+	}
+	job := &scriptJob{keys: []contracts.ExpectedKey{keyA}, fn: func(contracts.Day, int) contracts.JobResult { return retryable }}
+	if err := newScriptRec(led, oneDay(), clk, job).Reconcile(ctx, day); err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, day)
+	if _, ok := present[keyA]; ok {
+		t.Fatalf("keyA = %q, want missing", present[keyA])
+	}
+	for _, r := range led.runs[day] {
+		if r.ReasonCode == "expired" {
+			t.Fatalf("crashed run %s was expired", r.ID)
+		}
+	}
+	if job.calls() != 0 || led.cursor.Day != "2026-11-03" {
+		t.Fatalf("calls=%d cursor=%s, want no run and cursor held", job.calls(), led.cursor.Day)
+	}
+}
