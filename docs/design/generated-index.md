@@ -55,7 +55,12 @@ Owner: contracts. The contract of the generated TypeScript types, replacing the 
   is new. A new schema touches no shared list in a Go test. Derivation alone would make every file fall into some set, so a new schema has a
   positive test that does not read the manifest: its `$id` is `https://optdesk.invalid/schemas/page.<name>.json` (the carried copies keep
   `https://option-trader.invalid/`). A carried copy whose manifest line was deleted therefore fails on its `$id`, and the count of 29
-  carried files and the hash of every manifest line stay as checks.
+  carried files and the hash of every manifest line stay as checks. The rule holds on the schemas derived as new, all read: on main at the head
+  they are `page.option_data_page.v1.json` and `page.macro_rates.v2.json` (added by `macro-rates-v2-schema`), and both carry
+  `https://optdesk.invalid/schemas/page.<name>.json` as `$id`, so no schema is edited by this entry; `home-page-v2-schema` adds `page.home_page.v2.json`
+  with `$id` `https://optdesk.invalid/schemas/page.home_page.v2.json` (`docs/design/home-page.md`); `report-types` adds no schema (its type comes from the
+  carried `page.report_page.v2.json`, `$id` `https://option-trader.invalid/schemas/report_page.v2.json`, in `carryover.sha256`). The 29 carried copies keep `https://option-trader.invalid/`.
+  A later new schema with another `$id` fails the test; the rule has no exemption list.
 - The v3 body checks (no `null`, every property, const and enum value) run for every `*.v3.ts` file whose schema is not in `carryover.sha256`:
   today `market_summary.v3` and `options_summary.v3`, the two named in the v3 line of `docs/contracts/page-schemas.md`. The carried
   `structure_detail.v3.ts` is not checked by that body (it is not in the v3 line, and nothing here asserts it would pass); the choice is recorded in `## Left out`.
@@ -114,18 +119,22 @@ Delete the hand-written index, make the contract tests read the directory, and m
      shell string), from the directory `web`.
   12. The diff holds the six listed files and no other, and the result matches the Interface part of `docs/design/generated-index.md`.
   ## Checked by CI
-  - ci-go runs `go test ./internal/contracts/...` with the generated files at the head (the figure is not stated: the three designs ordered before this entry add some) and passes: the v3 body runs on `market_summary.v3.ts` and `options_summary.v3.ts` only, the same two as today.
+  - ci-go runs `go test ./internal/contracts/...` with the generated files at the head (the figure is not stated: the entries ordered before this one add some) and passes: the v3 body runs on `market_summary.v3.ts` and `options_summary.v3.ts` only, the same two as today.
   - ci-web (tsc, eslint, vitest, build) passes without the index; its `type drift` step (`pnpm --dir web run generate:types`, then
     `git diff --exit-code web/src/generated` and no untracked file) passes, so the script reproduces the committed files byte for byte, and any
     generated file written by hand matches `json2ts`.
-  Depends on: home-page-v2-schema (by name, `docs/design/home-page.md`; the dispatcher rewrites it to the issue number at cut time). Order: after home-page-v2-schema.
+  Depends on: home-page-v2-schema, home-page-view, report-page-view (by name, `docs/design/home-page.md` and `docs/design/report-page.md`; the dispatcher rewrites them to the issue numbers at cut time).
+  Order: after home-page-v2-schema, home-page-view, report-page-view.
   Size: M
 
 ## Decisions
 
-- Net time: this design does not delay the three open designs (285 macro-rates-view, 286 report-page, 287 home-page). They keep their own
-  Order chain (`macro-rates-v2-schema`, then `report-types`, then `home-page-v2-schema`) and their own Files lines. This design serves the
-  designs that come after, so its one entry is ordered after `home-page-v2-schema` and never collides with them.
+- Net time: this design does not delay the three open designs (285 macro-rates-view, 286 report-page, 287 home-page) and edits none of them. They keep their own
+  Order chain and their own Files lines. The one entry is ordered after every entry it shares a file with: `home-page-v2-schema` (`index.ts`,
+  `generated_ts_test.go`, `page-schemas.md`), `home-page-view` (its `json2ts` call in the `generate:types` value of `web/package.json`; its acceptance 7 counts the
+  `page.*.json` names of that file against main, which fails once this entry has replaced the value with `node scripts/generate-types.mjs`) and
+  `report-page-view` (its acceptance 2 requires an empty diff of `web/package.json` and none of `web/src/generated/index.ts` in the diff, and its
+  files import `@/generated/report_page.v2`, which this entry's acceptance 1 greps). Cut after them, this entry takes what they added into the directory rule.
 - One entry, not three: the contract test, the deleted index and the script are one interface (see Modules).
 - Lock-in, accepted: the name rule `^[a-z0-9_]+\.v[0-9]+$` and the v3 gate of `TestGeneratedV3Types` (a `*.v3.ts` file gets the v3 checks) become
   conventions of the directory; a naming change later is a change of this interface.
@@ -136,10 +145,9 @@ Delete the hand-written index, make the contract tests read the directory, and m
 - A generated `index.ts` (same script): two designs adding a type would both rewrite the same file and conflict in git; and nothing imports it.
 - A marker key in each schema (`x-ts`): the 29 carried copies are pinned by `carryover.sha256` and cannot take one.
 - A manifest file listing the types: a shared list again.
-- Edits to the designs 285, 286 and 287: none. They keep their Order chain, their Files lines (including `index.ts`, `generated_ts_test.go`,
-  `carryover_test.go`, `web/package.json`) and their counts; the entries that land first edit the shared lists as today, and this entry,
-  ordered after them, deletes the lists and takes what the three added into the directory rule. If one of them changes the lists after this
-  entry's cut, a rebase decides.
+- Edits to the designs 285, 286 and 287: none. They keep their Order chain, their Files lines and their counts; the entries that land first edit the shared
+  lists as today, and this entry, ordered after every entry it shares a file with (`home-page-v2-schema`, `home-page-view`, `report-page-view`), deletes the lists and
+  takes what they added into the directory rule. Nothing is left to a rebase for those entries.
 - The table and the "Also `page.<name>`" paragraphs of `docs/contracts/page-schemas.md` stay, named as the residual rebase-level conflict (Interface).
 - The v3 body check on the carried `structure_detail.v3.ts`: not run, because the v3 line of `docs/contracts/page-schemas.md` does not name it and passing is not shown; the gate is the manifest, not the file name. Considered and not chosen.
 - Row `pairs` for versions other than v3 in `TestGeneratedV3Types`: that body is specific to the v3 conventions; a v2 or v1 type needs no row.
@@ -156,3 +164,4 @@ Answer: `generated-index.adversarial.md`, in the dispatcher's scratchpad.
 5. Script acceptance grepped `index` and a false premise about counts kept by other designs: adopted. The grep is `index.ts`; the premise is dropped.
 6. Design-session points (earlier finding 1, `structure_detail.v3.ts` in the v3 gate, new-schema `$id` test against the dead 'neither set' check, the figure 14): applied.
 Net time (the dispatcher's point e): adopted; the three open designs are not made to depend on this one (Decisions, Left out).
+7. Design-session points (third round: the order after `home-page-view` and `report-page-view`, and the `$id` read on main and in the designs for the schemas the rule derives as new): applied.
