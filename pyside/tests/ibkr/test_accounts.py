@@ -292,9 +292,7 @@ def account_spec(*collect: str) -> GatewaySpec:
 
 
 @asynccontextmanager
-async def serving(
-    gateway: object, *collect: str
-) -> AsyncIterator[pb.AccountServiceStub]:
+async def serving(gateway: object, *collect: str) -> AsyncIterator[grpc.aio.Channel]:
     with short_socket_dir() as directory:
         target = f"unix:{directory / 's.sock'}"
         server = build_server(
@@ -304,7 +302,7 @@ async def serving(
         await server.start()
         async with grpc.aio.insecure_channel(target) as channel:
             try:
-                yield pb.AccountServiceStub(channel)
+                yield channel
             finally:
                 await server.stop(None)
 
@@ -344,8 +342,10 @@ def test_two_accounts_refused(capture: Capture) -> None:
         rig = Rig([shape(), other_shape()])
         await rig.gateway.open_session()
         rig.fake.summary = [(shape(), "Cushion", "1", "USD")]
-        async with serving(rig.gateway, "account_summary", "positions") as stub:
-            error = await code_of(stub.Account(pb.AccountRequest()))
+        async with serving(rig.gateway, "account_summary", "positions") as channel:
+            error = await code_of(
+                pb.AccountServiceStub(channel).Account(pb.AccountRequest())
+            )
         return error, bool(rig.fake.calls)
 
     error, sent = asyncio.run(run())
@@ -371,8 +371,8 @@ def test_alias_replaces_id() -> None:
             (shape(), "SPY", 2.0, 3.5),
             (other_shape(), "QQQ", 1.0, 1.0),
         ]
-        async with serving(rig.gateway, "account_summary", "positions") as stub:
-            return await stub.Account(pb.AccountRequest())
+        async with serving(rig.gateway, "account_summary", "positions") as channel:
+            return await pb.AccountServiceStub(channel).Account(pb.AccountRequest())
 
     response = asyncio.run(run())
     assert response.account == "alias_two" and response.generation == 1
@@ -404,8 +404,12 @@ class FakeAccounts:
 
 def test_account_unimplemented_without_words() -> None:
     async def run() -> grpc.StatusCode:
-        async with serving(FakeAccounts(), "market_data") as stub:
-            return (await code_of(stub.Account(pb.AccountRequest()))).code()
+        async with serving(FakeAccounts(), "market_data") as channel:
+            return (
+                await code_of(
+                    pb.AccountServiceStub(channel).Account(pb.AccountRequest())
+                )
+            ).code()
 
     assert asyncio.run(run()) == grpc.StatusCode.UNIMPLEMENTED
 
@@ -419,8 +423,10 @@ def test_positions_empty_when_not_collected() -> None:
 
     async def run() -> tuple[pb.AccountResponse, list[tuple[bool, bool]]]:
         fake = FakeAccounts(rows)
-        async with serving(fake, "account_summary") as stub:
-            return await stub.Account(pb.AccountRequest()), fake.asked
+        async with serving(fake, "account_summary") as channel:
+            return await pb.AccountServiceStub(channel).Account(
+                pb.AccountRequest()
+            ), fake.asked
 
     response, asked = asyncio.run(run())
     assert asked == [(True, False)]
@@ -435,8 +441,10 @@ def test_account_log_has_no_values(capture: Capture) -> None:
     )
 
     async def run() -> None:
-        async with serving(FakeAccounts(rows), "account_summary", "positions") as stub:
-            await stub.Account(pb.AccountRequest())
+        async with serving(
+            FakeAccounts(rows), "account_summary", "positions"
+        ) as channel:
+            await pb.AccountServiceStub(channel).Account(pb.AccountRequest())
 
     asyncio.run(run())
     lines = [m for m in capture.messages if "rpc_" in m]
@@ -457,8 +465,10 @@ def test_account_unexpected_error_is_internal(capture: Capture) -> None:
 
     async def run() -> grpc.aio.AioRpcError:
         fake = FakeAccounts(error=ValueError(secret))
-        async with serving(fake, "account_summary") as stub:
-            return await code_of(stub.Account(pb.AccountRequest()))
+        async with serving(fake, "account_summary") as channel:
+            return await code_of(
+                pb.AccountServiceStub(channel).Account(pb.AccountRequest())
+            )
 
     error = asyncio.run(run())
     assert error.code() == grpc.StatusCode.INTERNAL

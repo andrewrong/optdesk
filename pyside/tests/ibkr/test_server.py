@@ -421,10 +421,10 @@ def test_account_only_gateway_has_a_socket() -> None:
             assert reply.account == "x" and reply.generation == 1
             assert [v.tag for v in reply.values] == ["Cushion"]
             with pytest.raises(grpc.aio.AioRpcError) as raised:
-                async for _ in pb.MarketDataServiceStub(channel).Snapshot(
+                async for item in pb.MarketDataServiceStub(channel).Snapshot(
                     pb.SnapshotRequest()
                 ):
-                    pass
+                    assert item is None
             assert raised.value.code() == grpc.StatusCode.UNIMPLEMENTED
 
     with short_socket_dir() as home:
