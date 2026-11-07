@@ -156,7 +156,7 @@ The builder fills `underlyings`, the terms and the symbol
   5. Every test calls `t.Parallel()`; `grep -c 'time.Sleep\|time.Now' internal/pages/option_data_page/*.go` prints 0; no zone literal and no `pgx`; among `internal/...` imports only `internal/pages`, `internal/contracts` and `internal/store` appear; each new file stays under 600 lines and `builder.go` stays under 800.
   6. `docs/contracts/pages.md` names the three fields and the two tests in its version history; no file outside the six listed is in the diff.
   Checked by CI: ci-go (`go build ./...`, `go test ./internal/pages/...`, golangci-lint, go-arch-lint).
-  Depends on: option-serve-interface (merged).
+  Depends on: option-serve-interface (merged). Order: after 1 (option-serve-interface; both edit internal/pages/option_data_page/builder.go).
   Size: M
 
 ### option-serve-web
