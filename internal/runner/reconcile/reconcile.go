@@ -27,6 +27,8 @@ const (
 	// reasonEmptyBeforeClose marks a finished run that came back empty before the window
 	// close: the key stays missing and the run does not count toward the two-run cap.
 	reasonEmptyBeforeClose = "empty_before_close"
+	// reasonExpired explains a key whose last run ended retryable and whose window has closed.
+	reasonExpired = "expired"
 )
 
 type reconciler struct {
@@ -193,6 +195,12 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			continue
 		}
 		closeAt := closes[k.DatasetID]
+		if last, ok := lastRetryable(byKey[k]); ok && !closeAt.IsZero() && !r.clk.Now().Before(closeAt) {
+			if err := r.expire(ctx, last, day, k); err != nil {
+				return false, err
+			}
+			continue
+		}
 		crashed, start, reason := r.nextAttempt(byKey[k], closeAt)
 		if !start {
 			complete = false
@@ -212,8 +220,8 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 	return complete, nil
 }
 
-// nextAttempt decides whether a run starts for a missing key. Runs that ended empty before
-// the window close do not count toward the cap of two (repair and crash re-run). A running
+// nextAttempt decides whether a run starts for a missing key. Runs that ended empty or
+// retryable before the window close do not count toward the cap of two (repair and crash re-run). A running
 // run with a live lease is pending: nothing starts. An expired one is returned as crashed
 // and re-run once. closeAt is the close of the key's dataset window, zero when it has none.
 func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
@@ -221,10 +229,14 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	if !closeAt.IsZero() && now.After(closeAt) {
 		reason = reasonLate
 	}
+	open := !closeAt.IsZero() && now.Before(closeAt)
 	counted := 0
 	var running *store.Run
 	for i, run := range runs {
 		if run.ReasonCode == reasonEmptyBeforeClose {
+			continue
+		}
+		if open && run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && run.ReasonCode != reasonCrashed {
 			continue
 		}
 		counted++
@@ -242,6 +254,24 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 		return nil, true, reason
 	}
 	return nil, false, ""
+}
+
+// lastRetryable returns the last run of a key when it is done with a retryable error.
+func lastRetryable(runs []store.Run) (store.Run, bool) {
+	if len(runs) == 0 {
+		return store.Run{}, false
+	}
+	last := runs[len(runs)-1]
+	return last, last.Status == store.RunDone && last.ErrorCode == string(contracts.Retryable)
+}
+
+// expire makes the absence of k final: no_value, with the last run explained as expired.
+func (r *reconciler) expire(ctx context.Context, last store.Run, day contracts.Day, k contracts.ExpectedKey) error {
+	last.ReasonCode = reasonExpired
+	if err := r.ledger.RecordRun(ctx, last); err != nil {
+		return err
+	}
+	return r.ledger.MarkPresent(ctx, day, k, store.StatusNoValue)
 }
 
 func (r *reconciler) markCrashed(ctx context.Context, run store.Run) error {
