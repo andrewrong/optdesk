@@ -37,13 +37,16 @@ func newQuoteDatabase(t *testing.T) string {
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
 		}
+		verb := "ALTER"
 		if !have {
-			if _, err := admin.Exec(ctx, "CREATE ROLE "+r+" LOGIN PASSWORD '"+rolePassword+"'"); err != nil {
-				t.Fatalf("create role %s: %v", r, err)
-			}
+			verb = "CREATE"
+		}
+		if _, err := admin.Exec(ctx, verb+" ROLE "+r+" LOGIN PASSWORD '"+rolePassword+"'"); err != nil {
+			t.Fatalf("%s role %s: %v", strings.ToLower(verb), r, err)
 		}
 	}
-	_, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
+	// The lock stays held until the admin connection closes in t.Cleanup: TestSetupPG changes the passwords of
+	// these roles under the same lock.
 	suffix := make([]byte, 6)
 	if _, err := rand.Read(suffix); err != nil {
 		t.Fatal(err)
