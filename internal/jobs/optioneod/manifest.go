@@ -1,0 +1,150 @@
+package optioneod
+
+import (
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+	// The zone database is embedded so that a zone name loads on every machine.
+	_ "time/tzdata"
+
+	"github.com/pelletier/go-toml/v2"
+)
+
+const (
+	defaultZone        = "America/New_York"
+	defaultFreezeAfter = "1615"
+	defaultLateness    = 5
+	defaultIncrement   = "0.01"
+	defaultMaxExpiries = 3
+	defaultBand        = 0.10
+	defaultPerSide     = 8
+	defaultChunk       = 50
+	defaultBudget      = 8
+)
+
+type window struct {
+	Rule          string `toml:"rule"`
+	LatenessHours *int   `toml:"lateness_hours"`
+	Calendar      string `toml:"calendar"`
+}
+
+type underlying struct {
+	Symbol         string `toml:"symbol"`
+	SecType        string `toml:"sec_type"`
+	Exchange       string `toml:"exchange"`
+	Currency       string `toml:"currency"`
+	ConID          int64  `toml:"con_id"`
+	MIC            string `toml:"mic"`
+	CalendarID     string `toml:"calendar_id"`
+	PriceIncrement string `toml:"price_increment"`
+	LotSize        string `toml:"lot_size"`
+}
+
+type manifest struct {
+	Version              int          `toml:"version"`
+	ID                   string       `toml:"id"`
+	Zone                 string       `toml:"zone"`
+	Window               window       `toml:"window"`
+	MaxExpiries          int          `toml:"max_expiries"`
+	StrikeBand           float64      `toml:"strike_band"`
+	MaxStrikesPerSide    int          `toml:"max_strikes_per_side"`
+	Chunk                int          `toml:"chunk"`
+	BudgetMinutes        int          `toml:"budget_minutes"`
+	FreezeAfter          string       `toml:"freeze_after"`
+	OptionPriceIncrement string       `toml:"option_price_increment"`
+	Underlying           []underlying `toml:"underlying"`
+}
+
+// parseManifest decodes data and gives every missing optional key its default.
+func parseManifest(data []byte) (manifest, error) {
+	var m manifest
+	if err := toml.Unmarshal(data, &m); err != nil {
+		return manifest{}, fmt.Errorf("optioneod: manifest: %w", err)
+	}
+	if m.ID == "" || len(m.Underlying) == 0 {
+		return manifest{}, fmt.Errorf("optioneod: manifest needs an id and an underlying")
+	}
+	m.applyDefaults()
+	if err := m.validate(); err != nil {
+		return manifest{}, err
+	}
+	sort.Slice(m.Underlying, func(i, j int) bool { return m.Underlying[i].Symbol < m.Underlying[j].Symbol })
+	return m, nil
+}
+
+func (m *manifest) applyDefaults() {
+	if m.Zone == "" {
+		m.Zone = defaultZone
+	}
+	if m.Window.Rule == "" {
+		m.Window.Rule = "after_close"
+	}
+	if m.Window.LatenessHours == nil {
+		v := defaultLateness
+		m.Window.LatenessHours = &v
+	}
+	if m.MaxExpiries == 0 {
+		m.MaxExpiries = defaultMaxExpiries
+	}
+	if m.StrikeBand == 0 {
+		m.StrikeBand = defaultBand
+	}
+	if m.MaxStrikesPerSide == 0 {
+		m.MaxStrikesPerSide = defaultPerSide
+	}
+	if m.Chunk == 0 {
+		m.Chunk = defaultChunk
+	}
+	if m.BudgetMinutes == 0 {
+		m.BudgetMinutes = defaultBudget
+	}
+	if m.FreezeAfter == "" {
+		m.FreezeAfter = defaultFreezeAfter
+	}
+	if m.OptionPriceIncrement == "" {
+		m.OptionPriceIncrement = defaultIncrement
+	}
+}
+
+func (m manifest) validate() error {
+	if m.MaxExpiries < 0 || m.MaxStrikesPerSide < 0 || m.Chunk < 0 || m.BudgetMinutes < 0 || m.StrikeBand < 0 {
+		return fmt.Errorf("optioneod: manifest: counts and the band must not be negative")
+	}
+	if _, err := time.LoadLocation(m.Zone); err != nil {
+		return fmt.Errorf("optioneod: manifest: zone is unknown")
+	}
+	if _, err := parseHHMM(m.FreezeAfter); err != nil {
+		return fmt.Errorf("optioneod: manifest: freeze_after must be HHMM")
+	}
+	for _, u := range m.Underlying {
+		if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
+			return fmt.Errorf("optioneod: manifest: an underlying needs symbol, con_id and currency")
+		}
+	}
+	return nil
+}
+
+// parseHHMM reads "HHMM" as minutes after midnight.
+func parseHHMM(s string) (int, error) {
+	if len(s) != 4 {
+		return 0, fmt.Errorf("bad time")
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 || n/100 > 23 || n%100 > 59 {
+		return 0, fmt.Errorf("bad time")
+	}
+	return n/100*60 + n%100, nil
+}
+
+// canonical is a deterministic text of every setting, for the plan hash.
+func (m manifest) canonical() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d|%s|%s|%s|%d|%s|%d|%g|%d|%d|%d|%s|%s", m.Version, m.ID, m.Zone, m.Window.Rule, *m.Window.LatenessHours,
+		m.Window.Calendar, m.MaxExpiries, m.StrikeBand, m.MaxStrikesPerSide, m.Chunk, m.BudgetMinutes, m.FreezeAfter, m.OptionPriceIncrement)
+	for _, u := range m.Underlying {
+		fmt.Fprintf(&b, "\n%+v", u)
+	}
+	return b.String()
+}

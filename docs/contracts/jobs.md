@@ -29,9 +29,14 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 - The window rule is carried, not applied; the runner hookup belongs to the follow-up design.
 - The package imports contracts, clock, sources, store and the `jobs` root only.
 
+## option_eod
+
+`optioneod.New(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock)` builds the job `option_eod` (type `jobs.NewOptionEodFunc`) from its embedded `job.toml`; the design is `docs/design/option-jobs.md`. `Plan` gives one key `{obs.option_eod, SYMBOL}` per `[[underlying]]`, sorted, and a hash of the day and every manifest setting. A `Run` of one key: a `day` other than the day of the clock in the manifest `zone` is `NoValue` with "wrong day" and nothing else happens; before `freeze_after` (default 1615) it answers an empty result with a nil error and calls no port. Otherwise it takes the underlying's price (`Last`, else `Close`, else `UndPrice` of one `Snapshot(KindSnapshot)`; none is `Retryable`), selects from the chain the nearest `max_expiries` expirations on or after the day and the strikes inside the `strike_band` with at most `max_strikes_per_side` per side (an empty selection is `Permanent`), resolves each pair with `ResolveContract` (a pair not listed gets no row), resolves the instrument ids (the option with the 21-character `osi` identifier) and asks `Snapshot(KindOptionEod)` in chunks of `chunk`, writing the rows of a chunk before the next. The clock is read before every broker call; once `budget_minutes` (default 8) have passed the run stops with `Retryable` and keeps the rows written. All rows of a key carry one deterministic `capture_id`, `uuid.NewSHA1(uuid.NameSpaceOID, day|dataset|subject)`, and `snapshot_kind` `eod`. Status: OK and PARTIAL 1, NO_DATA 2, NO_SUBSCRIPTION, TIMEOUT, ERROR and DISCONNECTED 5 with the IBKR code or the status name as `error_code`. `Returned` is the rows written, `Usable` those of status 1; a writer error is `Retryable` with `Usable` 0. Errors of the broker and the resolver keep their kind, an untyped one is `Permanent`. The `[window]` lateness defaults to 5 hours and is answered by `Window()`.
+
 ## Version history
 
 - v1: `fred_series`, manifest version 1.
+- v1: `option_eod`, manifest version 1.
 
 ## Contract tests
 
@@ -39,6 +44,7 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 - `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
 - `internal/jobs/fredseries/window_test.go`: `TestWindowOf`, `TestWindowErrors`, `TestEmbeddedWindow`.
 - `internal/jobs/fredseries/run_test.go`: `TestRunWritesOnce`, `TestPlanLateRunRecovery`.
+- `internal/jobs/optioneod`: `TestPlan`, `TestManifestDefaults`, `TestSelect`, `TestRunWritesRows`, `TestCaptureIDStable`, `TestNotListed`, `TestBudget`, `TestGuards`, `TestErrors`.
 
 There is no test yet: the wrapping of an untyped fetch error as `Permanent` and the `Retryable` kind of a failed `InsertSeriesPoints` have no test (the fake writer never fails and no test gives the source an untyped error).
 
