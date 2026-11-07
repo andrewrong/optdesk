@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/ledger_page'
-import { figure, rowOf, withDetail } from './cells'
+import { columnsOf, figure, rowOf, withDetail } from './cells'
 import { SectionTables } from './SectionTables'
 
 export function View({ payload }: { payload: Payload }) {
@@ -71,13 +71,13 @@ export function View({ payload }: { payload: Payload }) {
             {share.note ? <p className="text-sm">{share.note}</p> : null}
             {share.rows.length > 0 ? (
               <DataTable
-                columns={[0, 1, 2].map((i) => ({ id: `c${i}`, label: '' }))}
+                columns={columnsOf([], 3)}
                 rows={share.rows.map((row) => rowOf(row.cells.map(figure)))}
               />
             ) : null}
             {share.sales.length > 0 ? (
               <DataTable
-                columns={[0, 1, 2, 3].map((i) => ({ id: `c${i}`, label: '' }))}
+                columns={columnsOf([], 4)}
                 rows={share.sales.map((sale) => rowOf(withDetail(sale.cells, sale.detail)))}
               />
             ) : null}
