@@ -20,6 +20,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.full_scan.v1 | 1 |
 | page.held_companies_summary.v1 | 1 |
 | page.home_page.v1 | 1 |
+| page.home_page.v2 | 2 |
 | page.household_page.v1 | 1 |
 | page.household_risk.v1 | 1 |
 | page.household_summary.v1 | 1 |
@@ -86,5 +87,6 @@ Invariants of the carried files:
 
 - v1: the 29 carried schemas (`page.macro_rates.v1` was added before them), the manifest and the fixture validation test.
 - v2 line: `common.v1` is added; the `page.<name>.v2.json` files of the five summaries and `home_page` are added by later issues, and the existing files are unchanged.
+- `page.home_page.v2` composes the five summary files by `$ref`: `page.household_summary.v2`, `page.held_companies_summary.v2` and `page.macro_summary.v2` (v2), `page.market_summary.v3` and `page.options_summary.v3` (v3). `BlockLink` is `{href, text}`.
 - v2 TypeScript types: the types of `page.market_summary.v2` and `page.options_summary.v2` are generated into `web/src/generated/` by the web script `generate:types` (`json-schema-to-typescript` 16.0.0), not by `contracts/generate.sh`; fixtures `web/fixtures/market-summary` and `web/fixtures/options-summary` are checked against these files.
 - v3 line: `common.v2`, `page.market_summary.v3` and `page.options_summary.v3` are added (tagged unions with a required `kind` on every figure and gap, `is_stale` set by the producer, lower snake case units, no `null`); the v2 files and `common.v1` are unchanged. Their types are generated into `web/src/generated/*.v3.ts` by `generate:types`; fixtures are in `web/fixtures/v3/`.

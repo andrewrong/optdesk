@@ -1,0 +1,142 @@
+{
+  "$defs": {
+    "BlockLink": {
+      "additionalProperties": false,
+      "description": "A link the home page shows: the path it goes to and its words.",
+      "properties": {
+        "href": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^/",
+          "title": "Href",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "href",
+        "text"
+      ],
+      "title": "BlockLink",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.home_page.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034), the home texts and links, and the five summary pages as members.",
+  "properties": {
+    "schema": {
+      "const": "home_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v1.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "stale_after": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "run_status": {
+      "$ref": "common.v1.json#/$defs/RunStatus"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "say": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Say",
+      "type": "string"
+    },
+    "gap_line": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Gap Line",
+      "type": "string"
+    },
+    "block_links": {
+      "items": {
+        "$ref": "#/$defs/BlockLink"
+      },
+      "maxItems": 10,
+      "title": "Block Links",
+      "type": "array"
+    },
+    "report_links": {
+      "items": {
+        "$ref": "#/$defs/BlockLink"
+      },
+      "maxItems": 10,
+      "title": "Report Links",
+      "type": "array"
+    },
+    "household": {
+      "$ref": "page.household_summary.v2.json"
+    },
+    "companies": {
+      "$ref": "page.held_companies_summary.v2.json"
+    },
+    "macro": {
+      "$ref": "page.macro_summary.v2.json"
+    },
+    "market": {
+      "$ref": "page.market_summary.v3.json"
+    },
+    "options": {
+      "$ref": "page.options_summary.v3.json"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "say",
+    "gap_line",
+    "block_links",
+    "report_links",
+    "household",
+    "companies",
+    "macro",
+    "market",
+    "options"
+  ],
+  "title": "HomePage",
+  "type": "object"
+}
