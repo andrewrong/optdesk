@@ -53,7 +53,10 @@ The page is already served from the store, not from demo data. The gap is smalle
    deploy harmless (the insert is refused, the option is still made, the page shows the gap), but terms are then missing for those options and
    are not written later (point 5), so the order is: `ot migrate`, then the new `ot` binary.
 4. Defaults for the two columns the jobs cannot know: `exercise_style` and `settlement_type` are the text `unknown`; `strike_currency` and
-   `multiplier` come from the spec (`Currency`, `LotSize`). Nothing shows these two. The grant is `INSERT` only, so a later correction of
+   `multiplier` come from the spec (`Currency`, `LotSize`). Nothing shows these two. The grant is `INSERT` plus `SELECT (instrument_id, valid_to)`: the insert carries
+   `ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING`, so a retried resolve is not an error and no other unique violation is
+   swallowed, and PostgreSQL needs SELECT on the arbiter and predicate columns at plan time (probed on PostgreSQL 14: with INSERT only the
+   targeted form is refused even when no conflict fires). The role reads no terms value. A later correction of
    `unknown` needs a later writer with its own grant; today nobody closes or replaces a terms row.
 5. First seen only, no backfill. Option instruments that exist already get no terms row: the database holds no collected option data yet, so
    a SQL parse and its failure surface are not worth it. An option made before this lands keeps the gap values.
@@ -144,7 +147,7 @@ Checked by CI: the migration Up and Down against PostgreSQL (the `pg` tests of `
 
 ### option-terms-written
 
-Module: store. This issue carries a grant (`INSERT` on `master.option_terms` to the role `ot_w_master`, which already writes `master.instrument`; no new role, no new schema right): its issue carries the waiver lines (advisor answers, the owner merges).
+Module: store. This issue carries a grant (`INSERT` and `SELECT (instrument_id, valid_to)` on `master.option_terms` to the role `ot_w_master`, which already writes `master.instrument`; no new role, no new schema right): its issue carries the waiver lines (advisor answers, the owner merges).
 
 Files: migrations/0011_option_terms_writer.sql, internal/store/instrument/resolve.go, internal/store/instrument/osi.go, internal/store/instrument/osi_test.go, internal/store/instrument/resolve_test.go, internal/store/instrument/terms_pg_test.go, internal/store/migrate/migrate_test.go, docs/contracts/store.md
 
@@ -159,7 +162,7 @@ Acceptance:
 3. With a fake database whose terms insert returns an error, the call returns the id and a nil error, the transaction runs `ROLLBACK TO SAVEPOINT` and commits, and the instrument and identifier inserts were run; `TestResolveTermsFailureKeepsInstrument`.
 4. With a fake database, no terms statement runs for: an existing key, a type other than `option`, an option with no `osi` extra, an `osi` that does not parse; in the last three the instrument is created and the error is nil; `TestResolveNoTerms`.
 5. Collision case, `TestResolveOsiCollision`: a second option whose `osi` already names another instrument (same symbol, expiry, right and strike, a different key, as an SPX and an SPXW option or an adjusted option give, because the job's `osiSymbol` ignores the trading class) returns a `Permanent` error as today, writes nothing, and runs no terms statement. This design does not change that behaviour (`## Left out`).
-6. `migrations/0011_option_terms_writer.sql` has an Up part that grants `INSERT` on `master.option_terms` to `ot_w_master` and nothing else, and a Down part that revokes it. `internal/store/migrate/migrate_test.go` ends with 0011 (the tests changed by 1 of the interface issue are changed again); `go test ./internal/store/... -count=1 -race` passes.
+6. `migrations/0011_option_terms_writer.sql` has an Up part that grants `INSERT` and `SELECT (instrument_id, valid_to)` on `master.option_terms` to `ot_w_master` and nothing else, and a Down part that revokes both; the terms insert carries `ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING`. `internal/store/migrate/migrate_test.go` ends with 0011 (the tests changed by 1 of the interface issue are changed again); `go test ./internal/store/... -count=1 -race` passes.
 7. `terms_pg_test.go` (build tag `pg`): its helper `newTermsDatabase` applies only 0009 today; it applies 0010 and 0011 as well, and the file gains `TestResolveWritesTermsPG` (a new option resolved by the role `ot_w_master` has a current terms row the page reader returns). `go vet -tags pg ./internal/store/instrument` passes offline.
 8. `docs/contracts/store.md` states the side effect of `ResolveInstrument`, the two defaults, the savepoint, the grant, the order "migrate before deploying the code" and a version line `v9`.
 9. `internal/store/api.go` does not change (`git diff --stat origin/main -- internal/store/api.go` prints nothing); every file stays under 600 lines.
