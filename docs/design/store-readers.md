@@ -52,10 +52,8 @@ Table (migration 0009, owner: store): the owner's schema v3 `master.option_terms
 
 ```sql
 master.option_terms(terms_version_id bigint generated always as identity PRIMARY KEY, -- addition: v3 says only "bigint PK"; identity is what master.instrument uses
- 
   instrument_id bigint NOT NULL REFERENCES master.instrument(instrument_id),
   right char(1) NOT NULL CHECK (right IN ('C','P')), -- addition: v3 gives no codes for the column
- 
   strike numeric NOT NULL, strike_currency char(3) NOT NULL, multiplier numeric NOT NULL,
   expiration_date date NOT NULL, exercise_style text NOT NULL, settlement_type text NOT NULL,
   valid_from timestamptz NOT NULL, valid_to timestamptz)
