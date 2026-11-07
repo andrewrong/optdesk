@@ -4,6 +4,8 @@
 
 The only module that opens the database. `store.SessionDayWriter` upserts and `store.SessionDayReader` reads `master.session_day r1` rows; `sessionday.Open` returns both with `Close` as a `store.SessionDayStore`. `internal/store/migrate` applies goose SQL migrations from an `fs.FS` the caller supplies; it embeds none.
 
+`internal/store/snapshot` holds the Reader and the Writer of two append-only datasets, `obs.option_eod r1` (one option contract on one session day, frozen after the close) and `obs.quote_snapshot r1` (a planned time slot of quotes). Neither can be obtained again once the day has gone, so both tables are permanent. `snapshot.OpenOptionEod` returns a `store.OptionEodStore` and `snapshot.OpenQuoteSnapshot` a `store.QuoteSnapshotStore`, each with `Close`.
+
 ## Inputs
 
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.
@@ -11,10 +13,15 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - A connection string to `sessionday.Open`; a `*sql.DB` and an `fs.FS` of SQL files to `migrate`.
 - The administrative DSN and an `fs.FS` of SQL files to `setup.MigrateUp`, which applies them as `ot_owner`; the administrative DSN to `setup.OwnerDSN`, which returns the DSN of the database `optdesk` whose login sets the role `ot_owner`, for `sessionday.Open`.
 - `setup.ReadEnv` reads a `$OT_HOME/.env` file; `store.DSNEnvLoader` (`OT_PG_DSN_LOADER`) names the line that holds the DSN of `ot_loader`.
+- `contracts.OptionEod` rows to `InsertOptionEod` (key `session_day`, `capture_id`, `instrument_id`); `contracts.QuoteSnapshot` rows to `InsertQuoteSnapshots` (key `session_day`, `capture_id`, `slot`, `instrument_id`).
+- An underlying id and two `contracts.Day` values to `OptionEod`; an instrument id and two `contracts.Day` values to `QuoteSnapshots`.
+- A connection string to `snapshot.OpenOptionEod` and to `snapshot.OpenQuoteSnapshot`; `store.DSNEnvOptionEod` (`OT_PG_DSN_OPTION_EOD`) and `store.DSNEnvQuoteSnapshot` (`OT_PG_DSN_QUOTE_SNAPSHOT`) name the lines that hold the DSNs of `ot_w_option_eod` and `ot_w_quote_snapshot`.
 
 ## Outputs
 
 - `SessionDays` returns the rows of the calendar with `session_day` between the two days, both ends inclusive, ordered by `session_day`; instants are in UTC; no rows gives an empty slice.
+- `OptionEod` returns the rows of the underlying with `session_day` between the two days, both ends inclusive, ordered by `session_day`, `instrument_id` and `capture_id`; `QuoteSnapshots` returns the rows of the instrument in the same range ordered by `session_day`, `slot` and `capture_id`; instants are in UTC; no rows gives an empty slice. Every capture of a key is returned, because the views pass every row through.
+- The views `rd.option_eod_r1` and `rd.quote_snapshot_r1` name every column of their table and return every row; `ot_runner` and `ot_ro_pages` have SELECT on them, and `ot_ro_pages` has no grant on a base table.
 - Errors are `contracts.TypedError`: `Retryable` when the database fails, `Permanent` for a malformed day.
 
 ## Invariants
@@ -22,6 +29,12 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `UpsertSessionDays` is `ON CONFLICT (calendar_id, session_day) DO UPDATE`, runs in one transaction (all rows or none), and does nothing for an empty input.
 - The caller's context is passed to every database call.
 - The SQL names the six columns of the table and never uses `SELECT *`.
+- `obs.option_eod` and `obs.quote_snapshot` are append-only: the insert is `ON CONFLICT DO NOTHING` in one transaction per call, no database call is made for an empty input, and no role but the owner may UPDATE, DELETE or TRUNCATE. A retry of the same capture (same `capture_id` and instrument) adds no row and keeps the first one; a better observation is a new capture with a new `capture_id`, a different key that the first never blocks.
+- Sentinel rule, per column: the writer stores NULL for -1, NaN or an infinity in any numeric column, `delta` and `theta_per_calendar_day` included (a real -1.0 is lost), keeps the `status` the caller set and the other columns of the row, and never rejects a row as a whole. The migration's CHECKs repeat the rule: no NaN or infinity anywhere, no -1 in IV, gamma and vega, and prices, sizes, volume, open interest and underlying price at least 0; `delta` and `theta_per_calendar_day` allow -1 in the CHECK.
+- `ot_w_option_eod` and `ot_w_quote_snapshot` (LOGIN, made by `setup.Setup`) each have `USAGE` on schemas `obs` and `ops`, `INSERT` on their own table only and `SELECT, REFERENCES` on `ops.capture_run` (`migrations/0006_option_eod.sql`, `migrations/0007_quote_snapshot.sql`), plus CONNECT on the database. They have no SELECT on their table and no write on `ops`: no UPDATE, DELETE or TRUNCATE anywhere.
+- `ops.dataset_window` needs no row of its own for the two datasets: `PutWindow` writes it for a dataset as soon as a job plans a key with its `DatasetID`, and no migration seeds it.
+- `capture_id` is a uuid with no foreign key yet; `underlying_id`, `instrument_id` and `terms_version_id` are plain `bigint`.
+- On a database made before `0006`, `ot setup pg` must run before `ot migrate`: `0006` and `0007` fail when the role `ot_w_option_eod` or `ot_w_quote_snapshot` is missing. Both tables are hypertables and need the timescaledb extension that `Setup` creates.
 - `session_day` is the market-zone date, not a UTC date.
 - Only files under `internal/store/` import pgx.
 - `setup.MigrateUp` runs `SET ROLE ot_owner` as the first statement of its one connection, then `SET search_path TO meta` and `CREATE SCHEMA IF NOT EXISTS meta`; the goose version table is `meta.goose_db_version`, owned by `ot_owner`. Its errors for a parse, connect, role or schema step are of fixed text and hold no DSN.
@@ -39,12 +52,16 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - v2: `ot_runner` may read `master.session_day` (migration 0004).
 - v3: `setup.MigrateUp` and `setup.OwnerDSN`: migrations and a session-day store as `ot_owner` from the administrative DSN; no new role, grant or credential.
 - v4: role `ot_loader` with the grants above and the new line `OT_PG_DSN_LOADER` in `$OT_HOME/.env`; `Setup` touches no other line of `.env`.
+- v5: migrations `0006` (`obs.option_eod`, `rd.option_eod_r1`) and `0007` (`obs.quote_snapshot`, `rd.quote_snapshot_r1`); roles `ot_w_option_eod` and `ot_w_quote_snapshot` with the grants above and the new lines `OT_PG_DSN_OPTION_EOD` and `OT_PG_DSN_QUOTE_SNAPSHOT` in `$OT_HOME/.env`; `Setup` touches no other line of `.env`; `snapshot.OpenOptionEod` and `snapshot.OpenQuoteSnapshot`; no change to an existing dataset.
 
 ## Contract tests
 
 - `internal/store/api_test.go`: the interface from both sides.
 - `internal/store/sessionday/sessionday_test.go`: SQL strings, transaction, empty input, context, range and order against an in-test fake.
 - `internal/store/sessionday/sessionday_pg_test.go` (build tag `pg`): the round trip through the real Writer and Reader on a database of its own.
+- `internal/store/api_test.go`: `TestOptionEodStoreContract`, `TestQuoteSnapshotStoreContract` and `TestSnapshotDSNEnvNames` hold both stores and the two line names from both sides.
+- `internal/store/snapshot/optioneod_test.go`, `quotesnapshot_test.go` and `screen_test.go`: `TestInsertSQL`, `TestInsertScreensSentinels`, `TestReaderRangeAndOrder`, `TestQuoteInsertSQL`, `TestQuoteInsertScreensSentinels`, `TestQuoteReaderRangeAndOrder` and `TestScreenSentinel` (SQL strings, transaction, empty input, context, sentinels, range and order, against an in-test fake).
+- `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
 
 ## Jobs and slots
