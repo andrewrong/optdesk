@@ -75,6 +75,7 @@ func readManifest(t *testing.T) map[string]string {
 // pageNewFiles names the schemas written in this repository after the carried copies; they are not in carryover.sha256.
 var pageNewFiles = []string{
 	"page.option_data_page.v1.json",
+	"page.macro_rates.v2.json",
 }
 
 func carriedFiles(t *testing.T) []string {
