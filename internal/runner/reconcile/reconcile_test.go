@@ -144,12 +144,16 @@ func TestCursorHoldsOnGap(t *testing.T) {
 	if len(led.runs["2026-11-04"]) != 1 {
 		t.Fatalf("runs = %d, want exactly one repair run", len(led.runs["2026-11-04"]))
 	}
-	// Another pass starts no further run: the gap stays.
+	// Another pass starts no further run on 11-04: the window has closed, so the absence is
+	// expired (no_value) and the cursor passes it; 11-05 gets its one repair run and holds.
 	if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
 		t.Fatal(err)
 	}
-	if len(led.runs["2026-11-04"]) != 1 || led.cursor.Day != "2026-11-03" {
-		t.Fatal("gap was retried or cursor moved")
+	if len(led.runs["2026-11-04"]) != 1 || led.runs["2026-11-04"][0].ReasonCode != "expired" || led.cursor.Day != "2026-11-04" {
+		t.Fatalf("runs=%+v cursor=%s, want the one run expired and cursor 2026-11-04", led.runs["2026-11-04"], led.cursor.Day)
+	}
+	if len(led.runs["2026-11-05"]) != 1 {
+		t.Fatalf("runs on 11-05 = %d, want one", len(led.runs["2026-11-05"]))
 	}
 	// A clean ledger advances over both days.
 	led2 := newLedger()
