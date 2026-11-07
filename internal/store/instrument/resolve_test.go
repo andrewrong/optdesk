@@ -308,7 +308,7 @@ func TestResolveOptionTerms(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{"'unknown', 'unknown'", "ON CONFLICT DO NOTHING"} {
+	for _, want := range []string{"'unknown', 'unknown'", "ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING"} {
 		if !strings.Contains(insertTermsSQL, want) {
 			t.Fatalf("terms insert lacks %q", want)
 		}
@@ -385,5 +385,26 @@ func TestResolveOsiCollision(t *testing.T) {
 	}
 	if !reflect.DeepEqual(f.events, []string{"begin", "rollback"}) {
 		t.Fatalf("events %v", f.events)
+	}
+}
+
+func TestResolveOptionTermsTargetedConflict(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	osi := store.Identifier{Scheme: "osi", Value: "SPX   261218C05000000"}
+	if _, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{osi}); err != nil {
+		t.Fatal(err)
+	}
+	var termsSQL string
+	for i, q := range f.stmts {
+		if q == insertTermsSQL {
+			termsSQL = q
+			if want := []any{int64(101), "C", "5000", "USD", "100", "2026-12-18"}; !reflect.DeepEqual(f.args[i], want) {
+				t.Fatalf("terms args %v, want %v", f.args[i], want)
+			}
+		}
+	}
+	if !strings.Contains(termsSQL, "ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING") {
+		t.Fatalf("terms insert lacks the targeted conflict clause: %s", termsSQL)
 	}
 }

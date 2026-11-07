@@ -28,12 +28,11 @@ RETURNING instrument_id`
 	rollbackSQL  = `ROLLBACK TO SAVEPOINT option_terms`
 
 	// insertTermsSQL writes the current terms row; exercise style and settlement type are not known to the caller. The
-	// conflict clause names no target: a target is read by the statement and would need SELECT on the table, while
-	// ot_w_master has INSERT only (0011).
+	// conflict target is read by the statement: ot_w_master has SELECT on instrument_id and valid_to for it (0011).
 	insertTermsSQL = `INSERT INTO master.option_terms
   (instrument_id, "right", strike, strike_currency, multiplier, expiration_date, exercise_style, settlement_type, valid_from)
 VALUES ($1, $2, $3::numeric, $4, $5::numeric, $6::date, 'unknown', 'unknown', now())
-ON CONFLICT DO NOTHING`
+ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING`
 )
 
 var (
@@ -142,27 +141,35 @@ func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Ident
 // not parse, writes nothing. A failed insert is rolled back to the savepoint and is not an error: the instrument stays.
 // Only a failure of the savepoint or of the rollback to it, which leaves the transaction unusable, is returned.
 func writeTerms(ctx context.Context, tx execer, id int64, spec store.InstrumentSpec, ids []store.Identifier) error {
-	for _, i := range ids {
-		if i.Scheme != "osi" {
-			continue
-		}
-		right, strike, expiry, err := parseOSI(i.Value)
-		if err != nil {
-			return nil
-		}
-		if err := tx.Exec(ctx, savepointSQL); err != nil {
-			return err
-		}
-		err = tx.Exec(ctx, insertTermsSQL, id, right, strike, spec.Currency, spec.LotSize, expiry)
-		if err == nil {
-			err = tx.Exec(ctx, releaseSQL)
-		}
-		if err != nil {
-			return tx.Exec(ctx, rollbackSQL)
-		}
+	osi, ok := firstOSI(ids)
+	if !ok {
 		return nil
 	}
+	right, strike, expiry, err := parseOSI(osi)
+	if err != nil {
+		return nil
+	}
+	if err := tx.Exec(ctx, savepointSQL); err != nil {
+		return err
+	}
+	err = tx.Exec(ctx, insertTermsSQL, id, right, strike, spec.Currency, spec.LotSize, expiry)
+	if err == nil {
+		err = tx.Exec(ctx, releaseSQL)
+	}
+	if err != nil {
+		return tx.Exec(ctx, rollbackSQL)
+	}
 	return nil
+}
+
+// firstOSI returns the value of the first osi identifier of ids; only that one gives terms.
+func firstOSI(ids []store.Identifier) (string, bool) {
+	for _, i := range ids {
+		if i.Scheme == "osi" {
+			return i.Value, true
+		}
+	}
+	return "", false
 }
 
 // lookup returns the id of the instrument the valid identifier names, or 0.

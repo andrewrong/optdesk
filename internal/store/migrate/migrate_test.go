@@ -189,7 +189,7 @@ func TestMigration0008(t *testing.T) {
 }
 
 // TestMigrationsEndWith0011 lists the migration files: 0010 and 0011 follow 0009; 0010 creates the name view for the
-// page role and drops it, 0011 grants INSERT on the terms table to the master writer and revokes it.
+// page role and drops it, 0011 grants INSERT and column SELECT on the terms table to the master writer and revokes it.
 func TestMigrationsEndWith0011(t *testing.T) {
 	t.Parallel()
 	files, err := filepath.Glob("../../../migrations/*.sql")
@@ -223,8 +223,8 @@ func TestMigrationsEndWith0011(t *testing.T) {
 		t.Fatalf("0010: one grant expected; Down must drop the view")
 	}
 	up, down = parts(files[n-1])
-	if strings.Count(up, "GRANT") != 1 || !strings.Contains(up, "GRANT INSERT ON master.option_terms TO ot_w_master;") ||
-		strings.Count(down, "REVOKE") != 1 || !strings.Contains(down, "REVOKE INSERT ON master.option_terms FROM ot_w_master;") {
-		t.Fatalf("0011: one grant of INSERT in Up and its revoke in Down expected")
+	if strings.Count(up, "GRANT") != 1 || !strings.Contains(up, "GRANT INSERT, SELECT (instrument_id, valid_to) ON master.option_terms TO ot_w_master;") ||
+		strings.Count(down, "REVOKE") != 1 || !strings.Contains(down, "REVOKE INSERT, SELECT (instrument_id, valid_to) ON master.option_terms FROM ot_w_master;") {
+		t.Fatalf("0011: one grant of INSERT and column SELECT in Up and its revoke in Down expected")
 	}
 }
