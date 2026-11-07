@@ -25,8 +25,11 @@ Every error is a `contracts.TypedError`. `UNAVAILABLE` and `DEADLINE_EXCEEDED` a
 - The socket path is the caller's: `Dial(ctx, socketPath, o)` is given `$OT_HOME/run/ibkr.sock` and never builds a path. `Dial` returns a `Retryable` error when the socket is not reachable.
 - Unix socket only; no TCP.
 - The client keeps no state between calls: no stored answers, no retries inside a call.
-- No type or call exists for orders, positions or accounts.
+- No type or call exists for orders.
+- The account client is a second, separate surface and is not part of `broker.Broker`: `DialAccount(ctx, socketPath, o)` returns an `*AccountClient` (`Retryable` when the socket is not reachable, defaults of `Options` as `Dial`). It has one call, `Account(ctx)`, which returns the plain types `Account` (alias, generation, `Values []AccountValue`, `Positions []Position`), `AccountValue` (tag, value, currency) and `Position` (a `broker.Contract`, quantity and average cost as the received decimal text, never floats), and `Close()`. `CallTimeout` bounds the call.
+- Alias rule: the answer carries the alias of the gateway's entry and the client never holds an account id. A response with an empty alias or a negative generation is a `Permanent` error.
+- `grpcbroker` is imported only by `ot`; a job needs a port in `internal/broker/api.go` first before it can use account data.
 
 ## Contract tests
 
-`internal/broker/grpcbroker`: `TestSnapshotOrder`, `TestQuoteFields`, `TestKinds`, `TestResolveNotListed`, `TestListChains`, `TestErrorKinds`, `TestResolveInFlight`, `TestTimeouts`, `TestDialRefuses`.
+`internal/broker/grpcbroker`: `TestSnapshotOrder`, `TestQuoteFields`, `TestKinds`, `TestResolveNotListed`, `TestListChains`, `TestErrorKinds`, `TestResolveInFlight`, `TestTimeouts`, `TestDialRefuses`, `TestAccountValues`, `TestAccountPositions`, `TestAccountErrorKinds`, `TestAccountCallTimeout`, `TestDialAccountRefuses`, `TestAccountEmptyAliasRefused`.

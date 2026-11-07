@@ -37,6 +37,19 @@ type client struct {
 // Dial connects to the service on the Unix socket at socketPath and returns once it is reachable.
 // The path is the caller's; the client keeps no state between calls.
 func Dial(ctx context.Context, socketPath string, o broker.Options) (broker.Broker, error) {
+	o = withDefaults(o)
+	conn, err := connect(ctx, socketPath)
+	if err != nil {
+		return nil, err
+	}
+	return &client{
+		conn: conn, data: pb.NewMarketDataServiceClient(conn), cons: pb.NewContractsServiceClient(conn),
+		opts: o, gate: newGate(o.ResolveInFlight),
+	}, nil
+}
+
+// withDefaults fills the fields of o that are zero.
+func withDefaults(o broker.Options) broker.Options {
 	if o.CallTimeout <= 0 {
 		o.CallTimeout = defaultCallTimeout
 	}
@@ -46,6 +59,12 @@ func Dial(ctx context.Context, socketPath string, o broker.Options) (broker.Brok
 	if o.ResolveInFlight <= 0 {
 		o.ResolveInFlight = defaultResolveInFlight
 	}
+	return o
+}
+
+// connect opens the connection to the Unix socket and returns once it is ready. Dial and DialAccount
+// both use it; a failure is a TypedError whose text never holds the path.
+func connect(ctx context.Context, socketPath string) (*grpc.ClientConn, error) {
 	conn, err := grpc.NewClient("unix:"+socketPath, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, permanent("dial: bad socket address")
@@ -57,10 +76,7 @@ func Dial(ctx context.Context, socketPath string, o broker.Options) (broker.Brok
 			return nil, &brokerError{kind: contracts.Retryable, text: "broker: dial: service unavailable"}
 		}
 	}
-	return &client{
-		conn: conn, data: pb.NewMarketDataServiceClient(conn), cons: pb.NewContractsServiceClient(conn),
-		opts: o, gate: newGate(o.ResolveInFlight),
-	}, nil
+	return conn, nil
 }
 
 func (c *client) Close() error { return c.conn.Close() }
