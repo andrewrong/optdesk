@@ -253,7 +253,9 @@ func (r *reconciler) markCrashed(ctx context.Context, run store.Run) error {
 }
 
 // run starts run number seq of k, records it and marks the key; it reports whether k is now present.
-func (r *reconciler) run(ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt time.Time, reason string) (bool, error) {
+func (r *reconciler) run(
+	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt time.Time, reason string,
+) (bool, error) {
 	now := r.clk.Now()
 	rec := store.Run{
 		ID:          fmt.Sprintf("%s|%s|%s|%d", day, k.DatasetID, k.SubjectKey, seq),
