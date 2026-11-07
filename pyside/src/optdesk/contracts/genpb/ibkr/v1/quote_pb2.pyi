@@ -54,7 +54,7 @@ class Quote(_message.Message):
     EVENT_TS_FIELD_NUMBER: _builtins.int
     status: _quote_types_pb2.QuoteStatus.ValueType
     market_data_type: _quote_types_pb2.MarketDataType.ValueType
-    """market_data_type is the type the gateway reported for this quote."""
+    """The type the gateway reported for this quote."""
     generation: _builtins.int
     bid: _builtins.float
     ask: _builtins.float

@@ -12,7 +12,7 @@ option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
 message Quote {
   ContractSpec contract = 1;
   QuoteStatus status = 2;
-  // market_data_type is the type the gateway reported for this quote.
+  // The type the gateway reported for this quote.
   MarketDataType market_data_type = 3;
   int64 generation = 4;
   google.protobuf.Timestamp requested_at = 5;

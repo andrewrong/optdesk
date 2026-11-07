@@ -27,7 +27,7 @@ type Quote struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Contract *ContractSpec          `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"`
 	Status   QuoteStatus            `protobuf:"varint,2,opt,name=status,proto3,enum=ibkr.v1.QuoteStatus" json:"status,omitempty"`
-	// market_data_type is the type the gateway reported for this quote.
+	// The type the gateway reported for this quote.
 	MarketDataType MarketDataType         `protobuf:"varint,3,opt,name=market_data_type,json=marketDataType,proto3,enum=ibkr.v1.MarketDataType" json:"market_data_type,omitempty"`
 	Generation     int64                  `protobuf:"varint,4,opt,name=generation,proto3" json:"generation,omitempty"`
 	RequestedAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=requested_at,json=requestedAt,proto3" json:"requested_at,omitempty"`
