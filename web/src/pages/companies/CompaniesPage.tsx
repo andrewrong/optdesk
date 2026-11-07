@@ -9,7 +9,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/types/companies_page'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/companies_page'
 import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
 export { validate as validateCompaniesPage } from '@/types/companies_page'
@@ -133,4 +134,9 @@ export function CompaniesPage({ payload }: { payload: Payload }) {
       ) : null}
     </div>
   )
+}
+
+export const registration = {
+  schema: 'companies_page',
+  page: page<Payload>(validate, CompaniesPage),
 }

@@ -4,7 +4,8 @@ import { TriangleAlert } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/types/advice_page'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/advice_page'
 export { validate as validateAdvicePage } from '@/types/advice_page'
 export type { Payload as AdvicePagePayload } from '@/types/advice_page'
 
@@ -62,4 +63,9 @@ export function AdvicePage({ payload }: { payload: Payload }) {
       ) : null}
     </div>
   )
+}
+
+export const registration = {
+  schema: 'advice_page',
+  page: page<Payload>(validate, AdvicePage),
 }

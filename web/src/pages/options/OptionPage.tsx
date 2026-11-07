@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
-import type { Payload } from '@/types/option_page'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/option_page'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 
@@ -142,4 +143,9 @@ export function OptionPage({ payload }: { payload: Payload }) {
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
     </div>
   )
+}
+
+export const registration = {
+  schema: 'option_page',
+  page: page<Payload>(validate, OptionPage),
 }

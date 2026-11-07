@@ -5,7 +5,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import type { Payload } from '@/types/macro_page'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/macro_page'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 export { validate as validateMacroPage } from '@/types/macro_page'
@@ -108,4 +109,9 @@ export function MacroPage({ payload }: { payload: Payload }) {
       </Card>
     </div>
   )
+}
+
+export const registration = {
+  schema: 'macro_page',
+  page: page<Payload>(validate, MacroPage),
 }
