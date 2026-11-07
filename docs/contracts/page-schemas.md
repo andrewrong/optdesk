@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Hold the JSON schemas of the pages in `contracts/schemas/page.*.json`. Thirty schemas are listed: `page.macro_rates.v1` is written for this repository, and the 29 others are copies of `docs/schemas/<name>.v<N>.json` of the old option-trader repository at commit b00b4ed, the commit the web migration used. The copies are unchanged except that every `x-timezone` value is the literal string `owner` (a privacy rule of this public repository), and the week-2 pass writes new versions only.
+Hold the JSON schemas of the pages in `contracts/schemas/page.*.json`. Thirty-one schemas are listed (one more than before): `page.macro_rates.v1` and `page.macro_rates.v2` are written for this repository, and the 29 others are copies of `docs/schemas/<name>.v<N>.json` of the old option-trader repository at commit b00b4ed, the commit the web migration used. The copies are unchanged except that every `x-timezone` value is the literal string `owner` (a privacy rule of this public repository), and the week-2 pass writes new versions only.
 
 ## Inputs
 
@@ -27,6 +27,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.ledger_page.v1 | 1 |
 | page.macro_page.v1 | 1 |
 | page.macro_rates.v1 | "1" (a string) |
+| page.macro_rates.v2 | 2 |
 | page.macro_summary.v1 | 1 |
 | page.market_summary.v1 | 1 |
 | page.market_weather.v1 | 1 |
