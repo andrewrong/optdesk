@@ -27,9 +27,14 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 - No `time.Now` or `time.Sleep`: time comes from the injected `clock.Clock`.
 - The root package `internal/runner` holds only `api.go` and `api_test.go`; it depends on `contracts`, `clock` and `store` only, never `internal/jobs` or pgx.
 
+## Backfill
+
+`Backfill(ctx, day, datasets)` (`reconcile.NewBackfillerWithRule`) re-runs the keys of one day at or behind the cursor that are missing or marked `no_value`, under the same lease as `Reconcile`. It reads the stored plan (`Expected`) and calls `Plan` of the jobs only to find the job of each key. The cursor, the plans and the windows are untouched: `SetCursor`, `PutExpected` and `PutWindow` are never called. A day after the cursor, or with an empty cursor, is refused (`RefusedAheadOfCursor`); a day with no stored plan is refused (`RefusedNoPlan`); a refusal is data, with a nil error and no write. A `present` key is not run (`AlreadyPresent`). Each run row has the reason `backfill`; the result lists the keys as `Filled`, `Absent` (`no_value`) or `Missing` (no usable answer). Tests: `internal/runner/reconcile/backfill_test.go`.
+
 ## Version history
 
 - v1: window materialisation, repair, crash re-run, cursor.
+- v2: `Backfill` of a day at or behind the cursor.
 
 ## Contract tests
 

@@ -62,6 +62,35 @@ func runOnce(a *app, args []string) error {
 
 // reconcileDay opens the stores, wires the job and reconciles day; it closes the stores on every path.
 func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, day contracts.Day) error {
+	check := func(ledger store.OpsLedger) error {
+		cur, err := ledger.Cursor(ctx)
+		if err != nil {
+			return fmt.Errorf("read reconcile cursor failed")
+		}
+		if cur.Day != "" && day <= cur.Day {
+			return fmt.Errorf("day %s is at or before the cursor %s: nothing to reconcile; use ot backfill --day %s", day, cur.Day, day)
+		}
+		return nil
+	}
+	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
+		rec := a.deps.newRunner(w.ledger, w.cal, clk, []contracts.Job{w.job}, ruleOf(w.job))
+		return rec.Reconcile(ctx, day)
+	})
+}
+
+// wiring is what run-once and backfill build from the open stores.
+type wiring struct {
+	ledger store.OpsLedger
+	cal    clock.Calendar
+	job    contracts.Job
+}
+
+// withWiring opens the stores and wires the fred_series job, then calls use; it closes the
+// stores on every path. check runs after the ledger is open and before the series store is
+// opened; it may be nil. No error text holds a DSN, a key or the text of a connection error.
+func withWiring(
+	ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, check func(store.OpsLedger) error, use func(wiring) error,
+) error {
 	d := a.deps
 	sd, err := d.openSessionDay(ctx, cfg.runnerDSN)
 	if err != nil {
@@ -73,12 +102,10 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return fmt.Errorf("open ledger with %s failed", store.DSNEnvRunner)
 	}
 	defer func() { _ = ledger.Close() }()
-	cur, err := ledger.Cursor(ctx)
-	if err != nil {
-		return fmt.Errorf("read reconcile cursor failed")
-	}
-	if cur.Day != "" && day <= cur.Day {
-		return fmt.Errorf("day %s is at or before the cursor %s: nothing to reconcile", day, cur.Day)
+	if check != nil {
+		if err := check(ledger); err != nil {
+			return err
+		}
 	}
 	ser, err := d.openSeries(ctx, cfg.seriesDSN)
 	if err != nil {
@@ -93,8 +120,7 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 	if err != nil {
 		return fmt.Errorf("build fred_series job failed: %w", err)
 	}
-	rec := d.newRunner(ledger, d.newCalendar(sd), clk, []contracts.Job{job}, ruleOf(job))
-	return rec.Reconcile(ctx, day)
+	return use(wiring{ledger: ledger, cal: d.newCalendar(sd), job: job})
 }
 
 // windowed is the optional method of a job that states its [window] table.
