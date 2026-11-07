@@ -33,6 +33,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `ResolveInstrument` returns the id of the instrument that `key` names now (the identifier row with `valid_to IS NULL`), creating it when none exists; the same key always gives the same id. `Instruments` returns the instruments of the ids with the identifiers valid now, ordered by id; an unknown id is absent; `PriceIncrement` and `LotSize` come back as the text the database holds, so a decimal round-trips as given.
 - `OptionTerms` returns the version with `valid_to IS NULL` of each id, ordered by `InstrumentID`; an id without a current version is absent; an empty list gives an empty answer and no database call. `Strike` and `Multiplier` are the text the database prints for the numeric (`100` and `100.00` are equal values); `ExpirationDate` is `YYYY-MM-DD`; `ValidFrom` is in UTC. More than 500 ids and an id of 0 are `Permanent`; a database failure is `Retryable`.
 - `OptionEodLatest` returns one entry per `underlying_id` with a row of `session_day` on or after `since`, ordered by `UnderlyingID`, with the greatest `session_day` of it; no row gives an empty list; a `since` that is neither empty nor `YYYY-MM-DD` is `Permanent`.
+- `InstrumentNames` (`store.InstrumentNameReader`) returns the `InstrumentID`, `Type` and `Name` of each id from the view `rd.instrument_r1` (columns `instrument_id`, `instrument_type`, `name`, `currency`; owner `ot_owner`; `SELECT` granted to `ot_ro_pages` only, nothing in schema `master`; migration `0010`), ordered by `InstrumentID`; an unknown id is absent; an empty list gives an empty answer and no database call; more than 500 ids and an id of 0 are `Permanent`. `instrument.OpenInstrumentNames` takes the line `store.DSNEnvPages`; it is a stub until its own entry fills it.
 - Errors are `contracts.TypedError`: `Retryable` when the database fails, `Permanent` for a malformed day.
 
 ## Invariants
@@ -74,6 +75,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - v5: migrations `0006` (`obs.option_eod`, `rd.option_eod_r1`) and `0007` (`obs.quote_snapshot`, `rd.quote_snapshot_r1`); roles `ot_w_option_eod` and `ot_w_quote_snapshot` with the grants above and the new lines `OT_PG_DSN_OPTION_EOD` and `OT_PG_DSN_QUOTE_SNAPSHOT` in `$OT_HOME/.env`; `Setup` touches no other line of `.env`; `snapshot.OpenOptionEod` and `snapshot.OpenQuoteSnapshot`; no change to an existing dataset.
 - v6: migration `0008` (`master.instrument`, `master.instrument_identifier`, three foreign keys); role `ot_w_master` and the new line `OT_PG_DSN_MASTER` in `$OT_HOME/.env`; `instrument.Open`.
 - v7: migration `0009` (`master.option_terms`, `rd.option_terms_r1`); `ot_ro_pages` reads the view; `instrument.OpenOptionTerms`; `store.OptionEodCatalog` documented.
+- v8: migration `0010` (`rd.instrument_r1`, four columns, owner `ot_owner`); `ot_ro_pages` reads the view; `store.InstrumentNameReader` and `instrument.OpenInstrumentNames` (a stub that returns `Permanent`, not implemented).
 
 ## Contract tests
 
@@ -88,7 +90,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `internal/store/instrument/resolve_test.go` and `read_test.go`: `TestResolveCreates`, `TestResolveSame`, `TestResolveLock`, `TestResolveExtraTaken`, `TestResolveChecks` and `TestInstruments` against an in-test fake.
 - `internal/store/instrument/instrument_pg_test.go` (build tag `pg`): `TestMigration0008PG`, `TestForeignKeysPG`, `TestConcurrentResolvePG` and `TestMasterGrantsPG`.
 
-- `internal/store/instrument/terms_test.go`: `TestOptionTerms`, `TestOptionTermsOrdersByInstrumentID`, `TestOptionTermsEmptyMakesNoCall`, `TestOptionTermsTooManyIDsIsPermanent`, `TestOptionTermsZeroIDIsPermanent` and `TestOptionTermsDatabaseErrorIsRetryable` against an in-test fake; `internal/store/migrate/migrate_test.go`: `TestMigrationsEndWith0009`.
+- `internal/store/instrument/terms_test.go`: `TestOptionTerms`, `TestOptionTermsOrdersByInstrumentID`, `TestOptionTermsEmptyMakesNoCall`, `TestOptionTermsTooManyIDsIsPermanent`, `TestOptionTermsZeroIDIsPermanent` and `TestOptionTermsDatabaseErrorIsRetryable` against an in-test fake; `internal/store/migrate/migrate_test.go`: `TestMigrationsEndWith0010`.
 - `internal/store/instrument/terms_pg_test.go` (build tag `pg`): `TestOptionTermsConstraintsPG`, `TestOptionTermsReaderPG` and `TestOptionTermsGrantsPG`.
 
 ## Jobs and slots
