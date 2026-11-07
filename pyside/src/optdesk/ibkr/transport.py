@@ -1,0 +1,439 @@
+"""Transport of the ibkr module: the send guard, the log filter and the gRPC servicers.
+
+The guard refuses every order message of the TWS client and every message
+outside a short allowlist; it is installed on the client before it connects.
+The log filter keeps account shapes out of every record. The servicers turn
+the three services of ibkr.v1 into calls on a Gateway. Generated types are
+imported through optdesk.contracts.api only.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import re
+import sys
+from collections.abc import AsyncIterator, Awaitable
+from typing import Any, TextIO, cast
+
+import grpc
+
+from optdesk.contracts import api as pb
+from optdesk.ibkr import spec
+from optdesk.ibkr.model import ChainRow, Gateway, QuoteRow, ResolveResult
+from optdesk.ibkr.timing import Clock, SystemClock
+
+# --- the guard -------------------------------------------------------------
+
+ORDER_IDS = frozenset(
+    {3, 4, 21, 58}
+)  # placeOrder, cancelOrder, exercise, global cancel
+ALLOWED_IDS = frozenset({1, 2, 9, 20, 25, 49, 59, 71, 78})
+
+
+class OrderRefused(Exception):
+    """An order message was about to be sent."""
+
+
+class NotAllowed(Exception):
+    """A message that is not on the allowlist was about to be sent."""
+
+
+def check(message_id: object) -> None:
+    """Raise OrderRefused for an order id and NotAllowed for any id not allowed."""
+    if message_id in ORDER_IDS:
+        raise OrderRefused(f"message {message_id} places or changes orders")
+    if message_id not in ALLOWED_IDS:
+        raise NotAllowed(f"message {message_id} is not on the allowlist")
+
+
+def _frame_id(frame: str) -> object:
+    head = frame.split("\0", 1)[0]
+    return int(head) if head.isdigit() else head
+
+
+def install_guard(client: Any) -> None:
+    """Guard client.send and client.sendMsg; call it before the client connects."""
+    send = client.send
+    send_msg = client.sendMsg
+
+    def guarded_send(*fields: object, **options: Any) -> None:
+        check(fields[0] if fields else None)
+        send(*fields, **options)
+
+    def guarded_send_msg(msg: str | None) -> None:
+        if msg:
+            check(_frame_id(msg))
+        send_msg(msg)
+
+    client.send = guarded_send
+    client.sendMsg = guarded_send_msg
+
+
+# --- the log filter --------------------------------------------------------
+
+EVENTS = frozenset(
+    {
+        "rpc_done",
+        "rpc_failed",
+        "server_started",
+        "server_stopped",
+        "connect_ok",
+        "connect_failed",
+        "session_lost",
+    }
+)
+FIELDS = frozenset(
+    {"rpc", "kind", "count", "status", "code", "generation", "elapsed_ms", "limit"}
+)
+WORDS = frozenset(
+    {
+        "ping",
+        "list_chains",
+        "resolve_contract",
+        "snapshot",
+        spec.OPTION_EOD,
+        spec.UNDERLYING_IV,
+        spec.SNAPSHOT,
+        spec.STATUS_OK,
+        spec.STATUS_PARTIAL,
+        spec.STATUS_NO_DATA,
+        spec.STATUS_NO_SUBSCRIPTION,
+        spec.STATUS_ERROR,
+        spec.STATUS_DISCONNECTED,
+        "found",
+        "not_listed",
+    }
+)
+MAX_TEXT = 200
+
+_ACCOUNT_SHAPE = re.compile(r"acct_[a-z]{1,8}|\b[A-Za-z]+\d{5,9}(?![A-Za-z0-9])")
+
+
+def _strip_accounts(text: str) -> str:
+    return _ACCOUNT_SHAPE.sub("", text)
+
+
+def scrub(text: str) -> str:
+    """Remove account shapes from text and drop free text over MAX_TEXT characters."""
+    clean = _strip_accounts(text)
+    return clean if len(clean) <= MAX_TEXT else ""
+
+
+def _allowed_value(value: object) -> bool:
+    if isinstance(value, bool | int | float):
+        return True
+    return isinstance(value, str) and value in WORDS
+
+
+def log_event(logger: logging.Logger, event: str, **fields: object) -> None:
+    """Log one event of the fixed set with the whitelisted fields it is given."""
+    if event not in EVENTS:
+        raise ValueError(f"unknown event {event!r}")
+    kept = " ".join(
+        f"{name}={value}"
+        for name, value in fields.items()
+        if name in FIELDS and _allowed_value(value)
+    )
+    logger.info("%s %s", event, kept)
+
+
+class _ScrubFactory:
+    """Record factory: every record of the process is scrubbed before any handler."""
+
+    def __init__(self, previous: Any) -> None:
+        self._previous = previous
+
+    def __call__(self, *args: Any, **kwargs: Any) -> logging.LogRecord:
+        record: logging.LogRecord = self._previous(*args, **kwargs)
+        try:
+            text = record.getMessage()
+        except (TypeError, ValueError):
+            text = str(record.msg)
+        record.msg = scrub(text)
+        record.args = None
+        if record.exc_info and record.exc_info[0] is not None:
+            trace = logging.Formatter().formatException(record.exc_info)
+            record.exc_text = _strip_accounts(trace)
+        return record
+
+
+def configure_logging(level: int = logging.INFO, stream: TextIO | None = None) -> None:
+    """Scrub every record, send the records to a stream and silence ib_async frames."""
+    if not isinstance(logging.getLogRecordFactory(), _ScrubFactory):
+        logging.setLogRecordFactory(_ScrubFactory(logging.getLogRecordFactory()))
+    root = logging.getLogger()
+    root.setLevel(level)
+    if not root.handlers:
+        handler = logging.StreamHandler(stream or sys.stderr)
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        root.addHandler(handler)
+    library = logging.getLogger("ib_async")
+    library.setLevel(logging.WARNING)
+    library.handlers.clear()
+    library.propagate = True
+
+
+# --- the servicers ---------------------------------------------------------
+
+_LOG = logging.getLogger("optdesk.ibkr")
+
+_SEC_TYPES = {
+    pb.SEC_TYPE_STOCK: "STK",
+    pb.SEC_TYPE_INDEX: "IND",
+    pb.SEC_TYPE_OPTION: "OPT",
+}
+_RIGHTS = {pb.RIGHT_PUT: "P", pb.RIGHT_CALL: "C"}
+_KINDS = {
+    pb.QUOTE_KIND_OPTION_EOD: spec.OPTION_EOD,
+    pb.QUOTE_KIND_UNDERLYING_IV: spec.UNDERLYING_IV,
+    pb.QUOTE_KIND_SNAPSHOT: spec.SNAPSHOT,
+}
+_STATUSES = {
+    spec.STATUS_OK: pb.QUOTE_STATUS_OK,
+    spec.STATUS_PARTIAL: pb.QUOTE_STATUS_PARTIAL,
+    spec.STATUS_NO_DATA: pb.QUOTE_STATUS_NO_DATA,
+    spec.STATUS_NO_SUBSCRIPTION: pb.QUOTE_STATUS_NO_SUBSCRIPTION,
+    "timeout": pb.QUOTE_STATUS_TIMEOUT,
+    spec.STATUS_ERROR: pb.QUOTE_STATUS_ERROR,
+    spec.STATUS_DISCONNECTED: pb.QUOTE_STATUS_DISCONNECTED,
+}
+_ERROR_STATUSES = frozenset({spec.STATUS_ERROR, spec.STATUS_NO_SUBSCRIPTION})
+_DOUBLE_FIELDS = frozenset(
+    {
+        "bid",
+        "ask",
+        "last",
+        "close",
+        "volume",
+        "open_interest",
+        "implied_vol",
+        "delta",
+        "gamma",
+        "vega",
+        "theta",
+        "und_price",
+        "option_implied_vol",
+        "historical_vol",
+        "bid_size",
+        "ask_size",
+        "last_size",
+    }
+)
+
+Context = grpc.aio.ServicerContext[Any, Any]
+
+
+def _data_type(value: int) -> pb.MarketDataType.ValueType:
+    return cast("pb.MarketDataType.ValueType", value)
+
+
+def quote_to_proto(row: QuoteRow) -> pb.Quote:
+    """Convert a QuoteRow; error text is set only on the error statuses."""
+    quote = pb.Quote(
+        status=_STATUSES.get(row.status, pb.QUOTE_STATUS_ERROR),
+        market_data_type=_data_type(row.market_data_type),
+        generation=row.generation,
+        error_code=row.error_code,
+    )
+    quote.contract.con_id = row.con_id
+    quote.requested_at.FromNanoseconds(int(row.requested_at * 1e9))
+    quote.sent_at.FromNanoseconds(int(row.sent_at * 1e9))
+    quote.received_at.FromNanoseconds(int(row.received_at * 1e9))
+    for name, value in row.fields:
+        if name in _DOUBLE_FIELDS:
+            setattr(quote, name, value)
+        elif name == "event_ts":
+            quote.event_ts.FromNanoseconds(int(value * 1e9))
+    if row.status in _ERROR_STATUSES:
+        quote.error_text = scrub(row.error_text)
+    return quote
+
+
+def _chain_to_proto(row: ChainRow) -> pb.Chain:
+    return pb.Chain(
+        exchange=row.exchange,
+        trading_class=row.trading_class,
+        multiplier=row.multiplier,
+        expirations=row.expirations,
+        strikes=row.strikes,
+    )
+
+
+def _status_of(exc: BaseException) -> tuple[grpc.StatusCode, str]:
+    if isinstance(exc, TimeoutError):
+        return grpc.StatusCode.DEADLINE_EXCEEDED, "the gateway did not answer in time"
+    if isinstance(exc, ConnectionError | OSError):
+        return grpc.StatusCode.UNAVAILABLE, "the gateway is not connected"
+    if isinstance(exc, spec.AmbiguousResolve):
+        return grpc.StatusCode.FAILED_PRECONDITION, scrub(str(exc))
+    if isinstance(exc, spec.BrokerError):
+        return grpc.StatusCode.UNKNOWN, scrub(str(exc))
+    return grpc.StatusCode.INTERNAL, "internal error"
+
+
+class _Servicers:
+    """What the three servicers share: the gateway, a clock and the rpc wrapper."""
+
+    def __init__(self, gateway: Gateway, clock: Clock) -> None:
+        self.gateway = gateway
+        self.clock = clock
+
+    async def call[T](self, rpc: str, context: Context, work: Awaitable[T]) -> T:
+        started = self.clock.monotonic()
+        try:
+            result = await work
+        except (grpc.RpcError, asyncio.CancelledError):
+            raise
+        except Exception as exc:
+            code, details = _status_of(exc)
+            log_event(_LOG, "rpc_failed", rpc=rpc, code=code.value[0])
+            await context.abort(code, details)
+            raise  # abort raises; unreachable
+        elapsed = int((self.clock.monotonic() - started) * 1000)
+        log_event(_LOG, "rpc_done", rpc=rpc, elapsed_ms=elapsed)
+        return result
+
+
+class SessionServicer(pb.SessionServiceServicer):
+    """SessionService: the probe."""
+
+    def __init__(self, shared: _Servicers) -> None:
+        self._shared = shared
+
+    async def Ping(self, request: pb.PingRequest, context: Context) -> pb.PingResponse:
+        state = await self._shared.call("ping", context, self._shared.gateway.status())
+        return pb.PingResponse(
+            connected=state.connected,
+            generation=state.generation,
+            market_data_type=_data_type(state.market_data_type),
+        )
+
+
+class ContractsServicer(pb.ContractsServiceServicer):
+    """ContractsService: chains and one-contract resolve."""
+
+    def __init__(self, shared: _Servicers) -> None:
+        self._shared = shared
+
+    async def ListChains(
+        self, request: pb.ListChainsRequest, context: Context
+    ) -> pb.ListChainsResponse:
+        under = request.underlying
+        sec_type = _SEC_TYPES.get(under.sec_type)
+        if sec_type not in ("STK", "IND") or not under.symbol or under.con_id <= 0:
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "underlying needs a stock or index type, a symbol and a con_id",
+            )
+        rows = await self._shared.call(
+            "list_chains",
+            context,
+            self._shared.gateway.chains(
+                sec_type=sec_type or "", symbol=under.symbol, con_id=under.con_id
+            ),
+        )
+        return pb.ListChainsResponse(
+            underlying_con_id=under.con_id,
+            chains=[_chain_to_proto(row) for row in rows],
+        )
+
+    async def ResolveContract(
+        self, request: pb.ResolveContractRequest, context: Context
+    ) -> pb.ResolveContractResponse:
+        c = request.contract
+        sec_type = _SEC_TYPES.get(c.sec_type)
+        right = _RIGHTS.get(c.right, "")
+        is_option = sec_type == "OPT"
+        if (
+            sec_type is None
+            or not c.symbol
+            or (is_option and not (c.expiry and c.strike and right))
+        ):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "contract needs a type and a symbol; an option is fully specified",
+            )
+        result: ResolveResult = await self._shared.call(
+            "resolve_contract",
+            context,
+            self._shared.gateway.resolve(
+                sec_type=sec_type or "",
+                symbol=c.symbol,
+                exchange=c.exchange,
+                currency=c.currency,
+                expiry=c.expiry,
+                strike=c.strike,
+                right=right,
+                multiplier=c.multiplier,
+                trading_class=c.trading_class,
+            ),
+        )
+        response = pb.ResolveContractResponse(
+            status=pb.RESOLVE_STATUS_FOUND
+            if result.found
+            else pb.RESOLVE_STATUS_NOT_LISTED,
+            error_code=result.error_code,
+            error_text=scrub(result.error_text),
+        )
+        if result.found:
+            response.contract.CopyFrom(c)
+            response.contract.con_id = result.con_id
+            response.contract.exchange = result.exchange or c.exchange
+            response.contract.trading_class = result.trading_class or c.trading_class
+            response.contract.multiplier = result.multiplier or c.multiplier
+        return response
+
+
+class MarketDataServicer(pb.MarketDataServiceServicer):
+    """MarketDataService: one quote per requested contract."""
+
+    def __init__(self, shared: _Servicers) -> None:
+        self._shared = shared
+
+    async def Snapshot(
+        self, request: pb.SnapshotRequest, context: Context
+    ) -> AsyncIterator[pb.SnapshotResponse]:
+        kind = _KINDS.get(request.kind)
+        con_ids = [c.con_id for c in request.contracts]
+        if kind is None or not con_ids or any(con_id <= 0 for con_id in con_ids):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "snapshot needs a kind and contracts that all carry a con_id",
+            )
+        queue: asyncio.Queue[QuoteRow | None] = asyncio.Queue()
+
+        async def on_quote(row: QuoteRow) -> None:
+            await queue.put(row)
+
+        work = asyncio.ensure_future(
+            self._shared.gateway.quotes(kind or "", con_ids, on_quote)
+        )
+        work.add_done_callback(lambda _: queue.put_nowait(None))
+        started = self._shared.clock.monotonic()
+        try:
+            while (row := await queue.get()) is not None:
+                yield pb.SnapshotResponse(quote=quote_to_proto(row))
+            failure = work.exception()
+        finally:
+            if not work.done():
+                work.cancel()
+            await asyncio.gather(work, return_exceptions=True)
+        if failure is not None:
+            code, details = _status_of(failure)
+            log_event(_LOG, "rpc_failed", rpc="snapshot", code=code.value[0])
+            await context.abort(code, details)
+        elapsed = int((self._shared.clock.monotonic() - started) * 1000)
+        log_event(
+            _LOG, "rpc_done", rpc="snapshot", count=len(con_ids), elapsed_ms=elapsed
+        )
+
+
+def build_server(gateway: Gateway, clock: Clock | None = None) -> grpc.aio.Server:
+    """Return a grpc.aio server with the three services over gateway; it is not bound."""
+    shared = _Servicers(gateway, clock or SystemClock())
+    server = grpc.aio.server()
+    pb.add_SessionServiceServicer_to_server(SessionServicer(shared), server)
+    pb.add_ContractsServiceServicer_to_server(ContractsServicer(shared), server)
+    pb.add_MarketDataServiceServicer_to_server(MarketDataServicer(shared), server)
+    return server
