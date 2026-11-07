@@ -59,6 +59,8 @@ components:
     in: cmd/ot
   store/migrate:
     in: internal/store/migrate
+  store/snapshot:
+    in: internal/store/snapshot
 deps:
   contracts:
     mayDependOn:
@@ -168,6 +170,10 @@ deps:
       - pages/macro_page
       - pages/embed
   store/migrate:
+    mayDependOn:
+      - contracts
+      - store
+  store/snapshot:
     mayDependOn:
       - contracts
       - store
