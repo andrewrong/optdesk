@@ -50,6 +50,7 @@ class _QuoteKindEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_QuoteKind.V
     QUOTE_KIND_UNSPECIFIED: _QuoteKind.ValueType  # 0
     QUOTE_KIND_OPTION_EOD: _QuoteKind.ValueType  # 1
     QUOTE_KIND_UNDERLYING_IV: _QuoteKind.ValueType  # 2
+    QUOTE_KIND_SNAPSHOT: _QuoteKind.ValueType  # 3
 
 class QuoteKind(_QuoteKind, metaclass=_QuoteKindEnumTypeWrapper):
     """QuoteKind selects the specification of a snapshot. Specification of each
@@ -62,6 +63,10 @@ class QuoteKind(_QuoteKind, metaclass=_QuoteKindEnumTypeWrapper):
       UNDERLYING_IV: a short streaming subscription per stock or index with
         generic ticks 104 and 106, released when option_implied_vol and
         historical_vol have arrived; at most 20 s.
+      SNAPSHOT: the current quote fields of one contract: a short streaming
+        subscription with no generic ticks (the default ticks only), released as
+        soon as bid and ask have arrived; at most 20 s; wanted fields bid, ask,
+        last, bid_size, ask_size, last_size, close, volume and the event time.
     These first values are corrected from the owner's live measurement (ADR 0003:
     measure first), which is a change of comment and table, not of shape.
     """
@@ -69,6 +74,7 @@ class QuoteKind(_QuoteKind, metaclass=_QuoteKindEnumTypeWrapper):
 QUOTE_KIND_UNSPECIFIED: QuoteKind.ValueType  # 0
 QUOTE_KIND_OPTION_EOD: QuoteKind.ValueType  # 1
 QUOTE_KIND_UNDERLYING_IV: QuoteKind.ValueType  # 2
+QUOTE_KIND_SNAPSHOT: QuoteKind.ValueType  # 3
 Global___QuoteKind: _TypeAlias = QuoteKind  # noqa: Y015
 
 class _QuoteStatus:

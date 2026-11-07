@@ -48,6 +48,10 @@ class Quote(_message.Message):
     HISTORICAL_VOL_FIELD_NUMBER: _builtins.int
     ERROR_CODE_FIELD_NUMBER: _builtins.int
     ERROR_TEXT_FIELD_NUMBER: _builtins.int
+    BID_SIZE_FIELD_NUMBER: _builtins.int
+    ASK_SIZE_FIELD_NUMBER: _builtins.int
+    LAST_SIZE_FIELD_NUMBER: _builtins.int
+    EVENT_TS_FIELD_NUMBER: _builtins.int
     status: _quote_types_pb2.QuoteStatus.ValueType
     market_data_type: _quote_types_pb2.MarketDataType.ValueType
     """market_data_type is the type the gateway reported for this quote."""
@@ -75,6 +79,10 @@ class Quote(_message.Message):
     """error_text is the IBKR text after the log filter's scrub, only on error
     statuses.
     """
+    bid_size: _builtins.float
+    """bid_size, ask_size and last_size are the sizes of the exchange quote."""
+    ask_size: _builtins.float
+    last_size: _builtins.float
     @_builtins.property
     def contract(self) -> _contract_pb2.ContractSpec: ...
     @_builtins.property
@@ -83,6 +91,10 @@ class Quote(_message.Message):
     def sent_at(self) -> _timestamp_pb2.Timestamp: ...
     @_builtins.property
     def received_at(self) -> _timestamp_pb2.Timestamp: ...
+    @_builtins.property
+    def event_ts(self) -> _timestamp_pb2.Timestamp:
+        """event_ts is the exchange's event time; sent_at and received_at stay ours."""
+
     def __init__(
         self,
         *,
@@ -109,15 +121,23 @@ class Quote(_message.Message):
         historical_vol: _builtins.float | None = ...,
         error_code: _builtins.int = ...,
         error_text: _builtins.str = ...,
+        bid_size: _builtins.float | None = ...,
+        ask_size: _builtins.float | None = ...,
+        last_size: _builtins.float | None = ...,
+        event_ts: _timestamp_pb2.Timestamp | None = ...,
     ) -> None: ...
-    _HasFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_bid", b"_bid", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "bid", b"bid", "close", b"close", "contract", b"contract", "delta", b"delta", "gamma", b"gamma", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
+    _HasFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_ask_size", b"_ask_size", "_bid", b"_bid", "_bid_size", b"_bid_size", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_last_size", b"_last_size", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "ask_size", b"ask_size", "bid", b"bid", "bid_size", b"bid_size", "close", b"close", "contract", b"contract", "delta", b"delta", "event_ts", b"event_ts", "gamma", b"gamma", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "last_size", b"last_size", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_bid", b"_bid", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "bid", b"bid", "close", b"close", "contract", b"contract", "delta", b"delta", "error_code", b"error_code", "error_text", b"error_text", "gamma", b"gamma", "generation", b"generation", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "market_data_type", b"market_data_type", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "status", b"status", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_ask_size", b"_ask_size", "_bid", b"_bid", "_bid_size", b"_bid_size", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_last_size", b"_last_size", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "ask_size", b"ask_size", "bid", b"bid", "bid_size", b"bid_size", "close", b"close", "contract", b"contract", "delta", b"delta", "error_code", b"error_code", "error_text", b"error_text", "event_ts", b"event_ts", "gamma", b"gamma", "generation", b"generation", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "last_size", b"last_size", "market_data_type", b"market_data_type", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "status", b"status", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     _WhichOneofReturnType__ask: _TypeAlias = _typing.Literal["ask"]  # noqa: Y015
     _WhichOneofArgType__ask: _TypeAlias = _typing.Literal["_ask", b"_ask"]  # noqa: Y015
+    _WhichOneofReturnType__ask_size: _TypeAlias = _typing.Literal["ask_size"]  # noqa: Y015
+    _WhichOneofArgType__ask_size: _TypeAlias = _typing.Literal["_ask_size", b"_ask_size"]  # noqa: Y015
     _WhichOneofReturnType__bid: _TypeAlias = _typing.Literal["bid"]  # noqa: Y015
     _WhichOneofArgType__bid: _TypeAlias = _typing.Literal["_bid", b"_bid"]  # noqa: Y015
+    _WhichOneofReturnType__bid_size: _TypeAlias = _typing.Literal["bid_size"]  # noqa: Y015
+    _WhichOneofArgType__bid_size: _TypeAlias = _typing.Literal["_bid_size", b"_bid_size"]  # noqa: Y015
     _WhichOneofReturnType__close: _TypeAlias = _typing.Literal["close"]  # noqa: Y015
     _WhichOneofArgType__close: _TypeAlias = _typing.Literal["_close", b"_close"]  # noqa: Y015
     _WhichOneofReturnType__delta: _TypeAlias = _typing.Literal["delta"]  # noqa: Y015
@@ -130,6 +150,8 @@ class Quote(_message.Message):
     _WhichOneofArgType__implied_vol: _TypeAlias = _typing.Literal["_implied_vol", b"_implied_vol"]  # noqa: Y015
     _WhichOneofReturnType__last: _TypeAlias = _typing.Literal["last"]  # noqa: Y015
     _WhichOneofArgType__last: _TypeAlias = _typing.Literal["_last", b"_last"]  # noqa: Y015
+    _WhichOneofReturnType__last_size: _TypeAlias = _typing.Literal["last_size"]  # noqa: Y015
+    _WhichOneofArgType__last_size: _TypeAlias = _typing.Literal["_last_size", b"_last_size"]  # noqa: Y015
     _WhichOneofReturnType__open_interest: _TypeAlias = _typing.Literal["open_interest"]  # noqa: Y015
     _WhichOneofArgType__open_interest: _TypeAlias = _typing.Literal["_open_interest", b"_open_interest"]  # noqa: Y015
     _WhichOneofReturnType__option_implied_vol: _TypeAlias = _typing.Literal["option_implied_vol"]  # noqa: Y015
@@ -145,7 +167,11 @@ class Quote(_message.Message):
     @_typing.overload
     def WhichOneof(self, oneof_group: _WhichOneofArgType__ask) -> _WhichOneofReturnType__ask | None: ...
     @_typing.overload
+    def WhichOneof(self, oneof_group: _WhichOneofArgType__ask_size) -> _WhichOneofReturnType__ask_size | None: ...
+    @_typing.overload
     def WhichOneof(self, oneof_group: _WhichOneofArgType__bid) -> _WhichOneofReturnType__bid | None: ...
+    @_typing.overload
+    def WhichOneof(self, oneof_group: _WhichOneofArgType__bid_size) -> _WhichOneofReturnType__bid_size | None: ...
     @_typing.overload
     def WhichOneof(self, oneof_group: _WhichOneofArgType__close) -> _WhichOneofReturnType__close | None: ...
     @_typing.overload
@@ -158,6 +184,8 @@ class Quote(_message.Message):
     def WhichOneof(self, oneof_group: _WhichOneofArgType__implied_vol) -> _WhichOneofReturnType__implied_vol | None: ...
     @_typing.overload
     def WhichOneof(self, oneof_group: _WhichOneofArgType__last) -> _WhichOneofReturnType__last | None: ...
+    @_typing.overload
+    def WhichOneof(self, oneof_group: _WhichOneofArgType__last_size) -> _WhichOneofReturnType__last_size | None: ...
     @_typing.overload
     def WhichOneof(self, oneof_group: _WhichOneofArgType__open_interest) -> _WhichOneofReturnType__open_interest | None: ...
     @_typing.overload

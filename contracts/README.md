@@ -7,7 +7,7 @@ The shared schemas of optdesk: dataset schemas, page schemas, the Go records and
 `contracts/proto/ibkr/v1/` holds seven proto files, all of package `ibkr.v1`: `session`, `contract`,
 `chains`, `resolve`, `quote_types`, `quote` and `marketdata`. They declare `SessionService` (`Ping`),
 `ContractsService` (`ListChains`, `ResolveContract`) and `MarketDataService` (`Snapshot`). Their Go output
-is `internal/contracts/genpb/*.pb.go` (messages only: no Go gRPC plugin is configured); their Python output
+is `internal/contracts/genpb/*.pb.go` (messages and the gRPC stubs, `*_grpc.pb.go`, from `protoc-gen-go-grpc`); their Python output
 is `pyside/src/optdesk/contracts/genpb/` (messages, typed stubs, stubs and servicers). Generated files
 are never edited by hand.
 

@@ -13,6 +13,7 @@ import grpc
 from optdesk.contracts import api
 from optdesk.contracts.api import (
     QUOTE_KIND_OPTION_EOD,
+    QUOTE_KIND_SNAPSHOT,
     RESOLVE_STATUS_FOUND,
     SEC_TYPE_OPTION,
     ContractSpec,
@@ -22,6 +23,7 @@ from optdesk.contracts.api import (
     ListChainsResponse,
     MarketDataServiceServicer,
     MarketDataServiceStub,
+    Quote,
     ResolveContractRequest,
     ResolveContractResponse,
     SessionServiceServicer,
@@ -121,3 +123,11 @@ def test_generated_python_is_current(tmp_path: pathlib.Path) -> None:
         p.relative_to(GENPB) for p in GENPB.rglob("*") if p.suffix in (".py", ".pyi")
     }
     assert committed_files == {p.relative_to(tmp_path) for p in generated}
+
+
+def test_snapshot_kind_and_sizes_exist() -> None:
+    quote = Quote(bid_size=1.0, ask_size=2.0, last_size=3.0)
+    assert QUOTE_KIND_SNAPSHOT == 3
+    assert (quote.bid_size, quote.ask_size, quote.last_size) == (1.0, 2.0, 3.0)
+    assert quote.HasField("event_ts") is False
+    assert quote.HasField("bid") is False

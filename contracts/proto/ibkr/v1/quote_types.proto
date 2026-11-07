@@ -25,12 +25,17 @@ enum MarketDataType {
 //   UNDERLYING_IV: a short streaming subscription per stock or index with
 //     generic ticks 104 and 106, released when option_implied_vol and
 //     historical_vol have arrived; at most 20 s.
+//   SNAPSHOT: the current quote fields of one contract: a short streaming
+//     subscription with no generic ticks (the default ticks only), released as
+//     soon as bid and ask have arrived; at most 20 s; wanted fields bid, ask,
+//     last, bid_size, ask_size, last_size, close, volume and the event time.
 // These first values are corrected from the owner's live measurement (ADR 0003:
 // measure first), which is a change of comment and table, not of shape.
 enum QuoteKind {
   QUOTE_KIND_UNSPECIFIED = 0;
   QUOTE_KIND_OPTION_EOD = 1;
   QUOTE_KIND_UNDERLYING_IV = 2;
+  QUOTE_KIND_SNAPSHOT = 3;
 }
 
 // QuoteStatus is the outcome of one quote.

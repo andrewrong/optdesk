@@ -40,4 +40,10 @@ message Quote {
   // error_text is the IBKR text after the log filter's scrub, only on error
   // statuses.
   string error_text = 23;
+  // bid_size, ask_size and last_size are the sizes of the exchange quote.
+  optional double bid_size = 24;
+  optional double ask_size = 25;
+  optional double last_size = 26;
+  // event_ts is the exchange's event time; sent_at and received_at stay ours.
+  google.protobuf.Timestamp event_ts = 27;
 }
