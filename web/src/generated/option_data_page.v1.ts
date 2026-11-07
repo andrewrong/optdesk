@@ -61,6 +61,7 @@ export interface OptionDataPage {
    */
   quote_series: [] | [QuoteSeries] | [QuoteSeries, QuoteSeries] | [QuoteSeries, QuoteSeries, QuoteSeries];
   stale_after?: Timestamp;
+  underlyings?: UnderlyingChoice[];
 }
 /**
  * The data time of one source behind the card.
@@ -135,4 +136,10 @@ export interface QuotePoint {
   bid: Cell;
   ask: Cell;
   last: Cell;
+}
+export interface UnderlyingChoice {
+  id: number;
+  label: Text1;
+  href: string;
+  current: boolean;
 }

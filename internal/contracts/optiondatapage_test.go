@@ -12,7 +12,7 @@ import (
 const optionPageFixturesDir = "../../contracts/fixtures"
 
 // TestOptionDataPageFixtures validates the fixtures of page.option_data_page.v1: ok, terms, gap and
-// stale are valid; bad-version fails once, at /schema_version, with the keyword const.
+// stale and choices are valid; a choices href with a scheme fails at href; bad-version fails once, at /schema_version, with the keyword const.
 func TestOptionDataPageFixtures(t *testing.T) {
 	t.Parallel()
 	s := compilePageV2(t, "page.option_data_page.v1.json")
@@ -28,7 +28,7 @@ func TestOptionDataPageFixtures(t *testing.T) {
 		}
 		return v
 	}
-	for _, name := range []string{"ok", "terms", "gap", "stale"} {
+	for _, name := range []string{"ok", "terms", "gap", "stale", "choices"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			if err := s.Validate(load(t, name)); err != nil {
@@ -36,6 +36,28 @@ func TestOptionDataPageFixtures(t *testing.T) {
 			}
 		})
 	}
+	t.Run("choices-bad-href", func(t *testing.T) {
+		t.Parallel()
+		v, ok := load(t, "choices").(map[string]any)
+		if !ok {
+			t.Fatal("choices is not an object")
+		}
+		first, ok := v["underlyings"].([]any)[0].(map[string]any)
+		if !ok {
+			t.Fatal("underlyings[0] is not an object")
+		}
+		first["href"] = "https://x/y"
+		err := s.Validate(v)
+		ve, ok := err.(*jsonschema.ValidationError)
+		if !ok {
+			t.Fatalf("err = %v, want a validation error", err)
+		}
+		var got []leaf
+		leaves(ve, &got)
+		if len(got) != 1 || got[0] != (leaf{"/underlyings/0/href", "pattern"}) {
+			t.Errorf("failures = %v, want one at /underlyings/0/href with pattern", got)
+		}
+	})
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
 		err := s.Validate(load(t, "bad-version"))

@@ -45,6 +45,12 @@ type Config struct {
 	Quotes       store.QuoteSnapshotReader
 	// Notes are the texts of the page's notes, shown as given; at most maxNotes are kept.
 	Notes []string
+	// Symbol is the underlying's symbol; empty: symbol is null.
+	Symbol string
+	// Terms reads the option terms of the kept rows; nil: expiry and right are null and strike is a no_data gap.
+	Terms store.OptionTermsReader
+	// Choices are the underlyings the page links to; empty: no underlyings field.
+	Choices []Choice
 }
 
 type sourceTime struct {
