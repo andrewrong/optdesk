@@ -133,8 +133,6 @@ Acceptance:
 6. `grep -c "page.home_page.v2" docs/contracts/page-schemas.md` is at least 1.
 7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line and no other path.
 
-## Checked by CI
-
 Checked by CI: `pnpm --dir web run generate:types` with `git diff --exit-code web/src/generated` (ci-web drift check: it regenerates `home_page.v2.ts` from the `generate:types` call this entry adds, so the file is checked here; json2ts cannot run in an offline sandbox, so no acceptance item claims it), tsc, eslint, vitest and the build; ci-go (`go test ./internal/contracts`); checks (the pull request body carries the line `Contracts: page.home_page v2 (new)` from the opening, the form `.github/workflows/checks.yml` accepts; v1 has no consumer and stays unchanged); the design verdict (the result matches the Interface part of `docs/design/home-page.md`, a judgement of the diff).
 
 ### home-page-compose
@@ -159,8 +157,6 @@ Acceptance:
 5. `TestComposeKeepsMembers` checks that each member in the output is byte-equal, after JSON compaction, to its input.
 6. `grep -c "internal/store\|time.Now\|os.ReadFile" internal/pages/home_page/compose.go` prints 0; `wc -l internal/pages/home_page/compose.go` shows under 600; `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go internal/pages/api_test.go cmd go.mod go.sum` is empty.
 7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line and no other path.
-
-## Checked by CI
 
 Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint, the `arch.toml` against `modules.md` check); the privacy scan; the design verdict (the result matches Decisions 5 and 6 of `docs/design/home-page.md`, a judgement of the code).
 
@@ -188,8 +184,6 @@ Acceptance:
 5. The same test checks that `registration.page.validate` refuses `bad-version.json` and refuses `bad-member.json` with a gap, and that it accepts `ok`; it opens no port and sleeps never; a clock the cards need is set with `vi.useFakeTimers` and `vi.setSystemTime`.
 6. `pnpm --dir web run test -- web/test/pages/home` passes, together with `web/test/shell` (the registration test finds `home_page` and no duplicate schema).
 7. `git diff $(git merge-base HEAD origin/main) -- web/package.json web/src/shell web/src/pages/home/HouseholdCard.tsx web/src/pages/home/HeldCompaniesCard.tsx web/src/pages/home/MacroCard.tsx web/src/pages/home/MarketSummaryCard.tsx web/src/pages/home/OptionsSummaryCard.tsx web/src/pages/home/StaleAlert.tsx web/src/pages/home/CardNotes.tsx web/src/pages/home/DataTimesFold.tsx web/no-compute-allow.txt web/deps-allowlist.txt web/src/generated` is empty, and `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
-
-## Checked by CI
 
 Checked by CI: `pnpm install --frozen-lockfile`, then tsc (`pnpm --dir web run typecheck`), eslint, vitest and the build; hygiene (the manifest of the new `fixtures` directory and the privacy scan); the design verdict (the result matches Decisions 7 and 8 of `docs/design/home-page.md`, a judgement of the code).
 
