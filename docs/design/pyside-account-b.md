@@ -128,19 +128,20 @@ Acceptance:
    prints 1 and its name is `Account`; no message, rpc or field identifier contains `Order`, `Execution`, `Cancel` or `Place` (checked on the declaration lines, not the comments: `grep -v '^ *//' contracts/proto/ibkr/v1/account.proto | grep -ci 'order\|execution\|cancel\|place'` prints 0).
 2. The messages are those of decision 2 of docs/design/pyside-account-b.md with the field numbers shown, every message and field has a comment, and `quantity` and `avg_cost` are `string`; `buf lint` and
    `buf build` pass on `contracts/proto`.
-3. The generated Go files `internal/contracts/genpb/account.pb.go` and `account_grpc.pb.go` and the four Python files are exactly the output of `sh contracts/generate.sh` (the generated-code check of `checks.yml`
-   finds no difference); none was edited by hand.
+3. The generated Go files `internal/contracts/genpb/account.pb.go` and `account_grpc.pb.go` are exactly the output of `sh contracts/generate.sh` (the `generated code is current` step of `checks.yml`, a
+   job that sets up Go only, finds no difference). The four Python files are the output of `contracts/generate-pyproto.sh` (`grpc_tools.protoc`), which that step does not run; they are checked by
+   `test_generated_python_is_current` in `pyside/tests/contracts/test_contracts_api.py`, run by `ci-pyside`. None was edited by hand.
 4. `pyside/src/optdesk/contracts/api.py` re-exports `AccountServiceServicer`, `AccountServiceStub`, `add_AccountServiceServicer_to_server`, `AccountRequest`, `AccountResponse`, `AccountValue` and `Position`
    in `__all__`, holds no logic, and imports no other new name.
 5. `pyside/tests/contracts/test_contracts_api.py` gains a test, `test_account_service_surface`, that checks from both sides with a fake servicer and a stub: the servicer base has exactly the method
-   `Account`, a stub has the same, and a caller reads `account`, `generation` and the repeated rows of a response built by the fake; `cd pyside && uv run pytest tests/contracts -n auto` passes.
+   `Account`, a stub has the same, and a caller reads `account`, `generation` and the repeated rows of a response built by the fake; `tests/contracts` passes under `ci-pyside` (see `Checked by CI`).
 6. `internal/contracts/account_proto_test.go` has `TestAccountServiceHasOneReadRpc` (the descriptor of `AccountService` lists exactly `Account`, not streaming) and a test using a fake server on a Unix
    socket in `t.TempDir()` with `t.Parallel()`; `go test ./internal/contracts/... -count=1 -race` passes.
 7. `ibkr.v1` of the other proto files is unchanged: `git diff --stat origin/main -- contracts/proto` lists only `account.proto`.
 8. No file outside the ten listed is in the diff.
 9. The result matches the sections Decisions (1 and 2) and Interface of docs/design/pyside-account-b.md, judged from the code and the design file.
 
-Checked by CI: the generated-code check of `checks.yml` and `buf lint`.
+Checked by CI: the generated-code check of `checks.yml` (Go output), `buf lint`, and `ci-pyside` (`uv sync --locked`, then `uv run pytest tests/contracts -n auto`, which holds `test_generated_python_is_current`); these commands need the package index and are not run in a sandbox without network.
 
 ### pyside-account
 
@@ -150,7 +151,7 @@ Second opinion: waived by the owner — the advisor answered it (<date>, filled 
 The owner merges this pull request.
 Advisor: agrees — (filled by the dispatcher)
 
-Files: pyside/src/optdesk/ibkr/transport.py, pyside/src/optdesk/ibkr/accounts.py, pyside/src/optdesk/ibkr/model.py, pyside/src/optdesk/ibkr/ibgateway.py, pyside/src/optdesk/ibkr/server.py, pyside/examples/gateways.example.toml, pyside/tests/ibkr/test_accounts.py, pyside/tests/ibkr/test_guard.py, pyside/tests/ibkr/test_server.py
+Files: pyside/src/optdesk/ibkr/transport.py, pyside/src/optdesk/ibkr/accounts.py, pyside/src/optdesk/ibkr/model.py, pyside/src/optdesk/ibkr/ibgateway.py, pyside/src/optdesk/ibkr/server.py, pyside/examples/gateways.example.toml, pyside/tests/ibkr/test_accounts.py, pyside/tests/ibkr/test_guard.py, pyside/tests/ibkr/test_server.py, pyside/tests/ibkr/test_loop_rules.py
 
 Design: docs/design/pyside-account-b.md#decisions
 
@@ -160,8 +161,10 @@ Order: after account-proto.
 
 Acceptance:
 
-1. `ALLOWED_IDS` in `pyside/src/optdesk/ibkr/transport.py` is `{1, 2, 9, 20, 25, 49, 59, 71, 78, 61, 62, 63, 64}` and `ORDER_IDS` is unchanged. In `pyside/tests/ibkr/test_guard.py` the existing
-   `test_unknown_id_refused` is edited (61 and 62 leave its tuple `(61, 62, 5, 7, 6, 0)` and the comment "positions request 61, account summary request 62"); `test_account_ids_pass` sends frames 61, 62, 63 and 64
+1. `ALLOWED_IDS` in `pyside/src/optdesk/ibkr/transport.py` is `{1, 2, 9, 20, 25, 49, 59, 71, 78, 61, 62, 63, 64}` and `ORDER_IDS` is unchanged. In `pyside/tests/ibkr/test_guard.py` three existing
+   places are edited: `test_unknown_id_refused` (61 and 62 leave its tuple `(61, 62, 5, 7, 6, 0)`); the module-level comment line `# ids of the TWS protocol: positions request 61, account summary request 62`
+   above `ORDER_IDS` is removed; and in `test_sendmsg_direct_is_guarded` the frame `client.sendMsg("61\x001\x00")` moves to an id that stays refused, `client.sendMsg("6\x001\x00")`, still asserting
+   `NotAllowed` (the count of recorded frames stays 1). New tests: `test_account_ids_pass` sends frames 61, 62, 63 and 64
    through the real `Client` with the recording stub connection and all four are recorded, and `test_order_and_other_ids_still_refused` checks that 3, 4, 21, 58, 6 and 5 still raise (`OrderRefused` for the
    first four, `NotAllowed` for 6 and 5).
 2. `pyside/src/optdesk/ibkr/accounts.py` (new, under 600 lines) holds the tag tuple of decision 3 of docs/design/pyside-account-b.md and the read. It calls `client.reqAccountSummary` with the ten tags itself (not
@@ -186,16 +189,26 @@ Acceptance:
 8. `server.py` and `build_server`: `build_server(gateway, clock=None, *, spec=None)` as in decision 6; `_socket_paths` returns the named socket for a gateway whose `collect` holds any of the three words;
    `ContractsService` and `MarketDataService` are registered only with `market_data`, `AccountService` only with `account_summary` or `positions`, and `SessionService` always; with `spec=None` the three
    services of today are registered. In `pyside/tests/ibkr/test_server.py`, `test_account_only_gateway_has_a_socket` (a gateway with the two account words and no `market_data` has `ibkr-<name>.sock` and
-   answers the account rpc with a fake, and `Snapshot` on it is `UNIMPLEMENTED`) and `test_default_socket_still_needs_market_data` pass.
+   answers the account rpc with a fake, and `Snapshot` on it is `UNIMPLEMENTED`) and `test_default_socket_still_needs_market_data` pass. The existing `test_serve_sockets_per_name_and_default` is edited: its positions-only case (`spec("c", 3, collect=("positions",))`) now expects
+   `{"ibkr-a.sock", "ibkr-c.sock", "ibkr.sock"}` instead of `{"ibkr-a.sock", "ibkr.sock"}`.
 9. `pyside/examples/gateways.example.toml` keeps its placeholders (no real port, alias or id), its second gateway lists `collect = ["account_summary", "positions"]`, and `pyside/tests/ibkr/test_gateways.py`
-   still loads it (`cd pyside && uv run pytest tests/ibkr/test_gateways.py -n auto` passes).
+   still loads it (`ci-pyside` runs `tests/ibkr/test_gateways.py`; see `Checked by CI`).
 10. Every test runs under `pytest -n auto` (a temporary directory for every socket, `kit.sockdir`), a fake clock from `pyside/tests/kit/fakeclock.py` and no sleep; none connects to a
-    broker. `cd pyside && uv sync --locked && uv run ruff check && uv run mypy --strict && uv run pytest -n auto` passes.
+    broker. `ruff check`, `mypy --strict` and `pytest -n auto` over `pyside` are decided by `ci-pyside` (see `Checked by CI`), not by a command of this item.
 11. An unexpected exception inside the Account handler maps to gRPC status `INTERNAL` with a constant message and none of the exception's text: `test_account_unexpected_error_is_internal` makes the fake gateway
     raise an exception whose text carries an id-shaped string (built at run time from two pieces) and asserts the status `INTERNAL`, a message equal to a module constant, and that neither the text nor the
     string is in the status details or in any log record.
-12. No file outside the nine listed is in the diff; `pyside/pyproject.toml` and `pyside/uv.lock` are unchanged; no new source file is over 600 lines and `transport.py`, `ibgateway.py` stay under 800.
+12. No file outside the ten listed is in the diff; `pyside/pyproject.toml` and `pyside/uv.lock` are unchanged; no new source file is over 600 lines and `transport.py`, `ibgateway.py` stay under 800.
 13. The result matches the section Decisions (points 3 to 7 and 9 to 10) of docs/design/pyside-account-b.md, judged from the code and the design file.
+14. `pyside/tests/ibkr/test_loop_rules.py` is edited, because its `ALLOWED` set (an allowlist, not a refuse list; `test_only_async_calls_on_ib_and_client` asserts the calls seen on `ib` and `client` in
+    `pyside/src/optdesk/ibkr/*.py` are inside it) refuses `reqAccountSummary`, `reqPositions` and the two cancels. The calls the read makes, all named: `client.reqAccountSummary`, `client.reqPositions`,
+    `client.cancelAccountSummary`, `client.cancelPositions`, and the accessor of the managed accounts of decision 4 when it is a call on `ib` or `client` (`managedAccounts`). The test gains a second set,
+    `ACCOUNT_ONLY`, holding exactly these names, accepted only in the file `pyside/src/optdesk/ibkr/accounts.py` and refused in every other file of the package; `ALLOWED` is unchanged, and
+    `test_account_calls_only_in_accounts_py` asserts that each of the four request and cancel calls is seen in `accounts.py` and in no other file. `grep -c 'ACCOUNT_ONLY' pyside/tests/ibkr/test_loop_rules.py`
+    is at least 2.
+
+Checked by CI: `ci-pyside` (`uv sync --locked`, `uv run ruff check`, `uv run mypy --strict`, `uv run pytest -n auto`, which includes `tests/ibkr/test_gateways.py`), as the merged transport design keeps these
+commands. They need the package index, so a sandbox without network does not decide them; items 1 to 9 and 11 to 14 are otherwise read from the diff and from tests that run offline.
 
 ### go-account-client
 
@@ -250,6 +263,10 @@ Acceptance:
 4. `grep -c '[A-Za-z]\{1,\}[0-9]\{5,9\}' docs/deploy/pyside.md` prints the same count as on origin/main, and the file contains no port number, host address or account id.
 5. No file outside `docs/deploy/pyside.md` is in the diff.
 6. The result matches the section Decisions (points 4, 6 and 10) of docs/design/pyside-account-b.md, judged from the file and the design file.
+7. Two sentences of `docs/deploy/pyside.md` that this design makes false are replaced: the `collect` bullet ("Only `market_data` is served today; the other two are accepted and change nothing until the later
+   account design lands") now says that each of the three words is served (`market_data` by the market data services, `account_summary` and `positions` by `AccountService`); and the `## Left out` entry
+   "Serving the account summary and positions" is removed from that list (the rest of the entry stays). `grep -c 'change nothing until the later' docs/deploy/pyside.md` prints 0 and
+   `grep -c 'Serving the account summary' docs/deploy/pyside.md` prints 0.
 
 ## Left out
 
@@ -282,4 +299,5 @@ Answer of the adversarial pass: `pyside-account-b.adversarial.md` in the dispatc
 - 4 Lock-in: adopted; recorded in `## Left out`.
 - 5 False claims: adopted; `build_server` gets `spec=None` (decision 6), the broker.md version-line claim is dropped, and the pyside entry names the edit of `test_guard.py::test_unknown_id_refused`.
 - 6 Slips: adopted; `pyside-runbook-account` has `Depends on: none` with the order in `Order:`, `AccountServicer` gets the alias and `collect` from `spec`, and the cancel assertion is in the real-client test.
+- Second design-session points applied (head 55a80d4): the `test_loop_rules.py` allowlist (Files and item 14), the Python output check of `account-proto`, the uv commands moved to `Checked by CI`, the two runbook sentences (item 7), and the named edits of `test_guard.py` and `test_server.py`.
 - Advisor: the conditions of the advisor were applied (an `INTERNAL` acceptance for an unexpected exception in `pyside-account`, the log defence stated in decision 7, the Contracts line of `account-proto`) and the runbook note on the live check of gateway B.
