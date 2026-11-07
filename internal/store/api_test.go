@@ -657,3 +657,62 @@ func TestOptionTermsStoreContract(t *testing.T) {
 		t.Fatalf("500 ids: %v", err)
 	}
 }
+
+type memNames struct{ rows []store.InstrumentName }
+
+func (m *memNames) InstrumentNames(_ context.Context, ids []int64) ([]store.InstrumentName, error) {
+	if len(ids) > 500 {
+		return nil, permanentErr("more than 500 ids")
+	}
+	out := []store.InstrumentName{}
+	for _, id := range ids {
+		if id == 0 {
+			return nil, permanentErr("instrument id 0")
+		}
+	}
+	for _, r := range m.rows {
+		for _, id := range ids {
+			if r.InstrumentID == id {
+				out = append(out, r)
+				break
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].InstrumentID < out[j].InstrumentID })
+	return out, nil
+}
+func (m *memNames) Close() error { return nil }
+
+func TestInstrumentNameContract(t *testing.T) {
+	t.Parallel()
+	var open store.OpenInstrumentNameFunc = func(context.Context, string) (store.InstrumentNameStore, error) {
+		return &memNames{rows: []store.InstrumentName{
+			{InstrumentID: 20, Type: "index", Name: "SPX"},
+			{InstrumentID: 10, Type: "stock", Name: "AAPL"},
+		}}, nil
+	}
+	s, err := open(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	var r store.InstrumentNameReader = s
+	ctx := context.Background()
+	got, err := r.InstrumentNames(ctx, []int64{20, 99, 10})
+	if err != nil || len(got) != 2 || got[0].InstrumentID != 10 || got[0].Name != "AAPL" || got[1].InstrumentID != 20 {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	got, err = r.InstrumentNames(ctx, []int64{})
+	if err != nil || got == nil || len(got) != 0 {
+		t.Fatalf("empty: %v, %v", got, err)
+	}
+	var te contracts.TypedError
+	_, err = r.InstrumentNames(ctx, make([]int64, 501))
+	if !errors.As(err, &te) || te.Kind() != contracts.Permanent {
+		t.Fatalf("501 ids: %v", err)
+	}
+	_, err = r.InstrumentNames(ctx, []int64{5, 0})
+	if !errors.As(err, &te) || te.Kind() != contracts.Permanent {
+		t.Fatalf("id 0: %v", err)
+	}
+}

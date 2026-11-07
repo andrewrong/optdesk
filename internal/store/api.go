@@ -132,6 +132,25 @@ type OptionTermsStore interface {
 	Close() error
 }
 
+// InstrumentName is the name of one instrument; for a stock or index it is the symbol.
+type InstrumentName struct {
+	InstrumentID int64
+	Type, Name   string
+}
+
+// InstrumentNameReader reads names by instrument id.
+type InstrumentNameReader interface {
+	// InstrumentNames returns the names of ids ordered by InstrumentID; an unknown id is absent; an empty list gives
+	// an empty answer and no database call; more than 500 ids or an id of 0 is Permanent.
+	InstrumentNames(ctx context.Context, ids []int64) ([]InstrumentName, error)
+}
+
+// InstrumentNameStore is the reader of the names and Close.
+type InstrumentNameStore interface {
+	InstrumentNameReader
+	Close() error
+}
+
 // SessionDayStore is the Reader and the Writer of master.session_day.
 type SessionDayStore interface {
 	SessionDayReader
@@ -286,6 +305,9 @@ type OpenOptionEodCatalogFunc func(ctx context.Context, dsn string) (OptionEodCa
 
 // OpenOptionTermsFunc opens the option terms store (internal/store/instrument.OpenOptionTerms).
 type OpenOptionTermsFunc func(ctx context.Context, dsn string) (OptionTermsStore, error)
+
+// OpenInstrumentNameFunc opens the name reader with the line DSNEnvPages (instrument.OpenInstrumentNames).
+type OpenInstrumentNameFunc func(ctx context.Context, dsn string) (InstrumentNameStore, error)
 
 // OpenQuoteSnapshotFunc opens the quote snapshot store (internal/store/snapshot.OpenQuoteSnapshot).
 type OpenQuoteSnapshotFunc func(ctx context.Context, dsn string) (QuoteSnapshotStore, error)
