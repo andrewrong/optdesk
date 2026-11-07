@@ -62,7 +62,7 @@ rows above name every other top-level path of the planned tree.
   `docs/contracts/page-schemas.md` and the code generated from contracts (`internal/contracts/gen/**`,
   `internal/contracts/genpb/**`, `web/src/generated/**`, `pyside/src/optdesk/contracts/genpb/**`) belong to contracts, so a source and its output are one module;
   each other `docs/contracts/<module>.md` belongs to its module; the migration runner and `migrations/**`
-  belong to store; `web/tests/**` belongs to web; `tests/**` (tests of the repo scripts) belongs to repo;
+  belong to store; `web/test/**` belongs to web; `tests/**` (tests of the repo scripts) belongs to repo;
   `cmd/**` belongs to ot (the composition root); `scripts/check-frontend-deps.mjs` and `frontend-whitelist.json` belong to web (the web row comes before the `scripts/**` of repo); `pyproject.toml` and `uv.lock` of Python live under `pyside/` (the
   pyside row); `deploy/**` has its own row and no week-1 issue.
 - Owner-only paths of the project declaration (an agent's pull request that touches one needs the owner's merge):
@@ -77,7 +77,7 @@ rows above name every other top-level path of the planned tree.
 
 | module | paths | entry | tests | depends |
 |---|---|---|---|---|
-| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/** pyside/tests/contracts/test_contracts_api.py docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go internal/contracts/genpb web/src/generated/index.ts pyside/src/optdesk/contracts/api.py | internal/contracts/api_test.go internal/contracts/schema_test.go pyside/tests/contracts/test_contracts_api.py |  |
+| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/** pyside/tests/contracts/test_contracts_api.py docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go internal/contracts/genpb web/src/generated/*.ts pyside/src/optdesk/contracts/api.py | internal/contracts/api_test.go internal/contracts/schema_test.go pyside/tests/contracts/test_contracts_api.py |  |
 | clock | internal/clock/** docs/contracts/clock.md pyside/src/optdesk/calendar/** pyside/tests/contracts/test_calendar_api.py pyside/tests/calendar/** | internal/clock/api.go pyside/src/optdesk/calendar/api.py | internal/clock/api_test.go pyside/tests/contracts/test_calendar_api.py | contracts |
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
@@ -87,7 +87,7 @@ rows above name every other top-level path of the planned tree.
 | jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store |
-| web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/tests/** | contracts |
+| web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/test/** | contracts |
 | pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/ibkr/api.py | pyside/tests/contracts/test_ibkr_api.py | contracts |
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
