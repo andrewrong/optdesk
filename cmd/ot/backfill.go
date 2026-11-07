@@ -8,6 +8,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 func init() { register("backfill", backfill) }
@@ -41,10 +42,16 @@ func backfill(a *app, args []string) error {
 	ctx := context.Background()
 	clk := a.deps.newClock()
 	var res runner.BackfillResult
-	var runErr error
+	var runErr, cursorErr error
+	var cursor contracts.Day
 	err = withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
 		b := a.deps.newBackfiller(w.ledger, w.cal, clk, []contracts.Job{w.job}, ruleOf(w.job))
 		res, runErr = b.Backfill(ctx, day, datasets)
+		if runErr == nil && res.Refused == runner.RefusedAheadOfCursor {
+			var cur store.Cursor
+			cur, cursorErr = w.ledger.Cursor(ctx)
+			cursor = cur.Day
+		}
 		return nil
 	})
 	if err != nil {
@@ -58,10 +65,17 @@ func backfill(a *app, args []string) error {
 		}
 		return fmt.Errorf("%s failed: the error text is withheld because it may hold a DSN or a key", what)
 	}
+	if cursorErr != nil {
+		return fmt.Errorf("read reconcile cursor failed")
+	}
 	switch res.Refused {
 	case "":
 	case runner.RefusedAheadOfCursor:
-		return fmt.Errorf("day %s is ahead of the cursor: use run-once", day)
+		shown := string(cursor)
+		if shown == "" {
+			shown = "(none)"
+		}
+		return fmt.Errorf("day %s is ahead of the cursor %s: use run-once", day, shown)
 	case runner.RefusedNoPlan:
 		return fmt.Errorf("no plan was recorded for day %s: nothing to backfill", day)
 	default:

@@ -165,3 +165,14 @@ func TestBackfillNoSecretInErrors(t *testing.T) {
 		check(t, a, errb)
 	})
 }
+
+func TestBackfillAheadNamesCursor(t *testing.T) {
+	t.Parallel()
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Refused: runner.RefusedAheadOfCursor}})
+	var opened, closed atomic.Int32
+	withCursor(a, &opened, &closed, "2026-03-03", nil)
+	err := backfill(a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.Contains(err.Error(), "ahead of the cursor 2026-03-03: use run-once") {
+		t.Fatalf("got %v", err)
+	}
+}

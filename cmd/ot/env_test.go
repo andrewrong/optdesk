@@ -88,9 +88,7 @@ const (
 
 var sentinels = []string{sentDSN, sentPassword, sentVerifier}
 
-func leakErr() error {
-	return fmt.Errorf("dial %s pw %s verifier %s", sentDSN, sentPassword, sentVerifier)
-}
+func leakErr() error { return fmt.Errorf("dial %s pw %s verifier %s", sentDSN, sentPassword, sentVerifier) }
 
 // leakApp builds an app whose env, .env and every opener hold or return the sentinels.
 func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
