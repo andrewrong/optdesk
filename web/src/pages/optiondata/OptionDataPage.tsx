@@ -2,10 +2,36 @@
 import { Info, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/types/option_data_page'
+import { validate, type Payload, type Result } from '@/types/option_data_page'
 import { ChainTable } from './ChainTable'
 import { QuoteChart } from './QuoteChart'
-export { validate as validateOptionDataPage } from '@/types/option_data_page'
+import { UnderlyingLinks } from './UnderlyingLinks'
+
+// The shared validator checks the version only; the page also refuses an `underlyings` entry whose `href` is not a string.
+export function validateOptionDataPage(input: unknown): Result {
+  const checked = validate(input)
+  if (!checked.ok) return checked
+  const list: unknown = checked.payload.underlyings
+  if (list === undefined) return checked
+  const sound =
+    Array.isArray(list) &&
+    list.every(
+      (entry: unknown) =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        'href' in entry &&
+        typeof entry.href === 'string',
+    )
+  if (sound) return checked
+  return {
+    ok: false,
+    gap: {
+      reason: 'invalid_payload',
+      text: 'The payload does not match its schema. Do not act on this card.',
+    },
+    errors: [],
+  }
+}
 export type { Payload as OptionDataPagePayload } from '@/types/option_data_page'
 
 export function OptionDataPage({ payload }: { payload: Payload }) {
@@ -39,6 +65,7 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
           <span className="text-muted-foreground">{underlying.session_day}</span>
         </CardContent>
       </Card>
+      {payload.underlyings ? <UnderlyingLinks underlyings={payload.underlyings} /> : null}
       <Card>
         <CardHeader>
           <CardTitle>{payload.chain_title}</CardTitle>
