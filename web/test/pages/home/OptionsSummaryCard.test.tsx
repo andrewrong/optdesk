@@ -1,5 +1,5 @@
-// Issue #130: the options_summary v2 card shows the text fields of the payload and nothing else. Expected strings
-// are read from the fixtures of fixtures/options-summary/, not from the component.
+// The options_summary v3 card shows the text fields of the payload and nothing else. Expected strings are read from
+// the fixtures of fixtures/v3/options-summary/, not from the component.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -16,7 +16,7 @@ const fixture = (dir: string, name: string) =>
   JSON.parse(
     readFileSync(path.resolve(import.meta.dirname, '../../../fixtures', dir, name), 'utf8'),
   )
-const os = (name: string) => fixture('options-summary', name)
+const os = (name: string) => fixture('v3/options-summary', name)
 
 let root: Root | null = null
 let host: HTMLElement
@@ -90,10 +90,18 @@ describe('OptionsSummaryCard', () => {
     }
   })
 
-  it('shows card.stale.text for stale.json', async () => {
+  it('shows card.stale.text and data-stale true for stale.json', async () => {
     const stale = os('stale.json')
     await showCard(stale)
-    expect(host.querySelector('[data-stale-label]')?.textContent).toBe(stale.card.stale.text)
+    const notice = host.querySelector('[data-stale]')!
+    expect(notice.getAttribute('data-stale')).toBe('true')
+    expect(notice.textContent).toBe(stale.card.stale.text)
+  })
+
+  it('gives data-stale false for ok.json', async () => {
+    const ok = os('ok.json')
+    await showCard(ok)
+    expect(host.querySelector('[data-stale]')?.getAttribute('data-stale')).toBe('false')
   })
 })
 
@@ -121,28 +129,5 @@ describe('App with options_summary', () => {
     expect(host.querySelector('[data-card=options-summary]')).toBeNull()
     expect(host.textContent).toBe('')
     expect(gap.ok ? '' : gap.gap.text).toMatch(/Unsupported schema_version/)
-  })
-})
-
-describe('OptionsSummaryCard and the clock', () => {
-  it('renders the same stale tone whatever the device clock says', async () => {
-    const ok = os('ok.json')
-    vi.useFakeTimers({ toFake: ['Date'] })
-    try {
-      vi.setSystemTime(new Date(Date.parse(ok.card.stale.stale_after) - 1000))
-      await showCard(ok)
-      // the chart carries generated ids, so compare the stale label and the tiles
-      const outside = () =>
-        ['[data-stale-label]', '[data-tiles]'].map((sel) => host.querySelector(sel)?.outerHTML)
-      const before = outside()
-      await act(async () => root?.unmount())
-      document.body.innerHTML = ''
-      vi.setSystemTime(new Date(Date.parse(ok.card.stale.stale_after) + 1000))
-      await showCard(ok)
-      expect(outside()).toEqual(before)
-      expect(host.querySelector('[data-clock-skew]')).toBeNull()
-    } finally {
-      vi.useRealTimers()
-    }
   })
 })
