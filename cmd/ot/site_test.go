@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -50,7 +53,7 @@ func newSiteFixture(t *testing.T, entries ...store.OptionEodLatest) *siteFixture
 		return p
 	}
 	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
-	f.h = siteHandler(a, clk, "2026-11-06", siteReaders{catalog: f.cat}, func(vm []byte) http.Handler {
+	f.h = siteHandler(a, clk, "2026-11-06", siteReaders{catalog: f.cat, names: &fakeNames{}}, func(vm []byte) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
 	})
 	return f
@@ -201,6 +204,10 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 		t.Error("a store was opened")
 		return nil, errors.New("opened")
 	}
+	a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
+		t.Error("a store was opened")
+		return nil, errors.New("opened")
+	}
 	a.deps.optionDataPage = newOptionDataPage
 	rd, closeFn, err := openSiteReaders(t.Context(), a)
 	if err != nil {
@@ -215,6 +222,10 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 			t.Fatalf("%s: %d %.200q", p, rec.Code, rec.Body)
 		}
 	}
+	got, err := rd.names.InstrumentNames(t.Context(), []int64{9000, 9010, 5})
+	if err != nil || len(got) != 2 || got[0].InstrumentID != 9000 || got[1].InstrumentID != 9010 || got[0].Name == "" {
+		t.Fatalf("demo names %+v %v", got, err)
+	}
 }
 
 func TestSiteMissingDSN(t *testing.T) {
@@ -228,5 +239,187 @@ func TestSiteMissingDSN(t *testing.T) {
 	err := runServe(a, []string{"--site", "--addr", "127.0.0.1:0"})
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvPages) || strings.Contains(err.Error(), "sentinel") {
 		t.Fatalf("err %v", err)
+	}
+}
+
+// fakeNames answers names, records the ids of each read and fails with err.
+type fakeNames struct {
+	mu    sync.Mutex
+	names []store.InstrumentName
+	err   error
+	reads [][]int64
+}
+
+func (f *fakeNames) InstrumentNames(_ context.Context, ids []int64) ([]store.InstrumentName, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads = append(f.reads, append([]int64(nil), ids...))
+	return f.names, f.err
+}
+
+// noRows holds no option data at all.
+type noRows struct{}
+
+func (noRows) OptionEod(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.OptionEod, error) {
+	return nil, nil
+}
+
+func (noRows) QuoteSnapshots(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.QuoteSnapshot, error) {
+	return nil, nil
+}
+
+func (noRows) OptionTerms(context.Context, []int64) ([]store.OptionTerms, error) { return nil, nil }
+
+// realSite serves the real option_data_page over the catalog, the names and empty rows; it returns the handler
+// and the log of the app.
+func realSite(t *testing.T, cat *fakeCatalog, names *fakeNames) (http.Handler, *bytes.Buffer) {
+	t.Helper()
+	a, log := testApp(t, "")
+	a.deps.optionDataPage = newOptionDataPage
+	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
+	rd := siteReaders{eod: noRows{}, quotes: noRows{}, catalog: cat, terms: noRows{}, names: names}
+	return siteHandler(a, clk, "2026-11-06", rd, func(vm []byte) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
+	}), log
+}
+
+type sitePageJSON struct {
+	RunStatus  string   `json:"run_status"`
+	Notes      []string `json:"notes"`
+	Gaps       []any    `json:"gaps"`
+	Underlying struct {
+		Symbol *string `json:"symbol"`
+		Label  string  `json:"label"`
+	} `json:"underlying"`
+	Choices []struct {
+		Label string `json:"label"`
+	} `json:"underlyings"`
+}
+
+func getSite(t *testing.T, h http.Handler, path string) (int, sitePageJSON) {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil))
+	var p sitePageJSON
+	if rec.Code == 200 {
+		if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+			t.Fatalf("json: %v: %.300q", err, rec.Body)
+		}
+	}
+	return rec.Code, p
+}
+
+const emptyNote = "No option data is stored yet; collection has not run."
+
+func TestSiteNames(t *testing.T) {
+	t.Parallel()
+	cat := &fakeCatalog{entries: []store.OptionEodLatest{
+		{UnderlyingID: 9000, SessionDay: "2026-11-05"}, {UnderlyingID: 9010, SessionDay: "2026-11-04"},
+	}}
+	names := &fakeNames{names: []store.InstrumentName{
+		{InstrumentID: 9000, Type: "stock", Name: "AAA"}, {InstrumentID: 9010, Type: "stock", Name: "BBB"},
+	}}
+	h, _ := realSite(t, cat, names)
+	code, p := getSite(t, h, "/options/data")
+	if code != 200 {
+		t.Fatalf("code %d", code)
+	}
+	if p.Underlying.Label != "AAA" || p.Underlying.Symbol == nil || *p.Underlying.Symbol != "AAA" {
+		t.Fatalf("underlying %+v", p.Underlying)
+	}
+	if len(p.Choices) != 2 || p.Choices[0].Label != "AAA" || p.Choices[1].Label != "BBB" {
+		t.Fatalf("choices %+v", p.Choices)
+	}
+	if len(names.reads) != 1 {
+		t.Fatalf("%d name reads", len(names.reads))
+	}
+	if len(p.Notes) != 0 {
+		t.Fatalf("notes %v", p.Notes)
+	}
+
+	t.Run("no name or option type keeps the id", func(t *testing.T) {
+		t.Parallel()
+		names := &fakeNames{names: []store.InstrumentName{{InstrumentID: 9010, Type: "option", Name: "OPT"}}}
+		h, _ := realSite(t, cat, names)
+		_, p := getSite(t, h, "/options/data")
+		if p.Underlying.Label != "Underlying 9000" || p.Underlying.Symbol != nil {
+			t.Fatalf("underlying %+v", p.Underlying)
+		}
+		if p.Choices[0].Label != "Underlying 9000" || p.Choices[1].Label != "Underlying 9010" {
+			t.Fatalf("choices %+v", p.Choices)
+		}
+	})
+	t.Run("at most 50 ids", func(t *testing.T) {
+		t.Parallel()
+		var entries []store.OptionEodLatest
+		for i := int64(1); i <= 80; i++ {
+			entries = append(entries, store.OptionEodLatest{UnderlyingID: 100 + i, SessionDay: "2026-11-05"})
+		}
+		names := &fakeNames{}
+		h, _ := realSite(t, &fakeCatalog{entries: entries}, names)
+		if code, _ := getSite(t, h, "/options/data/999"); code != 200 {
+			t.Fatalf("code %d", code)
+		}
+		if len(names.reads) != 1 || len(names.reads[0]) != 50 {
+			t.Fatalf("reads %v", names.reads)
+		}
+	})
+}
+
+func TestSiteEmptyStore(t *testing.T) {
+	t.Parallel()
+	names := &fakeNames{}
+	h, _ := realSite(t, &fakeCatalog{}, names)
+	code, p := getSite(t, h, "/options/data")
+	if code != 200 {
+		t.Fatalf("code %d", code)
+	}
+	if p.RunStatus != "partial" || len(p.Gaps) != 1 || len(p.Notes) != 1 || p.Notes[0] != emptyNote ||
+		p.Underlying.Label != "No underlying yet" {
+		t.Fatalf("page %+v", p)
+	}
+	if len(names.reads) != 0 {
+		t.Fatalf("name reads %v", names.reads)
+	}
+}
+
+func TestSiteNoteOnlyWhenCatalogEmpty(t *testing.T) {
+	t.Parallel()
+	cat := &fakeCatalog{entries: []store.OptionEodLatest{{UnderlyingID: 9000, SessionDay: "2026-11-05"}}}
+	h, _ := realSite(t, cat, &fakeNames{})
+	for _, path := range []string{"/options/data", "/options/data/9000", "/options/data/777"} {
+		code, p := getSite(t, h, path)
+		if code != 200 || len(p.Notes) != 0 || len(p.Gaps) != 1 {
+			t.Fatalf("%s: %d %+v", path, code, p)
+		}
+		if b, _ := json.Marshal(p.Gaps); !strings.Contains(string(b), "no option data stored") {
+			t.Fatalf("%s: gaps %s", path, b)
+		}
+	}
+}
+
+func TestSiteReaderErrors(t *testing.T) {
+	t.Parallel()
+	cat := &fakeCatalog{entries: []store.OptionEodLatest{{UnderlyingID: 9000, SessionDay: "2026-11-05"}}}
+	for name, tc := range map[string]struct {
+		cat   *fakeCatalog
+		names *fakeNames
+	}{
+		"catalog": {&fakeCatalog{err: errors.New("dsn sentinel-secret")}, &fakeNames{}},
+		"names":   {cat, &fakeNames{err: errors.New("dsn sentinel-secret")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h, log := realSite(t, tc.cat, tc.names)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/options/data", nil))
+			if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
+				t.Fatalf("%d %q", rec.Code, rec.Body)
+			}
+			if !strings.Contains(log.String(), "component=ot") || !strings.Contains(log.String(), "status=failed") ||
+				strings.Contains(log.String(), "sentinel") {
+				t.Fatalf("log %q", log)
+			}
+		})
 	}
 }

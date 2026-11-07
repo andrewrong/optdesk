@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"time"
 
@@ -100,6 +101,20 @@ func (demoOption) OptionTerms(_ context.Context, ids []int64) ([]store.OptionTer
 			StrikeCurrency: "USD", Multiplier: "100", ExpirationDate: "2026-12-18",
 			ExerciseStyle: "american", SettlementType: "physical",
 		})
+	}
+	return out, nil
+}
+
+// demoOptionNames are the symbols of the two demo underlyings.
+var demoOptionNames = map[int64]string{9000: "DEMA", 9010: "DEMB"}
+
+// InstrumentNames returns the names of the demo underlyings among ids, ordered by id.
+func (demoOption) InstrumentNames(_ context.Context, ids []int64) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, id := range demoOptionIDs {
+		if name, ok := demoOptionNames[id]; ok && slices.Contains(ids, id) {
+			out = append(out, store.InstrumentName{InstrumentID: id, Type: "stock", Name: name})
+		}
 	}
 	return out, nil
 }
