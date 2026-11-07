@@ -134,7 +134,7 @@ The tables, in words (identifiers are the column names; every price, size, volum
 - `received_at`, `generation`, `market_data_type`, `event_ts`, `status`, `error_code`, `currency`, `bid`, `ask`, `bid_size`,
   `ask_size`, `last`, `last_size`, `volume`. No IV column.
 - storage: a hypertable on `session_day` with 7-day chunks; compression after 7 days, segmented by `instrument_id`, ordered
-  by `session_day DESC, slot, capture_id`; no retention. Provisional.
+  by `session_day DESC, slot, capture_id`; no retention. Only the 7-day chunk interval and the 7-day compression delay are provisional; segmented by `instrument_id` and ordered by `session_day DESC, slot, capture_id` are fixed by schema v3.
 
 CHECK rules (the contracts generate the numeric ones, the migration repeats them):
 
@@ -246,7 +246,7 @@ after a higher one.
 
 Items under `Checked by CI` are decided by the workflows of the head commit; every other item is a fact read from the diff,
 with an offline grep or a named test. Every test added calls `t.Parallel()`, uses `t.TempDir()` for any file, never sleeps
-and never reads the real clock; every new source file stays under 600 lines. Pull requests carry `Contracts:` as AGENTS.md says.
+and never reads the real clock; every new source file stays under 600 lines. Pull request description conventions (the `Contracts:` line, and for the interface entry that it names the two new files under `contracts/datasets`) are merge conditions under AGENTS.md, not acceptance items.
 
 ### store-week2-interface (interface)
 
@@ -262,7 +262,7 @@ The two dataset schemas with their records and fixtures, and the store declarati
   5. `TestDatasetFixtures` in `schema_test.go` names both datasets; a case per schema shows a record with an extra property, a status of 6 and a currency of `usd` is rejected (offline: `grep -c 'obs.option_eod' internal/contracts/schema_test.go` is at least 1).
   6. `api.go` declares the types and constants of `## Interface` and gains no function body (offline: `grep -c '^func ' internal/store/api.go` prints the same number as at caacdb4); it still imports only `context`, `time` and `contracts`.
   7. `api_test.go` has two halves: a fake in the test that implements both stores (a repeat of one key adds no row; a second capture with a new `capture_id` adds one; inclusive range; documented order), and a caller written against the interfaces only that reads the fixtures of this entry through `contracts.OptionEod` and `contracts.QuoteSnapshot`. Tests `TestOptionEodStoreContract` and `TestQuoteSnapshotStoreContract`.
-  8. No file outside the thirteen listed is in the diff; the `Contracts:` line names the two new files under `contracts/datasets`. `internal/contracts/gen/records.go` has 184 lines at the base; two generated records add roughly 150 lines, so it stays near 350 lines, under the 800-line threshold (offline: `wc -l` after generation is below 800).
+  8. No file outside the thirteen listed is in the diff. `internal/contracts/gen/records.go` has 184 lines at the base; two generated records add roughly 150 lines, so it stays near 350 lines, under the 800-line threshold (offline: `wc -l` after generation is below 800).
   Checked by CI: ci-go, and the `checks` step that runs `sh contracts/generate.sh` and compares.
   Depends on: none. Order: first.
   Size: M
@@ -273,13 +273,13 @@ The two writer roles, their lines in `.env`, and the pg test helpers.
   Goal: after `ot setup pg` the roles `ot_w_option_eod` and `ot_w_quote_snapshot` exist with DSNs under their lines, and every pg test that migrates the whole `migrations/` directory has the roles and the Timescale extension in its scratch database.
   Files: internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/setup_pg_test.go, internal/store/setup/migrate_pg_test.go, internal/store/setup/loader_pg_test.go
   Design: docs/design/store-week2.md#brief; the roles are made by `Setup` like `ot_loader` (a SCRAM verifier, the password only in `.env`); the grants are in the migrations of the writer issues. Written against the tree at caacdb4 (after #135).
-  Owner's word: needed before merge (two new roles, two new credentials). Pending.
+  Owner's word: needed before merge (two new roles, two new credentials). Pending. The pull request description names the two new lines, says `Setup` touches no other line of `.env`, and carries the owner's word; this is a merge condition, not an acceptance item.
   Acceptance:
   1. `setup.go` declares `roleOptionEod = "ot_w_option_eod"` and `roleQuoteSnapshot = "ot_w_quote_snapshot"`, appends `{roleOptionEod, store.DSNEnvOptionEod}` and `{roleQuoteSnapshot, store.DSNEnvQuoteSnapshot}` to `roles`, and adds both to the `GRANT CONNECT` statement; `Setup` grants nothing on a table (offline: `grep -c 'roleOptionEod\|roleQuoteSnapshot' internal/store/setup/setup.go` is at least 4; `grep -c 'GRANT' internal/store/setup/setup.go` is unchanged).
   2. `ensureRole` is unchanged: no plain password reaches SQL (offline: `grep -c 'literal(password)' internal/store/setup/setup.go` prints 0, and `git diff` shows no line of `ensureRole` or `scram.go`).
   3. `TestRolesTable` expects seven roles, only `ot_owner` with an empty key, and the lines of the two new roles and of `ot_loader` by their `store` constants.
   4. In `migrate_pg_test.go` and `loader_pg_test.go` every scratch database that `migrateWith` or `MigrateUp` migrates gets `CREATE EXTENSION IF NOT EXISTS timescaledb` through the admin connection to that database before the migration (offline: `grep -c 'timescaledb' internal/store/setup/migrate_pg_test.go internal/store/setup/loader_pg_test.go` is at least 1 for each); a database that `loader_pg_test.go` creates itself is covered too; the role creation still runs under `pg_advisory_lock(54)` (offline: `grep -c 'pg_advisory_lock(54)'` unchanged).
-  5. No file outside the five listed is in the diff; the pull request description names the two new lines, says `Setup` touches no other line of `.env`, and carries the owner's word.
+  5. No file outside the five listed is in the diff.
   Checked by CI: `TestSetupPG` extended: after `Setup` on a seeded `.env` the file gains two lines whose users are the new roles and whose database is `optdesk`, other lines and comments are byte-equal, a second run changes nothing, and neither log nor error holds a password or verifier; the whole pg job stays green with migrations 0001 to 0005 only.
   Depends on: store-week2-interface (the two line names). #135 is merged at the base. Order: after the interface.
   Size: S
@@ -371,8 +371,8 @@ out of this public file). Its six points, each answered:
 1. Gap against the goal. Adopted in part. The window rule and a shared fake store are real gaps; they are named in
    `## Left out` with the follow-up designs `runner-window-per-dataset` and `store-testkit`, because each is its own
    interface change. The IV gap is stated, not closed: v3 has no IV column on the quote table. Wiring in `cmd/ot` waits for a job.
-2. The unnamed risk (CI red outside the Files lines). Adopted. The lint files are now carried by the interface issue as
-   a judged two-module entry, and `migrate_pg_test.go` and `loader_pg_test.go` are in `store-week2-roles` with the advisory
+2. The unnamed risk (CI red outside the Files lines). Adopted. The lint files are now carried by `store-option-eod`, the issue that creates the package, as
+   a judged two-module entry (store and repo; the first cut put them in the interface issue, and the cut was revised after #163), and `migrate_pg_test.go` and `loader_pg_test.go` are in `store-week2-roles` with the advisory
    lock and the Timescale extension in the scratch databases; goose ordering is in `## Rollout`; the frozen-key retry is
    defined in `## Interface`. The reviewer's other point, that a first write could freeze a bad capture, is answered by the
    key: a better observation is a new `capture_id`, a different key.
@@ -385,9 +385,8 @@ out of this public file). Its six points, each answered:
    the quote key holds `capture_id`, `slot` and `instrument_id`; a sentinel clears one column and never the row. Tables are
    hypertables as the advisor fixed; the migrations are applied by the owner, so a later change is a new migration.
 5. The false claim. Adopted: `arch.toml` and `.go-arch-lint.yml` do list the store sub-packages and need regeneration; the
-   claim is gone and the regeneration belongs to the interface issue. The other checks of the reviewer (record names, the
+   claim is gone and the regeneration belongs to `store-option-eod`. The other checks of the reviewer (record names, the
    count of aliases, `TestRolesTable` coming from #135) are corrected: no enum type is generated, so two aliases, and the
    roles issue is written against the tree after #135.
-6. Likeliest slip. Adopted. The lint files and the pg test helpers have an owner; the contracts and store entries are
-   split, so the one multi-module entry is the interface issue, and the reason is written in its Design line; the roles and
+6. Likeliest slip. Adopted. The lint files and the pg test helpers have an owner; the first cut split the contracts and store entries; after #163 the schemas and the store declarations are one interface entry (contracts and store) and the lint files are in `store-option-eod` (store and repo), so there are exactly two licensed two-module entries, with the reasons in `## Modules`; the roles and
    doc issues are written against the landed #135 tree; the SQL is checked by named pg tests, with greps only for presence.
