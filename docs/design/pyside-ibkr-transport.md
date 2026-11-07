@@ -193,7 +193,7 @@ enum MarketDataType { MARKET_DATA_TYPE_UNSPECIFIED = 0; MARKET_DATA_TYPE_LIVE = 
 //     option_implied_vol and historical_vol have arrived; at most 20 s.
 // These first values are corrected from the owner's live measurement (ADR 0003: measure first), which is a change of
 // comment and table, not of shape.
-enum QuoteKind { QUOTE_KIND_UNSPECIFIED = 0; QUOTE_KIND_OPTION_EOD = 1; QUOTE_KIND_UNDERLYING_IV = 2; }
+enum QuoteKind { QUOTE_KIND_UNSPECIFIED = 0; QUOTE_KIND_OPTION_EOD = 1; QUOTE_KIND_UNDERLYING_IV = 2; QUOTE_KIND_SNAPSHOT = 3; }
 enum QuoteStatus { QUOTE_STATUS_UNSPECIFIED = 0; QUOTE_STATUS_OK = 1; QUOTE_STATUS_PARTIAL = 2; QUOTE_STATUS_NO_DATA = 3;
                    QUOTE_STATUS_NO_SUBSCRIPTION = 4; QUOTE_STATUS_TIMEOUT = 5; QUOTE_STATUS_ERROR = 6; QUOTE_STATUS_DISCONNECTED = 7; }
 ```
@@ -217,8 +217,12 @@ message Quote {
   optional double historical_vol = 21;          // generic tick 104 of an underlying
   int32 error_code = 22;                        // IBKR code, 0 when none
   string error_text = 23;                       // IBKR text after the log filter's scrub, only on error statuses
+  optional double bid_size = 24; optional double ask_size = 25; optional double last_size = 26;   // sizes of the exchange quote
+  google.protobuf.Timestamp event_ts = 27;      // the exchange's event time; sent_at and received_at stay ours
 }
 ```
+
+Amendment 2026-11-07 (advisor): `QUOTE_KIND_SNAPSHOT = 3` and fields 24 to 27 (`bid_size`, `ask_size`, `last_size`, `event_ts`) are added before the first consumer, because `ibkr.v1` freezes at its first generated import and a later field would be a change of a frozen package. The sizes are `optional double` like every price, size and volume of `Quote` and of the store, whose tables hold them as nullable `numeric` (`docs/design/store-week2.md`, the lines on `obs.option_eod` and `obs.quote_snapshot`: `bid_size`, `ask_size`, `last_size`, `event_ts`); `event_ts` is a `google.protobuf.Timestamp` (message fields carry presence), matching the `event_ts` column of both tables next to `received_at`. `SNAPSHOT` is the kind of a planned time slot (`obs.quote_snapshot`); its tick set is a row of `spec.py` like the other kinds.
 
 `marketdata.proto` (imports `contract.proto`, `quote.proto` and `quote_types.proto`):
 
@@ -306,6 +310,7 @@ The seven proto files, their Go output, the Python generator, the generated Pyth
   python3 -I -c "import ast,pathlib,sys;bad=[(str(f),n.lineno) for f in pathlib.Path('pyside/tests').rglob('*.py') for n in ast.walk(ast.parse(f.read_text())) if isinstance(n,ast.Call) and ast.unparse(n.func) in ('asyncio.sleep','time.sleep','sleep') and not (ast.unparse(n.func)=='asyncio.sleep' and len(n.args)==1 and isinstance(n.args[0],ast.Constant) and n.args[0].value==0)];print(*bad,sep='\n');sys.exit(1 if bad else 0)"
   ```
   19. `model.py` declares the frozen dataclasses `ChainRow`, `ResolveResult`, `QuoteRow` and the `Gateway` protocol (`open_session`, `status`, `chains`, `resolve`, `quotes`, all async) with no function body beyond `...` and imports neither `ib_async` nor `optdesk.contracts` (`grep -nE '^(import|from) ' pyside/src/optdesk/ibkr/model.py` lists only `__future__`, `dataclasses`, `typing` and `collections.abc`). `pyside/tests/ibkr/test_seams.py`, which runs its coroutines with `asyncio.run`, has `test_fake_gateway_satisfies_protocol` (a fake class assigned to a `Gateway` variable passes `mypy --strict`, and the dataclasses are frozen), `test_fakeclock_sleep_parks_until_advance` and `test_with_timeout_uses_clock` (a call that never ends is cut at the fake second, no real wait).
+  20. The additions of 2026-11-07 are in the proto and in both outputs: `grep -c 'QUOTE_KIND_SNAPSHOT = 3' contracts/proto/ibkr/v1/quote_types.proto` prints 1; in `quote.proto` `grep -cE 'optional double (bid_size|ask_size|last_size)|Timestamp event_ts' contracts/proto/ibkr/v1/quote.proto` prints 4 and `grep -nE 'bid_size = 24|ask_size = 25|last_size = 26|event_ts = 27'` finds each once; `grep -c 'QUOTE_KIND_SNAPSHOT' internal/contracts/genpb/quote_types.pb.go` is at least 1 and `grep -cE 'BidSize|AskSize|LastSize|EventTs' internal/contracts/genpb/quote.pb.go` is at least 4; in `pyside/src/optdesk/contracts/genpb/ibkr/v1/quote_types_pb2.py` and `quote_pb2.pyi` the same names are found (`QUOTE_KIND_SNAPSHOT`, `bid_size`, `ask_size`, `last_size`, `event_ts`).
   Checked by CI: ci-go and checks (`sh contracts/generate.sh` then `git diff --exit-code`; the size ratchet; the pull request body carries the `Contracts:` line), ci-pyside (`uv sync --locked` fails on a stale lock, which is also `uv lock --check`; `uv run ruff check`, `uv run mypy --strict src tests` and `uv run pytest -n auto` pass with the generated tree present, `test_generated_python_is_current` (item 10) being the drift check of the generated Python).
   Depends on: ci-pyside-workflow.
   Size: L
