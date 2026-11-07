@@ -36,6 +36,7 @@ type deps struct {
 	newFRED        sources.NewFREDFunc
 	newFredSeries  jobs.NewFredSeriesFunc
 	newRunner      runner.NewWithRuleFunc
+	newBackfiller  runner.NewBackfillerWithRuleFunc
 	pageList       []pages.Page
 	newHandler     pages.NewHandlerFunc
 	migrateUp      func(ctx context.Context, adminDSN string, fsys fs.FS) error
@@ -59,6 +60,7 @@ func newDeps() deps {
 		newFRED:        fred.New,
 		newFredSeries:  fredseries.New,
 		newRunner:      reconcile.NewWithRule,
+		newBackfiller:  reconcile.NewBackfillerWithRule,
 		pageList:       []pages.Page{macro_rates.Page()},
 		newHandler:     embed.Handler,
 		migrateUp:      setup.MigrateUp,

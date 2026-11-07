@@ -2,12 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 // fakeClock is a clock fixed at one instant.
@@ -16,6 +21,31 @@ type fakeClock struct{ t time.Time }
 func (c fakeClock) Now() time.Time { return c.t }
 
 var _ clock.Clock = fakeClock{}
+
+// fakeBackfiller records its calls and answers res and err.
+type fakeBackfiller struct {
+	mu       sync.Mutex
+	days     []contracts.Day
+	datasets [][]string
+	res      runner.BackfillResult
+	err      error
+}
+
+func (f *fakeBackfiller) Backfill(_ context.Context, day contracts.Day, datasets []string) (runner.BackfillResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.days = append(f.days, day)
+	f.datasets = append(f.datasets, datasets)
+	res := f.res
+	res.Day = day
+	return res, f.err
+}
+
+func fakeNewBackfiller(f *fakeBackfiller) runner.NewBackfillerWithRuleFunc {
+	return func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Backfiller {
+		return f
+	}
+}
 
 // testApp builds an app over a real-profile OT_HOME in a temp dir holding envBody as .env.
 // It returns the app and the log output.
@@ -33,7 +63,10 @@ func testApp(t *testing.T, envBody string) (*app, *bytes.Buffer) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.deps = deps{newClock: func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} }}
+	a.deps = deps{
+		newClock:      func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} },
+		newBackfiller: fakeNewBackfiller(&fakeBackfiller{}),
+	}
 	return a, &errb
 }
 
