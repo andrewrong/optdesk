@@ -8,7 +8,7 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 
 ## Inputs
 
-- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 24`, `calendar = "XNYS"`), read with github.com/pelletier/go-toml/v2. The fields are `version`, `id`, `series` (the list of series ids) and the `[window]` table with `rule`, `lateness_hours` and `calendar`. A manifest without an id or without a series list fails with the error "fredseries: manifest needs an id and a series list".
+- `internal/jobs/fredseries/job.toml`, embedded: `version`, `id`, `series`, and one `[window]` table (`rule = "after_close"`, `lateness_hours = 96`, `calendar = "XNYS"`), read with github.com/pelletier/go-toml/v2. The fields are `version`, `id`, `series` (the list of series ids) and the `[window]` table with `rule`, `lateness_hours` and `calendar`. A manifest without an id or without a series list fails with the error "fredseries: manifest needs an id and a series list".
 - A `sources.Source`, a `store.SeriesWriter` and a `clock.Clock`, passed to `New`.
 - A `contracts.Day` and, for `Run`, the keys of `Plan`.
 
@@ -44,7 +44,7 @@ There is no test yet: the wrapping of an untyped fetch error as `Permanent` and 
 
 ## Jobs and slots
 
-`fred_series`, manifest version 1, window rule `after_close` with 24 hours lateness on calendar `XNYS`. Slots are assigned by the runner.
+`fred_series`, manifest version 1, window rule `after_close` with 96 hours lateness on calendar `XNYS`. Slots are assigned by the runner.
 
 ## Forbidden
 
