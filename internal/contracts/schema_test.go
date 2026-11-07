@@ -50,7 +50,7 @@ func loadRecords(t *testing.T, name string) ([]map[string]any, []byte) {
 func TestDatasetFixtures(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"master.session_day", "obs.series_point"} {
+	for _, name := range []string{"master.session_day", "obs.series_point", "obs.option_eod", "obs.quote_snapshot"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			s := compileDataset(t, name)
@@ -75,6 +75,54 @@ func TestDatasetFixtures(t *testing.T) {
 				}
 				if err := s.Validate(extra); err == nil {
 					t.Fatalf("record %d with an unknown field must fail", i)
+				}
+			}
+		})
+	}
+}
+
+func TestSnapshotSchemasReject(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"obs.option_eod", "obs.quote_snapshot"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := compileDataset(t, name)
+			recs, _ := loadRecords(t, name)
+			mutate := func(f func(map[string]any)) map[string]any {
+				m := map[string]any{}
+				for k, v := range recs[0] {
+					m[k] = v
+				}
+				f(m)
+				return m
+			}
+			cases := map[string]map[string]any{
+				"base":             mutate(func(map[string]any) {}),
+				"extra property":   mutate(func(m map[string]any) { m["extra"] = 1 }),
+				"status 6":         mutate(func(m map[string]any) { m["status"] = 6 }),
+				"status 0":         mutate(func(m map[string]any) { m["status"] = 0 }),
+				"currency usd":     mutate(func(m map[string]any) { m["currency"] = "usd" }),
+				"capture not uuid": mutate(func(m map[string]any) { m["capture_id"] = "not-a-uuid" }),
+				"negative bid":     mutate(func(m map[string]any) { m["bid"] = -1 }),
+			}
+			for label, rec := range cases {
+				err := s.Validate(rec)
+				if label == "base" && err != nil {
+					t.Fatalf("base record: %v", err)
+				}
+				if label != "base" && err == nil {
+					t.Fatalf("%s must be rejected", label)
+				}
+			}
+			if name == "obs.option_eod" {
+				if err := s.Validate(mutate(func(m map[string]any) { m["underlying_ccy"] = "eur" })); err == nil {
+					t.Fatal("underlying_ccy eur must be rejected")
+				}
+				if err := s.Validate(mutate(func(m map[string]any) { m["iv_decimal"] = -1 })); err == nil {
+					t.Fatal("iv_decimal -1 must be rejected")
+				}
+				if err := s.Validate(mutate(func(m map[string]any) { m["delta"] = nil })); err != nil {
+					t.Fatalf("null delta: %v", err)
 				}
 			}
 		})

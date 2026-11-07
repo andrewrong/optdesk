@@ -2,7 +2,11 @@ package store_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -250,5 +254,235 @@ func TestEnvContract(t *testing.T) {
 	}
 	if got := m[store.DSNEnvLoader]; got != "postgres://ot_loader@h/d" {
 		t.Fatalf("loader dsn %q", got)
+	}
+}
+
+type memOptionEod struct{ rows []contracts.OptionEod }
+
+func (m *memOptionEod) InsertOptionEod(_ context.Context, rows []contracts.OptionEod) error {
+	for _, r := range rows {
+		dup := false
+		for _, e := range m.rows {
+			if e.SessionDay.Equal(r.SessionDay.Time) && e.CaptureID == r.CaptureID && e.InstrumentID == r.InstrumentID {
+				dup = true
+			}
+		}
+		if !dup {
+			m.rows = append(m.rows, r)
+		}
+	}
+	return nil
+}
+
+func (m *memOptionEod) OptionEod(_ context.Context, id int64, from, to contracts.Day) ([]contracts.OptionEod, error) {
+	var out []contracts.OptionEod
+	for _, r := range m.rows {
+		d := contracts.Day(r.SessionDay.Format(time.DateOnly))
+		if int64(r.UnderlyingID) == id && d >= from && d <= to {
+			out = append(out, r)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if !a.SessionDay.Equal(b.SessionDay.Time) {
+			return a.SessionDay.Format(time.DateOnly) < b.SessionDay.Format(time.DateOnly)
+		}
+		if a.InstrumentID != b.InstrumentID {
+			return a.InstrumentID < b.InstrumentID
+		}
+		return a.CaptureID < b.CaptureID
+	})
+	return out, nil
+}
+func (m *memOptionEod) Close() error { return nil }
+
+type memQuoteSnapshot struct{ rows []contracts.QuoteSnapshot }
+
+func (m *memQuoteSnapshot) InsertQuoteSnapshots(_ context.Context, rows []contracts.QuoteSnapshot) error {
+	for _, r := range rows {
+		dup := false
+		for _, e := range m.rows {
+			if e.SessionDay.Equal(r.SessionDay.Time) && e.CaptureID == r.CaptureID && e.Slot == r.Slot && e.InstrumentID == r.InstrumentID {
+				dup = true
+			}
+		}
+		if !dup {
+			m.rows = append(m.rows, r)
+		}
+	}
+	return nil
+}
+
+func (m *memQuoteSnapshot) QuoteSnapshots(_ context.Context, id int64, from, to contracts.Day) ([]contracts.QuoteSnapshot, error) {
+	var out []contracts.QuoteSnapshot
+	for _, r := range m.rows {
+		d := contracts.Day(r.SessionDay.Format(time.DateOnly))
+		if int64(r.InstrumentID) == id && d >= from && d <= to {
+			out = append(out, r)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if !a.SessionDay.Equal(b.SessionDay.Time) {
+			return a.SessionDay.Format(time.DateOnly) < b.SessionDay.Format(time.DateOnly)
+		}
+		if a.Slot != b.Slot {
+			return a.Slot < b.Slot
+		}
+		return a.CaptureID < b.CaptureID
+	})
+	return out, nil
+}
+func (m *memQuoteSnapshot) Close() error { return nil }
+
+var (
+	_ store.OptionEodStore        = &memOptionEod{}
+	_ store.QuoteSnapshotStore    = &memQuoteSnapshot{}
+	_ store.OpenOptionEodFunc     = func(context.Context, string) (store.OptionEodStore, error) { return &memOptionEod{}, nil }
+	_ store.OpenQuoteSnapshotFunc = func(context.Context, string) (store.QuoteSnapshotStore, error) { return &memQuoteSnapshot{}, nil }
+)
+
+func loadFixture[T any](t *testing.T, name string) []T {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recs []T
+	if err := json.Unmarshal(b, &recs); err != nil {
+		t.Fatal(err)
+	}
+	return recs
+}
+
+// storeOptionEod and readOptionEod use the stores through their interfaces only.
+func storeAndRead(ctx context.Context, s store.OptionEodStore, rows []contracts.OptionEod, id int64, from, to contracts.Day) ([]contracts.OptionEod, error) {
+	if err := s.InsertOptionEod(ctx, rows); err != nil {
+		return nil, err
+	}
+	return s.OptionEod(ctx, id, from, to)
+}
+
+// requireEodOrder checks the documented order: session_day, instrument_id, capture_id.
+func requireEodOrder(t *testing.T, all []contracts.OptionEod) {
+	t.Helper()
+	for i := 1; i < len(all); i++ {
+		a, b := all[i-1], all[i]
+		less := a.SessionDay.Before(b.SessionDay.Time) ||
+			(a.SessionDay.Equal(b.SessionDay.Time) && (a.InstrumentID < b.InstrumentID ||
+				(a.InstrumentID == b.InstrumentID && a.CaptureID <= b.CaptureID)))
+		if !less {
+			t.Fatalf("row %d is out of order: %+v after %+v", i, b, a)
+		}
+	}
+}
+
+func TestOptionEodStoreContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	rows := loadFixture[contracts.OptionEod](t, "obs.option_eod.r1.json")
+	if len(rows) < 4 {
+		t.Fatalf("fixture has %d rows", len(rows))
+	}
+	s := &memOptionEod{}
+	underlying := int64(rows[0].UnderlyingID)
+
+	got, err := storeAndRead(ctx, s, rows, underlying, "2026-11-06", "2026-11-09")
+	if err != nil || len(got) != len(rows) {
+		t.Fatalf("first insert: got %d rows err %v, want %d", len(got), err, len(rows))
+	}
+	// a repeat of the same keys adds no row
+	got, err = storeAndRead(ctx, s, rows, underlying, "2026-11-06", "2026-11-09")
+	if err != nil || len(got) != len(rows) {
+		t.Fatalf("repeat: got %d rows err %v, want %d", len(got), err, len(rows))
+	}
+	// a second capture with a new capture_id adds one
+	again := rows[0]
+	again.CaptureID = "00000000-0000-4000-8000-0000000000ff"
+	got, err = storeAndRead(ctx, s, []contracts.OptionEod{again}, underlying, "2026-11-06", "2026-11-09")
+	if err != nil || len(got) != len(rows)+1 {
+		t.Fatalf("new capture: got %d rows err %v, want %d", len(got), err, len(rows)+1)
+	}
+	// the range is inclusive on both ends
+	got, _ = s.OptionEod(ctx, underlying, "2026-11-09", "2026-11-09")
+	if len(got) != 1 || got[0].SessionDay.Format(time.DateOnly) != "2026-11-09" {
+		t.Fatalf("upper bound: %+v", got)
+	}
+	got, _ = s.OptionEod(ctx, underlying, "2026-11-06", "2026-11-06")
+	if len(got) != len(rows) {
+		t.Fatalf("lower bound: got %d rows, want %d", len(got), len(rows))
+	}
+	if got, _ = s.OptionEod(ctx, underlying, "2026-11-07", "2026-11-08"); len(got) != 0 {
+		t.Fatalf("empty range: %+v", got)
+	}
+	all, _ := s.OptionEod(ctx, underlying, "2026-11-01", "2026-11-30")
+	requireEodOrder(t, all)
+	// a null column reads back as nil
+	nullDelta := 0
+	for _, r := range all {
+		if r.Delta == nil {
+			nullDelta++
+		}
+	}
+	if nullDelta == 0 {
+		t.Fatal("the fixture's null delta did not come back as nil")
+	}
+}
+
+func TestQuoteSnapshotStoreContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	rows := loadFixture[contracts.QuoteSnapshot](t, "obs.quote_snapshot.r1.json")
+	if len(rows) < 4 {
+		t.Fatalf("fixture has %d rows", len(rows))
+	}
+	var s store.QuoteSnapshotStore = &memQuoteSnapshot{}
+	if err := s.InsertQuoteSnapshots(ctx, rows); err != nil {
+		t.Fatal(err)
+	}
+	inst := int64(rows[0].InstrumentID)
+	got, _ := s.QuoteSnapshots(ctx, inst, "2026-11-06", "2026-11-06")
+	if len(got) != 2 {
+		t.Fatalf("instrument %d: got %d rows, want 2 (slots 1000 and 1500)", inst, len(got))
+	}
+	// a repeat adds no row
+	if err := s.InsertQuoteSnapshots(ctx, rows); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ = s.QuoteSnapshots(ctx, inst, "2026-11-06", "2026-11-06"); len(got) != 2 {
+		t.Fatalf("repeat: got %d rows, want 2", len(got))
+	}
+	// a second capture of the same slot adds one
+	again := rows[0]
+	again.CaptureID = "00000000-0000-4000-8000-0000000000ff"
+	if err := s.InsertQuoteSnapshots(ctx, []contracts.QuoteSnapshot{again}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.QuoteSnapshots(ctx, inst, "2026-11-06", "2026-11-06")
+	if len(got) != 3 {
+		t.Fatalf("new capture: got %d rows, want 3", len(got))
+	}
+	// order: slot, then capture_id
+	if got[0].Slot != "1000" || got[1].Slot != "1000" || got[2].Slot != "1500" || got[0].CaptureID > got[1].CaptureID {
+		t.Fatalf("order: %+v", got)
+	}
+	// inclusive range and an empty one
+	if got, _ = s.QuoteSnapshots(ctx, inst, "2026-11-05", "2026-11-06"); len(got) != 3 {
+		t.Fatalf("upper bound: got %d rows", len(got))
+	}
+	if got, _ = s.QuoteSnapshots(ctx, inst, "2026-11-07", "2026-11-08"); len(got) != 0 {
+		t.Fatalf("empty range: %+v", got)
+	}
+	// a null price reads back as nil
+	nulls, _ := s.QuoteSnapshots(ctx, int64(rows[2].InstrumentID), "2026-11-06", "2026-11-06")
+	if len(nulls) == 0 || nulls[0].Bid != nil {
+		t.Fatalf("null bid: %+v", nulls)
+	}
+}
+
+func TestSnapshotDSNEnvNames(t *testing.T) {
+	t.Parallel()
+	if store.DSNEnvOptionEod != "OT_PG_DSN_OPTION_EOD" || store.DSNEnvQuoteSnapshot != "OT_PG_DSN_QUOTE_SNAPSHOT" {
+		t.Fatalf("got %q and %q", store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot)
 	}
 }
