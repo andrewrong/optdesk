@@ -150,23 +150,23 @@ func TestUpEmptyFSIsAnError(t *testing.T) {
 	}
 }
 
-// TestMigrationsEndWith0008 lists the migration files: 0008 follows 0007 and has an Up and a Down part, the Down part
+// TestMigration0008 lists the migration files: 0008 follows 0007 and has an Up and a Down part, the Down part
 // dropping the foreign keys before the tables.
-func TestMigrationsEndWith0008(t *testing.T) {
+func TestMigration0008(t *testing.T) {
 	t.Parallel()
 	files, err := filepath.Glob("../../../migrations/*.sql")
-	if err != nil || len(files) < 8 {
+	if err != nil || len(files) < 9 {
 		t.Fatalf("migrations: %v, %v", files, err)
 	}
 	names := make([]string, len(files))
 	for i, f := range files {
 		names[i] = filepath.Base(f)
 	}
-	n := len(names)
-	if names[n-2] != "0007_quote_snapshot.sql" || names[n-1] != "0008_master_instrument.sql" {
-		t.Fatalf("migrations end with %v", names[n-2:])
+	n := len(names) - 2 // 0008 is the last but one, 0009 the last
+	if names[n-1] != "0007_quote_snapshot.sql" || names[n] != "0008_master_instrument.sql" {
+		t.Fatalf("0008 follows %v", names[n-1:])
 	}
-	raw, err := os.ReadFile(files[n-1])
+	raw, err := os.ReadFile(files[n])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,5 +181,40 @@ func TestMigrationsEndWith0008(t *testing.T) {
 	firstTable := strings.Index(down, "DROP TABLE")
 	if lastKey < 0 || firstTable < 0 || lastKey > firstTable || strings.Count(down, "DROP CONSTRAINT") != 3 {
 		t.Fatalf("Down part must drop the three keys before the tables:\n%s", down)
+	}
+}
+
+// TestMigrationsEndWith0009 lists the migration files: 0009 follows 0008 and has an Up and a Down part, the Down part
+// dropping the view, the index and the table in that order.
+func TestMigrationsEndWith0009(t *testing.T) {
+	t.Parallel()
+	files, err := filepath.Glob("../../../migrations/*.sql")
+	if err != nil || len(files) < 9 {
+		t.Fatalf("migrations: %v, %v", files, err)
+	}
+	n := len(files)
+	if filepath.Base(files[n-2]) != "0008_master_instrument.sql" || filepath.Base(files[n-1]) != "0009_master_option_terms.sql" {
+		t.Fatalf("migrations end with %v", files[n-2:])
+	}
+	raw, err := os.ReadFile(files[n-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, down, ok := strings.Cut(string(raw), "-- +goose Down")
+	if !ok || !strings.HasPrefix(up, "-- +goose Up") {
+		t.Fatal("0009 lacks an Up or a Down part")
+	}
+	for _, want := range []string{"CREATE TABLE master.option_terms ", "REFERENCES master.instrument (instrument_id)",
+		`CHECK ("right" IN ('C', 'P'))`, "CREATE UNIQUE INDEX option_terms_current", "WHERE valid_to IS NULL;",
+		"CREATE VIEW rd.option_terms_r1", "GRANT SELECT ON rd.option_terms_r1 TO ot_ro_pages"} {
+		if !strings.Contains(up, want) {
+			t.Errorf("Up part lacks %q", want)
+		}
+	}
+	view := strings.Index(down, "DROP VIEW rd.option_terms_r1")
+	index := strings.Index(down, "DROP INDEX master.option_terms_current")
+	table := strings.Index(down, "DROP TABLE master.option_terms")
+	if view < 0 || index < view || table < index {
+		t.Fatalf("Down part must drop the view, the index and the table in order:\n%s", down)
 	}
 }
