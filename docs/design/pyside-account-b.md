@@ -83,7 +83,7 @@ No row of `docs/design/modules.md` changes and no module is added. Paths by modu
 
 - contracts: `contracts/proto/ibkr/v1/account.proto` (owner-only path), the Go output `internal/contracts/genpb/account.pb.go` and `internal/contracts/genpb/account_grpc.pb.go`, the Python output
   `pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.py`, `account_pb2.pyi`, `account_pb2_grpc.py` and `account_pb2_grpc.pyi`, the re-export file `pyside/src/optdesk/contracts/api.py`, its test
-  `pyside/tests/contracts/test_contracts_api.py` and a new Go test `internal/contracts/account_proto_test.go`.
+  `pyside/tests/contracts/test_contracts_api.py` and a new Go test `internal/contracts/genpb/account_proto_test.go`.
 - pyside: `pyside/src/optdesk/ibkr/transport.py` (owner-only), `accounts.py` (new), `model.py`, `ibgateway.py`, `server.py`, `pyside/examples/gateways.example.toml`, and the tests
   `pyside/tests/ibkr/test_accounts.py` (new), `test_guard.py`, `test_server.py`. No new dependency: `pyside/pyproject.toml` and `pyside/uv.lock` do not change.
 - broker: `internal/broker/grpcbroker/account.go` (new), `dial.go`, `account_test.go` (new) and `docs/contracts/broker.md`. `internal/broker/api.go` is not edited. No new Go package, so no regenerated arch file.
@@ -94,7 +94,7 @@ No row of `docs/design/modules.md` changes and no module is added. Paths by modu
 The interface is the proto file `contracts/proto/ibkr/v1/account.proto` of decisions 1 and 2, owned by the contracts module, with the Go and Python output generated from it and committed together
 (`sh contracts/generate.sh`). The Go port of the broker module and the Python `api.py` of `ibkr` are not edited. The interface entry is `account-proto`; the pyside entry and the broker entry use the
 generated types and need nothing else from each other. The contract is tested from both sides: Python by `test_contracts_api.py` (servicer, stub and `add_..._to_server` of the new service, a fake and a
-caller), Go by `internal/contracts/account_proto_test.go` (the service descriptor lists exactly the one rpc; a fake server and a client compile against the generated code).
+caller), Go by `internal/contracts/genpb/account_proto_test.go` (the service descriptor lists exactly the one rpc; a fake server and a client compile against the generated code). The Go test sits in `internal/contracts/genpb` and is `package genpb`, so it imports nothing of contracts: no edge is added, whatever the arch check does with test files (`.go-arch-lint.yml` also has `excludeFiles: "^.*_test\\.go$"`).
 
 ## Issues
 
@@ -112,7 +112,7 @@ Second opinion: waived by the owner — the advisor answered it (<date>, filled 
 The owner merges this pull request.
 Advisor: agrees — (filled by the dispatcher)
 
-Files: contracts/proto/ibkr/v1/account.proto, internal/contracts/genpb/account.pb.go, internal/contracts/genpb/account_grpc.pb.go, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.pyi, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2_grpc.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2_grpc.pyi, pyside/src/optdesk/contracts/api.py, pyside/tests/contracts/test_contracts_api.py, internal/contracts/account_proto_test.go
+Files: contracts/proto/ibkr/v1/account.proto, internal/contracts/genpb/account.pb.go, internal/contracts/genpb/account_grpc.pb.go, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.pyi, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2_grpc.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2_grpc.pyi, pyside/src/optdesk/contracts/api.py, pyside/tests/contracts/test_contracts_api.py, internal/contracts/genpb/account_proto_test.go
 
 Design: docs/design/pyside-account-b.md#decisions
 
@@ -135,7 +135,7 @@ Acceptance:
    in `__all__`, holds no logic, and imports no other new name.
 5. `pyside/tests/contracts/test_contracts_api.py` gains a test, `test_account_service_surface`, that checks from both sides with a fake servicer and a stub: the servicer base has exactly the method
    `Account`, a stub has the same, and a caller reads `account`, `generation` and the repeated rows of a response built by the fake; `tests/contracts` passes under `ci-pyside` (see `Checked by CI`).
-6. `internal/contracts/account_proto_test.go` has `TestAccountServiceHasOneReadRpc` (the descriptor of `AccountService` lists exactly `Account`, not streaming) and a test using a fake server on a Unix
+6. `internal/contracts/genpb/account_proto_test.go` has `TestAccountServiceHasOneReadRpc` (the descriptor of `AccountService` lists exactly `Account`, not streaming) and a test using a fake server on a Unix
    socket in `t.TempDir()` with `t.Parallel()`; `go test ./internal/contracts/... -count=1 -race` passes.
 7. `ibkr.v1` of the other proto files is unchanged: `git diff --stat origin/main -- contracts/proto` lists only `account.proto`.
 8. No file outside the ten listed is in the diff.
@@ -301,3 +301,4 @@ Answer of the adversarial pass: `pyside-account-b.adversarial.md` in the dispatc
 - 6 Slips: adopted; `pyside-runbook-account` has `Depends on: none` with the order in `Order:`, `AccountServicer` gets the alias and `collect` from `spec`, and the cancel assertion is in the real-client test.
 - Second design-session points applied (head 55a80d4): the `test_loop_rules.py` allowlist (Files and item 14), the Python output check of `account-proto`, the uv commands moved to `Checked by CI`, the two runbook sentences (item 7), and the named edits of `test_guard.py` and `test_server.py`.
 - Advisor: the conditions of the advisor were applied (an `INTERNAL` acceptance for an unexpected exception in `pyside-account`, the log defence stated in decision 7, the Contracts line of `account-proto`) and the runbook note on the live check of gateway B.
+- Third design-session points applied: the Go contract test moved to `internal/contracts/genpb/account_proto_test.go` (same module, no new import edge; Files, Modules, Interface and account-proto item 6 follow).
