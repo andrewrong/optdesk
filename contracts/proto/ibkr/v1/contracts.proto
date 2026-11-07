@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+enum SecType {
+  SEC_TYPE_UNSPECIFIED = 0;
+  SEC_TYPE_STOCK = 1;
+  SEC_TYPE_INDEX = 2;
+  SEC_TYPE_OPTION = 3;
+}
+
+enum Right {
+  RIGHT_UNSPECIFIED = 0;
+  RIGHT_PUT = 1;
+  RIGHT_CALL = 2;
+}
+
+enum ResolveStatus {
+  RESOLVE_STATUS_UNSPECIFIED = 0;
+  RESOLVE_STATUS_FOUND = 1;
+  RESOLVE_STATUS_NOT_LISTED = 2;
+}
+
+// ContractSpec is a fully specified contract; an option leaves nothing open.
+message ContractSpec {
+  SecType sec_type = 1;
+  string symbol = 2;
+  string exchange = 3;
+  string currency = 4;
+  // expiry is YYYYMMDD, options only.
+  string expiry = 5;
+  // strike is canonical decimal text, options only.
+  string strike = 6;
+  Right right = 7;
+  string multiplier = 8;
+  string trading_class = 9;
+  // con_id is required by Snapshot (zero is INVALID_ARGUMENT) and answered by ResolveContract.
+  int64 con_id = 10;
+}
+
+// ContractsService lists chain definitions and resolves single contracts.
+service ContractsService {
+  rpc ListChains(ListChainsRequest) returns (ListChainsResponse);
+  rpc ResolveContract(ResolveContractRequest) returns (ResolveContractResponse);
+}
+
+// ListChainsRequest names a stock or index with its con_id.
+message ListChainsRequest {
+  ContractSpec underlying = 1;
+}
+
+// strikes is the union over all expirations of the chain, not the strikes of each expiration: most pairs of an
+// expiration and a strike do not exist (one run asked 8,170 and all came back not listed). The caller resolves
+// only the pairs it needs, and keeps a not-listed answer for days (the 7 days plus jitter of ADR 0003); this service keeps no cache.
+message ListChainsResponse {
+  int64 underlying_con_id = 1;
+  repeated Chain chains = 2;
+}
+
+message Chain {
+  string exchange = 1;
+  string trading_class = 2;
+  string multiplier = 3;
+  repeated string expirations = 4;
+  repeated string strikes = 5;
+}
+
+// ResolveContractRequest holds a stock, index or option, fully specified, con_id zero.
+message ResolveContractRequest {
+  ContractSpec contract = 1;
+}
+
+// FOUND: exactly one matching result. NOT_LISTED: an empty end or error 200. Several results, a differing result,
+// a timeout or a connectivity error is a gRPC error (FAILED_PRECONDITION for several or differing, DEADLINE_EXCEEDED, UNAVAILABLE), never a cached negative.
+message ResolveContractResponse {
+  ResolveStatus status = 1;
+  ContractSpec contract = 2;
+  int32 error_code = 3;
+  string error_text = 4;
+}

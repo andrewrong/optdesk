@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package ibkr.v1;
 
+import "ibkr/v1/marketdata.proto";
+
 option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
 
 // Session is the liveness probe of the broker transport.
@@ -17,4 +19,9 @@ message PingRequest {}
 message PingResponse {
   // connected is true while the broker session is up.
   bool connected = 1;
+  // generation is 0 before the first connect and grows by one at each reconnect;
+  // quotes of two generations come from two sessions.
+  int64 generation = 2;
+  // market_data_type is the type set on the current session.
+  MarketDataType market_data_type = 3;
 }

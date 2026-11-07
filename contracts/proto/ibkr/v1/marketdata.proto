@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "google/protobuf/timestamp.proto";
+import "ibkr/v1/contracts.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// The market-data type is one setting of the gateway session, not of a request. Pyside sets it once after each
+// connect from its configuration and reports it in PingResponse; a reconnect sets it again before any quote is served.
+enum MarketDataType {
+  MARKET_DATA_TYPE_UNSPECIFIED = 0;
+  MARKET_DATA_TYPE_LIVE = 1;
+  MARKET_DATA_TYPE_FROZEN = 2;
+  MARKET_DATA_TYPE_DELAYED = 3;
+  MARKET_DATA_TYPE_DELAYED_FROZEN = 4;
+}
+
+// Specification of each kind, held in pyside (spec.py) and written here so the caller knows what it gets:
+//   OPTION_EOD: a short streaming subscription per option with generic ticks 100 and 101, released as soon as bid, ask,
+//     close and the model values have arrived; at most 20 s; wanted fields bid, ask, close, volume, open_interest, model values.
+//   UNDERLYING_IV: a short streaming subscription per stock or index with generic ticks 104 and 106, released when
+//     option_implied_vol and historical_vol have arrived; at most 20 s.
+// These first values are corrected from the owner's live measurement (ADR 0003: measure first), which is a change of
+// comment and table, not of shape.
+enum QuoteKind {
+  QUOTE_KIND_UNSPECIFIED = 0;
+  QUOTE_KIND_OPTION_EOD = 1;
+  QUOTE_KIND_UNDERLYING_IV = 2;
+}
+
+enum QuoteStatus {
+  QUOTE_STATUS_UNSPECIFIED = 0;
+  QUOTE_STATUS_OK = 1;
+  QUOTE_STATUS_PARTIAL = 2;
+  QUOTE_STATUS_NO_DATA = 3;
+  QUOTE_STATUS_NO_SUBSCRIPTION = 4;
+  QUOTE_STATUS_TIMEOUT = 5;
+  QUOTE_STATUS_ERROR = 6;
+  QUOTE_STATUS_DISCONNECTED = 7;
+}
+
+// MarketDataService streams one quote per requested contract.
+service MarketDataService {
+  rpc Snapshot(SnapshotRequest) returns (stream SnapshotResponse);
+}
+
+// SnapshotRequest: every contract has con_id, else the call is INVALID_ARGUMENT.
+message SnapshotRequest {
+  QuoteKind kind = 1;
+  repeated ContractSpec contracts = 2;
+}
+
+// SnapshotResponse is one message per requested contract, in the sequence the answers complete.
+message SnapshotResponse {
+  Quote quote = 1;
+}
+
+message Quote {
+  ContractSpec contract = 1;
+  QuoteStatus status = 2;
+  // the type the gateway reported for this quote
+  MarketDataType market_data_type = 3;
+  int64 generation = 4;
+  google.protobuf.Timestamp requested_at = 5;
+  google.protobuf.Timestamp sent_at = 6;
+  google.protobuf.Timestamp received_at = 7;
+  optional double bid = 8;
+  optional double ask = 9;
+  optional double last = 10;
+  optional double close = 11;
+  optional double volume = 12;
+  optional double open_interest = 13;
+  // option model values
+  optional double implied_vol = 14;
+  optional double delta = 15;
+  optional double gamma = 16;
+  optional double vega = 17;
+  optional double theta = 18;
+  optional double und_price = 19;
+  // generic tick 106 of an underlying
+  optional double option_implied_vol = 20;
+  // generic tick 104 of an underlying
+  optional double historical_vol = 21;
+  // IBKR code, 0 when none
+  int32 error_code = 22;
+  // IBKR text after the log filter's scrub, only on error statuses
+  string error_text = 23;
+}

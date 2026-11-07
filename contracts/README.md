@@ -4,9 +4,11 @@ The shared schemas of optdesk: dataset schemas, page schemas, the Go records and
 
 ## Proto tree
 
-`contracts/proto/` holds exactly one proto file in week 1: `contracts/proto/ibkr/v1/session.proto`
-(package `ibkr.v1`, one rpc `Ping`). Its Go output is `internal/contracts/genpb/session.pb.go`;
-that file is generated and never edited by hand.
+`contracts/proto/ibkr/v1/` holds three proto files, all package `ibkr.v1`: `session.proto`
+(`SessionService`, rpc `Ping`), `contracts.proto` (`ContractsService`, rpcs `ListChains` and
+`ResolveContract`) and `marketdata.proto` (`MarketDataService`, rpc `Snapshot`). Their Go output is
+`internal/contracts/genpb/*.pb.go`: messages only, because no Go gRPC plugin is added. Those files are
+generated and never edited by hand.
 
 ## Generating
 
@@ -14,6 +16,12 @@ Run `sh contracts/generate.sh`; it calls `sh contracts/generate-proto.sh`, which
 `go tool buf lint` and then `go tool buf generate`. Both tools come from the `tool` block of
 `go.mod`, so nothing is downloaded beyond the Go module cache. The source and its generated
 output land in the same pull request.
+
+The Python output is generated on demand by `sh contracts/generate-pyproto.sh`, which runs
+`grpc_tools.protoc` through `uv run --project pyside --locked` into
+`pyside/src/optdesk/contracts/genpb/` and rewrites the generated imports to that package.
+`pyside/tests/contracts/test_contracts_api.py` fails when the committed output is stale.
+Python code imports the generated names through `optdesk.contracts.api` only.
 
 ## Versions
 
