@@ -51,3 +51,102 @@ func TestWindowRuleContract(t *testing.T) {
 		t.Fatalf("days = %v", f.days)
 	}
 }
+
+type fakeBackfiller struct {
+	result runner.BackfillResult
+	gotDay contracts.Day
+	gotIDs []string
+}
+
+func (f *fakeBackfiller) Backfill(_ context.Context, day contracts.Day, datasets []string) (runner.BackfillResult, error) {
+	f.gotDay, f.gotIDs = day, datasets
+	return f.result, nil
+}
+
+// describe is a caller: it branches on Refused, never on an error.
+func describe(res runner.BackfillResult) string {
+	switch res.Refused {
+	case runner.RefusedAheadOfCursor:
+		return "run-once first"
+	case runner.RefusedNoPlan:
+		return "no plan"
+	default:
+		return "done"
+	}
+}
+
+func TestBackfillerRefusalIsDataWithNilError(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		refused runner.BackfillRefusal
+		wantStr string
+		wantTxt string
+	}{
+		{"ahead of cursor", runner.RefusedAheadOfCursor, "ahead_of_cursor", "run-once first"},
+		{"no plan", runner.RefusedNoPlan, "no_plan", "no plan"},
+		{"not refused", "", "", "done"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := &fakeBackfiller{result: runner.BackfillResult{Refused: tc.refused}}
+			var newFn runner.NewBackfillerWithRuleFunc = func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Backfiller {
+				return f
+			}
+			b := newFn(nil, nil, nil, nil, runner.WindowRule{})
+			res, err := b.Backfill(context.Background(), "2026-11-06", []string{"DGS10"})
+			if err != nil {
+				t.Fatalf("a refusal carries a nil error, got %v", err)
+			}
+			if string(res.Refused) != tc.wantStr {
+				t.Fatalf("Refused = %q, want %q", res.Refused, tc.wantStr)
+			}
+			if got := describe(res); got != tc.wantTxt {
+				t.Fatalf("describe = %q, want %q", got, tc.wantTxt)
+			}
+			if f.gotDay != "2026-11-06" || len(f.gotIDs) != 1 || f.gotIDs[0] != "DGS10" {
+				t.Fatalf("arguments = %v %v", f.gotDay, f.gotIDs)
+			}
+		})
+	}
+}
+
+// fakeWindowed is a job-side type: it declares its window with plain values.
+type fakeWindowed struct {
+	calendarID  string
+	openOffset  time.Duration
+	closeOffset time.Duration
+}
+
+func (f fakeWindowed) Window() (string, time.Duration, time.Duration) {
+	return f.calendarID, f.openOffset, f.closeOffset
+}
+
+var _ runner.Windowed = fakeWindowed{}
+
+func TestWindowedContract(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		job  fakeWindowed
+	}{
+		{"all set", fakeWindowed{"XNYS", time.Minute, 5 * time.Hour}},
+		{"empty calendar and negative open offset", fakeWindowed{"", -30 * time.Minute, 96 * time.Hour}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var job any = tc.job
+			w, ok := job.(runner.Windowed)
+			if !ok {
+				t.Fatal("job does not satisfy runner.Windowed")
+			}
+			cal, open, closeOff := w.Window()
+			if cal != tc.job.calendarID || open != tc.job.openOffset || closeOff != tc.job.closeOffset {
+				t.Fatalf("Window() = %q %v %v, want %q %v %v", cal, open, closeOff,
+					tc.job.calendarID, tc.job.openOffset, tc.job.closeOffset)
+			}
+		})
+	}
+}

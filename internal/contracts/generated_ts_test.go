@@ -29,6 +29,7 @@ func TestGeneratedSummaryTypes(t *testing.T) {
 	files := []struct{ file, module, name string }{
 		{"market_summary.v2.ts", "./market_summary.v2", "MarketSummary"},
 		{"options_summary.v2.ts", "./options_summary.v2", "OptionsSummary"},
+		{"option_data_page.v1.ts", "./option_data_page.v1", "OptionDataPage"},
 	}
 	index := read("index.ts")
 	if got := firstLine(index); got != generatedBanner {

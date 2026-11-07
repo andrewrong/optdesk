@@ -253,7 +253,8 @@ func TestRunOnceDayBehindCursor(t *testing.T) {
 		runOnceFakes(a, &opened, &closed, &got)
 		withCursor(a, &opened, &closed, "2026-03-04", nil)
 		err := runOnce(a, []string{"--day", day})
-		if err == nil || !strings.Contains(err.Error(), day) || !strings.Contains(err.Error(), "2026-03-04") {
+		if err == nil || !strings.Contains(err.Error(), day) || !strings.Contains(err.Error(), "2026-03-04") ||
+			!strings.Contains(err.Error(), "use ot backfill --day "+day) {
 			t.Fatalf("day %s: err %v", day, err)
 		}
 		if got != "" || strings.Contains(errb.String(), "status=ok") {

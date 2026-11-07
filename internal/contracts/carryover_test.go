@@ -72,6 +72,11 @@ func readManifest(t *testing.T) map[string]string {
 	return m
 }
 
+// pageNewFiles names the schemas written in this repository after the carried copies; they are not in carryover.sha256.
+var pageNewFiles = []string{
+	"page.option_data_page.v1.json",
+}
+
 func carriedFiles(t *testing.T) []string {
 	t.Helper()
 	paths, err := filepath.Glob(filepath.Join(schemasDir, "page.*.json"))
@@ -81,7 +86,7 @@ func carriedFiles(t *testing.T) []string {
 	var names []string
 	for _, p := range paths {
 		n := filepath.Base(p)
-		if n == "page.macro_rates.v1.json" || slices.Contains(pageV2Files, n) || slices.Contains(pageV3Files, n) {
+		if n == "page.macro_rates.v1.json" || slices.Contains(pageV2Files, n) || slices.Contains(pageV3Files, n) || slices.Contains(pageNewFiles, n) {
 			continue
 		}
 		names = append(names, n)

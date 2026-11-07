@@ -288,3 +288,47 @@ func TestArchDeriveContractsGen(t *testing.T) {
 		t.Fatalf("contracts does not import contracts/gen:\n%s", block)
 	}
 }
+
+var nextKey = regexp.MustCompile(`\n  [^ ]`)
+
+func TestArchDeriveEntryListedSubPackages(t *testing.T) {
+	t.Parallel()
+	modules := "# Fixture\n\n## Modules\n\n" +
+		"| module | paths | entry | tests | depends |\n" +
+		"| --- | --- | --- | --- | --- |\n" +
+		"| contracts | internal/contracts/** | internal/contracts/api.go internal/contracts/genpb | internal/contracts/api_test.go | |\n" +
+		"| broker | internal/broker/** | internal/broker/api.go | internal/broker/api_test.go | contracts |\n" +
+		"| sources | internal/sources/** | internal/sources/api.go | internal/sources/api_test.go | |\n\n" +
+		"The composition root imports one constructor each: `internal/broker/grpcbroker`. Any other import is refused.\n"
+	dir := scratch(t, map[string]string{
+		"internal/contracts/genpb/g.go":   "package genpb\n",
+		"internal/broker/grpcbroker/d.go": "package grpcbroker\n",
+		"internal/sources/fred/f.go":      "package fred\n",
+		"internal/sources/s.go":           "package sources\n",
+		"internal/broker/b.go":            "package broker\n",
+	})
+	_, yml, err := generate(modules, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	block := func(name string) string {
+		_, rest, ok := strings.Cut(deps, "  "+name+":\n")
+		if !ok {
+			return ""
+		}
+		return nextKey.Split(rest, 2)[0]
+	}
+	if b := block("broker/grpcbroker"); !strings.Contains(b, "- contracts/genpb") {
+		t.Fatalf("broker/grpcbroker lacks contracts/genpb:\n%s", b)
+	}
+	if b := block("sources/fred"); strings.Contains(b, "genpb") {
+		t.Fatalf("sources/fred imports genpb:\n%s", b)
+	}
+	if b := block("broker"); strings.Contains(b, "genpb") {
+		t.Fatalf("the root broker imports genpb:\n%s", b)
+	}
+	if b := block("sources"); strings.Contains(b, "genpb") {
+		t.Fatalf("the root sources imports genpb:\n%s", b)
+	}
+}

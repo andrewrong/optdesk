@@ -486,3 +486,174 @@ func TestSnapshotDSNEnvNames(t *testing.T) {
 		t.Fatalf("got %q and %q", store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot)
 	}
 }
+
+// memInstrument is a fake InstrumentStore: one id per key, Instruments ordered by id.
+type memInstrument struct {
+	ids  map[store.Identifier]int64
+	rows map[int64]store.Instrument
+}
+
+func (m *memInstrument) ResolveInstrument(_ context.Context, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier) (int64, error) {
+	if id, ok := m.ids[key]; ok {
+		return id, nil
+	}
+	if m.ids == nil {
+		m.ids, m.rows = map[store.Identifier]int64{}, map[int64]store.Instrument{}
+	}
+	id := int64(len(m.ids) + 1)
+	m.ids[key] = id
+	m.rows[id] = store.Instrument{ID: id, Spec: spec, Identifiers: append([]store.Identifier{key}, extra...)}
+	return id, nil
+}
+
+func (m *memInstrument) Instruments(_ context.Context, ids []int64) ([]store.Instrument, error) {
+	var out []store.Instrument
+	for _, id := range ids {
+		if r, ok := m.rows[id]; ok {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+func (m *memInstrument) Close() error { return nil }
+
+var (
+	_ store.InstrumentStore    = &memInstrument{}
+	_ store.InstrumentResolver = &memInstrument{}
+	_ store.InstrumentReader   = &memInstrument{}
+	_ store.OpenInstrumentFunc = func(context.Context, string) (store.InstrumentStore, error) { return &memInstrument{}, nil }
+)
+
+func TestInstrumentStoreContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var s store.InstrumentStore = &memInstrument{}
+	a := store.Identifier{Scheme: "ibkr_conid", Value: "756733"}
+	b := store.Identifier{Scheme: "osi", Value: "SPY   261120C00600000"}
+	spec := store.InstrumentSpec{Type: "stock", Name: "SPY", Currency: "USD", Status: "active"}
+	id1, err := s.ResolveInstrument(ctx, a, spec, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id2, _ := s.ResolveInstrument(ctx, a, spec, []store.Identifier{{Scheme: "isin", Value: "X"}})
+	if id1 != id2 {
+		t.Fatalf("same key gave %d and %d", id1, id2)
+	}
+	idB, _ := s.ResolveInstrument(ctx, b, store.InstrumentSpec{Type: "option"}, nil)
+	if idB == id1 {
+		t.Fatalf("two keys share id %d", idB)
+	}
+	got, err := s.Instruments(ctx, []int64{idB, id1, 999})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != id1 || got[1].ID != idB || got[0].Spec.Name != "SPY" || got[0].Identifiers[0] != a {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestInstrumentDSNEnvName(t *testing.T) {
+	t.Parallel()
+	if store.DSNEnvMaster != "OT_PG_DSN_MASTER" {
+		t.Fatalf("got %q", store.DSNEnvMaster)
+	}
+}
+
+type permanentErr string
+
+func (e permanentErr) Error() string           { return string(e) }
+func (permanentErr) Kind() contracts.ErrorKind { return contracts.Permanent }
+
+type memEodCatalog struct{ latest []store.OptionEodLatest }
+
+func (m *memEodCatalog) OptionEodLatest(_ context.Context, since contracts.Day) ([]store.OptionEodLatest, error) {
+	out := []store.OptionEodLatest{}
+	for _, l := range m.latest {
+		if since == "" || l.SessionDay >= since {
+			out = append(out, l)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].UnderlyingID < out[j].UnderlyingID })
+	return out, nil
+}
+func (m *memEodCatalog) Close() error { return nil }
+
+type memTerms struct{ rows []store.OptionTerms }
+
+func (m *memTerms) OptionTerms(_ context.Context, ids []int64) ([]store.OptionTerms, error) {
+	if len(ids) > 500 {
+		return nil, permanentErr("more than 500 ids")
+	}
+	out := []store.OptionTerms{}
+	for _, r := range m.rows {
+		for _, id := range ids {
+			if r.InstrumentID == id {
+				out = append(out, r)
+				break
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].InstrumentID < out[j].InstrumentID })
+	return out, nil
+}
+func (m *memTerms) Close() error { return nil }
+
+func TestOptionEodCatalogStoreContract(t *testing.T) {
+	t.Parallel()
+	var open store.OpenOptionEodCatalogFunc = func(context.Context, string) (store.OptionEodCatalogStore, error) {
+		return &memEodCatalog{latest: []store.OptionEodLatest{{UnderlyingID: 9, SessionDay: "2026-11-05"}, {UnderlyingID: 3, SessionDay: "2026-11-04"}}}, nil
+	}
+	s, err := open(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	var c store.OptionEodCatalog = s
+	got, err := c.OptionEodLatest(context.Background(), "")
+	if err != nil || len(got) != 2 || got[0].UnderlyingID != 3 || got[1].UnderlyingID != 9 || got[1].SessionDay != "2026-11-05" {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	got, _ = c.OptionEodLatest(context.Background(), "2026-11-05")
+	if len(got) != 1 || got[0].UnderlyingID != 9 {
+		t.Fatalf("since: %v", got)
+	}
+	got, err = c.OptionEodLatest(context.Background(), "2027-01-01")
+	if err != nil || got == nil || len(got) != 0 {
+		t.Fatalf("empty: %v, %v", got, err)
+	}
+}
+
+func TestOptionTermsStoreContract(t *testing.T) {
+	t.Parallel()
+	var open store.OpenOptionTermsFunc = func(context.Context, string) (store.OptionTermsStore, error) {
+		return &memTerms{rows: []store.OptionTerms{
+			{TermsVersionID: 2, InstrumentID: 20, Right: "P", Strike: "100", Multiplier: "100"},
+			{TermsVersionID: 1, InstrumentID: 10, Right: "C", Strike: "105.5", Multiplier: "100", ExpirationDate: "2026-12-18"},
+		}}, nil
+	}
+	s, err := open(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	var r store.OptionTermsReader = s
+	ctx := context.Background()
+	got, err := r.OptionTerms(ctx, []int64{20, 99, 10})
+	if err != nil || len(got) != 2 || got[0].InstrumentID != 10 || got[1].InstrumentID != 20 {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	got, err = r.OptionTerms(ctx, []int64{})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("empty: %v, %v", got, err)
+	}
+	_, err = r.OptionTerms(ctx, make([]int64, 501))
+	var te contracts.TypedError
+	if !errors.As(err, &te) || te.Kind() != contracts.Permanent {
+		t.Fatalf("501 ids: %v", err)
+	}
+	if _, err = r.OptionTerms(ctx, make([]int64, 500)); err != nil {
+		t.Fatalf("500 ids: %v", err)
+	}
+}

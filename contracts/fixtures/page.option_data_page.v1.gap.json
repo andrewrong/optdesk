@@ -1,0 +1,43 @@
+{
+  "schema": "option_data_page",
+  "schema_version": 1,
+  "run_id": "run_1",
+  "build_id": "build_1",
+  "scope": "option_data_1",
+  "generated_at": "2026-11-07T00:00:00Z",
+  "data_times": [],
+  "run_status": "partial",
+  "stale": null,
+  "title": "Option data",
+  "sentence": "0 contracts on 2026-11-06.",
+  "chain_title": "Option chain, last stored day",
+  "series_title": "Quotes by slot",
+  "notes_title": "Notes",
+  "notes": [
+    "Synthetic fixture."
+  ],
+  "gaps": [
+    {
+      "kind": "gap",
+      "reason": "no_data",
+      "text": "no option data stored"
+    }
+  ],
+  "underlying": {
+    "id": 9000,
+    "symbol": null,
+    "label": "Synthetic underlying",
+    "session_day": null,
+    "price": {
+      "kind": "gap",
+      "reason": "no_data",
+      "text": "no data"
+    },
+    "currency": "USD"
+  },
+  "chain": {
+    "session_day": null,
+    "rows": []
+  },
+  "quote_series": []
+}

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// SecType is the kind of instrument a contract names.
+enum SecType {
+  SEC_TYPE_UNSPECIFIED = 0;
+  SEC_TYPE_STOCK = 1;
+  SEC_TYPE_INDEX = 2;
+  SEC_TYPE_OPTION = 3;
+}
+
+// Right is the side of an option.
+enum Right {
+  RIGHT_UNSPECIFIED = 0;
+  RIGHT_PUT = 1;
+  RIGHT_CALL = 2;
+}
+
+// ContractSpec is a fully specified contract; an option leaves nothing open.
+message ContractSpec {
+  SecType sec_type = 1;
+  string symbol = 2;
+  string exchange = 3;
+  string currency = 4;
+  // expiry is YYYYMMDD, options only.
+  string expiry = 5;
+  // strike is canonical decimal text, options only.
+  string strike = 6;
+  Right right = 7;
+  string multiplier = 8;
+  string trading_class = 9;
+  // con_id is required by Snapshot (zero is INVALID_ARGUMENT) and answered by
+  // ResolveContract.
+  int64 con_id = 10;
+}

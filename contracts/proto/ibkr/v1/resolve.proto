@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "ibkr/v1/chains.proto";
+import "ibkr/v1/contract.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// ResolveStatus is the outcome of a resolve that reached the end.
+enum ResolveStatus {
+  RESOLVE_STATUS_UNSPECIFIED = 0;
+  RESOLVE_STATUS_FOUND = 1;
+  RESOLVE_STATUS_NOT_LISTED = 2;
+}
+
+// ContractsService answers what contracts exist.
+service ContractsService {
+  // ListChains lists the chains of an underlying.
+  rpc ListChains(ListChainsRequest) returns (ListChainsResponse);
+  // ResolveContract resolves one fully specified contract.
+  rpc ResolveContract(ResolveContractRequest) returns (ResolveContractResponse);
+}
+
+// ResolveContractRequest holds a stock, index or option, fully specified, with
+// con_id zero.
+message ResolveContractRequest {
+  ContractSpec contract = 1;
+}
+
+// FOUND: exactly one matching result. NOT_LISTED: an empty end or error 200.
+// Several results, a differing result, a timeout or a connectivity error is a
+// gRPC error (FAILED_PRECONDITION for several or differing, DEADLINE_EXCEEDED,
+// UNAVAILABLE), never a cached negative.
+message ResolveContractResponse {
+  ResolveStatus status = 1;
+  ContractSpec contract = 2;
+  int32 error_code = 3;
+  string error_text = 4;
+}

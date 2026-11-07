@@ -1,0 +1,99 @@
+# ot-collect: `ot run-once` runs the option jobs
+
+Author: the optdesk dispatcher (draft)
+Owner approved: (pending)
+Date: 2026-11-07
+Source: owner request optdesk-485 (option collection), the follow-up named in Left out 1 of `docs/design/broker.md`, `docs/design/store-master.md` and `docs/design/option-jobs.md`; advisor answers of 2026-11-07 to the adversarial review.
+Read: `AGENTS.md`, `docs/design/modules.md`, `cmd/ot/wire.go`, `runonce.go`, `env.go`, `wire_test.go`, `runonce_test.go`, `docs/contracts/ot.md`, `scripts/arch`, the three designs above, `docs/design/runner-window.md` (pull request 207) and `docs/design/option-jobs.md` (pull request 188).
+
+Goal: `ot run-once` builds, besides `fred_series`, the real broker client, the instrument store, the two option writers and the two option jobs, and reconciles the day with the three jobs, so that option data flows once the prerequisites below have landed. There is no second command. The wiring adds constructors, DSN lines, a socket path and error text, plus three small pieces of logic named in `## Issues`: the path-length check, the stand-in broker of a failed dial and the closing of the resources.
+
+## Facts on 0d89c06
+
+- `cmd/ot/wire.go` has 15 `deps` fields and `newDeps` fills each with a real constructor. `TestNewDepsFilled` (`wire_test.go`) asserts `NumField() == 15` and that no field is nil, so adding fields changes that number (acceptance 1).
+- `runonce.go` opens the session-day store and the ledger with `OT_PG_DSN_RUNNER`, the series store with `OT_PG_DSN_SERIES_FRED`, builds the FRED source and the one job, and calls `newRunner(ledger, calendar, clock, []contracts.Job{job}, ruleOf(job))`. `ruleOf` and the private interface `windowed` give one `WindowRule` for the whole call; `TestRunOnceRuleFromJob` and `TestRunOnceZeroRule` test them. A day at or before the ledger cursor is refused before any job runs.
+- `Reconcile` handles every session day after the cursor up to the day and stops at the first day that is not fully reconciled; the cursor is one value for all datasets. One `ot run-once` call is one pass over the keys of the day.
+- `DSNEnvOptionEod`, `DSNEnvQuoteSnapshot` and `DSNEnvMaster` are declared in `internal/store/api.go`; the roles `ot_w_option_eod` and `ot_w_quote_snapshot` are made by `setup.go`; the role of `DSNEnvMaster` comes with #195 (store-week2 entries). `store.OpenOptionEodFunc`, `OpenQuoteSnapshotFunc` and `OpenInstrumentFunc` are declared; `snapshot.OpenOptionEod` and `OpenQuoteSnapshot` exist; `internal/store/instrument` holds the stub only until #195 lands.
+- Not on main: `internal/broker` (broker-interface, broker-grpc), `jobs.NewOptionEodFunc`, `jobs.NewQuoteSnapshotFunc` and the two job packages (jobs-interface, job-option-eod, job-quote-snapshot), the generated gRPC stubs (#166), `runner.Windowed` and the reader of it in the reconciler (runner-window-interface, runner-window; pull request 207, not yet registered as issues), and the retry of a retryable run (issue #209). `main` still has the single `WindowRule`.
+- The pyside service listens on `$OT_HOME/run/ibkr.sock` (`docs/design/pyside-ibkr-transport.md`); `docs/design/broker.md` says the socket path is the caller's. `OT_HOME` is read in `cmd/ot` through `a.getenv`. `broker.DialFunc` is `func(ctx, socketPath, Options) (Broker, error)`; a retryable failure is a `contracts.TypedError` of kind retryable (`broker.md`).
+- A Unix socket path is limited by `sun_path`: 104 bytes on macOS (108 on Linux). A longer path fails at dial or is truncated by the system call.
+- Runs inside the day: a slot key of `quote_snapshot` answers empty before its time and is retried by the next call; a slot not run within `grace_minutes` after its time is `NoValue` "missed slot", final (`option-jobs.md`). `option_eod` answers empty before `freeze_after` the same way.
+- `modules.md`: the row `ot` has depends `contracts clock sources store runner jobs pages repo`, and its implementation list already holds `internal/store/snapshot` and `internal/pages/option_data_page`. It names neither `broker` nor `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`.
+
+## Modules
+
+One entry, one module: `cmd/**` and `docs/contracts/ot.md` are `ot`. The text edit of `docs/design/modules.md` is made in this design's own pull request, as `option-page.md` did:
+
+- the depends cell of `ot` gains `broker`: `contracts clock sources broker store runner jobs pages repo`;
+- the implementation list of `ot` gains `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod` and `internal/jobs/quotesnapshot`;
+- the bullet "Modules not touched in week 1" is rewritten: broker is named by the depends cell of ot (this entry); the cell of jobs is named by `option-jobs.md`;
+- `arch.toml` and `.go-arch-lint.yml` are regenerated in the same diff by `go run ./scripts/arch`, never by hand, and `go run ./scripts/arch --check` exits 0. No path, entry or tests cell changes.
+
+| issue | module |
+|---|---|
+| ot-collect | ot |
+
+## Interface
+
+None. `ot` is the composition root: its entry cell is empty and no module imports it. The new `deps` fields are unexported names of a `package main`, not an interface file.
+
+## Security and second opinion
+
+The socket and its modes 0700/0600 are created and owned by the pyside service under `docs/design/pyside-ibkr-transport.md` (already judged there); `ot` only connects. The roles and the three DSN keys are the store entries' (#195, store-week2), and the owner ruled that PG DSNs live in `.env`; this entry adds no write outside the repository, no dependency and no network beyond that local socket. A second opinion is not asked for.
+
+## Issues
+
+Items under `Checked by CI` are decided by the workflows of the head commit; every other item is an offline grep or a named test, run without network, service or database. Every test uses `t.Parallel()`, `t.TempDir()` and the fake clock; none sleeps; no test dials the socket or opens a database (every constructor is a fake in `deps`).
+
+### ot-collect (ot)
+
+`ot run-once` gains the option jobs
+  Goal: `ot run-once [--day YYYY-MM-DD]` opens the stores and the broker with the real constructors, builds `fred_series`, `option_eod` and `quote_snapshot`, and reconciles the day with the three jobs under the reconciler's window rule, each job stating its own window through `Windowed`.
+  Files: cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/runonce.go, cmd/ot/runonce_test.go, docs/contracts/ot.md
+  Design: docs/design/ot-collect.md
+  Cross-module: none. The `modules.md` text, `arch.toml` and `.go-arch-lint.yml` come with the design pull request; `git diff -- go.mod go.sum internal contracts pyside migrations` is empty.
+  Behaviour: one `Reconcile` call takes the three jobs, because the ledger has one cursor. There is no `collect` command and no loop in the process: the runs inside the day are several `ot run-once` calls a day, started by the owner's scheduler; several calls a day, the cursor holds while a slot key is open (the day is not complete, so `Reconcile` does not move the cursor and the next call plans the same day again). The slot times are settings of the option jobs (`job.toml`, `option-jobs.md`), and the launchd plist that calls `ot run-once` at those times is the owner's.
+  Window: the reconciler constructor keeps one fallback rule; `ot` passes no per-job rules (it passes `runner.WindowRule{}`), and each job states its window through `runner.Windowed` as `runner-window.md` defines. `ruleOf` and the private interface `windowed` are removed from `runonce.go`, with `TestRunOnceRuleFromJob` and `TestRunOnceZeroRule`.
+  Dial failure: the dial is made once, before `Reconcile`. If it fails, `ot` does not stop: it builds the option jobs on an unexported stand-in broker in `cmd/ot` whose every method returns a retryable `contracts.TypedError` (text: `broker is not reachable`, no path), logs the failure once (step name only), and `FRED` still runs. The option keys then end in a retryable error, which issue #209 retries until the close of their window. A socket path of 104 bytes or more is refused before the dial with the named error `socket path too long` (never truncated); that refusal is a configuration error and stops the call as a missing `.env` line does.
+  New `deps` fields (names are the entry's to choose; each type is declared elsewhere): `dialBroker broker.DialFunc` (real: `grpcbroker.Dial`), `openInstrument store.OpenInstrumentFunc` (`instrument.Open`), `openOptionEod store.OpenOptionEodFunc` (`snapshot.OpenOptionEod`), `openQuoteSnapshot store.OpenQuoteSnapshotFunc` (`snapshot.OpenQuoteSnapshot`), `newOptionEod jobs.NewOptionEodFunc` (`optioneod.New`), `newQuoteSnapshot jobs.NewQuoteSnapshotFunc` (`quotesnapshot.New`): six new fields, 21 in all.
+  Lines of `$OT_HOME/.env`, all required, values never printed: the three already read by `run-once` (`OT_PG_DSN_RUNNER`, `OT_PG_DSN_SERIES_FRED`, `FRED_API_KEY`) and the three DSN lines that are new, `OT_PG_DSN_OPTION_EOD`, `OT_PG_DSN_QUOTE_SNAPSHOT` and `OT_PG_DSN_MASTER`: six lines, three of them new. The socket is `$OT_HOME/run/ibkr.sock`, built from `a.getenv("OT_HOME")` with `broker.Options{}`; `ot` creates, writes and chmods nothing at that path.
+  Acceptance:
+  1. `wire_test.go`: `TestNewDepsFilled` now asserts 21 fields (it asserts 15 today) and that `newDeps()` leaves none nil. `go list -f '{{join .Imports "\n"}}' ./cmd/ot | grep optdesk/internal` shows, besides what it shows today, exactly `internal/broker`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/store/snapshot`, `internal/jobs/optioneod` and `internal/jobs/quotesnapshot` as new lines (six; no file of `cmd/ot` imports `internal/store/snapshot` at `main`, because `snapshot.OpenOptionEod` and `snapshot.OpenQuoteSnapshot` become the real constructors in `wire.go`).
+  2. `TestRunOnceWiresOptionJobs` (fakes in `deps`, an `OT_HOME` in `t.TempDir()`): the session-day store and the ledger are opened with the runner line, the series store with its line, each writer with its own line and the instrument store with the master line; the instrument store is passed as the `store.InstrumentResolver` of both job constructors and each writer to its own job; the broker is dialled with the path `run/ibkr.sock` under that home; the runner constructor receives three jobs.
+  3. `TestRunOnceRule`: the runner constructor receives the zero `runner.WindowRule{}` and no per-job rule; `grep -c 'ruleOf\|windowed' cmd/ot/*.go` prints 0 per file; `TestRunOnceRuleFromJob` and `TestRunOnceZeroRule` no longer exist.
+  4. `TestRunOnceCloses`: on every path (a missing line, a failing open of each store, a failing dial, a failing job constructor, a failing `Reconcile`, success) each store and the broker that were opened are closed exactly once, in reverse order of opening (the fakes count); the closing is a `defer` per resource.
+  5. `TestRunOnceErrors` (table): a missing `.env` line is an error naming the line and no value; a failing open names the step and the DSN line name and contains neither the DSN, nor the socket path, nor the key (the test greps the text); `--day` that is not `YYYY-MM-DD` is a flag error; the demo profile is refused before any constructor is called; a day at or before the cursor is refused as today.
+  6. `TestRunOnceDialFails`: with `dialBroker` returning an error, `Reconcile` is still called with three jobs; the two option jobs, run by the test, return a retryable `TypedError` whose text holds neither the socket path nor the dial error text; the FRED job is untouched; the call logs the failure once and returns what `Reconcile` returns.
+  7. `TestRunOnceSocketPathLength`: an `OT_HOME` that makes the path 103 bytes dials; one that makes it 104 bytes (and a longer one) returns the error `socket path too long`, calls neither `dialBroker` nor any constructor, and the error text does not hold the path.
+  8. `TestRunOnceFREDUnchanged`: the FRED cases of `runonce_test.go` pass with the three new lines added to their `fullEnv` and the fakes of the new fields; the FRED source path, the cursor cases and the sentinel DSN case are not edited otherwise.
+  9. `docs/contracts/ot.md`: the flag table keeps `run-once` under `--day`; the `run-once` description names the three jobs; the environment table lists the six lines with `ot run-once` as reader; a paragraph states that the socket is `$OT_HOME/run/ibkr.sock`, that `ot` only connects to it and refuses a path of 104 bytes or more, that a down gateway makes the option keys retryable while FRED still runs, and that the runs inside the day are several calls of `ot run-once` a day by the owner's scheduler (the cursor holds while a slot key is open).
+  10. `grep -c '"tcp"' cmd/ot/wire.go cmd/ot/wire_test.go cmd/ot/runonce.go cmd/ot/runonce_test.go` prints 0 per file (`serve.go` and `serve_test.go` are not in the `Files:` line and are not touched); `grep -ciwE 'orders?|accounts?|positions?' cmd/ot/runonce.go` prints 0; every new file is under 600 lines; `cmd/ot/wire.go` stays under its present ceiling or 600 lines; `wc -l cmd/ot/runonce.go cmd/ot/runonce_test.go` prints under 600 for each (at `main` they are 139 and 304 lines; `docs/design/ratchet.json` does not exist at `main` and lists neither, so the cap is the 600-line bar of a new file and, at the latest, the 800 lines above which a file would need a ceiling that an agent may not add); `grep -c 'grpcbroker.Dial\|instrument.Open\|optioneod.New\|quotesnapshot.New' cmd/ot/*_test.go` prints 0 per file.
+  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `ot`), `checks` (`go run ./scripts/arch --check`: `arch.toml`, `.go-arch-lint.yml` and the `ot` import list of `modules.md` agree), hygiene (no secret, key or account id in a fixture).
+  Pull request body: `Contracts: unchanged`.
+  Depends on (all hard): `runner-window-interface` and `runner-window` (pull request 207, not registered as issues; `main` has the single `WindowRule`, so without them the option jobs have no window of their own); issue #209 ("Runner: a retryable run is retried until the close, then expired"; see Left out 1); `broker-grpc` (it holds `grpcbroker.Dial`; `broker-interface` precedes it); `job-option-eod` and `job-quote-snapshot` (`jobs-interface` precedes them); #195 (`instrument.Open` is a `deps` field, so `store-master` is a direct dependency); #166 `ibkr-proto` (the generated stubs that broker-grpc needs; transitive, named because the build fails without it).
+  Size: L
+
+Width: one entry. The `deps` struct, `newDeps`, the shared `reconcileDay` and the contract page are one file group; two entries would edit `wire.go` in parallel and the second would not compile without the first.
+
+## Left out
+
+1. Issue #209 is a hard prerequisite of option data, not a wish: without it, one retryable error freezes the cursor. `nextAttempt` counts a finished run with an error code as a try and does not start the key again; the key is never marked, the day is never complete, and `Reconcile` neither moves the cursor nor reaches later days (FRED stops advancing too). The option jobs answer retryable on a budget stop, a missing underlying price, a writer error and a gateway error, so that case is routine. `ot backfill` cannot repair it, because it refuses a day after the cursor. The issue "Runner: a retryable run is retried until the close, then expired" removes the freeze; this entry names it in `Depends on` and does not do its work.
+2. The option page wiring is not folded in: it is the follow-up named in `option-page.md` (`ot-option-page`), needs only `OT_PG_DSN_PAGES` and the readers, no broker and no job, and both edit `wire.go` (one rebases on the other).
+3. The deploy of the pyside IBKR service (the process that creates `$OT_HOME/run/ibkr.sock`), its start at login and its entry in `services.toml`: the owner's. Until it runs, the dial fails, the option keys are retryable and FRED runs.
+4. Scheduling: the launchd plist, the number of calls a day and their times (they follow the slot times of the option jobs), any live run against the gateway or a database, `ot setup pg` and `ot migrate` for the new roles and migration 0008: the owner's; no entry runs them. A call on a day that is already complete is refused as today (the cursor is at or after the day); the owner's schedule stops calling after the last pass of the day.
+5. The ledger grows by one run row per still-pending key per call; a day with several slots and several calls holds a few rows more. Not pruned by this entry. The lease (10 minutes, no renewal) means calls must not overlap; the scheduler starts one at a time.
+6. "Wrong day" and "missed slot" are final `NoValue` answers (`option-jobs.md`): `ot run-once --day <a past day>` marks the option keys of that day permanently without data, and a `run-once` for a day before the option jobs exist moves the cursor past it. Not a guard of this entry.
+7. A `--dataset` filter and `ot backfill` of the option datasets (`backfill.md` composes its own `deps`): a follow-up of the backfill entry.
+8. The pyside serving of `QUOTE_KIND_SNAPSHOT` (`ibkr-service`): until it lands the snapshot job writes nothing.
+9. A per-job calendar (`runner-window.md`, Left out): all three jobs use the calendar of the reconciler.
+
+## Adversarial
+
+The full answer of the adversarial review is in the author's scratchpad. The six points, each answered:
+
+1. Gap against the goal (nothing drives the slots): adopted. The runs inside the day are several `ot run-once` calls a day by the owner's scheduler, the slot times are option-jobs settings and the plist is the owner's; the cursor holds while a slot key is open. The ledger growth is stated (Left out 5). The dial no longer stops FRED, and the counts of lines and fields are one text now (six lines, three new; 21 fields).
+2. One retryable run freezes the cursor: adopted. Issue #209 is a hard prerequisite in `Depends on`, and Left out 1 gives the reason. The claim of the older text that same-day backfill repairs it is dropped.
+3. Simpler way (put the jobs into `run-once`): adopted, there is no `collect` command and the old Left out about retiring `run-once` is gone. Not adopted: turning "day at or before the cursor" into a logged no-op; the refusal stays as `run-once` has it, and the owner's schedule stops calling after the last pass.
+4. What it locks in: adopted in part. The shared cursor stops being a trap with one command; the socket path length is checked (104 bytes or more refused by name); the per-job window follows `runner-window.md` (the zero fallback rule, `Windowed` in each job). Not adopted: `.env` all-or-nothing stays (a missing line is a configuration error, the six lines are required), and the reverse-order closing stays a `defer` per resource, as `runonce.go` does today, not a closer stack.
+5. The claim most likely false ("no logic"): adopted. The sentence is gone; the three small pieces of logic are named in Goal (path-length check, stand-in broker of a failed dial, closing).
+6. Likeliest cause of a slip (the chain of prerequisites): adopted. `Depends on` lists every prerequisite as hard, names `runner-window-interface`, `runner-window` by slug, the retry as issue #209, and the scheduler is stated as the owner's so that it does not become a hidden entry.
