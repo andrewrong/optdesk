@@ -27,7 +27,7 @@ const (
 	// reasonEmptyBeforeClose marks a finished run that came back empty before the window
 	// close: the key stays missing and the run does not count toward the two-run cap.
 	reasonEmptyBeforeClose = "empty_before_close"
-	// reasonExpired explains a key whose last run ended retryable and whose window has closed.
+	// The reason "expired" explains a key whose last run ended retryable and whose window has closed.
 	reasonExpired = "expired"
 )
 
@@ -237,14 +237,14 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	if !closeAt.IsZero() && now.After(closeAt) {
 		reason = reasonLate
 	}
-	open := !closeAt.IsZero() && now.Before(closeAt)
+	beforeClose := !closeAt.IsZero() && now.Before(closeAt)
 	counted := 0
 	var running *store.Run
 	for i, run := range runs {
 		if run.ReasonCode == reasonEmptyBeforeClose {
 			continue
 		}
-		if open && endedRetryable(run) {
+		if beforeClose && run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && run.ReasonCode != reasonCrashed {
 			continue
 		}
 		counted++
@@ -264,28 +264,17 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 	return nil, false, ""
 }
 
-// lastRetryable returns the last run of a key when it is done with a retryable error.
-func lastRetryable(runs []store.Run) (store.Run, bool) {
-	if len(runs) == 0 {
-		return store.Run{}, false
-	}
-	last := runs[len(runs)-1]
-	return last, endedRetryable(last)
-}
-
-// endedRetryable reports whether a run finished with a retryable error of the job. A crashed
-// run also carries the code, but it is not a vendor answer: it keeps counting and is never expired.
-func endedRetryable(run store.Run) bool {
-	return run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && run.ReasonCode != reasonCrashed
-}
-
 // expireIfClosed makes the absence of k final when its last run ended retryable and the window
 // has closed: no_value, with the last run explained as expired. It reports whether it did.
 func (r *reconciler) expireIfClosed(
 	ctx context.Context, runs []store.Run, closeAt time.Time, day contracts.Day, k contracts.ExpectedKey,
 ) (bool, error) {
-	last, ok := lastRetryable(runs)
-	if !ok || closeAt.IsZero() || r.clk.Now().Before(closeAt) {
+	if len(runs) == 0 || closeAt.IsZero() || r.clk.Now().Before(closeAt) {
+		return false, nil
+	}
+	// A crashed run also carries the code, but it is not a vendor answer: it is never expired.
+	last := runs[len(runs)-1]
+	if last.Status != store.RunDone || last.ErrorCode != string(contracts.Retryable) || last.ReasonCode == reasonCrashed {
 		return false, nil
 	}
 	last.ReasonCode = reasonExpired

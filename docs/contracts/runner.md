@@ -36,7 +36,7 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 
 - v1: window materialisation, repair, crash re-run, cursor.
 - v2: `Backfill` of a day at or behind the cursor.
-- v3: a retryable run is retried until `CloseAt`, then expired (the `v2` line of issue #209; v2 was already taken by `Backfill`).
+- v3: a retryable run is retried until `CloseAt`, then expired (v2 is the `Backfill` line).
 
 ## Contract tests
 
@@ -44,7 +44,7 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 - `internal/runner/reconcile/window_test.go`: `TestWindowThanksgivingAndEarlyClose`, `TestWindowRuleOffsets`.
 - `internal/runner/api_test.go`: also `TestWindowRuleContract`; `reconcile_test.go`: also `TestNewWithRuleEmptyCalendar` and `var _ runner.NewWithRuleFunc = reconcile.NewWithRule`.
 - `internal/runner/reconcile/reconcile_test.go`: `TestReconcileRepairNoValueCrash`, `TestFullCycleLateRun`, `TestCursorHoldsOnGap`, and `var _ runner.NewFunc = reconcile.New`.
-- `internal/runner/reconcile/retry_test.go`: `TestRetryableBeforeCloseRetries`, `TestRetryableAtOrAfterCloseExpired`, `TestExpiredDayCompletesCursorAdvances`.
+- `internal/runner/reconcile/retry_test.go`: `TestRetryableBeforeCloseRetries`, `TestRetryableAtOrAfterCloseExpired`, `TestExpiredDayCompletesCursorAdvances`, `TestCrashedRunIsNotExpired`.
 
 ## Jobs and slots
 
