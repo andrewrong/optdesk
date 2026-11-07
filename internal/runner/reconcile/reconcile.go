@@ -159,21 +159,9 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			return false, err
 		}
 	}
-	closes := map[string]time.Time{}
-	seen := map[string]bool{}
-	for _, k := range p.keys {
-		if seen[k.DatasetID] {
-			continue
-		}
-		seen[k.DatasetID] = true
-		w, ok := windowFor(r.rule, k.DatasetID, s)
-		if !ok {
-			continue
-		}
-		closes[k.DatasetID] = w.CloseAt
-		if err := r.ledger.PutWindow(ctx, w); err != nil {
-			return false, err
-		}
+	closes, err := r.putWindows(ctx, p, s)
+	if err != nil {
+		return false, err
 	}
 
 	present, err := r.ledger.Present(ctx, day)
@@ -195,10 +183,9 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			continue
 		}
 		closeAt := closes[k.DatasetID]
-		if last, ok := lastRetryable(byKey[k]); ok && !closeAt.IsZero() && !r.clk.Now().Before(closeAt) {
-			if err := r.expire(ctx, last, day, k); err != nil {
-				return false, err
-			}
+		if expired, err := r.expireIfClosed(ctx, byKey[k], closeAt, day, k); err != nil {
+			return false, err
+		} else if expired {
 			continue
 		}
 		crashed, start, reason := r.nextAttempt(byKey[k], closeAt)
@@ -218,6 +205,27 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 		complete = complete && ok
 	}
 	return complete, nil
+}
+
+// putWindows puts the window of every dataset of the plan and returns the close of each.
+func (r *reconciler) putWindows(ctx context.Context, p plan, s clock.Session) (map[string]time.Time, error) {
+	closes := map[string]time.Time{}
+	seen := map[string]bool{}
+	for _, k := range p.keys {
+		if seen[k.DatasetID] {
+			continue
+		}
+		seen[k.DatasetID] = true
+		w, ok := windowFor(r.rule, k.DatasetID, s)
+		if !ok {
+			continue
+		}
+		closes[k.DatasetID] = w.CloseAt
+		if err := r.ledger.PutWindow(ctx, w); err != nil {
+			return nil, err
+		}
+	}
+	return closes, nil
 }
 
 // nextAttempt decides whether a run starts for a missing key. Runs that ended empty or
@@ -265,13 +273,20 @@ func lastRetryable(runs []store.Run) (store.Run, bool) {
 	return last, last.Status == store.RunDone && last.ErrorCode == string(contracts.Retryable)
 }
 
-// expire makes the absence of k final: no_value, with the last run explained as expired.
-func (r *reconciler) expire(ctx context.Context, last store.Run, day contracts.Day, k contracts.ExpectedKey) error {
+// expireIfClosed makes the absence of k final when its last run ended retryable and the window
+// has closed: no_value, with the last run explained as expired. It reports whether it did.
+func (r *reconciler) expireIfClosed(
+	ctx context.Context, runs []store.Run, closeAt time.Time, day contracts.Day, k contracts.ExpectedKey,
+) (bool, error) {
+	last, ok := lastRetryable(runs)
+	if !ok || closeAt.IsZero() || r.clk.Now().Before(closeAt) {
+		return false, nil
+	}
 	last.ReasonCode = reasonExpired
 	if err := r.ledger.RecordRun(ctx, last); err != nil {
-		return err
+		return false, err
 	}
-	return r.ledger.MarkPresent(ctx, day, k, store.StatusNoValue)
+	return true, r.ledger.MarkPresent(ctx, day, k, store.StatusNoValue)
 }
 
 func (r *reconciler) markCrashed(ctx context.Context, run store.Run) error {
