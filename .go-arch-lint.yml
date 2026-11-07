@@ -37,6 +37,8 @@ components:
     in: internal/store/sessionday
   store/setup:
     in: internal/store/setup
+  store/snapshot:
+    in: internal/store/snapshot
   runner:
     in: internal/runner
   runner/reconcile:
@@ -102,6 +104,10 @@ deps:
     mayDependOn:
       - contracts
       - store
+  store/snapshot:
+    mayDependOn:
+      - contracts
+      - store
   runner:
     mayDependOn:
       - contracts
@@ -160,6 +166,7 @@ deps:
       - runner/reconcile
       - store/sessionday
       - store/series
+      - store/snapshot
       - store/ops
       - store/setup
       - sources/fred
