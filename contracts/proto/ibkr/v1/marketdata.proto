@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "ibkr/v1/contract.proto";
+import "ibkr/v1/quote.proto";
+import "ibkr/v1/quote_types.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// MarketDataService serves short snapshots of the broker's market data.
+service MarketDataService {
+  // Snapshot streams one quote per requested contract.
+  rpc Snapshot(SnapshotRequest) returns (stream SnapshotResponse);
+}
+
+// SnapshotRequest asks for one kind of quote for many contracts. Every contract
+// has con_id, else the call is INVALID_ARGUMENT.
+message SnapshotRequest {
+  QuoteKind kind = 1;
+  repeated ContractSpec contracts = 2;
+}
+
+// SnapshotResponse is one message per requested contract, in the sequence the
+// answers complete.
+message SnapshotResponse {
+  Quote quote = 1;
+}

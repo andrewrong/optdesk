@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "ibkr/v1/contract.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// ListChainsRequest names a stock or index with its con_id.
+message ListChainsRequest {
+  ContractSpec underlying = 1;
+}
+
+// ListChainsResponse lists the chains of an underlying.
+//
+// strikes is the union over all expirations of the chain, not the strikes of
+// each expiration: most pairs of an expiration and a strike do not exist (one
+// run asked 8,170 and all came back not listed). The caller resolves only the
+// pairs it needs, and keeps a not-listed answer for days (the 7 days plus
+// jitter of ADR 0003); this service keeps no cache.
+message ListChainsResponse {
+  int64 underlying_con_id = 1;
+  repeated Chain chains = 2;
+}
+
+// Chain is one exchange, trading class and multiplier of an underlying.
+message Chain {
+  string exchange = 1;
+  string trading_class = 2;
+  string multiplier = 3;
+  repeated string expirations = 4;
+  repeated string strikes = 5;
+}

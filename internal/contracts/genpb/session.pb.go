@@ -62,9 +62,14 @@ func (*PingRequest) Descriptor() ([]byte, []int) {
 type PingResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// connected is true while the broker session is up.
-	Connected     bool `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Connected bool `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
+	// generation is 0 before the first connect and goes up by one at each
+	// reconnect; quotes of two generations are from two sessions.
+	Generation int64 `protobuf:"varint,2,opt,name=generation,proto3" json:"generation,omitempty"`
+	// market_data_type is the type set on the current session.
+	MarketDataType MarketDataType `protobuf:"varint,3,opt,name=market_data_type,json=marketDataType,proto3,enum=ibkr.v1.MarketDataType" json:"market_data_type,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PingResponse) Reset() {
@@ -104,14 +109,32 @@ func (x *PingResponse) GetConnected() bool {
 	return false
 }
 
+func (x *PingResponse) GetGeneration() int64 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *PingResponse) GetMarketDataType() MarketDataType {
+	if x != nil {
+		return x.MarketDataType
+	}
+	return MarketDataType_MARKET_DATA_TYPE_UNSPECIFIED
+}
+
 var File_ibkr_v1_session_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_session_proto_rawDesc = "" +
 	"\n" +
-	"\x15ibkr/v1/session.proto\x12\aibkr.v1\"\r\n" +
-	"\vPingRequest\",\n" +
+	"\x15ibkr/v1/session.proto\x12\aibkr.v1\x1a\x19ibkr/v1/quote_types.proto\"\r\n" +
+	"\vPingRequest\"\x8f\x01\n" +
 	"\fPingResponse\x12\x1c\n" +
-	"\tconnected\x18\x01 \x01(\bR\tconnected2E\n" +
+	"\tconnected\x18\x01 \x01(\bR\tconnected\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\x03R\n" +
+	"generation\x12A\n" +
+	"\x10market_data_type\x18\x03 \x01(\x0e2\x17.ibkr.v1.MarketDataTypeR\x0emarketDataType2E\n" +
 	"\x0eSessionService\x123\n" +
 	"\x04Ping\x12\x14.ibkr.v1.PingRequest\x1a\x15.ibkr.v1.PingResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
@@ -131,15 +154,17 @@ var file_ibkr_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_ibkr_v1_session_proto_goTypes = []any{
 	(*PingRequest)(nil),  // 0: ibkr.v1.PingRequest
 	(*PingResponse)(nil), // 1: ibkr.v1.PingResponse
+	(MarketDataType)(0),  // 2: ibkr.v1.MarketDataType
 }
 var file_ibkr_v1_session_proto_depIdxs = []int32{
-	0, // 0: ibkr.v1.SessionService.Ping:input_type -> ibkr.v1.PingRequest
-	1, // 1: ibkr.v1.SessionService.Ping:output_type -> ibkr.v1.PingResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: ibkr.v1.PingResponse.market_data_type:type_name -> ibkr.v1.MarketDataType
+	0, // 1: ibkr.v1.SessionService.Ping:input_type -> ibkr.v1.PingRequest
+	1, // 2: ibkr.v1.SessionService.Ping:output_type -> ibkr.v1.PingResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_ibkr_v1_session_proto_init() }
@@ -147,6 +172,7 @@ func file_ibkr_v1_session_proto_init() {
 	if File_ibkr_v1_session_proto != nil {
 		return
 	}
+	file_ibkr_v1_quote_types_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

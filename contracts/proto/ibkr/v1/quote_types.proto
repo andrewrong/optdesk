@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// The market-data type is one setting of the gateway session, not of a request.
+// Pyside sets it once after each connect from its configuration and reports it
+// in PingResponse; a reconnect sets it again before any quote is served.
+enum MarketDataType {
+  MARKET_DATA_TYPE_UNSPECIFIED = 0;
+  MARKET_DATA_TYPE_LIVE = 1;
+  MARKET_DATA_TYPE_FROZEN = 2;
+  MARKET_DATA_TYPE_DELAYED = 3;
+  MARKET_DATA_TYPE_DELAYED_FROZEN = 4;
+}
+
+// QuoteKind selects the specification of a snapshot. Specification of each
+// kind, held in pyside (spec.py) and written here so the caller knows what it
+// gets:
+//   OPTION_EOD: a short streaming subscription per option with generic ticks
+//     100 and 101, released as soon as bid, ask, close and the model values
+//     have arrived; at most 20 s; wanted fields bid, ask, close, volume,
+//     open_interest, model values.
+//   UNDERLYING_IV: a short streaming subscription per stock or index with
+//     generic ticks 104 and 106, released when option_implied_vol and
+//     historical_vol have arrived; at most 20 s.
+// These first values are corrected from the owner's live measurement (ADR 0003:
+// measure first), which is a change of comment and table, not of shape.
+enum QuoteKind {
+  QUOTE_KIND_UNSPECIFIED = 0;
+  QUOTE_KIND_OPTION_EOD = 1;
+  QUOTE_KIND_UNDERLYING_IV = 2;
+}
+
+// QuoteStatus is the outcome of one quote.
+enum QuoteStatus {
+  QUOTE_STATUS_UNSPECIFIED = 0;
+  QUOTE_STATUS_OK = 1;
+  QUOTE_STATUS_PARTIAL = 2;
+  QUOTE_STATUS_NO_DATA = 3;
+  QUOTE_STATUS_NO_SUBSCRIPTION = 4;
+  QUOTE_STATUS_TIMEOUT = 5;
+  QUOTE_STATUS_ERROR = 6;
+  QUOTE_STATUS_DISCONNECTED = 7;
+}
