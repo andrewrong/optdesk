@@ -23,6 +23,8 @@ components:
     in: internal/clock/calendar
   clock/realclock:
     in: internal/clock/realclock
+  broker:
+    in: internal/broker
   sources:
     in: internal/sources
   sources/fred:
@@ -59,6 +61,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  broker/grpcbroker:
+    in: internal/broker/grpcbroker
   store/instrument:
     in: internal/store/instrument
   store/migrate:
@@ -74,7 +78,13 @@ deps:
     mayDependOn:
       - contracts
       - clock
+      - contracts/genpb
   clock/realclock:
+    mayDependOn:
+      - contracts
+      - clock
+      - contracts/genpb
+  broker:
     mayDependOn:
       - contracts
       - clock
@@ -87,6 +97,7 @@ deps:
       - contracts
       - clock
       - sources
+      - contracts/genpb
   store:
     mayDependOn:
       - contracts
@@ -94,22 +105,27 @@ deps:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
   store/series:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
   store/sessionday:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
   store/setup:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
   store/snapshot:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
   runner:
     mayDependOn:
       - contracts
@@ -121,6 +137,7 @@ deps:
       - clock
       - store
       - runner
+      - contracts/genpb
   jobs:
     mayDependOn:
       - contracts
@@ -134,6 +151,7 @@ deps:
       - sources
       - store
       - jobs
+      - contracts/genpb
   pages:
     mayDependOn:
       - contracts
@@ -143,16 +161,19 @@ deps:
       - contracts
       - store
       - pages
+      - contracts/genpb
   pages/macro_page:
     mayDependOn:
       - contracts
       - store
       - pages
+      - contracts/genpb
   pages/macro_rates:
     mayDependOn:
       - contracts
       - store
       - pages
+      - contracts/genpb
   ot:
     mayDependOn:
       - contracts
@@ -176,11 +197,19 @@ deps:
       - pages/macro_rates
       - pages/macro_page
       - pages/embed
+  broker/grpcbroker:
+    mayDependOn:
+      - contracts
+      - clock
+      - broker
+      - contracts/genpb
   store/instrument:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
   store/migrate:
     mayDependOn:
       - contracts
       - store
+      - contracts/genpb
