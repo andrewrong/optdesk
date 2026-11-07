@@ -51,13 +51,15 @@ Why the terms are looked up by instrument id only: the builder holds the instrum
 Table (migration 0009, owner: store): the owner's schema v3 `master.option_terms`, in the column names of v3, one row per version of the terms of one instrument.
 
 ```sql
-master.option_terms(terms_version_id bigint generated always as identity PRIMARY KEY,
+master.option_terms(terms_version_id bigint generated always as identity PRIMARY KEY, -- addition: v3 says only "bigint PK"; identity is what master.instrument uses
+ 
   instrument_id bigint NOT NULL REFERENCES master.instrument(instrument_id),
-  right char(1) NOT NULL CHECK (right IN ('C','P')),
+  right char(1) NOT NULL CHECK (right IN ('C','P')), -- addition: v3 gives no codes for the column
+ 
   strike numeric NOT NULL, strike_currency char(3) NOT NULL, multiplier numeric NOT NULL,
   expiration_date date NOT NULL, exercise_style text NOT NULL, settlement_type text NOT NULL,
   valid_from timestamptz NOT NULL, valid_to timestamptz)
-CREATE UNIQUE INDEX option_terms_current ON master.option_terms (instrument_id) WHERE valid_to IS NULL
+CREATE UNIQUE INDEX option_terms_current ON master.option_terms (instrument_id) WHERE valid_to IS NULL -- addition: the one-row-per-instrument invariant of this design, not a v3 object
 ```
 
 The repository holds no copy of the v3 text for this table (`store-master.md` Left out 1 names only the columns and copies section 3.1 of the instrument tables), so the columns are the advisor's list of 2026-11-07; `underlying_id` is not in it and is not added (the underlying of an option is the `underlying_id` of its observation rows). `terms_version_id` of `obs.option_eod` and `obs.quote_snapshot` stays NULL; a foreign key from them to this table is a follow-up.
@@ -102,7 +104,7 @@ The catalog of underlyings and their latest day
   3. `TestCatalogSince` (table): an empty `since` sends the statement without a `WHERE` and no argument; a day sends it with one argument equal to that day; a text that is not `YYYY-MM-DD` is `Permanent` and the seam sees nothing.
   4. `TestCatalogErrors`: a seam failure is `Retryable`; the statement text names only `rd.option_eod_r1` (no `obs.`, offline grep of the test's expectation and of `catalog.go`).
   5. Each new file is under 600 lines; no file outside the three listed is in the diff.
-  Checked by CI: ci-go (go test, golangci-lint, go-arch-lint); the `pg` job (GitHub CI only): `catalog_pg_test.go` carries the build tag `pg`; with rows of two underlyings on three days, the answer holds each underlying's greatest day; `since` after an underlying's last day drops it; a connection as `ot_ro_pages` succeeds.
+  Checked by CI: ci-go (go test, golangci-lint, go-arch-lint); the `pg` job (GitHub CI only): `catalog_pg_test.go` carries the build tag `pg`; with rows of two underlyings on three days, the answer holds each underlying's greatest day; `since` after an underlying's last day drops it; a connection as `ot_ro_pages` succeeds; the test seeds at most one capture per (session_day, instrument), so its expected answer does not change when `rd.option_eod_r1` becomes the winner view.
   Depends on: store-readers-interface merged (merged work only).
   Size: S
 
