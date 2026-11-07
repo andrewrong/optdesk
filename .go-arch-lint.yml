@@ -25,12 +25,16 @@ components:
     in: internal/clock/realclock
   broker:
     in: internal/broker
+  broker/grpcbroker:
+    in: internal/broker/grpcbroker
   sources:
     in: internal/sources
   sources/fred:
     in: internal/sources/fred
   store:
     in: internal/store
+  store/instrument:
+    in: internal/store/instrument
   store/ops:
     in: internal/store/ops
   store/series:
@@ -63,10 +67,6 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
-  broker/grpcbroker:
-    in: internal/broker/grpcbroker
-  store/instrument:
-    in: internal/store/instrument
   store/migrate:
     in: internal/store/migrate
 deps:
@@ -90,6 +90,12 @@ deps:
     mayDependOn:
       - contracts
       - clock
+  broker/grpcbroker:
+    mayDependOn:
+      - contracts
+      - clock
+      - broker
+      - contracts/genpb
   sources:
     mayDependOn:
       - contracts
@@ -103,6 +109,11 @@ deps:
   store:
     mayDependOn:
       - contracts
+  store/instrument:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
   store/ops:
     mayDependOn:
       - contracts
@@ -187,6 +198,7 @@ deps:
       - contracts
       - clock
       - sources
+      - broker
       - store
       - runner
       - jobs
@@ -202,21 +214,12 @@ deps:
       - store/setup
       - sources/fred
       - jobs/fredseries
+      - broker/grpcbroker
+      - store/instrument
       - pages/macro_rates
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
-  broker/grpcbroker:
-    mayDependOn:
-      - contracts
-      - clock
-      - broker
-      - contracts/genpb
-  store/instrument:
-    mayDependOn:
-      - contracts
-      - store
-      - contracts/genpb
   store/migrate:
     mayDependOn:
       - contracts
