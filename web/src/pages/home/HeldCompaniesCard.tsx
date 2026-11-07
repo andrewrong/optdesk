@@ -78,9 +78,7 @@ export function HeldCompaniesCard({
   )
 }
 
-// The schema name is the stem of the generated module imported above. It is joined from parts so that the file
-// holds the full name on one line only, as issue #1133 acceptance 2 requires.
 export const registration = {
-  schema: ['held', 'companies', 'summary'].join('_'),
+  schema: 'held_companies_summary',
   page: page<Payload>(validate, HeldCompaniesCard),
 }
