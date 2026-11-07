@@ -7,6 +7,17 @@ modules import generated types through this file and nothing else.
 
 from __future__ import annotations
 
+from optdesk.contracts.genpb.ibkr.v1.account_pb2 import (
+    AccountRequest,
+    AccountResponse,
+    AccountValue,
+    Position,
+)
+from optdesk.contracts.genpb.ibkr.v1.account_pb2_grpc import (
+    AccountServiceServicer,
+    AccountServiceStub,
+    add_AccountServiceServicer_to_server,
+)
 from optdesk.contracts.genpb.ibkr.v1.chains_pb2 import (
     Chain,
     ListChainsRequest,
@@ -109,6 +120,11 @@ __all__ = [
     "SEC_TYPE_OPTION",
     "SEC_TYPE_STOCK",
     "SEC_TYPE_UNSPECIFIED",
+    "AccountRequest",
+    "AccountResponse",
+    "AccountServiceServicer",
+    "AccountServiceStub",
+    "AccountValue",
     "Chain",
     "ContractSpec",
     "ContractsServiceServicer",
@@ -120,6 +136,7 @@ __all__ = [
     "MarketDataType",
     "PingRequest",
     "PingResponse",
+    "Position",
     "Quote",
     "QuoteKind",
     "QuoteStatus",
@@ -132,6 +149,7 @@ __all__ = [
     "SessionServiceStub",
     "SnapshotRequest",
     "SnapshotResponse",
+    "add_AccountServiceServicer_to_server",
     "add_ContractsServiceServicer_to_server",
     "add_MarketDataServiceServicer_to_server",
     "add_SessionServiceServicer_to_server",

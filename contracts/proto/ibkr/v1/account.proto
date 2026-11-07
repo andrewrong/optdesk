@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "ibkr/v1/contract.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// AccountService reads the account summary and the positions of one gateway.
+service AccountService {
+  // Account returns the summary values and the positions of the account of
+  // the gateway, read-only.
+  rpc Account(AccountRequest) returns (AccountResponse);
+}
+
+// AccountRequest carries nothing: the tags are a fixed list of the server.
+message AccountRequest {}
+
+// AccountResponse holds the summary values and the positions of one account.
+message AccountResponse {
+  // account is the alias of the gateway's entry, never the account id.
+  string account = 1;
+  // generation is the session generation of PingResponse, so answers of two
+  // sessions can be told apart.
+  int64 generation = 2;
+  // values are the summary rows; empty when the gateway does not collect them.
+  repeated AccountValue values = 3;
+  // positions are the open positions; empty when none is open or the gateway
+  // does not collect them.
+  repeated Position positions = 4;
+}
+
+// AccountValue is one summary row.
+message AccountValue {
+  // tag is the summary tag, for example NetLiquidation.
+  string tag = 1;
+  // value is canonical decimal text, never a float.
+  string value = 2;
+  // currency is the currency code of the value.
+  string currency = 3;
+}
+
+// Position is one open position.
+message Position {
+  // contract is the contract held.
+  ContractSpec contract = 1;
+  // quantity is signed canonical decimal text.
+  string quantity = 2;
+  // avg_cost is canonical decimal text.
+  string avg_cost = 3;
+}

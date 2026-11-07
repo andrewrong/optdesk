@@ -16,6 +16,11 @@ from optdesk.contracts.api import (
     QUOTE_KIND_SNAPSHOT,
     RESOLVE_STATUS_FOUND,
     SEC_TYPE_OPTION,
+    AccountRequest,
+    AccountResponse,
+    AccountServiceServicer,
+    AccountServiceStub,
+    AccountValue,
     ContractSpec,
     ContractsServiceServicer,
     ContractsServiceStub,
@@ -23,6 +28,7 @@ from optdesk.contracts.api import (
     ListChainsResponse,
     MarketDataServiceServicer,
     MarketDataServiceStub,
+    Position,
     Quote,
     ResolveContractRequest,
     ResolveContractResponse,
@@ -131,3 +137,46 @@ def test_snapshot_kind_and_sizes_exist() -> None:
     assert (quote.bid_size, quote.ask_size, quote.last_size) == (1.0, 2.0, 3.0)
     assert quote.HasField("event_ts") is False
     assert quote.HasField("bid") is False
+
+
+class _FakeAccount(AccountServiceServicer):
+    async def Account(
+        self,
+        request: AccountRequest,
+        context: grpc.aio.ServicerContext[AccountRequest, AccountResponse],
+    ) -> AccountResponse:
+        return AccountResponse(
+            account="B",
+            generation=3,
+            values=[AccountValue(tag="NetLiquidation", value="100.5", currency="USD")],
+            positions=[
+                Position(
+                    contract=ContractSpec(symbol="SPY"), quantity="-2", avg_cost="1.25"
+                ),
+                Position(
+                    contract=ContractSpec(symbol="QQQ"), quantity="1", avg_cost="3"
+                ),
+            ],
+        )
+
+
+def _public_methods(cls: type) -> set[str]:
+    return {n for n in dir(cls) if not n.startswith("_")}
+
+
+def test_account_service_surface() -> None:
+    assert _public_methods(AccountServiceServicer) == {"Account"}
+    channel = MagicMock()
+    stub = AccountServiceStub(channel)
+    assert _public_methods(type(stub)) == set()
+    assert vars(stub).keys() == {"Account"}
+
+    async def run() -> AccountResponse:
+        return await _FakeAccount().Account(AccountRequest(), MagicMock())
+
+    response = asyncio.run(run())
+    assert response.account == "B"
+    assert response.generation == 3
+    assert [v.tag for v in response.values] == ["NetLiquidation"]
+    assert [p.contract.symbol for p in response.positions] == ["SPY", "QQQ"]
+    assert response.positions[0].quantity == "-2"
