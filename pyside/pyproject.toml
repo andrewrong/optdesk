@@ -3,7 +3,9 @@ name = "optdesk"
 version = "0.1.0"
 description = "optdesk Python side"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "exchange_calendars>=4,<5",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13"]
@@ -19,6 +21,10 @@ dev = [
 
 [tool.mypy]
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["exchange_calendars"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
