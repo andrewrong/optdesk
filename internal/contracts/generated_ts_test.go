@@ -13,80 +13,77 @@ const generatedDir = "../../web/src/generated"
 
 const generatedBanner = "// Code generated from contracts/, DO NOT EDIT."
 
-// TestGeneratedSummaryTypes guards the banner, the exported top-level name and the
-// re-exports of the generated v2 summary types. It does not detect drift in the bodies.
-func TestGeneratedSummaryTypes(t *testing.T) {
-	t.Parallel()
-	read := func(name string) string {
-		b, err := os.ReadFile(filepath.Join(generatedDir, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(b)
+// generatedTypeFiles lists the .ts files of generatedDir by base name.
+func generatedTypeFiles(t *testing.T) []string {
+	t.Helper()
+	entries, err := os.ReadDir(generatedDir)
+	if err != nil {
+		t.Fatal(err)
 	}
-	firstLine := func(s string) string { l, _, _ := strings.Cut(s, "\n"); return l }
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".ts") {
+			names = append(names, e.Name())
+		}
+	}
+	return names
+}
 
-	files := []struct{ file, module, name string }{
-		{"market_summary.v2.ts", "./market_summary.v2", "MarketSummary"},
-		{"options_summary.v2.ts", "./options_summary.v2", "OptionsSummary"},
-		{"option_data_page.v1.ts", "./option_data_page.v1", "OptionDataPage"},
-		{"indicator_detail.v1.ts", "./indicator_detail.v1", "IndicatorDetail"},
-		{"option_result_page.v1.ts", "./option_result_page.v1", "OptionResultPage"},
-		{"household_risk.v1.ts", "./household_risk.v1", "HouseholdRisk"},
-		{"ledger_page.v1.ts", "./ledger_page.v1", "LedgerPage"},
-		{"structure_detail.v3.ts", "./structure_detail.v3", "StructureDetail"},
-		{"stock_option_page.v1.ts", "./stock_option_page.v1", "StockOptionPage"},
-		{"household_summary.v2.ts", "./household_summary.v2", "HouseholdSummary"},
-		{"held_companies_summary.v2.ts", "./held_companies_summary.v2", "HeldCompaniesSummary"},
-		{"macro_summary.v2.ts", "./macro_summary.v2", "MacroSummary"},
-		{"macro_rates.v2.ts", "./macro_rates.v2", "MacroRates"},
-		{"report_page.v2.ts", "./report_page.v2", "ReportPage"},
-		{"home_page.v2.ts", "./home_page.v2", "HomePage"},
-	}
-	index := read("index.ts")
-	if got := firstLine(index); got != generatedBanner {
-		t.Errorf("index.ts line 1 = %q", got)
-	}
-	if strings.Contains(index, "export {}") {
-		t.Error("index.ts still holds the stub export {}")
-	}
-	var exports []string
-	for _, l := range strings.Split(index, "\n") {
-		if strings.HasPrefix(l, "export ") {
-			exports = append(exports, l)
-		}
-	}
-	if len(exports) != len(files) {
-		t.Errorf("index.ts has %d export lines %q, want %d", len(exports), exports, len(files))
+// TestGeneratedTypes reads the directory: every .ts file has the banner, a schema page.<name>.json and
+// an exported interface named by the title of that schema. It does not detect drift in the bodies.
+func TestGeneratedTypes(t *testing.T) {
+	t.Parallel()
+	files := generatedTypeFiles(t)
+	if len(files) == 0 {
+		t.Fatal("no .ts file in " + generatedDir)
 	}
 	for _, f := range files {
-		src := read(f.file)
-		if got := firstLine(src); got != generatedBanner {
-			t.Errorf("%s line 1 = %q", f.file, got)
+		if f == "index.ts" {
+			t.Fatal("index.ts exists: a consumer imports the file it needs")
 		}
-		if !regexp.MustCompile(`(?m)^export interface ` + f.name + ` `).MatchString(src) {
-			t.Errorf("%s does not export interface %s", f.file, f.name)
-		}
-		want := "export type { " + f.name + " } from '" + f.module + "';"
-		found := 0
-		for _, l := range exports {
-			if l == want {
-				found++
+		t.Run(f, func(t *testing.T) {
+			t.Parallel()
+			b, err := os.ReadFile(filepath.Join(generatedDir, f))
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-		if found != 1 {
-			t.Errorf("index.ts has %d lines %q, want 1", found, want)
-		}
+			src := string(b)
+			if line, _, _ := strings.Cut(src, "\n"); line != generatedBanner {
+				t.Errorf("line 1 = %q", line)
+			}
+			schema := "page." + strings.TrimSuffix(f, ".ts") + ".json"
+			if _, err := os.Stat(filepath.Join(schemasDir, schema)); err != nil {
+				t.Fatalf("no schema for %s: %v", f, err)
+			}
+			title, _ := readRaw(t, schemasDir, schema)["title"].(string)
+			if title == "" {
+				t.Fatalf("%s has no title", schema)
+			}
+			if !regexp.MustCompile(`(?m)^export interface ` + regexp.QuoteMeta(title) + ` `).MatchString(src) {
+				t.Errorf("%s does not export interface %s", f, title)
+			}
+		})
 	}
 }
 
-// TestGeneratedV3Types reads each v3 schema and its committed .ts: the banner, the exported top-level name, every
-// property name, const and enum value of the schema, and no null. It does not regenerate (no node, no network).
+// TestGeneratedV3Types reads each v3 file of the directory whose schema is written here (not carried): the banner,
+// the exported top-level name, every property name, const and enum value of the schema, and no null. It does not
+// regenerate (no node, no network).
 func TestGeneratedV3Types(t *testing.T) {
 	t.Parallel()
-	pairs := []struct{ schema, file, name string }{
-		{"page.market_summary.v3.json", "market_summary.v3.ts", "MarketSummaryV3"},
-		{"page.options_summary.v3.json", "options_summary.v3.ts", "OptionsSummaryV3"},
+	manifest := readManifest(t)
+	type pair struct{ schema, file, name string }
+	var pairs []pair
+	for _, f := range generatedTypeFiles(t) {
+		schema := "page." + strings.TrimSuffix(f, ".ts") + ".json"
+		if !strings.HasSuffix(f, ".v3.ts") {
+			continue
+		}
+		if _, carried := manifest[schema]; carried {
+			continue
+		}
+		title, _ := readRaw(t, schemasDir, schema)["title"].(string)
+		pairs = append(pairs, pair{schema, f, title})
 	}
 	nullWord := regexp.MustCompile(`\bnull\b`)
 	for _, p := range pairs {
