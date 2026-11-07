@@ -1,7 +1,8 @@
 -- +goose Up
 -- obs.option_eod r1 (one option contract on one session day, frozen after the close) and its view rd.option_eod_r1.
 -- Append-only: no role but the owner may UPDATE, DELETE or TRUNCATE. The roles ot_owner, ot_runner, ot_w_series_fred,
--- ot_ro_pages and ot_w_option_eod are made by internal/store/setup. Needs the timescaledb extension.
+-- ot_ro_pages and ot_w_option_eod are made by internal/store/setup. Needs the timescaledb extension, whose functions
+-- are schema-qualified because the migrator runs with search_path set to meta.
 CREATE SCHEMA IF NOT EXISTS obs;
 CREATE SCHEMA IF NOT EXISTS rd;
 
@@ -63,14 +64,14 @@ CREATE TABLE obs.option_eod (
     CONSTRAINT option_eod_theta_per_calendar_day_ck CHECK (theta_per_calendar_day IS NULL OR (theta_per_calendar_day <> 'NaN'::numeric AND theta_per_calendar_day <> 'Infinity'::numeric AND theta_per_calendar_day <> '-Infinity'::numeric))
 );
 
-SELECT create_hypertable('obs.option_eod', 'session_day', chunk_time_interval => INTERVAL '1 month');
+SELECT public.create_hypertable('obs.option_eod', 'session_day', chunk_time_interval => INTERVAL '1 month');
 
 ALTER TABLE obs.option_eod SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'underlying_id',
     timescaledb.compress_orderby = 'session_day DESC, capture_id, instrument_id'
 );
-SELECT add_compression_policy('obs.option_eod', INTERVAL '7 days');
+SELECT public.add_compression_policy('obs.option_eod', INTERVAL '7 days');
 
 CREATE INDEX option_eod_instrument_day ON obs.option_eod (instrument_id, session_day DESC);
 
