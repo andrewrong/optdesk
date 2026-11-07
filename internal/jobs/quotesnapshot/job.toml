@@ -1,0 +1,24 @@
+# Manifest of the quote_snapshot job. Values are synthetic; the instruments are the owner's to set.
+version = 1
+id = "quote_snapshot"
+zone = "America/New_York"
+slots = ["0945", "1230", "1530"]
+grace_minutes = 10
+chunk = 50
+budget_minutes = 8
+
+[window]
+rule = "after_close"
+lateness_hours = 4
+calendar = "XNYS"
+
+[[instrument]]
+symbol = "SPY"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 756733
+mic = "ARCX"
+calendar_id = "XNYS"
+price_increment = "0.01"
+lot_size = "1"
