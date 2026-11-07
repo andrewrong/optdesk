@@ -124,6 +124,8 @@ Module of each path this design touches:
 
 ## Interface
 
+Landed in #182 (commit 997b5a0).
+
 Owning module: `contracts` (the proto files and the Python entry file that re-exports their output), and `repo` for `go.mod` and `go.sum` (a Go dependency and its tool line land with the generated stubs that need them). The entry `ibkr-proto` also carries the lock and the seams of `pyside` (`timing.py`, `model.py`, the fake clock), listed under `## Issues`. `pyside/src/optdesk/ibkr/api.py` of `pyside` stays as it is (`## Left out`).
 
 Naming: `buf lint` with `STANDARD` requires the suffix `Service`, so the services are `SessionService` (exists), `ContractsService` and `MarketDataService`; requests and responses are `<Rpc>Request` and `<Rpc>Response`; enum values carry the enum
