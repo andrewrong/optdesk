@@ -4,6 +4,7 @@ import path from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { OptionDataPage } from '@/pages/optiondata/OptionDataPage'
 import { App } from '@/shell/App'
 import { page } from '@/shell/page'
 import { discoverCards, pages } from '@/shell/pages'
@@ -43,6 +44,10 @@ describe('page registry', () => {
   it('has the advice and household pages', () => {
     expect(Object.keys(pages)).toContain('advice_page')
     expect(Object.keys(pages)).toContain('household_page')
+  })
+
+  it('registers option_data_page with the option data page component', () => {
+    expect(pages['option_data_page']?.component).toBe(OptionDataPage)
   })
 
   it('renders the top navigation bar on a registry page', async () => {

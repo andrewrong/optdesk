@@ -28,6 +28,11 @@ import {
   validateStructuresList,
   type StructuresListPayload,
 } from '@/pages/structure/StructuresList'
+import {
+  OptionDataPage,
+  validateOptionDataPage,
+  type OptionDataPagePayload,
+} from '@/pages/optiondata/OptionDataPage'
 import { page, type Page } from '@/shell/page'
 
 // The page registry of the shell (ADR 0034): schema name -> the generated validator and the component.
@@ -68,6 +73,7 @@ const explicit: Record<string, Page> = {
   full_scan: page<FullScanPayload>(validateFullScan, FullScanPage),
   option_page: page<OptionPagePayload>(validateOptionPage, OptionPage),
   positions_page: page<PositionsPagePayload>(validatePositionsPage, PositionsPage),
+  option_data_page: page<OptionDataPagePayload>(validateOptionDataPage, OptionDataPage),
 }
 
 export const pages: Record<string, Page> = {
