@@ -5,8 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"time"
+	"path/filepath"
 
+	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -16,19 +17,40 @@ import (
 
 func init() { register("run-once", runOnce) }
 
-// runOnceConfig is what run-once needs from $OT_HOME/.env; its values are never printed.
-type runOnceConfig struct{ runnerDSN, seriesDSN, fredKey string }
+// maxSocketPath is the length from which a Unix socket path is refused: sun_path holds 104 bytes on macOS.
+const maxSocketPath = 104
+
+// runOnceConfig is what run-once needs from $OT_HOME/.env and the home; its values are never printed.
+type runOnceConfig struct {
+	runnerDSN, seriesDSN, optionEodDSN, quoteSnapshotDSN, masterDSN, fredKey string
+	socketPath                                                               string
+}
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) {
 	env, err := a.envFile()
 	if err != nil {
 		return runOnceConfig{}, err
 	}
-	c := runOnceConfig{runnerDSN: env[store.DSNEnvRunner], seriesDSN: env[store.DSNEnvSeriesFred], fredKey: env["FRED_API_KEY"]}
-	for name, v := range map[string]string{store.DSNEnvRunner: c.runnerDSN, store.DSNEnvSeriesFred: c.seriesDSN, "FRED_API_KEY": c.fredKey} {
-		if v == "" {
-			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", name)
+	c := runOnceConfig{
+		runnerDSN:        env[store.DSNEnvRunner],
+		seriesDSN:        env[store.DSNEnvSeriesFred],
+		optionEodDSN:     env[store.DSNEnvOptionEod],
+		quoteSnapshotDSN: env[store.DSNEnvQuoteSnapshot],
+		masterDSN:        env[store.DSNEnvMaster],
+		fredKey:          env["FRED_API_KEY"],
+	}
+	for _, l := range []struct{ name, v string }{
+		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
+		{store.DSNEnvOptionEod, c.optionEodDSN}, {store.DSNEnvQuoteSnapshot, c.quoteSnapshotDSN},
+		{store.DSNEnvMaster, c.masterDSN}, {"FRED_API_KEY", c.fredKey},
+	} {
+		if l.v == "" {
+			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", l.name)
 		}
+	}
+	c.socketPath = filepath.Join(a.getenv("OT_HOME"), "run", "ibkr.sock")
+	if len(c.socketPath) >= maxSocketPath {
+		return runOnceConfig{}, fmt.Errorf("socket path too long")
 	}
 	return c, nil
 }
@@ -60,7 +82,7 @@ func runOnce(a *app, args []string) error {
 	return nil
 }
 
-// reconcileDay opens the stores, wires the job and reconciles day; it closes the stores on every path.
+// reconcileDay opens the stores, wires the jobs and reconciles day; it closes the stores on every path.
 func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, day contracts.Day) error {
 	check := func(ledger store.OpsLedger) error {
 		cur, err := ledger.Cursor(ctx)
@@ -73,7 +95,7 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return nil
 	}
 	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
-		rec := a.deps.newRunner(w.ledger, w.cal, clk, []contracts.Job{w.job}, ruleOf(w.job))
+		rec := a.deps.newRunner(w.ledger, w.cal, clk, w.jobs, runner.WindowRule{})
 		return rec.Reconcile(ctx, day)
 	})
 }
@@ -82,12 +104,13 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 type wiring struct {
 	ledger store.OpsLedger
 	cal    clock.Calendar
-	job    contracts.Job
+	jobs   []contracts.Job
 }
 
-// withWiring opens the stores and wires the fred_series job, then calls use; it closes the
-// stores on every path. check runs after the ledger is open and before the series store is
-// opened; it may be nil. No error text holds a DSN, a key or the text of a connection error.
+// withWiring opens the stores and the broker, wires fred_series, option_eod and quote_snapshot, then
+// calls use; it closes what it opened on every path, last opened first. check runs after the ledger is
+// open and before the other stores are opened; it may be nil. A failed dial does not stop the call: the
+// option jobs get a broker that answers retryable. No error text holds a DSN, a path or a key.
 func withWiring(
 	ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, check func(store.OpsLedger) error, use func(wiring) error,
 ) error {
@@ -112,28 +135,49 @@ func withWiring(
 		return fmt.Errorf("open series store with %s failed", store.DSNEnvSeriesFred)
 	}
 	defer func() { _ = ser.Close() }()
+	eod, err := d.openOptionEod(ctx, cfg.optionEodDSN)
+	if err != nil {
+		return fmt.Errorf("open option_eod store with %s failed", store.DSNEnvOptionEod)
+	}
+	defer func() { _ = eod.Close() }()
+	snap, err := d.openQuoteSnapshot(ctx, cfg.quoteSnapshotDSN)
+	if err != nil {
+		return fmt.Errorf("open quote_snapshot store with %s failed", store.DSNEnvQuoteSnapshot)
+	}
+	defer func() { _ = snap.Close() }()
+	instr, err := d.openInstrument(ctx, cfg.masterDSN)
+	if err != nil {
+		return fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
+	}
+	defer func() { _ = instr.Close() }()
 	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
 	if err != nil {
 		return fmt.Errorf("build FRED source failed")
 	}
-	job, err := d.newFredSeries(src, ser, clk)
+	brk := dialOrStandIn(ctx, a, cfg.socketPath)
+	defer func() { _ = brk.Close() }()
+	fredJob, err := d.newFredSeries(src, ser, clk)
 	if err != nil {
 		return fmt.Errorf("build fred_series job failed: %w", err)
 	}
-	return use(wiring{ledger: ledger, cal: d.newCalendar(sd), job: job})
-}
-
-// windowed is the optional method of a job that states its [window] table.
-type windowed interface {
-	Window() (calendarID string, openOffset, closeOffset time.Duration)
-}
-
-// ruleOf is the window rule the job states, or the zero rule when it states none.
-func ruleOf(j contracts.Job) runner.WindowRule {
-	w, ok := j.(windowed)
-	if !ok {
-		return runner.WindowRule{}
+	eodJob, err := d.newOptionEod(brk, instr, eod, clk)
+	if err != nil {
+		return fmt.Errorf("build option_eod job failed")
 	}
-	id, open, closeOff := w.Window()
-	return runner.WindowRule{CalendarID: id, OpenOffset: open, CloseOffset: closeOff}
+	snapJob, err := d.newQuoteSnapshot(brk, instr, snap, clk)
+	if err != nil {
+		return fmt.Errorf("build quote_snapshot job failed")
+	}
+	return use(wiring{ledger: ledger, cal: d.newCalendar(sd), jobs: []contracts.Job{fredJob, eodJob, snapJob}})
+}
+
+// dialOrStandIn dials the broker once; a failure is logged by step name only and gives the stand-in
+// broker, whose Close does nothing.
+func dialOrStandIn(ctx context.Context, a *app, socketPath string) broker.Broker {
+	b, err := a.deps.dialBroker(ctx, socketPath, broker.Options{})
+	if err != nil {
+		a.log.Error("dial broker failed: the option jobs answer retryable", "component", "ot", "step", "dial broker")
+		return unreachableBroker{}
+	}
+	return b
 }

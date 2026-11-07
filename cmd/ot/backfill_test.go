@@ -140,7 +140,8 @@ func TestBackfillErrors(t *testing.T) {
 func TestBackfillNoSecretInErrors(t *testing.T) {
 	t.Parallel()
 	const dsn, fredKey, pgxText = "postgres://u:sentinel-pw@h/db", "sentinel-key", "pgx: sentinel-failure"
-	env := "OT_PG_DSN_RUNNER=" + dsn + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=" + fredKey + "\n"
+	env := "OT_PG_DSN_RUNNER=" + dsn + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=" + fredKey + "\n" +
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n"
 	check := func(t *testing.T, a *app, errb interface{ String() string }) {
 		err := backfill(a, []string{"--day", "2026-11-04"})
 		if err == nil {
