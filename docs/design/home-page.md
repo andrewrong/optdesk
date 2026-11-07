@@ -115,7 +115,7 @@ Owner: contracts. Frozen by `home-page-v2-schema`, read by `home-page-compose` (
   `t.Parallel`, no sleep) is the contract test: `TestHomePageV2Valid` builds the smallest valid instance and validates it (the pattern overrides of the existing
   v2 tests may be copied); `TestHomePageV2MemberChecked` changes `schema_version` of one member to a value its file does not allow and expects a failure at that member's
   path; `TestHomePageV2NoV1Defs` reads the file and fails when the text holds `option_trader__`. `generated_ts_test.go` gains the row `{"home_page.v2.ts", "./home_page.v2", "HomePage"}`.
-  `web/package.json` gains one `json2ts` call in `generate:types` for `page.home_page.v2.json` with `--cwd ../contracts/schemas` and the banner of the others; `home_page.v2.ts` is the output of that call, so this entry's own drift check covers it and `home-page-view` does not touch `web/package.json`.
+  `web/package.json` gains one `json2ts` call in `generate:types` for `page.home_page.v2.json` with `--cwd ../contracts/schemas` and the banner of the others; `home_page.v2.ts` is the output of that call, so this entry's own drift check covers it and `home-page-view` does not touch `web/package.json`. generated-index (docs/design/generated-index.md) runs after this entry and replaces the index.ts line and the json2ts call it adds.
 - 按 frontend-stack：用 json-schema-to-typescript 做 the generated type `HomePage`。
 
 Acceptance:
@@ -185,7 +185,7 @@ Acceptance:
 6. `pnpm --dir web run test -- web/test/pages/home` passes, together with `web/test/shell` (the registration test finds `home_page` and no duplicate schema).
 7. `git diff $(git merge-base HEAD origin/main) -- web/package.json web/src/shell web/src/pages/home/HouseholdCard.tsx web/src/pages/home/HeldCompaniesCard.tsx web/src/pages/home/MacroCard.tsx web/src/pages/home/MarketSummaryCard.tsx web/src/pages/home/OptionsSummaryCard.tsx web/src/pages/home/StaleAlert.tsx web/src/pages/home/CardNotes.tsx web/src/pages/home/DataTimesFold.tsx web/no-compute-allow.txt web/deps-allowlist.txt web/src/generated` is empty, and `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 
-Checked by CI: `pnpm install --frozen-lockfile`, then tsc (`pnpm --dir web run typecheck`), eslint, vitest and the build; hygiene (the manifest of the new `fixtures` directory and the privacy scan); the design verdict (the result matches Decisions 7 and 8 of `docs/design/home-page.md`, a judgement of the code).
+Checked by CI: `pnpm install --frozen-lockfile`, then tsc (`pnpm --dir web run typecheck`), eslint, vitest and the build; hygiene (the manifest of the new `fixtures` directory and the privacy scan); the pull request body carries `Contracts: unchanged`; the design verdict (the result matches Decisions 7 and 8 of `docs/design/home-page.md`, a judgement of the code).
 
 ## Left out
 
@@ -208,5 +208,6 @@ Read in full in `home-page.adversarial.md`, in the dispatcher's scratchpad. The 
 3. Simpler way: adopted in part. `BlockLink` carries `href` (Decision 4, 8), `ROUTE_PATHS` and the owner question are dropped; `home-page-compose` stays (backend work in parallel, a pure function with no caller yet).
 4. Lock-in: adopted. Decision 9 names it.
 5. Contracts line: adopted. The interface entry carries `Contracts: page.home_page v2 (new)`, counts are relative to main at cut time, and the compose entry lists `arch.toml` and `.go-arch-lint.yml`.
+- (a) adopted: the five points above (1 to 5) are the first round of the review and were adopted as they stand; the later rounds follow as (b) and (c). (No separate line (a) ever existed in the history of this file; it was folded into items 1 to 5.)
 - (b) adopted: `home-page-v2-schema` is a judged two-module entry (contracts and web) and carries the `generate:types` line with the generated file, so its drift check covers `home_page.v2.ts`; `home-page-view` has no `web/package.json`.
 - (c) adopted: `home-page-v2-schema` is ordered after `report-types` (`docs/design/report-page.md`) and depends on it by name.
