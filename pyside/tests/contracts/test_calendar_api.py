@@ -116,6 +116,8 @@ def test_rule2_session_day() -> None:
     sessions = [r for r in _build(["XNYS"], FIRST, LAST).rows if r.is_session]
     assert sessions
     for r in sessions:
+        assert r.open_at.tzinfo is not None
+        assert r.close_at.tzinfo is not None
         assert r.open_at < r.close_at
         assert r.open_at.utcoffset() == datetime.timedelta(0)
         assert r.close_at.utcoffset() == datetime.timedelta(0)
