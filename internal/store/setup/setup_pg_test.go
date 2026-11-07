@@ -101,7 +101,10 @@ func TestSetupPG(t *testing.T) {
 	if again := passwordOf(env[store.DSNEnvLoader], roleLoader); again != loaderPW {
 		t.Error("the second run changed the loader password")
 	}
-	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader, store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot, store.DSNEnvMaster} {
+	for _, key := range []string{
+		store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader,
+		store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot, store.DSNEnvMaster,
+	} {
 		c, err := pgx.Connect(ctx, env[key])
 		if err != nil {
 			t.Fatalf("connect with %s: %v", key, err)

@@ -123,6 +123,19 @@ func newDatabase(t *testing.T) string {
 	for _, f := range []string{"0001_master_session_day.sql", "0002_series.sql", "0003_ops_ledger.sql", "0004_session_day_grant.sql",
 		"0005_session_day_loader.sql", "0006_option_eod.sql", "0007_quote_snapshot.sql", "0008_master_instrument.sql"} {
 		applyMigration(t, connURL(t, name, ""), f)
+		if f == "0001_master_session_day.sql" {
+			// goose runs as ot_owner, which owns schema master; the foreign-key checks on master.instrument run as the
+			// table owner, so it needs the schema. Applying as the administrator needs the same ownership here.
+			own, err := pgx.Connect(ctx, connURL(t, name, ""))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = own.Exec(ctx, `ALTER SCHEMA master OWNER TO ot_owner`)
+			_ = own.Close(ctx)
+			if err != nil {
+				t.Fatalf("alter schema owner: %v", err)
+			}
+		}
 	}
 	for _, r := range []string{"ot_runner", "ot_ro_pages", "ot_w_master", "ot_w_option_eod", "ot_w_quote_snapshot"} {
 		if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO `+r); err != nil {
@@ -188,7 +201,8 @@ VALUES ('stock', 'SPY', 'USD', 'XARC', 'XNYS', 'active', 0.01, 1, now()) RETURNI
 	if err != nil {
 		t.Fatal(err)
 	}
-	const eod = `INSERT INTO obs.option_eod (session_day, capture_id, instrument_id, underlying_id, generation, market_data_type, received_at, status, currency, snapshot_kind, underlying_ccy)
+	const eod = `INSERT INTO obs.option_eod (session_day, capture_id, instrument_id, underlying_id, generation, market_data_type,
+  received_at, status, currency, snapshot_kind, underlying_ccy)
 VALUES ('2026-11-06', '00000000-0000-4000-8000-000000000001', $1, $2, 1, 1, now(), 4, 'USD', 'eod', 'USD')`
 	mustFail(t, owner, eod, int64(999999), id)
 	mustFail(t, owner, eod, id, int64(999999))
