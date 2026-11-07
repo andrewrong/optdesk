@@ -41,7 +41,7 @@ rows above name every other top-level path of the planned tree.
   `docs/design/week1.md#interface`). The interface-only rule therefore binds the library modules (every row with an interface file in
   `internal/`), and for `ot` this map states the exact import list, which `scripts/arch` generates as go-arch-lint component `ot` and
   `checks.yml` compares with this text: the root packages of the rows in its depends cell, `internal/profile`, and these implementation packages,
-  one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/store/sessionday`, `internal/store/series`, `internal/store/ops`,
+  one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/store/sessionday`, `internal/store/series`, `internal/store/snapshot`, `internal/store/ops`,
   `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/embed`.
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.

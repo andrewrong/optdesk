@@ -37,6 +37,8 @@ components:
     in: internal/store/sessionday
   store/setup:
     in: internal/store/setup
+  store/snapshot:
+    in: internal/store/snapshot
   runner:
     in: internal/runner
   runner/reconcile:
@@ -59,8 +61,6 @@ components:
     in: cmd/ot
   store/migrate:
     in: internal/store/migrate
-  store/snapshot:
-    in: internal/store/snapshot
 deps:
   contracts:
     mayDependOn:
@@ -101,6 +101,10 @@ deps:
       - contracts
       - store
   store/setup:
+    mayDependOn:
+      - contracts
+      - store
+  store/snapshot:
     mayDependOn:
       - contracts
       - store
@@ -162,6 +166,7 @@ deps:
       - runner/reconcile
       - store/sessionday
       - store/series
+      - store/snapshot
       - store/ops
       - store/setup
       - sources/fred
@@ -170,10 +175,6 @@ deps:
       - pages/macro_page
       - pages/embed
   store/migrate:
-    mayDependOn:
-      - contracts
-      - store
-  store/snapshot:
     mayDependOn:
       - contracts
       - store
