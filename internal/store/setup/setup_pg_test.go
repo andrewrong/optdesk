@@ -67,7 +67,9 @@ func TestSetupPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		_, _ = admin.Exec(ctx, "ALTER ROLE "+ident(roleLoader)+" PASSWORD "+literal(scramVerifier(testPassword, newSalt())))
+		for _, r := range addedRoles {
+			_, _ = admin.Exec(ctx, "ALTER ROLE "+ident(r)+" PASSWORD "+literal(scramVerifier(testPassword, newSalt())))
+		}
 		_, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
 	}()
 
@@ -84,7 +86,7 @@ func TestSetupPG(t *testing.T) {
 		t.Fatalf("Setup: %v", err)
 	}
 	first, _ := os.ReadFile(envPath)
-	loaderPW := checkLoaderLine(t, seed, string(first), logs.String())
+	loaderPW := checkAddedLines(t, seed, string(first), logs.String())
 	if err := Setup(ctx, cfg); err != nil {
 		t.Fatalf("second Setup: %v", err)
 	}
@@ -99,7 +101,7 @@ func TestSetupPG(t *testing.T) {
 	if again := passwordOf(env[store.DSNEnvLoader], roleLoader); again != loaderPW {
 		t.Error("the second run changed the loader password")
 	}
-	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader} {
+	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader, store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot} {
 		c, err := pgx.Connect(ctx, env[key])
 		if err != nil {
 			t.Fatalf("connect with %s: %v", key, err)
@@ -137,13 +139,26 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 	_, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
 }
 
+// addedRoles are the roles whose lines the seed lacks: Setup adds them, with the password it generates, and the
+// test puts testPassword back under lock 54 before it ends.
+var addedRoles = []string{roleLoader, roleOptionEod, roleQuoteSnapshot}
+
+func isAddedRole(name string) bool {
+	for _, r := range addedRoles {
+		if r == name {
+			return true
+		}
+	}
+	return false
+}
+
 // seedEnv returns a .env whose DSNs carry testPassword, so that Setup keeps the passwords of the roles.
 func seedEnv(t *testing.T, dsn string) string {
 	t.Helper()
 	var seed strings.Builder
 	seed.WriteString("FRED_API_KEY=kept\n")
 	for _, r := range roles {
-		if r.envKey == "" || r.name == roleLoader {
+		if r.envKey == "" || isAddedRole(r.name) {
 			continue
 		}
 		d, err := roleDSN(dsn, r.name, testPassword)
@@ -175,25 +190,45 @@ func TestSetupLogsNoSecret(t *testing.T) {
 	}
 }
 
-// checkLoaderLine asserts that Setup added exactly the loader line to the seed and kept every secret out of the
-// log; it returns the loader password.
-func checkLoaderLine(t *testing.T, seed, first, logs string) string {
+// checkAddedLines asserts that Setup added exactly the lines of addedRoles to the seed, each with the user of its
+// role and the database optdesk, and kept every secret out of the log; it returns the loader password.
+func checkAddedLines(t *testing.T, seed, first, logs string) string {
 	t.Helper()
 	if !strings.HasPrefix(first, seed) {
 		t.Errorf("the seeded lines changed:\n%s", first)
 	}
-	loaderLine := strings.TrimPrefix(first, seed)
-	if strings.Count(loaderLine, "\n") != 1 || !strings.HasPrefix(loaderLine, store.DSNEnvLoader+"=") {
-		t.Fatalf("Setup added %q, want one %s line", loaderLine, store.DSNEnvLoader)
+	added := strings.TrimPrefix(first, seed)
+	if n := strings.Count(added, "\n"); n != len(addedRoles) {
+		t.Fatalf("Setup added %d lines (%q), want %d", n, added, len(addedRoles))
 	}
-	lu, err := url.Parse(strings.TrimSuffix(strings.TrimPrefix(loaderLine, store.DSNEnvLoader+"="), "\n"))
-	if err != nil || lu.User.Username() != roleLoader || lu.Path != "/"+Database {
-		t.Fatalf("loader DSN user/database wrong: %v", err)
+	var loaderPW string
+	for _, r := range roles {
+		if !isAddedRole(r.name) {
+			continue
+		}
+		var line string
+		for _, l := range strings.Split(added, "\n") {
+			if strings.HasPrefix(l, r.envKey+"=") {
+				line = l
+			}
+		}
+		if line == "" {
+			t.Fatalf("Setup added no %s line: %q", r.envKey, added)
+		}
+		u, err := url.Parse(strings.TrimPrefix(line, r.envKey+"="))
+		if err != nil || u.User.Username() != r.name || u.Path != "/"+Database {
+			t.Fatalf("%s DSN user/database wrong: %v", r.envKey, err)
+		}
+		pw, _ := u.User.Password()
+		if pw == "" || strings.Contains(logs, pw) || strings.Contains(logs, line) {
+			t.Errorf("the log holds a secret of %s: %s", r.name, logs)
+		}
+		if r.name == roleLoader {
+			loaderPW = pw
+		}
 	}
-	loaderPW, _ := lu.User.Password()
-	if strings.Contains(logs, loaderPW) || strings.Contains(logs, loaderLine) ||
-		strings.Contains(logs, "SCRAM-SHA-256") {
-		t.Errorf("TestSetupLogsNoSecret: the log holds a secret: %s", logs)
+	if strings.Contains(logs, "SCRAM-SHA-256") {
+		t.Errorf("the log holds a verifier: %s", logs)
 	}
 	return loaderPW
 }

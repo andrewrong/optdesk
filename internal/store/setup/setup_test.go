@@ -111,20 +111,30 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 5 {
-		t.Fatalf("%d roles, want 5", len(roles))
+	if len(roles) != 7 {
+		t.Fatalf("%d roles, want 7", len(roles))
 	}
-	var loader string
+	keys := map[string]string{}
 	for _, r := range roles {
 		if r.envKey == "" && r.name != roleOwner {
 			t.Errorf("role %s has no line key", r.name)
 		}
-		if r.name == roleLoader {
-			loader = r.envKey
+		keys[r.name] = r.envKey
+	}
+	if keys[roleOwner] != "" {
+		t.Errorf("ot_owner line = %q, want none", keys[roleOwner])
+	}
+	for name, want := range map[string]string{
+		"ot_loader":           store.DSNEnvLoader,
+		"ot_w_option_eod":     store.DSNEnvOptionEod,
+		"ot_w_quote_snapshot": store.DSNEnvQuoteSnapshot,
+	} {
+		if got, ok := keys[name]; !ok || got != want {
+			t.Errorf("%s line = %q (present %v), want %q", name, got, ok, want)
 		}
 	}
-	if loader != store.DSNEnvLoader {
-		t.Errorf("ot_loader line = %q", loader)
+	if roleOptionEod != "ot_w_option_eod" || roleQuoteSnapshot != "ot_w_quote_snapshot" {
+		t.Errorf("role names %q, %q", roleOptionEod, roleQuoteSnapshot)
 	}
 }
 

@@ -51,6 +51,7 @@ func TestLoaderGrantsPG(t *testing.T) {
 		_, _ = c.Exec(ctx, `DROP DATABASE IF EXISTS "`+db+`" WITH (FORCE)`)
 	})
 	s.db = db
+	createTimescale(ctx, t, db) // CREATE EXTENSION timescaledb in the database made above, before the migration
 	if err := migrateWith(ctx, s.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), quietLog()); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
