@@ -123,6 +123,7 @@ var leakRows = map[string][]string{
 	"setup":    {"pg"},
 	"page":     {"--day", "2026-03-04"},
 	"run-once": {"--day", "2026-03-04"},
+	"backfill": {"--day", "2026-03-04"},
 }
 
 // leakExcluded names the commands that have no row, each with its reason.
