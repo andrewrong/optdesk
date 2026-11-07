@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -162,7 +163,10 @@ func TestMigration0008(t *testing.T) {
 	for i, f := range files {
 		names[i] = filepath.Base(f)
 	}
-	n := len(names) - 2 // 0008 is the last but one, 0009 the last
+	n := slices.Index(names, "0008_master_instrument.sql")
+	if n < 1 {
+		t.Fatalf("0008 not found in %v", names)
+	}
 	if names[n-1] != "0007_quote_snapshot.sql" || names[n] != "0008_master_instrument.sql" {
 		t.Fatalf("0008 follows %v", names[n-1:])
 	}
@@ -184,16 +188,16 @@ func TestMigration0008(t *testing.T) {
 	}
 }
 
-// TestMigrationsEndWith0009 lists the migration files: 0009 follows 0008 and has an Up and a Down part, the Down part
-// dropping the view, the index and the table in that order.
-func TestMigrationsEndWith0009(t *testing.T) {
+// TestMigrationsEndWith0010 lists the migration files: 0010 follows 0009 and has an Up and a Down part, Up creating
+// the view with its four columns, its owner and the grant to the page role, Down dropping it.
+func TestMigrationsEndWith0010(t *testing.T) {
 	t.Parallel()
 	files, err := filepath.Glob("../../../migrations/*.sql")
-	if err != nil || len(files) < 9 {
+	if err != nil || len(files) < 10 {
 		t.Fatalf("migrations: %v, %v", files, err)
 	}
 	n := len(files)
-	if filepath.Base(files[n-2]) != "0008_master_instrument.sql" || filepath.Base(files[n-1]) != "0009_master_option_terms.sql" {
+	if filepath.Base(files[n-2]) != "0009_master_option_terms.sql" || filepath.Base(files[n-1]) != "0010_instrument_names_view.sql" {
 		t.Fatalf("migrations end with %v", files[n-2:])
 	}
 	raw, err := os.ReadFile(files[n-1])
@@ -202,19 +206,15 @@ func TestMigrationsEndWith0009(t *testing.T) {
 	}
 	up, down, ok := strings.Cut(string(raw), "-- +goose Down")
 	if !ok || !strings.HasPrefix(up, "-- +goose Up") {
-		t.Fatal("0009 lacks an Up or a Down part")
+		t.Fatal("0010 lacks an Up or a Down part")
 	}
-	for _, want := range []string{"CREATE TABLE master.option_terms ", "REFERENCES master.instrument (instrument_id)",
-		`CHECK ("right" IN ('C', 'P'))`, "CREATE UNIQUE INDEX option_terms_current", "WHERE valid_to IS NULL;",
-		"CREATE VIEW rd.option_terms_r1", "GRANT SELECT ON rd.option_terms_r1 TO ot_ro_pages"} {
+	for _, want := range []string{"CREATE VIEW rd.instrument_r1", "instrument_id, instrument_type, name, currency",
+		"FROM master.instrument", "ALTER VIEW rd.instrument_r1 OWNER TO ot_owner", "GRANT SELECT ON rd.instrument_r1 TO ot_ro_pages"} {
 		if !strings.Contains(up, want) {
 			t.Errorf("Up part lacks %q", want)
 		}
 	}
-	view := strings.Index(down, "DROP VIEW rd.option_terms_r1")
-	index := strings.Index(down, "DROP INDEX master.option_terms_current")
-	table := strings.Index(down, "DROP TABLE master.option_terms")
-	if view < 0 || index < view || table < index {
-		t.Fatalf("Down part must drop the view, the index and the table in order:\n%s", down)
+	if strings.Count(up, "GRANT") != 1 || !strings.Contains(down, "DROP VIEW rd.instrument_r1") {
+		t.Fatalf("one grant expected; Down must drop the view:\n%s", raw)
 	}
 }
