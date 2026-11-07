@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "google/protobuf/timestamp.proto";
+import "ibkr/v1/contract.proto";
+import "ibkr/v1/quote_types.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// Quote is the answer for one requested contract.
+message Quote {
+  ContractSpec contract = 1;
+  QuoteStatus status = 2;
+  // The type the gateway reported for this quote.
+  MarketDataType market_data_type = 3;
+  int64 generation = 4;
+  google.protobuf.Timestamp requested_at = 5;
+  google.protobuf.Timestamp sent_at = 6;
+  google.protobuf.Timestamp received_at = 7;
+  optional double bid = 8;
+  optional double ask = 9;
+  optional double last = 10;
+  optional double close = 11;
+  optional double volume = 12;
+  optional double open_interest = 13;
+  // implied_vol to theta are the option model values.
+  optional double implied_vol = 14;
+  optional double delta = 15;
+  optional double gamma = 16;
+  optional double vega = 17;
+  optional double theta = 18;
+  optional double und_price = 19;
+  // option_implied_vol is generic tick 106 of an underlying.
+  optional double option_implied_vol = 20;
+  // historical_vol is generic tick 104 of an underlying.
+  optional double historical_vol = 21;
+  // error_code is the IBKR code, 0 when none.
+  int32 error_code = 22;
+  // error_text is the IBKR text after the log filter's scrub, only on error
+  // statuses.
+  string error_text = 23;
+  // bid_size, ask_size and last_size are the sizes of the exchange quote.
+  optional double bid_size = 24;
+  optional double ask_size = 25;
+  optional double last_size = 26;
+  // event_ts is the exchange's event time; sent_at and received_at stay ours.
+  google.protobuf.Timestamp event_ts = 27;
+}
