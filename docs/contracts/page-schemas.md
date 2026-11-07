@@ -2,12 +2,14 @@
 
 ## Responsibility
 
-Hold the JSON schemas of the pages in `contracts/schemas/page.*.json`. Thirty-one schemas are listed (one more than before): `page.macro_rates.v1` and `page.macro_rates.v2` are written for this repository, and the 29 others are copies of `docs/schemas/<name>.v<N>.json` of the old option-trader repository at commit b00b4ed, the commit the web migration used. The copies are unchanged except that every `x-timezone` value is the literal string `owner` (a privacy rule of this public repository), and the week-2 pass writes new versions only.
+Hold the JSON schemas of the pages in `contracts/schemas/page.*.json`. The schemas are of two kinds: those written for this repository (their `$id` is `https://optdesk.invalid/schemas/page.<name>.json`) and 29 copies of `docs/schemas/<name>.v<N>.json` of the old option-trader repository at commit b00b4ed, the commit the web migration used. The copies are unchanged except that every `x-timezone` value is the literal string `owner` (a privacy rule of this public repository), and the week-2 pass writes new versions only.
+
+The generated TypeScript types follow `docs/design/generated-index.md#generated-index`: one file `web/src/generated/<name>.ts` per type, generated from `page.<name>.json` with the banner on line 1 and `interface <title>` (the schema `title`), no index file, the set of types being the `.ts` files of the directory (`pnpm --dir web run generate:types [page.<name>]` regenerates them and creates the file of a named schema); the contract tests read the directories and no list.
 
 ## Inputs
 
 - `contracts/schemas/carryover.sha256`: one line `<sha256>  contracts/schemas/<file>` for each of the 29 copies, in file name order. `page.macro_rates.v1.json` is not in it.
-- `web/fixtures/<dir>/*.json`: the page fixtures that the migrated front end follows, 13 directories.
+- `web/fixtures/<dir>/*.json`: the page fixtures that the migrated front end follows.
 
 ## Outputs
 
@@ -79,7 +81,7 @@ Invariants of the carried files:
 
 - The 29 copies are unchanged except the `x-timezone` substitution (every value is `owner`, checked by the test); the hash of each edited copy is in the manifest, and `internal/contracts/carryover_test.go` fails on a file without a line, a line without a file, or a hash that differs.
 - The keywords `x-decimals`, `x-timezone` and `x-rounding` are unknown to the compiler and ignored.
-- Every fixture of `web/fixtures` validates against the schema that `internal/contracts/fixtures_test.go` maps its directory to (`positions-page` to `page.positions_page.v3.json`), except the 15 `bad-version.json` files, which fail at `/schema_version` with the keyword `const`.
+- Every fixture of `web/fixtures` validates against the schema that `internal/contracts/fixtures_test.go` maps its directory to (`positions-page` to `page.positions_page.v3.json`), except the `bad-version.json` files, which fail at `/schema_version` with the keyword `const`.
 - No schema and no fixture is edited to make a fixture pass.
 - The `const` of `schema_version` is an integer in the copies and a string in `page.macro_rates.v1`; unifying it is for week 2.
 
