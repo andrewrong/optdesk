@@ -63,23 +63,29 @@ func TestArchCheckCommittedFiles(t *testing.T) {
 	}
 }
 
+// fixtureModules is a small modules text of its own: three modules and the implementation list that generate reads.
+func fixtureModules(gammaDepends string) string {
+	return "# Fixture\n\n## Modules\n\n" +
+		"| module | paths | entry | tests | depends |\n" +
+		"| --- | --- | --- | --- | --- |\n" +
+		"| alpha | internal/alpha/** | api.go | internal/alpha/api_test.go | |\n" +
+		"| beta | internal/beta/** | api.go | internal/beta/api_test.go | alpha |\n" +
+		"| gamma | internal/gamma/** | api.go | internal/gamma/api_test.go | " + gammaDepends + " |\n\n" +
+		"The composition root imports one constructor each: `internal/alpha/impl`. Any other import is refused.\n"
+}
+
 func TestArchCheckFailsOnNewEdge(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules.md")
-	text := modulesText(t)
-	write(t, modules, text)
+	write(t, modules, fixtureModules("alpha"))
 	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 0 {
 		t.Fatalf("generate: exit %d: %s", code, out)
 	}
 	if code, out := runArch(t, "--check", "--modules", modules, "--root", dir); code != 0 {
 		t.Fatalf("fresh files: exit %d: %s", code, out)
 	}
-	edge := strings.Replace(text, "| internal/clock/api_test.go | contracts |", "| internal/clock/api_test.go | contracts store |", 1)
-	if edge == text {
-		t.Fatal("the clock row was not found")
-	}
-	write(t, modules, edge)
+	write(t, modules, fixtureModules("alpha beta"))
 	code, out := runArch(t, "--check", "--modules", modules, "--root", dir)
 	if code != 1 {
 		t.Fatalf("exit %d, want 1: %s", code, out)
