@@ -156,12 +156,14 @@ deps:
       - contracts
       - clock
       - sources
+      - broker
       - store
   jobs/fredseries:
     mayDependOn:
       - contracts
       - clock
       - sources
+      - broker
       - store
       - jobs
       - contracts/genpb

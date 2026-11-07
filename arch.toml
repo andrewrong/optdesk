@@ -82,19 +82,19 @@ may_import = ["contracts", "clock", "store", "runner"]
 
 [component."jobs"]
 in = "internal/jobs"
-may_import = ["contracts", "clock", "sources", "store"]
+may_import = ["contracts", "clock", "sources", "broker", "store"]
 
 [component."jobs/fredseries"]
 in = "internal/jobs/fredseries"
-may_import = ["contracts", "clock", "sources", "store", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "jobs"]
 
 [component."jobs/optioneod"]
 in = "internal/jobs/optioneod"
-may_import = ["contracts", "clock", "sources", "store", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "jobs"]
 
 [component."jobs/quotesnapshot"]
 in = "internal/jobs/quotesnapshot"
-may_import = ["contracts", "clock", "sources", "store", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "jobs"]
 
 [component."notify"]
 in = "internal/notify"
