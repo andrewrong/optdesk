@@ -609,7 +609,7 @@ func TestOptionEodCatalogStoreContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	var c store.OptionEodCatalog = s
 	got, err := c.OptionEodLatest(context.Background(), "")
 	if err != nil || len(got) != 2 || got[0].UnderlyingID != 3 || got[1].UnderlyingID != 9 || got[1].SessionDay != "2026-11-05" {
@@ -637,7 +637,7 @@ func TestOptionTermsStoreContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	var r store.OptionTermsReader = s
 	ctx := context.Background()
 	got, err := r.OptionTerms(ctx, []int64{20, 99, 10})
