@@ -188,33 +188,43 @@ func TestMigration0008(t *testing.T) {
 	}
 }
 
-// TestMigrationsEndWith0010 lists the migration files: 0010 follows 0009 and has an Up and a Down part, Up creating
-// the view with its four columns, its owner and the grant to the page role, Down dropping it.
-func TestMigrationsEndWith0010(t *testing.T) {
+// TestMigrationsEndWith0011 lists the migration files: 0010 and 0011 follow 0009; 0010 creates the name view for the
+// page role and drops it, 0011 grants INSERT and column SELECT on the terms table to the master writer and revokes it.
+func TestMigrationsEndWith0011(t *testing.T) {
 	t.Parallel()
 	files, err := filepath.Glob("../../../migrations/*.sql")
-	if err != nil || len(files) < 10 {
+	if err != nil || len(files) < 11 {
 		t.Fatalf("migrations: %v, %v", files, err)
 	}
 	n := len(files)
-	if filepath.Base(files[n-2]) != "0009_master_option_terms.sql" || filepath.Base(files[n-1]) != "0010_instrument_names_view.sql" {
-		t.Fatalf("migrations end with %v", files[n-2:])
+	if filepath.Base(files[n-3]) != "0009_master_option_terms.sql" || filepath.Base(files[n-2]) != "0010_instrument_names_view.sql" ||
+		filepath.Base(files[n-1]) != "0011_option_terms_writer.sql" {
+		t.Fatalf("migrations end with %v", files[n-3:])
 	}
-	raw, err := os.ReadFile(files[n-1])
-	if err != nil {
-		t.Fatal(err)
+	parts := func(path string) (string, string) {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		up, down, ok := strings.Cut(string(raw), "-- +goose Down")
+		if !ok || !strings.HasPrefix(up, "-- +goose Up") {
+			t.Fatalf("%s lacks an Up or a Down part", path)
+		}
+		return up, down
 	}
-	up, down, ok := strings.Cut(string(raw), "-- +goose Down")
-	if !ok || !strings.HasPrefix(up, "-- +goose Up") {
-		t.Fatal("0010 lacks an Up or a Down part")
-	}
+	up, down := parts(files[n-2])
 	for _, want := range []string{"CREATE VIEW rd.instrument_r1", "instrument_id, instrument_type, name, currency",
 		"FROM master.instrument", "ALTER VIEW rd.instrument_r1 OWNER TO ot_owner", "GRANT SELECT ON rd.instrument_r1 TO ot_ro_pages"} {
 		if !strings.Contains(up, want) {
-			t.Errorf("Up part lacks %q", want)
+			t.Errorf("0010 Up part lacks %q", want)
 		}
 	}
 	if strings.Count(up, "GRANT") != 1 || !strings.Contains(down, "DROP VIEW rd.instrument_r1") {
-		t.Fatalf("one grant expected; Down must drop the view:\n%s", raw)
+		t.Fatalf("0010: one grant expected; Down must drop the view")
+	}
+	up, down = parts(files[n-1])
+	if strings.Count(up, "GRANT") != 1 || !strings.Contains(up, "GRANT INSERT, SELECT (instrument_id, valid_to) ON master.option_terms TO ot_w_master;") ||
+		strings.Count(down, "REVOKE") != 1 || !strings.Contains(down, "REVOKE INSERT, SELECT (instrument_id, valid_to) ON master.option_terms FROM ot_w_master;") {
+		t.Fatalf("0011: one grant of INSERT and column SELECT in Up and its revoke in Down expected")
 	}
 }
