@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
+	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/sources"
@@ -47,6 +48,8 @@ type deps struct {
 	openInstrument    store.OpenInstrumentFunc
 	openOptionEod     store.OpenOptionEodFunc
 	openQuoteSnapshot store.OpenQuoteSnapshotFunc
+	openOptionCatalog store.OpenOptionEodCatalogFunc
+	openOptionTerms   store.OpenOptionTermsFunc
 	newOptionEod      jobs.NewOptionEodFunc
 	newQuoteSnapshot  jobs.NewQuoteSnapshotFunc
 	pageList          []pages.Page
@@ -55,6 +58,7 @@ type deps struct {
 	ownerDSN          func(adminDSN string) (string, error)
 	readEnv           store.ReadEnvFunc
 	macroPage         func(zone *time.Location, buildID string) pages.Page
+	optionDataPage    func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 }
 
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
@@ -77,6 +81,8 @@ func newDeps() deps {
 		openInstrument:    instrument.Open,
 		openOptionEod:     snapshot.OpenOptionEod,
 		openQuoteSnapshot: snapshot.OpenQuoteSnapshot,
+		openOptionCatalog: snapshot.OpenOptionEodCatalog,
+		openOptionTerms:   instrument.OpenOptionTerms,
 		newOptionEod:      optioneod.New,
 		newQuoteSnapshot:  quotesnapshot.New,
 		pageList:          []pages.Page{macro_rates.Page()},
@@ -85,6 +91,7 @@ func newDeps() deps {
 		ownerDSN:          setup.OwnerDSN,
 		readEnv:           setup.ReadEnv,
 		macroPage:         newMacroPage,
+		optionDataPage:    newOptionDataPage,
 	}
 }
 
@@ -101,4 +108,25 @@ func newMacroPage(zone *time.Location, buildID string) pages.Page {
 		},
 	}
 	return macro_page.NewPage(cfg)
+}
+
+// newOptionDataPage builds the page option_data_page of one underlying in zone; the symbol is left empty
+// because no store the page role reads holds one.
+func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pages.Page {
+	choices := make([]option_data_page.Choice, 0, len(in.Choices))
+	for _, c := range in.Choices {
+		choices = append(choices, option_data_page.Choice{ID: c.ID, Label: c.Label, Href: c.Href})
+	}
+	return option_data_page.NewPage(option_data_page.Config{
+		RunID:        "ot-page",
+		BuildID:      buildID,
+		Scope:        "option",
+		Zone:         zone,
+		UnderlyingID: in.UnderlyingID,
+		Label:        in.Label,
+		Eod:          in.Eod,
+		Quotes:       in.Quotes,
+		Terms:        in.Terms,
+		Choices:      choices,
+	})
 }
