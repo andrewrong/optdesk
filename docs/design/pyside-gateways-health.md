@@ -77,8 +77,7 @@ The two gateways are called gateway A and gateway B (account A, account B) here;
 
 No row of `docs/design/modules.md` changes, and no module is added. All paths are in the pyside row (`pyside/**`): `pyside/src/optdesk/ibkr/server.py`, `pyside/src/optdesk/ibkr/health.py` (new),
 `pyside/tests/ibkr/test_health.py` (new) and `pyside/tests/ibkr/test_server.py`. Not touched: `pyside/src/optdesk/ibkr/transport.py` (owner-only), `pyside/src/optdesk/ibkr/api.py` and
-`pyside/tests/contracts/test_ibkr_api.py` (the interface), `contracts/**` (contracts), `cmd/**` (ot), `pyside/pyproject.toml` and `pyside/uv.lock` (no new dependency). `docs/deploy/pyside.md` of the
-runbook draft is a docs path; the runbook issue is updated to this design in its own right (see `## Left out`).
+`pyside/tests/contracts/test_ibkr_api.py` (the interface), `contracts/**` (contracts), `cmd/**` (ot), `pyside/pyproject.toml` and `pyside/uv.lock` (no new dependency). `docs/deploy/pyside.md` (merged runbook) belongs to docs (`docs/**`); the third entry rewrites it.
 
 ## Interface
 
@@ -145,9 +144,27 @@ Two gateways, two sockets, the health listener started
   Depends on: pyside-health-board
   Size: M
 
+### pyside-runbook-two-gateways (docs)
+
+The runbook rewritten to this design
+  Goal: `docs/deploy/pyside.md` (merged as issue 262: one gateway, `boot = true`, no health) describes what the two entries above deliver: gateway A required and gateway B optional through `OT_IBKR_GATEWAY_B_PORT`, `boot = false`, the health URL `GET /health` on `OT_IBKR_HEALTH_PORT`, the services.toml entry of `## Proposed services.toml entry`, and the two sockets.
+  Files: docs/deploy/pyside.md
+  Design: docs/design/pyside-gateways-health.md#proposed-servicestoml-entry
+  Acceptance:
+  1. `grep -c -E 'boot += +false' docs/deploy/pyside.md` and `grep -c -E 'boot += +true' docs/deploy/pyside.md` print at least 1 and 0; `grep -c -E 'health += +"http://localhost:' docs/deploy/pyside.md` prints at least 1.
+  2. `grep -c -F -e OT_IBKR_GATEWAY_B_PORT -e OT_IBKR_HEALTH_PORT -e OT_IBKR_GATEWAY_B_CLIENT_ID -e OT_IBKR_GATEWAY_B_MARKET_DATA_TYPE docs/deploy/pyside.md` prints at least 4, and `grep -c -F -e ibkr-b.sock -e 'GET /health' docs/deploy/pyside.md` prints at least 2.
+  3. `grep -c -F 'crew cap --apply optdesk-pyside deploy' docs/deploy/pyside.md` and `grep -c -F 'crew cap --apply optdesk-pyside restart' docs/deploy/pyside.md` each print at least 1, and `grep -c -F 'deploy --apply' docs/deploy/pyside.md` prints 0.
+  4. `grep -c -i -F -e not_logged_in -e session_lost docs/deploy/pyside.md` prints at least 2, and `grep -c -i -E 'non-2xx|until A connects' docs/deploy/pyside.md` prints at least 1 (the first poll may fail until gateway A connects).
+  5. `grep -c -E '/Users/|/Volumes/' docs/deploy/pyside.md` prints 0, `grep -c -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' docs/deploy/pyside.md` prints 0, and `git diff --name-only origin/main` equals the Files line.
+  6. The result matches the `## Proposed services.toml entry` and `## Decisions` 5 to 9 of docs/design/pyside-gateways-health.md.
+  Checked by CI: hygiene and the `test` check.
+  Pull request body: `Contracts: unchanged`.
+  Depends on: pyside-two-gateways (prose: it documents what the two entries above deliver and lands after them; it shares no file with them)
+  Size: S
+
 ## Proposed services.toml entry
 
-The file is owner-only in agent-crew and is not changed here; the entry is the owner's to add, with the runbook of `docs/deploy/pyside.md` (updated, see `## Left out`). Values in angle brackets are
+The file is owner-only in agent-crew and is not changed here; the entry is the owner's to add, with the runbook `docs/deploy/pyside.md` (rewritten by the third entry). Values in angle brackets are
 placeholders, never written in this repository. The simpler way adopted on 2026-11-07 runs `uv` directly, with no file under `deploy/`.
 
 ```toml
@@ -167,12 +184,10 @@ To run with gateway A only, leave out `OT_IBKR_GATEWAY_B_PORT`.
 
 ## Left out
 
-- Account summary and position collection for account B (and for A): no allowlist entry, rpc or `ot` command exists for it. It is the later design that ADR 0003 foresees; it needs the owner-only
+- Account summary and position collection for account B (and for A): no allowlist entry, rpc or `ot` command exists for it. It is the next design (ADR 0003 foresees it); it needs the owner-only
   `transport.py` (allowlist) and `contracts/proto` (a service, an interface change with an interface entry first). It builds on the sessions this design provides.
 - Automatic fallback from A to B inside pyside: the caller dials `ibkr-b.sock` when it decides to; pyside keeps no routing rule.
 - Any `ot` change: `ot run-once` keeps reading `$OT_HOME/run/ibkr.sock` only.
-- The runbook issue draft (`docs/deploy/pyside.md`): it still says `boot = true` and "no health". It must be refreshed to this design (boot false, the health URL, the new keys, the two sockets, the
-  meaning of `not_logged_in` against `session_lost`, "A connected is 200; B never changes the code") before it is registered; it is a docs issue, not an entry here.
 - Startup grace for the first health poll, a restart policy on repeated 503, and starting or logging into IB Gateway from crew: crew's and the owner's.
 - ADR 0003 says "the owner's dedicated IB Gateway session" (one). A note that a second, read-only gateway session exists is the owner's to add to the ADR; this design does not edit it.
 - TLS, authentication or a non-loopback bind for `/health`: the listener is loopback only and the body holds no account id, port or host.
