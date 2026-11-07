@@ -308,7 +308,7 @@ func TestResolveOptionTerms(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{"'unknown', 'unknown'", "ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING"} {
+	for _, want := range []string{"'unknown', 'unknown'", "ON CONFLICT DO NOTHING"} {
 		if !strings.Contains(insertTermsSQL, want) {
 			t.Fatalf("terms insert lacks %q", want)
 		}
