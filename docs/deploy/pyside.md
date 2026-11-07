@@ -64,9 +64,9 @@ One `[[gateway]]` table per gateway. Keys:
   33 (a client id is per gateway), `market_data_type` to 1.
 - `account` (required): an alias, a label for you, never a real account id. A value shaped like an
   account id is refused. pyside does not send it to the gateway.
-- `collect` (required): a non-empty list of `market_data`, `account_summary`, `positions`. Only
-  `market_data` is served today; the other two are accepted and change nothing until the later
-  account design lands.
+- `collect` (required): a non-empty list of `market_data`, `account_summary`, `positions`. Each of
+  the three words is served: `market_data` by the market data services, `account_summary` and
+  `positions` by `AccountService`.
 - `required` (default false): whether this gateway's connection decides health (see below).
 - `default` (top level, optional): the gateway that also answers on `ibkr.sock`.
 
@@ -98,12 +98,14 @@ A key that is set and unusable is an error that names the key only.
 
 ## Sockets
 
-Every gateway whose `collect` holds `market_data` is served on `$OT_HOME/run/ibkr-<name>.sock`.
-One of them also answers on `$OT_HOME/run/ibkr.sock`, the path `ot` reads: the gateway `default`
+A gateway is served on `$OT_HOME/run/ibkr-<name>.sock` when its `collect` holds any of
+`market_data`, `account_summary` and `positions`. The session service is on every such socket; the
+market data services only when `collect` holds `market_data`, and `AccountService` only when it
+holds `account_summary` or `positions`. `ibkr.sock` still belongs to a gateway with `market_data`:
+one of those also answers on `$OT_HOME/run/ibkr.sock`, the path `ot` reads, the gateway `default`
 names, or the first one of the file when `default` is absent. Name `default` explicitly, so that a
-reordered file never switches the account `ot` collects market data from. A gateway without
-`market_data` has a session and a health entry and no socket. In the no-file case there is only
-`ibkr.sock`. The directory is mode 0700 and the files 0600.
+reordered file never switches the account `ot` collects market data from. In the no-file case
+there is only `ibkr.sock`. The directory is mode 0700 and the files 0600.
 
 Two rules about `OT_HOME`:
 
@@ -112,6 +114,31 @@ Two rules about `OT_HOME`:
    path, or the bind fails.
 
 Every gateway is read-only through the same guard; also set "Read-Only API" in IB Gateway.
+
+## Account data
+
+A gateway whose `collect` holds `account_summary` or `positions` (gateway B, for example, with
+`collect = ["account_summary", "positions"]` and no `market_data`) answers the rpc `Account` of
+`AccountService` on its `ibkr-<name>.sock`. The answer carries the alias of the gateway's entry and
+never an account id; the account id the gateway reports is dropped.
+
+- Exactly one account per gateway is served. When the login reports no account or several (an IRA
+  beside a margin account, a linked or advisor structure), the rpc is refused on every call.
+- Nothing is subscribed beyond a call: the rpc requests, reads until the gateway ends the data and
+  cancels, so no subscription outlives it.
+- The allowlist of the guard gains four ids only, 61 to 64 (the requests and cancels of positions
+  and account summary). Orders stay refused, and so does every other id.
+- The file with gateway B (its port and alias) stays on the owner's machine; the repository holds
+  only the example with placeholders.
+
+How a refused login shows: the log line in `optdesk-pyside.log` carries the word `multiple_accounts`
+(no count and no id), the Go caller sees a `Permanent` error, and the health URL still says
+connected. Recovery: a separate login for gateway B, or a later design that names one account by an
+alias held on the owner's machine.
+
+The live check of gateway B is the owner's: report what it lists, one account or several. Several
+accounts mean a later design for selecting one, and its selector is an `.env` secret, never TOML or
+code.
 
 ## Health
 
@@ -169,6 +196,6 @@ gateways are connected. Besides it, check:
 
 ## Left out
 
-Serving the account summary and positions, an automatic fallback from one gateway to another
+An automatic fallback from one gateway to another
 (the caller dials another gateway's socket), a launchd unit, starting IB Gateway from crew, TLS or
 a non-loopback bind for `/health`, and a script or env file under `deploy/`.
