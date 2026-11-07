@@ -5,10 +5,15 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 func TestSelect(t *testing.T) {
 	t.Parallel()
+	t.Run("run outcomes", func(t *testing.T) {
+		t.Parallel()
+		runOutcomes(t)
+	})
 	u := underlying{Symbol: "TEST", Currency: "USD"}
 	cases := []struct {
 		name     string
@@ -58,6 +63,29 @@ func TestSelect(t *testing.T) {
 			if !reflect.DeepEqual(seenE, tc.expiries) || !reflect.DeepEqual(seenS, tc.strikes) {
 				t.Fatalf("expiries %v strikes %v, want %v %v", seenE, seenS, tc.expiries, tc.strikes)
 			}
+		})
+	}
+}
+
+// runOutcomes (a subtest of TestSelect) shows what Run does with the answer of the selection: an empty one is Permanent, no price is
+// Retryable, and neither writes.
+func runOutcomes(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(b *fakeBroker)
+		kind  contracts.ErrorKind
+	}{
+		{"empty selection is permanent", func(b *fakeBroker) {
+			b.chains = []broker.Chain{{Expirations: []string{"20261105"}, Strikes: []string{"100"}}}
+		}, contracts.Permanent},
+		{"no underlying price is retryable", func(b *fakeBroker) { b.price = nil }, contracts.Retryable},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := newRig(t, "2026-11-06 17:00")
+			tc.setup(r.b)
+			wantFailure(t, r, tc.kind, 0)
 		})
 	}
 }
