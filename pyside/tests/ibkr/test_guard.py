@@ -11,7 +11,6 @@ from ib_async import Client, Contract, Order
 from optdesk.ibkr import transport
 from optdesk.ibkr.transport import NotAllowed, OrderRefused, check, install_guard
 
-# ids of the TWS protocol: positions request 61, account summary request 62
 ORDER_IDS = (3, 4, 21, 58)
 ALLOWED_IDS = (1, 2, 9, 20, 25, 49, 59, 71, 78)
 
@@ -68,11 +67,38 @@ def test_allowlist_passes() -> None:
 
 
 def test_unknown_id_refused() -> None:
-    for message_id in (61, 62, 5, 7, 6, 0):
+    for message_id in (5, 7, 6, 0):
         with pytest.raises(NotAllowed):
             check(message_id)
     with pytest.raises(NotAllowed):
         check("x")
+
+
+def test_account_ids_pass() -> None:
+    client, conn = _client()
+    install_guard(client)
+    client.reqPositions()
+    client.reqAccountSummary(1, "All", "Cushion")
+    client.cancelAccountSummary(1)
+    client.cancelPositions()
+    assert [f[4:].split(b"\x00", 1)[0] for f in conn.frames] == [
+        b"61",
+        b"62",
+        b"63",
+        b"64",
+    ]
+
+
+def test_order_and_other_ids_still_refused() -> None:
+    client, conn = _client()
+    install_guard(client)
+    for message_id in (3, 4, 21, 58):
+        with pytest.raises(OrderRefused):
+            client.sendMsg(f"{message_id}\x001\x00")
+    for message_id in (6, 5):
+        with pytest.raises(NotAllowed):
+            client.sendMsg(f"{message_id}\x001\x00")
+    assert conn.frames == []
 
 
 def test_real_client_refuses_orders() -> None:
@@ -100,7 +126,7 @@ def test_sendmsg_direct_is_guarded() -> None:
     with pytest.raises(OrderRefused):
         client.sendMsg("3\x0045\x00")
     with pytest.raises(NotAllowed):
-        client.sendMsg("61\x001\x00")
+        client.sendMsg("6\x001\x00")
     client.sendMsg("59\x001\x001\x00")
     client.sendMsg(None)  # the drain call of the client's own throttle
     assert len(conn.frames) == 1

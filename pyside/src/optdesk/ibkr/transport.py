@@ -13,14 +13,24 @@ import asyncio
 import logging
 import re
 import sys
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable, Collection
 from typing import Any, TextIO, cast
 
 import grpc
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr import spec
-from optdesk.ibkr.model import ChainRow, Gateway, QuoteRow, ResolveResult
+from optdesk.ibkr.gateways import GatewaySpec
+from optdesk.ibkr.model import (
+    AccountGateway,
+    AccountRows,
+    ChainRow,
+    Gateway,
+    MultipleAccounts,
+    PositionRow,
+    QuoteRow,
+    ResolveResult,
+)
 from optdesk.ibkr.timing import Clock, SystemClock
 
 # --- the guard -------------------------------------------------------------
@@ -28,7 +38,10 @@ from optdesk.ibkr.timing import Clock, SystemClock
 ORDER_IDS = frozenset(
     {3, 4, 21, 58}
 )  # placeOrder, cancelOrder, exercise, global cancel
-ALLOWED_IDS = frozenset({1, 2, 9, 20, 25, 49, 59, 71, 78})
+ALLOWED_IDS = frozenset(
+    {1, 2, 9, 20, 25, 49, 59, 71, 78}
+    | {61, 62, 63, 64}  # reqPositions, reqAccountSummary and their two cancels
+)
 
 
 class OrderRefused(Exception):
@@ -92,6 +105,8 @@ WORDS = frozenset(
         "list_chains",
         "resolve_contract",
         "snapshot",
+        "account",
+        "multiple_accounts",
         spec.OPTION_EOD,
         spec.UNDERLYING_IV,
         spec.SNAPSHOT,
@@ -184,6 +199,8 @@ _SEC_TYPES = {
     pb.SEC_TYPE_OPTION: "OPT",
 }
 _RIGHTS = {pb.RIGHT_PUT: "P", pb.RIGHT_CALL: "C"}
+_SEC_TYPE_VALUES = {word: value for value, word in _SEC_TYPES.items()}
+_RIGHT_VALUES = {word: value for value, word in _RIGHTS.items()}
 _KINDS = {
     pb.QUOTE_KIND_OPTION_EOD: spec.OPTION_EOD,
     pb.QUOTE_KIND_UNDERLYING_IV: spec.UNDERLYING_IV,
@@ -198,6 +215,8 @@ _STATUSES = {
     spec.STATUS_ERROR: pb.QUOTE_STATUS_ERROR,
     spec.STATUS_DISCONNECTED: pb.QUOTE_STATUS_DISCONNECTED,
 }
+INTERNAL_TEXT = "internal error"
+FAILED_ACCOUNTS_TEXT = "the login does not serve exactly one account"
 _ERROR_STATUSES = frozenset({spec.STATUS_ERROR, spec.STATUS_NO_SUBSCRIPTION})
 _DOUBLE_FIELDS = frozenset(
     {
@@ -265,11 +284,13 @@ def _status_of(exc: BaseException) -> tuple[grpc.StatusCode, str]:
         return grpc.StatusCode.DEADLINE_EXCEEDED, "the gateway did not answer in time"
     if isinstance(exc, ConnectionError | OSError):
         return grpc.StatusCode.UNAVAILABLE, "the gateway is not connected"
+    if isinstance(exc, MultipleAccounts):
+        return grpc.StatusCode.FAILED_PRECONDITION, FAILED_ACCOUNTS_TEXT
     if isinstance(exc, spec.AmbiguousResolve):
         return grpc.StatusCode.FAILED_PRECONDITION, scrub(str(exc))
     if isinstance(exc, spec.BrokerError):
         return grpc.StatusCode.UNKNOWN, scrub(str(exc))
-    return grpc.StatusCode.INTERNAL, "internal error"
+    return grpc.StatusCode.INTERNAL, INTERNAL_TEXT
 
 
 class _Servicers:
@@ -279,7 +300,13 @@ class _Servicers:
         self.gateway = gateway
         self.clock = clock
 
-    async def call[T](self, rpc: str, context: Context, work: Awaitable[T]) -> T:
+    async def call[T](
+        self,
+        rpc: str,
+        context: Context,
+        work: Awaitable[T],
+        count: Callable[[T], int] | None = None,
+    ) -> T:
         started = self.clock.monotonic()
         try:
             result = await work
@@ -287,11 +314,13 @@ class _Servicers:
             raise
         except Exception as exc:
             code, details = _status_of(exc)
-            log_event(_LOG, "rpc_failed", rpc=rpc, code=code.value[0])
+            word = exc.word if isinstance(exc, MultipleAccounts) else ""
+            log_event(_LOG, "rpc_failed", rpc=rpc, code=code.value[0], status=word)
             await context.abort(code, details)
             raise  # abort raises; unreachable
         elapsed = int((self.clock.monotonic() - started) * 1000)
-        log_event(_LOG, "rpc_done", rpc=rpc, elapsed_ms=elapsed)
+        rows = {} if count is None else {"count": count(result)}
+        log_event(_LOG, "rpc_done", rpc=rpc, elapsed_ms=elapsed, **rows)
         return result
 
 
@@ -429,11 +458,85 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
         )
 
 
-def build_server(gateway: Gateway, clock: Clock | None = None) -> grpc.aio.Server:
-    """Return a grpc.aio server with the three services over gateway; it is not bound."""
+class AccountServicer(pb.AccountServiceServicer):
+    """AccountService: the summary and the positions of the one account of a gateway."""
+
+    def __init__(
+        self, shared: _Servicers, alias: str, collect: Collection[str]
+    ) -> None:
+        self._shared = shared
+        self._alias = alias
+        self._summary = "account_summary" in collect
+        self._positions = "positions" in collect
+
+    async def Account(
+        self, request: pb.AccountRequest, context: Context
+    ) -> pb.AccountResponse:
+        if not (self._summary or self._positions):
+            await context.abort(
+                grpc.StatusCode.UNIMPLEMENTED, "this gateway serves no account data"
+            )
+        gateway = cast(AccountGateway, self._shared.gateway)
+        rows: AccountRows = await self._shared.call(
+            "account",
+            context,
+            gateway.account(summary=self._summary, positions=self._positions),
+            lambda r: len(r.values) + len(r.positions),
+        )
+        return pb.AccountResponse(
+            account=self._alias,
+            generation=rows.generation,
+            values=[
+                pb.AccountValue(tag=v.tag, value=v.value, currency=v.currency)
+                for v in (rows.values if self._summary else ())
+            ],
+            positions=[
+                _position_to_proto(p)
+                for p in (rows.positions if self._positions else ())
+            ],
+        )
+
+
+def _position_to_proto(row: PositionRow) -> pb.Position:
+    return pb.Position(
+        contract=pb.ContractSpec(
+            sec_type=_SEC_TYPE_VALUES.get(row.sec_type, pb.SEC_TYPE_UNSPECIFIED),
+            symbol=row.symbol,
+            exchange=row.exchange,
+            currency=row.currency,
+            expiry=row.expiry,
+            strike=row.strike,
+            right=_RIGHT_VALUES.get(row.right, pb.RIGHT_UNSPECIFIED),
+            multiplier=row.multiplier,
+            trading_class=row.trading_class,
+            con_id=row.con_id,
+        ),
+        quantity=row.quantity,
+        avg_cost=row.avg_cost,
+    )
+
+
+def build_server(
+    gateway: Gateway,
+    clock: Clock | None = None,
+    *,
+    spec: GatewaySpec | None = None,
+) -> grpc.aio.Server:
+    """Return a grpc.aio server over gateway; it is not bound.
+
+    Without spec: Session, Contracts and MarketData. With spec, by its collect
+    words: Session always, Contracts and MarketData with market_data, Account
+    with account_summary or positions (and spec.account as the alias answered).
+    """
     shared = _Servicers(gateway, clock or SystemClock())
     server = grpc.aio.server()
     pb.add_SessionServiceServicer_to_server(SessionServicer(shared), server)
-    pb.add_ContractsServiceServicer_to_server(ContractsServicer(shared), server)
-    pb.add_MarketDataServiceServicer_to_server(MarketDataServicer(shared), server)
+    collect = spec.collect if spec is not None else ("market_data",)
+    if "market_data" in collect:
+        pb.add_ContractsServiceServicer_to_server(ContractsServicer(shared), server)
+        pb.add_MarketDataServiceServicer_to_server(MarketDataServicer(shared), server)
+    if spec is not None and ("account_summary" in collect or "positions" in collect):
+        pb.add_AccountServiceServicer_to_server(
+            AccountServicer(shared, spec.account, collect), server
+        )
     return server

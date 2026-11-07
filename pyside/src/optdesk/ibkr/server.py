@@ -1,6 +1,7 @@
 """Server of the ibkr module: configuration, the sockets, the supervisors and the one loop.
 
-The process serves SessionService, ContractsService and MarketDataService over
+The process serves SessionService, ContractsService, MarketDataService and
+AccountService (each by the collect words of its gateway) over
 a Unix socket per gateway under $OT_HOME (and ibkr.sock for the default one),
 each gateway an IbGateway with the send guard installed, and answers GET /health
 when OT_IBKR_HEALTH_PORT is set. This file holds the one asyncio.run of the package.
@@ -22,6 +23,7 @@ from typing import Protocol
 import grpc.aio
 
 from optdesk.ibkr.gateways import (
+    COLLECT_WORDS,
     FALLBACK_NAME,
     ConfigError,
     GatewaySpec,
@@ -177,12 +179,12 @@ def _probe(gateway: Supervised, loop: asyncio.AbstractEventLoop) -> Probe:
 
 def _socket_paths(config: Config, spec: GatewaySpec) -> list[Path]:
     """Prepare the sockets of spec: its own by name, and ibkr.sock for the default."""
-    if "market_data" not in spec.collect:
+    if not set(spec.collect) & set(COLLECT_WORDS):
         return []
     paths = []
     if config.named_sockets:
         paths.append(prepare_socket(config.home, spec.name))
-    if spec.name == config.default:
+    if spec.name == config.default and "market_data" in spec.collect:
         paths.append(prepare_socket(config.home))
     return paths
 
@@ -208,7 +210,7 @@ async def serve(
         for spec, paths in plan:
             if not paths:
                 continue
-            server = build_server(gateways[spec.name], clock)
+            server = build_server(gateways[spec.name], clock, spec=spec)
             servers.append(server)
             previous = os.umask(0o177)
             try:

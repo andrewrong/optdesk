@@ -32,6 +32,16 @@ ALLOWED = {
     "sendMsg",
 }
 
+# The calls of the account read: accepted in accounts.py only, refused elsewhere.
+ACCOUNT_ONLY = {
+    "reqAccountSummary",
+    "reqPositions",
+    "cancelAccountSummary",
+    "cancelPositions",
+    "managedAccounts",
+}
+ACCOUNT_FILE = "accounts.py"
+
 
 def _receiver(call: ast.Call) -> str | None:
     func = call.func
@@ -45,15 +55,32 @@ def _receiver(call: ast.Call) -> str | None:
     return None
 
 
-def test_only_async_calls_on_ib_and_client() -> None:
-    seen: set[str] = set()
+def _calls_by_file() -> dict[str, set[str]]:
+    found: dict[str, set[str]] = {}
     for path in sorted(IBKR.glob("*.py")):
+        names = found.setdefault(path.name, set())
         for node in ast.walk(ast.parse(path.read_text())):
             if isinstance(node, ast.Call) and _receiver(node):
                 assert isinstance(node.func, ast.Attribute)
-                seen.add(node.func.attr)
-    assert seen <= ALLOWED, seen - ALLOWED
-    assert "connectAsync" in seen
+                names.add(node.func.attr)
+    return found
+
+
+def test_only_async_calls_on_ib_and_client() -> None:
+    by_file = _calls_by_file()
+    for name, calls in by_file.items():
+        allowed = ALLOWED | ACCOUNT_ONLY if name == ACCOUNT_FILE else ALLOWED
+        assert calls <= allowed, (name, calls - allowed)
+    assert "connectAsync" in set().union(*by_file.values())
+
+
+def test_account_calls_only_in_accounts_py() -> None:
+    by_file = _calls_by_file()
+    requests = ACCOUNT_ONLY - {"managedAccounts"}
+    assert requests <= by_file[ACCOUNT_FILE]
+    for name, calls in by_file.items():
+        if name != ACCOUNT_FILE:
+            assert not calls & ACCOUNT_ONLY, name
 
 
 def test_no_module_imports_nest_asyncio() -> None:
