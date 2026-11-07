@@ -50,7 +50,7 @@ What is missing: a generated type, a view, and (not cut here) a producer.
    is used; there is no new package. The entry is serialised with `macro-rates-v2-schema` of that design: both append a line to `web/src/generated/index.ts`
    and a row to `internal/contracts/generated_ts_test.go`, so `report-types` goes after it and every count below is relative to main at cut time. No schema file changes, so the pull request carries `Contracts: unchanged`.
 3. One view entry, not one per block. The view file imports every block file, so per-block entries would need each other's output. The
-   entry is size L and is split by file: `view.tsx` and and the files named in the view entry's What, each under 600 lines.
+   entry is size L and is split by file: `view.tsx` and the files named in the view entry's What, each under 600 lines.
 4. The view renders and computes nothing. Every string, figure, tone and state is a field of the payload; a numeric `value` is only
    handed to a chart as the height of a bar. A `Gap` in place of a figure shows its `text`. A block whose `state` is `gap` or `partial`
    shows its `gaps` and its `gap_text`. An optional block that is `null` is not drawn.
@@ -58,6 +58,7 @@ What is missing: a generated type, a view, and (not cut here) a producer.
    type file `web/src/types/report_page.ts` follows `web/src/types/ledger_page.ts` with `SUPPORTED_VERSIONS = [2]`. No edit of `pages.tsx`.
 6. Fixtures follow `web-views-wave.md` Decision 4: `web/test/pages/report/fixtures/` with its own manifest. Two valid fixtures, because the
    two slots differ in their blocks: `ok-close` (five blocks) and `ok-open` (eleven blocks), plus `gap`, `stale` and `bad-version`.
+   Synthetic only: no real quote, no account, no personal data.
 
 ## Modules
 
@@ -171,14 +172,16 @@ Checked by CI: `pnpm install --frozen-lockfile`, `pnpm --dir web run typecheck` 
 
 ## Adversarial
 
-Answer in `report-page.adversarial.md` in the dispatcher's scratchpad.
+The full adversarial answer is report-page.adversarial.md in the dispatcher's scratchpad.
 
 The design session's points on the size of the generated file, the fixture export names and the relative import were applied. The later design-session points were applied too: `wc -l` bounds for the new fixture and test files, the json2ts drift check moved to `## Checked by CI`, the fixture `gap.ts` named for the whole-`Gap` `proxies`, and `web/package.json` moved into the interface entry as a two-module set.
 
 1. Gap against the goal: adopted. Title, Goal and Decision 1 say "fixtures only"; the view entry names its files and block groups.
 2. Overlap with design PR 285 and the whole-`Gap` `proxies`: adopted. `report-types` is `Order: after macro-rates-v2-schema` and depends on it by name; the whole-`Gap` case is specified and tested.
 3. Simpler way (relative counts, smaller view cut): counts adopted (relative to main at cut time); the smaller view cut is not adopted, because the file split keeps each file small.
+4. Lock-in: low; not adopted as a change, because the type is generated from an unchanged schema, `report_page` v1 is dead and registration by glob needs no `pages.tsx` edit; the directory name and `Payload` bound to v2 are accepted.
 5. False claim: adopted. The `generated/` entries are 15 (14 type files and `index.ts`); the grep count of acceptance 6 is replaced by a vitest assertion on `Object.keys(okOpen.blocks)`.
 6. Likeliest slip: adopted. The attribute is `data-block-key`; titles are read with `getAllByText`.
 (a) Two-module set: adopted. `report-types` is a judged two-module entry (contracts and web) and carries the `generate:types` edit; the view entry has no `web/package.json`.
+(b) Overlap with PR 285: adopted, merged into point 2 (`Order: after macro-rates-v2-schema`, counts relative to main).
 (c) `maxItems` and tuples: adopted. The sentence on `[T, ...T[]]` and empty arrays in fixtures is added to Interface.
