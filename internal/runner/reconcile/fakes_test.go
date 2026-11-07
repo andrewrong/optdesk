@@ -150,13 +150,19 @@ func (l *fakeLedger) Close() error                               { return nil }
 
 // fakeJob plans fixed keys and answers each run from results (default: one usable record).
 type fakeJob struct {
+	id      string
 	keys    []contracts.ExpectedKey
 	results map[contracts.ExpectedKey]contracts.JobResult
 	mu      sync.Mutex
 	calls   []contracts.ExpectedKey
 }
 
-func (j *fakeJob) ID() string { return "fake" }
+func (j *fakeJob) ID() string {
+	if j.id != "" {
+		return j.id
+	}
+	return "fake"
+}
 func (j *fakeJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
 	return j.keys, "plan-1", nil
 }
@@ -169,4 +175,31 @@ func (j *fakeJob) Run(_ context.Context, _ contracts.Day, keys []contracts.Expec
 		return r
 	}
 	return contracts.JobResult{Returned: 1, Usable: 1}
+}
+
+// windowedJob is a fakeJob that declares its window with plain values, as runner.Windowed asks.
+type windowedJob struct {
+	*fakeJob
+	calendarID  string
+	open, close time.Duration
+}
+
+func (j windowedJob) Window() (string, time.Duration, time.Duration) {
+	return j.calendarID, j.open, j.close
+}
+
+// countingLedger counts the calls that a refused Reconcile must not make.
+type countingLedger struct {
+	*fakeLedger
+	acquires, expecteds int
+}
+
+func (l *countingLedger) Acquire(ctx context.Context, owner string, ttl time.Duration) (store.Lease, error) {
+	l.acquires++
+	return l.fakeLedger.Acquire(ctx, owner, ttl)
+}
+
+func (l *countingLedger) PutExpected(ctx context.Context, d contracts.Day, h string, k []contracts.ExpectedKey) error {
+	l.expecteds++
+	return l.fakeLedger.PutExpected(ctx, d, h, k)
 }
