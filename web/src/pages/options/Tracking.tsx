@@ -4,7 +4,8 @@ import { ClipboardList, Info } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/types/tracking'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/tracking'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 export { validate as validateTracking } from '@/types/tracking'
 export type { Payload as TrackingPayload } from '@/types/tracking'
@@ -77,4 +78,9 @@ export function Tracking({ payload }: { payload: Payload }) {
       </Alert>
     </div>
   )
+}
+
+export const registration = {
+  schema: 'tracking',
+  page: page<Payload>(validate, Tracking),
 }

@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import type { Payload } from '@/types/macro_summary'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/macro_summary'
 export { validate as validateMacro } from '@/types/macro_summary'
 export type { Payload as MacroPayload } from '@/types/macro_summary'
 import { StaleAlert } from './StaleAlert'
@@ -69,4 +70,9 @@ export function MacroCard({ payload, showGaps = true }: { payload: Payload; show
       </CardContent>
     </Card>
   )
+}
+
+export const registration = {
+  schema: 'macro_summary',
+  page: page<Payload>(validate, MacroCard),
 }

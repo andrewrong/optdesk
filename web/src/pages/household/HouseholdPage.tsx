@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Payload } from '@/types/household_page'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/household_page'
 import { CardNotes } from '../home/CardNotes'
 import { StaleAlert } from '../home/StaleAlert'
 import { AccountsSection, MoversSection, ScopeHeading, WhoseBadge } from './AccountsMovers'
@@ -220,4 +221,9 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
     </div>
   )
+}
+
+export const registration = {
+  schema: 'household_page',
+  page: page<Payload>(validate, HouseholdPage),
 }

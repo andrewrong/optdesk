@@ -30,6 +30,12 @@ func TestGeneratedSummaryTypes(t *testing.T) {
 		{"market_summary.v2.ts", "./market_summary.v2", "MarketSummary"},
 		{"options_summary.v2.ts", "./options_summary.v2", "OptionsSummary"},
 		{"option_data_page.v1.ts", "./option_data_page.v1", "OptionDataPage"},
+		{"indicator_detail.v1.ts", "./indicator_detail.v1", "IndicatorDetail"},
+		{"option_result_page.v1.ts", "./option_result_page.v1", "OptionResultPage"},
+		{"household_risk.v1.ts", "./household_risk.v1", "HouseholdRisk"},
+		{"ledger_page.v1.ts", "./ledger_page.v1", "LedgerPage"},
+		{"structure_detail.v3.ts", "./structure_detail.v3", "StructureDetail"},
+		{"stock_option_page.v1.ts", "./stock_option_page.v1", "StockOptionPage"},
 	}
 	index := read("index.ts")
 	if got := firstLine(index); got != generatedBanner {
