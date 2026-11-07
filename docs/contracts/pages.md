@@ -2,14 +2,14 @@
 
 ## Responsibility
 
-Build the view model of a page from stored values and serve it inside a static page. `macro_rates.Build` reads the series Reader and emits `page.macro_rates.v1` JSON; `embed.Handler` writes that JSON into the page at serve time. Pages make no request: the one place a page reads its data from is `<script id="vm" type="application/json">`.
+Build the view model of a page from stored values and serve it inside a static page. `macro_rates.Build` reads the series Reader and emits `page.macro_rates.v2` JSON; `embed.Handler` writes that JSON into the page at serve time. Pages make no request: the one place a page reads its data from is `<script id="vm" type="application/json">`.
 
 ## Interface
 
 - `pages.Meta{Name, Schema}`: `Schema` is informational; no code reads it and it is not the JSON field `schema`.
 - `pages.Builder`: `func(ctx, store.SeriesReader, contracts.Day, generatedAt time.Time) ([]byte, error)`.
 - `pages.Page{Meta, Build}`.
-- `macro_rates.Page()` returns `Meta{macro_rates, page.macro_rates.v1}` with the package `Build`.
+- `macro_rates.Page()` returns `Meta{macro_rates, page.macro_rates.v2}` with the package `Build`.
 - `macro_page.NewPage(c)` returns `Meta{macro_page, page.macro_page.v1}`; its `Build` uses a copy of `c` whose `Indicators` is copied at construction.
 - Zone rule: no pages code names a zone; `macro_page.Config.Zone` is given by the caller.
 
@@ -22,7 +22,7 @@ Build the view model of a page from stored values and serve it inside a static p
 
 ## Outputs
 
-- `macro_rates.Build`: JSON of `contracts/schemas/page.macro_rates.v1.json`; `generated_at` is `generatedAt` in UTC, `session_day` is the given day, points are in date order, a nil value is `null`.
+- `macro_rates.Build`: JSON of `contracts/schemas/page.macro_rates.v2.json` (texts in English, written by `text.go`; `latest` is the last point or a gap); `generated_at` is `generatedAt` in UTC, `session_day` is the given day, points are in date order, a nil value is `null`.
 - `gaps[]`: a nil value yields one `no_value` gap with the `series_id` and the date of the point. A series whose last point is more than 4 calendar days before the day, or that has no point in range, yields one `stale` gap with the day as `date`; a stale last point with a nil value gives that one gap only.
 - `embed.Handler`: `text/html` with the view model in the vm element; `embed.Render` returns the page bytes or an error for a view model that is not JSON (the handler answers 500).
 
@@ -49,7 +49,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `internal/pages/option_data_page/builder_test.go`: `TestBuildValidates`, `TestBuildGolden`, `TestBuildSelection`, `TestBuildGaps`.
 - `internal/pages/option_data_page/choices_test.go`: `TestBuildChoicesGolden` (new), `TestBuildNoNewFields` (new), `TestBuildChoices` (new).
 - `internal/pages/option_data_page/terms_test.go`: `TestBuildTermsGolden` (new), `TestBuildTerms` (new).
-- `internal/pages/macro_rates/builder_test.go`: `TestBuildGolden`, `TestGapsAndStale`, `TestBuildDemo`, `TestBuildErrors`.
+- `internal/pages/macro_rates/builder_test.go`: `TestBuildGolden`, `TestText`, `TestGapsAndStale`, `TestBuildFixtures`, `TestBuildDemo`, `TestBuildErrors`.
 - `internal/pages/embed/inject_test.go`: `TestInjectEscapes`, `TestHandlerServesStub`, `TestRenderRejectsBadJSON`, `TestHandlerBadViewModel`.
 
 ## Jobs and slots
