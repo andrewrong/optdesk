@@ -13,6 +13,12 @@ type SessionDay = gen.SessionDay
 // SeriesPoint is the record of dataset obs.series_point r1, generated from contracts/datasets.
 type SeriesPoint = gen.SeriesPoint
 
+// OptionEod is the record of dataset obs.option_eod r1, generated from contracts/datasets.
+type OptionEod = gen.OptionEod
+
+// QuoteSnapshot is the record of dataset obs.quote_snapshot r1, generated from contracts/datasets.
+type QuoteSnapshot = gen.QuoteSnapshot
+
 // SeriesUnit is the unit enum of obs.series_point r1.
 type SeriesUnit = gen.SeriesUnit
 

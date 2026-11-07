@@ -28,6 +28,28 @@ type SeriesReader interface {
 	SeriesPoints(ctx context.Context, seriesID string, from, to contracts.Day) ([]contracts.SeriesPoint, error)
 }
 
+// OptionEodWriter appends option end-of-day rows; a row whose key exists is left as it is.
+type OptionEodWriter interface {
+	InsertOptionEod(ctx context.Context, rows []contracts.OptionEod) error
+}
+
+// OptionEodReader reads the rows of an underlying with session_day between two days, inclusive,
+// ordered by session_day, instrument_id and capture_id.
+type OptionEodReader interface {
+	OptionEod(ctx context.Context, underlyingID int64, from, to contracts.Day) ([]contracts.OptionEod, error)
+}
+
+// QuoteSnapshotWriter appends quote snapshots idempotently.
+type QuoteSnapshotWriter interface {
+	InsertQuoteSnapshots(ctx context.Context, rows []contracts.QuoteSnapshot) error
+}
+
+// QuoteSnapshotReader reads the snapshots of an instrument with session_day between two days, inclusive,
+// ordered by session_day, slot and capture_id.
+type QuoteSnapshotReader interface {
+	QuoteSnapshots(ctx context.Context, instrumentID int64, from, to contracts.Day) ([]contracts.QuoteSnapshot, error)
+}
+
 // SessionDayStore is the Reader and the Writer of master.session_day.
 type SessionDayStore interface {
 	SessionDayReader
@@ -39,6 +61,20 @@ type SessionDayStore interface {
 type SeriesStore interface {
 	SeriesReader
 	SeriesWriter
+	Close() error
+}
+
+// OptionEodStore is the Reader and the Writer of obs.option_eod.
+type OptionEodStore interface {
+	OptionEodReader
+	OptionEodWriter
+	Close() error
+}
+
+// QuoteSnapshotStore is the Reader and the Writer of obs.quote_snapshot.
+type QuoteSnapshotStore interface {
+	QuoteSnapshotReader
+	QuoteSnapshotWriter
 	Close() error
 }
 
@@ -69,6 +105,10 @@ const (
 	DSNEnvPages = "OT_PG_DSN_PAGES"
 	// DSNEnvLoader names the line of $OT_HOME/.env that holds the DSN of the role ot_loader.
 	DSNEnvLoader = "OT_PG_DSN_LOADER"
+	// DSNEnvOptionEod names the line that holds the DSN of the role ot_w_option_eod.
+	DSNEnvOptionEod = "OT_PG_DSN_OPTION_EOD"
+	// DSNEnvQuoteSnapshot names the line that holds the DSN of the role ot_w_quote_snapshot.
+	DSNEnvQuoteSnapshot = "OT_PG_DSN_QUOTE_SNAPSHOT"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -153,6 +193,12 @@ type OpenSessionDayFunc func(ctx context.Context, dsn string) (SessionDayStore, 
 
 // OpenSeriesFunc opens the series store (internal/store/series.Open).
 type OpenSeriesFunc func(ctx context.Context, dsn string) (SeriesStore, error)
+
+// OpenOptionEodFunc opens the option end-of-day store (internal/store/snapshot.OpenOptionEod).
+type OpenOptionEodFunc func(ctx context.Context, dsn string) (OptionEodStore, error)
+
+// OpenQuoteSnapshotFunc opens the quote snapshot store (internal/store/snapshot.OpenQuoteSnapshot).
+type OpenQuoteSnapshotFunc func(ctx context.Context, dsn string) (QuoteSnapshotStore, error)
 
 // OpenLedgerFunc opens the ops ledger (internal/store/ops.Open).
 type OpenLedgerFunc func(ctx context.Context, dsn string) (OpsLedger, error)

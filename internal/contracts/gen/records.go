@@ -8,6 +8,347 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// obs.option_eod r1: one option contract on one session day, frozen after the
+// close.
+type OptionEod struct {
+	// Ask price. Null when absent.
+	Ask *float64 `json:"ask" yaml:"ask" mapstructure:"ask"`
+
+	// Ask size. Null when absent.
+	AskSize *float64 `json:"ask_size" yaml:"ask_size" mapstructure:"ask_size"`
+
+	// Bid price. Null when absent.
+	Bid *float64 `json:"bid" yaml:"bid" mapstructure:"bid"`
+
+	// Bid size. Null when absent.
+	BidSize *float64 `json:"bid_size" yaml:"bid_size" mapstructure:"bid_size"`
+
+	// Identifier of the capture, a uuid.
+	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
+
+	// Currency of the prices, three upper-case letters.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Delta. Null when absent; the writer turns -1 into null.
+	Delta *float64 `json:"delta" yaml:"delta" mapstructure:"delta"`
+
+	// Error code of the broker or the capture; null when none.
+	ErrorCode *string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Instant of the quote at the venue, UTC; null when unknown.
+	EventTs *time.Time `json:"event_ts" yaml:"event_ts" mapstructure:"event_ts"`
+
+	// Gamma. Null when absent; -1 is not a value.
+	Gamma *float64 `json:"gamma" yaml:"gamma" mapstructure:"gamma"`
+
+	// Generation of the instrument terms the capture used.
+	Generation int `json:"generation" yaml:"generation" mapstructure:"generation"`
+
+	// Identifier of the option contract.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvAskDecimal *float64 `json:"iv_ask_decimal" yaml:"iv_ask_decimal" mapstructure:"iv_ask_decimal"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvBidDecimal *float64 `json:"iv_bid_decimal" yaml:"iv_bid_decimal" mapstructure:"iv_bid_decimal"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvDecimal *float64 `json:"iv_decimal" yaml:"iv_decimal" mapstructure:"iv_decimal"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvMidDecimal *float64 `json:"iv_mid_decimal" yaml:"iv_mid_decimal" mapstructure:"iv_mid_decimal"`
+
+	// Last trade price. Null when absent.
+	Last *float64 `json:"last" yaml:"last" mapstructure:"last"`
+
+	// Broker market data type: 1 live, 2 frozen, 3 delayed, 4 delayed frozen.
+	MarketDataType int `json:"market_data_type" yaml:"market_data_type" mapstructure:"market_data_type"`
+
+	// Date the open interest refers to; null when absent.
+	OiAsofDate *types.SerializableDate `json:"oi_asof_date" yaml:"oi_asof_date" mapstructure:"oi_asof_date"`
+
+	// Open interest. Null when absent.
+	OpenInterest *float64 `json:"open_interest" yaml:"open_interest" mapstructure:"open_interest"`
+
+	// Instant the capture was received, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Market-zone session date.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Kind of the snapshot, for example eod.
+	SnapshotKind string `json:"snapshot_kind" yaml:"snapshot_kind" mapstructure:"snapshot_kind"`
+
+	// Status of the row: 1 ok, 2 no quote, 3 not listed, 4 stale, 5 error.
+	Status int `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Version of the contract terms; null when unknown.
+	TermsVersionID *int `json:"terms_version_id" yaml:"terms_version_id" mapstructure:"terms_version_id"`
+
+	// Theta per calendar day. Null when absent; the writer turns -1 into null.
+	ThetaPerCalendarDay *float64 `json:"theta_per_calendar_day" yaml:"theta_per_calendar_day" mapstructure:"theta_per_calendar_day"`
+
+	// Currency of the underlying, three upper-case letters.
+	UnderlyingCcy string `json:"underlying_ccy" yaml:"underlying_ccy" mapstructure:"underlying_ccy"`
+
+	// Instant of the underlying quote, UTC; null when unknown.
+	UnderlyingEventTs *time.Time `json:"underlying_event_ts" yaml:"underlying_event_ts" mapstructure:"underlying_event_ts"`
+
+	// Identifier of the underlying instrument.
+	UnderlyingID int `json:"underlying_id" yaml:"underlying_id" mapstructure:"underlying_id"`
+
+	// Price of the underlying at the capture. Null when absent.
+	UnderlyingPrice *float64 `json:"underlying_price" yaml:"underlying_price" mapstructure:"underlying_price"`
+
+	// Vega per volatility point. Null when absent; -1 is not a value.
+	VegaPerVolPoint *float64 `json:"vega_per_vol_point" yaml:"vega_per_vol_point" mapstructure:"vega_per_vol_point"`
+
+	// Volume of the day. Null when absent.
+	Volume *float64 `json:"volume" yaml:"volume" mapstructure:"volume"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionEod) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["ask"]; raw != nil && !ok {
+		return fmt.Errorf("field ask in OptionEod: required")
+	}
+	if _, ok := raw["ask_size"]; raw != nil && !ok {
+		return fmt.Errorf("field ask_size in OptionEod: required")
+	}
+	if _, ok := raw["bid"]; raw != nil && !ok {
+		return fmt.Errorf("field bid in OptionEod: required")
+	}
+	if _, ok := raw["bid_size"]; raw != nil && !ok {
+		return fmt.Errorf("field bid_size in OptionEod: required")
+	}
+	if _, ok := raw["capture_id"]; raw != nil && !ok {
+		return fmt.Errorf("field capture_id in OptionEod: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in OptionEod: required")
+	}
+	if _, ok := raw["delta"]; raw != nil && !ok {
+		return fmt.Errorf("field delta in OptionEod: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in OptionEod: required")
+	}
+	if _, ok := raw["event_ts"]; raw != nil && !ok {
+		return fmt.Errorf("field event_ts in OptionEod: required")
+	}
+	if _, ok := raw["gamma"]; raw != nil && !ok {
+		return fmt.Errorf("field gamma in OptionEod: required")
+	}
+	if _, ok := raw["generation"]; raw != nil && !ok {
+		return fmt.Errorf("field generation in OptionEod: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in OptionEod: required")
+	}
+	if _, ok := raw["iv_ask_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_ask_decimal in OptionEod: required")
+	}
+	if _, ok := raw["iv_bid_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_bid_decimal in OptionEod: required")
+	}
+	if _, ok := raw["iv_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_decimal in OptionEod: required")
+	}
+	if _, ok := raw["iv_mid_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_mid_decimal in OptionEod: required")
+	}
+	if _, ok := raw["last"]; raw != nil && !ok {
+		return fmt.Errorf("field last in OptionEod: required")
+	}
+	if _, ok := raw["market_data_type"]; raw != nil && !ok {
+		return fmt.Errorf("field market_data_type in OptionEod: required")
+	}
+	if _, ok := raw["oi_asof_date"]; raw != nil && !ok {
+		return fmt.Errorf("field oi_asof_date in OptionEod: required")
+	}
+	if _, ok := raw["open_interest"]; raw != nil && !ok {
+		return fmt.Errorf("field open_interest in OptionEod: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in OptionEod: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in OptionEod: required")
+	}
+	if _, ok := raw["snapshot_kind"]; raw != nil && !ok {
+		return fmt.Errorf("field snapshot_kind in OptionEod: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in OptionEod: required")
+	}
+	if _, ok := raw["terms_version_id"]; raw != nil && !ok {
+		return fmt.Errorf("field terms_version_id in OptionEod: required")
+	}
+	if _, ok := raw["theta_per_calendar_day"]; raw != nil && !ok {
+		return fmt.Errorf("field theta_per_calendar_day in OptionEod: required")
+	}
+	if _, ok := raw["underlying_ccy"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_ccy in OptionEod: required")
+	}
+	if _, ok := raw["underlying_event_ts"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_event_ts in OptionEod: required")
+	}
+	if _, ok := raw["underlying_id"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_id in OptionEod: required")
+	}
+	if _, ok := raw["underlying_price"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_price in OptionEod: required")
+	}
+	if _, ok := raw["vega_per_vol_point"]; raw != nil && !ok {
+		return fmt.Errorf("field vega_per_vol_point in OptionEod: required")
+	}
+	if _, ok := raw["volume"]; raw != nil && !ok {
+		return fmt.Errorf("field volume in OptionEod: required")
+	}
+	type Plain OptionEod
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = OptionEod(plain)
+	return nil
+}
+
+// obs.quote_snapshot r1: a planned time slot of quotes of one instrument.
+type QuoteSnapshot struct {
+	// Ask price. Null when absent.
+	Ask *float64 `json:"ask" yaml:"ask" mapstructure:"ask"`
+
+	// Ask size. Null when absent.
+	AskSize *float64 `json:"ask_size" yaml:"ask_size" mapstructure:"ask_size"`
+
+	// Bid price. Null when absent.
+	Bid *float64 `json:"bid" yaml:"bid" mapstructure:"bid"`
+
+	// Bid size. Null when absent.
+	BidSize *float64 `json:"bid_size" yaml:"bid_size" mapstructure:"bid_size"`
+
+	// Identifier of the capture, a uuid.
+	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
+
+	// Currency of the prices, three upper-case letters.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Error code of the broker or the capture; null when none.
+	ErrorCode *string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Instant of the quote at the venue, UTC; null when unknown.
+	EventTs *time.Time `json:"event_ts" yaml:"event_ts" mapstructure:"event_ts"`
+
+	// Generation of the instrument terms the capture used.
+	Generation int `json:"generation" yaml:"generation" mapstructure:"generation"`
+
+	// Identifier of the instrument.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// Last trade price. Null when absent.
+	Last *float64 `json:"last" yaml:"last" mapstructure:"last"`
+
+	// Last trade size. Null when absent.
+	LastSize *float64 `json:"last_size" yaml:"last_size" mapstructure:"last_size"`
+
+	// Broker market data type: 1 live, 2 frozen, 3 delayed, 4 delayed frozen.
+	MarketDataType int `json:"market_data_type" yaml:"market_data_type" mapstructure:"market_data_type"`
+
+	// Instant the capture was received, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Market-zone session date.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Planned time slot of the capture.
+	Slot string `json:"slot" yaml:"slot" mapstructure:"slot"`
+
+	// Status of the row: 1 ok, 2 no quote, 3 not listed, 4 stale, 5 error.
+	Status int `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Volume. Null when absent.
+	Volume *float64 `json:"volume" yaml:"volume" mapstructure:"volume"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *QuoteSnapshot) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["ask"]; raw != nil && !ok {
+		return fmt.Errorf("field ask in QuoteSnapshot: required")
+	}
+	if _, ok := raw["ask_size"]; raw != nil && !ok {
+		return fmt.Errorf("field ask_size in QuoteSnapshot: required")
+	}
+	if _, ok := raw["bid"]; raw != nil && !ok {
+		return fmt.Errorf("field bid in QuoteSnapshot: required")
+	}
+	if _, ok := raw["bid_size"]; raw != nil && !ok {
+		return fmt.Errorf("field bid_size in QuoteSnapshot: required")
+	}
+	if _, ok := raw["capture_id"]; raw != nil && !ok {
+		return fmt.Errorf("field capture_id in QuoteSnapshot: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in QuoteSnapshot: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in QuoteSnapshot: required")
+	}
+	if _, ok := raw["event_ts"]; raw != nil && !ok {
+		return fmt.Errorf("field event_ts in QuoteSnapshot: required")
+	}
+	if _, ok := raw["generation"]; raw != nil && !ok {
+		return fmt.Errorf("field generation in QuoteSnapshot: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in QuoteSnapshot: required")
+	}
+	if _, ok := raw["last"]; raw != nil && !ok {
+		return fmt.Errorf("field last in QuoteSnapshot: required")
+	}
+	if _, ok := raw["last_size"]; raw != nil && !ok {
+		return fmt.Errorf("field last_size in QuoteSnapshot: required")
+	}
+	if _, ok := raw["market_data_type"]; raw != nil && !ok {
+		return fmt.Errorf("field market_data_type in QuoteSnapshot: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in QuoteSnapshot: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in QuoteSnapshot: required")
+	}
+	if _, ok := raw["slot"]; raw != nil && !ok {
+		return fmt.Errorf("field slot in QuoteSnapshot: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in QuoteSnapshot: required")
+	}
+	if _, ok := raw["volume"]; raw != nil && !ok {
+		return fmt.Errorf("field volume in QuoteSnapshot: required")
+	}
+	type Plain QuoteSnapshot
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = QuoteSnapshot(plain)
+	return nil
+}
+
 // obs.series_point r1: one observation of a series as known from realtime_start.
 type SeriesPoint struct {
 	// Currency code; not empty when unit is ccy_amount, empty otherwise.
@@ -41,16 +382,13 @@ type SeriesPoint struct {
 	Unit SeriesUnit `json:"unit" yaml:"unit" mapstructure:"unit"`
 
 	// The observation; null when the source has no value (nullable numeric).
-	Value SeriesPointValue `json:"value" yaml:"value" mapstructure:"value"`
+	Value *float64 `json:"value" yaml:"value" mapstructure:"value"`
 }
 
-// The observation; null when the source has no value (nullable numeric).
-type SeriesPointValue *float64
-
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *SeriesPoint) UnmarshalJSON(value []byte) error {
+func (j *SeriesPoint) UnmarshalJSON(b []byte) error {
 	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
+	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
 	if _, ok := raw["currency"]; raw != nil && !ok {
@@ -88,7 +426,7 @@ func (j *SeriesPoint) UnmarshalJSON(value []byte) error {
 	}
 	type Plain SeriesPoint
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := json.Unmarshal(b, &plain); err != nil {
 		return err
 	}
 	*j = SeriesPoint(plain)
@@ -110,9 +448,9 @@ var enumValues_SeriesUnit = []interface{}{
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *SeriesUnit) UnmarshalJSON(value []byte) error {
+func (j *SeriesUnit) UnmarshalJSON(b []byte) error {
 	var v string
-	if err := json.Unmarshal(value, &v); err != nil {
+	if err := json.Unmarshal(b, &v); err != nil {
 		return err
 	}
 	var ok bool
@@ -151,9 +489,9 @@ type SessionDay struct {
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *SessionDay) UnmarshalJSON(value []byte) error {
+func (j *SessionDay) UnmarshalJSON(b []byte) error {
 	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
+	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
 	if _, ok := raw["calendar_id"]; raw != nil && !ok {
@@ -176,7 +514,7 @@ func (j *SessionDay) UnmarshalJSON(value []byte) error {
 	}
 	type Plain SessionDay
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := json.Unmarshal(b, &plain); err != nil {
 		return err
 	}
 	*j = SessionDay(plain)

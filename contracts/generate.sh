@@ -5,11 +5,18 @@ set -eu
 cd "$(dirname "$0")/.."
 
 D=https://optdesk.invalid/datasets
+OUT=internal/contracts/gen/records.go
 go tool go-jsonschema -p gen --capitalization ID \
   --schema-root-type "$D/master.session_day.r1.json=SessionDay" \
   --schema-root-type "$D/obs.series_point.r1.json=SeriesPoint" \
-  -o internal/contracts/gen/records.go \
-  contracts/datasets/master.session_day.r1.json contracts/datasets/obs.series_point.r1.json
+  --schema-root-type "$D/obs.option_eod.r1.json=OptionEod" \
+  --schema-root-type "$D/obs.quote_snapshot.r1.json=QuoteSnapshot" \
+  --schema-output "$D/master.session_day.r1.json=$OUT" \
+  --schema-output "$D/obs.series_point.r1.json=$OUT" \
+  --schema-output "$D/obs.option_eod.r1.json=$OUT" \
+  --schema-output "$D/obs.quote_snapshot.r1.json=$OUT" \
+  -o "$OUT" \
+  contracts/datasets/master.session_day.r1.json contracts/datasets/obs.series_point.r1.json contracts/datasets/obs.option_eod.r1.json contracts/datasets/obs.quote_snapshot.r1.json
 gofmt -w internal/contracts/gen/records.go
 
 go run ./contracts/gendoc -in contracts/datasets -out docs/contracts/datasets

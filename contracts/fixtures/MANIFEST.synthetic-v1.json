@@ -5,6 +5,8 @@
     {"path": "page.macro_rates.v1.golden.json", "sha256": "5095a03bc11d6b40fbcd2e18a758bfcbde2ae5bba199d2dbe21a12a1fcf860cb"},
     {"path": "master.session_day.r1.json", "sha256": "6f0d26b7c3edf0f7aa49431ec2eb61d5d2155695a6687086bb9cb92f877d3db7"},
     {"path": "obs.series_point.r1.json", "sha256": "04b1da3495a435afc292974f19138cc0d387e1f3ca096da1048fe2d5d43e2603"},
+    {"path": "obs.option_eod.r1.json", "sha256": "750708b292a56a203b988099a1aa2c7a2ef096721455370a287f4707a4ee8d75"},
+    {"path": "obs.quote_snapshot.r1.json", "sha256": "da129084bda9561449c2aac71364f2a16d93b1e033e00b0e2c8f02df19176a9c"},
     {"path": "symbols.txt", "sha256": "1ccd9ebe503fa02866faebfe6542069e2597f7accc13c4b7957d21f3adecc9bb"}
   ]
 }

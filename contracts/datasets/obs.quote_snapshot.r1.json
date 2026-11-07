@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.quote_snapshot.r1.json",
+  "title": "QuoteSnapshot",
+  "description": "obs.quote_snapshot r1: a planned time slot of quotes of one instrument.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_day", "capture_id", "slot", "instrument_id", "received_at", "generation", "market_data_type", "event_ts", "status", "error_code", "currency", "bid", "ask", "bid_size", "ask_size", "last", "last_size", "volume"],
+  "x-dataset": "obs.quote_snapshot",
+  "x-revision": "r1",
+  "x-primary-key": ["session_day", "capture_id", "slot", "instrument_id"],
+  "properties": {
+    "session_day": {"type": "string", "format": "date", "description": "Market-zone session date."},
+    "capture_id": {"type": "string", "format": "uuid", "description": "Identifier of the capture, a uuid."},
+    "slot": {"type": "string", "description": "Planned time slot of the capture."},
+    "instrument_id": {"type": "integer", "description": "Identifier of the instrument."},
+    "received_at": {"type": "string", "format": "date-time", "description": "Instant the capture was received, UTC."},
+    "generation": {"type": "integer", "description": "Generation of the instrument terms the capture used."},
+    "market_data_type": {"type": "integer", "description": "Broker market data type: 1 live, 2 frozen, 3 delayed, 4 delayed frozen."},
+    "event_ts": {"type": ["string", "null"], "format": "date-time", "description": "Instant of the quote at the venue, UTC; null when unknown."},
+    "status": {"type": "integer", "minimum": 1, "maximum": 5, "description": "Status of the row: 1 ok, 2 no quote, 3 not listed, 4 stale, 5 error."},
+    "error_code": {"type": ["string", "null"], "description": "Error code of the broker or the capture; null when none."},
+    "currency": {"type": "string", "pattern": "^[A-Z]{3}$", "description": "Currency of the prices, three upper-case letters."},
+    "bid": {"type": ["number", "null"], "minimum": 0, "description": "Bid price. Null when absent."},
+    "ask": {"type": ["number", "null"], "minimum": 0, "description": "Ask price. Null when absent."},
+    "bid_size": {"type": ["number", "null"], "minimum": 0, "description": "Bid size. Null when absent."},
+    "ask_size": {"type": ["number", "null"], "minimum": 0, "description": "Ask size. Null when absent."},
+    "last": {"type": ["number", "null"], "minimum": 0, "description": "Last trade price. Null when absent."},
+    "last_size": {"type": ["number", "null"], "minimum": 0, "description": "Last trade size. Null when absent."},
+    "volume": {"type": ["number", "null"], "minimum": 0, "description": "Volume. Null when absent."}
+  }
+}
