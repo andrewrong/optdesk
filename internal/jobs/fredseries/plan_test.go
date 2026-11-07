@@ -38,7 +38,7 @@ func TestEmbeddedManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	if m.Version != 1 || m.ID != "fred_series" || len(m.Series) != 1 || m.Series[0] != "DGS10" ||
-		m.Window.Rule != "after_close" || m.Window.LatenessHours != 24 {
+		m.Window.Rule != "after_close" || m.Window.LatenessHours != 96 {
 		t.Fatalf("manifest = %+v", m)
 	}
 	j, err := New(&fakeSource{}, &fakeWriter{}, fakeClock{})
