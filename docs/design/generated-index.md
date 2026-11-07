@@ -10,12 +10,12 @@ Goal of the design: after it, adding a generated TypeScript type touches only ne
   Nothing imports it: every consumer under `web/src` imports a file directly (`@/generated/structure_detail.v3`).
 - the table `files` of `TestGeneratedSummaryTypes` and the table `pairs` of `TestGeneratedV3Types` in
   `internal/contracts/generated_ts_test.go`.
-- the `generate:types` script of `web/package.json`: 14 `json2ts` calls chained with `&&`, one per schema, on one line.
+- the `generate:types` script of `web/package.json`: one `json2ts` call per schema, chained with `&&` on one line.
 - `pageNewFiles` of `internal/contracts/carryover_test.go`: one literal list of the schemas written in this repository, which each
   new schema extends.
 - `docs/contracts/page-schemas.md` carries counts ("Thirty schemas", "13 directories", "15 `bad-version.json` files"); they go.
 
-Not every schema has a generated type (14 of the `page.*.json` files do), so the script cannot simply generate the whole
+Not every schema has a generated type (only some of the `page.*.json` files do), so the script cannot simply generate the whole
 directory: that would add dead types for the superseded versions and collide names (`HeldCompaniesSummary` is the title of
 v1 and v2). The set of generated types is the set of `.ts` files in `web/src/generated`: a new type is registered by
 committing its file, a new file nobody else edits.
@@ -154,5 +154,5 @@ Answer: `generated-index.adversarial.md`, in the dispatcher's scratchpad.
 3. Three entries versus one two-module interface entry: adopted. One entry, precedent `pages-types-wave-2`; the `modules.md` cell edit moves into this PR.
 4. Lock-in of the name regex and the v3 gate: noted in Decisions, not changed.
 5. Script acceptance grepped `index` and a false premise about counts kept by other designs: adopted. The grep is `index.ts`; the premise is dropped.
-6. Design-session points (earlier finding 1, `structure_detail.v3.ts` in the v3 gate, new-schema `$id` test against the dead 'neither set' check, the 14-file count): applied.
+6. Design-session points (earlier finding 1, `structure_detail.v3.ts` in the v3 gate, new-schema `$id` test against the dead 'neither set' check, the figure 14): applied.
 Net time (the dispatcher's point e): adopted; the three open designs are not made to depend on this one (Decisions, Left out).
