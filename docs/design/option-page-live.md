@@ -117,18 +117,18 @@ schema `master`. The grant is a change of who may read what: the issue carries t
 ## Issues
 
 1. option-live-interface (interface), starts the day this design merges.
-2. option-terms-written, Order: after 1 (both edit `internal/store/migrate/migrate_test.go` and `docs/contracts/store.md`; the migration numbers 0010 and 0011 follow each other).
-3. option-names-reader, Order: after 1 (it implements the types of 1); independent of 2 (disjoint files).
-4. option-page-live-ot, Order: after 3 (`newDeps` names the constructor `instrument.OpenInstrumentNames`); its tests use fakes only.
+2. option-terms-written, Order: after 1 (it edits `internal/store/migrate/migrate_test.go` and `docs/contracts/store.md` after 1, and migration 0011 follows 0010).
+3. option-names-reader, Order: after 1 (it fills the stub `names.go` of 1); no shared file with 2 or 4.
+4. option-page-live-ot, Order: after 1 (it binds the stub `instrument.OpenInstrumentNames` of 1, which is enough for `TestNewDepsFilled`); no shared file with 2 or 3.
 
-Entries 2 and 3 run together once 1 has merged. What is shown end to end (a real database, the service deployed, the page filled) needs
+Entries 2, 3 and 4 need only entry 1 and none needs another's output; they run together once 1 has merged. What is shown end to end (a real database, the service deployed, the page filled) needs
 all four merged and the collection running, and is the owner's check: no test proves the owner-visible goal before the service runs.
 
 ### option-live-interface (interface)
 
 Module: store. This issue carries a grant (read on a new view for the page role): its issue carries the waiver lines (advisor answers, the owner merges).
 
-Files: internal/store/api.go, internal/store/api_test.go, migrations/0010_instrument_names_view.sql, internal/store/migrate/migrate_test.go, docs/contracts/store.md
+Files: internal/store/api.go, internal/store/api_test.go, migrations/0010_instrument_names_view.sql, internal/store/instrument/names.go, internal/store/migrate/migrate_test.go, docs/contracts/store.md
 
 Design: docs/design/option-page-live.md#interface
 
@@ -139,7 +139,9 @@ Acceptance:
 3. `migrations/0010_instrument_names_view.sql` has an Up and a Down part; Up creates `rd.instrument_r1` with the four columns, sets its owner to `ot_owner` and grants `SELECT` to `ot_ro_pages` only; Down drops the view.
 4. `TestMigration0008` in `internal/store/migrate/migrate_test.go` is changed (it takes `names[len-2]` as 0008 and fails once 0010 exists: it must find 0008 by name), `TestMigrationsEndWith0009` is replaced by a test that ends with `0010_instrument_names_view.sql`, and `go test ./internal/store/... -count=1 -race` passes.
 5. `docs/contracts/store.md` names the reader, the view, the grant and a version line `v8` (the last line is `v7`, migration 0009; the next line is `v8`).
-6. No file outside the five listed is in the diff.
+6. `internal/store/instrument/names.go` holds `OpenInstrumentNames` with `var _ store.OpenInstrumentNameFunc = OpenInstrumentNames`, a body that returns a `Permanent` error whose text says not implemented, and nothing else; `go vet ./internal/store/instrument` passes.
+7. No file outside the six listed is in the diff.
+8. The result matches the section Interface of docs/design/option-page-live.md, judged from the code and the design file.
 
 Checked by CI: the migration Up and Down against PostgreSQL (the `pg` tests of `internal/store/migrate`).
 
@@ -162,7 +164,7 @@ Acceptance:
 7. `terms_pg_test.go` (build tag `pg`): its helper `newTermsDatabase` applies only 0009 today; it applies 0010 and 0011 as well, and the file gains `TestResolveWritesTermsPG` (a new option resolved by the role `ot_w_master` has a current terms row the page reader returns). `go vet -tags pg ./internal/store/instrument` passes offline.
 8. `docs/contracts/store.md` states the side effect of `ResolveInstrument`, the two defaults, the savepoint, the grant, the order "migrate before deploying the code" and a version line `v9`.
 9. `internal/store/api.go` does not change (`git diff --stat origin/main -- internal/store/api.go` prints nothing); every file stays under 600 lines.
-10. The result matches the section Decisions (points 1 to 5) of docs/design/option-page-live.md.
+10. The result matches the section Decisions (points 1 to 5) of docs/design/option-page-live.md, judged from the code and the design file.
 
 Checked by CI: `TestResolveWritesTermsPG` and the migration 0011 Up and Down against PostgreSQL.
 
@@ -176,11 +178,11 @@ Design: docs/design/option-page-live.md#interface
 
 Acceptance:
 
-1. `instrument.OpenInstrumentNames` satisfies `store.OpenInstrumentNameFunc` (`var _ store.OpenInstrumentNameFunc = OpenInstrumentNames`) and reads `rd.instrument_r1` only, never `master`: `grep -c 'master\.' internal/store/instrument/names.go` prints 0.
+1. `names.go` (a stub after the interface entry) is filled: `OpenInstrumentNames` opens the database and reads `rd.instrument_r1` only, never `master`: `grep -c 'master\.' internal/store/instrument/names.go` prints 0.
 2. With a fake database: ids are returned ordered by id, an unknown id is absent, an empty list makes no database call, 501 ids and an id of 0 are `Permanent`, a database error is `Retryable`; `go test ./internal/store/instrument -run TestInstrumentNames -count=1 -race` passes, every test calls `t.Parallel()`.
-3. `names_pg_test.go` (build tag `pg`) has `TestInstrumentNamesPG` with the role `ot_ro_pages`; `go vet -tags pg ./internal/store/instrument` passes offline.
+3. `names_pg_test.go` (build tag `pg`) has `TestInstrumentNamesPG` with the role `ot_ro_pages` and its own helper that applies migrations 0001 to 0010 (it does not use `newTermsDatabase` of `terms_pg_test.go`); `go vet -tags pg ./internal/store/instrument` passes offline.
 4. No file outside the three listed is in the diff, each under 600 lines.
-5. The result matches the section Interface of docs/design/option-page-live.md.
+5. The result matches the section Interface of docs/design/option-page-live.md, judged from the code and the design file.
 
 Checked by CI: `TestInstrumentNamesPG`.
 
@@ -194,7 +196,7 @@ Design: docs/design/option-page-live.md#decisions
 
 Acceptance:
 
-1. `deps` gains `openInstrumentName store.OpenInstrumentNameFunc`, bound to `instrument.OpenInstrumentNames` in `newDeps`; `openSiteReaders` opens it with the same line as the other four and closes it with them; the demo profile opens none and its demo readers answer names for the two demo underlyings. `go test ./cmd/ot -run 'TestSiteDemoOpensNoStore|TestSiteMissingDSN' -count=1 -race` passes.
+1. `deps` gains `openInstrumentName store.OpenInstrumentNameFunc`, bound to `instrument.OpenInstrumentNames` (the stub of the interface entry) in `newDeps`, so `TestNewDepsFilled` passes before the reader is filled; `openSiteReaders` opens it with the same line as the other four and closes it with them; the demo profile opens none and its demo readers answer names for the two demo underlyings. `go test ./cmd/ot -run 'TestSiteDemoOpensNoStore|TestSiteMissingDSN' -count=1 -race` passes.
 2. With fakes, `GET /options/data` of a catalog of two underlyings whose names are `AAA` and `BBB` builds the page with `underlying.symbol` and `underlying.label` of the chosen one and the labels of both choices as the names; an id with no name, or of type `option`, keeps `Underlying <id>`; one name read per request with at most 50 ids; `TestSiteNames`.
 3. With a fake catalog that is empty and fake readers that hold nothing, `GET /options/data` answers 200 with a page whose JSON has `run_status` `partial`, one gap, the note `No option data is stored yet; collection has not run.` and `underlying.label` `No underlying yet`, and makes no name read; `TestSiteEmptyStore`.
 4. With a non-empty catalog the page has no such note; `/options/data/<id>` of an id with no rows keeps the gap `no option data stored` and adds no note; `TestSiteNoteOnlyWhenCatalogEmpty`.
@@ -202,7 +204,7 @@ Acceptance:
 6. `sitePageInput` gains `Notes []string` and `Symbol string`, and `newOptionDataPage` passes them to `Config.Notes` and `Config.Symbol`; `cmd/ot/wire_test.go` checks both reach the built page.
 7. `go test ./cmd/ot -count=1 -race` passes; every new test calls `t.Parallel()`, writes no file outside `t.TempDir()`, binds no fixed port and does not sleep.
 8. `docs/contracts/ot.md` states the five stores, the names, the empty-catalog note and label in the `--site` line.
-9. The result matches the section Decisions (points 6 and 7) of docs/design/option-page-live.md.
+9. The result matches the section Decisions (points 6 and 7) of docs/design/option-page-live.md, judged from the code and the design file.
 
 ## Left out
 
