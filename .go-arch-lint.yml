@@ -71,6 +71,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  pages/home_page:
+    in: internal/pages/home_page
   store/migrate:
     in: internal/store/migrate
 deps:
@@ -246,6 +248,12 @@ deps:
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
+  pages/home_page:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
+      - contracts/genpb
   store/migrate:
     mayDependOn:
       - contracts

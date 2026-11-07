@@ -1,0 +1,47 @@
+{
+  "build_id": "build-test",
+  "card": {
+    "columns": [
+      {
+        "id": "company",
+        "label": "公司"
+      },
+      {
+        "id": "earnings",
+        "label": "财报日"
+      },
+      {
+        "id": "day_change",
+        "label": "日涨跌"
+      },
+      {
+        "id": "five_day_change",
+        "label": "5日涨跌"
+      }
+    ],
+    "data_times_text": "美股数据日 10-23 · 日股数据日 10-23",
+    "gaps": [],
+    "notes": [],
+    "rows": [],
+    "say": "持有 9 家 · 2 家 21 日内财报 · 近 5 日消息：暂无数据源。",
+    "stale": {
+      "data_time": "2026-10-23T21:00:00+08:00",
+      "stale_after": "2026-10-24T21:00:00+08:00",
+      "text": "数据日 10-23"
+    },
+    "subtitle": "财报日历与变化",
+    "title": "持仓公司"
+  },
+  "data_times": [
+    {
+      "data_time": "2026-10-23T21:00:00+08:00",
+      "source": "held_companies"
+    }
+  ],
+  "generated_at": "2026-10-23T21:00:00+08:00",
+  "run_id": "run-test",
+  "run_status": "ok",
+  "schema": "held_companies_summary",
+  "schema_version": 2,
+  "scope": "scope-test"
+}

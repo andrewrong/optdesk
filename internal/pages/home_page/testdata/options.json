@@ -1,0 +1,181 @@
+{
+  "schema": "options_summary",
+  "schema_version": 3,
+  "run_id": "run-test",
+  "build_id": "build-test",
+  "scope": "scope-test",
+  "currency": "USD",
+  "generated_at": "2026-10-26T21:30:00Z",
+  "stale_after": "2026-10-27T21:00:00Z",
+  "data_times": [
+    {
+      "source": "fx_positions",
+      "data_time": "2026-10-23T21:00:00Z"
+    }
+  ],
+  "run_status": "ok",
+  "card": {
+    "title": "期权概览",
+    "say": "本月卖出 3 笔，收取权利金 +$310。",
+    "subtitle": "示例数据",
+    "stale": {
+      "data_time": "2026-10-23T21:00:00Z",
+      "text": "数据截至 10-23 收盘",
+      "is_stale": false
+    },
+    "tiles": {
+      "sold_count_month": {
+        "label": "本月卖出",
+        "figure": {
+          "kind": "value",
+          "value": 3,
+          "text": "3 笔",
+          "unit": "structures"
+        },
+        "caption": "示例"
+      },
+      "premium_month_usd": {
+        "label": "本月权利金",
+        "figure": {
+          "kind": "value",
+          "value": 310.0,
+          "text": "+$310",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      "open_premium_usd": {
+        "label": "未平权利金",
+        "figure": {
+          "kind": "value",
+          "value": 1250.5,
+          "text": "$1,250",
+          "unit": "usd"
+        }
+      },
+      "max_loss_usd": {
+        "label": "最大亏损",
+        "figure": {
+          "kind": "value",
+          "value": 4000.0,
+          "text": "$4,000",
+          "unit": "usd"
+        }
+      }
+    },
+    "premium_series_6m": [
+      {
+        "month": "2026-05",
+        "label": "5月",
+        "premium": {
+          "kind": "value",
+          "value": 120.0,
+          "text": "+$120",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "value",
+          "value": 60.0,
+          "text": "+$60",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      {
+        "month": "2026-06",
+        "label": "6月",
+        "premium": {
+          "kind": "value",
+          "value": -30.0,
+          "text": "−$30",
+          "unit": "usd_signed",
+          "tone": "down"
+        },
+        "closed": {
+          "kind": "value",
+          "value": -15.0,
+          "text": "−$15",
+          "unit": "usd_signed",
+          "tone": "down"
+        }
+      },
+      {
+        "month": "2026-07",
+        "label": "7月",
+        "premium": {
+          "kind": "value",
+          "value": 200.5,
+          "text": "+$200",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "value",
+          "value": 100.25,
+          "text": "+$100",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      {
+        "month": "2026-08",
+        "label": "8月",
+        "premium": {
+          "kind": "value",
+          "value": 80.0,
+          "text": "+$80",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "value",
+          "value": 40.0,
+          "text": "+$40",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      {
+        "month": "2026-09",
+        "label": "9月",
+        "premium": {
+          "kind": "value",
+          "value": 150.0,
+          "text": "+$150",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "value",
+          "value": 75.0,
+          "text": "+$75",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      {
+        "month": "2026-10",
+        "label": "10月",
+        "premium": {
+          "kind": "value",
+          "value": 310.0,
+          "text": "+$310",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "value",
+          "value": 155.0,
+          "text": "+$155",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      }
+    ],
+    "premium_series_text": "近六个月权利金",
+    "premium_series_caption": "示例数据，单位美元",
+    "notes": [],
+    "gaps": []
+  }
+}
