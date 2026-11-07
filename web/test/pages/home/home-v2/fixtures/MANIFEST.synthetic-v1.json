@@ -1,0 +1,8 @@
+{
+  "marker": "synthetic-v1",
+  "files": [
+    "bad-member.json",
+    "bad-version.json",
+    "ok.ts"
+  ]
+}
