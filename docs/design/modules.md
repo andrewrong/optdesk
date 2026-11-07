@@ -83,7 +83,7 @@ rows above name every other top-level path of the planned tree.
 | store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts |
 | compute | internal/compute/** docs/contracts/compute.md | internal/compute/api.go | internal/compute/api_test.go | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
-| jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources store |
+| jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/tests/** | contracts |

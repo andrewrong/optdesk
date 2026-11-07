@@ -1,0 +1,176 @@
+# Option jobs: the option_eod and quote_snapshot jobs
+
+Author: the optdesk dispatcher (draft)
+Owner approved: (pending)
+Date: 2026-11-07
+Source: owner request optdesk-485 (option collection), third of three designs. It is attached after the interface entries of `docs/design/broker.md` (`broker.Broker`) and
+`docs/design/store-master.md` (`store.InstrumentResolver`) have landed: the constructor types below name both. Read on main at 0c3d9e6: `internal/jobs/api.go`,
+`internal/jobs/fredseries/**`, `internal/contracts/api.go`, `internal/store/api.go`, `internal/runner/reconcile/reconcile.go`, `go.mod`, `go.sum`, `docs/design/store-week2.md`.
+Settled: `Quote` carries the sizes and `event_ts` and the kind `QUOTE_KIND_SNAPSHOT` exists (#166); instrument ids come from the master tables; `generation` is copied from `Quote.Generation`;
+expiries are the nearest `max_expiries`; strikes are a band around the underlying's price; a day other than the clock's market-zone day is `NoValue` with the text "wrong day"; no backfill of snapshots.
+
+Goal: two jobs, `option_eod` and `quote_snapshot`, that take a `broker.Broker`, a `store.InstrumentResolver`, a store writer and a clock, plan keys, collect quotes and write rows, shaped by what the runner
+does with a job. They are packages nothing calls yet (`## Left out`, point 1).
+
+Facts the design rests on (the runner shapes the design):
+
+- `Reconcile` calls `job.Run(ctx, day, []contracts.ExpectedKey{k})` with ONE key (`internal/runner/reconcile/reconcile.go:272`), keys in sequence (`:191-211`). A key must therefore be a unit a `Run` can finish alone:
+  option_eod's key is one underlying, quote_snapshot's key is one whole slot (`## Interface`), never one instrument.
+- The lease of a run is 10 minutes (`reconcile.go:23`, `:265`) and the loop renews none; a running run past its lease is closed as crashed by the next process (`:247-253`). A `Run` stays inside a budget (`## Interface`).
+- `NoValue` marks `no_value` at once (`:278-279`); a finished run with another error leaves the key unmarked and, by `nextAttempt` (`:219-244`), is not run again: only an empty answer before the window close (`:284-286`, a run
+  with reason `empty_before_close` is not counted) and one crash re-run start another attempt. Both facts are used below.
+- A job is `contracts.Job` with `ID`, `Plan`, `Run` (`internal/contracts/api.go:59-66`), `Run` answers `JobResult{Returned, Usable, Err}` (`:52-56`) with a `TypedError` of kind `Retryable`, `Permanent` or `NoValue` (`:28-43`).
+  `fredseries.New` builds a job from an embedded `job.toml` (`internal/jobs/fredseries/run.go:46-63`, `plan.go:18-19`), keys are `{DatasetID, SubjectKey}` (`plan.go:61`), the job states its `[window]` as plain values (`window.go:21-23`),
+  and a writer error is `Usable = 0` with `Retryable` (`run.go:87-90`). The constructor type sits in `internal/jobs/api.go:15`.
+- The writers are `store.OptionEodWriter` and `store.QuoteSnapshotWriter` (`internal/store/api.go:31-34`, `:42-45`); they turn -1, NaN and infinities into NULL (`internal/store/snapshot/screen.go:6-11`), so the jobs pass numbers through.
+  Keys are `(session_day, capture_id, instrument_id)` and `(session_day, capture_id, slot, instrument_id)`, an insert is `ON CONFLICT DO NOTHING` (`store-week2.md:117`, `:133`, `:153-155`).
+- `github.com/google/uuid v1.6.0` is an indirect line (`go.mod:154`) with its sum line already in `go.sum`; it becomes direct with the first import.
+- The dataset columns the proto does not fill (`iv_bid_decimal`, `iv_mid_decimal`, `iv_ask_decimal`, `underlying_event_ts`, `oi_asof_date`, `terms_version_id`) stay NULL (`contracts/datasets/obs.option_eod.r1.json`).
+
+## Modules
+
+One row of `docs/design/modules.md` changes (the design pull request makes the edit and regenerates `arch.toml` with `go run ./scripts/arch`): jobs gains `broker` in its depends cell
+(`modules.md:70`): `contracts clock sources broker store`. `internal/jobs/**` and `docs/contracts/jobs.md` are jobs; `go.mod`, `.go-arch-lint.yml` are repo (`modules.md:77`).
+
+| issue | module |
+|---|---|
+| jobs-interface | jobs and repo (licensed, below) |
+| job-option-eod | jobs |
+| job-quote-snapshot | jobs |
+
+Licence: the interface entry lies in two modules because it moves `google/uuid` to a direct require in `go.mod` (a dependency issue is a judged two-module entry, `modules.md:41-44`) and lists the two stub
+packages in `.go-arch-lint.yml`. It is the only entry of this design that touches `go.mod` or the lint file, so the two job entries cannot conflict there. The job entries lie in one module each.
+
+## Interface
+
+Owner: jobs, `internal/jobs/api.go`, declarations only. Added next to `NewFredSeriesFunc`:
+
+| name | declaration |
+|---|---|
+| `jobs.CaptureID` | `type CaptureID = uuid.UUID` (`github.com/google/uuid`, BSD-3-Clause, no dependencies; the library is already in the module graph, own implementation: none) |
+| `jobs.NewOptionEodFunc` | `func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error)`; implemented by `optioneod.New` |
+| `jobs.NewQuoteSnapshotFunc` | `func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error)`; implemented by `quotesnapshot.New` |
+
+Capture id, written by both jobs: one `CaptureID` per key, deterministic, `uuid.NewSHA1(uuid.NameSpaceOID, []byte(day + "|" + dataset + "|" + subject))`. A second run of the same key (a crash re-run, a same-day `ot backfill`)
+writes the same `capture_id` and the same instrument ids, so the insert keeps the first row of each contract and adds the contracts the first run missed; no duplicate capture reaches the pages.
+
+Keys: option_eod, `{obs.option_eod, SYMBOL}` per underlying. quote_snapshot, `{obs.quote_snapshot, "HHMM"}` per slot: one `Run` covers every instrument of the manifest for that slot, so a slot is one capture (one `capture_id`)
+and the instruments share one clock reading. Instruments are asked in chunks of `chunk` (default 50) with one `Snapshot` call each, and the rows of a chunk are written before the next chunk is asked.
+
+Budget: a `Run` reads the injected clock before every broker call; once `budget_minutes` (default 8) have passed since its start it stops, keeps the rows already written and returns `Err` of kind `Retryable`
+(the longest call is the broker's 60 s timeout, so the run ends before the 10-minute lease). Rows written stay; the same key re-run completes the rest by the capture id above.
+
+Timing guards, from the injected clock in the manifest's `zone`: a `day` other than the clock's market-zone day is `Err` of kind `NoValue` with the text "wrong day" and nothing else happens. Before the start of the thing collected
+(option_eod: `freeze_after`, default `1615`; quote_snapshot: the slot time) the job answers an empty `JobResult` with a nil error and calls no port: under a window whose close is later, the runner retries it
+(`reconcile.go:284-286`), which is why the per-dataset window is a prerequisite of wiring (`## Left out`). quote_snapshot, past the slot plus `grace_minutes` (default 10): `NoValue`, text "missed slot".
+
+Manifest, `job.toml` of each package (embedded as in `fredseries`; a missing optional key takes its code default): `version`, `id`, `zone`, a `[window]` table of the form of `internal/jobs/fredseries/job.toml`, and
+- option_eod: `max_expiries` (3), `strike_band` (fraction of the underlying's price, 0.10), `max_strikes_per_side` (8), `chunk` (50), `budget_minutes` (8), `freeze_after`, `option_price_increment` (0.01), and `[[underlying]]` entries `symbol`, `sec_type`, `exchange`, `currency`, `con_id`, `mic`, `calendar_id`, `price_increment`, `lot_size`;
+- quote_snapshot: `slots` (`HHMM`), `grace_minutes`, `chunk`, `budget_minutes`, and `[[instrument]]` entries with the same fields as `[[underlying]]`.
+
+Instrument ids: the underlying or instrument is resolved with `ResolveInstrument({ibkr_conid, <conId decimal>}, spec, nil)`; an option with `ResolveInstrument({ibkr_conid, <conId>}, spec, [{osi, <option symbol>}])`, where the option symbol is
+the 21-character form (symbol padded to 6, `yymmdd`, `C` or `P`, strike times 1000 in 8 digits) built by the job, `Type` `option`, `Name` text of symbol, expiry, right and strike, `MIC`, `CalendarID` and `Currency` of the underlying, `LotSize` the chain's multiplier,
+`PriceIncrement` `option_price_increment`, `Status` `active`. The underlying's id is also the `underlying_id` of its options.
+
+Selection (option_eod, pure function `selectContracts`): the underlying's price is `Last` of one `Snapshot(KindSnapshot, underlying)` answer, else `Close`, else `UndPrice`; with none, `Run` returns `Retryable` and writes nothing. Of the chain, the nearest `max_expiries`
+expirations on or after the day; of the strikes, those inside `price*(1-band)` to `price*(1+band)`, at most `max_strikes_per_side` below the price and at most that many at or above it, nearest first; both rights. Strikes are compared by parsed value and sent on as the text the chain gave. An empty
+selection is a `Permanent` error, never a quiet empty answer. At the defaults one `Run` resolves at most 96 pairs.
+
+Mapping, written by both jobs from a `broker.Quote` (a column not named is NULL):
+
+- `generation` is `Quote.Generation`; `market_data_type`, `received_at` (UTC) and `event_ts` (UTC, nil stays nil) as the quote gives them; `session_day` is the `day`; `currency` and `underlying_ccy` come from the manifest.
+- `status`: `OK` gives 1; `PARTIAL` gives 1 with its null columns left NULL (the distinction is lost, accepted); `NO_DATA` 2; a pair `ResolveContract` calls not listed gives no row (no conId, no instrument); `NO_SUBSCRIPTION`, `TIMEOUT`, `ERROR`, `DISCONNECTED` give 5 with `error_code` the IBKR code, else the status name. Status 4 is not produced.
+- `bid`, `ask`, `last`, `volume`, `bid_size`, `ask_size` copy through, and `last_size` for the snapshot table; for option_eod also `open_interest`, `iv_decimal` from `ImpliedVol`, `delta`, `gamma`, `theta_per_calendar_day` from `Theta`, `vega_per_vol_point` from `Vega`, `underlying_price` from `UndPrice`, `snapshot_kind` `eod`.
+
+## Issues
+
+Items under `Checked by CI` are decided by the workflows of the head commit; every other item is an offline grep or a named test, run without network, service or database. Every test uses `t.Parallel()` and
+`t.TempDir()` and a fake clock; none sleeps; no test touches a live broker; each job's tests keep their own fakes of `broker.Broker` and `store.InstrumentResolver` (`store-week2.md:349-350`: no shared test kit yet).
+
+### jobs-interface (interface)
+
+The constructor types, the capture id type and the stub packages
+  Goal: `internal/jobs/api.go` declares `CaptureID`, `NewOptionEodFunc` and `NewQuoteSnapshotFunc` as in `## Interface`, `google/uuid` is a direct require, and the two job packages exist as stubs the lint knows.
+  Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/optioneod/doc.go, internal/jobs/quotesnapshot/doc.go, go.mod, .go-arch-lint.yml
+  Design: docs/design/option-jobs.md#interface
+  Cross-module: jobs and repo, licensed by this design (see `## Modules`). Attached after the interface entries of `docs/design/broker.md` and `docs/design/store-master.md` merged (the types it names must exist).
+  Acceptance:
+  1. `git diff internal/jobs/api.go` shows additions only, exactly the three declarations; `grep -cE '^func ' internal/jobs/api.go` prints 0.
+  2. `api_test.go` tests the contract from both sides: a fake constructor assigned to each func type that returns a `contracts.Job`, and a caller that plans and runs it with fakes of the ports and takes a `CaptureID`.
+  3. Each of the two `doc.go` is a package comment and the package clause (`wc -l` at most 3).
+  4. `git diff go.mod` shows the `github.com/google/uuid v1.6.0` line moved out of the indirect block and no other change; `git diff -- go.sum` is empty; `go mod tidy -diff` prints nothing and `go mod verify` prints `all modules verified` (CI).
+  5. `go run ./scripts/arch --check` prints `arch: ok`; `.go-arch-lint.yml` lists `jobs/optioneod` and `jobs/quotesnapshot` and, with the row of this design merged, `arch.toml` has `broker` in the imports of `jobs`.
+  6. Every test added calls `t.Parallel()` and none sleeps.
+  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint, tidy), `checks` (arch); the design verdict on the pull request (an interface change).
+  Pull request body: `Contracts: unchanged`; the dependency named with its licence.
+  Depends on: none (merged work only, with the two other designs' interface entries merged). Order: before the two entries below.
+  Size: S
+
+### job-option-eod (jobs)
+
+The option_eod freeze job
+  Goal: `optioneod.New` returns the job `option_eod` with the keys, selection, budget, guards, capture id and mapping of `## Interface`.
+  Files: internal/jobs/optioneod/job.toml, internal/jobs/optioneod/manifest.go, internal/jobs/optioneod/plan.go, internal/jobs/optioneod/select.go, internal/jobs/optioneod/run.go, internal/jobs/optioneod/window.go, internal/jobs/optioneod/map.go, internal/jobs/optioneod/plan_test.go, internal/jobs/optioneod/select_test.go, internal/jobs/optioneod/run_test.go, internal/jobs/optioneod/map_test.go, docs/contracts/jobs.md
+  Design: docs/design/option-jobs.md#interface
+  Acceptance:
+  1. `run.go` holds `var _ jobs.NewOptionEodFunc = New`; `go list -deps ./internal/jobs/optioneod | grep optdesk/internal` lists only the roots of `broker`, `clock`, `contracts`, `jobs` and `store`.
+  2. `job.toml` has the keys of `## Interface` and one `[[underlying]]` with synthetic values; it holds no account id and no secret (`go run ./scripts/hygiene` prints ok, CI); `TestManifestDefaults` shows a missing optional key takes its default.
+  3. `TestPlan`: one key `{obs.option_eod, SYMBOL}` per underlying, sorted; the plan hash changes with the day and with the manifest, as `fredseries` does (`plan.go:56-66`).
+  4. `TestSelect` (table): nearest `max_expiries` on or after the day; the band and `max_strikes_per_side` cut the strikes (below, at or above, nearest first); strikes compare by value (`"95"` before `"100"`); an empty selection is `Permanent`; no underlying price is `Retryable` with no write.
+  5. `TestRunWritesRows`: a fake `Broker` answers the underlying snapshot, `ListChains`, `ResolveContract` and `Snapshot(KindOptionEod)` in chunks; a fake resolver returns ids (the option call carries the `osi` extra identifier of 21 characters); the fake `OptionEodWriter` receives rows equal to the mapping, with one deterministic `capture_id` for all rows and `snapshot_kind` `eod`; `Returned` counts the rows written and `Usable` those of status 1.
+  6. `TestCaptureIDStable`: two `Run`s of one key give the same `capture_id`; another day or another underlying gives another.
+  7. `TestNotListed`: a pair that is not listed is not asked for a quote and gets no row; the others are written.
+  8. `TestBudget`: with a fake clock advanced past `budget_minutes` after the first chunk, `Run` stops before the second chunk, keeps the rows of the first, and returns `Retryable`.
+  9. `TestGuards`: a `day` other than the market-zone day gives `NoValue` with "wrong day" and no port call and no write; before `freeze_after` an empty result with a nil error and no port call.
+  10. `TestErrors`: a `Retryable` error of the broker or the resolver gives `Err` of that kind and no write of that step; a writer error gives `Usable == 0` and `Retryable`; `NO_DATA` and `TIMEOUT` still write a row (2 and 5).
+  11. `docs/contracts/jobs.md` gains a paragraph for `option_eod`; each new file is under 600 lines; `git diff -- go.mod go.sum .go-arch-lint.yml` is empty.
+  Checked by CI: ci-go (go test, golangci-lint, go-arch-lint component `jobs/optioneod`).
+  Depends on: jobs-interface merged (merged work only).
+  Size: L
+
+### job-quote-snapshot (jobs)
+
+The quote_snapshot job
+  Goal: `quotesnapshot.New` returns the job `quote_snapshot` with one key per slot, chunked snapshots, budget, guards, capture id and mapping of `## Interface`.
+  Files: internal/jobs/quotesnapshot/job.toml, internal/jobs/quotesnapshot/manifest.go, internal/jobs/quotesnapshot/plan.go, internal/jobs/quotesnapshot/run.go, internal/jobs/quotesnapshot/window.go, internal/jobs/quotesnapshot/map.go, internal/jobs/quotesnapshot/plan_test.go, internal/jobs/quotesnapshot/run_test.go, internal/jobs/quotesnapshot/map_test.go
+  Design: docs/design/option-jobs.md#interface
+  Acceptance:
+  1. `run.go` holds `var _ jobs.NewQuoteSnapshotFunc = New`; imports as acceptance 1 of `job-option-eod`.
+  2. `job.toml` has the keys of `## Interface` and one `[[instrument]]` with synthetic values; hygiene is clean; `TestManifestDefaults` as above.
+  3. `TestPlan`: one key `{obs.quote_snapshot, "HHMM"}` per slot, sorted; the hash changes with day, slots and instruments.
+  4. `TestRunWritesRows`: for one slot key with 120 instruments and `chunk` 50, the fake `Broker` receives three `Snapshot(KindSnapshot)` calls of 50, 50 and 20 contracts in order; the fake `QuoteSnapshotWriter` gets the rows of each chunk before the next call, with `slot` the key's `HHMM`, one `capture_id` for the key, `last_size`, sizes and `event_ts` copied, `generation` from the quote.
+  5. `TestCaptureIDStable` as in `job-option-eod`; `TestBudget` as in `job-option-eod` over chunks.
+  6. `TestGuards`: a `day` other than the market-zone day gives `NoValue` with "wrong day" and no call; before the slot time an empty result with a nil error and no call; past the slot plus `grace_minutes` `NoValue` with "missed slot" and no call.
+  7. `TestStatusMapping` (table) as `## Interface`; a writer error gives `Usable == 0` and `Retryable`; a resolver error gives its kind and no write of that chunk.
+  8. Each new file is under 600 lines; `git diff -- go.mod go.sum .go-arch-lint.yml docs` is empty; no file outside `Files` is in the diff (`git diff --stat`).
+  Checked by CI: ci-go (go test, golangci-lint, go-arch-lint component `jobs/quotesnapshot`).
+  Depends on: jobs-interface merged (merged work only).
+  Size: M
+
+Width: two entries build in parallel after `jobs-interface`; they share no file. The status mapping is written twice (one `map.go` each), accepted over a shared package that would be a third module surface.
+
+## Left out
+
+1. Wiring in `cmd/ot` and the runner, the follow-up `ot-collect`, after the three designs merged: the real constructors in `deps` (`cmd/ot/wire.go:29-45`), the stores and the socket, a subcommand, the import list and depends cell of `ot` (`modules.md:28`, `:78`). It names real constructors of every package, so it cannot be a parallel entry. No row is written until it lands.
+2. `runner-window-per-dataset` (`store-week2.md:347-348`): `WindowRule` is one rule for all jobs (`reconcile.go:37`; `cmd/ot/runonce.go:96`). The freeze and the slots need a window of their own whose close lies after the start guard, or the empty answers of the guard are marked `no_value` at once (`reconcile.go:287-288`, a run before no close) instead of retried (`:284-286`); the FRED rule closes 96 hours late (`internal/jobs/fredseries/job.toml`). A hard prerequisite of `ot-collect`.
+3. The pyside serving of `QUOTE_KIND_SNAPSHOT` and the new fields (`ibkr-service`): until it lands the service answers `INVALID_ARGUMENT` and `quote_snapshot` writes nothing.
+4. The `NoValue` consequence, by plan: a day other than the market day and a missed slot are `NoValue`; the runner marks it at once and `Reconcile` treats it as final (`reconcile.go:278-279`), and `ot backfill` meets "wrong day" again. A run that starts late (launchd late, the machine asleep, a catch-up over several sessions) leaves permanent holes. Also a `Retryable` error is not run again by `Reconcile` (`:226-244`): the key stays unmarked until a same-day `ot backfill`, which the deterministic capture id makes safe. The owner's scheduling has to start the runs inside the day.
+5. A persistent not-listed cache (`docs/design/broker.md`, Left out 4): every run resolves every selected pair again, at most 96 at the defaults. The index IV job and its table (`store-week2.md:356-358`; `KindUnderlyingIV` exists in `broker` and no job uses it), the capture ledger and the foreign key of `capture_id` (`store-week2.md:351-354`), and the winner view among several captures of one contract (`store-week2.md:155-156`).
+6. Scheduling (launchd), the schedule of slots, any live run against the gateway or a database, and any real run of these jobs: the owner's. Orders, positions, accounts and funds are never part of this: no port has such a method (`go list -deps` in acceptance 1 of each job entry).
+7. Owner-only and second-opinion cases: the `google/uuid` line moves in `go.mod` (a direct line of a module already in the graph, no network call); the jobs add no outside call path, since they reach only the `broker.Broker` port. The option symbol (`osi`) and conIds are stored in `master.instrument_identifier.value`, which the owner's privacy scan allows for those schemes.
+8. What the option page design needs from these: rows of both datasets whose `instrument_id` resolves through `store.InstrumentReader.Instruments` (`docs/design/store-master.md`), read by `OptionEodReader` (`internal/store/api.go:36-40`) and `QuoteSnapshotReader` (`:47-51`); one capture per key, so the several captures of one contract on a day are few.
+9. Textual risk: `.go-arch-lint.yml` is edited by the interface entries of all three designs; the entries are attached one after another.
+
+10. Open point for the owner: `master.instrument` has NOT NULL `mic`, `calendar_id`, `price_increment` and `lot_size` that the proto does not carry; the jobs read them from `job.toml` and use one `option_price_increment` default for all options (real tick sizes are tiered). The compressed-hypertable foreign keys and the shared `.go-arch-lint.yml` are in `docs/design/store-master.md`.
+
+## Adversarial
+
+1. Gap against the goal: adopted as stated; no row is written until `ot-collect`, `runner-window-per-dataset` and the pyside serving land (Left out 1 to 3).
+2. Unnamed risk, the runner calls `Run` with one key: adopted; a quote_snapshot key is one whole slot (one capture, one `Snapshot` series), not one instrument, so `grace_minutes` is not consumed by earlier keys. Lease: adopted with a `budget_minutes` stop on the injected clock that keeps rows written. Capture id on retry: adopted, deterministic per key. Not-listed cache: dropped, named in Left out 5.
+3. Simpler way (conId key, own uuid formatter, option_eod first): not adopted for the conId (advisor settled master tables) and for the formatter (a library already in the graph is preferred, AGENTS.md); quote_snapshot stays because the slot key makes it sound, and its pyside half is named in Left out 3.
+4. Lock-in (strike band, one-way kinds): adopted; the band is relative to the underlying's price with defaults in code, an empty selection is `Permanent`, and the `NoValue`-final consequence is stated plainly (Left out 4).
+5. False claims (one module each, `go.mod` uuid, generate scripts): adopted; each package has a stub in the interface entry, only that entry touches `go.mod` and the lint file, and no sibling edits either.
+6. Slip causes (arch files, `go.mod` conflicts between siblings, wide entries): adopted; sibling entries share no file, the interface entry is two modules, and the three designs' interface entries are attached one after another.
+7. Open points for the owner: the NOT NULL columns of the owner's `master.instrument` that the proto lacks (`mic`, `calendar_id`, `price_increment`, `lot_size`) come from `job.toml` with one default for options; the owner decides whether that is acceptable (Left out 10).
+
+Full answer: scratchpad adversarial-broker-jobs.md and adversarial-option-collection.md of the dispatcher window (2026-11-07)
