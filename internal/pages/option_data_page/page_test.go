@@ -42,3 +42,18 @@ func TestNewPageCopiesConfig(t *testing.T) {
 		t.Fatalf("label changed: %s", got)
 	}
 }
+
+func TestNewPageCopiesNotes(t *testing.T) {
+	t.Parallel()
+	c := cfg(&fakeEod{}, &fakeQuotes{})
+	c.Notes = []string{"kept"}
+	p := NewPage(c)
+	c.Notes[0] = "changed"
+	got, err := p.Build(t.Context(), nil, "2026-11-06", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(got, []byte(`"notes":["kept"]`)) {
+		t.Fatalf("notes changed: %s", got)
+	}
+}

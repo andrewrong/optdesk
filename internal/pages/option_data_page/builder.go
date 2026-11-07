@@ -25,6 +25,7 @@ const (
 	maxSeries    = 3
 	maxPoints    = 200
 	maxGaps      = 20
+	maxNotes     = 20
 
 	defaultCurrency = "USD"
 )
@@ -42,6 +43,8 @@ type Config struct {
 	Label        string
 	Eod          store.OptionEodReader
 	Quotes       store.QuoteSnapshotReader
+	// Notes are the texts of the page's notes, shown as given; at most maxNotes are kept.
+	Notes []string
 }
 
 type sourceTime struct {
@@ -164,7 +167,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		DataTimes:   []sourceTime{}, RunStatus: "ok",
 		Title: "Option data", ChainTitle: "Option chain, last stored day",
 		SeriesTitle: "Quotes by slot", NotesTitle: "Notes",
-		Notes: []string{}, Gaps: []gap{}, QuoteSeries: []quoteSeries{},
+		Notes: append([]string{}, limit(c.Notes, maxNotes)...), Gaps: []gap{}, QuoteSeries: []quoteSeries{},
 		Underlying: underlying{ID: c.UnderlyingID, Label: c.Label, Price: noData(), Currency: defaultCurrency},
 		Chain:      chain{Rows: []chainRow{}},
 	}

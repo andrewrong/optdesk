@@ -215,8 +215,11 @@ func TestBuildGolden(t *testing.T) {
 	t.Parallel()
 	in := loadInput(t)
 	e, q := fromInput(in)
+	// ok.json holds the note of the sample; the input has none, so the config carries it.
+	c := inputCfg(in, e, q)
+	c.Notes = []string{"Synthetic fixture."}
 	got := func() map[string]any {
-		b, err := Build(t.Context(), inputCfg(in, e, q), contracts.Day(in.Day), fixedAt)
+		b, err := Build(t.Context(), c, contracts.Day(in.Day), fixedAt)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -234,8 +237,6 @@ func TestBuildGolden(t *testing.T) {
 	if err := json.Unmarshal(raw, &want); err != nil {
 		t.Fatal(err)
 	}
-	// The one note of the sample is text of the fixture, not of the builder, which writes none.
-	want["notes"] = []any{}
 	if !reflect.DeepEqual(got, want) {
 		g, _ := json.MarshalIndent(got, "", " ")
 		w, _ := json.MarshalIndent(want, "", " ")
