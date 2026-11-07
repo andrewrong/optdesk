@@ -90,6 +90,7 @@ func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Ident
 		spec.Status = defaultStat
 	}
 	var id int64
+	var termsClass string // the class of a rolled-back terms insert, "" when none
 	err := s.db.InTx(ctx, func(tx execer) error {
 		if err := tx.Exec(ctx, lockSQL, key.Scheme, key.Value); err != nil {
 			return err
@@ -127,12 +128,15 @@ func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Ident
 			}
 		}
 		if spec.Type == "option" {
-			return writeTerms(ctx, tx, id, spec, ids)
+			return writeTerms(ctx, tx, id, spec, ids, &termsClass)
 		}
 		return nil
 	})
 	if err != nil {
 		return 0, asTyped(err, "resolve")
+	}
+	if termsClass != "" {
+		s.logTermsRolledBack(id, termsClass)
 	}
 	return id, nil
 }
@@ -140,7 +144,7 @@ func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Ident
 // writeTerms inserts the current terms row of the new option id from its osi identifier. No osi, or one that does
 // not parse, writes nothing. A failed insert is rolled back to the savepoint and is not an error: the instrument stays.
 // Only a failure of the savepoint or of the rollback to it, which leaves the transaction unusable, is returned.
-func writeTerms(ctx context.Context, tx execer, id int64, spec store.InstrumentSpec, ids []store.Identifier) error {
+func writeTerms(ctx context.Context, tx execer, id int64, spec store.InstrumentSpec, ids []store.Identifier, class *string) error {
 	osi, ok := firstOSI(ids)
 	if !ok {
 		return nil
@@ -157,6 +161,7 @@ func writeTerms(ctx context.Context, tx execer, id int64, spec store.InstrumentS
 		err = tx.Exec(ctx, releaseSQL)
 	}
 	if err != nil {
+		*class = sqlClass(err)
 		return tx.Exec(ctx, rollbackSQL)
 	}
 	return nil
