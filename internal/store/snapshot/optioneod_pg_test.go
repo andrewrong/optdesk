@@ -55,23 +55,26 @@ func connURL(t *testing.T, dbname, user string) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// ensureRoles creates the roles of 0002, 0003 and 0006 when missing, under an advisory lock because roles are
-// shared by every database of the server and the tests run in parallel.
+// ensureRoles creates the roles of 0002, 0003 and 0006 when missing and puts rolePassword on them. It takes advisory
+// lock 54 and keeps it until the admin connection closes (t.Cleanup of newDatabase): the roles are shared by every
+// database of the server, and TestSetupPG changes their passwords under the same lock, so a test that connects as a
+// role must hold the lock for its whole run.
 func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 	t.Helper()
 	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`) }()
 	for _, r := range []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages", "ot_w_option_eod"} {
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
 		}
+		verb := "ALTER"
 		if !have {
-			if _, err := admin.Exec(ctx, "CREATE ROLE "+r+" LOGIN PASSWORD '"+rolePassword+"'"); err != nil {
-				t.Fatalf("create role %s: %v", r, err)
-			}
+			verb = "CREATE"
+		}
+		if _, err := admin.Exec(ctx, verb+" ROLE "+r+" LOGIN PASSWORD '"+rolePassword+"'"); err != nil {
+			t.Fatalf("%s role %s: %v", strings.ToLower(verb), r, err)
 		}
 	}
 }
