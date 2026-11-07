@@ -1,4 +1,4 @@
-// The 市场概览 card of the home page (market_summary v2). Every visible string and figure is a field of the
+// The 市场概览 card of the home page (market_summary v3). Every visible string and figure is a field of the
 // payload; this file formats, compares and computes nothing. `value` is used only by the table's user-started sort.
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'
@@ -9,7 +9,7 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/market_summary'
 import { CardNotes } from './CardNotes'
 import { DataTimesFold } from './DataTimesFold'
-import { StaleAlert } from './StaleAlert'
+import { StaleNotice } from './StaleNotice'
 
 type Chart_ = Payload['card']['chart']
 
@@ -17,7 +17,7 @@ function specOf(chart: Chart_): ChartSpec {
   const [close, average, band] = chart.series_names
   const line = (name: string, key: 'close' | 'ma200' | 'band_low' | 'band_high') => ({
     name,
-    points: chart.points.map((point) => ({ value: point[key] })),
+    points: chart.points.map((point) => ({ value: point[key] ?? null })),
   })
   return {
     kind: 'line',
@@ -42,6 +42,14 @@ function columnsOf(names: Payload['card']['index_table']['columns']): Column[] {
   ]
 }
 
+type Slot = Payload['card']['index_table']['rows'][number]['iv']
+
+// A figure slot is a value or a gap, told apart by its kind tag; a gap has no value and no tone.
+function cellOf(slot: Slot): Cell {
+  if (slot.kind === 'gap') return { reason: slot.reason, text: slot.text }
+  return { text: slot.text, value: slot.value, tone: slot.tone }
+}
+
 export function MarketSummaryCard({ payload }: { payload: Payload }) {
   const { card } = payload
   const rows = card.index_table.rows.map((row) => ({
@@ -50,9 +58,9 @@ export function MarketSummaryCard({ payload }: { payload: Payload }) {
       value: row.name,
       note: row.source_text ?? null,
     } as Cell,
-    iv: row.iv as Cell,
-    rv20: row.rv20 as Cell,
-    diff: row.iv_minus_rv20 as Cell,
+    iv: cellOf(row.iv),
+    rv20: cellOf(row.rv20),
+    diff: cellOf(row.iv_minus_rv20),
   }))
   const [first, last] = card.chart.end_labels
   return (
@@ -65,7 +73,7 @@ export function MarketSummaryCard({ payload }: { payload: Payload }) {
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <StaleAlert stale={card.stale} generatedAt={payload.generated_at} />
+        <StaleNotice text={card.stale.text} isStale={card.stale.is_stale} />
         <div data-chart-block>
           <Chart spec={specOf(card.chart)} ariaText={card.chart.aria_text} name="market-summary" />
           <div className="flex justify-between text-xs text-muted-foreground" data-end-labels>
