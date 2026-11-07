@@ -343,3 +343,54 @@ func TestNonEmptyFetchUnchanged(t *testing.T) {
 		t.Fatalf("present=%v cursor=%s", present, led2.cursor.Day)
 	}
 }
+
+func TestCrashedRunAfterEmptyRunIsTheOneClosed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	led.runs["2026-11-04"] = []store.Run{
+		{ID: "2026-11-04|ds|a|1", Day: "2026-11-04", Key: keyA, Status: store.RunDone, ReasonCode: reasonEmptyBeforeClose},
+		{ID: "2026-11-04|ds|a|2", Day: "2026-11-04", Key: keyA, Status: store.RunRunning, LeaseUntil: clk.Now().Add(-time.Minute)},
+	}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+	if err := newRec(led, clk, job).Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	runs := led.runs["2026-11-04"]
+	if len(runs) != 3 {
+		t.Fatalf("runs = %+v, want 3", runs)
+	}
+	if runs[0].ReasonCode != reasonEmptyBeforeClose || runs[0].ErrorCode != "" {
+		t.Fatalf("first run was rewritten: %+v", runs[0])
+	}
+	if runs[1].Status != store.RunDone || runs[1].ReasonCode != reasonCrashed {
+		t.Fatalf("crashed run not closed: %+v", runs[1])
+	}
+	if runs[2].ID != "2026-11-04|ds|a|3" {
+		t.Fatalf("new run id = %s", runs[2].ID)
+	}
+	present, _ := led.Present(ctx, "2026-11-04")
+	if present[keyA] != store.StatusPresent {
+		t.Fatalf("present = %v", present)
+	}
+}
+
+func TestEmptyWithoutWindowIsNoValue(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T10:00:00Z"))
+	led := newLedger()
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: empty()}
+	r := newRec(led, clk, job).(*reconciler)
+	// A non-session has no window for any dataset: the key keeps the old rule.
+	done, err := r.reconcileDay(ctx, clock.Session{CalendarID: "XNYS", Day: "2026-11-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, "2026-11-01")
+	if !done || present[keyA] != store.StatusNoValue {
+		t.Fatalf("done=%v present=%v", done, present)
+	}
+}
