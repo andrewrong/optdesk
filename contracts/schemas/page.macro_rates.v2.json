@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.macro_rates.v2.json",
+  "title": "MacroRates",
+  "description": "View model of the macro rates page, version 2: every string the page shows is in the payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "session_day", "title", "sentence", "series", "gaps"],
+  "properties": {
+    "schema": {"const": "macro_rates"},
+    "schema_version": {"const": 2},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "session_day": {"type": "string", "format": "date"},
+    "title": {"$ref": "#/$defs/Text"},
+    "sentence": {"$ref": "#/$defs/Text"},
+    "series": {"type": "array", "items": {"$ref": "#/$defs/Series"}},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/GapLine"}}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 200},
+    "Series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "unit", "latest", "points"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"$ref": "#/$defs/Text"},
+        "unit": {"enum": ["percent", "ratio", "ccy_amount", "count"]},
+        "latest": {"oneOf": [{"$ref": "#/$defs/LatestValue"}, {"$ref": "common.v2.json#/$defs/Gap"}]},
+        "points": {"type": "array", "items": {"$ref": "#/$defs/Point"}}
+      }
+    },
+    "Point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "value", "text"],
+      "properties": {
+        "date": {"type": "string", "format": "date"},
+        "value": {"type": ["number", "null"]},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "LatestValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "date", "value", "text"],
+      "properties": {
+        "kind": {"const": "value"},
+        "date": {"type": "string", "format": "date"},
+        "value": {"type": "number"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "GapLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["series_id", "date", "reason", "text"],
+      "properties": {
+        "series_id": {"type": "string", "minLength": 1},
+        "date": {"type": "string", "format": "date"},
+        "reason": {"enum": ["no_value", "stale"]},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    }
+  }
+}
