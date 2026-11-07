@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.option_data_page.v1.json",
+  "title": "OptionDataPage",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "option_data_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "sentence": {
+      "$ref": "#/$defs/Text"
+    },
+    "chain_title": {
+      "$ref": "#/$defs/Text"
+    },
+    "series_title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes_title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "underlying": {
+      "$ref": "#/$defs/Underlying"
+    },
+    "chain": {
+      "$ref": "#/$defs/Chain"
+    },
+    "quote_series": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/QuoteSeries"
+      },
+      "maxItems": 3
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "sentence",
+    "chain_title",
+    "series_title",
+    "notes_title",
+    "notes",
+    "gaps",
+    "underlying",
+    "chain",
+    "quote_series"
+  ],
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "value",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ]
+    },
+    "Cell": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Figure"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "Underlying": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "session_day": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "price": {
+          "$ref": "#/$defs/Cell"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "id",
+        "symbol",
+        "label",
+        "session_day",
+        "price",
+        "currency"
+      ]
+    },
+    "Chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_day": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChainRow"
+          }
+        }
+      },
+      "required": [
+        "session_day",
+        "rows"
+      ]
+    },
+    "Status": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "code",
+        "text"
+      ]
+    },
+    "ChainRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "instrument_id": {
+          "type": "integer"
+        },
+        "expiry": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "right": {
+          "enum": [
+            "call",
+            "put",
+            null
+          ]
+        },
+        "strike": {
+          "$ref": "#/$defs/Cell"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "bid": {
+          "$ref": "#/$defs/Cell"
+        },
+        "ask": {
+          "$ref": "#/$defs/Cell"
+        },
+        "last": {
+          "$ref": "#/$defs/Cell"
+        },
+        "volume": {
+          "$ref": "#/$defs/Cell"
+        },
+        "open_interest": {
+          "$ref": "#/$defs/Cell"
+        },
+        "iv": {
+          "$ref": "#/$defs/Cell"
+        },
+        "delta": {
+          "$ref": "#/$defs/Cell"
+        },
+        "gamma": {
+          "$ref": "#/$defs/Cell"
+        },
+        "theta": {
+          "$ref": "#/$defs/Cell"
+        },
+        "vega": {
+          "$ref": "#/$defs/Cell"
+        }
+      },
+      "required": [
+        "instrument_id",
+        "expiry",
+        "right",
+        "strike",
+        "status",
+        "bid",
+        "ask",
+        "last",
+        "volume",
+        "open_interest",
+        "iv",
+        "delta",
+        "gamma",
+        "theta",
+        "vega"
+      ]
+    },
+    "QuoteSeries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "instrument_id": {
+          "type": "integer"
+        },
+        "caption": {
+          "$ref": "#/$defs/Text"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QuotePoint"
+          }
+        }
+      },
+      "required": [
+        "instrument_id",
+        "caption",
+        "points"
+      ]
+    },
+    "QuotePoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session_day": {
+          "type": "string",
+          "format": "date"
+        },
+        "slot": {
+          "$ref": "#/$defs/Text"
+        },
+        "bid": {
+          "$ref": "#/$defs/Cell"
+        },
+        "ask": {
+          "$ref": "#/$defs/Cell"
+        },
+        "last": {
+          "$ref": "#/$defs/Cell"
+        }
+      },
+      "required": [
+        "session_day",
+        "slot",
+        "bid",
+        "ask",
+        "last"
+      ]
+    }
+  }
+}

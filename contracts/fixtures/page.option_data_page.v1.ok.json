@@ -1,0 +1,627 @@
+{
+  "schema": "option_data_page",
+  "schema_version": 1,
+  "run_id": "run_1",
+  "build_id": "build_1",
+  "scope": "option_data_1",
+  "generated_at": "2026-11-07T00:00:00Z",
+  "data_times": [
+    {
+      "source": "option_eod",
+      "data_time": "2026-11-06T21:30:00Z"
+    },
+    {
+      "source": "quote_snapshot",
+      "data_time": "2026-11-06T20:00:01Z"
+    }
+  ],
+  "run_status": "ok",
+  "stale": null,
+  "title": "Option data",
+  "sentence": "6 contracts on 2026-11-06.",
+  "chain_title": "Option chain, last stored day",
+  "series_title": "Quotes by slot",
+  "notes_title": "Notes",
+  "notes": [
+    "Synthetic fixture."
+  ],
+  "gaps": [],
+  "underlying": {
+    "id": 9000,
+    "symbol": null,
+    "label": "Synthetic underlying",
+    "session_day": "2026-11-06",
+    "price": {
+      "kind": "value",
+      "value": 450.5,
+      "text": "450.50",
+      "unit": "price"
+    },
+    "currency": "USD"
+  },
+  "chain": {
+    "session_day": "2026-11-06",
+    "rows": [
+      {
+        "instrument_id": 9001,
+        "expiry": null,
+        "right": null,
+        "strike": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no strike"
+        },
+        "status": {
+          "code": 1,
+          "text": "ok"
+        },
+        "bid": {
+          "kind": "value",
+          "value": 1.25,
+          "text": "1.25",
+          "unit": "price"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 1.35,
+          "text": "1.35",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 1.3,
+          "text": "1.30",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 250,
+          "text": "250",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 1800,
+          "text": "1800",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.25,
+          "text": "25.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "value",
+          "value": 0.45,
+          "text": "0.4500",
+          "unit": "delta"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.03,
+          "text": "0.0300",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.08,
+          "text": "-0.0800",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.11,
+          "text": "0.1100",
+          "unit": "vega"
+        }
+      },
+      {
+        "instrument_id": 9002,
+        "expiry": null,
+        "right": null,
+        "strike": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no strike"
+        },
+        "status": {
+          "code": 1,
+          "text": "ok"
+        },
+        "bid": {
+          "kind": "value",
+          "value": 2.1,
+          "text": "2.10",
+          "unit": "price"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 2.2,
+          "text": "2.20",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 2.15,
+          "text": "2.15",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 120,
+          "text": "120",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 1500,
+          "text": "1500",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.27,
+          "text": "27.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.04,
+          "text": "0.0400",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.09,
+          "text": "-0.0900",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.12,
+          "text": "0.1200",
+          "unit": "vega"
+        }
+      },
+      {
+        "instrument_id": 9003,
+        "expiry": null,
+        "right": null,
+        "strike": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no strike"
+        },
+        "status": {
+          "code": 2,
+          "text": "no quote"
+        },
+        "bid": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "ask": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "last": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "volume": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 900,
+          "text": "900",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "delta": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "gamma": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "theta": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "vega": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        }
+      },
+      {
+        "instrument_id": 9004,
+        "expiry": null,
+        "right": null,
+        "strike": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no strike"
+        },
+        "status": {
+          "code": 1,
+          "text": "ok"
+        },
+        "bid": {
+          "kind": "value",
+          "value": 0.55,
+          "text": "0.55",
+          "unit": "price"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 0.65,
+          "text": "0.65",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 0.6,
+          "text": "0.60",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 80,
+          "text": "80",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 700,
+          "text": "700",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.31,
+          "text": "31.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "value",
+          "value": 0.2,
+          "text": "0.2000",
+          "unit": "delta"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.02,
+          "text": "0.0200",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.05,
+          "text": "-0.0500",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.08,
+          "text": "0.0800",
+          "unit": "vega"
+        }
+      },
+      {
+        "instrument_id": 9005,
+        "expiry": null,
+        "right": null,
+        "strike": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no strike"
+        },
+        "status": {
+          "code": 1,
+          "text": "ok"
+        },
+        "bid": {
+          "kind": "value",
+          "value": 3.4,
+          "text": "3.40",
+          "unit": "price"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 3.5,
+          "text": "3.50",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 3.45,
+          "text": "3.45",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 60,
+          "text": "60",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 500,
+          "text": "500",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.22,
+          "text": "22.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "value",
+          "value": 0.62,
+          "text": "0.6200",
+          "unit": "delta"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.05,
+          "text": "0.0500",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.1,
+          "text": "-0.1000",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.13,
+          "text": "0.1300",
+          "unit": "vega"
+        }
+      },
+      {
+        "instrument_id": 9006,
+        "expiry": null,
+        "right": null,
+        "strike": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no strike"
+        },
+        "status": {
+          "code": 4,
+          "text": "stale"
+        },
+        "bid": {
+          "kind": "value",
+          "value": 0.1,
+          "text": "0.10",
+          "unit": "price"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 0.2,
+          "text": "0.20",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 0.15,
+          "text": "0.15",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 5,
+          "text": "5",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 300,
+          "text": "300",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.35,
+          "text": "35.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "value",
+          "value": 0.1,
+          "text": "0.1000",
+          "unit": "delta"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.01,
+          "text": "0.0100",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.03,
+          "text": "-0.0300",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.04,
+          "text": "0.0400",
+          "unit": "vega"
+        }
+      }
+    ]
+  },
+  "quote_series": [
+    {
+      "instrument_id": 9001,
+      "caption": "Contract 9001",
+      "points": [
+        {
+          "session_day": "2026-11-06",
+          "slot": "1000",
+          "bid": {
+            "kind": "value",
+            "value": 1.25,
+            "text": "1.25",
+            "unit": "price"
+          },
+          "ask": {
+            "kind": "value",
+            "value": 1.35,
+            "text": "1.35",
+            "unit": "price"
+          },
+          "last": {
+            "kind": "value",
+            "value": 1.3,
+            "text": "1.30",
+            "unit": "price"
+          }
+        },
+        {
+          "session_day": "2026-11-06",
+          "slot": "1500",
+          "bid": {
+            "kind": "value",
+            "value": 1.3,
+            "text": "1.30",
+            "unit": "price"
+          },
+          "ask": {
+            "kind": "value",
+            "value": 1.4,
+            "text": "1.40",
+            "unit": "price"
+          },
+          "last": {
+            "kind": "value",
+            "value": 1.35,
+            "text": "1.35",
+            "unit": "price"
+          }
+        }
+      ]
+    },
+    {
+      "instrument_id": 9002,
+      "caption": "Contract 9002",
+      "points": [
+        {
+          "session_day": "2026-11-06",
+          "slot": "1000",
+          "bid": {
+            "kind": "value",
+            "value": 1.25,
+            "text": "1.25",
+            "unit": "price"
+          },
+          "ask": {
+            "kind": "value",
+            "value": 1.35,
+            "text": "1.35",
+            "unit": "price"
+          },
+          "last": {
+            "kind": "value",
+            "value": 1.3,
+            "text": "1.30",
+            "unit": "price"
+          }
+        },
+        {
+          "session_day": "2026-11-06",
+          "slot": "1500",
+          "bid": {
+            "kind": "value",
+            "value": 1.3,
+            "text": "1.30",
+            "unit": "price"
+          },
+          "ask": {
+            "kind": "value",
+            "value": 1.4,
+            "text": "1.40",
+            "unit": "price"
+          },
+          "last": {
+            "kind": "value",
+            "value": 1.35,
+            "text": "1.35",
+            "unit": "price"
+          }
+        }
+      ]
+    },
+    {
+      "instrument_id": 9003,
+      "caption": "Contract 9003",
+      "points": [
+        {
+          "session_day": "2026-11-06",
+          "slot": "1000",
+          "bid": {
+            "kind": "gap",
+            "reason": "no_data",
+            "text": "no data"
+          },
+          "ask": {
+            "kind": "gap",
+            "reason": "no_data",
+            "text": "no data"
+          },
+          "last": {
+            "kind": "gap",
+            "reason": "no_data",
+            "text": "no data"
+          }
+        },
+        {
+          "session_day": "2026-11-06",
+          "slot": "1500",
+          "bid": {
+            "kind": "gap",
+            "reason": "no_data",
+            "text": "no data"
+          },
+          "ask": {
+            "kind": "gap",
+            "reason": "no_data",
+            "text": "no data"
+          },
+          "last": {
+            "kind": "gap",
+            "reason": "no_data",
+            "text": "no data"
+          }
+        }
+      ]
+    }
+  ]
+}
