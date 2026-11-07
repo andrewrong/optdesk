@@ -129,6 +129,7 @@ type viewModel struct {
 	Underlying    underlying    `json:"underlying"`
 	Chain         chain         `json:"chain"`
 	QuoteSeries   []quoteSeries `json:"quote_series"`
+	Underlyings   []choiceView  `json:"underlyings,omitempty"`
 }
 
 func validate(c Config) error {
@@ -143,7 +144,15 @@ func validate(c Config) error {
 	if c.Eod == nil || c.Quotes == nil {
 		return fmt.Errorf("option_data_page: nil reader")
 	}
-	return nil
+	return checkChoices(c.Choices)
+}
+
+// symbolPtr is nil for an empty symbol, so the page shows null.
+func symbolPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func fmtTime(t time.Time, zone *time.Location) string { return t.In(zone).Format(time.RFC3339) }
@@ -174,8 +183,8 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		Title: "Option data", ChainTitle: "Option chain, last stored day",
 		SeriesTitle: "Quotes by slot", NotesTitle: "Notes",
 		Notes: append([]string{}, limit(c.Notes, maxNotes)...), Gaps: []gap{}, QuoteSeries: []quoteSeries{},
-		Underlying: underlying{ID: c.UnderlyingID, Label: c.Label, Price: noData(), Currency: defaultCurrency},
-		Chain:      chain{Rows: []chainRow{}},
+		Underlying: underlying{ID: c.UnderlyingID, Symbol: symbolPtr(c.Symbol), Label: c.Label, Price: noData(), Currency: defaultCurrency},
+		Chain:      chain{Rows: []chainRow{}}, Underlyings: choiceViews(c.Choices, c.UnderlyingID),
 	}
 
 	rows, latest, err := selectRows(eod)
@@ -202,6 +211,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		if r.ReceivedAt.After(eodTime) {
 			eodTime = r.ReceivedAt
 		}
+	}
+	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
+		return nil, err
 	}
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
 	vm.Sentence = fmt.Sprintf("%d contracts on %s.", len(rows), sessionDay)
