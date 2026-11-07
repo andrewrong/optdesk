@@ -8,8 +8,8 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 22 {
-		t.Fatalf("deps has %d fields, want 22", v.NumField())
+	if v.NumField() != 25 {
+		t.Fatalf("deps has %d fields, want 25", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {
