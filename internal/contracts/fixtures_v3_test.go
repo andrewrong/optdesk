@@ -64,12 +64,71 @@ func hasNull(v any) bool {
 func isGap(o map[string]any) bool       { return o["kind"] == "gap" }
 func isStaleTrue(o map[string]any) bool { return o["is_stale"] == true }
 
+// checkV3File validates one file of a directory: the three good ones are valid and hold no null, the bad one
+// fails at /schema_version with const. It returns the problems and the parsed document.
+func checkV3File(t *testing.T, s *jsonschema.Schema, path, label string) (any, []string) {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: %v", label, err)}
+	}
+	inst, err := jsonschema.UnmarshalJSON(strings.NewReader(string(b)))
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: %v", label, err)}
+	}
+	var plain any
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return nil, []string{fmt.Sprintf("%s: %v", label, err)}
+	}
+	verr := s.Validate(inst)
+	if !strings.HasSuffix(label, "bad-version.json") {
+		var out []string
+		if verr != nil {
+			out = append(out, fmt.Sprintf("%s: want valid: %v", label, verr))
+		}
+		if hasNull(plain) {
+			out = append(out, label+": holds null")
+		}
+		return plain, out
+	}
+	ve, ok := verr.(*jsonschema.ValidationError)
+	if !ok {
+		return plain, []string{fmt.Sprintf("%s: want a validation error, got %v", label, verr)}
+	}
+	var ls []leaf
+	leaves(ve, &ls)
+	for _, l := range ls {
+		if l.location == "/schema_version" && l.keyword == "const" {
+			return plain, nil
+		}
+	}
+	return plain, []string{fmt.Sprintf("%s: no leaf at /schema_version with const; leaves %v", label, ls)}
+}
+
+// checkV3Tags holds the tag rules of the three good files of one directory.
+func checkV3Tags(dir string, docs map[string]any) []string {
+	var out []string
+	if d, ok := docs["ok"]; ok {
+		if anyObject(d, isGap) {
+			out = append(out, dir+"/ok.json: holds an object with kind gap")
+		}
+		if anyObject(d, isStaleTrue) {
+			out = append(out, dir+"/ok.json: holds is_stale true")
+		}
+	}
+	if d, ok := docs["gap"]; ok && !anyObject(d, isGap) {
+		out = append(out, dir+"/gap.json: holds no object with kind gap")
+	}
+	if d, ok := docs["stale"]; ok && !anyObject(d, isStaleTrue) {
+		out = append(out, dir+"/stale.json: holds no is_stale true")
+	}
+	return out
+}
+
 // fixturesV3Problems applies the fixture rule to the directory root (the place of web/fixtures/v3), with the
 // schema files of schemas. It returns one line per broken rule.
 func fixturesV3Problems(t *testing.T, root, schemas string) []string {
 	t.Helper()
-	var problems []string
-	bad := func(format string, a ...any) { problems = append(problems, fmt.Sprintf(format, a...)) }
 	entries, err := os.ReadDir(root)
 	if os.IsNotExist(err) {
 		return nil
@@ -77,6 +136,7 @@ func fixturesV3Problems(t *testing.T, root, schemas string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var problems []string
 	for _, ent := range entries {
 		if !ent.IsDir() {
 			continue
@@ -84,72 +144,23 @@ func fixturesV3Problems(t *testing.T, root, schemas string) []string {
 		dir := ent.Name()
 		schemaFile, ok := fixtureSchemaV3[dir]
 		if !ok {
-			bad("%s: directory has no row in the table", dir)
+			problems = append(problems, dir+": directory has no row in the table")
 			continue
 		}
 		if _, err := os.Stat(filepath.Join(schemas, schemaFile)); err != nil {
-			bad("%s: schema file %s is missing", dir, schemaFile)
+			problems = append(problems, fmt.Sprintf("%s: schema file %s is missing", dir, schemaFile))
 			continue
 		}
 		s := compileURL(t, schemas, schemaHost+schemaFile)
 		docs := map[string]any{}
 		for _, name := range []string{"ok", "gap", "stale", "bad-version"} {
-			path := filepath.Join(root, dir, name+".json")
-			b, err := os.ReadFile(path)
-			if err != nil {
-				bad("%s/%s.json: %v", dir, name, err)
-				continue
-			}
-			inst, err := jsonschema.UnmarshalJSON(strings.NewReader(string(b)))
-			if err != nil {
-				bad("%s/%s.json: %v", dir, name, err)
-				continue
-			}
-			var plain any
-			if err := json.Unmarshal(b, &plain); err != nil {
-				bad("%s/%s.json: %v", dir, name, err)
-				continue
-			}
-			docs[name] = plain
-			verr := s.Validate(inst)
-			if name != "bad-version" {
-				if verr != nil {
-					bad("%s/%s.json: want valid: %v", dir, name, verr)
-				}
-				if hasNull(plain) {
-					bad("%s/%s.json: holds null", dir, name)
-				}
-				continue
-			}
-			ve, ok := verr.(*jsonschema.ValidationError)
-			if !ok {
-				bad("%s/bad-version.json: want a validation error, got %v", dir, verr)
-				continue
-			}
-			var ls []leaf
-			leaves(ve, &ls)
-			found := false
-			for _, l := range ls {
-				found = found || (l.location == "/schema_version" && l.keyword == "const")
-			}
-			if !found {
-				bad("%s/bad-version.json: no leaf at /schema_version with const; leaves %v", dir, ls)
+			doc, p := checkV3File(t, s, filepath.Join(root, dir, name+".json"), dir+"/"+name+".json")
+			problems = append(problems, p...)
+			if doc != nil {
+				docs[name] = doc
 			}
 		}
-		if d, ok := docs["ok"]; ok {
-			if anyObject(d, isGap) {
-				bad("%s/ok.json: holds an object with kind gap", dir)
-			}
-			if anyObject(d, isStaleTrue) {
-				bad("%s/ok.json: holds is_stale true", dir)
-			}
-		}
-		if d, ok := docs["gap"]; ok && !anyObject(d, isGap) {
-			bad("%s/gap.json: holds no object with kind gap", dir)
-		}
-		if d, ok := docs["stale"]; ok && !anyObject(d, isStaleTrue) {
-			bad("%s/stale.json: holds no is_stale true", dir)
-		}
+		problems = append(problems, checkV3Tags(dir, docs)...)
 	}
 	return problems
 }

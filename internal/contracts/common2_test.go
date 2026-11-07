@@ -34,15 +34,35 @@ func TestCommonV2Defs(t *testing.T) {
 		{"run status", "RunStatus", `"partial"`, `"done"`},
 		{"source time", "SourceTime", `{"source":"s1","data_time":` + at + `}`, `{"source":"bad id","data_time":` + at + `}`},
 		{"stale label", "StaleLabel", `{"data_time":` + at + `,"text":"old","is_stale":true}`, `{"data_time":` + at + `,"text":"old"}`},
-		{"stale label with stale_after", "StaleLabel", `{"data_time":` + at + `,"text":"old","is_stale":false}`, `{"data_time":` + at + `,"stale_after":` + at + `,"text":"old"}`},
-		{"stale label long text", "StaleLabel", `{"data_time":` + at + `,"text":"x","is_stale":false}`, `{"data_time":` + at + `,"text":"` + strings.Repeat("x", 201) + `","is_stale":false}`},
+		{
+			"stale label with stale_after", "StaleLabel",
+			`{"data_time":` + at + `,"text":"old","is_stale":false}`,
+			`{"data_time":` + at + `,"stale_after":` + at + `,"text":"old"}`,
+		},
+		{
+			"stale label long text", "StaleLabel",
+			`{"data_time":` + at + `,"text":"x","is_stale":false}`,
+			`{"data_time":` + at + `,"text":"` + strings.Repeat("x", 201) + `","is_stale":false}`,
+		},
 		{"gap", "Gap", `{"kind":"gap","reason":"stale_input","text":"late"}`, `{"reason":"stale_input","text":"late"}`},
 		{"gap reason", "Gap", `{"kind":"gap","reason":"stale","text":"late"}`, `{"kind":"gap","reason":"bogus","text":"late"}`},
 		{"usd", "UsdFigure", `{"kind":"value","value":1.25,"text":"$1","unit":"usd"}`, `{"value":1.25,"text":"$1","unit":"usd"}`},
 		{"usd unit", "UsdFigure", `{"kind":"value","value":1,"text":"$1","unit":"usd"}`, `{"kind":"value","value":1,"text":"$1","unit":"USD"}`},
-		{"percent", "PercentFigure", `{"kind":"value","value":2.1,"text":"+2.1%","unit":"percent","tone":"up"}`, `{"kind":"value","value":10001,"text":"x","unit":"percent"}`},
-		{"share percent", "SharePercentFigure", `{"kind":"value","value":50,"text":"50%","unit":"share_percent"}`, `{"kind":"value","value":101,"text":"x","unit":"share_percent"}`},
-		{"usd signed", "UsdSignedFigure", `{"kind":"value","value":-5.5,"text":"−$5","unit":"usd_signed"}`, `{"kind":"value","value":-5.5,"text":"−$5","unit":"usd_signed","tone":null}`},
+		{
+			"percent", "PercentFigure",
+			`{"kind":"value","value":2.1,"text":"+2.1%","unit":"percent","tone":"up"}`,
+			`{"kind":"value","value":10001,"text":"x","unit":"percent"}`,
+		},
+		{
+			"share percent", "SharePercentFigure",
+			`{"kind":"value","value":50,"text":"50%","unit":"share_percent"}`,
+			`{"kind":"value","value":101,"text":"x","unit":"share_percent"}`,
+		},
+		{
+			"usd signed", "UsdSignedFigure",
+			`{"kind":"value","value":-5.5,"text":"−$5","unit":"usd_signed"}`,
+			`{"kind":"value","value":-5.5,"text":"−$5","unit":"usd_signed","tone":null}`,
+		},
 	}
 	covered := map[string]bool{}
 	for _, r := range rows {

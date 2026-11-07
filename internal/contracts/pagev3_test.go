@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -185,6 +186,111 @@ func TestPageV3ChartPoint(t *testing.T) {
 
 var unitName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
+// v3Rules holds what the conventions of a v3 file need to know while it is walked.
+type v3Rules struct {
+	t        *testing.T
+	name     string
+	common   map[string]any
+	localGap bool // options_summary keeps a local Gap
+}
+
+// sharedLocal reports whether a local name takes the place of a shared def.
+func (r v3Rules) sharedLocal(n string) bool {
+	_, shared := r.common[n]
+	return shared && (!r.localGap || n != "Gap")
+}
+
+func (r v3Rules) header(doc map[string]any) {
+	t := r.t
+	if doc["$id"] != schemaHost+r.name {
+		t.Errorf("$id = %v", doc["$id"])
+	}
+	props, _ := doc["properties"].(map[string]any)
+	sv, _ := props["schema_version"].(map[string]any)
+	if sv["const"] != float64(3) || sv["type"] != "integer" {
+		t.Errorf("schema_version = %v, want integer const 3", sv)
+	}
+	req, _ := doc["required"].([]any)
+	if !slices.Contains(req, any("stale_after")) {
+		t.Error("stale_after is not required")
+	}
+	defs, _ := doc["$defs"].(map[string]any)
+	for n := range defs {
+		if r.sharedLocal(n) {
+			t.Errorf("local def %q has the name of a shared def", n)
+		}
+		if strings.Contains(n, "__") {
+			t.Errorf("def name %q contains __", n)
+		}
+	}
+}
+
+// oneOf: every branch requires a kind with a const, and the consts differ.
+func (r v3Rules) oneOf(v any) {
+	branches, _ := v.([]any)
+	consts := map[any]bool{}
+	for _, br := range branches {
+		bm := br.(map[string]any)
+		if ref, ok := bm["$ref"].(string); ok {
+			bm, _ = follow(r.t, schemasDir, r.name, ref)
+		}
+		req, _ := bm["required"].([]any)
+		kp, _ := bm["properties"].(map[string]any)
+		kind, _ := kp["kind"].(map[string]any)
+		c, hasConst := kind["const"]
+		if !slices.Contains(req, any("kind")) || !hasConst {
+			r.t.Errorf("oneOf branch %v does not require a kind const", br)
+		}
+		if consts[c] {
+			r.t.Errorf("oneOf branches share the kind %v", c)
+		}
+		consts[c] = true
+	}
+}
+
+// properties checks the unit const and the number type of money.
+func (r v3Rules) properties(v any) {
+	pm, _ := v.(map[string]any)
+	unit, ok := pm["unit"].(map[string]any)
+	if !ok {
+		return
+	}
+	u, _ := unit["const"].(string)
+	if !unitName.MatchString(u) {
+		r.t.Errorf("unit const %q does not match %s", u, unitName)
+	}
+	if val, _ := pm["value"].(map[string]any); strings.HasPrefix(u, "usd") && val["type"] != "number" {
+		r.t.Errorf("money value of unit %s is %v, want number", u, val["type"])
+	}
+}
+
+func (r v3Rules) node(k string, v any) {
+	switch k {
+	case "$ref":
+		ref, _ := v.(string)
+		if local, ok := strings.CutPrefix(ref, "#/$defs/"); ok && r.sharedLocal(local) {
+			r.t.Errorf("ref %q is a local ref to a shared name", ref)
+		}
+	case "type":
+		if v == "null" {
+			r.t.Error(`type "null" occurs`)
+		}
+		if l, ok := v.([]any); ok && slices.Contains(l, any("null")) {
+			r.t.Error(`type list holds "null"`)
+		}
+	case "anyOf":
+		r.t.Error("anyOf occurs")
+	case "oneOf":
+		r.oneOf(v)
+	case "x-timezone":
+		if v != "owner" {
+			r.t.Errorf("x-timezone = %v, want owner", v)
+		}
+	case "properties":
+		r.properties(v)
+	}
+}
+
 // shared names come from common.v2.json; options_summary keeps a local Gap.
 func TestPageV3Conventions(t *testing.T) {
 	t.Parallel()
@@ -199,112 +305,15 @@ func TestPageV3Conventions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			r := v3Rules{t: t, name: name, common: common, localGap: name == "page.options_summary.v3.json"}
 			doc := readRaw(t, schemasDir, name)
-			if doc["$id"] != schemaHost+name {
-				t.Errorf("$id = %v", doc["$id"])
-			}
-			props, _ := doc["properties"].(map[string]any)
-			sv, _ := props["schema_version"].(map[string]any)
-			if sv["const"] != float64(3) || sv["type"] != "integer" {
-				t.Errorf("schema_version = %v, want integer const 3", sv)
-			}
-			req, _ := doc["required"].([]any)
-			hasStale := false
-			for _, r := range req {
-				hasStale = hasStale || r == "stale_after"
-			}
-			if !hasStale {
-				t.Error("stale_after is not required")
-			}
-
-			// (a) shared defs come from common.v2.json by ref.
-			localGap := name == "page.options_summary.v3.json"
-			defs, _ := doc["$defs"].(map[string]any)
-			for n := range defs {
-				if _, shared := common[n]; shared && !(localGap && n == "Gap") {
-					t.Errorf("local def %q has the name of a shared def", n)
-				}
-				// (c) no double underscore in a def name.
-				if strings.Contains(n, "__") {
-					t.Errorf("def name %q contains __", n)
+			r.header(doc)
+			for _, bad := range []string{"common.v1.json", "ROUND_HALF_UP"} {
+				if strings.Contains(string(b), bad) {
+					t.Errorf("%s occurs", bad)
 				}
 			}
-			if strings.Contains(string(b), "common.v1.json") {
-				t.Error("a ref names common.v1.json")
-			}
-			// (c) no ROUND_HALF_UP.
-			if strings.Contains(string(b), "ROUND_HALF_UP") {
-				t.Error("ROUND_HALF_UP occurs")
-			}
-
-			walk(doc, func(k string, v any) {
-				switch k {
-				case "$ref":
-					ref, _ := v.(string)
-					if local, ok := strings.CutPrefix(ref, "#/$defs/"); ok {
-						if _, shared := common[local]; shared && !(localGap && local == "Gap") {
-							t.Errorf("ref %q is a local ref to a shared name", ref)
-						}
-					}
-				case "type":
-					// (b) "null" is not a type.
-					if v == "null" {
-						t.Error(`type "null" occurs`)
-					}
-					if l, ok := v.([]any); ok {
-						for _, x := range l {
-							if x == "null" {
-								t.Error(`type list holds "null"`)
-							}
-						}
-					}
-				case "anyOf":
-					t.Error("anyOf occurs")
-				case "oneOf":
-					branches, _ := v.([]any)
-					consts := map[any]bool{}
-					for _, br := range branches {
-						bm := br.(map[string]any)
-						if ref, ok := bm["$ref"].(string); ok {
-							bm, _ = follow(t, schemasDir, name, ref)
-						}
-						kindReq := false
-						for _, r := range bm["required"].([]any) {
-							kindReq = kindReq || r == "kind"
-						}
-						kp, _ := bm["properties"].(map[string]any)
-						kind, _ := kp["kind"].(map[string]any)
-						c, hasConst := kind["const"]
-						if !kindReq || !hasConst {
-							t.Errorf("oneOf branch %v does not require a kind const", br)
-						}
-						if consts[c] {
-							t.Errorf("oneOf branches share the kind %v", c)
-						}
-						consts[c] = true
-					}
-				case "x-timezone":
-					// (c) x-timezone is owner.
-					if v != "owner" {
-						t.Errorf("x-timezone = %v, want owner", v)
-					}
-				case "properties":
-					pm, _ := v.(map[string]any)
-					unit, ok := pm["unit"].(map[string]any)
-					if !ok {
-						return
-					}
-					u, _ := unit["const"].(string)
-					if !unitName.MatchString(u) {
-						t.Errorf("unit const %q does not match %s", u, unitName)
-					}
-					if strings.HasPrefix(u, "usd") {
-						if val, _ := pm["value"].(map[string]any); val["type"] != "number" {
-							t.Errorf("money value of unit %s is %v, want number", u, val["type"])
-						}
-					}
-				}
-			})
+			walk(doc, r.node)
 			compilePageV2(t, name)
 		})
 	}

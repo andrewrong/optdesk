@@ -62,6 +62,9 @@ var expectedFailures = []expectedFailure{
 	badVersion("tracking"),
 }
 
+// isFixtureDir is true for a directory of fixtures of the old lines; web/fixtures/v3 has its own test.
+func isFixtureDir(ent os.DirEntry) bool { return ent.IsDir() && ent.Name() != "v3" }
+
 type leaf struct{ location, keyword string }
 
 func leaves(e *jsonschema.ValidationError, out *[]leaf) {
@@ -119,7 +122,7 @@ func TestFixturesValidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, ent := range entries {
-		if !ent.IsDir() || ent.Name() == "v3" {
+		if !isFixtureDir(ent) {
 			continue
 		}
 		dir := ent.Name()
