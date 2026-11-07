@@ -101,4 +101,26 @@ describe('option data page', () => {
       expect(validateOptionDataPage(fixture(name)).ok, name).toBe(true)
     }
   })
+
+  it('choices shows three links of the fixture, the current one marked', async () => {
+    const payload = fixture('choices')
+    await show(payload)
+    const nav = host.querySelectorAll('[data-underlying-links] a')
+    expect([...nav].map((a) => a.getAttribute('href'))).toEqual(
+      payload.underlyings.map((c: { href: string }) => c.href),
+    )
+    const marked = [...nav].filter((a) => a.getAttribute('aria-current') === 'page')
+    expect(marked).toHaveLength(1)
+    expect(marked[0]?.getAttribute('href')).toBe('/options/data/9000')
+  })
+
+  it('ok shows no choices block', async () => {
+    await show(fixture('ok'))
+    expect(host.querySelector('[data-underlying-links]')).toBeNull()
+  })
+
+  it('validate still accepts ok and choices', () => {
+    expect(validateOptionDataPage(fixture('ok')).ok).toBe(true)
+    expect(validateOptionDataPage(fixture('choices')).ok).toBe(true)
+  })
 })

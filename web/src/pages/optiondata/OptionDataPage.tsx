@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Payload } from '@/types/option_data_page'
 import { ChainTable } from './ChainTable'
 import { QuoteChart } from './QuoteChart'
+import { UnderlyingLinks } from './UnderlyingLinks'
 export { validate as validateOptionDataPage } from '@/types/option_data_page'
 export type { Payload as OptionDataPagePayload } from '@/types/option_data_page'
 
@@ -39,6 +40,7 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
           <span className="text-muted-foreground">{underlying.session_day}</span>
         </CardContent>
       </Card>
+      {payload.underlyings ? <UnderlyingLinks underlyings={payload.underlyings} /> : null}
       <Card>
         <CardHeader>
           <CardTitle>{payload.chain_title}</CardTitle>
