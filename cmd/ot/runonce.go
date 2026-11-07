@@ -73,6 +73,13 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return fmt.Errorf("open ledger with %s failed", store.DSNEnvRunner)
 	}
 	defer func() { _ = ledger.Close() }()
+	cur, err := ledger.Cursor(ctx)
+	if err != nil {
+		return fmt.Errorf("read reconcile cursor failed")
+	}
+	if cur.Day != "" && day <= cur.Day {
+		return fmt.Errorf("day %s is at or before the cursor %s: nothing to reconcile", day, cur.Day)
+	}
 	ser, err := d.openSeries(ctx, cfg.seriesDSN)
 	if err != nil {
 		return fmt.Errorf("open series store with %s failed", store.DSNEnvSeriesFred)
