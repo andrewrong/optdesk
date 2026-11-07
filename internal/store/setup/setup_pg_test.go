@@ -101,7 +101,7 @@ func TestSetupPG(t *testing.T) {
 	if again := passwordOf(env[store.DSNEnvLoader], roleLoader); again != loaderPW {
 		t.Error("the second run changed the loader password")
 	}
-	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader, store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot} {
+	for _, key := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader, store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot, store.DSNEnvMaster} {
 		c, err := pgx.Connect(ctx, env[key])
 		if err != nil {
 			t.Fatalf("connect with %s: %v", key, err)
@@ -141,7 +141,7 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 
 // addedRoles are the roles whose lines the seed lacks: Setup adds them, with the password it generates, and the
 // test puts testPassword back under lock 54 before it ends.
-var addedRoles = []string{roleLoader, roleOptionEod, roleQuoteSnapshot}
+var addedRoles = []string{roleLoader, roleOptionEod, roleQuoteSnapshot, roleMaster}
 
 func isAddedRole(name string) bool {
 	for _, r := range addedRoles {

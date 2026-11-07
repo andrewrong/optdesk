@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -145,5 +147,39 @@ func TestUpEmptyFSIsAnError(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	if err := migrate.Up(context.Background(), db, fstest.MapFS{}); err == nil {
 		t.Fatal("Up on an empty filesystem returned nil")
+	}
+}
+
+// TestMigrationsEndWith0008 lists the migration files: 0008 follows 0007 and has an Up and a Down part, the Down part
+// dropping the foreign keys before the tables.
+func TestMigrationsEndWith0008(t *testing.T) {
+	t.Parallel()
+	files, err := filepath.Glob("../../../migrations/*.sql")
+	if err != nil || len(files) < 8 {
+		t.Fatalf("migrations: %v, %v", files, err)
+	}
+	names := make([]string, len(files))
+	for i, f := range files {
+		names[i] = filepath.Base(f)
+	}
+	n := len(names)
+	if names[n-2] != "0007_quote_snapshot.sql" || names[n-1] != "0008_master_instrument.sql" {
+		t.Fatalf("migrations end with %v", names[n-2:])
+	}
+	raw, err := os.ReadFile(files[n-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, down, ok := strings.Cut(string(raw), "-- +goose Down")
+	if !ok || !strings.HasPrefix(up, "-- +goose Up") {
+		t.Fatal("0008 lacks an Up or a Down part")
+	}
+	if !strings.Contains(up, "CREATE TABLE master.instrument ") || !strings.Contains(up, "CREATE TABLE master.instrument_identifier") {
+		t.Fatal("Up part does not create the two tables")
+	}
+	lastKey := strings.LastIndex(down, "DROP CONSTRAINT")
+	firstTable := strings.Index(down, "DROP TABLE")
+	if lastKey < 0 || firstTable < 0 || lastKey > firstTable || strings.Count(down, "DROP CONSTRAINT") != 3 {
+		t.Fatalf("Down part must drop the three keys before the tables:\n%s", down)
 	}
 }
