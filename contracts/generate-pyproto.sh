@@ -18,7 +18,7 @@ uv run --project pyside --locked python -m grpc_tools.protoc \
   --mypy_grpc_out="$OUT" \
   contracts/proto/ibkr/v1/*.proto
 
-# Rewrite the generated imports from the top-level ibkr package to the package they live in.
+# Rewrite the generated imports from the top-level ibkr package to the package they live in, and keep ruff off generated files.
 uv run --project pyside --locked python - "$OUT" <<'PY'
 import pathlib
 import sys
@@ -27,8 +27,7 @@ root = pathlib.Path(sys.argv[1])
 for path in sorted(root.rglob("*.py*")):
     text = path.read_text()
     new = text.replace("from ibkr.v1 import", "from optdesk.contracts.genpb.ibkr.v1 import")
-    if new != text:
-        path.write_text(new)
+    path.write_text("# ruff: noqa\n" + new)
 PY
 
 : > "$OUT/__init__.py"

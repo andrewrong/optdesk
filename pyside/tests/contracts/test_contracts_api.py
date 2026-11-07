@@ -96,7 +96,8 @@ def test_generated_python_is_current(
     for path in sorted(out.rglob("*.py*")):
         text = path.read_text()
         path.write_text(
-            text.replace(
+            "# ruff: noqa\n"
+            + text.replace(
                 "from ibkr.v1 import", "from optdesk.contracts.genpb.ibkr.v1 import"
             )
         )
