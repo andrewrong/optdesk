@@ -111,8 +111,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 7 {
-		t.Fatalf("%d roles, want 7", len(roles))
+	if len(roles) != 8 {
+		t.Fatalf("%d roles, want 8", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -128,13 +128,14 @@ func TestRolesTable(t *testing.T) {
 		"ot_loader":           store.DSNEnvLoader,
 		"ot_w_option_eod":     store.DSNEnvOptionEod,
 		"ot_w_quote_snapshot": store.DSNEnvQuoteSnapshot,
+		"ot_w_master":         store.DSNEnvMaster,
 	} {
 		if got, ok := keys[name]; !ok || got != want {
 			t.Errorf("%s line = %q (present %v), want %q", name, got, ok, want)
 		}
 	}
-	if roleOptionEod != "ot_w_option_eod" || roleQuoteSnapshot != "ot_w_quote_snapshot" {
-		t.Errorf("role names %q, %q", roleOptionEod, roleQuoteSnapshot)
+	if roleOptionEod != "ot_w_option_eod" || roleQuoteSnapshot != "ot_w_quote_snapshot" || roleMaster != "ot_w_master" {
+		t.Errorf("role names %q, %q, %q", roleOptionEod, roleQuoteSnapshot, roleMaster)
 	}
 }
 
