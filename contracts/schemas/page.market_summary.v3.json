@@ -1,0 +1,459 @@
+{
+  "$defs": {
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "chart": {
+          "$ref": "#/$defs/Chart"
+        },
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "common.v2.json#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "index_table": {
+          "$ref": "#/$defs/IndexTable"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "vol_indices": {
+          "items": {
+            "$ref": "#/$defs/VolIndexItem"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Vol Indices",
+          "type": "array"
+        },
+        "vol_indices_note": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Vol Indices Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "say",
+        "subtitle",
+        "stale",
+        "chart",
+        "index_table",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "Chart": {
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Aria Text",
+          "type": "string"
+        },
+        "end_labels": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "End Labels",
+          "type": "array"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ChartPoint"
+          },
+          "maxItems": 120,
+          "title": "Points",
+          "type": "array"
+        },
+        "series_names": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Series Names",
+          "type": "array"
+        }
+      },
+      "required": [
+        "points",
+        "series_names",
+        "end_labels",
+        "aria_text"
+      ],
+      "title": "Chart",
+      "type": "object"
+    },
+    "ChartPoint": {
+      "additionalProperties": false,
+      "description": "One day. A level of a missing day is left out.",
+      "properties": {
+        "band_high": {
+          "maximum": 1000000000.0,
+          "minimum": 0,
+          "title": "Band High",
+          "type": "number"
+        },
+        "band_low": {
+          "maximum": 1000000000.0,
+          "minimum": 0,
+          "title": "Band Low",
+          "type": "number"
+        },
+        "close": {
+          "maximum": 1000000000.0,
+          "minimum": 0,
+          "title": "Close",
+          "type": "number"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "ma200": {
+          "maximum": 1000000000.0,
+          "minimum": 0,
+          "title": "Ma200",
+          "type": "number"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "ChartPoint",
+      "type": "object"
+    },
+    "IndexLevelFigure": {
+      "additionalProperties": false,
+      "description": "The level of a published market index in index points as its publisher states it (a Cboe\nvolatility index: 18.20 is 18.20 points). Not the 0 to 100 ease scale of ``IndexPointsFigure``:\nthe level has no upper bound in practice, the cap here only rejects a corrupt value.",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "index_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000.0,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "IndexLevelFigure",
+      "type": "object"
+    },
+    "IndexRow": {
+      "additionalProperties": false,
+      "properties": {
+        "iv": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ],
+          "title": "Iv"
+        },
+        "iv_minus_rv20": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ],
+          "title": "Iv Minus Rv20"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "rv20": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VolPointsFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ],
+          "title": "Rv20"
+        },
+        "source_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "iv",
+        "rv20",
+        "iv_minus_rv20"
+      ],
+      "title": "IndexRow",
+      "type": "object"
+    },
+    "IndexTable": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/IndexRow"
+          },
+          "maxItems": 10,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "IndexTable",
+      "type": "object"
+    },
+    "VolIndexItem": {
+      "additionalProperties": false,
+      "description": "One Cboe volatility index (VIX, VXN, RVX): its level in index points as Cboe publishes it\n(18.20 is 18.20 points, not a fraction and not a percent), the data day ``mm-dd`` and the\nsource series. Never part of the IV cell of the index table: a Cboe index is a methodology of\nits own.",
+      "properties": {
+        "day": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Day",
+          "type": "string"
+        },
+        "level": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/IndexLevelFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ],
+          "title": "Level"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "source_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "level",
+        "day"
+      ],
+      "title": "VolIndexItem",
+      "type": "object"
+    },
+    "VolPointsFigure": {
+      "additionalProperties": false,
+      "description": "Vol points (GLOSSARY \"Vol point\"), signed (``+2.1``).",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "unit": {
+          "const": "vol_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000,
+          "minimum": -1000,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 1,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "VolPointsFigure",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.market_summary.v3.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034) and card of the v3 line: tagged unions, a stale flag set by the producer.",
+  "properties": {
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "card": {
+      "$ref": "#/$defs/Card"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "schema": {
+      "const": "market_summary",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 3,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "stale_after",
+    "data_times",
+    "run_status",
+    "card"
+  ],
+  "title": "MarketSummaryV3",
+  "type": "object"
+}

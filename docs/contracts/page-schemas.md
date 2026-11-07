@@ -48,6 +48,10 @@ The schema ids with the `const` of their `schema_version`:
 
 Also `common.v1` (`contracts/schemas/common.v1.json`, `$id` `https://optdesk.invalid/schemas/common.v1.json`): only `$defs` `Id`, `Timestamp`, `RunStatus`, `SourceTime`, `StaleLabel`, `Gap`, `UsdFigure`, `PercentFigure`, `SharePercentFigure`, `UsdSignedFigure`, used as `common.v1.json#/$defs/<Name>`.
 
+Also `common.v2` (`contracts/schemas/common.v2.json`, `$id` `https://optdesk.invalid/schemas/common.v2.json`) for the v3 line: only `$defs` `Id`, `Timestamp`, `RunStatus`, `SourceTime`, `Gap`, `StaleLabel`, `UsdFigure`, `PercentFigure`, `SharePercentFigure`, `UsdSignedFigure`, used as `common.v2.json#/$defs/<Name>`. `Gap` requires `kind` (`gap`), `reason` and `text`; `StaleLabel` requires `data_time`, `text` and `is_stale`; each figure requires `kind` (`value`); units are `usd`, `percent`, `share_percent`, `usd_signed`.
+
+The v3 files, `schema_version` const 3: `page.market_summary.v3` (title `MarketSummaryV3`) and `page.options_summary.v3` (title `OptionsSummaryV3`); `stale_after` is required in both.
+
 ## Invariants
 
 Conventions of every file of the v2 line (`page.<name>.v2.json`, checked by `TestPageV2Conventions`):
@@ -58,6 +62,14 @@ Conventions of every file of the v2 line (`page.<name>.v2.json`, checked by `Tes
 4. No def name contains `__`; a def named `option_trader__viewmodels__<module>__<Name>` is renamed `<ModulePascal><Name>`, and one with a counterpart in `common.v1` becomes the `$ref`.
 5. `ROUND_HALF_UP` does not occur; every `x-rounding` value is `ROUND_HALF_EVEN`. A money value stays a JSON number.
 6. Every `x-timezone` value is `owner`.
+
+Conventions of every file of the v3 line (`page.<name>.v3.json`, checked by `TestPageV3Conventions`; a missing file is skipped):
+
+1. Shared defs come from `common.v2.json` by `$ref`, with no local def of their names, except the local `Gap` of `options_summary` (reasons `missing_quote`, `no_data`, `unsupported_currency`, `kind` `gap`).
+2. The string `"null"` is not a type and there is no `anyOf`; every `oneOf` has branches that each require a `kind` with a distinct `const`.
+3. No def name contains `__`, `ROUND_HALF_UP` does not occur, every `x-timezone` is `owner`, every `unit` const matches `^[a-z][a-z0-9_]*$`, and a money value is a JSON number.
+4. `schema_version` is `{"const": 3, "type": "integer"}` and `stale_after` is in `required`; staleness is the flag `is_stale` of the stale label, set by the producer.
+5. The fixtures of `web/fixtures/v3/<dir>` are checked by `TestFixturesV3Validate`, the generated types by `TestGeneratedV3Types`.
 
 Invariants of the carried files:
 
@@ -72,3 +84,4 @@ Invariants of the carried files:
 - v1: the 29 carried schemas (`page.macro_rates.v1` was added before them), the manifest and the fixture validation test.
 - v2 line: `common.v1` is added; the `page.<name>.v2.json` files of the five summaries and `home_page` are added by later issues, and the existing files are unchanged.
 - v2 TypeScript types: the types of `page.market_summary.v2` and `page.options_summary.v2` are generated into `web/src/generated/` by the web script `generate:types` (`json-schema-to-typescript` 16.0.0), not by `contracts/generate.sh`; fixtures `web/fixtures/market-summary` and `web/fixtures/options-summary` are checked against these files.
+- v3 line: `common.v2`, `page.market_summary.v3` and `page.options_summary.v3` are added (tagged unions with a required `kind` on every figure and gap, `is_stale` set by the producer, lower snake case units, no `null`); the v2 files and `common.v1` are unchanged. Their types are generated into `web/src/generated/*.v3.ts` by `generate:types`; fixtures are in `web/fixtures/v3/`.

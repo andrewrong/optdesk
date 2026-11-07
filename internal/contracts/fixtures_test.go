@@ -119,7 +119,7 @@ func TestFixturesValidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, ent := range entries {
-		if !ent.IsDir() {
+		if !ent.IsDir() || ent.Name() == "v3" {
 			continue
 		}
 		dir := ent.Name()

@@ -120,6 +120,9 @@ func minimal(t *testing.T, dir, file string, s map[string]any, overrides map[str
 	if a, ok := s["anyOf"].([]any); ok && len(a) > 0 {
 		return minimal(t, dir, file, a[0].(map[string]any), overrides)
 	}
+	if a, ok := s["oneOf"].([]any); ok && len(a) > 0 {
+		return minimal(t, dir, file, a[0].(map[string]any), overrides)
+	}
 	num := func(key string) float64 {
 		v, _ := s[key].(float64)
 		return v
