@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,14 @@ func TestWindowThanksgivingAndEarlyClose(t *testing.T) {
 		{CalendarID: "XNYS", Day: "2026-11-27", IsSession: true, EarlyClose: true, OpenAt: utc("2026-11-27T14:30:00Z"), CloseAt: utc("2026-11-27T18:00:00Z")},
 	}}
 	rule := runner.WindowRule{CalendarID: "XNYS", CloseOffset: time.Hour}
+	// A session with an early CloseAt: the window close is that instant plus the offset given.
+	early := cal.sessions[1]
+	if w, ok := windowFor(runner.WindowRule{CloseOffset: 5 * time.Hour}, "ds", early); !ok || w.CloseAt != early.CloseAt.Add(5*time.Hour) {
+		t.Fatalf("early close window = %+v ok=%v", w, ok)
+	}
+	if _, ok := windowFor(rule, "ds", clock.Session{Day: "2026-11-26"}); ok {
+		t.Fatal("non-session day got a window")
+	}
 	tests := []struct {
 		name    string
 		day     contracts.Day
@@ -77,4 +86,157 @@ func TestWindowRuleOffsets(t *testing.T) {
 	if _, ok := windowFor(rule, "ds", clock.Session{Day: "2026-11-26"}); ok {
 		t.Fatal("non-session day got a window")
 	}
+}
+
+func windowCal() fakeCalendar {
+	return fakeCalendar{sessions: []clock.Session{
+		{CalendarID: "XNYS", Day: "2026-11-04", IsSession: true, OpenAt: utc("2026-11-04T14:30:00Z"), CloseAt: utc("2026-11-04T21:00:00Z")},
+		// early close 13:00 ET = 18:00 UTC
+		{CalendarID: "XNYS", Day: "2026-11-27", IsSession: true, EarlyClose: true, OpenAt: utc("2026-11-27T14:30:00Z"), CloseAt: utc("2026-11-27T18:00:00Z")},
+	}}
+}
+
+func keyOf(ds string) contracts.ExpectedKey {
+	return contracts.ExpectedKey{DatasetID: ds, SubjectKey: "a"}
+}
+
+func TestWindowPerJob(t *testing.T) {
+	t.Parallel()
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	short := windowedJob{fakeJob: &fakeJob{id: "short", keys: []contracts.ExpectedKey{keyOf("d5")}}, close: 5 * time.Hour}
+	long := windowedJob{fakeJob: &fakeJob{id: "long", keys: []contracts.ExpectedKey{keyOf("d96")}}, close: 96 * time.Hour}
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	r := New(led, windowCal(), clk, []contracts.Job{short, long})
+	if err := r.Reconcile(context.Background(), "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]time.Time{}
+	for _, w := range led.puts {
+		got[w.DatasetID] = w.CloseAt
+	}
+	cl := utc("2026-11-04T21:00:00Z")
+	if len(led.puts) != 2 || got["d5"] != cl.Add(5*time.Hour) || got["d96"] != cl.Add(96*time.Hour) {
+		t.Fatalf("puts = %+v", led.puts)
+	}
+}
+
+func TestWindowedJobWithoutMethod(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		rule runner.WindowRule
+		want time.Time
+	}{
+		{"zero rule", runner.WindowRule{}, utc("2026-11-04T21:00:00Z")},
+		{"rule offset", runner.WindowRule{CloseOffset: 96 * time.Hour}, utc("2026-11-08T21:00:00Z")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			led := newLedger()
+			led.cursor = store.Cursor{Day: "2026-11-03"}
+			job := &fakeJob{keys: []contracts.ExpectedKey{keyOf("ds")}}
+			clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+			r := NewWithRule(led, windowCal(), clk, []contracts.Job{job}, tc.rule)
+			if err := r.Reconcile(context.Background(), "2026-11-04"); err != nil {
+				t.Fatal(err)
+			}
+			if len(led.puts) != 1 || led.puts[0].CloseAt != tc.want {
+				t.Fatalf("puts = %+v, want close %v", led.puts, tc.want)
+			}
+		})
+	}
+}
+
+func TestWindowCalendarMismatch(t *testing.T) {
+	t.Parallel()
+	mk := func(cal string) windowedJob {
+		return windowedJob{fakeJob: &fakeJob{id: "jpx-job", keys: []contracts.ExpectedKey{keyOf("ds")}}, calendarID: cal}
+	}
+	t.Run("mismatch", func(t *testing.T) {
+		t.Parallel()
+		led := &countingLedger{fakeLedger: newLedger()}
+		led.cursor = store.Cursor{Day: "2026-11-03"}
+		clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+		r := New(led, windowCal(), clk, []contracts.Job{mk("XJPX")})
+		err := r.Reconcile(context.Background(), "2026-11-04")
+		if err == nil || !strings.Contains(err.Error(), "jpx-job") {
+			t.Fatalf("err = %v, want one naming the job id", err)
+		}
+		if led.acquires != 0 || led.expecteds != 0 || len(led.puts) != 0 {
+			t.Fatalf("acquires=%d expecteds=%d puts=%d, want none", led.acquires, led.expecteds, len(led.puts))
+		}
+	})
+	for _, id := range []string{"", "XNYS"} {
+		t.Run("pass "+id, func(t *testing.T) {
+			t.Parallel()
+			led := newLedger()
+			led.cursor = store.Cursor{Day: "2026-11-03"}
+			clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+			r := New(led, windowCal(), clk, []contracts.Job{mk(id)})
+			if err := r.Reconcile(context.Background(), "2026-11-04"); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestReconcileEarlyCloseOptionWindow(t *testing.T) {
+	t.Parallel()
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-26"}
+	job := windowedJob{fakeJob: &fakeJob{id: "option_eod", keys: []contracts.ExpectedKey{keyOf("obs.option_eod")}}, close: 5 * time.Hour}
+	clk := clockwork.NewFakeClockAt(utc("2026-11-27T12:00:00Z"))
+	r := New(led, windowCal(), clk, []contracts.Job{job})
+	if err := r.Reconcile(context.Background(), "2026-11-27"); err != nil {
+		t.Fatal(err)
+	}
+	// 16:23 America/New_York on 2026-11-27 is 21:23 UTC.
+	if len(led.puts) != 1 || led.puts[0].CloseAt.Before(utc("2026-11-27T21:23:00Z")) {
+		t.Fatalf("puts = %+v, want close at or after 16:23 local", led.puts)
+	}
+}
+
+func TestEmptyRetriedUntilOwnClose(t *testing.T) {
+	t.Parallel()
+	empty := map[contracts.ExpectedKey]contracts.JobResult{keyOf("ds"): {}}
+	run := func(t *testing.T, now string, job contracts.Job) (*fakeLedger, map[contracts.ExpectedKey]store.PresentStatus) {
+		t.Helper()
+		led := newLedger()
+		led.cursor = store.Cursor{Day: "2026-11-03"}
+		clk := clockwork.NewFakeClockAt(utc(now))
+		if err := New(led, windowCal(), clk, []contracts.Job{job}).Reconcile(context.Background(), "2026-11-04"); err != nil {
+			t.Fatal(err)
+		}
+		p, _ := led.Present(context.Background(), "2026-11-04")
+		return led, p
+	}
+	own := func() contracts.Job {
+		return windowedJob{fakeJob: &fakeJob{keys: []contracts.ExpectedKey{keyOf("ds")}, results: empty}, close: 5 * time.Hour}
+	}
+	t.Run("before own close", func(t *testing.T) {
+		t.Parallel()
+		led, p := run(t, "2026-11-04T22:00:00Z", own())
+		if len(p) != 0 {
+			t.Fatalf("present = %v, want unmarked", p)
+		}
+		runs, _ := led.Runs(context.Background(), "2026-11-04")
+		if len(runs) != 1 || runs[0].ReasonCode != "empty_before_close" {
+			t.Fatalf("runs = %+v", runs)
+		}
+	})
+	t.Run("after own close", func(t *testing.T) {
+		t.Parallel()
+		_, p := run(t, "2026-11-05T03:00:00Z", own())
+		if p[keyOf("ds")] != store.StatusNoValue {
+			t.Fatalf("present = %v, want no_value", p)
+		}
+	})
+	t.Run("job without window", func(t *testing.T) {
+		t.Parallel()
+		_, p := run(t, "2026-11-04T22:00:00Z", &fakeJob{keys: []contracts.ExpectedKey{keyOf("ds")}, results: empty})
+		if p[keyOf("ds")] != store.StatusNoValue {
+			t.Fatalf("present = %v, want no_value at once", p)
+		}
+	})
 }
