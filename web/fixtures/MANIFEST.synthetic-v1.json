@@ -73,6 +73,16 @@
     "tracking/bad-version.json",
     "tracking/gap.json",
     "tracking/ok.json",
-    "tracking/stale.json"
+    "tracking/stale.json",
+    "v3/market-summary/bad-version.json",
+    "v3/market-summary/gap.json",
+    "v3/market-summary/ok.json",
+    "v3/market-summary/README.md",
+    "v3/market-summary/stale.json",
+    "v3/options-summary/bad-version.json",
+    "v3/options-summary/gap.json",
+    "v3/options-summary/ok.json",
+    "v3/options-summary/README.md",
+    "v3/options-summary/stale.json"
   ]
 }

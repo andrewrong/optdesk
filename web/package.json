@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit && vite build",
-    "generate:types": "json2ts -i ../contracts/schemas/page.market_summary.v2.json -o src/generated/market_summary.v2.ts --cwd ../contracts/schemas --bannerComment '// Code generated from contracts/, DO NOT EDIT.\n/* eslint-disable */' && json2ts -i ../contracts/schemas/page.options_summary.v2.json -o src/generated/options_summary.v2.ts --cwd ../contracts/schemas --bannerComment '// Code generated from contracts/, DO NOT EDIT.\n/* eslint-disable */'"
+    "generate:types": "json2ts -i ../contracts/schemas/page.market_summary.v2.json -o src/generated/market_summary.v2.ts --cwd ../contracts/schemas --bannerComment '// Code generated from contracts/, DO NOT EDIT.\n/* eslint-disable */' && json2ts -i ../contracts/schemas/page.options_summary.v2.json -o src/generated/options_summary.v2.ts --cwd ../contracts/schemas --bannerComment '// Code generated from contracts/, DO NOT EDIT.\n/* eslint-disable */' && json2ts -i ../contracts/schemas/page.market_summary.v3.json -o src/generated/market_summary.v3.ts --cwd ../contracts/schemas --bannerComment '// Code generated from contracts/, DO NOT EDIT.\n/* eslint-disable */' && json2ts -i ../contracts/schemas/page.options_summary.v3.json -o src/generated/options_summary.v3.ts --cwd ../contracts/schemas --bannerComment '// Code generated from contracts/, DO NOT EDIT.\n/* eslint-disable */'"
   },
   "dependencies": {
     "@tanstack/react-table": "8.21.3",

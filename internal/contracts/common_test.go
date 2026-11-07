@@ -104,6 +104,16 @@ func follow(t *testing.T, dir, name, ref string) (map[string]any, string) {
 	return m, file
 }
 
+// firstBranch returns the first branch of the anyOf or the oneOf of a raw schema.
+func firstBranch(s map[string]any) (map[string]any, bool) {
+	for _, k := range []string{"anyOf", "oneOf"} {
+		if a, ok := s[k].([]any); ok && len(a) > 0 {
+			return a[0].(map[string]any), true
+		}
+	}
+	return nil, false
+}
+
 // minimal builds the smallest valid value of a raw schema from its required lists.
 func minimal(t *testing.T, dir, file string, s map[string]any, overrides map[string]string) any {
 	t.Helper()
@@ -117,8 +127,8 @@ func minimal(t *testing.T, dir, file string, s map[string]any, overrides map[str
 	if e, ok := s["enum"].([]any); ok && len(e) > 0 {
 		return e[0]
 	}
-	if a, ok := s["anyOf"].([]any); ok && len(a) > 0 {
-		return minimal(t, dir, file, a[0].(map[string]any), overrides)
+	if b, ok := firstBranch(s); ok {
+		return minimal(t, dir, file, b, overrides)
 	}
 	num := func(key string) float64 {
 		v, _ := s[key].(float64)
