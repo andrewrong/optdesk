@@ -2,9 +2,7 @@
 /* eslint-disable */
 
 export type Text = string;
-export type Text1 = string;
-export type Unit = "percent" | "ratio" | "ccy_amount" | "count";
-export type Latest = LatestValue | Gap;
+export type Kind = "gap";
 export type Reason =
   | "missing_quote"
   | "no_data"
@@ -19,11 +17,7 @@ export type Reason =
   | "jp_slice_missing"
   | "missing_input"
   | "stale_input";
-export type Text2 = string;
-export type Text3 = string;
-export type Text4 = string;
-export type Text5 = string;
-export type Text6 = string;
+export type Text1 = string;
 
 /**
  * View model of the macro rates page, version 2: every string the page shows is in the payload.
@@ -34,39 +28,39 @@ export interface MacroRates {
   generated_at: string;
   session_day: string;
   title: Text;
-  sentence: Text1;
+  sentence: Text;
   series: Series[];
   gaps: GapLine[];
 }
 export interface Series {
   id: string;
-  title: Text2;
-  unit: Unit;
-  latest: Latest;
+  title: Text;
+  unit: "percent" | "ratio" | "ccy_amount" | "count";
+  latest: LatestValue | Gap;
   points: Point[];
 }
 export interface LatestValue {
   kind: "value";
   date: string;
   value: number;
-  text: Text3;
+  text: Text;
 }
 /**
  * A named data gap, used in place of a figure that cannot be computed. Never a zero.
  */
 export interface Gap {
-  kind: "gap";
+  kind: Kind;
   reason: Reason;
-  text: Text4;
+  text: Text1;
 }
 export interface Point {
   date: string;
   value: number | null;
-  text: Text5;
+  text: Text;
 }
 export interface GapLine {
   series_id: string;
   date: string;
   reason: "no_value" | "stale";
-  text: Text6;
+  text: Text;
 }
