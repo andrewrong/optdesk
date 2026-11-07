@@ -11,7 +11,7 @@ import (
 func TestPage(t *testing.T) {
 	t.Parallel()
 	p := Page()
-	if want := (pages.Meta{Name: "macro_rates", Schema: "page.macro_rates.v1"}); p.Meta != want {
+	if want := (pages.Meta{Name: "macro_rates", Schema: "page.macro_rates.v2"}); p.Meta != want {
 		t.Fatalf("meta = %+v", p.Meta)
 	}
 	demo := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": {

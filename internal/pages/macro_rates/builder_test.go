@@ -97,7 +97,7 @@ func decode(t *testing.T, b []byte) map[string]any {
 
 func golden(t *testing.T) map[string]any {
 	t.Helper()
-	b, err := os.ReadFile(fixturePath("page.macro_rates.v1.golden.json"))
+	b, err := os.ReadFile(fixturePath("page.macro_rates.v2.golden.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,21 +106,23 @@ func golden(t *testing.T) map[string]any {
 
 func compileSchema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
-	f, err := os.Open(filepath.Join("..", "..", "..", "contracts", "schemas", "page.macro_rates.v1.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	doc, err := jsonschema.UnmarshalJSON(f)
-	if err != nil {
-		t.Fatal(err)
-	}
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
-	if err := c.AddResource("page.macro_rates.v1.json", doc); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"common.v2.json", "page.macro_rates.v2.json"} {
+		f, err := os.Open(filepath.Join("..", "..", "..", "contracts", "schemas", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, err := jsonschema.UnmarshalJSON(f)
+		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := c.AddResource("https://optdesk.invalid/schemas/"+name, doc); err != nil {
+			t.Fatal(err)
+		}
 	}
-	s, err := c.Compile("page.macro_rates.v1.json")
+	s, err := c.Compile("https://optdesk.invalid/schemas/page.macro_rates.v2.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,16 +179,17 @@ func buildGaps(t *testing.T, day contracts.Day, pts ...contracts.SeriesPoint) []
 	return res
 }
 
-func wantGap(date, reason string) map[string]any {
-	return map[string]any{"series_id": "DGS10", "date": date, "reason": reason}
+func wantGap(date, reason, text string) map[string]any {
+	return map[string]any{"series_id": "DGS10", "date": date, "reason": reason, "text": text}
 }
 
 func TestGapsAndStale(t *testing.T) {
+	t.Run("latest", testLatest)
 	t.Parallel()
 	t.Run("nil value is one gap, not zero", func(t *testing.T) {
 		t.Parallel()
 		got := buildGaps(t, "2026-11-04", pt(t, "2026-11-03", nil), pt(t, "2026-11-04", f64(4.2)))
-		if want := []map[string]any{wantGap("2026-11-03", "no_value")}; !reflect.DeepEqual(got, want) {
+		if want := []map[string]any{wantGap("2026-11-03", "no_value", "no value on 2026-11-03")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
 	})
@@ -212,31 +215,123 @@ func TestGapsAndStale(t *testing.T) {
 	t.Run("older than the limit is stale at Day", func(t *testing.T) {
 		t.Parallel()
 		got := buildGaps(t, "2026-11-09", pt(t, "2026-11-04", f64(4.2)))
-		if want := []map[string]any{wantGap("2026-11-09", "stale")}; !reflect.DeepEqual(got, want) {
+		if want := []map[string]any{wantGap("2026-11-09", "stale", "no point within 4 days of 2026-11-09")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
 	})
 	t.Run("no point in range is stale at Day", func(t *testing.T) {
 		t.Parallel()
 		got := buildGaps(t, "2026-11-09")
-		if want := []map[string]any{wantGap("2026-11-09", "stale")}; !reflect.DeepEqual(got, want) {
+		if want := []map[string]any{wantGap("2026-11-09", "stale", "no point within 4 days of 2026-11-09")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
 	})
 	t.Run("stale last point with nil value is one gap", func(t *testing.T) {
 		t.Parallel()
 		got := buildGaps(t, "2026-11-20", pt(t, "2026-11-04", nil))
-		if want := []map[string]any{wantGap("2026-11-20", "stale")}; !reflect.DeepEqual(got, want) {
+		if want := []map[string]any{wantGap("2026-11-20", "stale", "no point within 4 days of 2026-11-20")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
 	})
 	t.Run("points before the lookback are not read", func(t *testing.T) {
 		t.Parallel()
 		got := buildGaps(t, "2026-12-10", pt(t, "2026-11-09", f64(4.0)))
-		if want := []map[string]any{wantGap("2026-12-10", "stale")}; !reflect.DeepEqual(got, want) {
+		if want := []map[string]any{wantGap("2026-12-10", "stale", "no point within 4 days of 2026-12-10")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("gaps = %v, want %v", got, want)
 		}
 	})
+}
+
+// latestOf builds a one-series page and returns the latest of its series.
+func latestOf(t *testing.T, day contracts.Day, pts ...contracts.SeriesPoint) map[string]any {
+	t.Helper()
+	r := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": pts}}
+	out, err := Build(t.Context(), r, day, fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := decode(t, out)
+	if err := compileSchema(t).Validate(m); err != nil {
+		t.Fatal(err)
+	}
+	return m["series"].([]any)[0].(map[string]any)["latest"].(map[string]any)
+}
+
+func testLatest(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		day  contracts.Day
+		pts  []contracts.SeriesPoint
+		want map[string]any
+	}{
+		{"stale", "2026-11-09", []contracts.SeriesPoint{pt(t, "2026-11-04", f64(4.2))},
+			map[string]any{"kind": "gap", "reason": "stale", "text": "latest point 2026-11-04 is old"}},
+		{"no point", "2026-11-09", nil,
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "no points"}},
+		{"null last", "2026-11-04", []contracts.SeriesPoint{pt(t, "2026-11-04", nil)},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "no value on 2026-11-04"}},
+		{"value", "2026-11-04", []contracts.SeriesPoint{pt(t, "2026-11-04", f64(4.2))},
+			map[string]any{"kind": "value", "date": "2026-11-04", "value": 4.2, "text": "4.20%"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := latestOf(t, c.day, c.pts...); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("latest = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+func TestText(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ name, got, want string }{
+		{"percent", pointText("percent", f64(4.1)), "4.10%"},
+		{"ratio", pointText("ratio", f64(0.5)), "0.5000"},
+		{"ccy_amount", pointText("ccy_amount", f64(1234.5)), "1234.50"},
+		{"count", pointText("count", f64(42)), "42"},
+		{"null", pointText("percent", nil), "no value"},
+		{"title", pageTitle, "Macro rates"},
+		{"sentence", pageSentence(1, "2026-11-04"), "1 series on 2026-11-04."},
+		{"series title", seriesTitle("DGS10"), "10-year Treasury yield"},
+		{"series title other", seriesTitle("X"), "X"},
+		{"no value gap", noValueText("2026-11-03"), "no value on 2026-11-03"},
+		{"stale gap line", staleGapText("2026-11-04"), "no point within 4 days of 2026-11-04"},
+		{"stale latest", staleLatestText("2026-10-28"), "latest point 2026-10-28 is old"},
+		{"no points", noPointsText, "no points"},
+	}
+	for _, c := range cases {
+		if c.got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, c.got, c.want)
+		}
+	}
+}
+
+func TestBuildFixtures(t *testing.T) {
+	t.Parallel()
+	cases := map[string]fakeReader{
+		"page.macro_rates.v2.gap.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
+			pt(t, "2026-11-02", f64(4.1)), pt(t, "2026-11-03", f64(4.2)), pt(t, "2026-11-04", nil)}}},
+		"page.macro_rates.v2.stale.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
+			pt(t, "2026-10-27", f64(4.1)), pt(t, "2026-10-28", f64(4.2))}}},
+	}
+	for name, r := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			out, err := Build(t.Context(), r, "2026-11-04", fixedAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := os.ReadFile(fixturePath(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(decode(t, out), decode(t, b)) {
+				t.Fatalf("json = %s\nwant %s", out, b)
+			}
+		})
+	}
 }
 
 func TestBuildErrors(t *testing.T) {
