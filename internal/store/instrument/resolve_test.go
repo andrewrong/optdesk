@@ -25,6 +25,8 @@ type fakeDB struct {
 	rows   [][]any // answers of Select
 	selSQL []string
 	closed bool
+	// failTerms makes the terms insert fail.
+	failTerms bool
 }
 
 func newFake() *fakeDB { return &fakeDB{ids: map[store.Identifier]int64{}, nextID: 100} }
@@ -34,6 +36,9 @@ type fakeTx struct{ f *fakeDB }
 func (t fakeTx) Exec(_ context.Context, sql string, args ...any) error {
 	t.f.stmts = append(t.f.stmts, sql)
 	t.f.args = append(t.f.args, args)
+	if sql == insertTermsSQL && t.f.failTerms {
+		return fmt.Errorf("permission denied")
+	}
 	if sql == insertIdentifierSQL {
 		t.f.ids[store.Identifier{Scheme: args[1].(string), Value: args[2].(string)}] = args[0].(int64)
 	}
@@ -266,3 +271,119 @@ func (failDB) Select(context.Context, string, []any, func(scanner) error) error 
 	return fmt.Errorf("down")
 }
 func (failDB) Close() error { return nil }
+
+// termsStmts returns the statements of the terms savepoint, in order.
+func termsStmts(f *fakeDB) []string {
+	var out []string
+	for _, q := range f.stmts {
+		if q == savepointSQL || q == insertTermsSQL || q == releaseSQL || q == rollbackSQL {
+			out = append(out, q)
+		}
+	}
+	return out
+}
+
+func TestResolveOptionTerms(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	if _, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO}); err != nil {
+		t.Fatal(err)
+	}
+	if got := termsStmts(f); !reflect.DeepEqual(got, []string{savepointSQL, insertTermsSQL, releaseSQL}) {
+		t.Fatalf("terms statements %q", got)
+	}
+	if !reflect.DeepEqual(f.events, []string{"begin", "commit"}) {
+		t.Fatalf("events %v", f.events)
+	}
+	// the terms come after the instrument and identifier inserts, in the same transaction
+	last := f.stmts[len(f.stmts)-3:]
+	if last[0] != savepointSQL {
+		t.Fatalf("savepoint not last: %q", f.stmts)
+	}
+	for i, q := range f.stmts {
+		if q == insertTermsSQL {
+			want := []any{int64(101), "C", "450", "USD", "100", "2026-11-20"}
+			if !reflect.DeepEqual(f.args[i], want) {
+				t.Fatalf("terms args %v, want %v", f.args[i], want)
+			}
+		}
+	}
+	for _, want := range []string{"'unknown', 'unknown'", "ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING"} {
+		if !strings.Contains(insertTermsSQL, want) {
+			t.Fatalf("terms insert lacks %q", want)
+		}
+	}
+}
+
+func TestResolveTermsFailureKeepsInstrument(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	f.failTerms = true
+	id, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, goodSpec(), []store.Identifier{extraO})
+	if err != nil || id != 101 {
+		t.Fatalf("id %d, err %v", id, err)
+	}
+	if got := termsStmts(f); !reflect.DeepEqual(got, []string{savepointSQL, insertTermsSQL, rollbackSQL}) {
+		t.Fatalf("terms statements %q", got)
+	}
+	if !reflect.DeepEqual(f.events, []string{"begin", "commit"}) || f.ids[keyID] != 101 {
+		t.Fatalf("events %v, ids %v", f.events, f.ids)
+	}
+}
+
+func TestResolveNoTerms(t *testing.T) {
+	t.Parallel()
+	stock := goodSpec()
+	stock.Type = "stock"
+	cases := map[string]struct {
+		spec  store.InstrumentSpec
+		extra []store.Identifier
+		seed  bool
+	}{
+		"existing key":    {goodSpec(), []store.Identifier{extraO}, true},
+		"stock":           {stock, []store.Identifier{extraO}, false},
+		"no osi":          {goodSpec(), []store.Identifier{{Scheme: "isin", Value: "US0000000001"}}, false},
+		"no extra":        {goodSpec(), nil, false},
+		"osi unparseable": {goodSpec(), []store.Identifier{{Scheme: "osi", Value: "SPY   261120X00450000"}}, false},
+		"osi short":       {goodSpec(), []store.Identifier{{Scheme: "osi", Value: "SPY"}}, false},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := newFake()
+			if c.seed {
+				f.ids[keyID] = 7
+			}
+			id, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), keyID, c.spec, c.extra)
+			if err != nil || id == 0 {
+				t.Fatalf("id %d, err %v", id, err)
+			}
+			if got := termsStmts(f); len(got) != 0 {
+				t.Fatalf("terms statements %q", got)
+			}
+			if !c.seed && f.ids[keyID] != id {
+				t.Fatal("instrument was not created")
+			}
+		})
+	}
+}
+
+func TestResolveOsiCollision(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	f.ids[extraO] = 7 // an SPX option already holds this osi; the new key is an SPXW option with the same osi
+	_, err := (&instrumentStore{db: f}).ResolveInstrument(context.Background(), store.Identifier{Scheme: "ibkr_conid", Value: "999"},
+		goodSpec(), []store.Identifier{extraO})
+	assertPermanent(t, err)
+	if got := termsStmts(f); len(got) != 0 {
+		t.Fatalf("terms statements %q", got)
+	}
+	for _, q := range f.stmts {
+		if q == insertInstrumentSQL || q == insertIdentifierSQL {
+			t.Fatalf("write after a collision: %s", q)
+		}
+	}
+	if !reflect.DeepEqual(f.events, []string{"begin", "rollback"}) {
+		t.Fatalf("events %v", f.events)
+	}
+}
