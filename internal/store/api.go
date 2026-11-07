@@ -50,6 +50,44 @@ type QuoteSnapshotReader interface {
 	QuoteSnapshots(ctx context.Context, instrumentID int64, from, to contracts.Day) ([]contracts.QuoteSnapshot, error)
 }
 
+// Identifier is one name of an instrument. Schemes: ibkr_conid, osi, ticker_exchange, jpx_option_code, isin.
+type Identifier struct {
+	Scheme, Value string
+}
+
+// InstrumentSpec describes an instrument. Type is stock, index or option;
+// PriceIncrement and LotSize are decimal text.
+type InstrumentSpec struct {
+	Type, Name, Currency, MIC, CalendarID, Status, PriceIncrement, LotSize string
+}
+
+// Instrument is a master.instrument row with the identifiers that are valid now.
+type Instrument struct {
+	ID          int64
+	Spec        InstrumentSpec
+	Identifiers []Identifier
+}
+
+// InstrumentResolver gives the id of an instrument.
+type InstrumentResolver interface {
+	// ResolveInstrument returns the id of the instrument that key names now, creating it with spec and the
+	// identifiers key and extra when none exists. The same key always gives the same id, under concurrent calls too.
+	ResolveInstrument(ctx context.Context, key Identifier, spec InstrumentSpec, extra []Identifier) (int64, error)
+}
+
+// InstrumentReader reads instruments by id.
+type InstrumentReader interface {
+	// Instruments returns the instruments of ids ordered by id; an unknown id is absent from the answer.
+	Instruments(ctx context.Context, ids []int64) ([]Instrument, error)
+}
+
+// InstrumentStore is the resolver and the reader of master.instrument.
+type InstrumentStore interface {
+	InstrumentResolver
+	InstrumentReader
+	Close() error
+}
+
 // SessionDayStore is the Reader and the Writer of master.session_day.
 type SessionDayStore interface {
 	SessionDayReader
@@ -109,6 +147,8 @@ const (
 	DSNEnvOptionEod = "OT_PG_DSN_OPTION_EOD"
 	// DSNEnvQuoteSnapshot names the line that holds the DSN of the role ot_w_quote_snapshot.
 	DSNEnvQuoteSnapshot = "OT_PG_DSN_QUOTE_SNAPSHOT"
+	// DSNEnvMaster names the line that holds the DSN of the role ot_w_master.
+	DSNEnvMaster = "OT_PG_DSN_MASTER"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -199,6 +239,9 @@ type OpenOptionEodFunc func(ctx context.Context, dsn string) (OptionEodStore, er
 
 // OpenQuoteSnapshotFunc opens the quote snapshot store (internal/store/snapshot.OpenQuoteSnapshot).
 type OpenQuoteSnapshotFunc func(ctx context.Context, dsn string) (QuoteSnapshotStore, error)
+
+// OpenInstrumentFunc opens the instrument store (internal/store/instrument.Open).
+type OpenInstrumentFunc func(ctx context.Context, dsn string) (InstrumentStore, error)
 
 // OpenLedgerFunc opens the ops ledger (internal/store/ops.Open).
 type OpenLedgerFunc func(ctx context.Context, dsn string) (OpsLedger, error)

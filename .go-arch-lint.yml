@@ -59,6 +59,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  store/instrument:
+    in: internal/store/instrument
   store/migrate:
     in: internal/store/migrate
 deps:
@@ -174,6 +176,10 @@ deps:
       - pages/macro_rates
       - pages/macro_page
       - pages/embed
+  store/instrument:
+    mayDependOn:
+      - contracts
+      - store
   store/migrate:
     mayDependOn:
       - contracts

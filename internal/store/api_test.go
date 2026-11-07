@@ -486,3 +486,77 @@ func TestSnapshotDSNEnvNames(t *testing.T) {
 		t.Fatalf("got %q and %q", store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot)
 	}
 }
+
+// memInstrument is a fake InstrumentStore: one id per key, Instruments ordered by id.
+type memInstrument struct {
+	ids  map[store.Identifier]int64
+	rows map[int64]store.Instrument
+}
+
+func (m *memInstrument) ResolveInstrument(_ context.Context, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier) (int64, error) {
+	if id, ok := m.ids[key]; ok {
+		return id, nil
+	}
+	if m.ids == nil {
+		m.ids, m.rows = map[store.Identifier]int64{}, map[int64]store.Instrument{}
+	}
+	id := int64(len(m.ids) + 1)
+	m.ids[key] = id
+	m.rows[id] = store.Instrument{ID: id, Spec: spec, Identifiers: append([]store.Identifier{key}, extra...)}
+	return id, nil
+}
+
+func (m *memInstrument) Instruments(_ context.Context, ids []int64) ([]store.Instrument, error) {
+	var out []store.Instrument
+	for _, id := range ids {
+		if r, ok := m.rows[id]; ok {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+func (m *memInstrument) Close() error { return nil }
+
+var (
+	_ store.InstrumentStore    = &memInstrument{}
+	_ store.InstrumentResolver = &memInstrument{}
+	_ store.InstrumentReader   = &memInstrument{}
+	_ store.OpenInstrumentFunc = func(context.Context, string) (store.InstrumentStore, error) { return &memInstrument{}, nil }
+)
+
+func TestInstrumentStoreContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var s store.InstrumentStore = &memInstrument{}
+	a := store.Identifier{Scheme: "ibkr_conid", Value: "756733"}
+	b := store.Identifier{Scheme: "osi", Value: "SPY   261120C00600000"}
+	spec := store.InstrumentSpec{Type: "stock", Name: "SPY", Currency: "USD", Status: "active"}
+	id1, err := s.ResolveInstrument(ctx, a, spec, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id2, _ := s.ResolveInstrument(ctx, a, spec, []store.Identifier{{Scheme: "isin", Value: "X"}})
+	if id1 != id2 {
+		t.Fatalf("same key gave %d and %d", id1, id2)
+	}
+	idB, _ := s.ResolveInstrument(ctx, b, store.InstrumentSpec{Type: "option"}, nil)
+	if idB == id1 {
+		t.Fatalf("two keys share id %d", idB)
+	}
+	got, err := s.Instruments(ctx, []int64{idB, id1, 999})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != id1 || got[1].ID != idB || got[0].Spec.Name != "SPY" || got[0].Identifiers[0] != a {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestInstrumentDSNEnvName(t *testing.T) {
+	t.Parallel()
+	if store.DSNEnvMaster != "OT_PG_DSN_MASTER" {
+		t.Fatalf("got %q", store.DSNEnvMaster)
+	}
+}
