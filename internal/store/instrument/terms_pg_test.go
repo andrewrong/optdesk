@@ -99,6 +99,18 @@ func TestResolveWritesTermsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
+	// the writer role may run the terms insert as it is written; the resolve below swallows a refusal, this shows it
+	wc := connectAs(t, name, "ot_w_master")
+	tx, err := wc.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, insertTermsSQL, int64(1), "C", "450", "USD", "100", "2026-11-20"); err != nil {
+		t.Fatalf("terms insert as ot_w_master: %v", err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
 	spec := store.InstrumentSpec{Type: "option", Name: "SPY 20261120 C 450", Currency: "USD", MIC: "XNYS", CalendarID: "XNYS",
 		PriceIncrement: "0.01", LotSize: "100"}
 	key := store.Identifier{Scheme: "ibkr_conid", Value: "777"}

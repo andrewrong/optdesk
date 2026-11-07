@@ -28,7 +28,8 @@ RETURNING instrument_id`
 	rollbackSQL  = `ROLLBACK TO SAVEPOINT option_terms`
 
 	// insertTermsSQL writes the current terms row; exercise style and settlement type are not known to the caller.
-	insertTermsSQL = `INSERT INTO master.option_terms (instrument_id, "right", strike, strike_currency, multiplier, expiration_date, exercise_style, settlement_type, valid_from)
+	insertTermsSQL = `INSERT INTO master.option_terms
+  (instrument_id, "right", strike, strike_currency, multiplier, expiration_date, exercise_style, settlement_type, valid_from)
 VALUES ($1, $2, $3::numeric, $4, $5::numeric, $6::date, 'unknown', 'unknown', now())
 ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING`
 )
