@@ -64,7 +64,7 @@ anywhere.
    rule that the gateway on `ibkr.sock` has `market_data` is unchanged, so `ot run-once` is unaffected.
 7. The log lines are unchanged in kind: `rpc_done` and `rpc_failed` with `rpc` set to `account` and `count` (the number of rows), through the whitelist of `transport.py` (`WORDS` gains `account` and
    `multiple_accounts`). No value, tag amount, symbol or alias is logged. The `ib_async` INFO line `position: ...` carries the account id; it stays harmless only because `configure_logging` sets the `ib_async`
-   logger to WARNING and the record factory scrubs id-shaped words; tests pin both (acceptance of `pyside-account`). The scrub works on the shape of a word, so a login id of another shape would pass it; the
+   logger to WARNING, which is the defence against account ids in logs, and the scrub regex of the record factory (letters plus 5 to 9 digits) is a second net; tests pin both (acceptance of `pyside-account`). The scrub works on the shape of a word, so a login id of another shape would pass it; the
    response is built from typed fields, so only logs are at risk. The guard checks ids, not tags.
 8. Go side: a client in the existing package `internal/broker/grpcbroker`, not a method on `broker.Broker`. `DialAccount(ctx, socketPath, broker.Options) (*AccountClient, error)` with `Account(ctx)` and
    `Close()`, plain types `Account`, `AccountValue` and `Position` (a `broker.Contract`, quantity and average cost as text) declared in the package, errors and defaults as `Dial` (`CallTimeout`, `Retryable`
@@ -117,6 +117,8 @@ Files: contracts/proto/ibkr/v1/account.proto, internal/contracts/genpb/account.p
 Design: docs/design/pyside-account-b.md#decisions
 
 Depends on: none.
+
+Contracts line of its pull request: `Contracts: ibkr.v1.account (new)`; this accepted form is read from the `Contracts` step of `.github/workflows/checks.yml`, and the pull request changes `contracts/proto`, so `unchanged` would fail. The body of the design pull request stays `Contracts: unchanged`.
 
 Order: first.
 
@@ -189,8 +191,11 @@ Acceptance:
    still loads it (`cd pyside && uv run pytest tests/ibkr/test_gateways.py -n auto` passes).
 10. Every test runs under `pytest -n auto` (a temporary directory for every socket, `kit.sockdir`), a fake clock from `pyside/tests/kit/fakeclock.py` and no sleep; none connects to a
     broker. `cd pyside && uv sync --locked && uv run ruff check && uv run mypy --strict && uv run pytest -n auto` passes.
-11. No file outside the nine listed is in the diff; `pyside/pyproject.toml` and `pyside/uv.lock` are unchanged; no new source file is over 600 lines and `transport.py`, `ibgateway.py` stay under 800.
-12. The result matches the section Decisions (points 3 to 7 and 9 to 10) of docs/design/pyside-account-b.md, judged from the code and the design file.
+11. An unexpected exception inside the Account handler maps to gRPC status `INTERNAL` with a constant message and none of the exception's text: `test_account_unexpected_error_is_internal` makes the fake gateway
+    raise an exception whose text carries an id-shaped string (built at run time from two pieces) and asserts the status `INTERNAL`, a message equal to a module constant, and that neither the text nor the
+    string is in the status details or in any log record.
+12. No file outside the nine listed is in the diff; `pyside/pyproject.toml` and `pyside/uv.lock` are unchanged; no new source file is over 600 lines and `transport.py`, `ibgateway.py` stay under 800.
+13. The result matches the section Decisions (points 3 to 7 and 9 to 10) of docs/design/pyside-account-b.md, judged from the code and the design file.
 
 ### go-account-client
 
@@ -241,6 +246,7 @@ Acceptance:
    refused, that nothing is subscribed beyond a call, that the four ids 61 to 64 are the only additions to the allowlist and orders stay refused, and that the file with gateway B stays on the owner's machine.
 3. The same section tells the owner how a refused multi-account login shows and how to recover: the log line carries the word `multiple_accounts` (no count and no id), the Go caller sees a `Permanent`
    error while the health URL still says connected, and the recovery is a separate login for gateway B or a later design that names one account by an alias held on the owner's machine.
+   The owner reports what the live check of gateway B lists (one account or several); several accounts mean a later design for selecting one, whose selector is an `.env` secret, never TOML or code.
 4. `grep -c '[A-Za-z]\{1,\}[0-9]\{5,9\}' docs/deploy/pyside.md` prints the same count as on origin/main, and the file contains no port number, host address or account id.
 5. No file outside `docs/deploy/pyside.md` is in the diff.
 6. The result matches the section Decisions (points 4, 6 and 10) of docs/design/pyside-account-b.md, judged from the file and the design file.
@@ -276,3 +282,4 @@ Answer of the adversarial pass: `pyside-account-b.adversarial.md` in the dispatc
 - 4 Lock-in: adopted; recorded in `## Left out`.
 - 5 False claims: adopted; `build_server` gets `spec=None` (decision 6), the broker.md version-line claim is dropped, and the pyside entry names the edit of `test_guard.py::test_unknown_id_refused`.
 - 6 Slips: adopted; `pyside-runbook-account` has `Depends on: none` with the order in `Order:`, `AccountServicer` gets the alias and `collect` from `spec`, and the cancel assertion is in the real-client test.
+- Advisor: the conditions of the advisor were applied (an `INTERNAL` acceptance for an unexpected exception in `pyside-account`, the log defence stated in decision 7, the Contracts line of `account-proto`) and the runbook note on the live check of gateway B.
