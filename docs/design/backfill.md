@@ -25,10 +25,11 @@ by `present`. The series writer inserts with `ON CONFLICT DO NOTHING`, so a repe
 | issue | module |
 |---|---|
 | runner-backfill-interface | runner |
-| runner-backfill | runner |
-| ot-backfill | ot |
+| backfill | runner and ot |
 
-Every entry lies in one module. No issue edits `go.mod`, `go.sum`, `package.json` or `pnpm-lock.yaml`.
+The interface entry lies in one module. The entry `backfill` lies in two, `runner` and `ot`: this design's cut licenses it,
+because the real constructor `reconcile.NewBackfillerWithRule` is named in `newDeps` of `cmd/ot` and neither half can merge
+without the other (a sibling `Depends on` is not used; the entry after the interface needs only merged work). No issue edits `go.mod`, `go.sum`, `package.json` or `pnpm-lock.yaml`.
 
 ## Interface
 
@@ -68,15 +69,19 @@ beside `deps.newRunner`.
 
 ### Behaviour (owner: runner, `reconcile.Backfill`)
 
-1. **Refusals, before any write.** The day is read against the cursor: an empty cursor, or a day after the cursor day, fails
+1. **Refusals, before any write.** The day is read against the cursor: an empty cursor, or a day after the cursor day,
    returns `Refused == runner.RefusedAheadOfCursor`. A day at or before the cursor whose stored plan is empty (`Expected`
    returns no keys) returns `Refused == runner.RefusedNoPlan`. Both return a nil error and write nothing.
    The lower bound is therefore the first day the runner ever planned: a non-session day and a day before collection began
    are both refused, and there is no constant to maintain. A day equal to the cursor day is allowed (that is the DGS10 case).
 2. **Keys.** The keys are the stored `Expected` keys of the day (what the day expected when it was reconciled), filtered by
-   `datasets`. The plan is not recomputed and `PutExpected` is not called, so a changed plan hash does not rewrite history.
-   All keys are validated before any key runs: a `datasets` id with no key on the day, or a key whose job is not in the
-   registry, is an error that names the dataset id, and then nothing has run and nothing is written.
+   `datasets`. `PutExpected` is not called and the stored plan hash is not compared, so a changed plan does not rewrite history.
+   **Key to job:** the existing lookup of `reconcile.go`, the method `plan(ctx, day)`, which calls `Plan(ctx, day)` of every
+   registered job and returns `p.job`, the map from `contracts.ExpectedKey` to job. Backfill calls it only to read that map;
+   it never stores the plan or its hash. A job's id is not a dataset id: the map is the only relation, and `contracts.Job`
+   is not extended. All keys are validated before any key runs: a `datasets` id with no stored key on the day, or a stored key
+   that is absent from the map (no registered job returns it today, for example a series dropped from the manifest), is an
+   error that names the dataset id; then nothing has run and nothing is written.
 3. **Which keys run.** Status `present`: not run, listed in `AlreadyPresent`. Status `no_value` or no status: run once in
    this call, whatever the earlier runs and the two-run cap say. Finality of an earlier attempt is overridden for these
    keys only and only by this explicit command: `Reconcile` is unchanged and still treats `no_value` as final.
@@ -108,9 +113,8 @@ list mode.
 ## Issues
 
 Items under `Checked by CI` are decided by the workflows of the head commit; every other item is a fact read from the diff,
-with an offline grep or a named test. Every issue edits the files of one module only (`docs/design/modules.md`). `runner-backfill`
-needs only the interface. `ot-backfill` is ordered after `runner-backfill` (its `Depends on` line), because the real wiring in
-`newDeps` names the constructor that issue creates; the three entries are kept so that each edits one module.
+with an offline grep or a named test. Every issue edits the files of one module, except the one cross-module entry `backfill`, which this design licenses
+(`## Modules`). Both entries build from merged work and the interface alone; neither needs a sibling's output.
 
 ### runner-backfill-interface (interface)
 
@@ -119,20 +123,21 @@ The runner declares the backfill contract
   Files: internal/runner/api.go, internal/runner/api_test.go
   Design: docs/design/backfill.md#interface
   Acceptance:
-  1. `api.go` holds the five declarations with doc comments that state refusals, that the cursor is not moved and that a `present` key is not run; no `errors.New`, no `var` initialiser, no logic; `Reconciler`, `NewFunc`, `WindowRule` and `NewWithRuleFunc` are unchanged (`git diff` shows only added lines in `api.go`).
-  2. `api_test.go` tests the contract from both sides: a fake `Backfiller` that returns a `BackfillResult` and one of the two errors, and a caller that reads the result and tests `errors.Is` against both variables.
+  1. `api.go` holds exactly these declarations: the types `Backfiller`, `BackfillResult` and `BackfillRefusal`, the constants `RefusedAheadOfCursor` and `RefusedNoPlan`, and the func type `NewBackfillerWithRuleFunc`, with doc comments that state refusals, that the cursor is not moved and that a `present` key is not run; no `errors.New`, no `var` initialiser, no logic; `Reconciler`, `NewFunc`, `WindowRule` and `NewWithRuleFunc` are unchanged (`git diff` shows only added lines in `api.go`).
+  2. `api_test.go` tests the contract from both sides: a fake `Backfiller` that returns a `BackfillResult` with `Refused` set to `RefusedAheadOfCursor` or `RefusedNoPlan` and a nil error, and a caller that branches on `Refused` (no `errors.Is`, no error variable).
   3. `go build ./...` has no new dependency (`git diff -- go.mod go.sum` is empty); no file outside the two is in the diff.
   4. Every test added calls `t.Parallel()` and none sleeps.
   Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint); the design verdict on the pull request (an interface change).
-  Depends on: none (merged work only). Order: before `runner-backfill` and `ot-backfill`.
+  Depends on: none (merged work only). Order: before `backfill`.
   Size: S
 
-### runner-backfill
+### backfill (runner and ot)
 
-The reconciler backfills a day at or behind the cursor
-  Goal: `reconcile.NewBackfillerWithRule` returns a `runner.Backfiller` that follows `## Interface`, Behaviour 1 to 7.
-  Files: internal/runner/reconcile/backfill.go, internal/runner/reconcile/backfill_test.go, docs/contracts/runner.md
-  Design: docs/design/backfill.md#behaviour-owner-runner-reconcilebackfill
+The runner backfills a day at or behind the cursor and `ot backfill` wires it
+  Goal: `reconcile.NewBackfillerWithRule` returns a `runner.Backfiller` that follows `## Interface`, Behaviour 1 to 7, and `ot backfill --day YYYY-MM-DD [--dataset ID]` opens the stores, wires the `fred_series` job as `run-once` does and calls it.
+  Files: internal/runner/reconcile/backfill.go, internal/runner/reconcile/backfill_test.go, docs/contracts/runner.md, cmd/ot/backfill.go, cmd/ot/backfill_test.go, cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/main_test.go, docs/contracts/ot.md
+  Design: docs/design/backfill.md#behaviour-owner-runner-reconcilebackfill and docs/design/backfill.md#cli-form-owner-ot-documented-in-docscontractsotmd
+  Cross-module: this one entry lies in two modules, runner and ot, licensed by this design (see `## Modules`): the real wiring in `newDeps` names the constructor, so a split would leave `ot` unbuildable until the runner half merged.
   Acceptance:
   1. `backfill.go` holds `var _ runner.NewBackfillerWithRuleFunc = NewBackfillerWithRule`, reuses the existing `run` and `markCrashed` methods and adds the helper `backfillKey` that classifies Filled, Absent and Missing by reading `Present` after `run`; `reconcile.go` is not edited (`git diff --stat` lists none of its lines), so `Reconcile` is unchanged. The only size rule is AGENTS.md: a new file under 600 lines.
   2. `TestBackfillRefusals` (table, fake ledger and fake calendar of `fakes_test.go` style): empty cursor and a day after the cursor give a nil error and `Refused == runner.RefusedAheadOfCursor`; a day at or before the cursor with no stored plan gives `runner.RefusedNoPlan`; in all cases the fake ledger recorded no `RecordRun`, `MarkPresent`, `SetCursor`, `PutExpected` or `PutWindow`.
@@ -140,32 +145,21 @@ The reconciler backfills a day at or behind the cursor
   4. `TestBackfillPresentIsNotRun`: a `present` key is in `AlreadyPresent`, the job's `Run` is never called, no run row is added.
   5. `TestBackfillIdempotent`: two calls in a row; the second runs no job and returns the key in `AlreadyPresent`; a key whose job returns an empty answer after the window close stays `no_value`, is listed in `Absent`, and each call adds one run row.
   6. `TestBackfillJobError`: a job error leaves the key unmarked (or `no_value` when it was), lists it in `Missing`, and records the error code in the run row; a job `NoValue` error lists the key in `Absent`.
-  7. `TestBackfillDatasetFilter`: with `datasets` set only those keys run; an id with no key on the day is an error naming it; a key without a job is an error naming its dataset id; in both cases no job ran even for the keys that came before the bad one (validate all, then run).
+  7. `TestBackfillDatasetFilter`: with `datasets` set only those keys run; an id with no key on the day is an error naming it; a stored key that today's `Plan` does not return is an error naming its dataset id (the lookup of Behaviour 2); in both cases no job `Run` was called, even for keys that came before the bad one (validate all, then run).
   8. `TestBackfillLease`: the lease is acquired once and released on every path (success, refusal, job error); a fake ledger whose `Acquire` fails makes `Backfill` return that error and run nothing.
   9. `TestBackfillLiveRunning`: a running run with a live lease gives `Missing` and no new run row; an expired one is closed `crashed` and the key is run.
   10. `docs/contracts/runner.md` gains a short paragraph for `Backfill` that says the cursor, plans and windows are untouched; no other file is in the diff.
   11. Every test uses the fake clock of the kit (no sleep), `t.Parallel()`, no database, no network.
-  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `runner/reconcile`; the file stays under 600 lines).
-  Depends on: runner-backfill-interface merged (it implements the declared names; it needs nothing from `ot-backfill`).
-  Size: M
-
-### ot-backfill
-
-`ot backfill` wires the runner's backfill
-  Goal: `ot backfill --day YYYY-MM-DD [--dataset ID]` opens the stores, wires the `fred_series` job as `run-once` does and calls `Backfill`.
-  Files: cmd/ot/backfill.go, cmd/ot/backfill_test.go, cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/main_test.go, docs/contracts/ot.md
-  Design: docs/design/backfill.md#cli-form-owner-ot-documented-in-docscontractsotmd
-  Acceptance:
-  1. `ot backfill` is registered in `backfill.go` (`register("backfill", ...)`); `deps` has `newBackfiller runner.NewBackfillerWithRuleFunc`, set to `reconcile.NewBackfillerWithRule` in `newDeps`; the test deps of `main_test.go` get a fake. `runonce.go` is edited only to share the store and job wiring (a helper both commands call) and to add the hint to its cursor error; `run-once` behaviour is otherwise unchanged and `runonce_test.go` changes only the asserted text of the cursor error (the hint).
-  2. `TestBackfillFlags` (table): no `--day` is an error naming the flag; `--day 2026-13-40` is an error; the demo profile is refused with the text `backfill needs a real profile; the demo profile opens no store`; none of these opens a store (the fake `openLedger` is not called).
-  3. `TestBackfillCallsRunner`: with fakes, `Backfill` is called once with the parsed day and the `--dataset` value (a nil slice without the flag); the log line is `backfill <day> done` with `status=ok`, standard output is empty, and every opened store is closed (fake `Close` counters) on success, on a runner error and on a refusal.
-  4. `TestBackfillErrors`: a fake `Backfiller` returning `Refused` `RefusedAheadOfCursor` or `RefusedNoPlan` (nil error) gives exit 1 with a message that names the day and says `run-once` for the first; a result with a non-empty `Missing` gives exit 1 and names the count; a result with only `Absent` gives exit 0.
-  5. No error text contains a DSN, a key value or a pgx message (the test greps the captured stderr for the fake values).
-  6. `docs/contracts/ot.md` lists `backfill` (the subcommand count in its first paragraph, the `--day` table row for backfill as required, `--dataset`, the log line and exit codes) and adds `run-once` pointing at it; no other file is in the diff.
-  7. Every test uses `t.Parallel()` and `t.TempDir()`, none sleeps, none connects to a database.
-  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint component `ot`).
-  Depends on: runner-backfill (the issue number is written when it exists; crew's queue honours it). `newDeps` names `reconcile.NewBackfillerWithRule`, which `runner-backfill` creates, so this issue cannot build before it merges; the tests still use a fake `Backfiller`.
-  Size: M
+  12. `ot backfill` is registered in `backfill.go` (`register("backfill", ...)`); `deps` has `newBackfiller runner.NewBackfillerWithRuleFunc`, set to `reconcile.NewBackfillerWithRule` in `newDeps` (the same issue creates the constructor, so the real value compiles at this merge); the test deps of `main_test.go` get a fake. `runonce.go` is edited only to share the store and job wiring (a helper both commands call) and to add the hint to its cursor error; `run-once` behaviour is otherwise unchanged and `runonce_test.go` changes only the asserted text of the cursor error (the hint).
+  13. `TestBackfillFlags` (table): no `--day` is an error naming the flag; `--day 2026-13-40` is an error; the demo profile is refused with the text `backfill needs a real profile; the demo profile opens no store`; none of these opens a store (the fake `openLedger` is not called).
+  14. `TestBackfillCallsRunner`: with fakes, `Backfill` is called once with the parsed day and the `--dataset` value (a nil slice without the flag); the log line is `backfill <day> done` with `status=ok`, standard output is empty, and every opened store is closed (fake `Close` counters) on success, on a runner error and on a refusal.
+  15. `TestBackfillErrors`: a fake `Backfiller` returning `Refused` `RefusedAheadOfCursor` or `RefusedNoPlan` (nil error) gives exit 1 with a message that names the day and says `run-once` for the first; a result with a non-empty `Missing` gives exit 1 and names the count; a result with only `Absent` gives exit 0.
+  16. No error text contains a DSN, a key value or a pgx message (the test greps the captured stderr for the fake values).
+  17. `docs/contracts/ot.md` lists `backfill` (the subcommand count in its first paragraph, the `--day` table row for backfill as required, `--dataset`, the log line and exit codes) and adds `run-once` pointing at it; no other file is in the diff.
+  18. Every test uses `t.Parallel()` and `t.TempDir()`, none sleeps, none connects to a database.
+  Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint components `runner/reconcile` and `ot`; `backfill.go` stays under 600 lines).
+  Depends on: runner-backfill-interface merged (it implements the declared names).
+  Size: L
 
 ## Left out
 
@@ -184,7 +178,7 @@ The reconciler backfills a day at or behind the cursor
 - Backfill of days before the first recorded plan (collection before the runner existed). It wants a plan for a day the
   ledger never saw, which is a separate decision about `PutExpected` for the past.
 - Changing `Reconcile` so a later `run-once` heals a `no_value` itself; #147 covers new days.
-- Backfilling a day whose stored plan differs from today's plan (new series added later): only the stored keys are run.
+- Backfilling a day whose stored plan differs from today's plan (new series added later): only the stored keys are run, and a stored key that today's `Plan` no longer returns is an error (Behaviour 2).
 - Datasets other than `fred_series`: `ot` wires one job today (as `run-once`); a second job is wired in both commands by
   the issue that adds it.
 
@@ -192,9 +186,10 @@ The reconciler backfills a day at or behind the cursor
 
 1. Gap (validate all keys first, own demo text, no list mode): adopted for the first two (Behaviour 2, Texts); list mode not adopted, the owner reads `ops.capture_present` (Left out of scope, said in Texts).
 2. Writer conflict key may swallow the recovered value: stated, not fixed here: it belongs to jobs/store, named in Left out; the runner cannot read content, so `present` stays on the job's `Usable`.
-3. Fold the interface issue into runner-backfill: not adopted, AGENTS.md lands the interface issue first; the split stays.
+3. Fold the interface issue into the next entry: not adopted, AGENTS.md lands the interface issue first; the split stays.
 4. Lock-in (api.go initialisers): adopted, refusals are a `BackfillRefusal` field, no `errors.New` in `api.go`; exit-code and `ReasonCode` `backfill` vocabulary accepted and written in the Interface.
-5. ot-backfill needs runner-backfill: adopted, `Depends on: runner-backfill` stated under Issues; the claim of independence is dropped.
+5. ot-backfill needs runner-backfill: first adopted as a `Depends on`, then replaced after the design session of abe0d44 by one cross-module entry (see 7).
 6. Slip causes: adopted `runonce_test.go` in Files, the 200-line cap dropped (600-line rule only), and the Absent/Missing helper `backfillKey` named with `reconcile.go` unedited.
+7. Design session of abe0d44 (crewd, verdict changes): answered. The two issues after the interface became one cross-module entry licensed under `## Modules`; Interface acceptance 2 now tests `Refused`; the key-to-job lookup is named (`plan`); the declarations are listed by name; the broken sentence in Behaviour 1 is fixed.
 
 Full answer: scratchpad adversarial-backfill.md of the dispatcher window (2026-11-07)
