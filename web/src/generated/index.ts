@@ -13,3 +13,4 @@ export type { HeldCompaniesSummary } from './held_companies_summary.v2';
 export type { MacroSummary } from './macro_summary.v2';
 export type { MacroRates } from './macro_rates.v2';
 export type { ReportPage } from './report_page.v2';
+export type { HomePage } from './home_page.v2';
