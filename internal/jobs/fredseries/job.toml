@@ -5,5 +5,5 @@ series = ["DGS10"]
 
 [window]
 rule = "after_close"
-lateness_hours = 24
+lateness_hours = 96
 calendar = "XNYS"
