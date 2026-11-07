@@ -42,6 +42,20 @@ func ensureOwnerRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 	}
 }
 
+// createTimescale creates the Timescale extension in database db through an admin connection to it, as the
+// migrations of the writer tables need it and ot_owner is not a superuser.
+func createTimescale(ctx context.Context, t *testing.T, db string) {
+	t.Helper()
+	c, err := pgx.Connect(ctx, adminDSN(t, db))
+	if err != nil {
+		t.Fatalf("connect admin to %s: %v", db, err)
+	}
+	defer func() { _ = c.Close(ctx) }()
+	if _, err := c.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS timescaledb`); err != nil {
+		t.Fatalf("create extension timescaledb in %s: %v", db, err)
+	}
+}
+
 func randHex(t *testing.T) string {
 	t.Helper()
 	b := make([]byte, 6)
@@ -77,6 +91,7 @@ func newScratch(t *testing.T, member bool) scratch {
 			t.Fatal(err)
 		}
 	}
+	createTimescale(ctx, t, s.db)
 	if member {
 		if _, err := admin.Exec(ctx, `GRANT ot_owner TO "`+s.login+`"`); err != nil {
 			t.Fatal(err)
