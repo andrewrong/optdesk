@@ -52,6 +52,9 @@ func NewWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []
 // Reconcile handles every session day after the cursor up to day, in order. It stops at
 // the first day that is not fully reconciled, so the cursor holds on a gap.
 func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) error {
+	if err := checkCalendars(r.jobs, r.rule); err != nil {
+		return err
+	}
 	lease, err := r.ledger.Acquire(ctx, owner, leaseTTL)
 	if err != nil {
 		return err
@@ -216,7 +219,7 @@ func (r *reconciler) putWindows(ctx context.Context, p plan, s clock.Session) (m
 			continue
 		}
 		seen[k.DatasetID] = true
-		w, ok := windowFor(r.rule, k.DatasetID, s)
+		w, ok := windowFor(ruleOf(p.job[k], r.rule), k.DatasetID, s)
 		if !ok {
 			continue
 		}
