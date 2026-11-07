@@ -1,4 +1,4 @@
-// The 期权概览 card of the home page (options_summary v2). Every visible string is a `text`, `label` or `caption`
+// The 期权概览 card of the home page (options_summary v3). Every visible string is a `text`, `label` or `caption`
 // field of the payload; this file formats and computes nothing. A Gap figure shows its text, never a zero.
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'
@@ -7,8 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/options_summary'
 import { CardNotes } from './CardNotes'
-import { Info } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { StaleNotice } from './StaleNotice'
 
 type Tiles = Payload['card']['tiles']
 const TILE_KEYS = [
@@ -21,19 +20,19 @@ const TILE_KEYS = [
 type Tile = Tiles[(typeof TILE_KEYS)[number]]
 
 function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
-  const gap = 'reason' in tile.figure
+  const figure = tile.figure
   return (
     <div className="space-y-1" data-tile={tileKey}>
       <div className="text-xs text-muted-foreground" data-tile-label>
         {tile.label}
       </div>
-      {gap ? (
+      {figure.kind === 'gap' ? (
         <Badge variant="secondary" className="h-auto whitespace-normal text-left" data-tile-gap>
-          {tile.figure.text}
+          {figure.text}
         </Badge>
       ) : (
         <div className="text-2xl font-semibold" data-tile-figure>
-          {tile.figure.text}
+          {figure.text}
         </div>
       )}
       {tile.caption ? (
@@ -54,7 +53,7 @@ export function OptionsSummaryCard({ payload }: { payload: Payload }) {
       {
         name: card.premium_series_text,
         points: card.premium_series_6m.map((point) =>
-          'reason' in point.premium
+          point.premium.kind === 'gap'
             ? { value: null, text: point.premium.text }
             : { value: point.premium.value, text: point.premium.text },
         ),
@@ -68,10 +67,7 @@ export function OptionsSummaryCard({ payload }: { payload: Payload }) {
         <CardDescription>{card.say ?? card.subtitle}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Alert data-stale-label>
-          <Info aria-hidden />
-          <AlertDescription>{card.stale.text}</AlertDescription>
-        </Alert>
+        <StaleNotice text={card.stale.text} isStale={card.stale.is_stale} />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-tiles>
           {TILE_KEYS.map((key) => (
             <TileBlock key={key} tileKey={key} tile={card.tiles[key]} />
