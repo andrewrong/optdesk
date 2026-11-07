@@ -66,14 +66,13 @@ func TestGeneratedTypes(t *testing.T) {
 	}
 }
 
-// TestGeneratedV3Types reads each v3 file of the directory whose schema is written here (not carried): the banner,
-// the exported top-level name, every property name, const and enum value of the schema, and no null. It does not
-// regenerate (no node, no network).
-func TestGeneratedV3Types(t *testing.T) {
-	t.Parallel()
+type v3Pair struct{ schema, file, name string }
+
+// v3Pairs lists the *.v3.ts files of the directory whose schema is not carried, with the schema title.
+func v3Pairs(t *testing.T) []v3Pair {
+	t.Helper()
 	manifest := readManifest(t)
-	type pair struct{ schema, file, name string }
-	var pairs []pair
+	var pairs []v3Pair
 	for _, f := range generatedTypeFiles(t) {
 		schema := "page." + strings.TrimSuffix(f, ".ts") + ".json"
 		if !strings.HasSuffix(f, ".v3.ts") {
@@ -83,8 +82,17 @@ func TestGeneratedV3Types(t *testing.T) {
 			continue
 		}
 		title, _ := readRaw(t, schemasDir, schema)["title"].(string)
-		pairs = append(pairs, pair{schema, f, title})
+		pairs = append(pairs, v3Pair{schema, f, title})
 	}
+	return pairs
+}
+
+// TestGeneratedV3Types reads each v3 file of the directory whose schema is written here (not carried): the banner,
+// the exported top-level name, every property name, const and enum value of the schema, and no null. It does not
+// regenerate (no node, no network).
+func TestGeneratedV3Types(t *testing.T) {
+	t.Parallel()
+	pairs := v3Pairs(t)
 	nullWord := regexp.MustCompile(`\bnull\b`)
 	for _, p := range pairs {
 		t.Run(p.file, func(t *testing.T) {
