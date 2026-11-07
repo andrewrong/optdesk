@@ -119,6 +119,12 @@ describe('option data page', () => {
     expect(host.querySelector('[data-underlying-links]')).toBeNull()
   })
 
+  it('validate rejects a non-string href', () => {
+    const bad = fixture('choices')
+    bad.underlyings[0].href = 123
+    expect(validateOptionDataPage(bad).ok).toBe(false)
+  })
+
   it('validate still accepts ok and choices', () => {
     expect(validateOptionDataPage(fixture('ok')).ok).toBe(true)
     expect(validateOptionDataPage(fixture('choices')).ok).toBe(true)
