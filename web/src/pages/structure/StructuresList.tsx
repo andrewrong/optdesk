@@ -4,7 +4,8 @@ import { CalendarClock, Info } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/types/structures_list'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/structures_list'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 export { validate as validateStructuresList } from '@/types/structures_list'
 export type { Payload as StructuresListPayload } from '@/types/structures_list'
@@ -73,4 +74,9 @@ export function StructuresList({ payload }: { payload: Payload }) {
       ) : null}
     </div>
   )
+}
+
+export const registration = {
+  schema: 'structures_list',
+  page: page<Payload>(validate, StructuresList),
 }

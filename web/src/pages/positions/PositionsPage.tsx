@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable } from '@/components/data-table/data-table'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
-import type { Payload } from '@/types/positions_page'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/positions_page'
 
 export { validate as validatePositionsPage } from '@/types/positions_page'
 export type { Payload as PositionsPagePayload } from '@/types/positions_page'
@@ -68,4 +69,9 @@ export function PositionsPage({ payload }: { payload: Payload }) {
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
     </div>
   )
+}
+
+export const registration = {
+  schema: 'positions_page',
+  page: page<Payload>(validate, PositionsPage),
 }

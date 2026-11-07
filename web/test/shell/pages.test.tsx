@@ -92,6 +92,29 @@ describe('discoverCards', () => {
     expect(found.alpha_summary).toBe(card)
   })
 
+  it('finds a registration under ../pages/x/view.tsx and throws when a schema is named twice', () => {
+    const registration = { schema: 'x_page', page: card }
+
+    const found = discoverCards({ '../pages/x/view.tsx': { registration } })
+    expect(found.x_page).toBe(card)
+    expect(() =>
+      discoverCards({
+        '../pages/x/view.tsx': { registration },
+        '../pages/y/view.tsx': { registration },
+      }),
+    ).toThrow(/Duplicate page schema "x_page"/)
+  })
+
+  it('registers every page file by its glob: the ten pages and the five cards are in the registry', () => {
+    for (const schema of [
+      'macro_page', 'household_page', 'companies_page', 'advice_page', 'macro_summary',
+      'full_scan', 'option_page', 'tracking', 'positions_page', 'structures_list',
+      'option_data_page', 'options_summary', 'market_summary',
+    ]) {
+      expect(pages[schema], schema).toBeDefined()
+    }
+  })
+
   it('throws on a duplicate schema, among the modules or against a taken one', () => {
     const registration = { schema: 'alpha_summary', page: card }
 

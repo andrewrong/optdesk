@@ -5,7 +5,8 @@ import { DataTable, type Cell, type Column } from '@/components/data-table/data-
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Payload } from '@/types/full_scan'
+import { page } from '@/shell/page'
+import { validate, type Payload } from '@/types/full_scan'
 import { CardNotes } from '@/pages/home/CardNotes'
 import { StaleAlert } from '@/pages/home/StaleAlert'
 
@@ -74,4 +75,9 @@ export function FullScanPage({ payload }: { payload: Payload }) {
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
     </div>
   )
+}
+
+export const registration = {
+  schema: 'full_scan',
+  page: page<Payload>(validate, FullScanPage),
 }
