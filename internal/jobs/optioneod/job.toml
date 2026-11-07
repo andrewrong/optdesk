@@ -1,0 +1,27 @@
+# Manifest of the option_eod job. Values of the underlying are synthetic.
+version = 1
+id = "option_eod"
+zone = "America/New_York"
+max_expiries = 3
+strike_band = 0.10
+max_strikes_per_side = 8
+chunk = 50
+budget_minutes = 8
+freeze_after = "1615"
+option_price_increment = "0.01"
+
+[window]
+rule = "after_close"
+lateness_hours = 5
+calendar = "XNYS"
+
+[[underlying]]
+symbol = "TEST"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 1000001
+mic = "XNYS"
+calendar_id = "XNYS"
+price_increment = "0.01"
+lot_size = "1"
