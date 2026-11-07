@@ -37,7 +37,7 @@ func TestCommonV2Defs(t *testing.T) {
 		{
 			"stale label with stale_after", "StaleLabel",
 			`{"data_time":` + at + `,"text":"old","is_stale":false}`,
-			`{"data_time":` + at + `,"stale_after":` + at + `,"text":"old"}`,
+			`{"data_time":` + at + `,"stale_after":` + at + `,"text":"old","is_stale":false}`,
 		},
 		{
 			"stale label long text", "StaleLabel",
@@ -88,5 +88,18 @@ func TestCommonV2Defs(t *testing.T) {
 		if !covered[n] {
 			t.Errorf("def %s has no row", n)
 		}
+	}
+}
+
+func TestStaleLabelRejectsStaleAfter(t *testing.T) {
+	t.Parallel()
+	s := compileURL(t, schemasDir, schemaHost+"common.v2.json#/$defs/StaleLabel")
+	inst, err := jsonschema.UnmarshalJSON(strings.NewReader(
+		`{"data_time":"2026-01-02T03:04:05Z","stale_after":"2026-01-02T03:04:05Z","text":"old","is_stale":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Validate(inst) == nil {
+		t.Fatal("a StaleLabel with stale_after is valid")
 	}
 }
