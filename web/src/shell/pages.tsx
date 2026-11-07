@@ -1,13 +1,8 @@
-import {
-  OptionDataPage,
-  validateOptionDataPage,
-  type OptionDataPagePayload,
-} from '@/pages/optiondata/OptionDataPage'
-import { page, type Page } from '@/shell/page'
+import { type Page } from '@/shell/page'
 
 // The page registry of the shell (ADR 0034): schema name -> the generated validator and the component.
 // A file `pages/<dir>/*.tsx` that exports `registration = { schema, page: page(validate, View) }` is found by one
-// Vite glob import and needs no line here (issue #1155); the entries below are the ones that stay explicit.
+// Vite glob import and needs no line here (issue #1155); no page is registered by hand in this file.
 
 export interface CardRegistration {
   schema: string
@@ -32,11 +27,6 @@ export function discoverCards(
   return Object.fromEntries(found)
 }
 
-const explicit: Record<string, Page> = {
-  option_data_page: page<OptionDataPagePayload>(validateOptionDataPage, OptionDataPage),
-}
-
-export const pages: Record<string, Page> = {
-  ...explicit,
-  ...discoverCards(import.meta.glob('../pages/*/*.tsx', { eager: true }), explicit),
-}
+export const pages: Record<string, Page> = discoverCards(
+  import.meta.glob('../pages/*/*.tsx', { eager: true }),
+)
