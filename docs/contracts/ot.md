@@ -6,7 +6,7 @@
 
 The subcommands:
 
-- `ot run-once [--day DAY]`: opens the stores, wires the `fred_series` job and reconciles the day (`Reconcile`). Real profile only.
+- `ot run-once [--day DAY]`: opens the stores, wires the `fred_series` job and reconciles the day (`Reconcile`). Real profile only. A day at or before the day of the ledger cursor is an error (exit 1) that names both days and logs no `status=ok`: `Reconcile` walks only days after the cursor, so there is nothing to reconcile.
 - `ot page [--day DAY] [--out FILE]`: builds the macro rates page once and writes its bytes.
 - `ot serve [--day DAY] [--addr ADDR]`: serves the macro rates page over HTTP until interrupted.
 - `ot setup pg`: sets up the PostgreSQL roles through `store.SetupFunc`, under the administrative DSN.
@@ -76,7 +76,7 @@ Row rules, checked for every file before anything is written:
 - `ot version` writes `ot dev (profile demo)` to standard output: the format is `ot <version> (profile <profile>)` and a newline; the version is `dev` unless set at build time with `-ldflags "-X main.version=..."`; the profile is `demo` or `real`.
 - `ot page` writes the page bytes the builder returned to standard output, or to the file of `--out` (mode 0644).
 - `ot serve` listens on `--addr` and logs `serve listening`. It builds the page per request: the view model is built anew for each request, with the day of `--day` or else today in the market zone at that request. When the build fails it answers 500 with the fixed text `internal error`; no error text reaches the client. A failed listen is an error that names the address. On interrupt it shuts down with a 5 second grace.
-- `ot run-once`, `ot setup pg`, `ot migrate` and `ot calendar load` write nothing to standard output; they log one line with `status=ok` on success.
+- `ot run-once`, `ot setup pg`, `ot migrate` and `ot calendar load` write nothing to standard output; they log one line with `status=ok` on success (`ot run-once` only when `Reconcile` ran and returned nil).
 - Error texts of `ot migrate` and `ot setup pg` withhold the underlying error, because it may hold `OT_PG_ADMIN_DSN`: the text says the error text is withheld.
 - The error texts of the open and load steps of the calendar loader keep that fixed text and say it is withheld because it may hold `OT_PG_DSN_LOADER`.
 - An error at the command boundary never wraps a pgx error. This holds for every command that takes a DSN (`calendar`, `migrate`, `setup`, `page`, `run-once`, `serve`): the error is a new text of fixed wording that names a stage and a line, never the text of the connection error. The calendar file errors name the path, and the row errors the row index and the rule, never a value.
