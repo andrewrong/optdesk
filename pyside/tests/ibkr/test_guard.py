@@ -17,7 +17,7 @@ ALLOWED_IDS = (1, 2, 9, 20, 25, 49, 59, 71, 78)
 
 
 class _Conn:
-    """Stands in for the socket connection and records every frame."""
+    """Stands in for the broker connection and records every frame."""
 
     def __init__(self) -> None:
         self.frames: list[bytes] = []
