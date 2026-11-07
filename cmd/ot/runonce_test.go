@@ -27,7 +27,9 @@ type fakeSD struct {
 }
 type fakeLedger struct {
 	store.OpsLedger
-	n *atomic.Int32
+	n         *atomic.Int32
+	cursorDay contracts.Day
+	cursorErr error
 }
 type fakeSeries struct {
 	store.SeriesStore
@@ -36,6 +38,9 @@ type fakeSeries struct {
 
 func (f fakeSD) Close() error     { f.n.Add(1); return nil }
 func (f fakeLedger) Close() error { f.n.Add(1); return nil }
+func (f fakeLedger) Cursor(context.Context) (store.Cursor, error) {
+	return store.Cursor{Day: f.cursorDay}, f.cursorErr
+}
 func (f fakeSeries) Close() error { f.n.Add(1); return nil }
 
 type fakeJob struct{ contracts.Job }
@@ -228,5 +233,71 @@ func TestRunOnceZeroRule(t *testing.T) {
 	}
 	if rule != (runner.WindowRule{}) || got != "2026-03-04" {
 		t.Fatalf("rule %+v day %q", rule, got)
+	}
+}
+
+// withCursor makes the ledger the app opens report cursor day and error.
+func withCursor(a *app, opened, closed *atomic.Int32, day contracts.Day, err error) {
+	a.deps.openLedger = func(context.Context, string) (store.OpsLedger, error) {
+		opened.Add(1)
+		return fakeLedger{n: closed, cursorDay: day, cursorErr: err}, nil
+	}
+}
+
+func TestRunOnceDayBehindCursor(t *testing.T) {
+	t.Parallel()
+	for _, day := range []string{"2026-03-03", "2026-03-04"} {
+		a, errb := testApp(t, fullEnv)
+		var opened, closed atomic.Int32
+		var got contracts.Day
+		runOnceFakes(a, &opened, &closed, &got)
+		withCursor(a, &opened, &closed, "2026-03-04", nil)
+		err := runOnce(a, []string{"--day", day})
+		if err == nil || !strings.Contains(err.Error(), day) || !strings.Contains(err.Error(), "2026-03-04") {
+			t.Fatalf("day %s: err %v", day, err)
+		}
+		if got != "" || strings.Contains(errb.String(), "status=ok") {
+			t.Fatalf("day %s: reconciled %q, log %q", day, got, errb.String())
+		}
+		if opened.Load() != closed.Load() || opened.Load() == 0 {
+			t.Fatalf("day %s: opened %d closed %d", day, opened.Load(), closed.Load())
+		}
+	}
+	a, errb := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	withCursor(a, &opened, &closed, "2026-03-04", nil)
+	if err := runOnce(a, []string{"--day", "2026-03-05"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != "2026-03-05" || !strings.Contains(errb.String(), "status=ok") {
+		t.Fatalf("reconciled %q, log %q", got, errb.String())
+	}
+}
+
+func TestRunOnceCursorEmptyAndError(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	withCursor(a, &opened, &closed, "", nil)
+	for _, day := range []string{"2000-01-01", "2026-03-04"} {
+		got = ""
+		if err := runOnce(a, []string{"--day", day}); err != nil || got != contracts.Day(day) {
+			t.Fatalf("day %s: reconciled %q err %v", day, got, err)
+		}
+	}
+	got = ""
+	opened.Store(0)
+	closed.Store(0)
+	withCursor(a, &opened, &closed, "", errors.New("secret-ledger-text"))
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.Contains(err.Error(), "cursor") || strings.Contains(err.Error(), "secret-ledger-text") {
+		t.Fatalf("err %v", err)
+	}
+	if got != "" || opened.Load() != closed.Load() || opened.Load() == 0 {
+		t.Fatalf("reconciled %q opened %d closed %d", got, opened.Load(), closed.Load())
 	}
 }

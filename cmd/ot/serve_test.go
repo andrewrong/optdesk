@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -81,9 +83,36 @@ func TestServeUnknownNameBindsNoPort(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = ln.Close() }()
-	_, want := findPage(a.deps.pageList, "nosuch")
+	_, want := pageNamed(a, "nosuch")
 	err = runServe(a, []string{"--name", "nosuch", "--addr", ln.Addr().String()})
 	if err == nil || err.Error() != want.Error() {
 		t.Fatalf("err %v want %v", err, want)
+	}
+}
+
+func TestServeMacroPage(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.profile.Name = "demo"
+	a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
+	var gotZone *time.Location
+	a.deps.macroPage = func(z *time.Location, _ string) pages.Page {
+		gotZone = z
+		return fakePage("macro_page", "MACRO")
+	}
+	var lc net.ListenConfig
+	ln, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	// The port is taken, so serve stops at the listen, after it has built the page by name.
+	err = runServe(a, []string{"--name", "macro_page", "--addr", ln.Addr().String()})
+	if err == nil || !strings.Contains(err.Error(), "cannot listen") || gotZone != a.profile.Zone || gotZone == nil {
+		t.Fatalf("err %v zone %v", err, gotZone)
+	}
+	err = runServe(a, []string{"--name", "nosuch", "--addr", ln.Addr().String()})
+	if err == nil || !strings.Contains(err.Error(), "known pages: macro_rates, macro_page") {
+		t.Fatalf("unknown name: err %v", err)
 	}
 }

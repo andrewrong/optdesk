@@ -87,7 +87,56 @@ func TestEmbeddedWindow(t *testing.T) {
 		t.Fatal("job has no Window method")
 	}
 	cal, open, closeOff := w.Window()
-	if cal != "XNYS" || open != 0 || closeOff != 24*time.Hour {
+	if cal != "XNYS" || open != 0 || closeOff != 96*time.Hour {
 		t.Fatalf("got (%q, %v, %v)", cal, open, closeOff)
+	}
+}
+
+func TestWindowCoversNextSession(t *testing.T) {
+	t.Parallel()
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, err := New(&fakeSource{}, &fakeWriter{}, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, ok := j.(interface {
+		Window() (string, time.Duration, time.Duration)
+	})
+	if !ok {
+		t.Fatal("job has no Window method")
+	}
+	_, _, off := w.Window()
+	at := func(m time.Month, d, h int) time.Time { return time.Date(2026, m, d, h, 0, 0, 0, loc) }
+	cases := []struct {
+		name       string
+		sess, next time.Time
+	}{
+		{"friday to monday", at(time.November, 6, 16), at(time.November, 9, 16)},
+		{"mlk weekend", at(time.January, 16, 16), at(time.January, 20, 16)},
+		{"labor day weekend", at(time.September, 4, 16), at(time.September, 8, 16)},
+		{"good friday", at(time.April, 2, 16), at(time.April, 6, 16)},
+		{"thanksgiving early close", at(time.November, 25, 16), at(time.November, 27, 13)},
+	}
+	var longest time.Duration
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if tc.sess.Add(off).Before(tc.next) {
+				t.Fatalf("window closes at %v, before next session close %v", tc.sess.Add(off), tc.next)
+			}
+		})
+		if g := tc.next.Sub(tc.sess); g > longest {
+			longest = g
+		}
+	}
+	if off < longest {
+		t.Fatalf("offset %v is shorter than the longest gap %v", off, longest)
+	}
+	jan := cases[1]
+	if !jan.sess.Add(off - time.Hour).Before(jan.next) {
+		t.Fatalf("offset %v is not the smallest whole hours that holds", off)
 	}
 }

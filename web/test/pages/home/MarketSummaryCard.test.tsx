@@ -1,5 +1,5 @@
-// Issue #129: the market_summary v2 card shows the text fields of the payload and nothing else. Expected strings
-// are read from the fixtures of fixtures/market-summary, not written here.
+// The market_summary v3 card shows the text fields of the payload and nothing else. Expected strings are read
+// from the fixtures of fixtures/v3/market-summary, not written here.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -14,7 +14,7 @@ import { validate } from '@/types/market_summary'
 
 const read = (dir: string, name: string) =>
   JSON.parse(readFileSync(path.resolve(import.meta.dirname, '../../../fixtures', dir, name), 'utf8'))
-const fixture = (name: string) => read('market-summary', name)
+const fixture = (name: string) => read('v3/market-summary', name)
 
 let root: Root | null = null
 let host: HTMLElement
@@ -94,11 +94,17 @@ describe('MarketSummaryCard', () => {
     const payload = fixture('stale.json')
     await show(<MarketSummaryCard payload={payload} />)
     expect(host.querySelector('[data-stale]')?.textContent).toBe(payload.card.stale.text)
+    expect(host.querySelector('[data-stale]')?.getAttribute('data-stale')).toBe('true')
+  })
+
+  it('shows data-stale false for a fresh payload', async () => {
+    await show(<MarketSummaryCard payload={fixture('ok.json')} />)
+    expect(host.querySelector('[data-stale]')?.getAttribute('data-stale')).toBe('false')
   })
 })
 
 describe('validate', () => {
-  it('rejects schema_version 1 and shows the gap text, no card body', () => {
+  it('rejects schema_version 2 and shows the gap text, no card body', () => {
     const result = validate(fixture('bad-version.json'))
     expect(result.ok).toBe(false)
     if (result.ok) return

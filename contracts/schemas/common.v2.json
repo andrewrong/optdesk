@@ -1,0 +1,293 @@
+{
+  "$defs": {
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "kind": {
+          "const": "gap",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "Id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "PercentFigure": {
+      "additionalProperties": false,
+      "description": "A fraction times 100, signed (``+2.1%``).",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "unit": {
+          "const": "percent",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 10000,
+          "minimum": -10000,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 4,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PercentFigure",
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "SharePercentFigure": {
+      "additionalProperties": false,
+      "description": "A share in whole percent, 0 to 100.",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "share_percent",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 0,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "SharePercentFigure",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "$ref": "#/$defs/Timestamp",
+          "title": "Data Time"
+        },
+        "source": {
+          "$ref": "#/$defs/Id",
+          "title": "Source"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "The times and the label. The producer sets is_stale; the browser compares no clock.",
+      "properties": {
+        "data_time": {
+          "$ref": "#/$defs/Timestamp",
+          "title": "Data Time"
+        },
+        "is_stale": {
+          "title": "Is Stale",
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "text",
+        "is_stale"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "Timestamp": {
+      "description": "An RFC 3339 time with any offset.",
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "UsdFigure": {
+      "additionalProperties": false,
+      "description": "A displayed US-dollar amount (two decimals in ``value``, whole dollars in ``text``).",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "usd",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000.0,
+          "minimum": 0,
+          "multipleOf": 0.01,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "UsdFigure",
+      "type": "object"
+    },
+    "UsdSignedFigure": {
+      "additionalProperties": false,
+      "description": "A signed US-dollar amount; ``text`` starts with ``+`` or ``−`` (U+2212).",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "unit": {
+          "const": "usd_signed",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000.0,
+          "minimum": -1000000000.0,
+          "multipleOf": 0.01,
+          "title": "Value",
+          "type": "number",
+          "x-decimals": 2,
+          "x-rounding": "ROUND_HALF_EVEN"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "UsdSignedFigure",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/common.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Defs shared by the page schemas of the v3 line: tagged unions, no null.",
+  "title": "common.v2"
+}
