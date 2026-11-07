@@ -29,8 +29,8 @@ rows above name every other top-level path of the planned tree.
   go-arch-lint component `<name>`, and each sub-package `internal/<name>/<sub>` is its own component `<name>/<sub>`;
   `internal/<name>/**` is never one component. The component `<name>` may import the root components named in the
   row's depends cell, the standard library and external modules; a sub-package component `<name>/<sub>` may import
-  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. The generated sub-packages `contracts/gen` and `contracts/genpb` have empty import lists, so the only edge between them and their root is contracts to contracts/gen. `scripts/arch` and `arch.toml` do not follow this yet (`contracts/gen` still may import `contracts`); the follow-up repo issue "scripts/arch: generated sub-packages import nothing" brings them in line. No component may import a sub-package component of another row, so other
-  modules import only the root package (the interface) of a module; the one exception is `ot`, below. The one directory whose name differs from its row is
+  the same and the root component `<name>`. The root component `contracts` may also import its own sub-package component `contracts/gen`. The generated sub-packages `contracts/gen` and `contracts/genpb` have empty import lists, so the only edge between them and their root is contracts to contracts/gen. A sub-package component `<name>/<sub>` may also import a sub-package component that the entry cell of a row in its depends cell lists (today only `contracts/genpb`, the generated gRPC services, listed in the entry cell of contracts); `scripts/arch` derives this from the entry cells and has no sub-package named in code. `scripts/arch` and `arch.toml` do not follow this yet (`contracts/gen` still may import `contracts`); the follow-up repo issue "scripts/arch: generated sub-packages import nothing" brings them in line. No component may import a sub-package component of another row, so other
+  modules import only the root package (the interface) of a module; the exceptions are the sub-package components listed in an entry cell, as the previous sentence says, and `ot`, below. The one directory whose name differs from its row is
   `internal/profile/`, owned by repo: its component `profile` has an empty import list (standard library and
   external modules only, `log/slog` among them), which is also the depends cell of repo. Nothing imports `profile` except `cmd/ot`.
   The row `ot` (path `cmd/**`) is marked as the composition root of the program, as point 5 of the design rules provides: the one
@@ -70,13 +70,13 @@ rows above name every other top-level path of the planned tree.
   `docs/design/ratchet.json` (docs).
 - Modules not touched in week 1: broker, compute and notify keep their paths, entry and tests cells (crew refuses a depends on a row
   with no entry), but none of their files exists until the weeks named in the second table (broker 3-4, compute 8-9, notify 11).
-  No depends cell names them yet: the design that creates their interface files adds them to the cells of jobs, pages and ot.
+  No depends cell names them yet: the issue whose code first imports one of them adds it to the depends cell of the importing row in that issue (for broker, the issues of `docs/design/option-jobs.md` for jobs and the wiring issue `ot-collect` for ot).
 
 ## Modules
 
 | module | paths | entry | tests | depends |
 |---|---|---|---|---|
-| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/** pyside/tests/contracts/test_contracts_api.py docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go web/src/generated/index.ts pyside/src/optdesk/contracts/api.py | internal/contracts/api_test.go internal/contracts/schema_test.go pyside/tests/contracts/test_contracts_api.py |  |
+| contracts | contracts/** buf.yaml buf.gen.yaml internal/contracts/** web/src/generated/** pyside/src/optdesk/contracts/** pyside/tests/contracts/test_contracts_api.py docs/contracts/00-protocol.md docs/contracts/datasets/** docs/contracts/figures/** docs/contracts/page-schemas.md | internal/contracts/api.go internal/contracts/genpb web/src/generated/index.ts pyside/src/optdesk/contracts/api.py | internal/contracts/api_test.go internal/contracts/schema_test.go pyside/tests/contracts/test_contracts_api.py |  |
 | clock | internal/clock/** docs/contracts/clock.md pyside/src/optdesk/calendar/** pyside/tests/contracts/test_calendar_api.py pyside/tests/calendar/** | internal/clock/api.go pyside/src/optdesk/calendar/api.py | internal/clock/api_test.go pyside/tests/contracts/test_calendar_api.py | contracts |
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
