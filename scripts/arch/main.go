@@ -31,6 +31,7 @@ const (
 type row struct {
 	name    string
 	paths   []string
+	entry   []string
 	depends []string
 }
 
@@ -67,6 +68,7 @@ func parseModules(text string) ([]row, error) {
 		rows = append(rows, row{
 			name:    strings.TrimSpace(cells[0]),
 			paths:   strings.Fields(cells[1]),
+			entry:   strings.Fields(cells[2]),
 			depends: strings.Fields(cells[4]),
 		})
 	}
@@ -109,6 +111,30 @@ func rootName(r row) (name, dir string) {
 
 // generated lists the generated sub-packages; each gets an empty may_import.
 var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
+
+// listedImports gives, for each root component, the sub-package components that the entry
+// cells of the rows it depends on list: its own sub-packages may import them.
+func listedImports(rows []row) map[string][]string {
+	entries := map[string][]string{}
+	for _, r := range rows {
+		for _, e := range r.entry {
+			if implPackage.MatchString("`" + e + "`") {
+				entries[r.name] = append(entries[r.name], strings.TrimPrefix(e, "internal/"))
+			}
+		}
+	}
+	out := map[string][]string{}
+	for _, r := range rows {
+		name, _ := rootName(r)
+		if name == "" {
+			continue
+		}
+		for _, d := range r.depends {
+			out[name] = append(out[name], entries[d]...)
+		}
+	}
+	return out
+}
 
 // derive builds the components from the table alone (arch.toml): the root of each row,
 // the implementation packages named in the text, contracts/gen and contracts/genpb.
@@ -228,7 +254,9 @@ func goDirs(root string) ([]string, error) {
 
 // deriveTree narrows the derived components to the tree: a component exists when its
 // directory holds Go files, and every package under internal/<row>/ is a component.
-func deriveTree(table []component, dirs []string) (comps []component, exclude []string) {
+// A sub-package may also import the sub-packages that the entry cell of a row its row
+// depends on lists (listed, by root name).
+func deriveTree(table []component, dirs []string, listed map[string][]string) (comps []component, exclude []string) {
 	have := map[string]bool{}
 	for _, d := range dirs {
 		have[d] = true
@@ -255,6 +283,11 @@ func deriveTree(table []component, dirs []string) (comps []component, exclude []
 		if rc, ok := rootDeps[root]; ok {
 			order = append(order, component{root + "/" + rest, d, subDeps(rc[0].deps, root)})
 			known[d] = true
+		}
+	}
+	for i, c := range order {
+		if root, _, ok := strings.Cut(c.name, "/"); ok {
+			order[i].deps = append(slices.Clone(c.deps), listed[root]...)
 		}
 	}
 	names := map[string]bool{}
@@ -323,7 +356,7 @@ func generate(modules, root string) (toml, yml []byte, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	comps, exclude := deriveTree(table, dirs)
+	comps, exclude := deriveTree(table, dirs, listedImports(rows))
 	return renderTOML(table), renderYAML(comps, exclude), nil
 }
 
