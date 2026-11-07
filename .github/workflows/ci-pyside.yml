@@ -10,6 +10,9 @@ on:
     paths:
       - 'pyside/**'
       - '.github/workflows/ci-pyside.yml'
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read

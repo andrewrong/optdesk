@@ -19,6 +19,9 @@ on:
       - 'pnpm-workspace.yaml'
       - '.npmrc'
       - 'contracts/schemas/**'
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
