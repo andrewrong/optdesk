@@ -1,4 +1,4 @@
-# Report page: the web front end gets the report_page view
+# Report page: the web front end gets the report_page view (fixtures only)
 
 Author: the optdesk dispatcher
 Owner approved: (pending)
@@ -23,7 +23,7 @@ What `report_page` is: the report of one market session, written twice a day (`s
   `accounts`, `candidates`, `reminders`, `tiles`, `system_status`). Each block carries `key`, `title`, `sub`, `say`, `note`, `state`
   (`ok`, `partial`, `gap`), `gaps`, `gap_text`, `data_times` and an optional `link`; the figures are `Cell` and `MoneyCell` values with a text,
   a tone and an optional numeric value, and a `Gap` stands where a figure is missing.
-- Types: no generated type. `web/src/generated/` has 12 files and `index.ts` has 12 export lines; none is `report_page`. The `selfCheckFiles`
+- Types: no generated type. `web/src/generated/` holds 15 entries (14 type files and `index.ts`; `market_summary.v3.ts` and `options_summary.v3.ts` are in neither the index nor the test) and `index.ts` has 12 export lines; none is `report_page`. The `selfCheckFiles`
   list of `internal/contracts/minimal_test.go` holds `page.report_page.v2.json` (a self check, no fixtures); the file is not in `pageV2Files`.
 - Web: `pages.tsx` has one explicit page (`option_data_page`) and one glob `../pages/*/*.tsx` that registers every file exporting `registration`.
   No file of `web/src` names `report_page`. `web/src/pages/` has no `report` directory. The pieces a view reads exist: `DataTable`
@@ -41,14 +41,15 @@ What is missing: a generated type, a view, and (not cut here) a producer.
 
 1. The cut. One interface entry for the generated type, then one web entry for the view. No Go builder entry: the schema is not
    changed, and a builder would have no reader to call (`## What main holds today`, Go). A builder that wrote only gaps would give the
-   page a payload that says nothing, so the producer waits for the account datasets (`## Left out`). Until then the view is fed by
-   fixtures in its tests, as the six views of `web-views-wave.md` were.
-2. The interface entry only adds the type. It is a two-module entry (web and contracts) exactly as `pages-self-registering` of
-   `web-views-wave.md` was judged: `web/package.json` (web) holds the one `generate:types` script, `web/src/generated/**` and
-   `internal/contracts/generated_ts_test.go` belong to contracts (first matching row of `modules.md`). The existing `json-schema-to-typescript`
-   is used; there is no new package. No schema file changes, so the pull request carries `Contracts: unchanged`.
+   page a payload that says nothing, so the producer waits for the account datasets (`## Left out`). Until then the page has no producer: the view is fixtures only, fed by
+   fixtures in its tests (no payload exists in production until the account datasets and a builder do), as the six views of `web-views-wave.md` were.
+2. The interface entry only adds the type and is a contracts-only entry: `web/src/generated/**` and `internal/contracts/generated_ts_test.go`
+   belong to contracts (first matching row of `modules.md`). The one-line edit of `generate:types` in `web/package.json` (web) moves to the view
+   entry, as `macro-rates-view` of `docs/design/macro-rates-view.md` does, so no entry is a two-module set. The existing `json-schema-to-typescript`
+   is used; there is no new package. The entry is serialised with `macro-rates-v2-schema` of that design: both append a line to `web/src/generated/index.ts`
+   and a row to `internal/contracts/generated_ts_test.go`, so `report-types` goes after it and every count below is relative to main at cut time. No schema file changes, so the pull request carries `Contracts: unchanged`.
 3. One view entry, not one per block. The view file imports every block file, so per-block entries would need each other's output. The
-   entry is size L and is split by file: `view.tsx` and one file per group of blocks, each under 600 lines.
+   entry is size L and is split by file: `view.tsx` and and the files named in the view entry's What, each under 600 lines.
 4. The view renders and computes nothing. Every string, figure, tone and state is a field of the payload; a numeric `value` is only
    handed to a chart as the height of a bar. A `Gap` in place of a figure shows its `text`. A block whose `state` is `gap` or `partial`
    shows its `gaps` and its `gap_text`. An optional block that is `null` is not drawn.
@@ -64,36 +65,38 @@ Paths used: `web/**` and `web/test/**` belong to web; `web/src/generated/**` and
 
 ## Interface
 
-Owner: contracts (the generated type), web (`generate:types`). Frozen by `report-types`, read by `report-page-view`.
+Owner: contracts (the generated type). Frozen by `report-types`, read by `report-page-view`.
 
 - `web/src/generated/report_page.v2.ts` exports `interface ReportPage`, made by `json2ts` from `contracts/schemas/page.report_page.v2.json`
   with `--cwd ../contracts/schemas` and the banner of the existing files; `web/src/generated/index.ts` gains
-  `export type { ReportPage } from './report_page.v2';`; the `generate:types` script of `web/package.json` gains the call.
-- `TestGeneratedSummaryTypes` gains the row `{"report_page.v2.ts", "./report_page.v2", "ReportPage"}`, so the file has 13 rows and `index.ts` 13 export lines.
-- If `tsc` fails on a generated type (`json2ts` writes an array with a `maxItems` as a tuple union), the pull request says so and the generated file is not edited by hand.
+  `export type { ReportPage } from './report_page.v2';`. The `generate:types` call is added by the view entry (Decision 2).
+- `TestGeneratedSummaryTypes` gains the row `{"report_page.v2.ts", "./report_page.v2", "ReportPage"}`, so its list has one more row than main at cut time and `index.ts` one more export line than before.
+- If `tsc` fails on a generated type (`json2ts` writes an array with a `maxItems` as a tuple union), the pull request says so and the generated file is not edited by hand. An array with `minItems` 1 becomes `[T, ...T[]]`, so a fixture that is `satisfies ReportPage` never writes `[]` for such an array (tsc fails on it).
 
 ## Issues
 
 ### report-types (interface)
 
-Module: web and contracts (judged two-module entry, Decision 2). Size: S.
+Module: contracts. Size: S.
 
-Files: `web/package.json`, `web/src/generated/report_page.v2.ts`, `web/src/generated/index.ts`, `internal/contracts/generated_ts_test.go`
+Files: `web/src/generated/report_page.v2.ts`, `web/src/generated/index.ts`, `internal/contracts/generated_ts_test.go`
 
-Depends on: none.
+Depends on: macro-rates-v2-schema
+
+Order: after macro-rates-v2-schema (docs/design/macro-rates-view.md)
 
 Design: docs/design/report-page.md#decisions
 
-Goal: the generated type of `report_page` v2 exists and is re-exported, with the script and the Go guard that every other generated type has.
+Goal: the generated type of `report_page` v2 exists and is re-exported, with the Go guard that every other generated type has (the script call comes with the view entry).
 
 Acceptance:
 
 1. `test -f web/src/generated/report_page.v2.ts`, and `head -1 web/src/generated/report_page.v2.ts` prints `// Code generated from contracts/, DO NOT EDIT.`.
 2. `grep -c "^export interface ReportPage " web/src/generated/report_page.v2.ts` prints 1, and `grep -c "export type { ReportPage } from './report_page.v2';" web/src/generated/index.ts` prints 1.
-3. `grep -c "page.report_page.v2.json" web/package.json` prints 1, the call writes `src/generated/report_page.v2.ts` with `--cwd ../contracts/schemas` and the same `--bannerComment` as the call for `market_summary.v2`, and `grep -o "json2ts -i" web/package.json | wc -l` prints 15 (14 on main).
-4. `internal/contracts/generated_ts_test.go` has the row for `report_page.v2.ts` and `go test ./internal/contracts -run TestGeneratedSummaryTypes -count=1 -race` passes (13 rows, 13 export lines in `index.ts`).
+3. The file `web/src/generated/report_page.v2.ts` is the output of `json2ts -i contracts/schemas/page.report_page.v2.json` with `--cwd ../contracts/schemas` and the same `--bannerComment` as the call for `market_summary.v2` (the view entry adds that call to `generate:types`); `git diff origin/main -- web/package.json` is empty.
+4. `internal/contracts/generated_ts_test.go` has the row for `report_page.v2.ts` and `go test ./internal/contracts -run TestGeneratedSummaryTypes -count=1 -race` passes (one more row than main, one more export line in `index.ts` than before: compare with `git show origin/main:<file>`).
 5. Every `properties` key of the top level of `contracts/schemas/page.report_page.v2.json` (`banner`, `blocks`, `chips`, `design_note`, `generated_at`, `market`, `say`, `schema`, `schema_version`, `session_date`, `slot`, `stale`, `status_lines`, `title`) and each of the eleven keys of `Blocks` appears in `web/src/generated/report_page.v2.ts` (`grep -c -E "^\s+<key>\??:" web/src/generated/report_page.v2.ts` prints at least 1 for each).
-6. `git diff --name-only origin/main` lists exactly the four paths of Files, and `git diff origin/main -- contracts/schemas` is empty.
+6. `git diff --name-only origin/main` lists exactly the three paths of Files, and `git diff origin/main -- contracts/schemas` is empty.
 7. The result matches the design part Interface of docs/design/report-page.md, judged from the diff.
 
 Checked by CI: `pnpm install --frozen-lockfile`, `pnpm --dir web run generate:types` (no drift in `web/src/generated`), `pnpm --dir web run typecheck` (tsc), `pnpm --dir web run lint`, `pnpm --dir web run build`.
@@ -102,17 +105,17 @@ Checked by CI: `pnpm install --frozen-lockfile`, `pnpm --dir web run generate:ty
 
 Module: web. Size: L.
 
-Files: `web/src/pages/report/view.tsx`, `web/src/pages/report/*.tsx`, `web/src/types/report_page.ts`, `web/test/pages/report/**` (the tests and the fixtures directory `web/test/pages/report/fixtures/` with its own `MANIFEST.synthetic-v1.json`)
+Files: `web/package.json` (only the `generate:types` call for `page.report_page.v2.json`), `web/src/pages/report/view.tsx`, `web/src/pages/report/*.tsx`, `web/src/types/report_page.ts`, `web/test/pages/report/**` (the tests and the fixtures directory `web/test/pages/report/fixtures/` with its own `MANIFEST.synthetic-v1.json`)
 
 Depends on: report-types
 
-Order: after report-types
+Order: after report-types (and so after macro-rates-v2-schema)
 
 Design: docs/design/report-page.md#decisions
 
-Goal: `report_page` v2 renders in the shell as a read-only page, for both slots, from fixtures written from the schema alone.
+Goal: `report_page` v2 renders in the shell as a read-only page, for both slots, from fixtures written from the schema alone (fixtures only: no producer exists).
 
-What: `view.tsx` registers the page and draws, in this order: the header (`title`, `say`, `banner.left`, `banner.right`, the `chips`, the `stale` label,
+What: the `generate:types` script of `web/package.json` gains the one `json2ts` call for `page.report_page.v2.json` (writing `src/generated/report_page.v2.ts`, `--cwd ../contracts/schemas`, the same `--bannerComment` as `market_summary.v2`). The files, each under 600 lines: `view.tsx` (registration, `Payload`, the order of the blocks), `frame.tsx` (header and the block frame: `state`, `gaps`, `gap_text`, `data_times`, `link`; each frame carries the attribute `data-block-key` with the block key), `cells.tsx` (`Cell`, `MoneyCell`, `Gap`, tones, `meters`), `close-blocks.tsx` (`actions`, `account_moves`, `risks`, `market_watch`), `global-assets.tsx` (`global_assets` with the chart) and `open-blocks.tsx` (`market_line`, `tiles`, `accounts`, `candidates`, `reminders`, `system_status`). `view.tsx` registers the page and draws, in this order: the header (`title`, `say`, `banner.left`, `banner.right`, the `chips`, the `stale` label,
 the `design_note`, the `status_lines` as label and text pairs), then the blocks. The five close blocks are drawn in the order `actions`,
 `account_moves`, `risks`, `market_watch`, `global_assets`; the six open blocks, when present, are drawn first, in the order `market_line`,
 `tiles`, `accounts`, `candidates`, `reminders`, `system_status`. Every block has one frame (title, `sub`, `say`, `note`, `state`, `gaps`,
@@ -127,19 +130,19 @@ Fixtures are TypeScript modules `ok-close.ts`, `ok-open.ts`, `gap.ts`, `stale.ts
 
 按 frontend-stack：用 @tanstack/react-table（through `web/src/components/data-table/data-table.tsx`）做 the tables of `trades`, `accounts`, `movers`, `indices`, `companies`, `sector` and `rest`。
 
-按 frontend-stack：用 recharts via the shadcn chart component (`web/src/charts/Chart.tsx`, `components/ui/chart.tsx`) 做 the `proxies` bars of `global_assets` (the day and five-day `value` of each proxy, the `chart_aria` text as its accessible name; a proxy whose cell is a `Gap` is not a bar and its text is listed under the chart)。
+按 frontend-stack：用 recharts via the shadcn chart component (`web/src/charts/Chart.tsx`, `components/ui/chart.tsx`) 做 the `proxies` bars of `global_assets` (the day and five-day `value` of each proxy, the `chart_aria` text as its accessible name; a proxy whose cell is a `Gap` is not a bar and its text is listed under the chart; when the whole `proxies` field is a `Gap` (the schema allows an array or a `Gap`) there is no chart, no `chart_aria` name, and the `Gap` text is shown in its place)。
 
 按 frontend-stack：用 shadcn card, badge, alert, accordion and progress (`components/ui`) 做 the header and block frames, the `tone` and `level` marks, the stale and gap lines, the folded `data_times` and `system_status`, and the `meters`。
 
 Acceptance:
 
 1. `test -f web/src/pages/report/view.tsx && test -f web/src/types/report_page.ts`; `grep -c "export const registration" web/src/pages/report/view.tsx` prints 1 and `grep -c "schema: 'report_page'" web/src/pages/report/view.tsx` prints 1.
-2. `git diff --name-only origin/main` lists no path outside the Files line (in particular not `web/src/shell/pages.tsx`, `web/package.json`, `web/src/generated/index.ts`, `web/no-compute-allow.txt`, `web/deps-allowlist.txt`, `web/fixtures/MANIFEST.synthetic-v1.json`, or a file of `web/src/pages/home/`).
+2. `git diff --name-only origin/main` lists no path outside the Files line, and `git diff origin/main -- web/package.json` changes only the `generate:types` line (in particular not `web/src/shell/pages.tsx`, `web/src/generated/index.ts`, `web/no-compute-allow.txt`, `web/deps-allowlist.txt`, `web/fixtures/MANIFEST.synthetic-v1.json`, or a file of `web/src/pages/home/`).
 3. `wc -l web/src/pages/report/*.tsx` shows every file under 600 lines; `grep -c "fetch(" web/src/pages/report/*.tsx` prints 0 for each; `grep -c -E "toFixed|Intl\.|parseFloat|reduce\(" web/src/pages/report/*.tsx` prints 0 for each (no formatting or arithmetic).
 4. `grep -l "useReactTable\|data-table" web/src/pages/report/*.tsx` is not empty and no file of `web/src/pages/report/` imports `recharts` directly (`grep -c "from 'recharts'" web/src/pages/report/*.tsx` prints 0 for each); `grep -c "chart_aria" web/src/pages/report/*.tsx` prints at least 1 in total.
 5. Fixtures: the files `ok-close.ts`, `ok-open.ts`, `gap.ts`, `stale.ts`, `bad-version.json` exist under `web/test/pages/report/fixtures/`; `grep -c "satisfies ReportPage" web/test/pages/report/fixtures/{ok-close,ok-open,gap,stale}.ts` prints 1 for each; `MANIFEST.synthetic-v1.json` there has `marker` `synthetic-v1` and lists exactly these five files; `grep -c "@" web/test/pages/report/fixtures/*` prints 0 for each; `grep -c '"schema_version": 2,' web/test/pages/report/fixtures/bad-version.json` prints 0.
-6. `ok-close.ts` has `slot: 'close'` and the five close blocks; `ok-open.ts` has `slot: 'open'` and all eleven keys of `blocks` non-null (`grep -c -E "^\s+(actions|account_moves|risks|market_watch|global_assets|market_line|accounts|candidates|reminders|tiles|system_status):" web/test/pages/report/fixtures/ok-open.ts` prints 11); `gap.ts` has a block whose `state` is `'gap'` and a `Gap` in place of a figure; `stale.ts` has a `stale` label.
-7. `web/test/pages/report/` holds a vitest file that renders `ok-close` and `ok-open`, and for each block key checks that the block `title` read from the fixture is on the page (11 keys, asserted by name: `grep -c -E "ok-open\.blocks\.<key>" web/test/pages/report/*.test.tsx` prints at least 1 for each of the eleven keys); renders `gap` and checks that the `gap_text` and the `Gap` text are on the page; renders `stale` and checks `stale.text` is on the page; checks that an optional block set to `null` leaves no frame (no element with its `key`); checks the `proxies` chart has the `chart_aria` text as its accessible name; checks that `validate` refuses `bad-version`; it reads no clock and opens no port.
+6. `ok-close.ts` has `slot: 'close'` and the five close blocks; `ok-open.ts` has `slot: 'open'` and all eleven keys of `blocks` non-null (asserted in the vitest file as `Object.keys(ok_open.blocks)` holding the eleven keys, each value not `null`; no grep count, because `accounts` and `candidates` also occur as nested keys); `gap.ts` has a block whose `state` is `'gap'` and a `Gap` in place of a figure; `stale.ts` has a `stale` label.
+7. `web/test/pages/report/` holds a vitest file that renders `ok-close` and `ok-open`, and for each block key checks that the block `title` read from the fixture is on the page (`getAllByText`, since a title can repeat in `sub` or `say`; 11 keys, asserted by name: `grep -c -E "ok-open\.blocks\.<key>" web/test/pages/report/*.test.tsx` prints at least 1 for each of the eleven keys); renders `gap` and checks that the `gap_text` and the `Gap` text are on the page; renders `stale` and checks `stale.text` is on the page; checks that an optional block set to `null` leaves no frame (no element with `data-block-key` equal to its key); checks the `proxies` chart has the `chart_aria` text as its accessible name, and that a fixture whose whole `proxies` is a `Gap` draws no chart and shows its text; checks that `validate` refuses `bad-version`; it reads no clock and opens no port.
 8. `pnpm --dir web run test -- web/test/pages/report` passes, and `git diff origin/main -- web/no-compute-allow.txt` is empty.
 9. The result matches the design part Decisions (points 3 to 6) of docs/design/report-page.md, judged from the diff.
 
@@ -151,12 +154,21 @@ Checked by CI: `pnpm install --frozen-lockfile`, `pnpm --dir web run typecheck` 
   (`contracts/datasets/` has four datasets); a builder would write gaps only. It follows the datasets and their readers, and then needs its own
   design (module pages, then `ot`).
 - One web entry per block: the blocks share `view.tsx`, so the entries would need each other's output; one entry split by file is chosen (Decision 3).
-- Generating the type inside the view entry: it would give the view a contracts path and edit three shared files (`generate:types`, `index.ts`, the Go list); a separate
-  interface entry keeps them in one place, as in `web-views-wave.md`.
+- Generating the type inside the view entry: it would give the view a contracts path and edit two more shared files (`index.ts`, the Go list); a separate
+  contracts-only interface entry keeps them in one place; only the one `generate:types` line is edited by the view entry, as in `docs/design/macro-rates-view.md`.
+- A smaller view cut (the five close blocks first, the six open blocks as a second issue): both slots share the frame, and the file split above already keeps each file small.
 - Dropping `report_page` v1 and a `report_page` v3: a deletion of a schema has no `Contracts:` form (`web-fixtures-vn1.md`); v3 is not written until a producer needs it.
 - Links of `link.href` and `candidates.full_page` to other pages: shown as the link text with its `href`; no router change here.
 - `macro_rates` and `market_weather` views: other designs.
 
 ## Adversarial
 
-Pending.
+Answer in `report-page.adversarial.md` in the dispatcher's scratchpad.
+
+1. Gap against the goal: adopted. Title, Goal and Decision 1 say "fixtures only"; the view entry names its files and block groups.
+2. Overlap with design PR 285 and the whole-`Gap` `proxies`: adopted. `report-types` is `Order: after macro-rates-v2-schema` and depends on it by name; the whole-`Gap` case is specified and tested.
+3. Simpler way (relative counts, smaller view cut): counts adopted (relative to main at cut time); the smaller view cut is not adopted, because the file split keeps each file small.
+5. False claim: adopted. The `generated/` entries are 15 (14 type files and `index.ts`); the grep count of acceptance 6 is replaced by a vitest assertion on `Object.keys(ok_open.blocks)`.
+6. Likeliest slip: adopted. The attribute is `data-block-key`; titles are read with `getAllByText`.
+(a) Two-module set: adopted as the alternative. `report-types` is contracts-only and the `generate:types` edit moves to the view entry.
+(c) `maxItems` and tuples: adopted. The sentence on `[T, ...T[]]` and empty arrays in fixtures is added to Interface.
