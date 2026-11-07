@@ -1,10 +1,11 @@
-// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
+// The 宏观 card payload: the generated v2 type of contracts/schemas/page.macro_summary.v2.json. The structural
+// check of a payload (an object with a supported `schema_version`) is the shared placeholder until the generated validators land.
+import type { MacroSummary } from '@/generated/macro_summary.v2'
 import { placeholderValidate, type Gap, type Result as Checked } from './placeholder.ts'
-import type { MacroSummary as PayloadV1 } from './macro_summary.v1.types.ts'
 
 export type { Gap }
-export const SUPPORTED_VERSIONS = [1] as const
-export type Payload = PayloadV1
+export const SUPPORTED_VERSIONS = [2] as const
+export type Payload = MacroSummary
 export type Result = Checked<Payload>
 
 export const validate = placeholderValidate<Payload>(SUPPORTED_VERSIONS)
