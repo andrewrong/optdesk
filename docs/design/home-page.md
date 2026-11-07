@@ -109,6 +109,7 @@ Owner: contracts. Frozen by `home-page-v2-schema`, read by `home-page-compose` (
   `web/src/generated/index.ts` and `internal/contracts/generated_ts_test.go`; every count below is relative to main at cut time.
 - Design: docs/design/home-page.md#Interface
 - Files: contracts/schemas/page.home_page.v2.json, docs/contracts/page-schemas.md, internal/contracts/home_page_v2_test.go, internal/contracts/generated_ts_test.go, web/src/generated/home_page.v2.ts, web/src/generated/index.ts
+
 - Goal: write the schema of the Interface section, its generated type and its tests. `page-schemas.md` gains the row `page.home_page.v2 | 2` and one line saying that
   the file composes the five summary files by `$ref` (v2 for household, held companies and macro; v3 for market and options). `home_page_v2_test.go` (new,
   `t.Parallel`, no sleep) is the contract test: `TestHomePageV2Valid` builds the smallest valid instance and validates it (the pattern overrides of the existing
@@ -143,6 +144,7 @@ checks (the `Contracts:` line).
 - Order: after home-page-v2-schema. `Compose` is a pure function and has no caller yet (the builders and the route are Left out); the owner wants this backend work in parallel with the view.
 - Design: docs/design/home-page.md#Decisions
 - Files: internal/pages/home_page/compose.go, internal/pages/home_page/compose_test.go, internal/pages/home_page/testdata/household.json, internal/pages/home_page/testdata/companies.json, internal/pages/home_page/testdata/macro.json, internal/pages/home_page/testdata/market.json, internal/pages/home_page/testdata/options.json, arch.toml, .go-arch-lint.yml
+
 - Goal: the function of Decisions 5 and 6. Signature: `func Compose(in Input, generatedAt time.Time) ([]byte, error)`, with `Input` holding `RunID`, `BuildID`, `Scope`, `Zone *time.Location`, `Title`,
   `Say`, `GapLine`, `BlockLinks`, `ReportLinks` (a slice of `Link{Href, Text string}`) and the five members as `[]byte` fields `Household`, `Companies`, `Macro`, `Market`, `Options`.
   `generated_at` is `generatedAt` written in `Zone`, as `macro_page` does; a nil `Zone` is an error. The package reads no clock, no store and no file outside tests, and imports only the standard library
@@ -168,6 +170,7 @@ Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint, the `arch.to
 - Order: after home-page-v2-schema.
 - Design: docs/design/home-page.md#Decisions
 - Files: web/src/pages/home/HomePage.tsx, web/src/types/home_page.ts, web/test/pages/home/HomePage.test.tsx, web/test/pages/home/home-v2/fixtures/ok.ts, web/test/pages/home/home-v2/fixtures/bad-version.json, web/test/pages/home/home-v2/fixtures/bad-member.json, web/test/pages/home/home-v2/fixtures/MANIFEST.synthetic-v1.json, web/package.json
+
 - Goal: Decisions 7 and 8. `web/src/types/home_page.ts` takes `Payload` from `HomePage` of `@/generated/home_page.v2` with `SUPPORTED_VERSIONS = [2]` and the placeholder check
   (the pattern of `web/src/types/macro_summary.ts`). `HomePage.tsx` exports `registration = { schema: 'home_page', page: page<Payload>(validate, HomePage) }`; its `validate` runs the top-level check, then the `validate`
   of `@/types/household_summary`, `held_companies_summary`, `macro_summary`, `market_summary` and `options_summary` on the five members, and returns the first gap. The component renders `HouseholdCard`, `HeldCompaniesCard`,
