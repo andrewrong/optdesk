@@ -81,7 +81,7 @@ None changed. Every path below belongs to a row of `docs/design/modules.md` as i
 
 | issue | module | order |
 |---|---|---|
-| home-page-v2-schema | contracts (interface) | after report-types (`docs/design/report-page.md`) |
+| home-page-v2-schema | contracts (interface), plus web (judged two-module entry: the `generate:types` line in `web/package.json`) | after report-types (`docs/design/report-page.md`) |
 | home-page-compose | pages (no caller yet) | after home-page-v2-schema |
 | home-page-view | web | after home-page-v2-schema, parallel with home-page-compose |
 
@@ -93,8 +93,8 @@ Owner: contracts. Frozen by `home-page-v2-schema`, read by `home-page-compose` (
 - `contracts/schemas/page.home_page.v2.json`: `$id` `https://optdesk.invalid/schemas/page.home_page.v2.json`, title `HomePage`, `additionalProperties` false.
   Required: `schema` (const `home_page`), `schema_version` (const 2), `run_id`, `build_id`, `scope`, `generated_at`, `data_times`, `run_status`, `title`,
   `say`, `gap_line`, `block_links`, `report_links`, `household`, `companies`, `macro`, `market`, `options`. Optional: `stale_after` (`Timestamp`).
-  The five members are the `$ref` of Decision 2; `block_links` and `report_links` hold at most 10 `BlockLink`.
-- `web/src/generated/home_page.v2.ts` (`HomePage`), made by `json2ts` with the banner of the existing files; `index.ts` re-exports `HomePage`. `BlockLink` is `{href, text}`.
+  The five members are the `$ref` of Decision 2; `block_links` and `report_links` hold at most 10 `BlockLink`; `data_times` holds at most 20 `SourceTime` (the cap `Compose` enforces, Decision 6).
+- `web/src/generated/home_page.v2.ts` (`HomePage`), made by `json2ts` with the banner of the existing files, through one new call in the `generate:types` script of `web/package.json` (the same entry writes both, so the CI drift check covers the file); `index.ts` re-exports `HomePage`. `BlockLink` is `{href, text}`.
 - Size of the generated file: json2ts inlines each `$ref`, so the file is about 2,500 lines or more. Generated files are exempt from the 600-line rule: `scripts/ratchet/main.go`
   `isSource` skips a file whose first five lines hold a generated mark (`code generated`, `do not edit`, `@generated`), and every file of `web/src/generated` starts with
   `// Code generated from contracts/, DO NOT EDIT.`; AGENTS.md says "source file", and `structure_detail.v3.ts` (708 lines) is the precedent. So the schema keeps its `$ref`s and
@@ -104,18 +104,18 @@ Owner: contracts. Frozen by `home-page-v2-schema`, read by `home-page-compose` (
 
 ### home-page-v2-schema (interface)
 
-- Module: contracts. Size: S. Depends on: report-types (by name; the dispatcher rewrites it to the issue number at cut time).
+- Module: contracts, plus web (judged two-module entry: the one `generate:types` line in `web/package.json` belongs to web, as `report-types` of `docs/design/report-page.md` and `pages-types-wave-2` of `docs/design/web-views-wave-2.md` do). Size: S. Depends on: report-types (by name; the dispatcher rewrites it to the issue number at cut time).
 - Order: after report-types (`docs/design/report-page.md`). The chain is `macro-rates-v2-schema`, then `report-types`, then `home-page-v2-schema`, because all three append to
   `web/src/generated/index.ts` and `internal/contracts/generated_ts_test.go`; every count below is relative to main at cut time.
 - Design: docs/design/home-page.md#Interface
-- Files: contracts/schemas/page.home_page.v2.json, docs/contracts/page-schemas.md, internal/contracts/home_page_v2_test.go, internal/contracts/generated_ts_test.go, web/src/generated/home_page.v2.ts, web/src/generated/index.ts
+- Files: contracts/schemas/page.home_page.v2.json, docs/contracts/page-schemas.md, internal/contracts/home_page_v2_test.go, internal/contracts/generated_ts_test.go, web/src/generated/home_page.v2.ts, web/src/generated/index.ts, web/package.json
 
 - Goal: write the schema of the Interface section, its generated type and its tests. `page-schemas.md` gains the row `page.home_page.v2 | 2` and one line saying that
   the file composes the five summary files by `$ref` (v2 for household, held companies and macro; v3 for market and options). `home_page_v2_test.go` (new,
   `t.Parallel`, no sleep) is the contract test: `TestHomePageV2Valid` builds the smallest valid instance and validates it (the pattern overrides of the existing
   v2 tests may be copied); `TestHomePageV2MemberChecked` changes `schema_version` of one member to a value its file does not allow and expects a failure at that member's
   path; `TestHomePageV2NoV1Defs` reads the file and fails when the text holds `option_trader__`. `generated_ts_test.go` gains the row `{"home_page.v2.ts", "./home_page.v2", "HomePage"}`.
-  `web/package.json` is not edited here: `home_page.v2.ts` is the output of `json2ts` run with the banner of the others, and the `generate:types` call is added by `home-page-view`.
+  `web/package.json` gains one `json2ts` call in `generate:types` for `page.home_page.v2.json` with `--cwd ../contracts/schemas` and the banner of the others; `home_page.v2.ts` is the output of that call, so this entry's own drift check covers it and `home-page-view` does not touch `web/package.json`.
 - 按 frontend-stack：用 json-schema-to-typescript 做 the generated type `HomePage`。
 
 Acceptance:
@@ -129,14 +129,13 @@ Acceptance:
    `go test ./internal/contracts -run TestCarryoverManifest` passes.
 4. `test -f web/src/generated/home_page.v2.ts` holds, `grep -c "Code generated from contracts/, DO NOT EDIT" web/src/generated/home_page.v2.ts` prints 1,
    `grep -c "export type" web/src/generated/index.ts` prints one more than `git show origin/main:web/src/generated/index.ts | grep -c "export type"` and `grep -c "export interface HomePage" web/src/generated/home_page.v2.ts` prints 1.
-5. `grep -c "home_page.v2.ts" internal/contracts/generated_ts_test.go` prints 1, and `git diff $(git merge-base HEAD origin/main) -- web/package.json` is empty.
+5. `grep -c "home_page.v2.ts" internal/contracts/generated_ts_test.go` prints 1; `grep -c "home_page.v2.json" web/package.json` prints 1 and `grep -o "page\.[a-z_]*\.v[0-9]*\.json" web/package.json | sort -u | wc -l` prints one more than the same command on `git show origin/main:web/package.json`.
 6. `grep -c "page.home_page.v2" docs/contracts/page-schemas.md` is at least 1.
-7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the six paths of the Files line and no other path; the pull request body carries the line
-   `Contracts: page.home_page v2 (new)` (the form `.github/workflows/checks.yml` accepts; v1 has no consumer and stays unchanged).
-8. The result matches the Interface part of `docs/design/home-page.md`, judged from the diff and the design file.
+7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line and no other path.
 
-Checked by CI: `pnpm --dir web run generate:types` with `git diff --exit-code web/src/generated` (ci-web drift check), tsc, eslint, vitest and the build; ci-go (`go test ./internal/contracts`);
-checks (the `Contracts:` line).
+## Checked by CI
+
+Checked by CI: `pnpm --dir web run generate:types` with `git diff --exit-code web/src/generated` (ci-web drift check: it regenerates `home_page.v2.ts` from the `generate:types` call this entry adds, so the file is checked here; json2ts cannot run in an offline sandbox, so no acceptance item claims it), tsc, eslint, vitest and the build; ci-go (`go test ./internal/contracts`); checks (the pull request body carries the line `Contracts: page.home_page v2 (new)` from the opening, the form `.github/workflows/checks.yml` accepts; v1 has no consumer and stays unchanged); the design verdict (the result matches the Interface part of `docs/design/home-page.md`, a judgement of the diff).
 
 ### home-page-compose
 
@@ -160,22 +159,22 @@ Acceptance:
 5. `TestComposeKeepsMembers` checks that each member in the output is byte-equal, after JSON compaction, to its input.
 6. `grep -c "internal/store\|time.Now\|os.ReadFile" internal/pages/home_page/compose.go` prints 0; `wc -l internal/pages/home_page/compose.go` shows under 600; `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go internal/pages/api_test.go cmd go.mod go.sum` is empty.
 7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line and no other path.
-8. The result matches the Decisions 5 and 6 of `docs/design/home-page.md`, judged from the code and the design file.
 
-Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint, the `arch.toml` against `modules.md` check); the privacy scan.
+## Checked by CI
+
+Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint, the `arch.toml` against `modules.md` check); the privacy scan; the design verdict (the result matches Decisions 5 and 6 of `docs/design/home-page.md`, a judgement of the code).
 
 ### home-page-view
 
 - Module: web. Size: M. Depends on: home-page-v2-schema.
 - Order: after home-page-v2-schema.
 - Design: docs/design/home-page.md#Decisions
-- Files: web/src/pages/home/HomePage.tsx, web/src/types/home_page.ts, web/test/pages/home/HomePage.test.tsx, web/test/pages/home/home-v2/fixtures/ok.ts, web/test/pages/home/home-v2/fixtures/bad-version.json, web/test/pages/home/home-v2/fixtures/bad-member.json, web/test/pages/home/home-v2/fixtures/MANIFEST.synthetic-v1.json, web/package.json
+- Files: web/src/pages/home/HomePage.tsx, web/src/types/home_page.ts, web/test/pages/home/HomePage.test.tsx, web/test/pages/home/home-v2/fixtures/ok.ts, web/test/pages/home/home-v2/fixtures/bad-version.json, web/test/pages/home/home-v2/fixtures/bad-member.json, web/test/pages/home/home-v2/fixtures/MANIFEST.synthetic-v1.json
 
 - Goal: Decisions 7 and 8. `web/src/types/home_page.ts` takes `Payload` from `HomePage` of `@/generated/home_page.v2` with `SUPPORTED_VERSIONS = [2]` and the placeholder check
   (the pattern of `web/src/types/macro_summary.ts`). `HomePage.tsx` exports `registration = { schema: 'home_page', page: page<Payload>(validate, HomePage) }`; its `validate` runs the top-level check, then the `validate`
   of `@/types/household_summary`, `held_companies_summary`, `macro_summary`, `market_summary` and `options_summary` on the five members, and returns the first gap. The component renders `HouseholdCard`, `HeldCompaniesCard`,
-  `MacroCard`, `MarketSummaryCard` and `OptionsSummaryCard` (imported, not edited) with `payload` set to the member; each of `block_links` and `report_links` is a link to its `href`, with no route table. `web/package.json` gains one `json2ts` call in `generate:types` for `page.home_page.v2.json` with `--cwd ../contracts/schemas` and the banner of the others (the CI drift check then covers `home_page.v2.ts`). `ok.ts` is typed `satisfies HomePage`
-  and builds its five members from the `ok` modules of `household-v2`, `held-v2` and `macro-v2` (imported) and the `ok.json` of `web/fixtures/v3/market-summary` and `options-summary` (read with `readFileSync`, as
+  `MacroCard`, `MarketSummaryCard` and `OptionsSummaryCard` (imported, not edited) with `payload` set to the member; each of `block_links` and `report_links` is a link to its `href`, with no route table. `web/package.json` and `web/src/generated/home_page.v2.ts` are not edited here: the generated file and the `generate:types` call come from `home-page-v2-schema`. `ok.ts` is typed `satisfies HomePage`, imports `HomePage` by the relative path `../../../../../src/generated/home_page.v2` and not by `@/generated/home_page.v2` (the fixture files hold no `@`, acceptance 3; the pattern of `web-views-wave-2.md` Decision 4 and `report-page.md`), and builds its five members from the `ok` modules of `household-v2`, `held-v2` and `macro-v2` (imported) and the `ok.json` of `web/fixtures/v3/market-summary` and `options-summary` (read with `readFileSync`, as
   `MarketSummaryCard.test.tsx` does). `bad-version.json` has a `schema_version` other than 2; `bad-member.json` has a valid top level and a `macro` member whose `schema_version` is not 2.
 - 按 frontend-stack：用 shadcn card, alert and button (`components/ui`) 做 the header, the `gap_line` and the two link lists。
 - 按 frontend-stack：用 vite 的 `import.meta.glob`（`web/src/shell/pages.tsx`, unchanged）做 the self-registration of `home_page`。
@@ -188,11 +187,11 @@ Acceptance:
 4. `web/test/pages/home/HomePage.test.tsx` renders `HomePage` with `ok` and checks that for each of the five members a text read from the fixture is on the page (`ok.household.card.title`, `ok.companies.card.title`, `ok.macro.card.title`, `ok.market.card.title`, `ok.options.card.title` each named in the file), that `ok.title`, `ok.say` and `ok.gap_line` are on the page, and that each of `ok.block_links` and `ok.report_links` is rendered as a link whose text is the `text` field and whose `href` attribute is the `href` field; `grep -c "ROUTE_PATHS" web/src/pages/home/HomePage.tsx` prints 0; `grep -c "ok\.\(household\|companies\|macro\|market\|options\)\.card\.title" web/test/pages/home/HomePage.test.tsx` prints at least 5.
 5. The same test checks that `registration.page.validate` refuses `bad-version.json` and refuses `bad-member.json` with a gap, and that it accepts `ok`; it opens no port and sleeps never; a clock the cards need is set with `vi.useFakeTimers` and `vi.setSystemTime`.
 6. `pnpm --dir web run test -- web/test/pages/home` passes, together with `web/test/shell` (the registration test finds `home_page` and no duplicate schema).
-7. `grep -o "page\.[a-z_]*\.v[0-9]*\.json" web/package.json | sort -u | wc -l` prints one more than the same command on `git show origin/main:web/package.json`, and `grep -c "home_page.v2.json" web/package.json` prints 1.
-8. `git diff $(git merge-base HEAD origin/main) -- web/src/shell web/src/pages/home/HouseholdCard.tsx web/src/pages/home/HeldCompaniesCard.tsx web/src/pages/home/MacroCard.tsx web/src/pages/home/MarketSummaryCard.tsx web/src/pages/home/OptionsSummaryCard.tsx web/src/pages/home/StaleAlert.tsx web/src/pages/home/CardNotes.tsx web/src/pages/home/DataTimesFold.tsx web/no-compute-allow.txt web/deps-allowlist.txt web/src/generated` is empty, and `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
-9. The result matches the Decisions 7 and 8 of `docs/design/home-page.md`, judged from the code and the design file.
+7. `git diff $(git merge-base HEAD origin/main) -- web/package.json web/src/shell web/src/pages/home/HouseholdCard.tsx web/src/pages/home/HeldCompaniesCard.tsx web/src/pages/home/MacroCard.tsx web/src/pages/home/MarketSummaryCard.tsx web/src/pages/home/OptionsSummaryCard.tsx web/src/pages/home/StaleAlert.tsx web/src/pages/home/CardNotes.tsx web/src/pages/home/DataTimesFold.tsx web/no-compute-allow.txt web/deps-allowlist.txt web/src/generated` is empty, and `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 
-Checked by CI: `pnpm install --frozen-lockfile`, then tsc (`pnpm --dir web run typecheck`), eslint, vitest and the build; hygiene (the manifest of the new `fixtures` directory and the privacy scan).
+## Checked by CI
+
+Checked by CI: `pnpm install --frozen-lockfile`, then tsc (`pnpm --dir web run typecheck`), eslint, vitest and the build; hygiene (the manifest of the new `fixtures` directory and the privacy scan); the design verdict (the result matches Decisions 7 and 8 of `docs/design/home-page.md`, a judgement of the code).
 
 ## Left out
 
@@ -215,5 +214,5 @@ Read in full in `home-page.adversarial.md`, in the dispatcher's scratchpad. The 
 3. Simpler way: adopted in part. `BlockLink` carries `href` (Decision 4, 8), `ROUTE_PATHS` and the owner question are dropped; `home-page-compose` stays (backend work in parallel, a pure function with no caller yet).
 4. Lock-in: adopted. Decision 9 names it.
 5. Contracts line: adopted. The interface entry carries `Contracts: page.home_page v2 (new)`, counts are relative to main at cut time, and the compose entry lists `arch.toml` and `.go-arch-lint.yml`.
-- (b) adopted: `home-page-v2-schema` is contracts-only; the `generate:types` edit moved to `home-page-view`.
+- (b) adopted: `home-page-v2-schema` is a judged two-module entry (contracts and web) and carries the `generate:types` line with the generated file, so its drift check covers `home_page.v2.ts`; `home-page-view` has no `web/package.json`.
 - (c) adopted: `home-page-v2-schema` is ordered after `report-types` (`docs/design/report-page.md`) and depends on it by name.
