@@ -53,6 +53,10 @@ components:
     in: internal/jobs
   jobs/fredseries:
     in: internal/jobs/fredseries
+  jobs/optioneod:
+    in: internal/jobs/optioneod
+  jobs/quotesnapshot:
+    in: internal/jobs/quotesnapshot
   pages:
     in: internal/pages
   pages/embed:
@@ -167,6 +171,24 @@ deps:
       - store
       - jobs
       - contracts/genpb
+  jobs/optioneod:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - jobs
+      - contracts/genpb
+  jobs/quotesnapshot:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - jobs
+      - contracts/genpb
   pages:
     mayDependOn:
       - contracts
@@ -218,6 +240,8 @@ deps:
       - jobs/fredseries
       - broker/grpcbroker
       - store/instrument
+      - jobs/optioneod
+      - jobs/quotesnapshot
       - pages/macro_rates
       - pages/macro_page
       - pages/option_data_page
