@@ -42,7 +42,7 @@ rows above name every other top-level path of the planned tree.
   `internal/`), and for `ot` this map states the exact import list, which `scripts/arch` generates as go-arch-lint component `ot` and
   `checks.yml` compares with this text: the root packages of the rows in its depends cell, `internal/profile`, and these implementation packages,
   one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/store/sessionday`, `internal/store/series`, `internal/store/snapshot`, `internal/store/ops`,
-  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`.
+  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`.
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
 - **Layers** (plan 2): data = contracts, clock, broker, sources, store, compute (in that order);
@@ -70,7 +70,7 @@ rows above name every other top-level path of the planned tree.
   `docs/design/ratchet.json` (docs).
 - Modules not touched in week 1: broker, compute and notify keep their paths, entry and tests cells (crew refuses a depends on a row
   with no entry), but none of their files exists until the weeks named in the second table (broker 3-4, compute 8-9, notify 11).
-  No depends cell names them yet: the issue whose code first imports one of them adds it to the depends cell of the importing row in that issue (for broker, the issues of `docs/design/option-jobs.md` for jobs and the wiring issue `ot-collect` for ot).
+  The depends cell of ot names broker (added by `docs/design/ot-collect.md`), so broker is no longer untouched in that sense. No other depends cell names broker, compute or notify yet: the issue whose code first imports one of them adds it to the depends cell of the importing row in that issue (for broker, the issues of `docs/design/option-jobs.md` for jobs).
 
 ## Modules
 
@@ -91,7 +91,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md |  | cmd/ot/main_test.go | contracts clock sources store runner jobs pages repo |
+| ot | cmd/** docs/contracts/ot.md |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs pages repo |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
