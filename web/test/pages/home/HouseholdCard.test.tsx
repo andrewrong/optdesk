@@ -1,5 +1,5 @@
-// Issue #1132: the 家庭概览 card shows the text fields of the payload and nothing else. Fixtures are the merged
-// payloads of fixtures/household-summary/; the literals below are from its README.
+// Issue #1132: the 家庭概览 card shows the text fields of the payload and nothing else. Fixtures are the
+// household_summary v2 payloads of ./household-v2/fixtures/, written from the schema alone.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -9,13 +9,17 @@ import { HouseholdCard, registration } from '@/pages/home/HouseholdCard'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const fixture = (name: string) =>
-  JSON.parse(
-    readFileSync(
-      path.resolve(import.meta.dirname, '../../../fixtures/household-summary', name),
-      'utf8',
-    ),
-  )
+import { validate } from '@/types/household_summary'
+import { gap } from './household-v2/fixtures/gap'
+import { ok } from './household-v2/fixtures/ok'
+import { stale } from './household-v2/fixtures/stale'
+
+const fixtures = { 'ok.json': ok, 'gap.json': gap, 'stale.json': stale }
+// A fresh copy, so a test may edit it.
+const fixture = (name: keyof typeof fixtures) => structuredClone(fixtures[name]) as any // eslint-disable-line @typescript-eslint/no-explicit-any
+const badVersion: unknown = JSON.parse(
+  readFileSync(path.resolve(import.meta.dirname, 'household-v2/fixtures/bad-version.json'), 'utf8'),
+)
 // jsdom has no ResizeObserver, which the Radix tooltip popper needs once it opens.
 vi.stubGlobal(
   'ResizeObserver',
@@ -36,6 +40,7 @@ async function show(payload: unknown) {
   })
 }
 afterEach(async () => {
+  vi.useRealTimers()
   await act(async () => root?.unmount())
   root = null
   document.body.innerHTML = ''
@@ -49,15 +54,15 @@ describe('HouseholdCard', () => {
 
   it('shows the title, subtitle and four tiles as sent', async () => {
     await show(fixture('ok.json'))
-    expect(host.querySelector('[data-slot=card-title]')?.textContent).toBe('家庭概览')
-    expect(host.textContent).toContain('两户合计 · 数据日 10-21')
+    expect(host.querySelector('[data-slot=card-title]')?.textContent).toBe(ok.card.title)
+    expect(host.textContent).toContain(ok.card.subtitle)
     expect(host.querySelectorAll('[data-tile]')).toHaveLength(4)
     expect(tile('net_worth').textContent).toContain('净值')
-    expect(tile('net_worth').textContent).toContain('≈$412,300')
-    expect(tile('day_change').textContent).toContain('+$1,860')
-    expect(tile('day_change').textContent).toContain('+0.45%')
-    expect(tile('cash').textContent).toContain('38%')
-    expect(tile('cash').textContent).toContain('+$156,700')
+    expect(tile('net_worth').textContent).toContain(ok.card.tiles.net_worth.figure.text)
+    expect(tile('day_change').textContent).toContain(ok.card.tiles.day_change.figure.text)
+    expect(tile('day_change').textContent).toContain(ok.card.tiles.day_change.caption.text)
+    expect(tile('cash').textContent).toContain(ok.card.tiles.cash.figure.text)
+    expect(tile('cash').textContent).toContain(ok.card.tiles.cash.caption.text)
   })
 
   it('explains a tile on focus of its info mark, and only when the payload sends explain', async () => {
@@ -106,20 +111,18 @@ describe('HouseholdCard', () => {
 
   it('shows a Gap figure as its text, never 0', async () => {
     await show(fixture('gap.json'))
-    // gap.json README: the allocation rows are missing, so the cash share is a gap
-    expect(tile('cash').querySelector('[data-slot=badge]')?.textContent).toBe(
-      '缺国家分布，现金占比暂不显示',
-    )
+    expect(tile('cash').querySelector('[data-slot=badge]')?.textContent).toBe(gap.card.gaps[1].text)
     expect(tile('month_to_date').querySelector('[data-slot=badge]')?.textContent).toBe(
-      '本月还没有日结单',
+      gap.card.gaps[0].text,
     )
     expect(tile('cash').textContent).not.toMatch(/\b0(\.0+)?%?\b|\$0\b/)
   })
 
   it('shows the stale label as sent', async () => {
-    // stale.json README: the label reads 数据已过期 · 数据日 10-21
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(stale.generated_at))
     await show(fixture('stale.json'))
-    expect(host.querySelector('[data-stale]')?.textContent).toBe('数据已过期 · 数据日 10-21')
+    expect(host.querySelector('[data-stale]')?.textContent).toBe(stale.card.stale.text)
     expect(host.querySelector('[data-stale]')?.getAttribute('data-stale')).toBe('true')
   })
 
@@ -159,11 +162,26 @@ describe('HouseholdCard', () => {
 
   it('shows notes, the gaps list and the 数据时间 text', async () => {
     await show(fixture('ok.json'))
-    expect(host.textContent).toContain('本月至今已扣除入金和出金，按简单法计算。')
+    expect(host.textContent).toContain(ok.card.notes[1])
     expect(host.querySelector('[data-gaps]')).toBeNull()
     await act(async () => {
       host.querySelector<HTMLElement>('[data-slot=accordion-trigger]')!.click()
     })
-    expect(host.textContent).toContain('净值 10-21 · 现金 10-21')
+    expect(host.textContent).toContain(ok.card.data_times_text)
+  })
+
+  it('shows the stale label of the ok fixture, not yet stale at its generation time', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(ok.generated_at))
+    await show(fixture('ok.json'))
+    expect(host.querySelector('[data-stale]')?.textContent).toBe(ok.card.stale.text)
+    expect(host.querySelector('[data-stale]')?.getAttribute('data-stale')).toBe('false')
+  })
+
+  it('lists the gaps of the gap fixture and refuses a schema_version it does not read', async () => {
+    await show(fixture('gap.json'))
+    expect(host.querySelector('[data-gaps]')?.textContent).toContain(gap.card.gaps[0].text)
+    expect(validate(badVersion).ok).toBe(false)
+    expect(validate(ok).ok).toBe(true)
   })
 })

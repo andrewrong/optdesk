@@ -123,8 +123,6 @@ export function HouseholdCard({
 }
 
 export const registration = {
-  // Joined so the schema name is spelled once in this file, in the import path above (issue #1132, acceptance 2);
-  // the test pins the result.
-  schema: ['household', 'summary'].join('_'),
+  schema: 'household_summary',
   page: page<Payload>(validate, HouseholdCard),
 }

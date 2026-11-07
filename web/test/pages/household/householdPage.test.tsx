@@ -9,6 +9,7 @@ import { HouseholdCard } from '@/pages/home/HouseholdCard'
 import { HouseholdPage, validateHouseholdPage } from '@/pages/household/HouseholdPage'
 import { monthChangeToSpec, trendToSpec } from '@/pages/household/householdToSpec'
 import { pages } from '@/shell/pages'
+import { ok } from '../home/household-v2/fixtures/ok'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const read = (dir: string, name: string) =>
@@ -212,7 +213,7 @@ it('links to /risk, and the 家庭概览 card links to /household', async () => 
   expect(link).toBeDefined()
   await act(async () => root?.unmount())
   host.remove()
-  await show(<HouseholdCard payload={read('household-summary', 'ok.json')} />)
+  await show(<HouseholdCard payload={ok} />)
   const card = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '/household')
   expect(card?.textContent).toContain('家庭页')
 })
