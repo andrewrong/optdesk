@@ -472,3 +472,19 @@ type SentStore interface {
 
 // OpenSentFunc opens the sent-mark store with the line DSNEnvAlerts (internal/store/alert.Open).
 type OpenSentFunc func(ctx context.Context, dsn string) (SentStore, error)
+
+// ReadingViewReader reads the winner rows of rd.reading_r1 as the role ot_ro_pages (the page process)
+// or ot_w_readings (the notify pass of risk-alerts).
+// This reader needs no grant on a readings table: it reads only the views rd.reading_r1 and rd.reading_parameter_r1.
+// Rows carry the parameters (data_day among them) read from the view rd.reading_parameter_r1, and no inputs.
+// One row per day: the highest version of the day, then in that version its highest-rev ok row, else its highest-rev row.
+type ReadingViewReader interface {
+	// WinnerReadings returns one row per day with day between from and to, inclusive, ascending by day,
+	// for one name, subject kind and subject; no rows gives an empty slice.
+	WinnerReadings(ctx context.Context, name, subjectKind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error)
+	Close() error
+}
+
+// OpenReadingViewFunc opens the view reader from a DSN of the role ot_ro_pages (the page process)
+// or ot_w_readings (the notify pass of risk-alerts); both hold SELECT on the views (internal/store/reading.OpenView).
+type OpenReadingViewFunc func(ctx context.Context, dsn string) (ReadingViewReader, error)

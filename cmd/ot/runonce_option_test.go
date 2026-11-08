@@ -13,7 +13,9 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -65,6 +67,22 @@ type evInstr struct {
 	store.InstrumentStore
 	c evc
 }
+type evCat struct {
+	store.OptionEodCatalogStore
+	c evc
+}
+type evTerms struct {
+	store.OptionTermsStore
+	c evc
+}
+type evNames struct {
+	store.InstrumentNameStore
+	c evc
+}
+type evReading struct {
+	store.ReadingStore
+	c evc
+}
 type evBroker struct {
 	broker.Broker
 	c evc
@@ -75,11 +93,15 @@ func (f evLedger) Close() error { return f.c.close() }
 func (f evLedger) Cursor(context.Context) (store.Cursor, error) {
 	return store.Cursor{Day: f.d}, nil
 }
-func (f evSeries) Close() error { return f.c.close() }
-func (f evEod) Close() error    { return f.c.close() }
-func (f evSnap) Close() error   { return f.c.close() }
-func (f evInstr) Close() error  { return f.c.close() }
-func (f evBroker) Close() error { return f.c.close() }
+func (f evSeries) Close() error  { return f.c.close() }
+func (f evEod) Close() error     { return f.c.close() }
+func (f evSnap) Close() error    { return f.c.close() }
+func (f evInstr) Close() error   { return f.c.close() }
+func (f evBroker) Close() error  { return f.c.close() }
+func (f evCat) Close() error     { return f.c.close() }
+func (f evTerms) Close() error   { return f.c.close() }
+func (f evNames) Close() error   { return f.c.close() }
+func (f evReading) Close() error { return f.c.close() }
 
 // brokerJob is a job whose Run asks the broker it was built with, as the option jobs do.
 type brokerJob struct {
@@ -126,6 +148,13 @@ type rig struct {
 	snapW      store.QuoteSnapshotWriter
 	cursor     contracts.Day
 	reconciled int
+	compute    jobs.ComputeStores
+}
+
+// pagesDSN is the value of the pages line of the rig's .env; the compute stores open with it.
+func (r *rig) pagesDSN() string {
+	env, _ := r.a.envFile()
+	return env[store.DSNEnvPages]
 }
 
 type recReconciler struct{ r *rig }
@@ -162,17 +191,28 @@ func newRig(t *testing.T, env string) *rig {
 		return evLedger{c: evc{"ledger", r.ev}, d: r.cursor}, nil
 	}
 	d.openSeries = func(_ context.Context, dsn string) (store.SeriesStore, error) {
-		if err := step("series", dsn); err != nil {
+		name := "series"
+		if dsn == r.pagesDSN() {
+			name = "c-series"
+		}
+		if err := step(name, dsn); err != nil {
 			return nil, err
 		}
-		return evSeries{c: evc{"series", r.ev}}, nil
+		return evSeries{c: evc{name, r.ev}}, nil
 	}
 	d.openOptionEod = func(_ context.Context, dsn string) (store.OptionEodStore, error) {
-		if err := step("eod", dsn); err != nil {
+		name := "eod"
+		if dsn == r.pagesDSN() {
+			name = "c-eod"
+		}
+		if err := step(name, dsn); err != nil {
 			return nil, err
 		}
-		r.eod = evEod{c: evc{"eod", r.ev}}
-		return r.eod, nil
+		e := evEod{c: evc{name, r.ev}}
+		if name == "eod" {
+			r.eod = e
+		}
+		return e, nil
 	}
 	d.openQuoteSnapshot = func(_ context.Context, dsn string) (store.QuoteSnapshotStore, error) {
 		if err := step("snap", dsn); err != nil {
@@ -187,6 +227,36 @@ func newRig(t *testing.T, env string) *rig {
 		}
 		r.instr = evInstr{c: evc{"instr", r.ev}}
 		return r.instr, nil
+	}
+	d.openOptionCatalog = func(_ context.Context, dsn string) (store.OptionEodCatalogStore, error) {
+		if err := step("c-catalog", dsn); err != nil {
+			return nil, err
+		}
+		return evCat{c: evc{"c-catalog", r.ev}}, nil
+	}
+	d.openOptionTerms = func(_ context.Context, dsn string) (store.OptionTermsStore, error) {
+		if err := step("c-terms", dsn); err != nil {
+			return nil, err
+		}
+		return evTerms{c: evc{"c-terms", r.ev}}, nil
+	}
+	d.openInstrumentName = func(_ context.Context, dsn string) (store.InstrumentNameStore, error) {
+		if err := step("c-names", dsn); err != nil {
+			return nil, err
+		}
+		return evNames{c: evc{"c-names", r.ev}}, nil
+	}
+	d.openReading = func(_ context.Context, dsn string) (store.ReadingStore, error) {
+		if err := step("readings", dsn); err != nil {
+			return nil, err
+		}
+		return evReading{c: evc{"readings", r.ev}}, nil
+	}
+	d.newComputeFigures = func(
+		cs jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock,
+	) (contracts.Job, error) {
+		r.compute = cs
+		return namedJob{id: "compute_figures"}, r.fail["figjob"]
 	}
 	d.dialBroker = func(_ context.Context, path string, _ broker.Options) (broker.Broker, error) {
 		r.ev.add("open broker")
@@ -222,12 +292,14 @@ func newRig(t *testing.T, env string) *rig {
 func TestRunOnceWiresOptionJobs(t *testing.T) {
 	t.Parallel()
 	env := "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
-		"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n"
+		"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
+		"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\n"
 	r := newRig(t, env)
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"sd": "run-dsn", "ledger": "run-dsn", "series": "ser-dsn", "eod": "eod-dsn", "snap": "snap-dsn", "instr": "master-dsn"}
+	want := map[string]string{"sd": "run-dsn", "ledger": "run-dsn", "series": "ser-dsn", "eod": "eod-dsn", "snap": "snap-dsn", "instr": "master-dsn",
+		"c-catalog": "pages-dsn", "c-eod": "pages-dsn", "c-terms": "pages-dsn", "c-names": "pages-dsn", "c-series": "pages-dsn", "readings": "readings-dsn"}
 	for k, v := range want {
 		if r.dsn[k] != v {
 			t.Errorf("store %s opened with %q, want %q", k, r.dsn[k], v)
@@ -246,7 +318,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures"}) {
 		t.Errorf("jobs %v", ids)
 	}
 }
@@ -262,7 +334,7 @@ func TestRunOnceRule(t *testing.T) {
 	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 3 {
+	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 4 {
 		t.Fatalf("rules %+v %+v, jobs %d", r.rule, r.backRule, len(r.jobs))
 	}
 }
@@ -280,7 +352,9 @@ func TestRunOnceCloses(t *testing.T) {
 		{"sd", "sd", fullEnv}, {"ledger", "ledger", fullEnv}, {"series", "series", fullEnv},
 		{"eod", "eod", fullEnv}, {"snap", "snap", fullEnv}, {"instr", "instr", fullEnv},
 		{"dial", "broker", fullEnv}, {"fred job", "fredjob", fullEnv}, {"eod job", "eodjob", fullEnv},
-		{"snap job", "snapjob", fullEnv}, {"reconcile", "reconcile", fullEnv},
+		{"snap job", "snapjob", fullEnv}, {"compute job", "figjob", fullEnv},
+		{"c-catalog", "c-catalog", fullEnv}, {"c-eod", "c-eod", fullEnv}, {"c-terms", "c-terms", fullEnv},
+		{"c-names", "c-names", fullEnv}, {"c-series", "c-series", fullEnv}, {"readings", "readings", fullEnv}, {"reconcile", "reconcile", fullEnv},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newRig(t, tc.env)
@@ -312,8 +386,9 @@ func TestRunOnceErrors(t *testing.T) {
 	t.Parallel()
 	const sentinel = "sentinel-secret"
 	env := "OT_PG_DSN_RUNNER=" + sentinel + "-r\nOT_PG_DSN_SERIES_FRED=" + sentinel + "-s\nFRED_API_KEY=" + sentinel + "-k\n" +
-		"OT_PG_DSN_OPTION_EOD=" + sentinel + "-e\nOT_PG_DSN_QUOTE_SNAPSHOT=" + sentinel + "-q\nOT_PG_DSN_MASTER=" + sentinel + "-m\n"
-	for _, line := range []string{"OT_PG_DSN_OPTION_EOD", "OT_PG_DSN_QUOTE_SNAPSHOT", "OT_PG_DSN_MASTER"} {
+		"OT_PG_DSN_OPTION_EOD=" + sentinel + "-e\nOT_PG_DSN_QUOTE_SNAPSHOT=" + sentinel + "-q\nOT_PG_DSN_MASTER=" + sentinel + "-m\n" +
+		"OT_PG_DSN_PAGES=" + sentinel + "-p\nOT_PG_DSN_READINGS=" + sentinel + "-rd\n"
+	for _, line := range []string{"OT_PG_DSN_OPTION_EOD", "OT_PG_DSN_QUOTE_SNAPSHOT", "OT_PG_DSN_MASTER", "OT_PG_DSN_PAGES", "OT_PG_DSN_READINGS"} {
 		t.Run("missing "+line, func(t *testing.T) {
 			var kept []string
 			for _, l := range strings.Split(env, "\n") {
@@ -330,6 +405,7 @@ func TestRunOnceErrors(t *testing.T) {
 	}
 	for _, tc := range []struct{ step, line string }{
 		{"eod", "OT_PG_DSN_OPTION_EOD"}, {"snap", "OT_PG_DSN_QUOTE_SNAPSHOT"}, {"instr", "OT_PG_DSN_MASTER"},
+		{"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"}, {"readings", "OT_PG_DSN_READINGS"},
 	} {
 		t.Run("open "+tc.step, func(t *testing.T) {
 			r := newRig(t, env)
@@ -381,10 +457,10 @@ func TestRunOnceDialFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "from reconcile") {
 		t.Fatalf("err %v, want what Reconcile returned", err)
 	}
-	if len(r.jobs) != 3 {
+	if len(r.jobs) != 4 {
 		t.Fatalf("Reconcile got %d jobs", len(r.jobs))
 	}
-	for _, j := range r.jobs[1:] {
+	for _, j := range r.jobs[1:3] {
 		res := j.Run(t.Context(), "2026-11-04", nil)
 		if res.Err == nil || res.Err.Kind() != contracts.Retryable {
 			t.Fatalf("%s: err %v", j.ID(), res.Err)
@@ -420,6 +496,7 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 			return map[string]string{
 				"OT_PG_DSN_RUNNER": "a", "OT_PG_DSN_SERIES_FRED": "a", "FRED_API_KEY": "a",
 				"OT_PG_DSN_OPTION_EOD": "a", "OT_PG_DSN_QUOTE_SNAPSHOT": "a", "OT_PG_DSN_MASTER": "a",
+				"OT_PG_DSN_PAGES": "a", "OT_PG_DSN_READINGS": "a",
 			}, nil
 		}
 		err := runOnce(r.a, nil)
@@ -432,5 +509,32 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "socket path too long") || strings.Contains(err.Error(), home) || len(r.ev.list()) != 0 {
 			t.Fatalf("%d bytes: err %v events %v", tc.n, err, r.ev.list())
 		}
+	}
+}
+
+func TestRunOnceWiresFourJobs(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, j := range r.jobs {
+		ids = append(ids, j.ID())
+	}
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures"}) {
+		t.Fatalf("jobs %v", ids)
+	}
+	c := r.compute
+	if c.Catalog == nil || c.OptionEod == nil || c.Terms == nil || c.Names == nil || c.Series == nil || c.Readings == nil || c.SessionDays == nil {
+		t.Fatalf("a store of compute_figures is nil: %+v", c)
+	}
+	if _, ok := c.SessionDays.(evSD); !ok {
+		t.Errorf("session days are %T, want the runner store already open", c.SessionDays)
+	}
+	// backfill hands the runner the same four jobs.
+	r.jobs = nil
+	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 4 {
+		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }

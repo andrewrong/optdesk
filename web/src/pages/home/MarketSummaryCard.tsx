@@ -10,23 +10,31 @@ import { validate, type Payload } from '@/types/market_summary'
 import { CardNotes } from './CardNotes'
 import { DataTimesFold } from './DataTimesFold'
 import { StaleNotice } from './StaleNotice'
+import { TitleLink } from './OverviewCard'
 
 type Chart_ = Payload['card']['chart']
 
 function specOf(chart: Chart_): ChartSpec {
   const [close, average, band] = chart.series_names
-  const line = (name: string, key: 'close' | 'ma200' | 'band_low' | 'band_high') => ({
+  const line = (
+    name: string,
+    key: 'close' | 'ma200' | 'band_low' | 'band_high',
+    extra: Partial<ChartSpec['series'][number]> = {},
+  ) => ({
     name,
     points: chart.points.map((point) => ({ value: point[key] ?? null })),
+    ...extra,
   })
+  // The two band lines share one legend entry: the second one is hidden from it.
   return {
     kind: 'line',
+    legend: true,
     categories: chart.points.map((point) => point.label),
     series: [
       line(close, 'close'),
       line(average, 'ma200'),
-      line(band, 'band_low'),
-      line(band, 'band_high'),
+      line(band, 'band_low', { dashed: true }),
+      line(band, 'band_high', { dashed: true, legendHidden: true }),
     ],
   }
 }
@@ -50,7 +58,7 @@ function cellOf(slot: Slot): Cell {
   return { text: slot.text, value: slot.value, tone: slot.tone }
 }
 
-export function MarketSummaryCard({ payload }: { payload: Payload }) {
+export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; titleHref?: string }) {
   const { card } = payload
   const rows = card.index_table.rows.map((row) => ({
     name: {
@@ -66,7 +74,9 @@ export function MarketSummaryCard({ payload }: { payload: Payload }) {
   return (
     <Card data-card="market-summary">
       <CardHeader>
-        <CardTitle>{card.title}</CardTitle>
+        <CardTitle>
+          <TitleLink href={titleHref}>{card.title}</TitleLink>
+        </CardTitle>
         <CardDescription>{card.say}</CardDescription>
         <p className="text-xs text-muted-foreground" data-subtitle>
           {card.subtitle}

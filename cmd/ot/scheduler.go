@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -60,6 +61,10 @@ func schedulerCmd(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
+	sender, err := telegramSender(a)
+	if err != nil {
+		return err
+	}
 	ln, err := listenHealth(a.getenv)
 	if err != nil {
 		return err
@@ -74,7 +79,7 @@ func schedulerCmd(a *app, args []string) error {
 	}
 	defer func() { _ = fence.Close() }() // the ticker closes it on drain too; Close is safe twice
 	err = withWiring(ctx, a, a.deps.newClock(), cfg, nil, func(w wiring) error {
-		return runScheduler(ctx, a, fw, cfg, fence, ln, w)
+		return runScheduler(ctx, a, fw, cfg, fence, ln, sender, w)
 	})
 	switch {
 	case err == nil:
@@ -117,7 +122,7 @@ func lockFence(ctx context.Context, a *app, clk clockwork.Clock, cfg runOnceConf
 
 // runScheduler builds the scheduler over the open stores and runs it until it stops.
 func runScheduler(
-	ctx context.Context, a *app, fw clockwork.Clock, cfg runOnceConfig, fence store.Fence, ln net.Listener, w wiring,
+	ctx context.Context, a *app, fw clockwork.Clock, cfg runOnceConfig, fence store.Fence, ln net.Listener, sender notify.Sender, w wiring,
 ) error {
 	d := a.deps
 	sl, err := d.openSchedulerLedger(ctx, cfg.runnerDSN)
@@ -144,7 +149,11 @@ func runScheduler(
 	}
 	p := &prober{w: w, hasKey: cfg.fredKey != ""}
 	rec := newSwapReconciler(enabled, build, p.probe, a.log)
-	gaps := d.newGapSyncer(w.ledger, sl, fw)
+	nf, err := newNotifier(a, ledgerGaps{sl}, sender, fw, true)
+	if err != nil {
+		return err
+	}
+	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, log: a.log}
 	s := d.newScheduler(fence, sl, w.ledger, w.cal, fw, rec, gaps, w.jobs, disabled, execIdentity)
 
 	srv := &http.Server{Handler: healthHandler(s, fw), ReadHeaderTimeout: 5 * time.Second}

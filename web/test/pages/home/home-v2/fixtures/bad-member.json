@@ -1,6 +1,6 @@
 {
   "schema": "home_page",
-  "schema_version": 2,
+  "schema_version": 3,
   "run_id": "run-demo-0001",
   "build_id": "build-demo-0001",
   "scope": "home",
@@ -10,16 +10,10 @@
   "title": "今日总览",
   "say": "五张卡片，一页看完。",
   "gap_line": "今天没有缺口",
-  "block_links": [
-    {
-      "href": "/household",
-      "text": "家庭页"
-    },
-    {
-      "href": "/options",
-      "text": "期权页"
-    }
-  ],
+  "overview": {
+    "gaps": [],
+    "items": []
+  },
   "report_links": [
     {
       "href": "/report/weekly",
@@ -695,5 +689,6 @@
       ],
       "gaps": []
     }
-  }
+  },
+  "stale_after": "2026-10-23T05:35:00+08:00"
 }

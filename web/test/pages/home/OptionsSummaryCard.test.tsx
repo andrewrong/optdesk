@@ -1,5 +1,5 @@
-// The options_summary v3 card shows the text fields of the payload and nothing else. Expected strings are read from
-// the fixtures of fixtures/v3/options-summary/, not from the component.
+// The options_summary v4 card shows the text fields of the payload and nothing else. Expected strings are read from
+// the v4 fixtures of contracts/fixtures, not from the component.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -17,7 +17,15 @@ const fixture = (dir: string, name: string) =>
   JSON.parse(
     readFileSync(path.resolve(import.meta.dirname, '../../../fixtures', dir, name), 'utf8'),
   )
-const os = (name: string) => fixture('v3/options-summary', name)
+const os = (name: string) =>
+  name === 'bad-version.json'
+    ? fixture('v3/options-summary', name)
+    : JSON.parse(
+        readFileSync(
+          path.resolve(import.meta.dirname, '../../../../contracts/fixtures', `page.options_summary.v4.${name}`),
+          'utf8',
+        ),
+      )
 
 const drawn: { spec: ChartSpec }[] = []
 vi.mock('@/charts/Chart', async (importOriginal) => {
@@ -57,7 +65,11 @@ describe('OptionsSummaryCard', () => {
     const ok = os('ok.json')
     await showCard(ok)
     const spec = drawn.at(-1)!.spec
-    expect(spec.series.map((s) => s.name)).toEqual([ok.card.premium_series_text, '已了结'])
+    expect(spec.series.map((s) => s.name)).toEqual([
+      ok.card.premium_series_text,
+      ok.card.closed_series_text,
+    ])
+    expect(spec.legend).toBe(true)
     const sent = ok.card.premium_series_6m
     expect(spec.categories).toEqual(sent.map((p: { label: string }) => p.label))
     expect(spec.series[0]!.points.map((p) => p.label)).toEqual(
@@ -86,6 +98,14 @@ describe('OptionsSummaryCard', () => {
     expect(tile('sold_count_month').querySelector('[data-tile-figure]')?.textContent).toBe(
       ok.card.tiles.sold_count_month.figure.text,
     )
+  })
+
+  it('renders the title as a link to titleHref', async () => {
+    const ok = os('ok.json')
+    await show(<OptionsSummaryCard payload={ok} titleHref="/options" />)
+    const a = host.querySelector('[data-slot=card-title] a')
+    expect(a?.getAttribute('href')).toBe('/options')
+    expect(a?.textContent).toBe(ok.card.title)
   })
 
   it('rejects bad-version.json with unsupported_version', () => {

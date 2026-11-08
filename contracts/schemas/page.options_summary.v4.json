@@ -1,0 +1,403 @@
+{
+  "$defs": {
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "closed_series_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Closed Series Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "premium_series_6m": {
+          "items": {
+            "$ref": "#/$defs/SeriesPoint"
+          },
+          "maxItems": 6,
+          "minItems": 6,
+          "title": "Premium Series 6M",
+          "type": "array"
+        },
+        "premium_series_caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Premium Series Caption",
+          "type": "string"
+        },
+        "premium_series_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Premium Series Text",
+          "type": "string"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "tiles": {
+          "$ref": "#/$defs/Tiles"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "subtitle",
+        "stale",
+        "tiles",
+        "premium_series_6m",
+        "premium_series_text",
+        "closed_series_text",
+        "premium_series_caption",
+        "notes",
+        "gaps"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "CountFigure": {
+      "additionalProperties": false,
+      "description": "A displayed count of option structures (a short put, a spread: one structure each).",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "structures",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Value",
+          "type": "integer",
+          "x-decimals": 0
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "CountFigure",
+      "type": "object"
+    },
+    "CountTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Caption",
+          "type": "string"
+        },
+        "figure": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CountFigure"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "title": "CountTile",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "kind": {
+          "const": "gap",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "SeriesPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "closed": {
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Closed"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "month": {
+          "description": "Calendar month as YYYY-MM.",
+          "maxLength": 7,
+          "minLength": 7,
+          "title": "Month",
+          "type": "string"
+        },
+        "premium": {
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Premium"
+        }
+      },
+      "required": [
+        "month",
+        "premium",
+        "label",
+        "closed"
+      ],
+      "title": "SeriesPoint",
+      "type": "object"
+    },
+    "SignedUsdTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Caption",
+          "type": "string"
+        },
+        "figure": {
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/UsdSignedFigure"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "title": "SignedUsdTile",
+      "type": "object"
+    },
+    "Tiles": {
+      "additionalProperties": false,
+      "description": "The four tiles, under fixed keys.",
+      "properties": {
+        "max_loss_usd": {
+          "$ref": "#/$defs/UsdTile"
+        },
+        "open_premium_usd": {
+          "$ref": "#/$defs/UsdTile"
+        },
+        "premium_month_usd": {
+          "$ref": "#/$defs/SignedUsdTile"
+        },
+        "sold_count_month": {
+          "$ref": "#/$defs/CountTile"
+        }
+      },
+      "required": [
+        "sold_count_month",
+        "premium_month_usd",
+        "open_premium_usd",
+        "max_loss_usd"
+      ],
+      "title": "Tiles",
+      "type": "object"
+    },
+    "UsdTile": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Caption",
+          "type": "string"
+        },
+        "figure": {
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/UsdFigure"
+            },
+            {
+              "$ref": "#/$defs/Gap"
+            }
+          ],
+          "title": "Figure"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "title": "UsdTile",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.options_summary.v4.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034) and card of the v3 line: tagged unions, a stale flag set by the producer.",
+  "properties": {
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "card": {
+      "$ref": "#/$defs/Card"
+    },
+    "currency": {
+      "const": "USD",
+      "title": "Currency",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "schema": {
+      "const": "options_summary",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 4,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "currency",
+    "generated_at",
+    "stale_after",
+    "data_times",
+    "run_status",
+    "card"
+  ],
+  "title": "OptionsSummaryV3",
+  "type": "object"
+}

@@ -240,3 +240,64 @@ type LoadAlertRulesFunc func(r io.Reader) (AlertRules, error)
 
 // DefaultAlertRulesFunc returns the rules embedded in the program.
 type DefaultAlertRulesFunc func() (AlertRules, error)
+
+// SharpMarkFunc says whether a day change and a 5-day change, in percent, are sharp. A
+// change is sharp when its absolute value reaches the limit of SharpLimitsFunc, the limit
+// itself included. A nil change is a gap and is never sharp. The two results are
+// independent of each other.
+type SharpMarkFunc func(day, five *float64) (daySharp, fiveSharp bool)
+
+// SharpLimitsFunc returns the limits, in percent, that SharpMarkFunc applies to the day
+// change and to the 5-day change, for a builder's note.
+type SharpLimitsFunc func() (day, fiveDay float64)
+
+// EaseSeries holds the seven series that Ease reads, as FromSeriesPoints gives them. The
+// three liquidity series WALCL, WDTGAL and RRPONTSYD are in whole dollars; DGS10, DFF and
+// BAMLH0A0HYM2 are in percent; SP500 is in index points and only its dates are used.
+type EaseSeries struct {
+	WALCL, WDTGAL, RRPONTSYD, DGS10, DFF, SP500, BAMLH0A0HYM2 Series
+}
+
+// EaseBand is the word for the score of an ease figure.
+type EaseBand string
+
+// The bands of an EaseFigure.
+const (
+	EaseTighter EaseBand = "tighter"
+	EaseSteady  EaseBand = "steady"
+	EaseLooser  EaseBand = "looser"
+)
+
+// EasePart is one of the four inputs of the ease figure. Input is "net_liquidity",
+// "us10y", "fed_funds" or "hy_oas", in that order. Status is ok or missing. Reason is
+// no_input (the series has no point), short_history (it has points, fewer than the
+// window; for net_liquidity, one of the eight summed Wednesdays has no figure) or
+// stale_input (the figure is older than its age). Score is rounded half-even to 2
+// places. A missing part with no figure has an empty DataDay and a Figure of 0.
+type EasePart struct {
+	Input   string
+	DataDay contracts.Day
+	Figure  float64
+	Score   float64
+	Status  Status
+	Reason  Reason
+}
+
+// EaseFigure is the ease figure: Figure.DataDay is the newest data day of the parts used,
+// Value the score to 2 places, Reason no_input when fewer than 3 parts are present and
+// Observations the number of parts used. Band is empty when the value is missing. Parts
+// always has four entries, in the order of EasePart.
+type EaseFigure struct {
+	Figure
+	Band  EaseBand
+	Parts []EasePart
+}
+
+// Ease computes the ease figure, purely: no I/O and no clock. id is "macro.ease" and the
+// rule comes from Rules; an unknown id gives a missing figure with reason bad_input.
+type Ease interface {
+	Ease(id string, s EaseSeries, asOf contracts.Day) EaseFigure
+}
+
+// NewEaseFunc builds an Ease that reads its rule from the given Rules.
+type NewEaseFunc func(Rules) Ease

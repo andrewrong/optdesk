@@ -12,6 +12,7 @@ export type { Payload as MacroPayload } from '@/types/macro_summary'
 import { StaleAlert } from './StaleAlert'
 import { CardNotes } from './CardNotes'
 import { DataTimesFold } from './DataTimesFold'
+import { TitleLink } from './OverviewCard'
 
 const COLUMNS: Column[] = [
   { id: 'date', label: '日期' },
@@ -19,7 +20,15 @@ const COLUMNS: Column[] = [
   { id: 'previous', label: '前值', align: 'right' },
 ]
 
-export function MacroCard({ payload, showGaps = true }: { payload: Payload; showGaps?: boolean }) {
+export function MacroCard({
+  payload,
+  showGaps = true,
+  titleHref,
+}: {
+  payload: Payload
+  showGaps?: boolean
+  titleHref?: string
+}) {
   const { card } = payload
   const { ease } = card
   const rows = card.events.map((event) => ({
@@ -32,7 +41,9 @@ export function MacroCard({ payload, showGaps = true }: { payload: Payload; show
   return (
     <Card data-card="macro-summary">
       <CardHeader>
-        <CardTitle>{card.title}</CardTitle>
+        <CardTitle>
+          <TitleLink href={titleHref}>{card.title}</TitleLink>
+        </CardTitle>
         <CardDescription>{card.say}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -347,3 +347,118 @@ func TestAlertContract(t *testing.T) {
 type emptyReader struct{}
 
 func (emptyReader) Read([]byte) (int, error) { return 0, io.EOF }
+
+// fakeSharp is a stand-in implementation of the sharp-move types: inclusive at the limit,
+// false for a nil change.
+func fakeSharp() (compute.SharpMarkFunc, compute.SharpLimitsFunc) {
+	limits := func() (float64, float64) { return 3, 8 }
+	mark := func(day, five *float64) (bool, bool) {
+		d, f := limits()
+		return day != nil && math.Abs(*day) >= d, five != nil && math.Abs(*five) >= f
+	}
+	return mark, limits
+}
+
+// sharpCaller uses only the two types, as a builder does.
+func sharpCaller(mark compute.SharpMarkFunc, limits compute.SharpLimitsFunc, day, five *float64) (bool, bool, float64, float64) {
+	ds, fs := mark(day, five)
+	d, f := limits()
+	return ds, fs, d, f
+}
+
+func TestSharpContract(t *testing.T) {
+	t.Parallel()
+	mark, limits := fakeSharp()
+	p := func(v float64) *float64 { return &v }
+	cases := []struct {
+		name      string
+		day, five *float64
+		wantDay   bool
+		wantFive  bool
+	}{
+		{"below", p(2.99), p(7.99), false, false},
+		{"at limit", p(3), p(8), true, true},
+		{"negative at limit", p(-3), p(-8), true, true},
+		{"independent", p(3), p(1), true, false},
+		{"nil is false", nil, nil, false, false},
+	}
+	for _, c := range cases {
+		ds, fs, d, f := sharpCaller(mark, limits, c.day, c.five)
+		if ds != c.wantDay || fs != c.wantFive {
+			t.Errorf("%s: got %v %v, want %v %v", c.name, ds, fs, c.wantDay, c.wantFive)
+		}
+		if d != 3 || f != 8 {
+			t.Errorf("%s: limits %v %v", c.name, d, f)
+		}
+	}
+}
+
+// fakeEase answers like the contract says: four parts in the order of the doc, a band
+// only when the value is present.
+type fakeEase struct{}
+
+func (fakeEase) Ease(id string, s compute.EaseSeries, asOf contracts.Day) compute.EaseFigure {
+	inputs := []string{"net_liquidity", "us10y", "fed_funds", "hy_oas"}
+	parts := make([]compute.EasePart, len(inputs))
+	for i, in := range inputs {
+		parts[i] = compute.EasePart{Input: in, Status: compute.StatusMissing, Reason: compute.NoInput}
+	}
+	if id != "macro.ease" {
+		return compute.EaseFigure{
+			Figure: compute.Figure{ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.BadInput},
+			Parts:  parts,
+		}
+	}
+	return compute.EaseFigure{
+		Figure: compute.Figure{ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.NoInput},
+		Parts:  parts,
+	}
+}
+
+// easeCaller uses only the types, as a job does.
+func easeCaller(e compute.Ease, id string, asOf contracts.Day) compute.EaseFigure {
+	return e.Ease(id, compute.EaseSeries{}, asOf)
+}
+
+func TestEaseContract(t *testing.T) {
+	t.Parallel()
+	newEase := compute.NewEaseFunc(func(compute.Rules) compute.Ease { return fakeEase{} })
+	e := newEase(nil)
+	for _, id := range []string{"macro.ease", "unknown"} {
+		f := easeCaller(e, id, "2026-01-02")
+		if len(f.Parts) != 4 {
+			t.Fatalf("%s: %d parts, want 4", id, len(f.Parts))
+		}
+		for i, want := range []string{"net_liquidity", "us10y", "fed_funds", "hy_oas"} {
+			if f.Parts[i].Input != want {
+				t.Errorf("%s: part %d is %q, want %q", id, i, f.Parts[i].Input, want)
+			}
+		}
+		if f.Status == compute.StatusMissing && f.Band != "" {
+			t.Errorf("%s: missing figure has band %q", id, f.Band)
+		}
+	}
+	if got := easeCaller(e, "unknown", "2026-01-02").Reason; got != compute.BadInput {
+		t.Errorf("unknown id reason %q, want bad_input", got)
+	}
+}
+
+func TestEaseWords(t *testing.T) {
+	t.Parallel()
+	bands := map[compute.EaseBand]string{
+		compute.EaseTighter: "tighter",
+		compute.EaseSteady:  "steady",
+		compute.EaseLooser:  "looser",
+	}
+	for b, want := range bands {
+		if string(b) != want {
+			t.Errorf("band %q, want %q", b, want)
+		}
+	}
+	f := easeCaller(fakeEase{}, "macro.ease", "2026-01-02")
+	for i, in := range []string{"net_liquidity", "us10y", "fed_funds", "hy_oas"} {
+		if f.Parts[i].Input != in {
+			t.Errorf("fake part %d %q disagrees with table %q", i, f.Parts[i].Input, in)
+		}
+	}
+}
