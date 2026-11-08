@@ -148,7 +148,7 @@ type Prober interface {
 
 // GapSyncer writes and clears the gaps of a day. disabled is the map of left-out jobs
 // (job id to reason); nil means none. The ticker owns that map and gives Sync a fresh
-// copy on every call: Sync may read it and must not keep it or write to it.
+// copy on every call: Sync may keep or read it without a race.
 type GapSyncer interface {
 	Sync(ctx context.Context, day contracts.Day, disabled map[string]string) error
 }
