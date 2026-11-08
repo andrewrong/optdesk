@@ -1,0 +1,21 @@
+{
+  "schema": "core_page",
+  "schema_version": 2,
+  "run_id": "run-demo-0001",
+  "build_id": "build-demo-0001",
+  "scope": "core",
+  "generated_at": "2026-10-26T21:30:00Z",
+  "data_times": [],
+  "run_status": "ok",
+  "stale": null,
+  "title": "核心持仓",
+  "sentence": "三家公司。",
+  "notes": [],
+  "gaps": [],
+  "basis_note": "不给目标价 · 不进规则",
+  "scale": { "low_text": "0%", "high_text": "15%", "treasury": { "text": "国债 4.2%", "marker_percent": 28 } },
+  "rows": [],
+  "jp_note": "日股暂未纳入。",
+  "legend": [],
+  "snapshot_text": "快照 2026-10-26"
+}
