@@ -2,7 +2,7 @@
 
 Author: the optdesk designer
 Owner approved: the owner's decisions below are binding (goal, source, EDINET automation); the advisor's of 2026-11-08 (port ADR 0008 and 0023 in meaning); the rest is for the design review
-Revision: 2 (adversarial review adopted; watch list shared with event-sources)
+Revision: 3 (owner answers of 2026-11-09 applied; revision 2: adversarial review adopted, watch list shared with event-sources)
 
 Source: the owner's goal "value investing plus option selling", the loop company value, buy price band, strike, candidates, ledger, tracking; the advisor of 2026-11-08; the adversarial review of revision 1 (dispatcher scratchpad, not in the repository).
 Read in option-trader at 4704569f (read only): `docs/adr/0008-valuation-and-acquisition-policy.md`, `0023-return-at-price.md`, `src/option_trader/valuation/` (`fcf_yield.py`, `reverse_dcf.py`, `price_return.py`, `five_questions.py`, `diagnosis.py`, `filing_rows.py`, `facts.py`), its `params/*.toml`, `sources/fmp/analyst_estimates.py`.
@@ -12,7 +12,7 @@ Goal: for each company the owner holds or watches, a stored buy-price band made 
 
 ## What the owner gets
 
-- A buy-price band per company: the highest price he would accept as assignment price (value at an 8% free-cash-flow yield) and a lower edge (10%); 6% is shown as a reference outside the band. It is the price line on the page. After 90 days without a new figure the page says "expired" and shows no band.
+- A buy-price band per company: the highest price he would accept as assignment price (value at an 8% free-cash-flow yield) and a lower edge (10%); 6% is shown as a reference outside the band. It is the price line on the page. The figure is valid 90 days from the day he approves it (owner 2026-11-09, as option-trader ADR 0008); he approves with one `ot` command, and after the 90 days the page says "expired" and shows no band. Before he approves, the page shows the figure labelled "awaiting approval".
 - The return a price earns per year in four named cases beside the US ten-year Treasury yield (ADR 0023, at the strike as it stands), and the growth today's price needs at 8%, 10% and 12% (reverse DCF).
 - One companies page with Core (the returns), Diagnosis (context for cyclical and financial names) and the five questions: four answered by numbers from filings, the fifth and the moat as his own text.
 - US companies from SEC filings; no hand-entered figures. A bank, insurer, cyclical or loss-making company shows "unvalued" with the reason, never a band.
@@ -30,14 +30,14 @@ Goal: for each company the owner holds or watches, a stored buy-price band made 
 
 1. Ported in meaning (advisor, 2026-11-08): `fcf_yield` v2 (5-year median of operating cash flow minus capital expenditure minus stock compensation, over current diluted shares, over the required yield; 6%, 8%, 10%, primary 8%; leverage and instability flags; share-count sanity; eligible years: 350 to 380 days, annual forms only, consecutive); reverse DCF (10 years, terminal 2%, rates 8%, 10% primary, 12%, no fade); `price_return` v1 with its four lines, gate, refusals and flags (ADR 0023 and its three notes); five questions Q1 to Q4; the diagnosis. Parameters are the option-trader files pinned by git blob id: `fcf_yield_v2.toml` 4952b59720ce, `reverse_dcf_v1.toml` e1e1f731c7b8, `price_return_v1.toml` 8d7be25e35c3, `five_questions_v1.toml` 6755537f67d5, `diagnosis_v1.toml` 643178784313, `filing_rows_v1.toml` 967d8d64ff48. They are US-GAAP and USD; Japan needs its own parameter file (concepts, JPY), written in `edinet-mapping`, new and registered as such, not "ported".
 2. Arithmetic: Decimal everywhere, no float64. Library `github.com/shopspring/decimal` (MIT, widely used, stable, no dependencies), added to `go.mod` by the first issue that imports it (`compute-filings`). Python used precision 34 per call (`localcontext(prec=34)`); shopspring has a package-global `DivisionPrecision`, which no code here sets or reads: every division goes through one helper `div` that keeps 34 significant digits explicitly, rounding half-even as the old code. The goldens compare exact text with the Python output; if parity cannot be reached the issue stops and reports, and `math/big.Rat` (standard library) is the fallback behind the same helper (own glue behind one function, owner 2026-11-08). The interface carries decimal text, so no library type is in an interface.
-3. The band. `valuation.buy_band` v1, subject kind `underlying`, subject the symbol, value = value per share at 8% (the maximum assignment price), parameters `low` (value at 10%), `ref_high` (6%), `expires_day`, `base_fy_end`, flags. It is price-free: no function that makes it takes a price. Expiry follows ADR 0008's 90 days, whose start there is approval; no approval exists here, so the start is the session day of the reading, and a reading is rewritten each day the facts are current (owner question 1). ADR 0008:25 ("the system's value is not a price limit; the owner's explicit maximum assignment price is the only one") and 0008:14 stay in force for any Policy: this design creates no Policy and no approval. The band is a displayed figure; that candidates read it as the cap follows the owner's goal and is decided in the candidates design with the owner.
+3. The band. `valuation.buy_band` v1, subject kind `underlying`, subject the symbol, value = value per share at 8% (the maximum assignment price), parameters `low` (value at 10%), `ref_high` (6%), `base_fy_end`, flags. It is price-free: no function that makes it takes a price. Owner 2026-11-09: the band runs from the value at 10% (lower edge) to the value at 8% (the maximum acceptable price, primary per ADR 0008), and it is the only system price proposal (`fcf_yield` alone; `floor_dcf` is not ported). The figure is valid 90 days counted from the owner's approval day, not from the data day. The approval is stored as a reading `valuation.band_approval` v1 (subject kind `underlying`, subject the symbol, value = the approval day, parameter `approved_value` = the band's 8% value text), written by the owner-run command `ot approve-band --symbol S [--day D]` (issue 16, in `cmd/ot`; no Policy, no notice, no batch). The band function holds no expiry and no clock: the page builder (issue 13) reads the band and the latest approval, and shows the band as valid while the day is within 90 days of the approval day and `approved_value` equals the band's current value; a different value (a new filing) shows "awaiting approval", and a day past the 90 shows "expired". ADR 0008:25 ("the system's value is not a price limit; the owner's explicit maximum assignment price is the only one") and 0008:14 stay in force for any Policy: this design creates no Policy and no approval. The band is a displayed figure; that candidates read it as the cap follows the owner's goal and is decided in the candidates design with the owner.
 4. Return at a price keeps the bare strike as ADR 0023:258-260 says (the premium is already in the put's own return). The net cost (strike minus premium) belongs to the candidates filter design. The reverse DCF implied growth is solved at page build from the quote, as ADR 0008 says, and is not stored; `valuation.implied_growth` and `valuation.return_at_price` are registered figures computed at page build, never stored; `compute-fcf-band` checks that `TestRulesMatchRegister` accepts a registered figure with no stored reading and, if it does not, reports the file to change instead of editing it.
 5. Unvalued is a state with a reason, not zero: SIC 6000-6799, the cyclical SIC ranges, a rejection (fewer than 5 eligible years, non-consecutive years, share-count jump, stale latest year over 457 days, non-positive base) gives `missing_input` with the reason in parameters. Cyclical and financial names get the diagnosis instead of a band.
 6. Fundamentals, US (owner choice a). SEC `companyfacts` directly (User-Agent from the environment, at most 5 requests a second, public CIK only). Concepts kept: the files' `NetCashProvidedByUsedInOperatingActivities`, the four capex concepts, `ShareBasedCompensation` and `AllocatedShareBasedCompensationExpense`, `WeightedAverageNumberOfDilutedSharesOutstanding`, `LongTermDebt`, `LongTermDebtNoncurrent`, the concepts `filing_rows_v1.toml` and `five_questions_v1.toml` list, and `dei:EntityCommonStockSharesOutstanding` (cover-page share check), taxonomies `us-gaap` and `dei`. One dataset `obs.fundamental_fact` r1: `source` (`sec`, later `edinet`; a later source extends the enum additively in its own contracts change), `taxonomy`, `concept`, `unit`, `currency`, `period_start`, `period_end`, `value` (decimal text), `form`, `doc_id`, `filed`, `retrieved_at`, `raw_sha256`; key `(source, doc_id, concept, period_start, period_end)`, append only. Every filed value is kept, so a later recast never hides the annual-form fact that makes a year eligible.
 7. Facts to Filings is compute's: `BuildFilings` takes the facts as the store returns them, applies the as-of rule (latest filed on or before the cutoff; `fy`/`fp` never decide) and the eligible-year rule, and returns ten fiscal years of Decimal text figures or a refusal reason. The job and the page both call it; no formula is in pages. The store query returns all rows filed on or before the cutoff for a subject (no winner picked in SQL).
 8. Japan (owner: EDINET automation). EDINET API v2 lists documents by day, not by company: the client keeps a stored day cursor per run and a backfill command scans the days needed for five eligible annual reports (the job's backfill path, as `ot backfill`). J-GAAP and IFRS map to the same concept names through a table; a standard not recognised or competing elements give no fact and a typed reason. Every fact keeps its EDINET document id.
 9. The subject list is not defined here. The event-sources design (`docs/design/event-sources.md`, Decision 1) owns the one owner-edited list `$OT_HOME/watch.toml`, type `jobs.WatchEntry{Issuer, Market string; Contract broker.Contract}` in `internal/jobs/api.go`, loaded by a loader in `cmd/ot`, rows keyed by issuer (`cik:<10 digits>` US, `edinet:<code>` JP). Valuation reuses the file and type: the fundamentals job plans from the entries (the CIK or EDINET code is the issuer text), the band's subject is the entry's symbol. This design depends on that design's `earnings-job` (adds `WatchEntry`) and `watch-loader-earnings-wire` (the loader) and adds no second list. The owner lists every company he holds in `watch.toml` too. Which are held (page block `holdings` against `watch_list`) is an optional input of the page builder, `Held func(ctx) (map[string]bool, error)` keyed by issuer, wired by `cmd/ot` from the positions reader; nil puts every row in the watch list block. A name without an issuer id is skipped with a typed reason, never guessed.
-10. FMP and analyst estimates are left out. The source in option-trader is FMP (ADR 0025). `ReturnAtPrice` takes an optional analyst input that the page passes as absent; lines 3 and 4 show the ADR's own state "left out: no analyst input".
+10. Owner 2026-11-09: the analyst line stays left out. FMP and analyst estimates are left out. The source in option-trader is FMP (ADR 0025). `ReturnAtPrice` takes an optional analyst input that the page passes as absent; lines 3 and 4 show the ADR's own state "left out: no analyst input".
 11. Registration: each stored figure is a `[[figure]]` entry of `register.toml` with `source_hash` of its Go files and a `history` line naming the option-trader blob ids of Decision 1, landed with the code (as `compute-ease`): `valuation.buy_band`, `valuation.implied_growth`, `valuation.return_at_price`, `valuation.question`, `valuation.diagnosis`; each is v1. Goldens come from a generator committed under `tools/compute-golden/valuation/` (own uv project, own `uv.lock`, not run in CI); the committed JSON is what tests read, so no check needs the old system.
 12. One page: `companies_page` v2 adds optional `core`, `diagnosis`, `questions` blocks to v1 (v1 stays readable). The owner text (fifth question, moat) and the override reach the builder through optional interfaces (`OwnerText`, `PriceOverride`) declared in the page package; nil gives a gap "not entered"; their stores are later designs. `core_page` and `diagnosis_page` stay unproduced.
 
@@ -77,7 +77,7 @@ Issues 1 to 16 are the US path; 17 to 19 start only when 16 is merged and the ow
 - compute, function types in the style of `ReadingFunc` (no five-method interface): `BuildFilingsFunc func(facts []contracts.FundamentalFact, asOf contracts.Day, std Standard) FilingsResult`, `BandFunc func(id string, f Filings, asOf contracts.Day) BandFigure`, `ImpliedGrowthFunc func(f Filings, spot string) ImpliedResult`, `ReturnAtPriceFunc func(f Filings, costs []string, a *Analyst, asOf contracts.Day) ReturnResult`, `QuestionsFunc`, `DiagnosisFunc`; text decimals, no I/O, no clock.
 - jobs: `NewFundamentalsFunc func(sources.FactSource, store.FactWriter, []WatchEntry, clock.Clock) (contracts.Job, error)`; a second figures constructor type adding the compute funcs and `store.FactReader`, the existing constructors unchanged.
 - pages: `companies_page.Config{Zone, Subjects []jobs.WatchEntry, Held, Read, Facts, BuildFilings, Band, ImpliedGrowth, ReturnAtPrice, Questions, Diagnosis, Quotes, Text, Override}`, in `internal/pages/companies_page/builder.go`; `internal/pages/api.go` unchanged.
-- ot: `newCompaniesPage`, `newSEC`, `newEDINET` in `cmd/ot/wire.go`; nil when a DSN or key is not set.
+- ot: `newCompaniesPage`, `newSEC`, `newEDINET` in `cmd/ot/wire.go`; nil when a DSN or key is not set. `ot approve-band --symbol S [--day D]` in `cmd/ot/approve.go` writes the `valuation.band_approval` reading (Decision 3).
 
 ## Issues
 
@@ -177,7 +177,7 @@ Checked by CI: none (the tool is not run in CI).
 - Design: docs/design/valuation.md#Decisions (1, 3, 4, 5, 11)
 - Files: internal/compute/valuation/fcf.go, internal/compute/valuation/flags.go, internal/compute/valuation/reverse.go, internal/compute/valuation/fcf_test.go, internal/compute/valuation/reverse_test.go, internal/compute/rules/rules.json, docs/conventions/register.toml, docs/GLOSSARY.md
 
-- Goal: `BandFunc` (value at 6%, 8%, 10%, leverage and range flags, 90-day expiry from the reading's day), `ImpliedGrowthFunc` (bisection, 64 iterations over -0.5 to 1), and the entries `valuation.buy_band` and `valuation.implied_growth` with real hashes; the check of Decision 4 on `TestRulesMatchRegister`.
+- Goal: `BandFunc` (value at 6%, 8%, 10%, leverage and range flags; no expiry, the approval day sets it), `ImpliedGrowthFunc` (bisection, 64 iterations over -0.5 to 1), and the entries `valuation.buy_band`, `valuation.band_approval` (an owner fact, no formula; its hash is that of its rule text) and `valuation.implied_growth` with real hashes; the check of Decision 4 on `TestRulesMatchRegister`.
 
 Acceptance:
 1. `go test ./internal/compute/valuation ./internal/compute/rules -race -count=1` passes; the golden tests compare every Decimal text exactly.
@@ -262,10 +262,10 @@ Checked by CI: ci-go, ci-web (`tsc`, `eslint`, `vitest`, the build).
 - Design: docs/design/valuation.md#Decisions (3, 5, 12)
 - Files: internal/pages/companies_page/builder.go, internal/pages/companies_page/band.go, internal/pages/companies_page/builder_test.go, internal/pages/companies_page/band_test.go
 
-- Goal: `Config`, `OwnerText`, `PriceOverride` and `Build` returning v2; rows from `Subjects`; the price line cell reads `valuation.buy_band` (band, `owner override` when given, `expired` after 90 days), `unvalued` with the reason text for a `missing_input`, the moat text from `OwnerText`; every other block a `Gap`; the builder holds no formula.
+- Goal: `Config`, `OwnerText`, `PriceOverride` and `Build` returning v2; rows from `Subjects`; the price line cell reads `valuation.buy_band` (band, `owner override` when given; `awaiting approval` without a matching `valuation.band_approval` reading; `expired` when the day is more than 90 days after the approval day), `unvalued` with the reason text for a `missing_input`, the moat text from `OwnerText`; every other block a `Gap`; the builder holds no formula.
 
 Acceptance:
-1. `go test ./internal/pages/companies_page -race -count=1` passes with `TestBandIsThePriceLine`, `TestOverrideIsLabelled`, `TestExpiredAfter90Days` (fake clock), `TestBankIsUnvalued`, `TestNilReadersGiveGaps`.
+1. `go test ./internal/pages/companies_page -race -count=1` passes with `TestBandIsThePriceLine`, `TestOverrideIsLabelled`, `TestExpiredAfter90DaysFromApproval` (fake clock), `TestAwaitingApprovalWhenValueDiffers`, `TestBankIsUnvalued`, `TestNilReadersGiveGaps`.
 2. `grep -c "decimal\|float64\|math\." internal/pages/companies_page/band.go` prints 0; `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go | grep -c .` prints 0.
 
 Checked by CI: ci-go; the size rule.
@@ -302,14 +302,15 @@ Checked by CI: ci-web.
 
 - Module: ot. Size: M. Order: after 3, 10, 11, 14 and after event-sources `watch-loader-earnings-wire` (the `watch.toml` loader). Second-opinion case: new outside service (the SEC is wired here; the environment name `OT_SEC_USER_AGENT` only, no value).
 - Design: docs/design/valuation.md#Interface
-- Files: cmd/ot/wire.go, cmd/ot/env.go, cmd/ot/runonce.go, cmd/ot/pagelist.go, cmd/ot/wire_test.go, docs/contracts/ot.md
+- Files: cmd/ot/wire.go, cmd/ot/env.go, cmd/ot/runonce.go, cmd/ot/pagelist.go, cmd/ot/approve.go, cmd/ot/approve_test.go, cmd/ot/main.go, cmd/ot/wire_test.go, docs/contracts/ot.md
 
-- Goal: `newSEC`, the `fundamentals` job in the registry, the valuation step passed to the figures job, `companies_page` in the page list on the pages DSN, `Subjects` from the loader and `Held` from the positions reader; an unset value leaves the job out and the page on gaps.
+- Goal: `newSEC`, the `fundamentals` job in the registry, the valuation step passed to the figures job, `companies_page` in the page list on the pages DSN, `Subjects` from the loader and `Held` from the positions reader; an unset value leaves the job out and the page on gaps. Also the owner-run `ot approve-band --symbol S [--day D]` (day default today in the zone), which reads the current `valuation.buy_band` for S and writes one `valuation.band_approval` reading with its 8% value; it refuses a symbol with no band.
 
 Acceptance:
 1. `go test ./cmd/ot -race -count=1` passes with a test each for unset (job left out) and set (built over a fake source).
 2. `ot page --name companies_page` over the fixtures prints a document that validates (offline).
 3. `grep -rn "OT_SEC_USER_AGENT" cmd/ot | grep -c "= *\""` prints 0 (names only).
+4. `go test ./cmd/ot -race -count=1` passes with `TestApproveBandWritesApproval` and `TestApproveBandRefusesNoBand` (fake store and clock).
 
 Checked by CI: ci-go; `go run ./scripts/arch --check`. Not verified offline: a real band for a real symbol; the owner runs `ot run-once` for one day and reads the page.
 
@@ -358,14 +359,17 @@ Checked by CI: ci-go.
 ## Left out
 
 - The largest strike figure and the filter of offers by it, net cost (strike minus premium), ledger and tracking: the later candidates design. The owner text store, the override store and the price-lines page post. The ADR 0008 approval flow (Policy, notice, batches): not ported.
-- `floor_dcf` v1, the sale price (ADR 0019), the fundamental history and implied-growth record tables, valuation drift.
-- FMP and analyst estimates (Decision 10). A Japanese 10-year yield source. Producers of `core_page` and `diagnosis_page`.
+- `floor_dcf` v1 (owner 2026-11-09: band only), the sale price (ADR 0019), the fundamental history and implied-growth record tables, valuation drift.
+- FMP and analyst estimates (Decision 10; owner 2026-11-09: the analyst line stays left out). A Japanese 10-year yield source. Producers of `core_page` and `diagnosis_page`.
 - Banks, insurers, cyclicals: diagnosis only, no method.
 
-## Open questions for the owner
+## Owner answers (2026-11-09)
 
-1. The band's lower edge: is it the value at a 10% yield (with 8% the top and 6% only a reference)? And do the 90 days count from the day the figure is made (this design) or from a day you confirm it, as ADR 0008 counted from approval?
-2. The system's price: is the band the 5-year-median free cash flow over 8% only (`fcf_yield`), or should the safer `floor_dcf` price of ADR 0008 also be ported and used?
+Both earlier questions are answered; the recommended options were chosen.
+
+1. Band: lower edge the value at a 10% yield, top the value at 8% (primary per ADR 0008), 6% only a reference. The 90 days count from the owner's approval day (ADR 0008), not from the data day (Decision 3, issues 7, 13, 16).
+2. System price: `fcf_yield` band only; `floor_dcf` is not ported now (Left out).
+3. The analyst line stays left out (Decision 10).
 
 ## Adversarial
 
@@ -374,11 +378,11 @@ Review file: dispatcher scratchpad `valuation-adversarial.md` (not in the reposi
 1. Gap, no holdings or subject list or symbol-to-CIK mapping: adopted (Decision 9: the shared `watch.toml` of event-sources owns the list; the held view is an optional page input).
 2. No web rendering: adopted (issue 15). No max strike: adopted as stated in Goal and Left out (candidates design). Price as input of the band: adopted (`BandFunc` has no price; implied growth solved at page build, Decision 4).
 3. JP: adopted. No claim of old EDINET code (Decisions, main today); US-first order (16 before 17); J-GAAP names ending unvalued stated; JP rate a gap with a candidate source; a Japan parameter file in 18; backfill by day cursor (17).
-4. Expiry start, ADR 0008:25 and 0008:14, `floor_dcf`: adopted as plain statements (Decision 3, no Policy created) and owner questions 1 and 2; not adopted: moving the start silently.
+4. Expiry start, ADR 0008:25 and 0008:14, `floor_dcf`: adopted as plain statements (Decision 3, no Policy created) superseded by the owner's answers of 2026-11-09: the start is approval and `floor_dcf` is not ported.
 5. Facts to Filings has no owner: adopted (Decision 7, issue 5; the store returns all rows filed by the cutoff).
 6. Simpler cut: adopted, merging store interface and implementation, sources interface into sec-source, page interface into band, function types instead of one interface, US first. Not adopted: dropping questions and diagnosis (the owner wants them on the page), and a normalised dataset (ADR 0008 wants the raw fact).
 7. Decimal: adopted (explicit 34 digits via `div`, no global, `Rat` fallback, dependency added in `compute-filings`). Not adopted: `math/big.Rat` first, since AGENTS prefers a mainstream library.
-8. Alpha Vantage claim false: adopted (FMP, Decision 10). Cost strike minus premium: adopted, bare strike kept (Decision 4). Band 8% and 10%: kept as owner question 1.
+8. Alpha Vantage claim false: adopted (FMP, Decision 10). Cost strike minus premium: adopted, bare strike kept (Decision 4). Band 8% and 10%: confirmed by owner 2026-11-09.
 9. Concept names and the cover-page share count: adopted (Decision 6). `rules.json` with a page-time figure: adopted as a check in issue 7. Web path in contracts: adopted (the contracts row owns `web/src/generated/**`).
 10. Goldens needing the old system: adopted (issue 6, generator under `tools/compute-golden/`, own uv project, committed JSON). Test files over 600 lines: adopted by splitting files per issue. Migration number: adopted ("next free at cut time", no number in Files). Same-file overlap with account-data and events: adopted (Order paragraph in Modules). Register, rules and glossary serial edits: adopted (issues 7, 8, 9 in order).
 11. Not adopted: a hand-written EDINET sample being the only offline check; it cannot be avoided, and the design says the first real day is the check.
