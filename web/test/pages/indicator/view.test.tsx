@@ -53,6 +53,7 @@ describe('IndicatorDetailView', () => {
     expect(text()).toContain(ok.sentence)
     expect(text()).toContain(ok.stale.text)
     expect(text()).toContain(ok.latest.value.text)
+    expect(text()).toContain(ok.latest.released.text)
     expect(text()).toContain(ok.revision.text)
     expect(text()).toContain(ok.explanation_title)
     for (const line of ok.explanation) expect(text()).toContain(line)
