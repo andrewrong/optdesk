@@ -24,10 +24,10 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 2. Dividends: IBKR tick 456 through `pyside`, as the old system and plan v2.5 row W5-6 have it; no new account. The tick is four comma-separated values (past 12 months, next 12 months, next ex-date `YYYYMMDD`, next amount). IBKR does not say declared or projected, so the guard treats every ex-date as projected.
 3. Earnings: Alpha Vantage `EARNINGS_CALENDAR` (`horizon=3month`), ported from the old source (header found by name; a notice body for a wrong key or used-up quota is an error, never `absent`; fewer than 500 rows is refused). Confirmed by the owner 2026-11-09; it is the only source the old system had; IBKR gives no earnings date through `pyside`. A new outside service for optdesk: `second-opinion case: new outside service`. The key `ALPHA_VANTAGE_API_KEY` is read by the `.env` loader and passed in; it never enters an error, log or row.
 4. What a gate may do with these rows (the gates are the next design; this is the contract they get). A vendor earnings date is never a company confirmation. Until a design ports the SEC estimated window, a `listed` date can only refuse or mark a candidate, never clear it; the date is `unconfirmed` unless its `time_of_day` is `pre-market` or `post-market` and the row is at most 2 days old (the old rule's two tests, without the window). `absent`, `unsupported` and `error` all mean unknown, never "no results before expiry", and an unknown or missing date gates as blocked (the candidate waits; it is not cleared); with `horizon=3month` an expiry beyond three months cannot be judged either.
-5. Japan, earnings: Alpha Vantage does not list Japanese companies. The first JP route is the JPX 決算発表予定日 Excel list (`jpx.co.jp/listing/event-schedules/financial-announcement/`, one xlsx per fiscal period, refreshed each business day about 17:00 for the next business day's items and less often otherwise): JPX's own list, no account, no key, a plain download once a day, rows `source` `jpx_xlsx`. Chosen first because it needs no outside account; J-Quants `/fins/earnings-date` (also JPX's, free plan) is the better feed but needs a free J-Quants account and API key, a new outside account, so it waits for the owner (issue 17) and replaces the Excel route only when the owner opens the account. The Excel's terms for automated download were not found (the site refused the research fetch): issue 15 begins by reading the JPX site policy and stops, reporting, if it forbids automated download; the answer is then issue 17 and the owner's account. A JP company missing from the list gets `absent` (the date is "announced to TSE", companies can be missing for weeks), and the gate sees unknown, so blocked, per Decision 4. The hand-typed date is no longer a route: `report_date_override` is only an owner override for one company, stored as a `listed` row with `source` `owner` and winning over the vendor's row for that day. For dividends the probe covers JP symbols (plan 11.1 item 4 asks for them); a market whose probe fails gets `unsupported` dividend rows.
+5. Japan, earnings: Alpha Vantage does not list Japanese companies. The JP route is J-Quants `GET https://api.jquants.com/v2/fins/earnings-date` (JPX's own API, all listed companies with the date history, fields `PubDate` and `SchDate`; the `/v2/equities/earnings-calendar` endpoint lists only March and September fiscal year companies, so it is not used). Owner 2026-11-09: "a, 我应该有账户，我之前注册过" (an account exists). Auth of the current V2 API is one header `x-api-key` and nothing else (V2 refuses `x-api-key` with `Authorization`; the V1 mail, password and refresh token flow is gone). The env key is `JQUANTS_API_KEY`, read by the `.env` loader and passed in, never in an error, log or row; the owner puts the value from the J-Quants dashboard in the service `.env`. option-trader never used J-Quants (no match in its code), so no earlier key name exists to reuse. Rows have `source` `jquants`; a pagination key is followed until empty; an empty `SchDate` (undecided) is `absent`. A new outside service: `second-opinion case: new outside service; owner's word 2026-11-09 given`. The JPX 決算発表予定日 Excel is left out, not a fallback: it is the same JPX data a day behind the API, its terms for automated download were not found, and it adds a second source, an xlsx dependency and a layout that changes per period for a case the gate already covers (a failed or missing J-Quants answer writes `error` or `absent`, which gates as blocked per Decision 4, never as cleared). The free plan's window and delay for this endpoint are unchecked: issue 15 begins by reading the plan page and stops, reporting, if the window cannot cover the next quarter. A JP company without a date gets `absent` (companies can be missing for weeks), and the gate sees unknown, so blocked. `report_date_override` is only an owner override for one company, stored as a `listed` row with `source` `owner` and winning over the vendor's row for that day. For dividends the probe covers JP symbols (plan 11.1 item 4 asks for them); a market whose probe fails gets `unsupported` dividend rows.
 6. Probe first, checkable: `ot probe dividends` asks IBKR for a fixed list: three US payers, one US non-payer, one US ETF, two JP payers. Per symbol: `ok` (parsable next ex-date), `no_value`, `timeout` (nothing in 10 s) or `error`. Per market the last lines are `probe: US pass|fail` and `probe: JP pass|fail`; a market passes when every payer is `ok`; for the non-payer and the ETF `no_value` and `timeout` are both fine, `error` is not. The owner runs it on the gateway machine (plan 11.1) and commits the output as `docs/design/event-sources-probe.txt`. `dividend-datasets` and later dividend issues Depend on `dividends-probe` and check that file in Acceptance 1 (`grep -c "^probe: US pass" ...` prints 1); if it prints 0 the worker stops and reports, it does not edit the file. Plan 11.1 stop rule: a failed market is not scheduled.
 7. Shapes (append-only; an error is a row, a later success is a new attempt):
-   - `obs.earnings_date` r1: key `(observed_on, issuer, attempt)`; `symbol`, `market`, `status` (`listed`, `absent`, `unsupported`, `error`), `report_date` (earliest listed date on or after `observed_on`), `fiscal_period_end`, `time_of_day`, `estimate` (currency not stored), `error_code`, `source` (`alphavantage`, `jpx_xlsx`, `owner`; later `jquants`), `received_at`.
+   - `obs.earnings_date` r1: key `(observed_on, issuer, attempt)`; `symbol`, `market`, `status` (`listed`, `absent`, `unsupported`, `error`), `report_date` (earliest listed date on or after `observed_on`), `fiscal_period_end`, `time_of_day`, `estimate` (currency not stored), `error_code`, `source` (`alphavantage`, `jquants`, `owner`), `received_at`.
    - `obs.dividend_expectation` r1: key `(session_day, instrument_id, attempt)`; `issuer`, `status` (`present`, `no_value`, `unsupported`, `error`), `past_12m`, `next_12m`, `next_amount` (per share), `next_ex_date`, `currency` (of the contract asked, not a claim of the tick), `error_code`, `source` `ibkr_tick_456`, `received_at`.
    - Readers: `EarningsDates(ctx, issuer, from, to)` and `Dividends(ctx, instrumentID, from, to)`, inclusive, ordered by day, only the highest `attempt` of a day, empty slice for none.
 8. Role `ot_w_events` (INSERT only on both tables) is added in `internal/store/setup/setup.go` with `store.DSNEnvEvents = "OT_PG_DSN_EVENTS"`, read in `cmd/ot/runonce.go` and listed in the preflight. `ot_ro_pages` reads. `ot setup pg` and `ot migrate` for the new role are the owner's, run before the jobs (the job is off with a named line while the DSN line is missing).
@@ -53,14 +53,13 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 | 12 dividend-store (interface and implementation) | store | after 11, 2 |
 | 13 dividend-job (interface and implementation) | jobs | after 12, 4, 6 |
 | 14 dividend-wire | ot | after 13, 5, 16 |
-| 15 jpx-earnings-source (interface and implementation) | sources | after 3 |
-| 16 jpx-earnings-wire | ot | after 15, 5 |
-| 17 jquants-earnings-source (waits for owner) | sources | after 15 |
+| 15 jquants-earnings-source (interface and implementation) | sources | after 3 |
+| 16 jquants-earnings-wire | ot | after 15, 5 |
 
 ## Interface
 
 - contracts: datasets of Decision 7 (generated Go, docs); `reference.proto`: `service ReferenceService { rpc Dividends(stream ContractKey) returns (stream DividendProjection); }` as plan v2.5 line 170 (the plan's `TradingHours` rpc is not part of this design); `ContractKey` (symbol, sec_type, exchange, currency, con_id) is new in this file; `DividendProjection` has the key, `status`, the four values as optional text decimals, `error_code`, `received_at`.
-- store: `EarningsDateWriter/Reader`, `DividendWriter/Reader`, `store.DSNEnvEvents`. sources: `EarningsConfig{BaseURL, APIKey, Clock}`, `EarningsRow`, `EarningsSource`, `NewAlphaVantageFunc`; `NewJPXFunc` (issue 15, same `EarningsSource`). broker: `Broker.Dividends(ctx, []Contract) ([]DividendProjection, error)`. jobs: `WatchEntry`, `NewEarningsRefreshFunc`, `NewDividendCaptureFunc`, each taking `[]WatchEntry`.
+- store: `EarningsDateWriter/Reader`, `DividendWriter/Reader`, `store.DSNEnvEvents`. sources: `EarningsConfig{BaseURL, APIKey, Clock}`, `EarningsRow`, `EarningsSource`, `NewAlphaVantageFunc`; `NewJQuantsFunc` (issue 15, same `EarningsSource`). broker: `Broker.Dividends(ctx, []Contract) ([]DividendProjection, error)`. jobs: `WatchEntry`, `NewEarningsRefreshFunc`, `NewDividendCaptureFunc`, each taking `[]WatchEntry`.
 - pyside: `ReferenceService` servicer registered in `transport.py`; the Protocol in `ibkr/api.py`.
 
 ## Issues
@@ -117,7 +116,7 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 - Files: docs/design/modules.md
 - Design: docs/design/event-sources.md#Modules
 - Order: after 4 (and after the other designs' edits of the same sentence).
-- Goal: add `internal/sources/alphavantage`, `internal/sources/jpx`, `internal/jobs/earningsrefresh`, `internal/store/events` to the one-constructor and implementation lists (the dividend package follows in 13).
+- Goal: add `internal/sources/alphavantage`, `internal/sources/jquants`, `internal/jobs/earningsrefresh`, `internal/store/events` to the one-constructor and implementation lists (the dividend package follows in 13).
 - Acceptance: 1. `grep -c "alphavantage\|earningsrefresh\|store/events" docs/design/modules.md` is at least 3. 2. the diff line.
 - Checked by CI: the modules-table check of `crew issue check`.
 
@@ -193,31 +192,22 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 - Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestDividendCaptureRegistered`, `TestDividendCaptureOffWhenBrokerDown` once each. 2. `grep -c "dividend_capture" docs/contracts/ot.md` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
-### 15 jpx-earnings-source (interface and implementation)
-- Module: sources. Size: M. Depends on: earnings-source.
-- Files: internal/sources/jpx/client.go, internal/sources/jpx/parse.go, internal/sources/jpx/client_test.go, docs/contracts/sources.md
-- Design: docs/design/event-sources.md#Decisions (5). Own code is the page parse; the xlsx read uses `github.com/xuri/excelize/v2` (BSD-3-Clause, widely used, stable API, few dependencies; a new direct dependency, named in the pull request description with its license). The tests build a small xlsx in `t.TempDir()`, no binary fixture.
+### 15 jquants-earnings-source (interface and implementation)
+- Module: sources. Size: M. Depends on: earnings-source. Second-opinion case: new outside service; owner's word 2026-11-09 given.
+- Files: internal/sources/jquants/client.go, internal/sources/jquants/parse.go, internal/sources/jquants/client_test.go, internal/sources/jquants/testdata/earnings_date.json, internal/sources/jquants/testdata/earnings_date_page2.json, docs/contracts/sources.md
+- Design: docs/design/event-sources.md#Decisions (5). Own code over `net/http` and `encoding/json`, no new dependency. The first step reads the J-Quants plan page for the free plan's window and delay of `/v2/fins/earnings-date` and stops, reporting in the pull request, if the window cannot cover the next quarter.
 - Order: after 3 (same `docs/contracts/sources.md`).
-- Goal: `NewJPXFunc` returns an `EarningsSource`: find the current period's xlsx link on the JPX page, download it once, parse code, company, date by header name, normalise the 5-digit code to 4; a changed layout, a short list or a non-xlsx body is a typed error. First read the JPX site policy; if it forbids automated download, stop and report in the pull request and change nothing.
-- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJPXParseByHeader`, `TestJPXCodeNormalised`, `TestJPXLayoutChangeIsError`, `TestJPXShortListIsError` once each. 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jpx/*.go` prints 0; `grep -c "jpx" docs/contracts/sources.md` is at least 1. 3. the diff line.
+- Goal: `NewJQuantsFunc` returns an `EarningsSource` over recorded bodies: the key only in the `x-api-key` header, pages followed by the pagination key, the latest `SchDate` on or after the day per company, 5-digit code normalised to 4, an empty `SchDate` is `absent`; a 401 or 403, a 429 and a non-JSON body are typed errors.
+- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJQuantsParse`, `TestJQuantsPagination`, `TestJQuantsEmptyDateIsAbsent`, `TestJQuantsKeyNeverInError`, `TestJQuantsAuthErrorIsTyped` once each, on the recorded files in `testdata` and no network. 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jquants/*.go` prints 0; `grep -c "jquants" docs/contracts/sources.md` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
-### 16 jpx-earnings-wire
-- Module: ot. Size: S. Depends on: jpx-earnings-source, watch-loader-earnings-wire.
-- Files: cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, docs/contracts/ot.md
+### 16 jquants-earnings-wire
+- Module: ot. Size: S. Depends on: jquants-earnings-source, watch-loader-earnings-wire.
+- Files: cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/env.go, docs/contracts/ot.md
 - Design: docs/design/event-sources.md#Decisions (5)
 - Order: after 15, 5 (same files), `account-wire`. Issue 14 is after 16 for the same files.
-- Goal: pass `NewJPXFunc` as the `JP` source of `earnings_refresh`; no key, no new env name; a JPX failure writes `error` rows for JP entries only.
-- Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestJPSourceWired`, `TestJPXFailureOnlyJPRows` once each. 2. `grep -c "jpx" docs/contracts/ot.md` is at least 1. 3. the diff line.
-- Checked by CI: ci-go; `go run ./scripts/arch --check`.
-
-### 17 jquants-earnings-source (waits for owner: J-Quants account; second-opinion case)
-- Module: sources. Size: M. Depends on: jpx-earnings-source. Second-opinion case: new outside account (a free J-Quants account and API key). Not cut until the owner opens the account and says so.
-- Files: internal/sources/jquants/client.go, internal/sources/jquants/parse.go, internal/sources/jquants/client_test.go, internal/sources/jquants/testdata/earnings_date.json, docs/contracts/sources.md
-- Design: docs/design/event-sources.md#Decisions (5). The free plan's data window and delay for `/fins/earnings-date` are unchecked; the first step reads the plan page and stops if the window cannot cover the next quarter.
-- Order: after 15 (same `docs/contracts/sources.md`). The wire (env name, `source` `jquants`) is a later issue cut with the owner's word.
-- Goal: an `EarningsSource` over recorded bodies; the key only in a header, never in an error, log or row.
-- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJQuantsParse`, `TestJQuantsKeyNeverInError`, `TestJQuantsAuthErrorIsTyped` once each. 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jquants/*.go` prints 0. 3. the diff line.
+- Goal: pass `NewJQuantsFunc` as the `JP` source of `earnings_refresh`, reading `JQUANTS_API_KEY`; a missing key disables only the JP source with a named line (JP entries get `unsupported`) and the value is never printed; a J-Quants failure writes `error` rows for JP entries only.
+- Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestJPSourceWired`, `TestJQuantsFailureOnlyJPRows`, `TestMissingJQuantsKeyNamedLine` once each. 2. `grep -c "JQUANTS_API_KEY" docs/contracts/ot.md` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
 ## Checked by CI
@@ -227,14 +217,14 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 ## What the owner gets
 
 - You keep one short file, `watch.toml`, of the companies you watch, US and Japanese. The valuation work reads the same file.
-- Once a day, for each US company, the system stores the next results date the vendor lists, or "not listed", with the vendor's time text; a Japanese company's date comes from JPX's published list, and a company missing from it is "not listed", which holds the candidate back. A date is a vendor's word, not the company's: it can make a candidate wait or carry a mark, never approve it.
+- Once a day, for each US company, the system stores the next results date the vendor lists, or "not listed", with the vendor's time text; a Japanese company's date comes from J-Quants (JPX's own API), and a company without a date is "not listed", which holds the candidate back. A date is a vendor's word, not the company's: it can make a candidate wait or carry a mark, never approve it.
 - After one command, `ot probe dividends`, run on your gateway machine, you know whether IBKR gives ex-dividend dates for US and for Japanese stocks. Only a market that passes gets a dividend schedule. Then per stock and day the next ex-date and amount per share are stored; the guard for short calls reads them as projected, never as declared.
-- Dates you type in `watch.toml` as `report_date_override` win over any vendor. Before the jobs run you do two things: add `OT_PG_DSN_EVENTS` and `ALPHA_VANTAGE_API_KEY` to `.env`, and run `ot migrate` and `ot setup pg`. No Telegram text, no order touched.
+- Dates you type in `watch.toml` as `report_date_override` win over any vendor. Before the jobs run you do two things: add `OT_PG_DSN_EVENTS`, `ALPHA_VANTAGE_API_KEY` and `JQUANTS_API_KEY` (the key from your J-Quants dashboard) to `.env`, and run `ot migrate` and `ot setup pg`. No Telegram text, no order touched.
 
 ## Open questions for the owner
 
 1. Is the old Alpha Vantage key still valid, and is the free quota (about 25 calls a day by my knowledge) enough? (The source itself is settled, 2026-11-09.)
-2. J-Quants (issue 17): do you open a free J-Quants account for the JP earnings feed, or stay on the JPX Excel? Waits for your word. If a market's dividend probe fails: a hand-kept file, or no guard for it?
+2. J-Quants is settled (account exists, 2026-11-09); which plan is it on? The free plan's window may not reach the next quarter. If a market's dividend probe fails: a hand-kept file, or no guard for it?
 
 ## Left out
 
