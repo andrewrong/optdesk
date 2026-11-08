@@ -405,6 +405,37 @@ async def collect(
     return rows, asyncio.ensure_future(gateway.quotes(kind, con_ids, keep))
 
 
+def test_quotes_send_exchange() -> None:
+    async def run(kind: str) -> list[str]:
+        clock = FakeClock()
+        gateway, fake = await opened(clock, lines=1)
+        fake.autofill = True
+        _, task = await collect(gateway, kind, [61])
+        await spin(50)
+        await clock.advance(21)
+        await task
+        contract = fake.tickers[61].contract
+        assert contract is not None
+        return [contract.exchange]
+
+    for kind in ("snapshot", "option_eod"):
+        assert asyncio.run(run(kind)) == ["SMART"]
+
+
+def test_quotes_contract_keeps_con_id() -> None:
+    async def run() -> list[int]:
+        clock = FakeClock()
+        gateway, fake = await opened(clock, lines=1)
+        fake.autofill = True
+        _, task = await collect(gateway, "snapshot", [71, 72])
+        await spin(50)
+        await clock.advance(1)
+        await task
+        return sorted(fake.tickers)
+
+    assert asyncio.run(run()) == [71, 72]
+
+
 def test_quotes_release_line_on_early_complete() -> None:
     async def run() -> tuple[list[str], list[int]]:
         clock = FakeClock()
