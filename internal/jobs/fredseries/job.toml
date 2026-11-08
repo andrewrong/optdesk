@@ -7,3 +7,11 @@ series = ["DGS10"]
 rule = "after_close"
 lateness_hours = 96
 calendar = "XNYS"
+
+[schedule]
+calendar = "XNYS"
+anchor = "time"
+zone = "America/New_York"
+offset = "7h30m"
+run_bound = "5m"
+restart_sensitive = false
