@@ -63,6 +63,15 @@ export function StructuresList({ payload }: { payload: Payload }) {
           </CardHeader>
           <CardContent className="min-w-0">
             <DataTable columns={COLUMNS} rows={group.rows.map(toCells)} />
+            <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+              {group.rows.map((row) =>
+                row.compare ? (
+                  <li key={row.href} data-structures-compare>
+                    {row.compare.sentence}
+                  </li>
+                ) : null,
+              )}
+            </ul>
           </CardContent>
         </Card>
       ))}
