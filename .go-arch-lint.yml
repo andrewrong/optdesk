@@ -35,6 +35,8 @@ components:
     in: internal/sources/fred
   store:
     in: internal/store
+  store/alert:
+    in: internal/store/alert
   store/instrument:
     in: internal/store/instrument
   store/ops:
@@ -160,6 +162,11 @@ deps:
   store:
     mayDependOn:
       - contracts
+  store/alert:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
   store/instrument:
     mayDependOn:
       - contracts
@@ -432,6 +439,7 @@ deps:
       - jobs/serieshistory
       - clock/calendarcli
       - jobs/calendarrefresh
+      - store/alert
       - compute/alertrules
   compute/contracttest:
     mayDependOn:
