@@ -172,3 +172,16 @@ func TestBadRequestedDayIsPermanentAndRunsNothing(t *testing.T) {
 		t.Fatalf("err = %v, ran = %v", err, ran)
 	}
 }
+
+func TestTruncatedFileIsPermanent(t *testing.T) {
+	t.Parallel()
+	body := testdata(t)
+	i := strings.Index(body, `    {"calendar_id": "XNYS", "session_day": "2026-11-30"`)
+	cut := strings.TrimRight(body[:i], ",\n") + "\n  ]\n}\n"
+	permanentFor(t, cut) // rows 2026-11-02..2026-11-29 for a request up to 2026-11-30
+}
+
+func TestEmptyRowsIsPermanent(t *testing.T) {
+	t.Parallel()
+	permanentFor(t, `{"provenance":{"generator":"g","generator_version":"1","source_library":"l","source_library_version":"1","generated_at":"2026-11-08T00:00:00Z"},"rows":[]}`)
+}

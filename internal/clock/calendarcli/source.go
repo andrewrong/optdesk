@@ -101,6 +101,12 @@ func check(f file, calendarID string, first, last time.Time) error {
 			return permanent("the provenance of the generated file is incomplete")
 		}
 	}
+	if len(f.Rows) == 0 {
+		return permanent("the generated file has no rows")
+	}
+	if !f.Rows[0].SessionDay.Time.Equal(first) || !f.Rows[len(f.Rows)-1].SessionDay.Time.Equal(last) {
+		return permanent("the rows do not cover the requested days")
+	}
 	var prev time.Time
 	for i, r := range f.Rows {
 		if r.CalendarID != calendarID {
