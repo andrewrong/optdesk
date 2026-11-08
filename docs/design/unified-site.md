@@ -110,6 +110,7 @@ macro_rates reads seven series as v3; embed serves the real web build
   Goal: `Build` writes the v3 page for seven series; `Handler` and `Assets` serve the built bundle; no stub remains.
   Files: internal/pages/macro_rates/builder.go, internal/pages/macro_rates/text.go, internal/pages/macro_rates/page.go, internal/pages/macro_rates/builder_test.go, internal/pages/macro_rates/page_test.go, internal/pages/embed/embed.go, internal/pages/embed/assets.go, internal/pages/embed/inject_test.go, internal/pages/embed/assets_test.go, internal/pages/embed/dist/.gitignore, internal/pages/embed/dist/index.html, docs/contracts/pages.md
   Design: docs/design/unified-site.md#decisions
+  Order: after 1 (site-interface).
   Depends on: site-interface (merged: the v3 schema and fixtures).
   Acceptance:
   1. `grep -c 'DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS"' internal/pages/macro_rates/builder.go` prints 1; `Build` keeps its signature; `build(ctx, r, ids, day, generatedAt)` is unexported, `Build` calls it with the seven ids; `Page()` names `page.macro_rates.v3`; `SchemaVersion` is 3; titles are those of Decision 6; `index_points` text has two decimals and no suffix.
@@ -127,6 +128,7 @@ The bar, the sample pages with their banner, the v3 types and the build output p
   Goal: `TopNav` has eight items; a `sample_page` payload shows the named page from the carried sample with the banner; the macro view reads v3; `pnpm build` writes into the embed directory.
   Files: web/src/shell/TopNav.tsx, web/src/shell/App.tsx, web/src/shell/SampleBanner.tsx, web/src/samples/index.ts, web/fixtures/home-page/ok.json, web/fixtures/household-risk/ok.json, web/fixtures/MANIFEST.synthetic-v1.json, web/src/types/macro_rates.ts, web/src/types/sample_page.ts, web/vite.config.ts, web/test/shell/TopNav.test.tsx, web/test/shell/sample.test.tsx, web/test/pages/macro_rates/view.test.tsx
   Design: docs/design/unified-site.md#decisions
+  Order: after 1 (site-interface).
   UI parts (frontend-stack, ADR 0034; no package is added, `frontend-whitelist.json` is unchanged; no page view is edited):
   - 按 frontend-stack：用 shadcn `Button` (`asChild`, `variant` `secondary` for the current item and `ghost` for the others) 做 the eight anchors of the bar, `aria-current="page"` on the current one.
   - 按 frontend-stack：用 shadcn `Alert` and `AlertDescription` (lucide `FlaskConical`) 做 the banner `示例数据，非实时数据 / Sample data, not live data`, `role="status"`, between `TopNav` and `main`.
@@ -150,6 +152,7 @@ The bar, the sample pages with their banner, the v3 types and the build output p
   Goal: the routes of Decision 3 on stores opened once, or on demo readers; `serve` has only `--day` and `--addr`.
   Files: cmd/ot/serve.go, cmd/ot/site.go, cmd/ot/sample.go, cmd/ot/wire.go, cmd/ot/demo.go, cmd/ot/serve_test.go, cmd/ot/site_test.go, cmd/ot/sample_test.go, docs/contracts/ot.md
   Design: docs/design/unified-site.md#decisions
+  Order: after 1 (site-interface).
   Depends on: site-interface (merged: `page.sample_page.v1`, its fixture and the stub `embed.Assets`). Needs no output of `site-pages`: its tests use a fake page and a fake assets handler.
   Behaviour: `runServe` is `runSite` without the flag test. `siteHandler` gains `/macro` (builds `deps.pageList[0]` per request, written with `newHandler`), `/assets/` (`deps.assets`) and the six sample routes (`sample.go`: route to schema map, the body the constant of Decision 4 written with `newHandler`; no store read). `wire.go` gains `assets` (real value `embed.Assets()`). `openSiteReaders` also opens the series store. `demoReader` returns points for the seven ids with their stored units.
   Acceptance:
