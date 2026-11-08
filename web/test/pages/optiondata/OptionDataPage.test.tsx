@@ -129,4 +129,62 @@ describe('option data page', () => {
     expect(validateOptionDataPage(fixture('ok')).ok).toBe(true)
     expect(validateOptionDataPage(fixture('choices')).ok).toBe(true)
   })
+
+  it('jpy shows the USD approximation, the earnings tone and the vol line as written', async () => {
+    const payload = fixture('jpy')
+    await show(payload)
+    const u = payload.underlying
+    const price = host.querySelector('[data-underlying-price]')!
+    expect(price.textContent).toContain(u.price.text)
+    expect(price.textContent).toContain(u.price.approx_usd_text)
+    expect(host.querySelector('[data-field="vol_line"]')?.textContent).toBe(u.vol_line)
+    const earnings = host.querySelector('[data-field="earnings_text"]')!
+    expect(earnings.textContent).toContain(u.earnings_text)
+    const badge = earnings.querySelector('[data-earnings]')!
+    expect(badge.getAttribute('data-earnings')).toBe('in_term')
+    expect(badge.getAttribute('data-variant')).toBe('destructive')
+    const bidRow = (payload.chain.rows as { bid: { kind: string; text: string } }[]).findIndex(
+      (r) => r.bid.kind === 'value',
+    )
+    expect(rowsOf()[bidRow]!.textContent).toContain(payload.chain.rows[bidRow].bid.approx_usd_text)
+  })
+
+  it('earnings tone alone picks the variant', async () => {
+    const payload = fixture('jpy')
+    payload.underlying.earnings_tone = 'outside'
+    payload.underlying.earnings_text = 'E 无'
+    await show(payload)
+    expect(host.querySelector('[data-earnings]')?.getAttribute('data-variant')).toBe('secondary')
+  })
+
+  it('terms shows the missing texts, every strike, the caption and the slots', async () => {
+    const payload = fixture('terms')
+    await show(payload)
+    const count = (t: string, w: string) => t.split(w).length - 1
+    const vol = host.querySelector('[data-field="vol_line"]')!
+    expect(count(vol.textContent ?? '', '缺')).toBe(1)
+    const earn = host.querySelector('[data-field="earnings_text"]')!
+    expect(count(earn.textContent ?? '', '没有数据来源')).toBe(1)
+    expect(earn.hasAttribute('data-earnings')).toBe(false)
+    expect(earn.querySelector('[data-earnings]')).toBeNull()
+    const rows: { strike: { text: string } }[] = payload.chain.rows
+    rows.forEach((r, i) => expect(rowsOf()[i]!.textContent).toContain(r.strike.text))
+    const series = payload.quote_series[0]
+    expect(host.querySelector('[role="tab"]')?.textContent).toBe(series.caption)
+    expect(host.querySelector('[data-slots]')?.getAttribute('data-slots')).toBe(
+      series.points.map((p: { slot: string }) => p.slot).join(','),
+    )
+  })
+
+  it('the chain header has Chinese shell labels and English terms', async () => {
+    await show(fixture('terms'))
+    const heads = [...host.querySelectorAll('thead th')].map((h) => h.textContent ?? '')
+    const all = heads.join('|')
+    for (const t of ['IV', 'Δ', 'Γ', 'Θ', 'Vega', 'OI']) expect(all).toContain(t)
+    for (const t of ['到期', '类型', '行权价', '状态', '买价', '卖价', '成交价', '成交量']) {
+      expect(all).toContain(t)
+    }
+    expect(all).not.toContain('Expiry')
+    expect(all).not.toContain('Strike')
+  })
 })
