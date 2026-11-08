@@ -369,7 +369,7 @@ class IbGateway:
                 return row(spec.STATUS_DISCONNECTED)
             job = _Job(con_id)
             self._jobs.add(job)
-            contract = Contract(conId=con_id)
+            contract = Contract(conId=con_id, exchange="SMART")
             sent = self._clock.now().timestamp()
             ticker: Any = None
             watch: Callable[..., None] | None = None
