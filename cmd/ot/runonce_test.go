@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -76,6 +77,7 @@ func (r recRunner) Reconcile(_ context.Context, d contracts.Day) error { *r.day 
 func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 	clk := a.deps.newClock
 	a.deps = deps{
+		openFence:   fenceOpener(&fakeInstFence{}),
 		newClock:    clk,
 		newCalendar: func(clock.SessionSource) clock.Calendar { return nil },
 		openSessionDay: func(context.Context, string) (store.SessionDayStore, error) {
@@ -301,4 +303,59 @@ func TestRunOnceCursorEmptyAndError(t *testing.T) {
 	if got != "" || opened.Load() != closed.Load() || opened.Load() == 0 {
 		t.Fatalf("reconciled %q opened %d closed %d", got, opened.Load(), closed.Load())
 	}
+}
+
+func TestRunOnceRefusedWhileSchedulerLive(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	inst := &fakeInstFence{held: true}
+	a.deps.openFence = fenceOpener(inst)
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.Contains(err.Error(), "ot scheduler status") {
+		t.Fatalf("err %v", err)
+	}
+	if got != "" || opened.Load() != 0 || inst.count() != 1 {
+		t.Fatalf("reconciled %q, opened %d, tries %d", got, opened.Load(), inst.count())
+	}
+}
+
+// fakeFence is a held fence; Close counts.
+type fakeFence struct {
+	lost   chan struct{}
+	closed atomic.Int32
+}
+
+func (f *fakeFence) Lost() <-chan struct{} { return f.lost }
+func (f *fakeFence) Close() error          { f.closed.Add(1); return nil }
+
+// fakeInstFence is an InstanceFence: held makes every TryLock fail (retryable), else it hands out fence.
+type fakeInstFence struct {
+	mu    sync.Mutex
+	tries int
+	held  bool
+	fence *fakeFence
+	build string
+}
+
+func (f *fakeInstFence) TryLock(_ context.Context, build string) (store.Fence, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.tries++
+	f.build = build
+	if f.held {
+		return nil, errors.New("held")
+	}
+	if f.fence == nil {
+		f.fence = &fakeFence{lost: make(chan struct{})}
+	}
+	return f.fence, nil
+}
+
+func (f *fakeInstFence) count() int { f.mu.Lock(); defer f.mu.Unlock(); return f.tries }
+
+func fenceOpener(f store.InstanceFence) store.OpenFenceFunc {
+	return func(context.Context, string) (store.InstanceFence, error) { return f, nil }
 }

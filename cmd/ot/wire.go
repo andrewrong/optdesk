@@ -22,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
+	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -31,37 +32,46 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/sessionday"
 	"github.com/andrewrong/optdesk/internal/store/setup"
 	"github.com/andrewrong/optdesk/internal/store/snapshot"
+	"github.com/jonboulle/clockwork"
 )
 
 // deps holds the constructors the subcommands call; a test fills it with fakes.
 type deps struct {
-	newClock           clock.NewClockFunc
-	newCalendar        clock.NewCalendarFunc
-	openSessionDay     store.OpenSessionDayFunc
-	openSeries         store.OpenSeriesFunc
-	openLedger         store.OpenLedgerFunc
-	setup              store.SetupFunc
-	newFRED            sources.NewFREDFunc
-	newFredSeries      jobs.NewFredSeriesFunc
-	newSeriesHistory   jobs.NewSeriesHistoryFunc
-	newRunner          runner.NewWithRuleFunc
-	newBackfiller      runner.NewBackfillerWithRuleFunc
-	dialBroker         broker.DialFunc
-	openInstrument     store.OpenInstrumentFunc
-	openOptionEod      store.OpenOptionEodFunc
-	openQuoteSnapshot  store.OpenQuoteSnapshotFunc
-	openOptionCatalog  store.OpenOptionEodCatalogFunc
-	openOptionTerms    store.OpenOptionTermsFunc
-	openInstrumentName store.OpenInstrumentNameFunc
-	newOptionEod       jobs.NewOptionEodFunc
-	newQuoteSnapshot   jobs.NewQuoteSnapshotFunc
-	pageList           []pages.Page
-	newHandler         pages.NewHandlerFunc
-	migrateUp          func(ctx context.Context, adminDSN string, fsys fs.FS) error
-	ownerDSN           func(adminDSN string) (string, error)
-	readEnv            store.ReadEnvFunc
-	macroPage          func(zone *time.Location, buildID string) pages.Page
-	optionDataPage     func(zone *time.Location, buildID string, in sitePageInput) pages.Page
+	newClock            clock.NewClockFunc
+	newCalendar         clock.NewCalendarFunc
+	openSessionDay      store.OpenSessionDayFunc
+	openSeries          store.OpenSeriesFunc
+	openLedger          store.OpenLedgerFunc
+	setup               store.SetupFunc
+	newFRED             sources.NewFREDFunc
+	newFredSeries       jobs.NewFredSeriesFunc
+	newSeriesHistory    jobs.NewSeriesHistoryFunc
+	newRunner           runner.NewWithRuleFunc
+	newBackfiller       runner.NewBackfillerWithRuleFunc
+	dialBroker          broker.DialFunc
+	openInstrument      store.OpenInstrumentFunc
+	openOptionEod       store.OpenOptionEodFunc
+	openQuoteSnapshot   store.OpenQuoteSnapshotFunc
+	openOptionCatalog   store.OpenOptionEodCatalogFunc
+	openOptionTerms     store.OpenOptionTermsFunc
+	openInstrumentName  store.OpenInstrumentNameFunc
+	newOptionEod        jobs.NewOptionEodFunc
+	newQuoteSnapshot    jobs.NewQuoteSnapshotFunc
+	pageList            []pages.Page
+	newHandler          pages.NewHandlerFunc
+	migrateUp           func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	ownerDSN            func(adminDSN string) (string, error)
+	readEnv             store.ReadEnvFunc
+	macroPage           func(zone *time.Location, buildID string) pages.Page
+	optionDataPage      func(zone *time.Location, buildID string, in sitePageInput) pages.Page
+	openFence           store.OpenFenceFunc
+	openSchedulerLedger store.OpenSchedulerLedgerFunc
+	newScheduler        runner.NewSchedulerFunc
+	newKeyRunner        runner.NewKeyRunnerFunc
+	newReconciler       runner.NewReconcilerFunc
+	newGapSyncer        func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
+	newFwClock          func() clockwork.Clock
+	notifyContext       func(context.Context) (context.Context, context.CancelFunc)
 }
 
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
@@ -70,33 +80,41 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 // newDeps returns the real constructors.
 func newDeps() deps {
 	return deps{
-		newClock:           realclock.NewReal,
-		newCalendar:        calendar.NewCalendar,
-		openSessionDay:     sessionday.Open,
-		openSeries:         series.Open,
-		openLedger:         ops.Open,
-		setup:              setup.Setup,
-		newFRED:            fred.New,
-		newFredSeries:      fredseries.New,
-		newSeriesHistory:   serieshistory.New,
-		newRunner:          reconcile.NewWithRule,
-		newBackfiller:      reconcile.NewBackfillerWithRule,
-		dialBroker:         grpcbroker.Dial,
-		openInstrument:     instrument.Open,
-		openOptionEod:      snapshot.OpenOptionEod,
-		openQuoteSnapshot:  snapshot.OpenQuoteSnapshot,
-		openOptionCatalog:  snapshot.OpenOptionEodCatalog,
-		openOptionTerms:    instrument.OpenOptionTerms,
-		openInstrumentName: instrument.OpenInstrumentNames,
-		newOptionEod:       optioneod.New,
-		newQuoteSnapshot:   quotesnapshot.New,
-		pageList:           []pages.Page{macro_rates.Page()},
-		newHandler:         embed.Handler,
-		migrateUp:          setup.MigrateUp,
-		ownerDSN:           setup.OwnerDSN,
-		readEnv:            setup.ReadEnv,
-		macroPage:          newMacroPage,
-		optionDataPage:     newOptionDataPage,
+		newClock:            realclock.NewReal,
+		newCalendar:         calendar.NewCalendar,
+		openSessionDay:      sessionday.Open,
+		openSeries:          series.Open,
+		openLedger:          ops.Open,
+		setup:               setup.Setup,
+		newFRED:             fred.New,
+		newFredSeries:       fredseries.New,
+		newSeriesHistory:    serieshistory.New,
+		newRunner:           reconcile.NewWithRule,
+		newBackfiller:       reconcile.NewBackfillerWithRule,
+		dialBroker:          grpcbroker.Dial,
+		openInstrument:      instrument.Open,
+		openOptionEod:       snapshot.OpenOptionEod,
+		openQuoteSnapshot:   snapshot.OpenQuoteSnapshot,
+		openOptionCatalog:   snapshot.OpenOptionEodCatalog,
+		openOptionTerms:     instrument.OpenOptionTerms,
+		openInstrumentName:  instrument.OpenInstrumentNames,
+		newOptionEod:        optioneod.New,
+		newQuoteSnapshot:    quotesnapshot.New,
+		pageList:            []pages.Page{macro_rates.Page()},
+		newHandler:          embed.Handler,
+		migrateUp:           setup.MigrateUp,
+		ownerDSN:            setup.OwnerDSN,
+		readEnv:             setup.ReadEnv,
+		macroPage:           newMacroPage,
+		optionDataPage:      newOptionDataPage,
+		openFence:           ops.OpenFence,
+		openSchedulerLedger: ops.OpenSchedulerLedger,
+		newScheduler:        sched.New,
+		newKeyRunner:        reconcile.NewKeyRunner,
+		newReconciler:       reconcile.NewReconciler,
+		newGapSyncer:        sched.NewGapSyncer,
+		newFwClock:          clockwork.NewRealClock,
+		notifyContext:       stopOnSignal,
 	}
 }
 

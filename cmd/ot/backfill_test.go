@@ -177,3 +177,18 @@ func TestBackfillAheadNamesCursor(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestBackfillRefusedWhileSchedulerLive(t *testing.T) {
+	t.Parallel()
+	f := &fakeBackfiller{}
+	a, opened, _, _ := backfillApp(t, fullEnv, f)
+	inst := &fakeInstFence{held: true}
+	a.deps.openFence = fenceOpener(inst)
+	err := backfill(a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.Contains(err.Error(), "ot scheduler status") {
+		t.Fatalf("err %v", err)
+	}
+	if len(f.days) != 0 || opened.Load() != 0 || inst.count() != 1 {
+		t.Fatalf("calls %d, opened %d, tries %d", len(f.days), opened.Load(), inst.count())
+	}
+}
