@@ -1,6 +1,9 @@
 package compute_test
 
 import (
+	"context"
+	"errors"
+	"io"
 	"math"
 	"testing"
 
@@ -274,3 +277,73 @@ func TestStatsAndSeriesAndUnits(t *testing.T) {
 		t.Fatal("unit conversions")
 	}
 }
+
+var _ compute.EvaluateAlertsFunc = fakeEvaluate
+var _ compute.LoadAlertRulesFunc = fakeLoad
+var _ compute.DefaultAlertRulesFunc = fakeDefault
+
+func fakeDefault() (compute.AlertRules, error) {
+	return compute.AlertRules{Rules: []compute.AlertRule{{ID: "r1", Figure: "market.vix_pctile_3y", Subject: "VIXCLS"}}, Hash: "h"}, nil
+}
+
+func fakeLoad(r io.Reader) (compute.AlertRules, error) {
+	if _, err := io.ReadAll(r); err != nil {
+		return compute.AlertRules{}, err
+	}
+	return fakeDefault()
+}
+
+// fakeEvaluate reads once per rule and reports the newest row as fired; no row is no_data.
+func fakeEvaluate(ctx context.Context, rs compute.AlertRules, read compute.ReadingFunc, today contracts.Day) ([]compute.AlertResult, error) {
+	var out []compute.AlertResult
+	for _, r := range rs.Rules {
+		rows, err := read(ctx, r.Figure, r.SubjectKind, r.Subject, today, today)
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			out = append(out, compute.AlertResult{RuleID: r.ID, State: "no_data", Reason: "no_reading"})
+			continue
+		}
+		out = append(out, compute.AlertResult{RuleID: r.ID, State: "fired", Day: today, DataDay: today})
+	}
+	return out, nil
+}
+
+func TestAlertContract(t *testing.T) {
+	t.Parallel()
+	rules, err := compute.DefaultAlertRulesFunc(fakeDefault)()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var evaluate compute.EvaluateAlertsFunc = fakeEvaluate
+	empty := compute.ReadingFunc(func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+		return nil, nil
+	})
+	got, err := evaluate(context.Background(), rules, empty, "2026-11-08")
+	if err != nil || len(got) != 1 || got[0].State != "no_data" || got[0].Reason != "no_reading" {
+		t.Fatalf("empty reader: %v %v", got, err)
+	}
+	one := compute.ReadingFunc(func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+		return []contracts.ReadingRecord{{}}, nil
+	})
+	got, err = evaluate(context.Background(), rules, one, "2026-11-08")
+	if err != nil || len(got) != 1 || got[0].State != "fired" || got[0].Day != "2026-11-08" {
+		t.Fatalf("one row: %v %v", got, err)
+	}
+	boom := errors.New("reader down")
+	bad := compute.ReadingFunc(func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+		return nil, boom
+	})
+	if _, err = evaluate(context.Background(), rules, bad, "2026-11-08"); !errors.Is(err, boom) {
+		t.Fatalf("reader error must be an error of the call: %v", err)
+	}
+	loaded, err := compute.LoadAlertRulesFunc(fakeLoad)(nil2Reader{})
+	if err != nil || len(loaded.Rules) != 1 {
+		t.Fatalf("load: %v %v", loaded, err)
+	}
+}
+
+type nil2Reader struct{}
+
+func (nil2Reader) Read([]byte) (int, error) { return 0, io.EOF }
