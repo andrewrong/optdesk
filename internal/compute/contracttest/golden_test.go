@@ -90,13 +90,22 @@ func TestUnitsFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Names: %v", err)
 	}
-	if len(names) != 6 {
-		t.Fatalf("names = %v, want the four hand files and the two generated ones", names)
-	}
 	if names[0] != "units.json" {
 		t.Fatalf("first name = %q, want units.json", names[0])
 	}
-	want := []string{"units.json", "figures.json", "indicators.json", "iv30_independent.json", "series.json", "stats.json"}
+	// Generated files (those with a provenance object) are not counted: a new one needs no edit here.
+	var hand []string
+	for _, name := range names {
+		f, err := Load(name)
+		if err != nil {
+			t.Fatalf("Load(%s): %v", name, err)
+		}
+		if f.Provenance == nil {
+			hand = append(hand, name)
+		}
+	}
+	want := []string{"units.json", "figures.json", "series.json", "stats.json"}
+	names = hand
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("names = %v, want %v", names, want)
 	}
