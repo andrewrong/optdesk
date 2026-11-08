@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
+	"github.com/pressly/goose/v3"
 )
 
 func envApp(t *testing.T, home string, rd store.ReadEnvFunc) *app {
@@ -120,6 +121,16 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 		openSeries:     func(context.Context, string) (store.SeriesStore, error) { return nil, leakErr() },
 		setup:          func(context.Context, store.SetupConfig) error { return leakErr() },
 		migrateUp:      func(context.Context, string, fs.FS) error { return leakErr() },
+	}
+	if name == "migrate" {
+		// a PgError-shaped error whose Detail holds the sentinels; the wrapper text holds them too
+		pg := &fakePgError{code: "42704", msg: `role "r" does not exist`, detail: sentDSN + " " + sentPassword}
+		a.deps.migrateUp = func(context.Context, string, fs.FS) error {
+			return &goose.PartialError{
+				Failed: &goose.MigrationResult{Source: &goose.Source{Version: 13}},
+				Err:    fmt.Errorf("%s %s %s: %w", sentDSN, sentPassword, sentVerifier, pg),
+			}
+		}
 	}
 	return a, &errb
 }
