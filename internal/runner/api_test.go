@@ -228,7 +228,10 @@ type fakeKeyRunner struct {
 	bound   time.Time
 }
 
-func (f *fakeKeyRunner) RunKey(_ context.Context, job contracts.Job, day contracts.Day, key contracts.ExpectedKey, attempt int, closeAt, deadline time.Time, reason string) (store.Run, error) {
+func (f *fakeKeyRunner) RunKey(
+	_ context.Context, _ contracts.Job, _ contracts.Day, _ contracts.ExpectedKey,
+	attempt int, closeAt, deadline time.Time, reason string,
+) (store.Run, error) {
 	f.attempt, f.reason, f.closeAt, f.bound = attempt, reason, closeAt, deadline
 	return store.Run{}, nil
 }
@@ -271,7 +274,10 @@ func TestSchedulerContract(t *testing.T) {
 	var gotDisabled map[string]string
 	var gotExe runner.ExecIdentityFunc
 	sch := &fakeScheduler{tick: clk.Now(), held: true}
-	var newFn runner.NewSchedulerFunc = func(_ store.Fence, _ store.SchedulerLedger, _ store.OpsLedger, _ clock.Calendar, _ clockwork.Clock, _ runner.Reconciler, g runner.GapSyncer, _ []contracts.Job, disabled map[string]string, exe runner.ExecIdentityFunc) runner.Scheduler {
+	var newFn runner.NewSchedulerFunc = func(
+		_ store.Fence, _ store.SchedulerLedger, _ store.OpsLedger, _ clock.Calendar, _ clockwork.Clock,
+		_ runner.Reconciler, g runner.GapSyncer, _ []contracts.Job, disabled map[string]string, exe runner.ExecIdentityFunc,
+	) runner.Scheduler {
 		gotDisabled, gotExe = disabled, exe
 		if err := g.Sync(context.Background(), "2026-11-06", disabled); err != nil {
 			t.Error(err)

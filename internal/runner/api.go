@@ -124,7 +124,7 @@ type RestartSensitive interface {
 // deterministic Run.ID, closeAt is the window close, reason is "late" or empty, and
 // the run's context ends at deadline.
 type KeyRunner interface {
-	RunKey(ctx context.Context, job contracts.Job, day contracts.Day, key contracts.ExpectedKey, attempt int, closeAt, deadline time.Time, reason string) (store.Run, error)
+	RunKey(ctx context.Context, job contracts.Job, day contracts.Day, key contracts.ExpectedKey, attempt int, closeAt, deadline time.Time, reason string) (store.Run, error) //nolint:lll // the issue fixes the full signature on one line
 }
 
 // Scheduler starts the jobs at their slots until ctx ends. A library may implement
@@ -148,10 +148,10 @@ type GapSyncer interface {
 type ExecIdentityFunc func() (string, error)
 
 // NewSchedulerFunc is the constructor of the scheduler (internal/runner/sched.New). gaps nil means no-op.
-type NewSchedulerFunc func(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, cal clock.Calendar, clk clockwork.Clock, rec Reconciler, gaps GapSyncer, jobs []contracts.Job, disabled map[string]string, exe ExecIdentityFunc) Scheduler
+type NewSchedulerFunc func(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, cal clock.Calendar, clk clockwork.Clock, rec Reconciler, gaps GapSyncer, jobs []contracts.Job, disabled map[string]string, exe ExecIdentityFunc) Scheduler //nolint:lll // the issue fixes the full signature on one line
 
 // NewKeyRunnerFunc is the constructor of the key runner (internal/runner/reconcile.NewKeyRunner).
 type NewKeyRunnerFunc func(ops store.OpsLedger, sched store.SchedulerLedger, clk clockwork.Clock) KeyRunner
 
 // NewReconcilerFunc is the constructor of the reconciler and backfiller pair (internal/runner/reconcile.NewReconciler).
-type NewReconcilerFunc func(ops store.OpsLedger, sched store.SchedulerLedger, cal clock.Calendar, clk clockwork.Clock, jobs []contracts.Job, rule WindowRule, kr KeyRunner) (Reconciler, Backfiller)
+type NewReconcilerFunc func(ops store.OpsLedger, sched store.SchedulerLedger, cal clock.Calendar, clk clockwork.Clock, jobs []contracts.Job, rule WindowRule, kr KeyRunner) (Reconciler, Backfiller) //nolint:lll // the issue fixes the full signature on one line
