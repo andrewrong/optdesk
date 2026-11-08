@@ -1,6 +1,7 @@
-// The indicator detail page (indicator_detail v1). Every visible string and figure is a field of the payload; this
+// The indicator detail page (indicator_detail v2). Every visible string and figure is a field of the payload; this
 // file formats, compares and computes nothing. The reference line is drawn as a second series of the same value.
 import { Chart } from '@/charts/Chart'
+import { DataTable, type Column } from '@/components/data-table/data-table'
 import type { ChartSpec } from '@/charts/spec'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -21,10 +22,31 @@ function specOf(payload: Payload): ChartSpec {
   }
   return {
     kind: 'line',
-    categories: payload.points.map((point) => point.observed_on),
+    categories: payload.points.map((point) => ('day' in point.released ? point.released.day : point.observed_on)),
     series,
     legend: line !== null,
   }
+}
+
+const RECENT_IDS = ['period', 'released', 'value', 'change'] as const
+
+function Recent({ recent }: { recent: Payload['recent'] }) {
+  if ('reason' in recent) return <GapLine text={recent.text} reason={recent.reason} />
+  const columns: Column[] = recent.columns.map((label, index) => ({ id: RECENT_IDS[index]!, label }))
+  return (
+    <section data-recent>
+      <h3 className="font-medium">{recent.title}</h3>
+      <DataTable
+        columns={columns}
+        rows={recent.rows.map((row) => ({
+          period: { text: row.period },
+          released: { text: row.released },
+          value: { text: row.value },
+          change: { text: row.change },
+        }))}
+      />
+    </section>
+  )
 }
 
 function GapLine({ text, reason }: { text: string; reason: string }) {
@@ -69,6 +91,10 @@ export function IndicatorDetailView({ payload }: { payload: Payload }) {
         {payload.points.length > 0 ? (
           <Chart spec={specOf(payload)} ariaText={payload.series_title} name="indicator-detail" />
         ) : null}
+        <p className="text-sm text-muted-foreground" data-meta-line>
+          {payload.meta_line}
+        </p>
+        <Recent recent={payload.recent} />
         {revision ? (
           <p className="text-sm text-muted-foreground" data-revision>
             {revision.text}

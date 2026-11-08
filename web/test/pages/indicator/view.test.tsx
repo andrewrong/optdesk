@@ -73,6 +73,28 @@ describe('IndicatorDetailView', () => {
   })
 })
 
+describe('IndicatorDetailView recent table', () => {
+  it('shows the four headers, every recent row, and meta_line of ok', async () => {
+    await show(<IndicatorDetailView payload={ok} />)
+    const heads = [...host.querySelectorAll('th')].map((th) => th.textContent)
+    expect(heads).toEqual(['期', '公布日', '值', '较前'])
+    expect(text()).toContain(ok.recent.title)
+    expect(ok.recent.rows.length).toBeGreaterThan(0)
+    const body = [...host.querySelectorAll('tbody tr')].map((tr) =>
+      [...tr.querySelectorAll('td')].map((td) => td.textContent),
+    )
+    expect(body).toEqual(ok.recent.rows.map((r) => [r.period, r.released, r.value, r.change]))
+    expect(text()).toContain(ok.meta_line)
+  })
+
+  it('shows the gap text and no table when recent is a gap', async () => {
+    await show(<IndicatorDetailView payload={gap} />)
+    expect(text()).toContain(gap.recent.text)
+    expect(host.querySelector('table')).toBeNull()
+    expect(text()).toContain(gap.meta_line)
+  })
+})
+
 describe('validate', () => {
   it('refuses the bad-version fixture and accepts ok', () => {
     expect(validate(badVersion).ok).toBe(false)
