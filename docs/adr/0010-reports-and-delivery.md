@@ -106,4 +106,4 @@ job run; account failures never change the slot outcome or report-ready notice.
 
 2026-11-08 (owner decision, optdesk-1074; `docs/design/risk-alerts.md` Decision 10, choice (a)): for market alerts only, the Telegram text may hold the rule title, the public market figure and its value, and the day of its data. It never holds anything derived from holdings or the account: no positions, balances, percentages, sizes, or tickers chosen from holdings.
 
-The account-derived ban ("Telegram never carries account-derived information", under **Telegram**) stands for what it covers. The job alert rule (a registered job id, status and the owner's local time) stands for job alerts; this amendment does not widen it.
+The ban on account-derived content in the Telegram section above stands for what it covers. The job alert rule (a registered job id, status and the owner's local time) stands for job alerts; this amendment does not widen it.
