@@ -183,5 +183,6 @@ func TestTruncatedFileIsPermanent(t *testing.T) {
 
 func TestEmptyRowsIsPermanent(t *testing.T) {
 	t.Parallel()
-	permanentFor(t, `{"provenance":{"generator":"g","generator_version":"1","source_library":"l","source_library_version":"1","generated_at":"2026-11-08T00:00:00Z"},"rows":[]}`)
+	permanentFor(t, `{"provenance":{"generator":"g","generator_version":"1","source_library":"l",`+
+		`"source_library_version":"1","generated_at":"2026-11-08T00:00:00Z"},"rows":[]}`)
 }
