@@ -181,10 +181,11 @@ func runBound(job contracts.Job) time.Duration {
 // day is cut a bound after its own start. A dataset with no window has no CloseAt, so its
 // deadline is now plus the bound.
 func deadlineFor(job contracts.Job, closeAt, now time.Time) time.Time {
-	if closeAt.IsZero() || closeAt.Before(now) {
-		return now.Add(runBound(job))
+	from := now // max(closeAt, now): a zero closeAt is never after now
+	if closeAt.After(now) {
+		from = closeAt
 	}
-	return closeAt.Add(runBound(job))
+	return from.Add(runBound(job))
 }
 
 // withClockwork returns clk as a clockwork.Clock: itself when it is one, else a clock whose
