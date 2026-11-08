@@ -35,6 +35,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          # Its own key: the go tool generators (buf, go-jsonschema) are not in the cache the ci-go jobs save.
+          cache-dependency-path: |
+            go.sum
+            contracts/generate.sh
       - name: size ratchet
         run: go run ./scripts/ratchet
       - name: repository hygiene

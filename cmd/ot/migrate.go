@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -30,9 +31,26 @@ func runMigrate(a *app, args []string) error {
 	if dsn == "" {
 		return fmt.Errorf("%s is not set", store.AdminDSNEnv)
 	}
+	if !hasSQLFile(*dir) {
+		return fmt.Errorf("migrate: --dir %q is not a directory with .sql files; pass --dir <repository>/migrations", *dir)
+	}
 	if err := a.deps.migrateUp(context.Background(), dsn, os.DirFS(*dir)); err != nil {
 		return fmt.Errorf("migrate failed; the error text is withheld because it may hold %s", store.AdminDSNEnv)
 	}
 	a.log.Info("migrate "+*dir+" done", "component", "ot", "status", "ok")
 	return nil
+}
+
+// hasSQLFile reports whether dir is a readable directory holding at least one *.sql file.
+func hasSQLFile(dir string) bool {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range ents {
+		if !e.IsDir() && filepath.Ext(e.Name()) == ".sql" {
+			return true
+		}
+	}
+	return false
 }

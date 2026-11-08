@@ -8,6 +8,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
@@ -195,5 +196,68 @@ func TestCaptureFollowsPlannedKey(t *testing.T) {
 	want := captureOf("2026-11-06", contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "QQQ"})
 	if len(ids) != 1 || ids[0] != want {
 		t.Fatalf("capture id %v ignores the planned key; want %v", ids, want)
+	}
+}
+
+// computeJob is a fake compute_figures job: it plans one key per name given and, on Run, reads through the
+// stores it was built with and answers one usable row per key.
+type computeJob struct {
+	stores jobs.ComputeStores
+	names  []string
+}
+
+func (computeJob) ID() string { return "compute_figures" }
+
+func (j computeJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	keys := make([]contracts.ExpectedKey, 0, len(j.names))
+	for _, n := range j.names {
+		keys = append(keys, contracts.ExpectedKey{DatasetID: "readings.reading", SubjectKey: n + "|market|VIXCLS"})
+	}
+	return keys, "hash", nil
+}
+
+func (j computeJob) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	var out contracts.JobResult
+	for range keys {
+		if _, err := j.stores.Readings.InsertReadings(ctx, []contracts.ReadingRecord{{}}); err != nil {
+			return contracts.JobResult{Returned: out.Returned}
+		}
+		out.Returned++
+		out.Usable++
+	}
+	return out
+}
+
+type fakeReadings struct {
+	store.ReadingStore
+	inserted int
+}
+
+func (r *fakeReadings) InsertReadings(_ context.Context, rows []contracts.ReadingRecord) (int, error) {
+	r.inserted += len(rows)
+	return len(rows), nil
+}
+
+func TestNewComputeFiguresFuncContract(t *testing.T) {
+	t.Parallel()
+	rd := &fakeReadings{}
+	var newJob jobs.NewComputeFiguresFunc = func(
+		s jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock,
+	) (contracts.Job, error) {
+		return computeJob{stores: s, names: []string{"market.vix_term_ratio", "market.iv30_own"}}, nil
+	}
+	j, err := newJob(jobs.ComputeStores{Readings: rd}, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j.ID() != "compute_figures" {
+		t.Fatalf("id = %q", j.ID())
+	}
+	ids, got := planAndRun(t, j, "2026-11-06")
+	if len(ids) != 2 || ids[0] == ids[1] {
+		t.Fatalf("one capture id per key expected, got %v", ids)
+	}
+	if got.Returned != 2 || got.Usable != 2 || rd.inserted != 2 {
+		t.Fatalf("result %+v, inserted %d", got, rd.inserted)
 	}
 }
