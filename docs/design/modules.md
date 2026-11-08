@@ -23,6 +23,7 @@ rows above name every other top-level path of the planned tree.
   that uses it); Python, `api.py` of the package with `tests/contracts/test_<module>_api.py`; TypeScript, the
   generated types and the JSON schema of a page (they are owned by contracts, so web has no entry of its own).
   Editing an entry file is an interface change (AGENTS.md): the issue carries a Design line.
+  A generated sub-package named in an entry cell (`internal/contracts/genpb`) is exempt from the declarations-only rule, because it is generated from `contracts/proto` and never edited by hand (AGENTS.md).
 - **depends** is the only source of module dependencies. `arch.toml` (go-arch-lint) is derived from this column
   by a script of the repo module; a check in `checks.yml` fails when `arch.toml` and this column disagree.
   The derivation: for a row named `<name>`, the root package `internal/<name>` (its `api.go`, the interface) is the
@@ -41,7 +42,7 @@ rows above name every other top-level path of the planned tree.
   `docs/design/week1.md#interface`). The interface-only rule therefore binds the library modules (every row with an interface file in
   `internal/`), and for `ot` this map states the exact import list, which `scripts/arch` generates as go-arch-lint component `ot` and
   `checks.yml` compares with this text: the root packages of the rows in its depends cell, `internal/profile`, and these implementation packages,
-  one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/store/sessionday`, `internal/store/series`, `internal/store/snapshot`, `internal/store/ops`,
+  one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/runner/sched`, `internal/store/sessionday`, `internal/store/series`, `internal/store/snapshot`, `internal/store/ops`,
   `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`.
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
