@@ -252,7 +252,9 @@ func newRig(t *testing.T, env string) *rig {
 		}
 		return evReading{c: evc{"readings", r.ev}}, nil
 	}
-	d.newComputeFigures = func(cs jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock) (contracts.Job, error) {
+	d.newComputeFigures = func(
+		cs jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock,
+	) (contracts.Job, error) {
 		r.compute = cs
 		return namedJob{id: "compute_figures"}, r.fail["figjob"]
 	}
