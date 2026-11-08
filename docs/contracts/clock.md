@@ -10,10 +10,14 @@ Read-only time and session calendar. `clock.Clock` gives the current time throug
 - Days as `contracts.Day` (`YYYY-MM-DD`, market zone).
 - For zone conversion, an instant and an IANA zone name; the owner zone is given by the caller and no zone is hard-coded for it.
 
+- A `clock.SessionDayDiffer`: `Diff(old, fresh)` compares two session-day slices by day (`calendar.NewDiffer`, a `clock.NewSessionDayDifferFunc`).
+- A `clock.CommandFunc`: `func(ctx, argv) (exitCode, err)` runs a command; `err` is non-nil only when it could not start or be waited for. `clock.NewCommandSessionSourceFunc(argv, workDir, run)` builds a `SessionSource` that runs the pyside generator through it (`argv` is the command prefix, `workDir` the directory for its temporary file).
+
 ## Outputs
 
 - `clock.Session`: calendar id, day, `IsSession`, `OpenAt`, `CloseAt` (UTC instants from the source row), `EarlyClose`.
 - `NextSession`: the first session strictly after the day.
+- `clock.SessionDayChange`: day, `Before`, `After` (`*contracts.SessionDay`). `Diff` returns changes sorted by day, empty when the slices agree; a day only in `fresh` has `Before` nil, a day only in `old` has `After` nil.
 - Errors are `contracts.TypedError`: `UnknownCalendar` when the source has no rows for the calendar, `NoValue` when no session is found in the searched span (56 days), `Retryable` when the source fails, `Permanent` for a bad day or zone name.
 
 ## Invariants
@@ -26,6 +30,7 @@ Read-only time and session calendar. `clock.Clock` gives the current time throug
 ## Version history
 
 - v1: Session, NextSession, ET/JST/InZone conversions.
+- v2: SessionDayChange, SessionDayDiffer, NewSessionDayDifferFunc, CommandFunc, NewCommandSessionSourceFunc (declarations).
 
 ## Contract tests
 

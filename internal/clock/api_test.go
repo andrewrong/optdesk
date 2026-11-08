@@ -46,7 +46,67 @@ var (
 	_ clock.SessionSource   = fakeSource{}
 	_ clock.NewClockFunc    = func() clock.Clock { return clockwork.NewFakeClock() }
 	_ clock.NewCalendarFunc = func(s clock.SessionSource) clock.Calendar { return fakeCalendar{s} }
+
+	_ clock.SessionDayDiffer            = fakeDiffer{}
+	_ clock.NewSessionDayDifferFunc     = func() clock.SessionDayDiffer { return fakeDiffer{} }
+	_ clock.CommandFunc                 = fakeCommand{}.run
+	_ clock.NewCommandSessionSourceFunc = newFakeCommandSource
 )
+
+// fakeDiffer reports each row of fresh beyond old as added and each row of old beyond fresh as removed.
+type fakeDiffer struct{}
+
+func (fakeDiffer) Diff(old, fresh []contracts.SessionDay) []clock.SessionDayChange {
+	var out []clock.SessionDayChange
+	for i := 0; i < len(old) || i < len(fresh); i++ {
+		c := clock.SessionDayChange{Day: contracts.Day("2026-11-0" + string(rune('1'+i)))}
+		if i < len(old) {
+			c.Before = &old[i]
+		}
+		if i < len(fresh) {
+			c.After = &fresh[i]
+		}
+		if c.Before == nil || c.After == nil {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// fakeCommand records the argv it was run with and answers a fixed result.
+type fakeCommand struct {
+	got  *[]string
+	code int
+	err  error
+}
+
+func (f fakeCommand) run(_ context.Context, argv []string) (int, error) {
+	if f.got != nil {
+		*f.got = argv
+	}
+	return f.code, f.err
+}
+
+// commandSource is a source that fails when the command does.
+type commandSource struct {
+	argv []string
+	run  clock.CommandFunc
+}
+
+func (s commandSource) SessionDays(ctx context.Context, id string, from, to contracts.Day) ([]contracts.SessionDay, error) {
+	code, err := s.run(ctx, append(append([]string{}, s.argv...), "--calendar", id, "--from", string(from), "--to", string(to)))
+	if err != nil {
+		return nil, err
+	}
+	if code != 0 {
+		return nil, unknownCal{}
+	}
+	return nil, nil
+}
+
+func newFakeCommandSource(argv []string, _ string, run clock.CommandFunc) clock.SessionSource {
+	return commandSource{argv: argv, run: run}
+}
 
 func TestClockContract(t *testing.T) {
 	t.Parallel()
@@ -70,5 +130,40 @@ func TestCalendarContract(t *testing.T) {
 	te, ok := err.(contracts.TypedError)
 	if !ok || te.Kind() != contracts.UnknownCalendar {
 		t.Fatalf("want UnknownCalendar, got %v", err)
+	}
+}
+
+func TestSessionDayDifferContract(t *testing.T) {
+	t.Parallel()
+	var newDiffer clock.NewSessionDayDifferFunc = func() clock.SessionDayDiffer { return fakeDiffer{} }
+	d := newDiffer()
+	row := contracts.SessionDay{CalendarID: "XNYS", IsSession: true}
+	if got := d.Diff([]contracts.SessionDay{row}, []contracts.SessionDay{row}); len(got) != 0 {
+		t.Fatalf("equal slices: %+v", got)
+	}
+	added := d.Diff(nil, []contracts.SessionDay{row})
+	if len(added) != 1 || added[0].Before != nil || added[0].After == nil {
+		t.Fatalf("added: %+v", added)
+	}
+	removed := d.Diff([]contracts.SessionDay{row}, nil)
+	if len(removed) != 1 || removed[0].Before == nil || removed[0].After != nil {
+		t.Fatalf("removed: %+v", removed)
+	}
+}
+
+func TestCommandSessionSourceContract(t *testing.T) {
+	t.Parallel()
+	var got []string
+	var run clock.CommandFunc = fakeCommand{got: &got}.run
+	var src clock.SessionSource = clock.NewCommandSessionSourceFunc(newFakeCommandSource)([]string{"uv", "run"}, t.TempDir(), run)
+	if _, err := src.SessionDays(context.Background(), "XNYS", "2026-11-02", "2026-11-30"); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) < 2 || got[0] != "uv" || got[1] != "run" {
+		t.Fatalf("argv %v", got)
+	}
+	failing := newFakeCommandSource(nil, t.TempDir(), fakeCommand{err: context.Canceled}.run)
+	if _, err := failing.SessionDays(context.Background(), "XNYS", "2026-11-02", "2026-11-02"); err != context.Canceled {
+		t.Fatalf("want start error, got %v", err)
 	}
 }
