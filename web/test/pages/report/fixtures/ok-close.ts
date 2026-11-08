@@ -19,9 +19,9 @@ export const okClose = {
   blocks: {
     system_status: {
       key: 'system_status',
-      title: '系统状态标题',
-      sub: '系统状态副标题',
-      say: '系统状态结论',
+      title: '运行概况标题',
+      sub: '系统状态',
+      say: '运行概况结论',
       state: 'ok',
       gaps: [],
       data_times: '系统状态数据时间 2026-10-23 16:15',

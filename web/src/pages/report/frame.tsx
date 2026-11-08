@@ -24,7 +24,11 @@ export interface FrameBlock {
 }
 
 // The badge words present the closed enum `state`; they are shell text.
-const STATE_WORD = { ok: '正常', partial: '延迟', gap: '缺' } as const
+const STATE_BADGE = {
+  ok: { word: '正常', variant: 'success' },
+  partial: { word: '延迟', variant: 'warning' },
+  gap: { word: '缺', variant: 'down' },
+} as const
 
 export function LinkButton({ link }: { link: Link }) {
   return (
@@ -41,8 +45,8 @@ export function Frame({ block, children }: { block: FrameBlock; children?: React
       <CardHeader>
         <CardTitle>{block.title}</CardTitle>
         <CardDescription>{block.sub}</CardDescription>
-        <Badge variant={block.state === 'ok' ? 'success' : block.state === 'partial' ? 'warning' : 'down'}>
-          {STATE_WORD[block.state]}
+        <Badge variant={STATE_BADGE[block.state].variant}>
+          {STATE_BADGE[block.state].word}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3">

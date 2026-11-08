@@ -88,7 +88,6 @@ describe('report page', () => {
     expect(frame('account_moves')!.querySelector('a')?.getAttribute('href')).toBe('/household')
     expect(frame('risks')!.querySelector('a')?.getAttribute('href')).toBe('/positions')
     const page = text(host)
-    expect(keysInOrder().filter((key) => key === 'system_status')).toHaveLength(1)
     expect(page).not.toContain('five_day')
     expect(page).not.toMatch(/\bday\b/)
   })
@@ -99,6 +98,18 @@ describe('report page', () => {
     expect(keysInOrder().slice(0, 6)).toEqual(open)
     expect(host.querySelector('a[href="/household"]')).toBeNull()
     expect(host.querySelector('a[href="/positions"]')).toBeNull()
+  })
+
+  it('shows 系统状态 once on ok-close', async () => {
+    await show(okClose)
+    expect(text(host).split('系统状态').length - 1).toBe(1)
+  })
+
+  it('writes the partial block of ok-open as 延迟 and never as partial', async () => {
+    await show(okOpen)
+    expect(okOpen.blocks.market_line.state).toBe('partial')
+    expect(text(frame('market_line')!)).toContain('延迟')
+    expect(text(host)).not.toContain('partial')
   })
 
   it('writes a partial block as 延迟, a gap block as 缺, and never the raw word', async () => {
