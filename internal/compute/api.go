@@ -240,3 +240,13 @@ type LoadAlertRulesFunc func(r io.Reader) (AlertRules, error)
 
 // DefaultAlertRulesFunc returns the rules embedded in the program.
 type DefaultAlertRulesFunc func() (AlertRules, error)
+
+// SharpMarkFunc says whether a day change and a 5-day change, in percent, are sharp. A
+// change is sharp when its absolute value reaches the limit of SharpLimitsFunc, the limit
+// itself included. A nil change is a gap and is never sharp. The two results are
+// independent of each other.
+type SharpMarkFunc func(day, five *float64) (daySharp, fiveSharp bool)
+
+// SharpLimitsFunc returns the limits, in percent, that SharpMarkFunc applies to the day
+// change and to the 5-day change, for a builder's note.
+type SharpLimitsFunc func() (day, fiveDay float64)

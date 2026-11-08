@@ -347,3 +347,48 @@ func TestAlertContract(t *testing.T) {
 type emptyReader struct{}
 
 func (emptyReader) Read([]byte) (int, error) { return 0, io.EOF }
+
+// fakeSharp is a stand-in implementation of the sharp-move types: inclusive at the limit,
+// false for a nil change.
+func fakeSharp() (compute.SharpMarkFunc, compute.SharpLimitsFunc) {
+	limits := func() (float64, float64) { return 3, 8 }
+	mark := func(day, five *float64) (bool, bool) {
+		d, f := limits()
+		return day != nil && math.Abs(*day) >= d, five != nil && math.Abs(*five) >= f
+	}
+	return mark, limits
+}
+
+// sharpCaller uses only the two types, as a builder does.
+func sharpCaller(mark compute.SharpMarkFunc, limits compute.SharpLimitsFunc, day, five *float64) (bool, bool, float64, float64) {
+	ds, fs := mark(day, five)
+	d, f := limits()
+	return ds, fs, d, f
+}
+
+func TestSharpContract(t *testing.T) {
+	t.Parallel()
+	mark, limits := fakeSharp()
+	p := func(v float64) *float64 { return &v }
+	cases := []struct {
+		name      string
+		day, five *float64
+		wantDay   bool
+		wantFive  bool
+	}{
+		{"below", p(2.99), p(7.99), false, false},
+		{"at limit", p(3), p(8), true, true},
+		{"negative at limit", p(-3), p(-8), true, true},
+		{"independent", p(3), p(1), true, false},
+		{"nil is false", nil, nil, false, false},
+	}
+	for _, c := range cases {
+		ds, fs, d, f := sharpCaller(mark, limits, c.day, c.five)
+		if ds != c.wantDay || fs != c.wantFive {
+			t.Errorf("%s: got %v %v, want %v %v", c.name, ds, fs, c.wantDay, c.wantFive)
+		}
+		if d != 3 || f != 8 {
+			t.Errorf("%s: limits %v %v", c.name, d, f)
+		}
+	}
+}
