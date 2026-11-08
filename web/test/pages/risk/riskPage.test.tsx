@@ -62,6 +62,11 @@ describe('HouseholdRiskView', () => {
     expect(host.querySelector('[data-gaps]')).toBeNull()
   })
 
+  it('shows the beta delta meaning', async () => {
+    const host = await show(ok)
+    expect(host.textContent ?? '').toContain(ok.beta_delta.meaning)
+  })
+
   it('shows the stale label of stale as sent', async () => {
     const host = await show(stale)
     expect(host.querySelector('[data-stale]')?.textContent).toBe(stale.stale.text)
