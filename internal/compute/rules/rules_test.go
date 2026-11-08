@@ -124,24 +124,29 @@ func funcSource(root, name string) (string, error) {
 		recv, rest = strings.TrimPrefix(r, "(*"), fn
 	}
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, filepath.Join(root, filepath.FromSlash(pathPart)),
-		func(fi os.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") }, 0)
+	dir := filepath.Join(root, filepath.FromSlash(pathPart))
+	ents, err := os.ReadDir(dir)
 	if err != nil {
 		return "", err
 	}
-	for _, p := range pkgs {
-		for _, f := range p.Files {
-			for _, d := range f.Decls {
-				fd, ok := d.(*ast.FuncDecl)
-				if !ok || fd.Name.Name != rest || recvName(fd) != recv {
-					continue
-				}
-				var buf bytes.Buffer
-				if err := printer.Fprint(&buf, token.NewFileSet(), fd); err != nil {
-					return "", err
-				}
-				return buf.String(), nil
+	for _, de := range ents {
+		if de.IsDir() || !strings.HasSuffix(de.Name(), ".go") || strings.HasSuffix(de.Name(), "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, filepath.Join(dir, de.Name()), nil, 0)
+		if err != nil {
+			return "", err
+		}
+		for _, d := range f.Decls {
+			fd, ok := d.(*ast.FuncDecl)
+			if !ok || fd.Name.Name != rest || recvName(fd) != recv {
+				continue
 			}
+			var buf bytes.Buffer
+			if err := printer.Fprint(&buf, token.NewFileSet(), fd); err != nil {
+				return "", err
+			}
+			return buf.String(), nil
 		}
 	}
 	return "", fmt.Errorf("%s not found", name)
