@@ -6,12 +6,16 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/clock/calendarcli"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -25,6 +29,7 @@ const maxSocketPath = 104
 // runOnceConfig is what run-once needs from $OT_HOME/.env and the home; its values are never printed.
 type runOnceConfig struct {
 	runnerDSN, seriesDSN, optionEodDSN, quoteSnapshotDSN, masterDSN, fredKey string
+	pagesDSN, readingsDSN, loaderDSN, calendarUV                             string
 	socketPath                                                               string
 }
 
@@ -44,11 +49,16 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		quoteSnapshotDSN: env[store.DSNEnvQuoteSnapshot],
 		masterDSN:        env[store.DSNEnvMaster],
 		fredKey:          env["FRED_API_KEY"],
+		pagesDSN:         env[store.DSNEnvPages],
+		readingsDSN:      env[store.DSNEnvReadings],
+		loaderDSN:        env[store.DSNEnvLoader],
+		calendarUV:       env[envCalendarUV],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
 		{store.DSNEnvOptionEod, c.optionEodDSN}, {store.DSNEnvQuoteSnapshot, c.quoteSnapshotDSN},
-		{store.DSNEnvMaster, c.masterDSN}, {"FRED_API_KEY", c.fredKey},
+		{store.DSNEnvMaster, c.masterDSN}, {store.DSNEnvPages, c.pagesDSN},
+		{store.DSNEnvReadings, c.readingsDSN}, {store.DSNEnvLoader, c.loaderDSN}, {"FRED_API_KEY", c.fredKey},
 	} {
 		if l.v == "" && (!allowNoFredKey || l.name != "FRED_API_KEY") {
 			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", l.name)
@@ -124,7 +134,7 @@ type wiring struct {
 	dial func(ctx context.Context) (broker.Broker, error)
 }
 
-// jobFactory builds the three jobs over the stores withWiring opened.
+// jobFactory builds the jobs over the stores withWiring opened.
 type jobFactory struct {
 	d    deps
 	clk  clock.Clock
@@ -133,6 +143,50 @@ type jobFactory struct {
 	eod  store.OptionEodStore
 	snap store.QuoteSnapshotStore
 	inst store.InstrumentStore
+	// compute holds the stores of compute_figures.
+	compute jobs.ComputeStores
+	uv      string
+	log     *slog.Logger
+	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
+	loader store.SessionDayStore
+}
+
+// calendarRefresh builds calendar_refresh over the loader store; the command is the uv program of the .env
+// line (default uv) and calendarArgs, run by calendarcli.Exec in the default temporary directory.
+func (f jobFactory) calendarRefresh() (contracts.Job, error) {
+	uv := f.uv
+	if uv == "" {
+		uv = "uv"
+	}
+	argv := append([]string{uv}, calendarArgs...)
+	src := f.d.newCommandSessionSource(argv, "", calendarcli.Exec)
+	// The log handler passes only the keys of profile.logFields, so the change is one value of "status".
+	obs := func(c clock.SessionDayChange) {
+		f.log.Info("calendar change", "component", "ot", "job", "calendar_refresh",
+			"status", fmt.Sprintf("day=%s before=[%s] after=[%s]", c.Day, describeDay(c.Before), describeDay(c.After)))
+	}
+	j, err := f.d.newCalendarRefresh(src, f.loader, f.d.newDiffer(), f.clk, obs)
+	if err != nil {
+		return nil, fmt.Errorf("build calendar_refresh job failed")
+	}
+	return j, nil
+}
+
+// describeDay renders one session-day row for the log; nil is "none" (the day is absent on that side).
+func describeDay(d *contracts.SessionDay) string {
+	if d == nil {
+		return "none"
+	}
+	return fmt.Sprintf("session=%t early_close=%t open=%s close=%s", d.IsSession, d.EarlyClose,
+		d.OpenAt.UTC().Format(time.RFC3339), d.CloseAt.UTC().Format(time.RFC3339))
+}
+
+func (f jobFactory) computeFigures() (contracts.Job, error) {
+	j, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build compute_figures job failed")
+	}
+	return j, nil
 }
 
 func (f jobFactory) fred() (contracts.Job, error) {
@@ -159,7 +213,7 @@ func (f jobFactory) quoteSnapshot(b broker.Broker) (contracts.Job, error) {
 	return j, nil
 }
 
-// withWiring opens the stores and the broker, wires fred_series, option_eod and quote_snapshot, then
+// withWiring opens the stores and the broker, wires fred_series, option_eod, quote_snapshot, compute_figures and calendar_refresh, then
 // calls use; it closes what it opened on every path, last opened first. check runs after the ledger is
 // open and before the other stores are opened; it may be nil. A failed dial does not stop the call: the
 // option jobs get a broker that answers retryable. An empty FRED key (only ot scheduler lets it through)
@@ -168,11 +222,11 @@ func withWiring(
 	ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, check func(store.OpsLedger) error, use func(wiring) error,
 ) error {
 	d := a.deps
-	sd, err := d.openSessionDay(ctx, cfg.runnerDSN)
+	sd, loader, closeDays, err := openSessionDays(ctx, d, cfg)
 	if err != nil {
-		return fmt.Errorf("open session-day store with %s failed", store.DSNEnvRunner)
+		return err
 	}
-	defer func() { _ = sd.Close() }()
+	defer closeDays()
 	ledger, err := d.openLedger(ctx, cfg.runnerDSN)
 	if err != nil {
 		return fmt.Errorf("open ledger with %s failed", store.DSNEnvRunner)
@@ -203,6 +257,11 @@ func withWiring(
 		return fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
 	}
 	defer func() { _ = instr.Close() }()
+	cs, closeCompute, err := openComputeStores(ctx, d, cfg, sd)
+	if err != nil {
+		return err
+	}
+	defer closeCompute()
 	var src sources.Source = noKeySource{}
 	if cfg.fredKey != "" {
 		src, err = d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
@@ -215,10 +274,10 @@ func withWiring(
 	var extra brokerSet
 	defer extra.closeAll()
 	return wireJobs(a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
-		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr}, ledger)
+		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log}, ledger)
 }
 
-// wireJobs builds the three jobs over the open stores and calls use.
+// wireJobs builds the five jobs over the open stores and calls use.
 func wireJobs(
 	a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *brokerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
@@ -235,8 +294,16 @@ func wireJobs(
 	if err != nil {
 		return err
 	}
+	figJob, err := f.computeFigures()
+	if err != nil {
+		return err
+	}
+	calJob, err := f.calendarRefresh()
+	if err != nil {
+		return err
+	}
 	return use(wiring{
-		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob}, brokerUp: brokerUp, factory: f,
+		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob, figJob, calJob}, brokerUp: brokerUp, factory: f,
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
 			if err != nil {
@@ -291,4 +358,75 @@ func holdOffScheduler(ctx context.Context, a *app, cfg runOnceConfig, who, refus
 		return nil, errors.New(refusal)
 	}
 	return fence, nil
+}
+
+// openSessionDays opens the window store with the runner line and the store of calendar_refresh with the loader
+// line; the returned func closes both, the loader store first.
+func openSessionDays(ctx context.Context, d deps, cfg runOnceConfig) (sd, loader store.SessionDayStore, closeAll func(), err error) {
+	sd, err = d.openSessionDay(ctx, cfg.runnerDSN)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("open session-day store with %s failed", store.DSNEnvRunner)
+	}
+	loader, err = d.openSessionDay(ctx, cfg.loaderDSN)
+	if err != nil {
+		_ = sd.Close()
+		return nil, nil, nil, fmt.Errorf("open session-day store with %s failed", store.DSNEnvLoader)
+	}
+	return sd, loader, func() { _ = loader.Close(); _ = sd.Close() }, nil
+}
+
+// openComputeStores opens the stores compute_figures reads and writes: catalog, eod, terms, names and series
+// with the pages line, the readings store with the readings line; the session days are the runner store
+// already open. The returned func closes what was opened, last opened first.
+func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.SessionDayStore) (jobs.ComputeStores, func(), error) {
+	var closers []func() error
+	closeAll := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			_ = closers[i]()
+		}
+	}
+	pagesFail := fmt.Errorf("open compute stores with %s failed", store.DSNEnvPages)
+	cs := jobs.ComputeStores{SessionDays: sd}
+	cat, err := d.openOptionCatalog(ctx, cfg.pagesDSN)
+	if err != nil {
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, cat.Close)
+	cs.Catalog = cat
+	eod, err := d.openOptionEod(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, eod.Close)
+	cs.OptionEod = eod
+	terms, err := d.openOptionTerms(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, terms.Close)
+	cs.Terms = terms
+	names, err := d.openInstrumentName(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, names.Close)
+	cs.Names = names
+	ser, err := d.openSeries(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, ser.Close)
+	cs.Series = ser
+	rd, err := d.openReading(ctx, cfg.readingsDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, fmt.Errorf("open readings store with %s failed", store.DSNEnvReadings)
+	}
+	closers = append(closers, rd.Close)
+	cs.Readings = rd
+	return cs, closeAll, nil
 }

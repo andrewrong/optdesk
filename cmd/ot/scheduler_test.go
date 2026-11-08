@@ -14,7 +14,10 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
@@ -116,6 +119,7 @@ type schedRig struct {
 	sl       *fakeSchedLedger
 	fw       *clockwork.FakeClock
 	gaps     *fakeGaps
+	notifier *fakeNotifier
 	sched    *fakeSched
 	cancel   context.CancelFunc
 	dials    atomic.Int32
@@ -145,8 +149,11 @@ func ids(jobs []contracts.Job) []string {
 
 func newSchedRig(t *testing.T, env string) *schedRig {
 	t.Helper()
-	a, errb := testApp(t, env)
-	r := &schedRig{a: a, errb: errb, inst: &fakeInstFence{}, sl: &fakeSchedLedger{}, fw: clockwork.NewFakeClock(), gaps: &fakeGaps{}, built: make(chan struct{})}
+	a, errb := testApp(t, env+telegramEnv)
+	r := &schedRig{
+		a: a, errb: errb, inst: &fakeInstFence{}, sl: &fakeSchedLedger{}, fw: clockwork.NewFakeClock(),
+		gaps: &fakeGaps{}, notifier: &fakeNotifier{}, built: make(chan struct{}),
+	}
 	var closed atomic.Int32
 	var day contracts.Day
 	runOnceFakes(a, &r.opened, &closed, &day)
@@ -177,6 +184,12 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobQuoteSnapshot}, nil
 	}
+	d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error) {
+		return idJob{id: jobComputeFigures}, nil
+	}
+	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+		return idJob{id: jobCalendarRefresh}, nil
+	}
 	d.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
 		n := r.dials.Add(1)
 		if r.dialErrs != nil {
@@ -196,6 +209,10 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		r.builds = append(r.builds, ids(jobs))
 		return fakeRec{ids: ids(jobs), mu: &r.mu, last: &r.reconned}, nil
 	}
+	d.newNotifier = func(notify.GapSource, notify.Sender, clockwork.Clock, notify.Config) (notify.Notifier, error) {
+		return r.notifier, nil
+	}
+	d.newTelegramSender = func(string, string, notify.TelegramOptions) (notify.Sender, error) { return nil, nil }
 	d.newGapSyncer = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer { return r.gaps }
 	d.newScheduler = func(
 		fence store.Fence, _ store.SchedulerLedger, _ store.OpsLedger, _ clock.Calendar, _ clockwork.Clock,
@@ -242,8 +259,16 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 	return <-done
 }
 
+// jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
+// never name them.
+const (
+	jobComputeFigures  = "compute_figures"
+	jobCalendarRefresh = "calendar_refresh"
+)
+
 const noKeyEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\n" +
-	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n"
+	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
 
 func TestSchedulerLocksOnce(t *testing.T) {
 	t.Parallel()
@@ -262,7 +287,7 @@ func TestSchedulerLocksOnce(t *testing.T) {
 	if b, _ := r.sl.build.Load().(string); b != "dev" || r.inst.build != "dev" {
 		t.Fatalf("build %q, lock build %q", b, r.inst.build)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("jobs %v", got)
 	}
 }
@@ -365,7 +390,7 @@ func TestSchedulerErrorsHoldNoSecret(t *testing.T) {
 	t.Parallel()
 	const secret = "postgres://sentinel-user:sentinel-pw@h/db"
 	env := "OT_PG_DSN_RUNNER=" + secret + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n" +
-		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n"
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n"
 	steps := map[string]func(r *schedRig){
 		"open fence": func(r *schedRig) {
 			r.a.deps.openFence = func(_ context.Context, dsn string) (store.InstanceFence, error) {
@@ -405,7 +430,8 @@ func TestSchedulerPassesGapSyncer(t *testing.T) {
 	done := r.start()
 	r.waitStarted(t, done)
 	r.tick()
-	if r.sched.gaps != runner.GapSyncer(r.gaps) {
+	// The scheduler gets the gap syncer wrapped by the notify pass (#550); the wrapper holds it as it is.
+	if w, ok := r.sched.gaps.(notifyingGaps); !ok || w.inner != runner.GapSyncer(r.gaps) {
 		t.Fatal("the scheduler did not get the gap syncer")
 	}
 	if len(r.gaps.seen) != 1 || len(r.gaps.seen[0]) != 0 {
@@ -419,10 +445,10 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	r := newSchedRig(t, noKeyEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	if len(r.sched.disabled) != 1 || r.sched.disabled[jobFredSeries] == "" {
@@ -440,10 +466,10 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	r.dialErrs = func(int32) error { return errors.New("no socket") }
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobFredSeries}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); len(got) != 3 {
+	if got := ids(r.sched.jobs); len(got) != 5 {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
@@ -476,13 +502,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if !slices.Equal(ran, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -509,7 +535,7 @@ func TestSchedulerFredStaysDisabledUntilRestart(t *testing.T) {
 		if got := r.sched.disabled[jobFredSeries]; got != first || got == "" {
 			t.Fatalf("reason %q, first %q", got, first)
 		}
-		if got := r.lastBuild(); !slices.Equal(got, []string{jobOptionEod, jobQuoteSnapshot}) {
+		if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
 			t.Fatalf("reconciler jobs %v", got)
 		}
 		if len(r.sched.disabled) != 1 {
@@ -528,7 +554,6 @@ func TestSchedulerDoesNotStartTheSite(t *testing.T) {
 	d.newHandler = func([]byte) http.Handler { called.Add(1); return nil }
 	d.macroPage = func(*time.Location, string) pages.Page { called.Add(1); return pages.Page{} }
 	d.optionDataPage = func(*time.Location, string, sitePageInput) pages.Page { called.Add(1); return pages.Page{} }
-	d.openOptionCatalog = nil
 	done := r.start()
 	r.waitStarted(t, done)
 	_ = r.stop(t, done)
@@ -560,5 +585,128 @@ func TestSchedulerDispatchesStatusAndCanRestart(t *testing.T) {
 	// Any other argument keeps the usage error and opens nothing.
 	if err := schedulerCmd(r.a, []string{"bogus"}); err == nil || !strings.Contains(err.Error(), "usage: ot scheduler") {
 		t.Fatalf("bogus argument: %v", err)
+	}
+}
+
+// telegramEnv holds the two synthetic Telegram lines the scheduler needs; they are not real.
+const telegramEnv = "OT_TELEGRAM_TOKEN=test-token\nOT_TELEGRAM_CHAT_ID=1000001\n"
+
+// fakeNotifier records its passes in order with the gap passes; it can fail or panic.
+type fakeNotifier struct {
+	mu     sync.Mutex
+	passes int
+	err    error
+	panics bool
+	gaps   *fakeGaps
+	synced []int // the number of gap passes seen at each notify pass
+}
+
+func (f *fakeNotifier) NotifyGaps(context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.passes++
+	if f.gaps != nil {
+		f.gaps.mu.Lock()
+		f.synced = append(f.synced, len(f.gaps.seen))
+		f.gaps.mu.Unlock()
+	}
+	if f.panics {
+		panic("boom")
+	}
+	return 0, f.err
+}
+
+func TestSchedulerCallsNotifyAfterGapPass(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	r.notifier.gaps = r.gaps
+	done := r.start()
+	r.waitStarted(t, done)
+	r.tick()
+	r.tick()
+	_ = r.stop(t, done)
+	if got := r.notifier.synced; !slices.Equal(got, []int{1, 2}) {
+		t.Fatalf("gap passes seen at each notify pass %v, want [1 2]", got)
+	}
+}
+
+func TestSchedulerSurvivesNotifyError(t *testing.T) {
+	t.Parallel()
+	for name, set := range map[string]func(*fakeNotifier){
+		"error": func(n *fakeNotifier) { n.err = errors.New("send to https://api.example/bot-secret-token failed") },
+		"panic": func(n *fakeNotifier) { n.panics = true },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := newSchedRig(t, fullEnv)
+			set(r.notifier)
+			done := r.start()
+			r.waitStarted(t, done)
+			r.tick()
+			r.tick()
+			if err := r.stop(t, done); err != nil {
+				t.Fatalf("the scheduler stopped: %v", err)
+			}
+			if r.notifier.passes != 2 || len(r.gaps.seen) != 2 {
+				t.Fatalf("notify passes %d, gap passes %d, want 2 and 2", r.notifier.passes, len(r.gaps.seen))
+			}
+			if strings.Contains(r.errb.String(), "secret") || !strings.Contains(r.errb.String(), "notify") {
+				t.Fatalf("log %q", r.errb.String())
+			}
+		})
+	}
+}
+
+func TestSchedulerNeedsTelegramLines(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	if err := writeFile(r.a.getenv("OT_HOME")+"/.env", fullEnv+"OT_TELEGRAM_TOKEN=test-token\n"); err != nil {
+		t.Fatal(err)
+	}
+	err := <-r.start()
+	if err == nil || !strings.Contains(err.Error(), "OT_TELEGRAM_CHAT_ID") || strings.Contains(err.Error(), "test-token") {
+		t.Fatalf("err %v", err)
+	}
+	if r.inst.count() != 0 {
+		t.Fatal("the lock was tried before the missing line was reported")
+	}
+}
+
+func TestSchedulerWiresFiveJobs(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	done := r.start()
+	r.waitStarted(t, done)
+	want := []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+	if got := ids(r.sched.jobs); !slices.Equal(got, want) {
+		t.Fatalf("scheduler jobs %v, want %v", got, want)
+	}
+	if got := r.lastBuild(); !slices.Equal(got, want) {
+		t.Fatalf("reconciler jobs %v, want %v", got, want)
+	}
+	if len(r.sched.disabled) != 0 {
+		t.Fatalf("disabled %v", r.sched.disabled)
+	}
+	_ = r.stop(t, done)
+}
+
+func TestSchedulerNeedsReadingsDSN(t *testing.T) {
+	t.Parallel()
+	env := strings.Replace(fullEnv, "OT_PG_DSN_READINGS=readings-dsn\n", "", 1)
+	r := newSchedRig(t, env)
+	done := r.start()
+	err := <-done
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestSchedulerNeedsLoaderDSN(t *testing.T) {
+	t.Parallel()
+	env := strings.Replace(fullEnv, "OT_PG_DSN_LOADER=loader-dsn\n", "", 1)
+	r := newSchedRig(t, env)
+	err := <-r.start()
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || strings.Contains(err.Error(), "loader-dsn") {
+		t.Fatalf("err %v", err)
 	}
 }

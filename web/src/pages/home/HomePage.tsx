@@ -1,9 +1,8 @@
-// The home page (home_page v2): a header with the gap line, five summary cards in one column each under its header link, and the report list. Every visible
+// The home page (home_page v3): the overview card, five summary cards in one column, each title a link, and the report list. Every visible
 // string is a field of the payload; the view computes nothing and holds no route table (links go to their `href`).
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate as validateHeld } from '@/types/held_companies_summary'
 import { validate as validateTop, type Gap, type Payload } from '@/types/home_page'
@@ -16,6 +15,7 @@ import { HouseholdCard } from './HouseholdCard'
 import { MacroCard } from './MacroCard'
 import { MarketSummaryCard } from './MarketSummaryCard'
 import { OptionsSummaryCard } from './OptionsSummaryCard'
+import { OverviewCard } from './OverviewCard'
 
 type Validation = { ok: true; payload: Payload } | { ok: false; gap: Gap; errors: never[] }
 
@@ -38,18 +38,6 @@ export function validate(input: unknown): Validation {
 }
 
 type Link = { href: string; text: string }
-
-// The header row of a card: block link `i` of the payload, or nothing when the payload has fewer links.
-function BlockRow({ link }: { link: Link | undefined }) {
-  if (!link) return null
-  return (
-    <div data-block-row>
-      <Button asChild variant="outline">
-        <a href={link.href}>{link.text}</a>
-      </Button>
-    </div>
-  )
-}
 
 // The first report is visible; the rest sit in the fold "全部报告". One report has no fold.
 function Reports({ links }: { links: readonly Link[] }) {
@@ -84,31 +72,17 @@ function Reports({ links }: { links: readonly Link[] }) {
 }
 
 export function HomePage({ payload }: { payload: Payload }) {
-  const rows = payload.block_links
+  // Card i of the page takes the href of overview line i for its title (macro, market, household, companies, options).
+  const [macro, market, household, companies, options] = payload.overview.items.map((item) => item.href)
   return (
     <div className="space-y-4" data-page="home-page">
-      <Card>
-        <CardHeader>
-          <CardTitle>{payload.title}</CardTitle>
-          <CardDescription>{payload.say}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert data-gap-line>
-            <AlertDescription>{payload.gap_line}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <OverviewCard payload={payload} />
       <div className="flex flex-col gap-4">
-        <BlockRow link={rows[0]} />
-        <MacroCard payload={payload.macro} />
-        <BlockRow link={rows[1]} />
-        <MarketSummaryCard payload={payload.market} />
-        <BlockRow link={rows[2]} />
-        <HouseholdCard payload={payload.household} />
-        <BlockRow link={rows[3]} />
-        <HeldCompaniesCard payload={payload.companies} />
-        <BlockRow link={rows[4]} />
-        <OptionsSummaryCard payload={payload.options} />
+        <MacroCard payload={payload.macro} titleHref={macro} />
+        <MarketSummaryCard payload={payload.market} titleHref={market} />
+        <HouseholdCard payload={payload.household} titleHref={household} />
+        <HeldCompaniesCard payload={payload.companies} titleHref={companies} />
+        <OptionsSummaryCard payload={payload.options} titleHref={options} />
       </div>
       <Reports links={payload.report_links} />
     </div>

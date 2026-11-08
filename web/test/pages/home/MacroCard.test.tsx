@@ -43,6 +43,18 @@ afterEach(async () => {
 })
 
 describe('MacroCard (macro_summary v2)', () => {
+  it('renders the title as a link to titleHref', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<MacroCard payload={ok} titleHref="/macro" />)
+    })
+    const a = host.querySelector('[data-slot=card-title] a')
+    expect(a?.getAttribute('href')).toBe('/macro')
+    expect(a?.textContent).toBe(ok.card.title)
+  })
+
   it('shows title, say, ease and stale text of ok as sent', async () => {
     await show(ok)
     expect(host.querySelector('[data-slot=card-title]')?.textContent).toBe(ok.card.title)
@@ -88,13 +100,13 @@ describe('MacroCard (macro_summary v2)', () => {
     )
   })
 
-  it('draws the fixed -2 to +2 scale with the neutral band texts and the stored marker', async () => {
+  it('draws the fixed 0 to 100 scale with the neutral band texts and the stored marker', async () => {
     await show(ok)
     const ticks = [...host.querySelectorAll('[data-ticks] span')].map((s) => s.textContent)
-    expect(ticks[0]).toBe('-2')
-    expect(ticks[ticks.length - 1]).toBe('+2')
-    expect(host.textContent).toContain('-0.5')
-    expect(host.textContent).toContain('+0.5')
+    expect(ticks[0]).toBe('0')
+    expect(ticks[ticks.length - 1]).toBe('100')
+    expect(host.textContent).toContain('34%')
+    expect(host.textContent).toContain('66%')
     expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
       String(ok.card.ease.marker_percent.value),
     )

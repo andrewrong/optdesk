@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 	"github.com/pressly/goose/v3"
@@ -110,8 +112,13 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 		notifyContext: func(ctx context.Context) (context.Context, context.CancelFunc) {
 			return context.WithCancel(ctx)
 		},
-		newClock:    func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} },
-		newCalendar: func(clock.SessionSource) clock.Calendar { return nil },
+		newClock:                func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} },
+		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
+		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
+		newDiffer:               func() clock.SessionDayDiffer { return nil },
+		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+			return nil, leakErr()
+		},
 		readEnv: func(string) (map[string]string, error) {
 			return map[string]string{store.DSNEnvLoader: sentDSN, store.DSNEnvPages: sentDSN, store.DSNEnvRunner: sentDSN,
 				store.DSNEnvSeriesFred: sentDSN, "FRED_API_KEY": "k", "VERIFIER": sentVerifier}, nil

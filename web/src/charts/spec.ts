@@ -20,6 +20,10 @@ export interface ChartSeries {
   invisible?: boolean
   /** A theme colour of the whole series; the default is `var(--chart-N)`. */
   color?: string
+  /** Draws the line dashed and thinner (a line chart only). */
+  dashed?: boolean
+  /** Keeps the series out of the legend, so several lines can share one entry. */
+  legendHidden?: boolean
 }
 
 export interface ChartSpec {

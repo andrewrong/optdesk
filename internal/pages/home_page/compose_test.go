@@ -21,29 +21,39 @@ var fixedNow = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 var slots = []string{"household", "companies", "macro", "market", "options"}
 
-func read(t *testing.T, name string) []byte {
+// members reads one of the overview_*.json files: an object holding the five
+// member documents by slot.
+func members(t *testing.T, name string) map[string]json.RawMessage {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("testdata", name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return b
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	return m
 }
 
-func input(t *testing.T) home_page.Input {
+func inputFrom(t *testing.T, name string) home_page.Input {
 	t.Helper()
+	m := members(t, name)
 	return home_page.Input{
 		RunID: "run-test", BuildID: "build-test", Scope: "scope-test",
 		Zone:  time.FixedZone("UTC+8", 8*3600),
-		Title: "Home", Say: "All quiet", GapLine: "No gap today",
-		BlockLinks:  []home_page_Link{{Href: "/companies", Text: "Companies"}},
-		ReportLinks: []home_page_Link{{Href: "/report", Text: "Report"}},
-		Household:   read(t, "household"), Companies: read(t, "companies"),
-		Macro: read(t, "macro"), Market: read(t, "market"), Options: read(t, "options"),
+		Title: "Home", Say: "All quiet",
+		CardLinks: home_page.CardLinks{
+			Macro: "/macro", Market: "/market", Household: "/household",
+			Companies: "/companies", Options: "/options",
+		},
+		ReportLinks: []home_page.Link{{Href: "/report", Text: "Report"}},
+		Household:   m["household"], Companies: m["companies"],
+		Macro: m["macro"], Market: m["market"], Options: m["options"],
 	}
 }
 
-type home_page_Link = home_page.Link
+func input(t *testing.T) home_page.Input { return inputFrom(t, "overview_ok") }
 
 func setSlot(in *home_page.Input, slot string, b []byte) {
 	switch slot {
@@ -112,7 +122,7 @@ func TestComposeValidatesAgainstSchema(t *testing.T) {
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
 	c.UseLoader(fileLoader{})
-	s, err := c.Compile(schemaHost + "page.home_page.v2.json")
+	s, err := c.Compile(schemaHost + "page.home_page.v3.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,15 +151,6 @@ func TestComposeNilZone(t *testing.T) {
 	t.Parallel()
 	in := input(t)
 	in.Zone = nil
-	if _, err := home_page.Compose(in, fixedNow); err == nil {
-		t.Fatal("want an error")
-	}
-}
-
-func TestComposeEmptyGapLine(t *testing.T) {
-	t.Parallel()
-	in := input(t)
-	in.GapLine = ""
 	if _, err := home_page.Compose(in, fixedNow); err == nil {
 		t.Fatal("want an error")
 	}
@@ -284,14 +285,28 @@ func TestComposeStaleAfter(t *testing.T) {
 			t.Errorf("stale_after = %v, want %v", got, early)
 		}
 	})
-	t.Run("omitted when none", func(t *testing.T) {
+	t.Run("fallback from data times", func(t *testing.T) {
 		t.Parallel()
 		in := input(t)
 		for _, s := range slots {
 			set(&in, s, nil)
+			setSlot(&in, s, edit(t, getSlot(in, s), dataTimes([2]string{"x", "2026-10-23T21:00:00+08:00"})))
 		}
-		if got, ok := compose(t, in)["stale_after"]; ok {
-			t.Errorf("stale_after = %v, want it omitted", got)
+		setSlot(&in, "macro", edit(t, in.Macro, dataTimes([2]string{"x", "2026-10-22T05:00:00+08:00"})))
+		got := compose(t, in)["stale_after"]
+		if want := "2026-10-26T09:30:00+08:00"; got != want {
+			t.Errorf("stale_after = %v, want %v", got, want)
+		}
+	})
+	t.Run("no stale_after and no data times is an error", func(t *testing.T) {
+		t.Parallel()
+		in := input(t)
+		for _, s := range slots {
+			set(&in, s, nil)
+			setSlot(&in, s, edit(t, getSlot(in, s), dataTimes()))
+		}
+		if _, err := home_page.Compose(in, fixedNow); err == nil {
+			t.Fatal("want an error")
 		}
 	})
 }

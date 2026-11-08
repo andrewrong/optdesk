@@ -13,7 +13,9 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
@@ -21,7 +23,8 @@ import (
 )
 
 const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
-	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n"
+	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
 
 type fakeSD struct {
 	store.SessionDayStore
@@ -57,15 +60,35 @@ type fakeSnap struct {
 	store.QuoteSnapshotStore
 	n *atomic.Int32
 }
+type fakeCat struct {
+	store.OptionEodCatalogStore
+	n *atomic.Int32
+}
+type fakeTerms struct {
+	store.OptionTermsStore
+	n *atomic.Int32
+}
+type fakeInstName struct {
+	store.InstrumentNameStore
+	n *atomic.Int32
+}
+type fakeReading struct {
+	store.ReadingStore
+	n *atomic.Int32
+}
 type fakeBrk struct {
 	broker.Broker
 	n *atomic.Int32
 }
 
-func (f fakeInstr) Close() error { f.n.Add(1); return nil }
-func (f fakeEod) Close() error   { f.n.Add(1); return nil }
-func (f fakeSnap) Close() error  { f.n.Add(1); return nil }
-func (f fakeBrk) Close() error   { f.n.Add(1); return nil }
+func (f fakeInstr) Close() error    { f.n.Add(1); return nil }
+func (f fakeEod) Close() error      { f.n.Add(1); return nil }
+func (f fakeSnap) Close() error     { f.n.Add(1); return nil }
+func (f fakeBrk) Close() error      { f.n.Add(1); return nil }
+func (f fakeCat) Close() error      { f.n.Add(1); return nil }
+func (f fakeTerms) Close() error    { f.n.Add(1); return nil }
+func (f fakeInstName) Close() error { f.n.Add(1); return nil }
+func (f fakeReading) Close() error  { f.n.Add(1); return nil }
 
 type fakeJob struct{ contracts.Job }
 
@@ -77,9 +100,14 @@ func (r recRunner) Reconcile(_ context.Context, d contracts.Day) error { *r.day 
 func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 	clk := a.deps.newClock
 	a.deps = deps{
-		openFence:   fenceOpener(&fakeInstFence{}),
-		newClock:    clk,
-		newCalendar: func(clock.SessionSource) clock.Calendar { return nil },
+		openFence:               fenceOpener(&fakeInstFence{}),
+		newClock:                clk,
+		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
+		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
+		newDiffer:               func() clock.SessionDayDiffer { return nil },
+		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+			return fakeJob{}, nil
+		},
 		openSessionDay: func(context.Context, string) (store.SessionDayStore, error) {
 			opened.Add(1)
 			return fakeSD{n: closed}, nil
@@ -111,6 +139,25 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		openQuoteSnapshot: func(context.Context, string) (store.QuoteSnapshotStore, error) {
 			opened.Add(1)
 			return fakeSnap{n: closed}, nil
+		},
+		openOptionCatalog: func(context.Context, string) (store.OptionEodCatalogStore, error) {
+			opened.Add(1)
+			return fakeCat{n: closed}, nil
+		},
+		openOptionTerms: func(context.Context, string) (store.OptionTermsStore, error) {
+			opened.Add(1)
+			return fakeTerms{n: closed}, nil
+		},
+		openInstrumentName: func(context.Context, string) (store.InstrumentNameStore, error) {
+			opened.Add(1)
+			return fakeInstName{n: closed}, nil
+		},
+		openReading: func(context.Context, string) (store.ReadingStore, error) {
+			opened.Add(1)
+			return fakeReading{n: closed}, nil
+		},
+		newComputeFigures: func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error) {
+			return fakeJob{}, nil
 		},
 		newOptionEod: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
@@ -156,7 +203,8 @@ func TestRunOnceDemoRefused(t *testing.T) {
 
 func TestRunOnceMissingKey(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_PG_DSN_RUNNER=r\nOT_PG_DSN_SERIES_FRED=s\nOT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n")
+	a, _ := testApp(t, "OT_PG_DSN_RUNNER=r\nOT_PG_DSN_SERIES_FRED=s\nOT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\n"+
+		"OT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n")
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -172,14 +220,14 @@ func TestRunOnceClosesStores(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, nil); err != nil || opened.Load() != 7 || closed.Load() != 7 {
+	if err := runOnce(a, nil); err != nil || opened.Load() != 14 || closed.Load() != 14 {
 		t.Fatalf("err %v opened %d closed %d", err, opened.Load(), closed.Load())
 	}
 	// A failure after two stores are open closes them too.
 	opened.Store(0)
 	closed.Store(0)
 	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { return nil, errors.New("down") }
-	if err := runOnce(a, nil); err == nil || closed.Load() != 2 {
+	if err := runOnce(a, nil); err == nil || closed.Load() != 3 {
 		t.Fatalf("err %v closed %d", err, closed.Load())
 	}
 }
@@ -188,7 +236,7 @@ func TestRunOnceSentinelDSN(t *testing.T) {
 	t.Parallel()
 	const sentinel = "postgres://sentinel-user:sentinel-pw@h/db"
 	a, errb := testApp(t, "OT_PG_DSN_RUNNER="+sentinel+"\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n"+
-		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n")
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n")
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -358,4 +406,35 @@ func (f *fakeInstFence) count() int { f.mu.Lock(); defer f.mu.Unlock(); return f
 
 func fenceOpener(f store.InstanceFence) store.OpenFenceFunc {
 	return func(context.Context, string) (store.InstanceFence, error) { return f, nil }
+}
+
+func TestRunOnceNeedsReadingsDSN(t *testing.T) {
+	t.Parallel()
+	const sentinel = "sentinel-readings-secret"
+	for name, env := range map[string]string{
+		"absent": strings.Replace(fullEnv, "OT_PG_DSN_READINGS=readings-dsn\n", "", 1),
+		"empty":  strings.Replace(fullEnv, "OT_PG_DSN_READINGS=readings-dsn\n", "OT_PG_DSN_READINGS=\n", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, _ := testApp(t, env+"OT_PG_DSN_X="+sentinel+"\n")
+			var opened, closed atomic.Int32
+			var got contracts.Day
+			runOnceFakes(a, &opened, &closed, &got)
+			err := runOnce(a, nil)
+			if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) || strings.Contains(err.Error(), sentinel) || opened.Load() != 0 {
+				t.Fatalf("err %v opened %d", err, opened.Load())
+			}
+		})
+	}
+	// The value of the line never reaches the error when its open fails.
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	a.deps.openReading = func(_ context.Context, dsn string) (store.ReadingStore, error) { return nil, errors.New("dial " + dsn) }
+	err := runOnce(a, nil)
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) || strings.Contains(err.Error(), "readings-dsn") {
+		t.Fatalf("err %v", err)
+	}
 }
