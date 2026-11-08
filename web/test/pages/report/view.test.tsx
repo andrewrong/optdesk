@@ -60,7 +60,6 @@ describe('report page', () => {
       okClose.say,
       okClose.banner.left,
       okClose.banner.right,
-      okClose.design_note,
       ...okClose.chips.map((chip) => chip.text),
       ...okClose.status_lines.flatMap((line) => [line.label, line.text]),
     ]) {
@@ -70,7 +69,9 @@ describe('report page', () => {
 
   it('draws the five close blocks of okClose in order, each with its title', async () => {
     await show(okClose)
-    expect(keysInOrder()).toEqual(['actions', 'account_moves', 'risks', 'market_watch', 'global_assets'])
+    expect(keysInOrder().filter((key) => key !== 'system_status')).toEqual([
+      'actions', 'account_moves', 'risks', 'market_watch', 'global_assets',
+    ])
     expect(okClose.slot).toBe('close')
     for (const block of Object.values(okClose.blocks)) {
       expect(getAllByText(block.title).length).toBeGreaterThan(0)
@@ -80,6 +81,50 @@ describe('report page', () => {
     expect(host.querySelector('[data-level="d"]')).not.toBeNull()
     expect(text(host)).toContain(okClose.blocks.actions.trades.footnote)
     expect(text(host)).toContain(okClose.blocks.global_assets.rotation.detail)
+  })
+
+  it('links account_moves to /household and risks to /positions, with 系统状态 once and no raw series names', async () => {
+    await show(okClose)
+    expect(frame('account_moves')!.querySelector('a')?.getAttribute('href')).toBe('/household')
+    expect(frame('risks')!.querySelector('a')?.getAttribute('href')).toBe('/positions')
+    const page = text(host)
+    expect(page).not.toContain('five_day')
+    expect(page).not.toMatch(/\bday\b/)
+  })
+
+  it('draws the open blocks before the close blocks, without the links to /household and /positions', async () => {
+    await show(okOpen)
+    const open = ['market_line', 'tiles', 'accounts', 'candidates', 'reminders', 'system_status']
+    expect(keysInOrder().slice(0, 6)).toEqual(open)
+    expect(host.querySelector('a[href="/household"]')).toBeNull()
+    expect(host.querySelector('a[href="/positions"]')).toBeNull()
+  })
+
+  it('shows 系统状态 once on ok-close', async () => {
+    await show(okClose)
+    expect(text(host).split('系统状态').length - 1).toBe(1)
+  })
+
+  it('writes the partial block of ok-open as 延迟 and never as partial', async () => {
+    await show(okOpen)
+    expect(okOpen.blocks.market_line.state).toBe('partial')
+    expect(text(frame('market_line')!)).toContain('延迟')
+    expect(text(host)).not.toContain('partial')
+  })
+
+  it('writes a partial block as 延迟, a gap block as 缺, and never the raw word', async () => {
+    await show(gap)
+    expect(gap.blocks.account_moves.state).toBe('partial')
+    expect(gap.blocks.risks.state).toBe('gap')
+    expect(text(frame('account_moves')!)).toContain('延迟')
+    expect(text(frame('account_moves')!)).not.toContain('partial')
+    expect(text(frame('risks')!)).toContain('缺')
+    expect(text(host)).not.toContain('partial')
+  })
+
+  it('never renders design_note', async () => {
+    await show({ ...okClose, design_note: '不应出现的设计说明' })
+    expect(text(host)).not.toContain('不应出现的设计说明')
   })
 
   it('draws the eleven blocks of okOpen, the open ones first', async () => {

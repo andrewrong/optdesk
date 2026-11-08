@@ -12,12 +12,22 @@ export const okClose = {
   say: '收盘一句话结论',
   banner: { left: '横幅左侧文字', right: '横幅右侧文字' },
   chips: [{ text: '筹码甲' }, { text: '筹码乙' }],
-  design_note: '设计说明文字',
   status_lines: [
     { label: '状态标签一', text: '状态内容一' },
     { label: '状态标签二', text: '状态内容二' },
   ],
   blocks: {
+    system_status: {
+      key: 'system_status',
+      title: '运行概况标题',
+      sub: '系统状态',
+      say: '运行概况结论',
+      state: 'ok',
+      gaps: [],
+      data_times: '系统状态数据时间 2026-10-23 16:15',
+      collapsed: false,
+      lines: [{ label: '系统行标签', text: '系统行文字' }],
+    },
     actions: {
       key: 'actions',
       title: '操作区标题',
@@ -70,6 +80,7 @@ export const okClose = {
       state: 'ok',
       gaps: [],
       data_times: '账户数据时间 2026-10-23 16:05',
+      link: { href: '/household', label: '账户波动' },
       accounts: {
         columns: ['账户', '净值', '当日金额', '当日百分比', '最大变动'],
         rows: [
@@ -111,6 +122,7 @@ export const okClose = {
       state: 'ok',
       gaps: [],
       data_times: '风险数据时间 2026-10-23 16:10',
+      link: { href: '/positions', label: '风险点' },
       items: [
         { kind: 'concentration', icon_key: 'pie', level: 'n', title: '风险项甲', detail: '风险详情甲' },
         { kind: 'expiry', icon_key: 'clock', level: 'w', title: '风险项乙', detail: '风险详情乙' },
