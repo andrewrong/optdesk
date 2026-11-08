@@ -3,213 +3,264 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
+Revision: 2 (after the adversarial pass, `account-adversarial.md` in the scratchpad of the review)
 Source: owner decisions of 2026-11-08, binding: (1) account data, all of it, before cut-over (a); (2) the margin cushion and the assignment cash are shown only on a page or as a local notice, never on Telegram (5 a; ADR 0010 stands for account data); (3) tracking is stage 1 (7 a). The advisor named the seller needs that are missing: an early-assignment and ex-dividend guard, cost basis and wheel, assignment cash by date per account, the margin cushion. Plan: `docs/design/alignment-v25.md` on `origin/design/alignment-v25` (rows `account job`, `Flex job`, `account collection with partial status`, `ot import`; "stage 2" of `docs/design/risk-alerts.md` Decision 12).
 Read on main at eb7321d: `AGENTS.md`, `docs/design/modules.md`, `broker.md`, `pyside-account-b.md`, `pyside-ibkr-transport.md`, `risk-alerts.md`, `store-week2.md`, `ot-collect.md`, `contracts/proto/ibkr/v1/account.proto`, `internal/broker/grpcbroker/account.go`, `pyside/src/optdesk/ibkr/accounts.py`, `migrations/0015_alerts.sql`, `internal/store/api.go`, `internal/jobs/quotesnapshot/`. option-trader (read-only): `src/option_trader/sources/ibkr/account_reader.py` (reqPositions, accountSummary, portfolio prices, orders) and `src/option_trader/private_book/executions.py` (executions and cash events come from a stored Flex report, not from the API). No credential, `.env` or service data was read.
 
 ## What main holds today
 
 - The account service is landed: `AccountService.Account` returns the summary rows (`TAGS` of `accounts.py`: NetLiquidation, TotalCashValue, AvailableFunds, ExcessLiquidity, BuyingPower, GrossPositionValue, EquityWithLoanValue, InitMarginReq, MaintMarginReq, Cushion) and the open positions of one gateway, by alias, decimal text, read-only. `grpcbroker.AccountClient` is its Go client. Nothing stores or reads it: no dataset, table, role or job (alignment rows `account job` and `account collection with partial status`).
-- The pyside transport allows ids `{1, 2, 9, 20, 25, 49, 59, 71, 78, 61, 62, 63, 64}` after `pyside-account-b.md`; the executions request is refused (that design's Left out). `contracts/proto/ibkr/v1` and `transport.py` are owner-only paths.
+- The pyside transport allows ids `{1, 2, 9, 20, 25, 49, 59, 71, 78, 61, 62, 63, 64}` after `pyside-account-b.md`; the executions request is refused (that design's Left out). `pyside/tests/ibkr/test_guard.py` holds its own tuple of the allowed ids and asserts the guard against it, so the two files change together. `contracts/proto/ibkr/v1` and `transport.py` are owner-only paths.
 - `docs/contracts/broker.md` keeps the account client out of `broker.Broker`; the account is a second surface.
 - Gateway B collects `account_summary` and `positions`; gateway A collects `market_data` only (`pyside/examples/gateways.example.toml`). Which gateway holds which owner account is a deploy file of the owner, not in this repository.
 - option-trader has the history (Flex reports with executions, cash events, assignments) in its own store. This repository has none.
 
 ## Decisions
 
-1. Stage 1 is three datasets, each stored by a job and readable by a Reader: `account.position` (open positions per capture), `account.value` (the summary rows per capture, balances and margin tags) and `account.execution` (one row per execution). Positions and values come from `AccountService.Account` as it is. Stage 1 builds no figure, page or notice.
-2. Executions from the API, not from Flex. `AccountService` gains one read rpc `Executions` (the request carries nothing; the answer lists the executions the gateway still holds, with the commission when its report has arrived) and pyside allows the one request id of the executions (`reqExecutions`, 7) and the commission report callback, and nothing else (order ids stay refused first). The API holds a few days of executions, so a job that misses more than that loses rows: the gap is real and is closed by `ot import` of option-trader's stored history at cut-over (the cut-over design, `docs/design/alignment-v25.md` Decision 3.8), and that import is not in this design. Flex (an HTTPS call to IBKR with the owner's token) is the other way and is deferred (Left out): it is a new outside account access.
-3. Row identity. A position or value row belongs to a capture: `(capture_id, alias, ...)`; the job writes one capture per run, in one transaction, and a partial answer (a gateway that collects only one of the two lists, or does not answer) writes what it has with `status` of the capture saying which list is missing, never a silent empty list: an empty `positions` of a gateway that collects them means no position and is written as a capture row with zero positions. An execution row is keyed by `(alias, exec_id)`, insert-only; a later commission arrives as `ON CONFLICT (alias, exec_id) DO UPDATE SET commission, commission_currency WHERE commission IS NULL` and nothing else changes.
-4. Account ids never appear: every row carries the alias of the gateway's entry (the broker rule). Money and quantities are `numeric` in the database and canonical decimal text in Go (as the proto has them); nothing is a float.
-5. A role of its own: `ot_w_account` (INSERT and SELECT on schema `account` tables; UPDATE only on the two commission columns of `account.execution`; no DELETE, no TRUNCATE), DSN line `OT_PG_DSN_ACCOUNT`, `store.DSNEnvAccount`. The reader role is the existing read-only role. Rows are permanent and append-only like `obs.*`. Account data and market data never share a role.
-6. Delivery rule, binding: nothing in this design reaches notify. The job writes no `job_event` text that carries a holding, balance or size (its failure text is a job id and a status, as ADR 0010 says); the margin cushion and the assignment cash, when built, go to a page block or a local notice (a macOS notification on the owner's machine, a later design), never `Sender`. `internal/notify` does not import the account reader (its depends cell does not name it; `scripts/arch` enforces it).
-7. Capture schedule: one run after the US close (anchor `session_close`, offset after, as the scheduler's manifests do) so that the executions of the day are held and the end-of-day positions are taken once; a second run before the open is a deferral. The job reads each configured account gateway socket in turn, one at a time; the sockets come from the owner's deploy file.
-8. The seller features and what they need (not cut):
-   - Margin cushion: stage 1 already stores `Cushion`, `ExcessLiquidity`, `MaintMarginReq` per capture; the figure and its page block are a later compute and pages issue, with the local notice.
-   - Assignment cash by date per account: an assignment shows in the API as a position change, not as an execution of the option; detecting it from consecutive captures (an option position gone on its expiry day while a stock position appears or changes) is a pure compute figure over `account.position`, and the cash is then `strike x multiplier x quantity` by date and alias. This is reliable only with a capture every session day; Flex marks assignments explicitly and is the check.
-   - Early-assignment and ex-dividend guard: needs the positions (stage 1) plus the ex-dividend dates, which no dataset holds; the source of dividends is the open question of that later design.
-   - Cost basis and wheel: needs full history of executions and assignments, so it waits for `ot import` and Flex.
-9. The first reader is the store's own: `store.AccountReader` with `Positions(ctx, alias, day)`, `Values(ctx, alias, day)`, `Executions(ctx, alias, from, to)`, so that stage 2 builders (household, positions, ledger, tracking) have one place to read. Stage 1 adds no page.
+1. Stage 1 is three datasets, each stored by a job and readable by a Reader: `account.position` (open positions per capture), `account.value` (summary rows per capture: balances and margin tags) and `account.execution` (one row per execution). Positions and values come from `AccountService.Account`. Stage 1 builds no figure, page or notice, and "readable" means the Go `store.AccountReader` that stage 2 builders use; no `ot` subcommand or page reads it yet (Left out). Position prices, unrealized P&L and orders are not collected (Left out).
+2. Collected is a field, not a guess. `AccountResponse` gains `bool values_collected = 5` and `bool positions_collected = 6`, and the new `ExecutionsResponse` has `collected`, so "the gateway does not collect it" differs from "none open". The job writes nothing for a kind that is not collected. An empty `positions` with `positions_collected` true is a capture with zero positions, written.
+3. Executions from the API, written only complete. `AccountService` gains one read rpc `Executions` and the gateway word `executions` in `collect`. The handler sends the one executions request (`reqExecutions`, id 7), waits for the end marker and for the commission reports until the deadline of `accounts.py`, and answers only executions whose commission report is in; the count of those still waiting is `pending`. The job writes the complete rows and, when `pending` is above zero, ends the run as failed with the status "pending", so a retry the same day (insert-only, `ON CONFLICT DO NOTHING`) picks the rest up. Rows are never updated, so `ot_w_account` needs INSERT and SELECT only.
+4. The API gives the current trading day only (assumed; the repository holds no evidence for more: option-trader reads its executions from Flex, not the API). A missed run therefore loses that day's executions. Mitigations: the schedule is a daily anchor on `session_close` with `run_bound` and `restart_sensitive` like the other jobs, so a missed run is a gap the scheduler reports (`scheduler.md` Decisions 12 and 13), and the real fix is Flex or `ot import`, both deferred (Left out).
+5. Identity. `account.capture(capture_id text PK, alias, captured_at, session_day, ...)`; `capture_id` is `<alias>:<session_day>:<run key>` of the scheduler run, so a retry of the same run writes the same id and the capture insert is `ON CONFLICT DO NOTHING` (then no child rows are written). An execution row is keyed by `(alias, exec_id)`. Every row carries the alias of the gateway's entry, never an account id; money and quantities are `numeric`, decimal text in Go, never floats. Rows are permanent and append-only.
+6. A role of its own: `ot_w_account`, INSERT and SELECT on the tables of schema `account`, no UPDATE, DELETE or TRUNCATE; DSN line `OT_PG_DSN_ACCOUNT`, `store.DSNEnvAccount`. The read-only page role `ot_ro_pages` gets USAGE on the schema and SELECT on its tables (in the migration, as `migrations/0004_session_day_grant.sql` does for its table). Account and market data never share a role.
+7. Delivery rule, binding: nothing in this design reaches notify. A job result or `job_event` carries a job id, a status and an alias only (an alias is a gateway name, not an account figure); no holding, balance or size. The margin cushion and the assignment cash, when built, go to a page block or a local notice, never `Sender`. `internal/notify` does not import `internal/store/account` or `internal/jobs/accountcapture` (`scripts/arch` enforces it).
+8. Stage 1 captures gateway B only (the one that collects the account lists today). The job iterates a list of sockets the owner's deploy file gives, so gateway A is a deploy change later, not a code change (Left out, with the question for the owner).
+9. The seller features and what they need (not cut):
+   - Margin cushion: `Cushion`, `ExcessLiquidity` and `MaintMarginReq` are stored per capture; the figure, its page block and the local notice are later issues.
+   - Assignment cash by date per account: an assignment shows in the API as a position change, not as an execution; a pure compute figure over consecutive `account.position` captures (an option position gone on its expiry day while a stock position appears) gives `strike x multiplier x quantity` by date and alias. It is only as reliable as the captures (Decision 4); Flex marks assignments explicitly and is the check.
+   - Early-assignment and ex-dividend guard: needs the stage 1 positions and ex-dividend dates, which no dataset holds; the dividend source is the open item of that later design.
+   - Cost basis and wheel: needs the full execution and assignment history, so it waits for `ot import` and Flex.
+10. `store.AccountReader`: `Positions(ctx, alias, day)`, `Values(ctx, alias, day)`, `Executions(ctx, alias, from, to)`, rows sorted by key.
 
 ## Second opinion
 
-Two items are second-opinion cases for the advisor (it answers later; no Advisor line is written here):
-- A new outside account access in the sense of data volume: the job reads the owner's account (positions, balances, executions) from IBKR for the first time and writes it to PostgreSQL, a new write of account data outside any existing role. Affects `account-interface` (the rpc and the datasets), `account-pyside-executions` (a new allowlisted request id), `account-store-migration` (the role `ot_w_account`) and `account-job`. Questions: (a) the allowlist grows by one read id and the order ids stay refused first; (b) the role cannot delete and updates only the commission; (c) account data never reaches `Sender`.
-- Flex, if the owner wants it, is a new outside account access (a token and an HTTPS call to IBKR). It is not in this design; each of its issues will carry the case.
+Second-opinion cases for the advisor (it answers later; no Advisor line is written here), named in the issues that carry them:
+- A new outside account access: the job reads the owner's positions, balances and executions from IBKR for the first time and writes them to PostgreSQL under a new role. Affects `account-proto`, `account-guard-id`, `account-pyside-executions`, `account-store-migration` and `account-job`. Questions: (a) the allowlist grows by one read id and the order ids stay refused first; (b) the role cannot update or delete; (c) account data never reaches `Sender`.
+- `account-guard-id` is in addition an owner-only path (`transport.py`): the owner merges it.
+- Flex, if the owner wants it, is a new outside account access (token and HTTPS call to IBKR); it is not in this design and each of its issues will carry the case.
 
 ## Modules
 
-New directories: `internal/store/account` (the Writer and Reader), `internal/jobs/accountcapture` (the job). Other edits are to existing packages. This pull request adds nothing to `docs/design/modules.md`; the issue `account-job` adds `broker` to nothing (jobs already names it) and `account-wire` edits only `cmd/**`. New Go imports are none of third parties (pgx and gRPC are in `go.mod`).
+New directories: `internal/store/account` and `internal/jobs/accountcapture`. This pull request edits `docs/design/modules.md` by one list: the exact import list of `cmd/ot` gains `internal/store/account` and `internal/jobs/accountcapture` (the precedent is `internal/store/alert`); no depends cell changes (jobs already names broker and store, ot names both). The interface entry lies in contracts only (the proto, the datasets and the output generated from them, committed together); the other interface files are edited by the issue of their own module, each with a Design line. The two judged two-module entries are the ones modules.md licenses by precedent: a new sub-package needs `.go-arch-lint.yml`, a repo path, regenerated by `go run ./scripts/arch` (`risk-alerts.md` `alerts-store-interface`). No Go dependency is added (pgx and gRPC are in `go.mod`).
 
 | # | issue | module | size | order |
 |---|---|---|---|---|
-| 1 | account-interface (interface) | contracts, broker, store and repo (licensed, below) | M | first |
-| 2 | account-pyside-executions | pyside | M | after 1 |
-| 3 | account-broker-grpc | broker | S | after 1 |
-| 4 | account-store-migration | store | M | after 1 |
-| 5 | account-store-impl | store | M | after 4 |
-| 6 | account-job | jobs | M | after 1, 3 and 5 |
-| 7 | account-wire | ot | S | after 6 |
-
-Licence: the interface entry lies in four modules because one change of the account surface is one contract: the proto and the datasets are contracts (`contracts/proto/**`, `contracts/datasets/**` and the generated Go, Python and TypeScript, which are never edited by hand and are committed with their source), the call is broker (`internal/broker/api.go`), the store types are store (`internal/store/api.go`), and `.go-arch-lint.yml` for the new sub-package `internal/store/account` is repo (`scripts/arch`, the precedent is `docs/design/broker.md:38` and `docs/design/risk-alerts.md` `alerts-store-interface`). The pairs licensed are contracts with broker (a rpc and the Go declaration that mirrors it), store with repo, and contracts with store (a dataset and the store type that carries it), and no other. Each later issue lies in one module.
+| 1 | account-proto (interface) | contracts | M | first |
+| 2 | account-guard-id | pyside (owner-only path, owner merges) | S | any time |
+| 3 | account-pyside-executions | pyside | M | after 1 and 2 |
+| 4 | account-broker | broker | M | after 1 |
+| 5 | account-store-api | store | S | after 1 |
+| 6 | account-store-migration | store | M | after 5 |
+| 7 | account-store-impl | store and repo (judged, `.go-arch-lint.yml`) | M | after 6 |
+| 8 | account-job | jobs and repo (judged, `.go-arch-lint.yml`) | M | after 4 and 5 |
+| 9 | account-wire | ot | S | after 4, 7 and 8 |
 
 ## Interface
 
 | name | owner and file | declaration |
 |---|---|---|
-| `AccountService.Executions`, messages `ExecutionsRequest{}`, `ExecutionsResponse{account, generation, executions}`, `Execution{exec_id, perm_id, time, contract, side, quantity, price, commission, commission_currency}` | contracts, `contracts/proto/ibkr/v1/account.proto` (owner-only, merged by the owner) | one read rpc; `time` is RFC 3339 UTC text, numbers are decimal text, `commission` is empty until its report arrives, no order id, no account id |
+| `AccountService.Executions`; `ExecutionsRequest{}`; `ExecutionsResponse{account, generation, collected, pending, executions}`; `Execution{exec_id, perm_id, time, contract, side, quantity, price, commission, commission_currency}`; `AccountResponse.values_collected = 5`, `positions_collected = 6` | contracts, `contracts/proto/ibkr/v1/account.proto` (owner-only, the owner merges) | `time` is RFC 3339 UTC text, numbers are decimal text, `commission` is always set, no order id and no account id; the change is additive (no field is removed or renumbered) |
 | datasets `account.position` r1, `account.value` r1, `account.execution` r1 | contracts, `contracts/datasets/account.*.r1.json` | position: `capture_id, alias, captured_at, session_day, symbol, sec_type, exchange, currency, expiry, strike, multiplier, right, con_id, quantity, avg_cost`; value: `capture_id, alias, captured_at, session_day, tag, value, currency`; execution: `alias, exec_id, perm_id, executed_at, session_day, symbol, sec_type, expiry, strike, right, multiplier, currency, side, quantity, price, commission, commission_currency` |
-| `broker.AccountReader` (`Account(ctx) (Account, error)`, `Executions(ctx) (Executions, error)`, `Close() error`) with the types `Account`, `AccountValue`, `Position`, `Execution`, `Executions` | broker, `internal/broker/api.go` | declarations only; additions only (the existing `Broker` is unchanged); `grpcbroker.AccountClient` is the implementation |
-| `store.AccountWriter` (`WriteCapture(ctx, Capture) error`, `WriteExecutions(ctx, alias string, []Execution) error`), `store.AccountReader` (Decision 9), `store.AccountStore` (both plus `Close() error`), `store.DSNEnvAccount = "OT_PG_DSN_ACCOUNT"`, `store.OpenAccountFunc func(ctx, dsn) (AccountStore, error)` | store, `internal/store/api.go` | declarations only, additions only; implementation `internal/store/account.Open`; `Capture{ID, Alias, At, SessionDay, Status, Values, Positions}` |
+| `broker.AccountReader` (`Account(ctx) (Account, error)`, `Executions(ctx) (Executions, error)`, `Close() error`); types `Account` (with `ValuesCollected`, `PositionsCollected`), `AccountValue`, `Position`, `Execution`, `Executions` (with `Collected`, `Pending`) | broker, `internal/broker/api.go` (issue 4) | declarations only, additions only; `Broker` unchanged; implemented by `grpcbroker.AccountClient` |
+| `store.AccountWriter` (`WriteCapture(ctx, Capture) error`, `WriteExecutions(ctx, alias string, []Execution) error`), `store.AccountReader` (Decision 10), `store.AccountStore` (both and `Close() error`), `store.DSNEnvAccount = "OT_PG_DSN_ACCOUNT"`, `store.OpenAccountFunc func(ctx, dsn) (AccountStore, error)`, `Capture{ID, Alias, At, SessionDay, Status, Values, Positions}` | store, `internal/store/api.go` (issue 5) | declarations only, additions only; implementation `internal/store/account.Open` |
 
 ## Issues
 
-### account-interface (interface)
+### account-proto (interface)
 
-- Module: contracts, broker, store and repo (judged four-module entry, Licence above). Size: M.
+- Module: contracts. Size: M. Depends on: none.
 - Order: first.
-- Design: docs/design/account-data.md#Interface (second-opinion case: the new rpc and the new datasets)
-- Files: contracts/proto/ibkr/v1/account.proto, contracts/datasets/account.position.r1.json, contracts/datasets/account.value.r1.json, contracts/datasets/account.execution.r1.json, docs/contracts/datasets/account.position.md, docs/contracts/datasets/account.value.md, docs/contracts/datasets/account.execution.md, internal/contracts/genpb/**, internal/contracts/gen/**, pyside/src/optdesk/contracts/genpb/**, internal/broker/api.go, internal/broker/api_test.go, docs/contracts/broker.md, internal/store/api.go, internal/store/api_test.go, internal/store/account/doc.go, docs/contracts/store.md, .go-arch-lint.yml
+- Design: docs/design/account-data.md#Interface (second-opinion case: the new rpc and datasets)
+- Files: contracts/proto/ibkr/v1/account.proto, contracts/datasets/account.position.r1.json, contracts/datasets/account.value.r1.json, contracts/datasets/account.execution.r1.json, contracts/generate.sh, docs/contracts/datasets/account.position.md, docs/contracts/datasets/account.value.md, docs/contracts/datasets/account.execution.md, internal/contracts/gen/records.go, internal/contracts/genpb/ibkr/v1/account.pb.go, internal/contracts/genpb/ibkr/v1/account_grpc.pb.go, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.pyi, pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2_grpc.py, pyside/src/optdesk/contracts/api.py, pyside/tests/contracts/test_contracts_api.py
 
-- Goal: the declarations of the Interface table, declarations only; the generated code committed with its source; a contract test from both sides for `broker.AccountReader` (a fake and a caller) and for `store.AccountStore` (a fake and a caller); the contract documents say the alias rule, the append-only rule and the delivery rule of Decision 6.
+- Goal: the proto messages and rpc and the three datasets of the Interface table; `contracts/generate.sh` lists the three datasets; the generated Go and Python are committed with their source (`sh contracts/generate.sh`, the pattern of `pyside-account-b.md` `account-proto`); the Python contract test covers the new servicer, stub and `add_..._to_server`.
 
 Acceptance:
 
-1. `grep -c "rpc Executions" contracts/proto/ibkr/v1/account.proto` prints 1; `grep -ci "order_id\|account_id" contracts/proto/ibkr/v1/account.proto` prints 0.
-2. `ls contracts/datasets/account.*.r1.json | wc -l | tr -d ' '` prints 3; `scripts/` generation check: `bash contracts/generate.sh && git diff --exit-code -- internal/contracts pyside/src/optdesk/contracts` prints nothing and exits 0.
-3. `grep -c "type AccountReader interface" internal/broker/api.go` prints 1; `git diff $(git merge-base HEAD origin/main) -- internal/broker/api.go internal/store/api.go | grep -c '^-[^-]'` prints 0 (additions only); `go test ./internal/broker ./internal/store -run 'TestAccount' -race -count=1` passes.
-4. `grep -c "DSNEnvAccount = \"OT_PG_DSN_ACCOUNT\"" internal/store/api.go` prints 1; `grep -c "store/account" .go-arch-lint.yml` is at least 1; `go run ./scripts/arch --check` prints `arch: ok`; `grep -c "internal/notify" .go-arch-lint.yml` is unchanged and no `notify` line names `store/account` (`grep -n "store/account" .go-arch-lint.yml | grep -c notify` prints 0).
-5. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vE '^(contracts/|docs/contracts/|internal/contracts/|pyside/src/optdesk/contracts/|internal/broker/api|internal/store/api|internal/store/account/doc.go|\.go-arch-lint\.yml)' | wc -l | tr -d ' '` prints 0.
+1. `grep -c "rpc Executions" contracts/proto/ibkr/v1/account.proto` prints 1; `grep -ci "order_id\|account_id" contracts/proto/ibkr/v1/account.proto` prints 0; `grep -c "values_collected = 5\|positions_collected = 6" contracts/proto/ibkr/v1/account.proto` prints 2.
+2. `git diff $(git merge-base HEAD origin/main) -- contracts/proto/ibkr/v1/account.proto | grep -c '^-[^-]'` prints 0 (additive).
+3. `ls contracts/datasets/account.*.r1.json | wc -l | tr -d ' '` prints 3; `grep -c "account\.\(position\|value\|execution\)\.r1" contracts/generate.sh` is at least 3.
+4. `sh contracts/generate.sh && git status --porcelain internal/contracts pyside/src/optdesk/contracts docs/contracts | wc -l | tr -d ' '` prints 0 (the committed output equals the generated one).
+5. `cd pyside && uv run pytest tests/contracts/test_contracts_api.py -q` passes.
+6. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxE 'contracts/(proto/ibkr/v1/account\.proto|datasets/account\.[a-z]+\.r1\.json|generate\.sh)|docs/contracts/datasets/account\.[a-z]+\.md|internal/contracts/(gen/records\.go|genpb/ibkr/v1/account.*)|pyside/src/optdesk/contracts/(genpb/ibkr/v1/account.*|api\.py)|pyside/tests/contracts/test_contracts_api\.py' | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: ci-go (`go test ./internal/broker ./internal/store`); the generated-code check; the `arch.toml` check; the design verdict. The proto path is owner-only: the owner merges it.
+Checked by CI: the generated-code check; pyside and ci-go workflows; the design verdict. The proto path is owner-only: the owner merges it.
+
+### account-guard-id
+
+- Module: pyside (owner-only path). Size: S. Depends on: none.
+- Order: any time; issue 3 waits for it.
+- Design: docs/design/account-data.md#Decisions (Decision 3; second-opinion case, owner merges)
+- Files: pyside/src/optdesk/ibkr/transport.py, pyside/tests/ibkr/test_guard.py
+
+- Goal: `ALLOWED_IDS` gains id 7 (`reqExecutions`) and nothing else; `ORDER_IDS` is unchanged and still checked first; `test_guard.py` states id 7 as allowed and ids 3, 4, 21 and 58 as refused, in the same pull request so that CI is green on it alone. The commission report is an inbound callback, not a request, and needs no id.
+
+Acceptance:
+
+1. `cd pyside && uv run pytest tests/ibkr/test_guard.py -n auto -q` passes.
+2. `git diff $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py | grep '^[-+][^-+]' | grep -c "ORDER_IDS"` prints 0, and `git diff $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py | grep -c '^-[^-]'` is at most 1 (the one line of `ALLOWED_IDS` rewritten).
+3. `cd pyside && uv run python -c "from optdesk.ibkr.transport import ALLOWED_IDS, ORDER_IDS; print(7 in ALLOWED_IDS, sorted(ORDER_IDS))"` prints `True [3, 4, 21, 58]`.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/ibkr/transport.py -e pyside/tests/ibkr/test_guard.py | wc -l | tr -d ' '` prints 0.
+
+Checked by CI: the pyside workflow (`uv sync --locked`, ruff, mypy --strict, pytest); the design verdict; the owner's merge.
 
 ### account-pyside-executions
 
-- Module: pyside. Size: M. Depends on: account-interface.
-- Order: after 1.
-- Design: docs/design/account-data.md#Decisions (Decision 2; second-opinion case)
-- Files: pyside/src/optdesk/ibkr/accounts.py, pyside/src/optdesk/ibkr/server.py, pyside/tests/ibkr/test_executions.py, pyside/tests/ibkr/test_guard.py, pyside/tests/contracts/test_ibkr_api.py. `pyside/src/optdesk/ibkr/transport.py` is owner-only and needs the one line that adds id 7: reported in the pull request description, not edited.
+- Module: pyside. Size: M. Depends on: account-proto and account-guard-id.
+- Order: after 1 and 2.
+- Design: docs/design/account-data.md#Decisions (Decisions 2 and 3; second-opinion case)
+- Files: pyside/src/optdesk/ibkr/accounts.py, pyside/src/optdesk/ibkr/server.py, pyside/src/optdesk/ibkr/gateways.py, pyside/tests/ibkr/test_executions.py, pyside/tests/ibkr/test_gateways.py
 
-- Goal: the handler of `Executions` over a fake gateway: it sends the one executions request, waits for the end marker and the commission reports within the deadline of `accounts.py`, answers by alias with decimal text, an empty list when there is none, and refuses nothing else; no test connects to a live broker.
+- Goal: the handler of `Executions` over a fake gateway as Decision 3 says (complete rows only, `pending` counted, empty list with `collected` true when none, `collected` false and no request sent when the gateway's `collect` lacks `executions`), the `executions` word accepted by `gateways.py`, and `values_collected` and `positions_collected` set from `collect` in `Account`; no test connects to a live broker.
 
 Acceptance:
 
-1. `cd pyside && uv run pytest tests/ibkr/test_executions.py tests/ibkr/test_guard.py tests/contracts/test_ibkr_api.py -n auto -q` passes.
+1. `cd pyside && uv run pytest tests/ibkr -n auto -q` passes; `grep -c "def test_" pyside/tests/ibkr/test_executions.py` is at least 5 (complete, pending, empty, not collected, order ids still refused).
 2. `cd pyside && uv run ruff check . && uv run mypy --strict src tests` pass.
-3. `grep -c "7" pyside/tests/ibkr/test_guard.py` is at least 1 and the guard test asserts ids 3, 4, 21 and 58 are still refused first (`cd pyside && uv run pytest tests/ibkr/test_guard.py -k order -q` passes).
-4. `git diff --name-only $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py | wc -l | tr -d ' '` prints 0.
+3. `grep -c "time.sleep\|asyncio.sleep" pyside/tests/ibkr/test_executions.py` prints 0.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/ibkr/accounts.py -e pyside/src/optdesk/ibkr/server.py -e pyside/src/optdesk/ibkr/gateways.py -e pyside/tests/ibkr/test_executions.py -e pyside/tests/ibkr/test_gateways.py | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: the pyside workflow (`uv sync --locked`, ruff, mypy, pytest); the design verdict; the owner's merge of `transport.py`.
+Checked by CI: the pyside workflow; the design verdict.
 
-### account-broker-grpc
+### account-broker
 
-- Module: broker. Size: S. Depends on: account-interface.
+- Module: broker. Size: M. Depends on: account-proto.
 - Order: after 1.
-- Design: docs/design/account-data.md#Interface
-- Files: internal/broker/grpcbroker/account.go, internal/broker/grpcbroker/account_test.go, internal/broker/grpcbroker/convert.go, internal/broker/grpcbroker/convert_test.go
+- Design: docs/design/account-data.md#Interface (broker row; interface change of `internal/broker/api.go`)
+- Files: internal/broker/api.go, internal/broker/api_test.go, docs/contracts/broker.md, internal/broker/grpcbroker/account.go, internal/broker/grpcbroker/account_test.go, internal/broker/grpcbroker/convert.go, internal/broker/grpcbroker/convert_test.go
 
-- Goal: `AccountClient` satisfies `broker.AccountReader`: `Account` as today (its types become the broker types), `Executions` with the same rules (no retry, an empty alias or a negative generation is `Permanent`, time parsed as UTC, decimals kept as text); tested against an in-process fake gRPC server on a unix socket in `t.TempDir()`.
+- Goal: the declarations of the Interface table (contract test from both sides: a fake `AccountReader` and a caller); `AccountClient` satisfies it: `Account` as today with the two collected flags, `Executions` with the same rules (no retry, empty alias or negative generation is `Permanent`, time parsed as UTC, decimals kept as text), tested against an in-process fake gRPC server on a unix socket in `t.TempDir()`; `docs/contracts/broker.md` records the new surface and keeps the alias rule.
 
 Acceptance:
 
-1. `grep -c "var _ broker.AccountReader" internal/broker/grpcbroker/account_test.go` prints 1; `go test ./internal/broker/... -race -count=1` passes.
-2. `grep -rn "t.Parallel()" internal/broker/grpcbroker/account_test.go | wc -l | tr -d ' '` is at least 3; `grep -c "time.Sleep" internal/broker/grpcbroker/account_test.go` prints 0.
-3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc '^internal/broker/grpcbroker/'` prints 0.
+1. `grep -c "type AccountReader interface" internal/broker/api.go` prints 1; `git diff $(git merge-base HEAD origin/main) -- internal/broker/api.go | grep -c '^-[^-]'` prints 0; `grep -c "var _ broker.AccountReader" internal/broker/grpcbroker/account_test.go` prints 1.
+2. `go test ./internal/broker/... -race -count=1` passes; `grep -c "t.Parallel()" internal/broker/grpcbroker/account_test.go` is at least 3; `grep -c "time.Sleep" internal/broker/grpcbroker/account_test.go` prints 0.
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxE 'internal/broker/(api|api_test)\.go|docs/contracts/broker\.md|internal/broker/grpcbroker/(account|account_test|convert|convert_test)\.go' | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: ci-go (`go test ./internal/broker/...`); the design verdict.
+Checked by CI: ci-go; the design verdict.
+
+### account-store-api
+
+- Module: store. Size: S. Depends on: account-proto (for the dataset names only).
+- Order: after 1.
+- Design: docs/design/account-data.md#Interface (store row; interface change of `internal/store/api.go`)
+- Files: internal/store/api.go, internal/store/api_test.go, docs/contracts/store.md
+
+- Goal: the store declarations of the Interface table, declarations only, with a contract test from both sides (a fake `AccountStore` and a caller); `docs/contracts/store.md` records the schema `account`, the keys of Decision 5, the insert-only rule and the delivery rule of Decision 7.
+
+Acceptance:
+
+1. `grep -c "type AccountStore interface\|type AccountReader interface\|type AccountWriter interface\|type OpenAccountFunc " internal/store/api.go` prints 4; `grep -c "DSNEnvAccount = \"OT_PG_DSN_ACCOUNT\"" internal/store/api.go` prints 1; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep -c '^-[^-]'` prints 0.
+2. `grep -c "var _ store.OpenAccountFunc" internal/store/api_test.go` prints 1; `go test ./internal/store -run 'TestAccount' -race -count=1` passes.
+3. `grep -c "account.capture\|insert-only" docs/contracts/store.md` is at least 2.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e internal/store/api.go -e internal/store/api_test.go -e docs/contracts/store.md | wc -l | tr -d ' '` prints 0.
+
+Checked by CI: ci-go; the design verdict.
 
 ### account-store-migration
 
-- Module: store. Size: M. Depends on: account-interface.
-- Order: after 1.
-- Design: docs/design/account-data.md#Decisions (Decisions 3 to 5; second-opinion case)
+- Module: store. Size: M. Depends on: account-store-api.
+- Order: after 5.
+- Design: docs/design/account-data.md#Decisions (Decisions 5 and 6; second-opinion case)
 - Files: migrations/0016_account.sql, internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/account_pg_test.go
 
-- Goal: schema `account` with `account.capture(capture_id uuid PK, alias text, captured_at timestamptz, session_day date, status text)`, `account.position` and `account.value` keyed by `(capture_id, ...)` with a foreign key to the capture, and `account.execution` keyed by `(alias, exec_id)`, all columns of the datasets of the Interface table (`numeric` for money and quantity); the role `ot_w_account` and its grants of Decision 5, made by `setup`, DSN line `OT_PG_DSN_ACCOUNT`.
+- Goal: schema `account` with `account.capture`, `account.position`, `account.value` (foreign key to the capture) and `account.execution`, columns of the datasets (`numeric` for money and quantity); the role `ot_w_account` (INSERT and SELECT only) made by `setup` with the DSN line `OT_PG_DSN_ACCOUNT`; USAGE on the schema and SELECT on the tables for `ot_ro_pages`.
 
 Acceptance:
 
-1. `M=migrations/0016_account.sql`; `test -f $M` succeeds; `grep -cE "CREATE TABLE( IF NOT EXISTS)? account\.(capture|position|value|execution)" $M` prints 4; `grep -v '^--' $M | grep -ci "DELETE\|TRUNCATE"` prints 0; `grep -v '^--' $M | grep -ci "GRANT UPDATE"` prints 1 and that line names only the two commission columns.
-2. `grep -c "ot_w_account" internal/store/setup/setup.go` is at least 2; `go test ./internal/store/setup -run 'TestRoles|TestAccountRole' -race -count=1` passes.
-3. `grep -c "//go:build pg" internal/store/setup/account_pg_test.go` prints 1.
-4. `grep -ci "float\|double" migrations/0016_account.sql` prints 0.
-5. `git diff --name-only $(git merge-base HEAD origin/main)` lists only the four Files paths.
+1. `M=migrations/0016_account.sql`; `test -f $M` succeeds; `grep -cE "CREATE TABLE( IF NOT EXISTS)? account\.(capture|position|value|execution)" $M` prints 4; `grep -v '^--' $M | grep -ci "UPDATE\|DELETE\|TRUNCATE"` prints 0; `grep -ci "float\|double" $M` prints 0.
+2. `grep -v '^--' $M | grep -c "ot_ro_pages"` is at least 2 (schema USAGE and table SELECT); `grep -v '^--' $M | grep -c "ot_w_account"` is at least 2.
+3. `grep -c "ot_w_account" internal/store/setup/setup.go` is at least 2; `go test ./internal/store/setup -run 'TestRoles|TestAccountRole' -race -count=1` passes.
+4. `grep -c "//go:build pg" internal/store/setup/account_pg_test.go` prints 1.
+5. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e migrations/0016_account.sql -e internal/store/setup/setup.go -e internal/store/setup/setup_test.go -e internal/store/setup/account_pg_test.go | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: ci-go; the `pg` job in GitHub CI (`TestAccountMigration`: it applies on a clean database, the role holds the grants above and no more); the design verdict.
+Checked by CI: ci-go; the `pg` job in GitHub CI (`TestAccountMigration`: it applies on a clean database, `ot_w_account` has the grants above and no more, `ot_ro_pages` can SELECT); the design verdict.
 
 ### account-store-impl
 
-- Module: store. Size: M. Depends on: account-store-migration.
-- Order: after 4.
-- Design: docs/design/account-data.md#Decisions (Decisions 3 and 9)
-- Files: internal/store/account/store.go, internal/store/account/read.go, internal/store/account/store_test.go, internal/store/account/store_pg_test.go
+- Module: store and repo (judged two-module entry: `.go-arch-lint.yml` is a repo path, regenerated by `go run ./scripts/arch`; precedent `risk-alerts.md` `alerts-store-interface`). Size: M. Depends on: account-store-migration.
+- Order: after 6.
+- Design: docs/design/account-data.md#Decisions (Decisions 5 and 10)
+- Files: internal/store/account/doc.go, internal/store/account/store.go, internal/store/account/read.go, internal/store/account/store_test.go, internal/store/account/store_pg_test.go, .go-arch-lint.yml
 
-- Goal: `account.Open` returns the `store.AccountStore` over pgx with the role `ot_w_account`: `WriteCapture` is one transaction (the capture row and its rows, an idempotent retry of the same `capture_id` writes nothing twice), `WriteExecutions` is the insert-only upsert of Decision 3, the Reader returns rows sorted by key. The tests of the non-`pg` file run against a fake `database` as in `internal/store/snapshot`.
+- Goal: `account.Open` returns the `store.AccountStore` over pgx with the role `ot_w_account`: `WriteCapture` is one transaction (a capture whose id exists writes nothing, children included), `WriteExecutions` is insert-only `ON CONFLICT DO NOTHING`, the Reader returns rows sorted by key. The non-`pg` tests run against a fake `database` as in `internal/store/snapshot`.
 
 Acceptance:
 
 1. `go test ./internal/store/account -race -count=1` passes; `grep -c "t.Parallel()" internal/store/account/store_test.go` is at least 4.
-2. `grep -c "//go:build pg" internal/store/account/store_pg_test.go` prints 1; `grep -rc "pgx" internal/store/account/store.go` is at least 1 and `grep -rln "pgx" internal --include=*.go | grep -vc '^internal/store/'` prints 0.
-3. `grep -ci "delete from\|truncate" internal/store/account/store.go` prints 0.
-4. `wc -l internal/store/account/*.go | awk '$1>600' | wc -l | tr -d ' '` prints 0.
+2. `grep -c "//go:build pg" internal/store/account/store_pg_test.go` prints 1; `grep -rl "pgx" internal --include=*.go | grep -vc '^internal/store/'` prints 0.
+3. `grep -ci "update \|delete from\|truncate" internal/store/account/store.go` prints 0.
+4. `wc -l internal/store/account/*.go | grep -v total | awk '$1>600' | wc -l | tr -d ' '` prints 0.
+5. `go run ./scripts/arch --check` prints `arch: ok`; `grep -c "store/account" .go-arch-lint.yml` is at least 1.
+6. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxE 'internal/store/account/[a-z_]+\.go|\.go-arch-lint\.yml' | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: ci-go; the `pg` job (`TestAccountStore`: write, rewrite the same capture, a commission arriving after its execution, read back); the design verdict.
+Checked by CI: ci-go; the `pg` job (`TestAccountStore`: write, rewrite the same capture id, executions twice, read back); the `arch.toml` check; the design verdict.
 
 ### account-job
 
-- Module: jobs. Size: M. Depends on: account-interface, account-broker-grpc and account-store-impl.
-- Order: after 1, 3 and 5.
-- Design: docs/design/account-data.md#Decisions (Decisions 3, 6 and 7; second-opinion case: the new account access)
-- Files: internal/jobs/accountcapture/job.go, internal/jobs/accountcapture/job.toml, internal/jobs/accountcapture/schedule.go, internal/jobs/accountcapture/job_test.go, internal/jobs/accountcapture/schedule_test.go
+- Module: jobs and repo (judged two-module entry: `.go-arch-lint.yml`, as above). Size: M. Depends on: account-broker and account-store-api (the interfaces only; the implementations are wired in issue 9).
+- Order: after 4 and 5.
+- Design: docs/design/account-data.md#Decisions (Decisions 2 to 5, 7 and 8; second-opinion case: the new account access)
+- Files: internal/jobs/accountcapture/job.go, internal/jobs/accountcapture/job.toml, internal/jobs/accountcapture/schedule.go, internal/jobs/accountcapture/job_test.go, internal/jobs/accountcapture/schedule_test.go, .go-arch-lint.yml
 
-- Goal: the job `account_capture` through the interfaces only (`broker.AccountReader` per configured alias, `store.AccountWriter`, `clock`): for each alias one `Account` and one `Executions` call, one capture and one execution write, `status` naming a missing list, a failed alias does not stop the others and the result of the job says which alias failed by alias only; the manifest `job.toml` carries the schedule of Decision 7 and no account id, socket path or value; no text of the result carries a holding, balance or size.
+- Goal: the job `account_capture` through the interfaces only (`broker.AccountReader` per configured alias, `store.AccountWriter`, `clock`): per alias one `Account` and one `Executions` call; the capture id of Decision 5; nothing written for a kind not collected; `pending` above zero ends the run failed with the status "pending" after the complete rows are written; a failed alias does not stop the others; a result names a failed alias and a status only; `job.toml` carries the schedule of Decision 4 and no account id, socket path or value.
 
 Acceptance:
 
-1. `go test ./internal/jobs/accountcapture -race -count=1` passes with fakes of both interfaces and the fake clock of the test kit; `grep -c "time.Sleep" internal/jobs/accountcapture/*.go` prints 0.
-2. `grep -c "^\[schedule\]" internal/jobs/accountcapture/job.toml` prints 1; `grep -ciE "DU[0-9]|U[0-9]{6,}|socket|token" internal/jobs/accountcapture/job.toml` prints 0.
-3. `grep -rn "internal/notify" internal/jobs/accountcapture | wc -l | tr -d ' '` prints 0; `go run ./scripts/arch --check` prints `arch: ok`.
-4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc '^internal/jobs/accountcapture/'` prints 0.
+1. `go test ./internal/jobs/accountcapture -race -count=1` passes with fakes of both interfaces and the test kit's fake clock; the tests include a retry of the same run key (no second capture), a kind not collected (no row), `pending` above zero (rows written, run failed), a failing alias among two.
+2. `grep -c "time.Sleep" internal/jobs/accountcapture/*.go` prints 0; `grep -c "^\[schedule\]" internal/jobs/accountcapture/job.toml` prints 1; `grep -ciE "DU[0-9]|U[0-9]{6,}|socket|token" internal/jobs/accountcapture/job.toml` prints 0.
+3. `grep -rln "internal/notify\|internal/store/account\|grpcbroker" internal/jobs/accountcapture | wc -l | tr -d ' '` prints 0; `go run ./scripts/arch --check` prints `arch: ok`; `grep -c "jobs/accountcapture" .go-arch-lint.yml` is at least 1.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxE 'internal/jobs/accountcapture/[a-z_.]+|\.go-arch-lint\.yml' | wc -l | tr -d ' '` prints 0.
 
 Checked by CI: ci-go; the `arch.toml` check; the design verdict.
 
 ### account-wire
 
-- Module: ot. Size: S. Depends on: account-job.
-- Order: after 6.
-- Design: docs/design/account-data.md#Decisions (Decision 7)
+- Module: ot. Size: S. Depends on: account-broker, account-store-impl and account-job.
+- Order: after 4, 7 and 8.
+- Design: docs/design/account-data.md#Decisions (Decision 8)
 - Files: cmd/ot/account.go, cmd/ot/account_test.go, cmd/ot/jobs.go, docs/contracts/ot.md
 
-- Goal: the registry entry `account_capture` (constructor with `grpcbroker.DialAccount` per alias of the owner's file `OT_ACCOUNT_SOCKETS` read by name, and `account.Open` with `OT_PG_DSN_ACCOUNT`), so that `ot run-once account_capture` and the scheduler find the job; a dry run with fakes in the test; the contract document names the two environment keys and no value.
+- Goal: the registry entry `account_capture` (constructor with `grpcbroker.DialAccount` per socket of the owner's list, read by the key `OT_ACCOUNT_SOCKETS`, and `account.Open` with `OT_PG_DSN_ACCOUNT`) so that `ot run-once account_capture` and the scheduler find the job; a dry run with fakes in the test; the contract document names the two keys and no value. The two new import paths are already in the `cmd/ot` list of `modules.md` by this design.
 
 Acceptance:
 
 1. `go test ./cmd/ot -run 'TestAccount' -race -count=1` passes.
-2. `grep -c "OT_PG_DSN_ACCOUNT\|DSNEnvAccount" cmd/ot/account.go` is at least 1; `grep -rn "internal/notify" cmd/ot/account.go | wc -l | tr -d ' '` prints 0.
+2. `grep -c "OT_PG_DSN_ACCOUNT\|DSNEnvAccount" cmd/ot/account.go` is at least 1; `grep -c "internal/notify" cmd/ot/account.go` prints 0.
 3. `go run ./scripts/arch --check` prints `arch: ok`.
-4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vcE '^(cmd/ot/|docs/contracts/ot.md$)'` prints 0.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxE 'cmd/ot/(account|account_test|jobs)\.go|docs/contracts/ot\.md' | wc -l | tr -d ' '` prints 0.
 
 Checked by CI: ci-go; the `arch.toml` check; the design verdict. Running the job against the real gateway is the owner's (`ot run-once`), not a test.
 
 ## Checked by CI
 
-- `go test ./internal/broker/... ./internal/store/... ./internal/jobs/accountcapture ./cmd/ot -race -count=1` (ci-go, parallel, `t.TempDir()`, fake clock, no sleep).
+- `go test ./internal/broker/... ./internal/store/... ./internal/jobs/accountcapture ./cmd/ot -race -count=1` (ci-go: parallel, `t.TempDir()`, fake clock, no sleep).
 - `go test -tags pg ./internal/store/...` (the `pg` job, GitHub CI only).
-- `go run ./scripts/arch --check` printing `arch: ok`.
-- The generated-code check of `contracts/generate.sh`.
+- `go run ./scripts/arch --check` printing `arch: ok`; the generated-code check of `contracts/generate.sh`.
 - Pyside: `uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`.
 
 ## Left out
 
-- Flex (executions, cash events and assignments with full history): a new outside account access with a token; deferred, and the cost basis and wheel depend on it or on `ot import`. Rejected as stage 1 because the API already carries the day's executions and positions without a second credential.
-- `ot import` of option-trader's history: the cut-over design (alignment Decision 3.8); it reads the three tables of this design and `bars`.
-- The seller features of Decision 8 (margin cushion figure and block, assignment cash by date per account, the early-assignment and ex-dividend guard, cost basis and wheel), the local notice, and the dividend source: each is its own later design over these tables. Named so that nothing is silently dropped.
-- The portfolio prices and open orders that option-trader's `account_reader.py` also reads, and the account-update stream: not in stage 1; orders stay refused by the guard.
-- A position and value history by overwrite (a "current" table): rejected, because captures are the history that assignment detection and tracking read.
-- One generic key-value `account.value` of arbitrary tags: kept as tag rows (the proto's shape), with the tag list fixed by pyside.
-- Pages (positions, household, ledger, tracking), compute figures and the `report_page` blocks: stage 2 designs; this design only makes the data readable.
-- Which owner account sits behind which gateway, and whether gateway A also collects account data (a deploy-file change of the owner): see the open question.
-- Telegram text about accounts: never (owner decision 5 a); a local notice is a later design.
+- A missed day of executions: the API holds the current day only (Decision 4), so a missed run loses it. Mitigation: the scheduler reports the gap; Flex or `ot import` fills it. Flex (executions, cash events and assignments with full history) is deferred: it is a new outside account access with a token. Rejected as stage 1 because the API already carries the day's executions without a second credential.
+- `ot import` of option-trader's history: the cut-over design (alignment Decision 3.8).
+- The seller features of Decision 9, the local notice and the dividend source: each its own later design over these tables.
+- Gateway A capture. Question for the owner: is gateway A a different account of yours? If yes, a deploy-file change adds its socket to the list and its `collect` words; no code change.
+- Readers beyond Go: an `ot` subcommand or page that shows the stored rows, position prices, unrealized P&L, per-currency ledger, open orders, the account-update stream (orders stay refused by the guard). Pages, compute figures and `report_page` blocks are stage 2.
+- Rejected: an update of the commission after the first write (a UPDATE grant, a nullable column); a "current" overwrite table instead of captures (captures are the history that assignment detection and tracking read); one four-module interface entry (the review's R1, below); a random capture id.
+- Lock-ins, named: the `capture_id` text shape and the tag rows are permanent keys of append-only tables, the alias is the identity of every row (renaming an alias in the deploy file orphans history), and the proto field numbers are fixed once the owner merges.
+- Telegram text about accounts: never (owner decision 5 a).
 
-## Open questions for the owner
+## Adversarial
 
-1. Should gateway A (market data today) also collect account data, so that both accounts are captured? a: yes, change its `collect` in the deploy file; b: no, only gateway B in stage 1.
+Review: `account-adversarial.md` (scratchpad of this session). Each point:
+
+- Q1 goal gaps: readable is the Go Reader only (adopted: stated in Decision 1 and Left out); executions start from the first run and the history waits for Flex or `ot import` (adopted: Decision 4, Left out); no prices or P&L (adopted: Left out).
+- Q2 and Q5 partial status and "collected" (adopted: Decision 2, proto fields 5 and 6, job tests). The claim "a few days of executions" is replaced by the current day only (adopted: Decision 4).
+- Q3 simpler cut: interface entry for contracts only, broker and store declarations in their own issues (adopted); executions written complete and insert-only, no UPDATE grant (adopted: Decision 3 and 6); one run per session day (adopted: Decision 4).
+- Q4 lock-ins named (adopted: Left out). The role per data class is kept: account data must not share a role with market data.
+- Q6 and R2 owner-only merges: `transport.py` and `test_guard.py` move to one small owner-merge issue `account-guard-id`; the handler depends on it; the vacuous grep is dropped (adopted). The contracts issue is the only other owner-merge and now holds only contracts files.
+- R1 four-module entry: refused and removed, with the self-licence paragraph (adopted). The two repo pairs left (issues 7 and 8) are the `.go-arch-lint.yml` precedent only.
+- R3 weak acceptance: baselines are now `git merge-base` diffs, Files-bounded diff commands per issue, the generate check names `contracts/generate.sh` and its output paths, the `ot_ro_pages` grant is a migration line and a `pg` test, the collected rule has job tests (adopted). The grants themselves are verified only by the `pg` job, which is GitHub CI by AGENTS.md (not adopted as an offline check, because no offline tool can).
+- R4 dependencies: the job depends on the interfaces (4 and 5) only; wire depends on 4, 7 and 8 (adopted).
+- R5 contradictions: the `cmd/ot` import list of `modules.md` is edited by this design (adopted); `.go-arch-lint.yml` is in the Files of issues 7 and 8 (adopted); the capture id derives from the run key (adopted: Decision 5); the status rule is computable (adopted: Decision 2); the alias is a gateway name, not an account figure (checked, recorded in Decision 7); "Owner approved: (pending)" stays until the second-opinion cases are answered.
+- Gateway A: not in stage 1 (adopted as the dispatcher decided: Decision 8, Left out with the question).
