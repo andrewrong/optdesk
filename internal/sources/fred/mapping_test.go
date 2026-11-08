@@ -144,11 +144,20 @@ func compareUnits(table map[string]contracts.SeriesUnit, meta []seriesMeta) []st
 			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
 		case units != "Percent" && u == contracts.SeriesUnit("percent"):
 			fails = append(fails, fmt.Sprintf("%s: table says percent, recorded units %q", id, units))
+		case units != "Index" && u == indexPoints:
+			fails = append(fails, fmt.Sprintf("%s: table says index_points, recorded units %q", id, units))
 		}
 	}
 	for id, units := range recorded {
-		if u, ok := table[id]; ok && units == "Percent" && u != contracts.SeriesUnit("percent") {
+		u, ok := table[id]
+		if !ok {
+			continue
+		}
+		if units == "Percent" && u != contracts.SeriesUnit("percent") {
 			fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
+		}
+		if units == "Index" && u != indexPoints {
+			fails = append(fails, fmt.Sprintf("%s: recorded Index, table says %q", id, u))
 		}
 	}
 	return fails
@@ -186,3 +195,40 @@ func TestSeriesUnitsDetectsWrongClaim(t *testing.T) {
 		t.Errorf("fails = %v", fails)
 	}
 }
+
+func TestMappingMarketSeries(t *testing.T) {
+	t.Parallel()
+	pub := time.Date(2024, 2, 1, 12, 0, 0, 0, time.UTC)
+	body := func(v string) []byte {
+		return []byte(`{"observations":[{"realtime_start":"2024-02-01","realtime_end":"2024-02-01","date":"2024-01-03","value":"` + v + `"}]}`)
+	}
+	for _, id := range []string{"SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS"} {
+		got, err := mapObservations(id, body("18.2"), pub)
+		if err != nil || len(got) != 1 {
+			t.Fatalf("%s: %v %v", id, got, err)
+		}
+		if got[0].Unit != indexPoints || got[0].Value == nil || *got[0].Value != 18.2 || got[0].Status != "present" {
+			t.Errorf("%s: %+v", id, got[0])
+		}
+	}
+	got, err := mapObservations("VIXCLS", body("."), pub)
+	if err != nil || len(got) != 1 || got[0].Value != nil || got[0].Status != "no_value" || got[0].Unit != indexPoints {
+		t.Errorf("VIXCLS dot: %+v %v", got, err)
+	}
+	got, err = mapObservations("DGS3MO", body("5.35"), pub)
+	if err != nil || len(got) != 1 || got[0].Value == nil || *got[0].Value != 5.35 || got[0].Unit != contracts.SeriesUnit("percent") {
+		t.Errorf("DGS3MO: %+v %v", got, err)
+	}
+}
+
+func TestSeriesUnitsDetectsIndexPointsOnPercent(t *testing.T) {
+	t.Parallel()
+	table := map[string]contracts.SeriesUnit{"DGS10": indexPoints}
+	fails := compareUnits(table, loadMeta(t))
+	if len(fails) != 2 {
+		t.Errorf("fails = %v", fails)
+	}
+}
+
+// indexPoints is the unit of the index series; the contracts package does not re-export the constant.
+const indexPoints = contracts.SeriesUnit("index_points")
