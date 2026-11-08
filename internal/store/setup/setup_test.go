@@ -111,8 +111,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 8 {
-		t.Fatalf("%d roles, want 8", len(roles))
+	if len(roles) != 9 {
+		t.Fatalf("%d roles, want 9", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -164,4 +164,20 @@ func TestEnvfileQuotedValue(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != want {
 		t.Errorf("file = %q, want %q", got, want)
 	}
+}
+
+func TestRoleListHasReadings(t *testing.T) {
+	t.Parallel()
+	if roleReadings != "ot_w_readings" || store.DSNEnvReadings != "OT_PG_DSN_READINGS" {
+		t.Fatalf("role %q, line %q", roleReadings, store.DSNEnvReadings)
+	}
+	for _, r := range roles {
+		if r.name == roleReadings {
+			if r.envKey != "OT_PG_DSN_READINGS" {
+				t.Errorf("ot_w_readings line = %q", r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_readings is not in the role list")
 }

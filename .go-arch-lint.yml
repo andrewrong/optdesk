@@ -37,6 +37,8 @@ components:
     in: internal/store/instrument
   store/ops:
     in: internal/store/ops
+  store/reading:
+    in: internal/store/reading
   store/series:
     in: internal/store/series
   store/sessionday:
@@ -141,6 +143,11 @@ deps:
       - store
       - contracts/genpb
   store/ops:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
+  store/reading:
     mayDependOn:
       - contracts
       - store
@@ -323,6 +330,7 @@ deps:
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
+      - store/reading
       - compute/own
       - compute/gonumstats
       - notify/core
