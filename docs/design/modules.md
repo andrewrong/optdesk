@@ -23,6 +23,7 @@ rows above name every other top-level path of the planned tree.
   that uses it); Python, `api.py` of the package with `tests/contracts/test_<module>_api.py`; TypeScript, the
   generated types and the JSON schema of a page (they are owned by contracts, so web has no entry of its own).
   Editing an entry file is an interface change (AGENTS.md): the issue carries a Design line.
+  A generated sub-package named in an entry cell (`internal/contracts/genpb`) is exempt from the declarations-only rule, because it is generated from `contracts/proto` and never edited by hand (AGENTS.md).
 - **depends** is the only source of module dependencies. `arch.toml` (go-arch-lint) is derived from this column
   by a script of the repo module; a check in `checks.yml` fails when `arch.toml` and this column disagree.
   The derivation: for a row named `<name>`, the root package `internal/<name>` (its `api.go`, the interface) is the
