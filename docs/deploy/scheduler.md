@@ -136,6 +136,30 @@ touches nothing. While the lock is held, `ot run-once` and `ot backfill` refuse 
 new one gets it within its wait. If the old process died, the database releases the lock when its
 connection ends.
 
+## What calendar_refresh needs
+
+The job `calendar_refresh` asks pyside's own generator for the trading calendar by running
+`uv run --no-sync --project pyside python -m optdesk.calendar ...` as a child process of the
+scheduler (`docs/design/compute-calendar.md#Decisions`). The child starts in the working directory
+of the scheduler, so the host needs:
+
+- `uv` on `PATH` of the scheduler, or the path of `uv` in the `.env` line `OT_CALENDAR_UV` (the
+  default is `uv` found on `PATH`);
+- the working directory of the scheduler is the checkout root, the directory that holds `pyside/`.
+  This is the same need as the pyside unit, which starts with
+  `uv run --no-sync --project pyside python -m optdesk.ibkr` (`docs/deploy/pyside.md` line 23-24);
+- two lines in `$OT_HOME/.env`: `OT_PG_DSN_LOADER` (the DSN of the role `ot_loader`, the only role
+  that may write `master.session_day`) and `OT_CALENDAR_UV` (the `uv` path above).
+
+A failed command ends the run in one of two ways:
+
+- a failure to start or wait for the process, or a timeout at `run_bound` (5 minutes), is a
+  retryable run;
+- exit code 1, exit code 2 and any other nonzero exit are permanent.
+
+Either way nothing is written for that run, and the next session day's refresh covers the span
+again (today minus 7 to today plus 400 days).
+
 ## Left out
 
 Not done here: starting the scheduler at machine boot, a launchd unit (not used), a cron entry,
