@@ -134,26 +134,28 @@ func TestCursorHoldsOnGap(t *testing.T) {
 	if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
 		t.Fatal(err)
 	}
-	// 2026-11-04 failed its one repair run: unresolved gap, the cursor holds and 11-05 is not touched.
+	// 2026-11-04 failed its one repair run: unresolved gap, the cursor holds; the walk goes on to 11-05.
 	if led.cursor.Day != "2026-11-03" {
 		t.Fatalf("cursor = %s, want 2026-11-03", led.cursor.Day)
 	}
-	if len(led.runs["2026-11-05"]) != 0 {
-		t.Fatal("later day was reconciled past a gap")
+	if len(led.runs["2026-11-05"]) == 0 {
+		t.Fatal("the walk stopped at the gap: 2026-11-05 has no run")
 	}
 	if len(led.runs["2026-11-04"]) != 1 {
 		t.Fatalf("runs = %d, want exactly one repair run", len(led.runs["2026-11-04"]))
 	}
-	// Another pass starts no further run on 11-04: the window has closed, so the absence is
-	// expired (no_value) and the cursor passes it; 11-05 gets its one repair run and holds.
+	// Another pass starts no further run: both windows have closed, so each absence is
+	// expired (no_value) and the cursor passes both days.
 	if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
 		t.Fatal(err)
 	}
-	if len(led.runs["2026-11-04"]) != 1 || led.runs["2026-11-04"][0].ReasonCode != "expired" || led.cursor.Day != "2026-11-04" {
-		t.Fatalf("runs=%+v cursor=%s, want the one run expired and cursor 2026-11-04", led.runs["2026-11-04"], led.cursor.Day)
+	for _, d := range []contracts.Day{"2026-11-04", "2026-11-05"} {
+		if len(led.runs[d]) != 1 || led.runs[d][0].ReasonCode != "expired" {
+			t.Fatalf("runs on %s = %+v, want the one run expired", d, led.runs[d])
+		}
 	}
-	if len(led.runs["2026-11-05"]) != 1 {
-		t.Fatalf("runs on 11-05 = %d, want one", len(led.runs["2026-11-05"]))
+	if led.cursor.Day != "2026-11-05" {
+		t.Fatalf("cursor = %s, want 2026-11-05", led.cursor.Day)
 	}
 	// A clean ledger advances over both days.
 	led2 := newLedger()
@@ -163,6 +165,40 @@ func TestCursorHoldsOnGap(t *testing.T) {
 	}
 	if led2.cursor.Day != "2026-11-05" {
 		t.Fatalf("cursor = %s, want 2026-11-05", led2.cursor.Day)
+	}
+}
+
+func TestWalkPastHeldDay(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	sess := func(d string) clock.Session {
+		return clock.Session{CalendarID: "XNYS", Day: contracts.Day(d), IsSession: true,
+			OpenAt: utc(d + "T14:30:00Z"), CloseAt: utc(d + "T21:00:00Z")}
+	}
+	cal := fakeCalendar{sessions: []clock.Session{sess("2026-11-03"), sess("2026-11-04"), sess("2026-11-05")}}
+	// D = 11-05, D-3 = 11-02 is the cursor, so 11-03 is the held day (D-2) the fred key fails on.
+	clk := clockwork.NewFakeClockAt(utc("2026-11-05T22:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-02"}
+	fredKey := contracts.ExpectedKey{DatasetID: "fred", SubjectKey: "DGS3MO"}
+	optKey := contracts.ExpectedKey{DatasetID: "option_eod", SubjectKey: "SPY"}
+	fred := windowedJob{
+		fakeJob: &fakeJob{id: "fred_series", keys: []contracts.ExpectedKey{fredKey}, results: map[contracts.ExpectedKey]contracts.JobResult{
+			fredKey: {Err: kindErr{kind: contracts.Retryable}},
+		}},
+		calendarID: "XNYS", close: 96 * time.Hour,
+	}
+	opt := windowedJob{fakeJob: &fakeJob{id: "option_eod", keys: []contracts.ExpectedKey{optKey}}, calendarID: "XNYS", close: 5 * time.Hour}
+	rec := NewWithRule(led, cal, clk, []contracts.Job{fred, opt}, runner.WindowRule{CalendarID: "XNYS"})
+	if err := rec.Reconcile(ctx, "2026-11-05"); err != nil {
+		t.Fatal(err)
+	}
+	present, _ := led.Present(ctx, "2026-11-05")
+	if present[optKey] != store.StatusPresent || len(led.runs["2026-11-05"]) == 0 {
+		t.Fatalf("option_eod key of D not run: present=%v", present)
+	}
+	if led.cursor.Day != "2026-11-02" {
+		t.Fatalf("cursor = %s, want it held at 2026-11-02, before the held day", led.cursor.Day)
 	}
 }
 
