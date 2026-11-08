@@ -1,0 +1,451 @@
+{
+  "$defs": {
+    "DateText": {
+      "additionalProperties": false,
+      "description": "A calendar date and its written form.",
+      "properties": {
+        "day": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Day",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "day",
+        "text"
+      ],
+      "title": "DateText",
+      "type": "object"
+    },
+    "Latest": {
+      "additionalProperties": false,
+      "description": "The newest stored point: its value, the day observed and the day released (or a ``Gap``).",
+      "properties": {
+        "observed": {
+          "$ref": "#/$defs/DateText"
+        },
+        "released": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DateText"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Released"
+        },
+        "value": {
+          "$ref": "#/$defs/SeriesFigure"
+        }
+      },
+      "required": [
+        "value",
+        "observed",
+        "released"
+      ],
+      "title": "Latest",
+      "type": "object"
+    },
+    "Point": {
+      "additionalProperties": false,
+      "properties": {
+        "observed_on": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Observed On",
+          "type": "string"
+        },
+        "released": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DateText"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Released"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "number"
+        },
+        "vintage_on": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Vintage On",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observed_on",
+        "value",
+        "text",
+        "vintage_on",
+        "released"
+      ],
+      "title": "Point",
+      "type": "object"
+    },
+    "RecentBlock": {
+      "type": "object",
+      "title": "RecentBlock",
+      "additionalProperties": false,
+      "description": "The last-12-periods table; metric id: assigned by compute.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Title"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Columns"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecentRow"
+          },
+          "maxItems": 12,
+          "title": "Rows"
+        }
+      },
+      "required": [
+        "title",
+        "columns",
+        "rows"
+      ]
+    },
+    "RecentRow": {
+      "type": "object",
+      "title": "RecentRow",
+      "additionalProperties": false,
+      "description": "One of the last periods; every cell is the producer's text.",
+      "properties": {
+        "period": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Period"
+        },
+        "released": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Released"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Value"
+        },
+        "change": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Change"
+        }
+      },
+      "required": [
+        "period",
+        "released",
+        "value",
+        "change"
+      ]
+    },
+    "ReferenceLine": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/SeriesFigure"
+        }
+      },
+      "required": [
+        "label",
+        "value"
+      ],
+      "title": "ReferenceLine",
+      "type": "object"
+    },
+    "Revision": {
+      "additionalProperties": false,
+      "description": "The previous vintage of the latest observation and the step from it to the shown value.",
+      "properties": {
+        "previous": {
+          "$ref": "#/$defs/SeriesFigure"
+        },
+        "step": {
+          "$ref": "#/$defs/SeriesFigure"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "vintage": {
+          "$ref": "#/$defs/DateText"
+        }
+      },
+      "required": [
+        "previous",
+        "vintage",
+        "step",
+        "text"
+      ],
+      "title": "Revision",
+      "type": "object"
+    },
+    "SeriesFigure": {
+      "additionalProperties": false,
+      "description": "A value of the series, or a difference of two of its values (``series_change``).",
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "series_value",
+            "series_change"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "SeriesFigure",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.indicator_detail.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "explanation": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Explanation",
+      "type": "array"
+    },
+    "explanation_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Explanation Title",
+      "type": "string"
+    },
+    "gaps": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/Gap"
+      },
+      "maxItems": 20,
+      "title": "Gaps",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "latest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Latest"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ],
+      "title": "Latest"
+    },
+    "meta_line": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "title": "Meta Line",
+      "description": "The source line, such as source, data time and freshness; metric id: assigned by compute."
+    },
+    "points": {
+      "items": {
+        "$ref": "#/$defs/Point"
+      },
+      "maxItems": 5000,
+      "title": "Points",
+      "type": "array"
+    },
+    "recent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RecentBlock"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ],
+      "title": "Recent"
+    },
+    "reference_line": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReferenceLine"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "indicator_detail",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sentence": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "series_title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Series Title",
+      "type": "string"
+    },
+    "slug": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Slug",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "common.v1.json#/$defs/StaleLabel"
+    },
+    "stale_after": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "slug",
+    "title",
+    "sentence",
+    "latest",
+    "revision",
+    "reference_line",
+    "series_title",
+    "explanation_title",
+    "points",
+    "explanation",
+    "gaps",
+    "stale",
+    "meta_line",
+    "recent"
+  ],
+  "title": "IndicatorDetail",
+  "type": "object"
+}
