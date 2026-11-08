@@ -12,6 +12,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -37,6 +39,10 @@ type reconciler struct {
 	clk    clock.Clock
 	jobs   []contracts.Job
 	rule   runner.WindowRule
+	kr     runner.KeyRunner
+	// sched renews the run lease on fclk while a call runs; nil (the commands) renews nothing.
+	sched store.SchedulerLedger
+	fclk  clockwork.Clock
 }
 
 // New builds the reconciler with the default window rule (DefaultCalendarID, no offsets).
@@ -46,20 +52,42 @@ func New(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contract
 
 // NewWithRule builds the reconciler with an explicit window rule.
 func NewWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule runner.WindowRule) runner.Reconciler {
-	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule}
+	return newReconciler(l, nil, cal, clk, jobs, rule, nil)
+}
+
+var _ runner.NewReconcilerFunc = NewReconciler
+
+// NewReconciler builds the reconciler and backfiller pair of the scheduler. Both renew
+// ops.run_lease through sched every 30 s while they run and release it by defer when
+// cancelled; kr runs every key (nil builds NewKeyRunner).
+func NewReconciler(
+	l store.OpsLedger, sched store.SchedulerLedger, cal clock.Calendar, clk clockwork.Clock, jobs []contracts.Job, rule runner.WindowRule, kr runner.KeyRunner,
+) (runner.Reconciler, runner.Backfiller) {
+	r := newReconciler(l, sched, cal, clk, jobs, rule, kr)
+	return r, r
+}
+
+func newReconciler(
+	l store.OpsLedger, sched store.SchedulerLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule runner.WindowRule, kr runner.KeyRunner,
+) *reconciler {
+	fclk := withClockwork(clk)
+	if kr == nil {
+		kr = NewKeyRunner(l, sched, fclk)
+	}
+	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk}
 }
 
 // Reconcile handles every session day after the cursor up to day, in order. It stops at
 // the first day that is not fully reconciled, so the cursor holds on a gap.
-func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) error {
+func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err error) {
 	if err := checkCalendars(r.jobs, r.rule); err != nil {
 		return err
 	}
-	lease, err := r.ledger.Acquire(ctx, owner, leaseTTL)
+	ctx, release, err := r.holdLease(ctx)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = r.ledger.Release(ctx, lease) }()
+	defer release(&err)
 
 	cur, err := r.ledger.Cursor(ctx)
 	if err != nil {
@@ -201,7 +229,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 				return false, err
 			}
 		}
-		ok, err := r.run(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, reason)
+		_, ok, err := r.run(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, reason)
 		if err != nil {
 			return false, err
 		}
@@ -295,46 +323,18 @@ func (r *reconciler) markCrashed(ctx context.Context, run store.Run) error {
 	return r.ledger.RecordRun(ctx, run)
 }
 
-// run starts run number seq of k, records it and marks the key; it reports whether k is now present.
+// run starts run number seq of k through the key runner; it reports whether k is now marked.
 func (r *reconciler) run(
 	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt time.Time, reason string,
-) (bool, error) {
-	now := r.clk.Now()
-	rec := store.Run{
-		ID:          fmt.Sprintf("%s|%s|%s|%d", day, k.DatasetID, k.SubjectKey, seq),
-		Day:         day,
-		Key:         k,
-		Status:      store.RunRunning,
-		LeaseUntil:  now.Add(leaseTTL),
-		HeartbeatAt: now,
-		ReasonCode:  reason,
+) (store.Run, bool, error) {
+	rec, err := r.kr.RunKey(ctx, job, day, k, seq, closeAt, deadlineFor(job, closeAt, r.clk.Now()), reason)
+	if err != nil {
+		return rec, false, err
 	}
-	if err := r.ledger.RecordRun(ctx, rec); err != nil {
-		return false, err
+	present, err := r.ledger.Present(ctx, day)
+	if err != nil {
+		return rec, false, err
 	}
-	res := job.Run(ctx, day, []contracts.ExpectedKey{k})
-	rec.Status = store.RunDone
-	rec.FinishedAt = r.clk.Now()
-	rec.ReturnedN, rec.UsableN = res.Returned, res.Usable
-	var status store.PresentStatus
-	switch {
-	case res.Err != nil && res.Err.Kind() == contracts.NoValue:
-		status = store.StatusNoValue
-	case res.Err != nil:
-		rec.ErrorCode = string(res.Err.Kind())
-	case res.Usable > 0:
-		status = store.StatusPresent
-	case !closeAt.IsZero() && r.clk.Now().Before(closeAt):
-		// An empty answer is no explanation: retry until the window closes.
-		rec.ReasonCode = reasonEmptyBeforeClose
-	default:
-		status = store.StatusNoValue
-	}
-	if err := r.ledger.RecordRun(ctx, rec); err != nil {
-		return false, err
-	}
-	if status == "" {
-		return false, nil
-	}
-	return true, r.ledger.MarkPresent(ctx, day, k, status)
+	_, marked := present[k]
+	return rec, marked, nil
 }
