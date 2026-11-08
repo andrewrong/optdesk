@@ -2,6 +2,7 @@ package fredseries
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -33,11 +34,12 @@ func TestPlanHash(t *testing.T) {
 
 func TestEmbeddedManifest(t *testing.T) {
 	t.Parallel()
+	want := []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS"}
 	m, err := parseManifest(manifestBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Version != 1 || m.ID != "fred_series" || len(m.Series) != 1 || m.Series[0] != "DGS10" ||
+	if m.Version != 1 || m.ID != "fred_series" || !slices.Equal(m.Series, want) ||
 		m.Window.Rule != "after_close" || m.Window.LatenessHours != 96 {
 		t.Fatalf("manifest = %+v", m)
 	}
@@ -46,7 +48,7 @@ func TestEmbeddedManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	keys, _, err := j.Plan(context.Background(), "2026-11-05")
-	if err != nil || len(keys) != 1 {
+	if err != nil || len(keys) != len(want) {
 		t.Fatalf("keys %v err %v", keys, err)
 	}
 }
