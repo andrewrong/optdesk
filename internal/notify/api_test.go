@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
@@ -118,5 +120,86 @@ func TestSenderAndOptionsContract(t *testing.T) {
 	}
 	if _, err := newFn("", "", want); err != notify.ErrSend {
 		t.Fatalf("err = %v, want ErrSend", err)
+	}
+}
+
+type fakeSentStore struct {
+	marks  []store.SentMark
+	marked []store.SentMark
+}
+
+func (f *fakeSentStore) SentSince(context.Context, contracts.Day) ([]store.SentMark, error) {
+	return f.marks, nil
+}
+
+func (f *fakeSentStore) MarkSent(_ context.Context, ruleID string, day contracts.Day) error {
+	f.marked = append(f.marked, store.SentMark{RuleID: ruleID, Day: day})
+	return nil
+}
+
+func (f *fakeSentStore) Close() error { return nil }
+
+type fakeAlertNotifier struct {
+	deps   notify.AlertDeps
+	sender notify.Sender
+}
+
+func (n *fakeAlertNotifier) NotifyAlerts(ctx context.Context) (int, error) {
+	today := contracts.Day("2026-11-06")
+	res, err := n.deps.Evaluate(ctx, n.deps.Rules, n.deps.Read, today)
+	if err != nil {
+		return 0, err
+	}
+	var fired []compute.AlertResult
+	for _, r := range res {
+		if r.State == "fired" && r.Public {
+			fired = append(fired, r)
+		}
+	}
+	if len(fired) == 0 {
+		return 0, nil
+	}
+	if err := n.sender.Send(ctx, "optdesk: 1 market alert"); err != nil {
+		return 0, err
+	}
+	for _, r := range fired {
+		if err := n.deps.Sent.MarkSent(ctx, r.RuleID, r.Day); err != nil {
+			return 0, err
+		}
+	}
+	return len(fired), nil
+}
+
+var _ notify.NewAlertNotifierFunc = func(d notify.AlertDeps, s notify.Sender, _ clockwork.Clock, _ notify.Config) (notify.AlertNotifier, error) {
+	return &fakeAlertNotifier{deps: d, sender: s}, nil
+}
+
+func TestAlertNotifierContract(t *testing.T) {
+	t.Parallel()
+	sent := &fakeSentStore{}
+	snd := &fakeSender{}
+	deps := notify.AlertDeps{
+		Evaluate: func(context.Context, compute.AlertRules, compute.ReadingFunc, contracts.Day) ([]compute.AlertResult, error) {
+			return []compute.AlertResult{
+				{RuleID: "r1", State: "fired", Public: true, Day: "2026-11-06"},
+				{RuleID: "r2", State: "fired", Public: false, Day: "2026-11-06"},
+				{RuleID: "r3", State: "clear", Public: true, Day: "2026-11-06"},
+			}, nil
+		},
+		Sent: sent,
+	}
+	var newFn notify.NewAlertNotifierFunc = func(d notify.AlertDeps, s notify.Sender, _ clockwork.Clock, _ notify.Config) (notify.AlertNotifier, error) {
+		return &fakeAlertNotifier{deps: d, sender: s}, nil
+	}
+	n, err := newFn(deps, snd, clockwork.NewFakeClock(), notify.Config{Zone: time.UTC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := n.NotifyAlerts(context.Background())
+	if err != nil || got != 1 {
+		t.Fatalf("NotifyAlerts = %d, %v", got, err)
+	}
+	if len(snd.texts) != 1 || len(sent.marked) != 1 || sent.marked[0].RuleID != "r1" {
+		t.Fatalf("texts = %v, marked = %v", snd.texts, sent.marked)
 	}
 }

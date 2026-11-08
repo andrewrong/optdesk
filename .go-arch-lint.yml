@@ -103,6 +103,8 @@ components:
     in: internal/pages/macro_rates
   pages/option_data_page:
     in: internal/pages/option_data_page
+  pages/risks_block:
+    in: internal/pages/risks_block
   profile:
     in: internal/profile
   ot:
@@ -394,6 +396,14 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  pages/risks_block:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - pages
+      - contracts/genpb
+      - compute/contracttest
   ot:
     mayDependOn:
       - contracts
@@ -441,6 +451,7 @@ deps:
       - jobs/calendarrefresh
       - store/alert
       - compute/alertrules
+      - pages/risks_block
   compute/contracttest:
     mayDependOn:
       - contracts
