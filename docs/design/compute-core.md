@@ -189,7 +189,7 @@ Checked by CI: `go test ./internal/compute/gonumstats -race -count=1`; the `chec
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-own-glue, compute-gonum-stats.
 - Order: after 1, 2, 4, 5 (compute-interface, compute-fixtures-hand, compute-own-glue, compute-gonum-stats); all four edit `.go-arch-lint.yml` too.
 - Design: docs/design/compute-core.md#Interface
-- Files: internal/compute/figures/figures.go, internal/compute/figures/series.go, internal/compute/figures/series_test.go, internal/compute/figures/iv_pending.go, internal/compute/figures/iv_pending_test.go, .go-arch-lint.yml
+- Files: internal/compute/figures/figures.go, internal/compute/figures/series.go, internal/compute/figures/series_test.go, internal/compute/figures/iv_pending.go, internal/compute/figures/iv_pending_test.go, internal/compute/contracttest/testdata/figures.json, .go-arch-lint.yml
 
 - Goal: `figures.New` (`compute.NewFiguresFunc`) with `HistoricalVol` (HV(n), GLOSSARY.md line 65: sample stdev of the last `N` log returns times the square root of `TradingDays`; `N`+1 closes else `short_history`; a zero or negative close `bad_input`), `MovingAverageGap` (through `Rolling.Mean`, not `Indicators`), `PercentileInYears` (GLOSSARY.md line 87 for the four index ids: calendar years before the day, day excluded, missing skipped, `Observations` the count, `short_history` when the history does not reach back `Years`) and `Ratio`. Every method reads its numbers from `Rules`, applies `MaxAgeDays` against `asOf` (`stale_input`), sets `DataDay`, and leaves nothing to a caller. The type is `calc` (receiver of every method). The three IV methods (`Iv30`, `IvPercentile`, `IvRank`) are stubs that return a missing `bad_input`, and live only in `iv_pending.go` with their test `TestUnfinishedAreMissing` in `iv_pending_test.go`, so that `compute-figures-iv` removes both files and never edits `figures.go` (REV1:2).
 
@@ -200,7 +200,7 @@ Acceptance:
 3. `TestMovingAverageGap` (199 closes `short_history`, 200 ok, gap equal to `close/mean - 1` to 1e-12), `TestPercentileInYears` (day excluded, gap skipped, `Below` and `AtOrBelow` differ on a tie, two years of history for `Years` 3 is `short_history`) and `TestRatio` (zero denominator `bad_input`, stale denominator `stale_input`) pass.
 4. `TestStaleInput` passes: an input older than `MaxAgeDays` against `asOf` is `missing` with `stale_input` and `DataDay` is the newest input day; `TestCompareFromRule` passes (the same series ranks differently under two rules; no method has a `Compare` parameter).
 5. `go list -deps ./internal/compute/figures | grep -c "gonum\|go-talib"` prints 0 and `grep -c "time\.Now" internal/compute/figures/*.go` prints 0 (a package list never holds a symbol); `grep -c 'internal/compute/figures' .go-arch-lint.yml` prints 1; each Go file is under 600 lines.
-6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the six paths of the Files line.
+6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line (the golden file gains a trading_days value of 252 in its series cases: without it the annualised HV cannot match; added after the review of PR 456).
 
 Checked by CI: `go test ./internal/compute/figures -race -count=1`; the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change).
 
