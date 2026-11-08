@@ -55,15 +55,26 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - Iv30 input rules (Decision 10): subjects are the underlyings of `OptionEodCatalog.OptionEodLatest(ctx, day)` that have a row of the day itself in `OptionEod(ctx, id, day, day)`, named by `InstrumentNames`. Of one `instrument_id` the row with the latest `received_at` is used, and only `status` 1. `OptionTerms` is asked in chunks of 500 ids; a row without a current terms version is dropped and counted. The mid is (bid+ask)/2 when both are present, `ask >= bid` and `ask > 0`, else that side is absent; an IV absent or not above 0 is 0. `T` runs from the close of the as-of day's session row (calendar `XNYS`) to the `close_at` of the expiration day's session row, or its `open_at` for an `AM` settlement; an expiration day that is not a session day drops that expiry; minutes are floored. The rate is the newest `DGS3MO` point not after the as-of day; none gives a missing `no_input`.
 - Retry classes: a store error is `Retryable`; a bad rule (an unknown id or version, a rule the core rejects) is `Permanent`. A figure the core marks missing is stored `missing_input` with its reason, never skipped.
 
+## SeriesHistoryLoader
+
+`jobs.SeriesHistoryLoader` has `Load(ctx, sources.FetchPlan) ([]jobs.SeriesLoaded, error)`; `jobs.SeriesLoaded` is `{SeriesID string; Fetched int}`; the constructor type is `jobs.NewSeriesHistoryFunc` (`serieshistory.New(sources.Source, store.SeriesWriter)`). The design is `docs/design/compute-fred-series.md#series-history-loader`; `ot series-load` only wires it.
+
+- `Load` refuses an empty series list, `From` after `To` and a range over 5 years as `Permanent`, before any fetch.
+- One `Fetch` per series over `From`..`To`; every series is fetched before the first write, so a source error writes nothing.
+- The points of a series are written once, with one `InsertSeriesPoints` call (idempotent), and `Load` returns the count fetched per series.
+- A source or writer error is passed on by class only: a `TypedError` keeps its kind, an untyped fetch error is `Permanent`, an untyped write error `Retryable`; the text is not passed on. Only `contracts.TypedError` values are returned.
+- No clock and no environment are read.
+
 ## Version history
 
 - v1: `fred_series`, manifest version 1.
 - v1: `option_eod`, manifest version 1.
 - v1: `compute_figures`, interface only (`jobs.ComputeStores`, `jobs.NewComputeFiguresFunc`).
+- v1: `SeriesHistoryLoader`, with `internal/jobs/serieshistory`.
 
 ## Contract tests
 
-- `internal/jobs/api_test.go`: `TestRegistryContract`, `TestNewComputeFiguresFuncContract`, the interface.
+- `internal/jobs/api_test.go`: `TestRegistryContract`, `TestNewComputeFiguresFuncContract`, `TestNewSeriesHistoryFuncContract`, the interface.
 - `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
 - `schedule_test.go` of each of the three packages: `TestEmbeddedSchedule`, `TestBadScheduleTable`.
 - `internal/jobs/fredseries/window_test.go`: `TestWindowOf`, `TestWindowErrors`, `TestEmbeddedWindow`.
