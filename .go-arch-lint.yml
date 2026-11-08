@@ -45,6 +45,8 @@ components:
     in: internal/store/setup
   store/snapshot:
     in: internal/store/snapshot
+  compute:
+    in: internal/compute
   runner:
     in: internal/runner
   runner/reconcile:
@@ -145,6 +147,9 @@ deps:
       - contracts
       - store
       - contracts/genpb
+  compute:
+    mayDependOn:
+      - contracts
   runner:
     mayDependOn:
       - contracts

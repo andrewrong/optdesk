@@ -52,6 +52,10 @@ may_import = ["contracts", "store"]
 in = "internal/store/ops"
 may_import = ["contracts", "store"]
 
+[component."store/reading"]
+in = "internal/store/reading"
+may_import = ["contracts", "store"]
+
 [component."store/series"]
 in = "internal/store/series"
 may_import = ["contracts", "store"]
@@ -84,6 +88,10 @@ may_import = ["contracts", "compute"]
 in = "internal/compute/own"
 may_import = ["contracts", "compute"]
 
+[component."compute/rules"]
+in = "internal/compute/rules"
+may_import = ["contracts", "compute"]
+
 [component."compute/talibind"]
 in = "internal/compute/talibind"
 may_import = ["contracts", "compute"]
@@ -102,19 +110,23 @@ may_import = ["contracts", "clock", "store", "runner"]
 
 [component."jobs"]
 in = "internal/jobs"
-may_import = ["contracts", "clock", "sources", "broker", "store"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute"]
+
+[component."jobs/computefigures"]
+in = "internal/jobs/computefigures"
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
 
 [component."jobs/fredseries"]
 in = "internal/jobs/fredseries"
-may_import = ["contracts", "clock", "sources", "broker", "store", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
 
 [component."jobs/optioneod"]
 in = "internal/jobs/optioneod"
-may_import = ["contracts", "clock", "sources", "broker", "store", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
 
 [component."jobs/quotesnapshot"]
 in = "internal/jobs/quotesnapshot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
 
 [component."notify"]
 in = "internal/notify"
@@ -146,4 +158,4 @@ may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "pages", "profile", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures"]

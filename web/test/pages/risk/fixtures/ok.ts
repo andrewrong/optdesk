@@ -11,7 +11,7 @@ export const ok = {
   data_times: [{ source: 'positions', data_time: '2026-01-05T09:00:00+08:00' }],
   run_status: 'ok',
   title: 'Household risk ok',
-  sentence: 'Sentence ok: the book leans long and short vega is small.',
+  sentence: 'Sentence ok: the largest delta is Alpha Corp ok at plus 1,200 dollars, and the worst sigma move is minus two sigma on Alpha Corp, a loss of 500 dollars.',
   vega_title: 'Vega by expiry ok',
   delta: {
     title: 'Delta by underlying ok',
@@ -73,6 +73,8 @@ export const ok = {
         },
       },
       { label: 'Metric label two ok', value_text: 'Metric value two ok', explanation: 'Metric explanation two ok', table: null },
+      { label: 'Max drawdown ok', value_text: 'Minus 8 percent ok', explanation: 'Metric explanation: the largest fall from a peak ok', table: null },
+      { label: 'Portfolio beta ok', value_text: '1.1 ok', explanation: 'Metric explanation: move of the book per one percent move of the index ok', table: null },
     ],
   },
   notes: ['Note one ok', 'Note two ok'],
