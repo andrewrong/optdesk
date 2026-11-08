@@ -65,6 +65,17 @@ describe('HouseholdCard', () => {
     expect(tile('cash').textContent).toContain(ok.card.tiles.cash.caption.text)
   })
 
+  it('shows the net-worth caption with the family and daughter parts as text, the total from figure.text', async () => {
+    await show(fixture('ok.json'))
+    const net = tile('net_worth').textContent!
+    const caption = ok.card.tiles.net_worth.caption.text
+    expect(net).toContain(caption)
+    expect(net).toContain('家庭(本人+配偶)')
+    expect(net).toContain('女儿(单独计)')
+    expect(net).toContain('已含在合计内')
+    expect(net).toContain(ok.card.tiles.net_worth.figure.text)
+  })
+
   it('explains a tile on focus of its info mark, and only when the payload sends explain', async () => {
     const payload = fixture('ok.json')
     await show(payload)

@@ -163,6 +163,9 @@
         "unit": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "approx_usd_text": {
+          "$ref": "#/$defs/Text"
         }
       },
       "required": [
@@ -213,6 +216,22 @@
         "currency": {
           "type": "string",
           "pattern": "^[A-Z]{3}$"
+        },
+        "vol_line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "The vol line shown in the header; metric id: assigned by compute."
+        },
+        "earnings_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "earnings_tone": {
+          "enum": [
+            "in_term",
+            "outside",
+            "none"
+          ]
         }
       },
       "required": [

@@ -93,12 +93,19 @@ export interface Underlying {
   session_day: string | null;
   price: Cell;
   currency: string;
+  /**
+   * The vol line shown in the header; metric id: assigned by compute.
+   */
+  vol_line?: string;
+  earnings_text?: Text1;
+  earnings_tone?: "in_term" | "outside" | "none";
 }
 export interface Figure {
   kind: "value";
   value: number;
   text: Text1;
   unit: string;
+  approx_usd_text?: Text1;
 }
 export interface Chain {
   session_day: string | null;

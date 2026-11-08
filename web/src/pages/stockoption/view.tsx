@@ -1,5 +1,6 @@
 // The stock option page: a read-only view of page.stock_option_page.v1. Every string and figure is a field of
-// the payload; this file computes and formats nothing.
+// the payload; this file computes and formats nothing. The matrix toggle between yield and premium is view
+// state inside MatrixTable: both texts are in each cell of the payload.
 import { Info, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { page } from '@/shell/page'

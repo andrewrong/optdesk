@@ -1,0 +1,536 @@
+{
+  "$defs": {
+    "CoveredCalls": {
+      "type": "object",
+      "title": "CoveredCalls",
+      "additionalProperties": false,
+      "description": "The covered-call section of a rule version.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Title"
+        },
+        "sub": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Sub"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleGroup"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Groups"
+        },
+        "comparison": {
+          "$ref": "#/$defs/Table"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        }
+      },
+      "required": [
+        "title",
+        "sub",
+        "groups",
+        "comparison",
+        "note"
+      ]
+    },
+    "MyTrades": {
+      "type": "object",
+      "title": "MyTrades",
+      "additionalProperties": false,
+      "description": "The My trades table; a Gap with its cause until a producer exists.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Title"
+        },
+        "sub": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Sub"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Columns"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "maxItems": 12
+          },
+          "maxItems": 2000,
+          "title": "Rows"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        }
+      },
+      "required": [
+        "title",
+        "sub",
+        "columns",
+        "rows",
+        "note"
+      ]
+    },
+    "RuleGroup": {
+      "type": "object",
+      "title": "RuleGroup",
+      "additionalProperties": false,
+      "description": "One group of a rule version: its tiles (or a Gap), a note and its evaluation rows.",
+      "properties": {
+        "key": {
+          "$ref": "common.v1.json#/$defs/Id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Title"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Tile"
+              },
+              "maxItems": 8,
+              "minItems": 1
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Summary"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrackingRow"
+          },
+          "maxItems": 2000,
+          "title": "Rows"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "summary",
+        "note",
+        "rows"
+      ]
+    },
+    "RuleVersion": {
+      "type": "object",
+      "title": "RuleVersion",
+      "additionalProperties": false,
+      "description": "One rule version; the first entry of versions is the current one, later entries are older and folded.",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Label"
+        },
+        "expired_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Expired Text"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleGroup"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Groups"
+        },
+        "covered_calls": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CoveredCalls"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Covered Calls"
+        },
+        "my_trades": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MyTrades"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "My Trades"
+        }
+      },
+      "required": [
+        "label",
+        "expired_text",
+        "groups",
+        "covered_calls",
+        "my_trades"
+      ]
+    },
+    "Table": {
+      "type": "object",
+      "title": "Table",
+      "additionalProperties": false,
+      "description": "Columns and rows of strings; the view prints them and computes nothing.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Columns"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "maxItems": 12
+          },
+          "maxItems": 2000,
+          "title": "Rows"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ]
+    },
+    "Tile": {
+      "type": "object",
+      "title": "Tile",
+      "additionalProperties": false,
+      "description": "One summary tile of a rule group; label and text are the producer's words; metric id: assigned by compute.",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Label"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Text"
+        }
+      },
+      "required": [
+        "label",
+        "text"
+      ]
+    },
+    "TrackingRow": {
+      "additionalProperties": false,
+      "description": "One evaluation. ``premium`` and ``underlying_move`` are the P&L split, or the same Gap\n(the outcome in words) when the row has no grade to split.",
+      "properties": {
+        "assigned": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Assigned"
+        },
+        "expiry_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Expiry Text",
+          "type": "string"
+        },
+        "outcome": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Outcome",
+          "type": "string"
+        },
+        "premium": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Premium"
+        },
+        "status": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        },
+        "strike": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Strike",
+          "type": "string"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "underlying_move": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usd"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "title": "Underlying Move"
+        }
+      },
+      "required": [
+        "symbol",
+        "expiry_text",
+        "strike",
+        "status",
+        "outcome",
+        "premium",
+        "underlying_move",
+        "assigned"
+      ],
+      "title": "TrackingRow",
+      "type": "object"
+    },
+    "Usd": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "usd",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "Usd",
+      "type": "object",
+      "description": "A signed USD amount as text and number."
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.tracking.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "how": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "How",
+      "type": "array"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "tracking",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "sentence": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Sentence",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "common.v1.json#/$defs/StaleLabel"
+    },
+    "stale_after": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "versions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RuleVersion"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Versions",
+      "description": "Rule versions, current first; older ones are later entries."
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "sentence",
+    "how",
+    "stale",
+    "versions"
+  ],
+  "title": "Tracking",
+  "type": "object"
+}

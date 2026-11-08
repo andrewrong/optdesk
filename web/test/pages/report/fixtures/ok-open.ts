@@ -1,6 +1,6 @@
 import type { ReportPage } from '../../../../src/generated/report_page.v2'
 
-// Synthetic report_page fixture, open slot (all eleven blocks), written from contracts/schemas/page.report_page.v2.json alone.
+// Synthetic report_page fixture, open slot (the open blocks in full, the close blocks in their smallest valid form), written from contracts/schemas/page.report_page.v2.json alone.
 export const okOpen = {
   schema: 'report_page',
   schema_version: 2,
@@ -18,8 +18,8 @@ export const okOpen = {
       title: '市场一行标题',
       sub: '市场一行副标题',
       say: '市场一行结论',
-      state: 'ok',
-      gaps: [],
+      state: 'partial',
+      gaps: [{ reason: 'missing_quote', text: '市场一行缺口文字' }],
       data_times: '市场一行数据时间',
       sentence: '市场一行整句文字',
       figures: [{ label: '指数甲', figure: { text: '18.20', unit: 'index_points', value: 18.2 } }],
@@ -102,7 +102,7 @@ export const okOpen = {
       state: 'ok',
       gaps: [],
       data_times: '持仓提醒数据时间',
-      rows: [{ text: '提醒行文字', tone: 'down', link: { href: '/positions', label: '提醒链接' } }],
+      rows: [{ text: '提醒行文字', tone: 'down' }],
       rest_title: '平静的其余标题',
       rest_columns: ['标的', '组合', '户', '到期', '已赚'],
       rest: [{ cells: ['REST', '组合甲', '账户甲', '11-20', { reason: 'no_data', text: '已赚缺口文字' }] }],
@@ -126,7 +126,19 @@ export const okOpen = {
       state: 'ok',
       gaps: [],
       data_times: '开盘操作数据时间',
-      trades: { columns: ['时间'], rows: [] },
+      trades: {
+        columns: ['时间', '账户', '动作', '标的', '数量', '价格'],
+        rows: [
+          {
+            time: { text: '09:30', tone: 'none' },
+            account: { text: '开盘账户', tone: 'none' },
+            action: { text: '买入', tone: 'up' },
+            instrument: { text: '开盘标的', tone: 'none' },
+            quantity: { text: '1', tone: 'none', value: 1 },
+            price: { text: '1.00', tone: 'none', value: 1 },
+          },
+        ],
+      },
     },
     account_moves: {
       key: 'account_moves',
@@ -136,8 +148,30 @@ export const okOpen = {
       state: 'ok',
       gaps: [],
       data_times: '开盘账户变动数据时间',
-      accounts: { columns: ['账户'], rows: [] },
-      movers: { heading: '开盘变动明细', columns: ['标的'], rows: [] },
+      accounts: {
+        columns: ['账户', '净值', '当日金额', '当日百分比', '最大变动'],
+        rows: [
+          {
+            account: { text: '开盘账户', tone: 'none' },
+            net: { text: '$1,000', tone: 'none', value: 1000 },
+            day_amount: { text: '+$10', tone: 'up', value: 10 },
+            day_pct: { text: '+1.0%', tone: 'up', value: 1 },
+            biggest: { text: 'DEMO +$10', tone: 'up' },
+          },
+        ],
+      },
+      movers: {
+        heading: '开盘变动明细',
+        columns: ['标的', '账户', '当日金额', '说明'],
+        rows: [
+          {
+            symbol: { text: 'DEMO', tone: 'none' },
+            account: { text: '开盘账户', tone: 'none' },
+            day_amount: { text: '+$10', tone: 'up', value: 10 },
+            note: { text: '开盘变动说明', tone: 'none' },
+          },
+        ],
+      },
     },
     risks: {
       key: 'risks',
@@ -157,8 +191,28 @@ export const okOpen = {
       state: 'ok',
       gaps: [],
       data_times: '开盘市场观察数据时间',
-      indices: { columns: ['指数'], rows: [] },
-      companies: { columns: ['公司'], rows: [] },
+      indices: {
+        columns: ['指数', '收盘', '当日', '五日'],
+        rows: [
+          {
+            name: { text: '开盘指数', tone: 'none' },
+            close: { text: '1,000', tone: 'none', value: 1000 },
+            day: { text: '+0.1%', tone: 'up', value: 0.1 },
+            five_day: { text: '+0.2%', tone: 'up', value: 0.2 },
+            source_text: null,
+          },
+        ],
+      },
+      companies: {
+        columns: ['公司', '当日', '消息'],
+        rows: [
+          {
+            symbol: { text: 'DEMO', tone: 'none' },
+            day: { text: '+1.0%', tone: 'up', value: 1 },
+            news: { text: '开盘公司消息', tone: 'none' },
+          },
+        ],
+      },
     },
     global_assets: {
       key: 'global_assets',
@@ -177,7 +231,19 @@ export const okOpen = {
           five_day: { text: '+2.0%', tone: 'up', value: 2 },
         },
       ],
-      sector: { heading: '开盘板块', columns: ['板块'], rows: [] },
+      sector: {
+        heading: '开盘板块',
+        columns: ['板块', 'ETF', '1日', '5日', '20日'],
+        rows: [
+          {
+            sector: { text: '开盘科技', tone: 'none' },
+            etf: { text: 'XLT', tone: 'none' },
+            d1: { text: '+0.1%', tone: 'up', value: 0.1 },
+            d5: { text: '+0.2%', tone: 'up', value: 0.2 },
+            d20: { text: '+0.3%', tone: 'up', value: 0.3 },
+          },
+        ],
+      },
     },
   },
 } satisfies ReportPage

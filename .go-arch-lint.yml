@@ -45,6 +45,8 @@ components:
     in: internal/store/setup
   store/snapshot:
     in: internal/store/snapshot
+  compute:
+    in: internal/compute
   runner:
     in: internal/runner
   runner/reconcile:
@@ -145,6 +147,9 @@ deps:
       - contracts
       - store
       - contracts/genpb
+  compute:
+    mayDependOn:
+      - contracts
   runner:
     mayDependOn:
       - contracts
@@ -164,6 +169,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
   jobs/fredseries:
     mayDependOn:
       - contracts
@@ -171,6 +177,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
       - jobs
       - contracts/genpb
   jobs/optioneod:
@@ -180,6 +187,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
       - jobs
       - contracts/genpb
   jobs/quotesnapshot:
@@ -189,6 +197,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
       - jobs
       - contracts/genpb
   pages:
@@ -230,6 +239,7 @@ deps:
       - jobs
       - pages
       - profile
+      - compute
       - clock/realclock
       - clock/calendar
       - runner/reconcile

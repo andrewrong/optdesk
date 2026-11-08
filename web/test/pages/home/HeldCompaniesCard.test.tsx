@@ -68,8 +68,27 @@ describe('HeldCompaniesCard', () => {
     await show(ok)
     const rows = bodyRows()
     expect(rows).toHaveLength(ok.card.rows.length)
-    expect(rows[0]).toEqual(['AMD', '10-28', '+2.1%', '+5.0%'])
+    expect(rows[0]).toEqual(['AMD', '10-28 盘后', '+2.1%', '+5.0%'])
     expect(rows[1]).toEqual(['MSFT', '11-12', '−0.4% · 10-22', '−1.0%'])
+    expect(rows[2]).toEqual(['NVDA', '11-19 盘前', '+0.8%', '+2.2%'])
+  })
+
+  it('shows 盘前 or 盘后 where the source states it, the date alone on the other row, named once in the notes', async () => {
+    await show(ok)
+    const rows = bodyRows()
+    expect(rows[0]![1]).toMatch(/盘前|盘后/)
+    expect(rows[2]![1]).toMatch(/盘前|盘后/)
+    expect(rows[1]![1]).toBe('11-12')
+    expect(rows[1]![1]).not.toMatch(/盘前|盘后/)
+    const named = ok.card.notes.filter((n) => n.includes('MSFT'))
+    expect(named).toHaveLength(1)
+    expect(host.textContent!.split(named[0]!)).toHaveLength(2)
+  })
+
+  it('shows the news column as a gap that states the missing source', async () => {
+    await show(ok)
+    const gaps = [...host.querySelectorAll('[data-gaps] li')].map((l) => l.textContent)
+    expect(gaps).toEqual(['近 5 日消息：暂无数据源'])
   })
 
   it('aligns the first column left and the others right', async () => {

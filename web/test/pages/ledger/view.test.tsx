@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { registration, View } from '@/pages/ledger/view'
 import { pages } from '@/shell/pages'
 import { validate } from '@/types/ledger_page'
@@ -14,6 +14,15 @@ import { stale } from './fixtures/stale'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const badVersion = JSON.parse(
   readFileSync(path.resolve(import.meta.dirname, 'fixtures/bad-version.json'), 'utf8'),
+)
+// jsdom has no ResizeObserver, which the chart container needs.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
 )
 let root: Root | undefined
 let host: HTMLElement
@@ -73,6 +82,36 @@ describe('ledger view', () => {
     expect(host.querySelector('[data-nothing-closed]')).toBeNull()
     expect(ok.gaps).toHaveLength(0)
     expect(host.querySelector('[data-gaps]')).toBeNull()
+  })
+
+  it('draws one line chart of the section points with its summary, and none without a chart', async () => {
+    const first = req(ok.sections[0])
+    const chart = req(first.chart)
+    const page = await show(ok)
+    // One line chart per section that has a chart; the JPY section has none.
+    const drawn = ok.sections.filter((s) => s.chart !== null)
+    expect(drawn.length).toBeLessThan(ok.sections.length)
+    expect(host.querySelectorAll('[data-chart]')).toHaveLength(drawn.length)
+    expect(host.querySelector('[data-chart]')?.getAttribute('aria-label')).toBe(chart.summary)
+    expect(host.querySelector('[data-points]')?.getAttribute('data-points')).toBe(String(chart.points.length))
+    on(chart.summary, page)
+    expect(page).toContain('Ann.')
+    on(ok.header.fx_note, page)
+    on('n<30', page)
+    const without = structuredClone(ok)
+    for (const section of without.sections) section.chart = null as never
+    await act(async () => root?.unmount())
+    host.remove()
+    await show(without)
+    expect(host.querySelector('[data-chart]')).toBeNull()
+  })
+
+  it('carries ten or more points in each USD section and approx_usd text in the JPY one', () => {
+    for (const section of ok.sections.filter((s) => s.key.endsWith('_usd'))) {
+      expect(req(section.chart).points.length).toBeGreaterThanOrEqual(10)
+    }
+    const jpy = req(ok.sections.find((s) => s.key.endsWith('_jpy')))
+    expect(req(jpy.lead.total).text).toContain('approx_usd')
   })
 
   it('shows the nothing_closed line and the stale label of stale', async () => {

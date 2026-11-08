@@ -7,6 +7,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OptionPage, validateOptionPage } from '@/pages/options/OptionPage'
 import { pages } from '@/shell/pages'
 
+// The jest-dom matcher of the same name is not a dependency of web/: an element is visible when it is in the
+// document and neither it nor an ancestor is hidden by `hidden`, display none or visibility hidden.
+declare module 'vitest' {
+  interface Assertion {
+    toBeVisible(): void
+  }
+}
+expect.extend({
+  toBeVisible(el: Element) {
+    let pass = el.isConnected
+    for (let n: Element | null = el; n && pass; n = n.parentElement) {
+      const style = getComputedStyle(n)
+      if (n.hasAttribute('hidden') || style.display === 'none' || style.visibility === 'hidden') {
+        pass = false
+      }
+    }
+    return { pass, message: () => `expected the element ${pass ? 'not ' : ''}to be visible` }
+  },
+})
+
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const fixture = (name: string) =>
@@ -80,9 +100,9 @@ describe('OptionPage', () => {
     const table = host.querySelector('[data-market=US] [data-table=candidates]')!
     const header = [...table.querySelectorAll('th button')].find((b) => b.textContent === '标的')!
     await click(header)
-    expect(firstColumn(table)).toEqual(['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'TGT'])
+    expect(firstColumn(table)).toEqual(['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'TGT'])
     await click(header)
-    expect(firstColumn(table)).toEqual(['TGT', 'GGG', 'FFF', 'EEE', 'DDD', 'CCC', 'BBB', 'AAA'])
+    expect(firstColumn(table)).toEqual(['TGT', 'FFF', 'EEE', 'DDD', 'CCC', 'BBB', 'AAA'])
   })
 
   it('lists the eleven candidate columns and sorts the rows by the Δ sort value', async () => {
@@ -144,14 +164,14 @@ describe('OptionPage', () => {
     expect(firstColumn(table)).toEqual(['BBB', 'AAA', 'CCC']) // −30, −16, −5 ascending
   })
 
-  it('shows TGT as 跳过 with gap cells, and no zero, for Bid, Ask, volume and open interest', async () => {
+  it('shows TGT as 跳过 with gap cells, and no zero, for Bid/Ask, spread, volume and open interest', async () => {
     await show(fixture('ok.json'))
     const row = [
       ...host.querySelectorAll('[data-market=US] [data-table=candidates] tbody tr'),
     ].find((r) => r.querySelector('td')!.textContent === 'TGT')!
     const cells = [...row.querySelectorAll('td')].map((c) => c.textContent)
     expect(cells[1]).toBe('跳过')
-    expect(cells.filter((c) => c === '缺')).toHaveLength(6) // annualised, Bid, Ask, breakeven, volume, open interest
+    expect(cells.filter((c) => c === '缺')).toHaveLength(5) // annualised, Bid/Ask, spread %, volume, open interest
   })
 
   it('marks the chosen contract in the chain, which is shown without a click', async () => {
@@ -191,18 +211,6 @@ describe('OptionPage', () => {
     expect(card.textContent).toContain('¥240,000（≈$1,600）')
   })
 
-  it('shows the JP breakeven as the payload text followed by its ≈USD text', async () => {
-    await show(fixture('ok.json'))
-    const jp = [...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '日股')!
-    await pick(jp)
-    const table = host.querySelector('[data-market=JP] [data-table=candidates]')!
-    const col = [...table.querySelectorAll('th')].findIndex((h) => h.textContent === '盈亏平衡')
-    expect(col).toBeGreaterThan(-1)
-    // Invented fixture: JPA strike 2400, bid 38, 150 JPY per USD: 2362 / 150 = 15.75.
-    const first = table.querySelector('tbody tr')!.querySelectorAll('td')[col]!
-    expect(first.textContent).toBe('¥2,362 ≈$15.75')
-  })
-
   it('shows the premium line of the payload card as given', async () => {
     const payload = fixture('ok.json')
     await show(payload)
@@ -211,7 +219,7 @@ describe('OptionPage', () => {
     expect(card.textContent).toContain('到期在价内概率')
   })
 
-  it('has the 到期在价内概率, 比现金 and 盈亏平衡 columns of the payload and a tooltip with the payload hint', async () => {
+  it('has a tooltip with the payload hint on the IVP header', async () => {
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -222,17 +230,90 @@ describe('OptionPage', () => {
     )
     const payload = fixture('ok.json')
     await show(payload)
-    const columns = payload.markets[0].candidates.columns
+    const hint = payload.markets[0].candidates.columns.find((c: { id: string }) => c.id === 'ivp').hint
+    expect(hint).toBeTruthy()
     const table = host.querySelector('[data-market=US] [data-table=candidates]')!
-    const headers = [...table.querySelectorAll('th')].map((h) => h.textContent)
-    for (const label of ['到期在价内概率', '比现金', '盈亏平衡']) expect(headers).toContain(label)
-    const hint = columns.find((c: { id: string }) => c.id === 'itm').hint
-    expect(hint).toContain('N(-d2)')
-    const button = [...table.querySelectorAll('th button')].find((b) =>
-      b.textContent!.startsWith('到期在价内概率'),
+    const button = [...table.querySelectorAll('th button')].find(
+      (b) => b.textContent === 'IVP',
     ) as HTMLElement
     await act(async () => button.focus())
     expect(document.body.textContent).toContain(hint)
+  })
+
+  it('prints the contract line and the IV line of every card as written', async () => {
+    const payload = fixture('ok.json')
+    await show(payload)
+    const check = (pane: { cards: { id: string; contract_line: string; iv_line: string }[] }) => {
+      for (const card of pane.cards) {
+        const el = host.querySelector(`[data-opportunity=${card.id}]`)!
+        expect(el.textContent).toContain(card.contract_line)
+        expect(el.textContent).toContain(card.iv_line)
+      }
+    }
+    check(payload.markets[0])
+    const jp = [...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '日股')!
+    await pick(jp)
+    check(payload.markets[1])
+    const first = payload.markets[0].cards[0]
+    expect(first.contract_line).toBe('sell put 62 · 11-13 周五 · 22 天 · Δ −0.15')
+    expect(first.iv_line).toBe('IV 38% · HV30 31% · IVP 72')
+  })
+
+  it('draws the E tags and the rich-premium tag as written on their cards, all secondary Badges', async () => {
+    const payload = fixture('ok.json')
+    await show(payload)
+    const cards = payload.markets[0].cards as { id: string; tags: string[] }[]
+    for (const text of ['E 11-12 在期内', 'E 无', '权利金偏高']) {
+      const card = cards.find((c) => c.tags.includes(text))!
+      const tag = [...host.querySelectorAll(`[data-opportunity=${card.id}] [data-slot=badge]`)].find(
+        (b) => b.textContent === text,
+      )!
+      expect(tag).toBeTruthy()
+      expect(tag.className).toContain('bg-secondary')
+      expect(tag.className).not.toContain('bg-destructive')
+    }
+  })
+
+  it('shows the IVP 缺 line without a number', async () => {
+    const payload = fixture('ok.json')
+    await show(payload)
+    const card = payload.markets[0].cards.find((c: { iv_line: string }) => c.iv_line.includes('IVP 缺'))
+    const el = host.querySelector(`[data-opportunity=${card.id}]`)!
+    expect(card.iv_line).toBe('IV 31% · HV30 29% · IVP 缺')
+    expect(el.textContent).toContain('IVP 缺')
+    expect(el.textContent).not.toMatch(/IVP\s*\d/)
+  })
+
+  it('has the twelve candidate columns of the board in order, and the link with the count', async () => {
+    const payload = fixture('ok.json')
+    await show(payload)
+    const labels = ['标的', '判定', '年化', 'strike %', 'DTE', 'Δ', 'Bid/Ask', 'spread %', 'Vol', 'OI', 'IVP', 'E']
+    for (const pane of payload.markets) {
+      expect(pane.candidates.columns.map((c: { label: string }) => c.label)).toEqual(labels)
+    }
+    const table = host.querySelector('[data-market=US] [data-table=candidates]')!
+    expect([...table.querySelectorAll('th')].map((h) => h.textContent)).toEqual(labels)
+    expect(host.querySelector('[data-market=US] [data-all-link]')!.textContent).toBe('全部 6 个机会')
+  })
+
+  it('shows every chain row on first render with no click', async () => {
+    const payload = fixture('ok.json')
+    await show(payload)
+    const rows = [...host.querySelectorAll('[data-market=US] [data-table=chain] tbody tr')]
+    expect(rows).toHaveLength(payload.markets[0].chain.table.rows.length)
+    for (const row of rows) {
+      expect(row.isConnected).toBe(true)
+      expect(row).toBeVisible()
+    }
+  })
+
+  it('shows 没有链数据 for a pane whose chain is null', async () => {
+    const payload = fixture('ok.json')
+    payload.markets[0].chain = null
+    await show(payload)
+    const pane = host.querySelector('[data-market=US]')!
+    expect(pane.textContent).toContain('没有链数据')
+    expect(pane.querySelector('[data-table=chain]')).toBeNull()
   })
 
   it('shows the verdict of the payload, not one derived from the numbers', async () => {

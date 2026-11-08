@@ -1,5 +1,6 @@
-// The home page (home_page v2): five summary cards under a header, the gap line and two link lists. Every visible
+// The home page (home_page v2): a header with the gap line, five summary cards in one column each under its header link, and the report list. Every visible
 // string is a field of the payload; the view computes nothing and holds no route table (links go to their `href`).
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,20 +37,54 @@ export function validate(input: unknown): Validation {
   return top
 }
 
-function Links({ label, links }: { label: string; links: readonly { href: string; text: string }[] }) {
-  if (links.length === 0) return null
+type Link = { href: string; text: string }
+
+// The header row of a card: block link `i` of the payload, or nothing when the payload has fewer links.
+function BlockRow({ link }: { link: Link | undefined }) {
+  if (!link) return null
   return (
-    <nav aria-label={label} className="flex flex-wrap gap-2" data-links={label}>
-      {links.map((link, index) => (
-        <Button key={`${index}-${link.href}`} asChild variant="outline">
-          <a href={link.href}>{link.text}</a>
+    <div data-block-row>
+      <Button asChild variant="outline">
+        <a href={link.href}>{link.text}</a>
+      </Button>
+    </div>
+  )
+}
+
+// The first report is visible; the rest sit in the fold "全部报告". One report has no fold.
+function Reports({ links }: { links: readonly Link[] }) {
+  const [first, ...rest] = links
+  if (!first) return null
+  return (
+    <Card data-links="report_links">
+      <CardHeader>
+        <CardTitle>报告</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button asChild variant="outline">
+          <a href={first.href}>{first.text}</a>
         </Button>
-      ))}
-    </nav>
+        {rest.length > 0 && (
+          <Accordion type="single" collapsible>
+            <AccordionItem value="all-reports">
+              <AccordionTrigger>全部报告</AccordionTrigger>
+              <AccordionContent className="flex flex-wrap gap-2">
+                {rest.map((link, index) => (
+                  <Button key={`${index}-${link.href}`} asChild variant="outline">
+                    <a href={link.href}>{link.text}</a>
+                  </Button>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
 export function HomePage({ payload }: { payload: Payload }) {
+  const rows = payload.block_links
   return (
     <div className="space-y-4" data-page="home-page">
       <Card>
@@ -57,21 +92,25 @@ export function HomePage({ payload }: { payload: Payload }) {
           <CardTitle>{payload.title}</CardTitle>
           <CardDescription>{payload.say}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent>
           <Alert data-gap-line>
             <AlertDescription>{payload.gap_line}</AlertDescription>
           </Alert>
-          <Links label="block_links" links={payload.block_links} />
-          <Links label="report_links" links={payload.report_links} />
         </CardContent>
       </Card>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <HouseholdCard payload={payload.household} />
-        <HeldCompaniesCard payload={payload.companies} />
+      <div className="flex flex-col gap-4">
+        <BlockRow link={rows[0]} />
         <MacroCard payload={payload.macro} />
+        <BlockRow link={rows[1]} />
         <MarketSummaryCard payload={payload.market} />
+        <BlockRow link={rows[2]} />
+        <HouseholdCard payload={payload.household} />
+        <BlockRow link={rows[3]} />
+        <HeldCompaniesCard payload={payload.companies} />
+        <BlockRow link={rows[4]} />
         <OptionsSummaryCard payload={payload.options} />
       </div>
+      <Reports links={payload.report_links} />
     </div>
   )
 }
