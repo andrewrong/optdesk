@@ -447,7 +447,7 @@ Checked by CI: ci-go runs (`go test ./internal/runner -run 'TestProberContract' 
 ### sched-reconcile-walk
 
 - Module: runner. Size: S. Depends on: sched-run-key (landed), 14 (sched-runner-probe) and 5 (sched-reconcile-count), because all edit docs/contracts/runner.md.
-- Order: after 4, 5, 14 (sched-run-key, sched-reconcile-count, sched-runner-probe; all edit docs/contracts/runner.md), before 7 (sched-ticker); this is entry 15 of this list.
+- Order: after 2, 4, 5, 14 (sched-runner-interface, sched-run-key, sched-reconcile-count, sched-runner-probe; all edit docs/contracts/runner.md), before 7 (sched-ticker); this is entry 15 of this list.
 - Design: docs/design/scheduler.md#Decisions
 - Files: internal/runner/reconcile/reconcile.go, internal/runner/reconcile/reconcile_test.go, docs/contracts/runner.md
 
@@ -466,7 +466,7 @@ Checked by CI: ci-go runs (`go test ./internal/runner/reconcile -run 'TestCursor
 ### sched-run-deadline
 
 - Module: runner. Size: S. Depends on: sched-run-key (landed), 14 (sched-runner-probe), 5 (sched-reconcile-count) and 15 (sched-reconcile-walk), because all edit docs/contracts/runner.md.
-- Order: after 4, 5, 14, 15 (sched-run-key, sched-reconcile-count, sched-runner-probe, sched-reconcile-walk; 5, 14 and 15 also edit docs/contracts/runner.md), so none runs in parallel with it; this is entry 16 of this list.
+- Order: after 2, 4, 5, 14, 15 (sched-runner-interface, sched-run-key, sched-reconcile-count, sched-runner-probe, sched-reconcile-walk; 2, 5, 14 and 15 also edit docs/contracts/runner.md), so none runs in parallel with it; this is entry 16 of this list.
 - Design: docs/design/scheduler.md#Decisions
 - Files: internal/runner/reconcile/runkey.go, internal/runner/reconcile/runkey_test.go, docs/contracts/runner.md
 
