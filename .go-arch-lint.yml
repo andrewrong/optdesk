@@ -73,6 +73,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  compute/contracttest:
+    in: internal/compute/contracttest
   pages/home_page:
     in: internal/pages/home_page
   store/migrate:
@@ -180,6 +182,7 @@ deps:
       - compute
       - jobs
       - contracts/genpb
+      - compute/contracttest
   jobs/optioneod:
     mayDependOn:
       - contracts
@@ -190,6 +193,7 @@ deps:
       - compute
       - jobs
       - contracts/genpb
+      - compute/contracttest
   jobs/quotesnapshot:
     mayDependOn:
       - contracts
@@ -200,6 +204,7 @@ deps:
       - compute
       - jobs
       - contracts/genpb
+      - compute/contracttest
   pages:
     mayDependOn:
       - contracts
@@ -258,6 +263,11 @@ deps:
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
+  compute/contracttest:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   pages/home_page:
     mayDependOn:
       - contracts
