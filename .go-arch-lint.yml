@@ -103,6 +103,8 @@ components:
     in: internal/compute/contracttest
   notify/notifytest:
     in: internal/notify/notifytest
+  pages/gaps:
+    in: internal/pages/gaps
   pages/home_page:
     in: internal/pages/home_page
   store/migrate:
@@ -395,6 +397,12 @@ deps:
       - contracts
       - store
       - notify
+      - contracts/genpb
+  pages/gaps:
+    mayDependOn:
+      - contracts
+      - store
+      - pages
       - contracts/genpb
   pages/home_page:
     mayDependOn:
