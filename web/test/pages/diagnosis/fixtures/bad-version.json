@@ -1,0 +1,17 @@
+{
+  "schema": "diagnosis_page",
+  "schema_version": 2,
+  "run_id": "run-demo-0001",
+  "build_id": "build-demo-0001",
+  "scope": "diagnosis",
+  "generated_at": "2026-10-26T21:30:00Z",
+  "data_times": [],
+  "run_status": "ok",
+  "stale": null,
+  "title": "体质诊断 · 10 年",
+  "sentence": "x",
+  "notes": [],
+  "gaps": [],
+  "basis_note": "x",
+  "groups": []
+}
