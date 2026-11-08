@@ -8,9 +8,9 @@ type Series = Payload['quote_series'][number]
 type PayloadCell = Series['points'][number]['bid']
 
 const CONFIG: ChartConfig = {
-  bid: { label: 'Bid', color: 'var(--chart-1)' },
-  ask: { label: 'Ask', color: 'var(--chart-2)' },
-  last: { label: 'Last', color: 'var(--chart-3)' },
+  bid: { label: '买价', color: 'var(--chart-1)' },
+  ask: { label: '卖价', color: 'var(--chart-2)' },
+  last: { label: '成交价', color: 'var(--chart-3)' },
 }
 
 const valueOf = (cell: PayloadCell) => (cell.kind === 'value' ? cell.value : null)
@@ -23,7 +23,11 @@ function SeriesChart({ series }: { series: Series }) {
     last: valueOf(point.last),
   }))
   return (
-    <ChartContainer config={CONFIG} className="aspect-[2/1] w-full min-h-56">
+    <ChartContainer
+      config={CONFIG}
+      className="aspect-[2/1] w-full min-h-56"
+      data-slots={data.map((point) => point.slot).join(',')}
+    >
       <LineChart data={data}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="slot" />

@@ -6,26 +6,30 @@ type ChainRow = Payload['chain']['rows'][number]
 type PayloadCell = ChainRow['bid']
 
 const COLUMNS: Column[] = [
-  { id: 'expiry', label: 'Expiry' },
-  { id: 'right', label: 'Right' },
-  { id: 'strike', label: 'Strike', align: 'right' },
-  { id: 'status', label: 'Status' },
-  { id: 'bid', label: 'Bid', align: 'right' },
-  { id: 'ask', label: 'Ask', align: 'right' },
-  { id: 'last', label: 'Last', align: 'right' },
-  { id: 'volume', label: 'Volume', align: 'right' },
-  { id: 'open_interest', label: 'Open interest', align: 'right' },
+  { id: 'expiry', label: '到期' },
+  { id: 'right', label: '类型' },
+  { id: 'strike', label: '行权价', align: 'right' },
+  { id: 'status', label: '状态' },
+  { id: 'bid', label: '买价', align: 'right' },
+  { id: 'ask', label: '卖价', align: 'right' },
+  { id: 'last', label: '成交价', align: 'right' },
+  { id: 'volume', label: '成交量', align: 'right' },
+  { id: 'open_interest', label: 'OI', align: 'right' },
   { id: 'iv', label: 'IV', align: 'right' },
-  { id: 'delta', label: 'Delta', align: 'right' },
-  { id: 'gamma', label: 'Gamma', align: 'right' },
-  { id: 'theta', label: 'Theta', align: 'right' },
+  { id: 'delta', label: 'Δ', align: 'right' },
+  { id: 'gamma', label: 'Γ', align: 'right' },
+  { id: 'theta', label: 'Θ', align: 'right' },
   { id: 'vega', label: 'Vega', align: 'right' },
 ]
 
-// A figure keeps its number for sorting; a gap keeps its reason and text and has no value.
+// A figure keeps its number for sorting; the ≈USD text sits beside it as sent; a gap keeps its reason and text and has no value.
 const cellOf = (cell: PayloadCell): Cell =>
   cell.kind === 'value'
-    ? { text: cell.text, value: cell.value }
+    ? {
+        text: cell.text,
+        value: cell.value,
+        approx_usd: cell.approx_usd_text ? { text: cell.approx_usd_text } : null,
+      }
     : { reason: cell.reason, text: cell.text }
 
 const plain = (text: string | null): Cell => ({ text: text ?? '-', value: text })
