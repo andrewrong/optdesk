@@ -50,6 +50,11 @@ type file struct {
 // SessionDays runs the generator over the days and returns the rows it wrote. No error text holds
 // a path or a value of the file.
 func (s source) SessionDays(ctx context.Context, calendarID string, from, to contracts.Day) ([]contracts.SessionDay, error) {
+	first, err1 := time.Parse(time.DateOnly, string(from))
+	last, err2 := time.Parse(time.DateOnly, string(to))
+	if err1 != nil || err2 != nil {
+		return nil, permanent("the requested days are not dates")
+	}
 	dir, err := os.MkdirTemp(s.workDir, "calendar-")
 	if err != nil {
 		return nil, &typedError{contracts.Retryable, "cannot make the temporary directory"}
@@ -80,13 +85,13 @@ func (s source) SessionDays(ctx context.Context, calendarID string, from, to con
 	if err := json.Unmarshal(raw, &f); err != nil {
 		return nil, permanent("the generated file is not a valid calendar object")
 	}
-	if err := check(f, calendarID, from, to); err != nil {
+	if err := check(f, calendarID, first, last); err != nil {
 		return nil, err
 	}
 	return f.Rows, nil
 }
 
-func check(f file, calendarID string, from, to contracts.Day) error {
+func check(f file, calendarID string, first, last time.Time) error {
 	p := f.Provenance
 	if p == nil {
 		return permanent("the generated file has no provenance")
@@ -95,11 +100,6 @@ func check(f file, calendarID string, from, to contracts.Day) error {
 		if v == "" {
 			return permanent("the provenance of the generated file is incomplete")
 		}
-	}
-	first, err1 := time.Parse(time.DateOnly, string(from))
-	last, err2 := time.Parse(time.DateOnly, string(to))
-	if err1 != nil || err2 != nil {
-		return permanent("the requested days are not dates")
 	}
 	var prev time.Time
 	for i, r := range f.Rows {

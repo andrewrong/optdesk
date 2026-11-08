@@ -162,3 +162,13 @@ func TestTempDirRemoved(t *testing.T) {
 		}
 	}
 }
+
+func TestBadRequestedDayIsPermanentAndRunsNothing(t *testing.T) {
+	t.Parallel()
+	ran := false
+	src := calendarcli.New(nil, t.TempDir(), func(context.Context, []string) (int, error) { ran = true; return 0, nil })
+	_, err := src.SessionDays(context.Background(), "XNYS", "2026-13-01", to)
+	if err == nil || kindOf(t, err) != contracts.Permanent || ran {
+		t.Fatalf("err = %v, ran = %v", err, ran)
+	}
+}
