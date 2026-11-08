@@ -26,15 +26,15 @@ const (
 )
 
 type keyRunner struct {
-	ops   store.OpsLedger
-	sched store.SchedulerLedger
-	clk   clockwork.Clock
+	ops store.OpsLedger
+	clk clockwork.Clock
 }
 
-// NewKeyRunner builds the one path that runs a job for one key. sched is kept for the
-// per-key lease of stage 2; in stage 1 the caller holds ops.run_lease.
-func NewKeyRunner(ops store.OpsLedger, sched store.SchedulerLedger, clk clockwork.Clock) runner.KeyRunner {
-	return &keyRunner{ops: ops, sched: sched, clk: clk}
+// NewKeyRunner builds the one path that runs a job for one key. It takes no lease of its
+// own in stage 1 (the caller holds ops.run_lease), so the SchedulerLedger of the
+// constructor type is not used.
+func NewKeyRunner(ops store.OpsLedger, _ store.SchedulerLedger, clk clockwork.Clock) runner.KeyRunner {
+	return &keyRunner{ops: ops, clk: clk}
 }
 
 // RunKey runs key through job under a context that ends at deadline, and records the run
@@ -127,7 +127,19 @@ func (k *keyRunner) verdict(
 // heartbeat renews the run row every 30 s until the returned stop is called, which waits
 // for the last write, so the final row is never overwritten by a beat.
 func (k *keyRunner) heartbeat(wctx, runCtx context.Context, rec store.Run) (stop func()) {
-	t := k.clk.NewTicker(beat)
+	return every(runCtx, k.clk, func() bool {
+		now := k.clk.Now()
+		rec.HeartbeatAt, rec.LeaseUntil = now, now.Add(leaseTTL)
+		// A failed beat is not fatal: the next one, or the final write, follows.
+		_ = k.ops.RecordRun(wctx, rec)
+		return true
+	})
+}
+
+// every calls fn on each 30 s tick of clk until ctx ends, fn returns false, or stop is
+// called; stop waits for a running fn to return.
+func every(ctx context.Context, clk clockwork.Clock, fn func() bool) (stop func()) {
+	t := clk.NewTicker(beat)
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -138,13 +150,12 @@ func (k *keyRunner) heartbeat(wctx, runCtx context.Context, rec store.Run) (stop
 			select {
 			case <-done:
 				return
-			case <-runCtx.Done():
+			case <-ctx.Done():
 				return
 			case <-t.Chan():
-				now := k.clk.Now()
-				rec.HeartbeatAt, rec.LeaseUntil = now, now.Add(leaseTTL)
-				// A failed beat is not fatal: the next one, or the final write, follows.
-				_ = k.ops.RecordRun(wctx, rec)
+				if !fn() {
+					return
+				}
 			}
 		}
 	}()
@@ -162,7 +173,11 @@ func runBound(job contracts.Job) time.Duration {
 }
 
 // deadlineFor is the end of a run started at now: the later of the window close and now,
-// plus the run bound of the job, so a late run is not cut before it starts.
+// plus the run bound of the job. Decision 8 of docs/design/scheduler.md says the window's
+// CloseAt plus the bound; that cuts a run started more than one bound after the close
+// before it starts, and a dataset with no window has no CloseAt. The existing late-run
+// behaviour (TestFullCycleLateRun) needs the later of the two, so this is a stated departure
+// that the design file is to be amended for.
 func deadlineFor(job contracts.Job, closeAt, now time.Time) time.Time {
 	base := now
 	if closeAt.After(base) {
@@ -201,39 +216,24 @@ func (r *reconciler) holdLease(ctx context.Context) (context.Context, func(errp 
 	var (
 		mu       sync.Mutex
 		renewErr error
-		wg       sync.WaitGroup
+		stop     = func() {}
 	)
-	done := make(chan struct{})
 	if r.sched != nil {
-		t := r.fclk.NewTicker(beat)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer t.Stop()
-			for {
-				select {
-				case <-done:
-					return
-				case <-runCtx.Done():
-					return
-				case <-t.Chan():
-					mu.Lock()
-					l, err := r.sched.RenewLease(wctx, lease, leaseTTL)
-					if err != nil {
-						renewErr = err
-						mu.Unlock()
-						cancel()
-						return
-					}
-					lease = l
-					mu.Unlock()
-				}
+		stop = every(runCtx, r.fclk, func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			l, err := r.sched.RenewLease(wctx, lease, leaseTTL)
+			if err != nil {
+				renewErr = err
+				cancel()
+				return false
 			}
-		}()
+			lease = l
+			return true
+		})
 	}
 	return runCtx, func(errp *error) {
-		close(done)
-		wg.Wait()
+		stop()
 		cancel()
 		mu.Lock()
 		defer mu.Unlock()
