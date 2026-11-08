@@ -259,9 +259,7 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer closeFn()
-	h := siteHandler(a, a.deps.newClock(), "", rd, func(vm []byte) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
-	}, http.NotFoundHandler())
+	h := siteHandler(a, a.deps.newClock(), "", rd, echoHandler, http.NotFoundHandler())
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/macro", nil))
 	if rec.Code != 200 || !bytes.Equal(rec.Body.Bytes(), golden) {
@@ -278,6 +276,11 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 	if err != nil || len(got) != 2 || got[0].InstrumentID != 9000 || got[1].InstrumentID != 9010 || got[0].Name == "" {
 		t.Fatalf("demo names %+v %v", got, err)
 	}
+}
+
+// echoHandler writes the view model as the body, so a test needs no built web bundle.
+func echoHandler(vm []byte) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
 }
 
 func TestSiteMissingDSN(t *testing.T) {
