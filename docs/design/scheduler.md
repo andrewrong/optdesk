@@ -245,7 +245,7 @@ Checked by CI: ci-go runs (`go test ./internal/runner/reconcile -race -count=1` 
 ### sched-reconcile-count
 
 - Module: runner. Size: S. Depends on: sched-run-key (landed), sched-runner-probe.
-- Order: after 2, 4 and sched-runner-probe (sched-runner-interface, sched-run-key; sched-runner-probe also edits docs/contracts/runner.md).
+- Order: after 2, 4, 14 (sched-runner-interface, sched-run-key, sched-runner-probe; 14 also edits docs/contracts/runner.md).
 - Design: docs/design/scheduler.md#Decisions
 - Files: internal/runner/reconcile/reconcile.go, internal/runner/reconcile/retry_test.go, internal/runner/reconcile/count_test.go, docs/contracts/runner.md
 - Pull request description: lists the old and new assertion of `TestCrashedRunIsNotExpired`.
@@ -425,7 +425,7 @@ Checked by CI: hygiene (the privacy scan); the design verdict.
 ### sched-runner-probe (interface)
 
 - Module: runner. Size: S. Depends on: sched-runner-interface (landed), sched-run-key (landed).
-- Order: after 2, 4 (sched-runner-interface, sched-run-key: both edit docs/contracts/runner.md), before sched-reconcile-count, sched-ticker and sched-cmd-run; added in revision 10, so it carries no number.
+- Order: after 2, 4 (sched-runner-interface, sched-run-key; both edit docs/contracts/runner.md), before sched-reconcile-count, sched-ticker and sched-cmd-run; added in revision 10, so it carries no number.
 - Design: docs/design/scheduler.md#Interface
 - Files: internal/runner/api.go, internal/runner/api_test.go, docs/contracts/runner.md
 
