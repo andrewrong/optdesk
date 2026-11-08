@@ -41,6 +41,11 @@ func backfill(a *app, args []string) error {
 	}
 	ctx := context.Background()
 	clk := a.deps.newClock()
+	fence, err := holdOffScheduler(ctx, a, cfg, "backfill", "backfill refused: ot scheduler holds the lock or the lock cannot be taken; check ot scheduler status")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = fence.Close() }()
 	var res runner.BackfillResult
 	var runErr, cursorErr error
 	var cursor contracts.Day
@@ -68,8 +73,22 @@ func backfill(a *app, args []string) error {
 	if cursorErr != nil {
 		return fmt.Errorf("read reconcile cursor failed")
 	}
-	switch res.Refused {
+	if err := refusalError(res.Refused, day, cursor); err != nil {
+		return err
+	}
+	if len(res.Missing) > 0 {
+		return fmt.Errorf("backfill %s: %d key(s) are still missing", day, len(res.Missing))
+	}
+	a.log.Info("backfill "+string(day)+" done", "component", "ot", "status", "ok",
+		"already_present", len(res.AlreadyPresent), "filled", len(res.Filled), "absent", len(res.Absent), "missing", len(res.Missing))
+	return nil
+}
+
+// refusalError is the error for a day the backfiller refused; nil when it did not.
+func refusalError(refused runner.BackfillRefusal, day, cursor contracts.Day) error {
+	switch refused {
 	case "":
+		return nil
 	case runner.RefusedAheadOfCursor:
 		shown := string(cursor)
 		if shown == "" {
@@ -78,13 +97,6 @@ func backfill(a *app, args []string) error {
 		return fmt.Errorf("day %s is ahead of the cursor %s: use run-once", day, shown)
 	case runner.RefusedNoPlan:
 		return fmt.Errorf("no plan was recorded for day %s: nothing to backfill", day)
-	default:
-		return fmt.Errorf("backfill %s was refused", day)
 	}
-	if len(res.Missing) > 0 {
-		return fmt.Errorf("backfill %s: %d key(s) are still missing", day, len(res.Missing))
-	}
-	a.log.Info("backfill "+string(day)+" done", "component", "ot", "status", "ok",
-		"already_present", len(res.AlreadyPresent), "filled", len(res.Filled), "absent", len(res.Absent), "missing", len(res.Missing))
-	return nil
+	return fmt.Errorf("backfill %s was refused", day)
 }

@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"path/filepath"
+	"sync"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -26,7 +28,11 @@ type runOnceConfig struct {
 	socketPath                                                               string
 }
 
-func loadRunOnceConfig(a *app) (runOnceConfig, error) {
+func loadRunOnceConfig(a *app) (runOnceConfig, error) { return loadConfig(a, false) }
+
+// loadConfig reads the lines of run-once from $OT_HOME/.env. With allowNoFredKey an empty FRED_API_KEY is not
+// an error: ot scheduler then leaves fred_series out (Decision 8). A missing DSN is always an error.
+func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 	env, err := a.envFile()
 	if err != nil {
 		return runOnceConfig{}, err
@@ -44,7 +50,7 @@ func loadRunOnceConfig(a *app) (runOnceConfig, error) {
 		{store.DSNEnvOptionEod, c.optionEodDSN}, {store.DSNEnvQuoteSnapshot, c.quoteSnapshotDSN},
 		{store.DSNEnvMaster, c.masterDSN}, {"FRED_API_KEY", c.fredKey},
 	} {
-		if l.v == "" {
+		if l.v == "" && (!allowNoFredKey || l.name != "FRED_API_KEY") {
 			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", l.name)
 		}
 	}
@@ -75,6 +81,11 @@ func runOnce(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
+	fence, err := holdOffScheduler(ctx, a, cfg, "run-once", "run-once refused: ot scheduler holds the lock or the lock cannot be taken; check ot scheduler status")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = fence.Close() }()
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
 		return fmt.Errorf("run-once %s: %w", day, err)
 	}
@@ -100,17 +111,59 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 	})
 }
 
-// wiring is what run-once and backfill build from the open stores.
+// wiring is what run-once, backfill and ot scheduler build from the open stores.
 type wiring struct {
 	ledger store.OpsLedger
 	cal    clock.Calendar
 	jobs   []contracts.Job
+	// brokerUp is false when the dial at start failed and the option jobs hold the stand-in broker.
+	brokerUp bool
+	// factory builds a job anew for the probe of ot scheduler; its stores stay open until use returns.
+	factory jobFactory
+	// dial dials the broker anew; the broker it returns is closed when withWiring returns.
+	dial func(ctx context.Context) (broker.Broker, error)
+}
+
+// jobFactory builds the three jobs over the stores withWiring opened.
+type jobFactory struct {
+	d    deps
+	clk  clock.Clock
+	src  sources.Source
+	ser  store.SeriesStore
+	eod  store.OptionEodStore
+	snap store.QuoteSnapshotStore
+	inst store.InstrumentStore
+}
+
+func (f jobFactory) fred() (contracts.Job, error) {
+	j, err := f.d.newFredSeries(f.src, f.ser, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build fred_series job failed: %w", err)
+	}
+	return j, nil
+}
+
+func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
+	j, err := f.d.newOptionEod(b, f.inst, f.eod, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build option_eod job failed")
+	}
+	return j, nil
+}
+
+func (f jobFactory) quoteSnapshot(b broker.Broker) (contracts.Job, error) {
+	j, err := f.d.newQuoteSnapshot(b, f.inst, f.snap, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build quote_snapshot job failed")
+	}
+	return j, nil
 }
 
 // withWiring opens the stores and the broker, wires fred_series, option_eod and quote_snapshot, then
 // calls use; it closes what it opened on every path, last opened first. check runs after the ledger is
 // open and before the other stores are opened; it may be nil. A failed dial does not stop the call: the
-// option jobs get a broker that answers retryable. No error text holds a DSN, a path or a key.
+// option jobs get a broker that answers retryable. An empty FRED key (only ot scheduler lets it through)
+// gives fred_series a source that answers permanent. No error text holds a DSN, a path or a key.
 func withWiring(
 	ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, check func(store.OpsLedger) error, use func(wiring) error,
 ) error {
@@ -150,34 +203,92 @@ func withWiring(
 		return fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
 	}
 	defer func() { _ = instr.Close() }()
-	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
-	if err != nil {
-		return fmt.Errorf("build FRED source failed")
+	var src sources.Source = noKeySource{}
+	if cfg.fredKey != "" {
+		src, err = d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
+		if err != nil {
+			return fmt.Errorf("build FRED source failed")
+		}
 	}
-	brk := dialOrStandIn(ctx, a, cfg.socketPath)
+	brk, brokerUp := dialOrStandIn(ctx, a, cfg.socketPath)
 	defer func() { _ = brk.Close() }()
-	fredJob, err := d.newFredSeries(src, ser, clk)
+	var extra brokerSet
+	defer extra.closeAll()
+	return wireJobs(a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
+		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr}, ledger)
+}
+
+// wireJobs builds the three jobs over the open stores and calls use.
+func wireJobs(
+	a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
+	extra *brokerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
+) error {
+	fredJob, err := f.fred()
 	if err != nil {
-		return fmt.Errorf("build fred_series job failed: %w", err)
+		return err
 	}
-	eodJob, err := d.newOptionEod(brk, instr, eod, clk)
+	eodJob, err := f.optionEod(brk)
 	if err != nil {
-		return fmt.Errorf("build option_eod job failed")
+		return err
 	}
-	snapJob, err := d.newQuoteSnapshot(brk, instr, snap, clk)
+	snapJob, err := f.quoteSnapshot(brk)
 	if err != nil {
-		return fmt.Errorf("build quote_snapshot job failed")
+		return err
 	}
-	return use(wiring{ledger: ledger, cal: d.newCalendar(sd), jobs: []contracts.Job{fredJob, eodJob, snapJob}})
+	return use(wiring{
+		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob}, brokerUp: brokerUp, factory: f,
+		dial: func(ctx context.Context) (broker.Broker, error) {
+			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
+			if err != nil {
+				return nil, err
+			}
+			extra.add(b)
+			return b, nil
+		},
+	})
+}
+
+// brokerSet holds the brokers dialed after start, so that withWiring closes them.
+type brokerSet struct {
+	mu sync.Mutex
+	bs []broker.Broker
+}
+
+func (s *brokerSet) add(b broker.Broker) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bs = append(s.bs, b)
+}
+
+func (s *brokerSet) closeAll() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, b := range s.bs {
+		_ = b.Close()
+	}
 }
 
 // dialOrStandIn dials the broker once; a failure is logged by step name only and gives the stand-in
-// broker, whose Close does nothing.
-func dialOrStandIn(ctx context.Context, a *app, socketPath string) broker.Broker {
+// broker, whose Close does nothing. The bool is false for the stand-in.
+func dialOrStandIn(ctx context.Context, a *app, socketPath string) (broker.Broker, bool) {
 	b, err := a.deps.dialBroker(ctx, socketPath, broker.Options{})
 	if err != nil {
 		a.log.Error("dial broker failed: the option jobs answer retryable", "component", "ot", "step", "dial broker")
-		return unreachableBroker{}
+		return unreachableBroker{}, false
 	}
-	return b
+	return b, true
+}
+
+// holdOffScheduler takes the instance fence and keeps it until the caller closes it: a hand command refuses
+// while ot scheduler holds it (Decision 6). The error texts hold no DSN.
+func holdOffScheduler(ctx context.Context, a *app, cfg runOnceConfig, who, refusal string) (store.Fence, error) {
+	inst, err := a.deps.openFence(ctx, cfg.runnerDSN)
+	if err != nil {
+		return nil, fmt.Errorf("open instance fence with %s failed", store.DSNEnvRunner)
+	}
+	fence, err := inst.TryLock(ctx, who)
+	if err != nil {
+		return nil, errors.New(refusal)
+	}
+	return fence, nil
 }
