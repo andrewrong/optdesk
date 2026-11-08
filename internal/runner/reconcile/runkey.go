@@ -175,11 +175,13 @@ func runBound(job contracts.Job) time.Duration {
 	return defaultRunBound
 }
 
-// deadlineFor is the end of a run: the window's CloseAt plus the run bound of the job
-// (Decision 8 of docs/design/scheduler.md); a dataset with no window has no CloseAt, so
-// its deadline is now plus the bound.
+// deadlineFor is the end of a run: max(CloseAt, start) + the run bound of the job (Decision 8
+// of docs/design/scheduler.md), where start is now, the instant the run begins. A run that
+// begins before the close is cut a bound after the close; a late run or a Backfill of a closed
+// day is cut a bound after its own start. A dataset with no window has no CloseAt, so its
+// deadline is now plus the bound.
 func deadlineFor(job contracts.Job, closeAt, now time.Time) time.Time {
-	if closeAt.IsZero() {
+	if closeAt.IsZero() || closeAt.Before(now) {
 		return now.Add(runBound(job))
 	}
 	return closeAt.Add(runBound(job))
