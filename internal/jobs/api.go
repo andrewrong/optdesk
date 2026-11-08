@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -26,3 +27,17 @@ type NewOptionEodFunc func(broker.Broker, store.InstrumentResolver, store.Option
 
 // NewQuoteSnapshotFunc is the constructor of the quote_snapshot job (internal/jobs/quotesnapshot.New).
 type NewQuoteSnapshotFunc func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error)
+
+// ComputeStores is the seven store interfaces the compute_figures job reads and writes.
+type ComputeStores struct {
+	Catalog     store.OptionEodCatalog
+	OptionEod   store.OptionEodReader
+	Terms       store.OptionTermsReader
+	Names       store.InstrumentNameReader
+	SessionDays store.SessionDayReader
+	Series      store.SeriesReader
+	Readings    store.ReadingStore
+}
+
+// NewComputeFiguresFunc is the constructor of the compute_figures job (internal/jobs/computefigures.New).
+type NewComputeFiguresFunc func(ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error)
