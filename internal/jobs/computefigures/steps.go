@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,6 +31,7 @@ type runState struct {
 	returned int
 	usable   int
 	failed   int
+	noTerms  int // option rows dropped for want of a current terms version
 	firstErr contracts.TypedError
 }
 
@@ -52,14 +54,14 @@ func (r *runState) runIv30(ts []target) {
 		}
 		in := inputs{ComputeStores: r.j.stores, ops: r.j.ops, units: r.j.units, rateSeries: r.j.m.RateSeries,
 			rateMaxAge: t.rule.MaxAgeDays}
-		chain, rate, err := ivInput(r.ctx, in, t.subj.id, r.day)
+		chain, rate, noTerms, err := ivInputCounted(r.ctx, in, t.subj.id, r.day)
+		r.noTerms += noTerms
 		var f compute.Figure
 		switch {
 		case errors.Is(err, errNoRate), errors.Is(err, errNoSession):
 			f = r.missing(t, compute.NoInput, "")
 		case errors.Is(err, errStaleRate):
 			f = r.missing(t, compute.StaleInput, rate.Day)
-			f.StaleRate = true
 		case err != nil:
 			r.failStore(err)
 			continue
@@ -95,8 +97,8 @@ func hashLines(lines []string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// window is the number of calendar days of inputs a series figure reads before the as-of day.
-func window(rule compute.Rule) int {
+// lookbackDays is the number of calendar days of inputs a series figure reads before the as-of day.
+func lookbackDays(rule compute.Rule) int {
 	if rule.Years > 0 {
 		return rule.Years*366 + 7
 	}
@@ -110,7 +112,7 @@ func (r *runState) runMarket(ts []target) {
 			r.failStore(r.ctx.Err())
 			return
 		}
-		from := shiftDay(r.day, -window(t.rule))
+		from := shiftDay(r.day, -lookbackDays(t.rule))
 		var series []compute.Series
 		var lines []string
 		bad := false
@@ -150,7 +152,7 @@ func (r *runState) runIvStats(ts []target) {
 			r.failStore(r.ctx.Err())
 			return
 		}
-		from := shiftDay(r.day, -window(t.rule))
+		from := shiftDay(r.day, -lookbackDays(t.rule))
 		rows, err := r.j.stores.Readings.LatestReadings(r.ctx, r.j.m.Iv30, kindUnderlying, t.subj.name, from, r.day)
 		if err != nil {
 			r.failStore(fmt.Errorf("computefigures: iv30 readings: %w", err))
@@ -232,6 +234,11 @@ func (r *runState) store(t target, f compute.Figure, rowsHash string, in []input
 			return
 		}
 		rec.Rev = p.Rev + 1
+		if p.State == "ok" && rec.State == "missing_input" {
+			// v3's winner rule keeps showing the earlier ok; the change is only visible here.
+			slog.Warn("computefigures: a missing reading is hidden behind an earlier ok", "name", rec.Name,
+				"subject", rec.Subject, "day", string(r.day), "rev", rec.Rev)
+		}
 	}
 	if _, err := r.j.stores.Readings.InsertReadings(r.ctx, []contracts.ReadingRecord{rec}); err != nil {
 		r.failStore(fmt.Errorf("computefigures: insert readings: %w", err))
@@ -313,7 +320,7 @@ func parameters(rule compute.Rule, iv30 bool, f compute.Figure) []param {
 		ps = append(ps, tag("data_day", string(f.DataDay)))
 	}
 	ps = append(ps, num("observations", f.Observations))
-	if iv30 {
+	if iv30 && f.Status == compute.StatusOK {
 		ps = append(ps, tag("stale_rate", strconv.FormatBool(f.StaleRate)))
 	}
 	if rule.Window > 0 {

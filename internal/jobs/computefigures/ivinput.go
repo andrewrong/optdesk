@@ -45,13 +45,20 @@ type expiryKey struct {
 // ivInput maps the stored rows of one underlying on day to the arguments of Iv30. The rate is
 // returned with errStaleRate when it is older than rateMaxAge calendar days; errNoRate when there is none.
 func ivInput(ctx context.Context, s inputs, underlyingID int64, day contracts.Day) ([]compute.ExpiryQuotes, compute.Point, error) {
-	rate, err := rateOf(ctx, s, day)
+	chain, rate, _, err := ivInputCounted(ctx, s, underlyingID, day)
+	return chain, rate, err
+}
+
+// ivInputCounted is ivInput with the count of rows dropped because they have no current terms version.
+func ivInputCounted(ctx context.Context, s inputs, underlyingID int64, day contracts.Day) (chain []compute.ExpiryQuotes,
+	rate compute.Point, noTerms int, err error) {
+	rate, err = rateOf(ctx, s, day)
 	if err != nil {
-		return nil, rate, err
+		return nil, rate, 0, err
 	}
 	rows, err := s.OptionEod.OptionEod(ctx, underlyingID, day, day)
 	if err != nil {
-		return nil, rate, fmt.Errorf("computefigures: option_eod: %w", err)
+		return nil, rate, 0, fmt.Errorf("computefigures: option_eod: %w", err)
 	}
 	latest := map[int64]contracts.OptionEod{}
 	for _, r := range rows {
@@ -72,7 +79,7 @@ func ivInput(ctx context.Context, s inputs, underlyingID int64, day contracts.Da
 	for _, c := range chunks(ids) {
 		got, err := s.Terms.OptionTerms(ctx, c)
 		if err != nil {
-			return nil, rate, fmt.Errorf("computefigures: terms: %w", err)
+			return nil, rate, 0, fmt.Errorf("computefigures: terms: %w", err)
 		}
 		for _, t := range got {
 			strike, perr := strconv.ParseFloat(t.Strike, 64)
@@ -87,7 +94,8 @@ func ivInput(ctx context.Context, s inputs, underlyingID int64, day contracts.Da
 	for _, id := range ids {
 		t, ok := terms[id]
 		if !ok {
-			continue // no current terms version: dropped
+			noTerms++ // no current terms version: dropped and counted
+			continue
 		}
 		k := expiryKey{day: t.expiry, am: t.am}
 		if groups[k] == nil {
@@ -100,8 +108,8 @@ func ivInput(ctx context.Context, s inputs, underlyingID int64, day contracts.Da
 		}
 		applyRow(q, t.right, latest[id])
 	}
-	chain, err := toChain(ctx, s, day, groups)
-	return chain, rate, err
+	chain, err = toChain(ctx, s, day, groups)
+	return chain, rate, noTerms, err
 }
 
 type termsRow struct {

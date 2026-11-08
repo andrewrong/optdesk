@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 // fakeFigs answers like the core in the way the job can see: an empty input is no_input, a short one
@@ -377,3 +378,51 @@ func TestValueIsRoundedText(t *testing.T) {
 }
 
 func ptr(v float64) *float64 { return &v }
+
+func TestPlanKeysUniqueWhenNamesCollide(t *testing.T) {
+	t.Parallel()
+	f := world()
+	f.latest = append(f.latest, store.OptionEodLatest{UnderlyingID: 2, SessionDay: dayD})
+	f.names[2] = "SPY"
+	row := eodRow(200, fp(1), fp(2), nil, closeD)
+	row.UnderlyingID = 2
+	f.eod[2] = []contracts.OptionEod{row}
+	j := newJob(t, f, newFigs())
+	seen := map[string]bool{}
+	for _, k := range plan(t, j) {
+		if seen[k.SubjectKey] {
+			t.Fatalf("duplicate key %s", k.SubjectKey)
+		}
+		seen[k.SubjectKey] = true
+	}
+	for _, want := range []string{"market.iv30_own|underlying|underlying:1", "market.iv30_own|underlying|underlying:2"} {
+		if !seen[want] {
+			t.Fatalf("missing key %s", want)
+		}
+	}
+}
+
+func TestUnknownMethodRejected(t *testing.T) {
+	t.Parallel()
+	j := &job{m: manifest{Iv30: "market.iv30_own", Ivp: "market.ivp_own", Ivr: "market.ivr_own",
+		Market: []marketSpec{{ID: "market.vix_pctile_3y", Method: "typo", Series: []string{"VIXCLS"}}}},
+		rules: rules.New(), rule: map[string]compute.Rule{}}
+	if err := j.findRules(); err == nil {
+		t.Fatal("an unknown method must be an error")
+	}
+}
+
+func TestDroppedRowsAreCounted(t *testing.T) {
+	t.Parallel()
+	f := world()
+	delete(f.terms, 101) // a row without a current terms version
+	_, _, n, err := ivInputCounted(context.Background(), testInputs(f), 1, dayD)
+	if err != nil || n != 1 {
+		t.Fatalf("no-terms count %d err %v, want 1", n, err)
+	}
+	f.latest = append(f.latest, store.OptionEodLatest{UnderlyingID: 3, SessionDay: "2026-11-09"})
+	_, dropped, err := listSubjects(context.Background(), f.stores(), dayD)
+	if err != nil || dropped != 1 {
+		t.Fatalf("later-only count %d err %v, want 1", dropped, err)
+	}
+}

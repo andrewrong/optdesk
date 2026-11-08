@@ -314,7 +314,7 @@ func TestIvInputStaleRateRules(t *testing.T) {
 		state     string
 		code      int
 		staleRate string
-	}{{5, "missing_input", 3, "true"}, {4, "ok", 0, "true"}, {1, "ok", 0, "true"}, {0, "ok", 0, "false"}} {
+	}{{5, "missing_input", 3, ""}, {4, "ok", 0, "true"}, {1, "ok", 0, "true"}, {0, "ok", 0, "false"}} {
 		f := world()
 		f.series["DGS3MO"] = nil
 		f.addRate(shiftDay(dayD, -tc.age), 4)

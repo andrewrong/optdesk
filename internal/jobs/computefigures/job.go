@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -103,6 +104,9 @@ func (j *job) findRules() error {
 		if len(ms.Series) == 0 || (ms.Method == methodRatio && len(ms.Series) != 2) {
 			return fmt.Errorf("computefigures: manifest: bad series of %s", ms.ID)
 		}
+		if ms.Method != methodRatio && ms.Method != methodPercent && ms.Method != methodMAGap {
+			return fmt.Errorf("computefigures: manifest: unknown method of %s", ms.ID)
+		}
 		ids = append(ids, ms.ID)
 	}
 	for _, id := range ids {
@@ -135,9 +139,12 @@ func dayValue(d string) contracts.Day { return contracts.Day(d) }
 
 // Plan lists one key per rule and subject, sorted, and the hash of the plan.
 func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.ExpectedKey, string, error) {
-	subs, err := subjects(ctx, j.stores, day)
+	subs, dropped, err := listSubjects(ctx, j.stores, day)
 	if err != nil {
 		return nil, "", err
+	}
+	if dropped > 0 {
+		slog.Info("computefigures: underlyings dropped for having only later rows", "day", string(day), "count", dropped)
 	}
 	var keys []contracts.ExpectedKey
 	for _, s := range subs {
@@ -188,7 +195,10 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			market = append(market, target{rule: rule, subj: subject{kind: kind, name: subj}, spec: spec})
 		case known && kind == kindUnderlying:
 			if under == nil {
-				subs, err := subjects(ctx, j.stores, day)
+				subs, dropped, err := listSubjects(ctx, j.stores, day)
+				if dropped > 0 {
+					slog.Info("computefigures: underlyings dropped for having only later rows", "day", string(day), "count", dropped)
+				}
 				if err != nil {
 					r.fail(contracts.Retryable, err)
 					under = map[string]subject{}
@@ -217,6 +227,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r.runIv30(iv30)
 	r.runMarket(market)
 	r.runIvStats(ivs)
+	if r.noTerms > 0 {
+		slog.Info("computefigures: option rows dropped for want of current terms", "day", string(day), "count", r.noTerms)
+	}
 	res := contracts.JobResult{Returned: r.returned, Usable: r.usable}
 	if r.firstErr != nil {
 		res.Err = r.firstErr
