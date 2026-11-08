@@ -117,7 +117,7 @@ describe('stock option view', () => {
     expect(page).toContain(gap.matrix.empty)
     expect(page).toContain(gap.contracts.empty)
     expect(page).not.toContain(ok.cards[0]?.title ?? '')
-    expect(page).not.toContain('Notice read the card first')
+    expect(page).not.toContain(ok.notice)
   })
 
   it('refuses a schema_version it does not read', () => {
