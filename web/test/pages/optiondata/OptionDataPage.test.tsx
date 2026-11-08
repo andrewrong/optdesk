@@ -1,11 +1,22 @@
 // The fixtures of contracts/fixtures are the independent reference: the page shows their texts as written.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { act } from 'react'
+import { act, cloneElement, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OptionDataPage, validateOptionDataPage } from '@/pages/optiondata/OptionDataPage'
 import type { OptionDataPagePayload } from '@/pages/optiondata/OptionDataPage'
+
+const yAxisProps = vi.hoisted(() => [] as Record<string, unknown>[])
+vi.mock('recharts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('recharts')>()),
+  ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
+    cloneElement(children, { width: 640, height: 288 }),
+  YAxis: (props: Record<string, unknown>) => {
+    yAxisProps.push(props)
+    return null
+  },
+}))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const dir = path.resolve(import.meta.dirname, '../../../../contracts/fixtures')
@@ -186,5 +197,12 @@ describe('option data page', () => {
     }
     expect(all).not.toContain('Expiry')
     expect(all).not.toContain('Strike')
+  })
+
+  it('fits the quote y-axis to the data', async () => {
+    yAxisProps.length = 0
+    await show(fixture('ok'))
+    expect(yAxisProps.length).toBeGreaterThan(0)
+    expect(yAxisProps[0]!.domain).toEqual(['auto', 'auto'])
   })
 })

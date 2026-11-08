@@ -31,7 +31,7 @@ function SeriesChart({ series }: { series: Series }) {
       <LineChart data={data}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="slot" />
-        <YAxis />
+        <YAxis domain={['auto', 'auto']} />
         <ChartTooltip content={<ChartTooltipContent />} />
         {Object.keys(CONFIG).map((key) => (
           <Line
