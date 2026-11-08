@@ -117,8 +117,8 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 		migrateUp:      func(context.Context, string, fs.FS) error { return leakErr() },
 	}
 	if name == "migrate" {
-		// a PgError-shaped error with a fixed message; the wrapper text holds the sentinels
-		pg := &fakePgError{code: "42704", msg: `role "r" does not exist`}
+		// a PgError-shaped error whose Detail holds the sentinels; the wrapper text holds them too
+		pg := &fakePgError{code: "42704", msg: `role "r" does not exist`, detail: sentDSN + " " + sentPassword}
 		a.deps.migrateUp = func(context.Context, string, fs.FS) error {
 			return &goose.PartialError{
 				Failed: &goose.MigrationResult{Source: &goose.Source{Version: 13}},

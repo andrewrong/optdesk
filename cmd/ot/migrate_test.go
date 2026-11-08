@@ -223,10 +223,11 @@ func migrateFail(t *testing.T, up error) (string, error) {
 	return errb.String(), err
 }
 
-// fakePgError stands for a *pgconn.PgError: an error with a SQLSTATE and a fixed message.
-type fakePgError struct{ code, msg string }
+// fakePgError stands for a *pgconn.PgError: an error with a SQLSTATE, a message and a Detail. Like
+// the real one, its text holds severity, message and SQLSTATE and never the Detail.
+type fakePgError struct{ code, msg, detail string }
 
-func (e *fakePgError) Error() string    { return e.msg }
+func (e *fakePgError) Error() string    { return "ERROR: " + e.msg + " (SQLSTATE " + e.code + ")" }
 func (e *fakePgError) SQLState() string { return e.code }
 
 func partialWrapping(version int64, pg *fakePgError) error {
@@ -247,14 +248,14 @@ func TestMigrateErrorStage(t *testing.T) {
 
 func TestMigrateErrorSQLState(t *testing.T) {
 	t.Parallel()
-	pg := &fakePgError{code: "23505", msg: "duplicate key value"}
+	pg := &fakePgError{code: "23505", msg: "duplicate key value", detail: "DETAILMARKER"}
 	log, err := migrateFail(t, partialWrapping(13, pg))
 	for _, s := range []string{"13", "23505", "duplicate key value"} {
 		if !strings.Contains(err.Error(), s) || !strings.Contains(log, s) {
 			t.Fatalf("%q missing: err %v log %q", s, err, log)
 		}
 	}
-	for _, s := range []string{"WRAPPEDMARKER", "sentinel-pw", "ot setup pg"} {
+	for _, s := range []string{"WRAPPEDMARKER", "DETAILMARKER", "(SQLSTATE", "sentinel-pw", "ot setup pg"} {
 		if strings.Contains(err.Error(), s) || strings.Contains(log, s) {
 			t.Fatalf("%q present: err %v log %q", s, err, log)
 		}
