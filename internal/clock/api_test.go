@@ -155,7 +155,7 @@ func TestCommandSessionSourceContract(t *testing.T) {
 	t.Parallel()
 	var got []string
 	var run clock.CommandFunc = fakeCommand{got: &got}.run
-	var src clock.SessionSource = clock.NewCommandSessionSourceFunc(newFakeCommandSource)([]string{"uv", "run"}, t.TempDir(), run)
+	src := clock.NewCommandSessionSourceFunc(newFakeCommandSource)([]string{"uv", "run"}, t.TempDir(), run)
 	if _, err := src.SessionDays(context.Background(), "XNYS", "2026-11-02", "2026-11-30"); err != nil {
 		t.Fatal(err)
 	}
