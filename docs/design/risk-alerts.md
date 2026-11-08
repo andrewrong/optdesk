@@ -144,7 +144,7 @@ Checked by CI: ci-go (`go test ./internal/compute/... -race -count=1`); the size
 - Module: store. Size: M. Depends on: alerts-store-interface.
 - Order: after 2 (alerts-store-interface).
 - Design: docs/design/risk-alerts.md#Decisions (Decision 4; second-opinion case)
-- Files: one new file `migrations/<next free number>_alerts.sql` (the number is taken at the cut; 0015 on main today, and another design may take it first), internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/alerts_pg_test.go
+- Files: migrations/0015_alerts.sql (landed in PR 536), internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/alerts_pg_test.go
 
 - Goal: schema `alerts` with the one table `alerts.sent(rule_id text, day date, sent_at timestamptz, PK(rule_id, day))`, the role `ot_w_alerts` (INSERT and SELECT on that table, nothing else, no UPDATE, DELETE or TRUNCATE) made by `setup` with the DSN line `OT_PG_DSN_ALERTS`.
 
