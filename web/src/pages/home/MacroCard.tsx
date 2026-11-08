@@ -1,9 +1,9 @@
 // The 宏观 card of the home page (ADR 0034 step 3b, board ab1). Every visible string is a `text` field of the
 // payload; this file formats and computes nothing. `value` is used only by the table's user-started sort.
+import { EaseGauge } from '@/components/ease-gauge/EaseGauge'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/macro_summary'
@@ -46,18 +46,13 @@ export function MacroCard({ payload, showGaps = true }: { payload: Payload; show
             <div className="text-2xl font-semibold" data-ease-figure>
               {ease.figure.text}
             </div>
-            <Progress value={ease.marker_percent.value} aria-label={ease.aria_text} data-marker />
-            <div className="flex justify-between text-xs text-muted-foreground" data-ticks>
-              {ease.ticks.map((tick, index) => (
-                <span key={`${index}-${tick}`}>{tick}</span>
-              ))}
-            </div>
+            <EaseGauge ease={ease} />
             <div className="text-xs text-muted-foreground" data-neutral-band>
               中性区间 {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
             </div>
             <p>{ease.reading_text}</p>
             <div className="text-xs text-muted-foreground" data-week-change>
-              {ease.week_change.text}
+              较上周 {ease.week_change.text}
             </div>
           </div>
         )}

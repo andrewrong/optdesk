@@ -767,3 +767,34 @@ func TestInstrumentNameContract(t *testing.T) {
 		t.Fatalf("id 0: %v", err)
 	}
 }
+
+var _ store.OpenSentFunc = func(context.Context, string) (store.SentStore, error) { return &memSent{}, nil }
+
+// memSent is a fake SentStore that keeps every mark; the filter by day is the store's, not the fake's.
+type memSent struct{ rows []store.SentMark }
+
+func (m *memSent) SentSince(context.Context, contracts.Day) ([]store.SentMark, error) {
+	return m.rows, nil
+}
+
+func (m *memSent) MarkSent(_ context.Context, ruleID string, day contracts.Day) error {
+	m.rows = append(m.rows, store.SentMark{RuleID: ruleID, Day: day})
+	return nil
+}
+
+func (m *memSent) Close() error { return nil }
+
+func TestSentContract(t *testing.T) {
+	t.Parallel()
+	s, ctx, sends := store.SentStore(&memSent{}), context.Background(), 0
+	for i := 0; i < 2; i++ { // a caller: send what is not marked, mark after the send
+		if got, _ := s.SentSince(ctx, "2026-11-05"); len(got) == 0 {
+			sends++
+			_ = s.MarkSent(ctx, "vix_high", "2026-11-05")
+		}
+	}
+	got, err := s.SentSince(ctx, "2026-11-05")
+	if sends != 1 || err != nil || len(got) != 1 || got[0].RuleID != "vix_high" || store.DSNEnvAlerts != "OT_PG_DSN_ALERTS" {
+		t.Fatalf("sends %d got %+v err %v", sends, got, err)
+	}
+}

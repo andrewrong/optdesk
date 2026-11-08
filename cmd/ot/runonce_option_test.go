@@ -146,6 +146,7 @@ func newRig(t *testing.T, env string) *rig {
 		return r.fail[name]
 	}
 	d := &r.a.deps
+	d.openFence = fenceOpener(&fakeInstFence{})
 	d.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} }
 	d.newCalendar = func(clock.SessionSource) clock.Calendar { return nil }
 	d.openSessionDay = func(_ context.Context, dsn string) (store.SessionDayStore, error) {

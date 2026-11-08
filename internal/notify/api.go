@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -73,3 +74,29 @@ type NewTelegramSenderFunc func(token, chatID string, o TelegramOptions) (Sender
 
 // NewDryRunSenderFunc is the constructor of the sender that writes the text to w (internal/notify/dryrun.New).
 type NewDryRunSenderFunc func(w io.Writer) Sender
+
+// AlertDeps are the inputs of the alert pass besides the sender, the clock and the Config.
+type AlertDeps struct {
+	// Rules are the alert rules, with PublicSubjects.
+	Rules compute.AlertRules
+	// Evaluate evaluates the rules (internal/compute/alertrules.Evaluate).
+	Evaluate compute.EvaluateAlertsFunc
+	// Read is the winner reader of the report page.
+	Read compute.ReadingFunc
+	// Sent holds the marks of the alerts already said (alerts.sent).
+	Sent store.SentStore
+}
+
+// AlertNotifier makes one pass over the market alerts, in the quiet window of Config.
+//
+// NotifyAlerts sends at most one text "optdesk: N market alert(s)" of the results that are
+// fired and Public and have no mark yet, and calls Sent.MarkSent only for the alerts printed,
+// after the send was confirmed (at-least-once delivery). Inside the quiet window it returns 0
+// and reads nothing. It returns the number of alerts reported; there is no Run and no loop.
+type AlertNotifier interface {
+	NotifyAlerts(ctx context.Context) (int, error)
+}
+
+// NewAlertNotifierFunc is the constructor of the alert notifier (internal/notify/core.NewAlerts);
+// it fails only on a bad Config or an incomplete AlertDeps.
+type NewAlertNotifierFunc func(AlertDeps, Sender, clockwork.Clock, Config) (AlertNotifier, error)

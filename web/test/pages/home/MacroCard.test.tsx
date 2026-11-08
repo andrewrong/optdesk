@@ -27,6 +27,15 @@ async function show(payload: Shown, showGaps?: boolean) {
     root.render(<MacroCard payload={payload} showGaps={showGaps} />)
   })
 }
+// jsdom has no ResizeObserver, which the Radix slider measures its thumb with.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+)
 afterEach(async () => {
   await act(async () => root?.unmount())
   root = null
@@ -46,13 +55,21 @@ describe('MacroCard (macro_summary v2)', () => {
       `中性区间 ${ok.card.ease.neutral_band.low.text} – ${ok.card.ease.neutral_band.high.text}`,
     )
     expect(host.textContent).toContain(ok.card.ease.reading_text)
-    expect(host.querySelector('[data-week-change]')?.textContent).toBe(
+    expect(host.querySelector('[data-week-change]')?.textContent).toContain(
       ok.card.ease.week_change.text,
     )
     expect(host.querySelector('[data-stale]')?.textContent).toBe(ok.card.stale.text)
-    expect(host.querySelector('[data-marker]')?.getAttribute('aria-valuenow')).toBe(
+    expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
       String(ok.card.ease.marker_percent.value),
     )
+  })
+
+  it('labels the week change', async () => {
+    await show(ok)
+    const text = host.querySelector('[data-week-change]')?.textContent ?? ''
+    expect(text.startsWith('较上周')).toBe(true)
+    expect(text.indexOf('较上周')).toBeLessThan(text.indexOf(ok.card.ease.week_change.text))
+    expect(text.endsWith(ok.card.ease.week_change.text)).toBe(true)
   })
 
   it('shows the events of ok with the Gap text of 前值', async () => {
@@ -78,7 +95,7 @@ describe('MacroCard (macro_summary v2)', () => {
     expect(ticks[ticks.length - 1]).toBe('+2')
     expect(host.textContent).toContain('-0.5')
     expect(host.textContent).toContain('+0.5')
-    expect(host.querySelector('[data-marker]')?.getAttribute('aria-valuenow')).toBe(
+    expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
       String(ok.card.ease.marker_percent.value),
     )
   })
@@ -120,7 +137,7 @@ describe('MacroCard (macro_summary v2)', () => {
     await show(gap)
     expect(host.querySelector('[data-ease-gap]')?.textContent).toBe(gap.card.ease.text)
     expect(host.textContent).toContain(gap.card.gaps[0].text)
-    expect(host.querySelector('[data-marker]')).toBeNull()
+    expect(host.querySelector('[role=slider]')).toBeNull()
   })
 
   it('shows the stale text of stale and flags it once the clock passes stale_after', async () => {

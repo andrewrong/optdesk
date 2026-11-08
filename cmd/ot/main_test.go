@@ -3,6 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
@@ -12,7 +17,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/jonboulle/clockwork"
 )
 
 // fakeClock is a clock fixed at one instant.
@@ -136,3 +143,124 @@ func TestBadProfileStopsStart(t *testing.T) {
 func writeFile(path, body string) error { return os.WriteFile(path, []byte(body), 0o600) }
 
 func readFile(path string) ([]byte, error) { return os.ReadFile(path) }
+
+// The two commands below exist only in the test binary: one fails with an exitError, one with a plain error.
+func init() {
+	register("test-exit-75", func(*app, []string) error {
+		return fmt.Errorf("outer: %w", &exitError{code: 75, err: errors.New("replaced")})
+	})
+	register("test-fail", func(*app, []string) error { return errors.New("plain") })
+	leakExcluded["test-exit-75"] = "test-only command"
+	leakExcluded["test-fail"] = "test-only command"
+}
+
+func TestRunHonoursExitCode(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		cmd  string
+		want int
+	}{{"test-exit-75", 75}, {"test-fail", 1}, {"version", 0}} {
+		var out, errb bytes.Buffer
+		if code := run([]string{tc.cmd}, func(string) string { return "" }, &out, &errb); code != tc.want {
+			t.Errorf("%s: exit %d, want %d", tc.cmd, code, tc.want)
+		}
+	}
+}
+
+// healthSched is a Scheduler whose health surface a test sets.
+type healthSched struct {
+	held bool
+	tick time.Time
+}
+
+func (h healthSched) Run(context.Context) error { return nil }
+func (h healthSched) LastTick() time.Time       { return h.tick }
+func (h healthSched) FenceHeld() bool           { return h.held }
+
+func healthGet(t *testing.T, h http.Handler, method, path string) int {
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, path, nil))
+	return rec.Code
+}
+
+func TestSchedulerHealth200WhenFenceHeld(t *testing.T) {
+	t.Parallel()
+	fw := clockwork.NewFakeClock()
+	h := healthHandler(healthSched{held: true, tick: fw.Now()}, fw)
+	fw.Advance(59 * time.Second)
+	if c := healthGet(t, h, http.MethodGet, "/health"); c != 200 {
+		t.Fatalf("status %d", c)
+	}
+}
+
+func TestSchedulerHealth503WhenTickStale(t *testing.T) {
+	t.Parallel()
+	fw := clockwork.NewFakeClock()
+	s := healthSched{held: true, tick: fw.Now()}
+	h := healthHandler(s, fw)
+	fw.Advance(60 * time.Second)
+	if c := healthGet(t, h, http.MethodGet, "/health"); c != 503 {
+		t.Fatalf("stale tick: status %d", c)
+	}
+	if c := healthGet(t, healthHandler(healthSched{held: false, tick: fw.Now()}, fw), http.MethodGet, "/health"); c != 503 {
+		t.Fatalf("fence lost: status %d", c)
+	}
+}
+
+func TestSchedulerHealthOtherPath404(t *testing.T) {
+	t.Parallel()
+	fw := clockwork.NewFakeClock()
+	h := healthHandler(healthSched{held: true, tick: fw.Now()}, fw)
+	if c := healthGet(t, h, http.MethodGet, "/"); c != 404 {
+		t.Fatalf("path /: status %d", c)
+	}
+	if c := healthGet(t, h, http.MethodGet, "/health/x"); c != 404 {
+		t.Fatalf("path /health/x: status %d", c)
+	}
+	for _, m := range []string{http.MethodPost, http.MethodHead, http.MethodDelete} {
+		if c := healthGet(t, h, m, "/health"); c != 405 {
+			t.Fatalf("%s: status %d", m, c)
+		}
+	}
+}
+
+func TestSchedulerHealth200JustAfterStart(t *testing.T) {
+	t.Parallel()
+	// A ticker built now reports the instant of construction as its last tick, before its first turn.
+	fw := clockwork.NewFakeClock()
+	s := sched.New(&fakeFence{lost: make(chan struct{})}, nil, nil, nil, fw, nil, nil, nil, nil, nil)
+	if c := healthGet(t, healthHandler(s, fw), http.MethodGet, "/health"); c != 200 {
+		t.Fatalf("status %d", c)
+	}
+}
+
+func TestSchedulerHealthBindsLoopback(t *testing.T) {
+	t.Parallel()
+	addr, err := healthAddr(func(string) string { return "" })
+	if err != nil || addr != "127.0.0.1:8765" {
+		t.Fatalf("default address %q, err %v", addr, err)
+	}
+	ln, err := listenHealth(func(k string) string {
+		if k == healthPortEnv {
+			return "0"
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	ta, ok := ln.Addr().(*net.TCPAddr)
+	if !ok || !ta.IP.Equal(net.IPv4(127, 0, 0, 1)) || ta.Port == 0 {
+		t.Fatalf("listener %v", ln.Addr())
+	}
+}
+
+func TestExecIdentityIsStable(t *testing.T) {
+	t.Parallel()
+	a, err := execIdentity()
+	b, err2 := execIdentity()
+	if err != nil || err2 != nil || a == "" || a != b {
+		t.Fatalf("identity %q %q, errs %v %v", a, b, err, err2)
+	}
+}

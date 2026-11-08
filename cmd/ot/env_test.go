@@ -15,6 +15,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/jonboulle/clockwork"
 	"github.com/pressly/goose/v3"
 )
 
@@ -96,7 +97,7 @@ func leakErr() error {
 // leakApp builds an app whose env, .env and every opener hold or return the sentinels.
 func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 	t.Helper()
-	env := map[string]string{"OT_HOME": "home", "OT_ZONE": "UTC", store.AdminDSNEnv: sentDSN, "OT_PG_PASSWORD": sentPassword}
+	env := map[string]string{"OT_HOME": "home", "OT_ZONE": "UTC", store.AdminDSNEnv: sentDSN, "OT_PG_PASSWORD": sentPassword, healthPortEnv: "0"}
 	var out, errb bytes.Buffer
 	a, err := newApp(func(k string) string { return env[k] }, &out, &errb)
 	if err != nil {
@@ -104,6 +105,11 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 	}
 	a.profile.Name = "real"
 	a.deps = deps{
+		openFence:  fenceOpener(&fakeInstFence{}),
+		newFwClock: func() clockwork.Clock { return clockwork.NewFakeClock() },
+		notifyContext: func(ctx context.Context) (context.Context, context.CancelFunc) {
+			return context.WithCancel(ctx)
+		},
 		newClock:    func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} },
 		newCalendar: func(clock.SessionSource) clock.Calendar { return nil },
 		readEnv: func(string) (map[string]string, error) {
@@ -136,6 +142,7 @@ var leakRows = map[string][]string{
 	"setup":       {"pg"},
 	"page":        {"--day", "2026-03-04"},
 	"run-once":    {"--day", "2026-03-04"},
+	"scheduler":   nil,
 	"backfill":    {"--day", "2026-03-04"},
 	"series-load": {"--series", "SP500", "--from", "2021-01-01", "--to", "2026-01-01"},
 }
