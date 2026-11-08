@@ -65,7 +65,7 @@ export function Chart({
   const common = { data: rows, margin: { left: 8, right: 8, top: 16, bottom: 8 } }
   const parts = [
     <CartesianGrid key="grid" vertical={false} />,
-    <XAxis key="x" dataKey="category" interval="preserveStartEnd" minTickGap={24} {...axis} />,
+    <XAxis key="x" dataKey="category" {...axis} interval="preserveStartEnd" minTickGap={24} />,
     <YAxis key="y" hide domain={['auto', 'auto']} />,
     <ChartTooltip key="tip" content={<ChartTooltipContent />} />,
     spec.legend ? <ChartLegend key="legend" content={<ChartLegendContent />} /> : null,

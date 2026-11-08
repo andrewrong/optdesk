@@ -136,7 +136,7 @@ describe('MarketSummaryCard', () => {
     expect(xAxes.length).toBeGreaterThan(0)
     const axis = xAxes[xAxes.length - 1]!
     expect(axis.interval).toBe('preserveStartEnd')
-    expect(axis.minTickGap as number).toBeGreaterThanOrEqual(24)
+    expect(axis.minTickGap).toBe(24)
     expect(drawn[drawn.length - 1]!.categories).toEqual(
       payload.card.chart.points.map((point: { label: string }) => point.label),
     )
