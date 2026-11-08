@@ -112,6 +112,16 @@ func TestMigrateDirEmpty(t *testing.T) {
 	checkDirRefused(t, dir)
 }
 
+// A subdirectory named like a migration is not a migration file.
+func TestMigrateDirOnlySubdirNamedSQL(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "x.sql"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	checkDirRefused(t, dir)
+}
+
 func TestMigrateDirWithSQL(t *testing.T) {
 	t.Parallel()
 	a, _, rec := migrateApp(t, map[string]string{store.AdminDSNEnv: "d"}, "real", okUp)
