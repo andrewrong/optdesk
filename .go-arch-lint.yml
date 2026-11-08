@@ -47,6 +47,8 @@ components:
     in: internal/store/snapshot
   compute:
     in: internal/compute
+  compute/own:
+    in: internal/compute/own
   runner:
     in: internal/runner
   runner/reconcile:
@@ -152,6 +154,11 @@ deps:
   compute:
     mayDependOn:
       - contracts
+  compute/own:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   runner:
     mayDependOn:
       - contracts
@@ -263,6 +270,7 @@ deps:
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
+      - compute/own
   compute/contracttest:
     mayDependOn:
       - contracts
