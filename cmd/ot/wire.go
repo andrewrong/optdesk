@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io/fs"
+	"net/http"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -203,3 +204,6 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 		Choices:      choices,
 	})
 }
+
+// newAssets returns the handler of /assets/* of the web bundle; the one place wire.go calls embed.Assets.
+func newAssets() http.Handler { return embed.Assets() }
