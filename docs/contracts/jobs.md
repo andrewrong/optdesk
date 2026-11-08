@@ -45,14 +45,25 @@ A manifest without the table has no schedule: `Schedule()` returns empty strings
 
 Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `0s`, bound 16m (8 minutes plus its budget), restart-sensitive; `fred_series` `time` 07:30 in `America/New_York`, bound 5m, not restart-sensitive; `quote_snapshot` `session_close` `-30m`, bound 16m, restart-sensitive.
 
+## compute_figures
+
+`computefigures.New(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock)` builds the job `compute_figures` (type `jobs.NewComputeFiguresFunc`); the design is `docs/design/compute-figures.md`. `jobs.ComputeStores` holds the seven store interfaces the job uses: `Catalog` (`store.OptionEodCatalog`), `OptionEod` (`store.OptionEodReader`), `Terms` (`store.OptionTermsReader`), `Names` (`store.InstrumentNameReader`), `SessionDays` (`store.SessionDayReader`), `Series` (`store.SeriesReader`) and `Readings` (`store.ReadingStore`). The job is declared here; its implementation is a later issue.
+
+- Keys: one `{readings.reading, "name|subject_kind|subject"}` per (rule, subject). `subject_kind` is `underlying` (subject is the symbol of `InstrumentNames`, else `underlying:<id>`) or `market` (subject is the FRED id of the first input).
+- Steps, in order: IV30, then the market figures, then IVP and IVR from the stored IV30 readings, so a missing IV30 gives a missing IVP with `no_input`. A step that fails does not stop the others; its keys are written missing or stay absent, and the postcondition names them.
+- As-of day: the slot day. `Postcondition`: every planned key has a reading row for the as-of day, ok or missing.
+- Iv30 input rules (Decision 10): subjects are the underlyings of `OptionEodCatalog.OptionEodLatest(ctx, day)` that have a row of the day itself in `OptionEod(ctx, id, day, day)`, named by `InstrumentNames`. Of one `instrument_id` the row with the latest `received_at` is used, and only `status` 1. `OptionTerms` is asked in chunks of 500 ids; a row without a current terms version is dropped and counted. The mid is (bid+ask)/2 when both are present, `ask >= bid` and `ask > 0`, else that side is absent; an IV absent or not above 0 is 0. `T` runs from the close of the as-of day's session row (calendar `XNYS`) to the `close_at` of the expiration day's session row, or its `open_at` for an `AM` settlement; an expiration day that is not a session day drops that expiry; minutes are floored. The rate is the newest `DGS3MO` point not after the as-of day; none gives a missing `no_input`.
+- Retry classes: a store error is `Retryable`; a bad rule (an unknown id or version, a rule the core rejects) is `Permanent`. A figure the core marks missing is stored `missing_input` with its reason, never skipped.
+
 ## Version history
 
 - v1: `fred_series`, manifest version 1.
 - v1: `option_eod`, manifest version 1.
+- v1: `compute_figures`, interface only (`jobs.ComputeStores`, `jobs.NewComputeFiguresFunc`).
 
 ## Contract tests
 
-- `internal/jobs/api_test.go`: `TestRegistryContract`, the interface.
+- `internal/jobs/api_test.go`: `TestRegistryContract`, `TestNewComputeFiguresFuncContract`, the interface.
 - `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
 - `schedule_test.go` of each of the three packages: `TestEmbeddedSchedule`, `TestBadScheduleTable`.
 - `internal/jobs/fredseries/window_test.go`: `TestWindowOf`, `TestWindowErrors`, `TestEmbeddedWindow`.
