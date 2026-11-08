@@ -165,14 +165,16 @@ func TestSessionDayFixtureValues(t *testing.T) {
 func TestSeriesPointFixtureValues(t *testing.T) {
 	t.Parallel()
 	recs, _ := loadRecords(t, "obs.series_point")
-	if len(recs) != 3 {
-		t.Fatalf("want 3 records, got %d", len(recs))
+	if len(recs) != 4 {
+		t.Fatalf("want 4 records, got %d", len(recs))
 	}
-	dates := []string{"2026-11-02", "2026-11-03", "2026-11-04"}
-	values := []any{4.1, nil, 4.2}
-	statuses := []string{"present", "no_value", "present"}
+	ids := []string{"DGS10", "DGS10", "DGS10", "VIXCLS"}
+	units := []string{"percent", "percent", "percent", "index_points"}
+	dates := []string{"2026-11-02", "2026-11-03", "2026-11-04", "2026-11-04"}
+	values := []any{4.1, nil, 4.2, 18.2}
+	statuses := []string{"present", "no_value", "present", "present"}
 	for i, r := range recs {
-		if r["series_id"] != "DGS10" || r["unit"] != "percent" || r["source"] != "fred" ||
+		if r["series_id"] != ids[i] || r["unit"] != units[i] || r["source"] != "fred" ||
 			r["observation_date"] != dates[i] || r["value"] != values[i] || r["status"] != statuses[i] {
 			t.Fatalf("record %d: %v", i, r)
 		}
