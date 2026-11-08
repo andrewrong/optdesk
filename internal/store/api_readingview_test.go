@@ -18,7 +18,7 @@ type memView struct{ rows []contracts.ReadingRecord }
 func (m *memView) WinnerReadings(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
 	out := []contracts.ReadingRecord{}
 	for _, r := range m.rows {
-		if r.Name == name && r.SubjectKind == kind && r.Subject == subject && !r.Day.Time.Before(string2time(from)) && !r.Day.Time.After(string2time(to)) {
+		if r.Name == name && r.SubjectKind == kind && r.Subject == subject && !r.Day.Before(string2time(from)) && !r.Day.After(string2time(to)) {
 			out = append(out, r)
 		}
 	}
@@ -53,7 +53,7 @@ func TestReadingViewReaderContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// The caller side: reads two days through the interface only.
 	got, err := r.WinnerReadings(ctx, "n", "k", "s", "2026-11-04", "2026-11-05")
