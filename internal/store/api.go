@@ -344,3 +344,110 @@ type OpenLedgerFunc func(ctx context.Context, dsn string) (OpsLedger, error)
 
 // SetupFunc creates the database objects (internal/store/setup.Setup).
 type SetupFunc func(ctx context.Context, cfg SetupConfig) error
+
+// The statuses a scheduler run may also take (additive; the column is text).
+const (
+	// RunPartial is a run cut at its deadline or at a stop after it returned rows (Returned > 0). It is a counted
+	// verdict but does not mark the key present: the key stays missing and the tick runs it again.
+	RunPartial RunStatus = "partial"
+	// RunAbandoned is a run cut by a graceful stop with Returned = 0 (reason abandoned_stop); it is not counted.
+	// A crashed run is not this status: it stays running, its lease lapses, and the reconciler marks it with reason crashed.
+	RunAbandoned RunStatus = "abandoned"
+)
+
+// Fence is a held instance fence: one scheduler per database.
+type Fence interface {
+	// Lost returns a channel that is closed when the fence is no longer held (its connection died).
+	Lost() <-chan struct{}
+	// Close releases the fence; it is safe to call more than once.
+	Close() error
+}
+
+// InstanceFence takes the one-scheduler fence. Only cmd/ot calls it.
+type InstanceFence interface {
+	// TryLock takes the fence for build without waiting; it fails with a Retryable error while another holds it.
+	// The fence holds one dedicated connection until Close.
+	TryLock(ctx context.Context, build string) (Fence, error)
+}
+
+// Gap is one record of ops.job_gap. A key gap (expired, partial, crashed_repeatedly) carries DatasetID, Day and no JobID;
+// a preflight_failed gap carries JobID and no DatasetID. A zero time.Time in ReportedAt or ClearedAt is NULL.
+// ReportedAt has one owner, the notify module; no page sets it.
+type Gap struct {
+	JobID, DatasetID string
+	Day              contracts.Day
+	Reason           string
+	FirstSeenAt      time.Time
+	ReportedAt       time.Time
+	ClearedAt        time.Time
+}
+
+// JobState is one row of ops.scheduler_job: the state of a job as the ticker last saw it.
+// A zero time.Time is NULL; an empty DisabledReason means the job is enabled.
+type JobState struct {
+	JobID            string
+	NextStart        time.Time
+	WindowEnd        time.Time
+	RestartSensitive bool
+	DisabledReason   string
+}
+
+// SchedulerStatus is what `ot scheduler status` shows, read from ops.* only.
+type SchedulerStatus struct {
+	// Build is the build the running scheduler recorded with SetState.
+	Build string
+	// Runs are the non-terminal runs, with HeartbeatAt.
+	Runs []Run
+	Jobs []JobState
+	// Gaps are the open gaps.
+	Gaps []Gap
+}
+
+// SchedulerLedger is the writer of the scheduler tables and the reader of their status; the role is ot_runner.
+// Every lease or gap time comes from the database's now(), never from the caller's clock.
+type SchedulerLedger interface {
+	// RenewLease extends l until the database's now() plus ttl and returns the lease; it fails with a Retryable
+	// error when another owner holds the lease.
+	RenewLease(ctx context.Context, l Lease, ttl time.Duration) (Lease, error)
+	// PutGap inserts g, or updates the open gap of the same key; FirstSeenAt is the database's now() on insert.
+	PutGap(ctx context.Context, g Gap) error
+	// ClearGap sets ClearedAt of the open gap with the key of g to the database's now(); no open gap is no error.
+	ClearGap(ctx context.Context, g Gap) error
+	// MarkGapReported sets ReportedAt of the gap with the key of g to the database's now(); only notify calls it.
+	MarkGapReported(ctx context.Context, g Gap) error
+	// SetState records build in the one row of ops.scheduler_state.
+	SetState(ctx context.Context, build string) error
+	// PutJobStates replaces the rows of ops.scheduler_job with states.
+	PutJobStates(ctx context.Context, states []JobState) error
+	// Status reads ops.* only.
+	Status(ctx context.Context) (SchedulerStatus, error)
+	Close() error
+}
+
+// Expectation is one row of rd.expectation_r1. Closed true: the day has no session, so CLOSED;
+// Closed false with a zero ExpectedDay: no expectation, so UNKNOWN.
+type Expectation struct {
+	DatasetID               string
+	ExpectedDay, PresentDay contracts.Day
+	DueBy                   time.Time
+	Gap                     string
+	Closed                  bool
+}
+
+// GapReader reads the views rd.job_gap_r1 and rd.expectation_r1 as the role ot_ro_pages, which has no grant on an ops table.
+type GapReader interface {
+	// OpenGaps returns the gaps with no ClearedAt, shown whether or not ReportedAt is set.
+	OpenGaps(ctx context.Context) ([]Gap, error)
+	// Expectations returns the expectations with ExpectedDay between from and to, inclusive.
+	Expectations(ctx context.Context, from, to contracts.Day) ([]Expectation, error)
+	Close() error
+}
+
+// OpenFenceFunc opens the instance fence (internal/store/ops.OpenFence).
+type OpenFenceFunc func(ctx context.Context, dsn string) (InstanceFence, error)
+
+// OpenSchedulerLedgerFunc opens the scheduler ledger (internal/store/ops.OpenSchedulerLedger).
+type OpenSchedulerLedgerFunc func(ctx context.Context, dsn string) (SchedulerLedger, error)
+
+// OpenGapReaderFunc opens the gap reader with the line DSNEnvPages (internal/store/ops.OpenGapReader).
+type OpenGapReaderFunc func(ctx context.Context, dsn string) (GapReader, error)

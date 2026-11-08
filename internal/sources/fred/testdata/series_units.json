@@ -1,5 +1,11 @@
 [
   {"series_id": "DGS10", "units": "Percent"},
   {"series_id": "DGS2", "units": "Percent"},
-  {"series_id": "CPIAUCSL", "units": "Index 1982-1984=100"}
+  {"series_id": "CPIAUCSL", "units": "Index 1982-1984=100"},
+  {"series_id": "SP500", "units": "Index"},
+  {"series_id": "VIXCLS", "units": "Index"},
+  {"series_id": "VXNCLS", "units": "Index"},
+  {"series_id": "RVXCLS", "units": "Index"},
+  {"series_id": "VXVCLS", "units": "Index"},
+  {"series_id": "DGS3MO", "units": "Percent"}
 ]

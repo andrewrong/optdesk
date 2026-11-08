@@ -27,8 +27,8 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 - A run that starts after the window's `CloseAt` is late (reason `late`); its keys are reconciled all the same.
 - A day is fully reconciled when every expected key is `present` or `no_value`. The cursor advances only over fully reconciled days, in order, and stops at the first day with a gap or a pending run.
 - The run lease (`Acquire`/`Release`) is held for the whole `Reconcile` call.
-- No `time.Now` or `time.Sleep`: time comes from the injected `clock.Clock`.
-- The root package `internal/runner` holds only `api.go` and `api_test.go`; it depends on `contracts`, `clock` and `store` only, never `internal/jobs` or pgx.
+- No `time.Now` or `time.Sleep`: time comes from the injected `clock.Clock`, and from a `clockwork.Clock` where a timer is needed.
+- The root package `internal/runner` holds only `api.go` and `api_test.go`; it depends on `contracts`, `clock`, `store` and `clockwork` (`github.com/jonboulle/clockwork`, because `NewSchedulerFunc` takes a `clockwork.Clock`) only, never `internal/jobs` or pgx.
 
 ## Backfill
 
@@ -50,7 +50,22 @@ For each session day after the reconcile cursor, up to the requested day, the ru
 
 ## Jobs and slots
 
-None yet. The runner runs the registered jobs one key at a time on the calling goroutine; scheduling slots belong to the follow-up wiring design.
+Declared in `internal/runner/api.go`, declarations only; `contracts.Job` is not edited.
+
+- `Slot{JobID, CalendarID, Anchor, Zone string; Offset time.Duration}`: the plain schedule of one job.
+- Optional methods of a job, standard-library types only so a job package imports no runner type: `Scheduled` (`Schedule() (calendarID, anchor, zone string, offset time.Duration)`), `Bounded` (`RunBound() time.Duration`), `Postcondition` (`Postcondition(ctx, day, datasetID, subjectKey string) (bool, error)`: whether the rows of the key exist now) and `RestartSensitive` (`RestartSensitive() bool`). A job without a method gets the default.
+- `KeyRunner.RunKey(ctx, job, day, key, attempt, closeAt, deadline, reason)` runs one key through the job; the run context ends at `deadline`.
+- `Scheduler` (`Run`, `LastTick`, `FenceHeld`): a library may implement it. `LastTick` is the instant of the last loop turn, or of construction before the first; `FenceHeld` is false once the fence is lost.
+- `GapSyncer.Sync(ctx, day, disabled)`: `disabled` maps the id of a left-out job to its reason, nil for none.
+- `ExecIdentityFunc` and the constructor types `NewSchedulerFunc`, `NewKeyRunnerFunc` and `NewReconcilerFunc`.
+
+Fixed run reasons (Decision 7 of `docs/design/scheduler.md`):
+
+- `crashed`: the reconciler's mark on a `running` run whose lease lapsed.
+- `abandoned_stop`: a run cut at a drain with no rows returned.
+- `crashed_repeatedly`: written on the run at the close, after three runs of one `(day, dataset, subject)` ended `crashed` or `abandoned_stop`.
+
+Counting: only `crashed` and `abandoned_stop` runs count toward the brake of three; `empty_before_close` runs and retryable runs before the close count for nothing. `Reconcile` counts the runs of the key that carry these reasons and starts no new run at three; the gap syncer counts the same runs through `store.OpsLedger` and writes the gap at three, and treats a run with `crashed_repeatedly` as proof of the stop.
 
 ## Forbidden
 
