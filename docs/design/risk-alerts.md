@@ -230,7 +230,7 @@ Checked by CI: the design verdict (the amendment says what Decision 10 says); th
 
 ### alerts-wire
 
-Not cut by this design: `alerts-wire` is not cut by this design: it is cut only after the winner reader (`WinnerReadings` over `rd.reading_parameter_r1`) of `docs/design/report-page-producer.md` has landed, together with `notify-wiring` and `sched-cmd-run`; until then nothing wires the alerts pass. The text below is the intent for that later cut, not an issue to open from this design.
+`alerts-wire` is not cut by this design: it is cut only after the winner reader (`WinnerReadings` over `rd.reading_parameter_r1`) of `docs/design/report-page-producer.md` has landed, together with `notify-wiring` and `sched-cmd-run`; until then nothing wires the alerts pass. The text below is the intent for that later cut, not an issue to open from this design.
 
 - Module: ot. Size: M. Depends on: not cut by this design; see the note under the heading.
 - Order: not cut by this design; see the note under the heading. When cut, it edits the files that `notify-wiring` and `sched-cmd-run` create or change (`cmd/ot/scheduler.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `docs/contracts/ot.md`).
