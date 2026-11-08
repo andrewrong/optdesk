@@ -347,9 +347,11 @@ type SetupFunc func(ctx context.Context, cfg SetupConfig) error
 
 // The statuses a scheduler run may also take (additive; the column is text).
 const (
-	// RunPartial is a run that ended with some of its key present and some not.
+	// RunPartial is a run cut at its deadline or at a stop after it returned rows (Returned > 0). It is a counted
+	// verdict but does not mark the key present: the key stays missing and the tick runs it again.
 	RunPartial RunStatus = "partial"
-	// RunAbandoned is a run that the scheduler closed at stop or that crashed past its attempts.
+	// RunAbandoned is a run cut by a graceful stop with Returned = 0 (reason abandoned_stop); it is not counted.
+	// A crashed run is not this status: it stays running, its lease lapses, and the reconciler marks it with reason crashed.
 	RunAbandoned RunStatus = "abandoned"
 )
 
