@@ -609,3 +609,31 @@ func copyPackage(t *testing.T, root, tmp, pkg string) string {
 	}
 	return dst
 }
+
+func TestHashCoversEaseScoreLogic(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	figs, _ := readRegister(t)
+	var e entry
+	for _, c := range readEntries(t) {
+		if c.ID == "macro.ease" {
+			e = c
+		}
+	}
+	f, _ := findFigure(figs, e.ID, e.Version)
+	tmp := t.TempDir()
+	dst := copyPackage(t, root, tmp, "ease")
+	p := filepath.Join(dst, "ease.go")
+	b, _ := os.ReadFile(p)
+	s := strings.Replace(string(b), "obs[days[n-1-p.usLookback]]", "obs[days[n-p.usLookback]]", 1)
+	if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h, err := ruleHash(tmp, f.ImplementedBy, e.numbers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h == e.Hash {
+		t.Fatal("changing which DGS10 observation usChange subtracts leaves the macro.ease hash unchanged")
+	}
+}
