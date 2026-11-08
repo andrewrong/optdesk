@@ -14,8 +14,9 @@ import (
 //go:embed rules.json
 var tableJSON []byte
 
-// entry is one object of rules.json; the field names are its keys.
-type entry struct {
+// numbers are the numbers of a rule: the keys of an object of rules.json but its hash, in the
+// order of the canonical JSON the rule hash covers (Decision 12).
+type numbers struct {
 	ID          string `json:"id"`
 	Version     int    `json:"version"`
 	Convention  string `json:"convention"`
@@ -28,7 +29,12 @@ type entry struct {
 	Years       int    `json:"years"`
 	TradingDays int    `json:"trading_days"`
 	MaxAgeDays  int    `json:"max_age_days"`
-	Hash        string `json:"hash"`
+}
+
+// entry is one object of rules.json.
+type entry struct {
+	numbers
+	Hash string `json:"hash"`
 }
 
 type table struct {

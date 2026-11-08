@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -22,28 +23,6 @@ import (
 )
 
 var _ compute.NewRulesFunc = New
-
-// numbers is the canonical JSON of a rule without its hash (Decision 12): the struct order
-// is the key order.
-type numbers struct {
-	ID          string `json:"id"`
-	Version     int    `json:"version"`
-	Convention  string `json:"convention"`
-	Unit        string `json:"unit"`
-	Scale       int    `json:"scale"`
-	Compare     string `json:"compare"`
-	N           int    `json:"n"`
-	Window      int    `json:"window"`
-	MinValid    int    `json:"min_valid"`
-	Years       int    `json:"years"`
-	TradingDays int    `json:"trading_days"`
-	MaxAgeDays  int    `json:"max_age_days"`
-}
-
-func (e entry) numbers() numbers {
-	return numbers{e.ID, e.Version, e.Convention, e.Unit, e.Scale, e.Compare, e.N, e.Window,
-		e.MinValid, e.Years, e.TradingDays, e.MaxAgeDays}
-}
 
 type figureEntry struct {
 	ID            string   `toml:"id"`
@@ -111,45 +90,129 @@ func findFigure(figs []figureEntry, id string, version int) (figureEntry, bool) 
 	return figureEntry{}, false
 }
 
-// funcSource prints the normalized source of one implemented_by name under root, such as
-// "internal/compute/figures.(*calc).Iv30" or "internal/compute/figures.strikeStar".
-func funcSource(root, name string) (string, error) {
+// splitName cuts an implemented_by name such as "internal/compute/figures.(*calc).Iv30" or
+// "internal/compute/figures.strikeStar" into the package path and the key "calc.Iv30" or
+// ".strikeStar" (receiver, dot, name).
+func splitName(name string) (pathPart, key string) {
 	idx := strings.LastIndex(name, "/")
-	pathPart, rest := name[:idx+1], name[idx+1:]
-	pkg, rest, _ := strings.Cut(rest, ".")
-	pathPart += pkg
+	pkg, rest, _ := strings.Cut(name[idx+1:], ".")
+	pathPart = name[:idx+1] + pkg
 	recv := ""
 	if strings.HasPrefix(rest, "(*") {
 		r, fn, _ := strings.Cut(rest, ").")
 		recv, rest = strings.TrimPrefix(r, "(*"), fn
 	}
-	fset := token.NewFileSet()
+	return pathPart, recv + "." + rest
+}
+
+// pkgFuncs parses the non-test files of one package directory and keys each function by
+// "recv.name".
+func pkgFuncs(root, pathPart string) (map[string]*ast.FuncDecl, error) {
 	dir := filepath.Join(root, filepath.FromSlash(pathPart))
 	ents, err := os.ReadDir(dir)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	fset := token.NewFileSet()
+	out := map[string]*ast.FuncDecl{}
 	for _, de := range ents {
 		if de.IsDir() || !strings.HasSuffix(de.Name(), ".go") || strings.HasSuffix(de.Name(), "_test.go") {
 			continue
 		}
 		f, err := parser.ParseFile(fset, filepath.Join(dir, de.Name()), nil, 0)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		for _, d := range f.Decls {
-			fd, ok := d.(*ast.FuncDecl)
-			if !ok || fd.Name.Name != rest || recvName(fd) != recv {
-				continue
+			if fd, ok := d.(*ast.FuncDecl); ok {
+				out[recvName(fd)+"."+fd.Name.Name] = fd
 			}
-			var buf bytes.Buffer
-			if err := printer.Fprint(&buf, token.NewFileSet(), fd); err != nil {
-				return "", err
-			}
-			return buf.String(), nil
 		}
 	}
-	return "", fmt.Errorf("%s not found", name)
+	return out, nil
+}
+
+// callees lists the keys of the functions of the package that fd calls: a plain call of a
+// package function, or a selector call whose name is a method of the package.
+func callees(fd *ast.FuncDecl, funcs map[string]*ast.FuncDecl) []string {
+	var keys []string
+	ast.Inspect(fd, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch fun := call.Fun.(type) {
+		case *ast.Ident:
+			if _, ok := funcs["."+fun.Name]; ok {
+				keys = append(keys, "."+fun.Name)
+			}
+		case *ast.SelectorExpr:
+			for k := range funcs {
+				if recv, name, _ := strings.Cut(k, "."); recv != "" && name == fun.Sel.Name {
+					keys = append(keys, k)
+				}
+			}
+		}
+		return true
+	})
+	return keys
+}
+
+// hashedSources gives the normalized source of the listed functions in order, then of the
+// package functions they call, directly or through each other, sorted by key. The register
+// lists the callees by hand (Decision 5) and may miss one; a figure's number depends on every
+// helper it reaches, so the hash follows the calls itself.
+func hashedSources(root string, impl []string) ([]string, error) {
+	cache := map[string]map[string]*ast.FuncDecl{}
+	type item struct {
+		pkg, key string
+	}
+	var order, queue []item
+	seen := map[item]bool{}
+	for _, name := range impl {
+		pkg, key := splitName(name)
+		it := item{pkg, key}
+		if !seen[it] {
+			seen[it] = true
+			order = append(order, it)
+			queue = append(queue, it)
+		}
+	}
+	var extra []item
+	for len(queue) > 0 {
+		it := queue[0]
+		queue = queue[1:]
+		funcs, ok := cache[it.pkg]
+		if !ok {
+			var err error
+			if funcs, err = pkgFuncs(root, it.pkg); err != nil {
+				return nil, err
+			}
+			cache[it.pkg] = funcs
+		}
+		fd, ok := funcs[it.key]
+		if !ok {
+			return nil, fmt.Errorf("%s %s not found", it.pkg, it.key)
+		}
+		for _, k := range callees(fd, funcs) {
+			c := item{it.pkg, k}
+			if !seen[c] {
+				seen[c] = true
+				extra = append(extra, c)
+				queue = append(queue, c)
+			}
+		}
+	}
+	sort.Slice(extra, func(i, j int) bool { return extra[i].key < extra[j].key })
+	var out []string
+	for _, it := range append(order, extra...) {
+		var buf bytes.Buffer
+		if err := printer.Fprint(&buf, token.NewFileSet(), cache[it.pkg][it.key]); err != nil {
+			return nil, err
+		}
+		out = append(out, buf.String())
+	}
+	return out, nil
 }
 
 func recvName(fd *ast.FuncDecl) string {
@@ -167,14 +230,14 @@ func recvName(fd *ast.FuncDecl) string {
 }
 
 // ruleHash is Decision 12: sha256 over the normalized source of each listed function in
-// order, then the canonical JSON of the numbers.
+// order, then of the helpers they call, then the canonical JSON of the numbers.
 func ruleHash(root string, impl []string, n numbers) (string, error) {
 	h := sha256.New()
-	for _, name := range impl {
-		src, err := funcSource(root, name)
-		if err != nil {
-			return "", err
-		}
+	srcs, err := hashedSources(root, impl)
+	if err != nil {
+		return "", err
+	}
+	for _, src := range srcs {
 		h.Write([]byte(src))
 		h.Write([]byte("\n"))
 	}
@@ -196,7 +259,7 @@ func TestHashesMatchSource(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s v%d not in register", e.ID, e.Version)
 		}
-		got, err := ruleHash(root, f.ImplementedBy, e.numbers())
+		got, err := ruleHash(root, f.ImplementedBy, e.numbers)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,7 +304,7 @@ func checkHashSensitivity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	base, err := ruleHash(tmp, f.ImplementedBy, e.numbers())
+	base, err := ruleHash(tmp, f.ImplementedBy, e.numbers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +320,7 @@ func checkHashSensitivity(t *testing.T) {
 		}
 	}
 	hash := func() string {
-		h, err := ruleHash(tmp, f.ImplementedBy, e.numbers())
+		h, err := ruleHash(tmp, f.ImplementedBy, e.numbers)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -395,5 +458,52 @@ func TestRegisterEntriesComplete(t *testing.T) {
 			t.Errorf("duplicate entry %s", id)
 		}
 		seen[id] = true
+	}
+}
+
+func TestHashCoversIvWindow(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	figs, _ := readRegister(t)
+	var e entry
+	for _, c := range readEntries(t) {
+		if c.ID == "market.ivp_own" {
+			e = c
+		}
+	}
+	f, _ := findFigure(figs, e.ID, e.Version)
+	tmp := t.TempDir()
+	dst := filepath.Join(tmp, "internal", "compute", "figures")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(root, "internal", "compute", "figures")
+	ents, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ents {
+		b, err := os.ReadFile(filepath.Join(src, d.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dst, d.Name()), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base, err := ruleHash(tmp, f.ImplementedBy, e.numbers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(dst, "ivp.go")
+	b, _ := os.ReadFile(p)
+	s := string(b)
+	i := strings.Index(s, "func (c calc) ivWindow(")
+	j := strings.Index(s[i:], "{\n") + i + 2
+	if err := os.WriteFile(p, []byte(s[:j]+"\t_ = 3\n"+s[j:]), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := ruleHash(tmp, f.ImplementedBy, e.numbers); got == base {
+		t.Fatal("an edit of ivWindow, which IvPercentile calls, leaves the ivp_own rule hash unchanged")
 	}
 }
