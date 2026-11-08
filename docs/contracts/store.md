@@ -10,6 +10,8 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 
 `master.option_terms` (migration `0009`) holds one row per version of the terms of one option, and the view `rd.option_terms_r1` shows the current version of each. `instrument.OpenOptionTerms` returns a `store.OptionTermsStore`: the reader `OptionTerms`, with `Close`. `store.OptionEodCatalog` (`OptionEodLatest`) lists the underlyings that have rows of `obs.option_eod` and the greatest `session_day` of each, read from `rd.option_eod_r1`; it is declared in `internal/store/api.go` and implemented by its own entry.
 
+`internal/store/reading` holds the Reader and the Writer of stored figure values, `readings.reading` r1 (with the children `reading_input`, `reading_input_key` and `reading_parameter`). `reading.Open` returns a `store.ReadingStore` (`InsertReadings`, `LatestReadings`, `Close`) from the line `store.DSNEnvReadings` (`OT_PG_DSN_READINGS`) of the role `ot_w_readings`.
+
 ## Inputs
 
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.
@@ -34,6 +36,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `OptionTerms` returns the version with `valid_to IS NULL` of each id, ordered by `InstrumentID`; an id without a current version is absent; an empty list gives an empty answer and no database call. `Strike` and `Multiplier` are the text the database prints for the numeric (`100` and `100.00` are equal values); `ExpirationDate` is `YYYY-MM-DD`; `ValidFrom` is in UTC. More than 500 ids and an id of 0 are `Permanent`; a database failure is `Retryable`.
 - `OptionEodLatest` returns one entry per `underlying_id` with a row of `session_day` on or after `since`, ordered by `UnderlyingID`, with the greatest `session_day` of it; no row gives an empty list; a `since` that is neither empty nor `YYYY-MM-DD` is `Permanent`.
 - `InstrumentNames` (`store.InstrumentNameReader`) returns the `InstrumentID`, `Type` and `Name` of each id from the view `rd.instrument_r1` (columns `instrument_id`, `instrument_type`, `name`, `currency`; owner `ot_owner`; `SELECT` granted to `ot_ro_pages` only, nothing in schema `master`; migration `0010`), ordered by `InstrumentID`; an unknown id is absent; an empty list gives an empty answer and no database call; more than 500 ids and an id of 0 are `Permanent`. `instrument.OpenInstrumentNames` takes the line `store.DSNEnvPages`; it is a stub until its own entry fills it.
+- `LatestReadings` returns the newest rev of each day with `day` between the two days, both ends inclusive, for one `name`, `subject_kind` and `subject`, in any state, ascending by day; no rows gives an empty slice. `InsertReadings` returns the number of readings inserted; a key that exists adds none.
 - Errors are `contracts.TypedError`: `Retryable` when the database fails, `Permanent` for a malformed day.
 
 ## Invariants
@@ -66,6 +69,11 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `rd.option_terms_r1` names every column and has `WHERE valid_to IS NULL`; table and view belong to `ot_owner`. `ot_ro_pages` has `USAGE` on schema `rd` and `SELECT` on the view, nothing on schema `master`, no write; the view runs with its owner's rights. `0009` grants nothing to `ot_w_master`; `0011` grants `ot_w_master` `INSERT` on `master.option_terms` and `SELECT` on its two columns `instrument_id` and `valid_to` (PostgreSQL reads the conflict target of the insert), no UPDATE or DELETE; Down revokes both.
 - The reader's statement reads `rd.option_terms_r1` only, never `master`.
 
+- `readings.reading` is insert-only. Its key is `(name, version, subject_kind, subject, day, rev)`; `value` is `numeric(38,12)` or NULL; `rev` is at least 1; the insert is `ON CONFLICT DO NOTHING` in one transaction per call, record and children together.
+- The view `rd.reading_r1` applies the winner rule per `(name, version, subject_kind, subject, day)`: the row with the highest `rev` of state `ok` wins; a row of state `missing_input` yields to any `ok` row and shows only when the day has no `ok` row (then its highest `rev`). `LatestReadings` is not the view: it returns the newest rev whatever its state.
+- The enum `reading_unit` has nine words: `decimal, percent, vol_point, per_calendar_day, count, days, money, ratio, text_tag`.
+- Grants: `ot_w_readings` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_READINGS`) has `INSERT` and `SELECT` on the four tables and `SELECT` on `rd.reading_r1`; `ot_ro_pages` has `SELECT` on `rd.reading_r1` and nothing on the tables; `ot_runner` has nothing. No role has UPDATE, DELETE or TRUNCATE.
+
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
@@ -77,10 +85,11 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - v7: migration `0009` (`master.option_terms`, `rd.option_terms_r1`); `ot_ro_pages` reads the view; `instrument.OpenOptionTerms`; `store.OptionEodCatalog` documented.
 - v8: migration `0010` (`rd.instrument_r1`, four columns, owner `ot_owner`); `ot_ro_pages` reads the view; `store.InstrumentNameReader` and `instrument.OpenInstrumentNames` (a stub that returns `Permanent`, not implemented).
 - v9: migration `0011` (`INSERT` and column `SELECT` of `instrument_id`, `valid_to` on `master.option_terms` to `ot_w_master`); `ResolveInstrument` writes the terms of a new option inside a savepoint. Migrate before deploying the code (`ot migrate`, then the new binary): code before the migration is harmless, the insert is refused and rolled back to the savepoint, but those options keep no terms row.
+- v10 (declared, tables not yet made): `store.ReadingWriter`, `store.ReadingReader`, `store.ReadingStore`, `store.OpenReadingFunc` and `store.DSNEnvReadings`; the table, view, enum and role come from migration `0013` in a later entry.
 
 ## Contract tests
 
-- `internal/store/api_test.go`: the interface from both sides.
+- `internal/store/api_test.go`: the interface from both sides; `TestReadingContract` and `TestReadingDSNEnvName` hold `ReadingStore` and its line name.
 - `internal/store/sessionday/sessionday_test.go`: SQL strings, transaction, empty input, context, range and order against an in-test fake.
 - `internal/store/sessionday/sessionday_pg_test.go` (build tag `pg`): the round trip through the real Writer and Reader on a database of its own.
 - `internal/store/api_test.go`: `TestOptionEodStoreContract`, `TestQuoteSnapshotStoreContract` and `TestSnapshotDSNEnvNames` hold both stores and the two line names from both sides.

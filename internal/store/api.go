@@ -151,10 +151,29 @@ type InstrumentNameStore interface {
 	Close() error
 }
 
+// ReadingWriter inserts readings, each with its inputs and parameters, idempotently on the key
+// (name, version, subject_kind, subject, day, rev). It returns the count of readings inserted; a key that exists adds none.
+type ReadingWriter interface {
+	InsertReadings(ctx context.Context, rows []contracts.ReadingRecord) (inserted int, err error)
+}
+
+// ReadingReader reads the readings of one figure and subject.
+type ReadingReader interface {
+	// LatestReadings returns the newest rev of each day in the range from to to, inclusive, any state, ascending by day.
+	LatestReadings(ctx context.Context, name, subjectKind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error)
+}
+
 // SessionDayStore is the Reader and the Writer of master.session_day.
 type SessionDayStore interface {
 	SessionDayReader
 	SessionDayWriter
+	Close() error
+}
+
+// ReadingStore is the Reader and the Writer of readings.reading.
+type ReadingStore interface {
+	ReadingReader
+	ReadingWriter
 	Close() error
 }
 
@@ -212,6 +231,8 @@ const (
 	DSNEnvQuoteSnapshot = "OT_PG_DSN_QUOTE_SNAPSHOT"
 	// DSNEnvMaster names the line that holds the DSN of the role ot_w_master.
 	DSNEnvMaster = "OT_PG_DSN_MASTER"
+	// DSNEnvReadings names the line that holds the DSN of the role ot_w_readings.
+	DSNEnvReadings = "OT_PG_DSN_READINGS"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -296,6 +317,9 @@ type OpenSessionDayFunc func(ctx context.Context, dsn string) (SessionDayStore, 
 
 // OpenSeriesFunc opens the series store (internal/store/series.Open).
 type OpenSeriesFunc func(ctx context.Context, dsn string) (SeriesStore, error)
+
+// OpenReadingFunc opens the readings store (internal/store/reading.Open).
+type OpenReadingFunc func(ctx context.Context, dsn string) (ReadingStore, error)
 
 // OpenOptionEodFunc opens the option end-of-day store (internal/store/snapshot.OpenOptionEod).
 type OpenOptionEodFunc func(ctx context.Context, dsn string) (OptionEodStore, error)
