@@ -61,9 +61,14 @@ func TestAlertMigration(t *testing.T) {
 		}
 	}
 
+	inDB, err := pgx.Connect(ctx, adminDSN(t, s.db)) // s.admin is connected to the server's default database
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = inDB.Close(ctx) })
 	for _, role := range []string{roleRunner, roleRoPages, roleReadings} {
 		var ok bool
-		if err := s.admin.QueryRow(ctx, `SELECT has_table_privilege($1, 'alerts.sent', 'SELECT')`, role).Scan(&ok); err != nil || ok {
+		if err := inDB.QueryRow(ctx, `SELECT has_table_privilege($1, 'alerts.sent', 'SELECT')`, role).Scan(&ok); err != nil || ok {
 			t.Errorf("%s SELECT on alerts.sent: %v, %v", role, ok, err)
 		}
 	}
