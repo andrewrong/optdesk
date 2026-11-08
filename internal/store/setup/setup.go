@@ -35,6 +35,7 @@ const (
 	roleOptionEod     = "ot_w_option_eod"
 	roleQuoteSnapshot = "ot_w_quote_snapshot"
 	roleMaster        = "ot_w_master"
+	roleReadings      = "ot_w_readings"
 )
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
@@ -49,12 +50,13 @@ var roles = []roleSpec{
 	{roleOptionEod, store.DSNEnvOptionEod},
 	{roleQuoteSnapshot, store.DSNEnvQuoteSnapshot},
 	{roleMaster, store.DSNEnvMaster},
+	{roleReadings, store.DSNEnvReadings},
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the eight roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the nine roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -130,7 +132,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 	}
 	grant := "REVOKE ALL ON DATABASE " + ident(Database) + " FROM PUBLIC; GRANT CONNECT ON DATABASE " + ident(Database) +
 		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader) +
-		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster)
+		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}
