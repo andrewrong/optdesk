@@ -13,7 +13,7 @@ type differ struct{}
 func NewDiffer() clock.SessionDayDiffer { return differ{} }
 
 func dayOf(r contracts.SessionDay) contracts.Day {
-	return contracts.Day(r.SessionDay.Time.Format(dayLayout))
+	return contracts.Day(r.SessionDay.Format(dayLayout))
 }
 
 func sameRow(a, b contracts.SessionDay) bool {
