@@ -852,11 +852,9 @@ func (m *memGapReader) Expectations(_ context.Context, from, to contracts.Day) (
 }
 func (m *memGapReader) Close() error { return nil }
 
-var (
-	_ store.OpenFenceFunc           = func(context.Context, string) (store.InstanceFence, error) { return nil, nil }
-	_ store.OpenSchedulerLedgerFunc = func(context.Context, string) (store.SchedulerLedger, error) { return nil, nil }
-	_ store.OpenGapReaderFunc       = func(context.Context, string) (store.GapReader, error) { return nil, nil }
-)
+var _ store.OpenFenceFunc = func(context.Context, string) (store.InstanceFence, error) { return nil, nil }
+var _ store.OpenSchedulerLedgerFunc = func(context.Context, string) (store.SchedulerLedger, error) { return nil, nil }
+var _ store.OpenGapReaderFunc = func(context.Context, string) (store.GapReader, error) { return nil, nil }
 
 func TestInstanceFenceContract(t *testing.T) {
 	t.Parallel()
