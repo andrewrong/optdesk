@@ -1,0 +1,172 @@
+{
+  "schema": "macro_rates",
+  "schema_version": 3,
+  "generated_at": "2000-01-01T00:00:00Z",
+  "session_day": "2026-11-04",
+  "title": "Macro rates",
+  "sentence": "7 series on 2026-11-04.",
+  "series": [
+    {
+      "id": "DGS10",
+      "title": "10-year Treasury yield",
+      "unit": "percent",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 4.2,
+        "text": "4.20%"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 4.1,
+          "text": "4.10%"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 4.2,
+          "text": "4.20%"
+        }
+      ]
+    },
+    {
+      "id": "DGS3MO",
+      "title": "3-month Treasury yield",
+      "unit": "percent",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 4.2,
+        "text": "4.20%"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 4.1,
+          "text": "4.10%"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 4.2,
+          "text": "4.20%"
+        }
+      ]
+    },
+    {
+      "id": "SP500",
+      "title": "S&P 500",
+      "unit": "index_points",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 5120.25,
+        "text": "5120.25"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 5100.5,
+          "text": "5100.50"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 5120.25,
+          "text": "5120.25"
+        }
+      ]
+    },
+    {
+      "id": "VIXCLS",
+      "title": "VIX",
+      "unit": "index_points",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 5120.25,
+        "text": "5120.25"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 5100.5,
+          "text": "5100.50"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 5120.25,
+          "text": "5120.25"
+        }
+      ]
+    },
+    {
+      "id": "VXNCLS",
+      "title": "VXN (Nasdaq-100 volatility)",
+      "unit": "index_points",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 5120.25,
+        "text": "5120.25"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 5100.5,
+          "text": "5100.50"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 5120.25,
+          "text": "5120.25"
+        }
+      ]
+    },
+    {
+      "id": "RVXCLS",
+      "title": "RVX (Russell 2000 volatility)",
+      "unit": "index_points",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 5120.25,
+        "text": "5120.25"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 5100.5,
+          "text": "5100.50"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 5120.25,
+          "text": "5120.25"
+        }
+      ]
+    },
+    {
+      "id": "VXVCLS",
+      "title": "VXV (3-month volatility)",
+      "unit": "index_points",
+      "latest": {
+        "kind": "value",
+        "date": "2026-11-04",
+        "value": 5120.25,
+        "text": "5120.25"
+      },
+      "points": [
+        {
+          "date": "2026-11-03",
+          "value": 5100.5,
+          "text": "5100.50"
+        },
+        {
+          "date": "2026-11-04",
+          "value": 5120.25,
+          "text": "5120.25"
+        }
+      ]
+    }
+  ],
+  "gaps": []
+}

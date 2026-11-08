@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
@@ -116,6 +117,7 @@ type schedRig struct {
 	sl       *fakeSchedLedger
 	fw       *clockwork.FakeClock
 	gaps     *fakeGaps
+	notifier *fakeNotifier
 	sched    *fakeSched
 	cancel   context.CancelFunc
 	dials    atomic.Int32
@@ -145,8 +147,11 @@ func ids(jobs []contracts.Job) []string {
 
 func newSchedRig(t *testing.T, env string) *schedRig {
 	t.Helper()
-	a, errb := testApp(t, env)
-	r := &schedRig{a: a, errb: errb, inst: &fakeInstFence{}, sl: &fakeSchedLedger{}, fw: clockwork.NewFakeClock(), gaps: &fakeGaps{}, built: make(chan struct{})}
+	a, errb := testApp(t, env+telegramEnv)
+	r := &schedRig{
+		a: a, errb: errb, inst: &fakeInstFence{}, sl: &fakeSchedLedger{}, fw: clockwork.NewFakeClock(),
+		gaps: &fakeGaps{}, notifier: &fakeNotifier{}, built: make(chan struct{}),
+	}
 	var closed atomic.Int32
 	var day contracts.Day
 	runOnceFakes(a, &r.opened, &closed, &day)
@@ -196,6 +201,10 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		r.builds = append(r.builds, ids(jobs))
 		return fakeRec{ids: ids(jobs), mu: &r.mu, last: &r.reconned}, nil
 	}
+	d.newNotifier = func(notify.GapSource, notify.Sender, clockwork.Clock, notify.Config) (notify.Notifier, error) {
+		return r.notifier, nil
+	}
+	d.newTelegramSender = func(string, string, notify.TelegramOptions) (notify.Sender, error) { return nil, nil }
 	d.newGapSyncer = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer { return r.gaps }
 	d.newScheduler = func(
 		fence store.Fence, _ store.SchedulerLedger, _ store.OpsLedger, _ clock.Calendar, _ clockwork.Clock,
@@ -405,7 +414,8 @@ func TestSchedulerPassesGapSyncer(t *testing.T) {
 	done := r.start()
 	r.waitStarted(t, done)
 	r.tick()
-	if r.sched.gaps != runner.GapSyncer(r.gaps) {
+	// The scheduler gets the gap syncer wrapped by the notify pass (#550); the wrapper holds it as it is.
+	if w, ok := r.sched.gaps.(notifyingGaps); !ok || w.inner != runner.GapSyncer(r.gaps) {
 		t.Fatal("the scheduler did not get the gap syncer")
 	}
 	if len(r.gaps.seen) != 1 || len(r.gaps.seen[0]) != 0 {
@@ -560,5 +570,89 @@ func TestSchedulerDispatchesStatusAndCanRestart(t *testing.T) {
 	// Any other argument keeps the usage error and opens nothing.
 	if err := schedulerCmd(r.a, []string{"bogus"}); err == nil || !strings.Contains(err.Error(), "usage: ot scheduler") {
 		t.Fatalf("bogus argument: %v", err)
+	}
+}
+
+// telegramEnv holds the two synthetic Telegram lines the scheduler needs; they are not real.
+const telegramEnv = "OT_TELEGRAM_TOKEN=test-token\nOT_TELEGRAM_CHAT_ID=1000001\n"
+
+// fakeNotifier records its passes in order with the gap passes; it can fail or panic.
+type fakeNotifier struct {
+	mu     sync.Mutex
+	passes int
+	err    error
+	panics bool
+	gaps   *fakeGaps
+	synced []int // the number of gap passes seen at each notify pass
+}
+
+func (f *fakeNotifier) NotifyGaps(context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.passes++
+	if f.gaps != nil {
+		f.gaps.mu.Lock()
+		f.synced = append(f.synced, len(f.gaps.seen))
+		f.gaps.mu.Unlock()
+	}
+	if f.panics {
+		panic("boom")
+	}
+	return 0, f.err
+}
+
+func TestSchedulerCallsNotifyAfterGapPass(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	r.notifier.gaps = r.gaps
+	done := r.start()
+	r.waitStarted(t, done)
+	r.tick()
+	r.tick()
+	_ = r.stop(t, done)
+	if got := r.notifier.synced; !slices.Equal(got, []int{1, 2}) {
+		t.Fatalf("gap passes seen at each notify pass %v, want [1 2]", got)
+	}
+}
+
+func TestSchedulerSurvivesNotifyError(t *testing.T) {
+	t.Parallel()
+	for name, set := range map[string]func(*fakeNotifier){
+		"error": func(n *fakeNotifier) { n.err = errors.New("send to https://api.example/bot-secret-token failed") },
+		"panic": func(n *fakeNotifier) { n.panics = true },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := newSchedRig(t, fullEnv)
+			set(r.notifier)
+			done := r.start()
+			r.waitStarted(t, done)
+			r.tick()
+			r.tick()
+			if err := r.stop(t, done); err != nil {
+				t.Fatalf("the scheduler stopped: %v", err)
+			}
+			if r.notifier.passes != 2 || len(r.gaps.seen) != 2 {
+				t.Fatalf("notify passes %d, gap passes %d, want 2 and 2", r.notifier.passes, len(r.gaps.seen))
+			}
+			if strings.Contains(r.errb.String(), "secret") || !strings.Contains(r.errb.String(), "notify") {
+				t.Fatalf("log %q", r.errb.String())
+			}
+		})
+	}
+}
+
+func TestSchedulerNeedsTelegramLines(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	if err := writeFile(r.a.getenv("OT_HOME")+"/.env", fullEnv+"OT_TELEGRAM_TOKEN=test-token\n"); err != nil {
+		t.Fatal(err)
+	}
+	err := <-r.start()
+	if err == nil || !strings.Contains(err.Error(), "OT_TELEGRAM_CHAT_ID") || strings.Contains(err.Error(), "test-token") {
+		t.Fatalf("err %v", err)
+	}
+	if r.inst.count() != 0 {
+		t.Fatal("the lock was tried before the missing line was reported")
 	}
 }

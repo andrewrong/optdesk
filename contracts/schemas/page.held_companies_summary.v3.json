@@ -1,0 +1,455 @@
+{
+  "$defs": {
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 5,
+          "minItems": 5,
+          "title": "Columns",
+          "type": "array"
+        },
+        "data_times_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Data Times Text",
+          "type": "string"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "common.v2.json#/$defs/Gap"
+          },
+          "maxItems": 20,
+          "title": "Gaps",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Notes",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/Row"
+          },
+          "maxItems": 30,
+          "title": "Rows",
+          "type": "array"
+        },
+        "say": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Say",
+          "type": "string"
+        },
+        "sharp_note": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sharp Note",
+          "type": "string"
+        },
+        "stale": {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        "subtitle": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "say",
+        "subtitle",
+        "stale",
+        "columns",
+        "rows",
+        "sharp_note",
+        "notes",
+        "gaps",
+        "data_times_text"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "Column": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "company",
+            "price",
+            "earnings",
+            "day_change",
+            "five_day_change"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "EarningsCell": {
+      "additionalProperties": false,
+      "description": "A results date: ``date`` is the ISO day, ``text`` what is shown (``10-28`` or ``已公布 10-20``).",
+      "properties": {
+        "date": {
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+          "title": "Date",
+          "type": "string"
+        },
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "date",
+        "text"
+      ],
+      "title": "EarningsCell",
+      "type": "object"
+    },
+    "NoMark": {
+      "additionalProperties": false,
+      "description": "No mark: the move is not sharp.",
+      "properties": {
+        "kind": {
+          "const": "none",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "NoMark",
+      "type": "object"
+    },
+    "PriceFigure": {
+      "additionalProperties": false,
+      "description": "A quote price: ``value`` is the number, ``text`` what is shown.",
+      "properties": {
+        "kind": {
+          "const": "value",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "price",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "PriceFigure",
+      "type": "object"
+    },
+    "Row": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "enum": [
+            "USD",
+            "JPY"
+          ],
+          "title": "Currency",
+          "type": "string"
+        },
+        "day_change": {
+          "title": "Day Change",
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "day_sharp": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SharpMark"
+            },
+            {
+              "$ref": "#/$defs/NoMark"
+            }
+          ],
+          "title": "Day Sharp"
+        },
+        "earnings": {
+          "title": "Earnings",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/EarningsCell"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "five_day_change": {
+          "title": "Five Day Change",
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "five_day_sharp": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SharpMark"
+            },
+            {
+              "$ref": "#/$defs/NoMark"
+            }
+          ],
+          "title": "Five Day Sharp"
+        },
+        "price": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PriceFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ],
+          "title": "Price"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "volatility": {
+          "$ref": "#/$defs/VolatilityLine"
+        }
+      },
+      "required": [
+        "symbol",
+        "currency",
+        "price",
+        "earnings",
+        "day_change",
+        "five_day_change",
+        "day_sharp",
+        "five_day_sharp",
+        "volatility"
+      ],
+      "title": "Row",
+      "type": "object"
+    },
+    "SharpMark": {
+      "additionalProperties": false,
+      "description": "A sharp move mark: ``text`` is the label shown beside the change.",
+      "properties": {
+        "kind": {
+          "const": "sharp",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "text"
+      ],
+      "title": "SharpMark",
+      "type": "object"
+    },
+    "VolatilityLine": {
+      "additionalProperties": false,
+      "description": "The tool's own HV30, IV30 and IV percentile of a name (ADR 0033 change 9). ``source`` is the short\nlabel (\"own\"), ``label`` names the conventions and the data day; the figures are percents without a\nsign or tone, a part that is not an ``ok`` reading of the day is a ``Gap``, and one of an earlier day\ncarries that day in its ``text``. ``reconciliation`` is the status the readings carry against IBKR's\nseries; no IBKR value is shown.",
+      "properties": {
+        "data_day": {
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+          "title": "Data Day",
+          "type": "string"
+        },
+        "hv30": {
+          "title": "Hv30",
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "iv30": {
+          "title": "Iv30",
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "ivp": {
+          "title": "Ivp",
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/PercentFigure"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "reconciliation": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reconciliation",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "label",
+        "data_day",
+        "hv30",
+        "iv30",
+        "ivp",
+        "reconciliation"
+      ],
+      "title": "VolatilityLine",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.held_companies_summary.v3.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Envelope (ADR 0034) and card. No envelope currency: the names carry their own.",
+  "properties": {
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "card": {
+      "$ref": "#/$defs/Card"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "schema": {
+      "const": "held_companies_summary",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 3,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "stale_after",
+    "run_status",
+    "card"
+  ],
+  "title": "HeldCompaniesSummary",
+  "type": "object"
+}
