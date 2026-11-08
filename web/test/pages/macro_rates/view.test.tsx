@@ -1,4 +1,4 @@
-// Issue #305: the macro_rates view shows the text of page.macro_rates.v2 and computes nothing.
+// Issue #305: the macro_rates view shows the text of page.macro_rates.v3 and computes nothing.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -12,7 +12,7 @@ import { validate, type Payload } from '@/types/macro_rates'
 const fixture = (name: string): unknown =>
   JSON.parse(
     readFileSync(
-      path.resolve(import.meta.dirname, '../../../../contracts/fixtures', `page.macro_rates.v2.${name}.json`),
+      path.resolve(import.meta.dirname, '../../../../contracts/fixtures', `page.macro_rates.v3.${name}.json`),
       'utf8',
     ),
   )
