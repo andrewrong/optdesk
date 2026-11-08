@@ -43,18 +43,21 @@ type underlying struct {
 }
 
 type manifest struct {
-	Version              int          `toml:"version"`
-	ID                   string       `toml:"id"`
-	Zone                 string       `toml:"zone"`
-	Window               window       `toml:"window"`
-	MaxExpiries          int          `toml:"max_expiries"`
-	StrikeBand           float64      `toml:"strike_band"`
-	MaxStrikesPerSide    int          `toml:"max_strikes_per_side"`
-	Chunk                int          `toml:"chunk"`
-	BudgetMinutes        int          `toml:"budget_minutes"`
-	FreezeAfter          string       `toml:"freeze_after"`
-	OptionPriceIncrement string       `toml:"option_price_increment"`
-	Underlying           []underlying `toml:"underlying"`
+	Version              int           `toml:"version"`
+	ID                   string        `toml:"id"`
+	Zone                 string        `toml:"zone"`
+	Window               window        `toml:"window"`
+	Schedule             scheduleTable `toml:"schedule"`
+	MaxExpiries          int           `toml:"max_expiries"`
+	StrikeBand           float64       `toml:"strike_band"`
+	MaxStrikesPerSide    int           `toml:"max_strikes_per_side"`
+	Chunk                int           `toml:"chunk"`
+	BudgetMinutes        int           `toml:"budget_minutes"`
+	FreezeAfter          string        `toml:"freeze_after"`
+	OptionPriceIncrement string        `toml:"option_price_increment"`
+	Underlying           []underlying  `toml:"underlying"`
+
+	sched schedule
 }
 
 // parseManifest decodes data and gives every missing optional key its default.
@@ -70,6 +73,11 @@ func parseManifest(data []byte) (manifest, error) {
 	if err := m.validate(); err != nil {
 		return manifest{}, err
 	}
+	sched, err := scheduleOf(m.Schedule)
+	if err != nil {
+		return manifest{}, err
+	}
+	m.sched = sched
 	sort.Slice(m.Underlying, func(i, j int) bool { return m.Underlying[i].Symbol < m.Underlying[j].Symbol })
 	return m, nil
 }
