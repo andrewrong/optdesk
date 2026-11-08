@@ -24,6 +24,15 @@ Says missed work once, as one plain-text message. The scheduler process calls `N
 - `ErrSend` is the error class of a failed delivery; its text never holds a token, a chat id or a URL.
 - `internal/notify` holds only `api.go` and `api_test.go`; it depends on `store`, `clockwork` and the standard library.
 
+## Market alerts
+
+- `AlertNotifier.NotifyAlerts(ctx)` is a second pass beside `NotifyGaps`, built by `notify.NewAlertNotifierFunc(AlertDeps, Sender, clock, Config)` (`internal/notify/core.NewAlerts`). `AlertDeps{Rules, Evaluate, Read, Sent}` names `compute.EvaluateAlertsFunc`, `compute.ReadingFunc` and `store.SentStore`. `Notifier`, `Sender` and `Config` are unchanged.
+- The quiet window is the one of `Config` (`QuietFrom`, `QuietTo`, `Zone`); there is no second setting. Inside it the pass returns 0 and reads nothing; a fired alert without a mark is said by the first pass after the window.
+- Alert text (risk-alerts Decision 9): first line `optdesk: N market alert(s)`, then one line per alert sorted by level (`d`, `w`, `n`), day, rule id: `<D|W|N> <Title>: <Detail> (data of <DataDay>) <Day>`; at most 20 lines, then `and M more`; under 3500 bytes; plain text, one message per pass. No account id, DSN, path, token, chat id or error text.
+- Public-subject rule: only results that are `fired` and `Public` (the rule's subject is in `public_subjects` of the rules) are sent; a non-public result is never sent.
+- Mark-after-send rule: `SentStore.MarkSent(ctx, ruleID, day)` is called only after `Sender.Send` returned nil, and only for the alerts printed, never for one behind "and M more". A failed send marks nothing; a failed mark is retried at the next pass, the one case where an alert can repeat. Results with a mark in `alerts.sent` are not sent again.
+
 ## Version history
 
 - v1: interface declared (stage 1).
+- v2: alert notifier interface declared (additions only).
