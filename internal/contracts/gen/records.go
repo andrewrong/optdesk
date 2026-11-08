@@ -349,6 +349,314 @@ func (j *QuoteSnapshot) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// readings.reading r1: one stored figure value of one subject on one day, with the
+// inputs and parameters that made it.
+type ReadingRecord struct {
+	// Currency code when the unit is money, empty otherwise.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Cutoff of the inputs; the text session_close.
+	Cutoff string `json:"cutoff" yaml:"cutoff" mapstructure:"cutoff"`
+
+	// As-of session date of the reading.
+	Day types.SerializableDate `json:"day" yaml:"day" mapstructure:"day"`
+
+	// Input tables the reading was computed from.
+	Inputs []ReadingRecordInputsElem `json:"inputs" yaml:"inputs" mapstructure:"inputs"`
+
+	// Deterministic identifier of the run that wrote the reading, a uuid.
+	JobRunID string `json:"job_run_id" yaml:"job_run_id" mapstructure:"job_run_id"`
+
+	// Register id of the figure, for example market.ivp_own.
+	Name string `json:"name" yaml:"name" mapstructure:"name"`
+
+	// Job that wrote the reading.
+	Origin ReadingRecordOrigin `json:"origin" yaml:"origin" mapstructure:"origin"`
+
+	// Parameters the rule ran with.
+	Parameters []ReadingRecordParametersElem `json:"parameters" yaml:"parameters" mapstructure:"parameters"`
+
+	// Why the reading is missing, 1 to 5 (3 is stale_input); null when the state is
+	// ok.
+	ReasonCode *int `json:"reason_code" yaml:"reason_code" mapstructure:"reason_code"`
+
+	// Instant the reading was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Revision of the reading for its key; a later rev replaces an earlier one.
+	Rev int `json:"rev" yaml:"rev" mapstructure:"rev"`
+
+	// SHA-256 of the sorted input rows in a fixed text form, 64 lower-case hex
+	// digits.
+	RowsSha256 string `json:"rows_sha256" yaml:"rows_sha256" mapstructure:"rows_sha256"`
+
+	// ok: the value was computed; missing_input: an input was missing and the value
+	// is null.
+	State ReadingRecordState `json:"state" yaml:"state" mapstructure:"state"`
+
+	// Subject id: a symbol, underlying:<id> or a FRED id.
+	Subject string `json:"subject" yaml:"subject" mapstructure:"subject"`
+
+	// Kind of the subject: underlying or market.
+	SubjectKind string `json:"subject_kind" yaml:"subject_kind" mapstructure:"subject_kind"`
+
+	// Unit corresponds to the JSON schema field "unit".
+	Unit ReadingUnit `json:"unit" yaml:"unit" mapstructure:"unit"`
+
+	// Value as decimal text, at most 12 places; null when the state is missing_input.
+	Value *string `json:"value" yaml:"value" mapstructure:"value"`
+
+	// Version of the register entry that made the reading.
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+type ReadingRecordInputsElem struct {
+	// Hash of the rule that made the reading.
+	CodeVersion string `json:"code_version" yaml:"code_version" mapstructure:"code_version"`
+
+	// Version of the conventions the rule used.
+	ConventionVersion string `json:"convention_version" yaml:"convention_version" mapstructure:"convention_version"`
+
+	// Table the input rows came from.
+	InputTable string `json:"input_table" yaml:"input_table" mapstructure:"input_table"`
+
+	// Keys of the input rows.
+	Keys []string `json:"keys" yaml:"keys" mapstructure:"keys"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReadingRecordInputsElem) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["code_version"]; raw != nil && !ok {
+		return fmt.Errorf("field code_version in ReadingRecordInputsElem: required")
+	}
+	if _, ok := raw["convention_version"]; raw != nil && !ok {
+		return fmt.Errorf("field convention_version in ReadingRecordInputsElem: required")
+	}
+	if _, ok := raw["input_table"]; raw != nil && !ok {
+		return fmt.Errorf("field input_table in ReadingRecordInputsElem: required")
+	}
+	if _, ok := raw["keys"]; raw != nil && !ok {
+		return fmt.Errorf("field keys in ReadingRecordInputsElem: required")
+	}
+	type Plain ReadingRecordInputsElem
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = ReadingRecordInputsElem(plain)
+	return nil
+}
+
+type ReadingRecordOrigin string
+
+const ReadingRecordOriginComputeFigures ReadingRecordOrigin = "compute_figures"
+
+var enumValues_ReadingRecordOrigin = []interface{}{
+	"compute_figures",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReadingRecordOrigin) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_ReadingRecordOrigin {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_ReadingRecordOrigin, v)
+	}
+	*j = ReadingRecordOrigin(v)
+	return nil
+}
+
+type ReadingRecordParametersElem struct {
+	// Parameter name, for example window.
+	Param string `json:"param" yaml:"param" mapstructure:"param"`
+
+	// Numeric value; null when the parameter is a tag.
+	ValueNum *float64 `json:"value_num" yaml:"value_num" mapstructure:"value_num"`
+
+	// Text value; null when the parameter is numeric.
+	ValueTag *string `json:"value_tag" yaml:"value_tag" mapstructure:"value_tag"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReadingRecordParametersElem) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["param"]; raw != nil && !ok {
+		return fmt.Errorf("field param in ReadingRecordParametersElem: required")
+	}
+	if _, ok := raw["value_num"]; raw != nil && !ok {
+		return fmt.Errorf("field value_num in ReadingRecordParametersElem: required")
+	}
+	if _, ok := raw["value_tag"]; raw != nil && !ok {
+		return fmt.Errorf("field value_tag in ReadingRecordParametersElem: required")
+	}
+	type Plain ReadingRecordParametersElem
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = ReadingRecordParametersElem(plain)
+	return nil
+}
+
+type ReadingRecordState string
+
+const ReadingRecordStateMissingInput ReadingRecordState = "missing_input"
+const ReadingRecordStateOk ReadingRecordState = "ok"
+
+var enumValues_ReadingRecordState = []interface{}{
+	"ok",
+	"missing_input",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReadingRecordState) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_ReadingRecordState {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_ReadingRecordState, v)
+	}
+	*j = ReadingRecordState(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReadingRecord) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in ReadingRecord: required")
+	}
+	if _, ok := raw["cutoff"]; raw != nil && !ok {
+		return fmt.Errorf("field cutoff in ReadingRecord: required")
+	}
+	if _, ok := raw["day"]; raw != nil && !ok {
+		return fmt.Errorf("field day in ReadingRecord: required")
+	}
+	if _, ok := raw["inputs"]; raw != nil && !ok {
+		return fmt.Errorf("field inputs in ReadingRecord: required")
+	}
+	if _, ok := raw["job_run_id"]; raw != nil && !ok {
+		return fmt.Errorf("field job_run_id in ReadingRecord: required")
+	}
+	if _, ok := raw["name"]; raw != nil && !ok {
+		return fmt.Errorf("field name in ReadingRecord: required")
+	}
+	if _, ok := raw["origin"]; raw != nil && !ok {
+		return fmt.Errorf("field origin in ReadingRecord: required")
+	}
+	if _, ok := raw["parameters"]; raw != nil && !ok {
+		return fmt.Errorf("field parameters in ReadingRecord: required")
+	}
+	if _, ok := raw["reason_code"]; raw != nil && !ok {
+		return fmt.Errorf("field reason_code in ReadingRecord: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in ReadingRecord: required")
+	}
+	if _, ok := raw["rev"]; raw != nil && !ok {
+		return fmt.Errorf("field rev in ReadingRecord: required")
+	}
+	if _, ok := raw["rows_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_sha256 in ReadingRecord: required")
+	}
+	if _, ok := raw["state"]; raw != nil && !ok {
+		return fmt.Errorf("field state in ReadingRecord: required")
+	}
+	if _, ok := raw["subject"]; raw != nil && !ok {
+		return fmt.Errorf("field subject in ReadingRecord: required")
+	}
+	if _, ok := raw["subject_kind"]; raw != nil && !ok {
+		return fmt.Errorf("field subject_kind in ReadingRecord: required")
+	}
+	if _, ok := raw["unit"]; raw != nil && !ok {
+		return fmt.Errorf("field unit in ReadingRecord: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in ReadingRecord: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in ReadingRecord: required")
+	}
+	type Plain ReadingRecord
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = ReadingRecord(plain)
+	return nil
+}
+
+type ReadingUnit string
+
+const ReadingUnitCount ReadingUnit = "count"
+const ReadingUnitDays ReadingUnit = "days"
+const ReadingUnitDecimal ReadingUnit = "decimal"
+const ReadingUnitMoney ReadingUnit = "money"
+const ReadingUnitPerCalendarDay ReadingUnit = "per_calendar_day"
+const ReadingUnitPercent ReadingUnit = "percent"
+const ReadingUnitRatio ReadingUnit = "ratio"
+const ReadingUnitTextTag ReadingUnit = "text_tag"
+const ReadingUnitVolPoint ReadingUnit = "vol_point"
+
+var enumValues_ReadingUnit = []interface{}{
+	"decimal",
+	"percent",
+	"vol_point",
+	"per_calendar_day",
+	"count",
+	"days",
+	"money",
+	"ratio",
+	"text_tag",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReadingUnit) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_ReadingUnit {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_ReadingUnit, v)
+	}
+	*j = ReadingUnit(v)
+	return nil
+}
+
 // obs.series_point r1: one observation of a series as known from realtime_start.
 type SeriesPoint struct {
 	// Currency code; not empty when unit is ccy_amount, empty otherwise.
