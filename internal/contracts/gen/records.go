@@ -745,6 +745,7 @@ type SeriesUnit string
 
 const SeriesUnitCcyAmount SeriesUnit = "ccy_amount"
 const SeriesUnitCount SeriesUnit = "count"
+const SeriesUnitIndexPoints SeriesUnit = "index_points"
 const SeriesUnitPercent SeriesUnit = "percent"
 const SeriesUnitRatio SeriesUnit = "ratio"
 
@@ -753,6 +754,7 @@ var enumValues_SeriesUnit = []interface{}{
 	"ratio",
 	"ccy_amount",
 	"count",
+	"index_points",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
