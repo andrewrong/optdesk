@@ -104,7 +104,7 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 
 ## Contract tests
 
-- `internal/store/api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
+- `internal/store/scheduler_api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
 - `internal/store/api_test.go`: the interface from both sides; `TestReadingContract` and `TestReadingDSNEnvName` hold `ReadingStore` and its line name.
 - `internal/store/sessionday/sessionday_test.go`: SQL strings, transaction, empty input, context, range and order against an in-test fake.
 - `internal/store/sessionday/sessionday_pg_test.go` (build tag `pg`): the round trip through the real Writer and Reader on a database of its own.
