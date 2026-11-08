@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker/grpcbroker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/clock/calendar"
+	"github.com/andrewrong/optdesk/internal/clock/calendarcli"
 	"github.com/andrewrong/optdesk/internal/clock/realclock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
@@ -16,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
@@ -48,51 +50,62 @@ import (
 
 // deps holds the constructors the subcommands call; a test fills it with fakes.
 type deps struct {
-	newClock            clock.NewClockFunc
-	newCalendar         clock.NewCalendarFunc
-	openSessionDay      store.OpenSessionDayFunc
-	openSeries          store.OpenSeriesFunc
-	openLedger          store.OpenLedgerFunc
-	setup               store.SetupFunc
-	newFRED             sources.NewFREDFunc
-	newFredSeries       jobs.NewFredSeriesFunc
-	newSeriesHistory    jobs.NewSeriesHistoryFunc
-	newRunner           runner.NewWithRuleFunc
-	newBackfiller       runner.NewBackfillerWithRuleFunc
-	dialBroker          broker.DialFunc
-	openInstrument      store.OpenInstrumentFunc
-	openOptionEod       store.OpenOptionEodFunc
-	openQuoteSnapshot   store.OpenQuoteSnapshotFunc
-	openOptionCatalog   store.OpenOptionEodCatalogFunc
-	openOptionTerms     store.OpenOptionTermsFunc
-	openInstrumentName  store.OpenInstrumentNameFunc
-	newOptionEod        jobs.NewOptionEodFunc
-	newQuoteSnapshot    jobs.NewQuoteSnapshotFunc
-	openReading         store.OpenReadingFunc
-	newComputeFigures   jobs.NewComputeFiguresFunc
-	computeFigures      compute.Figures
-	computeRules        compute.Rules
-	computeUnits        compute.Units
-	computeSeriesOps    compute.SeriesOps
-	pageList            []pages.Page
-	newHandler          pages.NewHandlerFunc
-	migrateUp           func(ctx context.Context, adminDSN string, fsys fs.FS) error
-	ownerDSN            func(adminDSN string) (string, error)
-	readEnv             store.ReadEnvFunc
-	macroPage           func(zone *time.Location, buildID string) pages.Page
-	optionDataPage      func(zone *time.Location, buildID string, in sitePageInput) pages.Page
-	openFence           store.OpenFenceFunc
-	openSchedulerLedger store.OpenSchedulerLedgerFunc
-	newScheduler        runner.NewSchedulerFunc
-	newKeyRunner        runner.NewKeyRunnerFunc
-	newReconciler       runner.NewReconcilerFunc
-	newGapSyncer        func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
-	newFwClock          func() clockwork.Clock
-	notifyContext       func(context.Context) (context.Context, context.CancelFunc)
-	newNotifier         notify.NewNotifierFunc
-	newTelegramSender   notify.NewTelegramSenderFunc
-	newDryRunSender     notify.NewDryRunSenderFunc
+	newClock                clock.NewClockFunc
+	newCalendar             clock.NewCalendarFunc
+	newCommandSessionSource clock.NewCommandSessionSourceFunc
+	newDiffer               clock.NewSessionDayDifferFunc
+	newCalendarRefresh      jobs.NewCalendarRefreshFunc
+	openSessionDay          store.OpenSessionDayFunc
+	openSeries              store.OpenSeriesFunc
+	openLedger              store.OpenLedgerFunc
+	setup                   store.SetupFunc
+	newFRED                 sources.NewFREDFunc
+	newFredSeries           jobs.NewFredSeriesFunc
+	newSeriesHistory        jobs.NewSeriesHistoryFunc
+	newRunner               runner.NewWithRuleFunc
+	newBackfiller           runner.NewBackfillerWithRuleFunc
+	dialBroker              broker.DialFunc
+	openInstrument          store.OpenInstrumentFunc
+	openOptionEod           store.OpenOptionEodFunc
+	openQuoteSnapshot       store.OpenQuoteSnapshotFunc
+	openOptionCatalog       store.OpenOptionEodCatalogFunc
+	openOptionTerms         store.OpenOptionTermsFunc
+	openInstrumentName      store.OpenInstrumentNameFunc
+	newOptionEod            jobs.NewOptionEodFunc
+	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
+	openReading             store.OpenReadingFunc
+	newComputeFigures       jobs.NewComputeFiguresFunc
+	computeFigures          compute.Figures
+	computeRules            compute.Rules
+	computeUnits            compute.Units
+	computeSeriesOps        compute.SeriesOps
+	pageList                []pages.Page
+	newHandler              pages.NewHandlerFunc
+	migrateUp               func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	ownerDSN                func(adminDSN string) (string, error)
+	readEnv                 store.ReadEnvFunc
+	macroPage               func(zone *time.Location, buildID string) pages.Page
+	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
+	openFence               store.OpenFenceFunc
+	openSchedulerLedger     store.OpenSchedulerLedgerFunc
+	newScheduler            runner.NewSchedulerFunc
+	newKeyRunner            runner.NewKeyRunnerFunc
+	newReconciler           runner.NewReconcilerFunc
+	newGapSyncer            func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
+	newFwClock              func() clockwork.Clock
+	notifyContext           func(context.Context) (context.Context, context.CancelFunc)
+	newNotifier             notify.NewNotifierFunc
+	newTelegramSender       notify.NewTelegramSenderFunc
+	newDryRunSender         notify.NewDryRunSenderFunc
 }
+
+// calendarArgs is what follows the uv program in the command of calendar_refresh, that is
+// `run --no-sync --project pyside python -m optdesk.calendar`; calendarcli adds the
+// calendar, the days and the output file. The program is the line OT_CALENDAR_UV, or uv on PATH.
+var calendarArgs = []string{"run", "--no-sync", "--project", "pyside", "python", "-m", "optdesk.calendar"}
+
+// envCalendarUV names the line of .env that sets the path of uv.
+const envCalendarUV = "OT_CALENDAR_UV"
 
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
 var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
@@ -103,50 +116,53 @@ func newDeps() deps {
 	sops := own.NewSeriesOps()
 	rl := rules.New()
 	return deps{
-		newClock:            realclock.NewReal,
-		newCalendar:         calendar.NewCalendar,
-		openSessionDay:      sessionday.Open,
-		openSeries:          series.Open,
-		openLedger:          ops.Open,
-		setup:               setup.Setup,
-		newFRED:             fred.New,
-		newFredSeries:       fredseries.New,
-		newSeriesHistory:    serieshistory.New,
-		newRunner:           reconcile.NewWithRule,
-		newBackfiller:       reconcile.NewBackfillerWithRule,
-		dialBroker:          grpcbroker.Dial,
-		openInstrument:      instrument.Open,
-		openOptionEod:       snapshot.OpenOptionEod,
-		openQuoteSnapshot:   snapshot.OpenQuoteSnapshot,
-		openOptionCatalog:   snapshot.OpenOptionEodCatalog,
-		openOptionTerms:     instrument.OpenOptionTerms,
-		openInstrumentName:  instrument.OpenInstrumentNames,
-		newOptionEod:        optioneod.New,
-		newQuoteSnapshot:    quotesnapshot.New,
-		openReading:         reading.Open,
-		newComputeFigures:   computefigures.New,
-		computeFigures:      figures.New(stats, own.NewRolling(stats), sops, rl),
-		computeRules:        rl,
-		computeUnits:        own.NewUnits(),
-		computeSeriesOps:    sops,
-		pageList:            []pages.Page{macro_rates.Page()},
-		newHandler:          embed.Handler,
-		migrateUp:           setup.MigrateUp,
-		ownerDSN:            setup.OwnerDSN,
-		readEnv:             setup.ReadEnv,
-		macroPage:           newMacroPage,
-		optionDataPage:      newOptionDataPage,
-		openFence:           ops.OpenFence,
-		openSchedulerLedger: ops.OpenSchedulerLedger,
-		newScheduler:        sched.New,
-		newKeyRunner:        reconcile.NewKeyRunner,
-		newReconciler:       reconcile.NewReconciler,
-		newGapSyncer:        sched.NewGapSyncer,
-		newFwClock:          clockwork.NewRealClock,
-		notifyContext:       stopOnSignal,
-		newNotifier:         core.New,
-		newTelegramSender:   telegram.New,
-		newDryRunSender:     dryrun.New,
+		newClock:                realclock.NewReal,
+		newCalendar:             calendar.NewCalendar,
+		newCommandSessionSource: calendarcli.New,
+		newDiffer:               calendar.NewDiffer,
+		newCalendarRefresh:      calendarrefresh.New,
+		openSessionDay:          sessionday.Open,
+		openSeries:              series.Open,
+		openLedger:              ops.Open,
+		setup:                   setup.Setup,
+		newFRED:                 fred.New,
+		newFredSeries:           fredseries.New,
+		newSeriesHistory:        serieshistory.New,
+		newRunner:               reconcile.NewWithRule,
+		newBackfiller:           reconcile.NewBackfillerWithRule,
+		dialBroker:              grpcbroker.Dial,
+		openInstrument:          instrument.Open,
+		openOptionEod:           snapshot.OpenOptionEod,
+		openQuoteSnapshot:       snapshot.OpenQuoteSnapshot,
+		openOptionCatalog:       snapshot.OpenOptionEodCatalog,
+		openOptionTerms:         instrument.OpenOptionTerms,
+		openInstrumentName:      instrument.OpenInstrumentNames,
+		newOptionEod:            optioneod.New,
+		newQuoteSnapshot:        quotesnapshot.New,
+		openReading:             reading.Open,
+		newComputeFigures:       computefigures.New,
+		computeFigures:          figures.New(stats, own.NewRolling(stats), sops, rl),
+		computeRules:            rl,
+		computeUnits:            own.NewUnits(),
+		computeSeriesOps:        sops,
+		pageList:                []pages.Page{macro_rates.Page()},
+		newHandler:              embed.Handler,
+		migrateUp:               setup.MigrateUp,
+		ownerDSN:                setup.OwnerDSN,
+		readEnv:                 setup.ReadEnv,
+		macroPage:               newMacroPage,
+		optionDataPage:          newOptionDataPage,
+		openFence:               ops.OpenFence,
+		openSchedulerLedger:     ops.OpenSchedulerLedger,
+		newScheduler:            sched.New,
+		newKeyRunner:            reconcile.NewKeyRunner,
+		newReconciler:           reconcile.NewReconciler,
+		newGapSyncer:            sched.NewGapSyncer,
+		newFwClock:              clockwork.NewRealClock,
+		notifyContext:           stopOnSignal,
+		newNotifier:             core.New,
+		newTelegramSender:       telegram.New,
+		newDryRunSender:         dryrun.New,
 	}
 }
 

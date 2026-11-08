@@ -149,6 +149,16 @@ type rig struct {
 	cursor     contracts.Day
 	reconciled int
 	compute    jobs.ComputeStores
+	loader     store.SessionDayStore // the store opened with the loader line
+	calStore   store.SessionDayStore // the store handed to calendar_refresh
+	argv       []string
+	observer   jobs.CalendarObserver
+}
+
+// loaderDSN is the value of the loader line of the rig's .env.
+func (r *rig) loaderDSN() string {
+	env, _ := r.a.envFile()
+	return env[store.DSNEnvLoader]
 }
 
 // pagesDSN is the value of the pages line of the rig's .env; the compute stores open with it.
@@ -179,10 +189,29 @@ func newRig(t *testing.T, env string) *rig {
 	d.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} }
 	d.newCalendar = func(clock.SessionSource) clock.Calendar { return nil }
 	d.openSessionDay = func(_ context.Context, dsn string) (store.SessionDayStore, error) {
-		if err := step("sd", dsn); err != nil {
+		name := "sd"
+		if dsn == r.loaderDSN() {
+			name = "sd-loader"
+		}
+		if err := step(name, dsn); err != nil {
 			return nil, err
 		}
-		return evSD{c: evc{"sd", r.ev}}, nil
+		e := evSD{c: evc{name, r.ev}}
+		if name == "sd-loader" {
+			r.loader = e
+		}
+		return e, nil
+	}
+	d.newCommandSessionSource = func(argv []string, _ string, _ clock.CommandFunc) clock.SessionSource {
+		r.argv = argv
+		return nil
+	}
+	d.newDiffer = func() clock.SessionDayDiffer { return nil }
+	d.newCalendarRefresh = func(
+		_ clock.SessionSource, sd store.SessionDayStore, _ clock.SessionDayDiffer, _ clock.Clock, obs jobs.CalendarObserver,
+	) (contracts.Job, error) {
+		r.calStore, r.observer = sd, obs
+		return namedJob{id: "calendar_refresh"}, r.fail["caljob"]
 	}
 	d.openLedger = func(_ context.Context, dsn string) (store.OpsLedger, error) {
 		if err := step("ledger", dsn); err != nil {
@@ -293,7 +322,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	t.Parallel()
 	env := "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
 		"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
-		"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\n"
+		"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
 	r := newRig(t, env)
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
@@ -318,7 +347,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh"}) {
 		t.Errorf("jobs %v", ids)
 	}
 }
@@ -334,7 +363,7 @@ func TestRunOnceRule(t *testing.T) {
 	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 4 {
+	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 5 {
 		t.Fatalf("rules %+v %+v, jobs %d", r.rule, r.backRule, len(r.jobs))
 	}
 }
@@ -352,9 +381,10 @@ func TestRunOnceCloses(t *testing.T) {
 		{"sd", "sd", fullEnv}, {"ledger", "ledger", fullEnv}, {"series", "series", fullEnv},
 		{"eod", "eod", fullEnv}, {"snap", "snap", fullEnv}, {"instr", "instr", fullEnv},
 		{"dial", "broker", fullEnv}, {"fred job", "fredjob", fullEnv}, {"eod job", "eodjob", fullEnv},
-		{"snap job", "snapjob", fullEnv}, {"compute job", "figjob", fullEnv},
+		{"snap job", "snapjob", fullEnv}, {"compute job", "figjob", fullEnv}, {"calendar job", "caljob", fullEnv},
 		{"c-catalog", "c-catalog", fullEnv}, {"c-eod", "c-eod", fullEnv}, {"c-terms", "c-terms", fullEnv},
-		{"c-names", "c-names", fullEnv}, {"c-series", "c-series", fullEnv}, {"readings", "readings", fullEnv}, {"reconcile", "reconcile", fullEnv},
+		{"c-names", "c-names", fullEnv}, {"c-series", "c-series", fullEnv}, {"readings", "readings", fullEnv},
+		{"sd-loader", "sd-loader", fullEnv}, {"reconcile", "reconcile", fullEnv},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newRig(t, tc.env)
@@ -387,8 +417,10 @@ func TestRunOnceErrors(t *testing.T) {
 	const sentinel = "sentinel-secret"
 	env := "OT_PG_DSN_RUNNER=" + sentinel + "-r\nOT_PG_DSN_SERIES_FRED=" + sentinel + "-s\nFRED_API_KEY=" + sentinel + "-k\n" +
 		"OT_PG_DSN_OPTION_EOD=" + sentinel + "-e\nOT_PG_DSN_QUOTE_SNAPSHOT=" + sentinel + "-q\nOT_PG_DSN_MASTER=" + sentinel + "-m\n" +
-		"OT_PG_DSN_PAGES=" + sentinel + "-p\nOT_PG_DSN_READINGS=" + sentinel + "-rd\n"
-	for _, line := range []string{"OT_PG_DSN_OPTION_EOD", "OT_PG_DSN_QUOTE_SNAPSHOT", "OT_PG_DSN_MASTER", "OT_PG_DSN_PAGES", "OT_PG_DSN_READINGS"} {
+		"OT_PG_DSN_PAGES=" + sentinel + "-p\nOT_PG_DSN_READINGS=" + sentinel + "-rd\nOT_PG_DSN_LOADER=" + sentinel + "-ld\n"
+	for _, line := range []string{
+		"OT_PG_DSN_OPTION_EOD", "OT_PG_DSN_QUOTE_SNAPSHOT", "OT_PG_DSN_MASTER", "OT_PG_DSN_PAGES", "OT_PG_DSN_READINGS", "OT_PG_DSN_LOADER",
+	} {
 		t.Run("missing "+line, func(t *testing.T) {
 			var kept []string
 			for _, l := range strings.Split(env, "\n") {
@@ -405,7 +437,7 @@ func TestRunOnceErrors(t *testing.T) {
 	}
 	for _, tc := range []struct{ step, line string }{
 		{"eod", "OT_PG_DSN_OPTION_EOD"}, {"snap", "OT_PG_DSN_QUOTE_SNAPSHOT"}, {"instr", "OT_PG_DSN_MASTER"},
-		{"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"}, {"readings", "OT_PG_DSN_READINGS"},
+		{"c-catalog", "OT_PG_DSN_PAGES"}, {"c-series", "OT_PG_DSN_PAGES"}, {"readings", "OT_PG_DSN_READINGS"}, {"sd-loader", "OT_PG_DSN_LOADER"},
 	} {
 		t.Run("open "+tc.step, func(t *testing.T) {
 			r := newRig(t, env)
@@ -457,7 +489,7 @@ func TestRunOnceDialFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "from reconcile") {
 		t.Fatalf("err %v, want what Reconcile returned", err)
 	}
-	if len(r.jobs) != 4 {
+	if len(r.jobs) != 5 {
 		t.Fatalf("Reconcile got %d jobs", len(r.jobs))
 	}
 	for _, j := range r.jobs[1:3] {
@@ -496,7 +528,7 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 			return map[string]string{
 				"OT_PG_DSN_RUNNER": "a", "OT_PG_DSN_SERIES_FRED": "a", "FRED_API_KEY": "a",
 				"OT_PG_DSN_OPTION_EOD": "a", "OT_PG_DSN_QUOTE_SNAPSHOT": "a", "OT_PG_DSN_MASTER": "a",
-				"OT_PG_DSN_PAGES": "a", "OT_PG_DSN_READINGS": "a",
+				"OT_PG_DSN_PAGES": "a", "OT_PG_DSN_READINGS": "a", "OT_PG_DSN_LOADER": "a",
 			}, nil
 		}
 		err := runOnce(r.a, nil)
@@ -522,7 +554,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh"}) {
 		t.Fatalf("jobs %v", ids)
 	}
 	c := r.compute
@@ -534,7 +566,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	}
 	// backfill hands the runner the same four jobs.
 	r.jobs = nil
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 4 {
+	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 5 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }

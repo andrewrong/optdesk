@@ -3,6 +3,7 @@ package fredseries
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -67,13 +68,27 @@ func (j *job) ID() string { return j.m.ID }
 
 // Run fetches the series of keys for day and writes the points in one call.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
-	ids := make([]string, 0, len(keys))
+	var plain, windowed []string
 	for _, k := range keys {
-		ids = append(ids, k.SubjectKey)
+		if slices.Contains(j.m.Windowed, k.SubjectKey) {
+			windowed = append(windowed, k.SubjectKey)
+		} else {
+			plain = append(plain, k.SubjectKey)
+		}
 	}
-	points, err := j.src.Fetch(ctx, sources.FetchPlan{SeriesIDs: ids, From: day, To: day})
-	if err != nil {
-		return contracts.JobResult{Err: asTyped(err, contracts.Permanent)}
+	var points []contracts.SeriesPoint
+	for _, g := range []struct {
+		ids  []string
+		from contracts.Day
+	}{{plain, day}, {windowed, daysBefore(day, j.m.LookbackDays)}} {
+		if len(g.ids) == 0 {
+			continue
+		}
+		got, err := j.src.Fetch(ctx, sources.FetchPlan{SeriesIDs: g.ids, From: g.from, To: day})
+		if err != nil {
+			return contracts.JobResult{Err: asTyped(err, contracts.Permanent)}
+		}
+		points = append(points, got...)
 	}
 	res := contracts.JobResult{Returned: len(points)}
 	for _, p := range points {
@@ -89,4 +104,13 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		res.Err = asTyped(err, contracts.Retryable)
 	}
 	return res
+}
+
+// daysBefore is the calendar day n days before day; an unparsable day is returned as it is.
+func daysBefore(day contracts.Day, n int) contracts.Day {
+	t, err := time.Parse("2006-01-02", string(day))
+	if err != nil {
+		return day
+	}
+	return contracts.Day(t.AddDate(0, 0, -n).Format("2006-01-02"))
 }
