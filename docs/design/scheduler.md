@@ -1,0 +1,449 @@
+# Scheduler: a separate process that runs the reconcile of the runner on calendar slots (stage 1)
+
+Author: the optdesk designer (first draft)
+Owner approved: (pending)
+Revision: 5 (after the adversarial review, the owner's resident-service requirement, optdesk-advisor's opinion of 2026-11-08 and the owner's decisions of 2026-11-08 on boot, deploy and the way)
+
+Source: owner request of 2026-11-08 ("a scheduler design now, every later job needs it; do not repeat option-trader's mistakes"), the 20 lessons of option-trader's scheduler (the advisor's list of 2026-11-08,
+kept by the author, not in the repository), `docs/contracts/runner.md` ("Jobs and slots: None yet ... scheduling slots belong to the follow-up wiring design"), the adversarial review of revision 1 (kept by the author), and optdesk-advisor's opinion of 2026-11-08.
+Read on main at 3ef73b1: `AGENTS.md`, `docs/design/modules.md`, `docs/design/home-page.md` (format), `docs/design/runner-window.md`, `docs/design/ot-collect.md`, `docs/design/pyside-ibkr-transport.md`,
+`docs/adr/0003-market-data-architecture.md`, `docs/contracts/runner.md`, `docs/contracts/jobs.md`, `docs/deploy/pyside.md`, `docs/engineering.md`, `internal/runner/api.go`, `internal/runner/reconcile/reconcile.go`
+(`leaseTTL`, `run`, `Acquire`), `internal/store/api.go` (`OpsLedger`, `Run`, `Lease`, `Window`), `internal/store/ops/ledger.go`, `migrations/0003_ops_ledger.sql`, `internal/clock/api.go`, `internal/clock/calendar/calendar.go`,
+`internal/jobs/api.go`, `internal/contracts/api.go` (`Job`, `JobResult`, `ExpectedKey`, `TypedError`), `cmd/ot/runonce.go`, `cmd/ot/serve.go`, `.golangci.yml`, `scripts/arch/main.go`, `go.mod`;
+crew's `rules/service.md` (docker or host under the keeper in tmux; no launchd).
+
+Goal (stage 1): one long-running process, `ot scheduler`, that calls the existing `Reconcile` at the slots the jobs declare (slots come from the trading calendar), once at start plus 10 minutes and every 15 minutes, keeps every fact of
+its work in PostgreSQL, runs alone (a PostgreSQL advisory lock), and says in one place what is late, partial or missing. Job contents (fetches, compute, reports, alerts) are not designed here. Lanes, hand requests and resumable units are stage 2 (Left out):
+today there are three jobs and one gateway, and stage 2 needs a real job that asks for it.
+
+What main holds today: `ot run-once` and `ot backfill` (`cmd/ot/runonce.go`, `cmd/ot/backfill.go`) run one `Reconcile` call and exit. The runner runs the keys of a day one at a time on the calling goroutine (private `reconciler.run`), holds the one row of
+`ops.run_lease` (10 minutes, no renewal, expiry computed from the database's `now()` in `Acquire`) for the whole call, and nothing starts a call. The run table, the present marks, the windows and the cursor in `ops.*` already are the state machine; this design starts the calls and adds what is missing around them.
+
+## Decisions
+
+1. Own code behind an interface, no scheduling library. Owner rule of 2026-11-08: our own code, even thin glue, sits behind an interface so that a library can replace it later. The interface is `runner.Scheduler` (`Run(ctx) error`, in `internal/runner/api.go`), built by `runner.NewSchedulerFunc`;
+   the fence is behind `store.InstanceFence` and the run of one key behind `runner.KeyRunner` (Decision 8). `cmd/ot` sees only these. The real reasons, replacing the revision-1 text:
+   - The state is already in `ops.*`: `ops.capture_run` (run, lease, heartbeat, reason), `ops.capture_present`, `ops.dataset_window`, `ops.reconcile_cursor`, and `Reconcile` is the state machine over them. A library that keeps a job table or a job list (river, gocron) would hold a second copy of that state or replace `Reconcile`, which works and has tests. That is the deciding reason.
+   - `github.com/riverqueue/river` (v0.51.1 of 2026-11-05, MPL-2.0, deps: pgx v5, its own driver module and others): pre-1.0, so the API is not stable (AGENTS.md criterion); MPL-2.0 is file-level copyleft, short of "permissive"; it brings its own schema outside the goose migrations and the per-role grants. Its periodic jobs could take a calendar-driven next time
+     (`PeriodicSchedule.Next`), and `.golangci.yml` lets pgx be imported under `internal/store/**`, so it could be placed there; neither changes the first reason. Not chosen. Its PG touching would also need the owner's word.
+   - `github.com/go-co-op/gocron/v2` (v2.23.0 of 2026-10-26, MIT; deps: clockwork, uuid, robfig/cron/v3): it has `WithClock`, one-time jobs and an elector hook, so a calendar slot can be expressed; but its job list lives in memory and the fence and the missed-run logic would still be ours. Not chosen now; it is the likeliest library behind `runner.Scheduler` later.
+   - `github.com/robfig/cron/v3` (MIT, last tag 2020-01): cron strings only, no injectable clock. Not chosen.
+   - Size, stated as it is: the wait loop is small (the part a library would replace); the stage-1 work is thirteen issues around it (slots, run of a key, gaps, fence, commands). The pull request that lands the ticker carries `Design: own implementation, because ...` with this text. No issue below adds a direct dependency;
+     `github.com/jonboulle/clockwork` v0.5.0 is already one (`go.mod`).
+2. Process: resident, not one-shot (owner requirement of 2026-11-08). `ot scheduler` is a subcommand of the one `ot` binary, a long-running process that stays up, and a separate process from `ot serve` (`cmd/ot/serve.go`); serve never starts, stops or embeds it, and no cron or launchd runs it. It shuts down gracefully on SIGTERM (Decision 10), runs alone (Decision 5)
+   and answers health: a listener on `localhost` only, `GET /health` is 200 while the fence is held and the loop's tick counter is current, 503 otherwise (any other path 404), and `ot scheduler status` (Decision 11) gives the detail.
+   The way is a host service under the crew keeper (tmux, no launchd), decided by a trial of 2026-11-08 (the dispatcher's): a Unix socket listening on the host in a directory bind-mounted into a container (OrbStack running, `docker run --rm -v <dir>:/sock ...` connecting to `/sock/s.sock`) gave `ConnectionRefusedError` twice and the host listener never saw a connection. OrbStack does not forward a host Unix
+   socket through a bind mount here, and the broker jobs reach pyside only by the sockets under `$OT_HOME/run/` (`docs/deploy/pyside.md`), so the scheduler cannot run in a container; `rules/service.md` allows the host for what a container cannot do. The entry is `way = "host"`, proposed in `docs/deploy/scheduler.md`. `ot serve` stays in docker: `cmd/ot/serve.go`, `site.go` and `page.go` name no broker and no socket
+   (checked on main), it reads PostgreSQL only. Owner decisions of 2026-11-08: the machine itself starts nothing (the IB gateways need a re-login after a boot anyway) and the owner starts the keeper, which brings the scheduler up and restarts it after a crash. In crew's terms that is `boot = true`: the keeper skips every host service with `boot = false` (`cap_keeper.go:294`, confirmed by agent-crew-dispatcher), no other `services.toml` key gives restart on a crash, and the exit status 75 contract below also needs `boot = true`. So the entry is `boot = true`, which here means "started and restarted by the keeper the owner starts", not a start at machine boot (no launchd);
+   after the owner's first deploy, deploys run automatically on merge with automatic rollback (`deploy` is not `"owner"` after the first). PostgreSQL is in docker and is the only state.
+3. Schedule, plain values, not a runner type. Each job answers one optional method, in the manner of `Windowed`: `Schedule() (calendarID, anchor, zone string, offset time.Duration)`. A job package imports no runner type, so the `jobs` row of `docs/design/modules.md` keeps its depends cell (`contracts clock sources broker store`; the revision-1 claim that a job returns `runner.Slot` was wrong).
+   `anchor` is `session_open` or `session_close` (taken from `clock.Calendar.Session` of the calendar, so an early close moves the slot; `zone` empty) or `time` (`offset` is the wall time since midnight in the named `zone`, on session days of the calendar). `offset` may be negative (the US close slot is `session_close` with `-30m`).
+   The runner root declares the same values as `runner.Slot` for its own use, and `internal/runner/sched` converts. One slot per job in stage 1 (several a day: stage 2). Instants are computed in UTC from the calendar and `time.LoadLocation`; the owner's display time zone (from configuration) is only for printing.
+   A job without `Schedule()` is run only by the 15-minute ticks.
+4. The ticker. One goroutine waits with a `clockwork.Clock` timer to the next of: the next slot start, the next reconcile tick (start + 10 minutes, then every 15), and a 30-second ceiling; after every wake it recomputes from `Now()` (never from a monotonic delta: a sleeping Mac stops it). When a slot start has passed or a tick is due it hands one
+   `Reconcile(ctx, day)` for today (and the open days after the cursor, which `Reconcile` already walks in order and in one call) to a worker goroutine and goes back to waiting. The loop calls no ledger, broker or job; every worker call has a `context.WithTimeout` and the ledger connection sets `lock_timeout` and `statement_timeout`.
+   A stop of 15 hours is one `Reconcile` call at start, not one close per missed occurrence. Time is injected: `clock.Clock` has only `Now()` (`internal/clock/api.go`), so `runner.NewSchedulerFunc` takes a `clockwork.Clock` (a subset of which `clock.Clock` already is) and the root package of runner gains that import (see Reversals).
+5. Single instance by a PostgreSQL session advisory lock, taken before anything else is opened. `store.InstanceFence.TryLock(ctx, build)` runs `pg_try_advisory_lock` on a dedicated connection that nothing else uses and returns a `Fence`: it is released by the database when the connection or the process dies (no TTL, no epoch,
+   no table), and `Fence.Lost()` closes when the connection drops, which cancels the process context. A second `ot scheduler` retries for 60 seconds and exits non-zero. A watchdog goroutine exits the process when the loop's tick counter has not advanced for 60 seconds (a frozen loop does not hold the fence; the keeper restarts it). The build id is written to
+   `ops.scheduler_state` (below) after the lock is held, so `status` shows which build runs. Stated residual: a process frozen so long that its connection drops, and that then wakes, can write once before it sees `Lost()`; the writes of `Reconcile` are idempotent (deterministic run and capture ids), so the cost is a repeated key, not a wrong one.
+6. Run lease. The existing `ops.run_lease` stays and is renewed: `Reconcile` and `Backfill` are given a renewal every 30 seconds while they run (`RenewLease` on `SchedulerLedger`, SQL `now()`), so a call longer than 10 minutes no longer lapses its lease, and a scheduler that is killed leaves the lease for at most the remaining TTL, which the next
+   `Acquire` already waits out as `Retryable` (the next 15-minute tick). The scheduler releases the lease on drain. Hand commands (`ot run-once`, `ot backfill`) first try the advisory lock; while the scheduler holds it they refuse (exit non-zero, the text names `ot scheduler status`).
+7. Counting of runs (changes `docs/contracts/runner.md`: v4). Only a run that reached a verdict spends the allowance of two runs per key and day. A run ended by a graceful stop (reason `abandoned_stop`) or a `running` run whose lease ran out without a verdict (`crashed`) is not counted, as lessons 7 and 9 require. The brake against a crash loop stays, and it is in the unit that
+   exists, the key and the day (there is no occurrence in stage 1): three not-counted runs of one `(day, dataset, subject)` stop the key with reason `crashed_repeatedly`: no new run, the cursor holds, a gap is written. This replaces runner v3's "a crashed run counts" and its one re-run; the replacement lets three process deaths happen before the gap, and the keeper's own restart backoff
+   bounds how fast they can.
+8. One entry point for one key, in the runner. `runner.KeyRunner.RunKey(ctx, day, key, deadline time.Time) (store.Run, error)` runs one key through its job under a context that ends at `deadline` (the run bound; a cut run with `Returned > 0` is recorded `partial`, a verdict that counts, the rest is repaired by the next tick),
+   writes the run row with heartbeat and lease renewal every 30 seconds, consults the job's optional `Postcondition` for "present", and is what the private `run` of `reconcile.go` becomes: `Reconcile` and `Backfill` call it for every key (so there is one path that runs a job, and a hand backfill and a tick cannot differ). It takes no lease of its own in stage 1 (the caller holds `ops.run_lease`);
+   a per-key lease is what stage 2 changes to run lanes in parallel. The deadline given by `Reconcile` is the window's `CloseAt` plus a bound from the job (`RunBound`, a plain value of an optional `Bounded` method, default 30 minutes), so a run is never open-ended.
+   `Preflighter`: `Preflight(ctx) error`, a plain optional method, run at start and again at every ticker tick for every job that failed it; a job that fails (missing key, no socket) is disabled alone, a gap `preflight_failed` is written once, `ot scheduler status` is red while it fails, the other jobs run, and the first pass that succeeds enables the job and clears the gap.
+9. Gaps, one record. `ops.job_gap` (job, dataset, day, reason, `first_seen_at`, `reported_at`, `cleared_at`) is written by the scheduler after each `Reconcile` from the runs and the present marks: a key still missing after its window close (`expired`), a `crashed_repeatedly` key, a `preflight_failed` job; a gap is cleared when the key is present or `no_value`; `reported_at` is set the first time a page shows it, so it is said once.
+   Pages read through `store.GapReader` (role `ot_ro_pages`) from two views in schema `rd`, not from base tables: `rd.job_gap_r1` (the open and cleared gaps) and `rd.expectation_r1` (derived from `ops.dataset_window`, whose `close_at` is the due-by instant, and `ops.capture_present`); `OpenGaps(ctx)` and `Expectations(ctx, from, to)` read them, and an `Expectation` is `{DatasetID, ExpectedDay, DueBy, PresentDay, Gap}`. This keeps the owner's schema v3 rule (restated in `docs/design/store-week2.md`): `ops` is written by `ot_runner` only and `ot_ro_pages` reads views of `rd` with no grant on a base table.
+   `ops.job_gap`, `ops.scheduler_state` (one row, the build) and `ops.scheduler_job` (one row per job: next start, window end, `restart_sensitive`, disabled reason; written by the ticker) sit beside `ops.capture_run` and the other tables of `migrations/0003_ops_ledger.sql`; they replace nothing. Schema v3's `ops.job_run`, `ops.job_event` and `ops.stream_gap` are not on main (`docs/design/store-week2.md` defers `ops.job_event` to a design `capture-ledger`, and `docs/design/modules.md` names `job_event` as an input of notify): this design neither creates nor replaces them; `notify` will read `rd.job_gap_r1` until that design says otherwise, and the advisor is asked whether `job_gap` should later be folded into `job_event`.
+   One pure function `gaps.Freshness(Expectation, now) State` in `internal/pages/gaps` gives FRESH, LATE, STALE, UNKNOWN, INVALID or CLOSED: the five of lesson 14 plus CLOSED, because the owner wants 休市 and not 过期; a day without a session has no window, so a holiday is CLOSED. INVALID is a `PresentDay` after the expected day, or an expectation with no `DatasetID`.
+   `stale_after` of a page is the `DueBy`. Sending a message is the `notify` module, left out; it will read the same rows.
+10. Restart guard. Crew has no hook that asks a service before a restart or a deploy (both end the tmux session), so safe restart is the scheduler's own job. It drains: on SIGTERM the loop stops, the worker gets a 30-second grace, the run in hand is finished or cut at the end of the grace, and the drain rule is one: a cut run with `Returned > 0` ends `partial` (a verdict, counted like any partial run), a cut run with `Returned = 0` ends `abandoned` with reason `abandoned_stop` (not counted, Decision 7); then the lease is released, the fence is closed and the process exits. `TestDrainWritesAbandonedAndCloses` asserts the `Returned = 0` case and a second case `Returned > 0` ends `partial`. For a replacement of its binary the scheduler compares its executable identity (size, mtime, inode of the first element of `run`) at each tick, drains when it changed and exits with status 75, the one drain contract of crew (`rules/service.md`: one uncounted keeper restart per new identity). `ot scheduler can-restart` exits 0 only when no run is non-terminal and no job marked `restart_sensitive` is between its slot start and its window close; it prints the reason otherwise. `restart_sensitive` is a boolean key of the `[schedule]` table of a job's `job.toml` (default false), answered by the optional plain method `RestartSensitive() bool`; the ticker writes it with each job's window end to `ops.scheduler_job`, and `can-restart` reads that table (so it needs no job code); crew never calls it, a person or the dispatcher runs it before a hand restart. The key and the method are owned by `sched-jobs-schedule`; the method is declared in `sched-runner-interface`.
+    It is advice, and after the first deploy it is not even asked: crew's automatic deploy and rollback restart the scheduler on merge without calling it, and crew's `restart` bypasses it. Lesson 8's "no restart in a window" is therefore recorded, not enforced, and a merge during a sensitive slot costs a drain (the run in hand ends `partial` or `abandoned` by the drain rule above) and a repeat of that key on restart. Enforcing it needs a pre-deploy hook in crew, which is not ours (open question 1).
+11. Progress. A run row's `heartbeat_at` and `lease_until` are renewed by `RunKey`; `ot scheduler status` reads only `ops.*` (instance build, non-terminal runs with age and last heartbeat, next slot per job, open gaps) and opens no dataset store and no broker; exit 0 green, 1 red.
+12. A generic job, not a fetch. The scheduler core knows a job only as `contracts.Job` registered by id, plus the optional plain-value methods: `Schedule` (when), `Bounded` (the time budget), `Postcondition` (what must exist afterwards), `Preflighter` (can it start), and `Run`/`Plan` (what it does). An `ExpectedKey{DatasetID, SubjectKey}` is opaque to the runner
+    (`docs/contracts/runner.md`: "Keys are opaque; it never reads dataset content") and names an output, not a fetch: `{obs.option_eod, SPY}` for a capture, `{report.morning, 2026-11-09}` for a report, `{alert.margin, 2026-11-09}` for an alert evaluation. "Postcondition" is "this output exists for the day". The core imports no job package and no dataset type;
+    adding a new kind of job (compute, report, alert) is a new package under `internal/jobs/` that implements `contracts.Job` and the optional methods, plus one line in the registry that `cmd/ot` wires: no change to `internal/runner`, `internal/runner/sched` or the ledger. Data collection (`fred_series`, `option_eod`, `quote_snapshot`) is only the first registered jobs.
+    Stage-1 limits that a later job may meet and that are in Left out: one slot a day per job, and a day-keyed output (a job whose unit is not a session day, such as an intraday alert, needs the occurrence of stage 2).
+13. Time and tests. No `time.Now`, `time.Sleep` or `time.After` in the packages below; time comes from a `clockwork.Clock` (the fake in tests, advanced with `Advance` and `BlockUntilContext`; the existing runner tests use `clockwork` fakes); no test sleeps; every test is `t.Parallel`; PostgreSQL tests carry the build tag `pg` and run in GitHub CI only; no test dials a broker.
+
+## Reversals this design makes, stated
+
+- No departure from schema v3 or from `migrations/0003_ops_ledger.sql` ("ot_ro_pages reads views of rd only: no grant on ops"): pages read the views `rd.job_gap_r1` and `rd.expectation_r1`, and `ot_ro_pages` gets `SELECT` on those two views only. (An earlier draft granted three base tables; the advisor's opinion of 2026-11-08 replaced that.)
+- Two invariants of `docs/contracts/runner.md` change, both in `sched-runner-interface`: line 30 "No `time.Now` or `time.Sleep`: time comes from the injected `clock.Clock`" becomes "... from the injected `clock.Clock`, and from a `clockwork.Clock` where a timer is needed", and line 31 (the root depends on `contracts`, `clock` and `store` only) gains `clockwork`: the root package imports `github.com/jonboulle/clockwork` because `runner.NewSchedulerFunc` takes a `clockwork.Clock`. `clock.Clock` is not widened (`internal/clock/api.go` is not edited).
+- Runner v4: a crashed or abandoned run is no longer counted, with the per-key brake of Decision 7 (reverses v3 "a crashed run is not covered by this and still counts"); the brake of three is written into `docs/contracts/runner.md` next to the two-run cap, in `sched-reconcile-count`.
+- Lease arithmetic stays on PostgreSQL's `now()`: `Acquire` already computes expiry in SQL, the new `RenewLease` does the same, and the advisory lock has no expiry at all. No process-clock lease exists (revision 1's instance lease, which would have used the process clock, is dropped).
+- `ot run-once` and `ot backfill` refuse while the scheduler lives (a change of the commands of `docs/contracts/ot.md`).
+
+## The 20 lessons and what prevents each
+
+"Stage 2" means that the lesson is only partly met in stage 1 and the rest is in Left out; "records" means advice or a row, not a block.
+
+| # | lesson (option-trader) | element here |
+|---|---|---|
+| 1 | loop froze on a locked store | Decision 4: loop calls nothing slow, workers have timeouts, `lock_timeout` and `statement_timeout`; Decision 5: watchdog exits a frozen loop |
+| 2 | 15 h stop closed missed occurrences one by one | Decision 4: one `Reconcile` call at start, then sleep to the next due time |
+| 3 | publish awaited on the scheduler path | the scheduler publishes nothing, it writes `ops.*` rows (Decisions 2, 9); the loop only waits and dispatches |
+| 4 | two serves ran together | Decision 5: advisory lock before any other open, released by the database on death, build id in `ops.scheduler_state`; Decision 10: bounded drain; hand commands refuse while it lives (Decision 6) |
+| 5 | hand backfill held the only lane 150 min | partly: Decision 8 gives every run a deadline (`RunBound`) and Decision 6 keeps hand commands out while the scheduler lives; parallel lanes and a yielding backfill are stage 2 |
+| 6 | CLI took the store lock; file lock | file lock: not applicable (PostgreSQL has row locks and roles). One writer role: the scheduler and the commands use `ot_runner`, and the commands refuse while the scheduler runs (Decision 6) |
+| 7 | restarts abandoned running jobs, retry spent | Decision 7: `abandoned_stop` and lapsed-lease runs are not counted; Decision 10: `can-restart` records "not now" (advice) |
+| 8 | EOD capture replanned from zero 5 times | stage 2 (`Resumable` units); stage 1 gives the restart advice of Decision 10 and keeps writes idempotent, so a restart repeats keys, it does not corrupt them. Not prevented in stage 1; the cost is the repeat of the key in hand |
+| 9 | partial refresh, its recovery killed, slot undone | Decision 7: only a verdict spends the allowance; Decision 8: a cut run with rows is `partial`, repaired on the next tick |
+| 10 | no postcondition, job with no run row unnoticed | Decisions 4, 8: `Postcondition` per key, ticks from schedule and calendar at start + 10 min and every 15 min, so a key with no run row is a missing key. The reconnect trigger is covered by the 15-minute tick (pyside gives no reconnect event) |
+| 11 | one deadline for start and run | Decision 8: the run bound is its own value; a start is never refused for lateness, it is repaired (no start deadline in stage 1, so manual and scheduled starts do not differ). A start deadline and a hard stop are stage 2 |
+| 12 | frozen requests went live in extended hours | job content plus stage 2 (`HardStop`); the run context ends at the window `CloseAt` plus the job's bound (Decision 8). Not prevented by the scheduler alone |
+| 13 | time zones and half days by hand | Decision 3: slots from `clock.Calendar` and named zones in UTC, early close moves `session_close` slots, offset may be negative; Decision 4: recompute from the wall clock at most every 30 s |
+| 14 | two staleness rules, holiday shown stale | Decision 9: one `Freshness` function from expectations derived from `ops.dataset_window`; no session means CLOSED |
+| 15 | silent 40 min capture | Decision 11: heartbeat on every run, `status` from `ops.*` only. Per-unit progress notes are stage 2 |
+| 16 | missed jobs seen only when a page was opened; missing key silent | Decision 8 `Preflighter` (disabled, red, gap at start); Decision 9 gaps are rows, said once; the red morning read is `notify`, left out |
+| 17 | scheduler inside serve, started by hand | Decision 2: separate process and crew service; Decision 10: restart advice |
+| 18 | request bursts broke the gateway | not applicable to the scheduler: the pacer lives in pyside (`pacing.py`, ADR 0003, `docs/design/pyside-ibkr-transport.md`) and the Go client has a gate (`internal/broker/grpcbroker/pace.go`); the scheduler runs one key at a time |
+| 19 | hand re-runs collided with the lane | Decision 6: hand commands refuse while the scheduler lives, so there is one runner; self-repair is the tick; hand requests through rows are stage 2 |
+| 20 | "run it again" by hand; wait for the close; night pings | Decision 4: automatic repair every 15 min until the window close, then `expired` and a gap; a probe slot (several slots a day) is stage 2; nothing here sends a night message |
+
+## Modules
+
+One change of `docs/design/modules.md`, in text only: the sentence that lists the implementation packages `cmd/ot` may import gains `internal/runner/sched`. No table row changes: jobs keep their depends cell (Decision 3), runner depends on `contracts clock store`, pages on `contracts store`, `ot` on
+`runner jobs pages store`. This design's pull request carries that edit, as `docs/design/option-jobs.md` and `docs/design/ot-collect.md` did for their rows. Every path below belongs to a row as it stands: `internal/runner/**` and `docs/contracts/runner.md` to runner; `internal/store/**`, `migrations/**` and `docs/contracts/store.md`
+to store; `internal/jobs/**` and `docs/contracts/jobs.md` to jobs; `internal/pages/**` to pages; `cmd/**` and `docs/contracts/ot.md` to ot; `docs/deploy/**` to docs.
+`arch.toml` and `.go-arch-lint.yml` belong to the repo row (`docs/design/modules.md`, ownership of shared paths) and are generated by `go run ./scripts/arch` (README.md). The three issues that add a package (`sched-slots`, `sched-pages-gaps`, and `sched-cmd-run` for the import list) are therefore judged two-module entries (their module and repo),
+named as such below; the files are regenerated, never edited by hand.
+
+| issue | module | order |
+|---|---|---|
+| sched-store-interface | store (interface) | first |
+| sched-runner-interface | runner (interface) | after sched-store-interface |
+| sched-store-ops | store | after sched-store-interface |
+| sched-run-key | runner | after sched-runner-interface and sched-store-ops |
+| sched-reconcile-count | runner | after sched-run-key |
+| sched-slots | runner, plus repo (judged two-module entry) | after sched-runner-interface |
+| sched-ticker | runner | after sched-run-key and sched-slots |
+| sched-gaps | runner | after sched-ticker |
+| sched-jobs-schedule | jobs | after sched-runner-interface |
+| sched-pages-gaps | pages, plus repo (judged two-module entry) | after sched-store-interface |
+| sched-cmd-run | ot, plus repo (judged two-module entry) | after sched-ticker, sched-gaps and sched-jobs-schedule |
+| sched-cmd-status | ot | after sched-cmd-run |
+| sched-deploy-runbook | docs | after sched-cmd-status |
+
+## Interface
+
+Owner: store and runner. Frozen by `sched-store-interface` and `sched-runner-interface`; read by every issue after them.
+
+Store (`internal/store/api.go`, added beside `OpsLedger`, which is unchanged):
+
+- `InstanceFence` with `TryLock(ctx, build string) (Fence, error)` (a `Retryable` error while another holds it) and `Fence` with `Lost() <-chan struct{}` and `Close() error`.
+- `SchedulerLedger`: `RenewLease(ctx, Lease, ttl)` (expiry from the database's `now()`), `PutGap`, `ClearGap`, `MarkGapReported`, `SetState(ctx, build)`, `PutJobStates(ctx, []JobState)` (`JobState{JobID, NextStart, WindowEnd time.Time; RestartSensitive bool; DisabledReason string}`), `Status(ctx)` (reads `ops.*` only). Types: `Gap`, `SchedulerStatus`; `RunStatus` gains `RunPartial` and `RunAbandoned` (additive; the column is text).
+- `GapReader` (role `ot_ro_pages`, reading the views `rd.job_gap_r1` and `rd.expectation_r1`): `OpenGaps(ctx)`, `Expectations(ctx, from, to contracts.Day)`; type `Expectation{DatasetID string; ExpectedDay, PresentDay contracts.Day; DueBy time.Time; Gap string}`. Constructors `OpenFenceFunc`, `OpenSchedulerLedgerFunc`, `OpenGapReaderFunc`.
+- `migrations/0012_scheduler.sql`: `ops.job_gap`, `ops.scheduler_state` (one row) and `ops.scheduler_job`, owner `ot_owner`, writes by `ot_runner`; the views `rd.job_gap_r1` and `rd.expectation_r1` (owner `ot_owner`, which can read `ops`), with `SELECT` on the views for `ot_ro_pages` and `ot_runner`, and no grant on an `ops` table for `ot_ro_pages`.
+
+Runner (`internal/runner/api.go`, added beside `Reconciler`, `Backfiller` and `Windowed`, which are unchanged): `Slot` (the plain values of Decision 3), the optional plain-value interfaces `Scheduled`, `Bounded`, `Preflighter`, `Postcondition`, `RestartSensitive`, `KeyRunner` (Decision 8), `Scheduler` (`Run(ctx) error`) and
+`NewSchedulerFunc` (`internal/runner/sched.New`, taking `store.InstanceFence`, `store.SchedulerLedger`, `store.OpsLedger`, `clock.Calendar`, a `clockwork.Clock`, a `runner.Reconciler` and `[]contracts.Job`). `contracts.Job` and `internal/jobs/api.go` are not edited. The job contract is generic (Decision 12): a job is `contracts.Job` registered by id (`jobs.Registry`) with optional `Schedule`, `Bounded`, `Postcondition` and `Preflight`; nothing in these declarations names a fetch, a dataset type or a broker, and a new kind of job needs no edit of the scheduler core. The method sets of the optional interfaces use only standard-library types, so a job package implements them without importing runner.
+
+## Issues
+
+### sched-store-interface (interface)
+
+- Module: store. Size: S. Depends on: none.
+- Order: first.
+- Design: docs/design/scheduler.md#Interface
+- Files: internal/store/api.go, internal/store/api_test.go, docs/contracts/store.md
+
+- Goal: add the store declarations of the Interface section to `internal/store/api.go`, declarations only, with the contract test from both sides (a fake that implements `InstanceFence`, `SchedulerLedger` and `GapReader`, and a caller that uses them) and a section of `docs/contracts/store.md` saying who writes and who reads,
+  and recording the two views and their grants (`ot_ro_pages` reads views of `rd` only, as schema v3 says, and has no grant on an `ops` table).
+
+Acceptance:
+
+1. `grep -c "type InstanceFence interface\|type SchedulerLedger interface\|type GapReader interface\|type Expectation struct" internal/store/api.go` prints 4; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep -c '^-[^-]'` prints 0.
+2. `go test ./internal/store -run 'TestInstanceFenceContract|TestSchedulerLedgerContract|TestGapReaderContract' -race -count=1` passes and `grep -c "t.Parallel()" internal/store/api_test.go` is at least `grep -c "^func Test" internal/store/api_test.go`.
+3. `grep -c "var _ store.OpenFenceFunc\|var _ store.OpenSchedulerLedgerFunc\|var _ store.OpenGapReaderFunc" internal/store/api_test.go` prints 3.
+4. `grep -c "rd.job_gap_r1\|rd.expectation_r1" docs/contracts/store.md` is at least 2 and `go vet ./internal/store` passes.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the three paths of the Files line.
+
+Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint); checks (`Contracts: unchanged`); the design verdict (the result matches the Interface part of `docs/design/scheduler.md`).
+
+### sched-runner-interface (interface)
+
+- Module: runner. Size: S. Depends on: sched-store-interface.
+- Order: after sched-store-interface.
+- Design: docs/design/scheduler.md#Interface
+- Files: internal/runner/api.go, internal/runner/api_test.go, docs/contracts/runner.md
+
+- Goal: add the runner declarations of the Interface section. Declarations only; `contracts.Job` is not edited. `docs/contracts/runner.md` gains the section "Jobs and slots" replacing "None yet", and its two changed invariants are made there: line 30 (time from `clock.Clock`, and from `clockwork.Clock` where a timer is needed) and line 31 (the root imports `clockwork` too). The optional `RestartSensitive` method is declared here.
+  The interface the owner's rule asks for is `runner.Scheduler`: its doc comment says that a library may implement it.
+
+Acceptance:
+
+1. `grep -c "type Slot struct\|type Scheduled interface\|type Bounded interface\|type Preflighter interface\|type Postcondition interface\|type RestartSensitive interface\|type KeyRunner interface\|type Scheduler interface" internal/runner/api.go` prints 8.
+2. `go test ./internal/runner -run 'TestSchedulerContract|TestKeyRunnerContract|TestOptionalMethods' -race -count=1` passes: one fake job implements only `contracts.Job`, one implements every optional method with standard-library types only, and a caller type-asserts each.
+3. `git diff $(git merge-base HEAD origin/main) -- internal/runner/api.go | grep -c '^-[^-]'` prints 0 and `git diff $(git merge-base HEAD origin/main) -- internal/contracts internal/jobs internal/clock` is empty.
+4. `grep -c "None yet" docs/contracts/runner.md` prints 0; `grep -c "clockwork" docs/contracts/runner.md` is at least 2 (the time line and the imports line); `grep -c "from the injected .clock.Clock.\." docs/contracts/runner.md` prints 0.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the three paths of the Files line.
+
+Checked by CI: ci-go (go-arch-lint: the root package imports `contracts`, `clock`, `store` and `clockwork`); checks (`Contracts: unchanged`); the design verdict.
+
+### sched-store-ops
+
+- Module: store. Size: M. Depends on: sched-store-interface.
+- Order: after sched-store-interface.
+- Design: docs/design/scheduler.md#Interface
+- Files: migrations/0012_scheduler.sql, internal/store/ops/scheduler.go, internal/store/ops/scheduler_test.go, internal/store/ops/scheduler_pg_test.go, internal/store/ops/gaps.go
+
+- Goal: the three tables, the two views and their grants (`SELECT` on the views to `ot_ro_pages` and `ot_runner`; none on an `ops` table to `ot_ro_pages`), and the implementations of `InstanceFence`, `SchedulerLedger` and `GapReader` on the connection helpers of `internal/store/ops/ledger.go`. The fence holds one dedicated connection. `RenewLease` and every lease or gap time use SQL `now()`; no `time.Now` in the files.
+
+Acceptance:
+
+1. `test -f migrations/0012_scheduler.sql`; `grep -c "CREATE TABLE ops\.\(job_gap\|scheduler_state\|scheduler_job\)" migrations/0012_scheduler.sql` prints 3; `grep -c "CREATE VIEW rd\.\(job_gap_r1\|expectation_r1\)" migrations/0012_scheduler.sql` prints 2; `grep "ot_ro_pages" migrations/0012_scheduler.sql | grep -c "ops\."` prints 0 (no grant on an `ops` object to `ot_ro_pages`).
+2. `go test ./internal/store/ops -race -count=1` passes without PostgreSQL (the fake `querier` of `ledger.go`): `TestRenewLeaseUsesDatabaseNow` (the SQL text holds `now()` and no time argument), `TestPutGapIdempotent`, `TestClearGap`, `TestExpectationFromWindowAndPresent`, `TestPutJobStatesReplacesRows`.
+3. `grep -c "t.Parallel()" internal/store/ops/scheduler_test.go` is at least `grep -c "^func Test" internal/store/ops/scheduler_test.go`; `grep -c "time.Sleep\|time.Now" internal/store/ops/scheduler.go internal/store/ops/gaps.go` prints 0 for each file.
+4. `head -1 internal/store/ops/scheduler_pg_test.go` is `//go:build pg` and `go vet -tags pg ./internal/store/ops` passes.
+5. `grep -rc "pgx" internal/runner internal/pages internal/jobs cmd | grep -v ':0$'` prints nothing; `wc -l internal/store/ops/scheduler.go` shows under 600.
+6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
+
+Checked by CI: ci-go with PostgreSQL (`go test -tags pg ./internal/store/ops`: goose up on an empty database, `TestFenceSecondLockRefusedThenFreedOnClose`, `TestOtRoPagesCannotReadOpsTables`, `TestOtRoPagesReadsViews`); checks; the design verdict.
+
+### sched-run-key
+
+- Module: runner. Size: M. Depends on: sched-runner-interface, sched-store-ops.
+- Order: after sched-runner-interface and sched-store-ops.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/runner/reconcile/runkey.go, internal/runner/reconcile/runkey_test.go, internal/runner/reconcile/reconcile.go, internal/runner/reconcile/backfill.go, docs/contracts/runner.md
+
+- Goal: Decision 8 and the renewal of Decision 6. `reconcile.NewKeyRunner` (type `runner.KeyRunner`) runs one key under a context that ends at the deadline, records heartbeat and lease renewal every 30 s of the injected clock, records `partial` for a cut run with rows, consults `Postcondition` when the job has it, and the private `run` of
+  `reconcile.go` is replaced by calls to it, in `Reconcile` and in `Backfill`. `Reconcile` and `Backfill` also renew `ops.run_lease` through `RenewLease` while they run. Counting does not change here (next issue); behaviour of existing tests does not change.
+
+Acceptance:
+
+1. `go test ./internal/runner/reconcile -race -count=1` passes in full with the existing tests unchanged (`git diff $(git merge-base HEAD origin/main) --stat -- 'internal/runner/reconcile/*_test.go'` lists only `runkey_test.go`).
+2. `go test ./internal/runner/reconcile -run 'TestRunKeyDeadlineCutsRun|TestRunKeyCutWithRowsIsPartial|TestRunKeyHeartbeatEvery30s|TestRunKeyPostcondition|TestReconcileAndBackfillUseRunKey|TestRunLeaseRenewedWhileRunning' -race -count=1 -v` shows six PASS; time is a `clockwork.FakeClock`.
+3. `grep -c "KeyRunner" internal/runner/reconcile/reconcile.go internal/runner/reconcile/backfill.go` prints at least 1 for each file, and `grep -c "job.Run(" internal/runner/reconcile/reconcile.go internal/runner/reconcile/backfill.go` prints 0 for each (the one call is in `runkey.go`).
+4. `grep -c "time.Sleep\|time.Now" internal/runner/reconcile/runkey.go` prints 0; `grep -c "t.Parallel()" internal/runner/reconcile/runkey_test.go` is at least `grep -c "^func Test" internal/runner/reconcile/runkey_test.go`; `wc -l internal/runner/reconcile/*.go | sort -n | tail -2` shows no file over 600 lines that was not over it on main.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
+
+Checked by CI: ci-go; the design verdict (one path runs a job; no new behaviour for the existing cases).
+
+### sched-reconcile-count
+
+- Module: runner. Size: S. Depends on: sched-run-key.
+- Order: after sched-run-key.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/runner/reconcile/reconcile.go, internal/runner/reconcile/retry_test.go, internal/runner/reconcile/count_test.go, docs/contracts/runner.md
+
+- Goal: Decision 7. A run with reason `abandoned_stop`, or a `running` run whose lease lapsed without a verdict, does not count toward the two-run cap; three of them for one `(day, dataset, subject)` stop the key with reason `crashed_repeatedly` (no new run, the cursor holds). `TestCrashedRunIsNotExpired` of `retry_test.go` encodes "a crashed run counts" and is
+  changed in this issue, which is why `retry_test.go` is in the Files line. `docs/contracts/runner.md` changes to v4 and its invariants text follows.
+
+Acceptance:
+
+1. `go test ./internal/runner/reconcile -run 'TestAbandonedRunNotCounted|TestLapsedLeaseNotCounted|TestCrashedRepeatedlyStopsKey|TestCrashedRunIsNotExpired' -race -count=1 -v` shows four PASS.
+2. `go test ./internal/runner/reconcile -race -count=1` passes in full; `git diff $(git merge-base HEAD origin/main) -- internal/runner/reconcile/retry_test.go` changes only `TestCrashedRunIsNotExpired` (the pull request description lists its old and new assertion).
+3. `grep -c "v4" docs/contracts/runner.md` is at least 1, `grep -c "still counts" docs/contracts/runner.md` prints 0, and the brake is written next to the two-run cap: `grep -c "crashed_repeatedly" docs/contracts/runner.md` is at least 1 and `grep -c "three" docs/contracts/runner.md` is at least 1 (not only tested in `count_test.go`).
+4. `grep -c "crashed_repeatedly" internal/runner/reconcile/reconcile.go` is at least 1; `grep -c "time.Sleep\|time.Now" internal/runner/reconcile/reconcile.go` prints 0; `grep -c "t.Parallel()" internal/runner/reconcile/count_test.go` is at least `grep -c "^func Test" internal/runner/reconcile/count_test.go`.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the four paths of the Files line.
+
+Checked by CI: ci-go; checks; the design verdict (this reverses the "crashed counts" rule of runner v3 and says so).
+
+### sched-slots
+
+- Module: runner, plus repo (judged two-module entry: `arch.toml` and `.go-arch-lint.yml` are repo paths, regenerated by `go run ./scripts/arch`). Size: M. Depends on: sched-runner-interface.
+- Order: after sched-runner-interface.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/runner/sched/slots.go, internal/runner/sched/slots_test.go, arch.toml, .go-arch-lint.yml
+
+- Goal: Decision 3 as one pure function: `NextStarts(ctx, cal clock.Calendar, jobs []runner.Slot, from time.Time, days int) ([]Start, error)`, where a `Start` is a job id and a UTC instant. Anchors `session_open`, `session_close` and `time` (named zone), offsets, a non-session day gives none, an unknown calendar or zone is an error naming the job.
+  No clock, store or file access. The two repo files are the output of `go run ./scripts/arch` for the new package, not hand edits.
+
+Acceptance:
+
+1. `go test ./internal/runner/sched -run TestSlots -race -count=1 -v` passes with `TestSlotsUSCloseMinus30OnEarlyClose` (13:00 ET close gives 12:30 ET), `TestSlotsDSTWeek` (the US spring change week gives the right UTC instant each day), `TestSlotsKLNoDST`, `TestSlotsNoSessionNoStart` (Thanksgiving), `TestSlotsUnknownZone`.
+2. The tests use a fake `clock.Calendar` built from `contracts.SessionDay` rows; `grep -c "t.Parallel()" internal/runner/sched/slots_test.go` is at least `grep -c "^func Test" internal/runner/sched/slots_test.go`; `grep -c "time.Sleep\|time.Now" internal/runner/sched/slots.go` prints 0.
+3. `grep -c "[0-9][0-9]:[0-9][0-9]" internal/runner/sched/slots.go` prints 0 (no hand-written time in code; the test file holds them as data).
+4. `go run ./scripts/arch --check` exits 0 and `git diff $(git merge-base HEAD origin/main) -- arch.toml .go-arch-lint.yml` is only the lines for the component `runner/sched`; `grep -c "internal/jobs\|pgx" internal/runner/sched/slots.go` prints 0.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the four paths of the Files line.
+
+Checked by CI: ci-go (go-arch-lint with the new component, golangci-lint, the `arch.toml` against `docs/design/modules.md` check); the design verdict.
+
+### sched-ticker
+
+- Module: runner. Size: M. Depends on: sched-run-key, sched-slots.
+- Order: after sched-run-key and sched-slots.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/runner/sched/ticker.go, internal/runner/sched/ticker_test.go, internal/runner/sched/fakes_test.go
+
+- Goal: Decisions 4, 5 and 10 as `sched.New` (type `runner.NewSchedulerFunc`): the wait loop on a `clockwork.Clock`, the worker call of `Reconcile`, the ticks at start + 10 minutes and every 15, the fence taken first and its `Lost()` and the watchdog cancelling the context, preflight of the jobs at start and again at every tick for a disabled job, `PutJobStates` each turn, and the drain. It declares the hook `GapSyncer` (`Sync(ctx, day) error`, in `ticker.go`) and an option `WithGapSyncer`; after every `Reconcile` the ticker calls the configured syncer as a worker task with its own timeout, and the default is a no-op, so this issue lands and passes without `sched-gaps`. It imports
+  `runner`, `store`, `clock`, `contracts` and clockwork only (the reconciler is handed in as a `runner.Reconciler`). In-memory fakes of `InstanceFence` and `SchedulerLedger` are in `fakes_test.go`.
+
+Acceptance:
+
+1. `go test ./internal/runner/sched -run 'TestTicker' -race -count=1 -v` passes with `TestTickerCallsNoLedgerOnLoopGoroutine` (a blocking ledger; the loop still wakes at the 30 s ceiling), `TestTickerReconcileAtStartPlus10ThenEvery15`, `TestTickerSleepsToNextDue` (the fake clock has one waiter, due at the next start), `TestTickerSlotStartCallsReconcileOnce`, `TestTickerCallsGapSyncerAfterReconcile`, `TestTickerDefaultGapSyncerIsNoop`, `TestFenceHeldSecondExitsAfter60s`, `TestFenceLostCancelsContext`, `TestWatchdogExitsOnFrozenLoop`, `TestDrainWritesAbandonedAndCloses`, `TestPreflightFailureDisablesOnlyThatJob`, `TestPreflightRetriedEveryTickAndEnablesOnFirstPass`, `TestJobStatesWrittenWithRestartSensitive`, `TestExecutableChangeDrainsAndReturnsReplacement` (the tick sees a new identity through an injected stat function, drains, and returns a sentinel error that `cmd/ot` maps to exit 75).
+2. `grep -c "time.Sleep\|time.Now\|time.After" internal/runner/sched/ticker.go` prints 0; `grep -c "t.Parallel()" internal/runner/sched/ticker_test.go` is at least `grep -c "^func Test" internal/runner/sched/ticker_test.go`; `go test ./internal/runner/sched -race -count=3` passes.
+3. `grep -c "os.Exit" internal/runner/sched/ticker.go` prints 0 (the exit is `cmd/ot`'s); `grep -c "internal/jobs\|internal/runner/reconcile\|pgx" internal/runner/sched/ticker.go` prints 0.
+4. `wc -l internal/runner/sched/ticker.go` shows under 600.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the three paths of the Files line.
+
+Checked by CI: ci-go; the design verdict (the result matches Decisions 4, 5 and 10 of `docs/design/scheduler.md`).
+
+### sched-gaps
+
+- Module: runner. Size: S. Depends on: sched-ticker.
+- Order: after sched-ticker.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/runner/sched/gaps.go, internal/runner/sched/gaps_test.go
+
+- Goal: Decision 9, the writing side: `NewGapSyncer(store.OpsLedger, store.SchedulerLedger)` returns the `GapSyncer` that `sched-ticker` declares (its default is a no-op). `Sync(ctx, day)` reads the runs and present marks of the day through `store.OpsLedger` and writes, idempotently, the gaps `expired`, `crashed_repeatedly` and `preflight_failed` and clears a gap whose key is present or `no_value` or whose job passes preflight, through `store.SchedulerLedger`.
+  The ticker calls it after every `Reconcile` (already, through the hook of `sched-ticker`); `sched-cmd-run` passes it with `WithGapSyncer`. This issue edits no file of the ticker.
+
+Acceptance:
+
+1. `go test ./internal/runner/sched -run 'TestGaps' -race -count=1 -v` passes with `TestGapsExpiredKey`, `TestGapsCrashedRepeatedly`, `TestGapsPreflightFailedOnce`, `TestGapsPreflightClearedOnFirstPass`, `TestGapsClearedWhenPresent`, `TestGapsIdempotentAcrossCalls`.
+2. `grep -c "t.Parallel()" internal/runner/sched/gaps_test.go` is at least `grep -c "^func Test" internal/runner/sched/gaps_test.go`; `grep -c "time.Sleep\|time.Now" internal/runner/sched/gaps.go` prints 0.
+3. `grep -c "var _ sched.GapSyncer" internal/runner/sched/gaps_test.go` prints 1 (the type satisfies the hook declared by `sched-ticker`), and `go test ./internal/runner/sched -run 'TestGapsViaTickerHook' -race -count=1` passes: the ticker of `sched-ticker`, given this syncer by `WithGapSyncer`, writes a gap after a `Reconcile` that leaves a key missing past its close.
+4. `wc -l internal/runner/sched/gaps.go` shows under 600; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the two paths of the Files line.
+
+Checked by CI: ci-go; the design verdict.
+
+### sched-jobs-schedule
+
+- Module: jobs. Size: M. Depends on: sched-runner-interface.
+- Order: after sched-runner-interface.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/jobs/fredseries/job.toml, internal/jobs/fredseries/schedule.go, internal/jobs/fredseries/schedule_test.go, internal/jobs/optioneod/job.toml, internal/jobs/optioneod/schedule.go, internal/jobs/optioneod/schedule_test.go, internal/jobs/quotesnapshot/job.toml, internal/jobs/quotesnapshot/schedule.go, internal/jobs/quotesnapshot/schedule_test.go, docs/contracts/jobs.md
+
+- Goal: each of the three jobs gains a `[schedule]` table in its embedded manifest (`go-toml/v2`, as the `[window]` table; keys `calendar`, `anchor`, `zone`, `offset`, `run_bound`, `restart_sensitive`) and the plain-value methods `Schedule() (calendarID, anchor, zone string, offset time.Duration)`, `RunBound() time.Duration`, `RestartSensitive() bool` and `Preflight(ctx) error` (the key or the socket is there; no network call). No job package imports `internal/runner`.
+  The slot values and the `restart_sensitive` set are proposals that this issue fixes in the three `job.toml` files, and the owner confirms them at the review of its pull request; they are not in the design's decisions and no acceptance line or CI check depends on a value, only on the presence and the validity of the keys. Proposed: `option_eod` `session_close` `+0`, bound 8 min plus its own budget, `restart_sensitive = true`; `fred_series` `time` 07:30 in `America/New_York`, false; `quote_snapshot` `session_close` `-30m`, `restart_sensitive = true`. A bad table makes `New` fail with an error that names the key and no value.
+
+Acceptance:
+
+1. `go test ./internal/jobs/... -race -count=1` passes, including `TestEmbeddedSchedule` in each of the three packages and `TestBadScheduleTable` (unknown anchor, `time` without a zone, negative bound).
+2. `grep -c "^\[schedule\]" internal/jobs/fredseries/job.toml internal/jobs/optioneod/job.toml internal/jobs/quotesnapshot/job.toml` prints 1 for each file.
+3. `grep -c "func (.*) Schedule()\|func (.*) RunBound()\|func (.*) RestartSensitive()\|func (.*) Preflight(" internal/jobs/fredseries/schedule.go internal/jobs/optioneod/schedule.go internal/jobs/quotesnapshot/schedule.go` prints 4 for each file.
+4. `grep -rc "internal/runner" internal/jobs | grep -v ':0$'` prints nothing; `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go internal/contracts internal/runner docs/design/modules.md` is empty; `grep -c "time.Sleep\|time.Now" internal/jobs/fredseries/schedule.go internal/jobs/optioneod/schedule.go internal/jobs/quotesnapshot/schedule.go` prints 0 for each.
+5. `grep -c "Schedule()" docs/contracts/jobs.md` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the ten paths of the Files line.
+
+Checked by CI: ci-go (go-arch-lint: jobs imports no new module); the privacy scan; the design verdict (the values are confirmed by the owner at this pull request's review).
+
+### sched-pages-gaps
+
+- Module: pages, plus repo (judged two-module entry: `arch.toml` and `.go-arch-lint.yml` regenerated by `go run ./scripts/arch`). Size: M. Depends on: sched-store-interface.
+- Order: after sched-store-interface; parallel with the runner issues.
+- Design: docs/design/scheduler.md#Decisions
+- Files: internal/pages/gaps/freshness.go, internal/pages/gaps/freshness_test.go, internal/pages/gaps/lines.go, internal/pages/gaps/lines_test.go, arch.toml, .go-arch-lint.yml
+
+- Goal: Decision 9, the reading side: the pure `Freshness(e store.Expectation, now time.Time) State` (FRESH, LATE, STALE, UNKNOWN, INVALID, CLOSED) and `Lines([]store.Gap, now time.Time) []string` (one line per open gap, a gap with `reported_at` set is not repeated). No store access (the caller passes values), no clock read. No page builder is edited; the wiring is left out.
+
+Acceptance:
+
+1. `go test ./internal/pages/gaps -race -count=1 -v` passes with `TestFreshnessHolidayIsClosed` (an expectation with no session), `TestFreshnessLateThenStale` (`now` before, between and after `DueBy`), `TestFreshnessNoExpectationIsUnknown`, `TestFreshnessPresentAfterExpectedIsInvalid`, `TestLinesSaidOnce`.
+2. `grep -c 'State = "' internal/pages/gaps/freshness.go` prints 6.
+3. `grep -rc "time.Now\|time.Sleep\|internal/store/ops\|pgx" internal/pages/gaps | grep -v ':0$'` prints nothing; `grep -c "t.Parallel()" internal/pages/gaps/freshness_test.go internal/pages/gaps/lines_test.go` is at least the `func Test` count of each (`grep -c "^func Test"`).
+4. `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go internal/pages/api_test.go contracts go.mod go.sum` is empty; `go run ./scripts/arch --check` exits 0.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the six paths of the Files line.
+
+Checked by CI: ci-go (go-arch-lint with the new component `pages/gaps`); the design verdict.
+
+### sched-cmd-run
+
+- Module: ot, plus repo (judged two-module entry: `arch.toml` and `.go-arch-lint.yml` regenerated by `go run ./scripts/arch` after `docs/design/modules.md` gains `internal/runner/sched` in the import list of `cmd/ot`). Size: M. Depends on: sched-ticker, sched-gaps, sched-jobs-schedule.
+- Order: after sched-ticker, sched-gaps and sched-jobs-schedule.
+- Design: docs/design/scheduler.md#Decisions
+- Files: cmd/ot/scheduler.go, cmd/ot/scheduler_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/runonce.go, cmd/ot/backfill.go, docs/contracts/ot.md, arch.toml, .go-arch-lint.yml
+
+- Goal: `ot scheduler` (Decision 2): reads the DSNs and the socket path as `loadRunOnceConfig` does and builds through `withWiring` (no copy), takes the fence first, serves `GET /health` on `localhost` at the port of `OT_SCHED_HEALTH_PORT` (200 while the fence is held and the tick counter is current, else 503, other paths 404, other methods 405; a read-only handler of a few lines, no page server), runs `sched.New(..., sched.WithGapSyncer(sched.NewGapSyncer(...)))` `.Run` under `signal.NotifyContext(os.Interrupt, syscall.SIGTERM)`, exits 0 after a drain and non-zero when the fence is held or lost. `wire.go` gains the constructor fields and the real `clockwork` clock;
+  `wire_test.go` follows the field count. `ot run-once` and `ot backfill` try the advisory lock first and refuse while it is held (Decision 6). No error text holds a DSN, a path or a key.
+
+Acceptance:
+
+1. `go test ./cmd/ot -run 'TestScheduler|TestNewDepsFilled|TestRunOnceRefusedWhileSchedulerLive|TestBackfillRefusedWhileSchedulerLive' -race -count=1 -v` passes, with `TestSchedulerExitsNonZeroWhenFenceHeld`, `TestSchedulerDrainsOnTerm`, `TestSchedulerRefusesDemoProfile`, `TestSchedulerErrorsHoldNoSecret` and `TestSchedulerPassesGapSyncer`.
+2. `grep -c 'register("scheduler"' cmd/ot/scheduler.go` prints 1; the test `TestSchedulerDoesNotStartTheSite` (no `runSite`, `serveOn` or listener is called through `deps`) passes.
+3. `grep -c "t.Parallel()" cmd/ot/scheduler_test.go` is at least `grep -c "^func Test" cmd/ot/scheduler_test.go`; `grep -c "time.Sleep" cmd/ot/scheduler.go cmd/ot/scheduler_test.go` prints 0 for each.
+4. `go test ./cmd/ot -run 'TestSchedulerHealth200WhenFenceHeld|TestSchedulerHealth503WhenTickStale|TestSchedulerHealthOtherPath404' -race -count=1` passes (a fake clock and an `httptest` recorder, no fixed port); `go run ./scripts/arch --check` exits 0 (the import list of `docs/design/modules.md` names `internal/runner/sched`).
+5. `grep -c "ot scheduler" docs/contracts/ot.md` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line.
+
+Checked by CI: ci-go; the `arch.toml` against `docs/design/modules.md` check; the design verdict.
+
+### sched-cmd-status
+
+- Module: ot. Size: M. Depends on: sched-cmd-run.
+- Order: after sched-cmd-run.
+- Design: docs/design/scheduler.md#Decisions
+- Files: cmd/ot/schedstatus.go, cmd/ot/schedstatus_test.go, docs/contracts/ot.md
+
+- Goal: Decisions 10 and 11 on the command line: `ot scheduler status` (reads `ops.*` through `store.SchedulerLedger` only: build, non-terminal runs with age and last heartbeat, next slot per job, open gaps; exit 0 green, 1 red) and `ot scheduler can-restart` (exit 0 or 1 with the reason; it reads `restart_sensitive` and the window end from `ops.scheduler_job`). Neither opens a dataset store or the broker.
+
+Acceptance:
+
+1. `go test ./cmd/ot -run 'TestSchedStatus|TestCanRestart' -race -count=1 -v` passes.
+2. `TestSchedStatusOpensNoDatasetStore` fails if `status` calls any `openSeries`, `openOptionEod`, `openQuoteSnapshot`, `openInstrument` or `dialBroker` field of `deps` (the fakes count calls).
+3. `TestCanRestart` covers three cases: a running run (exit 1), a `restart_sensitive` job between slot start and window close (exit 1), idle (exit 0).
+4. `TestSchedStatusRedOnOpenGapOrDisabledJob` expects exit 1 with a gap `preflight_failed` listed once.
+5. `grep -c "t.Parallel()" cmd/ot/schedstatus_test.go` is at least `grep -c "^func Test" cmd/ot/schedstatus_test.go`; `grep -c "time.Sleep" cmd/ot/schedstatus.go` prints 0; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the three paths of the Files line.
+
+Checked by CI: ci-go; the design verdict.
+
+### sched-deploy-runbook
+
+- Module: docs. Size: S. Depends on: sched-cmd-status.
+- Order: after sched-cmd-status.
+- Design: docs/design/scheduler.md#Decisions
+- Files: docs/deploy/scheduler.md, docs/design/ot-collect.md
+
+- Goal: the runbook of `ot scheduler` in the form of `docs/deploy/pyside.md`: the proposed `services.toml` entry (`way = "host"`, `repo`, `build`, `run`, `boot = true` (one sentence in the runbook: in crew this means started and restarted by the keeper the owner starts, not a start at machine boot), `env` with placeholders only, `health = "http://localhost:<health port>/health"`, and no `deploy = "owner"` after the owner's first deploy, so crew deploys on merge and rolls back by itself); the trial of 2026-11-08 and its result (a host Unix socket in a bind-mounted directory gave
+  `ConnectionRefusedError` twice under OrbStack, so a container cannot reach the pyside sockets and the scheduler is a host service; `ot serve` stays in docker and needs no socket); how a crash is recovered (the keeper, the owner having started it; the IB gateways need a re-login after a boot anyway); the restart procedure (`ot scheduler can-restart`, then `crew cap --apply optdesk-scheduler restart`, and what an automatic deploy does without it); what SIGTERM does;
+  how to read `status`; the first deploy (the owner's); and what a second process does when the advisory lock is held. It also amends `docs/design/ot-collect.md`, whose lines 55, 69 and 83 name launchd or "the owner's scheduler" as what starts `ot run-once` (line 55 the Behaviour paragraph, line 69 the "several calls a day by the owner's scheduler" sentence, line 83 the Left out item 4): they now point to this scheduler. The runbook also tells the owner to merge changes of the scheduler outside 09:30-16:30 America/New_York until lesson 8 is enforced, because an automatic deploy restarts it without a `can-restart` check. No secret, account id or owner path is written.
+
+Acceptance:
+
+1. `test -f docs/deploy/scheduler.md` and `grep -c "can-restart" docs/deploy/scheduler.md` is at least 2.
+2. `grep "launchd" docs/deploy/scheduler.md | grep -vc "not\|no "` prints 0 (launchd is named only as not used); `grep -c "<[a-z ]*>" docs/deploy/scheduler.md` is at least 3 (placeholders).
+3. `grep -c "ot scheduler status\|ot scheduler can-restart" docs/deploy/scheduler.md` is at least 3 and `grep -c 'register("scheduler"' cmd/ot/scheduler.go` prints 1.
+4. `grep -c "launchd\|owner's scheduler" docs/design/ot-collect.md` prints 0 and `grep -c "docs/design/scheduler.md" docs/design/ot-collect.md` is at least 3; `grep -c "09:30-16:30" docs/deploy/scheduler.md` is at least 1; `grep -c "ConnectionRefusedError" docs/deploy/scheduler.md` is at least 1 and `grep -c 'way = "host"' docs/deploy/scheduler.md` is at least 1.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the two paths of the Files line.
+
+Checked by CI: hygiene (the privacy scan); the design verdict.
+
+## Left out
+
+- Stage 2, after a real job needs it (several of these are what a compute, report or alert job will need first: an intraday or non-session-day unit, several slots a day, parallel lanes): lanes with capacity and a per-key lease (so two jobs run in parallel and a backfill yields at a unit boundary: lessons 5, 19), hand requests through a `job_request` table, `Resumable` units with `Progress` and `Beat` notes (lessons 8, 15), several slots a day, a start deadline and a hard stop per slot (lessons 11, 12), an occurrence table. The shape of `RunKey` and of `Scheduled` leaves room for each.
+- Message delivery (morning report, night rule, pushes): the `notify` module (week 11); it reads `rd.job_gap_r1`, as pages do. The red nightly read of lesson 16 is its issue.
+- Job contents: what a job requests in which session, compute, reports.
+- Wiring of `pages/gaps` into the page builders: after the builders exist.
+- A reconnect trigger from pyside (lesson 10): the 15-minute tick bounds the delay; an event needs a change in `contracts/proto`, owner-only.
+- Automatic deploy restarts the scheduler without a `can-restart` check in stage 1; the drain on TERM limits the harm (the run in hand ends `partial` or `abandoned` by the drain rule of Decision 10: a partial counts, an abandoned does not) and the runbook asks for merges outside 09:30-16:30 America/New_York.
+- Anything beyond `GET /health` and `status` for observability (metrics, a page of runs): later.
+- Lessons 5, 8, 11, 15 and 19 are not prevented in stage 1 (only recorded or partly met, see the table); stage 2 above closes them.
+- A scheduling library behind `runner.Scheduler`: gocron v2 is the likeliest; reopen when a job needs more than the `time` anchor.
+- Pruning of `ops.job_gap` and `ops.capture_run`: later; the rows are small.
+- Enforcing the restart windows of lesson 8: crew has no pre-restart hook; lesson 8 is recorded (`can-restart`, advice for hand restarts) and partly enforced by the drain and exit 75 of Decision 10.
+
+## Open questions for the owner
+
+1. Automatic deploy and rollback restart the scheduler on every merge; crew cannot ask `can-restart` first. The cost is a drain (the run in hand ends `partial` or `abandoned` by the drain rule of Decision 10: a partial counts, an abandoned does not) and a repeat of that key, and a merge during a `restart_sensitive` slot is not stopped. Accept that in stage 1, or ask crew for a pre-deploy check later?
+2. (Settled, kept for the record.) `boot = true`, because the keeper skips `boot = false` services and restart on crash and exit 75 need it; the owner starts the keeper by hand.
+3. A job that fails preflight is disabled alone and shown red (Decision 8); the alternative is that the whole scheduler refuses to start. Proposed: the first. (Owner decision of 2026-11-08: disable only the failing job; this is recorded and no longer open.)
+4. The slot values and the `restart_sensitive` set: proposals in `sched-jobs-schedule`, confirmed by the owner at that pull request's review.
+
+## Adversarial
+
+The review is `scheduler-adversarial.md`, kept by the author (the dispatcher's scratchpad), not in the repository. Its six points and top-5 changes, answered:
+
+1. Gap against the goal (no entry point that runs one key): adopted. `sched-run-key` and Decision 8 add `runner.KeyRunner`; `Reconcile` and `Backfill` call it, so one path runs a job. Partly not adopted: it takes no per-key lease and does not do `Resumable`, because lanes and units are cut to stage 2 (change 3). The "occurrence in the run table" objection is adopted by dropping the occurrence: the brake is per `(day, dataset, subject)`. The remark that the table says "prevents" where it means "records" is adopted: the table now says "records", "stage 2" or "not prevented" for lessons 5, 7, 8, 11, 12, 15, 19.
+2. Biggest risk (two leases, self-kill loop, crash-loop brake): adopted in part. The instance lease is dropped for a PostgreSQL advisory lock (no TTL, no table, the database frees it on death); the run lease is renewed during a call (Decision 6) so it does not outlast a killed process by 10 minutes of a long run; the brake of three not-counted runs is kept and is tested in `sched-reconcile-count`. Not adopted: "expiry from the process clock rather than `now()`" is not true of `ops.run_lease` (`Acquire` already uses the database's `now()`, `internal/store/ops/ledger.go`); it was true only of revision 1's instance lease, which is gone.
+3. Simpler way: adopted. Stage 1 is the ticker over `Reconcile`, an advisory-lock fence, the counting change with a brake, gaps and `Freshness`. The river and "about 100 lines" text is replaced (Decision 1): the deciding reason is that `ops.*` and `Reconcile` already hold the state; river is pre-1.0 and MPL-2.0; reason (a) (pgx) and (b) (own schema) are no longer relied on, since `.golangci.yml` allows pgx under `internal/store/**`. The size claim now says what it is. gocron is kept as the likely library behind `runner.Scheduler`.
+4. Lock-in: adopted. The plain-value `Schedule()` keeps the runner types out of the job packages; `Slot` is in the runner root only; `job_occurrence`, `job_unit` and `job_request` are not created, so only `ops.job_gap`, `ops.scheduler_job` and the two `rd` views become contracts of `notify` and pages. The v4 rule and the hand-command refusal are in "Reversals". The review's point that a wedged-but-renewing scheduler blocks hand repair is met by the watchdog (a frozen loop exits) and by there being no TTL; a scheduler that loops but runs nothing is visible in `status`. The `chunk`-change point belongs to stage 2 (units).
+5. False claims: adopted all four. (1) `Schedule()` is plain values and the jobs row keeps its depends cell (Decision 3). (2) `clock.Clock` has only `Now()`: the runner takes a `clockwork.Clock` and the `runner.md` import line changes in `sched-runner-interface` (Reversals). (3) `arch.toml` and `.go-arch-lint.yml` are repo paths, generated by `go run ./scripts/arch`: the three issues that need them are named judged two-module entries and run the script. (4) `retry_test.go` is in the Files line of `sched-reconcile-count`.
+6. Likeliest slip (`sched-loop` too large; the missing runner change): adopted. `sched-loop` is gone: `sched-run-key` (runner side, before the ticker), `sched-ticker` and `sched-gaps` replace it, none sized L. The units and occurrence work is stage 2.
+
+The top-5 changes: 1 adopted (partly, as said under point 1); 2 adopted; 3 adopted; 4 adopted (the `grep -c -r` per-file checks are rewritten with `grep -rc ... | grep -v ':0$'`, the brittle "serve" grep is replaced by `TestSchedulerDoesNotStartTheSite`, `Expectation` is in the Interface, `sched-loop` is split); 5 adopted (the "Reversals" section), except that "PostgreSQL `now()` for lease expiry" is stated as already true for the run lease and as the rule for `RenewLease`.
+
+Owner requirement of 2026-11-08 (resident service, generic jobs): adopted. (a) Decisions 2, 5, 10 and 11 make `ot scheduler` a resident process with graceful drain, a single-instance fence, a `/health` listener (`sched-cmd-run`) and `status`; `sched-deploy-runbook` carries the host entry with `boot = true` (the container trial failed, Decision 2), so there is no docker entry and no open question about the way. (b) Decision 12 and the Interface text state the generic job contract and name what is stage-1 limited (one slot a day, day-keyed outputs); it answers the review's lock-in point 4 as well, since the optional methods are plain values and no job kind is written into the core.
+
+Required fixes of optdesk-advisor's opinion of 2026-11-08, all adopted: (a) the issue count says thirteen; (b) the health listener is in Decision 2 and `sched-cmd-run`, and Left out no longer says there is none; (c) `restart_sensitive` is a `[schedule]` key of `job.toml` with the method `RestartSensitive()`, owned by `sched-jobs-schedule`, declared in `sched-runner-interface`, written to `ops.scheduler_job` by the ticker and read by `can-restart`; (d) no scratchpad path remains in this file; (e) the three base-table grants are replaced by two `rd` views and the file says that `ops.job_gap`, `ops.scheduler_state` and `ops.scheduler_job` sit beside the existing ops tables and that schema v3's `job_run`, `job_event` and `stream_gap` are not created or replaced (not on main); (f) the changed invariants of `runner.md` lines 30 and 35 are listed (Reversals) and made in `sched-runner-interface`, and the brake of three goes into `runner.md` in `sched-reconcile-count`; (g) `docs/design/ot-collect.md` lines 55 and 83 (grep finds launchd on those two lines; line 69 does not name it) are amended in `sched-deploy-runbook`; (h) the review's point that "slot values are a human decision inside an acceptance gate" is answered by moving the values out of the acceptance lines: `sched-jobs-schedule` fixes proposals in `job.toml`, the owner confirms them at that pull request, and the checks test only the keys.
+Owner decisions of 2026-11-08, adopted: preflight disables only the failing job, is retried at every tick, and its gap clears on the first pass (Decision 8, `sched-ticker`, `sched-gaps`); no start at machine boot, a crash recovered by the keeper the owner starts, and automatic deploy with rollback after the first deploy (Decision 2, `sched-deploy-runbook`, open question 1); corrected on the dispatcher's confirmation that crew's keeper skips `boot = false`, so the entry is `boot = true`, and that crew has no pre-restart hook, so safe restart is the scheduler's own drain and exit 75 (Decision 10), lesson 8 being recorded and partly enforced; the way is host, from the trial written into Decision 2 and the runbook, and `ot serve` stays in docker (checked: `cmd/ot/serve.go`, `site.go` and `page.go` name no broker and no socket).
+
+Completeness answers of rev 5 (D:n is a line of this file):
+- The `ot_ro_pages` grant point (review point 4, and the advisor's schema v3 point): not adopted as a base-table grant. Pages read two views of `rd`, `rd.job_gap_r1` and `rd.expectation_r1`, and `ot_ro_pages` has no grant on any `ops` table (D:59, D:74, D:140; the check is in `sched-store-ops`, acceptance 1). Readers named `rd.job_gap_r1` everywhere; `ops.job_gap` is the writer's table only (D:408 is the one mention by `notify`, and it says `rd.job_gap_r1`).
+- CLOSED against INVALID (lesson 14's five states): INVALID is kept, D:61, because a present day after the expected day (or an expectation with no dataset id) is a fault of the stored data that is neither late nor closed, and dropping it would show such a row as FRESH; CLOSED is added, D:61, because the owner wants 休市 and not 过期 and a day without a session has no window.
+- `sched-jobs-units` (revision 1) is gone because `Resumable` units and `Progress` are stage 2, D:407; nothing in stage 1 calls them and the jobs keep their idempotent chunk writes.
+- `sched-instance` (revision 1) is gone because the instance lease with an epoch and its table were replaced by a PostgreSQL advisory lock, D:46, folded into `sched-ticker` (the fence, the watchdog, the drain) and `sched-store-ops` (`InstanceFence`).
+- The wiring gap of the gap sync is closed: `sched-ticker` declares `GapSyncer` with a no-op default and calls it after every `Reconcile`; `sched-gaps` implements it and edits no ticker file; `sched-cmd-run` passes it (D:274, D:294, D:352).
