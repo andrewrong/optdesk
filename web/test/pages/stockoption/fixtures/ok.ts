@@ -18,8 +18,8 @@ export const ok = {
     day_change: 'Day +1.00%',
     day_tone: 'up',
     quote: 'Quotes at 09:30 delayed',
-    iv: 'IV 30%',
-    earnings: 'Earnings 2026-02-01',
+    iv: 'IV 24.1% · HV30 缺 · IVP 38',
+    earnings: '财报 2026-02-01 · 在期内',
     trend: 'Trend above both averages',
     policy: 'Policy sell puts below support',
     refresh_expiry: '2026-02-20',
@@ -82,14 +82,14 @@ export const ok = {
   ],
   contracts: {
     basis: 'Contracts basis last quotes',
-    columns: ['Expiry', 'Strike', 'Bid', 'Mid', 'Ask', 'Delta', 'IV', 'Volume', 'OI', 'Yield', 'Note'],
+    columns: ['到期', '行权价', '买价', '卖价', 'Δ', 'IV', 'Θ/天', 'Γ', 'Vega', '成交量', '年化'],
     notes: ['Contracts note one'],
     empty: null,
     rows: [
       {
         expiry: '2026-02-20',
         expiry_text: 'Row expiry Feb 20',
-        cells: ['Feb 20', '95', '1.10', '1.20', '1.30', '-0.20', '30%', '120', '800', '1.2%', 'Row cell note'],
+        cells: ['Feb 20', '95', '1.10', '1.30', '-0.20', '30%', '-0.03', '0.05', '0.12', '120', '1.2%'],
       },
     ],
   },
