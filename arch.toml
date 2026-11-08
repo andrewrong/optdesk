@@ -184,13 +184,13 @@ may_import = ["contracts", "store", "compute", "pages"]
 in = "internal/pages/option_data_page"
 may_import = ["contracts", "store", "compute", "pages"]
 
+[component."pages/report_page"]
+in = "internal/pages/report_page"
+may_import = ["contracts", "store", "compute", "pages"]
+
 [component."pages/risks_block"]
 in = "internal/pages/risks_block"
 may_import = ["contracts", "store", "compute", "pages"]
-
-[component."pages/report_page"]
-in = "internal/pages/report_page"
-may_import = ["contracts", "store", "pages"]
 
 [component."profile"]
 in = "internal/profile"
