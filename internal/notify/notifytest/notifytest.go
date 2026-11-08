@@ -4,9 +4,11 @@ package notifytest
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -118,3 +120,85 @@ func (s *Source) MarkTimes() []time.Time {
 	defer s.mu.Unlock()
 	return append([]time.Time(nil), s.markAt...)
 }
+
+// SentStore is a fake store.SentStore: the rows of alerts.sent in memory.
+type SentStore struct {
+	mu      sync.Mutex
+	rows    []store.SentMark
+	marks   []store.SentMark
+	markErr error
+	readErr error
+}
+
+// Seed adds rows as if they were marked earlier; they do not count as marks of the pass.
+func (s *SentStore) Seed(rows ...store.SentMark) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rows = append(s.rows, rows...)
+}
+
+// SetMarkErr makes MarkSent fail with err; nil clears it.
+func (s *SentStore) SetMarkErr(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.markErr = err
+}
+
+// SetReadErr makes SentSince fail with err; nil clears it.
+func (s *SentStore) SetReadErr(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.readErr = err
+}
+
+// SentSince returns the rows with Day >= from, ascending by day then rule id.
+func (s *SentStore) SentSince(_ context.Context, from contracts.Day) ([]store.SentMark, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.readErr != nil {
+		return nil, s.readErr
+	}
+	var out []store.SentMark
+	for _, r := range s.rows {
+		if r.Day >= from {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Day != out[j].Day {
+			return out[i].Day < out[j].Day
+		}
+		return out[i].RuleID < out[j].RuleID
+	})
+	return out, nil
+}
+
+// MarkSent records the call and adds the row unless it exists; on failure it records nothing.
+func (s *SentStore) MarkSent(_ context.Context, ruleID string, day contracts.Day) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.markErr != nil {
+		return s.markErr
+	}
+	m := store.SentMark{RuleID: ruleID, Day: day}
+	s.marks = append(s.marks, m)
+	for _, r := range s.rows {
+		if r == m {
+			return nil
+		}
+	}
+	s.rows = append(s.rows, m)
+	return nil
+}
+
+// Close does nothing.
+func (s *SentStore) Close() error { return nil }
+
+// Marks returns the successful MarkSent calls in call order.
+func (s *SentStore) Marks() []store.SentMark {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]store.SentMark(nil), s.marks...)
+}
+
+var _ store.SentStore = (*SentStore)(nil)
