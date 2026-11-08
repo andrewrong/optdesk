@@ -105,9 +105,8 @@ func TestUnitsFirst(t *testing.T) {
 		}
 	}
 	want := []string{"units.json", "figures.json", "series.json", "stats.json"}
-	names = hand
-	if !reflect.DeepEqual(names, want) {
-		t.Fatalf("names = %v, want %v", names, want)
+	if !reflect.DeepEqual(hand, want) {
+		t.Fatalf("hand names = %v, want %v", hand, want)
 	}
 }
 

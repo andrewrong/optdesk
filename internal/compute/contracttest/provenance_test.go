@@ -51,17 +51,17 @@ func checkProvenance(raw json.RawMessage, dir string) error {
 	if len(p.Libraries) == 0 || p.GeneratedAt == "" {
 		return errors.New("libraries or generated_at is empty")
 	}
-	for field, want := range map[string]struct{ got, file string }{
+	for field, entry := range map[string]struct{ got, file string }{
 		"gen_sha256":  {p.GenSHA256, "gen.py"},
 		"lock_sha256": {p.LockSHA256, "uv.lock"},
 	} {
-		b, err := os.ReadFile(filepath.Join(dir, want.file))
+		b, err := os.ReadFile(filepath.Join(dir, entry.file))
 		if err != nil {
 			return err
 		}
 		sum := sha256.Sum256(b)
-		if got := hex.EncodeToString(sum[:]); got != want.got {
-			return fmt.Errorf("%s = %s, but %s hashes to %s", field, want.got, want.file, got)
+		if got := hex.EncodeToString(sum[:]); got != entry.got {
+			return fmt.Errorf("%s = %s, but %s hashes to %s", field, entry.got, entry.file, got)
 		}
 	}
 	return nil
