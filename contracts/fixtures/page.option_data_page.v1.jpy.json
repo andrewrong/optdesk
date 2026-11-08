@@ -1,0 +1,204 @@
+{
+  "schema": "option_data_page",
+  "schema_version": 1,
+  "run_id": "run_1",
+  "build_id": "build_1",
+  "scope": "option_data_1",
+  "generated_at": "2026-11-07T00:00:00Z",
+  "data_times": [
+    {
+      "source": "option_eod",
+      "data_time": "2026-11-06T21:30:00Z"
+    },
+    {
+      "source": "quote_snapshot",
+      "data_time": "2026-11-06T20:00:01Z"
+    }
+  ],
+  "run_status": "ok",
+  "stale": null,
+  "title": "Option data",
+  "sentence": "2 contracts on 2026-11-06.",
+  "chain_title": "Option chain, last stored day",
+  "series_title": "Quotes by slot",
+  "notes_title": "Notes",
+  "notes": [
+    "Synthetic fixture."
+  ],
+  "gaps": [],
+  "underlying": {
+    "id": 9100,
+    "symbol": null,
+    "label": "Synthetic JPY underlying",
+    "session_day": "2026-11-06",
+    "price": {
+      "kind": "value",
+      "value": 3200,
+      "text": "3200",
+      "unit": "price",
+      "approx_usd_text": "≈ 21.3 USD"
+    },
+    "currency": "JPY",
+    "vol_line": "IV30 28.5% / HV30 缺",
+    "earnings_text": "Earnings 2026-11-12 (vendor)",
+    "earnings_tone": "in_term"
+  },
+  "chain": {
+    "session_day": "2026-11-06",
+    "rows": [
+      {
+        "instrument_id": 9101,
+        "expiry": "2026-11-20",
+        "right": "call",
+        "strike": {
+          "kind": "value",
+          "value": 3200,
+          "text": "3200",
+          "unit": "price",
+          "approx_usd_text": "≈ 21.3 USD"
+        },
+        "status": {
+          "code": 1,
+          "text": "ok"
+        },
+        "bid": {
+          "kind": "value",
+          "value": 14.5,
+          "text": "14.5",
+          "unit": "price",
+          "approx_usd_text": "≈ 0.10 USD"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 15.5,
+          "text": "15.5",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 15.0,
+          "text": "15.0",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 100,
+          "text": "100",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 900,
+          "text": "900",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.3,
+          "text": "30.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "value",
+          "value": 0.5,
+          "text": "0.5000",
+          "unit": "delta"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.02,
+          "text": "0.0200",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.05,
+          "text": "-0.0500",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.1,
+          "text": "0.1000",
+          "unit": "vega"
+        }
+      },
+      {
+        "instrument_id": 9102,
+        "expiry": "2026-11-20",
+        "right": "put",
+        "strike": {
+          "kind": "value",
+          "value": 3100,
+          "text": "3100",
+          "unit": "price",
+          "approx_usd_text": "≈ 20.6 USD"
+        },
+        "status": {
+          "code": 1,
+          "text": "ok"
+        },
+        "bid": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "no data"
+        },
+        "ask": {
+          "kind": "value",
+          "value": 15.5,
+          "text": "15.5",
+          "unit": "price"
+        },
+        "last": {
+          "kind": "value",
+          "value": 15.0,
+          "text": "15.0",
+          "unit": "price"
+        },
+        "volume": {
+          "kind": "value",
+          "value": 100,
+          "text": "100",
+          "unit": "count"
+        },
+        "open_interest": {
+          "kind": "value",
+          "value": 900,
+          "text": "900",
+          "unit": "count"
+        },
+        "iv": {
+          "kind": "value",
+          "value": 0.3,
+          "text": "30.0%",
+          "unit": "iv_decimal"
+        },
+        "delta": {
+          "kind": "value",
+          "value": 0.5,
+          "text": "0.5000",
+          "unit": "delta"
+        },
+        "gamma": {
+          "kind": "value",
+          "value": 0.02,
+          "text": "0.0200",
+          "unit": "gamma"
+        },
+        "theta": {
+          "kind": "value",
+          "value": -0.05,
+          "text": "-0.0500",
+          "unit": "theta"
+        },
+        "vega": {
+          "kind": "value",
+          "value": 0.1,
+          "text": "0.1000",
+          "unit": "vega"
+        }
+      }
+    ]
+  },
+  "quote_series": []
+}
