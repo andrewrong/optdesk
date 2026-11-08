@@ -13,7 +13,7 @@ Says missed work once, as one plain-text message. The scheduler process calls `N
 
 ## Outputs
 
-- `NotifyGaps` returns the number of gaps reported. One pass makes one send attempt; there is no `Run`, loop or sleep.
+- `NotifyGaps` returns the number of gaps reported; each gap printed is marked with `MarkGapReported`, the only write notify can make. One pass makes one send attempt; there is no `Run`, loop or sleep.
 - Constructors: `notify.NewNotifierFunc` (`internal/notify/core`), `notify.NewTelegramSenderFunc` (`internal/notify/telegram`), `notify.NewDryRunSenderFunc` (`internal/notify/dryrun`); fakes in `internal/notify/notifytest`.
 
 ## Invariants
