@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {"name": "vintage_latest_present_wins", "group": "from_series_points",
+     "input": {"points": [
+       {"observation_date": "2024-01-02", "realtime_start": "2024-01-03", "status": "present", "value": 4.0},
+       {"observation_date": "2024-01-02", "realtime_start": "2024-02-01", "status": "present", "value": 4.05},
+       {"observation_date": "2024-01-03", "realtime_start": "2024-01-04", "status": "present", "value": 4.1},
+       {"observation_date": "2024-01-03", "realtime_start": "2024-02-01", "status": "no_value", "value": null},
+       {"observation_date": "2024-01-04", "realtime_start": "2024-01-05", "status": "no_value", "value": null},
+       {"observation_date": "2024-01-05", "realtime_start": "2024-01-06", "status": "present", "value": 4.2}]},
+     "expected": [{"day": "2024-01-02", "value": 4.05}, {"day": "2024-01-03", "value": 4.1}, {"day": "2024-01-05", "value": 4.2}], "tolerance": 1e-12,
+     "working": "01-02 has two present vintages; the later realtime_start (02-01) wins: 4.05. 01-03: the later vintage is no_value, so it is not chosen; the present vintage 4.1 stays. 01-04 has only a no_value row: the day is absent. 01-05: 4.2. One point per day, ascending"},
+    {"name": "vintage_latest_start_not_input_order", "group": "from_series_points",
+     "input": {"points": [
+       {"observation_date": "2024-03-01", "realtime_start": "2024-03-10", "status": "present", "value": 9.5},
+       {"observation_date": "2024-03-01", "realtime_start": "2024-03-02", "status": "present", "value": 9.0}]},
+     "expected": [{"day": "2024-03-01", "value": 9.5}], "tolerance": 0,
+     "working": "the later realtime_start 03-10 wins whatever the order of the rows: 9.5"},
+    {"name": "from_series_points_empty", "group": "from_series_points", "input": {"points": []}, "expected": [], "tolerance": 0,
+     "working": "no row, no point"},
+    {"name": "align_with_gap", "group": "align",
+     "input": {"a": [{"day": "2024-01-01", "value": 1}, {"day": "2024-01-02", "value": 2}, {"day": "2024-01-03", "value": 3}, {"day": "2024-01-04", "value": 4}],
+               "b": [{"day": "2024-01-01", "value": 10}, {"day": "2024-01-03", "value": 30}, {"day": "2024-01-04", "value": 40}, {"day": "2024-01-05", "value": 50}]},
+     "expected": {"a": [{"day": "2024-01-01", "value": 1}, {"day": "2024-01-03", "value": 3}, {"day": "2024-01-04", "value": 4}],
+                  "b": [{"day": "2024-01-01", "value": 10}, {"day": "2024-01-03", "value": 30}, {"day": "2024-01-04", "value": 40}]}, "tolerance": 0,
+     "working": "days of a: 01-01, 01-02, 01-03, 01-04; days of b: 01-01, 01-03, 01-04, 01-05; both have 01-01, 01-03, 01-04; a keeps 1, 3, 4 and b keeps 10, 30, 40"},
+    {"name": "align_nothing_in_common", "group": "align",
+     "input": {"a": [{"day": "2024-01-01", "value": 1}], "b": [{"day": "2024-01-02", "value": 2}]},
+     "expected": {"a": [], "b": []}, "tolerance": 0,
+     "working": "01-01 against 01-02: no common day, both empty"},
+    {"name": "log_returns_up_then_down", "group": "log_returns",
+     "input": {"series": [{"day": "2024-01-01", "value": 100}, {"day": "2024-01-02", "value": 110}, {"day": "2024-01-03", "value": 99}]},
+     "expected": [{"day": "2024-01-02", "value": 0.09531017980432493}, {"day": "2024-01-03", "value": -0.10536051565782628}], "tolerance": 1e-12,
+     "working": "dated by the later point: ln(110/100) = ln 1.1 = 0.0953101798 on 01-02; ln(99/110) = ln 0.9 = -0.1053605157 on 01-03"},
+    {"name": "log_returns_flat", "group": "log_returns",
+     "input": {"series": [{"day": "2024-01-01", "value": 50}, {"day": "2024-01-02", "value": 50}]},
+     "expected": [{"day": "2024-01-02", "value": 0}], "tolerance": 0,
+     "working": "ln(50/50) = ln 1 = 0"},
+    {"name": "log_returns_one_point", "group": "log_returns",
+     "input": {"series": [{"day": "2024-01-01", "value": 50}]}, "expected": [], "tolerance": 0,
+     "working": "one point has no return"}
+  ]
+}

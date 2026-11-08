@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/contracts/gen"
 )
 
 type fakeErr struct{ kind contracts.ErrorKind }
@@ -57,6 +58,18 @@ func TestRecordsAreGenerated(t *testing.T) {
 	var d contracts.SessionDay
 	d.CalendarID = "XNYS"
 	if d.CalendarID != "XNYS" {
+		t.Fatal("alias of the generated record")
+	}
+}
+
+func TestReadingRecordAlias(t *testing.T) {
+	t.Parallel()
+	var r contracts.ReadingRecord
+	g := gen.ReadingRecord(r)
+	g.Name = "market.ivp_own"
+	g.Inputs = append(g.Inputs, gen.ReadingRecordInputsElem{InputTable: "obs.option_eod"})
+	r = g
+	if r.Name != "market.ivp_own" || len(r.Inputs) != 1 {
 		t.Fatal("alias of the generated record")
 	}
 }

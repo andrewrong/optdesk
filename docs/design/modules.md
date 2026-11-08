@@ -23,6 +23,7 @@ rows above name every other top-level path of the planned tree.
   that uses it); Python, `api.py` of the package with `tests/contracts/test_<module>_api.py`; TypeScript, the
   generated types and the JSON schema of a page (they are owned by contracts, so web has no entry of its own).
   Editing an entry file is an interface change (AGENTS.md): the issue carries a Design line.
+  One exception, a test kit: the entry cell of compute names `internal/compute/contracttest`, a package of golden suites that imports `testing` and so holds behaviour, not declarations. It is listed so that a replacement implementation of a compute interface can run the suite; it is not imported by `cmd/ot`, and a package outside compute imports it from `_test.go` files only (go-arch-lint skips those; `docs/design/compute-core.md`, Decision 11).
   A generated sub-package named in an entry cell (`internal/contracts/genpb`) is exempt from the declarations-only rule, because it is generated from `contracts/proto` and never edited by hand (AGENTS.md).
 - **depends** is the only source of module dependencies. `arch.toml` (go-arch-lint) is derived from this column
   by a script of the repo module; a check in `checks.yml` fails when `arch.toml` and this column disagree.
@@ -43,7 +44,7 @@ rows above name every other top-level path of the planned tree.
   `internal/`), and for `ot` this map states the exact import list, which `scripts/arch` generates as go-arch-lint component `ot` and
   `checks.yml` compares with this text: the root packages of the rows in its depends cell, `internal/profile`, and these implementation packages,
   one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/runner/sched`, `internal/store/sessionday`, `internal/store/series`, `internal/store/snapshot`, `internal/store/ops`,
-  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`, `internal/clock/calendarcli`, `internal/jobs/calendarrefresh`.
+  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`, `internal/compute/rules`, `internal/store/reading`, `internal/jobs/computefigures`, `internal/compute/own`, `internal/compute/gonumstats`, `internal/compute/talibind`, `internal/compute/figures`., `internal/notify/core`, `internal/notify/telegram`, `internal/notify/dryrun`, `internal/clock/calendarcli`, `internal/jobs/calendarrefresh`.
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
 - **Layers** (plan 2): data = contracts, clock, broker, sources, store, compute (in that order);
@@ -70,9 +71,9 @@ rows above name every other top-level path of the planned tree.
   `.github/` (ci), `contracts/proto/` (contracts), `deploy/` (deploy), `pyside/src/optdesk/ibkr/transport.py` (pyside),
   `docs/design/ratchet.json` (docs).
 - Modules not touched in week 1: broker, compute and notify keep their paths, entry and tests cells (crew refuses a depends on a row
-  with no entry), but none of their files exists until the weeks named in the second table (broker 3-4, compute 8-9, notify 11).
+  with no entry), but none of their files exists until the weeks named in the second table (broker 3-4, compute 8-9; notify is stage 1, see below).
   The depends cells of jobs (added by `docs/design/option-jobs.md`, which follows the broker interface entry of
-  `docs/design/broker.md`) and of ot (added by `docs/design/ot-collect.md`) name broker, so broker is no longer untouched in that sense. No other depends cell names broker, compute or notify yet: the issue whose code first imports one of them adds it to the depends cell of the importing row in that issue.
+  `docs/design/broker.md`) and of ot (added by `docs/design/ot-collect.md`) name broker, so broker is no longer untouched in that sense. The depends cell of ot also names notify (added by `docs/design/notify.md`, which also adds `internal/notify/core`, `internal/notify/telegram` and `internal/notify/dryrun` to the import list of ot), so notify is no longer untouched either and its files come with that design (its interface entry first, stage 1, not week 11). No other depends cell names compute yet: the issue whose code first imports one of them adds it to the depends cell of the importing row in that issue.
 
 ## Modules
 
@@ -83,9 +84,9 @@ rows above name every other top-level path of the planned tree.
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
 | store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts |
-| compute | internal/compute/** docs/contracts/compute.md | internal/compute/api.go | internal/compute/api_test.go | contracts |
+| compute | internal/compute/** docs/contracts/compute.md tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
-| jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store |
+| jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/test/** | contracts |
@@ -93,7 +94,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs pages repo |
+| ot | cmd/** docs/contracts/ot.md |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
@@ -111,7 +112,7 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | compute | data | typed records | figure values with register id and version | any I/O | docs/contracts/compute.md (first issue: week 8-9) |
 | runner | scheduling | job manifests (window rules), the key set each job Plan returns, the run table | run, attempt, job_event; ops.capture_expected_key and ops.dataset_window; control socket | knowing dataset content (keys are opaque) | docs/contracts/runner.md |
 | jobs | scheduling | broker, sources, store, compute | dataset writes and a JobResult | importing another jobs package | job.toml per package and docs/contracts/jobs.md |
-| notify | scheduling | job_event, push list | morning report, push | account-derived information (ADR 0010) | docs/contracts/notify.md (first issue: week 11) |
+| notify | scheduling | job_event, push list | morning report, push | account-derived information (ADR 0010) | docs/contracts/notify.md (first issue: `notify-interface` of `docs/design/notify.md`, stage 1) |
 | pages | front | Reader, compute | vN JSON of a page | computing, writing the database | docs/contracts/pages.md |
 | web | front | vN JSON | pages | computing, reading the database | docs/adr/0034-frontend-stack.md |
 | pyside | outside the layers | IB Gateway through the TWS API | the gRPC services of contracts/proto/ibkr/v1 | opening the database, business numbers | contracts/proto/ibkr/v1 |

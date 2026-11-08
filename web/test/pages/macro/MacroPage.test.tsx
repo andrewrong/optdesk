@@ -69,6 +69,29 @@ it('renders the Python gauge and every event and indicator with its label', asyn
   )
 })
 
+it('draws the -2 to +2 scale, every status text, the detail links and the missing cause once', async () => {
+  const payload = fixture('ok.json')
+  await show(payload)
+  const ticks = [...host.querySelectorAll('[data-ticks] span')].map((n) => n.textContent)
+  expect(ticks[0]).toBe('-2')
+  expect(ticks.at(-1)).toBe('+2')
+  expect(ticks).toEqual(['-2', '-1', '0', '+1', '+2'])
+  expect(payload.ease.aria_text).toContain('-2 到 +2')
+  expect(host.querySelector('[data-neutral-band]')?.textContent).toBe('-0.5 – +0.5')
+  expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe(
+    String(payload.ease.marker_percent.value),
+  )
+  for (const indicator of payload.indicators as { label: string; detail_href: string | null }[]) {
+    expect(host.querySelector('[data-indicators]')?.textContent).toContain(indicator.label)
+  }
+  const hrefs = [...host.querySelectorAll('[data-indicators] a')].map((a) => a.getAttribute('href'))
+  expect(hrefs).toEqual(
+    payload.indicators.flatMap((i: { detail_href: string | null }) => (i.detail_href ? [i.detail_href] : [])),
+  )
+  expect(host.textContent?.split('数据源未接入')).toHaveLength(2)
+  expect(host.textContent).toContain('没有缺口。')
+})
+
 it('shows the ease gap once without a gauge and keeps the missing indicator reason', async () => {
   const payload = fixture('gap.json')
   await show(payload)

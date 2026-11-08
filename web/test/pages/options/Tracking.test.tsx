@@ -1,16 +1,18 @@
-// Issue #1827: the page shows the rows in payload order with the strings Python sent; the fixtures are the
-// independent reference.
-import { readFileSync, readdirSync } from 'node:fs'
+// The tracking page shows the strings of the v2 payload grouped by rule version; the synthetic fixtures of
+// tracking-v2/fixtures are the reference.
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { Tracking, validateTracking } from '@/pages/options/Tracking'
-import { pages } from '@/shell/pages'
+import { Tracking, registration } from '@/pages/options/Tracking'
+import { gap } from './tracking-v2/fixtures/gap'
+import { ok } from './tracking-v2/fixtures/ok'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-const dir = path.resolve(import.meta.dirname, '../../../fixtures/tracking')
-const fixture = (name: string) => JSON.parse(readFileSync(path.join(dir, name), 'utf8'))
+const badVersion = JSON.parse(
+  readFileSync(path.resolve(import.meta.dirname, 'tracking-v2/fixtures/bad-version.json'), 'utf8'),
+)
 let root: Root | undefined
 let host: HTMLElement
 async function show(payload: unknown) {
@@ -31,56 +33,55 @@ afterEach(async () => {
   host?.remove()
 })
 
-type Cell = { text: string }
-interface Row {
-  symbol: string
-  expiry_text: string
-  strike: string
-  status: string
-  outcome: string
-  premium: Cell
-  underlying_move: Cell
-  assigned: string | null
-}
-
-it('registers the page and validates the fixtures', () => {
-  expect(pages.tracking).toBeDefined()
-  for (const name of readdirSync(dir).filter(
-    (name) => name.endsWith('.json') && (!name.startsWith('bad-') || name === 'bad-version.json'),
-  )) {
-    expect(validateTracking(fixture(name)).ok, name).toBe(!name.startsWith('bad-'))
-  }
+it('registers the page, refuses bad-version and accepts ok', () => {
+  expect(registration.schema).toBe('tracking')
+  expect(registration.page.validate(badVersion).ok).toBe(false)
+  expect(registration.page.validate(ok).ok).toBe(true)
 })
 
-it('shows the rows in payload order, the split as sent and the 指派 flag as a badge', async () => {
-  const payload = fixture('ok.json')
-  await show(payload)
-  const trs = host.querySelectorAll('tbody tr')
-  expect(trs).toHaveLength(payload.rows.length)
-  payload.rows.forEach((row: Row, i: number) => {
-    const t = trs[i]!.textContent ?? ''
-    for (const cell of [
-      row.symbol,
-      row.expiry_text,
-      row.strike,
-      row.status,
-      row.outcome,
-      row.premium.text,
-      row.underlying_move.text,
-    ]) {
-      expect(t).toContain(cell)
+it('shows the current version, every tile, the notes, the comparison and My trades', async () => {
+  await show(ok)
+  const text = host.textContent ?? ''
+  const current = ok.versions[0]
+  expect(text).toContain(current.label)
+  expect(text).toContain(current.expired_text)
+  for (const line of ok.how) expect(text).toContain(line)
+  for (const group of current.groups) {
+    expect(text).toContain(group.title)
+    if (Array.isArray(group.summary)) {
+      for (const tile of group.summary) {
+        expect(text).toContain(tile.label)
+        expect(text).toContain(tile.text)
+      }
     }
-    const badges = [...trs[i]!.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent)
-    if (row.assigned !== null) expect(badges).toContain(row.assigned)
-  })
-  expect(payload.rows.some((row: Row) => row.assigned !== null)).toBe(true)
-  expect(host.textContent).toContain(payload.pending)
-  for (const line of payload.how) expect(host.textContent).toContain(line)
+  }
+  for (const figure of ['31', '24', '3', '+0.9%', '+0.2%']) expect(text).toContain(figure)
+  expect(text).toContain('太早，不下结论。')
+  for (const cell of (current.covered_calls.comparison.rows as unknown as string[][]).flat()) expect(text).toContain(cell)
+  for (const cell of (current.my_trades as unknown as { rows: string[][] }).rows.flat()) expect(text).toContain(cell)
+  expect(text).not.toContain('OLD')
 })
 
-it('shows the page note once', async () => {
-  const payload = fixture('gap.json')
-  expect(typeof payload.note).toBe('string')
-  await show(payload)
-  expect((host.textContent ?? '').split(payload.note)).toHaveLength(2)
+it('folds the group rows closed', async () => {
+  await show(ok)
+  expect(host.textContent).not.toContain('AAA')
+  const trigger = host.querySelector('[data-tracking-group="sell-put"] [data-slot="accordion-trigger"]')
+  expect(trigger?.getAttribute('aria-expanded')).toBe('false')
+})
+
+it('renders a my_trades gap as text with no My trades table and folds older versions', async () => {
+  await show(gap)
+  const text = host.textContent ?? ''
+  expect(text).toContain('我的交易还没有数据来源')
+  expect(text).toContain('这一组还没有可汇总的结果')
+  expect(host.querySelectorAll('table')).toHaveLength(0)
+
+  await act(async () => root?.unmount())
+  host.remove()
+  await show(ok)
+  const old = [...host.querySelectorAll('[data-slot="accordion-item"]')].find((i) =>
+    i.textContent?.includes('更早的规则版本'),
+  )
+  expect(old?.querySelector('[data-slot="accordion-trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  expect(host.textContent).not.toContain('规则 v2')
 })

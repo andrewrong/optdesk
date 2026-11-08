@@ -115,7 +115,11 @@ function MarketTab({ pane }: { pane: Pane }) {
             <PayloadTableView table={pane.chain.table} name="chain" />
           </CardContent>
         </Card>
-      ) : null}
+      ) : (
+        <Card data-chain-empty>
+          <CardContent>没有链数据</CardContent>
+        </Card>
+      )}
     </div>
   )
 }

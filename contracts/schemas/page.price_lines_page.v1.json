@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.price_lines_page.v1.json",
+  "title": "PriceLinesPage",
+  "description": "Board 14: the price lines the owner keeps. The page posts a form to a constant path and computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "sentence",
+    "notes",
+    "gaps",
+    "intro",
+    "saved",
+    "error",
+    "form",
+    "rows",
+    "add",
+    "unset",
+    "footnote"
+  ],
+  "properties": {
+    "schema": {
+      "const": "price_lines_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "sentence": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "intro": {
+      "$ref": "#/$defs/Text"
+    },
+    "saved": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "form": {
+      "$ref": "#/$defs/PriceLineForm"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PriceLineRow"
+      }
+    },
+    "add": {
+      "$ref": "#/$defs/AddBlock"
+    },
+    "unset": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/UnsetRow"
+      }
+    },
+    "footnote": {
+      "$ref": "#/$defs/Text"
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "AddBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "markets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "US",
+              "JP"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "hint": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "markets",
+        "hint"
+      ]
+    },
+    "Figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "value",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "description": "A number the producer wrote; the view prints text."
+    },
+    "FigureOrGap": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Figure"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "PriceLineForm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "post_path": {
+          "const": "/plan/price-lines",
+          "type": "string"
+        },
+        "expires": {
+          "type": "string",
+          "pattern": "^[0-9]{1,12}$"
+        },
+        "mac": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "post_path",
+        "expires",
+        "mac"
+      ],
+      "description": "Where the form posts and the token it carries: UTC epoch seconds as digits and the lower-case hex MAC."
+    },
+    "PriceLineRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "market": {
+          "type": "string",
+          "enum": [
+            "US",
+            "JP"
+          ]
+        },
+        "price": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "symbol",
+        "market",
+        "price",
+        "note"
+      ]
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "UnsetRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "market": {
+          "type": "string",
+          "enum": [
+            "US",
+            "JP"
+          ]
+        }
+      },
+      "required": [
+        "symbol",
+        "market"
+      ],
+      "description": "A held company with no price line; its add form is prefilled."
+    }
+  }
+}

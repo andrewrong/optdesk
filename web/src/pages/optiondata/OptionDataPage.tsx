@@ -1,6 +1,7 @@
 // The option data page: every figure and sentence is the text the builder wrote; this file computes nothing.
 import { Info, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload, type Result } from '@/types/option_data_page'
@@ -35,6 +36,9 @@ export function validateOptionDataPage(input: unknown): Result {
 }
 export type { Payload as OptionDataPagePayload } from '@/types/option_data_page'
 
+// The producer's earnings_tone picks the variant; the text is never read.
+const EARNINGS_VARIANT = { in_term: 'destructive', outside: 'secondary', none: 'outline' } as const
+
 export function OptionDataPage({ payload }: { payload: Payload }) {
   const { underlying, chain, stale } = payload
   const hasRows = chain.rows[0] !== undefined
@@ -61,9 +65,27 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
         <CardHeader>
           <CardTitle>{underlying.symbol ?? underlying.label}</CardTitle>
         </CardHeader>
-        <CardContent className="flex gap-4">
-          <span data-underlying-price>{underlying.price.text}</span>
+        <CardContent className="flex flex-wrap gap-4">
+          <span data-underlying-price>
+            {underlying.price.text}
+            {underlying.price.kind === 'value' && underlying.price.approx_usd_text ? (
+              <span className="ml-1 text-muted-foreground">{underlying.price.approx_usd_text}</span>
+            ) : null}
+          </span>
           <span className="text-muted-foreground">{underlying.session_day}</span>
+          <span data-field="vol_line">{underlying.vol_line ?? '缺'}</span>
+          <span data-field="earnings_text">
+            {underlying.earnings_text ? (
+              <Badge
+                variant={EARNINGS_VARIANT[underlying.earnings_tone ?? 'none']}
+                data-earnings={underlying.earnings_tone}
+              >
+                {underlying.earnings_text}
+              </Badge>
+            ) : (
+              '没有数据来源'
+            )}
+          </span>
         </CardContent>
       </Card>
       {payload.underlyings ? <UnderlyingLinks underlyings={payload.underlyings} /> : null}
