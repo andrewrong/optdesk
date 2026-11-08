@@ -2,6 +2,8 @@ package macro_page
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -60,5 +62,52 @@ func TestNewPageCopiesConfig(t *testing.T) {
 	}
 	if !bytes.Equal(before, after) {
 		t.Fatalf("before %s after %s", before, after)
+	}
+}
+
+func goldenReader(t *testing.T) fakeReader {
+	t.Helper()
+	return fakeReader{points: map[string][]contracts.SeriesPoint{
+		"DGS10": {pt(t, "2026-11-03", "2026-11-04", "percent", f64(4.25)), pt(t, "2026-11-04", "2026-11-05", "percent", f64(4.3))},
+		"DGS2":  {pt(t, "2026-11-04", "2026-11-05", "percent", nil)},
+	}}
+}
+
+func goldenConfig() Config {
+	c := cfg("DGS10", "DGS2")
+	c.Indicators[0].DetailHref = "/indicator/DGS10"
+	return c
+}
+
+func TestConfigReadNilUnchanged(t *testing.T) {
+	t.Parallel()
+	c := goldenConfig()
+	c.Read = nil
+	b, err := Build(t.Context(), goldenReader(t), c, "2026-11-05", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != golden {
+		t.Fatalf("got\n%s\nwant\n%s", b, golden)
+	}
+}
+
+func TestConfigReadUnusedUnchanged(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	c := goldenConfig()
+	c.Read = func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+		calls++
+		return nil, errors.New("must not be called")
+	}
+	b, err := Build(t.Context(), goldenReader(t), c, "2026-11-05", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != golden {
+		t.Fatalf("got\n%s\nwant\n%s", b, golden)
+	}
+	if calls != 0 {
+		t.Fatalf("Read called %d times", calls)
 	}
 }
