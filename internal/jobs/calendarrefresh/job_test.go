@@ -211,10 +211,10 @@ func TestObserverOncePerChange(t *testing.T) {
 	}
 }
 
-type permErr struct{}
+type retryableErr struct{}
 
-func (permErr) Error() string             { return "boom" }
-func (permErr) Kind() contracts.ErrorKind { return contracts.Retryable }
+func (retryableErr) Error() string             { return "boom" }
+func (retryableErr) Kind() contracts.ErrorKind { return contracts.Retryable }
 
 func TestEmptyFreshIsPermanent(t *testing.T) {
 	t.Parallel()
@@ -236,7 +236,7 @@ func TestSourceErrorKeepsItsClass(t *testing.T) {
 		err  error
 		want contracts.ErrorKind
 	}{
-		{"retryable", permErr{}, contracts.Retryable},
+		{"retryable", retryableErr{}, contracts.Retryable},
 		{"untyped", errors.New("x"), contracts.Permanent},
 	} {
 		r := newRig(t, newStore(), nil)
@@ -257,11 +257,31 @@ func TestSpanFromClock(t *testing.T) {
 	}
 }
 
+// span is one row per calendar day from 2026-11-09 to 2027-12-14.
+func span(t *testing.T) []contracts.SessionDay {
+	t.Helper()
+	start := time.Date(2026, 11, 9, 0, 0, 0, 0, time.UTC)
+	var rows []contracts.SessionDay
+	for i := 0; i <= daysAfter; i++ {
+		rows = append(rows, sd(t, start.AddDate(0, 0, i).Format("2006-01-02"), false))
+	}
+	return rows
+}
+
+func TestPostconditionFalseWithGapInSpan(t *testing.T) {
+	t.Parallel()
+	st := newStore(sd(t, "2026-11-09", false), sd(t, "2027-12-14", false))
+	r := newRig(t, st, nil)
+	got, err := r.j.Postcondition(context.Background(), "2026-11-09", datasetID, "XNYS")
+	if err != nil || got {
+		t.Fatalf("Postcondition = %v, %v; want false: the days between are not stored", got, err)
+	}
+}
+
 func TestPostconditionFalseUntilSpanEndStored(t *testing.T) {
 	t.Parallel()
-	end := sd(t, "2027-12-14", false)
 	st := newStore(sd(t, "2026-11-09", false))
-	r := newRig(t, st, []contracts.SessionDay{sd(t, "2026-11-09", false), end})
+	r := newRig(t, st, span(t))
 	ctx := context.Background()
 	check := func(want bool) {
 		t.Helper()

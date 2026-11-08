@@ -136,16 +136,25 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 	return res
 }
 
-// Postcondition is true when the store holds the row of the span end (as-of day plus 400 days) of the key.
+// Postcondition is true when the store holds one row for every calendar day from the as-of day
+// to the span end (as-of day plus 400 days) of the key.
 func (j *job) Postcondition(ctx context.Context, day, _, subjectKey string) (bool, error) {
 	d, err := time.Parse(dayLayout, day)
 	if err != nil {
 		return false, asTyped(err, contracts.Permanent)
 	}
-	end := shift(d, daysAfter)
-	rows, err := j.st.SessionDays(ctx, subjectKey, end, end)
+	rows, err := j.st.SessionDays(ctx, subjectKey, contracts.Day(day), shift(d, daysAfter))
 	if err != nil {
 		return false, asTyped(err, contracts.Retryable)
 	}
-	return len(rows) > 0, nil
+	have := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		have[r.SessionDay.Format(dayLayout)] = true
+	}
+	for i := 0; i <= daysAfter; i++ {
+		if !have[string(shift(d, i))] {
+			return false, nil
+		}
+	}
+	return true, nil
 }
