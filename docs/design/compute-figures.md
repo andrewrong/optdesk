@@ -222,7 +222,7 @@ Checked by CI: `go test ./cmd/ot -race -count=1` (the whole package, including t
 ### docs-iv30-rate-age
 
 - Module: docs. Size: S. Depends on: docs-compute-rules, compute-rules (the entry and its hash are on main).
-- Order: after 4 and 5, before 7 (compute-figures-job); it edits `register.toml` like 4 and 5. Not an interface change: the entry stays version 1, the sentence is corrected to the landed `rules.json` (`MaxAgeDays` 4).
+- Order: after 4, 5 (docs-compute-rules, compute-rules; both edit `register.toml` too), before 7 (compute-figures-job). Not an interface change: the entry stays version 1, the sentence is corrected to the landed `rules.json` (`MaxAgeDays` 4).
 - Design: docs/design/compute-figures.md#Decisions
 - Files: docs/conventions/register.toml
 
