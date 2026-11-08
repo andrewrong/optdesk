@@ -27,7 +27,7 @@
   "scope": "full-scan",
   "sections": [
     {
-      "liquidity": "2 个候选缺报价，年化、Bid、Ask 无法给出",
+      "liquidity": "SYN2 缺报价，年化、Bid、Ask 无法给出",
       "strategy": "short_put",
       "sub": "2 行，按判定排序",
       "table": {
@@ -48,14 +48,14 @@
             "label": "年化"
           },
           {
-            "align": "left",
-            "id": "contract",
-            "label": "合约"
+            "align": "right",
+            "id": "strike_pct",
+            "label": "strike %"
           },
           {
             "align": "right",
-            "id": "strike_pct",
-            "label": "行权价 %"
+            "id": "dte",
+            "label": "DTE"
           },
           {
             "align": "right",
@@ -64,39 +64,28 @@
           },
           {
             "align": "right",
-            "id": "bid",
-            "label": "Bid"
+            "id": "quote",
+            "label": "Bid/Ask"
           },
           {
             "align": "right",
-            "id": "ask",
-            "label": "Ask"
+            "id": "spread_pct",
+            "label": "spread %"
           },
           {
             "align": "right",
-            "id": "iv",
-            "label": "IV"
+            "id": "vol",
+            "label": "Vol"
           },
           {
             "align": "right",
-            "hint": "按风险中性模型 N(-d2) 估计的到期在价内概率",
-            "id": "itm",
-            "label": "到期在价内概率"
+            "id": "oi",
+            "label": "OI"
           },
           {
             "align": "right",
-            "id": "excess",
-            "label": "比现金"
-          },
-          {
-            "align": "right",
-            "id": "breakeven",
-            "label": "盈亏平衡"
-          },
-          {
-            "align": "right",
-            "id": "dte",
-            "label": "到期"
+            "id": "ivp",
+            "label": "IVP"
           },
           {
             "align": "right",
@@ -133,67 +122,11 @@
               },
               {
                 "cell": {
-                  "kind": "text",
-                  "text": "SYN1 11/21 行权价 $48 Put",
-                  "value": "20261121"
-                },
-                "column": "contract"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
+                  "text": "92.3%",
+                  "unit": "percent",
+                  "value": 92.3
                 },
                 "column": "strike_pct"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "delta"
-              },
-              {
-                "cell": {
-                  "reason": "missing_quote",
-                  "text": "缺"
-                },
-                "column": "bid"
-              },
-              {
-                "cell": {
-                  "reason": "missing_quote",
-                  "text": "缺"
-                },
-                "column": "ask"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "iv"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "itm"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "excess"
-              },
-              {
-                "cell": {
-                  "reason": "missing_quote",
-                  "text": "缺"
-                },
-                "column": "breakeven"
               },
               {
                 "cell": {
@@ -205,8 +138,54 @@
               },
               {
                 "cell": {
+                  "kind": "text",
+                  "text": "-0.18",
+                  "value": "-0.18"
+                },
+                "column": "delta"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "1.20 / 1.30",
+                  "value": "1.20 / 1.30"
+                },
+                "column": "quote"
+              },
+              {
+                "cell": {
+                  "text": "8.3%",
+                  "unit": "percent",
+                  "value": 8.3
+                },
+                "column": "spread_pct"
+              },
+              {
+                "cell": {
                   "reason": "no_data",
                   "text": "缺"
+                },
+                "column": "vol"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "oi"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "ivp"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "E 10-28",
+                  "value": "E 10-28"
                 },
                 "column": "earnings"
               }
@@ -240,67 +219,10 @@
               },
               {
                 "cell": {
-                  "kind": "text",
-                  "text": "SYN2 11/21 行权价 $48 Put",
-                  "value": "20261121"
-                },
-                "column": "contract"
-              },
-              {
-                "cell": {
                   "reason": "no_data",
                   "text": "缺"
                 },
                 "column": "strike_pct"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "delta"
-              },
-              {
-                "cell": {
-                  "reason": "missing_quote",
-                  "text": "缺"
-                },
-                "column": "bid"
-              },
-              {
-                "cell": {
-                  "reason": "missing_quote",
-                  "text": "缺"
-                },
-                "column": "ask"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "iv"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "itm"
-              },
-              {
-                "cell": {
-                  "reason": "no_data",
-                  "text": "缺"
-                },
-                "column": "excess"
-              },
-              {
-                "cell": {
-                  "reason": "missing_quote",
-                  "text": "缺"
-                },
-                "column": "breakeven"
               },
               {
                 "cell": {
@@ -314,6 +236,49 @@
                 "cell": {
                   "reason": "no_data",
                   "text": "缺"
+                },
+                "column": "delta"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "quote"
+              },
+              {
+                "cell": {
+                  "reason": "missing_quote",
+                  "text": "缺"
+                },
+                "column": "spread_pct"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "vol"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "oi"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "ivp"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "—",
+                  "value": "—"
                 },
                 "column": "earnings"
               }
@@ -346,14 +311,49 @@
             "label": "年化"
           },
           {
-            "align": "left",
-            "id": "contract",
-            "label": "合约"
+            "align": "right",
+            "id": "strike_pct",
+            "label": "strike %"
           },
           {
             "align": "right",
             "id": "dte",
-            "label": "到期"
+            "label": "DTE"
+          },
+          {
+            "align": "right",
+            "id": "delta",
+            "label": "Δ"
+          },
+          {
+            "align": "right",
+            "id": "quote",
+            "label": "Bid/Ask"
+          },
+          {
+            "align": "right",
+            "id": "spread_pct",
+            "label": "spread %"
+          },
+          {
+            "align": "right",
+            "id": "vol",
+            "label": "Vol"
+          },
+          {
+            "align": "right",
+            "id": "oi",
+            "label": "OI"
+          },
+          {
+            "align": "right",
+            "id": "ivp",
+            "label": "IVP"
+          },
+          {
+            "align": "right",
+            "id": "earnings",
+            "label": "E"
           }
         ],
         "rows": [
@@ -385,11 +385,11 @@
               },
               {
                 "cell": {
-                  "kind": "text",
-                  "text": "SYN1 11/21 行权价 $52 Call",
-                  "value": "20261121"
+                  "text": "104.0%",
+                  "unit": "percent",
+                  "value": 104.0
                 },
-                "column": "contract"
+                "column": "strike_pct"
               },
               {
                 "cell": {
@@ -398,6 +398,59 @@
                   "value": 19
                 },
                 "column": "dte"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "0.21",
+                  "value": "0.21"
+                },
+                "column": "delta"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "0.85 / 0.90",
+                  "value": "0.85 / 0.90"
+                },
+                "column": "quote"
+              },
+              {
+                "cell": {
+                  "text": "5.7%",
+                  "unit": "percent",
+                  "value": 5.7
+                },
+                "column": "spread_pct"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "vol"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "oi"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "ivp"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "E 10-28",
+                  "value": "E 10-28"
+                },
+                "column": "earnings"
               }
             ],
             "id": "r0"
@@ -407,11 +460,172 @@
       "title": "备兑看涨"
     },
     {
-      "gap": {
-        "reason": "no_data",
-        "text": "今天没有候选扫描"
-      },
       "strategy": "put_credit_spread",
+      "sub": "1 行，按判定排序",
+      "table": {
+        "columns": [
+          {
+            "align": "left",
+            "id": "symbol",
+            "label": "标的"
+          },
+          {
+            "align": "left",
+            "id": "verdict",
+            "label": "判定"
+          },
+          {
+            "align": "right",
+            "id": "annualised",
+            "label": "年化"
+          },
+          {
+            "align": "right",
+            "id": "strike_pct",
+            "label": "strike %"
+          },
+          {
+            "align": "right",
+            "id": "dte",
+            "label": "DTE"
+          },
+          {
+            "align": "right",
+            "id": "delta",
+            "label": "Δ"
+          },
+          {
+            "align": "right",
+            "id": "quote",
+            "label": "Bid/Ask"
+          },
+          {
+            "align": "right",
+            "id": "spread_pct",
+            "label": "spread %"
+          },
+          {
+            "align": "right",
+            "id": "vol",
+            "label": "Vol"
+          },
+          {
+            "align": "right",
+            "id": "oi",
+            "label": "OI"
+          },
+          {
+            "align": "right",
+            "id": "ivp",
+            "label": "IVP"
+          },
+          {
+            "align": "right",
+            "id": "earnings",
+            "label": "E"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "SYN1",
+                  "value": "SYN1"
+                },
+                "column": "symbol"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "通过",
+                  "value": 0
+                },
+                "column": "verdict"
+              },
+              {
+                "cell": {
+                  "text": "22.4%",
+                  "unit": "percent",
+                  "value": 22.4
+                },
+                "column": "annualised"
+              },
+              {
+                "cell": {
+                  "text": "92.3%",
+                  "unit": "percent",
+                  "value": 92.3
+                },
+                "column": "strike_pct"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "19 天",
+                  "value": 19
+                },
+                "column": "dte"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "-0.18",
+                  "value": "-0.18"
+                },
+                "column": "delta"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "0.60 / 0.70",
+                  "value": "0.60 / 0.70"
+                },
+                "column": "quote"
+              },
+              {
+                "cell": {
+                  "text": "15.4%",
+                  "unit": "percent",
+                  "value": 15.4
+                },
+                "column": "spread_pct"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "vol"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "oi"
+              },
+              {
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                },
+                "column": "ivp"
+              },
+              {
+                "cell": {
+                  "kind": "text",
+                  "text": "E 10-28",
+                  "value": "E 10-28"
+                },
+                "column": "earnings"
+              }
+            ],
+            "id": "r0"
+          }
+        ]
+      },
       "title": "卖出看跌价差"
     }
   ],
