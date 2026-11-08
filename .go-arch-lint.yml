@@ -55,6 +55,8 @@ components:
     in: internal/runner
   runner/reconcile:
     in: internal/runner/reconcile
+  runner/sched:
+    in: internal/runner/sched
   jobs:
     in: internal/jobs
   jobs/fredseries:
@@ -188,6 +190,13 @@ deps:
       - store
       - runner
       - contracts/genpb
+  runner/sched:
+    mayDependOn:
+      - contracts
+      - clock
+      - store
+      - runner
+      - contracts/genpb
   jobs:
     mayDependOn:
       - contracts
@@ -295,6 +304,7 @@ deps:
       - clock/realclock
       - clock/calendar
       - runner/reconcile
+      - runner/sched
       - store/sessionday
       - store/series
       - store/snapshot
