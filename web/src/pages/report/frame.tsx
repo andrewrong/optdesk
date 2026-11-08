@@ -23,6 +23,9 @@ export interface FrameBlock {
   link?: Link | null
 }
 
+// The badge words present the closed enum `state`; they are shell text.
+const STATE_WORD = { ok: '正常', partial: '延迟', gap: '缺' } as const
+
 export function LinkButton({ link }: { link: Link }) {
   return (
     <Button asChild variant="link" size="sm">
@@ -39,7 +42,7 @@ export function Frame({ block, children }: { block: FrameBlock; children?: React
         <CardTitle>{block.title}</CardTitle>
         <CardDescription>{block.sub}</CardDescription>
         <Badge variant={block.state === 'ok' ? 'success' : block.state === 'partial' ? 'warning' : 'down'}>
-          {block.state}
+          {STATE_WORD[block.state]}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -85,7 +88,6 @@ export function Header({ payload }: { payload: ReportPage }) {
         </div>
       ) : null}
       {payload.stale ? <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} /> : null}
-      {payload.design_note ? <p className="text-xs text-muted-foreground">{payload.design_note}</p> : null}
       <dl className="text-xs" data-status-lines>
         {payload.status_lines.map((line, at) => (
           <div key={`${at}-${line.label}`} className="flex gap-2">
