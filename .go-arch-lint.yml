@@ -65,8 +65,6 @@ components:
     in: internal/compute/rules
   compute/talibind:
     in: internal/compute/talibind
-  compute/sharpmove:
-    in: internal/compute/sharpmove
   runner:
     in: internal/runner
   runner/reconcile:
@@ -113,6 +111,8 @@ components:
     in: cmd/ot
   compute/contracttest:
     in: internal/compute/contracttest
+  compute/sharpmove:
+    in: internal/compute/sharpmove
   notify/notifytest:
     in: internal/notify/notifytest
   pages/gaps:
@@ -235,11 +235,6 @@ deps:
       - compute
       - contracts/genpb
   compute/talibind:
-    mayDependOn:
-      - contracts
-      - compute
-      - contracts/genpb
-  compute/sharpmove:
     mayDependOn:
       - contracts
       - compute
@@ -460,6 +455,11 @@ deps:
       - compute/alertrules
       - pages/risks_block
   compute/contracttest:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/sharpmove:
     mayDependOn:
       - contracts
       - compute
