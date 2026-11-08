@@ -245,7 +245,7 @@ Two reviews are answered: `market-adversarial.md` of revision 1 (M) and `index-i
 | M3d cut the term block's own series selection | Not adopted: the schema has the `term` points `today` and `five_days_ago`, and the stored VIX and VXV series are the only source; the cost is four tests. A Gap-only term would show nothing the owner can use. |
 | M3 percentile from `SeriesReader` in the builder | Not adopted: the pages row forbids computing; stays under Left out. |
 | M4 constants make renames interface changes | Adopted with M3c (no interface file). |
-| M4 register paths pin the page structure | Not adopted: a `pages` path is the audit trail by rule; it is set last (entry 4) so it is true when written. |
+| M4 register paths pin the page structure | Not adopted: a `pages` path is the audit trail by rule; it is set last (`market-page-docs`) so it is true when written. |
 | M4 freshness: 4 days on the page vs 8 in the register | Adopted as an explanation: the two rules decide different things (Decision 3, `stale` row); the page label is a display rule, the register limit decides the `stale_input` Gap. Not unified into one number, because the page cannot read the register limit without importing `compute/rules`, which the pages row does not allow. |
 | M4 row order and the mapping VIX/VXN/RVX to SPX/NDX/RUT lock the labels | Not adopted as a change: the column is the Cboe index of that underlying and the schema calls it `rank_3y`; a later IBKR IV changes the `iv` cell, not this one. Stated, not fixed. |
 | M4 owner's manual FRED history load | Partly adopted: still the owner's act, but it now has an owner (the docs entry's runbook), a check (the page's own text) and `ot run-once` to make the readings appear at once. No test can see a human act. |
@@ -259,12 +259,12 @@ Two reviews are answered: `market-adversarial.md` of revision 1 (M) and `index-i
 | M-refuse 2 acceptance not checkable offline | Adopted: arch check moved to CI; the fake-reader limit of `TestMarketRankFilled` is stated with the tests that cover the real mapping. |
 | M-refuse 3 Depends on unmerged entries | Adopted: the entries are named (`report-reading-view-impl`, `report-page-ot`, `site-ot-serve`), including the interface already merged (#591). |
 | M-refuse 4 contradictions (D:55, hidden route, `ok`, constant `gaps`, wire.go import, "no open question") | Adopted: each fixed above; the open questions are now listed. |
-| M-refuse 5 collisions on wire.go, page.go, site.go, serve.go, demo.go | Partly adopted: this design touches no `serve.go`; page.go, wire.go, demo.go and ot.md are edited by entry 2 only after `report-page-ot`, site.go by entry 3 only after `site-ot-serve`. The disagreement of `report-page-ot` (`serve --name`) with the unified site is not this design's to settle. |
+| M-refuse 5 collisions on wire.go, page.go, site.go, serve.go, demo.go | Partly adopted: this design touches no `serve.go`; page.go, wire.go, demo.go and ot.md are edited by `market-page-ot-cmd` only after `report-page-ot`, site.go by entry 3 only after `site-ot-serve`. The disagreement of `report-page-ot` (`serve --name`) with the unified site is not this design's to settle. |
 | I1 the goal "shown to the owner" is not met by an uncalled package | Adopted: the cells ship with their producer and the route. |
 | I1 history is not shown, only today's percentile | Not adopted as built: the schema has no field for a series; asked as owner question 2. |
-| I1 percentile only after a manual load and a later compute | Adopted as runbook (entry 4). |
+| I1 percentile only after a manual load and a later compute | Adopted as runbook (`market-page-docs`). |
 | I1 hand-off: no owner of the producer | Adopted: this design owns it. |
-| I2 register would name a reader nothing calls | Adopted: entry 4 is last. |
+| I2 register would name a reader nothing calls | Adopted: `market-page-docs` is last. |
 | I2 the number is not a float | Adopted: `json.Number` of the shifted text (Decision 4). |
 | I3 put the cells in the producer | Adopted. |
 | I4 unit `percent` vs `share_percent` | Adopted: `share_percent`. |
