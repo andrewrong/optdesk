@@ -1,0 +1,7 @@
+{
+  "MACD": {
+    "reason": "go-talib seeds the fast EMA at the start of the input; TA-Lib seeds it at index slow-1 with the average of the last fast values, and seeds the signal line on the first defined macd values",
+    "first_index": 8,
+    "max_abs_diff": 0.7587588945950412
+  }
+}
