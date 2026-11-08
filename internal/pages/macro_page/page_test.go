@@ -3,6 +3,7 @@ package macro_page
 import (
 	"bytes"
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -91,13 +92,13 @@ func TestConfigReadNilUnchanged(t *testing.T) {
 	}
 }
 
-func TestConfigReadWithoutReadingUnchanged(t *testing.T) {
+func TestConfigReadUnusedUnchanged(t *testing.T) {
 	t.Parallel()
 	calls := 0
 	c := goldenConfig()
 	c.Read = func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
 		calls++
-		return nil, nil
+		return nil, errors.New("must not be called")
 	}
 	b, err := Build(t.Context(), goldenReader(t), c, "2026-11-05", fixedAt)
 	if err != nil {
@@ -106,7 +107,7 @@ func TestConfigReadWithoutReadingUnchanged(t *testing.T) {
 	if string(b) != golden {
 		t.Fatalf("got\n%s\nwant\n%s", b, golden)
 	}
-	if calls == 0 {
-		t.Fatal("Read was not called")
+	if calls != 0 {
+		t.Fatalf("Read called %d times", calls)
 	}
 }
