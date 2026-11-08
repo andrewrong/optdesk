@@ -21,6 +21,8 @@ components:
     in: internal/clock
   clock/calendar:
     in: internal/clock/calendar
+  clock/calendarcli:
+    in: internal/clock/calendarcli
   clock/realclock:
     in: internal/clock/realclock
   broker:
@@ -101,6 +103,11 @@ deps:
     mayDependOn:
       - contracts
   clock/calendar:
+    mayDependOn:
+      - contracts
+      - clock
+      - contracts/genpb
+  clock/calendarcli:
     mayDependOn:
       - contracts
       - clock
@@ -315,6 +322,7 @@ deps:
       - notify/core
       - notify/telegram
       - notify/dryrun
+      - clock/calendarcli
   compute/contracttest:
     mayDependOn:
       - contracts
