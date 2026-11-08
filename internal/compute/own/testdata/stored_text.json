@@ -1,0 +1,11 @@
+[
+  {"id": "market.iv30_own", "input": 0.2, "want": "0.200000"},
+  {"id": "market.ivp_own", "input": 0.75, "want": "0.750000"},
+  {"id": "market.ivr_own", "input": 0.3333333333, "want": "0.333333"},
+  {"id": "market.vix_term_ratio", "input": 1.0625, "want": "1.062500"},
+  {"id": "market.vix_pctile_3y", "input": 0.0078125, "want": "0.007812"},
+  {"id": "market.vxn_pctile_3y", "input": 0.0234375, "want": "0.023438"},
+  {"id": "market.rvx_pctile_3y", "input": 0, "want": "0.000000"},
+  {"id": "market.sp500_pctile_3y", "input": 1, "want": "1.000000"},
+  {"id": "market.sp500_vs_200d", "input": 0.0312, "want": "0.031200"}
+]

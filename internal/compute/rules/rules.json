@@ -1,0 +1,11 @@
+[
+  {"id":"market.iv30_own","version":1,"convention":"iv30_v1","unit":"decimal","scale":6,"compare":"","n":0,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":4,"hash":"954384dce91bf80b1818268dd80950dd9086602509ab996a49b7fc390a8d1b4e"},
+  {"id":"market.ivp_own","version":1,"convention":"ivp_v1","unit":"decimal","scale":6,"compare":"at_or_below","n":0,"window":252,"min_valid":252,"years":0,"trading_days":0,"max_age_days":4,"hash":"621be4dd63d58ff110c4b9cc48f6d5123dd9c15b093c027ec0f3c67dafb7b3a5"},
+  {"id":"market.ivr_own","version":1,"convention":"ivr_v1","unit":"decimal","scale":6,"compare":"","n":0,"window":252,"min_valid":252,"years":0,"trading_days":0,"max_age_days":4,"hash":"3a4dac047615294091479000e9922beebcbd6e05f02a3dc95ae402b0f1456640"},
+  {"id":"market.vix_term_ratio","version":1,"convention":"ratio_v1","unit":"ratio","scale":6,"compare":"","n":0,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":8,"hash":"3cdd68fea0449a6f769a136da63f28fb4d7c404bf32ce5ae7940260164355903"},
+  {"id":"market.vix_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"10451f8e76c5766000779a5275a0654271c4b08cc0865975945c331b5262c1c8"},
+  {"id":"market.vxn_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"27005000d0161cc97c3de1683077de0887f28a71dc9e2bb2265cb71be9a29f80"},
+  {"id":"market.rvx_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"cbe18c896b65945181b179ac9a228b24b1b35c7b28ca1f0ef9566270d0a6d7c2"},
+  {"id":"market.sp500_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"0c706bf58ce757cf155cd8f6a91e6ab7db1d4425ef9db5b652d763f7ff42b909"},
+  {"id":"market.sp500_vs_200d","version":2,"convention":"ma_gap_v2","unit":"ratio","scale":6,"compare":"","n":200,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":8,"hash":"273d3c26e04c3e92880c16a494a3b486b318b34464d59f18e6d077e6d724154d"}
+]

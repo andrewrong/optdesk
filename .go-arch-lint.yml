@@ -57,6 +57,8 @@ components:
     in: internal/compute/gonumstats
   compute/own:
     in: internal/compute/own
+  compute/rules:
+    in: internal/compute/rules
   runner:
     in: internal/runner
   runner/reconcile:
@@ -199,6 +201,11 @@ deps:
       - compute
       - contracts/genpb
   compute/own:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/rules:
     mayDependOn:
       - contracts
       - compute
@@ -367,6 +374,7 @@ deps:
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
+      - compute/rules
       - store/reading
       - compute/own
       - compute/gonumstats
