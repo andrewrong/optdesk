@@ -180,7 +180,7 @@ func TestTextHoldsNoSentinel(t *testing.T) {
 	const s = "SENTINEL-SECRET"
 	r.src.SetGaps(
 		store.Gap{DatasetID: "ds1", Day: "2026-11-06", Reason: s},
-		store.Gap{DatasetID: "ds2", Day: "2026-11-06", Reason: "expired", JobID: ""},
+		store.Gap{DatasetID: "ds2", Day: "2026-11-06", Reason: "expired", JobID: "JOB-" + s},
 	)
 	if _, err := r.n.NotifyGaps(context.Background()); err != nil {
 		t.Fatal(err)
@@ -189,14 +189,33 @@ func TestTextHoldsNoSentinel(t *testing.T) {
 	if strings.Contains(text, s) || !strings.Contains(text, "dataset ds1 day 2026-11-06 unknown") {
 		t.Fatalf("text %q", text)
 	}
-	// the error text of a failed send is not copied into the text either
+	// a failed send's error text never reaches the next text
 	r2 := newRig(t, noon(), notify.Config{})
-	r2.src.SetGaps(store.Gap{JobID: "job-" + s, Day: "2026-11-06", Reason: "preflight_failed"})
+	r2.src.SetGaps(dsGap("ds3", 0))
+	r2.sender.SetErr(errors.New("boom " + s))
+	_, _ = r2.n.NotifyGaps(context.Background())
+	r2.sender.SetErr(nil)
+	r2.clock.Advance(15 * time.Minute)
 	if _, err := r2.n.NotifyGaps(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if got := r2.sender.Texts()[0]; !strings.Contains(got, "job job-"+s+" day 2026-11-06 preflight_failed") {
-		t.Fatalf("job line %q", got)
+	for _, got := range r2.sender.Texts() {
+		if strings.Contains(got, s) {
+			t.Fatalf("error text in %q", got)
+		}
+	}
+}
+
+func TestKeyGapHidesJobID(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, noon(), notify.Config{})
+	r.src.SetGaps(store.Gap{JobID: "SENTINEL", DatasetID: "ds1", Day: "2026-11-06", Reason: "expired"})
+	if _, err := r.n.NotifyGaps(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	got := r.sender.Texts()[0]
+	if strings.Contains(got, "SENTINEL") || !strings.Contains(got, "dataset ds1 day 2026-11-06 expired") {
+		t.Fatalf("text %q", got)
 	}
 }
 

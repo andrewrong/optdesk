@@ -22,7 +22,7 @@ func reason(r string) string {
 }
 
 func line(g store.Gap) string {
-	if g.JobID != "" {
+	if g.Reason == "preflight_failed" {
 		return fmt.Sprintf("job %s day %s %s", g.JobID, g.Day, reason(g.Reason))
 	}
 	return fmt.Sprintf("dataset %s day %s %s", g.DatasetID, g.Day, reason(g.Reason))
