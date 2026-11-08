@@ -98,6 +98,10 @@ func newDatabase(t *testing.T) string {
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
 		t.Fatalf("apply 0013: %v", err)
 	}
+	// Migration 0009 gives the page role USAGE on schema rd; this database has only 0013.
+	if _, err := c.Exec(ctx, `GRANT USAGE ON SCHEMA rd TO ot_ro_pages`); err != nil {
+		t.Fatal(err)
+	}
 	for _, r := range []string{"ot_runner", "ot_ro_pages", "ot_w_readings"} {
 		if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO `+r); err != nil {
 			t.Fatal(err)

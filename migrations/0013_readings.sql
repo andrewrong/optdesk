@@ -89,6 +89,7 @@ FROM (
 ) ranked
 WHERE winner = 1;
 
+ALTER SCHEMA readings OWNER TO ot_owner;
 ALTER TYPE readings.reading_unit OWNER TO ot_owner;
 ALTER TABLE readings.reading OWNER TO ot_owner;
 ALTER TABLE readings.reading_input OWNER TO ot_owner;
