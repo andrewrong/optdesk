@@ -51,6 +51,8 @@ components:
     in: internal/store/snapshot
   compute:
     in: internal/compute
+  compute/alertrules:
+    in: internal/compute/alertrules
   compute/figures:
     in: internal/compute/figures
   compute/gonumstats:
@@ -194,6 +196,11 @@ deps:
   compute:
     mayDependOn:
       - contracts
+  compute/alertrules:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/figures:
     mayDependOn:
       - contracts
@@ -417,6 +424,7 @@ deps:
       - jobs/serieshistory
       - clock/calendarcli
       - jobs/calendarrefresh
+      - compute/alertrules
   compute/contracttest:
     mayDependOn:
       - contracts

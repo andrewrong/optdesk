@@ -3,6 +3,11 @@ package compute
 
 import "github.com/andrewrong/optdesk/internal/contracts"
 
+import (
+	"context"
+	"io"
+)
+
 // Point is one value of a series on one day.
 type Point struct {
 	Day   contracts.Day
@@ -188,3 +193,50 @@ type (
 	NewRulesFunc      func() Rules
 	NewFiguresFunc    func(Stats, Rolling, SeriesOps, Rules) Figures
 )
+
+// AlertRule is one market alert rule over a stored figure, plain values only. Op is a
+// comparison word and Threshold a decimal text; both are checked by the loader.
+type AlertRule struct {
+	ID, Title, Figure                                string
+	FigureVersion                                    int
+	SubjectKind, Subject, Unit, Op, Threshold, Level string
+	MaxDataAgeDays                                   int
+}
+
+// AlertRules is a loaded rule set. PublicSubjects lists the subjects whose alerts may
+// leave the process; Hash is the sha256 of the rule file bytes.
+type AlertRules struct {
+	Rules          []AlertRule
+	PublicSubjects []string
+	Hash           string
+}
+
+// AlertResult is the outcome of one rule. State is "fired", "clear" or "no_data". Reason
+// is empty, or one of "no_reading", "missing_input", "unit_mismatch", "stale_data" or
+// "no_data_day". Day is the row day and DataDay the day of the row's newest input. Detail
+// is built from fixed words and the stored value, never from free text. Public is true
+// when the rule's subject is in AlertRules.PublicSubjects.
+type AlertResult struct {
+	RuleID, Title, Level, Figure, Value, Detail, Reason string
+	State                                               string
+	Day, DataDay                                        contracts.Day
+	Public                                              bool
+}
+
+// ReadingFunc reads the stored readings of one figure and subject for the days from to
+// to. The function passed to EvaluateAlertsFunc applies the winner rule of the report
+// page: per day a missing_input row shows only when the day has no ok row, and the
+// highest rev of state ok wins.
+type ReadingFunc func(ctx context.Context, name, subjectKind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error)
+
+// EvaluateAlertsFunc evaluates every rule, purely. For each rule it calls read for the
+// days today-5 to today and uses the newest row returned. A reader error is an error of
+// the call, never a no_data result. The results follow the order of the rules.
+type EvaluateAlertsFunc func(ctx context.Context, rules AlertRules, read ReadingFunc, today contracts.Day) ([]AlertResult, error)
+
+// LoadAlertRulesFunc decodes and checks a rule file; an error names the key and the rule
+// id and never a value.
+type LoadAlertRulesFunc func(r io.Reader) (AlertRules, error)
+
+// DefaultAlertRulesFunc returns the rules embedded in the program.
+type DefaultAlertRulesFunc func() (AlertRules, error)
