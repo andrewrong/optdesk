@@ -121,7 +121,7 @@ Checked by CI: ci-go (`go mod verify`, `go test ./internal/notify/telegram -race
 ### notify-wiring
 
 - Module: ot. Size: S. Depends on: notify-interface, notify-core, notify-dryrun, notify-telegram, and sched-cmd-run of `docs/design/scheduler.md` (PR #358; cross-design dependency: both entries edit `cmd/ot/scheduler.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go` and `docs/contracts/ot.md`, so this entry starts only after sched-cmd-run has landed on main and edits the files as they are then; a stop on a conflict is reported, not resolved by editing sched-cmd-run's tests).
-- Order: after 1, 2, 3 and 4 (notify-interface, notify-core, notify-dryrun, notify-telegram); in addition after sched-cmd-run of the other design (its landing, not an own number).
+- Order: after 1, 2, 3, 4 (notify-interface, notify-core, notify-dryrun, notify-telegram); in addition after sched-cmd-run of the other design (its landing, not an own number).
 - Design: docs/design/notify.md#Decisions
 - Files: cmd/ot/scheduler.go, cmd/ot/scheduler_test.go, cmd/ot/notify.go, cmd/ot/notify_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, docs/contracts/ot.md
 
