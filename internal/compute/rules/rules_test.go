@@ -507,3 +507,105 @@ func TestHashCoversIvWindow(t *testing.T) {
 		t.Fatal("an edit of ivWindow, which IvPercentile calls, leaves the ivp_own rule hash unchanged")
 	}
 }
+
+func TestHashCoversEaseHelpers(t *testing.T) {
+	t.Parallel()
+	root := repoRoot(t)
+	figs, _ := readRegister(t)
+	var e entry
+	for _, c := range readEntries(t) {
+		if c.ID == "macro.ease" {
+			e = c
+		}
+	}
+	f, ok := findFigure(figs, e.ID, e.Version)
+	if !ok {
+		t.Fatal("macro.ease not in the register")
+	}
+	tmp := t.TempDir()
+	dst := copyPackage(t, root, tmp, "ease")
+	hash := func() string {
+		h, err := ruleHash(tmp, f.ImplementedBy, e.numbers)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return h
+	}
+	base := hash()
+	if base != e.Hash {
+		t.Fatalf("the copy hashes to %q, rules.json says %q", base, e.Hash)
+	}
+	// edit replaces the first match of from in a file of the copy.
+	edit := func(file, from, to string) {
+		t.Helper()
+		p := filepath.Join(dst, file)
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), from) {
+			t.Fatalf("%s lacks %q", file, from)
+		}
+		if err := os.WriteFile(p, []byte(strings.Replace(string(b), from, to, 1)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	helpers := map[string]string{
+		"params":        "params.go",
+		"round2":        "ease.go",
+		"ratOfFloat":    "ease.go",
+		"wholeHalfUp":   "ease.go",
+		"weekdaysAfter": "ease.go",
+	}
+	// whitespace only: blank lines before the function change nothing.
+	for name, file := range helpers {
+		edit(file, "func "+name+"(", "\n\n\nfunc "+name+"(")
+	}
+	if hash() != base {
+		t.Error("a whitespace-only edit changed the hash")
+	}
+	for name, file := range helpers {
+		b, _ := os.ReadFile(filepath.Join(dst, file))
+		s := string(b)
+		i := strings.Index(s, "func "+name+"(")
+		j := strings.Index(s[i:], "{\n") + i + 2
+		if err := os.WriteFile(filepath.Join(dst, file), []byte(s[:j]+"\t_ = 1\n"+s[j:]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if hash() == base {
+			t.Errorf("a body edit of %s did not change the hash", name)
+		}
+		edit(file, "\t_ = 1\n", "")
+		if hash() != base {
+			t.Fatalf("restoring %s failed", name)
+		}
+	}
+}
+
+// copyPackage copies the files of internal/compute/<pkg> under root into the same path under
+// tmp and gives the new directory.
+func copyPackage(t *testing.T, root, tmp, pkg string) string {
+	t.Helper()
+	dst := filepath.Join(tmp, "internal", "compute", pkg)
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(root, "internal", "compute", pkg)
+	ents, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range ents {
+		if d.IsDir() {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(src, d.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dst, d.Name()), b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dst
+}

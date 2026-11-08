@@ -1718,3 +1718,37 @@ source_hash = "4ef9212f67cd918b8144449419fa9df31e6126ac2d6ef1061dd9f0eaa209150c"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+
+[[figure]]
+id = "macro.ease"
+version = 2
+title_zh = "松紧度"
+pages = ["macro_page.ease"]
+formula = """
+Four inputs of equal weight, each a linear sub-score 100 * (figure - at_0) / (at_100 - at_0) clipped to 0..100: net_liquidity (the change of weekly net liquidity, a fraction; -0.03 is 0, +0.03 is 100), us10y (DGS10 today minus DGS10 63 observations earlier, in basis points; +75 is 0, -75 is 100), fed_funds (DFF on a session minus DFF on the session 126 sessions earlier, in basis points, sessions being the observation dates of SP500; +50 is 0, -50 is 100) and hy_oas (BAMLH0A0HYM2, percent, newest point; 5.5 is 0, 2.5 is 100). The value is the mean of the sub-scores present (not the rounded ones), rounded half-even to 2 places; it has no value with fewer than 3 present. The band is taken on the value after that rounding, rounded half-up to a whole number: 0-33 偏紧 (tighter), 34-66 中性 (steady), 67-100 偏松 (looser). All arithmetic is exact rationals, each input first turned into its shortest decimal text. Synthetic: figures 0, 0, 0 and 3.23 give 56.42; all four at the 100 points give 100.00; all at the 0 points give 0.00."""
+inputs = """
+The FRED series WALCL, WDTGAL, RRPONTSYD, DGS10, DFF, SP500 and BAMLH0A0HYM2, units as stored (the three liquidity series in whole dollars, DGS10, DFF and BAMLH0A0HYM2 in percent, SP500 in index points of which only the dates are used). Weekly net liquidity of a Wednesday W is WALCL(W) - WDTGAL(W) - RRP, WALCL and WDTGAL dated exactly W and RRP the newest RRPONTSYD point in (W-7, W]; the change at W is the sum of the figures of W, W-7, W-14 and W-21 over the sum of those of W-91, W-98, W-105 and W-112, minus 1, and needs all eight figures; the newest Wednesday on or before the as-of day that has a change is used. A no-value point is not an observation. Ages: net_liquidity 10 calendar days, us10y 3 weekdays, fed_funds 7 calendar days, hy_oas 3 weekdays."""
+period_date = "The as-of session day; the data day is the newest input day used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 2 places."
+excludes = """
+Display only: nothing votes, offers, sizes or gates on it. No holiday calendar in "weekdays old". No IBKR figure."""
+gap_text = """
+Fewer than 3 inputs: missing, no_input. Each input's reason (no_input, short_history or stale_input) is in its own parameter, never a zero. An unknown id: missing, bad_input."""
+implemented_by = [
+  "internal/compute/ease.(*calc).Ease",
+  "internal/compute/ease.params",
+  "internal/compute/ease.score",
+  "internal/compute/ease.ratOfFloat",
+  "internal/compute/ease.round2",
+  "internal/compute/ease.wholeHalfUp",
+  "internal/compute/ease.band",
+  "internal/compute/ease.weekdaysAfter",
+  "internal/compute/ease.netLiquidityChange",
+  "internal/compute/ease.weeklyNetLiquidity",
+  "internal/compute/ease.changeBack",
+  "internal/compute/ease.fedFundsChange",
+]
+source_hash = "518ff1d1426a18d099460a493f6f29bcb1effd8e3c032535cc85ad3cf2756b10"
+agreed_on = "2026-11-08"
+agreed_in = "docs/design/ease-v2.md"
+history = ["2026-11-08 v2: ported from option-trader macro.ease v2 (issue 827: only the HY OAS points differ from its version 1) by docs/design/ease-v2.md; owner delegated the ease producer to the advisor (alignment answers 2026-11-08); no version 1 here; band words are the page's, not option-trader's 变紧 / 没怎么变 / 变松."]

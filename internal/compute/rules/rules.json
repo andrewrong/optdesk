@@ -7,5 +7,6 @@
   {"id":"market.vxn_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"9eec19fd5ecd9e1375ea5d39d60c0404f12d76497d1670ea473030bc396b73b3"},
   {"id":"market.rvx_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"869e1909e45e1f187cef023110a7bba8b450e02f5c71634546bb028dd394d811"},
   {"id":"market.sp500_pctile_3y","version":1,"convention":"pctile_3y_v1","unit":"decimal","scale":6,"compare":"below","n":0,"window":0,"min_valid":0,"years":3,"trading_days":0,"max_age_days":8,"hash":"43a29cdbbe9efb9ab59aec8e0a5d94f61896ce9268a62c07b23010a71be1ca87"},
-  {"id":"market.sp500_vs_200d","version":2,"convention":"ma_gap_v2","unit":"ratio","scale":6,"compare":"","n":200,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":8,"hash":"4c36c030baea6946aeb17504f18e17647d323968a2f3315cdc77989fb052cac8"}
+  {"id":"market.sp500_vs_200d","version":2,"convention":"ma_gap_v2","unit":"ratio","scale":6,"compare":"","n":200,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":8,"hash":"4c36c030baea6946aeb17504f18e17647d323968a2f3315cdc77989fb052cac8"},
+  {"id":"macro.ease","version":2,"convention":"ease_v2","unit":"decimal","scale":2,"compare":"","n":0,"window":126,"min_valid":3,"years":0,"trading_days":0,"max_age_days":10,"hash":"518ff1d1426a18d099460a493f6f29bcb1effd8e3c032535cc85ad3cf2756b10"}
 ]

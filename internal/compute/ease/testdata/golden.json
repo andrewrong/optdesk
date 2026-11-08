@@ -1,0 +1,166 @@
+{
+ "cases": [
+  {
+   "name": "ported: three at zero, hy 3.23",
+   "origin": "option-trader",
+   "source": "option-trader macro.ease.v2.toml, case 1 (figures 0, 0, 0, 3.23)",
+   "kind": "score",
+   "figures": {
+    "net_liquidity": 0,
+    "us10y": 0,
+    "fed_funds": 0,
+    "hy_oas": 3.23
+   },
+   "want_value": 56.42,
+   "want_band": "steady"
+  },
+  {
+   "name": "ported: all at the 100 points",
+   "origin": "option-trader",
+   "source": "option-trader macro.ease.v2.toml, case 2 (all four at the 100 points)",
+   "kind": "score",
+   "figures": {
+    "net_liquidity": 0.03,
+    "us10y": -75,
+    "fed_funds": -50,
+    "hy_oas": 2.5
+   },
+   "want_value": 100.0,
+   "want_band": "looser"
+  },
+  {
+   "name": "ported: all at the 0 points",
+   "origin": "option-trader",
+   "source": "option-trader macro.ease.v2.toml, case 3 (all four at the 0 points)",
+   "kind": "score",
+   "figures": {
+    "net_liquidity": -0.03,
+    "us10y": 75,
+    "fed_funds": 50,
+    "hy_oas": 5.5
+   },
+   "want_value": 0.0,
+   "want_band": "tighter"
+  },
+  {
+   "name": "three inputs, fed funds absent",
+   "origin": "optdesk",
+   "source": "docs/design/ease-v2.md Decision 1 (mean of the sub-scores present): 75, 25, 50",
+   "kind": "score",
+   "figures": {
+    "net_liquidity": 0.015,
+    "us10y": 37.5,
+    "fed_funds": null,
+    "hy_oas": 4.0
+   },
+   "want_value": 50.0,
+   "want_band": "steady"
+  },
+  {
+   "name": "half-even tie",
+   "origin": "optdesk",
+   "source": "docs/design/ease-v2.md Decision 1 (half-even at 2 places): mean 0.005",
+   "kind": "score",
+   "figures": {
+    "net_liquidity": -0.05,
+    "us10y": 100,
+    "fed_funds": null,
+    "hy_oas": 5.49955
+   },
+   "want_value": 0.0,
+   "want_band": "tighter"
+  },
+  {
+   "name": "two inputs",
+   "origin": "optdesk",
+   "source": "docs/design/ease-v2.md Decision 1 (min_inputs 3)",
+   "kind": "score",
+   "figures": {
+    "net_liquidity": null,
+    "us10y": 0,
+    "fed_funds": null,
+    "hy_oas": 4.0
+   },
+   "want_missing": true
+  },
+  {
+   "name": "weekly: recent weeks up 1.5 percent",
+   "origin": "optdesk",
+   "source": "docs/design/ease-v2.md Decision 2: 406 / 400 - 1",
+   "kind": "weekly",
+   "weeks_billions": [
+    101.5,
+    101.5,
+    101.5,
+    101.5,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "want_change": 0.015
+  },
+  {
+   "name": "weekly: an unsummed week has no figure",
+   "origin": "optdesk",
+   "source": "docs/design/ease-v2.md Decision 2: W-28 to W-84 may lack one",
+   "kind": "weekly",
+   "weeks_billions": [
+    101.5,
+    101.5,
+    101.5,
+    101.5,
+    100.0,
+    null,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "want_change": 0.015
+  },
+  {
+   "name": "weekly: a summed week has no figure",
+   "origin": "optdesk",
+   "source": "docs/design/ease-v2.md Decision 2: each of the eight must have one",
+   "kind": "weekly",
+   "weeks_billions": [
+    101.5,
+    101.5,
+    null,
+    101.5,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+   ],
+   "want_change": null,
+   "want_reason": "short_history"
+  }
+ ]
+}
