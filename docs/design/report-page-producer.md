@@ -88,7 +88,7 @@ PR 492 has merged and its code entries `alerts-compute-interface`, `alerts-rules
 
 | issue | module | paths |
 |---|---|---|
-| report-reading-view-interface (interface) | store | `internal/store/api.go`, `internal/store/api_test.go` |
+| report-reading-view-interface (interface) | store | `internal/store/api.go`, `internal/store/api_readingview_test.go` |
 | report-reading-view-impl | store | `migrations/NNNN_reading_parameter_view.sql`, `internal/store/reading/view.go`, `internal/store/reading/view_test.go`, `internal/store/reading/pg_view_test.go`, `internal/store/reading/reading_test.go`, `internal/store/reading/pg_test.go`, `docs/contracts/store.md` |
 | report-page-builder | pages, plus repo (judged two-module entry: `.go-arch-lint.yml`, as `alerts-risks-block` of 492) | `internal/pages/report_page/**`, `docs/contracts/pages.md`, `.go-arch-lint.yml` |
 | report-page-ot | ot | `cmd/ot/report.go`, `cmd/ot/report_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/serve.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot.md` |
@@ -141,13 +141,15 @@ command; items decided by workflows are under `Checked by CI`. Every test calls 
 ### report-reading-view-interface (interface)
 
 Module: store. Size: S.
-Files: `internal/store/api.go`, `internal/store/api_test.go`
+Files: `internal/store/api.go`, `internal/store/api_readingview_test.go`
+
+`internal/store/api_test.go` is 800 lines at 2fc2a01 and is not listed in `docs/design/ratchet.json`, so `scripts/ratchet` refuses any growth of it; the contract test of this interface lives in the new file `internal/store/api_readingview_test.go` of the same package (at most 600 lines), and `api_test.go` is not edited.
 Order: first. `alerts-store-interface` of 492 (`SentMark`, `SentStore`) has merged, so no unmerged design edits `internal/store/api.go`; the file is read as main holds it at cut time.
 Design: docs/design/report-page-producer.md#interface
 Goal: `ReadingViewReader` and `OpenReadingViewFunc` are declared, with a test of the contract from both sides.
 Acceptance:
 1. `grep -c "type ReadingViewReader interface\|type OpenReadingViewFunc func" internal/store/api.go` prints 2, and the method line is `WinnerReadings(ctx context.Context, name, subjectKind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error)`.
-2. `grep -n "func TestReadingViewReaderContract" internal/store/api_test.go` prints one line; `go test ./internal/store -run TestReadingViewReaderContract -race -count=1` passes: a fake that implements the interface (one side) and a caller that reads two days through it and sees ascending days and an empty slice for no rows (the other).
+2. `grep -n "func TestReadingViewReaderContract" internal/store/api_readingview_test.go` prints one line, and `git diff --name-only` against the merge base does not list `internal/store/api_test.go`; `go test ./internal/store -run TestReadingViewReaderContract -race -count=1` passes: a fake that implements the interface (one side) and a caller that reads two days through it and sees ascending days and an empty slice for no rows (the other).
 3. `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep '^-' | grep -vc '^---'` prints 0 (additions only), and `grep -c "database/sql\|pgx" internal/store/api.go` is unchanged from main.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go build ./...`, `go test ./internal/store/...`, golangci-lint, go-arch-lint.
