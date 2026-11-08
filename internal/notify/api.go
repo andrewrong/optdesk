@@ -1,0 +1,75 @@
+// Package notify says missed work once, as a text message. The scheduler process calls
+// Notifier.NotifyGaps after each gap pass; notify is the one owner of ops.job_gap.reported_at.
+package notify
+
+import (
+	"context"
+	"errors"
+	"io"
+	"net/http"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/jonboulle/clockwork"
+)
+
+const (
+	// TokenEnv names the line of $OT_HOME/.env that holds the bot token.
+	TokenEnv = "OT_TELEGRAM_TOKEN"
+	// ChatIDEnv names the line of $OT_HOME/.env that holds the chat id.
+	ChatIDEnv = "OT_TELEGRAM_CHAT_ID"
+	// DefaultQuietFrom is the start of the default quiet hours, "HH:MM" in Config.Zone.
+	DefaultQuietFrom = "23:00"
+	// DefaultQuietTo is the end of the default quiet hours; the window may cross midnight.
+	DefaultQuietTo = "07:00"
+)
+
+// ErrSend is the error class of a failed delivery. Its text never holds a token, a chat id or a URL.
+var ErrSend = errors.New("notify: send failed")
+
+// Sender delivers one text message. It returns nil only when the service confirmed the delivery.
+type Sender interface {
+	Send(ctx context.Context, text string) error
+}
+
+// GapSource is the consumer-side port of notify over the gap rows.
+type GapSource interface {
+	// OpenGaps returns the open gaps (store.SchedulerLedger.Status).
+	OpenGaps(ctx context.Context) ([]store.Gap, error)
+	// MarkGapReported sets ReportedAt of the gap with the key of g (store.SchedulerLedger.MarkGapReported).
+	MarkGapReported(ctx context.Context, g store.Gap, at time.Time) error
+}
+
+// Notifier makes one pass over the open gaps.
+//
+// NotifyGaps sends at most one text for the open gaps not yet reported and marks only the gaps
+// printed in it, after the send was confirmed (at-least-once delivery). It returns the number of
+// gaps reported; there is no Run and no loop.
+type Notifier interface {
+	NotifyGaps(ctx context.Context) (int, error)
+}
+
+// Config holds the quiet hours. An empty QuietFrom or QuietTo takes the default.
+type Config struct {
+	// QuietFrom and QuietTo are "HH:MM" in Zone.
+	QuietFrom, QuietTo string
+	// Zone is the owner's zone (profile.Zone).
+	Zone *time.Location
+}
+
+// TelegramOptions are the optional settings of the Telegram sender, for tests.
+type TelegramOptions struct {
+	// ServerURL replaces the Telegram server; empty means the real one.
+	ServerURL string
+	// HTTPClient replaces the HTTP client; nil means the default.
+	HTTPClient *http.Client
+}
+
+// NewNotifierFunc is the constructor of the notifier (internal/notify/core.New); it fails only on a bad Config.
+type NewNotifierFunc func(GapSource, Sender, clockwork.Clock, Config) (Notifier, error)
+
+// NewTelegramSenderFunc is the constructor of the Telegram sender (internal/notify/telegram.New).
+type NewTelegramSenderFunc func(token, chatID string, o TelegramOptions) (Sender, error)
+
+// NewDryRunSenderFunc is the constructor of the sender that writes the text to w (internal/notify/dryrun.New).
+type NewDryRunSenderFunc func(w io.Writer) Sender

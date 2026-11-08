@@ -63,6 +63,14 @@ components:
     in: internal/jobs/optioneod
   jobs/quotesnapshot:
     in: internal/jobs/quotesnapshot
+  notify:
+    in: internal/notify
+  notify/core:
+    in: internal/notify/core
+  notify/dryrun:
+    in: internal/notify/dryrun
+  notify/telegram:
+    in: internal/notify/telegram
   pages:
     in: internal/pages
   pages/embed:
@@ -79,6 +87,8 @@ components:
     in: cmd/ot
   compute/contracttest:
     in: internal/compute/contracttest
+  notify/notifytest:
+    in: internal/notify/notifytest
   pages/home_page:
     in: internal/pages/home_page
   store/migrate:
@@ -219,6 +229,28 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  notify:
+    mayDependOn:
+      - contracts
+      - store
+  notify/core:
+    mayDependOn:
+      - contracts
+      - store
+      - notify
+      - contracts/genpb
+  notify/dryrun:
+    mayDependOn:
+      - contracts
+      - store
+      - notify
+      - contracts/genpb
+  notify/telegram:
+    mayDependOn:
+      - contracts
+      - store
+      - notify
+      - contracts/genpb
   pages:
     mayDependOn:
       - contracts
@@ -256,6 +288,7 @@ deps:
       - store
       - runner
       - jobs
+      - notify
       - pages
       - profile
       - compute
@@ -279,10 +312,19 @@ deps:
       - pages/embed
       - compute/own
       - compute/gonumstats
+      - notify/core
+      - notify/telegram
+      - notify/dryrun
   compute/contracttest:
     mayDependOn:
       - contracts
       - compute
+      - contracts/genpb
+  notify/notifytest:
+    mayDependOn:
+      - contracts
+      - store
+      - notify
       - contracts/genpb
   pages/home_page:
     mayDependOn:
