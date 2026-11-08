@@ -161,7 +161,7 @@ func jpyObjects(t *testing.T, page any) (map[string]any, map[string]any) {
 	return v, u
 }
 
-// checkJPYShape asserts the content of the jpy fixture: no quote series, JPY, the vol line, the earnings tone and text, an approximated price and the chain rows.
+// checkJPYShape asserts the content of the jpy fixture: no quote series, JPY, vol line, earnings tone and text, price and rows.
 func checkJPYShape(t *testing.T, page any) {
 	t.Helper()
 	v, u := jpyObjects(t, page)
