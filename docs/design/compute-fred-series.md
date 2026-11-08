@@ -6,7 +6,7 @@ Revision: 4
 
 Source: the owner's decisions of 2026-11-07 and 2026-11-08 (order of work compute, then risk and alerts, then strategy), the scheduler design `docs/design/scheduler.md` rev 8 (merged on main, pull request 335), `docs/research/go-quant-ecosystem.md` (on main, #343), the restart plan v2.5 rev 2.1 text (cited P:<line>), the compute design adversarial review, rev 1 of the four files (kept by the dispatcher, not committed; REV1:<finding>) and the review of rev 2 of the first draft (ADV:<line>).
 Read on main at af7e583: `AGENTS.md`, `docs/design/modules.md`, `docs/GLOSSARY.md`, `contracts/datasets/obs.series_point.r1.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/schema_test.go`, `internal/contracts/page_schema_test.go`, `scripts/hygiene/main.go`, `migrations/0002_series.sql`, `internal/sources/fred/mapping.go`, `internal/jobs/fredseries/job.toml`, `internal/jobs/fredseries/run.go`, `cmd/ot/backfill.go`, `docs/contracts/ot.md`.
-One of four designs (`compute-core.md`, this file, `compute-figures.md`, `compute-calendar.md`). Order of the four: core, figures, FRED, calendar. This file lands after `compute-figures.md`: `series-unit-index-points` comes after figures' `reading-dataset` (both edit `contracts/generate.sh`, `records.go`, `schema_test.go` and the manifest), `store-series-unit-index-points` (migration 0014) after `store-reading-tables` (0013), `series-history-loader` after `jobs-compute-api` (same `api.go`), `series-load-wire` after `compute-jobs-wire` (same `wire.go`). `compute-calendar.md` lands after this file. Like figures, the scheduler design is on main, its issues are not yet: `sched-store-ops` and `sched-jobs-schedule` are named below.
+One of four designs (`compute-core.md`, this file, `compute-figures.md`, `compute-calendar.md`). Order of the four: core, figures, FRED, calendar. This file lands after `compute-figures.md`: `series-unit-index-points` comes after figures' `reading-dataset` (both edit `contracts/generate.sh`, `records.go`, `schema_test.go` and the manifest), `store-series-unit-index-points` (migration 0014) after `store-reading-tables` (0013), `series-history-loader` after `jobs-compute-api` (same `api.go`), `series-load-wire` before `compute-jobs-wire` of `compute-figures.md` (same `wire.go`; it depends only on `series-history-loader`, so it does not wait for the scheduler's `sched-cmd-run` or for the figures job). `compute-calendar.md` lands after this file. Like figures, the scheduler design is on main, its issues are not yet: `sched-store-ops` and `sched-jobs-schedule` are named below.
 
 Goal: store the series the figures read, in the unit the glossary gives them, and the history the figures need before a first run is useful. Today `internal/jobs/fredseries/job.toml` fetches `DGS10` only and nothing loads history, so every figure of `compute-figures.md` would be missing.
 
@@ -36,7 +36,7 @@ Edit of `docs/design/modules.md` in this design's pull request: the list "one co
 | fred-market-series | sources | after series-unit-index-points |
 | fred-market-manifest | jobs | after fred-market-series, store-series-unit-index-points and `sched-jobs-schedule` (same file) |
 | series-history-loader (interface and implementation) | jobs, plus repo (judged: `.go-arch-lint.yml`) | after fred-market-series, `jobs-compute-api` (compute-figures.md; same files) |
-| series-load-wire | ot | after series-history-loader, `compute-jobs-wire` (compute-figures.md; same files) |
+| series-load-wire | ot | after series-history-loader |
 
 ## Interface
 
@@ -141,8 +141,8 @@ Checked by CI: `go test ./internal/jobs ./internal/jobs/serieshistory -race -cou
 
 ### series-load-wire
 
-- Module: ot. Size: S. Depends on: series-history-loader, compute-jobs-wire (compute-figures.md; both edit `wire.go`, `ot.md`).
-- Order: after 5 (series-history-loader), and after `compute-jobs-wire` of compute-figures.md (same `wire.go` and `ot.md`). The owner runs the command with the window the owner chooses; no CI step runs it.
+- Module: ot. Size: S. Depends on: series-history-loader. `compute-jobs-wire` (compute-figures.md) comes after this issue; both edit `wire.go`, `ot.md`.
+- Order: after 5 (series-history-loader); `compute-jobs-wire` of compute-figures.md comes after this issue (same `wire.go` and `ot.md`). The owner runs the command with the window the owner chooses; no CI step runs it.
 - Design: docs/design/compute-fred-series.md#Interface
 - Files: cmd/ot/seriesload.go, cmd/ot/seriesload_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, docs/contracts/ot.md
 
@@ -170,7 +170,7 @@ Checked by CI: `go test ./cmd/ot -run TestSeriesLoad -race -count=1`: the plan h
 Read: the compute design adversarial review, rev 1 of the four files (kept by the dispatcher, not committed; REV1). Older answers (ADV, rev 2 of the first draft: vintages, migration numbers, MANIFEST, offline checks) stand as in rev 1 of this file. Adopted means the text above changed.
 
 - REV1:13 (history load is the owner's manual act; first run is missing everywhere): adopted. Decision 3 says what is missing until the load, and `compute-figures.md` tests it (`TestFirstRunOnEmptyStores`) instead of leaving it in prose.
-- REV1:15 (shared generated files, `wire.go`, `ot.md` strings, migration numbers): adopted. `series-unit-index-points` comes after `reading-dataset`; `series-load-wire` after `compute-jobs-wire`; the subcommand count is checked against the registrations, not written as "nine"; the migration acceptance checks unique and gapless numbers, not `tail -3`.
+- REV1:15 (shared generated files, `wire.go`, `ot.md` strings, migration numbers): adopted. `series-unit-index-points` comes after `reading-dataset`; `series-load-wire` before `compute-jobs-wire` (swapped later: the loader is merged and `compute-jobs-wire` waits for the scheduler); the subcommand count is checked against the registrations, not written as "nine"; the migration acceptance checks unique and gapless numbers, not `tail -3`.
 - REV1:R1 (no closes beyond SP500; first-run state is prose): the first-run state is adopted as a test (REV1:13); IBKR index closes stay out (no dataset), named in Left out.
 - REV1:R2 (FRED lag against `MaxAgeDays` 4 days): adopted in `compute-figures.md` Decision 7 (8 calendar days for FRED figures, `data_day` kept); an irreversible `ALTER TYPE ... ADD VALUE` and the new enum value reaching TS types are kept: the glossary needs the unit (GLOSSARY.md:75), the value is additive on r1, and Decision 1 names why `ratio` is wrong.
 - REV1:R3 (skip the loader chain by a `from` override of `ot backfill` or `fred_series`): not adopted: `ot backfill` re-runs keys of a stored plan and the job fetches one date by contract (`run.go` (line 74)); an override changes the plan hash and the window rule that the scheduler design also edits. Merging the interface issue into the loader issue: adopted (one module, one pull request, nothing uses the interface between them). The loader, its wiring and the ninth subcommand stay: they are the least change to `fredseries`.

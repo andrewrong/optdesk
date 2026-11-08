@@ -51,7 +51,7 @@ Size of `docs/conventions/register.toml`: 1509 lines on main, about 1780 after t
 | 5 | compute-rules | compute, plus docs (judged) | after 3, 4 (store-reading-tables, docs-compute-rules), and compute-figures-series and compute-figures-iv (core) |
 | 6 | jobs-compute-api (interface) | jobs | after 2 (store-reading-interface), and compute-interface (core), sched-runner-interface, sched-jobs-schedule |
 | 7 | compute-figures-job | jobs, plus repo (judged: `.go-arch-lint.yml`) | after 3, 5, 6 (store-reading-tables, compute-rules, jobs-compute-api) |
-| 8 | compute-jobs-wire | ot; second-opinion case | after 7 (compute-figures-job), and sched-cmd-run and the core issues |
+| 8 | compute-jobs-wire | ot; second-opinion case | after 7 (compute-figures-job), and sched-cmd-run, `series-load-wire` (compute-fred-series.md) and the core issues |
 | 9 | docs-iv30-rate-age | docs | after 4, 5 (docs-compute-rules, compute-rules), before 7 (compute-figures-job) |
 
 The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design. Two entries that share a file name each other's number: `register.toml` (4, 5, 9), `.go-arch-lint.yml` (3, 5, 7).
@@ -200,8 +200,8 @@ Checked by CI: `go test ./internal/jobs/computefigures -race -count=1`; `go run 
 
 ### compute-jobs-wire
 
-- Module: ot. Size: M. Depends on: compute-figures-job, sched-cmd-run (scheduler design: both edit `wire.go` and `runonce.go`), and the whole core of `compute-core.md` (`compute-interface` to `compute-figures-iv`, `compute-own-glue`, `compute-gonum-stats`), whose constructors it calls. Second-opinion case for the window: `run-once` now needs the readings role's DSN.
-- Order: after 7 (compute-figures-job) and after sched-cmd-run; last of this file, and cut only when the core and every issue before it are on main (Modules).
+- Module: ot. Size: M. Depends on: compute-figures-job, sched-cmd-run (scheduler design: both edit `wire.go` and `runonce.go`), series-load-wire (compute-fred-series.md; both edit `wire.go` and `ot.md`), and the whole core of `compute-core.md` (`compute-interface` to `compute-figures-iv`, `compute-own-glue`, `compute-gonum-stats`), whose constructors it calls. Second-opinion case for the window: `run-once` now needs the readings role's DSN.
+- Order: after 7 (compute-figures-job) and after sched-cmd-run and `series-load-wire` (compute-fred-series.md; same `wire.go`, `ot.md`); last of this file, and cut only when the core and every issue before it are on main (Modules).
 - Design: docs/design/compute-figures.md#Interface
 - Brief: docs/design/compute-figures.md#Second opinion (one brief, shared with `calendar-jobs-wire`).
 - Second opinion: required; the advisor answers before the merge and the owner merges the pull request (the pull request waits for the owner's word).
@@ -268,7 +268,7 @@ Read: the compute design adversarial review, rev 1 of the four files (kept by th
 - REV1:F4 (lock-in: migration shape, `cutoff`, `conv` tag, role): kept and named: Decisions 1, 12; `cutoff` chosen by the owner (session_close, 2026-11-08); the slot awaits the first job issue review. REV1:F5 (the false claim at F:28): see REV1:5. REV1:F6: `compute-rules` order and count (adopted: no count arithmetic, `TestNoPendingForGoIds`); `compute-figures-job` mapping and stores (adopted, see REV1:7, 8); `store-reading-tables` proof (the pg proof stays under Checked by CI; offline checks are the shape and recording-fake tests).
 - REV1:R2 (FRED lag against `MaxAgeDays`): adopted, Decision 7 (4 for IV30, 8 for FRED).
 - REV1:13 (first run on a fresh database): adopted as `TestFirstRunOnEmptyStores`.
-- Cross-file: shared generated files: adopted (`reading-dataset` first; FRED's unit issue after it); wire files: `compute-jobs-wire` after `sched-cmd-run`; `docs/contracts/ot.md` strings "four jobs"/"nine subcommands" assume the order of the four designs after the scheduler; "Advisor: agrees" and "advisor change" lines as attestations: removed here and in the calendar design.
+- Cross-file: shared generated files: adopted (`reading-dataset` first; FRED's unit issue after it); wire files: `compute-jobs-wire` after `sched-cmd-run` and after `series-load-wire` (FRED design); `docs/contracts/ot.md` strings "four jobs"/"nine subcommands" assume the order of the four designs after the scheduler; "Advisor: agrees" and "advisor change" lines as attestations: removed here and in the calendar design.
 - REV1 cross-file, goal check (own glue behind an interface: the rule-hash recipe, `figures.New`'s `Rolling` over `Stats`): `Rolling` see `compute-core.md` Adversarial (already behind its interface, injected into `figures.New`). The recipe is not behind a new interface: no library does it, it makes no figure, and the hash reaches the code only as data, `Rule.Hash` through `Rules`; `rules_test.go` holds the recipe as the check of Decision 12. Not adopted; the owner may ask for one at the design review.
 - A failed IV30 step blocks the rest? No (Decision 9): a step that fails does not stop the others. The steps run in order IV30, market figures, then IVP and IVR; a failed IV30 leaves its keys missing or absent and IVP and IVR of those names are `missing_input` with `no_input`, while the market figures run as before, and the postcondition names every key without a row.
 - Units (the unit of a stored reading): each id has one word of the `reading_unit` enum, Decision 5, in the register entry, in `rules.json` and in the stored row; `TestRulesMatchRegister` checks all three agree.
