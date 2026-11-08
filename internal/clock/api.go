@@ -41,3 +41,29 @@ type NewClockFunc func() Clock
 
 // NewCalendarFunc is the constructor of the calendar (internal/clock/calendar.NewCalendar).
 type NewCalendarFunc func(SessionSource) Calendar
+
+// SessionDayChange is one day on which two session-day slices differ. Before is nil for a day only
+// in the fresh slice; After is nil for a day only in the old slice.
+type SessionDayChange struct {
+	Day    contracts.Day
+	Before *contracts.SessionDay
+	After  *contracts.SessionDay
+}
+
+// SessionDayDiffer compares two session-day slices by day. The result is sorted by day and empty
+// when the slices agree.
+type SessionDayDiffer interface {
+	Diff(old, fresh []contracts.SessionDay) []SessionDayChange
+}
+
+// NewSessionDayDifferFunc is the constructor of the differ (internal/clock/calendar.NewDiffer).
+type NewSessionDayDifferFunc func() SessionDayDiffer
+
+// CommandFunc runs argv to its end and returns its exit code. err is non-nil only when the command
+// could not start or be waited for.
+type CommandFunc func(ctx context.Context, argv []string) (exitCode int, err error)
+
+// NewCommandSessionSourceFunc is the constructor of the session source that runs the pyside
+// generator as a command (internal/clock/calendarcli.New). argv is the command prefix and workDir
+// the directory for its temporary file.
+type NewCommandSessionSourceFunc func(argv []string, workDir string, run CommandFunc) SessionSource
