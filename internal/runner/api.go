@@ -137,8 +137,18 @@ type Scheduler interface {
 	FenceHeld() bool
 }
 
+// Prober is the optional interface of the Reconciler given to NewSchedulerFunc. Before
+// each Reconcile the ticker calls Probe for every job left out, on the worker goroutine
+// of Reconcile, so a probe never overlaps a Reconcile. An empty reason means the inputs
+// of the job are there and the job returns to the map of the enabled; a non-empty reason
+// is the reason it stays left out. A Reconciler without Probe means no re-probe.
+type Prober interface {
+	Probe(ctx context.Context, jobID string) (reason string)
+}
+
 // GapSyncer writes and clears the gaps of a day. disabled is the map of left-out jobs
-// (job id to reason), the one given to NewSchedulerFunc; nil means none.
+// (job id to reason); nil means none. The ticker owns that map and gives Sync a fresh
+// copy on every call: Sync may keep or read it without a race.
 type GapSyncer interface {
 	Sync(ctx context.Context, day contracts.Day, disabled map[string]string) error
 }
@@ -148,6 +158,8 @@ type GapSyncer interface {
 type ExecIdentityFunc func() (string, error)
 
 // NewSchedulerFunc is the constructor of the scheduler (internal/runner/sched.New). gaps nil means no-op.
+// disabled (job id to reason) is copied at construction: the ticker owns its copy, updates
+// it when a probe changes a job, and gives GapSyncer.Sync a fresh copy; the caller's map is not kept.
 type NewSchedulerFunc func(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, cal clock.Calendar, clk clockwork.Clock, rec Reconciler, gaps GapSyncer, jobs []contracts.Job, disabled map[string]string, exe ExecIdentityFunc) Scheduler //nolint:lll // the issue fixes the full signature on one line
 
 // NewKeyRunnerFunc is the constructor of the key runner (internal/runner/reconcile.NewKeyRunner).

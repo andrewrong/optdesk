@@ -301,3 +301,38 @@ func TestSchedulerContract(t *testing.T) {
 		t.Fatal("Run on a cancelled context returned nil")
 	}
 }
+
+// probingReconciler is a Reconciler that also implements Prober.
+type probingReconciler struct {
+	fakeReconciler
+	reasons map[string]string
+}
+
+func (p *probingReconciler) Probe(_ context.Context, jobID string) string { return p.reasons[jobID] }
+
+// probeOf is the caller side: it probes only when rec implements Prober.
+func probeOf(ctx context.Context, rec runner.Reconciler, jobID string) (reason string, probed bool) {
+	p, ok := rec.(runner.Prober)
+	if !ok {
+		return "", false
+	}
+	return p.Probe(ctx, jobID), true
+}
+
+func TestProberContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	var withProbe runner.Reconciler = &probingReconciler{reasons: map[string]string{"option_eod": "broker dial failed"}}
+	if reason, probed := probeOf(ctx, withProbe, "option_eod"); !probed || reason != "broker dial failed" {
+		t.Fatalf("probe = %q %v, want the reason", reason, probed)
+	}
+	if reason, probed := probeOf(ctx, withProbe, "fred_series"); !probed || reason != "" {
+		t.Fatalf("passing probe = %q %v, want empty reason", reason, probed)
+	}
+
+	var without runner.Reconciler = &fakeReconciler{}
+	if _, probed := probeOf(ctx, without, "option_eod"); probed {
+		t.Fatal("a Reconciler without Probe must show no probe")
+	}
+}
