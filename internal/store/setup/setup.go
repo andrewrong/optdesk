@@ -36,7 +36,7 @@ const (
 	roleQuoteSnapshot = "ot_w_quote_snapshot"
 	roleMaster        = "ot_w_master"
 	roleReadings      = "ot_w_readings"
-	roleAlerts        = "ot_w_alerts"
+	roleAlerts        = "ot_w_alerts" // INSERT and SELECT on alerts.sent only (migrations/0015_alerts.sql)
 )
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
@@ -52,7 +52,7 @@ var roles = []roleSpec{
 	{roleQuoteSnapshot, store.DSNEnvQuoteSnapshot},
 	{roleMaster, store.DSNEnvMaster},
 	{roleReadings, store.DSNEnvReadings},
-	{roleAlerts, store.DSNEnvAlerts},
+	{roleAlerts, store.DSNEnvAlerts}, // ot_w_alerts, line OT_PG_DSN_ALERTS
 }
 
 // extensions are created in the database by Setup.
