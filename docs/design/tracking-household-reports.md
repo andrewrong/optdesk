@@ -2,7 +2,7 @@
 
 Author: the optdesk designer (second draft, after the adversarial review)
 Owner approved: (pending)
-Revision: 3
+Revision: 4
 
 Source: the page comparison of 2026-11-08 (design set v2.2, boards 2, 3, 4, 8, 9, 20, 21, 24, 25, plus the later owner changes #1457, #1458, #1544, #1644, #1741 to #1761, #1766, #1774, #1778, #1844, #1845, #1854). The owner chose to turn every deviation into a design.
 Read on origin/main at 3ef73b1: `contracts/schemas/page.tracking.v1.json` (331 lines), `page.indicator_detail.v1.json` (443 lines), `page.report_page.v2.json`, `page.ledger_page.v1.json`, `page.structures_list.v1.json`, `page.macro_page.v1.json`, `page.macro_summary.v2.json`,
@@ -10,11 +10,11 @@ Read on origin/main at 3ef73b1: `contracts/schemas/page.tracking.v1.json` (331 l
 `web/src/pages/structuredetail/Payoff.tsx`, `web/src/charts/spec.ts`, `web/src/pages/macro/MacroPage.tsx`, `web/fixtures/**`, `web/test/pages/**`, `web/src/types/tracking.ts`, `web/src/types/indicator_detail.ts`.
 
 Goal: the tracking page groups by rule version with the board's summary tiles, the covered-call section and "My trades"; the indicator page has its last-12-periods table and its source line; the reports lose their skeleton text and name their bar series; the ledger draws its cumulative line; the structures list shows its compare row;
-the macro page reads -2 to +2; the risk page says its result in plain words. Pages show "缺" for numbers without a producer until the compute design. Producer-written numbers (HV30, IVP, delta, the ease value, tile figures) wait for the compute design's register of metric ids: the live page shows 缺 until a producer exists, and the fixtures are the only source of their values. Schema field descriptions of such fields say "metric id: assigned by compute". No page here gets a route in this design; each is served by `ot` in a later design (`docs/design/option-page-serve.md`).
+the macro page reads -2 to +2; the risk page says its result in plain words. Pages show "缺" for numbers without a producer until the compute design. Producer-written numbers (HV30, IVP, delta, the ease value, tile figures) wait for the compute design's register of metric ids: the live page shows 缺 until a producer exists, and the fixtures are the only source of their values. The schema `description` of the fields that hold such text (the tile `text` of `RuleGroup.summary`, the `value` and `change` of `RecentBlock` rows) says "metric id: assigned by compute" (checked in tracking-indicator-schemas acceptance 6). No page here gets a route in this design; each is served by `ot` in a later design (`docs/design/option-page-serve.md`).
 
 ## What main holds today
 
-- `tracking.v1` and `indicator_detail.v1` are carried files; both fit under 600 lines when copied. `tracking.v1` has one flat `rows` list and the text `pending` ("暂未迁移"); `indicator_detail.v1` has `latest`, `points`, `revision`, `reference_line` and `data_times`, no change column and no source line.
+- `tracking.v1` and `indicator_detail.v1` are carried files (their `$id` is `https://option-trader.invalid/...`, which `TestNewSchemasAreOurs` does not accept for a new file); both fit under 600 lines when copied. `tracking.v1` has one flat `rows` list and the text `pending` ("暂未迁移"); `indicator_detail.v1` has `latest`, `points`, `revision`, `reference_line` and `data_times`, no change column and no source line.
 - `report_page.v2` blocks already carry `data_times` text and `state`; `frame.tsx` renders a fold of the data times and a badge for `state !== 'ok'` with the raw word ("partial"); `open-blocks.tsx` already has the `rest` accordion titled `rest_title`. What is left: `frame.tsx` still renders `design_note`, `global-assets.tsx` names its series `day` and `five_day`, and the open fixture holds close blocks as well.
 - `SectionTables.tsx` of the ledger renders only `chart.summary` as a paragraph; no chart is drawn from `chart.points` (`ChartPoint {day, text, value}`).
 - `ChartSpec` (`web/src/charts/spec.ts`) has `kind` line or bar, categories and series, with no reference line or area; `Payoff.tsx` shows the break-even and the band as badges.
@@ -53,9 +53,10 @@ None changed. `contracts/**` belongs to contracts; `web/**` to web.
 
 Owner: contracts. Frozen by `tracking-indicator-schemas`, read by `tracking-view` and `indicator-view`.
 
-- `contracts/schemas/page.tracking.v2.json` (`$id` `https://optdesk.invalid/schemas/page.tracking.v2.json`, title `Tracking`, `schema` const `tracking`, `schema_version` const 2, `additionalProperties` false): the envelope of v1 (`run_id`, `build_id`, `scope`, `generated_at`, `data_times`, `run_status`, `stale`, `title`, `sentence`, `how`, `note`) and `versions` as Decision 2 gives it, in place of `rows` and `pending`.
-  `TrackingRow` is copied from v1.
-- `contracts/schemas/page.indicator_detail.v2.json` (title `IndicatorDetail`, `schema_version` const 2): the v1 content plus the required `meta_line` and `recent` of Decision 3.
+- Both v2 files follow the v2-line conventions of `docs/contracts/page-schemas.md` (Invariants, `TestPageV2Conventions`): `schema_version` is `{"const": 2, "type": "integer"}`; the shared defs `Gap`, `SourceTime`, `StaleLabel` (and `Timestamp`, `Id`) come from `common.v1.json#/$defs/...` by `$ref` with no local def of the same name; the optional top-level `stale_after` (`$ref` `Timestamp`, not in `required`) is declared. The local `Gap`, `SourceTime` and `StaleLabel` copies of the v1 files are dropped. The `Gap` reason enum of `common.v1` (13 reasons) is the same list as the local `Gap` of both v1 files, so every `reason` the v1 rows and fixtures use stays valid. The local `Usd` of `tracking.v1` has no counterpart with the same shape in `common.v1` (`UsdFigure` is `USD`, non-negative; `UsdSignedFigure` is `usd_signed`), so it stays a local def of `page.tracking.v2.json` under the name `Usd` (a name `common.v1` does not have), with `unit` const `usd` as in v1.
+- `contracts/schemas/page.tracking.v2.json` (`$id` `https://optdesk.invalid/schemas/page.tracking.v2.json`, title `Tracking`, `schema` const `tracking`, `schema_version` const 2, `additionalProperties` false): the envelope of v1 (`run_id`, `build_id`, `scope`, `generated_at`, `data_times`, `run_status`, `stale`, `title`, `sentence`, `how`, `note`) plus the optional `stale_after`, and `versions` as Decision 2 gives it, in place of `rows` and `pending`.
+  `TrackingRow` is copied from v1, its `Gap` refs pointing at `common.v1.json#/$defs/Gap` and its `Usd` refs at the local `Usd`.
+- `contracts/schemas/page.indicator_detail.v2.json` (`$id` `https://optdesk.invalid/schemas/page.indicator_detail.v2.json`, title `IndicatorDetail`, `schema` const `indicator_detail`, `schema_version` const 2, `additionalProperties` false): the v1 content (its `$id` is not carried) plus the optional `stale_after`, with `Gap`, `SourceTime` and `StaleLabel` by `$ref` to `common.v1.json`, and the required `meta_line` and `recent` of Decision 3.
 - Generated types: `web/src/generated/tracking.v2.ts` and `web/src/generated/indicator_detail.v2.ts`, both new; `indicator_detail.v1.ts` stays.
 
 ## Issues
@@ -68,7 +69,7 @@ Owner: contracts. Frozen by `tracking-indicator-schemas`, read by `tracking-view
 - Files: contracts/schemas/page.tracking.v2.json, contracts/schemas/page.indicator_detail.v2.json, docs/contracts/page-schemas.md, internal/contracts/tracking_v2_test.go, internal/contracts/indicator_detail_v2_test.go, web/src/generated/tracking.v2.ts, web/src/generated/indicator_detail.v2.ts
 
 - Goal: write the two schemas of the Interface section; `page.tracking.v1.json` and `page.indicator_detail.v1.json` stay byte-identical. Neither new file is over 600 lines. `page-schemas.md` gets the two rows. The generated types are produced by `pnpm --dir web run generate:types page.tracking.v2 page.indicator_detail.v2` (the first run of a new schema names it) and committed.
-  The tests (new, pattern of `home_page_v2_test.go`): the smallest instance validates; version 1 fails at `/schema_version`; `versions` empty fails; a `summary` given as a Gap validates; `my_trades` as a Gap validates; `recent` with 13 rows fails and `recent` as a Gap validates.
+  The tests (new, pattern of `home_page_v2_test.go`): the smallest instance validates; a `stale_after` of `Timestamp` form validates; version 1 fails at `/schema_version`; `versions` empty fails; a `summary` given as a Gap validates; `my_trades` as a Gap validates; `recent` with 13 rows fails and `recent` as a Gap validates.
 
 Acceptance:
 
@@ -77,6 +78,7 @@ Acceptance:
 3. `wc -l contracts/schemas/page.tracking.v2.json contracts/schemas/page.indicator_detail.v2.json` shows each under 600; `git diff $(git merge-base HEAD origin/main) -- contracts/schemas/page.tracking.v1.json contracts/schemas/page.indicator_detail.v1.json contracts/schemas/carryover.sha256 web/src/generated/indicator_detail.v1.ts` is empty.
 4. `grep -c "interface RuleGroup" web/src/generated/tracking.v2.ts` prints 1; `grep -c "meta_line" web/src/generated/indicator_detail.v2.ts` is at least 1.
 5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line.
+6. `go test ./internal/contracts -run 'TestPageV2Conventions|TestNewSchemasAreOurs' -count=1` passes with both v2 files present; `grep -c "common.v1.json#/\$defs/Gap" contracts/schemas/page.tracking.v2.json contracts/schemas/page.indicator_detail.v2.json` is at least 1 for each; `grep -c '"\$id"' contracts/schemas/page.indicator_detail.v2.json` prints 1 and `grep -c "optdesk.invalid/schemas/page.indicator_detail.v2.json" contracts/schemas/page.indicator_detail.v2.json` prints 1; `grep -c "metric id: assigned by compute" contracts/schemas/page.tracking.v2.json contracts/schemas/page.indicator_detail.v2.json` is at least 1 for each.
 
 Checked by CI: ci-go; `pnpm install --frozen-lockfile`, then `generate:types` leaves the committed files unchanged, tsc, eslint, vitest, build; the pull request body carries `Contracts: page.tracking.v2, page.indicator_detail.v2 (new)`; the design verdict (Decisions 2 and 3).
 
@@ -88,7 +90,7 @@ Checked by CI: ci-go; `pnpm install --frozen-lockfile`, then `generate:types` le
 - Files: web/src/types/tracking.ts, web/src/pages/options/Tracking.tsx, web/test/pages/options/Tracking.test.tsx, web/test/pages/options/tracking-v2/fixtures/ok.ts, web/test/pages/options/tracking-v2/fixtures/gap.ts, web/test/pages/options/tracking-v2/fixtures/stale.ts, web/test/pages/options/tracking-v2/fixtures/bad-version.json, web/test/pages/options/tracking-v2/fixtures/MANIFEST.synthetic-v1.json
 
 - Goal: Decision 2. `web/src/types/tracking.ts` takes `Payload` from `Tracking` of `@/generated/tracking.v2` with `SUPPORTED_VERSIONS = [2]`. The page shows the headline, "怎么算的", then for the current version its label and `expired_text`, each group's tiles (a Gap summary prints its text once; a `note` is printed under the title), the group rows in a fold, the covered-call section with its groups and comparison table,
-  and the My trades table or its gap; older versions are folded under "更早的规则版本". The v2 fixtures are new TypeScript files typed `satisfies Tracking` and carry the board's numbers as text (31, 24, 3, +0.9%, +0.2%; the group with "太早，不下结论。"; the My trades rows).
+  and the My trades table or its gap; older versions are folded under "更早的规则版本". The v2 fixtures are new TypeScript files typed `satisfies Tracking`; they import `Tracking` by the relative path `../../../../../src/generated/tracking.v2` and not by `@/generated/tracking.v2` (the fixture files hold no `@`, acceptance 4; the pattern of `home-page.md`), and carry the board's numbers as text (31, 24, 3, +0.9%, +0.2%; the group with "太早，不下结论。"; the My trades rows).
   `web/fixtures/tracking` (v1) is not edited; the Go fixture test keeps validating it. Nothing is averaged or compared in the view.
 - 按 frontend-stack：用 shadcn card and badge (`components/ui`) 做 the group tiles and the version heads。
 - 按 frontend-stack：用 shadcn accordion (`components/ui/accordion.tsx`) 做 the folded rows and the older versions。
@@ -111,7 +113,7 @@ Checked by CI: `pnpm install --frozen-lockfile`, tsc, eslint, vitest, build; hyg
 - Design: docs/design/tracking-household-reports.md#Decisions
 - Files: web/src/types/indicator_detail.ts, web/src/pages/indicator/view.tsx, web/test/pages/indicator/view.test.tsx, web/test/pages/indicator/fixtures/ok.ts, web/test/pages/indicator/fixtures/gap.ts, web/test/pages/indicator/fixtures/stale.ts, web/test/pages/indicator/fixtures/bad-version.json
 
-- Goal: Decision 3 on board 9. Types come from `@/generated/indicator_detail.v2` with `SUPPORTED_VERSIONS = [2]`. The page shows the latest value with its release date, the line chart on the release-date axis, `meta_line`, then the "最近 12 期" table (期, 公布日, 值, 较前) from `recent`, or its gap text. The fixtures are v2 and in Chinese; the explanation block stays.
+- Goal: Decision 3 on board 9. Types in `view.tsx` and `indicator_detail.ts` come from `@/generated/indicator_detail.v2` with `SUPPORTED_VERSIONS = [2]`. The page shows the latest value with its release date, the line chart on the release-date axis, `meta_line`, then the "最近 12 期" table (期, 公布日, 值, 较前) from `recent`, or its gap text. The fixtures are v2 and in Chinese, typed `satisfies IndicatorDetail` and importing the type by the relative path `../../../../src/generated/indicator_detail.v2`, not by the `@/` alias; the explanation block stays.
 - 按 frontend-stack：用 recharts through `web/src/charts/Chart.tsx` 做 the line over release dates。
 - 按 frontend-stack：用 @tanstack/react-table (`components/data-table/data-table.tsx`) 做 the last-12-periods table。
 - 按 frontend-stack：用 shadcn badge and card (`components/ui`) 做 the header。
@@ -132,7 +134,7 @@ Checked by CI: `pnpm install --frozen-lockfile`, tsc, eslint, vitest, build; hyg
 - Design: docs/design/tracking-household-reports.md#Decisions
 - Files: web/src/pages/report/frame.tsx, web/src/pages/report/global-assets.tsx, web/test/pages/report/view.test.tsx, web/test/pages/report/fixtures/ok-open.ts, web/test/pages/report/fixtures/ok-close.ts
 
-- Goal: Decision 4. `frame.tsx` never renders `design_note` and writes the state badge as 延迟 or 缺; `global-assets.tsx` names its bar series 当日 and 五日. `ok-open.ts` holds the open blocks only (market line, tiles, accounts, candidates by sector, watch list, reminders, system status); `ok-close.ts` holds the five close blocks and `system_status` once,
+- Goal: Decision 4. `frame.tsx` never renders `design_note` and writes the state badge as 延迟 or 缺; `global-assets.tsx` names its bar series 当日 and 五日. `ok-open.ts` holds the open blocks only (market line, tiles, accounts, candidates by sector, watch list, reminders, system status); `ok-close.ts` holds the five close blocks, in this order of `view.tsx`: `actions`, `account_moves`, `risks`, `market_watch`, `global_assets` (the keys of `blocks`; the order is that of `web/src/pages/report/view.tsx`, which the view keeps), and `system_status` once,
   with `account_moves.link.href` `/household` and `risks.link.href` `/positions`. Neither fixture has `design_note`. The data-times fold and the reminder fold already exist and are not edited.
 - 按 frontend-stack：用 recharts (`BarChart` through `components/ui/chart.tsx`) 做 the global-assets bars。
 - 按 frontend-stack：用 shadcn badge and card (`components/ui`) 做 the state badges and blocks。
@@ -140,7 +142,7 @@ Checked by CI: `pnpm install --frozen-lockfile`, tsc, eslint, vitest, build; hyg
 Acceptance:
 
 1. `pnpm --dir web run test -- web/test/pages/report` passes.
-2. The test renders `ok-close` and checks that the five block titles appear in the board order, that the two links have the hrefs above, that "系统状态" appears once, and that neither "day" nor "five_day" is on the page.
+2. The test renders `ok-close` and checks that the five blocks (`data-block` `actions`, `account_moves`, `risks`, `market_watch`, `global_assets`) appear in that order in the document, that the two links have the hrefs above, that "系统状态" appears once, and that neither "day" nor "five_day" is on the page.
 3. The test renders `ok-open` and checks that no close-only block is rendered (`data-block` of `account_moves`, `risks` and `global_assets` count 0) and that a block with `state` `partial` shows 延迟 and not "partial".
 4. The test renders a payload whose `design_note` is set and checks that the note text is not on the page; `grep -c "design_note" web/src/pages/report/frame.tsx` prints 0; `grep -c "design_note" web/test/pages/report/fixtures/ok-open.ts web/test/pages/report/fixtures/ok-close.ts` prints 0 for each file.
 5. `grep -c "toFixed\|parseFloat\|Intl.NumberFormat" web/src/pages/report/frame.tsx web/src/pages/report/global-assets.tsx` prints 0 for each file; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
@@ -190,7 +192,7 @@ Checked by CI: `pnpm install --frozen-lockfile`, tsc, eslint, vitest, build; hyg
 - Design: docs/design/tracking-household-reports.md#Decisions
 - Files: web/fixtures/structures-list/ok.json, web/test/pages/structure/StructuresList.test.tsx
 
-- Goal: the list fixture has the "本周要决定" group first and the later group second, and one row with `compare` filled (captured, close cost, exit DTE, roll net, cash after, commission; #1854), as board 6 and owner feedback 6 describe.
+- Goal: the list fixture has the "本周要决定" group first and the later group second, and one row with `compare` filled (captured, close cost, exit DTE, roll net, cash after, commission; #1854), as owner feedback 6 and #1854 describe. Which board shows the structures list could not be determined from the repo (board 6 is `positions_page`, left as it is), so no board is cited.
 
 Acceptance:
 
@@ -219,6 +221,14 @@ Acceptance:
 Checked by CI: `pnpm install --frozen-lockfile`, tsc, eslint, vitest, build; hygiene; `Contracts: unchanged`; the design verdict (board 8).
 
 ## Left out
+
+Rejected alternatives, with the reason:
+
+- Optional fields added to `page.tracking.v1.json` and `page.indicator_detail.v1.json` without a version bump (the route `option-page-serve.md` took for `underlyings`): not chosen, because `tracking` changes shape (grouped `versions` in place of the flat `rows`, `pending` removed), which is not an optional addition, and the v1 files are carried copies whose hash is held in `carryover.sha256`; editing them breaks `carryover_test.go`. The indicator change is additive, but both files move together so `page-schemas.md` is edited once.
+- Mapping the 0 to 100 track to -2..+2 in the view: not chosen, because the front end renders data and computes nothing (AGENTS.md); the producer writes `ticks`, `marker_percent` and `reading_text` (Decision 6).
+- A flat `rows` list in tracking v2 with a version column: not chosen, because the board groups by rule version with tiles, a covered-call section and My trades per version; a flat list would make the view group and count, which it must not.
+- Fixed tile counts and a three-group enum: not chosen, because they would pre-empt the compute design; tiles and groups stay loose (Decision 2).
+- Fixing the new tracking fixtures by editing `web/fixtures/tracking`: not chosen, because that fixture is validated against v1 by `fixtures_test.go` and `No schema and no fixture is edited to make a fixture pass`.
 
 - The builders of tracking, indicator, report, ledger, structure and risk pages and every number the new text carries (tracking averages and the comparison with the treasury, My trades, the ease value): they wait for the compute design and their own builder designs.
 - The structure detail price chart with the break-even mark and band (board 24): `ChartSpec` has a category axis and no reference line or area, so it needs a numeric axis in the chart layer (`web/src/charts/**`); a design of its own. The badges stay.
