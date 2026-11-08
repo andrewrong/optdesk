@@ -150,8 +150,6 @@ func openPool(ctx context.Context, dsn string) (database, error) {
 	return pgDB{pool: pool}, nil
 }
 
-func gapArgs(g store.Gap) (time.Time, error) { return parseDay(g.Day) }
-
 // RenewLease extends l to the database's now() plus ttl. Another owner, or no lease, gives a Retryable error.
 func (s *schedLedger) RenewLease(ctx context.Context, l store.Lease, ttl time.Duration) (store.Lease, error) {
 	var out store.Lease
@@ -175,7 +173,7 @@ func (s *schedLedger) RenewLease(ctx context.Context, l store.Lease, ttl time.Du
 }
 
 func (s *schedLedger) PutGap(ctx context.Context, g store.Gap) error {
-	d, err := gapArgs(g)
+	d, err := parseDay(g.Day)
 	if err != nil {
 		return err
 	}
@@ -183,7 +181,7 @@ func (s *schedLedger) PutGap(ctx context.Context, g store.Gap) error {
 }
 
 func (s *schedLedger) ClearGap(ctx context.Context, g store.Gap) error {
-	d, err := gapArgs(g)
+	d, err := parseDay(g.Day)
 	if err != nil {
 		return err
 	}
@@ -191,7 +189,7 @@ func (s *schedLedger) ClearGap(ctx context.Context, g store.Gap) error {
 }
 
 func (s *schedLedger) MarkGapReported(ctx context.Context, g store.Gap) error {
-	d, err := gapArgs(g)
+	d, err := parseDay(g.Day)
 	if err != nil {
 		return err
 	}
