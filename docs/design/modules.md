@@ -42,7 +42,7 @@ rows above name every other top-level path of the planned tree.
   `internal/`), and for `ot` this map states the exact import list, which `scripts/arch` generates as go-arch-lint component `ot` and
   `checks.yml` compares with this text: the root packages of the rows in its depends cell, `internal/profile`, and these implementation packages,
   one constructor each: `internal/clock/realclock`, `internal/clock/calendar`, `internal/runner/reconcile`, `internal/store/sessionday`, `internal/store/series`, `internal/store/snapshot`, `internal/store/ops`,
-  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`.
+  `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/embed`, `internal/compute/contracttest`, `internal/compute/own`, `internal/compute/gonumstats`, `internal/compute/talibind`, `internal/compute/figures`.
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
 - **Layers** (plan 2): data = contracts, clock, broker, sources, store, compute (in that order);
@@ -82,7 +82,7 @@ rows above name every other top-level path of the planned tree.
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
 | store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts |
-| compute | internal/compute/** docs/contracts/compute.md | internal/compute/api.go | internal/compute/api_test.go | contracts |
+| compute | internal/compute/** docs/contracts/compute.md tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
 | jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store |
