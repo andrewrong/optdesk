@@ -33,6 +33,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: restore the golangci-lint cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('go.sum', '.golangci.yml') }}
+          restore-keys: golangci-lint-${{ runner.os }}-
       # golangci-lint and go-arch-lint are tool directives of go.mod: go tool uses that pin.
       - name: golangci-lint
         run: go tool golangci-lint run ./...
