@@ -78,15 +78,15 @@ it('renders the Python gauge and every event and indicator with its label', asyn
   )
 })
 
-it('draws the -2 to +2 scale, every status text, the detail links and the missing cause once', async () => {
+it('draws the 0 to 100 scale, every status text, the detail links and the missing cause once', async () => {
   const payload = fixture('ok.json')
   await show(payload)
   const ticks = [...host.querySelectorAll('[data-ticks] span')].map((n) => n.textContent)
-  expect(ticks[0]).toBe('-2')
-  expect(ticks.at(-1)).toBe('+2')
-  expect(ticks).toEqual(['-2', '-1', '0', '+1', '+2'])
-  expect(payload.ease.aria_text).toContain('-2 到 +2')
-  expect(host.querySelector('[data-neutral-band]')?.textContent).toBe('-0.5 – +0.5')
+  expect(ticks[0]).toBe('0')
+  expect(ticks.at(-1)).toBe('100')
+  expect(ticks).toEqual(['0', '25', '50', '75', '100'])
+  expect(payload.ease.aria_text).toContain('0 到 100')
+  expect(host.querySelector('[data-neutral-band]')?.textContent).toBe('33.5% – 66.5%')
   expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
     String(payload.ease.marker_percent.value),
   )

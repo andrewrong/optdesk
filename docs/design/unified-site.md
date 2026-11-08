@@ -109,8 +109,8 @@ macro_rates reads seven series as v3; embed serves the real web build
   Module: pages
   Goal: `Build` writes the v3 page for seven series; `Handler` and `Assets` serve the built bundle; no stub remains.
   Files: internal/pages/macro_rates/builder.go, internal/pages/macro_rates/text.go, internal/pages/macro_rates/page.go, internal/pages/macro_rates/builder_test.go, internal/pages/macro_rates/page_test.go, internal/pages/embed/embed.go, internal/pages/embed/assets.go, internal/pages/embed/inject_test.go, internal/pages/embed/assets_test.go, internal/pages/embed/dist/.gitignore, internal/pages/embed/dist/index.html, docs/contracts/pages.md, cmd/ot/site_test.go
-  Cross-module file: `cmd/ot/site_test.go` (module ot). `TestSiteDemoOpensNoStore` passes the real `embed.Handler` to `siteHandler`; once the stub is gone, `Handler` answers 500 when `dist/index.html` is not built (as in CI), so the test fails. This entry owns that minimal swap: it replaces that argument with a test-local handler that writes the view model as the body, removes the `embed` import if unused, and changes nothing else of that file. `site-ot-serve` runs after this entry and rewrites the same test on top of the merged version.
   Design: docs/design/unified-site.md#decisions
+  Cross-module file: `cmd/ot/site_test.go` (module ot). `TestSiteDemoOpensNoStore` passes the real `embed.Handler` to `siteHandler`; once the stub is gone, `Handler` answers 500 when `dist/index.html` is not built (as in CI), so the test fails. This entry owns that minimal swap: it replaces that argument with a test-local handler that writes the view model as the body, removes the `embed` import if unused, and changes nothing else of that file. `site-ot-serve` runs after this entry and rewrites the same test on top of the merged version.
   Order: after 1 (site-interface).
   Depends on: site-interface (merged: the v3 schema and fixtures).
   Acceptance:

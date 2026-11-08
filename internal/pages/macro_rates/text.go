@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// The English texts of the page.macro_rates.v2 view model (frozen by v2).
+// The English texts of the page.macro_rates.v3 view model.
 const (
 	pageTitle    = "Macro rates"
 	noPointsText = "no points"
@@ -16,10 +16,20 @@ func pageSentence(n int, day string) string {
 	return fmt.Sprintf("%d series on %s.", n, day)
 }
 
+var seriesTitles = map[string]string{
+	"DGS10":  "10-year Treasury yield",
+	"DGS3MO": "3-month Treasury yield",
+	"SP500":  "S&P 500",
+	"VIXCLS": "VIX",
+	"VXNCLS": "VXN (Nasdaq-100 volatility)",
+	"RVXCLS": "RVX (Russell 2000 volatility)",
+	"VXVCLS": "VXV (3-month volatility)",
+}
+
 // seriesTitle is the title of a series: a known id has a name, any other is its own id.
 func seriesTitle(id string) string {
-	if id == "DGS10" {
-		return "10-year Treasury yield"
+	if t, ok := seriesTitles[id]; ok {
+		return t
 	}
 	return id
 }
@@ -34,7 +44,7 @@ func pointText(unit string, v *float64) string {
 		return strconv.FormatFloat(*v, 'f', 2, 64) + "%"
 	case "ratio":
 		return strconv.FormatFloat(*v, 'f', 4, 64)
-	case "ccy_amount":
+	case "ccy_amount", "index_points":
 		return strconv.FormatFloat(*v, 'f', 2, 64)
 	default: // count, and any unit the schema does not list
 		return strconv.FormatFloat(*v, 'f', -1, 64)

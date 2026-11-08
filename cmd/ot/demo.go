@@ -9,25 +9,38 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-// demoReader is the series reader of the demo profile: three typed points of DGS10.
+// demoReader is the series reader of the demo profile: three typed points of each of the seven
+// series of the macro page, with the unit the loader stores (percent for the two rates, index_points
+// for the five indices).
 type demoReader struct{}
 
-func demoPoint(day string, v *float64) contracts.SeriesPoint {
+// demoUnits maps each demo series to its stored unit.
+var demoUnits = map[string]string{
+	"DGS10": "percent", "DGS3MO": "percent",
+	"SP500": "index_points", "VIXCLS": "index_points", "VXNCLS": "index_points",
+	"RVXCLS": "index_points", "VXVCLS": "index_points",
+}
+
+func demoPoint(id, unit, day string, v *float64) contracts.SeriesPoint {
 	d, _ := time.Parse(dayLayout, day)
 	return contracts.SeriesPoint{
-		SeriesID:        "DGS10",
+		SeriesID:        id,
 		ObservationDate: types.SerializableDate{Time: d},
-		Unit:            contracts.SeriesUnit("percent"),
+		Unit:            contracts.SeriesUnit(unit),
 		Value:           v,
 	}
 }
 
-// SeriesPoints returns the demo points of DGS10 between from and to; other series are empty.
+// SeriesPoints returns the demo points of one of the seven series between from and to; other series are empty.
 func (demoReader) SeriesPoints(_ context.Context, seriesID string, from, to contracts.Day) ([]contracts.SeriesPoint, error) {
-	if seriesID != "DGS10" {
+	unit, ok := demoUnits[seriesID]
+	if !ok {
 		return nil, nil
 	}
 	a, b := 4.1, 4.2
+	if unit == "index_points" {
+		a, b = 5000.25, 5010.5
+	}
 	all := []struct {
 		day string
 		v   *float64
@@ -35,7 +48,7 @@ func (demoReader) SeriesPoints(_ context.Context, seriesID string, from, to cont
 	var out []contracts.SeriesPoint
 	for _, p := range all {
 		if d := contracts.Day(p.day); d >= from && d <= to {
-			out = append(out, demoPoint(p.day, p.v))
+			out = append(out, demoPoint(seriesID, unit, p.day, p.v))
 		}
 	}
 	return out, nil
