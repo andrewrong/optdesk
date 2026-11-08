@@ -65,6 +65,8 @@ Declared in `internal/runner/api.go`, declarations only; `contracts.Job` is not 
 - `GapSyncer.Sync(ctx, day, disabled)`: `disabled` maps the id of a left-out job to its reason, nil for none.
 - `ExecIdentityFunc` and the constructor types `NewSchedulerFunc`, `NewKeyRunnerFunc` and `NewReconcilerFunc`.
 
+`Prober` (`Probe(ctx, jobID) (reason string)`, Decision 8) is an optional interface of the `Reconciler` given to `NewSchedulerFunc`; without it there is no re-probe. The ticker owns the `disabled` map (job id to reason): it copies the map it is given, and gives `GapSyncer.Sync` a fresh copy on every call, so `Sync` neither keeps nor writes it. On every tick, before `Reconcile`, the ticker calls `Probe` for each job in the map, on the same worker goroutine as `Reconcile`, so a probe never overlaps a `Reconcile`. An empty reason removes the job from the map; a non-empty one keeps it with that reason.
+
 Fixed run reasons (Decision 7 of `docs/design/scheduler.md`):
 
 - `crashed`: the reconciler's mark on a `running` run whose lease lapsed.
