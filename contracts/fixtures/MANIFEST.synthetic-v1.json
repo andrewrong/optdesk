@@ -16,6 +16,7 @@
     {"path": "page.option_data_page.v1.bad-version.json", "sha256": "3bea8416706380b02bb1ebf8d209d3dead6525003f11353d34eaba0dd01f77d5"},
     {"path": "page.option_data_page.v1.choices.json", "sha256": "d42c113e890ee715e45e9ee064dd7cd402d9ac64688b90bf97e53007e473c3c3"},
     {"path": "page.option_data_page.v1.terms-input.json", "sha256": "9dc22422ce0653fa7abe47efb08a78408d065949e11dfd20db05e9bba7cafe6e"},
+    {"path": "page.option_data_page.v1.jpy.json", "sha256": "d8230eafae9a2802bc856122158b980001f8928ffd374869cdccce666a927be8"},
     {"path": "page.macro_rates.v2.golden.json", "sha256": "6969354073660dd36b21fd9930ce564ca75261579293bf98f2b437301996ee6f"},
     {"path": "page.macro_rates.v2.gap.json", "sha256": "93a55508c79ccf2ba49b05899388c046e786c95c033152f3f838269a74a95dc9"},
     {"path": "page.macro_rates.v2.stale.json", "sha256": "d9b224f2632c152d16b0b8cfc6b1db2a56407c79e6577567fc7302524399f38a"},
