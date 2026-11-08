@@ -182,8 +182,7 @@ func TestRunFetchWindowPerGroup(t *testing.T) {
 	}
 	ids := func(p sources.FetchPlan) []string { s := slices.Clone(p.SeriesIDs); slices.Sort(s); return s }
 	got := [][]string{ids(src.plans[0]), ids(src.plans[1])}
-	if !(slices.Equal(got[0], plainIDs) && slices.Equal(got[1], windowedIDs)) &&
-		!(slices.Equal(got[1], plainIDs) && slices.Equal(got[0], windowedIDs)) {
+	if !slices.Equal(got[0], plainIDs) || !slices.Equal(got[1], windowedIDs) {
 		t.Fatalf("groups = %v", got)
 	}
 }
