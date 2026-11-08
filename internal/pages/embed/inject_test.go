@@ -9,11 +9,14 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/andrewrong/optdesk/internal/pages"
 )
 
 var _ pages.NewHandlerFunc = Handler
+
+var indexHTML = indexFS()["index.html"].Data
 
 var vmRe = regexp.MustCompile(`(?s)<script id="vm" type="application/json">(.*?)</script>`)
 
@@ -50,17 +53,25 @@ func TestRenderRejectsBadJSON(t *testing.T) {
 	}
 }
 
-func TestHandlerServesStub(t *testing.T) {
-	t.Parallel()
+func indexFS() fstest.MapFS {
+	return fstest.MapFS{"index.html": {Data: []byte(`<html><script id="vm" type="application/json"></script></html>`)}}
+}
+
+func get(t *testing.T, h http.Handler, method, target string) *httptest.ResponseRecorder {
+	t.Helper()
 	rec := httptest.NewRecorder()
-	Handler([]byte(`{"k":"v"}`)).ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
-	res := rec.Result()
-	defer func() { _ = res.Body.Close() }()
-	body, _ := io.ReadAll(res.Body)
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d", res.StatusCode)
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, target, nil))
+	return rec
+}
+
+func TestHandlerServesIndex(t *testing.T) {
+	t.Parallel()
+	rec := get(t, newHandler(indexFS(), []byte(`{"k":"v"}`)), http.MethodGet, "/")
+	body, _ := io.ReadAll(rec.Result().Body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
 	}
-	if ct := res.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
 		t.Fatalf("content type = %q", ct)
 	}
 	m := vmRe.FindSubmatch(body)
@@ -71,9 +82,18 @@ func TestHandlerServesStub(t *testing.T) {
 
 func TestHandlerBadViewModel(t *testing.T) {
 	t.Parallel()
-	rec := httptest.NewRecorder()
-	Handler([]byte(`nope`)).ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
+	if rec := get(t, newHandler(indexFS(), []byte(`nope`)), http.MethodGet, "/"); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+}
+
+func TestHandlerNoBundle500(t *testing.T) {
+	t.Parallel()
+	rec := get(t, newHandler(fstest.MapFS{}, []byte(`{}`)), http.MethodGet, "/")
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	if got := strings.TrimSpace(rec.Body.String()); got != "web bundle not built: run pnpm --dir web build" {
+		t.Fatalf("body = %q", got)
 	}
 }
