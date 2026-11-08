@@ -65,7 +65,7 @@ func TestRecordsAreGenerated(t *testing.T) {
 func TestReadingRecordAlias(t *testing.T) {
 	t.Parallel()
 	var r contracts.ReadingRecord
-	var g gen.ReadingRecord = r
+	g := gen.ReadingRecord(r)
 	g.Name = "market.ivp_own"
 	g.Inputs = append(g.Inputs, gen.ReadingRecordInputsElem{InputTable: "obs.option_eod"})
 	r = g
