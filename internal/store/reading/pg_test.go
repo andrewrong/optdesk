@@ -43,7 +43,7 @@ func connURL(t *testing.T, dbname, user string) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newDatabase makes a throwaway database with the roles and migration 0013, dropped in t.Cleanup.
+// newDatabase makes a throwaway database with the roles and migrations 0013 and 0016, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
@@ -85,18 +85,20 @@ func newDatabase(t *testing.T) string {
 			t.Errorf("drop database %s: %v", name, err)
 		}
 	})
-	raw, err := os.ReadFile("../../../migrations/0013_readings.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
 	c, err := pgx.Connect(ctx, connURL(t, name, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = c.Close(ctx) }()
-	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
-		t.Fatalf("apply 0013: %v", err)
+	for _, file := range []string{"0013_readings.sql", "0016_reading_parameter_view.sql"} {
+		raw, err := os.ReadFile("../../../migrations/" + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+		if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
+			t.Fatalf("apply %s: %v", file, err)
+		}
 	}
 	// Migration 0009 gives the page role USAGE on schema rd; this database has only 0013.
 	if _, err := c.Exec(ctx, `GRANT USAGE ON SCHEMA rd TO ot_ro_pages`); err != nil {

@@ -26,6 +26,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `macro_rates.Build`: JSON of `contracts/schemas/page.macro_rates.v3.json` (`schema_version` 3; `index_points` text has two decimals and no suffix) (texts in English, written by `text.go`; `latest` is the last point or a gap); `generated_at` is `generatedAt` in UTC, `session_day` is the given day, points are in date order, a nil value is `null`.
 - `gaps[]`: a nil value yields one `no_value` gap with the `series_id` and the date of the point. A series whose last point is more than 4 calendar days before the day, or that has no point in range, yields one `stale` gap with the day as `date`; a stale last point with a nil value gives that one gap only.
 - `embed.Handler`: `text/html` with the view model in the vm element; `embed.Render` returns the page bytes or an error for a view model that is not JSON (the handler answers 500).
+- `report_page.Build(ctx, c Config, day, generatedAt)` and `report_page.NewPage(c Config)` (page name `report_page`, schema `page.report_page.v2`): `Config` is `Market` (`US` or `JP`), `Slot` (`open` or `close`), `Zone` (`generated_at` is written in it) and `Risks`, a `RiskBlockFunc` (`func(ctx, day, generatedAt) ([]byte, error)`). The `risks` block is the bytes `Risks` returns, embedded unchanged; an error of `Risks`, a market or slot outside the lists, or a nil `Zone` or `Risks` is an error of `Build`. The other four blocks (`actions`, `account_moves`, `market_watch`, `global_assets`) are gap-only: state `gap`, one `Gap` of reason `not_built`, each required figure field a `Gap` of reason `not_built`. No optional block is written. The package computes no figure; only `ot` imports it.
 
 ## Invariants
 
@@ -40,6 +41,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - v2: `Meta`, `Builder` and `Page` names; `macro_rates.Page` and `macro_page.NewPage`.
 - v4: `macro_rates` writes `page.macro_rates.v3` for seven series; `embed` embeds the built bundle (`all:dist`), adds `Assets` and the 500 text; the stub page is gone.
 - v3: `internal/pages/option_data_page`: `NewPage(Config)` and `Build` for `page.option_data_page.v1`; `Config` is `RunID`, `BuildID`, `Scope`, `Zone`, `UnderlyingID`, `Label`, `Eod` (`store.OptionEodReader`) and `Quotes` (`store.QuoteSnapshotReader`) and `Notes` (texts of the page notes, at most 20); the series reader the caller passes is ignored. v3 also fills three fields: `Choices` (`[]Choice`, the first 50 become `underlyings`; a `Href` outside `^/[A-Za-z0-9/_-]{1,100}$` is an error of `Build`), `Terms` (`store.OptionTermsReader`, one call with the kept rows' ids; fills `expiry`, `right` and `strike`; a reader error is returned) and `Symbol` (`underlying.symbol`); zero values keep the output unchanged.
+- v5: `internal/pages/report_page`: `Build` and `NewPage` for `page.report_page.v2`, with `Config` and `RiskBlockFunc`; the `risks` block is given bytes and four blocks are gap-only.
 
 ## Contract tests
 
