@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -25,6 +26,7 @@ const maxSocketPath = 104
 // runOnceConfig is what run-once needs from $OT_HOME/.env and the home; its values are never printed.
 type runOnceConfig struct {
 	runnerDSN, seriesDSN, optionEodDSN, quoteSnapshotDSN, masterDSN, fredKey string
+	pagesDSN, readingsDSN                                                    string
 	socketPath                                                               string
 }
 
@@ -44,11 +46,14 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		quoteSnapshotDSN: env[store.DSNEnvQuoteSnapshot],
 		masterDSN:        env[store.DSNEnvMaster],
 		fredKey:          env["FRED_API_KEY"],
+		pagesDSN:         env[store.DSNEnvPages],
+		readingsDSN:      env[store.DSNEnvReadings],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
 		{store.DSNEnvOptionEod, c.optionEodDSN}, {store.DSNEnvQuoteSnapshot, c.quoteSnapshotDSN},
-		{store.DSNEnvMaster, c.masterDSN}, {"FRED_API_KEY", c.fredKey},
+		{store.DSNEnvMaster, c.masterDSN}, {store.DSNEnvPages, c.pagesDSN},
+		{store.DSNEnvReadings, c.readingsDSN}, {"FRED_API_KEY", c.fredKey},
 	} {
 		if l.v == "" && (!allowNoFredKey || l.name != "FRED_API_KEY") {
 			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", l.name)
@@ -124,7 +129,7 @@ type wiring struct {
 	dial func(ctx context.Context) (broker.Broker, error)
 }
 
-// jobFactory builds the three jobs over the stores withWiring opened.
+// jobFactory builds the four jobs over the stores withWiring opened.
 type jobFactory struct {
 	d    deps
 	clk  clock.Clock
@@ -133,6 +138,16 @@ type jobFactory struct {
 	eod  store.OptionEodStore
 	snap store.QuoteSnapshotStore
 	inst store.InstrumentStore
+	// compute holds the stores of compute_figures.
+	compute jobs.ComputeStores
+}
+
+func (f jobFactory) computeFigures() (contracts.Job, error) {
+	j, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build compute_figures job failed")
+	}
+	return j, nil
 }
 
 func (f jobFactory) fred() (contracts.Job, error) {
@@ -159,7 +174,7 @@ func (f jobFactory) quoteSnapshot(b broker.Broker) (contracts.Job, error) {
 	return j, nil
 }
 
-// withWiring opens the stores and the broker, wires fred_series, option_eod and quote_snapshot, then
+// withWiring opens the stores and the broker, wires fred_series, option_eod, quote_snapshot and compute_figures, then
 // calls use; it closes what it opened on every path, last opened first. check runs after the ledger is
 // open and before the other stores are opened; it may be nil. A failed dial does not stop the call: the
 // option jobs get a broker that answers retryable. An empty FRED key (only ot scheduler lets it through)
@@ -203,6 +218,11 @@ func withWiring(
 		return fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
 	}
 	defer func() { _ = instr.Close() }()
+	cs, closeCompute, err := openComputeStores(ctx, d, cfg, sd)
+	if err != nil {
+		return err
+	}
+	defer closeCompute()
 	var src sources.Source = noKeySource{}
 	if cfg.fredKey != "" {
 		src, err = d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
@@ -215,10 +235,10 @@ func withWiring(
 	var extra brokerSet
 	defer extra.closeAll()
 	return wireJobs(a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
-		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr}, ledger)
+		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs}, ledger)
 }
 
-// wireJobs builds the three jobs over the open stores and calls use.
+// wireJobs builds the four jobs over the open stores and calls use.
 func wireJobs(
 	a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *brokerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
@@ -235,8 +255,12 @@ func wireJobs(
 	if err != nil {
 		return err
 	}
+	figJob, err := f.computeFigures()
+	if err != nil {
+		return err
+	}
 	return use(wiring{
-		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob}, brokerUp: brokerUp, factory: f,
+		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob, figJob}, brokerUp: brokerUp, factory: f,
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
 			if err != nil {
@@ -291,4 +315,60 @@ func holdOffScheduler(ctx context.Context, a *app, cfg runOnceConfig, who, refus
 		return nil, errors.New(refusal)
 	}
 	return fence, nil
+}
+
+// openComputeStores opens the stores compute_figures reads and writes: catalog, eod, terms, names and series
+// with the pages line, the readings store with the readings line; the session days are the runner store
+// already open. The returned func closes what was opened, last opened first.
+func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.SessionDayStore) (jobs.ComputeStores, func(), error) {
+	var closers []func() error
+	closeAll := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			_ = closers[i]()
+		}
+	}
+	pagesFail := fmt.Errorf("open compute stores with %s failed", store.DSNEnvPages)
+	cs := jobs.ComputeStores{SessionDays: sd}
+	cat, err := d.openOptionCatalog(ctx, cfg.pagesDSN)
+	if err != nil {
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, cat.Close)
+	cs.Catalog = cat
+	eod, err := d.openOptionEod(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, eod.Close)
+	cs.OptionEod = eod
+	terms, err := d.openOptionTerms(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, terms.Close)
+	cs.Terms = terms
+	names, err := d.openInstrumentName(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, names.Close)
+	cs.Names = names
+	ser, err := d.openSeries(ctx, cfg.pagesDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, pagesFail
+	}
+	closers = append(closers, ser.Close)
+	cs.Series = ser
+	rd, err := d.openReading(ctx, cfg.readingsDSN)
+	if err != nil {
+		closeAll()
+		return jobs.ComputeStores{}, nil, fmt.Errorf("open readings store with %s failed", store.DSNEnvReadings)
+	}
+	closers = append(closers, rd.Close)
+	cs.Readings = rd
+	return cs, closeAll, nil
 }

@@ -10,7 +10,13 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/clock/calendar"
 	"github.com/andrewrong/optdesk/internal/clock/realclock"
+	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/figures"
+	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
+	"github.com/andrewrong/optdesk/internal/compute/own"
+	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
@@ -32,6 +38,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
+	"github.com/andrewrong/optdesk/internal/store/reading"
 	"github.com/andrewrong/optdesk/internal/store/series"
 	"github.com/andrewrong/optdesk/internal/store/sessionday"
 	"github.com/andrewrong/optdesk/internal/store/setup"
@@ -61,6 +68,12 @@ type deps struct {
 	openInstrumentName  store.OpenInstrumentNameFunc
 	newOptionEod        jobs.NewOptionEodFunc
 	newQuoteSnapshot    jobs.NewQuoteSnapshotFunc
+	openReading         store.OpenReadingFunc
+	newComputeFigures   jobs.NewComputeFiguresFunc
+	computeFigures      compute.Figures
+	computeRules        compute.Rules
+	computeUnits        compute.Units
+	computeSeriesOps    compute.SeriesOps
 	pageList            []pages.Page
 	newHandler          pages.NewHandlerFunc
 	migrateUp           func(ctx context.Context, adminDSN string, fsys fs.FS) error
@@ -86,6 +99,9 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 
 // newDeps returns the real constructors.
 func newDeps() deps {
+	stats := gonumstats.New()
+	sops := own.NewSeriesOps()
+	rl := rules.New()
 	return deps{
 		newClock:            realclock.NewReal,
 		newCalendar:         calendar.NewCalendar,
@@ -107,6 +123,12 @@ func newDeps() deps {
 		openInstrumentName:  instrument.OpenInstrumentNames,
 		newOptionEod:        optioneod.New,
 		newQuoteSnapshot:    quotesnapshot.New,
+		openReading:         reading.Open,
+		newComputeFigures:   computefigures.New,
+		computeFigures:      figures.New(stats, own.NewRolling(stats), sops, rl),
+		computeRules:        rl,
+		computeUnits:        own.NewUnits(),
+		computeSeriesOps:    sops,
 		pageList:            []pages.Page{macro_rates.Page()},
 		newHandler:          embed.Handler,
 		migrateUp:           setup.MigrateUp,
