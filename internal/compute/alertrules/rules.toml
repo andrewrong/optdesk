@@ -1,0 +1,147 @@
+# Alert rules of stage 1 (docs/design/risk-alerts.md, Decisions 5 and 6).
+# The thresholds and data ages are proposals that the owner confirms.
+version = 1
+public_subjects = ["SPY", "VIXCLS", "VXNCLS", "RVXCLS", "SP500"]
+
+[[rule]]
+id = "spy_ivr_high"
+title = "SPY IV rank high"
+figure = "market.ivr_own"
+figure_version = 1
+subject_kind = "underlying"
+subject = "SPY"
+unit = "decimal"
+op = "ge"
+threshold = "0.80"
+level = "w"
+max_data_age_days = 4
+
+[[rule]]
+id = "spy_ivr_low"
+title = "SPY IV rank low"
+figure = "market.ivr_own"
+figure_version = 1
+subject_kind = "underlying"
+subject = "SPY"
+unit = "decimal"
+op = "le"
+threshold = "0.10"
+level = "n"
+max_data_age_days = 4
+
+[[rule]]
+id = "spy_ivp_high"
+title = "SPY IV percentile high"
+figure = "market.ivp_own"
+figure_version = 1
+subject_kind = "underlying"
+subject = "SPY"
+unit = "decimal"
+op = "ge"
+threshold = "0.90"
+level = "w"
+max_data_age_days = 4
+
+[[rule]]
+id = "spy_ivp_low"
+title = "SPY IV percentile low"
+figure = "market.ivp_own"
+figure_version = 1
+subject_kind = "underlying"
+subject = "SPY"
+unit = "decimal"
+op = "le"
+threshold = "0.10"
+level = "n"
+max_data_age_days = 4
+
+[[rule]]
+id = "vix_pctile_high"
+title = "VIX 3-year percentile high"
+figure = "market.vix_pctile_3y"
+figure_version = 1
+subject_kind = "market"
+subject = "VIXCLS"
+unit = "decimal"
+op = "ge"
+threshold = "0.90"
+level = "w"
+max_data_age_days = 6
+
+[[rule]]
+id = "vix_pctile_extreme"
+title = "VIX 3-year percentile extreme"
+figure = "market.vix_pctile_3y"
+figure_version = 1
+subject_kind = "market"
+subject = "VIXCLS"
+unit = "decimal"
+op = "ge"
+threshold = "0.97"
+level = "d"
+max_data_age_days = 6
+
+[[rule]]
+id = "vxn_pctile_high"
+title = "VXN 3-year percentile high"
+figure = "market.vxn_pctile_3y"
+figure_version = 1
+subject_kind = "market"
+subject = "VXNCLS"
+unit = "decimal"
+op = "ge"
+threshold = "0.90"
+level = "w"
+max_data_age_days = 6
+
+[[rule]]
+id = "rvx_pctile_high"
+title = "RVX 3-year percentile high"
+figure = "market.rvx_pctile_3y"
+figure_version = 1
+subject_kind = "market"
+subject = "RVXCLS"
+unit = "decimal"
+op = "ge"
+threshold = "0.90"
+level = "w"
+max_data_age_days = 6
+
+[[rule]]
+id = "vix_backwardation"
+title = "VIX term structure in backwardation"
+figure = "market.vix_term_ratio"
+figure_version = 1
+subject_kind = "market"
+subject = "VIXCLS"
+unit = "ratio"
+op = "gt"
+threshold = "1.0"
+level = "w"
+max_data_age_days = 6
+
+[[rule]]
+id = "sp500_below_200d"
+title = "S&P 500 below its 200-day average"
+figure = "market.sp500_vs_200d"
+figure_version = 2
+subject_kind = "market"
+subject = "SP500"
+unit = "ratio"
+op = "lt"
+threshold = "0"
+level = "w"
+max_data_age_days = 6
+
+[[rule]]
+id = "sp500_far_below_200d"
+title = "S&P 500 far below its 200-day average"
+figure = "market.sp500_vs_200d"
+figure_version = 2
+subject_kind = "market"
+subject = "SP500"
+unit = "ratio"
+op = "lt"
+threshold = "-0.05"
+level = "d"
+max_data_age_days = 6
