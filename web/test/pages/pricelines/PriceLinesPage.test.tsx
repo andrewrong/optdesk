@@ -106,6 +106,15 @@ describe('PriceLinesPage', () => {
     expect(host.querySelector('[data-stale]')?.textContent).toContain(stale.stale.text)
   })
 
+  it('follows the producer is_stale, not the device clock', async () => {
+    const host = await show({
+      ...stale,
+      stale: { ...stale.stale, is_stale: false },
+      stale_after: '2026-01-05T10:00:00+08:00', // already in the past
+    })
+    expect(host.querySelector('[data-stale]')?.getAttribute('data-stale')).toBe('false')
+  })
+
   it('refuses bad-version and accepts ok', () => {
     expect(registration.page.validate(badVersion).ok).toBe(false)
     expect(registration.page.validate(ok).ok).toBe(true)

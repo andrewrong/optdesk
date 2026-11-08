@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CardNotes } from '@/pages/home/CardNotes'
-import { StaleAlert } from '@/pages/home/StaleAlert'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/price_lines_page'
 
@@ -39,32 +38,28 @@ function MarketSelect({ markets, value }: { markets: readonly Market[]; value?: 
   )
 }
 
-function Fields({
-  markets,
-  symbol,
-  market,
-  price,
-  note,
-}: {
-  markets: readonly Market[]
-  symbol?: string
-  market?: Market
-  price?: string
-  note?: string
-}) {
+function PriceNoteInputs({ price, note }: { price?: string; note?: string }) {
   return (
     <>
-      <input name="symbol" defaultValue={symbol} className={FIELD} aria-label="code" />
-      <MarketSelect markets={markets} value={market} />
       <input name="price" defaultValue={price} className={FIELD} aria-label="price" />
       <input name="note" defaultValue={note} className={FIELD} aria-label="note" />
     </>
   )
 }
 
-function Message({ children, destructive, ...rest }: { children: ReactNode; destructive?: boolean } & Record<string, boolean | string>) {
+function Fields({ markets, symbol, market }: { markets: readonly Market[]; symbol?: string; market?: Market }) {
   return (
-    <Alert variant={destructive ? 'destructive' : 'success'} {...rest}>
+    <>
+      <input name="symbol" defaultValue={symbol} className={FIELD} aria-label="code" />
+      <MarketSelect markets={markets} value={market} />
+      <PriceNoteInputs />
+    </>
+  )
+}
+
+function Message({ children, kind }: { children: ReactNode; kind: 'saved' | 'error' }) {
+  return (
+    <Alert variant={kind === 'error' ? 'destructive' : 'success'} data-saved={kind === 'saved' || undefined} data-error={kind === 'error' || undefined}>
       <Info aria-hidden />
       <AlertDescription>{children}</AlertDescription>
     </Alert>
@@ -83,8 +78,7 @@ function SavedRow({ row, form }: { row: Payload['rows'][number]; form: Payload['
           <Tokens form={form} />
           <input type="hidden" name="symbol" value={row.symbol} />
           <input type="hidden" name="market" value={row.market} />
-          <input name="price" defaultValue={row.price ?? ''} className={FIELD} aria-label="price" />
-          <input name="note" defaultValue={row.note ?? ''} className={FIELD} aria-label="note" />
+          <PriceNoteInputs price={row.price ?? ''} note={row.note ?? ''} />
           <Button type="submit" name="action" value="save">
             保存
           </Button>
@@ -106,22 +100,16 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
         <p className="text-sm text-muted-foreground">{payload.sentence}</p>
         <p className="text-sm text-muted-foreground">{payload.intro}</p>
       </header>
-      {payload.stale && payload.stale_after ? (
-        <StaleAlert
-          stale={{ text: payload.stale.text, stale_after: payload.stale_after }}
-          generatedAt={payload.generated_at}
-        />
-      ) : payload.stale ? (
+      {payload.stale ? (
         <Alert variant={payload.stale.is_stale ? 'destructive' : 'default'} data-stale={payload.stale.is_stale}>
+          <Info aria-hidden />
           <AlertDescription>{payload.stale.text}</AlertDescription>
         </Alert>
       ) : null}
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
-      {payload.saved !== null ? <Message data-saved>{payload.saved}</Message> : null}
+      {payload.saved !== null ? <Message kind="saved">{payload.saved}</Message> : null}
       {payload.error !== null ? (
-        <Message destructive data-error>
-          {payload.error}
-        </Message>
+        <Message kind="error">{payload.error}</Message>
       ) : null}
       <Card>
         <CardHeader>
