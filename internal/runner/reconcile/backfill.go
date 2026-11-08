@@ -19,18 +19,18 @@ const reasonBackfill = "backfill"
 
 // NewBackfillerWithRule builds the backfiller with an explicit window rule.
 func NewBackfillerWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule runner.WindowRule) runner.Backfiller {
-	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule}
+	return newReconciler(l, nil, cal, clk, jobs, rule, nil)
 }
 
 // Backfill runs the keys of a day at or behind the cursor that are missing or no_value.
 // It never calls SetCursor, PutExpected or PutWindow.
-func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets []string) (runner.BackfillResult, error) {
-	res := runner.BackfillResult{Day: day}
-	lease, err := r.ledger.Acquire(ctx, owner, leaseTTL)
+func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets []string) (res runner.BackfillResult, err error) {
+	res = runner.BackfillResult{Day: day}
+	ctx, release, err := r.holdLease(ctx)
 	if err != nil {
 		return res, err
 	}
-	defer func() { _ = r.ledger.Release(ctx, lease) }()
+	defer release(&err)
 
 	cur, err := r.ledger.Cursor(ctx)
 	if err != nil {
@@ -193,7 +193,8 @@ func (r *reconciler) closeOf(ctx context.Context, datasetID string, day contract
 func (r *reconciler) backfillKey(
 	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt time.Time,
 ) (store.PresentStatus, error) {
-	if _, err := r.run(ctx, job, day, k, seq, closeAt, reasonBackfill); err != nil {
+	rec, _, err := r.run(ctx, job, day, k, seq, closeAt, reasonBackfill)
+	if err != nil {
 		return "", err
 	}
 	present, err := r.ledger.Present(ctx, day)
@@ -204,15 +205,8 @@ func (r *reconciler) backfillKey(
 	if status != store.StatusNoValue {
 		return status, nil
 	}
-	runs, err := r.ledger.Runs(ctx, day)
-	if err != nil {
-		return "", err
-	}
-	id := fmt.Sprintf("%s|%s|%s|%d", day, k.DatasetID, k.SubjectKey, seq)
-	for _, run := range runs {
-		if run.ID == id && run.ErrorCode != "" {
-			return "", nil
-		}
+	if rec.ErrorCode != "" {
+		return "", nil
 	}
 	return status, nil
 }
