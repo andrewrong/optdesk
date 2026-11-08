@@ -30,7 +30,7 @@ export const ok = {
       }
     ],
     notes: [
-      '财报日只显示日期：盘前、盘后时间暂无数据源。'
+      'MSFT 财报日只显示日期：盘前、盘后时间暂无数据源。'
     ],
     rows: [
       {
@@ -43,7 +43,7 @@ export const ok = {
         },
         earnings: {
           date: '2026-10-28',
-          text: '10-28'
+          text: '10-28 盘后'
         },
         five_day_change: {
           text: '+5.0%',
@@ -108,9 +108,47 @@ export const ok = {
           reconciliation: '缺',
           source: '自有 own'
         }
+      },
+      {
+        currency: 'USD',
+        day_change: {
+          text: '+0.8%',
+          tone: 'up',
+          unit: 'percent',
+          value: 0.8
+        },
+        earnings: {
+          date: '2026-11-19',
+          text: '11-19 盘前'
+        },
+        five_day_change: {
+          text: '+2.2%',
+          tone: 'up',
+          unit: 'percent',
+          value: 2.2
+        },
+        symbol: 'NVDA',
+        volatility: {
+          data_day: '2026-10-23',
+          hv30: {
+            reason: 'no_data',
+            text: 'HV30（自有，口径 hv30_v1）：暂无读数'
+          },
+          iv30: {
+            reason: 'no_data',
+            text: '自有 iv30：暂无读数'
+          },
+          ivp: {
+            reason: 'no_data',
+            text: '自有 ivp：暂无读数'
+          },
+          label: '自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23',
+          reconciliation: '缺',
+          source: '自有 own'
+        }
       }
     ],
-    say: '持有 9 家 · 2 家 21 日内财报 · 近 5 日消息：暂无数据源。',
+    say: '持有 9 家 · 3 家 28 日内财报 · 近 5 日消息：暂无数据源。',
     stale: {
       data_time: '2026-10-23T21:00:00+08:00',
       stale_after: '2026-10-24T21:00:00+08:00',
