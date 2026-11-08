@@ -275,3 +275,25 @@ func TestBadPeriod(t *testing.T) {
 	_, err = ind.ATR(v, v[:5], v, 3)
 	permanentErr("ATR unequal", err)
 }
+
+func TestShortInputIsAllNaN(t *testing.T) {
+	t.Parallel()
+	v := []float64{1, 2, 3}
+	ind := New()
+	r, err := ind.RSI(v, 14)
+	if err != nil || len(r) != 3 || !math.IsNaN(r[0]) || !math.IsNaN(r[2]) {
+		t.Errorf("RSI short: %v %v", r, err)
+	}
+	a, err := ind.ATR(v, v, v, 14)
+	if err != nil || len(a) != 3 || !math.IsNaN(a[2]) {
+		t.Errorf("ATR short: %v %v", a, err)
+	}
+	ro, err := ind.ROC(v, 14)
+	if err != nil || len(ro) != 3 || !math.IsNaN(ro[2]) {
+		t.Errorf("ROC short: %v %v", ro, err)
+	}
+	m, s, h, err := ind.MACD(v, 12, 26, 9)
+	if err != nil || len(m) != 3 || len(s) != 3 || len(h) != 3 || !math.IsNaN(m[2]) || !math.IsNaN(s[2]) || !math.IsNaN(h[2]) {
+		t.Errorf("MACD short: %v %v %v %v", m, s, h, err)
+	}
+}
