@@ -51,16 +51,16 @@ New directory: `internal/compute/ease` (the score). This pull request edits `doc
 | 5 | ease-job-step (interface and implementation) | jobs | M | after 1, 3, 4 |
 | 6 | macro-page-interface (interface) | pages | S | first |
 | 7 | macro-page-ease | pages | M | after 6 |
-| 8 | macro-ease-wire | ot | S | depends on 6 and #553; ordered after 5 |
+| 8 | macro-ease-wire | ot | S | depends on 4, 5, 6 and #553 |
 | 9 | macro-page-fixtures-scale | web | S | first |
 
-The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design, `#553` is the open issue "Wire the compute figures job into run-once and backfill" (it adds the readings DSN to `cmd/ot` and the call of `computefigures.New`). No entry spans more than two modules. `internal/compute/api.go` is in 1 only; `docs/conventions/register.toml` and `docs/GLOSSARY.md` are in 4 only (the whole entry lands with its real hash in one change, so no sibling's output is needed); `internal/jobs/api.go`, `docs/contracts/jobs.md`, `internal/jobs/computefigures/job.toml` and `steps.go` are in 5 only; `internal/pages/macro_page/page.go` is in 6 only, `builder.go` and the other files of the package in 7 only. Entries 1, 2, 6 and 9 can start at once; 7 shares no file with 3 to 5. Not merged, because each pair crosses modules: 2 into 3, 1 into 4, 6 into 7.
+The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design, `#553` is the open issue "Wire the compute figures job into run-once and backfill" (it adds the readings DSN to `cmd/ot` and the call of `computefigures.New`). No entry spans more than two modules. `internal/compute/api.go` is in 1 only; `docs/conventions/register.toml` and `docs/GLOSSARY.md` are in 4 only (the whole entry lands with its real hash in one change, so no sibling's output is needed); `internal/jobs/api.go`, `docs/contracts/jobs.md`, `internal/jobs/computefigures/job.toml` and `steps.go` are in 5 only; `internal/pages/macro_page/builder.go` is in 6 (only the field is added to `Config`, declared there) and in 7 (after 6, so the two never edit it at once); `page_test.go` is in 6 only, `ease.go`, `builder_test.go` and `ease_test.go` in 7 only. Entries 1, 2, 6 and 9 can start at once; 7 shares no file with 3 to 5. Not merged, because each pair crosses modules: 2 into 3, 1 into 4, 6 into 7.
 
-Two interface steps, written as `home-page-revise.md` writes its two: 1 (compute) and 6 (pages), each marked `(interface)` with its own Design line; 5 carries an interface change too, in one issue with the one package that implements the type (its heading says so). Each issue is verifiable alone: 4 needs only 1 (the register entry is its own); 7 and 8 need only 6 (the field exists); 5 keeps the old constructor, so `cmd/ot` compiles whatever the order with #553 (Order of 5), and 8 is the issue that passes `ease.New(rules)` to the job.
+Two interface steps, written as `home-page-revise.md` writes its two: 1 (compute) and 6 (pages), each marked `(interface)` with its own Design line; 5 carries an interface change too, in one issue with the one package that implements the type (its heading says so). Each issue is verifiable alone: 4 needs only 1 (the register entry is its own); 7 needs only 6 (the field exists); 5 keeps the old constructor, so `cmd/ot` compiles whatever the order with #553 (Order of 5), and 8 needs 4, 5, 6 and #553 (the field, `ease.New`, `NewWithEase`, the call of #553) and is the issue that passes `ease.New(rules)` to the job.
 
 ## Interface
 
-Owner: compute (`compute.Ease` and its types, `internal/compute/api.go`), ot (the `macroPage` field), jobs (`NewComputeFiguresEaseFunc` in `internal/jobs/api.go`), sources (the unit table, not an interface file), pages (`macro_page.Config.Read`, a package type in `internal/pages/macro_page/page.go`, frozen by `macro-page-interface`; `internal/pages/api.go` is unchanged).
+Owner: compute (`compute.Ease` and its types, `internal/compute/api.go`), ot (the `macroPage` field), jobs (`NewComputeFiguresEaseFunc` in `internal/jobs/api.go`), sources (the unit table, not an interface file), pages (`macro_page.Config.Read`, a package type in `internal/pages/macro_page/builder.go`, frozen by `macro-page-interface`; `internal/pages/api.go` is unchanged).
 
 - compute, additions to `internal/compute/api.go`:
   - `type EaseSeries struct { WALCL, WDTGAL, RRPONTSYD, DGS10, DFF, SP500, BAMLH0A0HYM2 Series }`: the seven series of `FromSeriesPoints`; the three liquidity series in whole dollars (Decision 3), `DGS10`, `DFF` and `BAMLH0A0HYM2` in percent, `SP500` in index points (only its dates are used).
@@ -71,7 +71,7 @@ Owner: compute (`compute.Ease` and its types, `internal/compute/api.go`), ot (th
   - `type Ease interface { Ease(id string, s EaseSeries, asOf contracts.Day) EaseFigure }` and `type NewEaseFunc func(Rules) Ease`. `id` is `macro.ease`; the rule comes from `Rules` (`Rule("macro.ease")`); an unknown id gives a missing figure with `bad_input`, as `Figures` does. Pure: no I/O, no clock.
 - register: the entry `macro.ease` v2 of Decision 6 and the glossary term `Ease (macro)`, added with their implementation and real hash by `compute-ease` (one change, so `TestRulesMatchRegister` compares the entry with `rules.json` in the same issue).
 - jobs: `internal/jobs/api.go` gains a second constructor type and keeps `NewComputeFiguresFunc` as it is: `type NewComputeFiguresEaseFunc func(ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock) (contracts.Job, error)` (`compute.Ease` after `compute.SeriesOps`), and `computefigures.NewWithEase` is its implementation; `computefigures.New` and `NewComputeFiguresFunc` keep their six parameters and behave as `NewWithEase` with a nil `Ease`, so no ease step runs and the plan has no `macro.ease` key. With a non-nil `Ease` the job document gains the key `{readings.reading, "macro.ease|market|WALCL"}`. Why a second constructor: `cmd/ot` is outside the module of the jobs issue, and #553 wires `computefigures.New` into it; changing the signature in place would break `cmd/ot` whenever #553 lands first. The manifests gain keys, not interfaces: `internal/jobs/fredseries/job.toml` gains `windowed` (a list of series ids) and `lookback_days` (one integer, 1 to 31; Decision 4) and `internal/jobs/computefigures/job.toml` a table `[ease]` with `id = "macro.ease"` and `series` (the seven ids, in the order of `EaseSeries`).
-- pages: `macro_page.Config.Read compute.ReadingFunc`, optional, added to the `Config` struct in `internal/pages/macro_page/page.go` by `macro-page-interface`; nil gives today's output byte for byte.
+- pages: `macro_page.Config.Read compute.ReadingFunc`, optional, added to the `Config` struct in `internal/pages/macro_page/builder.go` by `macro-page-interface`; nil gives today's output byte for byte.
 - ot: `macroPage` of `deps` (`cmd/ot/wire.go`) takes the reading function (issue `macro-ease-wire`, which also passes `ease.New(rules)` to `computefigures.NewWithEase`): `func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page`; `nil` when the readings DSN is not set.
 
 ## Issues
@@ -172,15 +172,15 @@ Checked by CI: ci-go (`go test ./internal/jobs/... -race -count=1`); the size ru
 ### macro-page-interface (interface)
 
 - Module: pages. Size: S. Depends on: none.
-- Order: first (6). Interface change: the `Config` struct of `internal/pages/macro_page/page.go` gains one optional field; additive. `internal/pages/api.go` is unchanged. Contracts: unchanged.
+- Order: first (6). Interface change: the `Config` struct, declared in `internal/pages/macro_page/builder.go`, gains one optional field (only the field is added; `page.go` holds `NewPage` and is not edited); additive. `internal/pages/api.go` is unchanged. Contracts: unchanged.
 - Design: docs/design/ease-v2.md#Interface
-- Files: internal/pages/macro_page/page.go, internal/pages/macro_page/page_test.go
+- Files: internal/pages/macro_page/builder.go, internal/pages/macro_page/page_test.go
 
 - Goal: `Config.Read compute.ReadingFunc` with a doc comment (optional; nil keeps the page as it is, the ease a `no_data` gap; with it `Build` may read stored readings; the reader's error is an error of `Build`, not a gap). `Build` does not use it yet. `page_test.go` tests the contract from both sides: a `Config` with `Read` nil builds the same bytes as before the field, and a `Config` with a fake `Read` that records calls builds the same bytes too (nothing reads it yet), so the issue changes no output.
 
 Acceptance:
 
-1. `grep -c "Read " internal/pages/macro_page/page.go` is at least 1 and `grep -c "compute.ReadingFunc" internal/pages/macro_page/page.go` is at least 1.
+1. `grep -c "Read " internal/pages/macro_page/builder.go` is at least 1 and `grep -c "compute.ReadingFunc" internal/pages/macro_page/builder.go` is at least 1; `git diff $(git merge-base HEAD origin/main) -- internal/pages/macro_page/builder.go | grep '^-' | grep -vc '^---'` prints 0 (only additions).
 2. `go test ./internal/pages/macro_page -race -count=1` passes with `TestConfigReadNilUnchanged` and `TestConfigReadUnusedUnchanged` present (each name once; both compare the bytes with the golden of main); `grep -c "t.Parallel()" internal/pages/macro_page/page_test.go` is at least the count of `^func Test`; `grep -c "time.Sleep\|time.Now()" internal/pages/macro_page/page_test.go` prints 0.
 3. `go list -deps ./internal/pages/macro_page | grep -c "internal/compute/ease\|internal/jobs\|internal/sources"` prints 0; `git diff $(git merge-base HEAD origin/main) -- contracts internal/pages/api.go | grep -c .` prints 0; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the two paths of the Files line.
 
@@ -206,8 +206,8 @@ Checked by CI: ci-go (`go test ./internal/pages/... -race -count=1`); `Contracts
 
 ### macro-ease-wire
 
-- Module: ot. Size: S. Depends on: macro-page-interface (the field `Config.Read`) and #553 (the open issue that adds the readings DSN and the call of `computefigures.New` to `cmd/ot`; this issue uses the reader opener it lands, so it is cut after that code is on main and names the opener and the call in its pull request). It needs no other issue's merged output to compile or be tested.
-- Order: after 5 (`ease-job-step`, which lands `computefigures.NewWithEase`; ordered, not a compile dependency of the page part) and after #553. Without it the page keeps the `no_data` gap in production (the review's gap 1) and the job stores no ease.
+- Module: ot. Size: S. Depends on: macro-page-interface (the field `Config.Read`) and #553 (the open issue that adds the readings DSN and the call of `computefigures.New` to `cmd/ot`; this issue uses the reader opener it lands, so it is cut after that code is on main and names the opener and the call in its pull request). Depends on, for the job part (compile dependencies): ease-job-step (5), which lands `computefigures.NewWithEase` and the key `macro.ease|market|WALCL` that `TestComputeFiguresJobGetsEase` asserts, and compute-ease (4), which lands `ease.New`; so it depends on 4, 5, 6 and #553.
+- Order: after 4, 5, 6 and #553. Without it the page keeps the `no_data` gap in production (the review's gap 1) and the job stores no ease.
 - Design: docs/design/ease-v2.md#Decisions (Decision 8) and #Interface
 - Files: cmd/ot/wire.go, cmd/ot/pagelist.go, cmd/ot/wire_test.go, cmd/ot/pagelist_test.go, cmd/ot/page_test.go, docs/contracts/ot.md
 
@@ -257,7 +257,7 @@ Checked by CI: the web workflow (`tsc`, `eslint`, `vitest`, build); `Contracts: 
 
 Review of revision 1: the full text is `scratchpad/ease-adversarial.md` of the dispatcher's session (the file is in its scratchpad directory; an absolute path is not written here because the pre-push hook refuses local paths) (kept by the dispatcher, not committed). The scoring port was found to match option-trader; the faults were elsewhere. Revision 2 answers each point.
 
-- Gap, the gauge stays empty in production: adopted. Issue 8 (`macro-ease-wire`, module ot, after 5 and #553, on the field of issue 6) passes the reading function to `macro_page` and `ease.New(rules)` to the job; the item is out of Left out.
+- Gap, the gauge stays empty in production: adopted. Issue 8 (`macro-ease-wire`, module ot, after 4, 5, 6 and #553) passes the reading function to `macro_page` and `ease.New(rules)` to the job; the item is out of Left out.
 - Window refetch not idempotent (`realtime_start` in the key): adopted, and the review was right. Decision 3 pins the vintage of the five new series to the observation date in the mapper; Decision 4 uses one `windowed` list and one `lookback_days = 14`; `TestPinnedVintageSameKeyAcrossFetchDays` varies `realtime_start` between two fetches, so a fake with equal vintages can no longer hide the fault. Cost named: a revision of a first-seen value is not stored.
 - Timing of `compute_figures` against the 07:30 fetch: adopted as a stated fact (What main holds today); the ages of Decision 1 already allow it.
 - Hash coverage (rounding, rational conversion, whole-number step, `weekdaysAfter`): adopted. Decision 6 lists twelve names; `TestHashCoversEaseHelpers` proves each helper edit changes the hash.
