@@ -30,6 +30,7 @@ const (
 	newestReadingLabel = "最新读数日 "
 	noReadingWord      = "无"
 	alertDataLabel     = "；提醒数据日 "
+	moreWord           = "等"
 	generatedLabel     = "；生成于 "
 	detailDataDayOpen  = "（数据日 "
 	detailDataDayClose = "）"

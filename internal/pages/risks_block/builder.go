@@ -19,6 +19,10 @@ const (
 	// maxItems and maxGaps are the maxItems of items and gaps in the schema.
 	maxItems = 50
 	maxGaps  = 20
+	// maxDataDays is how many distinct data days data_times names; maxLength is the schema's
+	// maxLength of the text fields.
+	maxDataDays = 6
+	maxLength   = 200
 
 	timeLayout = "2006-01-02T15:04:05-07:00"
 )
@@ -90,7 +94,9 @@ func Build(ctx context.Context, in Input) ([]byte, error) {
 			if len(items) < maxItems {
 				items = append(items, it)
 			}
-			dataDays = append(dataDays, string(r.DataDay))
+			if len(dataDays) == 0 || !contains(dataDays, string(r.DataDay)) {
+				dataDays = append(dataDays, string(r.DataDay))
+			}
 		case "no_data":
 			noData++
 			if len(gaps) < maxGaps {
@@ -143,7 +149,10 @@ func dataTimes(newest contracts.Day, dataDays []string, generatedAt time.Time) s
 	}
 	if len(dataDays) > 0 {
 		sb.WriteString(alertDataLabel)
-		sb.WriteString(strings.Join(dataDays, "、"))
+		sb.WriteString(strings.Join(dataDays[:min(len(dataDays), maxDataDays)], "、"))
+		if len(dataDays) > maxDataDays {
+			sb.WriteString(moreWord)
+		}
 	}
 	sb.WriteString(generatedLabel)
 	sb.WriteString(generatedAt.Format(timeLayout))
@@ -158,6 +167,19 @@ func firedItem(r compute.AlertResult) (item, error) {
 	if !ok {
 		icon = iconVolatility
 	}
-	return item{kindMarketAlert, icon, r.Level, r.Title,
-		r.Detail + detailDataDayOpen + string(r.DataDay) + detailDataDayClose}, nil
+	suffix := detailDataDayOpen + string(r.DataDay) + detailDataDayClose
+	detail := []rune(r.Detail)
+	if room := maxLength - len([]rune(suffix)); len(detail) > room {
+		detail = detail[:max(room, 0)]
+	}
+	return item{kindMarketAlert, icon, r.Level, r.Title, string(detail) + suffix}, nil
+}
+
+func contains(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }

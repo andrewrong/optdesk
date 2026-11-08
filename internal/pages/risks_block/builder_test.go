@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -279,5 +281,22 @@ func TestBlockReaderErrorIsError(t *testing.T) {
 	}
 	if _, err := Build(context.Background(), in); !errors.Is(err, boom) {
 		t.Errorf("err = %v, want boom", err)
+	}
+}
+
+func TestBlockManyFiredStaysInSchema(t *testing.T) {
+	t.Parallel()
+	var res []compute.AlertResult
+	for i := 0; i < 16; i++ {
+		res = append(res, fired(fmt.Sprintf("r%d", i), "标题", "market.vix_pctile_3y", "w", "d", fmt.Sprintf("2026-11-%02d", i+1)))
+	}
+	res = append(res, fired("long", "标题", "market.ivr_own", "w", strings.Repeat("长", 300), "2026-11-06"))
+	s := schema(t)
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(build(t, res, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Validate(doc); err != nil {
+		t.Fatalf("many fired rules break the schema: %v", err)
 	}
 }
