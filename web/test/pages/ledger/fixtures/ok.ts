@@ -1,4 +1,15 @@
-import type { LedgerPage } from '../../../../src/generated/ledger_page.v1'
+import type { ChartPoint, LedgerPage } from '../../../../src/generated/ledger_page.v1'
+
+// Twelve steps of a cumulative line, as the schema's two-or-more tuple of day, text and number.
+const line = (): [ChartPoint, ChartPoint, ...ChartPoint[]] => {
+  const steps = Array.from({ length: 12 }, (_, i) => ({
+    day: `2026-${String(i + 1).padStart(2, '0')}-01`,
+    text: `ok 累计 +${i * 10}`,
+    value: i * 10,
+  }))
+  const [a, b, ...rest] = steps
+  return [a as ChartPoint, b as ChartPoint, ...rest]
+}
 
 // Synthetic ledger_page fixture written from contracts/schemas/page.ledger_page.v1.json alone.
 export const ok = {
@@ -30,7 +41,7 @@ export const ok = {
     {
       key: 'acct_a_usd',
       title: 'ok 分区标题',
-      chart: null,
+      chart: { points: line(), summary: 'ok 曲线摘要' },
       lead: { caption: 'ok 引导', total: { text: 'ok 引导合计 +120', tone: 'gain' } },
       more: ['ok 更多一行'],
       open: [
@@ -49,7 +60,7 @@ export const ok = {
             { text: 'ok 策略名' },
             { text: 'ok 已平 5' },
             { text: 'ok 结果 +120', tone: 'gain' },
-            { text: 'ok 备注' },
+            { text: 'n<30' },
           ],
           closed: [
             {
@@ -65,7 +76,89 @@ export const ok = {
           lines: ['ok 策略行'],
         },
       ],
-      strategy_columns: ['ok 策略列', 'ok 笔数列', 'ok 结果列', 'ok 备注列'],
+      strategy_columns: ['Strategy', 'Closed', 'Realized', 'Ann.'],
+      totals_differ: null,
+    },
+    {
+      key: 'acct_b_usd',
+      title: 'ok 第二美元分区',
+      chart: { points: line(), summary: 'ok 第二曲线摘要' },
+      lead: { caption: 'ok 引导', total: { text: 'ok 引导合计 +120', tone: 'gain' } },
+      more: ['ok 更多一行'],
+      open: [
+        {
+          label: 'ok 未平合约',
+          small: 'ok 未平小字',
+          premium: { text: 'ok 权利金 -30', tone: 'loss' },
+          detail: ['ok 未平细节'],
+        },
+      ],
+      open_columns: ['ok 合约列', 'ok 权利金列'],
+      open_title: 'ok 未平表标题',
+      strategies: [
+        {
+          cells: [
+            { text: 'ok 策略名' },
+            { text: 'ok 已平 5' },
+            { text: 'ok 结果 +120', tone: 'gain' },
+            { text: 'n<30' },
+          ],
+          closed: [
+            {
+              cells: [
+                { text: 'ok 已平合约' },
+                { text: 'ok 已实现 +120', tone: 'gain' },
+                { text: '' },
+              ],
+              detail: ['ok 已平细节'],
+            },
+          ],
+          dots: [{ text: 'ok 点', value: 120, delivered: false }],
+          lines: ['ok 策略行'],
+        },
+      ],
+      strategy_columns: ['Strategy', 'Closed', 'Realized', 'Ann.'],
+      totals_differ: null,
+    },
+    {
+      key: 'acct_c_jpy',
+      title: 'ok 日元分区',
+      chart: null,
+      lead: { caption: 'ok 引导', total: { text: 'ok 引导合计 +120 约 ok approx_usd 800 美元', tone: 'gain' } },
+      more: ['ok 更多一行'],
+      open: [
+        {
+          label: 'ok 未平合约',
+          small: 'ok 未平小字',
+          premium: { text: 'ok 权利金 -30', tone: 'loss' },
+          detail: ['ok 未平细节'],
+        },
+      ],
+      open_columns: ['ok 合约列', 'ok 权利金列'],
+      open_title: 'ok 未平表标题',
+      strategies: [
+        {
+          cells: [
+            { text: 'ok 策略名' },
+            { text: 'ok 已平 5' },
+            { text: 'ok 结果 +120', tone: 'gain' },
+            { text: 'n<30' },
+          ],
+          closed: [
+            {
+              cells: [
+                { text: 'ok 已平合约' },
+                { text: 'ok 已实现 +120', tone: 'gain' },
+                { text: '' },
+              ],
+              detail: ['ok 已平细节'],
+            },
+          ],
+          dots: [{ text: 'ok 点', value: 120, delivered: false }],
+          lines: ['ok 策略行'],
+        },
+      ],
+      strategy_columns: ['Strategy', 'Closed', 'Realized', 'Ann.'],
       totals_differ: null,
     },
   ],
