@@ -27,8 +27,8 @@ func (seriesOps) FromSeriesPoints(points []contracts.SeriesPoint) compute.Series
 		if p.Status != "present" || p.Value == nil {
 			continue
 		}
-		day := contracts.Day(p.ObservationDate.Time.Format(dateLayout))
-		vintage := p.RealtimeStart.Time.Format(dateLayout)
+		day := contracts.Day(p.ObservationDate.Format(dateLayout))
+		vintage := p.RealtimeStart.Format(dateLayout)
 		if old, ok := best[day]; ok && old.vintage >= vintage {
 			continue
 		}
