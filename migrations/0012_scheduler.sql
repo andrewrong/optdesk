@@ -49,14 +49,20 @@ CREATE VIEW rd.job_gap_r1 AS
 SELECT job_id, dataset_id, day, reason, first_seen_at, reported_at, cleared_at
 FROM ops.job_gap;
 
--- One row per dataset window. due_by is the close of the window; present_day is the latest day with a present key of
--- the dataset; gap is the reason of the open gap of the dataset on that day ('' when none). A window with neither
+-- One row per dataset window. due_by is the close of the window; present_day is the latest day on or before the
+-- expected day that has a present key and whose expected keys are all present or no_value; gap is the reason of the open gap of the dataset on that day ('' when none). A window with neither
 -- open_at nor close_at is a day without a session: closed.
 CREATE VIEW rd.expectation_r1 AS
 SELECT w.dataset_id,
        w.session_day AS expected_day,
        (SELECT max(p.session_day) FROM ops.capture_present p
-         WHERE p.dataset_id = w.dataset_id AND p.status = 'present') AS present_day,
+         WHERE p.dataset_id = w.dataset_id AND p.status = 'present' AND p.session_day <= w.session_day
+           AND NOT EXISTS (SELECT 1 FROM ops.capture_expected_key k
+                            WHERE k.dataset_id = p.dataset_id AND k.session_day = p.session_day
+                              AND NOT EXISTS (SELECT 1 FROM ops.capture_present q
+                                               WHERE q.session_day = k.session_day AND q.dataset_id = k.dataset_id
+                                                 AND q.subject_key = k.subject_key
+                                                 AND q.status IN ('present', 'no_value')))) AS present_day,
        w.close_at AS due_by,
        COALESCE((SELECT g.reason FROM ops.job_gap g
                   WHERE g.dataset_id = w.dataset_id AND g.day = w.session_day AND g.cleared_at IS NULL

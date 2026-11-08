@@ -127,3 +127,63 @@ func TestOtRoPagesReadsViews(t *testing.T) {
 		t.Errorf("status = %+v", st)
 	}
 }
+
+func TestExpectationPresentDayNotAfterExpected(t *testing.T) {
+	t.Parallel()
+	name := newSchedulerDatabase(t)
+	ctx := context.Background()
+	c := connectAs(t, name, "ot_runner")
+	for _, q := range []string{
+		`INSERT INTO ops.dataset_window VALUES ('obs.x','2026-11-02','2026-11-02 14:30Z','2026-11-02 22:00Z'),
+		                                       ('obs.x','2026-11-03','2026-11-03 14:30Z','2026-11-03 22:00Z')`,
+		`INSERT INTO ops.capture_present (session_day, dataset_id, subject_key, status) VALUES ('2026-11-03','obs.x','SPY','present')`,
+	} {
+		if _, err := c.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, err := OpenGapReader(ctx, connURL(t, name, "ot_ro_pages"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = r.Close() })
+	got, err := r.Expectations(ctx, "2026-11-02", "2026-11-02")
+	if err != nil || len(got) != 1 {
+		t.Fatalf("%v %v", got, err)
+	}
+	if got[0].PresentDay > got[0].ExpectedDay {
+		t.Errorf("PresentDay %s after ExpectedDay %s: Freshness reads INVALID", got[0].PresentDay, got[0].ExpectedDay)
+	}
+}
+
+func TestExpectationPresentDayNeedsCompleteDay(t *testing.T) {
+	t.Parallel()
+	name := newSchedulerDatabase(t)
+	ctx := context.Background()
+	c := connectAs(t, name, "ot_runner")
+	for _, q := range []string{
+		`INSERT INTO ops.dataset_window VALUES ('obs.x','2026-11-03','2026-11-03 14:30Z','2026-11-03 22:00Z')`,
+		`INSERT INTO ops.capture_expected_key VALUES ('2026-11-03','h','obs.x','SPY'),('2026-11-03','h','obs.x','QQQ')`,
+		`INSERT INTO ops.capture_present VALUES ('2026-11-03','obs.x','SPY','present')`,
+	} {
+		if _, err := c.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, err := OpenGapReader(ctx, connURL(t, name, "ot_ro_pages"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = r.Close() })
+	got, err := r.Expectations(ctx, "2026-11-03", "2026-11-03")
+	if err != nil || len(got) != 1 || got[0].PresentDay != "" {
+		t.Fatalf("one key of two present: %+v %v", got, err)
+	}
+	if _, err := c.Exec(ctx, `INSERT INTO ops.capture_present VALUES ('2026-11-03','obs.x','QQQ','no_value')`); err != nil {
+		t.Fatal(err)
+	}
+	got, err = r.Expectations(ctx, "2026-11-03", "2026-11-03")
+	if err != nil || len(got) != 1 || got[0].PresentDay != "2026-11-03" {
+		t.Fatalf("all keys settled: %+v %v", got, err)
+	}
+}
