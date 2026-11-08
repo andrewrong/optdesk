@@ -22,3 +22,11 @@ mic = "ARCX"
 calendar_id = "XNYS"
 price_increment = "0.01"
 lot_size = "1"
+
+# Proposed slot: 30 minutes before the close; the bound is 8 minutes plus the job's own budget_minutes.
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "-30m"
+run_bound = "16m"
+restart_sensitive = true
