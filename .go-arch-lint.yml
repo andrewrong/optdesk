@@ -51,6 +51,8 @@ components:
     in: internal/store/snapshot
   compute:
     in: internal/compute
+  compute/figures:
+    in: internal/compute/figures
   compute/gonumstats:
     in: internal/compute/gonumstats
   compute/own:
@@ -184,6 +186,11 @@ deps:
   compute:
     mayDependOn:
       - contracts
+  compute/figures:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/gonumstats:
     mayDependOn:
       - contracts
@@ -353,6 +360,7 @@ deps:
       - store/reading
       - compute/own
       - compute/gonumstats
+      - compute/figures
       - notify/core
       - notify/telegram
       - notify/dryrun
