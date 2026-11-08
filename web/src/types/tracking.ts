@@ -1,10 +1,10 @@
-// TEMPORARY hand-written placeholder (not generated; web/src/generated stays the stub). Types copied from the old repository until the week1-schemas issue generates them.
+// The tracking page reads schema version 2 (grouped by rule version); its payload type is the generated one.
+import type { Tracking } from '@/generated/tracking.v2'
 import { placeholderValidate, type Gap, type Result as Checked } from './placeholder.ts'
-import type { Tracking as PayloadV1 } from './tracking.v1.types.ts'
 
 export type { Gap }
-export const SUPPORTED_VERSIONS = [1] as const
-export type Payload = PayloadV1
+export const SUPPORTED_VERSIONS = [2] as const
+export type Payload = Tracking
 export type Result = Checked<Payload>
 
 export const validate = placeholderValidate<Payload>(SUPPORTED_VERSIONS)

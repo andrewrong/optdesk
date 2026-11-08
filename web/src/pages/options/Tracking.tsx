@@ -1,8 +1,10 @@
-// Issue #1827: one row per scanned candidate with its outcome and the P&L split. Python sends the rows, the
-// order and every string; the table only sorts on demand and the browser computes nothing.
+// Tracking page v2: grouped by rule version. Python sends the versions, groups, tiles, rows and every string; the
+// view prints them in payload order and computes, averages and compares nothing.
 import { ClipboardList, Info } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/tracking'
@@ -22,7 +24,12 @@ const COLUMNS: Column[] = [
 ]
 const text = (value: string) => ({ text: value, value })
 
-type Row = Payload['rows'][number]
+type Version = Payload['versions'][number]
+type Group = Version['groups'][number]
+type Row = Group['rows'][number]
+// The generated `rows` types of the two string tables are a union of flat tuples (a generator quirk); on the wire a
+// row is a list of strings, so the view reads them as a list of rows.
+type StringTable = { columns: readonly string[]; rows: readonly unknown[] }
 
 const toCells = (row: Row): Record<string, Cell> => ({
   symbol: text(row.symbol),
@@ -37,7 +44,94 @@ const toCells = (row: Row): Record<string, Cell> => ({
     : { assigned: { text: row.assigned, value: row.assigned, badge: true } }),
 })
 
+function StringsTable({ table }: { table: StringTable }) {
+  const columns: Column[] = table.columns.map((label, i) => ({ id: `c${i}`, label, wrap: true }))
+  const rows = (table.rows as readonly (readonly string[])[]).map((row) =>
+    Object.fromEntries(row.map((cell, i) => [`c${i}`, text(cell)])),
+  )
+  return <DataTable columns={columns} rows={rows} />
+}
+
+function GroupBlock({ group }: { group: Group }) {
+  return (
+    <Card className="min-w-0" data-tracking-group={group.key}>
+      <CardHeader>
+        <CardTitle>{group.title}</CardTitle>
+        {group.note ? <p className="text-sm text-muted-foreground">{group.note}</p> : null}
+      </CardHeader>
+      <CardContent className="min-w-0 space-y-3">
+        {Array.isArray(group.summary) ? (
+          <div className="flex flex-wrap gap-2">
+            {group.summary.map((tile) => (
+              <Badge key={tile.label} variant="outline" className="h-auto gap-2 px-3 py-1">
+                <span className="text-muted-foreground">{tile.label}</span>
+                <span className="font-semibold">{tile.text}</span>
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{group.summary.text}</p>
+        )}
+        <Accordion type="single" collapsible>
+          <AccordionItem value="rows">
+            <AccordionTrigger>评估明细</AccordionTrigger>
+            <AccordionContent>
+              <DataTable columns={COLUMNS} rows={group.rows.map(toCells)} />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
+  )
+}
+
+function VersionBody({ version }: { version: Version }) {
+  const calls = version.covered_calls
+  const mine = version.my_trades
+  return (
+    <div className="min-w-0 space-y-4">
+      {version.groups.map((group) => (
+        <GroupBlock key={group.key} group={group} />
+      ))}
+      {calls ? (
+        <Card className="min-w-0" data-tracking-covered-calls>
+          <CardHeader>
+            <CardTitle>{calls.title}</CardTitle>
+            <p className="text-sm text-muted-foreground">{calls.sub}</p>
+          </CardHeader>
+          <CardContent className="min-w-0 space-y-4">
+            {calls.groups.map((group) => (
+              <GroupBlock key={group.key} group={group} />
+            ))}
+            <StringsTable table={calls.comparison} />
+            {calls.note ? <p className="text-sm text-muted-foreground">{calls.note}</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
+      <Card className="min-w-0" data-tracking-my-trades>
+        {'columns' in mine ? (
+          <>
+            <CardHeader>
+              <CardTitle>{mine.title}</CardTitle>
+              <p className="text-sm text-muted-foreground">{mine.sub}</p>
+            </CardHeader>
+            <CardContent className="min-w-0 space-y-2">
+              <StringsTable table={mine} />
+              {mine.note ? <p className="text-sm text-muted-foreground">{mine.note}</p> : null}
+            </CardContent>
+          </>
+        ) : (
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{mine.text}</p>
+          </CardContent>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 export function Tracking({ payload }: { payload: Payload }) {
+  const [current, ...older] = payload.versions
   return (
     <div className="min-w-0 space-y-6" data-page="tracking">
       <header>
@@ -51,17 +145,6 @@ export function Tracking({ payload }: { payload: Payload }) {
           <AlertDescription>{payload.note}</AlertDescription>
         </Alert>
       ) : null}
-      <Card className="min-w-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList aria-hidden />
-            系统期权跟踪
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="min-w-0">
-          <DataTable columns={COLUMNS} rows={payload.rows.map(toCells)} />
-        </CardContent>
-      </Card>
       <Card>
         <CardHeader>
           <CardTitle>怎么算的</CardTitle>
@@ -72,10 +155,32 @@ export function Tracking({ payload }: { payload: Payload }) {
           ))}
         </CardContent>
       </Card>
-      <Alert data-tracking-pending>
-        <Info aria-hidden />
-        <AlertDescription>{payload.pending}</AlertDescription>
-      </Alert>
+      <section className="min-w-0 space-y-4" data-tracking-version="current">
+        <div className="flex flex-wrap items-center gap-2">
+          <ClipboardList aria-hidden className="size-5" />
+          <h2 className="text-lg font-semibold">{current.label}</h2>
+          <Badge variant="secondary">{current.expired_text}</Badge>
+        </div>
+        <VersionBody version={current} />
+      </section>
+      {older.length > 0 ? (
+        <Accordion type="single" collapsible>
+          <AccordionItem value="older">
+            <AccordionTrigger>更早的规则版本</AccordionTrigger>
+            <AccordionContent className="space-y-6">
+              {older.map((version) => (
+                <section key={version.label} className="min-w-0 space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">{version.label}</h3>
+                    <Badge variant="secondary">{version.expired_text}</Badge>
+                  </div>
+                  <VersionBody version={version} />
+                </section>
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ) : null}
     </div>
   )
 }

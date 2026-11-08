@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.market_page.v1.json",
+  "title": "MarketPage",
+  "description": "Board 7: the market page. A render of numbers a producer writes; nothing is computed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "sentence",
+    "notes",
+    "gaps",
+    "weather",
+    "indices",
+    "term",
+    "breadth"
+  ],
+  "properties": {
+    "schema": {
+      "const": "market_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "sentence": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "weather": {
+      "$ref": "#/$defs/Weather"
+    },
+    "indices": {
+      "$ref": "#/$defs/Indices"
+    },
+    "term": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Term"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "breadth": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Breadth"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "Breadth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BreadthRow"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "rows"
+      ]
+    },
+    "BreadthRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "figure": {
+          "$ref": "#/$defs/FigureOrGap"
+        }
+      },
+      "required": [
+        "label",
+        "figure"
+      ],
+      "description": "Breadth figure (metric id: assigned by compute)."
+    },
+    "Chart": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "aria_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "series_names": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChartPoint"
+          },
+          "maxItems": 400
+        }
+      },
+      "required": [
+        "aria_text",
+        "series_names",
+        "points"
+      ]
+    },
+    "ChartPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "close": {
+          "type": "number",
+          "description": "Index close (metric id: assigned by compute)",
+          "x-decimals": 2
+        },
+        "ma200": {
+          "type": "number",
+          "description": "200-day line (metric id: assigned by compute)",
+          "x-decimals": 2
+        }
+      },
+      "required": [
+        "label",
+        "close",
+        "ma200"
+      ]
+    },
+    "Figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "value",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "description": "A number the producer wrote; the view prints text."
+    },
+    "FigureOrGap": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Figure"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "IndexRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Text"
+        },
+        "iv": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "rv20": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "iv_minus_rv20": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "rank_3y": {
+          "$ref": "#/$defs/FigureOrGap"
+        }
+      },
+      "required": [
+        "name",
+        "iv",
+        "rv20",
+        "iv_minus_rv20",
+        "rank_3y"
+      ],
+      "description": "Each figure is written by the producer (metric id: assigned by compute); a missing one is a Gap."
+    },
+    "Indices": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "sentence": {
+          "$ref": "#/$defs/Text"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IndexRow"
+          }
+        },
+        "note": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "title",
+        "sentence",
+        "columns",
+        "rows",
+        "note"
+      ]
+    },
+    "Term": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "sentence": {
+          "$ref": "#/$defs/Text"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TermPoint"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "sentence",
+        "points"
+      ]
+    },
+    "TermPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "today": {
+          "$ref": "#/$defs/FigureOrGap"
+        },
+        "five_days_ago": {
+          "$ref": "#/$defs/FigureOrGap"
+        }
+      },
+      "required": [
+        "label",
+        "today",
+        "five_days_ago"
+      ],
+      "description": "Term curve values (metric id: assigned by compute)."
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Weather": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headline": {
+          "$ref": "#/$defs/Text"
+        },
+        "sentence": {
+          "$ref": "#/$defs/Text"
+        },
+        "chart": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Chart"
+            },
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            }
+          ]
+        }
+      },
+      "required": [
+        "headline",
+        "sentence",
+        "chart"
+      ]
+    }
+  }
+}
