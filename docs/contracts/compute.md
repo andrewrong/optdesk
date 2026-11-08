@@ -35,6 +35,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - Reasons. `Reason` is empty, or `no_reading`, `missing_input`, `unit_mismatch`, `stale_data` or `no_data_day`; a reason goes with state `no_data` only.
 - Window. For each rule `read` is called for the days `today - 5` to `today` and the newest row returned is used; evaluation does not choose a winner, the `ReadingFunc` passed in applies the winner rule of the report page.
 - Data-day rule. The row day is not the day of the data. The parameter `data_day` of the row is the day of its newest input: absent or not a day gives `no_data_day`; row day minus `data_day` above the rule's `MaxDataAgeDays` calendar days gives `stale_data`.
+- Stale and missing data. `stale_data` and `no_data_day` are counted and logged by rule id, since they mean the data or the rule file is wrong.
 - Comparison. Exact on decimal text (no float); `Detail` is built from fixed words and the stored value, never from free text of the rule file. `Public` is true when the subject is in `PublicSubjects`.
 - Errors. A reader error is an error of the call, never `no_data`. A loader error names the key and the rule id and never a value.
 

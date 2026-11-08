@@ -338,12 +338,12 @@ func TestAlertContract(t *testing.T) {
 	if _, err = evaluate(context.Background(), rules, bad, "2026-11-08"); !errors.Is(err, boom) {
 		t.Fatalf("reader error must be an error of the call: %v", err)
 	}
-	loaded, err := compute.LoadAlertRulesFunc(fakeLoad)(nil2Reader{})
+	loaded, err := compute.LoadAlertRulesFunc(fakeLoad)(emptyReader{})
 	if err != nil || len(loaded.Rules) != 1 {
 		t.Fatalf("load: %v %v", loaded, err)
 	}
 }
 
-type nil2Reader struct{}
+type emptyReader struct{}
 
-func (nil2Reader) Read([]byte) (int, error) { return 0, io.EOF }
+func (emptyReader) Read([]byte) (int, error) { return 0, io.EOF }
