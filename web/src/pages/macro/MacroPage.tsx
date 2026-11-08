@@ -1,9 +1,9 @@
 // Board 8: all figures and prose are supplied by Python; tables only sort on demand.
 import { ChevronRight, Info } from 'lucide-react'
+import { EaseGauge } from '@/components/ease-gauge/EaseGauge'
 import { DataTable, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/macro_page'
@@ -65,12 +65,7 @@ export function MacroPage({ payload }: { payload: Payload }) {
           ) : (
             <>
               <div className="text-2xl font-semibold">{ease.figure.text}</div>
-              <Progress value={ease.marker_percent.value} aria-label={ease.aria_text} />
-              <div className="flex justify-between text-xs text-muted-foreground" data-ticks>
-                {ease.ticks.map((tick) => (
-                  <span key={tick}>{tick}</span>
-                ))}
-              </div>
+              <EaseGauge ease={ease} />
               <p className="text-xs text-muted-foreground" data-neutral-band>
                 {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
               </p>
