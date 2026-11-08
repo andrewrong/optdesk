@@ -233,6 +233,8 @@ const (
 	DSNEnvMaster = "OT_PG_DSN_MASTER"
 	// DSNEnvReadings names the line that holds the DSN of the role ot_w_readings.
 	DSNEnvReadings = "OT_PG_DSN_READINGS"
+	// DSNEnvAlerts names the line that holds the DSN of the role ot_w_alerts.
+	DSNEnvAlerts = "OT_PG_DSN_ALERTS"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -451,3 +453,22 @@ type OpenSchedulerLedgerFunc func(ctx context.Context, dsn string) (SchedulerLed
 
 // OpenGapReaderFunc opens the gap reader with the line DSNEnvPages (internal/store/ops.OpenGapReader).
 type OpenGapReaderFunc func(ctx context.Context, dsn string) (GapReader, error)
+
+// SentMark is one row of alerts.sent: the alert rule that was said on a data day.
+type SentMark struct {
+	RuleID string
+	Day    contracts.Day
+}
+
+// SentStore reads and writes the table alerts.sent, key (rule_id, day).
+type SentStore interface {
+	// SentSince returns the marks with day >= from, ascending by day then rule id.
+	SentSince(ctx context.Context, from contracts.Day) ([]SentMark, error)
+	// MarkSent inserts the mark ON CONFLICT DO NOTHING, sent_at from the database's now().
+	// The caller marks after the send, never before.
+	MarkSent(ctx context.Context, ruleID string, day contracts.Day) error
+	Close() error
+}
+
+// OpenSentFunc opens the sent-mark store with the line DSNEnvAlerts (internal/store/alert.Open).
+type OpenSentFunc func(ctx context.Context, dsn string) (SentStore, error)

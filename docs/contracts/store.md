@@ -74,6 +74,14 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - The enum `reading_unit` has nine words: `decimal, percent, vol_point, per_calendar_day, count, days, money, ratio, text_tag`.
 - Grants: `ot_w_readings` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_READINGS`) has `INSERT` and `SELECT` on the four tables and `SELECT` on `rd.reading_r1`; `ot_ro_pages` has `SELECT` on `rd.reading_r1` and nothing on the tables; `ot_runner` has nothing. No role has UPDATE, DELETE or TRUNCATE.
 
+## Alert sent marks
+
+`internal/store/alert` (stub; the implementation is a later issue) will hold `alert.Open`, a `store.OpenSentFunc` returning a `store.SentStore` (`SentSince`, `MarkSent`, `Close`) from the line `store.DSNEnvAlerts` (`OT_PG_DSN_ALERTS`) of the role `ot_w_alerts`.
+
+- Table `alerts.sent(rule_id, day, sent_at)`, key `(rule_id, day)`. `SentSince(from)` returns the marks with `day >= from`, ascending by day then rule id; none gives an empty slice.
+- `MarkSent` inserts `ON CONFLICT DO NOTHING`; `sent_at` comes from the database's `now()`. A second mark of the same key changes nothing.
+- Mark after send: the caller calls `MarkSent` only after the message was sent, so a failed send leaves no mark and the result is said again on the next pass.
+
 ## Scheduler store
 
 Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, views and implementations come from `migrations/0012_scheduler.sql` and `sched-store-ops` in later entries. Design: `docs/design/scheduler.md#sched-store-interface`.
@@ -111,6 +119,7 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 - `internal/store/api_test.go`: `TestOptionEodStoreContract`, `TestQuoteSnapshotStoreContract` and `TestSnapshotDSNEnvNames` hold both stores and the two line names from both sides.
 - `internal/store/snapshot/optioneod_test.go`, `quotesnapshot_test.go` and `screen_test.go`: `TestInsertSQL`, `TestInsertScreensSentinels`, `TestReaderRangeAndOrder`, `TestQuoteInsertSQL`, `TestQuoteInsertScreensSentinels`, `TestQuoteReaderRangeAndOrder` and `TestScreenSentinel` (SQL strings, transaction, empty input, context, sentinels, range and order, against an in-test fake).
 - `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
+- `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
 
 - `internal/store/instrument/resolve_test.go` and `read_test.go`: `TestResolveCreates`, `TestResolveSame`, `TestResolveLock`, `TestResolveExtraTaken`, `TestResolveChecks` and `TestInstruments` against an in-test fake.

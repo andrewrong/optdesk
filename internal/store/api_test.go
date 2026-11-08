@@ -767,3 +767,72 @@ func TestInstrumentNameContract(t *testing.T) {
 		t.Fatalf("id 0: %v", err)
 	}
 }
+
+var _ store.OpenSentFunc = func(ctx context.Context, dsn string) (store.SentStore, error) {
+	return &memSent{}, nil
+}
+
+// memSent is a fake SentStore: marks are kept once per key, as the table alerts.sent does.
+type memSent struct{ rows []store.SentMark }
+
+func (m *memSent) SentSince(_ context.Context, from contracts.Day) ([]store.SentMark, error) {
+	var out []store.SentMark
+	for _, r := range m.rows {
+		if r.Day >= from {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (m *memSent) MarkSent(_ context.Context, ruleID string, day contracts.Day) error {
+	for _, r := range m.rows {
+		if r.RuleID == ruleID && r.Day == day {
+			return nil
+		}
+	}
+	m.rows = append(m.rows, store.SentMark{RuleID: ruleID, Day: day})
+	return nil
+}
+
+func (m *memSent) Close() error { return nil }
+
+// sentCaller sends only what is not marked, then marks after the send, through the interface only.
+func sentCaller(ctx context.Context, s store.SentStore, ruleID string, day contracts.Day, send func()) error {
+	marks, err := s.SentSince(ctx, day)
+	if err != nil {
+		return err
+	}
+	for _, m := range marks {
+		if m.RuleID == ruleID && m.Day == day {
+			return nil
+		}
+	}
+	send()
+	return s.MarkSent(ctx, ruleID, day)
+}
+
+func TestSentContract(t *testing.T) {
+	t.Parallel()
+	s := &memSent{}
+	ctx := context.Background()
+	sends := 0
+	for i := 0; i < 2; i++ {
+		if err := sentCaller(ctx, s, "vix_high", "2026-11-05", func() { sends++ }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if sends != 1 {
+		t.Fatalf("sent %d times, want 1", sends)
+	}
+	got, err := s.SentSince(ctx, "2026-11-05")
+	if err != nil || len(got) != 1 || got[0].RuleID != "vix_high" {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+	if got, _ := s.SentSince(ctx, "2026-11-06"); len(got) != 0 {
+		t.Fatalf("later window got %+v", got)
+	}
+	if store.DSNEnvAlerts != "OT_PG_DSN_ALERTS" {
+		t.Fatalf("DSNEnvAlerts = %q", store.DSNEnvAlerts)
+	}
+}
