@@ -19,6 +19,8 @@ import (
 
 var _ pages.BuildMacroRatesFunc = Build
 
+var dgs10 = []string{"DGS10"}
+
 var fixedAt = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // fakeReader is an in-memory SeriesReader.
@@ -97,7 +99,7 @@ func decode(t *testing.T, b []byte) map[string]any {
 
 func golden(t *testing.T) map[string]any {
 	t.Helper()
-	b, err := os.ReadFile(fixturePath("page.macro_rates.v2.golden.json"))
+	b, err := os.ReadFile(fixturePath("page.macro_rates.v3.golden.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +110,7 @@ func compileSchema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
-	for _, name := range []string{"common.v2.json", "page.macro_rates.v2.json"} {
+	for _, name := range []string{"common.v2.json", "page.macro_rates.v3.json"} {
 		f, err := os.Open(filepath.Join("..", "..", "..", "contracts", "schemas", name))
 		if err != nil {
 			t.Fatal(err)
@@ -122,7 +124,7 @@ func compileSchema(t *testing.T) *jsonschema.Schema {
 			t.Fatal(err)
 		}
 	}
-	s, err := c.Compile("https://optdesk.invalid/schemas/page.macro_rates.v2.json")
+	s, err := c.Compile("https://optdesk.invalid/schemas/page.macro_rates.v3.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +133,7 @@ func compileSchema(t *testing.T) *jsonschema.Schema {
 
 func TestBuildGolden(t *testing.T) {
 	t.Parallel()
-	out, err := Build(t.Context(), readerFromFixture(t), "2026-11-04", fixedAt)
+	out, err := build(t.Context(), readerFromFixture(t), dgs10, "2026-11-04", fixedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,24 +148,19 @@ func TestBuildGolden(t *testing.T) {
 
 func TestBuildDemo(t *testing.T) {
 	t.Parallel()
-	demo := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": {
-		pt(t, "2026-11-02", f64(4.1)),
-		pt(t, "2026-11-03", nil),
-		pt(t, "2026-11-04", f64(4.2)),
-	}}}
-	out, err := Build(t.Context(), demo, "2026-11-04", fixedAt)
+	out, err := Build(t.Context(), sevenReader(t, "percent", "index_points"), "2026-11-04", fixedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(decode(t, out), golden(t)) {
-		t.Fatalf("json = %s", out)
+	if n := len(decode(t, out)["series"].([]any)); n != 7 {
+		t.Fatalf("series = %d, want 7", n)
 	}
 }
 
 func buildGaps(t *testing.T, day contracts.Day, pts ...contracts.SeriesPoint) []map[string]any {
 	t.Helper()
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": pts}}
-	out, err := Build(t.Context(), r, day, fixedAt)
+	out, err := build(t.Context(), r, dgs10, day, fixedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +193,7 @@ func TestGapsAndStale(t *testing.T) {
 	t.Run("nil point is null in points", func(t *testing.T) {
 		t.Parallel()
 		r := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": {pt(t, "2026-11-04", nil)}}}
-		out, err := Build(t.Context(), r, "2026-11-04", fixedAt)
+		out, err := build(t.Context(), r, dgs10, "2026-11-04", fixedAt)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -246,7 +243,7 @@ func TestGapsAndStale(t *testing.T) {
 func latestOf(t *testing.T, day contracts.Day, pts ...contracts.SeriesPoint) map[string]any {
 	t.Helper()
 	r := fakeReader{points: map[string][]contracts.SeriesPoint{"DGS10": pts}}
-	out, err := Build(t.Context(), r, day, fixedAt)
+	out, err := build(t.Context(), r, dgs10, day, fixedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,6 +288,7 @@ func TestText(t *testing.T) {
 		{"ratio", pointText("ratio", f64(0.5)), "0.5000"},
 		{"ccy_amount", pointText("ccy_amount", f64(1234.5)), "1234.50"},
 		{"count", pointText("count", f64(42)), "42"},
+		{"index_points", pointText("index_points", f64(5120.254)), "5120.25"},
 		{"null", pointText("percent", nil), "no value"},
 		{"title", pageTitle, "Macro rates"},
 		{"sentence", pageSentence(1, "2026-11-04"), "1 series on 2026-11-04."},
@@ -311,15 +309,15 @@ func TestText(t *testing.T) {
 func TestBuildFixtures(t *testing.T) {
 	t.Parallel()
 	cases := map[string]fakeReader{
-		"page.macro_rates.v2.gap.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
+		"page.macro_rates.v3.gap.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
 			pt(t, "2026-11-02", f64(4.1)), pt(t, "2026-11-03", f64(4.2)), pt(t, "2026-11-04", nil)}}},
-		"page.macro_rates.v2.stale.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
+		"page.macro_rates.v3.stale.json": {points: map[string][]contracts.SeriesPoint{"DGS10": {
 			pt(t, "2026-10-27", f64(4.1)), pt(t, "2026-10-28", f64(4.2))}}},
 	}
 	for name, r := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			out, err := Build(t.Context(), r, "2026-11-04", fixedAt)
+			out, err := build(t.Context(), r, dgs10, "2026-11-04", fixedAt)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -343,4 +341,105 @@ func TestBuildErrors(t *testing.T) {
 	if _, err := Build(t.Context(), fakeReader{}, "not-a-day", fixedAt); err == nil {
 		t.Fatal("want error for a bad day")
 	}
+}
+
+// sevenReader holds the seven series with the two points of the seven fixture.
+func sevenReader(t *testing.T, rateUnit, indexUnit string) fakeReader {
+	t.Helper()
+	m := map[string][]contracts.SeriesPoint{}
+	for _, id := range seriesIDs {
+		unit, a, b := indexUnit, 5100.5, 5120.25
+		if id == "DGS10" || id == "DGS3MO" {
+			unit, a, b = rateUnit, 4.1, 4.2
+		}
+		p1, p2 := pt(t, "2026-11-03", f64(a)), pt(t, "2026-11-04", f64(b))
+		for _, p := range []*contracts.SeriesPoint{&p1, &p2} {
+			p.SeriesID = id
+			p.Unit = contracts.SeriesUnit(unit)
+		}
+		m[id] = []contracts.SeriesPoint{p1, p2}
+	}
+	return fakeReader{points: m}
+}
+
+func TestBuildSevenSeries(t *testing.T) {
+	t.Parallel()
+	t.Run("seven stored series", func(t *testing.T) {
+		t.Parallel()
+		out, err := Build(t.Context(), sevenReader(t, "percent", "index_points"), "2026-11-04", fixedAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := os.ReadFile(fixturePath("page.macro_rates.v3.seven.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := decode(t, out)
+		if !reflect.DeepEqual(got, decode(t, b)) {
+			t.Fatalf("json = %s\nwant %s", out, b)
+		}
+		if got["sentence"] != "7 series on 2026-11-04." {
+			t.Fatalf("sentence = %v", got["sentence"])
+		}
+		var ids []string
+		for _, s := range got["series"].([]any) {
+			ids = append(ids, s.(map[string]any)["id"].(string))
+		}
+		if !reflect.DeepEqual(ids, seriesIDs) {
+			t.Fatalf("ids = %v", ids)
+		}
+		if err := compileSchema(t).Validate(got); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("only DGS10 stored", func(t *testing.T) {
+		t.Parallel()
+		r := readerFromFixture(t)
+		out, err := Build(t.Context(), r, "2026-11-04", fixedAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := decode(t, out)
+		if err := compileSchema(t).Validate(m); err != nil {
+			t.Fatal(err)
+		}
+		series := m["series"].([]any)
+		for _, s := range series[1:] {
+			l := s.(map[string]any)["latest"].(map[string]any)
+			if l["reason"] != "no_data" || l["text"] != "no points" {
+				t.Fatalf("latest = %v", l)
+			}
+		}
+		stale := 0
+		for _, g := range m["gaps"].([]any) {
+			if g.(map[string]any)["reason"] == "stale" {
+				stale++
+			}
+		}
+		if stale != 6 {
+			t.Fatalf("stale gaps = %d, want 6", stale)
+		}
+	})
+	t.Run("reader error on any id", func(t *testing.T) {
+		t.Parallel()
+		for _, id := range seriesIDs {
+			r := failingReader{inner: sevenReader(t, "percent", "index_points"), failID: id}
+			out, err := Build(t.Context(), r, "2026-11-04", fixedAt)
+			if err == nil || out != nil {
+				t.Fatalf("%s: out=%s err=%v", id, out, err)
+			}
+		}
+	})
+}
+
+type failingReader struct {
+	inner  fakeReader
+	failID string
+}
+
+func (f failingReader) SeriesPoints(ctx context.Context, id string, from, to contracts.Day) ([]contracts.SeriesPoint, error) {
+	if id == f.failID {
+		return nil, errors.New("boom")
+	}
+	return f.inner.SeriesPoints(ctx, id, from, to)
 }

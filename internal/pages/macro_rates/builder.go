@@ -1,4 +1,4 @@
-// Package macro_rates builds the page.macro_rates.v2 view model from stored series points.
+// Package macro_rates builds the page.macro_rates.v3 view model from stored series points.
 // It only formats stored values; it computes nothing, reads no clock and makes no request.
 package macro_rates
 
@@ -24,8 +24,8 @@ const (
 	defaultUnit = "percent"
 )
 
-// seriesIDs are the series the page lists (week 1).
-var seriesIDs = []string{"DGS10"}
+// seriesIDs are the series the page lists, in page order.
+var seriesIDs = []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS"}
 
 type point struct {
 	Date  string   `json:"date"`
@@ -68,10 +68,14 @@ type viewModel struct {
 	Gaps          []gap    `json:"gaps"`
 }
 
-// Build returns the page.macro_rates.v2 JSON for day, read from r. generatedAt is written
+// Build returns the page.macro_rates.v3 JSON for day, read from r. generatedAt is written
 // in UTC, RFC 3339. A nil value is a no_value gap at its date; a series whose last point
 // is more than the freshness limit before day, or that has no point, is one stale gap at day.
 func Build(ctx context.Context, r store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
+	return build(ctx, r, seriesIDs, day, generatedAt)
+}
+
+func build(ctx context.Context, r store.SeriesReader, ids []string, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 	d, err := time.Parse(dayLayout, string(day))
 	if err != nil {
 		return nil, fmt.Errorf("macro_rates: bad day %q: %w", day, err)
@@ -79,14 +83,14 @@ func Build(ctx context.Context, r store.SeriesReader, day contracts.Day, generat
 	from := contracts.Day(d.AddDate(0, 0, -lookbackDays).Format(dayLayout))
 	vm := viewModel{
 		Schema:        "macro_rates",
-		SchemaVersion: 2,
+		SchemaVersion: 3,
 		GeneratedAt:   generatedAt.UTC().Format(time.RFC3339),
 		SessionDay:    string(day),
 		Title:         pageTitle,
 		Series:        []series{},
 		Gaps:          []gap{},
 	}
-	for _, id := range seriesIDs {
+	for _, id := range ids {
 		rows, err := r.SeriesPoints(ctx, id, from, day)
 		if err != nil {
 			return nil, fmt.Errorf("macro_rates: read %s: %w", id, err)
