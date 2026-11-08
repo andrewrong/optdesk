@@ -48,6 +48,10 @@ may_import = ["contracts", "clock", "sources"]
 in = "internal/store"
 may_import = ["contracts"]
 
+[component."store/account"]
+in = "internal/store/account"
+may_import = ["contracts", "store"]
+
 [component."store/alert"]
 in = "internal/store/alert"
 may_import = ["contracts", "store"]
@@ -124,6 +128,10 @@ may_import = ["contracts", "clock", "store", "runner"]
 in = "internal/jobs"
 may_import = ["contracts", "clock", "sources", "broker", "store", "compute"]
 
+[component."jobs/accountcapture"]
+in = "internal/jobs/accountcapture"
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
+
 [component."jobs/calendarrefresh"]
 in = "internal/jobs/calendarrefresh"
 may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
@@ -194,4 +202,4 @@ may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "store/account", "jobs/accountcapture"]
