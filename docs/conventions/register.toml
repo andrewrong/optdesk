@@ -1159,7 +1159,7 @@ Fewer than 200 values or a missing one: missing, short_history. A newest point o
 implemented_by = [
   "internal/compute/figures.(*calc).MovingAverageGap",
 ]
-source_hash = "pending-recompute"
+source_hash = "4c36c030baea6946aeb17504f18e17647d323968a2f3315cdc77989fb052cac8"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v2: source FRED SP500 only, mean of the last 200 values, unit ratio, half-even at 6 places (new entry beside v1, which is unchanged); Advisor: agrees (2026-11-08)."]
@@ -1549,7 +1549,7 @@ No history spanning 3 years: missing, short_history. No point within 8 days: mis
 implemented_by = [
   "internal/compute/figures.(*calc).PercentileInYears",
 ]
-source_hash = "pending-recompute"
+source_hash = "94dc0713f8318283f5bf712c9926decec47b3e6fff444b1d53be4ecc68af58ae"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1572,7 +1572,7 @@ No history spanning 3 years: missing, short_history. No point within 8 days: mis
 implemented_by = [
   "internal/compute/figures.(*calc).PercentileInYears",
 ]
-source_hash = "pending-recompute"
+source_hash = "9eec19fd5ecd9e1375ea5d39d60c0404f12d76497d1670ea473030bc396b73b3"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1595,7 +1595,7 @@ No history spanning 3 years: missing, short_history. No point within 8 days: mis
 implemented_by = [
   "internal/compute/figures.(*calc).PercentileInYears",
 ]
-source_hash = "pending-recompute"
+source_hash = "869e1909e45e1f187cef023110a7bba8b450e02f5c71634546bb028dd394d811"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1618,7 +1618,7 @@ No history spanning 3 years: missing, short_history. No point within 8 days: mis
 implemented_by = [
   "internal/compute/figures.(*calc).PercentileInYears",
 ]
-source_hash = "pending-recompute"
+source_hash = "43a29cdbbe9efb9ab59aec8e0a5d94f61896ce9268a62c07b23010a71be1ca87"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1642,7 +1642,7 @@ implemented_by = [
   "internal/compute/figures.(*calc).Iv30",
   "internal/compute/figures.strikeStar",
 ]
-source_hash = "pending-recompute"
+source_hash = "03cf7d637f3e2b5f1a4e81f5cf0565662b9dbcd4f6c21ec50c11f97e4677c183"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1665,7 +1665,7 @@ Fewer than 252 valid sessions: missing, short_history. No IV30 of the day: missi
 implemented_by = [
   "internal/compute/figures.(*calc).IvPercentile",
 ]
-source_hash = "pending-recompute"
+source_hash = "899cb7e0ea366a887d74cb9e20b696bda2e904ace061512d8b5983971dc0cb8b"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1688,7 +1688,7 @@ Fewer than 252 valid sessions: missing, short_history. A range of 0: missing, ze
 implemented_by = [
   "internal/compute/figures.(*calc).IvRank",
 ]
-source_hash = "pending-recompute"
+source_hash = "8067d5ed4c41cfcc2a8d530eecbf7f9c45c6d9ed1e48d07e489bdd8d662eb15f"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
@@ -1711,7 +1711,7 @@ A zero VXVCLS: missing, bad_input. A missing leg: missing, no_input. No pair wit
 implemented_by = [
   "internal/compute/figures.(*calc).Ratio",
 ]
-source_hash = "pending-recompute"
+source_hash = "4ef9212f67cd918b8144449419fa9df31e6126ac2d6ef1061dd9f0eaa209150c"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
