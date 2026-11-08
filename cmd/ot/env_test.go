@@ -126,6 +126,8 @@ var leakRows = map[string][]string{
 	"page":     {"--day", "2026-03-04"},
 	"run-once": {"--day", "2026-03-04"},
 	"backfill": {"--day", "2026-03-04"},
+
+	"series-load": {"--series", "SP500", "--from", "2021-01-01", "--to", "2026-01-01"},
 }
 
 // leakExcluded names the commands that have no row, each with its reason.
