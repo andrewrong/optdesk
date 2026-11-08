@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { MacroPage, validateMacroPage } from '@/pages/macro/MacroPage'
 import { pages } from '@/shell/pages'
 
@@ -20,6 +20,15 @@ async function show(payload: unknown) {
     root.render(<MacroPage payload={payload as never} />)
   })
 }
+// jsdom has no ResizeObserver, which the Radix slider measures its thumb with.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+)
 afterEach(async () => {
   await act(async () => root?.unmount())
   root = undefined
@@ -38,7 +47,7 @@ it('validates fixtures and registers the macro page', () => {
 it('renders the Python gauge and every event and indicator with its label', async () => {
   const payload = fixture('ok.json')
   await show(payload)
-  expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe('56')
+  expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe('56')
   expect(host.textContent).toContain('中性，较上周 −0.2。')
   const events = host.querySelectorAll('[data-events] tbody tr')
   expect(events).toHaveLength(payload.events.length)
@@ -78,7 +87,7 @@ it('draws the -2 to +2 scale, every status text, the detail links and the missin
   expect(ticks).toEqual(['-2', '-1', '0', '+1', '+2'])
   expect(payload.ease.aria_text).toContain('-2 到 +2')
   expect(host.querySelector('[data-neutral-band]')?.textContent).toBe('-0.5 – +0.5')
-  expect(host.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')).toBe(
+  expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
     String(payload.ease.marker_percent.value),
   )
   for (const indicator of payload.indicators as { label: string; detail_href: string | null }[]) {
@@ -95,7 +104,7 @@ it('draws the -2 to +2 scale, every status text, the detail links and the missin
 it('shows the ease gap once without a gauge and keeps the missing indicator reason', async () => {
   const payload = fixture('gap.json')
   await show(payload)
-  expect(host.querySelector('[role=progressbar]')).toBeNull()
+  expect(host.querySelector('[role=slider]')).toBeNull()
   expect(host.textContent?.split(payload.ease.text)).toHaveLength(2)
   const row = [...host.querySelectorAll('[data-indicators] tbody tr')].find((row) =>
     row.textContent?.includes('中国 PMI'),
@@ -124,4 +133,11 @@ it('colours each indicator source badge by the status Python sent', async () => 
   const seen = badges.map((b) => b.textContent)
   expect(seen).toEqual(expect.arrayContaining(['及时', '缺', '迟到']))
   for (const b of badges) expect(b.classList).toContain(cls[b.textContent as keyof typeof cls])
+})
+
+it('uses the gauge', async () => {
+  await show(fixture('ok.json'))
+  expect(host.querySelectorAll('[role=slider]')).toHaveLength(1)
+  expect(host.querySelectorAll('[data-ease-gauge]')).toHaveLength(1)
+  expect(host.querySelector('[role=progressbar]')).toBeNull()
 })
