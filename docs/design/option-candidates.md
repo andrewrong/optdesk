@@ -1,130 +1,138 @@
-# Option candidates: short puts and covered calls, generated from the stored chain, gated, ranked by annualized yield
+# Option candidates: short puts first, then covered calls and the ex-dividend guard, generated from the stored chain, gated, ranked by annualized yield
 
-Author: the optdesk designer (first draft)
+Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
-Revision: 1
+Revision: 2 (adversarial review answered; revision 1 was 869127e)
 
-Source: owner 2026-11-09: options trading comes first and is done completely before valuation; the owner types a buy price per company by hand for now (the automated valuation, pull request 607, is parked). Binding owner decisions: a put qualifies when strike minus premium is at most the buy price; gates plus annualized-yield order, no composite score; earnings dates and ex-dividend dates gate; an early-assignment and ex-dividend guard for short calls; the margin cushion and the assignment cash never go to Telegram; two IBKR accounts, alias A and B.
-Read on main at 4a73feb: `AGENTS.md`, `docs/design/modules.md`, `docs/design/ease-v2.md`, `docs/design/report-page-producer.md`, `docs/design/option-jobs.md`, `docs/design/option-pages-v22.md`, `contracts/datasets/obs.option_eod.r1.json`, `internal/jobs/api.go`, `internal/jobs/optioneod/{job.toml,select.go}`, `internal/store/api.go`, `internal/compute/api.go`, `arch.toml`. On branches in review: `docs/design/event-sources.md` (606), `docs/design/account-data.md` (561), `docs/design/valuation.md` (607, only its `watch.toml` lines).
-Read in option-trader (read only; nothing copied): ADR 0009 (gates and order), 0011 and 0013 (capital), 0016 (earnings), 0020 (covered call rule), `candidates/puts.py` and `candidates/params/put_v1.toml`, `strategies/params/covered_call_v1.toml`. Plan v2.5 section 11, rows W8-9 (candidates, compute) and W11 (candidate pages, ledger, tracking).
+Source: owner 2026-11-09: options trading comes first and is done completely before valuation; the owner types a buy price per company by hand for now (the automated valuation, pull request 607, is parked). Binding owner decisions: a put qualifies when strike minus premium is at most the buy price; gates plus annualized-yield order, no composite score; earnings dates and ex-dividend dates gate; an early-assignment and ex-dividend guard for short calls; the margin cushion and the assignment cash never go to Telegram; two IBKR accounts, alias A and B. Dispatcher direction: puts first, they do not wait for the dividend chain; the option side must be usable soon.
+Read on main at 4a73feb: `AGENTS.md`, `docs/design/modules.md`, `docs/design/ease-v2.md`, `docs/design/report-page-producer.md`, `docs/design/option-jobs.md`, `docs/design/option-pages-v22.md`, `contracts/datasets/obs.option_eod.r1.json`, `internal/jobs/api.go`, `internal/jobs/optioneod/{job.toml,select.go}`, `internal/store/api.go`, `internal/compute/api.go`, `arch.toml`, `contracts/proto/ibkr/v1`. On branches in review: `docs/design/event-sources.md` (606), `docs/design/account-data.md` (561), `docs/design/valuation.md` (607, only its `watch.toml` lines).
+Read in option-trader (read only; nothing copied): ADR 0004 (OSE.JPN routing), 0009 (gates and order), 0011 and 0013 (capital), 0016 (earnings), 0020 (covered call rule), `candidates/puts.py`, `candidates/params/put_v1.toml`, `put_jp_v1.toml`, `strategies/params/covered_call_v1.toml`. Plan v2.5 section 11, rows W8-9 (candidates) and W11 (candidate pages, ledger, tracking).
 
-Goal: after each option_eod capture, one stored, ranked list per day of the short puts and covered calls that the owner may sell, each with the reason of every gate it failed, plus a guard verdict for the short calls already open. The pages come later from this table.
+Goal: after each option_eod capture, one stored, ranked list per day of the short puts the owner may sell, each blocked contract with the reason of every gate it failed; later the covered calls and a guard verdict for the short calls already open. A page reads the table (next design, named below).
 
 ## What main holds today
 
-- Chain capture: the job `option_eod` writes `obs.option_eod` r1 (bid, ask, sizes, open interest, underlying price, IV, delta, per contract per session day); the terms (right, strike, expiry, multiplier) are in `store.OptionTermsReader`. Its manifest names one underlying, SPY, `max_expiries = 3` (the three nearest expiries) and `strike_band = 0.10`. For a seller that is too narrow twice: the nearest three expiries are weeklies under 21 days, and a strike 10 percent from the spot misses a put at the owner's buy price.
-- Nothing computes a candidate: no package, dataset, job or reader. `compute-core` and `compute-figures` Left out ranks; the gap table calls the row "missing, silent drop".
-- Not on main, in review: earnings and ex-dividend rows and `jobs.WatchEntry` with `$OT_HOME/watch.toml` (606), the account positions and values (561). Until they land the gates below answer `unknown`, which blocks (Decision 5): the table is right but empty-handed.
+- Chain capture: `option_eod` writes `obs.option_eod` r1 (bid, ask, sizes, open interest, underlying price, IV, delta; `*float64` in the generated record); the terms are in `store.OptionTermsReader` (at most 500 ids per call). Its manifest names SPY only, `max_expiries = 3` (the three nearest expiries, weeklies under 21 days), `strike_band = 0.10` and `max_strikes_per_side = 8`: too narrow for a seller, whose put sits at the buy price, often 15 to 25 percent below the spot.
+- Nothing computes a candidate: no package, dataset, job or reader (gap table: "missing, silent drop").
+- In review: earnings and ex-dividend rows with `jobs.WatchEntry` and `$OT_HOME/watch.toml` (606), the account positions and values (561). `DGS3MO` is loaded by `fred_series` (unit `percent`).
 
 ## Decisions
 
-1. Where. A pure rule package `internal/compute/optioncand` (module compute: no I/O, no clock, exact arithmetic with `math/big.Rat` of the standard library, because go.mod holds no decimal library and the rule needs only exact sums and ratios; the package sits behind `compute.OptionCandidates`, so a library can replace it). A job `option_candidates` (module jobs) reads the stores, calls it and writes the dataset `candidates.option_candidate` r1 through `store.CandidateWriter`. Pages and `ot candidates` read through `store.CandidateReader`. Computed rows are stored, because the `pages` module computes nothing.
-2. Owner-typed prices live in `watch.toml`. 606 owns that file and `WatchEntry` (one `[[underlying]]` per company, keyed by `issuer`, a typed field list read by a loader in `cmd/ot`). A field added to the same table is the smallest place: no second file, no second key, the owner edits one list, valuation reads the same file. `WatchEntry` gains `BuyPrice` and `SalePrice`, decimal text in the currency of the contract, both optional (`buy_price = "180.00"`). The type is declared by 606's `earnings-job`, so the interface issue is `after` it. When valuation lands it may fill a band elsewhere; these two stay the owner's word and win.
-3. Which contracts. For every watched US underlying with a stored chain of the latest captured session day D, and every contract whose DTE (expiry minus D, calendar days) is in `min_dte..max_dte` (21..45, ported from `put_v1.toml`; 30..45 is preferred and only marks `preferred_dte`). Puts: strike below the spot (out of the money). Calls: strike at or above the spot. Japan: no option capture exists, so a JP entry gives no row; it is named, not skipped silently (Left out).
-4. Short put gates, in this order; each is `pass`, `block` or `unknown`, and the row keeps the first reason code of each gate it did not pass:
-   1. `buy_price`: `strike - bid <= BuyPrice` (the owner's rule, premium taken at the bid, per share, before fees). No `BuyPrice` is `block no_buy_price`.
-   2. `quote`: row status ok, bid above 0, ask present, `bid_size >= min_bid_size`, market data type 1 or 2 (3 and 4 are `unknown`), spread `(ask - bid) / mid <= max_spread` and `open_interest >= min_open_interest` (the two limits are advisor-set, below).
-   3. `events`: next results date from the 606 earnings reader. A `listed` date from D to the expiry, both included, is `block earnings_before_expiry`. A `listed` date after the expiry passes and sets the mark `earnings_unconfirmed` (606 Decision 4: a vendor date refuses or marks, never clears). `absent`, `unsupported`, `error`, a missing row, a row more than 2 days old and an expiry beyond the 3-month horizon of the source are `unknown`. The owner's `report_date_override` replaces the vendor date as 606 has it.
-   4. `funding`, per account alias: `strike x multiplier` (one contract) is at most `AvailableFunds` of that alias from the latest `account.value` capture, in the same currency; a capture older than one session day is `unknown`. The row stores `fits` (alias to `fit`, `no_fit` or `unknown`); the gate passes when at least one alias is `fit`. Cash for puts already open and concentration caps are Left out.
-   5. `cash_rate`: annualized yield (Decision 6) at least the stored `DGS3MO` of at most 7 days old (ported from ADR 0009 gate 6), else `block yield_below_cash`; no fresh rate is `unknown`.
-5. Unknown is not a pass. A gate that cannot decide gives `unknown`, and the row's status is `blocked` if any gate blocked, else `unknown` if any gate is unknown, else `ok`. Only `ok` rows are ranked. The old system's rule (ADR 0009: "unknown earnings gives UNKNOWN, not PASS") and 606 Decision 4 both say so.
-6. Ranking, no composite score. Annualized yield `= (bid / strike) x (365 / DTE)` for a put, `(bid / spot) x (365 / DTE)` for a call, a ratio kept exact and stored as decimal text to 6 places. Order of `ok` rows: annualized yield descending, then DTE ascending, then strike ascending, then instrument id. `rank` is the position in the whole day, `rank_in_underlying` within a company. Also stored, never ranked: break-even (put `strike - bid`, call `strike + bid`), delta, IV, `preferred_dte`. Blocked and unknown rows are stored too, with their reasons, so the owner sees why a contract failed; they have no rank.
-7. Covered calls. Shares are the `account.position` stock rows of the underlying, per alias, at the latest capture: free shares = shares minus `multiplier x` the open short calls on the same underlying. Gates in order: `shares` (free shares at least one multiplier in some alias, else `block no_free_shares`); `strike_floor` (`strike >= SalePrice` when the owner set one, else `strike >= avg_cost` of the shares in that alias, per share; an alias with neither is `unknown`); `quote`, `events` as for puts (the owner's decision is that earnings gate; ADR 0020 only marked them); `guard` (Decision 8). A call row carries the alias it would be written against, so a company held in A and B has one row per alias.
-8. Early-assignment and ex-dividend guard. For a call with an ex-dividend date X from D to the expiry (606 stores the next ex-date and the amount per share; IBKR does not say declared or projected, so every date is projected): `extrinsic = max(0, bid - max(0, spot - strike))`; `extrinsic < amount x div_guard_factor` (1.0, advisor-set) is `block early_assignment_risk`, because holders exercise the day before the ex-date. A `no_value` dividend row passes with the mark `no_dividend`; `error`, `unsupported`, no row, or a row older than 3 days is `unknown`. The same function judges the short calls already open (rows of kind `held_call_guard`, per alias, from the positions): verdict `risk`, `ok` or `unknown`, `unknown` when the held contract has no capture that day. The guard rows are local: they are the input of a later notice, never of Telegram.
-9. Privacy. `fits`, `alias`, shares, and the guard rows come from account data. They are stored in one table readable only by the roles of the pages and `ot candidates` (local), the job never calls `notify`, and a test pins that no code path from this package reaches a Telegram sender (ADR 0010 stands; margin cushion and assignment cash have no row here at all, they are `account-figures`, below).
-10. Advisor-set values (the owner may change them; they are keys of `job.toml`, not code): `min_dte 21`, `max_dte 45`, `min_bid_size 1`, `max_spread 0.10`, `min_open_interest 10`, `div_guard_factor 1.0`, `max_rate_age_days 7`, `max_event_age_days 2`. The first three are ported from `put_v1.toml`; the rest are new.
-11. Chain coverage. The `option_eod` manifest cannot feed these gates (Current state). Entry 8 gives it the watch list as underlyings and a DTE window (`min_dte`, `max_dte`) in place of the nearest expiries, and a wider strike band. The job `option_candidates` runs at `session_close` plus 30 minutes, after `option_eod` (its freeze is at 16:15).
+1. Where. A pure rule package `internal/compute/optioncand` (no I/O, no clock) behind `compute.OptionCandidates`, so a library can replace it. Exact arithmetic with `math/big.Rat` of the standard library, because go.mod holds no decimal library and the rule needs only exact sums and ratios. A job `option_candidates` (jobs) reads the stores, calls the rule and writes `candidates.option_candidate` r1 through `store.CandidateWriter`. Computed rows are stored because pages compute nothing. Typed columns, not one JSON payload (revision 1 review, section 3): the page and `ot candidates` read columns; the gate results are one ordered JSON array text.
+2. Put first, calls later. The first cut (issues 1 to 10) is puts: it needs `WatchEntry` and the earnings reader of 606, the account reader of 561 for the funding gate, and nothing of the dividend chain or its probe. Calls and the guard are issues 11 to 14, ordered after 606 `dividend-store`; puts never wait for them. Until a reader exists its gate answers `unknown` (Decision 5), so the puts ship with earnings and account data only when those land.
+3. Owner prices in `watch.toml`. 606 owns the file and `WatchEntry` (one `[[underlying]]` per company keyed by `issuer`, read by a loader in `cmd/ot`). The smallest place is two more optional fields of the same table: `buy_price` and `sale_price`, decimal text in the currency of the contract. No second file or key. When valuation (607) lands it may propose a band; the owner's word wins, a permanent precedence stated here.
+4. Numbers. Stored `bid`, `ask`, `delta` and the underlying price are `*float64`. The job converts each with `strconv.FormatFloat(v, 'f', -1, 64)` (shortest text that round-trips) and then rounds half-even to 4 places before `big.Rat.SetString`, so 1.99 is 199/100 and 0.1 is 1/10; `CandidateInput` carries decimal text only. `DGS3MO` is in percent: the rate ratio is `value / 100`, exactly, from the same text conversion. Yield is stored as decimal text to 6 places.
+5. Status rule. Each gate is `pass`, `block` or `unknown`; the row status is `blocked` if any gate blocked, else `unknown` if any is unknown, else `ok`. Only `ok` rows are ranked. An `unknown` gate marks its row and is stored with its reason; it never freezes a day, because rows are keyed by run (Decision 9) and the reader takes the latest run.
+6. Which contracts. For each US underlying of the watch list with a chain at D, the latest XNYS session day on or before the run day (gate `chain_fresh`: any other D gives `unknown stale_chain` on every row), and each contract with DTE (expiry minus D, calendar days) in `min_dte..max_dte`. Moneyness is not filtered: puts and calls are evaluated at every captured strike and the gates decide; an in-the-money row gets the mark `itm`. The premium is the end-of-day bid at the 16:15 freeze; the owner sells next session, so it is an estimate, shown as such (`bid_eod` in the columns).
+7. Put gates, in order; each row keeps the first reason code of every gate it did not pass:
+   1. `buy_price`: `strike - bid <= BuyPrice` (inclusive, per share, before fees). No `BuyPrice` is `block no_buy_price`.
+   2. `quote`: row status ok, bid above 0, ask present, `bid_size >= min_bid_size`, market data type 1 or 2 (3 and 4 are `unknown`), `(ask - bid) / mid <= max_spread`, `open_interest >= min_open_interest`.
+   3. `events`: next results date from the 606 reader, where a row counts while it is at most `max_event_age_sessions` XNYS session days old (counted with the calendar, so a Friday row is one session old on Monday and a holiday does not break it). A `listed` date from D to the expiry, inclusive, is `block earnings_before_expiry`. A `listed` date after the expiry passes with the mark `earnings_unconfirmed` (606: a vendor date refuses or marks, never clears). `unsupported`, `error`, no row, a stale row, or an expiry beyond the 3-month horizon is `unknown`. `absent` is `unknown` unless the company reported recently: when the reader holds a `listed` date R in `D - 100 .. D - 1` and `expiry < R + min_report_gap_days` (60, advisor-set), the next report cannot fall inside the contract and the gate passes with the mark `earnings_beyond_horizon`; so a name that just reported is not blocked until the next date appears. The owner's `report_date_override` replaces the vendor date as in 606.
+   4. `funding`, per alias (A, B): `strike x multiplier` is at most `AvailableFunds` of that alias from the newest `account.value` capture, same currency; a capture older than one session day is `unknown`, a different currency is `unknown no_fx` (no conversion is built, Left out). The row stores `fits` (alias to `fit`, `no_fit`, `unknown`); the gate passes when one alias is `fit`. This is weaker than ADR 0009, which used settled cash minus all open and working puts; that stricter rule is the named next step of the same gate (Left out).
+   5. `cash_rate`: annualized yield at least `DGS3MO / 100` of at most `max_rate_age_days` (7) old, else `block yield_below_cash`; no fresh rate is `unknown`. (ADR 0009 used the treasury.gov 13-week rate; the stored FRED series is the same instrument and is already loaded.)
+8. Ranking, no composite score. Annualized yield `= (bid / strike) x (365 / DTE)` for a put, `(bid / spot) x (365 / DTE)` for a call. Order of `ok` rows: yield descending, then DTE ascending, then strike ascending, then instrument id. `rank` is the position in the run, `rank_in_underlying` within a company. Stored, never ranked: break-even (put `strike - bid`, call `strike + bid`), delta, IV, `preferred_dte` (30 to 45). Blocked and unknown rows are stored with their reasons, without a rank.
+9. Run and key. Key `(session_day, run_id, kind, instrument_id, alias)` plus a `rule_version` column; insert-only, a rerun is a new `run_id` (the runner's run id), and `CandidateReader(day, kind)` returns the rows of the newest run of that day (by `computed_at`). Order in `run-once`: `option_eod`, `earnings_refresh`, `account_capture`, `option_candidates` last (the job after those it reads); in the scheduler `option_candidates` is anchored at `session_close` plus 30 minutes and the earnings and account jobs are scheduled before it by their own designs; if one is late the row is `unknown` and the owner reruns `run-once`, which replaces the view with a newer run.
+10. Capture follows the owner's prices (issue 3). `option_eod` takes its underlyings from the watch list (US stock entries). Its strike range per underlying is derived from `BuyPrice`: from `0.80 x BuyPrice` up to `max(BuyPrice x 1.05, spot)`, at most `max_strikes` (24) strikes; with no `BuyPrice` the old band of 10 percent applies. Expiries are those with DTE in `min_dte..max_dte` instead of the nearest three. The held short calls (issue 11) add their own expiries and strikes whatever their DTE.
+11. Covered calls (issues 11 to 14). Shares are the stock rows of `account.position` per alias at the newest capture; free shares = shares minus `multiplier x` open short calls of that underlying. Gates: `shares` (`block no_free_shares`), `strike_floor` (`strike >= SalePrice` if set, else `strike >= avg_cost` of that alias; neither is `unknown`), `quote`, `events` as for puts, and `guard`. One row per alias that holds the shares.
+12. Early-assignment and ex-dividend guard. With the next ex-date X (606 `present` row, `next_ex_date`) from D to the expiry and amount `d` per share: `extrinsic = max(0, bid - max(0, spot - strike))`; `extrinsic < d x div_guard_factor` (1.0, advisor-set) is `block early_assignment_risk` (holders exercise the day before the ex-date). A `no_value` row passes with the mark `no_dividend`; `error`, `unsupported`, no row or a stale row is `unknown`. Every ex-date is projected (606 Decision 2). The same function judges short calls already open: kind `held_call_guard`, per alias, verdict `risk`, `ok` or `unknown`; their contracts are captured whatever their DTE (Decision 10), so the verdict is not `unknown` by construction.
+13. Privacy. `fits`, `alias`, shares and guard rows come from account data and are stored in one table read only by the roles of the pages and `ot candidates`. The job and the rule import no `notify` and no sender; tests pin it (ADR 0010 stands). The margin cushion and assignment cash have no row here (`account-figures`).
+14. Japan, stated plainly: left out of this design, with a route named. IBKR routes Japanese options as `OSE.JPN` (old ADR 0004), which the pyside contract can carry in `Contract.Exchange`; whether the gateway returns usable single-stock option chains and quotes is untested here and `OT` has no JP option underlying today. The old system had its own JP parameter files (`put_jp_v1.toml`, `covered_call_jp_v1.toml`, 09:00 to 15:40 JST hours). 606 gives JP earnings (J-Quants) and, after its probe, dividends. The next design is `option-candidates-jp`: a probe of one JP option chain through `option_eod` with `OSE.JPN`, then JP parameters and the JP calendar. A JP entry gives no row and `ot candidates` prints one line naming it, so it is never silent. Owner question below.
+15. Advisor-set values (keys of `job.toml`, the owner may change them): `min_dte 21`, `max_dte 45`, `min_bid_size 1` (the three ported from `put_v1.toml`), `max_spread 0.10`, `min_open_interest 10`, `div_guard_factor 1.0`, `max_rate_age_days 7`, `max_event_age_sessions 2`, `min_report_gap_days 60`, `max_strikes 24`.
 
 ## The option side, whole
 
-What the owner needs to run options completely, with its design and state. This table is the input for sequencing; a row marked missing names the next design.
+What the owner needs to run options completely, with its design and state. This table is the input for sequencing; a missing row names the next design.
 
 | piece | design | state |
 |---|---|---|
-| capture of the option chain | `option-jobs.md`, job `option_eod` | merged; SPY only and nearest expiries: fixed by `option-eod-watch` of this design |
-| earnings and ex-dividend dates | `event-sources.md` | in review PR 606 |
-| watch list and the owner's buy and sale price | `event-sources.md` (list), this design (two fields) | list in PR 606; fields this design |
-| account positions, values, executions (accounts A and B) | `account-data.md` | in review PR 561; collector pyside and the Go client merged (`pyside-account-b.md`) |
-| candidates, gates, ranking | this design | this design |
-| early-assignment and ex-dividend guard, held calls too | this design (Decision 8) | this design |
-| ledger, cost basis, wheel (assigned shares, then calls) | none | missing; next design `option-ledger`: needs `account.execution` history and assignment rows; waits for PR 561 and for `ot import` or Flex (561 Left out) |
-| assignment cash by date per account | `account-data.md` Decision 9 names it | missing; next design `account-figures` (assignment cash, margin cushion from `account.value`), needs PR 561 |
+| capture of the option chain | `option-jobs.md`, job `option_eod` | merged; SPY only: issue 3 of this design (watch list, band from the buy price, DTE window) and issue 11 (held calls) |
+| earnings and ex-dividend dates | `event-sources.md` | in review PR 606 (earnings first, dividends behind its probe) |
+| watch list and the owner's buy and sale price | `event-sources.md` (list), this design (two fields) | list in PR 606; fields: issues 1 and 2 |
+| account positions, values, executions (accounts A and B) | `account-data.md` | in review PR 561; collector and Go client merged |
+| candidates, gates, ranking: short puts | this design | this design, issues 4 to 10 |
+| covered calls and the ex-dividend guard, held calls too | this design | this design, issues 11 to 14, after 606 `dividend-store` |
+| a page for the candidates (`option_page`, `stock_option_page`) | views in `option-pages-v22.md` | builder missing; next design `option-candidates-page`, started right after this one is approved (until then `ot candidates` prints the list) |
+| ledger, cost basis, wheel | none | missing; next design `option-ledger`, needs `account.execution` history and assignment rows (PR 561, Flex or `ot import`) |
+| assignment cash by date per account, margin cushion | `account-data.md` Decision 9 names them | missing; next design `account-figures`, needs PR 561 |
 | tracking of open positions, P and L, roll and close advice | `tracking-household-reports.md` is the view only | missing builder and data; next design `option-tracking`, needs `option-ledger` |
 | alerts: market and missed-job on Telegram | `risk-alerts.md`, `notify.md` | merged (market only, ADR 0010 amended) |
-| local notice for the guard, the margin cushion, assignment cash | none | missing; next design `option-notices` (a page banner or local notice, never Telegram), needs `account-figures` |
-| pages: candidates (`option_page`, `stock_option_page`), positions, ledger, tracking, structures | `option-pages-v22.md` (views), `tracking-household-reports.md` | views merged, builders missing; next designs `option-candidates-page` (right after this design), then the others |
-| valuation and the automatic buy price | `valuation.md` | parked, PR 607; the hand-typed buy price replaces it for now |
+| local notice for the guard, cushion, assignment cash (never Telegram) | none | missing; next design `option-notices`, needs `account-figures` |
+| Japan options | none | left out, next design `option-candidates-jp` (Decision 14) |
+| valuation and the automatic buy price | `valuation.md` | parked, PR 607; the hand-typed buy price replaces it |
 
 ## Modules
 
-New directories: `internal/compute/optioncand`, `internal/jobs/optioncandidates`, `internal/store/candidate`. This pull request edits `docs/design/modules.md` by three names in the sentence that lists the implementation packages `cmd/ot` may import and regenerates `arch.toml` with `go run ./scripts/arch` (the precedent is `internal/compute/ease`). Interface files: `internal/compute/api.go`, `internal/store/api.go`, `internal/jobs/api.go` (each additive), the dataset in `contracts/`.
+New directories: `internal/compute/optioncand`, `internal/jobs/optioncandidates`, `internal/store/candidate`, `internal/pages/candidate_text`. This pull request edits `docs/design/modules.md` by four names in the sentence that lists the implementation packages `cmd/ot` may import and regenerates `arch.toml` with `go run ./scripts/arch` (the precedent is `internal/compute/ease`; `.go-arch-lint.yml` is tree-derived and appears with the first issue of each package). Interface files: `internal/compute/api.go`, `internal/store/api.go`, `internal/jobs/api.go` (each additive), the dataset in `contracts/`.
 
 | # | issue | module | order |
 |---|---|---|---|
-| 1 | watch-owner-prices-interface (interface) | jobs | after event-sources `earnings-job` |
-| 2 | watch-owner-prices-loader | ot | after 1, event-sources `watch-loader-earnings-wire` |
+| 1 | watch-owner-prices-interface (interface) | jobs | after 606 `earnings-job` |
+| 2 | watch-owner-prices-loader | ot | after 1, 606 `watch-loader-earnings-wire` |
 | 3 | option-eod-watch (interface and implementation) | jobs | after 1 |
-| 4 | candidate-compute-interface (interface) | compute, plus repo (the licensed pair) | first |
-| 5 | compute-candidates | compute | after 4 |
-| 6 | candidate-dataset (interface) | contracts | after account-data `account-proto`, event-sources `earnings-datasets` |
-| 7 | candidate-store-api (interface) | store | after 6, account-data `account-store-api` |
-| 8 | candidate-store-impl | store, plus repo (the licensed pair) | after 7, account-data `account-store-migration`, event-sources `earnings-store` |
-| 9 | candidates-job (interface and implementation) | jobs, plus repo (the licensed pair) | after 1, 3, 5, 8, event-sources `dividend-store`, account-data `account-store-impl` |
-| 10 | candidates-wire | ot | after 9, event-sources `watch-loader-earnings-wire`, account-data `account-wire` |
+| 4 | candidate-compute-interface (interface) | compute, plus repo (licensed pair) | first |
+| 5 | compute-put-candidates | compute | after 4 |
+| 6 | candidate-dataset (interface) | contracts | after 561 `account-proto`, 606 `earnings-datasets` |
+| 7 | candidate-store-api (interface) | store | after 6, 561 `account-store-api`, 606 `earnings-store` |
+| 8 | candidate-store-impl | store, plus repo (licensed pair) | after 7, 561 `account-store-migration` and `account-store-impl`, 606 `earnings-store` and `dividend-store` |
+| 9 | candidates-job-puts (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 3, 5, 8, 561 `account-job`, 606 `earnings-job` |
+| 10 | candidate-text | pages | after 7 |
+| 11 | option-eod-held-calls | jobs | after 3, 561 `account-store-impl` |
+| 12 | compute-call-candidates | compute | after 5 |
+| 13 | candidates-job-calls (interface and implementation) | jobs, plus repo (licensed pair) | after 9, 11, 12, 606 `dividend-store` and `dividend-job` |
+| 14 | candidates-wire | ot | after 9, 10, 606 `watch-loader-earnings-wire`, 561 `account-wire`; calls are wired by a second pass of the same file once 13 has merged |
+
+Puts are complete at issue 14 without 11 to 13; the owner sees puts in `ot candidates` as soon as 1 to 10 and 14 have merged.
 
 ## Interface
 
-- jobs, `internal/jobs/api.go`: `WatchEntry` (declared by 606) gains `BuyPrice, SalePrice string` (decimal text, empty when unset); `type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock) (contracts.Job, error)` (a second constructor, so `NewOptionEodFunc` and `cmd/ot` keep building, the pattern of `NewComputeFiguresEaseFunc`); `type NewOptionCandidatesFunc func(CandidateStores, compute.OptionCandidates, compute.Rules, []WatchEntry, clock.Clock) (contracts.Job, error)` with `CandidateStores{OptionEod store.OptionEodReader; Terms store.OptionTermsReader; Names store.InstrumentNameReader; Catalog store.OptionEodCatalog; Series store.SeriesReader; Earnings store.EarningsDateReader; Dividends store.DividendReader; Accounts store.AccountReader; Candidates store.CandidateWriter; SessionDays store.SessionDayReader}`. A nil `Earnings`, `Dividends` or `Accounts` makes its gates `unknown`.
-- compute, `internal/compute/api.go`: `type CandidateKind string` (`short_put`, `covered_call`, `held_call_guard`); `type GateStatus string` (`pass`, `block`, `unknown`); `type GateResult struct{ Gate string; Status GateStatus; Reason string }`; `type OptionQuote` (terms and quote of one contract, decimals as text); `type CandidateInput` (day, underlying, spot, quotes, `BuyPrice`, `SalePrice`, earnings, dividend, rate, per-alias shares, avg cost and funds, open short calls); `type Candidate` (kind, alias, instrument, the gate results in order, status, marks, annualized yield, break-even, `Rank`, `RankInUnderlying`); `type CandidateParams` (the keys of Decision 10); `type OptionCandidates interface { Evaluate(CandidateInput, CandidateParams) []Candidate }` and `type NewOptionCandidatesFunc func() OptionCandidates`. Pure: no I/O, no clock.
-- contracts: dataset `candidates.option_candidate` r1: key `(session_day, capture_id, kind, instrument_id, alias)`; columns `issuer, underlying_id, expiry, dte, right, strike, multiplier, bid, ask, spot, buy_price, sale_price, break_even, annualized_yield, delta, iv, status, reasons` (the gate results as ordered text), `marks`, `fits` (alias map as text), `next_earnings, earnings_state, next_ex_date, ex_amount, extrinsic, rank, rank_in_underlying, rule_version, computed_at`; money as decimal text; `alias` is empty for puts.
-- store: `type CandidateWriter interface { InsertCandidates(ctx, []Candidate) (int, error) }`, `type CandidateReader interface { Candidates(ctx, day contracts.Day, kind string) ([]Candidate, error) }` (ordered by `rank`, rows without rank last by instrument id), `store.DSNEnvCandidate = "OT_PG_DSN_CANDIDATE"`; row type `store.Candidate` is a plain struct of the dataset columns.
-- ot: `ot candidates [--day D] [--kind short_put|covered_call|held_call_guard]` prints the ranked rows as text, local only.
+- jobs, `internal/jobs/api.go`: `WatchEntry` (606) gains `BuyPrice, SalePrice string` (decimal text, empty unset). `type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock) (contracts.Job, error)` (a second constructor so `NewOptionEodFunc` and `cmd/ot` keep building). `type CandidateStores struct{ OptionEod store.OptionEodReader; Terms store.OptionTermsReader; Names store.InstrumentNameReader; Series store.SeriesReader; Earnings store.EarningsDateReader; Accounts store.AccountReader; Candidates store.CandidateWriter; SessionDays store.SessionDayReader }` and `type NewOptionCandidatesFunc func(CandidateStores, compute.OptionCandidates, []WatchEntry, clock.Clock) (contracts.Job, error)`. Issue 13 adds `NewOptionCandidatesCallsFunc` taking `CandidateStores` plus `Dividends store.DividendReader` (no signature above changes). A nil reader makes its gates `unknown`.
+- compute, `internal/compute/api.go`: `CandidateKind` (`short_put`, `covered_call`, `held_call_guard`), `GateStatus` (`pass`, `block`, `unknown`), `GateResult{Gate, Status, Reason}`, `OptionQuote`, `CandidateInput` (day, underlying, spot, quotes, `BuyPrice`, `SalePrice`, earnings rows, optional dividend row, rate, per-alias shares, avg cost, funds, open short calls; decimals as text), `Candidate`, `CandidateParams` (Decision 15), `type OptionCandidates interface { Evaluate(CandidateInput, CandidateParams) []Candidate }`, `type NewOptionCandidatesFunc func() OptionCandidates`. Declared once for puts and calls (issue 4), so the later call issues add no interface change.
+- contracts: dataset `candidates.option_candidate` r1: key `(session_day, run_id, kind, instrument_id, alias)`; columns `rule_version, issuer, underlying_id, expiry, dte, right, strike, multiplier, bid_eod, ask, spot, buy_price, sale_price, break_even, annualized_yield, delta, iv, status, gates` (ordered JSON array text), `marks`, `fits`, `next_earnings, earnings_state, next_ex_date, ex_amount, extrinsic, rank, rank_in_underlying, computed_at`; money as decimal text; `alias` empty for puts.
+- store: `CandidateWriter.InsertCandidates(ctx, []Candidate) (int, error)`, `CandidateReader.Candidates(ctx, day, kind) ([]Candidate, error)` (newest run of the day, ranked rows first), `store.DSNEnvCandidate = "OT_PG_DSN_CANDIDATE"`, plain row type `store.Candidate`.
+- pages: `candidate_text.Format(rows []store.Candidate, all bool) string` (no sort, no arithmetic: text of stored columns). ot: `ot candidates [--day D] [--kind K] [--all]`, wiring only.
 
 ## Issues
 
-Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a fake clock, never sleeps, opens no port, and no test touches a live broker or database (a test that needs PostgreSQL carries the tag `pg`). Acceptance is checked offline by the command shown.
+Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a fake clock, never sleeps, opens no port, and touches no live broker or database (a test that needs PostgreSQL carries the tag `pg`). Acceptance is checked offline by the command shown.
 
 ### 1 watch-owner-prices-interface (interface)
 
 Module: jobs. Size: S.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`
-Design: docs/design/option-candidates.md#decisions (Decision 2)
-Order: after event-sources `earnings-job` (it declares `WatchEntry` in the same files).
-Goal: `WatchEntry` gains `BuyPrice` and `SalePrice` with doc comments (decimal text, currency of the contract, empty means unset, the owner's word wins over any automatic value), and the contract test shows a caller reading both from a fake loader.
+Design: docs/design/option-candidates.md#decisions (Decision 3)
+Order: after 606 `earnings-job` (it declares `WatchEntry` in the same files).
+Goal: `WatchEntry` gains `BuyPrice` and `SalePrice` with doc comments (decimal text, currency of the contract, empty unset, the owner's word wins over any automatic value); the contract test shows a caller reading both from a fake loader.
 Acceptance:
-1. `grep -c "BuyPrice\|SalePrice" internal/jobs/api.go` is at least 2, and `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0 (additions only).
+1. `grep -c "BuyPrice\|SalePrice" internal/jobs/api.go` is at least 2, and `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0.
 2. `go test ./internal/jobs -race -count=1 -run WatchEntry` passes; `grep -c "t.Parallel()" internal/jobs/api_test.go` is at least `grep -c "^func Test" internal/jobs/api_test.go`.
-3. `grep -c "buy_price\|BuyPrice" docs/contracts/jobs.md` is at least 1.
-4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
+3. `grep -c "buy_price\|BuyPrice" docs/contracts/jobs.md` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go build ./...`, golangci-lint, go-arch-lint.
 
 ### 2 watch-owner-prices-loader
 
 Module: ot. Size: S.
 Files: `cmd/ot/watch.go`, `cmd/ot/watch_test.go`, `cmd/ot/testdata/watch_prices.toml` (new), `docs/contracts/ot.md`
-Design: docs/design/option-candidates.md#decisions (Decision 2)
-Order: after watch-owner-prices-interface and event-sources `watch-loader-earnings-wire` (it creates `cmd/ot/watch.go`).
-Goal: the loader of `watch.toml` reads `buy_price` and `sale_price` per `[[underlying]]`; a value that is not a positive decimal with at most 4 places, or a `sale_price` below a `buy_price` of the same entry, is a named refusal that names the issuer and never the file path of the owner.
+Design: docs/design/option-candidates.md#decisions (Decision 3)
+Order: after 1 and 606 `watch-loader-earnings-wire` (it creates `cmd/ot/watch.go`).
+Goal: the loader reads `buy_price` and `sale_price` per `[[underlying]]`; a value that is not a positive decimal with at most 4 places, or a `sale_price` below the `buy_price` of the same entry, is a named refusal that names the issuer, never a path.
 Acceptance:
-1. `go test ./cmd/ot -race -count=1 -run 'TestWatchPrices'` passes; `grep -c "^func TestWatchPrices" cmd/ot/watch_test.go` is at least 4 (loaded, empty is unset, refused text, sale below buy).
-2. `grep -c "buy_price\|sale_price" docs/contracts/ot.md` is at least 2.
-3. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
+1. `go test ./cmd/ot -race -count=1 -run TestWatchPrices` passes; `grep -c "^func TestWatchPrices" cmd/ot/watch_test.go` is at least 4 (loaded, empty is unset, refused text, sale below buy).
+2. `grep -c "buy_price\|sale_price" docs/contracts/ot.md` is at least 2; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./cmd/ot`, golangci-lint.
 
 ### 3 option-eod-watch (interface and implementation)
 
 Module: jobs. Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioneod/job.toml`, `internal/jobs/optioneod/select.go`, `internal/jobs/optioneod/select_test.go`, `internal/jobs/optioneod/manifest.go`, `internal/jobs/optioneod/plan.go`, `internal/jobs/optioneod/plan_test.go`, `internal/jobs/optioneod/run.go`, `internal/jobs/optioneod/run_test.go`, `internal/jobs/optioneod/watch.go`, `internal/jobs/optioneod/watch_test.go`, `docs/contracts/jobs.md`
-Design: docs/design/option-candidates.md#decisions (Decision 11)
-Order: after watch-owner-prices-interface (same `api.go`, `api_test.go`, `jobs.md`).
-Goal: `optioneod.NewWithWatch` (the type `NewOptionEodWatchFunc`) takes the underlyings from the `WatchEntry` list (US stock entries only) instead of the manifest table; the manifest gains `min_dte` and `max_dte` (expiries inside the window replace `max_expiries`; absent keys keep today's rule byte for byte) and the band default stays `0.10` with a per-entry override key `strike_band`; `optioneod.New` and `NewOptionEodFunc` are unchanged.
+Design: docs/design/option-candidates.md#decisions (Decision 10)
+Order: after 1 (same `api.go`, `api_test.go`, `jobs.md`).
+Goal: `optioneod.NewWithWatch` (the type `NewOptionEodWatchFunc`) takes the underlyings from the `WatchEntry` list (US stock entries only); expiries are those with DTE in `min_dte..max_dte`; the strikes of an entry with a `BuyPrice` run from `0.80 x BuyPrice` to `max(BuyPrice x 1.05, spot)`, at most `max_strikes`; an entry without one keeps the 10 percent band. `optioneod.New` and `NewOptionEodFunc` are unchanged and the manifest without the new keys behaves as today, byte for byte.
 Acceptance:
-1. `go test ./internal/jobs/optioneod -race -count=1` passes with `TestWatchUnderlyingsUSOnly`, `TestDTEWindowSelectsMonthlies`, `TestNoWindowKeepsNearestExpiries`, `TestStrikeBandOverride` each present once (`grep -c` of each name is 1).
+1. `go test ./internal/jobs/optioneod -race -count=1` passes with `TestWatchUnderlyingsUSOnly`, `TestDTEWindowSelectsMonthlies`, `TestNoWindowKeepsNearestExpiries`, `TestStrikeRangeFromBuyPrice`, `TestNoBuyPriceKeepsBand`, `TestMaxStrikesCap` each present once (`grep -c` of each name is 1); `TestStrikeRangeFromBuyPrice` has buy price 100, spot 130 and requires strikes 80 to 130 only.
 2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "NewOptionEodWatchFunc" internal/jobs/api.go` prints 1.
-3. `grep -c "min_dte\|max_dte" docs/contracts/jobs.md` is at least 2.
-4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines.
-Checked by CI: `go test ./internal/jobs/...`, go-arch-lint. Whether the real gateway returns the monthly expiries and the deeper strikes is not checkable offline; the first run is read with `ot candidates`.
+3. `grep -c "min_dte\|max_dte\|max_strikes" docs/contracts/jobs.md` is at least 3; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines.
+Checked by CI: `go test ./internal/jobs/...`, go-arch-lint. Whether the gateway returns the monthlies and the deeper strikes, and whether the run fits `budget_minutes`, is not checkable offline; the first run is read with `ot candidates`.
 
 ### 4 candidate-compute-interface (interface)
 
@@ -132,53 +140,53 @@ Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/compute/api.go`, `internal/compute/api_test.go`, `docs/contracts/compute.md`, `internal/compute/optioncand/doc.go`, `.go-arch-lint.yml`
 Design: docs/design/option-candidates.md#interface
 Order: first.
-Goal: the compute types of `## Interface`, with doc comments that say what each gate word and reason code means, and one paragraph of `docs/contracts/compute.md` that fixes the promises: exact arithmetic, unknown is not a pass, only `ok` rows ranked, yield and break-even formulas. The contract test uses a fake `OptionCandidates` and a caller that checks the order of the gate results and that a `blocked` row has no rank.
+Goal: the compute types of `## Interface` with doc comments for each gate word and reason code, and a paragraph of `docs/contracts/compute.md` that fixes the promises: exact arithmetic, the float-to-decimal step, `DGS3MO` is percent, unknown is not a pass, only `ok` rows ranked, yield and break-even formulas. The contract test uses a fake `OptionCandidates` and a caller that checks the order of the gate results and that a blocked row has no rank.
 Acceptance:
 1. `grep -c "OptionCandidates\|CandidateInput\|CandidateParams\|GateResult" internal/compute/api.go` is at least 4; `git diff $(git merge-base HEAD origin/main) -- internal/compute/api.go | grep '^-' | grep -vc '^---'` prints 0.
-2. `go test ./internal/compute -race -count=1` passes; `grep -c "time.Sleep\|time.Now()" internal/compute/api_test.go` prints 0; `wc -l < internal/compute/api_test.go` prints less than 800 (it is 464 on main; past 800 the contract test would move to a new file).
-3. `grep -c "annualized\|break-even" docs/contracts/compute.md` is at least 2; `go list -deps ./internal/compute | grep -c "internal/compute/optioncand"` prints 0.
+2. `go test ./internal/compute -race -count=1` passes; `grep -c "time.Sleep\|time.Now()" internal/compute/api_test.go` prints 0; `wc -l < internal/compute/api_test.go` prints less than 800 (464 on main).
+3. `grep -c "annualized\|break-even\|percent" docs/contracts/compute.md` is at least 3; `go list -deps ./internal/compute | grep -c "internal/compute/optioncand"` prints 0.
 4. `go run ./scripts/arch --check` prints `arch: ok`; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the Files line.
 Checked by CI: ci-go, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`.
 
-### 5 compute-candidates
+### 5 compute-put-candidates
 
 Module: compute. Size: L.
-Files: `internal/compute/optioncand/optioncand.go`, `internal/compute/optioncand/put.go`, `internal/compute/optioncand/call.go`, `internal/compute/optioncand/events.go`, `internal/compute/optioncand/guard.go`, `internal/compute/optioncand/rank.go`, `internal/compute/optioncand/exact.go`, `internal/compute/optioncand/put_test.go`, `internal/compute/optioncand/call_test.go`, `internal/compute/optioncand/events_test.go`, `internal/compute/optioncand/guard_test.go`, `internal/compute/optioncand/rank_test.go`, `internal/compute/optioncand/exact_test.go`, `internal/compute/optioncand/testdata/`
-Design: docs/design/option-candidates.md#decisions (Decisions 3 to 8)
-Order: after candidate-compute-interface.
-Goal: `New()` returns an `OptionCandidates` that applies the gates of Decisions 4, 7 and 8 in order, the status rule of Decision 5 and the ranking of Decision 6, on `math/big.Rat`, with no float on a price or a yield.
+Files: `internal/compute/optioncand/optioncand.go`, `internal/compute/optioncand/put.go`, `internal/compute/optioncand/events.go`, `internal/compute/optioncand/rank.go`, `internal/compute/optioncand/exact.go`, `internal/compute/optioncand/put_test.go`, `internal/compute/optioncand/events_test.go`, `internal/compute/optioncand/rank_test.go`, `internal/compute/optioncand/exact_test.go`, `internal/compute/optioncand/purity_test.go`, `internal/compute/optioncand/testdata/`
+Design: docs/design/option-candidates.md#decisions (Decisions 4 to 8)
+Order: after 4.
+Goal: `New()` returns an `OptionCandidates` that applies, for `short_put`, the gates of Decision 7 in order, the status rule of Decision 5 and the ranking of Decision 8 on `big.Rat`.
 Acceptance:
-1. `grep -rhE "^func (TestBuyPriceBoundary|TestNoBuyPriceBlocks|TestQuoteGate|TestEarningsListedInsideBlocks|TestEarningsAfterExpiryMarks|TestEarningsUnknownBlocks|TestFundingPerAlias|TestCashRateStale|TestUnknownIsNotPass|TestRankByYield|TestRankTieOrder|TestBlockedHasNoRank|TestCallFreeShares|TestCallStrikeFloorAvgCost|TestCallStrikeFloorSalePrice|TestGuardExtrinsicBelowDividend|TestGuardNoValuePasses|TestGuardHeldCall|TestDeterministic)\(" internal/compute/optioncand | wc -l` prints 19, and `go test ./internal/compute/optioncand -race -count=1` passes.
-2. `TestBuyPriceBoundary`: strike 100, bid 2.00, buy price 98.00 passes and bid 1.99 blocks (the boundary is inclusive, exact). `TestGuardExtrinsicBelowDividend`: spot 110, strike 100, bid 10.40, dividend 0.50 gives extrinsic 0.40 and blocks; bid 10.60 passes.
-3. `grep -rc "float64\|float32\|time.Now()\|time.Sleep\|os\.\|net/http\|database/sql" internal/compute/optioncand/*.go | grep -v '_test.go' | grep -v ':0$'` prints nothing; `go list -deps ./internal/compute/optioncand | grep -c "internal/store\|internal/notify\|internal/jobs"` prints 0.
-4. `TestDeterministic` runs the same input shuffled 20 times (seed fixed in the test) and requires identical output; `grep -c "t.Parallel()"` of each test file is at least its count of `^func Test`.
-5. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines.
-Checked by CI: ci-go, golangci-lint, go-arch-lint. Whether the advisor-set limits (Decision 10) suit the owner is decided by reading the first stored day.
+1. `grep -rhE "^func (TestBuyPriceBoundary|TestNoBuyPriceBlocks|TestQuoteGate|TestEarningsListedInsideBlocks|TestEarningsAfterExpiryMarks|TestEarningsUnknownBlocks|TestEarningsAbsentAfterRecentReport|TestEventAgeInSessions|TestStaleChain|TestFundingPerAlias|TestNoFxIsUnknown|TestCashRatePercent|TestUnknownIsNotPass|TestRankByYield|TestRankTieOrder|TestBlockedHasNoRank|TestDeterministic|TestNoFloatNoClockNoIO)\(" internal/compute/optioncand | wc -l` prints 18, and `go test ./internal/compute/optioncand -race -count=1` passes.
+2. `TestBuyPriceBoundary`: strike 100, bid "2.00", buy price "98.00" passes, bid "1.99" blocks. `TestCashRatePercent`: a rate text "4.20" compares as 0.042 (a yield 0.05 passes, 0.04 blocks). `TestEventAgeInSessions`: a row dated Friday is fresh on Monday and a row from Wednesday is stale on the next Monday, with a fake calendar. `TestEarningsAbsentAfterRecentReport`: `absent` with a `listed` date 40 days back and expiry in 30 days passes with the mark `earnings_beyond_horizon`; with no earlier date it is `unknown`.
+3. `TestNoFloatNoClockNoIO` parses the package files with `go/parser` and fails on any identifier `float32` or `float64`, any import of `os`, `net/http`, `database/sql`, `time` calls `Now` or `Sleep`, or an import of `internal/store`, `internal/notify` or `internal/jobs` (the AST ignores comments, so a word in a comment cannot fail it).
+4. `TestDeterministic` runs the same input shuffled 20 times (fixed seed) and requires identical output; `grep -c "t.Parallel()"` of each test file is at least its count of `^func Test`.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line (`testdata/` counts as one); each new file is under 600 lines.
+Checked by CI: ci-go, golangci-lint, go-arch-lint. Whether the advisor-set limits suit the owner is decided by reading the first stored day.
 
 ### 6 candidate-dataset (interface)
 
 Module: contracts. Size: M.
 Files: `contracts/datasets/candidates.option_candidate.r1.json`, `contracts/generate.sh`, `internal/contracts/gen/records.go`, `internal/contracts/api.go`, `docs/contracts/datasets/candidates.option_candidate.md`, `contracts/fixtures/candidates.option_candidate.r1.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/schema_test.go`
 Design: docs/design/option-candidates.md#interface
-Order: after account-data `account-proto` and event-sources `earnings-datasets` (the same generated files; `contracts/generate.sh` and `records.go`).
-Goal: the dataset schema of the Interface section with the generated Go record and its document, committed together; the fixture is marked synthetic.
+Order: after 561 `account-proto` and 606 `earnings-datasets` (the same `generate.sh`, `records.go`).
+Goal: the dataset of the Interface section, with the generated Go record and its document committed together; the fixture is marked synthetic.
 Acceptance:
 1. `test -f contracts/datasets/candidates.option_candidate.r1.json`, and `bash contracts/generate.sh && git diff --exit-code internal/contracts/gen` leaves no change.
 2. `go test ./internal/contracts -race -count=1` passes with the fixture validated; `grep -c "candidates.option_candidate" contracts/fixtures/MANIFEST.synthetic-v1.json` is at least 1.
-3. `grep -c '"required"' contracts/datasets/candidates.option_candidate.r1.json` is at least 1 and the key array equals `["session_day","capture_id","kind","instrument_id","alias"]`.
+3. `grep -c '"run_id"\|"rule_version"' contracts/datasets/candidates.option_candidate.r1.json` is at least 2, and its `x-primary-key` equals `["session_day","run_id","kind","instrument_id","alias"]`.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
-Checked by CI: the generate check of `checks.yml`, `Contracts: changed` in the pull request body (a file under `contracts/datasets`).
+Checked by CI: the generate check of `checks.yml`; the pull request body carries `Contracts: changed`.
 
 ### 7 candidate-store-api (interface)
 
 Module: store. Size: S.
 Files: `internal/store/api.go`, `internal/store/api_candidate_test.go`, `docs/contracts/store.md`
 Design: docs/design/option-candidates.md#interface
-Order: after candidate-dataset, and after account-data `account-store-api` and event-sources `earnings-store` (the same `api.go`, `store.md`).
-Goal: `CandidateWriter`, `CandidateReader`, `store.Candidate`, `DSNEnvCandidate`, declarations only. `internal/store/api_test.go` is 800 lines and is not edited; the contract test is the new file `internal/store/api_candidate_test.go`, a fake on one side and a caller that reads a day and sees ranked rows before unranked ones.
+Order: after 6, 561 `account-store-api`, 606 `earnings-store` (the same `api.go`, `store.md`).
+Goal: `CandidateWriter`, `CandidateReader`, `store.Candidate`, `DSNEnvCandidate`, declarations only. `internal/store/api_test.go` is 800 lines and is not edited; the contract test is the new file `internal/store/api_candidate_test.go`: a fake on one side, a caller that reads a day written by two runs and sees only the newer run, ranked rows first.
 Acceptance:
 1. `grep -c "type CandidateWriter interface\|type CandidateReader interface" internal/store/api.go` prints 2; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "database/sql\|pgx" internal/store/api.go` equals its count on main.
-2. `go test ./internal/store -run TestCandidateContract -race -count=1` passes; `git diff --name-only $(git merge-base HEAD origin/main)` does not list `internal/store/api_test.go`.
+2. `go test ./internal/store -run TestCandidateContract -race -count=1` passes; the diff does not list `internal/store/api_test.go`.
 3. `grep -c "OT_PG_DSN_CANDIDATE\|CandidateReader" docs/contracts/store.md` is at least 2.
 Checked by CI: ci-go, go-arch-lint.
 
@@ -186,61 +194,132 @@ Checked by CI: ci-go, go-arch-lint.
 
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `migrations/NNNN_candidates.sql` (NNNN the next free number at cut time), `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`), `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#decisions (Decisions 1 and 9)
-Order: after candidate-store-api; after account-data `account-store-migration` and event-sources `earnings-store` (same `setup.go`; the migration number is the next free one at cut time).
-Goal: a table `candidates.option_candidate` with the key of the dataset, `ON CONFLICT DO NOTHING`, the role `ot_w_candidate` (INSERT and SELECT only) and `SELECT` for the role of the pages; `candidate.Open(ctx, dsn)` implements both interfaces; the reader orders ranked rows first.
+Design: docs/design/option-candidates.md#decisions (Decisions 1, 9, 13)
+Order: after 7; after 561 `account-store-migration` and `account-store-impl`, 606 `earnings-store` and `dividend-store` (same `setup.go`, the migration number and `.go-arch-lint.yml`: this entry takes the next free number and rebases on the last of them).
+Goal: a table `candidates.option_candidate` with the dataset key, insert-only, the role `ot_w_candidate` (INSERT and SELECT) and `SELECT` for the pages role; `candidate.Open(ctx, dsn)` implements both interfaces; the reader returns the newest run of the day.
 Acceptance:
-1. `grep -c "CREATE TABLE candidates.option_candidate\|ot_w_candidate" migrations/NNNN_candidates.sql` is at least 2 and `grep -c "UPDATE\|DELETE" migrations/NNNN_candidates.sql` prints 0 (no grant of them).
-2. `go test ./internal/store/candidate ./internal/store/setup -race -count=1` passes without a database (query text, row mapping, an empty day gives an empty slice, a reversed or zero day is an error).
-3. `grep -rc "OT_PG_DSN_CANDIDATE\|os.Getenv" internal/store/candidate/*.go | grep -v ':0$'` prints nothing (the DSN is passed in).
-4. `grep -c "^func TestCandidateRoundTrip\|^func TestCandidateConflictKeepsFirst" internal/store/candidate/store_pg_test.go` prints 2 and the file starts with `//go:build pg`; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
+1. `grep -c "CREATE TABLE candidates.option_candidate\|ot_w_candidate" migrations/NNNN_candidates.sql` is at least 2 and `grep -ci "GRANT.*\(UPDATE\|DELETE\)" migrations/NNNN_candidates.sql` prints 0.
+2. `go test ./internal/store/candidate ./internal/store/setup -race -count=1` passes without a database (query text, row mapping, an empty day gives an empty slice, a zero day is an error, two runs give the newer one).
+3. `grep -rl "os.Getenv" internal/store/candidate` prints nothing (the DSN is passed in).
+4. `grep -c "^func TestCandidateRoundTrip\|^func TestCandidateNewestRunWins" internal/store/candidate/store_pg_test.go` prints 2 and the file starts with `//go:build pg`; the diff lists no path outside the Files line.
 Checked by CI: the two `pg` tests run only in GitHub CI; `go run ./scripts/arch --check`.
 
-### 9 candidates-job (interface and implementation)
+### 9 candidates-job-puts (interface and implementation)
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
-Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#decisions (Decisions 1, 9, 10, 11)
-Order: after watch-owner-prices-interface, option-eod-watch (same `api.go`, `api_test.go`, `jobs.md`), compute-candidates, candidate-store-impl, event-sources `dividend-store`, account-data `account-store-impl` (`.go-arch-lint.yml`: this entry rebases on the last of them).
-Goal: `optioncandidates.New` (the type `NewOptionCandidatesFunc`) runs at `session_close` plus 30 minutes; for each watched US underlying it reads the latest option_eod day, the terms, the earnings and dividend rows, the newest account captures per alias and `DGS3MO`, builds the `CandidateInput`, calls `Evaluate` and writes the rows once per capture id (a rerun adds none). A nil reader gives `unknown` gates, not an error; a store error is a failed run with a named code.
+Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
+Design: docs/design/option-candidates.md#decisions (Decisions 1, 4, 5, 9, 13, 15)
+Order: after 1, 3, 5, 8, 561 `account-job` and 606 `earnings-job` (they create job packages and regenerate `.go-arch-lint.yml`; this entry rebases on the last of them).
+Goal: `optioncandidates.New` (the type `NewOptionCandidatesFunc`) runs at `session_close` plus 30 minutes; for each watched US underlying it reads the newest chain day, the terms (in chunks of 500 ids), the earnings rows, the newest account captures per alias and `DGS3MO`, converts floats to decimal text (Decision 4), calls `Evaluate` for `short_put` and writes the rows under a new run id. A nil reader gives `unknown` gates, not an error; a store error is a failed run with a named code. The job holds no dividend reader.
 Acceptance:
-1. `go test ./internal/jobs/optioncandidates -race -count=1` passes with `TestNilEarningsIsUnknown`, `TestRerunWritesNothingNew`, `TestOnlyUSEntries`, `TestAliasesAandBAreSeparateRows`, `TestStoreErrorFailsRun`, `TestScheduleIsCloseAfterEod` each present once.
-2. `grep -rc "internal/notify\|telegram" internal/jobs/optioncandidates | grep -v ':0$'` prints nothing; `go list -deps ./internal/jobs/optioncandidates | grep -c "internal/notify"` prints 0.
-3. `grep -c "min_dte\|max_dte\|min_bid_size\|max_spread\|min_open_interest\|div_guard_factor\|max_rate_age_days\|max_event_age_days" internal/jobs/optioncandidates/job.toml` is 8.
-4. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines.
+1. `go test ./internal/jobs/optioncandidates -race -count=1` passes with `TestNilEarningsIsUnknown`, `TestRerunIsNewRun`, `TestOnlyUSEntries`, `TestAliasesAandBAreSeparate`, `TestStoreErrorFailsRun`, `TestScheduleIsCloseAfterEod`, `TestTermsChunkedAt500`, `TestStaleChainDay`, `TestJPEntryNamedNotSilent` each present once.
+2. `TestFloatToDecimal` in `convert_test.go` feeds 1.99, 0.1, 100.00049 and 1e-7 and requires the texts "1.99", "0.1", "100" and "0" (shortest round-trip text, then half-even to 4 places, trailing zeros dropped); the test for `DGS3MO` "4.20" requires the ratio 0.042.
+3. `grep -rl "internal/notify\|telegram" internal/jobs/optioncandidates` prints nothing; `go list -deps ./internal/jobs/optioncandidates | grep -c "internal/notify"` prints 0; `grep -rc "Dividend" internal/jobs/optioncandidates/job.go` prints 0.
+4. `grep -c "min_dte\|max_dte\|min_bid_size\|max_spread\|min_open_interest\|max_rate_age_days\|max_event_age_sessions\|min_report_gap_days" internal/jobs/optioncandidates/job.toml` is 8.
+5. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; the diff lists no path outside the Files line; each new file is under 600 lines.
 Checked by CI: ci-go, go-arch-lint, `go run ./scripts/arch --check`.
 
-### 10 candidates-wire
+### 10 candidate-text
+
+Module: pages. Size: S.
+Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`
+Design: docs/design/option-candidates.md#interface
+Order: after 7.
+Goal: `Format(rows, all)` returns the plain text of the stored rows in the stored order: for `ok` rows company, kind, alias, expiry, strike, bid, annualized yield, break-even and marks; with `all` the blocked and unknown rows with their gate reasons; a line per JP entry is not its job (the command adds it). No sort, no arithmetic.
+Acceptance:
+1. `go test ./internal/pages/candidate_text -race -count=1` passes with `TestFormatOrderKept`, `TestFormatAllShowsReasons`, `TestFormatEmpty` each present once.
+2. `grep -rc "sort\.\|big\.\|float64" internal/pages/candidate_text/format.go` prints 0; `grep -c "candidate_text" docs/contracts/pages.md` is at least 1.
+3. The diff lists no path outside the Files line.
+Checked by CI: ci-go, go-arch-lint.
+
+### 11 option-eod-held-calls
+
+Module: jobs. Size: M.
+Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/held_test.go`, `internal/jobs/optioneod/run.go`, `internal/jobs/optioneod/run_test.go`, `internal/jobs/optioneod/plan.go`, `internal/jobs/optioneod/plan_test.go`
+Design: docs/design/option-candidates.md#decisions (Decisions 10 and 12)
+Order: after 3 (same files), 561 `account-store-impl`.
+Goal: `optioneod` optionally takes a `store.AccountReader` (a nil reader changes nothing) and adds the expiry and strike of every open short call of a watched underlying, from the newest `account.position` capture, to the day's contract list whatever its DTE.
+Acceptance:
+1. `go test ./internal/jobs/optioneod -race -count=1` passes with `TestHeldCallAddedAtTenDTE`, `TestHeldCallDeduplicated`, `TestNilAccountReaderUnchanged` each present once.
+2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep -c .` prints 0; the diff lists no path outside the Files line.
+Checked by CI: ci-go.
+
+### 12 compute-call-candidates
+
+Module: compute. Size: M.
+Files: `internal/compute/optioncand/call.go`, `internal/compute/optioncand/guard.go`, `internal/compute/optioncand/call_test.go`, `internal/compute/optioncand/guard_test.go`, `internal/compute/optioncand/testdata/`
+Design: docs/design/option-candidates.md#decisions (Decisions 11 and 12)
+Order: after 5.
+Goal: `Evaluate` handles `covered_call` (gates of Decision 11) and `held_call_guard` (Decision 12), same status rule and ranking.
+Acceptance:
+1. `grep -rhE "^func (TestCallFreeShares|TestCallStrikeFloorAvgCost|TestCallStrikeFloorSalePrice|TestGuardExtrinsicBelowDividend|TestGuardNoValuePasses|TestGuardUnknownStaleRow|TestGuardHeldCall|TestCallOneRowPerAlias)\(" internal/compute/optioncand | wc -l` prints 8, and `go test ./internal/compute/optioncand -race -count=1` passes (including `TestNoFloatNoClockNoIO` of issue 5).
+2. `TestGuardExtrinsicBelowDividend`: spot "110", strike "100", bid "10.40", dividend "0.50" gives extrinsic 0.40 and blocks; bid "10.60" passes.
+3. The diff lists no path outside the Files line; each new file is under 600 lines.
+Checked by CI: ci-go, golangci-lint, go-arch-lint.
+
+### 13 candidates-job-calls (interface and implementation)
+
+Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
+Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/calls_test.go`, `internal/jobs/optioncandidates/job.toml`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
+Design: docs/design/option-candidates.md#interface
+Order: after 9 (same files), 11, 12, 606 `dividend-store` and `dividend-job`.
+Goal: `NewOptionCandidatesCallsFunc` adds the dividend reader and the call and guard kinds to the same run; `NewOptionCandidatesFunc` and puts behave as before; `div_guard_factor` joins `job.toml`.
+Acceptance:
+1. `go test ./internal/jobs/optioncandidates -race -count=1` passes with `TestCallsNeedDividendReader`, `TestPutsUnchangedByCalls`, `TestHeldCallGuardRows` each present once; `grep -c "div_guard_factor" internal/jobs/optioncandidates/job.toml` prints 1.
+2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -rl "internal/notify" internal/jobs/optioncandidates` prints nothing; the diff lists no path outside the Files line.
+Checked by CI: ci-go, go-arch-lint.
+
+### 14 candidates-wire
 
 Module: ot. Size: M.
 Files: `cmd/ot/candidates.go`, `cmd/ot/candidates_test.go`, `cmd/ot/runonce.go`, `cmd/ot/runonce_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/scheduler.go`, `cmd/ot/main.go`, `cmd/ot/env.go`, `docs/contracts/ot.md`
-Design: docs/design/option-candidates.md#interface
-Order: after candidates-job, event-sources `watch-loader-earnings-wire`, account-data `account-wire` (the same `runonce.go`, `wire.go`, `env.go`).
-Goal: `option_candidates` registers in `run-once` and the scheduler, and `option_eod` uses `NewWithWatch` with the loaded list; a missing `OT_PG_DSN_CANDIDATE` disables only this job with a named line; `ot candidates` prints the ranked `ok` rows (company, kind, alias, expiry, strike, bid, annualized yield, break-even, marks) and, with `--all`, the blocked rows with their reasons. Output is local text, written to stdout only.
+Design: docs/design/option-candidates.md#decisions (Decision 9)
+Order: after 9, 10, 606 `watch-loader-earnings-wire`, 561 `account-wire` (the same `runonce.go`, `wire.go`, `env.go`). The calls are wired by a second pull request of this entry once 13 has merged; the entry is not closed before.
+Goal: wiring only. `option_candidates` registers in `run-once` after `option_eod`, `earnings_refresh` and `account_capture`, and in the scheduler; `option_eod` uses `NewWithWatch`; a missing `OT_PG_DSN_CANDIDATE` disables only this job with a named line; `ot candidates` opens the store, calls `candidate_text.Format` and prints it, with one line per JP entry of the watch list ("no option route: see option-candidates-jp").
 Acceptance:
-1. `go test ./cmd/ot -race -count=1` passes with `TestCandidatesCommandRanked`, `TestCandidatesAllShowsReasons`, `TestCandidatesRegistered`, `TestMissingCandidateDSNDisablesOnlyIt` each present once.
-2. `grep -c "OT_PG_DSN_CANDIDATE\|ot candidates" docs/contracts/ot.md` is at least 2.
-3. `grep -rc "notify\|telegram" cmd/ot/candidates.go` prints 0.
-4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines.
+1. `go test ./cmd/ot -race -count=1` passes with `TestCandidatesCommandPrints`, `TestCandidatesRegisteredAfterInputs`, `TestMissingCandidateDSNDisablesOnlyIt`, `TestCandidatesNamesJPEntry` each present once.
+2. `grep -c "OT_PG_DSN_CANDIDATE\|ot candidates" docs/contracts/ot.md` is at least 2; `grep -c "sort\.\|big\.\|float64" cmd/ot/candidates.go` prints 0; `grep -c "notify\|telegram" cmd/ot/candidates.go` prints 0.
+3. The diff lists no path outside the Files line; each new file is under 600 lines.
 Checked by CI: `go test ./cmd/ot`, golangci-lint. The owner runs `ot migrate`, `ot setup pg` and adds `OT_PG_DSN_CANDIDATE` to `.env` before the first run.
 
 ## Left out
 
-- Pages: `option_page` and `stock_option_page` builders are the design `option-candidates-page`; until then `ot candidates` is the view.
-- Ledger, cost basis, wheel, assignment cash, margin cushion, tracking, local notices: the next designs of the table above; none is a row here.
-- Funding by open puts and concentration caps (ADR 0011, 0013), the 13-week-rate gate beyond `DGS3MO`, fees, the ITM probability N(-d2), the volatility spread and IV rank (they need the bars design), spreads, naked short calls, rolls: each its own design, named so that none is silently dropped. The register ids `option.candidates.*` of the old register (earnings date, IV context, ITM probability, excess yield) are not ported here; annualized yield and break-even are plain arithmetic documented in `docs/contracts/compute.md`.
-- Japan: no option capture and no JP earnings or dividend rows in the cut; a JP entry yields no row.
-- An owner acknowledgement that clears an earnings block (the old system's ADR 0016): the owner's tool is the `report_date_override` of 606 and, to sell through results, deleting the date; a separate acknowledgement record is not built.
-- Rejected: a composite score (owner decision); computing candidates in the page builder (pages compute nothing); a new file for the prices (606's `watch.toml` already is the owner's list).
+- The candidate page: the next design `option-candidates-page` (builder for `option_page` and `stock_option_page`, reading `store.CandidateReader`); `ot candidates` is the view until then.
+- Japan options (Decision 14): `option-candidates-jp`, after a probe. Ledger, wheel, assignment cash, margin cushion, tracking, local notices: the next designs of the table, none is a row here.
+- Funding by open and working puts and concentration caps (ADR 0011, 0013) and FX conversion; fees; the ITM probability N(-d2), the volatility spread and IV rank (they need the bars design); spreads, naked short calls, rolls. Register ids `option.candidates.*` of the old register are not ported; annualized yield and break-even are plain arithmetic in `docs/contracts/compute.md`.
+- A coverage check of the chain (a run that ends early on its budget leaves fewer contracts, which looks like fewer candidates): named, not built; the first day is read by hand.
+- An owner acknowledgement that clears an earnings block (old ADR 0016): the tool is `report_date_override` of 606; no separate record.
+- Rejected: a composite score (owner decision); one JSON payload column or a dataset without a run id (review); computing in the page builder; a new file for the prices.
+
+## Open questions for the owner
+
+1. Covered calls: strike floor is your `sale_price` when set, else the average cost of the shares in that account. Right?
+2. Defaults: DTE 21 to 45, spread at most 10 percent, open interest at least 10, guard when extrinsic value is below the dividend. Keep?
+3. Gate on yield above the 13-week Treasury bill rate, or a fixed minimum yield instead?
+4. Japan options: after the US puts, do you want a probe of Japanese option chains (`option-candidates-jp`) before valuation?
 
 ## What the owner gets
 
 - You type one or two prices per company in the file you already keep, `watch.toml`: `buy_price` (the most you would pay for the shares) and, if you like, `sale_price` (the least you would sell them for).
-- After each close the tool lists the puts you could sell, best annualized yield first. A put is on the list only when strike minus the premium is at or below your buy price, the quote is real, no results date falls before expiry, the cash fits in account A or B, and the yield beats the Treasury bill rate. Anything it cannot check counts as not cleared and shows why.
-- Covered calls on shares you hold are listed the same way, per account, with the strike at or above your sale price (or your cost) and a warning when an ex-dividend date makes early assignment likely. Calls you already hold are checked against the same warning.
-- You read it with `ot candidates`, on your own machine. Nothing about accounts, cash or margin goes to Telegram, ever.
-- Before it shows anything real you add `OT_PG_DSN_CANDIDATE` to `.env` and run `ot migrate` and `ot setup pg`; the earnings and dividend sources of design 606 and the account data of 561 must be in first, or every row says unknown.
+- After each close the tool lists the puts you could sell, best annualized yield first. A put is listed only when strike minus the premium is at or below your buy price, the quote is real, no results date falls before expiry, the cash fits in account A or B, and the yield beats the Treasury bill rate. Anything it cannot check shows as not cleared, with the reason, and a rerun after the missing data arrives replaces the list.
+- Puts come first: they do not wait for the dividend data. Covered calls on shares you hold, with the ex-dividend assignment warning (also for calls you already hold), follow as issues 11 to 14.
+- You read it with `ot candidates` on your own machine; a page comes in the next design. Nothing about accounts, cash or margin goes to Telegram, ever. Japanese options are not covered yet: the tool says so by name.
+- Before it shows real rows you add `OT_PG_DSN_CANDIDATE` (and the 606 and 561 keys and DSNs) to `.env`, run `ot migrate` and `ot setup pg`, and fill `watch.toml` with each company's identifiers and prices.
 
 ## Adversarial
 
-Pending. The adversarial review of revision 1 comes before the design review; its findings and the answers go here.
+The adversarial review of revision 1 is in the dispatcher scratchpad, not in the repository. Answers:
+
+- 1a JP absent: adopted. Decision 14 states the route (`OSE.JPN` as in the old ADR 0004, a probe first), the next design `option-candidates-jp`, a named line in the output, and an owner question.
+- 1b capture cannot reach the put: adopted. Decision 10 and issue 3 derive the strike range from `BuyPrice`, add the DTE window and a strike cap; the per-entry band key is dropped.
+- 1c guard on held calls mostly unknown: adopted. Issue 11 captures every open short call whatever its DTE.
+- 1d staleness: adopted. Gate `chain_fresh` (Decision 6); the end-of-day bid is named an estimate.
+- 1e unknown freezes the day, key without capture or run: adopted. Run id and `rule_version` in the key, newest run read, run-once order named (Decision 9).
+- 1f earnings: adopted for `absent` after a recent report (Decision 7.3, `min_report_gap_days`), and event age in session days; one key for both sources. The two-source inconsistency is removed.
+- 1g rule gaps: adopted in part. Moneyness is not filtered, so the put at the buy price above spot is evaluated; the funding gate says plainly it is weaker than ADR 0009 and gives `no_fx` as unknown. Not adopted: the stricter funding rule (its own later step, Left out).
+- 1h owner steps: adopted (What the owner gets lists them).
+- 2 and 3 put first and simpler way: adopted for puts first (Decision 2, issues 11 to 14 after the dividend chain, `CandidateStores` without a dividend reader). Not adopted: one JSON payload column (typed columns kept so the page and text read without parsing); the key gets the run id as the review asked.
+- 4 lock-in: adopted for the key. The precedence of the owner's price is stated as permanent (Decision 3). `CandidateInput` is declared once with the call fields, so issues 12 and 13 add no interface change.
+- 5 claims: `DGS3MO` percent conversion and the float-to-decimal step adopted (Decision 4, tests in issues 5 and 9); `absent` rule and `present` versus `no_value` wording adopted; 500-id chunking tested in issue 9; issue 8 now follows `dividend-store`.
+- 6 order gaps: adopted (issues 8, 9, 13 name 561 and 606 entries that regenerate `.go-arch-lint.yml`); the issue 5 grep is replaced by an AST test; `ot` is wiring only, the text formatter is issue 10 in pages.
+- Still open, owner: the four questions above.

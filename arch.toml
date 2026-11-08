@@ -184,6 +184,10 @@ may_import = ["contracts", "store", "compute", "notify"]
 in = "internal/pages"
 may_import = ["contracts", "store", "compute"]
 
+[component."pages/candidate_text"]
+in = "internal/pages/candidate_text"
+may_import = ["contracts", "store", "compute", "pages"]
+
 [component."pages/embed"]
 in = "internal/pages/embed"
 may_import = ["contracts", "store", "compute", "pages"]
@@ -214,4 +218,4 @@ may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/report_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "compute/ease", "compute/optioncand", "store/candidate", "jobs/optioncandidates"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/report_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "compute/ease", "compute/optioncand", "store/candidate", "jobs/optioncandidates", "pages/candidate_text"]
