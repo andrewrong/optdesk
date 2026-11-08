@@ -50,7 +50,7 @@ func loadRecords(t *testing.T, name string) ([]map[string]any, []byte) {
 func TestDatasetFixtures(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"master.session_day", "obs.series_point", "obs.option_eod", "obs.quote_snapshot"} {
+	for _, name := range []string{"master.session_day", "obs.series_point", "obs.option_eod", "obs.quote_snapshot", "readings.reading"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			s := compileDataset(t, name)
@@ -191,4 +191,56 @@ func TestSymbolsFixture(t *testing.T) {
 		t.Fatalf("symbols: got %q", b)
 	}
 
+}
+
+func TestReadingRejects(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "readings.reading")
+	recs, _ := loadRecords(t, "readings.reading")
+	if len(recs) != 3 {
+		t.Fatalf("want 3 records, got %d", len(recs))
+	}
+	mutate := func(i int, f func(map[string]any)) map[string]any {
+		m := map[string]any{}
+		for k, v := range recs[i] {
+			m[k] = v
+		}
+		f(m)
+		return m
+	}
+	for i := range recs {
+		if err := s.Validate(mutate(i, func(map[string]any) {})); err != nil {
+			t.Fatalf("record %d: %v", i, err)
+		}
+	}
+	if recs[0]["state"] != "ok" || len(recs[0]["parameters"].([]any)) != 2 ||
+		recs[1]["state"] != "missing_input" || recs[1]["reason_code"] != float64(3) || recs[1]["value"] != nil ||
+		recs[2]["rev"] != float64(2) || recs[2]["name"] != recs[0]["name"] {
+		t.Fatalf("fixture shape: %v", recs)
+	}
+	bad := map[string]map[string]any{
+		"value 1e3":         mutate(0, func(m map[string]any) { m["value"] = "1e3" }),
+		"value number":      mutate(0, func(m map[string]any) { m["value"] = 0.5 }),
+		"value 13 decimals": mutate(0, func(m map[string]any) { m["value"] = "0.1234567890123" }),
+		"state done":        mutate(0, func(m map[string]any) { m["state"] = "done" }),
+		"reason 9":          mutate(1, func(m map[string]any) { m["reason_code"] = 9 }),
+		"reason 0":          mutate(1, func(m map[string]any) { m["reason_code"] = 0 }),
+		"rev 0":             mutate(0, func(m map[string]any) { m["rev"] = 0 }),
+		"origin other":      mutate(0, func(m map[string]any) { m["origin"] = "other" }),
+		"unit bogus":        mutate(0, func(m map[string]any) { m["unit"] = "bogus" }),
+		"parameter extra": mutate(0, func(m map[string]any) {
+			m["parameters"] = []any{map[string]any{"param": "a", "value_num": nil, "value_tag": nil, "x": 1}}
+		}),
+		"input without keys": mutate(0, func(m map[string]any) {
+			m["inputs"] = []any{map[string]any{"input_table": "t", "code_version": "c", "convention_version": "v"}}
+		}),
+	}
+	for label, rec := range bad {
+		if err := s.Validate(rec); err == nil {
+			t.Fatalf("%s must be rejected", label)
+		}
+	}
+	if err := s.Validate(mutate(0, func(m map[string]any) { m["value"] = "-12345.123456789012"; m["reason_code"] = nil })); err != nil {
+		t.Fatalf("signed value with 12 decimals: %v", err)
+	}
 }

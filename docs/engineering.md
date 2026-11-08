@@ -4,11 +4,11 @@ How code gets into this repository. `AGENTS.md` holds the short version for agen
 
 ## 1. Libraries do the maths
 
-- Option pricing, implied-volatility solving and Greeks come from QuantLib. py_vollib is a cross-check under identical (European) assumptions only.
-- IBKR's own model IV and Greeks are a primary data source; our computations validate them.
-- Volatility forecasting uses `arch`.
-- Hand-written formulas are limited to simple arithmetic defined in `GLOSSARY.md` (yields, cost basis, HV). Each cites its definition.
-- Where a library engine does not provide a Greek (for example vega or rho from QuantLib's finite-difference American engine), compute it by bump-and-reprice with that same engine. Document the step size and test convergence. Never return zero or a European Greek as a stand-in.
+- Numerics come from gonum (statistics, linear algebra) and go-talib (indicators), each behind an interface of `internal/compute`; own glue code, even thin, sits behind an interface too, so a library can replace it. Nothing outside `internal/compute` imports a library directly.
+- Implied volatility comes only from IBKR model values (`iv_decimal`), with one exception: the own IV30 of `GLOSSARY.md` (`market.iv30_own`, convention `iv30_v1`), which joins IBKR model IVs by the glossary's rule. We do not solve IV ourselves and do not price options to replace a broker value.
+- Figures are stored as readings (`readings.reading`), each with the hash of the rule that made it (`reading_input.code_version`) and the hash of its input rows (`rows_sha256`), insert-only. A value is the decimal text of `Units.RoundHalfEven`; a missing figure is stored as missing with a reason code, never as a zero.
+- Hand-written formulas are limited to simple arithmetic defined in `GLOSSARY.md` and in the figures register (yields, cost basis, HV, ratios, percentile ranks). Each cites its definition.
+- Greeks and a forecast of volatility are not computed here until a design adds them; a Greek is never returned as zero or as a European stand-in.
 - A new dependency needs a reason in the issue. `uv.lock` pins every version.
 
 ## 2. One vocabulary
