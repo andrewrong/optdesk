@@ -28,11 +28,15 @@ function specOf(payload: Payload): ChartSpec {
   }
 }
 
-const RECENT_IDS = ['period', 'released', 'value', 'change'] as const
-
 function Recent({ recent }: { recent: Payload['recent'] }) {
   if ('reason' in recent) return <GapLine text={recent.text} reason={recent.reason} />
-  const columns: Column[] = recent.columns.map((label, index) => ({ id: RECENT_IDS[index]!, label }))
+  const [period, released, value, change] = recent.columns
+  const columns: Column[] = [
+    { id: 'period', label: period },
+    { id: 'released', label: released },
+    { id: 'value', label: value },
+    { id: 'change', label: change },
+  ]
   return (
     <section data-recent>
       <h3 className="font-medium">{recent.title}</h3>

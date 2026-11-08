@@ -34,9 +34,7 @@ describe('indicator chart spec', () => {
   it('draws ok.points as one line and ok.reference_line as a flat second line', async () => {
     const spec = await specOf(ok)
     expect(spec.kind).toBe('line')
-    expect(spec.categories).toEqual(
-      ok.points.map((point) => ('day' in point.released ? point.released.day : point.observed_on)),
-    )
+    expect(spec.categories).toEqual(['2026-09-05', '2026-10-03', '2026-10-01'])
     expect(spec.series[0]!.points.map((point) => point.value)).toEqual(ok.points.map((point) => point.value))
     expect(spec.series[0]!.points.map((point) => point.text)).toEqual(ok.points.map((point) => point.text))
     expect(spec.series[1]!.name).toBe(ok.reference_line.label)
