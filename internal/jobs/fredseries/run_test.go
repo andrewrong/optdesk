@@ -3,6 +3,7 @@ package fredseries
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -132,5 +133,82 @@ func TestPlanLateRunRecovery(t *testing.T) {
 	}
 	if len(w.calls) != 1 {
 		t.Fatalf("writes = %d", len(w.calls))
+	}
+}
+
+func keysOf(ids ...string) []contracts.ExpectedKey {
+	out := make([]contracts.ExpectedKey, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, contracts.ExpectedKey{DatasetID: "obs.series_point", SubjectKey: id})
+	}
+	return out
+}
+
+var (
+	plainIDs    = []string{"DGS10", "DGS3MO", "RVXCLS", "SP500", "VIXCLS", "VXNCLS", "VXVCLS"}
+	windowedIDs = []string{"BAMLH0A0HYM2", "DFF", "RRPONTSYD", "WALCL", "WDTGAL"}
+)
+
+func TestRunFetchWindowPerGroup(t *testing.T) {
+	t.Parallel()
+	day := contracts.Day("2026-11-06")
+	src := &fakeSource{}
+	j, err := New(src, &fakeWriter{}, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks, _, err := j.Plan(context.Background(), day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ks) != 12 {
+		t.Fatalf("keys = %d", len(ks))
+	}
+	j.Run(context.Background(), day, ks)
+	if len(src.plans) != 2 {
+		t.Fatalf("fetch calls = %d", len(src.plans))
+	}
+	for _, p := range src.plans {
+		if p.To != day {
+			t.Fatalf("To = %s", p.To)
+		}
+		from := contracts.Day("2026-11-06")
+		if slices.Contains(p.SeriesIDs, "WALCL") {
+			from = "2026-10-23"
+		}
+		if p.From != from {
+			t.Fatalf("ids %v From = %s, want %s", p.SeriesIDs, p.From, from)
+		}
+	}
+	ids := func(p sources.FetchPlan) []string { s := slices.Clone(p.SeriesIDs); slices.Sort(s); return s }
+	got := [][]string{ids(src.plans[0]), ids(src.plans[1])}
+	if !(slices.Equal(got[0], plainIDs) && slices.Equal(got[1], windowedIDs)) &&
+		!(slices.Equal(got[1], plainIDs) && slices.Equal(got[0], windowedIDs)) {
+		t.Fatalf("groups = %v", got)
+	}
+}
+
+func TestRunOnlyWindowedKeysMakeOneCall(t *testing.T) {
+	t.Parallel()
+	day := contracts.Day("2026-11-06")
+	for name, c := range map[string]struct {
+		ids  []string
+		from contracts.Day
+	}{
+		"windowed": {windowedIDs, "2026-10-23"},
+		"plain":    {plainIDs, day},
+	} {
+		src := &fakeSource{}
+		j, err := New(src, &fakeWriter{}, fakeClock{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		j.Run(context.Background(), day, keysOf(c.ids...))
+		if len(src.plans) != 1 {
+			t.Fatalf("%s: fetch calls = %d", name, len(src.plans))
+		}
+		if p := src.plans[0]; p.From != c.from || p.To != day || len(p.SeriesIDs) != len(c.ids) {
+			t.Fatalf("%s: plan = %+v", name, p)
+		}
 	}
 }
