@@ -82,13 +82,14 @@ func TestBadInput(t *testing.T) {
 func TestNoInfOnOverflow(t *testing.T) {
 	t.Parallel()
 	s := gonumstats.New()
-	big := []float64{math.MaxFloat64, math.MaxFloat64}
-	m, err := s.Mean(big)
-	if err == nil && (math.IsInf(m, 0) || math.IsNaN(m)) {
-		t.Errorf("Mean = %v with nil error; want a finite value or a Permanent error", m)
-	}
-	sd, err := s.StdDev([]float64{math.MaxFloat64, -math.MaxFloat64})
-	if err == nil && (math.IsInf(sd, 0) || math.IsNaN(sd)) {
-		t.Errorf("StdDev = %v with nil error; want a finite value or a Permanent error", sd)
+	for name, f := range map[string]func() (float64, error){
+		"mean":   func() (float64, error) { return s.Mean([]float64{math.MaxFloat64, math.MaxFloat64}) },
+		"stddev": func() (float64, error) { return s.StdDev([]float64{math.MaxFloat64, -math.MaxFloat64}) },
+	} {
+		v, err := f()
+		var te contracts.TypedError
+		if !errors.As(err, &te) || te.Kind() != contracts.Permanent || v != 0 {
+			t.Errorf("%s: got %v, %v; want 0 and a Permanent TypedError", name, v, err)
+		}
 	}
 }
