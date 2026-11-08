@@ -187,6 +187,9 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobComputeFigures}, nil
 	}
+	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+		return idJob{id: jobCalendarRefresh}, nil
+	}
 	d.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
 		n := r.dials.Add(1)
 		if r.dialErrs != nil {
@@ -256,12 +259,16 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 	return <-done
 }
 
-// jobComputeFigures is the id of the fourth job; scheduler.go and preflight.go never name it.
-const jobComputeFigures = "compute_figures"
+// jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
+// never name them.
+const (
+	jobComputeFigures  = "compute_figures"
+	jobCalendarRefresh = "calendar_refresh"
+)
 
 const noKeyEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\n" +
 	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
-	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\n"
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
 
 func TestSchedulerLocksOnce(t *testing.T) {
 	t.Parallel()
@@ -280,7 +287,7 @@ func TestSchedulerLocksOnce(t *testing.T) {
 	if b, _ := r.sl.build.Load().(string); b != "dev" || r.inst.build != "dev" {
 		t.Fatalf("build %q, lock build %q", b, r.inst.build)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("jobs %v", got)
 	}
 }
@@ -383,7 +390,7 @@ func TestSchedulerErrorsHoldNoSecret(t *testing.T) {
 	t.Parallel()
 	const secret = "postgres://sentinel-user:sentinel-pw@h/db"
 	env := "OT_PG_DSN_RUNNER=" + secret + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n" +
-		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\n"
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n"
 	steps := map[string]func(r *schedRig){
 		"open fence": func(r *schedRig) {
 			r.a.deps.openFence = func(_ context.Context, dsn string) (store.InstanceFence, error) {
@@ -438,10 +445,10 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	r := newSchedRig(t, noKeyEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	if len(r.sched.disabled) != 1 || r.sched.disabled[jobFredSeries] == "" {
@@ -459,10 +466,10 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	r.dialErrs = func(int32) error { return errors.New("no socket") }
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); len(got) != 4 {
+	if got := ids(r.sched.jobs); len(got) != 5 {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
@@ -495,13 +502,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if !slices.Equal(ran, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -528,7 +535,7 @@ func TestSchedulerFredStaysDisabledUntilRestart(t *testing.T) {
 		if got := r.sched.disabled[jobFredSeries]; got != first || got == "" {
 			t.Fatalf("reason %q, first %q", got, first)
 		}
-		if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
+		if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
 			t.Fatalf("reconciler jobs %v", got)
 		}
 		if len(r.sched.disabled) != 1 {
@@ -665,12 +672,12 @@ func TestSchedulerNeedsTelegramLines(t *testing.T) {
 	}
 }
 
-func TestSchedulerWiresFourJobs(t *testing.T) {
+func TestSchedulerWiresFiveJobs(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	want := []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+	want := []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
 	if got := ids(r.sched.jobs); !slices.Equal(got, want) {
 		t.Fatalf("scheduler jobs %v, want %v", got, want)
 	}
@@ -690,6 +697,16 @@ func TestSchedulerNeedsReadingsDSN(t *testing.T) {
 	done := r.start()
 	err := <-done
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestSchedulerNeedsLoaderDSN(t *testing.T) {
+	t.Parallel()
+	env := strings.Replace(fullEnv, "OT_PG_DSN_LOADER=loader-dsn\n", "", 1)
+	r := newSchedRig(t, env)
+	err := <-r.start()
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || strings.Contains(err.Error(), "loader-dsn") {
 		t.Fatalf("err %v", err)
 	}
 }
