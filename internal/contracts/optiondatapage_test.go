@@ -16,18 +16,7 @@ const optionPageFixturesDir = "../../contracts/fixtures"
 func TestOptionDataPageFixtures(t *testing.T) {
 	t.Parallel()
 	s := compilePageV2(t, "page.option_data_page.v1.json")
-	load := func(t *testing.T, name string) any {
-		t.Helper()
-		b, err := os.ReadFile(filepath.Join(optionPageFixturesDir, "page.option_data_page.v1."+name+".json"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		v, err := jsonschema.UnmarshalJSON(strings.NewReader(string(b)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return v
-	}
+	load := loadOptionPageFixture
 	for _, name := range []string{"ok", "terms", "gap", "stale", "choices", "jpy"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -36,6 +25,29 @@ func TestOptionDataPageFixtures(t *testing.T) {
 			}
 		})
 	}
+	t.Run("jpy-shape", func(t *testing.T) {
+		t.Parallel()
+		checkJPYShape(t, load(t, "jpy"))
+	})
+	t.Run("jpy-bad-approx-usd-text", func(t *testing.T) {
+		t.Parallel()
+		v, u := jpyObjects(t, load(t, "jpy"))
+		price, _ := u["price"].(map[string]any)
+		price["approx_usd_text"] = strings.Repeat("x", 201)
+		wantLeaf(t, s.Validate(v), leaf{"/underlying/price/approx_usd_text", "maxLength"})
+	})
+	t.Run("jpy-bad-earnings-tone", func(t *testing.T) {
+		t.Parallel()
+		v, u := jpyObjects(t, load(t, "jpy"))
+		u["earnings_tone"] = "red"
+		wantLeaf(t, s.Validate(v), leaf{"/underlying/earnings_tone", "enum"})
+	})
+	t.Run("jpy-unknown-underlying-key", func(t *testing.T) {
+		t.Parallel()
+		v, u := jpyObjects(t, load(t, "jpy"))
+		u["bogus"] = "x"
+		wantLeaf(t, s.Validate(v), leaf{"/underlying", "additionalProperties"})
+	})
 	t.Run("choices-bad-href", func(t *testing.T) {
 		t.Parallel()
 		v, ok := load(t, "choices").(map[string]any)
@@ -70,85 +82,6 @@ func TestOptionDataPageFixtures(t *testing.T) {
 		if len(got) != 1 || got[0] != (leaf{"/schema_version", "const"}) {
 			t.Errorf("failures = %v, want one at /schema_version with const", got)
 		}
-	})
-}
-
-// TestOptionDataPageJPY checks the shape of the jpy fixture and that the four optional fields are
-// validated: an approx_usd_text over 200 characters, an earnings_tone outside the enum and an
-// unknown key in Underlying each fail at their own location.
-func TestOptionDataPageJPY(t *testing.T) {
-	t.Parallel()
-	s := compilePageV2(t, "page.option_data_page.v1.json")
-	load := func(t *testing.T, name string) any {
-		t.Helper()
-		b, err := os.ReadFile(filepath.Join(optionPageFixturesDir, "page.option_data_page.v1."+name+".json"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		v, err := jsonschema.UnmarshalJSON(strings.NewReader(string(b)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return v
-	}
-	// jpyUnderlying returns the underlying object of the jpy fixture.
-	jpyUnderlying := func(t *testing.T) (map[string]any, map[string]any) {
-		t.Helper()
-		v, ok := load(t, "jpy").(map[string]any)
-		if !ok {
-			t.Fatal("jpy is not an object")
-		}
-		u, ok := v["underlying"].(map[string]any)
-		if !ok {
-			t.Fatal("jpy underlying is not an object")
-		}
-		return v, u
-	}
-	t.Run("jpy-shape", func(t *testing.T) {
-		t.Parallel()
-		v, u := jpyUnderlying(t)
-		if series, ok := v["quote_series"].([]any); !ok || len(series) != 0 {
-			t.Errorf("quote_series = %v, want an empty list", v["quote_series"])
-		}
-		if u["currency"] != "JPY" {
-			t.Errorf("currency = %v, want JPY", u["currency"])
-		}
-		if tone := u["earnings_tone"]; tone != "in_term" {
-			t.Errorf("earnings_tone = %v, want in_term", tone)
-		}
-		if vl, _ := u["vol_line"].(string); !strings.Contains(vl, "HV30 缺") {
-			t.Errorf("vol_line = %q, want it to contain HV30 缺", vl)
-		}
-		if et, _ := u["earnings_text"].(string); et == "" {
-			t.Error("earnings_text is empty")
-		}
-		price, _ := u["price"].(map[string]any)
-		if price["kind"] != "value" || price["approx_usd_text"] == nil {
-			t.Errorf("price = %v, want a value figure with approx_usd_text", price)
-		}
-		chain, _ := v["chain"].(map[string]any)
-		rows, _ := chain["rows"].([]any)
-		checkJPYRows(t, rows)
-	})
-	t.Run("jpy-bad-approx-usd-text", func(t *testing.T) {
-		t.Parallel()
-		v, u := jpyUnderlying(t)
-		_ = v
-		price, _ := u["price"].(map[string]any)
-		price["approx_usd_text"] = strings.Repeat("x", 201)
-		wantLeaf(t, s.Validate(v), leaf{"/underlying/price/approx_usd_text", "maxLength"})
-	})
-	t.Run("jpy-bad-earnings-tone", func(t *testing.T) {
-		t.Parallel()
-		v, u := jpyUnderlying(t)
-		u["earnings_tone"] = "red"
-		wantLeaf(t, s.Validate(v), leaf{"/underlying/earnings_tone", "enum"})
-	})
-	t.Run("jpy-unknown-underlying-key", func(t *testing.T) {
-		t.Parallel()
-		v, u := jpyUnderlying(t)
-		u["bogus"] = "x"
-		wantLeaf(t, s.Validate(v), leaf{"/underlying", "additionalProperties"})
 	})
 }
 
@@ -198,4 +131,60 @@ func checkJPYRows(t *testing.T, rows []any) {
 	if gaps != 1 {
 		t.Errorf("rows with a gap bid = %d, want 1", gaps)
 	}
+}
+
+// loadOptionPageFixture reads page.option_data_page.v1.<name>.json as a decoded JSON value.
+func loadOptionPageFixture(t *testing.T, name string) any {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(optionPageFixturesDir, "page.option_data_page.v1."+name+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := jsonschema.UnmarshalJSON(strings.NewReader(string(b)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
+}
+
+// jpyObjects returns the page and its underlying object.
+func jpyObjects(t *testing.T, page any) (map[string]any, map[string]any) {
+	t.Helper()
+	v, ok := page.(map[string]any)
+	if !ok {
+		t.Fatal("jpy is not an object")
+	}
+	u, ok := v["underlying"].(map[string]any)
+	if !ok {
+		t.Fatal("jpy underlying is not an object")
+	}
+	return v, u
+}
+
+// checkJPYShape asserts the content of the jpy fixture: no quote series, JPY, the vol line, the earnings tone and text, an approximated price and the chain rows.
+func checkJPYShape(t *testing.T, page any) {
+	t.Helper()
+	v, u := jpyObjects(t, page)
+	if series, ok := v["quote_series"].([]any); !ok || len(series) != 0 {
+		t.Errorf("quote_series = %v, want an empty list", v["quote_series"])
+	}
+	if u["currency"] != "JPY" {
+		t.Errorf("currency = %v, want JPY", u["currency"])
+	}
+	if tone := u["earnings_tone"]; tone != "in_term" {
+		t.Errorf("earnings_tone = %v, want in_term", tone)
+	}
+	if vl, _ := u["vol_line"].(string); !strings.Contains(vl, "HV30 缺") {
+		t.Errorf("vol_line = %q, want it to contain HV30 缺", vl)
+	}
+	if et, _ := u["earnings_text"].(string); et == "" {
+		t.Error("earnings_text is empty")
+	}
+	price, _ := u["price"].(map[string]any)
+	if price["kind"] != "value" || price["approx_usd_text"] == nil {
+		t.Errorf("price = %v, want a value figure with approx_usd_text", price)
+	}
+	chain, _ := v["chain"].(map[string]any)
+	rows, _ := chain["rows"].([]any)
+	checkJPYRows(t, rows)
 }
