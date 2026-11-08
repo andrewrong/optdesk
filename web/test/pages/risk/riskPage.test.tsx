@@ -52,6 +52,7 @@ describe('HouseholdRiskView', () => {
     expectBody(text, [ok.vega_title, ok.vega.meaning, ok.vega.total.text])
     for (const row of ok.vega.rows) expectBody(text, [row.expiry_text, row.vega.text])
     expectBody(text, [ok.standard_metrics.title])
+    expect(ok.standard_metrics.metrics.length).toBeGreaterThanOrEqual(4)
     for (const metric of ok.standard_metrics.metrics) {
       expectBody(text, [metric.label, metric.value_text, metric.explanation])
     }
