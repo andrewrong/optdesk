@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.diagnosis_page.v1.json",
+  "title": "DiagnosisPage",
+  "description": "Board 16: diagnosis over ten years. The page ranks nothing and gives no price.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "sentence",
+    "notes",
+    "gaps",
+    "basis_note",
+    "groups"
+  ],
+  "properties": {
+    "schema": {
+      "const": "diagnosis_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "sentence": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "basis_note": {
+      "$ref": "#/$defs/Text"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DiagGroup"
+      }
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "DiagGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Class named by the producer; the view orders groups by array position."
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/DiagRow"
+              },
+              {
+                "$ref": "common.v2.json#/$defs/Gap"
+              }
+            ]
+          }
+        },
+        "legend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "columns",
+        "rows",
+        "legend"
+      ]
+    },
+    "DiagRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "latest_fy": {
+          "$ref": "#/$defs/Text"
+        },
+        "latest": {
+          "$ref": "#/$defs/Text"
+        },
+        "rank_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "extra": {
+          "$ref": "#/$defs/Text"
+        },
+        "usual": {
+          "$ref": "#/$defs/Text"
+        },
+        "years": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/YearRow"
+          },
+          "maxItems": 12
+        }
+      },
+      "required": [
+        "symbol",
+        "latest_fy",
+        "latest",
+        "rank_text",
+        "extra",
+        "usual",
+        "years"
+      ],
+      "description": "Ten-year ratios and ranks as produced text (metric id: assigned by compute)."
+    },
+    "Figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "value",
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "text",
+        "unit"
+      ],
+      "description": "A number the producer wrote; the view prints text."
+    },
+    "FigureOrGap": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Figure"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "YearRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fy": {
+          "$ref": "#/$defs/Text"
+        },
+        "revenue": {
+          "$ref": "#/$defs/Text"
+        },
+        "margin": {
+          "$ref": "#/$defs/Text"
+        },
+        "extra": {
+          "$ref": "#/$defs/Text"
+        },
+        "bar_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Width of the mini bar, 0 to 100 (metric id: assigned by compute)",
+          "x-decimals": 1
+        }
+      },
+      "required": [
+        "fy",
+        "revenue",
+        "margin",
+        "extra",
+        "bar_percent"
+      ]
+    }
+  }
+}
