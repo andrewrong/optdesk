@@ -21,6 +21,8 @@ components:
     in: internal/clock
   clock/calendar:
     in: internal/clock/calendar
+  clock/calendarcli:
+    in: internal/clock/calendarcli
   clock/realclock:
     in: internal/clock/realclock
   broker:
@@ -37,6 +39,8 @@ components:
     in: internal/store/instrument
   store/ops:
     in: internal/store/ops
+  store/reading:
+    in: internal/store/reading
   store/series:
     in: internal/store/series
   store/sessionday:
@@ -63,6 +67,8 @@ components:
     in: internal/jobs/optioneod
   jobs/quotesnapshot:
     in: internal/jobs/quotesnapshot
+  jobs/serieshistory:
+    in: internal/jobs/serieshistory
   notify:
     in: internal/notify
   notify/core:
@@ -105,6 +111,11 @@ deps:
       - contracts
       - clock
       - contracts/genpb
+  clock/calendarcli:
+    mayDependOn:
+      - contracts
+      - clock
+      - contracts/genpb
   clock/realclock:
     mayDependOn:
       - contracts
@@ -139,6 +150,11 @@ deps:
       - store
       - contracts/genpb
   store/ops:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
+  store/reading:
     mayDependOn:
       - contracts
       - store
@@ -219,6 +235,17 @@ deps:
       - contracts/genpb
       - compute/contracttest
   jobs/quotesnapshot:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
+  jobs/serieshistory:
     mayDependOn:
       - contracts
       - clock
@@ -310,11 +337,14 @@ deps:
       - pages/macro_page
       - pages/option_data_page
       - pages/embed
+      - store/reading
       - compute/own
       - compute/gonumstats
       - notify/core
       - notify/telegram
       - notify/dryrun
+      - jobs/serieshistory
+      - clock/calendarcli
   compute/contracttest:
     mayDependOn:
       - contracts
