@@ -318,13 +318,13 @@ Checked by CI: ci-go runs (`go test ./internal/runner/sched -run 'TestGaps' -rac
 
 Acceptance:
 
-1. `grep -rhE "^func (TestEmbeddedSchedule|TestBadScheduleTable)\(" internal/jobs | wc -l` prints 2 (the tests of this issue exist by name; `go test` runs them under Checked by CI).
+1. `grep -cE "^func (TestEmbeddedSchedule|TestBadScheduleTable)\(" internal/jobs/fredseries/schedule_test.go internal/jobs/optioneod/schedule_test.go internal/jobs/quotesnapshot/schedule_test.go` prints 2 for each file (each of the three packages holds both tests, six in all; `go test` runs them under Checked by CI).
 2. `grep -c "^\[schedule\]" internal/jobs/fredseries/job.toml internal/jobs/optioneod/job.toml internal/jobs/quotesnapshot/job.toml` prints 1 for each file.
 3. `grep -c "func (.*) Schedule()\|func (.*) RunBound()\|func (.*) RestartSensitive()\|func (.*) Preflight(" internal/jobs/fredseries/schedule.go internal/jobs/optioneod/schedule.go internal/jobs/quotesnapshot/schedule.go` prints 4 for each file.
 4. `grep -rc "internal/runner" internal/jobs | grep -v ':0$'` prints nothing; `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go internal/contracts internal/runner docs/design/modules.md` is empty; `grep -c "time.Sleep\|time.Now" internal/jobs/fredseries/schedule.go internal/jobs/optioneod/schedule.go internal/jobs/quotesnapshot/schedule.go` prints 0 for each.
 5. `grep -c "Schedule()" docs/contracts/jobs.md` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the thirteen paths of the Files line.
 
-Checked by CI: ci-go runs (`go test ./internal/jobs/... -race -count=1` passes, including `TestEmbeddedSchedule` in each of the three packages and `TestBadScheduleTable` (unknown anchor, `time` without a zone, negative bound)); the rest of ci-go (go-arch-lint: jobs imports no new module); the privacy scan; the design verdict (the values are confirmed by the owner at this pull request's review).
+Checked by CI: ci-go runs (`go test ./internal/jobs/... -race -count=1` passes, including `TestEmbeddedSchedule` and `TestBadScheduleTable` in each of the three packages (unknown anchor, `time` without a zone, negative bound)); the rest of ci-go (go-arch-lint: jobs imports no new module); the privacy scan; the design verdict (the values are confirmed by the owner at this pull request's review).
 
 ### sched-pages-gaps
 
