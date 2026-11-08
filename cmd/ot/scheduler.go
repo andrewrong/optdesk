@@ -44,7 +44,13 @@ func stopOnSignal(ctx context.Context) (context.Context, context.CancelFunc) {
 // It returns an error for every way out but a drain; exitError carries the code, so no os exit happens here
 // and every deferred close runs.
 func schedulerCmd(a *app, args []string) error {
-	if len(args) != 0 {
+	if len(args) > 0 {
+		switch args[0] {
+		case "status":
+			return schedStatusCmd(a, args[1:])
+		case "can-restart":
+			return schedCanRestartCmd(a, args[1:])
+		}
 		return fmt.Errorf("usage: ot scheduler")
 	}
 	if a.profile.Name == "demo" {

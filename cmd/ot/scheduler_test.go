@@ -545,3 +545,20 @@ func TestSchedulerPortInvalid(t *testing.T) {
 		}
 	}
 }
+
+func TestSchedulerDispatchesStatusAndCanRestart(t *testing.T) {
+	t.Parallel()
+	st := store.SchedulerStatus{Build: "dispatch-build", Gaps: []store.Gap{{DatasetID: "d", Reason: "expired", Day: "2026-11-06"}}}
+	r := newStatusRig(t, st)
+	if code := exitCodeOf(schedulerCmd(r.a, []string{"status"})); code != 1 || !strings.Contains(r.out.String(), "dispatch-build") {
+		t.Fatalf("status: exit %d, output %q", code, r.out.String())
+	}
+	r = newStatusRig(t, store.SchedulerStatus{Runs: []store.Run{{ID: "busy", Status: store.RunRunning}}})
+	if code := exitCodeOf(schedulerCmd(r.a, []string{"can-restart"})); code != 1 {
+		t.Fatalf("can-restart: exit %d, want 1", code)
+	}
+	// Any other argument keeps the usage error and opens nothing.
+	if err := schedulerCmd(r.a, []string{"bogus"}); err == nil || !strings.Contains(err.Error(), "usage: ot scheduler") {
+		t.Fatalf("bogus argument: %v", err)
+	}
+}
