@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.sample_page.v1.json",
+  "title": "SamplePage",
+  "description": "Marker of a sample route: the shell shows the sample payload of the named page, with a banner.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "page"],
+  "properties": {
+    "schema": {"const": "sample_page"},
+    "schema_version": {"const": 1},
+    "page": {"enum": ["home_page", "household_page", "positions_page", "household_risk", "option_page", "advice_page"]}
+  }
+}

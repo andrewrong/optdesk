@@ -68,7 +68,23 @@ export function Chart({
     <XAxis key="x" dataKey="category" {...axis} interval="preserveStartEnd" minTickGap={24} />,
     <YAxis key="y" hide domain={['auto', 'auto']} />,
     <ChartTooltip key="tip" content={<ChartTooltipContent />} />,
-    spec.legend ? <ChartLegend key="legend" content={<ChartLegendContent />} /> : null,
+    spec.legend ? (
+      <ChartLegend
+        key="legend"
+        content={({ payload }) => (
+          // A series with `legendType: 'none'` shares the entry of its neighbour.
+          <ChartLegendContent
+            payload={payload
+              ?.filter((item) => item.type !== 'none')
+              .map(({ value, color, dataKey }) => ({
+                value,
+                color,
+                dataKey: typeof dataKey === 'function' ? undefined : dataKey,
+              }))}
+          />
+        )}
+      />
+    ) : null,
   ]
   return (
     <div role="img" aria-label={ariaText} data-chart={name} className={cn(className, 'overflow-hidden')}>
@@ -83,7 +99,9 @@ export function Chart({
                 name={series.name}
                 type="monotone"
                 stroke={`var(--color-${keyOf(index)})`}
-                strokeWidth={2}
+                strokeWidth={series.dashed ? 1 : 2}
+                {...(series.dashed ? { strokeDasharray: '4 4' } : {})}
+                {...(series.legendHidden ? { legendType: 'none' as const } : {})}
                 dot={false}
                 connectNulls
                 isAnimationActive={false}
@@ -101,6 +119,7 @@ export function Chart({
                 stackId={series.stack}
                 fill={series.invisible ? 'transparent' : `var(--color-${keyOf(index)})`}
                 hide={false}
+                {...(series.legendHidden ? { legendType: 'none' as const } : {})}
                 isAnimationActive={false}
                 {...(series.invisible ? { tooltipType: 'none' as const } : {})}
               >

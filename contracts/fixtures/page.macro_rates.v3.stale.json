@@ -1,0 +1,40 @@
+{
+  "schema": "macro_rates",
+  "schema_version": 3,
+  "generated_at": "2000-01-01T00:00:00Z",
+  "session_day": "2026-11-04",
+  "title": "Macro rates",
+  "sentence": "1 series on 2026-11-04.",
+  "series": [
+    {
+      "id": "DGS10",
+      "title": "10-year Treasury yield",
+      "unit": "percent",
+      "latest": {
+        "kind": "gap",
+        "reason": "stale",
+        "text": "latest point 2026-10-28 is old"
+      },
+      "points": [
+        {
+          "date": "2026-10-27",
+          "value": 4.1,
+          "text": "4.10%"
+        },
+        {
+          "date": "2026-10-28",
+          "value": 4.2,
+          "text": "4.20%"
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "series_id": "DGS10",
+      "date": "2026-11-04",
+      "reason": "stale",
+      "text": "no point within 4 days of 2026-11-04"
+    }
+  ]
+}

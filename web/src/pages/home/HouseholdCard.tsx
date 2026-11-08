@@ -19,6 +19,7 @@ import { page } from '@/shell/page'
 import { CardNotes } from './CardNotes'
 import { DataTimesFold } from './DataTimesFold'
 import { StaleAlert } from './StaleAlert'
+import { TitleLink } from './OverviewCard'
 
 type Tile = Payload['card']['tiles'][keyof Payload['card']['tiles']]
 
@@ -87,15 +88,19 @@ function TileCard({ id, tile }: { id: string; tile: Tile }) {
 export function HouseholdCard({
   payload,
   showGaps = true,
+  titleHref,
 }: {
   payload: Payload
   showGaps?: boolean
+  titleHref?: string
 }) {
   const { card } = payload
   return (
     <Card data-card="household-summary">
       <CardHeader>
-        <CardTitle>{card.title}</CardTitle>
+        <CardTitle>
+          <TitleLink href={titleHref}>{card.title}</TitleLink>
+        </CardTitle>
         <CardDescription>{card.subtitle}</CardDescription>
         <CardAction>
           <Button asChild variant="link">

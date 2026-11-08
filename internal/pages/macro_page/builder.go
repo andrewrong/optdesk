@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -58,6 +59,10 @@ type Config struct {
 	Scope      string
 	Zone       *time.Location
 	Indicators []Indicator
+	// Read is optional. Nil keeps the page as it is: the ease is a no_data gap. With it,
+	// Build may read stored readings through it; an error of Read is an error of Build,
+	// never a gap.
+	Read compute.ReadingFunc
 }
 
 type gap struct {

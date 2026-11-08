@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/pressly/goose/v3"
 )
 
 type upCall struct {
@@ -205,4 +207,94 @@ func TestMigrateMalformedDSN(t *testing.T) {
 func TestMigrateWrongPasswordDSN(t *testing.T) {
 	t.Parallel()
 	migrateSentinel(t, "postgres://sentinel-user:sentinel-pw@127.0.0.1:0/db")
+}
+
+// migrateFail runs ot migrate with a migrateUp that returns up, and returns the log and the
+// returned error after the error was logged the way main does.
+func migrateFail(t *testing.T, up error) (string, error) {
+	t.Helper()
+	a, errb, _ := migrateApp(t, map[string]string{store.AdminDSNEnv: "postgres://u:sentinel-pw@h/db"}, "real",
+		func(*upCall) error { return up })
+	err := runMigrate(a, []string{"--dir", sqlDir(t)})
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	a.log.Error("command failed", "component", "ot", "err", err.Error())
+	return errb.String(), err
+}
+
+// fakePgError stands for a *pgconn.PgError: an error with a SQLSTATE, a message and a Detail. Like
+// the real one, its text holds severity, message and SQLSTATE and never the Detail.
+type fakePgError struct{ code, msg, detail string }
+
+func (e *fakePgError) Error() string    { return "ERROR: " + e.msg + " (SQLSTATE " + e.code + ")" }
+func (e *fakePgError) SQLState() string { return e.code }
+
+func partialWrapping(version int64, pg *fakePgError) error {
+	return &goose.PartialError{
+		Failed: &goose.MigrationResult{Source: &goose.Source{Version: version}},
+		Err:    fmt.Errorf("WRAPPEDMARKER: %w", pg),
+	}
+}
+
+func TestMigrateErrorStage(t *testing.T) {
+	t.Parallel()
+	const text = "setup: migrate: connect: the server refused or could not be reached"
+	log, err := migrateFail(t, errors.New(text))
+	if !strings.Contains(err.Error(), text) || !strings.Contains(log, text) {
+		t.Fatalf("err %v log %q", err, log)
+	}
+}
+
+func TestMigrateErrorSQLState(t *testing.T) {
+	t.Parallel()
+	pg := &fakePgError{code: "23505", msg: "duplicate key value", detail: "DETAILMARKER"}
+	log, err := migrateFail(t, partialWrapping(13, pg))
+	for _, s := range []string{"13", "23505", "duplicate key value"} {
+		if !strings.Contains(err.Error(), s) || !strings.Contains(log, s) {
+			t.Fatalf("%q missing: err %v log %q", s, err, log)
+		}
+	}
+	for _, s := range []string{"WRAPPEDMARKER", "DETAILMARKER", "(SQLSTATE", "sentinel-pw", "ot setup pg"} {
+		if strings.Contains(err.Error(), s) || strings.Contains(log, s) {
+			t.Fatalf("%q present: err %v log %q", s, err, log)
+		}
+	}
+}
+
+func TestMigrateErrorRoleHint(t *testing.T) {
+	t.Parallel()
+	pg := &fakePgError{code: "42704", msg: `role "ot_w_readings" does not exist`}
+	log, err := migrateFail(t, partialWrapping(13, pg))
+	// the log quotes the message, so the log is checked for its unquoted part
+	for _, s := range []string{"13", "42704", "ot_w_readings", "does not exist", "ot setup pg"} {
+		if !strings.Contains(err.Error(), s) || !strings.Contains(log, s) {
+			t.Fatalf("%q missing: err %v log %q", s, err, log)
+		}
+	}
+	if !strings.Contains(err.Error(), pg.msg) {
+		t.Fatalf("message missing: %v", err)
+	}
+	if strings.Contains(err.Error(), "WRAPPEDMARKER") || strings.Contains(log, "WRAPPEDMARKER") {
+		t.Fatalf("wrapped text leaked: %v", err)
+	}
+	// 42704 without a role in the message gets no hint
+	_, err = migrateFail(t, partialWrapping(5, &fakePgError{code: "42704", msg: `type "x" does not exist`}))
+	if strings.Contains(err.Error(), "ot setup pg") {
+		t.Fatalf("hint on a non-role message: %v", err)
+	}
+}
+
+func TestMigrateErrorUnknownWithheld(t *testing.T) {
+	t.Parallel()
+	const dsn = "postgres://sentinel-user:sentinel-pw@127.0.0.1:0/db"
+	log, err := migrateFail(t, errors.New("dial "+dsn+" password sentinel-pw"))
+	if !strings.Contains(err.Error(), "migrate failed; the error text is withheld because it may hold "+store.AdminDSNEnv) {
+		t.Fatalf("err %v", err)
+	}
+	for _, s := range []string{dsn, "sentinel-pw", "sentinel-user"} {
+		if strings.Contains(err.Error(), s) || strings.Contains(log, s) {
+			t.Fatalf("%q leaked: %v / %q", s, err, log)
+		}
+	}
 }

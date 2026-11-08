@@ -55,6 +55,8 @@ components:
     in: internal/compute
   compute/alertrules:
     in: internal/compute/alertrules
+  compute/ease:
+    in: internal/compute/ease
   compute/figures:
     in: internal/compute/figures
   compute/gonumstats:
@@ -111,6 +113,8 @@ components:
     in: cmd/ot
   compute/contracttest:
     in: internal/compute/contracttest
+  compute/sharpmove:
+    in: internal/compute/sharpmove
   notify/notifytest:
     in: internal/notify/notifytest
   pages/gaps:
@@ -208,6 +212,11 @@ deps:
     mayDependOn:
       - contracts
   compute/alertrules:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/ease:
     mayDependOn:
       - contracts
       - compute
@@ -452,7 +461,13 @@ deps:
       - store/alert
       - compute/alertrules
       - pages/risks_block
+      - compute/ease
   compute/contracttest:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/sharpmove:
     mayDependOn:
       - contracts
       - compute

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -57,6 +58,16 @@ func usage(stderr io.Writer) {
 	fmt.Fprintf(stderr, "usage: ot <command> [args]\ncommands: %s\n", strings.Join(names, " "))
 }
 
+// exitError is an error of a command that carries the exit code of the process; run returns that code
+// instead of 1, so a command never calls os.Exit and its deferred closes run.
+type exitError struct {
+	code int
+	err  error
+}
+
+func (e *exitError) Error() string { return e.err.Error() }
+func (e *exitError) Unwrap() error { return e.err }
+
 func run(args []string, getenv func(string) string, stdout, stderr io.Writer) int {
 	a, err := newApp(getenv, stdout, stderr)
 	if err != nil {
@@ -70,6 +81,10 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 	}
 	if err := commands[args[0]](a, args[1:]); err != nil {
 		a.log.Error("command failed", "component", "ot", "err", err.Error())
+		var ee *exitError
+		if errors.As(err, &ee) {
+			return ee.code
+		}
 		return 1
 	}
 	return 0

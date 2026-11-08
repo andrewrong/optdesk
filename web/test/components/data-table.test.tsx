@@ -44,6 +44,27 @@ afterEach(async () => {
   host.remove()
 })
 
+describe('DataTable sharp mark', () => {
+  it('shows a destructive Badge with the mark text beside the figure and none without a mark', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    const rows: Record<string, Cell>[] = [
+      { name: { text: 'hot' }, amount: { text: '+4.0%', value: 4, sharp: { text: '大幅' } } },
+      { name: { text: 'calm' }, amount: { text: '+1.0%', value: 1, sharp: null } },
+      { name: { text: 'plain' }, amount: { text: '+0.5%', value: 0.5 } },
+    ]
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<DataTable columns={COLUMNS} rows={rows} />)
+    })
+    const badges = [...host.querySelectorAll('[data-sharp]')]
+    expect(badges.map((b) => b.textContent)).toEqual(['大幅'])
+    expect(badges[0]?.closest('td')?.textContent).toBe('+4.0% 大幅')
+    expect(badges[0]?.getAttribute('data-variant')).toBe('destructive')
+    expect(badges[0]?.querySelector('svg')).not.toBeNull()
+  })
+})
+
 describe('DataTable', () => {
   it('sorts a column by value and not by text', async () => {
     await show()

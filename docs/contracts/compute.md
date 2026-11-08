@@ -39,10 +39,20 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - Comparison. Exact on decimal text (no float); `Detail` is built from fixed words and the stored value, never from free text of the rule file. `Public` is true when the subject is in `PublicSubjects`.
 - Errors. A reader error is an error of the call, never `no_data`. A loader error names the key and the rule id and never a value.
 
+## Ease
+
+`EaseSeries`, `EaseBand`, `EasePart`, `EaseFigure`, `Ease` and `NewEaseFunc` are in `internal/compute/api.go`; the implementation (`internal/compute/ease`, a stub until its issue lands) is passed in by `cmd/ot`. Design: `docs/design/ease-v2.md#Interface`.
+
+- Arithmetic. `Ease` of `macro.ease` is exact (no float drift in the sums); the value and each part's score are rounded half-even to 2 places.
+- Parts. `EaseFigure.Parts` always has four entries, in the order `net_liquidity`, `us10y`, `fed_funds`, `hy_oas`; a part without a figure is missing with a reason and an empty `DataDay`.
+- Band. `Band` is `tighter`, `steady` or `looser`, and empty when the figure is missing.
+- Unknown id. A missing figure with reason `bad_input`, as `Figures`. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
 - v2: additions only: the alert rule types and function types above.
+- v3: additions only: the ease types and `Ease` above.
 
 ## Contract tests
 
