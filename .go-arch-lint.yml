@@ -311,52 +311,68 @@ deps:
     mayDependOn:
       - contracts
       - store
+      - compute
   notify/core:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   notify/dryrun:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   notify/telegram:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   pages:
     mayDependOn:
       - contracts
       - store
+      - compute
   pages/embed:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/macro_page:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/macro_rates:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/option_data_page:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   ot:
     mayDependOn:
       - contracts
@@ -410,20 +426,26 @@ deps:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   pages/gaps:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/home_page:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   store/migrate:
     mayDependOn:
       - contracts
