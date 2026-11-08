@@ -1,9 +1,10 @@
 import { Lightbulb, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-// Live routes only (`_PROMOTED` in reports/listener.py). Fixed shell text: no payload field is read.
+// The eight items of Decision 3 (docs/design/unified-site.md), in order. Fixed shell text: no payload field is read.
 const ITEMS: readonly { label: string; path: string; prefix?: boolean; icon?: LucideIcon }[] = [
   { label: '首页', path: '/home' },
+  { label: '宏观', path: '/macro' },
   { label: '家庭资产', path: '/household' },
   { label: '持仓', path: '/positions' },
   { label: '风险', path: '/risk' },

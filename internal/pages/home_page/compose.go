@@ -2,7 +2,8 @@
 //
 // Compose is a pure function: it reads no clock, no store and no file. The five
 // members are written through as they came; Compose only checks their identity
-// and folds their run status, data times and stale_after into the envelope.
+// and folds their run status, data times and stale_after into the envelope, and
+// copies the overview from them.
 package home_page
 
 import (
@@ -15,8 +16,9 @@ import (
 
 const (
 	schemaName    = "home_page"
-	schemaVersion = 2
+	schemaVersion = 3
 	maxDataTimes  = 20
+	staleDays     = 4 // the freshness rule of macro_page: data day + 4 days at 09:30
 	timeLayout    = "2006-01-02T15:04:05-07:00"
 )
 
@@ -35,8 +37,7 @@ type Input struct {
 	Zone        *time.Location
 	Title       string
 	Say         string
-	GapLine     string
-	BlockLinks  []Link
+	CardLinks   CardLinks
 	ReportLinks []Link
 
 	Household []byte
@@ -77,13 +78,13 @@ type payload struct {
 	BuildID       string          `json:"build_id"`
 	Scope         string          `json:"scope"`
 	GeneratedAt   string          `json:"generated_at"`
-	StaleAfter    string          `json:"stale_after,omitempty"`
+	StaleAfter    string          `json:"stale_after"`
 	DataTimes     []sourceTime    `json:"data_times"`
 	RunStatus     string          `json:"run_status"`
 	Title         string          `json:"title"`
 	Say           string          `json:"say"`
 	GapLine       string          `json:"gap_line"`
-	BlockLinks    []Link          `json:"block_links"`
+	Overview      overview        `json:"overview"`
 	ReportLinks   []Link          `json:"report_links"`
 	Household     json.RawMessage `json:"household"`
 	Companies     json.RawMessage `json:"companies"`
@@ -93,23 +94,20 @@ type payload struct {
 }
 
 // Compose returns the home_page payload of in, with generated_at set to
-// generatedAt written in in.Zone. It returns an error when Zone is nil, GapLine
-// is empty, a member does not carry the schema, schema_version and run identity
+// generatedAt written in in.Zone. The overview and gap_line are built from the
+// members (see buildOverview). stale_after is the earliest of the members that
+// carry one, else the earliest data_time day plus 4 days at 09:30 in in.Zone. It
+// returns an error when Zone is nil, a card link does not start with "/", a card
+// has neither say nor subtitle, the members hold more than 20 gaps, a member does not carry the schema, schema_version and run identity
 // of its slot (the error names the slot), or the members hold more than 20
 // distinct data times.
 func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 	if in.Zone == nil {
 		return nil, errors.New("home_page: nil Zone")
 	}
-	if in.GapLine == "" {
-		return nil, errors.New("home_page: empty GapLine")
-	}
-	slots := []slot{
-		{"household", "household_summary", 2, in.Household},
-		{"companies", "held_companies_summary", 2, in.Companies},
-		{"macro", "macro_summary", 2, in.Macro},
-		{"market", "market_summary", 3, in.Market},
-		{"options", "options_summary", 3, in.Options},
+	ov, err := buildOverview(in)
+	if err != nil {
+		return nil, err
 	}
 	out := payload{
 		Schema:        schemaName,
@@ -122,8 +120,8 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 		RunStatus:     "ok",
 		Title:         in.Title,
 		Say:           in.Say,
-		GapLine:       in.GapLine,
-		BlockLinks:    nonNil(in.BlockLinks),
+		GapLine:       gapLine(len(ov.Gaps)),
+		Overview:      ov,
 		ReportLinks:   nonNil(in.ReportLinks),
 		Household:     in.Household,
 		Companies:     in.Companies,
@@ -131,9 +129,9 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 		Market:        in.Market,
 		Options:       in.Options,
 	}
-	var earliest time.Time
+	var earliest, earliestData time.Time
 	seen := map[sourceTime]bool{}
-	for _, s := range slots {
+	for _, s := range slotsOf(in) {
 		m, err := readMember(s, in)
 		if err != nil {
 			return nil, fmt.Errorf("home_page: %s: %w", s.name, err)
@@ -144,6 +142,13 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 		for _, dt := range m.DataTimes {
 			if !seen[dt] {
 				seen[dt] = true
+				t, err := time.Parse(time.RFC3339, dt.DataTime)
+				if err != nil {
+					return nil, fmt.Errorf("home_page: %s: data_time: %w", s.name, err)
+				}
+				if earliestData.IsZero() || t.Before(earliestData) {
+					earliestData = t
+				}
 				out.DataTimes = append(out.DataTimes, dt)
 			}
 		}
@@ -158,6 +163,11 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 			}
 		}
 	}
+	if out.StaleAfter == "" {
+		if out.StaleAfter, err = fallbackStale(earliestData, in.Zone); err != nil {
+			return nil, err
+		}
+	}
 	if len(out.DataTimes) > maxDataTimes {
 		return nil, fmt.Errorf("home_page: %d data times, at most %d", len(out.DataTimes), maxDataTimes)
 	}
@@ -168,6 +178,26 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 		return nil, fmt.Errorf("home_page: encode: %w", err)
 	}
 	return bytes.TrimSuffix(buf.Bytes(), []byte("\n")), nil
+}
+
+// slotsOf lists the five members with the schema and version each must carry.
+func slotsOf(in Input) []slot {
+	return []slot{
+		{"household", "household_summary", 2, in.Household},
+		{"companies", "held_companies_summary", 3, in.Companies},
+		{"macro", "macro_summary", 2, in.Macro},
+		{"market", "market_summary", 3, in.Market},
+		{"options", "options_summary", 4, in.Options},
+	}
+}
+
+// fallbackStale is the day of the earliest data time plus staleDays at 09:30 in zone.
+func fallbackStale(earliestData time.Time, zone *time.Location) (string, error) {
+	if earliestData.IsZero() {
+		return "", errors.New("home_page: no stale_after and no data_times in the members")
+	}
+	d := earliestData.In(zone)
+	return time.Date(d.Year(), d.Month(), d.Day()+staleDays, 9, 30, 0, 0, zone).Format(timeLayout), nil
 }
 
 func readMember(s slot, in Input) (member, error) {

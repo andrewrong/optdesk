@@ -25,11 +25,12 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 describe('TopNav', () => {
-  it('has seven links with the fixed labels and paths', async () => {
+  it('has eight links with the fixed labels and paths', async () => {
     await showAt('/home')
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('主导航')
     expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['首页', '/home'],
+      ['宏观', '/macro'],
       ['家庭资产', '/household'],
       ['持仓', '/positions'],
       ['风险', '/risk'],
@@ -46,6 +47,7 @@ describe('TopNav', () => {
     ['/options/data', '期权数据'],
     ['/options/data/9001', '期权数据'],
     ['/options', '期权'],
+    ['/macro/', '宏观'],
   ])('marks only the link of %s', async (pathname, label) => {
     await showAt(pathname)
     const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')
