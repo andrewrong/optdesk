@@ -92,6 +92,20 @@ it('shows the two groups in order, the rows in payload order, and each text as s
   })
 })
 
+it('shows the compare sentence of each row that has one, as sent', async () => {
+  const payload = fixture('ok.json')
+  payload.groups[0].rows[0].compare.sentence = '已赚 12.3%（你定的 50%），平仓成本 $77.00'
+  await show(payload)
+  const first = host.querySelectorAll('[data-structures-group]')[0]!
+  expect(first.textContent).toContain('已赚 12.3%（你定的 50%），平仓成本 $77.00')
+  const sentences = [...host.querySelectorAll('[data-structures-compare]')].map((el) => el.textContent)
+  expect(sentences).toEqual(
+    payload.groups.flatMap((group: { rows: { compare?: { sentence: string } }[] }) =>
+      group.rows.flatMap((row) => (row.compare ? [row.compare.sentence] : [])),
+    ),
+  )
+})
+
 it('shows 价内/价外 and 除息 as badges from the payload text', async () => {
   const payload = fixture('ok.json')
   payload.groups[1].rows[0].ex_dividend = '除息 2026-11-18'

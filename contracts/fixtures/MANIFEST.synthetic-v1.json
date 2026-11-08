@@ -20,6 +20,7 @@
     {"path": "page.macro_rates.v2.golden.json", "sha256": "6969354073660dd36b21fd9930ce564ca75261579293bf98f2b437301996ee6f"},
     {"path": "page.macro_rates.v2.gap.json", "sha256": "93a55508c79ccf2ba49b05899388c046e786c95c033152f3f838269a74a95dc9"},
     {"path": "page.macro_rates.v2.stale.json", "sha256": "d9b224f2632c152d16b0b8cfc6b1db2a56407c79e6577567fc7302524399f38a"},
-    {"path": "page.macro_rates.v2.bad-version.json", "sha256": "ed7612d72cef4ce597363f1fdc90fa9ecc4f85b883290245ded88c20b5c04fa8"}
+    {"path": "page.macro_rates.v2.bad-version.json", "sha256": "ed7612d72cef4ce597363f1fdc90fa9ecc4f85b883290245ded88c20b5c04fa8"},
+    {"path": "readings.reading.r1.json", "sha256": "4e0bc6a95470203cf359a81122fd138faf4de6262b96daf820850dd57dbc3ade"}
   ]
 }
