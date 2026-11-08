@@ -5,7 +5,7 @@ import { TONE_CLASS } from '@/components/data-table/data-table'
 import type { Payload } from '@/types/stock_option_page'
 
 export function TopBlock({ top }: { top: Payload['top'] }) {
-  const lines = [top.quote, top.iv, top.earnings, top.trend, top.policy]
+  const lines = [top.quote, top.iv, top.trend, top.policy]
   const tone = top.day_tone && top.day_tone !== 'none' ? TONE_CLASS[top.day_tone] : undefined
   return (
     <Card data-block="top">
@@ -19,6 +19,7 @@ export function TopBlock({ top }: { top: Payload['top'] }) {
       </CardHeader>
       <CardContent className="space-y-1 text-sm">
         {lines.map((line) => (line ? <p key={line}>{line}</p> : null))}
+        {top.earnings ? <Badge variant="secondary">{top.earnings}</Badge> : null}
       </CardContent>
     </Card>
   )
