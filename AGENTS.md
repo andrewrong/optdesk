@@ -37,6 +37,7 @@ optdesk is written in three languages: Go (services and the command line), Pytho
 - No test connects to a live broker or places an order. A Go test that needs PostgreSQL carries the build tag
   `pg` and runs only in GitHub CI.
 - Python: `uv sync --locked`, then `ruff check`, `mypy --strict` and `pytest`. The lockfile `uv.lock` is committed.
+- A dev-only generator under `tools/<name>/` is its own uv project with its own committed `uv.lock`; it is not run in CI and nothing at run time imports it.
 - Web: the front end renders data and computes nothing. pnpm is the one package manager, pinned in the
   `packageManager` field of the root `package.json`; install with `pnpm install --frozen-lockfile`; the
   lockfile `pnpm-lock.yaml` is committed. A change under `web/` passes `tsc`, `eslint`, `vitest` and the build in CI.
