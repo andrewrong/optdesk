@@ -15,12 +15,9 @@ var distFS embed.FS
 // noBundleText is the body of the 500 answered when dist/index.html is absent.
 const noBundleText = "web bundle not built: run pnpm --dir web build"
 
-// bundle is the content of dist.
+// bundle is the content of dist; the directory is embedded by the pattern above, so Sub cannot fail.
 func bundle() fs.FS {
-	sub, err := fs.Sub(distFS, "dist")
-	if err != nil {
-		return distFS
-	}
+	sub, _ := fs.Sub(distFS, "dist")
 	return sub
 }
 
