@@ -47,6 +47,8 @@ components:
     in: internal/store/snapshot
   compute:
     in: internal/compute
+  compute/gonumstats:
+    in: internal/compute/gonumstats
   compute/own:
     in: internal/compute/own
   runner:
@@ -154,6 +156,11 @@ deps:
   compute:
     mayDependOn:
       - contracts
+  compute/gonumstats:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/own:
     mayDependOn:
       - contracts
@@ -271,6 +278,7 @@ deps:
       - pages/option_data_page
       - pages/embed
       - compute/own
+      - compute/gonumstats
   compute/contracttest:
     mayDependOn:
       - contracts
