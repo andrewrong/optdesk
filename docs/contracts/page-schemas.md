@@ -27,6 +27,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.household_risk.v1 | 1 |
 | page.household_summary.v1 | 1 |
 | page.indicator_detail.v1 | 1 |
+| page.indicator_detail.v2 | 2 |
 | page.ledger_page.v1 | 1 |
 | page.macro_page.v1 | 1 |
 | page.macro_rates.v1 | "1" (a string) |
@@ -49,6 +50,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.structure_detail.v3 | 3 |
 | page.structures_list.v1 | 1 |
 | page.tracking.v1 | 1 |
+| page.tracking.v2 | 2 |
 
 Also `common.v1` (`contracts/schemas/common.v1.json`, `$id` `https://optdesk.invalid/schemas/common.v1.json`): only `$defs` `Id`, `Timestamp`, `RunStatus`, `SourceTime`, `StaleLabel`, `Gap`, `UsdFigure`, `PercentFigure`, `SharePercentFigure`, `UsdSignedFigure`, used as `common.v1.json#/$defs/<Name>`.
 
@@ -57,6 +59,8 @@ Also `common.v2` (`contracts/schemas/common.v2.json`, `$id` `https://optdesk.inv
 The v3 files, `schema_version` const 3: `page.market_summary.v3` (title `MarketSummaryV3`) and `page.options_summary.v3` (title `OptionsSummaryV3`); `stale_after` is required in both.
 
 Also `page.option_data_page.v1` (`schema_version` 1, title `OptionDataPage`), written for this repository by `docs/design/option-page.md#interface`: the page of stored option data (chain of the last stored day and up to three quote series). The page name is `option_data_page`; it is not `option_page` (`page.option_page.v1` is a carried copy and is unchanged). It refs `common.v2.json` for `Id`, `Timestamp`, `RunStatus`, `Gap`, `SourceTime` and `StaleLabel`. Its fixtures are `contracts/fixtures/page.option_data_page.v1.{input,ok,terms,gap,stale,bad-version,choices,terms-input,jpy}.json`, listed in `MANIFEST.synthetic-v1.json` and checked by `TestOptionDataPageFixtures` (`choices` validates; an `href` with a scheme fails); the optional `underlyings` field (list of `UnderlyingChoice` `{id, label, href, current}`, `href` matching `^/[A-Za-z0-9/_-]{1,100}$`, absent when the builder has no choices) was added by `docs/design/option-page-serve.md#interface` without a version change; the optional `Underlying.vol_line`, `Underlying.earnings_text`, `Underlying.earnings_tone` (`in_term`, `outside`, `none`) and `Figure.approx_usd_text` (the USD approximation of a JPY figure) were added by `docs/design/option-pages-v22.md#interface` without a version change, with the fixture `jpy`; its type is generated into `web/src/generated/option_data_page.v1.ts` by `generate:types`. It is not in `carryover.sha256` (`pageNewFiles` in `carryover_test.go`).
+
+Also `page.tracking.v2` (title `Tracking`) and `page.indicator_detail.v2` (title `IndicatorDetail`), written for this repository by `docs/design/tracking-household-reports.md#interface`; the v1 files are carried copies and stay byte-identical. Both follow the v2-line conventions and take `Gap`, `SourceTime` and `StaleLabel` from `common.v1`. `page.tracking.v2` replaces `rows` and `pending` by `versions` (1 to 10 `RuleVersion`, current first: `label`, `expired_text`, 1 to 6 `RuleGroup`, `covered_calls` or null, `my_trades` or a `Gap`); a `RuleGroup` has `key`, `title`, `summary` (1 to 8 `{label, text}` tiles or a `Gap`), `note` and `rows` (`TrackingRow`); `Usd` stays a local def. `page.indicator_detail.v2` keeps the v1 content and requires `meta_line` (the source line) and `recent` (a `RecentBlock` of at most 12 rows `{period, released, value, change}`, or a `Gap`). Their types are generated into `web/src/generated/tracking.v2.ts` and `web/src/generated/indicator_detail.v2.ts`; neither is in `carryover.sha256`.
 
 ## Invariants
 
