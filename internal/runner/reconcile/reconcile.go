@@ -78,8 +78,10 @@ func newReconciler(
 	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk}
 }
 
-// Reconcile handles every session day after the cursor up to day, in order. It stops at
-// the first day that is not fully reconciled, so the cursor holds on a gap.
+// Reconcile handles every session day after the cursor up to day, in order. A day that is
+// not fully reconciled does not stop the walk: the cursor holds on it, and the days after
+// it are still reconciled. The cursor is set to a day only when that day and every day
+// before it are done, so every day at or before the cursor is complete.
 func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err error) {
 	if err := checkCalendars(r.jobs, r.rule); err != nil {
 		return err
@@ -98,13 +100,17 @@ func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err erro
 	if err != nil {
 		return err
 	}
+	prefix := true // every day walked so far is done
 	for _, s := range sessions {
 		done, err := r.reconcileDay(ctx, s)
 		if err != nil {
 			return err
 		}
 		if !done {
-			return nil
+			prefix = false
+		}
+		if !prefix {
+			continue
 		}
 		if err := r.ledger.SetCursor(ctx, store.Cursor{Day: s.Day}); err != nil {
 			return err
