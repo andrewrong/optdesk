@@ -74,6 +74,19 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - The enum `reading_unit` has nine words: `decimal, percent, vol_point, per_calendar_day, count, days, money, ratio, text_tag`.
 - Grants: `ot_w_readings` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_READINGS`) has `INSERT` and `SELECT` on the four tables and `SELECT` on `rd.reading_r1`; `ot_ro_pages` has `SELECT` on `rd.reading_r1` and nothing on the tables; `ot_runner` has nothing. No role has UPDATE, DELETE or TRUNCATE.
 
+## Scheduler store
+
+Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, views and implementations come from `migrations/0012_scheduler.sql` and `sched-store-ops` in later entries. Design: `docs/design/scheduler.md#sched-store-interface`.
+
+- `InstanceFence.TryLock(ctx, build)` gives a `Fence` (`Lost() <-chan struct{}`, `Close() error`), or a `Retryable` error while another holds it. Writer: none (an advisory lock on one dedicated connection). Reader: `cmd/ot` only.
+- `SchedulerLedger` (role `ot_runner`) is the only writer of `ops.job_gap`, `ops.scheduler_state` (one row, the build) and `ops.scheduler_job`, and the reader of `Status` (reads `ops.*` only). `RenewLease` and every gap time use the database's `now()`. `MarkGapReported` is called only by `notify`; a page never sets `ReportedAt`.
+- `RunStatus` gains `RunPartial` and `RunAbandoned` (additive; the column is text).
+- `GapReader` (role `ot_ro_pages`) reads `OpenGaps` and `Expectations(ctx, from, to)` from two views of schema `rd`, never from a base table:
+  - `rd.job_gap_r1`: the open and cleared gaps of `ops.job_gap`.
+  - `rd.expectation_r1`: derived from `ops.dataset_window` (`close_at` is the due-by instant) and `ops.capture_present`.
+- Grants (recorded here, made by migration `0012` in another entry): both views belong to `ot_owner`, which can read `ops`; `SELECT` on both views to `ot_ro_pages` and `ot_runner`. `ot_ro_pages` reads views of `rd` only and has no grant on an `ops` table, as schema v3 says.
+- Constructors: `OpenFenceFunc`, `OpenSchedulerLedgerFunc`, `OpenGapReaderFunc` (the last opens with the line `DSNEnvPages`).
+
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
@@ -87,8 +100,11 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - v9: migration `0011` (`INSERT` and column `SELECT` of `instrument_id`, `valid_to` on `master.option_terms` to `ot_w_master`); `ResolveInstrument` writes the terms of a new option inside a savepoint. Migrate before deploying the code (`ot migrate`, then the new binary): code before the migration is harmless, the insert is refused and rolled back to the savepoint, but those options keep no terms row.
 - v10 (declared, tables not yet made): `store.ReadingWriter`, `store.ReadingReader`, `store.ReadingStore`, `store.OpenReadingFunc` and `store.DSNEnvReadings`; the table, view, enum and role come from migration `0013` in a later entry.
 
+- v11 (declared, tables and views not yet made): `store.InstanceFence`, `store.Fence`, `store.SchedulerLedger`, `store.GapReader`, their types and constructor types; the views `rd.job_gap_r1` and `rd.expectation_r1` come from migration `0012` in a later entry.
+
 ## Contract tests
 
+- `internal/store/api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
 - `internal/store/api_test.go`: the interface from both sides; `TestReadingContract` and `TestReadingDSNEnvName` hold `ReadingStore` and its line name.
 - `internal/store/sessionday/sessionday_test.go`: SQL strings, transaction, empty input, context, range and order against an in-test fake.
 - `internal/store/sessionday/sessionday_pg_test.go` (build tag `pg`): the round trip through the real Writer and Reader on a database of its own.
