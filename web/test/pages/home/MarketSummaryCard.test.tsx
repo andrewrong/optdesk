@@ -29,6 +29,20 @@ vi.mock('@/charts/Chart', async (importOriginal) => {
   }
 })
 
+const xAxes: Record<string, unknown>[] = []
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>()
+  return {
+    ...actual,
+    XAxis: (props: Record<string, unknown>) => {
+      xAxes.push(props)
+      return null
+    },
+    LineChart: ({ children }: { children?: React.ReactNode }) => <svg>{children}</svg>,
+    BarChart: ({ children }: { children?: React.ReactNode }) => <svg>{children}</svg>,
+  }
+})
+
 let root: Root | null = null
 let host: HTMLElement
 async function show(node: React.ReactNode) {
@@ -112,6 +126,20 @@ describe('MarketSummaryCard', () => {
     expect(new Set(spec.series.map((s) => s.name))).toEqual(new Set(payload.card.chart.series_names))
     expect(payload.card.chart.series_names).toHaveLength(3)
     expect(spec.categories.length).toBeGreaterThanOrEqual(30)
+  })
+
+  it('thins the x-axis labels', async () => {
+    const payload = fixture('ok.json')
+    xAxes.length = 0
+    drawn.length = 0
+    await show(<MarketSummaryCard payload={payload} />)
+    expect(xAxes.length).toBeGreaterThan(0)
+    const axis = xAxes[xAxes.length - 1]!
+    expect(axis.interval).toBe('preserveStartEnd')
+    expect(axis.minTickGap as number).toBeGreaterThanOrEqual(24)
+    expect(drawn[drawn.length - 1]!.categories).toEqual(
+      payload.card.chart.points.map((point: { label: string }) => point.label),
+    )
   })
 
   it('shows the SPX, NDX and RUT rows of ok', async () => {
