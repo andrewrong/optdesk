@@ -162,7 +162,7 @@ the plan asks for it and no design allowed the drop.
 | pages: vM JSON, no browser computation | plan 1.5 | covered, wired | AGENTS.md, web | - |
 | gaps said once; closed market not stale; JPY with approx USD | plan 1.5 | covered, code only (not wired to data) | pages/gaps, option-pages-v22 (approx_usd_text) | - |
 | notify: Telegram never account-derived | plan 1.6 | covered, wired | ADR 0010; notify.md; #537 amendment. Altered: ADR 0010 amendment: market alert may carry rule title and public figure (owner 2026-11-08) | - |
-| report files immutable, atomic | plan 1.6 | deferred by plan or owner | PR 500 serves per request, no stored report. Why: plan: stored immutable files; PR 500: computed per request. Altered, pending owner (question 5). Altered, owner 2026-11-09: reports computed per request; plan 1.6 stored immutable files not built. Status says the producer, not wiring | report-page-producer (PR 500, merged) |
+| report files immutable, atomic | plan 1.6 | deferred by plan or owner | PR 500 serves per request, no stored report. Why: plan: stored immutable files; PR 500: computed per request. Altered, owner 2026-11-09: reports computed per request; plan 1.6 stored immutable files not built | report-page-producer (PR 500, merged) |
 | stock history two bases, weekly adjusted_last re-pull | plan 1.8 | missing | see W5-6 | bars (follow-on, not yet drafted) |
 | intraday quote storage kept permanently, monthly partitions | plan 1.3 | missing | quote_snapshot job exists; no partitioning or retention design | bars (follow-on, not yet drafted) |
 | pyside size.toml and import-linter locks | plan 3.8 | missing | not found on main (no size.toml, no import-linter config); pyside ci covers ruff, mypy, pytest only | pyside-guards (follow-on, not yet drafted) |
@@ -257,7 +257,7 @@ Answers to the adversarial review of the first draft (kept outside the repositor
 - Dependency claim false: adopted; `settings-store` and `runner-stage2` come before `compute-stage2` and `notify-stage2`.
 - Bars overloaded, index IV waits: adopted; `index-iv` split out and placed second.
 - Order: import depends on `account-data` and `bars` only: adopted in Decision 3.8. Replay and closure stay last.
-- Shape: `## Decisions` and `## Open questions for the owner` added; the Chinese page is named as the artifact.
+- Shape: `## Decisions` and `## Owner answers and open questions` added; the Chinese page is named as the artifact.
 - Owner questions unanswered block designs: not adoptable here; they are asked. Since 2026-11-09 the answers close the old
   questions 2-5 (see `## Owner answers and open questions`).
 - Revision 2026-11-09: the design review's findings are fixed (the index IV row sits under the design that holds it, the
