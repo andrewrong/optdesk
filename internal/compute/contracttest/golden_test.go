@@ -90,13 +90,13 @@ func TestUnitsFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Names: %v", err)
 	}
-	if len(names) != 4 {
-		t.Fatalf("names = %v, want the four hand files", names)
+	if len(names) != 6 {
+		t.Fatalf("names = %v, want the four hand files and the two generated ones", names)
 	}
 	if names[0] != "units.json" {
 		t.Fatalf("first name = %q, want units.json", names[0])
 	}
-	want := []string{"units.json", "figures.json", "series.json", "stats.json"}
+	want := []string{"units.json", "figures.json", "indicators.json", "iv30_independent.json", "series.json", "stats.json"}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("names = %v, want %v", names, want)
 	}

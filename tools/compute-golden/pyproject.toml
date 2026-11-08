@@ -1,0 +1,12 @@
+[project]
+name = "compute-golden"
+version = "0.1.0"
+description = "Dev-only generator of the generated golden fixtures of internal/compute (not in CI, not at run time)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0,<3",
+    "TA-Lib>=0.6,<0.7",
+]
+
+[tool.uv]
+package = false
