@@ -72,7 +72,7 @@ Read on the branch `design/risk-alerts` (pull request 492, revision 2): `docs/de
    (the reader behind `ReadingFunc`), made in PR 492, which the dispatcher handles; this design does not edit 492. The notify pass opens its reader under the role it already has: `WinnerReadings` also reads `rd.reading_r1` and the new view, which `ot_w_readings` can read once the grant is given (see the next sentence), so 492's `ot` wiring is the one place that changes. PR 492 takes its `alerts-wire` entry out of its cut until this design's winner reader lands, so no entry of 492 wires `LatestReadings` into the notify pass.
    The grants follow the existing pattern for every `rd` view (`migrations/0002:58`, `0006:100`, `0007:70`, `0009:31`, `0010:10`, `0012:77-78`, `0013:104`): `SELECT` on the view to the role that reads it, none on the base table. The migration grants `rd.reading_parameter_r1` to `ot_ro_pages` and `ot_w_readings`. `docs/contracts/store.md` line 75 (the grants of `readings`) names both views.
    This is an interface change of `internal/store/api.go`, so it is its own first entry.
-   error: it is a `partial` or `gap` state inside the `risks` block (492 Decision 13).
+   error: a reading the rules cannot use is not an error of the page, it is a `partial` or `gap` state inside the `risks` block (492 Decision 13).
 8a. Lifecycle of the reader (the `ot` entry). The reader is opened once per process: once per `ot page` command and once at the start of `ot serve --name report_page`, as `serve.go` opens `seriesReader` once before it listens (`defer closeFn()`), and closed on exit.
    `pageNamed(a, name)` has no context and returns no closer, so `report_page` is not built by it: `page.go` and `serve.go` each test the name `report_page` before calling `pageNamed` and call `report.go` (`reportPage(ctx, a, market, slot) (pages.Page, func(), error)` for the command, a handler over one opened reader for the server).
    `pageNamed` is unchanged except that its known-pages list gains `report_page` after `macro_page`, so the two tests that assert that text change by that one word and are in the entry's Files. The `.env` line is `OT_PG_DSN_PAGES` only.
@@ -108,11 +108,11 @@ type ReadingViewReader interface {
 	Close() error
 }
 
-// OpenReadingViewFunc opens the view reader from a DSN of the role ot_ro_pages (internal/store/reading.OpenView).
+// OpenReadingViewFunc opens the view reader from a DSN of the role ot_ro_pages (the page process) or ot_w_readings (the notify pass of risk-alerts); both hold SELECT on the views (internal/store/reading.OpenView).
 type OpenReadingViewFunc func(ctx context.Context, dsn string) (ReadingViewReader, error)
 ```
 
-Owner `pages`, package `internal/pages/report_page` (a plain package like `option_data_page`; `internal/pages/api.go` is not edited):
+Owner `pages`, package `internal/pages/report_page` (a plain package like `option_data_page`; `internal/pages/api.go` is not edited). `RiskBlockFunc` and `Config` are a contract between `ot` and `pages` that is declared here, in the implementation package, and not in `internal/pages/api.go`. This is allowed only because `ot` is the composition root: it is the one module that imports `report_page` and fills `Config`; no other module may import this package:
 
 ```go
 // RiskBlockFunc returns the JSON of the RisksBlock of report_page v2 for a day (ot closes it over risks_block.Build of risk-alerts).
