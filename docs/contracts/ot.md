@@ -125,7 +125,7 @@ Exit codes, each tied to its condition:
 ## Version history
 
 - v6: `ot run-once`, `ot backfill` and `ot scheduler` build five jobs, the fifth `calendar_refresh` (`clock.SessionSource` from `calendarcli.New`, the command `uv run --no-sync --project pyside python -m optdesk.calendar`, each changed day logged as `calendar change`), and need the line `OT_PG_DSN_LOADER` too; the process that runs jobs holds the DSN of `ot_loader`.
-- v5: `ot run-once`, `ot backfill` and `ot scheduler` wire the jobs through `compute_figures`, the fourth,, and need the lines `OT_PG_DSN_PAGES` and `OT_PG_DSN_READINGS` too.
+- v5: `ot run-once`, `ot backfill` and `ot scheduler` wire the jobs through `compute_figures`, the fourth, and need the lines `OT_PG_DSN_PAGES` and `OT_PG_DSN_READINGS` too.
 - v4: `ot run-once` and `ot backfill` build `fred_series`, `option_eod` and `quote_snapshot`, need the lines `OT_PG_DSN_OPTION_EOD`, `OT_PG_DSN_QUOTE_SNAPSHOT` and `OT_PG_DSN_MASTER`, dial `$OT_HOME/run/ibkr.sock` and pass `runner.WindowRule{}`.
 
 - v1: the subcommands `run-once`, `page`, `serve`, `setup`, `version`, `migrate` and `calendar load`.
