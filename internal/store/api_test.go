@@ -120,7 +120,29 @@ func (l *memLedger) Acquire(_ context.Context, owner string, ttl time.Duration) 
 func (l *memLedger) Release(context.Context, store.Lease) error { l.lease = nil; return nil }
 func (l *memLedger) Close() error                               { return nil }
 
+// memReadings is a fake ReadingStore: it keeps records in insert order.
+type memReadings struct{ rows []contracts.ReadingRecord }
+
+func (m *memReadings) InsertReadings(_ context.Context, rows []contracts.ReadingRecord) (int, error) {
+	m.rows = append(m.rows, rows...)
+	return len(rows), nil
+}
+
+func (m *memReadings) LatestReadings(_ context.Context, name, kind, subject string, _, _ contracts.Day) ([]contracts.ReadingRecord, error) {
+	var out []contracts.ReadingRecord
+	for _, r := range m.rows {
+		if r.Name == name && r.Subject == subject && r.SubjectKind == kind {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (m *memReadings) Close() error { return nil }
+
 var (
+	_ store.ReadingStore       = (*memReadings)(nil)
+	_ store.OpenReadingFunc    = func(context.Context, string) (store.ReadingStore, error) { return &memReadings{}, nil }
 	_ store.SeriesStore        = (*memSeries)(nil)
 	_ store.SessionDayStore    = (*memDays)(nil)
 	_ store.OpsLedger          = (*memLedger)(nil)
@@ -144,6 +166,35 @@ func TestSeriesContract(t *testing.T) {
 	got, err := roundTrip(context.Background(), s, s)
 	if err != nil || len(got) != 1 || got[0].SeriesID != "DGS10" {
 		t.Fatalf("got %+v err %v", got, err)
+	}
+}
+
+// readingRoundTrip uses the writer and the reader through their interfaces only.
+func readingRoundTrip(ctx context.Context, w store.ReadingWriter, r store.ReadingReader) (int, []contracts.ReadingRecord, error) {
+	n, err := w.InsertReadings(ctx, []contracts.ReadingRecord{{Name: "market.ivp_own", Subject: "SPX"}, {Name: "market.ivp_own", Subject: "NDX"}})
+	if err != nil {
+		return 0, nil, err
+	}
+	got, err := r.LatestReadings(ctx, "market.ivp_own", "", "SPX", "2026-11-01", "2026-11-30")
+	return n, got, err
+}
+
+func TestReadingContract(t *testing.T) {
+	t.Parallel()
+	s := &memReadings{}
+	n, got, err := readingRoundTrip(context.Background(), s, s)
+	if err != nil || n != 2 || len(got) != 1 || got[0].Subject != "SPX" {
+		t.Fatalf("inserted %d got %+v err %v", n, got, err)
+	}
+}
+
+func TestReadingDSNEnvName(t *testing.T) {
+	t.Parallel()
+	if store.DSNEnvReadings != "OT_PG_DSN_READINGS" {
+		t.Fatalf("DSNEnvReadings = %q", store.DSNEnvReadings)
+	}
+	if store.DSNEnvReadings == store.DSNEnvSeriesFred || store.DSNEnvReadings == store.DSNEnvPages {
+		t.Fatal("DSNEnvReadings equals another role line")
 	}
 }
 
