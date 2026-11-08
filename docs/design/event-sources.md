@@ -30,7 +30,7 @@ Goal: two stored, readable facts per underlying: the next results date and the n
    - `obs.earnings_date` r1: key `(observed_on, issuer, attempt)`; `symbol`, `market`, `status` (`listed`, `absent`, `unsupported`, `error`), `report_date` (earliest listed date on or after `observed_on`), `fiscal_period_end`, `time_of_day`, `estimate` (currency not stored), `error_code`, `source` (`alphavantage`, `jquants`, `owner`), `received_at`.
    - `obs.dividend_expectation` r1: key `(session_day, instrument_id, attempt)`; `issuer`, `status` (`present`, `no_value`, `unsupported`, `error`), `past_12m`, `next_12m`, `next_amount` (per share), `next_ex_date`, `currency` (of the contract asked, not a claim of the tick), `error_code`, `source` `ibkr_tick_456`, `received_at`.
    - Readers: `EarningsDates(ctx, issuer, from, to)` and `Dividends(ctx, instrumentID, from, to)`, inclusive, ordered by day, only the highest `attempt` of a day, empty slice for none.
-8. Role `ot_w_events` (INSERT only on both tables) is added in `internal/store/setup/setup.go` with `store.DSNEnvEvents = "OT_PG_DSN_EVENTS"`, read in `cmd/ot/runonce.go` and listed in the preflight. `ot_ro_pages` reads. `ot setup pg` and `ot migrate` for the new role are the owner's, run before the jobs (the job is off with a named line while the DSN line is missing).
+8. Role `ot_w_events` (INSERT on both tables, plus SELECT on the views `rd.earnings_date_r1` and `rd.dividend_expectation_r1`, so the job can read the rows of the day for the once-a-day rule of Decision 12; no UPDATE, DELETE or TRUNCATE) is added in `internal/store/setup/setup.go` with `store.DSNEnvEvents = "OT_PG_DSN_EVENTS"`, read in `cmd/ot/runonce.go` and listed in the preflight. `ot_ro_pages` reads too. `ot setup pg` and `ot migrate` for the new role are the owner's, run before the jobs (the job is off with a named line while the DSN line is missing).
 9. The short-call guard needs the next ex-date and amount per share and `received_at` freshness; its rule (extrinsic value against the dividend) is the next design.
 10. Order against `origin/design/account-data`, which edits the same files. Rule: an events issue that edits a file named here is `after` the account-data issue that edits it, and both keep a Files-bounded diff. Shared files and the account-data issues: `generate.sh`, `records.go`, docs/contracts datasets (`account-proto`); `internal/broker/api.go` (`account-broker-api`); `internal/store/api.go` (`account-store-api`); `setup.go` (`account-store-migration`, which also takes migration 0016); `cmd/ot/runonce.go`, `wire.go` (`account-wire`); `transport.py` (`account-guard-id`); `server.py` (`account-pyside-executions`). Migration numbers are written "next free at cut time" everywhere. `store/api.go` is 490 lines plus account-data's: the store issues check it stays under 600 and, if not, report instead of splitting.
 11. Cut order: earnings first (issues 1 to 6 and 15, 16, no probe), the probe chain (7 to 10) in parallel with it, dividends (11 to 14) after the probe. Sixteen issues: the watch list, the dividend side and the two Japanese sources have their own issues; the gate is what stops wasted dividend work.
@@ -54,18 +54,19 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 | 7 reference-proto (interface) | contracts | after 1 |
 | 8 pyside-dividends (interface and implementation) | pyside | after 7, account-guard-id, account-pyside-executions |
 | 9 broker-dividends (interface and implementation) | broker | after 7, account-broker-api |
-| 10 dividends-probe | ot | after 5, 8, 9 |
+| 10 dividends-probe | ot | after 5, 8, 9, account-wire |
 | 11 dividend-datasets (interface) | contracts | after 10 and the probe file |
 | 12 dividend-store (interface and implementation) | store | after 11, 2 |
 | 13 dividend-job (interface and implementation) | jobs | after 12, 4, 6 |
 | 14 dividend-wire | ot | after 13, 5, 16, account-wire |
 | 15 jquants-earnings-source (interface and implementation) | sources | after 3 and the jquants file |
-| 16 jquants-earnings-wire | ot | after 15, 5, 6, account-wire |
+| 16 jquants-earnings-wire | ot | after 15, 5, 6, 10, account-wire |
 
 ## Interface
 
 - contracts: datasets of Decision 7 (generated Go, docs); `reference.proto`: `service ReferenceService { rpc Dividends(stream ContractKey) returns (stream DividendProjection); }` as plan v2.5 line 170 (the plan's `TradingHours` rpc is not part of this design); `ContractKey` (symbol, sec_type, exchange, currency, con_id) is new in this file; `DividendProjection` has the key, `status`, the four values as optional text decimals, `error_code`, `received_at`.
 - store: `EarningsDateWriter/Reader`, `DividendWriter/Reader`, `store.DSNEnvEvents`. sources: `EarningsConfig{BaseURL, APIKey, Clock}`, `EarningsRow`, `EarningsSource`, `NewAlphaVantageFunc`; `NewJQuantsFunc` (issue 15, same `EarningsSource`, declared in `internal/sources/api.go` by issue 15). broker: a separate `ReferenceClient` interface with `Dividends(ctx, []Contract) ([]DividendProjection, error)` and its own dial type `NewReferenceFunc` in `internal/broker/api.go`; `Broker` is unchanged, so `unreachableBroker` and the test fakes keep compiling. jobs: `WatchEntry`, `NewEarningsRefreshFunc`, `NewDividendCaptureFunc`, each taking `[]WatchEntry`.
+- ot: owns the `watch.toml` format (Decision 1), defined in `docs/contracts/ot.md` by issue 5; the loader in `cmd/ot/watch.go` is its only parser and the valuation design follows the contract.
 - pyside: `ReferenceService` servicer registered in `transport.py`; the Protocol in `ibkr/api.py`.
 
 ## Issues
@@ -86,8 +87,8 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 - Files: internal/store/api.go, internal/store/api_events_test.go, migrations/NNNN_events.sql, internal/store/events/earnings.go, internal/store/events/earnings_test.go, internal/store/events/earnings_pg_test.go, internal/store/setup/setup.go, internal/store/setup/setup_test.go, docs/contracts/store.md, arch.toml, .go-arch-lint.yml
 - Design: docs/design/event-sources.md#Decisions (7, 8, 10). `arch.toml` and `.go-arch-lint.yml` are regenerated for the new `internal/store/events` package (a module plus repo-file pair). The contract test is a new file (`api_test.go` is 800 lines). NNNN is the next free at cut time.
 - Order: after 1, `account-store-api`, `account-store-migration`.
-- Goal: `EarningsDateWriter/Reader`, `DSNEnvEvents`, table and view `rd.earnings_date_r1`, role `ot_w_events` INSERT only, reader returns the highest attempt per day.
-- Acceptance: 1. `grep -c "EarningsDateWriter\|EarningsDateReader\|DSNEnvEvents" internal/store/api.go` is at least 3 and `wc -l < internal/store/api.go` is under 600. 2. `go test ./internal/store/... -race -count=1` passes with `TestReaderTakesHighestAttempt` once; `grep -c "go:build pg" internal/store/events/earnings_pg_test.go` prints 1; `grep -c "ot_w_events" internal/store/setup/setup.go` is at least 1. 3. `grep -c "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_events.sql` prints 0; the diff line.
+- Goal: `EarningsDateWriter/Reader`, `DSNEnvEvents`, table and view `rd.earnings_date_r1`, role `ot_w_events` with INSERT and SELECT on the view `rd.earnings_date_r1` (the job reads the rows of the day), reader returns the highest attempt per day.
+- Acceptance: 1. `grep -c "EarningsDateWriter\|EarningsDateReader\|DSNEnvEvents" internal/store/api.go` is at least 3 and `wc -l < internal/store/api.go` is under 600. 2. `go test ./internal/store/... -race -count=1` passes with `TestReaderTakesHighestAttempt` once; `grep -c "go:build pg" internal/store/events/earnings_pg_test.go` prints 1; `grep -c "ot_w_events" internal/store/setup/setup.go` is at least 1. 3. `grep -c "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_events.sql` prints 0 and `grep -c "GRANT SELECT ON rd.earnings_date_r1 TO ot_w_events" migrations/*_events.sql` prints 1; the diff line.
 - Checked by CI: ci-go; `go test -tags pg ./internal/store/...` (GitHub CI only); `go run ./scripts/arch --check`; the size rule.
 
 ### 3 earnings-source (interface and implementation)
@@ -157,11 +158,11 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 10 dividends-probe
 - Module: ot. Size: S. Depends on: watch-loader-earnings-wire, pyside-dividends, broker-dividends.
-- Files: cmd/ot/probe.go, cmd/ot/probe_test.go, docs/contracts/ot.md
-- Design: docs/design/event-sources.md#Decisions (6)
-- Order: after 5, 8, 9. The owner runs it and commits `docs/design/event-sources-probe.txt`; the dividend issues wait for that file.
-- Goal: `ot probe dividends [--symbols ...]` prints one line per symbol and `probe: US pass|fail`, `probe: JP pass|fail`; exit code 0 only when every market in the run passes; no key, DSN or account text; real broker by the wiring, fake in the test.
-- Acceptance: 1. `go test ./cmd/ot -race -count=1 -run TestProbeDividends` passes with `TestProbeDividendsPass`, `TestProbeDividendsTimeoutOnNonPayerPasses`, `TestProbeDividendsErrorOnNonPayerFails`, `TestProbeDividendsMissingDateFails`, `TestProbeDividendsPerMarket`, `TestProbeDividendsPrintsNoSecret` once each. 2. `grep -c "probe dividends" docs/contracts/ot.md` is at least 1. 3. the diff line.
+- Files: cmd/ot/probe.go, cmd/ot/probe_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, docs/contracts/ot.md
+- Design: docs/design/event-sources.md#Decisions (6). `cmd/ot` builds its parts through the `deps` struct in `wire.go`, which tests fill with fakes; this issue adds the `deps` field for `NewReferenceFunc`, so the probe test needs no package global.
+- Order: after 5, 8, 9, `account-wire` (same `wire.go`). Issue 16 is after 10 for `docs/contracts/ot.md` and `wire.go`. The owner runs it and commits `docs/design/event-sources-probe.txt`; the dividend issues wait for that file.
+- Goal: `ot probe dividends [--symbols ...]` prints one line per symbol and `probe: US pass|fail`, `probe: JP pass|fail`; exit code 0 only when every market in the run passes; no key, DSN or account text; a `deps` field for `NewReferenceFunc`, wired to grpcbroker in `wire.go` and filled with a fake in the test (issue 14 reuses that field).
+- Acceptance: 1. `go test ./cmd/ot -race -count=1 -run TestProbeDividends` passes with `TestProbeDividendsPass`, `TestProbeDividendsTimeoutOnNonPayerPasses`, `TestProbeDividendsErrorOnNonPayerFails`, `TestProbeDividendsMissingDateFails`, `TestProbeDividendsPerMarket`, `TestProbeDividendsPrintsNoSecret` once each. 2. `grep -c "probe dividends" docs/contracts/ot.md` is at least 1; `grep -c "NewReferenceFunc" cmd/ot/wire.go` is at least 1. 3. the diff line.
 - Checked by CI: ci-go. The real run is the owner's.
 
 ### 11 dividend-datasets (interface)
@@ -178,8 +179,8 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 - Files: internal/store/api.go, internal/store/api_dividends_test.go, migrations/NNNN_dividends.sql, internal/store/events/dividends.go, internal/store/events/dividends_test.go, internal/store/events/dividends_pg_test.go, docs/contracts/store.md
 - Design: docs/design/event-sources.md#Decisions (7, 8). NNNN is the next free at cut time.
 - Order: after 11, 2.
-- Goal: `DividendWriter/Reader`, table and view `rd.dividend_expectation_r1`, INSERT for `ot_w_events`, SELECT for `ot_ro_pages`, highest attempt per day.
-- Acceptance: 1. `grep -c "DividendWriter\|DividendReader" internal/store/api.go` is at least 2 and `wc -l < internal/store/api.go` is under 600. 2. `go test ./internal/store/... -race -count=1` passes; `grep -c "go:build pg" internal/store/events/dividends_pg_test.go` prints 1; `grep -c "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_dividends.sql` prints 0. 3. the diff line.
+- Goal: `DividendWriter/Reader`, table and view `rd.dividend_expectation_r1`, INSERT and SELECT on the view for `ot_w_events`, SELECT for `ot_ro_pages`, highest attempt per day.
+- Acceptance: 1. `grep -c "DividendWriter\|DividendReader" internal/store/api.go` is at least 2 and `wc -l < internal/store/api.go` is under 600. 2. `go test ./internal/store/... -race -count=1` passes; `grep -c "go:build pg" internal/store/events/dividends_pg_test.go` prints 1; `grep -c "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_dividends.sql` prints 0 and `grep -c "GRANT SELECT ON rd.dividend_expectation_r1 TO ot_w_events" migrations/*_dividends.sql` prints 1. 3. the diff line.
 - Checked by CI: ci-go; `go test -tags pg ./internal/store/...`; the size rule.
 
 ### 13 dividend-job (interface and implementation)
@@ -192,10 +193,10 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
 ### 14 dividend-wire
-- Module: ot. Size: S. Depends on: dividend-job, watch-loader-earnings-wire, jquants-earnings-wire.
+- Module: ot. Size: S. Depends on: dividend-job, watch-loader-earnings-wire, jquants-earnings-wire, dividends-probe.
 - Files: cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, docs/contracts/ot.md
 - Design: docs/design/event-sources.md#Decisions (6, 8)
-- Order: after 13, 5, 16 (same files), `account-wire`.
+- Order: after 13, 5, 10, 16 (same files), `account-wire`. It reuses the `NewReferenceFunc` field of `deps` that issue 10 adds.
 - Goal: register `dividend_capture` beside `option_eod` with the same broker and the watch list; a down broker disables it by the existing preflight rule.
 - Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestDividendCaptureRegistered`, `TestDividendCaptureOffWhenBrokerDown` once each. 2. `grep -c "dividend_capture" docs/contracts/ot.md` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
@@ -206,15 +207,15 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 - Design: docs/design/event-sources.md#Decisions (5, 12). Own code over `net/http` and `encoding/json`, no new dependency. `arch.toml` and `.go-arch-lint.yml` are regenerated for the new package (a module plus repo-file pair). The plan is settled (free, owner 2026-11-09) and the request shape is the owner's committed file, so no network step or choice is left to the worker.
 - Call budget (Decision 12): one bulk request per `Fetch` (pages by cursor capped at 5, then `error` `page_cap`), never a request per symbol and no issuer input; no retry on any status; a 429 is `error` with `error_code` `rate_limited`.
 - Order: after 3 (same `docs/contracts/sources.md` and `internal/sources/api.go`) and after the owner commits `docs/design/event-sources-jquants.txt`.
-- Goal: `NewJQuantsFunc` returns an `EarningsSource` over recorded bodies: the key only in the `x-api-key` header, pages followed by the pagination key, the latest `SchDate` on or after the day per company, 5-digit code normalised to 4, an empty `SchDate` is `absent`; a 401 or 403, a 429 and a non-JSON body are typed errors, and no error is retried.
-- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJQuantsParse`, `TestJQuantsPagination`, `TestJQuantsEmptyDateIsAbsent`, `TestJQuantsKeyNeverInError`, `TestJQuantsAuthErrorIsTyped`, `TestJQuantsOneCallPerFetch`, `TestJQuantsRateLimitedNoRetry`, `TestJQuantsPageCap` once each, with a fake client that counts calls (one call for a one-page body, at most 5 for pages, exactly 1 after a 429 or 5xx, `page_cap` on a sixth page), on the recorded files in `testdata` and no network. 2. `grep -c "^request: bulk" docs/design/event-sources-jquants.txt` prints 1 (else stop and report, do not edit the file). 3. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jquants/*.go` prints 0; `grep -c "jquants" docs/contracts/sources.md` is at least 1. 4. the diff line.
+- Goal: `NewJQuantsFunc` returns an `EarningsSource` over recorded bodies: the key only in the `x-api-key` header, pages followed by the pagination key, the earliest `SchDate` on or after the day per company (Decision 7), 5-digit code normalised to 4, an empty `SchDate` is `absent`; a 401 or 403, a 429 and a non-JSON body are typed errors, and no error is retried.
+- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJQuantsParse`, `TestJQuantsEarliestFutureDate`, `TestJQuantsPagination`, `TestJQuantsEmptyDateIsAbsent`, `TestJQuantsKeyNeverInError`, `TestJQuantsAuthErrorIsTyped`, `TestJQuantsOneCallPerFetch`, `TestJQuantsRateLimitedNoRetry`, `TestJQuantsPageCap` once each, with a fake client that counts calls (one call for a one-page body, at most 5 for pages, exactly 1 after a 429 or 5xx, `page_cap` on a sixth page), on the recorded files in `testdata` and no network. 2. `grep -c "^request: bulk" docs/design/event-sources-jquants.txt` prints 1 (else stop and report, do not edit the file). 3. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jquants/*.go` prints 0; `grep -c "jquants" docs/contracts/sources.md` is at least 1. 4. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
 ### 16 jquants-earnings-wire
-- Module: ot. Size: S. Depends on: jquants-earnings-source, watch-loader-earnings-wire, events-docs-modules.
+- Module: ot. Size: S. Depends on: jquants-earnings-source, watch-loader-earnings-wire, events-docs-modules, dividends-probe.
 - Files: cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/env.go, docs/contracts/ot.md
 - Design: docs/design/event-sources.md#Decisions (5, 12)
-- Order: after 15 and the jquants file, 5, 6 (same files, and the `ot` import list of modules.md), `account-wire`. Issue 14 is after 16 for the same files.
+- Order: after 15 and the jquants file, 5, 6 (same files, and the `ot` import list of modules.md), 10 (`wire.go`, `docs/contracts/ot.md`), `account-wire`. Issue 14 is after 16 for the same files.
 - Goal: pass `NewJQuantsFunc` as the `JP` source of `earnings_refresh`, reading `JQUANTS_API_KEY`; a missing key disables only the JP source with a named line (JP entries get `unsupported`) and the value is never printed; a J-Quants failure writes `error` rows for JP entries only; the J-Quants source is called at most once per day (no second call from a manual `run-once` or a scheduler tick the same day, no retry after an `error`).
 - Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestJPSourceWired`, `TestJQuantsFailureOnlyJPRows`, `TestMissingJQuantsKeyNamedLine`, `TestJQuantsOneCallPerDay`, `TestJQuantsErrorDayNotRetried` once each (fake client counting calls: 1 for two ticks on one day, 0 further after an `error`). 2. `grep -c "JQUANTS_API_KEY" docs/contracts/ot.md` is at least 1. 3. `grep -c "^request: bulk" docs/design/event-sources-jquants.txt` prints 1 (else stop and report). 4. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
