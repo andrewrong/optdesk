@@ -2,7 +2,7 @@
 
 Author: the optdesk designer (second draft, after the adversarial review)
 Owner approved: (pending)
-Revision: 3
+Revision: 4
 
 Source: the page comparison of 2026-11-08 (design set v2.2, owner-approved 2026-10-23, board 1, plus the later owner changes #1625, #1629, #1642, #1748, #1753, #1773, #1787, #1793, #1794, #1795). The owner chose to turn every deviation into a design.
 Read on origin/main at 3ef73b1: `contracts/schemas/page.home_page.v2.json`, `page.household_summary.v2.json`, `page.market_summary.v3.json`, `page.options_summary.v3.json`, `page.macro_summary.v2.json`, `page.held_companies_summary.v2.json`,
@@ -100,7 +100,7 @@ Checked by CI: `pnpm install --frozen-lockfile`, tsc, eslint, vitest, build; hyg
 - Files: web/fixtures/v3/market-summary/ok.json, web/fixtures/v3/market-summary/gap.json, web/fixtures/v3/market-summary/README.md, web/test/pages/home/MarketSummaryCard.test.tsx, web/test/pages/home/macro-v2/fixtures/ok.ts, web/test/pages/home/MacroCard.test.tsx
 
 - Goal: Decisions 3 and 5. Market `ok.json`: at least 30 chart points each with `close`, `ma200`, `band_low` and `band_high` (the three `series_names` stay), and SPX, NDX and RUT rows (IV, RV20, IV−RV20). `gap.json`: the N225 row whose IV is a gap with its cause (a gap object never goes into `ok.json`).
-  `README.md` states the new figures (it lists the hand-worked figures of `ok.json`). Macro `ok.ts`: `ticks` "-2", "-1", "0", "+1", "+2", a marker and a neutral band as track percents with texts "-0.5" and "+0.5", a prior value on every event and one event whose `previous` is missing and shown as missing.
+  `README.md` states the new figures (it lists the hand-worked figures of `ok.json`). Macro `ok.ts`: `ticks` "-2", "-1", "0", "+1", "+2", a marker and a neutral band as track percents with texts "-0.5" and "+0.5", a prior value on every event but one, and exactly one event (the last) whose `previous` is missing and shown as missing.
 - 按 frontend-stack：用 recharts through `web/src/charts/Chart.tsx` 做 the close, 200-day and band lines (unchanged view)。
 - 按 frontend-stack：用 shadcn progress (`components/ui/progress.tsx`) 做 the gauge track (unchanged view)。
 
@@ -156,3 +156,4 @@ The review is kept by the author. Answers, by its numbering.
 - 6.1 offline acceptance: adopted, no `generate:types` line; the Go fixture tests run offline. 6.2 conflicts on `page-schemas.md`: adopted, this file does not edit it. 6.5 permanently empty values: adopted, said once in the Goal.
 - Per-file check HB: no break found. "Owner approved: (pending)" stays until the review.
 - Top 1: not applicable here. Top 2: adopted. Top 3: adopted for home-options-card-view. Top 4: adopted. Top 5: adopted (daughter, macro scale, 盘前/盘后 in Decision 4). Top 6: adopted, with the schema issues merged or removed.
+- Design session verdict on rev 3: adopted. The macro `ok.ts` Goal now says a prior value on every event but one, and exactly one event (the last) with `previous` missing, as Acceptance 3 already assumed.
