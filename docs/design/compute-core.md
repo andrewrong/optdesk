@@ -67,6 +67,8 @@ The numbers are the entries of `## Issues` in this file. Two entries that share 
 
 ## Interface
 
+Landed in #387
+
 Owner: compute. Frozen by `compute-interface`; read by every issue here, by `compute-figures.md` and by the page designs. Declarations only; standard library plus `contracts`. `internal/compute/api.go` (package `compute`):
 
 - Types: `Point{Day contracts.Day; Value float64}`; `Series []Point` (ascending, one point per day); `Status` (`ok`, `missing`); `Reason` (the five of Decision 2); `Compare` (`Below`, `AtOrBelow`);
