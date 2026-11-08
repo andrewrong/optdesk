@@ -14,7 +14,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
-	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -214,7 +213,7 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer closeFn()
-	h := siteHandler(a, a.deps.newClock(), "", rd, embed.Handler)
+	h := siteHandler(a, a.deps.newClock(), "", rd, echoHandler)
 	for _, p := range []string{"/options/data", "/options/data/9010"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil))
@@ -226,6 +225,11 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 	if err != nil || len(got) != 2 || got[0].InstrumentID != 9000 || got[1].InstrumentID != 9010 || got[0].Name == "" {
 		t.Fatalf("demo names %+v %v", got, err)
 	}
+}
+
+// echoHandler writes the view model as the body, so a test needs no built web bundle.
+func echoHandler(vm []byte) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
 }
 
 func TestSiteMissingDSN(t *testing.T) {
