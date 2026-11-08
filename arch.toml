@@ -48,6 +48,10 @@ may_import = ["contracts", "clock", "sources"]
 in = "internal/store"
 may_import = ["contracts"]
 
+[component."store/alert"]
+in = "internal/store/alert"
+may_import = ["contracts", "store"]
+
 [component."store/instrument"]
 in = "internal/store/instrument"
 may_import = ["contracts", "store"]
@@ -79,6 +83,10 @@ may_import = ["contracts", "store"]
 [component."compute"]
 in = "internal/compute"
 may_import = ["contracts"]
+
+[component."compute/alertrules"]
+in = "internal/compute/alertrules"
+may_import = ["contracts", "compute"]
 
 [component."compute/figures"]
 in = "internal/compute/figures"
@@ -142,39 +150,43 @@ may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jo
 
 [component."notify"]
 in = "internal/notify"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "store", "compute"]
 
 [component."notify/core"]
 in = "internal/notify/core"
-may_import = ["contracts", "store", "notify"]
+may_import = ["contracts", "store", "compute", "notify"]
 
 [component."notify/dryrun"]
 in = "internal/notify/dryrun"
-may_import = ["contracts", "store", "notify"]
+may_import = ["contracts", "store", "compute", "notify"]
 
 [component."notify/telegram"]
 in = "internal/notify/telegram"
-may_import = ["contracts", "store", "notify"]
+may_import = ["contracts", "store", "compute", "notify"]
 
 [component."pages"]
 in = "internal/pages"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "store", "compute"]
 
 [component."pages/embed"]
 in = "internal/pages/embed"
-may_import = ["contracts", "store", "pages"]
+may_import = ["contracts", "store", "compute", "pages"]
 
 [component."pages/macro_page"]
 in = "internal/pages/macro_page"
-may_import = ["contracts", "store", "pages"]
+may_import = ["contracts", "store", "compute", "pages"]
 
 [component."pages/macro_rates"]
 in = "internal/pages/macro_rates"
-may_import = ["contracts", "store", "pages"]
+may_import = ["contracts", "store", "compute", "pages"]
 
 [component."pages/option_data_page"]
 in = "internal/pages/option_data_page"
-may_import = ["contracts", "store", "pages"]
+may_import = ["contracts", "store", "compute", "pages"]
+
+[component."pages/risks_block"]
+in = "internal/pages/risks_block"
+may_import = ["contracts", "store", "compute", "pages"]
 
 [component."profile"]
 in = "internal/profile"
@@ -182,4 +194,4 @@ may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block"]
