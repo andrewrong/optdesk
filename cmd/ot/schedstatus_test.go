@@ -28,10 +28,10 @@ var statusNow = time.Date(2026, 11, 6, 15, 0, 0, 0, time.UTC)
 // statusRig is an app whose only working store is the scheduler ledger; every dataset store and the broker
 // dial count their calls.
 type statusRig struct {
-	a        *app
-	out      *bytes.Buffer
-	led      *statusLedger
-	datasets atomic.Int32
+	a              *app
+	out            *bytes.Buffer
+	led            *statusLedger
+	forbiddenOpens atomic.Int32
 }
 
 func newStatusRig(t *testing.T, st store.SchedulerStatus) *statusRig {
@@ -41,12 +41,15 @@ func newStatusRig(t *testing.T, st store.SchedulerStatus) *statusRig {
 	a.stdout = r.out
 	a.deps.newFwClock = func() clockwork.Clock { return clockwork.NewFakeClockAt(statusNow) }
 	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return r.led, nil }
-	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { r.datasets.Add(1); return nil, nil }
-	a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) { r.datasets.Add(1); return nil, nil }
-	a.deps.openQuoteSnapshot = func(context.Context, string) (store.QuoteSnapshotStore, error) { r.datasets.Add(1); return nil, nil }
-	a.deps.openInstrument = func(context.Context, string) (store.InstrumentStore, error) { r.datasets.Add(1); return nil, nil }
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { r.forbiddenOpens.Add(1); return nil, nil }
+	a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) { r.forbiddenOpens.Add(1); return nil, nil }
+	a.deps.openQuoteSnapshot = func(context.Context, string) (store.QuoteSnapshotStore, error) {
+		r.forbiddenOpens.Add(1)
+		return nil, nil
+	}
+	a.deps.openInstrument = func(context.Context, string) (store.InstrumentStore, error) { r.forbiddenOpens.Add(1); return nil, nil }
 	a.deps.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
-		r.datasets.Add(1)
+		r.forbiddenOpens.Add(1)
 		return nil, nil
 	}
 	return r
@@ -61,7 +64,7 @@ func TestSchedStatusOpensNoDatasetStore(t *testing.T) {
 	if err := schedCanRestartCmd(r.a, nil); err != nil {
 		t.Fatal(err)
 	}
-	if n := r.datasets.Load(); n != 0 {
+	if n := r.forbiddenOpens.Load(); n != 0 {
 		t.Fatalf("a dataset store or the broker was opened %d times", n)
 	}
 	if r.led.closed.Load() != 2 {
@@ -144,5 +147,17 @@ func TestCanRestart(t *testing.T) {
 				t.Fatalf("reason %q lacks %q", err, c.text)
 			}
 		})
+	}
+}
+
+func TestCanRestartRefusesWhenStoredSlotHasJustStarted(t *testing.T) {
+	t.Parallel()
+	r := newStatusRig(t, store.SchedulerStatus{Jobs: []store.JobState{{
+		JobID: "option_eod", RestartSensitive: true,
+		NextStart: statusNow.Add(-time.Minute), // the row has not been refreshed since the slot started
+		WindowEnd: statusNow.Add(time.Hour),
+	}}})
+	if code := exitCodeOf(schedCanRestartCmd(r.a, nil)); code != 1 {
+		t.Fatalf("exit %d, want 1: the sensitive window opened a minute ago", code)
 	}
 }

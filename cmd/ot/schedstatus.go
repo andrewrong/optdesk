@@ -99,6 +99,8 @@ func gapLabel(g store.Gap) string {
 // restartBlocker is the reason a restart is not safe at now, or "": a non-terminal run, or a restart-sensitive
 // job between its slot start and its window close. ops.scheduler_job holds the next slot after now and the first
 // window end after now, so the window is open when that end comes before the next slot (or no slot follows).
+// The row is only as fresh as the last ticker turn, so a stored NextStart that is already past now is the slot
+// that has just started: its window is open too.
 func restartBlocker(st store.SchedulerStatus, now time.Time) string {
 	if n := len(st.Runs); n > 0 {
 		return fmt.Sprintf("%d run(s) not finished, first %s", n, st.Runs[0].ID)
@@ -107,7 +109,7 @@ func restartBlocker(st store.SchedulerStatus, now time.Time) string {
 		if !j.RestartSensitive || !j.WindowEnd.After(now) {
 			continue
 		}
-		if j.NextStart.IsZero() || !j.NextStart.Before(j.WindowEnd) {
+		if !j.NextStart.After(now) || !j.NextStart.Before(j.WindowEnd) {
 			return fmt.Sprintf("job %s is restart-sensitive and its window closes at %s", j.JobID, j.WindowEnd.UTC().Format(time.RFC3339))
 		}
 	}
