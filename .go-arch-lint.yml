@@ -61,6 +61,8 @@ components:
     in: internal/runner/reconcile
   jobs:
     in: internal/jobs
+  jobs/calendarrefresh:
+    in: internal/jobs/calendarrefresh
   jobs/fredseries:
     in: internal/jobs/fredseries
   jobs/optioneod:
@@ -212,6 +214,17 @@ deps:
       - broker
       - store
       - compute
+  jobs/calendarrefresh:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/fredseries:
     mayDependOn:
       - contracts
@@ -345,6 +358,7 @@ deps:
       - notify/dryrun
       - jobs/serieshistory
       - clock/calendarcli
+      - jobs/calendarrefresh
   compute/contracttest:
     mayDependOn:
       - contracts
