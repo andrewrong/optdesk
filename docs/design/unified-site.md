@@ -108,7 +108,8 @@ The v3 schema of macro_rates and the schema of the sample marker, with generated
 macro_rates reads seven series as v3; embed serves the real web build
   Module: pages
   Goal: `Build` writes the v3 page for seven series; `Handler` and `Assets` serve the built bundle; no stub remains.
-  Files: internal/pages/macro_rates/builder.go, internal/pages/macro_rates/text.go, internal/pages/macro_rates/page.go, internal/pages/macro_rates/builder_test.go, internal/pages/macro_rates/page_test.go, internal/pages/embed/embed.go, internal/pages/embed/assets.go, internal/pages/embed/inject_test.go, internal/pages/embed/assets_test.go, internal/pages/embed/dist/.gitignore, internal/pages/embed/dist/index.html, docs/contracts/pages.md
+  Files: internal/pages/macro_rates/builder.go, internal/pages/macro_rates/text.go, internal/pages/macro_rates/page.go, internal/pages/macro_rates/builder_test.go, internal/pages/macro_rates/page_test.go, internal/pages/embed/embed.go, internal/pages/embed/assets.go, internal/pages/embed/inject_test.go, internal/pages/embed/assets_test.go, internal/pages/embed/dist/.gitignore, internal/pages/embed/dist/index.html, docs/contracts/pages.md, cmd/ot/site_test.go
+  Cross-module file: `cmd/ot/site_test.go` (module ot). `TestSiteDemoOpensNoStore` passes the real `embed.Handler` to `siteHandler`; once the stub is gone, `Handler` answers 500 when `dist/index.html` is not built (as in CI), so the test fails. This entry replaces that argument with a test-local handler that writes the view model as the body, removes the `embed` import if unused, and changes nothing else of that file.
   Design: docs/design/unified-site.md#decisions
   Order: after 1 (site-interface).
   Depends on: site-interface (merged: the v3 schema and fixtures).
@@ -117,7 +118,7 @@ macro_rates reads seven series as v3; embed serves the real web build
   2. Tests that change, by name: `TestBuildGolden`, `TestBuildFixtures`, `TestGapsAndStale` and the helper at `builder_test.go:166` and `:249` call `build(..., []string{"DGS10"})` and read the `page.macro_rates.v3.*` fixtures; `TestBuildDemo` and `TestPage` (and `page_test.go:22-26`, `p.Build` against `Build`) expect seven series; `TestText` gains the `index_points` case; `TestBuildErrors` is unchanged in meaning. New `TestBuildSevenSeries`: a fake reader holding all seven ids with their stored units gives seven series in order, sentence `7 series on 2026-11-04.`, the bytes equal to `page.macro_rates.v3.seven.json`, and the output validates against `page.macro_rates.v3.json`; with only DGS10 stored, six series are `no_data` with `no points` and six `stale` gaps; a reader error on any id returns no bytes.
   3. `assets.go` replaces the stub of `site-interface` with the handler of `/assets/*`; `embed.go` reads `//go:embed all:dist`; `Handler(vm)` writes the vm into `dist/index.html`; `TestHandlerServesIndex` (replaces `TestHandlerServesStub`) and `TestHandlerBadViewModel` run on an in-memory `fstest.MapFS` through an unexported `newHandler(fsys, vm)`; `TestHandlerNoBundle500` (no `index.html`: 500, the fixed text, no path in the body); `TestAssets`: `/assets/a.js` answers the file with a JavaScript type, `/assets/missing` and `/index.html` and `/assets/../x` are 404, POST is 405.
   4. `git ls-files internal/pages/embed/dist` prints exactly `internal/pages/embed/dist/.gitignore` and the file holds `*` and `!.gitignore`.
-  5. Every test calls `t.Parallel()`; `grep -c 'time.Sleep\|time.Now' internal/pages/embed/*.go internal/pages/macro_rates/*.go` prints 0; among `internal/...` imports only `internal/contracts` and `internal/store` appear; `docs/contracts/pages.md` names `Assets`, the bundle path, the 500 text and `page.macro_rates.v3`; no file outside the twelve listed is in the diff.
+  5. Every test calls `t.Parallel()`; `grep -c 'time.Sleep\|time.Now' internal/pages/embed/*.go internal/pages/macro_rates/*.go` prints 0; among `internal/...` imports only `internal/contracts` and `internal/store` appear; `docs/contracts/pages.md` names `Assets`, the bundle path, the 500 text and `page.macro_rates.v3`; no file outside the thirteen listed is in the diff.
   Checked by CI: ci-go (`go build ./...` with no bundle, `go test ./internal/pages/...`, golangci-lint, go-arch-lint).
   Size: M
 
@@ -152,7 +153,7 @@ The bar, the sample pages with their banner, the v3 types and the build output p
   Goal: the routes of Decision 3 on stores opened once, or on demo readers; `serve` has only `--day` and `--addr`.
   Files: cmd/ot/serve.go, cmd/ot/site.go, cmd/ot/sample.go, cmd/ot/wire.go, cmd/ot/demo.go, cmd/ot/serve_test.go, cmd/ot/site_test.go, cmd/ot/sample_test.go, docs/contracts/ot.md
   Design: docs/design/unified-site.md#decisions
-  Order: after 1 (site-interface).
+  Order: after 1, 2 (site-interface; site-pages, which also edits `cmd/ot/site_test.go`).
   Depends on: site-interface (merged: `page.sample_page.v1`, its fixture and the stub `embed.Assets`). Needs no output of `site-pages`: its tests use a fake page and a fake assets handler.
   Behaviour: `runServe` is `runSite` without the flag test. `siteHandler` gains `/macro` (builds `deps.pageList[0]` per request, written with `newHandler`), `/assets/` (`deps.assets`) and the six sample routes (`sample.go`: route to schema map, the body the constant of Decision 4 written with `newHandler`; no store read). `wire.go` gains `assets` (real value `embed.Assets()`). `openSiteReaders` also opens the series store. `demoReader` returns points for the seven ids with their stored units.
   Acceptance:
