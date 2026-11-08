@@ -12,7 +12,7 @@ Fetch series from external data sources and return typed records with provenance
 
 ## Outputs
 
-- `[]contracts.SeriesPoint` (`obs.series_point r1`), never a hand-written copy. A FRED value `"."` becomes a nil value with status `no_value`; other rows have status `present`. The unit `percent` is set in `mapping.go` only. `realtime_start`, `realtime_end` and `published_at` (the fetch instant on the injected clock) are kept, so the vintage is preserved; `source` is `fred`, `source_revision` is `realtime_start`.
+- `[]contracts.SeriesPoint` (`obs.series_point r1`), never a hand-written copy. A FRED value `"."` becomes a nil value with status `no_value`; other rows have status `present`. The unit and currency of each series come from the table `seriesUnits` in `mapping.go` only. A FRED series of unit `ccy_amount` is stored in whole units of its currency (`currency` set, e.g. `USD`): the decimal point of the FRED text is shifted on the text before it becomes a float64 (millions 6 places, billions 9). A pinned series (`pinVintage`) keeps the first value seen: `realtime_start`, `realtime_end` and `source_revision` are the observation date, so a second fetch of the same observation is the same store key. `realtime_start`, `realtime_end` and `published_at` (the fetch instant on the injected clock) are kept, so the vintage is preserved; `source` is `fred`, `source_revision` is `realtime_start`.
 - Errors are `contracts.TypedError` only: HTTP 429, 5xx, transport failures and cancellation are `Retryable`; other non-200 statuses, undecodable bodies and bad configuration are `Permanent`.
 
 ## Invariants
@@ -27,7 +27,7 @@ Fetch series from external data sources and return typed records with provenance
 
 ## Contract tests
 
-`internal/sources/fred`: `TestMapping`, `TestFixtureMapping`, `TestPacing`, `TestErrorKinds`, `TestRedaction`; the wiring `var _ sources.NewFREDFunc = New`.
+`internal/sources/fred`: `TestMapping`, `TestFixtureMapping`, `TestShiftDecimalText`, `TestPinnedVintageSameKeyAcrossFetchDays`, `TestPacing`, `TestErrorKinds`, `TestRedaction`; the wiring `var _ sources.NewFREDFunc = New`.
 
 ## Jobs and slots
 

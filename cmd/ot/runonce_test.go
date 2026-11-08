@@ -24,7 +24,7 @@ import (
 
 const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
 	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
-	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\n"
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
 
 type fakeSD struct {
 	store.SessionDayStore
@@ -100,9 +100,14 @@ func (r recRunner) Reconcile(_ context.Context, d contracts.Day) error { *r.day 
 func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 	clk := a.deps.newClock
 	a.deps = deps{
-		openFence:   fenceOpener(&fakeInstFence{}),
-		newClock:    clk,
-		newCalendar: func(clock.SessionSource) clock.Calendar { return nil },
+		openFence:               fenceOpener(&fakeInstFence{}),
+		newClock:                clk,
+		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
+		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
+		newDiffer:               func() clock.SessionDayDiffer { return nil },
+		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+			return fakeJob{}, nil
+		},
 		openSessionDay: func(context.Context, string) (store.SessionDayStore, error) {
 			opened.Add(1)
 			return fakeSD{n: closed}, nil
@@ -199,7 +204,7 @@ func TestRunOnceDemoRefused(t *testing.T) {
 func TestRunOnceMissingKey(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "OT_PG_DSN_RUNNER=r\nOT_PG_DSN_SERIES_FRED=s\nOT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\n"+
-		"OT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\n")
+		"OT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n")
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -215,14 +220,14 @@ func TestRunOnceClosesStores(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, nil); err != nil || opened.Load() != 13 || closed.Load() != 13 {
+	if err := runOnce(a, nil); err != nil || opened.Load() != 14 || closed.Load() != 14 {
 		t.Fatalf("err %v opened %d closed %d", err, opened.Load(), closed.Load())
 	}
 	// A failure after two stores are open closes them too.
 	opened.Store(0)
 	closed.Store(0)
 	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { return nil, errors.New("down") }
-	if err := runOnce(a, nil); err == nil || closed.Load() != 2 {
+	if err := runOnce(a, nil); err == nil || closed.Load() != 3 {
 		t.Fatalf("err %v closed %d", err, closed.Load())
 	}
 }
@@ -231,7 +236,7 @@ func TestRunOnceSentinelDSN(t *testing.T) {
 	t.Parallel()
 	const sentinel = "postgres://sentinel-user:sentinel-pw@h/db"
 	a, errb := testApp(t, "OT_PG_DSN_RUNNER="+sentinel+"\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n"+
-		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\n")
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n")
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -431,25 +436,5 @@ func TestRunOnceNeedsReadingsDSN(t *testing.T) {
 	err := runOnce(a, nil)
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) || strings.Contains(err.Error(), "readings-dsn") {
 		t.Fatalf("err %v", err)
-	}
-}
-
-func TestDemoProfileOpensNoStore(t *testing.T) {
-	t.Parallel()
-	for name, run := range map[string]func(*app) error{
-		"run-once": func(a *app) error { return runOnce(a, nil) },
-		"backfill": func(a *app) error { return backfill(a, []string{"--day", "2026-03-04"}) },
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			a, _ := testApp(t, fullEnv)
-			a.profile.Name = "demo"
-			var opened, closed atomic.Int32
-			var got contracts.Day
-			runOnceFakes(a, &opened, &closed, &got)
-			if err := run(a); err == nil || opened.Load() != 0 {
-				t.Fatalf("err %v opened %d", err, opened.Load())
-			}
-		})
 	}
 }

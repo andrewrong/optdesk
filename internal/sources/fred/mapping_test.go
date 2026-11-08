@@ -131,14 +131,15 @@ type seriesMeta struct {
 }
 
 // compareUnits reports every disagreement between a unit table and recorded FRED metadata.
-func compareUnits(table map[string]contracts.SeriesUnit, meta []seriesMeta) []string {
+func compareUnits(table map[string]unitRow, meta []seriesMeta) []string {
 	var fails []string
 	recorded := map[string]string{}
 	for _, m := range meta {
 		recorded[m.SeriesID] = m.Units
 	}
-	for id, u := range table {
+	for id, row := range table {
 		units, ok := recorded[id]
+		u := row.unit
 		switch {
 		case !ok:
 			fails = append(fails, fmt.Sprintf("%s: no recorded metadata", id))
@@ -146,21 +147,33 @@ func compareUnits(table map[string]contracts.SeriesUnit, meta []seriesMeta) []st
 			fails = append(fails, fmt.Sprintf("%s: table says percent, recorded units %q", id, units))
 		case units != "Index" && u == indexPoints:
 			fails = append(fails, fmt.Sprintf("%s: table says index_points, recorded units %q", id, units))
+		case u == ccyAmount && !ccyTextMatchesShift(units, row.shift):
+			fails = append(fails, fmt.Sprintf("%s: ccy_amount shift %d does not match recorded units %q", id, row.shift, units))
 		}
 	}
 	for id, units := range recorded {
-		u, ok := table[id]
+		row, ok := table[id]
 		if !ok {
 			continue
 		}
+		u := row.unit
 		if units == "Percent" && u != contracts.SeriesUnit("percent") {
 			fails = append(fails, fmt.Sprintf("%s: recorded Percent, table says %q", id, u))
 		}
 		if units == "Index" && u != indexPoints {
 			fails = append(fails, fmt.Sprintf("%s: recorded Index, table says %q", id, u))
 		}
+		if strings.HasSuffix(units, "of U.S. Dollars") && u != ccyAmount {
+			fails = append(fails, fmt.Sprintf("%s: recorded %q, table says %q", id, units, u))
+		}
 	}
 	return fails
+}
+
+// ccyTextMatchesShift holds the two full texts a ccy_amount row may record.
+func ccyTextMatchesShift(units string, shift int) bool {
+	return (units == "Millions of U.S. Dollars" && shift == 6) ||
+		(units == "Billions of U.S. Dollars" && shift == 9)
 }
 
 func loadMeta(t *testing.T) []seriesMeta {
@@ -185,11 +198,11 @@ func TestSeriesUnitsMatchMetadata(t *testing.T) {
 
 func TestSeriesUnitsDetectsWrongClaim(t *testing.T) {
 	t.Parallel()
-	table := map[string]contracts.SeriesUnit{}
+	table := map[string]unitRow{}
 	for k, v := range seriesUnits {
 		table[k] = v
 	}
-	table["CPIAUCSL"] = contracts.SeriesUnit("percent")
+	table["CPIAUCSL"] = unitRow{unit: contracts.SeriesUnit("percent")}
 	fails := compareUnits(table, loadMeta(t))
 	if len(fails) != 1 || !strings.Contains(fails[0], "CPIAUCSL") {
 		t.Errorf("fails = %v", fails)
@@ -223,12 +236,122 @@ func TestMappingMarketSeries(t *testing.T) {
 
 func TestSeriesUnitsDetectsIndexPointsOnPercent(t *testing.T) {
 	t.Parallel()
-	table := map[string]contracts.SeriesUnit{"DGS10": indexPoints}
+	table := map[string]unitRow{"DGS10": {unit: indexPoints}}
 	fails := compareUnits(table, loadMeta(t))
 	if len(fails) != 2 {
 		t.Errorf("fails = %v", fails)
 	}
 }
 
-// indexPoints is the unit of the index series; the contracts package does not re-export the constant.
-const indexPoints = contracts.SeriesUnit("index_points")
+func TestShiftDecimalText(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		in    string
+		shift int
+		want  float64
+	}{
+		{"0.123", 9, 123000000},
+		{"6700000", 6, 6.7e12},
+		{"-1.5", 6, -1500000},
+		{"1.5", 0, 1.5},
+	} {
+		body := []byte(`{"observations":[{"realtime_start":"2026-11-06","realtime_end":"2026-11-06","date":"2026-11-04","value":"` + c.in + `"}]}`)
+		id := map[int]string{6: "WALCL", 9: "RRPONTSYD", 0: "DFF"}[c.shift]
+		got, err := mapObservations(id, body, time.Time{})
+		if err != nil || len(got) != 1 || got[0].Value == nil || *got[0].Value != c.want {
+			t.Errorf("%s shift %d: %+v %v, want %v", c.in, c.shift, got, err, c.want)
+		}
+	}
+	dot := []byte(`{"observations":[{"realtime_start":"2026-11-06","realtime_end":"2026-11-06","date":"2026-11-04","value":"."}]}`)
+	got, err := mapObservations("WALCL", dot, time.Time{})
+	if err != nil || len(got) != 1 || got[0].Value != nil || got[0].Status != "no_value" {
+		t.Errorf("dot: %+v %v", got, err)
+	}
+}
+
+func TestCcyAmountRowsCarryUSD(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"observations":[{"realtime_start":"2026-11-06","realtime_end":"2026-11-06","date":"2026-11-04","value":"6700000"}]}`)
+	got, err := mapObservations("WALCL", body, time.Time{})
+	if err != nil || len(got) != 1 || got[0].Unit != ccyAmount || got[0].Currency != "USD" {
+		t.Errorf("WALCL: %+v %v", got, err)
+	}
+	got, err = mapObservations("DGS10", body, time.Time{})
+	if err != nil || len(got) != 1 || got[0].Currency != "" {
+		t.Errorf("DGS10: %+v %v", got, err)
+	}
+}
+
+func TestUnitsTextMatchesShift(t *testing.T) {
+	t.Parallel()
+	meta := loadMeta(t)
+	if fails := compareUnits(seriesUnits, meta); len(fails) != 0 {
+		t.Errorf("table fails: %v", fails)
+	}
+	table := map[string]unitRow{}
+	for k, v := range seriesUnits {
+		table[k] = v
+	}
+	row := table["WALCL"]
+	row.shift = 9
+	table["WALCL"] = row
+	if fails := compareUnits(table, meta); len(fails) != 1 || !strings.Contains(fails[0], "WALCL") {
+		t.Errorf("WALCL shift 9: %v", fails)
+	}
+	table["WALCL"] = seriesUnits["WALCL"]
+	altered := append([]seriesMeta(nil), meta...)
+	for i := range altered {
+		if altered[i].SeriesID == "RRPONTSYD" {
+			altered[i].Units = "Millions of U.S. Dollars"
+		}
+	}
+	if fails := compareUnits(table, altered); len(fails) != 1 || !strings.Contains(fails[0], "RRPONTSYD") {
+		t.Errorf("RRPONTSYD millions: %v", fails)
+	}
+}
+
+func TestSeriesUnitsEveryConfiguredIDRecorded(t *testing.T) {
+	t.Parallel()
+	recorded := map[string]bool{}
+	for _, m := range loadMeta(t) {
+		recorded[m.SeriesID] = true
+	}
+	for id := range seriesUnits {
+		if !recorded[id] {
+			t.Errorf("%s has no recorded text", id)
+		}
+	}
+	table := map[string]unitRow{"NEWID": {unit: contracts.SeriesUnit("percent")}}
+	if fails := compareUnits(table, loadMeta(t)); len(fails) != 1 || !strings.Contains(fails[0], "NEWID") {
+		t.Errorf("unrecorded id not detected: %v", fails)
+	}
+}
+
+func TestPinnedVintageSameKeyAcrossFetchDays(t *testing.T) {
+	t.Parallel()
+	body := func(day string) []byte {
+		return []byte(`{"observations":[{"realtime_start":"` + day + `","realtime_end":"` + day + `","date":"2026-11-04","value":"6700000"}]}`)
+	}
+	type key struct {
+		id   string
+		date time.Time
+		rs   time.Time
+	}
+	keyOf := func(id, fetchDay string) key {
+		got, err := mapObservations(id, body(fetchDay), time.Time{})
+		if err != nil || len(got) != 1 {
+			t.Fatalf("%s: %v %v", id, got, err)
+		}
+		return key{got[0].SeriesID, got[0].ObservationDate.Time, got[0].RealtimeStart.Time}
+	}
+	if a, b := keyOf("WALCL", "2026-11-06"), keyOf("WALCL", "2026-11-07"); a != b {
+		t.Errorf("WALCL keys differ: %v %v", a, b)
+	}
+	if a, b := keyOf("DGS10", "2026-11-06"), keyOf("DGS10", "2026-11-07"); a == b {
+		t.Errorf("DGS10 keys equal: %v", a)
+	}
+	got, _ := mapObservations("WALCL", body("2026-11-07"), time.Time{})
+	if !got[0].RealtimeEnd.Equal(day("2026-11-04").Time) || got[0].SourceRevision != "2026-11-04" {
+		t.Errorf("pin: %+v", got[0])
+	}
+}
