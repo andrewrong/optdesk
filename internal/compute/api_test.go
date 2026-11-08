@@ -392,3 +392,73 @@ func TestSharpContract(t *testing.T) {
 		}
 	}
 }
+
+// fakeEase answers like the contract says: four parts in the order of the doc, a band
+// only when the value is present.
+type fakeEase struct{}
+
+func (fakeEase) Ease(id string, s compute.EaseSeries, asOf contracts.Day) compute.EaseFigure {
+	inputs := []string{"net_liquidity", "us10y", "fed_funds", "hy_oas"}
+	parts := make([]compute.EasePart, len(inputs))
+	for i, in := range inputs {
+		parts[i] = compute.EasePart{Input: in, Status: compute.StatusMissing, Reason: compute.NoInput}
+	}
+	if id != "macro.ease" {
+		return compute.EaseFigure{
+			Figure: compute.Figure{ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.BadInput},
+			Parts:  parts,
+		}
+	}
+	return compute.EaseFigure{
+		Figure: compute.Figure{ID: id, Day: asOf, Status: compute.StatusMissing, Reason: compute.NoInput},
+		Parts:  parts,
+	}
+}
+
+// easeCaller uses only the types, as a job does.
+func easeCaller(e compute.Ease, id string, asOf contracts.Day) compute.EaseFigure {
+	return e.Ease(id, compute.EaseSeries{}, asOf)
+}
+
+func TestEaseContract(t *testing.T) {
+	t.Parallel()
+	newEase := compute.NewEaseFunc(func(compute.Rules) compute.Ease { return fakeEase{} })
+	e := newEase(nil)
+	for _, id := range []string{"macro.ease", "unknown"} {
+		f := easeCaller(e, id, "2026-01-02")
+		if len(f.Parts) != 4 {
+			t.Fatalf("%s: %d parts, want 4", id, len(f.Parts))
+		}
+		for i, want := range []string{"net_liquidity", "us10y", "fed_funds", "hy_oas"} {
+			if f.Parts[i].Input != want {
+				t.Errorf("%s: part %d is %q, want %q", id, i, f.Parts[i].Input, want)
+			}
+		}
+		if f.Status == compute.StatusMissing && f.Band != "" {
+			t.Errorf("%s: missing figure has band %q", id, f.Band)
+		}
+	}
+	if got := easeCaller(e, "unknown", "2026-01-02").Reason; got != compute.BadInput {
+		t.Errorf("unknown id reason %q, want bad_input", got)
+	}
+}
+
+func TestEaseWords(t *testing.T) {
+	t.Parallel()
+	bands := map[compute.EaseBand]string{
+		compute.EaseTighter: "tighter",
+		compute.EaseSteady:  "steady",
+		compute.EaseLooser:  "looser",
+	}
+	for b, want := range bands {
+		if string(b) != want {
+			t.Errorf("band %q, want %q", b, want)
+		}
+	}
+	f := easeCaller(fakeEase{}, "macro.ease", "2026-01-02")
+	for i, in := range []string{"net_liquidity", "us10y", "fed_funds", "hy_oas"} {
+		if f.Parts[i].Input != in {
+			t.Errorf("fake part %d %q disagrees with table %q", i, f.Parts[i].Input, in)
+		}
+	}
+}

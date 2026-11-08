@@ -55,6 +55,8 @@ components:
     in: internal/compute
   compute/alertrules:
     in: internal/compute/alertrules
+  compute/ease:
+    in: internal/compute/ease
   compute/figures:
     in: internal/compute/figures
   compute/gonumstats:
@@ -210,6 +212,11 @@ deps:
     mayDependOn:
       - contracts
   compute/alertrules:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/ease:
     mayDependOn:
       - contracts
       - compute
@@ -454,6 +461,7 @@ deps:
       - store/alert
       - compute/alertrules
       - pages/risks_block
+      - compute/ease
   compute/contracttest:
     mayDependOn:
       - contracts
