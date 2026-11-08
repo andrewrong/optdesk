@@ -1,4 +1,4 @@
-# Manifest of the option_eod job. Values of the underlying are synthetic.
+# Manifest of the option_eod job. The underlying is SPY, one real symbol.
 version = 1
 id = "option_eod"
 zone = "America/New_York"
@@ -16,12 +16,12 @@ lateness_hours = 5
 calendar = "XNYS"
 
 [[underlying]]
-symbol = "TEST"
+symbol = "SPY"
 sec_type = "STK"
 exchange = "SMART"
 currency = "USD"
-con_id = 1000001
-mic = "XNYS"
+con_id = 756733
+mic = "ARCX"
 calendar_id = "XNYS"
 price_increment = "0.01"
 lot_size = "1"
