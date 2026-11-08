@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/jonboulle/clockwork"
 )
 
 type fakeReconciler struct{ days []contracts.Day }
@@ -148,5 +149,149 @@ func TestWindowedContract(t *testing.T) {
 					tc.job.calendarID, tc.job.openOffset, tc.job.closeOffset)
 			}
 		})
+	}
+}
+
+// plainJob implements contracts.Job and nothing else.
+type plainJob struct{}
+
+func (plainJob) ID() string { return "plain" }
+func (plainJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return nil, "", nil
+}
+func (plainJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
+	return contracts.JobResult{}
+}
+
+// fullJob implements every optional method with standard-library types only.
+type fullJob struct{ plainJob }
+
+func (fullJob) Schedule() (string, string, string, time.Duration) {
+	return "XNYS", "session_close", "America/New_York", time.Hour
+}
+func (fullJob) RunBound() time.Duration { return 10 * time.Minute }
+func (fullJob) Postcondition(_ context.Context, day, datasetID, subjectKey string) (bool, error) {
+	return day == "2026-11-06" && datasetID == "d" && subjectKey == "k", nil
+}
+func (fullJob) RestartSensitive() bool { return true }
+
+func TestOptionalMethods(t *testing.T) {
+	t.Parallel()
+	var plain any = plainJob{}
+	if _, ok := plain.(runner.Scheduled); ok {
+		t.Fatal("plain job must not satisfy Scheduled")
+	}
+	if _, ok := plain.(runner.Bounded); ok {
+		t.Fatal("plain job must not satisfy Bounded")
+	}
+	if _, ok := plain.(runner.Postcondition); ok {
+		t.Fatal("plain job must not satisfy Postcondition")
+	}
+	if _, ok := plain.(runner.RestartSensitive); ok {
+		t.Fatal("plain job must not satisfy RestartSensitive")
+	}
+
+	var full any = fullJob{}
+	s, ok := full.(runner.Scheduled)
+	if !ok {
+		t.Fatal("full job does not satisfy Scheduled")
+	}
+	cal, anchor, zone, off := s.Schedule()
+	slot := runner.Slot{JobID: "full", CalendarID: cal, Anchor: anchor, Zone: zone, Offset: off}
+	if slot.CalendarID != "XNYS" || slot.Anchor != "session_close" || slot.Zone != "America/New_York" || slot.Offset != time.Hour {
+		t.Fatalf("slot = %+v", slot)
+	}
+	b, ok := full.(runner.Bounded)
+	if !ok || b.RunBound() != 10*time.Minute {
+		t.Fatal("Bounded not satisfied or wrong bound")
+	}
+	p, ok := full.(runner.Postcondition)
+	if !ok {
+		t.Fatal("full job does not satisfy Postcondition")
+	}
+	if got, err := p.Postcondition(context.Background(), "2026-11-06", "d", "k"); err != nil || !got {
+		t.Fatalf("Postcondition = %v %v", got, err)
+	}
+	if got, _ := p.Postcondition(context.Background(), "2026-11-06", "d", "other"); got {
+		t.Fatal("Postcondition true for a missing key")
+	}
+	r, ok := full.(runner.RestartSensitive)
+	if !ok || !r.RestartSensitive() {
+		t.Fatal("RestartSensitive not satisfied or false")
+	}
+}
+
+type fakeKeyRunner struct {
+	attempt int
+	reason  string
+	closeAt time.Time
+	bound   time.Time
+}
+
+func (f *fakeKeyRunner) RunKey(_ context.Context, job contracts.Job, day contracts.Day, key contracts.ExpectedKey, attempt int, closeAt, deadline time.Time, reason string) (store.Run, error) {
+	f.attempt, f.reason, f.closeAt, f.bound = attempt, reason, closeAt, deadline
+	return store.Run{}, nil
+}
+
+func TestKeyRunnerContract(t *testing.T) {
+	t.Parallel()
+	f := &fakeKeyRunner{}
+	var newFn runner.NewKeyRunnerFunc = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return f }
+	kr := newFn(nil, nil, clockwork.NewFakeClock())
+	closeAt := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
+	deadline := closeAt.Add(time.Minute)
+	if _, err := kr.RunKey(context.Background(), plainJob{}, "2026-11-06", contracts.ExpectedKey{}, 2, closeAt, deadline, "late"); err != nil {
+		t.Fatal(err)
+	}
+	if f.attempt != 2 || f.reason != "late" || !f.closeAt.Equal(closeAt) || !f.bound.Equal(deadline) {
+		t.Fatalf("got %+v", f)
+	}
+}
+
+type fakeGaps struct{ disabled map[string]string }
+
+func (g *fakeGaps) Sync(_ context.Context, _ contracts.Day, disabled map[string]string) error {
+	g.disabled = disabled
+	return nil
+}
+
+type fakeScheduler struct {
+	tick time.Time
+	held bool
+}
+
+func (s *fakeScheduler) Run(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }
+func (s *fakeScheduler) LastTick() time.Time           { return s.tick }
+func (s *fakeScheduler) FenceHeld() bool               { return s.held }
+
+func TestSchedulerContract(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClock()
+	gaps := &fakeGaps{}
+	var gotDisabled map[string]string
+	var gotExe runner.ExecIdentityFunc
+	sch := &fakeScheduler{tick: clk.Now(), held: true}
+	var newFn runner.NewSchedulerFunc = func(_ store.Fence, _ store.SchedulerLedger, _ store.OpsLedger, _ clock.Calendar, _ clockwork.Clock, _ runner.Reconciler, g runner.GapSyncer, _ []contracts.Job, disabled map[string]string, exe runner.ExecIdentityFunc) runner.Scheduler {
+		gotDisabled, gotExe = disabled, exe
+		if err := g.Sync(context.Background(), "2026-11-06", disabled); err != nil {
+			t.Error(err)
+		}
+		return sch
+	}
+	want := map[string]string{"j1": "no key"}
+	s := newFn(nil, nil, nil, nil, clk, nil, gaps, nil, want, func() (string, error) { return "id1", nil })
+	if gotDisabled["j1"] != "no key" || gaps.disabled["j1"] != "no key" {
+		t.Fatalf("disabled = %v %v", gotDisabled, gaps.disabled)
+	}
+	if id, err := gotExe(); err != nil || id != "id1" {
+		t.Fatalf("exe = %q %v", id, err)
+	}
+	if !s.LastTick().Equal(clk.Now()) || !s.FenceHeld() {
+		t.Fatal("health surface wrong")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := s.Run(ctx); err == nil {
+		t.Fatal("Run on a cancelled context returned nil")
 	}
 }
