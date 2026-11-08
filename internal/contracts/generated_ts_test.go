@@ -75,7 +75,8 @@ func v3Pairs(t *testing.T) []v3Pair {
 	var pairs []v3Pair
 	for _, f := range generatedTypeFiles(t) {
 		schema := "page." + strings.TrimSuffix(f, ".ts") + ".json"
-		if !strings.HasSuffix(f, ".v3.ts") {
+		// macro_rates.v3 is version 3 of the v2 line (its points hold null), not of the v3 line.
+		if !strings.HasSuffix(f, ".v3.ts") || f == "macro_rates.v3.ts" {
 			continue
 		}
 		if _, carried := manifest[schema]; carried {
