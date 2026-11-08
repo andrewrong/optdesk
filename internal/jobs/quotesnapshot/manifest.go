@@ -46,17 +46,19 @@ type instrument struct {
 }
 
 type manifest struct {
-	Version       int          `toml:"version"`
-	ID            string       `toml:"id"`
-	Zone          string       `toml:"zone"`
-	Slots         []string     `toml:"slots"`
-	GraceMinutes  *int         `toml:"grace_minutes"`
-	Chunk         *int         `toml:"chunk"`
-	BudgetMinutes *int         `toml:"budget_minutes"`
-	Window        window       `toml:"window"`
-	Instruments   []instrument `toml:"instrument"`
+	Version       int           `toml:"version"`
+	ID            string        `toml:"id"`
+	Zone          string        `toml:"zone"`
+	Slots         []string      `toml:"slots"`
+	GraceMinutes  *int          `toml:"grace_minutes"`
+	Chunk         *int          `toml:"chunk"`
+	BudgetMinutes *int          `toml:"budget_minutes"`
+	Window        window        `toml:"window"`
+	Schedule      scheduleTable `toml:"schedule"`
+	Instruments   []instrument  `toml:"instrument"`
 
-	loc *time.Location
+	loc   *time.Location
+	sched schedule
 }
 
 func intOr(p *int, def int) int {
@@ -118,6 +120,9 @@ func parseManifest(data []byte) (manifest, error) {
 		if in.Symbol == "" || in.ConID == 0 || in.Currency == "" {
 			return manifest{}, errors.New("quotesnapshot: manifest: an instrument needs symbol, con_id and currency")
 		}
+	}
+	if m.sched, err = scheduleOf(m.Schedule); err != nil {
+		return manifest{}, err
 	}
 	return m, nil
 }

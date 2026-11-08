@@ -27,10 +27,13 @@ type window struct {
 }
 
 type manifest struct {
-	Version int      `toml:"version"`
-	ID      string   `toml:"id"`
-	Series  []string `toml:"series"`
-	Window  window   `toml:"window"`
+	Version  int           `toml:"version"`
+	ID       string        `toml:"id"`
+	Series   []string      `toml:"series"`
+	Window   window        `toml:"window"`
+	Schedule scheduleTable `toml:"schedule"`
+
+	sched schedule
 }
 
 func parseManifest(data []byte) (manifest, error) {
@@ -41,6 +44,11 @@ func parseManifest(data []byte) (manifest, error) {
 	if m.ID == "" || len(m.Series) == 0 {
 		return manifest{}, fmt.Errorf("fredseries: manifest needs an id and a series list")
 	}
+	sched, err := scheduleOf(m.Schedule)
+	if err != nil {
+		return manifest{}, err
+	}
+	m.sched = sched
 	return m, nil
 }
 

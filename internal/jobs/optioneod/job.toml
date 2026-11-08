@@ -25,3 +25,11 @@ mic = "XNYS"
 calendar_id = "XNYS"
 price_increment = "0.01"
 lot_size = "1"
+
+# Proposed slot: at the close; the bound is 8 minutes plus the job's own budget_minutes.
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "0s"
+run_bound = "16m"
+restart_sensitive = true
