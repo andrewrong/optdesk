@@ -63,6 +63,8 @@ components:
     in: internal/jobs/optioneod
   jobs/quotesnapshot:
     in: internal/jobs/quotesnapshot
+  jobs/serieshistory:
+    in: internal/jobs/serieshistory
   notify:
     in: internal/notify
   notify/core:
@@ -229,6 +231,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/serieshistory:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   notify:
     mayDependOn:
       - contracts
@@ -315,6 +328,7 @@ deps:
       - notify/core
       - notify/telegram
       - notify/dryrun
+      - jobs/serieshistory
   compute/contracttest:
     mayDependOn:
       - contracts
