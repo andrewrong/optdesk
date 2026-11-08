@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ErrorBoundary } from '@/shell/ErrorBoundary'
 import { App } from '@/shell/App'
 import { OptionsSummaryCard, registration } from '@/pages/home/OptionsSummaryCard'
+import type { ChartSpec } from '@/charts/spec'
 import { validate } from '@/types/options_summary'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -17,6 +18,17 @@ const fixture = (dir: string, name: string) =>
     readFileSync(path.resolve(import.meta.dirname, '../../../fixtures', dir, name), 'utf8'),
   )
 const os = (name: string) => fixture('v3/options-summary', name)
+
+const drawn: { spec: ChartSpec }[] = []
+vi.mock('@/charts/Chart', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/charts/Chart')>()
+  return {
+    Chart: (props: { spec: ChartSpec; ariaText: string; name: string }) => {
+      drawn.push(props)
+      return actual.Chart(props)
+    },
+  }
+})
 
 let root: Root | null = null
 let host: HTMLElement
@@ -41,6 +53,41 @@ const KEYS = ['sold_count_month', 'premium_month_usd', 'open_premium_usd', 'max_
 const tile = (key: string) => host.querySelector(`[data-tile=${key}]`)!
 
 describe('OptionsSummaryCard', () => {
+  it('draws two series, premium and closed, with a label per point and the caption', async () => {
+    const ok = os('ok.json')
+    await showCard(ok)
+    const spec = drawn.at(-1)!.spec
+    expect(spec.series.map((s) => s.name)).toEqual([ok.card.premium_series_text, '已了结'])
+    const sent = ok.card.premium_series_6m
+    expect(spec.categories).toEqual(sent.map((p: { label: string }) => p.label))
+    expect(spec.series[0]!.points.map((p) => p.label)).toEqual(
+      sent.map((p: { premium: { text: string } }) => p.premium.text),
+    )
+    expect(spec.series[1]!.points.map((p) => p.label)).toEqual(
+      sent.map((p: { closed: { text: string } }) => p.closed.text),
+    )
+    expect(host.textContent).toContain(ok.card.premium_series_caption)
+  })
+
+  it('gives a gap point a null value with its text', async () => {
+    const ok = os('ok.json')
+    ok.card.premium_series_6m[0].closed = { kind: 'gap', reason: 'no_data', text: '缺数据' }
+    await showCard(ok)
+    const point = drawn.at(-1)!.spec.series[1]!.points[0]
+    expect(point).toEqual({ value: null, text: '缺数据', label: '缺数据' })
+  })
+
+  it('counts the sold tile in groups, not 笔', async () => {
+    const ok = os('ok.json')
+    await showCard(ok)
+    const text = tile('sold_count_month').textContent ?? ''
+    expect(text).toContain('组')
+    expect(text).not.toContain('笔')
+    expect(tile('sold_count_month').querySelector('[data-tile-figure]')?.textContent).toBe(
+      ok.card.tiles.sold_count_month.figure.text,
+    )
+  })
+
   it('rejects bad-version.json with unsupported_version', () => {
     const result = validate(os('bad-version.json'))
     expect(result.ok).toBe(false)
