@@ -26,7 +26,7 @@ only and names no broker and no socket. PostgreSQL is in docker and is the only 
 
 ```toml
 [services.optdesk-scheduler]
-way    = "host"                # the broker sockets are Unix sockets on the host; a container cannot connect to them
+way = "host"                 # the broker sockets are Unix sockets on the host; a container cannot connect to them
 repo   = "andrewrong/optdesk"
 boot   = true                  # in crew: started and restarted by the keeper the owner starts, not a start at machine boot
 deploy = "auto"                # crew deploys on merge and rolls back by itself; set only after the first deploy below
