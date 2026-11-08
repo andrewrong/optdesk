@@ -82,7 +82,7 @@ func (f *instanceFence) TryLock(ctx context.Context, build string) (store.Fence,
 		_ = conn.Close(context.WithoutCancel(ctx))
 		return nil, retryable(errors.New("ops: the fence is held by another scheduler"))
 	}
-	return newFence(conn), nil
+	return newFence(ctx, conn), nil
 }
 
 // fence is a held lock with its connection. A goroutine waits on the connection, which is otherwise idle, and
@@ -96,8 +96,8 @@ type fence struct {
 	err    error
 }
 
-func newFence(conn *pgx.Conn) *fence {
-	ctx, cancel := context.WithCancel(context.Background())
+func newFence(parent context.Context, conn *pgx.Conn) *fence {
+	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
 	f := &fence{conn: conn, lost: make(chan struct{}), cancel: cancel, done: make(chan struct{})}
 	go func() {
 		defer close(f.done)
