@@ -128,6 +128,23 @@ describe('MarketSummaryCard', () => {
     expect(spec.categories.length).toBeGreaterThanOrEqual(30)
   })
 
+  it('turns the legend on and hides the second band line from it, both band lines dashed', async () => {
+    drawn.length = 0
+    await show(<MarketSummaryCard payload={fixture('ok.json')} />)
+    const spec = drawn[drawn.length - 1]!
+    expect(spec.legend).toBe(true)
+    expect(spec.series.map((s) => s.legendHidden === true)).toEqual([false, false, false, true])
+    expect(spec.series.map((s) => s.dashed === true)).toEqual([false, false, true, true])
+  })
+
+  it('renders the title as a link to titleHref', async () => {
+    const payload = fixture('ok.json')
+    await show(<MarketSummaryCard payload={payload} titleHref="/macro" />)
+    const a = host.querySelector('[data-slot=card-title] a')
+    expect(a?.getAttribute('href')).toBe('/macro')
+    expect(a?.textContent).toBe(payload.card.title)
+  })
+
   it('thins the x-axis labels', async () => {
     const payload = fixture('ok.json')
     xAxes.length = 0

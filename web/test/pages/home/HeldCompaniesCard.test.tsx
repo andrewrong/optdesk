@@ -1,5 +1,5 @@
 // The 持仓公司 card shows the text fields of the payload and nothing else. Fixtures are the synthetic payloads of
-// held-v2/fixtures/, written from the v2 schema alone.
+// held-v2/fixtures/, written from the v3 schema alone.
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -46,7 +46,7 @@ describe('HeldCompaniesCard', () => {
     expect(registration.schema).toBe('held_companies_summary')
   })
 
-  it('refuses a payload of another schema version and takes version 2', () => {
+  it('refuses a payload of another schema version and takes version 3', () => {
     expect(validate(badVersion).ok).toBe(false)
     expect(validate(ok).ok).toBe(true)
   })
@@ -61,6 +61,7 @@ describe('HeldCompaniesCard', () => {
     expect([...host.querySelectorAll('[data-companies] th')].map((h) => h.textContent)).toEqual(
       ok.card.columns.map((c) => c.label),
     )
+    expect(ok.card.columns.map((c) => c.label)).toEqual(['公司', '价格', '财报日', '日涨跌', '5日涨跌'])
     expect(host.querySelector('[data-volatility]')).toBeNull()
   })
 
@@ -68,18 +69,18 @@ describe('HeldCompaniesCard', () => {
     await show(ok)
     const rows = bodyRows()
     expect(rows).toHaveLength(ok.card.rows.length)
-    expect(rows[0]).toEqual(['AMD', '10-28 盘后', '+2.1%', '+5.0%'])
-    expect(rows[1]).toEqual(['MSFT', '11-12', '−0.4% · 10-22', '−1.0%'])
-    expect(rows[2]).toEqual(['NVDA', '11-19 盘前', '+0.8%', '+2.2%'])
+    expect(rows[0]).toEqual(['AMD', '$214.30', '10-28 盘后', '+3.4% 大幅', '+5.0%'])
+    expect(rows[1]).toEqual(['MSFT', '无报价', '11-12', '−0.4% · 10-22', '−1.0%'])
+    expect(rows[2]).toEqual(['NVDA', '$131.55', '11-19 盘前', '+0.8%', '−8.4% 大幅'])
   })
 
   it('shows 盘前 or 盘后 where the source states it, the date alone on the other row, named once in the notes', async () => {
     await show(ok)
     const rows = bodyRows()
-    expect(rows[0]![1]).toMatch(/盘前|盘后/)
-    expect(rows[2]![1]).toMatch(/盘前|盘后/)
-    expect(rows[1]![1]).toBe('11-12')
-    expect(rows[1]![1]).not.toMatch(/盘前|盘后/)
+    expect(rows[0]![2]).toMatch(/盘前|盘后/)
+    expect(rows[2]![2]).toMatch(/盘前|盘后/)
+    expect(rows[1]![2]).toBe('11-12')
+    expect(rows[1]![2]).not.toMatch(/盘前|盘后/)
     const named = ok.card.notes.filter((n) => n.includes('MSFT'))
     expect(named).toHaveLength(1)
     expect(host.textContent!.split(named[0]!)).toHaveLength(2)
@@ -94,25 +95,25 @@ describe('HeldCompaniesCard', () => {
   it('aligns the first column left and the others right', async () => {
     await show(ok)
     const cells = [...host.querySelectorAll('[data-companies] tbody tr:first-child td')]
-    expect(cells.map((c) => c.classList.contains('text-right'))).toEqual([false, true, true, true])
+    expect(cells.map((c) => c.classList.contains('text-right'))).toEqual([false, true, true, true, true])
   })
 
   it('colours a cell by the tone sent', async () => {
     await show(ok)
     const trs = host.querySelectorAll('[data-companies] tbody tr')
-    expect(trs[0]!.querySelectorAll('td')[2]!.querySelector('.text-success')).not.toBeNull()
-    expect(trs[1]!.querySelectorAll('td')[2]!.querySelector('.text-down')).not.toBeNull()
+    expect(trs[0]!.querySelectorAll('td')[3]!.querySelector('.text-success')).not.toBeNull()
+    expect(trs[1]!.querySelectorAll('td')[3]!.querySelector('.text-down')).not.toBeNull()
   })
 
   it('sorts the 财报日 column by the value (ISO date) of the cells', async () => {
     const sorted = structuredClone(ok)
     const rows = sorted.card.rows
     // texts that would sort differently from their dates
-    rows[0]!.earnings = { date: '2026-12-01', text: 'ZZ' }
-    rows[1]!.earnings = { date: '2026-11-12', text: 'AA' }
+    rows[0]!.earnings = { kind: 'value', date: '2026-12-01', text: 'ZZ' }
+    rows[1]!.earnings = { kind: 'value', date: '2026-11-12', text: 'AA' }
     await show(sorted)
     const header = [...host.querySelectorAll('[data-companies] th button')].find(
-      (b) => b.textContent === ok.card.columns[1]!.label,
+      (b) => b.textContent === ok.card.columns[2]!.label,
     ) as HTMLElement
     await act(async () => header.click())
     const names = bodyRows().map((r) => r[0])
@@ -143,10 +144,58 @@ describe('HeldCompaniesCard', () => {
     expect(host.textContent).toContain(ok.card.gaps[0]!.text)
   })
 
-  it('shows a table-level Gap as its text, with no table', async () => {
+  it('shows a price Gap cell as its text', async () => {
+    await show(ok)
+    const gapRow = ok.card.rows.findIndex((row) => row.price.kind === 'gap')
+    expect(gapRow).toBeGreaterThanOrEqual(0)
+    const price = ok.card.rows[gapRow]!.price
+    expect(bodyRows()[gapRow]![1]).toBe(price.text)
+  })
+
+  it('shows a Badge with its text for a sharp mark and none for a NoMark', async () => {
+    await show(ok)
+    const marks = (col: number) =>
+      [...host.querySelectorAll('[data-companies] tbody tr')].map(
+        (tr) => tr.querySelectorAll('td')[col]!.querySelector('[data-slot=badge]')?.textContent ?? null,
+      )
+    expect(marks(3)).toEqual(['大幅', null, null])
+    expect(marks(4)).toEqual([null, null, '大幅'])
+  })
+
+  it('shows sharp_note and has no mark the payload did not send', async () => {
+    await show(ok)
+    expect(host.querySelector('[data-sharp-note]')?.textContent).toBe(ok.card.sharp_note)
+    const plain = structuredClone(ok)
+    for (const row of plain.card.rows) {
+      row.day_sharp = { kind: 'none' }
+      row.five_day_sharp = { kind: 'none' }
+    }
+    await act(async () => root?.unmount())
+    await show(plain)
+    expect(host.querySelectorAll('[data-companies] [data-sharp]')).toHaveLength(0)
+  })
+
+  it('has one sharp day mark, one sharp 5-day mark and one price Gap row in the ok fixture', () => {
+    expect(ok.card.rows.filter((r) => r.day_sharp.kind === 'sharp')).toHaveLength(1)
+    expect(ok.card.rows.filter((r) => r.five_day_sharp.kind === 'sharp')).toHaveLength(1)
+    expect(ok.card.rows.filter((r) => r.price.kind === 'gap')).toHaveLength(1)
+  })
+
+  it('renders the title as a link to titleHref', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<HeldCompaniesCard payload={ok as never} titleHref="/positions" />)
+    })
+    const a = host.querySelector('[data-slot=card-title] a')
+    expect(a?.getAttribute('href')).toBe('/positions')
+    expect(a?.textContent).toBe(ok.card.title)
+  })
+
+  it('shows the gap fixture with no data rows, its say and its gap', async () => {
     await show(gap)
-    expect(host.querySelector('[data-table-gap]')?.textContent).toBe(gap.card.rows.text)
-    expect(host.querySelector('table')).toBeNull()
+    expect(bodyRows()).toHaveLength(0)
     expect(host.textContent).toContain(gap.card.say)
     expect(host.textContent).toContain(gap.card.gaps[0]!.text)
   })

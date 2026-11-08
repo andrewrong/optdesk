@@ -59,12 +59,12 @@ describe('HomePage', () => {
     const text = host.textContent ?? ''
     expect(text).toContain(ok.title)
     expect(text).toContain(ok.say)
-    expect(host.querySelector('[data-gap-line]')?.textContent).toBe(ok.gap_line)
+    expect(host.querySelector('[data-gap-line]')?.textContent).toContain(ok.gap_line)
   })
 
-  it('renders block_links and report_links as links to their href', () => {
+  it('renders the first report link as a link to its href', () => {
     const anchors = [...host.querySelectorAll('a')]
-    for (const link of [...ok.block_links, ok.report_links[0]]) {
+    for (const link of [ok.report_links[0]]) {
       const found = anchors.find((a) => a.getAttribute('href') === link.href && a.textContent === link.text)
       expect(found, link.text).toBeDefined()
     }
@@ -75,7 +75,6 @@ const CARDS: string[] = ['macro-summary', 'market-summary', 'household-summary',
 const card = (name: string | undefined) => host.querySelector(`[data-card="${name}"]`) as Element
 const anchorOf = (link: { href: string; text: string } | undefined) =>
   [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === link?.href && a.textContent === link?.text) as Element
-const ABOVE = Node.DOCUMENT_POSITION_FOLLOWING
 const FOLLOWS = Node.DOCUMENT_POSITION_FOLLOWING
 
 async function renderWith(payload: typeof ok) {
@@ -92,26 +91,29 @@ describe('HomePage layout', () => {
     expect((host.textContent ?? '').split(ok.gap_line)).toHaveLength(2)
   })
 
+  it('has no jump chips between the cards', () => {
+    expect(host.querySelectorAll('[data-block-row]')).toHaveLength(0)
+  })
+
+  it('makes each card title a link to the href of its overview line', () => {
+    CARDS.forEach((name, i) => {
+      const a = card(name).querySelector('[data-slot=card-title] a')
+      expect(a?.getAttribute('href'), name).toBe(ok.overview.items[i]!.href)
+    })
+  })
+
+  it('shows a changed overview text', async () => {
+    const changed = structuredClone(ok)
+    changed.overview.items[2].text = '一句换过的话'
+    await renderWith(changed)
+    expect(host.textContent).toContain('一句换过的话')
+  })
+
   it('orders the cards macro, market, household, companies, options', () => {
     for (let i = 0; i < CARDS.length - 1; i++) {
       expect(card(CARDS[i]), CARDS[i]).not.toBeNull()
       expect(card(CARDS[i]).compareDocumentPosition(card(CARDS[i + 1])) & FOLLOWS).toBeTruthy()
     }
-  })
-
-  it('puts block link i above card i', () => {
-    expect(ok.block_links).toHaveLength(5)
-    ok.block_links.forEach((link, i) => {
-      const a = anchorOf(link)
-      expect(a, link.text).toBeDefined()
-      expect(a.compareDocumentPosition(card(CARDS[i])) & ABOVE).toBeTruthy()
-      if (i > 0) expect(card(CARDS[i - 1]).compareDocumentPosition(a) & ABOVE).toBeTruthy()
-    })
-  })
-
-  it('renders one row per block link', async () => {
-    await renderWith({ ...ok, block_links: ok.block_links.slice(0, 2) as unknown as typeof ok.block_links })
-    expect(host.querySelectorAll('[data-block-row]')).toHaveLength(2)
   })
 
   it('shows the first report link outside the fold and the rest inside', async () => {

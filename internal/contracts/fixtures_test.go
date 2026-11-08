@@ -18,7 +18,7 @@ var fixtureSchema = map[string]string{
 	"companies-page":         "page.companies_page.v1.json",
 	"full-scan":              "page.full_scan.v1.json",
 	"held-companies-summary": "page.held_companies_summary.v1.json",
-	"home-page":              "page.home_page.v2.json",
+	"home-page":              "page.home_page.v3.json",
 	"household-page":         "page.household_page.v1.json",
 	"household-risk":         "page.household_risk.v1.json",
 	"household-summary":      "page.household_summary.v1.json",
@@ -145,7 +145,7 @@ func TestFixturesValidate(t *testing.T) {
 			t.Run(rel, func(t *testing.T) {
 				t.Parallel()
 				var s *jsonschema.Schema
-				if strings.HasSuffix(schemaFile, ".v2.json") {
+				if strings.HasSuffix(schemaFile, ".v2.json") || strings.HasSuffix(schemaFile, ".v3.json") {
 					s = compilePageV2(t, schemaFile)
 				} else {
 					s = compileCarried(t, schemaFile)

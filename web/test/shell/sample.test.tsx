@@ -106,12 +106,12 @@ describe('sample pages', () => {
     expect(samples['option_page']).toEqual(fixtureJson('option-page'))
   })
 
-  it('home-page/ok.json is the TS ok with bar links only and no report links', () => {
+  it('home-page/ok.json is the TS ok (a v3 payload) with bar links only and no report links', () => {
     const json = fixtureJson('home-page') as typeof homeTs
-    expect(json.block_links.map((l) => l.href)).toEqual(['/macro', '/household', '/options'])
+    expect(json.schema_version).toBe(3)
+    expect(json.overview.items.map((l) => l.href)).toEqual(['/macro', '/macro', '/household', '/positions', '/options'])
     expect(json.report_links).toEqual([])
-    const other = (o: object) =>
-      Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'block_links' && k !== 'report_links'))
+    const other = (o: object) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'report_links'))
     expect(other(json)).toEqual(JSON.parse(JSON.stringify(other(homeTs))))
   })
 

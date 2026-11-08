@@ -1,4 +1,4 @@
-// The 期权概览 card of the home page (options_summary v3). Every visible string is a `text`, `label` or `caption`
+// The 期权概览 card of the home page (options_summary v4). Every visible string is a `text`, `label` or `caption`
 // field of the payload; this file formats and computes nothing. A Gap figure shows its text, never a zero.
 import { Chart } from '@/charts/Chart'
 import type { ChartPoint, ChartSpec } from '@/charts/spec'
@@ -8,6 +8,7 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/options_summary'
 import { CardNotes } from './CardNotes'
 import { StaleNotice } from './StaleNotice'
+import { TitleLink } from './OverviewCard'
 
 type Tiles = Payload['card']['tiles']
 const TILE_KEYS = [
@@ -46,7 +47,7 @@ function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
   )
 }
 
-export function OptionsSummaryCard({ payload }: { payload: Payload }) {
+export function OptionsSummaryCard({ payload, titleHref }: { payload: Payload; titleHref?: string }) {
   const { card } = payload
   const points = (pick: (point: Point) => Figure) =>
     card.premium_series_6m.map((point): ChartPoint => {
@@ -59,16 +60,19 @@ export function OptionsSummaryCard({ payload }: { payload: Payload }) {
     })
   const spec: ChartSpec = {
     kind: 'bar',
+    legend: true,
     categories: card.premium_series_6m.map((point) => point.label),
     series: [
       { name: card.premium_series_text, points: points((point) => point.premium) },
-      { name: '已了结', points: points((point) => point.closed) },
+      { name: card.closed_series_text, points: points((point) => point.closed) },
     ],
   }
   return (
     <Card data-card="options-summary">
       <CardHeader>
-        <CardTitle>{card.title}</CardTitle>
+        <CardTitle>
+          <TitleLink href={titleHref}>{card.title}</TitleLink>
+        </CardTitle>
         <CardDescription>{card.say ?? card.subtitle}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

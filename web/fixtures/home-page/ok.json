@@ -1,6 +1,6 @@
 {
   "schema": "home_page",
-  "schema_version": 2,
+  "schema_version": 3,
   "run_id": "run-demo-0001",
   "build_id": "build-demo-0001",
   "scope": "home",
@@ -9,21 +9,46 @@
   "run_status": "ok",
   "title": "今日总览",
   "say": "五张卡片，一页看完。",
-  "gap_line": "今天没有缺口",
-  "block_links": [
-    {
-      "href": "/macro",
-      "text": "宏观页"
-    },
-    {
-      "href": "/household",
-      "text": "家庭页"
-    },
-    {
-      "href": "/options",
-      "text": "期权页"
-    }
-  ],
+  "gap_line": "2 处缺口，见下",
+  "overview": {
+    "gaps": [
+      {
+        "card": "宏观",
+        "text": "前值暂缺"
+      },
+      {
+        "card": "持仓公司",
+        "text": "近 5 日消息：暂无数据源"
+      }
+    ],
+    "items": [
+      {
+        "href": "/macro",
+        "label": "宏观",
+        "text": "松紧度中性，较上周 −0.2。本周的事件是 CPI。"
+      },
+      {
+        "href": "/macro",
+        "label": "市场概览",
+        "text": "隐含波动率高于已实现，差 +2.0 个波动点。"
+      },
+      {
+        "href": "/household",
+        "label": "家庭概览",
+        "text": "两户合计 · 数据日 10-21"
+      },
+      {
+        "href": "/positions",
+        "label": "持仓公司",
+        "text": "持有 9 家 · 3 家 28 日内财报 · 近 5 日消息：暂无数据源。"
+      },
+      {
+        "href": "/options",
+        "label": "期权概览",
+        "text": "本月卖出 5 组，收取权利金 +$310。"
+      }
+    ]
+  },
   "report_links": [],
   "household": {
     "build_id": "build-demo-0001",
@@ -130,6 +155,10 @@
           "label": "公司"
         },
         {
+          "id": "price",
+          "label": "价格"
+        },
+        {
           "id": "earnings",
           "label": "财报日"
         },
@@ -145,6 +174,7 @@
       "data_times_text": "美股数据日 10-23 · 日股数据日 10-23",
       "gaps": [
         {
+          "kind": "gap",
           "reason": "no_news_source",
           "text": "近 5 日消息：暂无数据源"
         }
@@ -156,33 +186,52 @@
         {
           "currency": "USD",
           "day_change": {
-            "text": "+2.1%",
+            "kind": "value",
+            "text": "+3.4%",
             "tone": "up",
             "unit": "percent",
-            "value": 2.1
+            "value": 3.4
+          },
+          "day_sharp": {
+            "kind": "sharp",
+            "text": "大幅"
           },
           "earnings": {
             "date": "2026-10-28",
+            "kind": "value",
             "text": "10-28 盘后"
           },
           "five_day_change": {
+            "kind": "value",
             "text": "+5.0%",
             "tone": "up",
             "unit": "percent",
             "value": 5
           },
+          "five_day_sharp": {
+            "kind": "none"
+          },
+          "price": {
+            "kind": "value",
+            "text": "$214.30",
+            "unit": "price",
+            "value": 214.3
+          },
           "symbol": "AMD",
           "volatility": {
             "data_day": "2026-10-23",
             "hv30": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "HV30（自有，口径 hv30_v1）：暂无读数"
             },
             "iv30": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "自有 iv30：暂无读数"
             },
             "ivp": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "自有 ivp：暂无读数"
             },
@@ -194,33 +243,50 @@
         {
           "currency": "USD",
           "day_change": {
+            "kind": "value",
             "text": "−0.4% · 10-22",
             "tone": "down",
             "unit": "percent",
             "value": -0.4
           },
+          "day_sharp": {
+            "kind": "none"
+          },
           "earnings": {
             "date": "2026-11-12",
+            "kind": "value",
             "text": "11-12"
           },
           "five_day_change": {
+            "kind": "value",
             "text": "−1.0%",
             "tone": "down",
             "unit": "percent",
             "value": -1
           },
+          "five_day_sharp": {
+            "kind": "none"
+          },
+          "price": {
+            "kind": "gap",
+            "reason": "missing_quote",
+            "text": "无报价"
+          },
           "symbol": "MSFT",
           "volatility": {
             "data_day": "2026-10-23",
             "hv30": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "HV30（自有，口径 hv30_v1）：暂无读数"
             },
             "iv30": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "自有 iv30：暂无读数"
             },
             "ivp": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "自有 ivp：暂无读数"
             },
@@ -232,33 +298,52 @@
         {
           "currency": "USD",
           "day_change": {
+            "kind": "value",
             "text": "+0.8%",
             "tone": "up",
             "unit": "percent",
             "value": 0.8
           },
+          "day_sharp": {
+            "kind": "none"
+          },
           "earnings": {
             "date": "2026-11-19",
+            "kind": "value",
             "text": "11-19 盘前"
           },
           "five_day_change": {
-            "text": "+2.2%",
-            "tone": "up",
+            "kind": "value",
+            "text": "−8.4%",
+            "tone": "down",
             "unit": "percent",
-            "value": 2.2
+            "value": -8.4
+          },
+          "five_day_sharp": {
+            "kind": "sharp",
+            "text": "大幅"
+          },
+          "price": {
+            "kind": "value",
+            "text": "$131.55",
+            "unit": "price",
+            "value": 131.55
           },
           "symbol": "NVDA",
           "volatility": {
             "data_day": "2026-10-23",
             "hv30": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "HV30（自有，口径 hv30_v1）：暂无读数"
             },
             "iv30": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "自有 iv30：暂无读数"
             },
             "ivp": {
+              "kind": "gap",
               "reason": "no_data",
               "text": "自有 ivp：暂无读数"
             },
@@ -269,9 +354,10 @@
         }
       ],
       "say": "持有 9 家 · 3 家 28 日内财报 · 近 5 日消息：暂无数据源。",
+      "sharp_note": "日涨跌 3% 及以上、5日涨跌 8% 及以上标“大幅”。",
       "stale": {
         "data_time": "2026-10-23T21:00:00+08:00",
-        "stale_after": "2026-10-24T21:00:00+08:00",
+        "is_stale": false,
         "text": "数据日 10-23"
       },
       "subtitle": "财报日历与变化",
@@ -287,8 +373,9 @@
     "run_id": "run-demo-0001",
     "run_status": "ok",
     "schema": "held_companies_summary",
-    "schema_version": 2,
-    "scope": "home"
+    "schema_version": 3,
+    "scope": "home",
+    "stale_after": "2026-10-24T21:00:00+08:00"
   },
   "macro": {
     "build_id": "build-demo-0001",
@@ -422,135 +509,135 @@
           {
             "label": "09-15",
             "close": 101,
-            "ma200": 98.1,
-            "band_low": 96.1,
-            "band_high": 100.1
+            "ma200": 98.4,
+            "band_low": 96.3,
+            "band_high": 100.5
           },
           {
             "label": "09-16",
             "close": 100.8,
-            "ma200": 98.2,
-            "band_low": 96.2,
-            "band_high": 100.2
+            "ma200": 98.8,
+            "band_low": 96.6,
+            "band_high": 101
           },
           {
             "label": "09-17",
             "close": 100.6,
-            "ma200": 98.3,
+            "ma200": 98.6,
             "band_low": 96.3,
-            "band_high": 100.3
+            "band_high": 100.9
           },
           {
             "label": "09-18",
             "close": 101.6,
             "ma200": 98.4,
-            "band_low": 96.4,
-            "band_high": 100.4
+            "band_low": 96,
+            "band_high": 100.8
           },
           {
             "label": "09-21",
             "close": 102.6,
-            "ma200": 98.5,
-            "band_low": 96.5,
-            "band_high": 100.5
+            "ma200": 98.2,
+            "band_low": 96.2,
+            "band_high": 100.2
           },
           {
             "label": "09-22",
             "close": 102.4,
-            "ma200": 98.6,
-            "band_low": 96.6,
-            "band_high": 100.6
+            "ma200": 98,
+            "band_low": 95.9,
+            "band_high": 100.1
           },
           {
             "label": "09-23",
             "close": 102.2,
-            "ma200": 98.7,
-            "band_low": 96.7,
-            "band_high": 100.7
+            "ma200": 98.4,
+            "band_low": 96.2,
+            "band_high": 100.6
           },
           {
             "label": "09-24",
             "close": 103.2,
             "ma200": 98.8,
-            "band_low": 96.8,
-            "band_high": 100.8
+            "band_low": 96.5,
+            "band_high": 101.1
           },
           {
             "label": "09-25",
             "close": 104.2,
-            "ma200": 98.9,
-            "band_low": 96.9,
-            "band_high": 100.9
+            "ma200": 99.2,
+            "band_low": 96.8,
+            "band_high": 101.6
           },
           {
             "label": "09-28",
             "close": 104,
-            "ma200": 99,
-            "band_low": 97,
-            "band_high": 101
-          },
-          {
-            "label": "09-29",
-            "close": 103.8,
-            "ma200": 99.1,
-            "band_low": 97.1,
-            "band_high": 101.1
-          },
-          {
-            "label": "09-30",
-            "close": 104.8,
-            "ma200": 99.2,
-            "band_low": 97.2,
-            "band_high": 101.2
-          },
-          {
-            "label": "10-01",
-            "close": 105.8,
-            "ma200": 99.3,
-            "band_low": 97.3,
-            "band_high": 101.3
-          },
-          {
-            "label": "10-02",
-            "close": 105.6,
-            "ma200": 99.4,
-            "band_low": 97.4,
-            "band_high": 101.4
-          },
-          {
-            "label": "10-05",
-            "close": 105.4,
-            "ma200": 99.5,
-            "band_low": 97.5,
-            "band_high": 101.5
-          },
-          {
-            "label": "10-06",
-            "close": 106.4,
             "ma200": 99.6,
             "band_low": 97.6,
             "band_high": 101.6
           },
           {
+            "label": "09-29",
+            "close": 103.8,
+            "ma200": 99.4,
+            "band_low": 97.3,
+            "band_high": 101.5
+          },
+          {
+            "label": "09-30",
+            "close": 104.8,
+            "ma200": 99.2,
+            "band_low": 97,
+            "band_high": 101.4
+          },
+          {
+            "label": "10-01",
+            "close": 105.8,
+            "ma200": 99,
+            "band_low": 96.7,
+            "band_high": 101.3
+          },
+          {
+            "label": "10-02",
+            "close": 105.6,
+            "ma200": 98.8,
+            "band_low": 96.4,
+            "band_high": 101.2
+          },
+          {
+            "label": "10-05",
+            "close": 105.4,
+            "ma200": 99.2,
+            "band_low": 97.2,
+            "band_high": 101.2
+          },
+          {
+            "label": "10-06",
+            "close": 106.4,
+            "ma200": 99.6,
+            "band_low": 97.5,
+            "band_high": 101.7
+          },
+          {
             "label": "10-07",
             "close": 107.4,
-            "ma200": 99.7,
-            "band_low": 97.7,
-            "band_high": 101.7
+            "ma200": 100,
+            "band_low": 97.8,
+            "band_high": 102.2
           },
           {
             "label": "10-08",
             "close": 107.2,
-            "ma200": 99.8,
-            "band_low": 97.8,
-            "band_high": 101.8
+            "ma200": 100.4,
+            "band_low": 98.1,
+            "band_high": 102.7
           },
           {
             "label": "10-09",
             "close": 107,
-            "ma200": 99.9,
-            "band_low": 97.9,
-            "band_high": 101.9
+            "ma200": 100.2,
+            "band_low": 97.8,
+            "band_high": 102.6
           },
           {
             "label": "10-12",
@@ -562,65 +649,65 @@
           {
             "label": "10-13",
             "close": 109,
-            "ma200": 100.1,
-            "band_low": 98.1,
-            "band_high": 102.1
+            "ma200": 99.8,
+            "band_low": 97.7,
+            "band_high": 101.9
           },
           {
             "label": "10-14",
             "close": 108.8,
-            "ma200": 100.2,
-            "band_low": 98.2,
-            "band_high": 102.2
+            "ma200": 99.6,
+            "band_low": 97.4,
+            "band_high": 101.8
           },
           {
             "label": "10-15",
             "close": 108.6,
-            "ma200": 100.3,
-            "band_low": 98.3,
+            "ma200": 100,
+            "band_low": 97.7,
             "band_high": 102.3
           },
           {
             "label": "10-16",
             "close": 109.6,
             "ma200": 100.4,
-            "band_low": 98.4,
-            "band_high": 102.4
+            "band_low": 98,
+            "band_high": 102.8
           },
           {
             "label": "10-19",
             "close": 110.6,
-            "ma200": 100.5,
-            "band_low": 98.5,
-            "band_high": 102.5
-          },
-          {
-            "label": "10-20",
-            "close": 110.4,
-            "ma200": 100.6,
-            "band_low": 98.6,
-            "band_high": 102.6
-          },
-          {
-            "label": "10-21",
-            "close": 110.2,
-            "ma200": 100.7,
-            "band_low": 98.7,
-            "band_high": 102.7
-          },
-          {
-            "label": "10-22",
-            "close": 111.2,
             "ma200": 100.8,
             "band_low": 98.8,
             "band_high": 102.8
           },
           {
+            "label": "10-20",
+            "close": 110.4,
+            "ma200": 101.2,
+            "band_low": 99.1,
+            "band_high": 103.3
+          },
+          {
+            "label": "10-21",
+            "close": 110.2,
+            "ma200": 101,
+            "band_low": 98.8,
+            "band_high": 103.2
+          },
+          {
+            "label": "10-22",
+            "close": 111.2,
+            "ma200": 100.8,
+            "band_low": 98.5,
+            "band_high": 103.1
+          },
+          {
             "label": "10-23",
             "close": 112.2,
-            "ma200": 100.9,
-            "band_low": 98.9,
-            "band_high": 102.9
+            "ma200": 100.6,
+            "band_low": 98.2,
+            "band_high": 103
           }
         ],
         "series_names": [
@@ -758,7 +845,7 @@
   },
   "options": {
     "schema": "options_summary",
-    "schema_version": 3,
+    "schema_version": 4,
     "run_id": "run_fx_os_001",
     "build_id": "build_fx_001",
     "scope": "options",
@@ -932,11 +1019,13 @@
         }
       ],
       "premium_series_text": "近六个月权利金",
+      "closed_series_text": "近六个月已平仓权利金",
       "premium_series_caption": "示例数据，单位美元",
       "notes": [
         "示例数据，非真实账户"
       ],
       "gaps": []
     }
-  }
+  },
+  "stale_after": "2026-10-23T05:35:00+08:00"
 }

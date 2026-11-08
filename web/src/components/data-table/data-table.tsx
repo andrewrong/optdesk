@@ -6,7 +6,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { ArrowUpDown } from 'lucide-react'
+import { ArrowUpDown, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +38,8 @@ export interface FigureCell {
   href?: string
   /** A cell the user can choose: the text is a toggle button; choosing is the page's state, not a figure. */
   select?: { onSelect: () => void; selected: boolean }
+  /** A sharp-move mark written by Python: its text is shown in a destructive Badge beside the figure. */
+  sharp?: { text: string } | null
   /** A display-only ≈USD figure beside a JPY amount (Python's text, for example `≈$82`). */
   approx_usd?: { text: string } | null
 }
@@ -134,12 +136,23 @@ export function DataTable({
       ) : (
         cell.text
       )
-      const approx = cell.approx_usd ? (
+      const marked = cell.sharp ? (
         <>
-          {text} <span className="text-muted-foreground">{cell.approx_usd.text}</span>
+          {text}{' '}
+          <Badge variant="destructive" data-sharp>
+            <TriangleAlert aria-hidden />
+            {cell.sharp.text}
+          </Badge>
         </>
       ) : (
         text
+      )
+      const approx = cell.approx_usd ? (
+        <>
+          {marked} <span className="text-muted-foreground">{cell.approx_usd.text}</span>
+        </>
+      ) : (
+        marked
       )
       const shown = cell.source ? (
         <>
