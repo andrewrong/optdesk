@@ -11,7 +11,7 @@ Read on main at 5f0edc8: `AGENTS.md`, `docs/design/modules.md`, `docs/design/rep
 `contracts/schemas/page.report_page.v2.json`, `internal/pages/api.go`, `internal/pages/option_data_page/page.go`,
 `internal/pages/embed/embed.go`, `internal/store/api.go` (`ReadingReader`, `GapReader`), `internal/store/reading/reader.go`,
 `migrations/0013_readings.sql`, `cmd/ot/serve.go`, `cmd/ot/pagelist.go`, `cmd/ot/wire.go`, `arch.toml`.
-Read on the branch `design/risk-alerts` (pull request 492, revision 2): `docs/design/risk-alerts.md` (Decisions 3 and 13,
+Read on main after the merge of pull request 492 (design, then its code entries): `docs/design/risk-alerts.md` (Decisions 3 and 13,
 `alerts-risks-block`, `## Left out`).
 
 ## What main holds today
@@ -31,7 +31,7 @@ Read on the branch `design/risk-alerts` (pull request 492, revision 2): `docs/de
   `migrations/0013_readings.sql`). So no code of the pages role can read a reading today. `store.GapReader` is the precedent: it reads views as `ot_ro_pages`.
 - Scheduler: a job answers `Schedule()` with an anchor (`session_open`, `session_close` or a wall time); the runner runs jobs that write datasets and checks
   windows. Nothing in `scheduler.md` or `jobs.md` runs a page.
-- Pull request 492 (merged) plans `risks_block.Build(ctx, Input) ([]byte, error)` returning the JSON of one `RisksBlock`, with
+- Pull request 492 is merged: its design is `docs/design/risk-alerts.md`, and its code entries `alerts-compute-interface`, `alerts-store-interface`, `alerts-notify-interface`, `alerts-rules`, `alerts-store-migration` and `alerts-risks-block` have landed on main (`internal/compute/alertrules`, `internal/pages/risks_block`). Its `alerts-wire` entry is not cut. `risks_block.Build(ctx, Input) ([]byte, error)` returning the JSON of one `RisksBlock`, with
   `Input{Rules compute.AlertRules; Evaluate compute.EvaluateAlertsFunc; Read compute.ReadingFunc; Today contracts.Day; GeneratedAt time.Time}`, and
   names the producer as its next step (`## Left out`), with "the stores opened under `ot_ro_pages`". `compute.ReadingFunc` has the shape of the
   method value `LatestReadings`. That method cannot run under `ot_ro_pages` (above): the notify pass of 492 uses the writer role, the page cannot.
@@ -61,16 +61,15 @@ Read on the branch `design/risk-alerts` (pull request 492, revision 2): `docs/de
    into the envelope values by `ot`), and `ot serve --name report_page` serves one route that takes the same two query parameters (`?market=us&slot=open`; a missing or invalid value answers 400 with a fixed text, no error text). The day is `--day`
    or today as the commands already compute it (`dayOrDefault`). JP calendar days are not handled here (`## Left out`). The advisor chose flags over four names.
 7. Reading readings as `ot_ro_pages`, least privilege kept: the page process holds no writer DSN. A new store reader over views: `store.ReadingViewReader.WinnerReadings(ctx, name, subjectKind, subject, from, to)` with the
-   signature of `LatestReadings` (a `compute.ReadingFunc` as a method value; 492 needs no change), opened from `store.DSNEnvPages`. Two facts decide its shape.
+   signature of `LatestReadings` (a `compute.ReadingFunc` as a method value; the merged 492 code needs no change), opened from `store.DSNEnvPages`. Two facts decide its shape.
    (a) 492 Decision 7 evaluates a rule on the reading parameter `data_day` (no such parameter gives `no_data_day`, so `no_data`), and `rd.reading_r1` has no parameter columns
    (`migrations/0013_readings.sql:81-91`). So a migration (store module) adds the view `rd.reading_parameter_r1` (every column of `readings.reading_parameter`, owner `ot_owner`, `SELECT` to `ot_ro_pages`; the base table is not granted),
    and `WinnerReadings` reads the winner rows of `rd.reading_r1`, then the parameters of those exact keys from the new view, and fills `ReadingRecord.Parameters` (`param`, `value_num`, `value_tag`), the same row type `LatestReadings` returns.
-   Inputs stay empty (no rule reads them). The migration number is the next free one at cut time (after `alerts-store-migration` of 492 if that has merged).
+   Inputs stay empty (no rule reads them). The migration number is the next free one at cut time (after `alerts-store-migration` of 492, which has merged).
    (b) The view `rd.reading_r1` is partitioned by `(name, version, subject_kind, subject, day)`, so after a figure version bump it holds two rows for one day. The reader takes no version (the shape of `ReadingFunc` has none) and
    keeps one row per day: the highest `version` of the day, then the winner rule inside that version (highest `rev` of state `ok`, else the highest `rev`), as `LatestReadings` takes the higher version. A test bumps the version and sees one row per day.
-   The winner rule is the rule of the page, and PR 492's notify pass must read through the same rule (`WinnerReadings`, as `Read` of its `AlertDeps`), so the page and the Telegram alert never disagree on a row. That is a one-line change of 492 Decision 7
-   (the reader behind `ReadingFunc`), made in PR 492, which the dispatcher handles; this design does not edit 492. The notify pass opens its reader under the role it already has: `WinnerReadings` also reads `rd.reading_r1` and the new view, which `ot_w_readings` can read once the grant is given (see the next sentence), so 492's `ot` wiring is the one place that changes. PR 492 takes its `alerts-wire` entry out of its cut until this design's winner reader lands, so no entry of 492 wires `LatestReadings` into the notify pass.
-   The grants follow the existing pattern for every `rd` view (`migrations/0002:58`, `0006:100`, `0007:70`, `0009:31`, `0010:10`, `0012:77-78`, `0013:104`): `SELECT` on the view to the role that reads it, none on the base table. The migration grants `rd.reading_parameter_r1` to `ot_ro_pages` and `ot_w_readings`. `docs/contracts/store.md` line 75 (the grants of `readings`) names both views.
+   The winner rule is the rule of the page, and the notify pass of 492 must read through the same rule (`WinnerReadings`, as `Read` of its `AlertDeps`), so the page and the Telegram alert never disagree on a row. 492 is merged and its design is not edited here. No merged code wires `LatestReadings` into the notify pass: the entry that wires it, `alerts-wire` of `docs/design/risk-alerts.md` (not cut), is cut only after `report-reading-view-impl` of this design has landed, and its cut must name `WinnerReadings` as `AlertDeps.Read`. The dispatcher carries that: it cuts `alerts-wire` with that line, and corrects the words `LatestReadings` in Decision 7 of `risk-alerts.md` by a small design pull request of its own. The notify pass opens its reader under the role it already has: `WinnerReadings` reads `rd.reading_r1` and the new view only, which `ot_w_readings` can read once the grant is given (see the next sentence), so the `ot` wiring of `alerts-wire` is the one place that changes.
+The grants follow the existing pattern for every `rd` view (`migrations/0002:58`, `0006:100`, `0007:70`, `0009:31`, `0010:10`, `0012:77-78`, `0013:104`): `SELECT` on the view to the role that reads it, none on the base table. The migration grants `rd.reading_parameter_r1` to `ot_ro_pages` and `ot_w_readings`. `docs/contracts/store.md` line 75 (the grants of `readings`) names both views.
    This is an interface change of `internal/store/api.go`, so it is its own first entry.
    error: a reading the rules cannot use is not an error of the page, it is a `partial` or `gap` state inside the `risks` block (492 Decision 13).
 8a. Lifecycle of the reader (the `ot` entry). The reader is opened once per process: once per `ot page` command and once at the start of `ot serve --name report_page`, as `serve.go` opens `seriesReader` once before it listens (`defer closeFn()`), and closed on exit.
@@ -85,7 +84,7 @@ Read on the branch `design/risk-alerts` (pull request 492, revision 2): `docs/de
 
 No row of `docs/design/modules.md` is added. The list of implementation packages `cmd/ot` may import gains `internal/pages/report_page` (one sentence edited by this pull request, with
 `arch.toml` regenerated by `go run ./scripts/arch`, as 492 does for its three packages; the two pull requests edit the same sentence, so the second to merge rebases it).
-The merge of PR 492, with the landing of its code entries `alerts-compute-interface`, `alerts-rules` and `alerts-risks-block` and their `ot` import-list entries in `docs/design/modules.md` (which 492 added), is a precondition of cutting `report-page-ot`, which imports `alertrules` and `risks_block`. `internal/store/reading` is already in that list. The `pages` row keeps its depends cell (`contracts store`, plus `compute` once 492 merges: `report_page` imports neither).
+PR 492 has merged and its code entries `alerts-compute-interface`, `alerts-rules` and `alerts-risks-block` have landed, with their `ot` import-list entries in `docs/design/modules.md`; `report-page-ot` imports `alertrules` and `risks_block` and is not held by them. `internal/store/reading` is already in that list. The `pages` row keeps its depends cell (`contracts store`, plus `compute` as 492 added it: `report_page` imports neither).
 
 | issue | module | paths |
 |---|---|---|
@@ -99,7 +98,8 @@ The merge of PR 492, with the landing of its code entries `alerts-compute-interf
 Owner `store`, file `internal/store/api.go`; additions only.
 
 ```go
-// ReadingViewReader reads the winner rows of rd.reading_r1 as the role ot_ro_pages (the page process) or ot_w_readings (the notify pass of risk-alerts); neither has a grant on a readings table for this reader.
+// ReadingViewReader reads the winner rows of rd.reading_r1 as the role ot_ro_pages (the page process) or ot_w_readings (the notify pass of risk-alerts).
+// This reader needs no grant on a readings table: it reads only the views rd.reading_r1 and rd.reading_parameter_r1.
 // Rows carry the parameters (data_day among them) read from the view rd.reading_parameter_r1, and no inputs. One row per day: the highest version of the day, then in that version
 // its highest-rev ok row, else its highest-rev row.
 type ReadingViewReader interface {
@@ -134,7 +134,7 @@ the method value `ReadingViewReader.WinnerReadings`; `ot` passes it as `risks_bl
 
 ## Issues
 
-The cut: the store interface first, then two entries that can run in parallel (the store implementation and the builder), then the `ot` entry, which is serial after both and is cut only once pull request 492 has merged and its code entries have landed (see `## Order`). Items are facts read from the diff with an offline
+The cut: the store interface first, then two entries that can run in parallel (the store implementation and the builder), then the `ot` entry, which is serial after both and waits only for the two entries before it (see `## Order`). Items are facts read from the diff with an offline
 command; items decided by workflows are under `Checked by CI`. Every test calls `t.Parallel()`, uses `t.TempDir()` for any file, a fake clock where time matters, no sleep, no fixed port, no live database
 (a test that needs PostgreSQL carries the tag `pg`).
 
@@ -142,7 +142,7 @@ command; items decided by workflows are under `Checked by CI`. Every test calls 
 
 Module: store. Size: S.
 Files: `internal/store/api.go`, `internal/store/api_test.go`
-Order: first. No other design edits `internal/store/api.go` at cut time except 492's `alerts-store-interface` (`SentMark`, `SentStore`): if it has not merged, this entry goes after it (same file).
+Order: first. `alerts-store-interface` of 492 (`SentMark`, `SentStore`) has merged, so no unmerged design edits `internal/store/api.go`; the file is read as main holds it at cut time.
 Design: docs/design/report-page-producer.md#interface
 Goal: `ReadingViewReader` and `OpenReadingViewFunc` are declared, with a test of the contract from both sides.
 Acceptance:
@@ -156,7 +156,7 @@ Checked by CI: `go build ./...`, `go test ./internal/store/...`, golangci-lint, 
 
 Module: store. Size: M.
 Files: `migrations/NNNN_reading_parameter_view.sql` (NNNN the next free number at cut time), `internal/store/reading/view.go`, `internal/store/reading/view_test.go`, `internal/store/reading/pg_view_test.go` (tag `pg`, new), `internal/store/reading/reading_test.go` and `internal/store/reading/pg_test.go` (existing, touched only for shared test helpers), `docs/contracts/store.md`
-Order: after report-reading-view-interface, and after `alerts-store-migration` of 492 (`docs/design/risk-alerts.md`) if both are unmerged: the migration number is the next free one.
+Order: after report-reading-view-interface; `alerts-store-migration` of 492 has merged, so the migration number is the next free one in `migrations/` at cut time.
 Design: docs/design/report-page-producer.md#decisions (Decision 7)
 Goal: `reading.OpenView(ctx, dsn)` returns a `store.ReadingViewReader` that reads `rd.reading_r1` and `rd.reading_parameter_r1` only, one row per day, with the parameters (`data_day`) filled, so a connection of `ot_ro_pages` feeds the 492 rules.
 Acceptance:
@@ -172,7 +172,7 @@ Checked by CI: the two tests of acceptance 4 pass (they need a live PostgreSQL a
 
 Module: pages, plus repo (judged two-module entry: `.go-arch-lint.yml`, as `alerts-risks-block` of 492). Size: M.
 Files: `internal/pages/report_page/builder.go`, `internal/pages/report_page/blocks.go`, `internal/pages/report_page/strings.go`, `internal/pages/report_page/page.go`, `internal/pages/report_page/builder_test.go`, `internal/pages/report_page/testdata/` (new), `docs/contracts/pages.md`, `.go-arch-lint.yml` (regenerated by `go run ./scripts/arch`: the component of the new directory and the `ot` list)
-Order: first among the builders; needs none of 492's code (its test passes a fake `RiskBlockFunc`). It is the entry that makes 492's block visible once `report-page-ot` wires the two.
+Order: first among the builders; needs none of 492's code (its test passes a fake `RiskBlockFunc`). It is the entry that makes the block of 492 visible once `report-page-ot` wires the two.
 Design: docs/design/report-page-producer.md#decisions (Decisions 1, 2, 6 and 10)
 Goal: `Build` and `NewPage` of `## Interface` return the JSON of `contracts/schemas/page.report_page.v2.json`: the envelope, the `risks` block as the bytes the `Config` function gives, four gap blocks (reason `not_built`), no optional block.
 Acceptance:
@@ -190,7 +190,7 @@ Checked by CI: `go build ./...`, `go test ./internal/pages/...`, golangci-lint, 
 
 Module: ot. Size: M.
 Files: `cmd/ot/report.go`, `cmd/ot/report_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/serve.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot.md`
-Order: after report-reading-view-impl, report-page-builder (which regenerates `.go-arch-lint.yml`, so this entry does not edit it) and, from pull request 492 (`docs/design/risk-alerts.md`), alerts-compute-interface, alerts-rules (`alertrules.Evaluate`, `Load`, `DefaultRules`) and alerts-risks-block (`risks_block.Build`). This entry is serial after report-reading-view-impl and report-page-builder of this cut, and the merge of PR 492 and the landing of its code entries alerts-compute-interface, alerts-rules and alerts-risks-block, with their `ot` import-list entries in `docs/design/modules.md` (which 492 added), are a precondition of cutting it: it is not cut before them. `cmd/ot/wire.go` is also edited by other open designs (their `deps` fields): the second to merge rebases.
+Order: after report-reading-view-impl, report-page-builder (which regenerates `.go-arch-lint.yml`, so this entry does not edit it); it uses the landed code of 492 (`docs/design/risk-alerts.md`): `alertrules.Evaluate`, `Load`, `DefaultRules` and `risks_block.Build`. This entry is serial after report-reading-view-impl and report-page-builder of this cut; 492 no longer holds it back. `cmd/ot/wire.go` is also edited by other open designs (their `deps` fields): the second to merge rebases.
 Design: docs/design/report-page-producer.md#decisions (Decisions 3 to 8a)
 Goal: `ot page --name report_page --market us --slot open` prints the page and `ot serve --name report_page` serves it (`?market=us&slot=open`), built per request from the stored readings read as `ot_ro_pages` through one reader opened once per process, with the `risks` block of 492.
 Behaviour:
@@ -214,12 +214,12 @@ Checked by CI: `go build ./...`, `go test ./cmd/ot/...`, golangci-lint, go-arch-
 
 | # | issue | module | size | order |
 |---|---|---|---|---|
-| 1 | report-reading-view-interface (interface) | store | S | first (after alerts-store-interface of 492 if that has not merged: same file) |
-| 2 | report-reading-view-impl | store | M | after 1 (and after alerts-store-migration of 492, for the migration number) |
+| 1 | report-reading-view-interface (interface) | store | S | first (alerts-store-interface of 492 has merged) |
+| 2 | report-reading-view-impl | store | M | after 1 (migration number read at cut time) |
 | 3 | report-page-builder | pages, plus repo (judged) | M | first; parallel with 1 and 2 |
-| 4 | report-page-ot | ot | M | serial after 2 and 3; not cut until PR 492 has merged and its code entries alerts-compute-interface, alerts-rules, alerts-risks-block (and their `ot` import-list entries in `modules.md`) have landed |
+| 4 | report-page-ot | ot | M | serial after 2 and 3; the 492 code it imports (alerts-compute-interface, alerts-rules, alerts-risks-block) is already on main |
 
-Entries 1 and 3 start the day the design merges; entry 4 is cut only after 2, 3 and the 492 precondition above. What the owner sees end to end in a browser also needs `report-types` and `report-page-view` of `docs/design/report-page.md`: no entry here waits for them and they do not wait for this design.
+Entries 1 and 3 start the day the design merges; entry 4 is cut only after 2 and 3. What the owner sees end to end in a browser also needs `report-types` and `report-page-view` of `docs/design/report-page.md`: no entry here waits for them and they do not wait for this design.
 
 ## Left out
 
@@ -228,7 +228,7 @@ Entries 1 and 3 start the day the design merges; entry 4 is cut only after 2, 3 
 - A stored report (a table of pages, a history by slot, a push of the page): not needed for the goal; it would add a dataset, a role, a migration and a job, and the scheduler would need a `Schedule()`. Revisit if the owner wants to read yesterday's report as it was.
 - `status_lines` from `internal/pages/gaps` (`Freshness`, `Lines` over `store.GapReader`): the stage-1 line is empty; a later entry adds a `GapLines` function to the `Config`. Not cut: `GapReader` has no opener wired for pages.
 - The JP market calendar and the default day of a JP report: `--day` or the existing default (`marketZone`) is used; the slot's session day comes from `clock` in a later design.
-- Changing 492: its `ReadingFunc` shape fits the new reader. 492's notify pass must read through the same winner rule (Decision 7); that one-line change of 492 Decision 7 is made in PR 492, not here.
+- Changing 492: it is merged and its `ReadingFunc` shape fits the new reader. The notify pass must read through the same winner rule (Decision 7); no entry of this design wires it. The dispatcher cuts `alerts-wire` of `risk-alerts.md` after `report-reading-view-impl` with `WinnerReadings` as its reader, and corrects Decision 7 of that file by a small design pull request.
 - Removing `report_page` v1, a v3 schema, the web view and its type: `report-page.md`.
 
 ## Open questions for the owner
