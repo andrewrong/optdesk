@@ -78,3 +78,17 @@ func TestBadInput(t *testing.T) {
 	v, err = s.PercentileRank([]float64{1, 2}, 1, compute.Compare("sideways"))
 	check("rank bad compare", v, err)
 }
+
+func TestNoInfOnOverflow(t *testing.T) {
+	t.Parallel()
+	s := gonumstats.New()
+	big := []float64{math.MaxFloat64, math.MaxFloat64}
+	m, err := s.Mean(big)
+	if err == nil && (math.IsInf(m, 0) || math.IsNaN(m)) {
+		t.Errorf("Mean = %v with nil error; want a finite value or a Permanent error", m)
+	}
+	sd, err := s.StdDev([]float64{math.MaxFloat64, -math.MaxFloat64})
+	if err == nil && (math.IsInf(sd, 0) || math.IsNaN(sd)) {
+		t.Errorf("StdDev = %v with nil error; want a finite value or a Permanent error", sd)
+	}
+}
