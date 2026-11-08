@@ -120,12 +120,13 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 
 // leakRows is the table of commands that take a DSN, with the arguments that reach the failing step.
 var leakRows = map[string][]string{
-	"calendar": {"load", "testdata/calendar_synthetic.json"},
-	"migrate":  {"--dir", "testdata/migrate"},
-	"setup":    {"pg"},
-	"page":     {"--day", "2026-03-04"},
-	"run-once": {"--day", "2026-03-04"},
-	"backfill": {"--day", "2026-03-04"},
+	"calendar":    {"load", "testdata/calendar_synthetic.json"},
+	"migrate":     {"--dir", "testdata/migrate"},
+	"setup":       {"pg"},
+	"page":        {"--day", "2026-03-04"},
+	"run-once":    {"--day", "2026-03-04"},
+	"backfill":    {"--day", "2026-03-04"},
+	"series-load": {"--series", "SP500", "--from", "2021-01-01", "--to", "2026-01-01"},
 }
 
 // leakExcluded names the commands that have no row, each with its reason.
