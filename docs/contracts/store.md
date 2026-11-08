@@ -72,7 +72,9 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `readings.reading` is insert-only. Its key is `(name, version, subject_kind, subject, day, rev)`; `value` is `numeric(38,12)` or NULL; `rev` is at least 1; the insert is `ON CONFLICT DO NOTHING` in one transaction per call, record and children together.
 - The view `rd.reading_r1` applies the winner rule per `(name, version, subject_kind, subject, day)`: the row with the highest `rev` of state `ok` wins; a row of state `missing_input` yields to any `ok` row and shows only when the day has no `ok` row (then its highest `rev`). `LatestReadings` is not the view: it returns the newest rev whatever its state.
 - The enum `reading_unit` has nine words: `decimal, percent, vol_point, per_calendar_day, count, days, money, ratio, text_tag`.
-- Grants: `ot_w_readings` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_READINGS`) has `INSERT` and `SELECT` on the four tables and `SELECT` on `rd.reading_r1`; `ot_ro_pages` has `SELECT` on `rd.reading_r1` and nothing on the tables; `ot_runner` has nothing. No role has UPDATE, DELETE or TRUNCATE.
+- Grants: `ot_w_readings` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_READINGS`) has `INSERT` and `SELECT` on the four tables and `SELECT` on the views `rd.reading_r1` and `rd.reading_parameter_r1`; `ot_ro_pages` has `SELECT` on both views and nothing on the tables; `ot_runner` has nothing. No role has UPDATE, DELETE or TRUNCATE.
+- The view `rd.reading_parameter_r1` (migration `0016`, owner `ot_owner`) names every column of `readings.reading_parameter`; no grant is made on the table.
+- `reading.OpenView(ctx, dsn)` returns a `store.ReadingViewReader` (`WinnerReadings`, `Close`) that reads `rd.reading_r1` and `rd.reading_parameter_r1` only, so it runs as `ot_ro_pages` or `ot_w_readings`; the caller passes the DSN (the page process reads the line `store.DSNEnvPages`, `OT_PG_DSN_PAGES`), the package reads no environment. `WinnerReadings(ctx, name, subjectKind, subject, from, to)` returns one row per day, ascending by day: the winner and version rule is the highest `version` of the day, then in that version the highest-rev `ok` row, else the highest-rev row (the winner rule of `rd.reading_r1`). Each row carries its `Parameters` (`param`, `value_num`, `value_tag`; `data_day` among them) read from the second view for the same keys, and no `Inputs` (empty). No rows gives an empty slice; `from` after `to` or a bad day is a `Permanent` error and makes no query; a database error is `Retryable`.
 
 ## Alert sent marks
 
@@ -110,6 +112,8 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 
 - v11 (declared, tables and views not yet made): `store.InstanceFence`, `store.Fence`, `store.SchedulerLedger`, `store.GapReader`, their types and constructor types; the views `rd.job_gap_r1` and `rd.expectation_r1` come from migration `0012` in a later entry.
 
+- v12: migration `0016` (`rd.reading_parameter_r1`, `SELECT` to `ot_ro_pages` and `ot_w_readings`); `reading.OpenView` and `store.ReadingViewReader.WinnerReadings`. Migrate before deploying the reader.
+
 ## Contract tests
 
 - `internal/store/scheduler_api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
@@ -120,6 +124,7 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 - `internal/store/snapshot/optioneod_test.go`, `quotesnapshot_test.go` and `screen_test.go`: `TestInsertSQL`, `TestInsertScreensSentinels`, `TestReaderRangeAndOrder`, `TestQuoteInsertSQL`, `TestQuoteInsertScreensSentinels`, `TestQuoteReaderRangeAndOrder` and `TestScreenSentinel` (SQL strings, transaction, empty input, context, sentinels, range and order, against an in-test fake).
 - `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
 - `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
+- `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
 
 - `internal/store/instrument/resolve_test.go` and `read_test.go`: `TestResolveCreates`, `TestResolveSame`, `TestResolveLock`, `TestResolveExtraTaken`, `TestResolveChecks` and `TestInstruments` against an in-test fake.
