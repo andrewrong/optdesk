@@ -1,0 +1,11 @@
+# Manifest of the calendar_refresh job. The command line of the session source is the wiring's.
+version = 1
+id = "calendar_refresh"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+zone = "America/New_York"
+offset = "-30m"
+run_bound = "5m"
+restart_sensitive = false
