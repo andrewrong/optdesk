@@ -169,6 +169,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
   jobs/fredseries:
     mayDependOn:
       - contracts
@@ -176,6 +177,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
       - jobs
       - contracts/genpb
   jobs/optioneod:
@@ -185,6 +187,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
       - jobs
       - contracts/genpb
   jobs/quotesnapshot:
@@ -194,6 +197,7 @@ deps:
       - sources
       - broker
       - store
+      - compute
       - jobs
       - contracts/genpb
   pages:
@@ -235,6 +239,7 @@ deps:
       - jobs
       - pages
       - profile
+      - compute
       - clock/realclock
       - clock/calendar
       - runner/reconcile
