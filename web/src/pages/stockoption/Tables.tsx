@@ -1,5 +1,7 @@
 // The matrix and the contracts table of the stock option page, both drawn by the shared DataTable.
 // The headers, the cells and the sentences are the payload's own text; nothing is computed here.
+import { useState } from 'react'
+import { Toggle } from '@/components/ui/toggle'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import type { Payload } from '@/types/stock_option_page'
@@ -10,6 +12,8 @@ type Contracts = Payload['contracts']
 // One row per expiry, one column per strike; a cell is found by its expiry and strike, and a pair with no
 // contract is an empty cell.
 export function MatrixTable({ matrix }: { matrix: Matrix }) {
+  // View state only: each cell carries both texts; the toggle picks which one is shown.
+  const [showPremium, setShowPremium] = useState(false)
   const columns: Column[] = [
     { id: 'expiry', label: '' },
     ...matrix.strikes.map((strike) => ({ id: `s:${strike}`, label: strike, align: 'right' as const })),
@@ -19,7 +23,7 @@ export function MatrixTable({ matrix }: { matrix: Matrix }) {
     for (const strike of matrix.strikes) {
       const cell = matrix.cells.find((c) => c.expiry === expiry.expiry && c.strike === strike)
       row[`s:${strike}`] = cell
-        ? { text: cell.yield_text, note: cell.premium, badge: cell.chosen }
+        ? { text: showPremium ? cell.premium : cell.yield_text, badge: cell.chosen }
         : { text: '' }
     }
     return row
@@ -27,6 +31,15 @@ export function MatrixTable({ matrix }: { matrix: Matrix }) {
   return (
     <Card data-block="matrix">
       <CardContent className="space-y-3">
+        <Toggle
+          variant="outline"
+          size="sm"
+          pressed={showPremium}
+          onPressedChange={setShowPremium}
+          aria-label="年化 / 权利金"
+        >
+          {showPremium ? '权利金' : '年化'}
+        </Toggle>
         {matrix.facts ? <p className="text-sm text-muted-foreground">{matrix.facts}</p> : null}
         {matrix.empty ? (
           <p data-matrix-empty>{matrix.empty}</p>
