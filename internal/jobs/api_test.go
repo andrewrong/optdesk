@@ -241,7 +241,9 @@ func (r *fakeReadings) InsertReadings(_ context.Context, rows []contracts.Readin
 func TestNewComputeFiguresFuncContract(t *testing.T) {
 	t.Parallel()
 	rd := &fakeReadings{}
-	var newJob jobs.NewComputeFiguresFunc = func(s jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock) (contracts.Job, error) {
+	var newJob jobs.NewComputeFiguresFunc = func(
+		s jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock,
+	) (contracts.Job, error) {
 		return computeJob{stores: s, names: []string{"market.vix_term_ratio", "market.iv30_own"}}, nil
 	}
 	j, err := newJob(jobs.ComputeStores{Readings: rd}, nil, nil, nil, nil, nil)
