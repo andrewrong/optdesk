@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -64,7 +65,7 @@ var bandWords = map[string]string{"tighter": "偏紧", "steady": "中性", "loos
 
 // readEase reads macro.ease for day; nil with no error means no usable reading. An error
 // of read is returned.
-func readEase(ctx context.Context, read func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error), day time.Time) (*easeReading, error) {
+func readEase(ctx context.Context, read compute.ReadingFunc, day time.Time) (*easeReading, error) {
 	d := contracts.Day(day.Format(dayLayout))
 	rows, err := read(ctx, easeName, easeKind, easeSubject, d, d)
 	if err != nil {
