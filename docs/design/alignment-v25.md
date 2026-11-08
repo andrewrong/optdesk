@@ -5,8 +5,8 @@ Source: owner decision 2026-11-08 (optdesk-1128): optdesk designs align with pla
 nothing is dropped silently; what is left out is named and asked. Built from the plan, design set v2.2, the old figure
 register and origin/main. Revised 2026-11-09 for the owner's answers of 2026-11-08 and 2026-11-09 and for the designs
 merged since: report-page-producer (PR 500), unified-site (PR 533), home-page-revise (PR 539) and ease-v2 (PR 560). In review:
-account-data (PR 561). Being drafted: valuation and event-sources. The index IV is folded into market-page-producer, which is
-being revised.
+account-data (PR 561), valuation (PR 607) and event-sources (PR 606). The index IV is folded into market-page-producer, which is
+in review (PR 604).
 
 This file is an index and is not binding: it writes no code and changes no interface. This document is the source. The owner
 page, the artifact "计划对齐清单", is a snapshot of it in Chinese; when a row changes here the page is regenerated.
@@ -29,11 +29,11 @@ None. The work is the follow-on designs below, each its own design pull request 
    wired, covered code only, design exists not built, deferred, missing. "Covered" never means built unless it says wired.
 2. Follow-on names are working names. `builders-wave` stands for about ten designs, one per wave, named when cut.
 3. Order of follow-on designs, with the dependency that fixes it. The owner's answers of 2026-11-09 are applied; the
-   designs that exist or are being drafted are named in the last column of the table.
+   designs that exist or are in review are named in the last column of the table.
    1. `probes`: plan 11.1 items 3-6, now the CBOE probe for index IV, the 20-year history and Timescale. The scanner is
-      dropped by the owner and tick 456 dividends is asked again (question 3), since `event-sources` is being drafted.
+      dropped by the owner and tick 456 dividends is asked again (question 3), since `event-sources` is in review (PR 606).
       Items 0-2 are moot: pyside is merged and runs. Its answers decide the live index IV step and the depth `bars` can rely on.
-   2. `index-iv` is folded into `market-page-producer` (being revised): the index IV comes from FRED VIXCLS, VXNCLS and
+   2. `index-iv` is folded into `market-page-producer` (in review, PR 604): the index IV comes from FRED VIXCLS, VXNCLS and
       RVXCLS, and IBKR live only after the CBOE probe. The Historical rpc (a proto change, owner-merge only) is needed only
       for that live step. Index freeze (client id 31) and the volatility refresh job are asked (question 2). The 15:10
       premarket capture is dropped, so no window_bound dataset is known; the figure does not wait for `bars`.
@@ -46,7 +46,7 @@ None. The work is the follow-on designs below, each its own design pull request 
    5. `settings-store` and `runner-stage2`, before `compute-stage2` and `notify-stage2`: settings versioning feeds the rule
       parameters of the candidates gates and the settings-as-of of pages; the morning report needs job_event, repair-run and
       window state from the runner (lease, control socket, expired status).
-   6. `valuation` and `event-sources` (being drafted): fundamentals from SEC companyfacts (US) and EDINET automation (JP),
+   6. `valuation` (in review, PR 607) and `event-sources` (in review, PR 606): fundamentals from SEC companyfacts (US) and EDINET automation (JP),
       valuation ratios, earnings and ex-dividend dates. Both feed `compute-stage2`.
    7. `compute-stage2`: the Go port and rehash of the 44 pending-recompute register entries, plus candidates (put strike minus
       premium at or below the buy price; gates, then annualized yield; no composite score) and structures. `notify-stage2`:
@@ -62,13 +62,13 @@ None. The work is the follow-on designs below, each its own design pull request 
 
 | status | rows |
 |---|---|
-| covered, wired | 22 |
+| covered, wired | 21 |
 | covered, code only (not wired to data) | 18 |
-| design exists, not built | 26 |
-| deferred by plan or owner | 9 |
-| missing | 43 |
+| design exists, not built | 25 |
+| deferred by plan or owner | 10 |
+| missing | 44 |
 
-A status is the state of the code. Every row also names its design in the last column: merged, in review, being drafted, a
+A status is the state of the code. Every row also names its design in the last column: merged, in review, a
 follow-on not yet drafted, or left out. 'Dropped by the owner' rows are counted as deferred by plan or owner.
 
 Register: `docs/conventions/register.toml` holds 53 entries: 41 old and 12 new (8 market own and percentile figures,
@@ -92,7 +92,7 @@ the plan asks for it and no design allowed the drop.
 | pyside move-in + gRPC Session/Contracts/MarketData | plan 11 W2 | covered, code only (not wired to data) | pyside/, pyside-*.md, contracts/proto/ibkr/v1 (真实网关此处未测 / real gateway untested here) | - |
 | minimal store option_eod, quote_snapshot | plan 11 W2 | covered, wired | store/snapshot, option-jobs.md, store-week2.md | - |
 | option_eod freeze job | plan 11 W2 | covered, wired | internal/jobs/optioneod, wired in wire.go | - |
-| index IV job (tick 106 / IvBars) | plan 11 W2 | missing | Owner 2026-11-09: index IV from FRED VIXCLS/VXNCLS/RVXCLS; IBKR live after a CBOE probe. The Historical rpc is needed only for that live step; contracts/proto is owner-merge only | market-page-producer (being revised; holds the index IV); FRED VIXCLS, VXNCLS, RVXCLS first, IBKR live only after the CBOE probe (`probes`) |
+| index IV job (tick 106 / IvBars) | plan 11 W2 | missing | Owner 2026-11-09: index IV from FRED VIXCLS/VXNCLS/RVXCLS; IBKR live after a CBOE probe. The Historical rpc is needed only for that live step; contracts/proto is owner-merge only | market-page-producer (in review, PR 604; holds the index IV); FRED VIXCLS, VXNCLS, RVXCLS first, IBKR live only after the CBOE probe (`probes`) |
 | index freeze (client id 31), volatility refresh job (45 symbols x 3 history requests) | plan 11 W2 | missing | no job or design; no Historical rpc in proto. The owner's answers of 2026-11-09 do not mention them | left out - asked of the owner (question 2) |
 | quote_snapshot job | plan 11 W2 | covered, wired | internal/jobs/quotesnapshot | - |
 | gocron decision | plan 11 W2 | covered, wired | scheduler.md. Altered: own ticker instead of gocron (scheduler.md) | - |
@@ -111,7 +111,7 @@ the plan asks for it and no design allowed the drop.
 | FX job | plan 11 W5-6 | missing | none. Daily FX only; PR 561 holds account, value and execution datasets, not FX. Owner 2026-11-09: all account data before cut-over | account-data follow-up (follow-on, not yet drafted) |
 | account job | plan 11 W5-6 | design exists, not built | pyside-account-b.md stops at proto, pyside and Go client; no dataset, store or job. PR 561: account.position, account.value, account.execution, job account_capture; both gateways (alias label) | account-data (PR 561, in review) |
 | Flex job | plan 11 W5-6 | missing | none. Owner 2026-11-09: all account data before cut-over, so Flex is in scope; PR 561 Left out defers it | account-data follow-up (follow-on, not yet drafted); PR 561 defers Flex |
-| dividends (Reference.Dividends, tick 456) | plan 11 W5-6 | deferred by plan or owner | no probe, no design. Why: plan: scheduled only if the day-1 probe passes | event-sources (being drafted) (ex-dividend dates); left out - asked of the owner (question 3: is the tick 456 probe still wanted) |
+| dividends (Reference.Dividends, tick 456) | plan 11 W5-6 | deferred by plan or owner | no probe, no design. Why: plan: scheduled only if the day-1 probe passes | event-sources (in review, PR 606) (ex-dividend dates); left out - asked of the owner (question 3: is the tick 456 probe still wanted) |
 | scanner coarse screen (Scanner.Run) | plan 11 W5-6 | deferred by plan or owner | pyside-ibkr-transport.md leaves scanners out. Why: plan: scheduled only if the day-1 probe passes. Owner 2026-11-09: scanner dropped | dropped by the owner 2026-11-09 |
 | contract tests against real pyside | plan 11 W5-6 | covered, code only (not wired to data) | pyside tests/contracts; Go-side contract tests use fakes | - |
 | weekly adjusted_last re-pull with adjust_epoch | plan 11 W5-6 | missing | one line in plan 1.8 only; no design | bars (follow-on, not yet drafted) |
@@ -122,21 +122,21 @@ the plan asks for it and no design allowed the drop.
 | HV30 / HV(n) | plan 11 W8-9 | covered, code only (not wired to data) | compute-core Figures.HistoricalVol, tested; market.hv30_own not registered, no closes dataset. Altered: waits for a bars design (compute-core Left out) | bars (follow-on, not yet drafted) |
 | IV30 derivation | plan 11 W8-9 | covered, code only (not wired to data) | compute/figures/iv30.go, compute-figures.md (market.iv30_own); job not wired in cmd/ot. Altered: Cboe-style own IV30 per glossary | - |
 | IV percentile / rank | plan 11 W8-9 | covered, code only (not wired to data) | figures/ivp.go, market.ivp_own, ivr_own. Altered: GLOSSARY ivp_v1 (at-or-below, 252) wins over plan line 84 strictly-below (flagged 2026-11-08) | - |
-| candidates (ITM probability N(-d2), excess yield, earnings date, iv_context) | plan 11 W8-9 | missing | no compute design; register ids are Python text. Why: silently dropped. Owner 2026-11-09: put strike minus premium <= buy price; order by gates plus annualized yield | compute-stage2 (follow-on, not yet drafted); event-sources (being drafted) for earnings date |
+| candidates (ITM probability N(-d2), excess yield, earnings date, iv_context) | plan 11 W8-9 | missing | no compute design; register ids are Python text. Why: silently dropped. Owner 2026-11-09: put strike minus premium <= buy price; order by gates plus annualized yield | compute-stage2 (follow-on, not yet drafted); event-sources (in review, PR 606) for earnings date |
 | structures (max loss/gain, unrealized pnl, earned share, close cost, roll credit, commission, level distance) | plan 11 W8-9 | missing | no compute design. Why: silently dropped | compute-stage2 (follow-on, not yet drafted) |
 | scoring | plan 11 W8-9 | deferred by plan or owner | no design names it. Why: silently dropped. Owner 2026-11-09: gates plus annualized-yield order, no composite score | dropped by the owner 2026-11-09: no composite score; the candidates row holds the gates and the annualized-yield order |
-| valuation ratios | plan 11 W8-9 | design exists, not built | compute-core has generic Ratio only. Why: silently dropped. Owner 2026-11-09: fundamentals source is SEC companyfacts (US) and EDINET automation (JP), ported | valuation (being drafted) |
+| valuation ratios | plan 11 W8-9 | missing | compute-core has generic Ratio only. Why: silently dropped. Owner 2026-11-09: fundamentals source is SEC companyfacts (US) and EDINET automation (JP), ported | valuation (in review, PR 607) |
 | register migration (ids, version, hash, Go impl) | plan 11 W8-9 | design exists, not built | register.toml holds 41 old + 12 new; 44 of 53 entries pending-recompute; compute-figures ports 8 market.* ids + sp500_vs_200d v2. Altered: single register.toml kept; go/printer hash only for new ids | compute-stage2 (follow-on, not yet drafted) |
-| fundamentals source (SEC companyfacts for US, EDINET automation for JP) | boards 13, 16; owner 2026-11-09 | missing | owner 2026-11-09: port both; no job or design on main | valuation (being drafted) |
-| earnings and ex-dividend dates | plan 11 W8-9 (candidates: earnings date) | missing | no design on main | event-sources (being drafted) |
+| fundamentals source (SEC companyfacts for US, EDINET automation for JP) | boards 13, 16; owner 2026-11-09 | missing | owner 2026-11-09: port both; no job or design on main | valuation (in review, PR 607) |
+| earnings and ex-dividend dates | plan 11 W8-9 (candidates: earnings date) | missing | no design on main | event-sources (in review, PR 606) |
 | macro ease score (plan: -2..+2; ease-v2: 0 to 100) | plan 11 W8-9 | design exists, not built | macro_page builder emits gap "松紧度暂无数据"; no producer. Why: neither old register nor plan has it. Owner 2026-11-08 delegated to the advisor: option-trader ease v2 ported, scale 0 to 100; no Go code yet | ease-v2 (PR 560, merged) |
 | go/printer hash equivalence check | plan 11 W8-9 | covered, wired | compute-figures Decision 12 | - |
 | web option page family | plan 11 W8-9 | covered, code only (not wired to data) | option-pages-v22.md; option_data_page live at /options/data | - |
 | builder: home | plan 11 W10 | covered, code only (not wired to data) | home_page/compose.go merged; members absent so /home shows samples (PR 533, PR 539). Altered: member builders absent, home shows samples | home-page-revise (PR 539, merged), unified-site (PR 533, merged); member builders: builders-wave (follow-on, not yet drafted) |
 | builder: household | plan 11 W10 | missing | no design; needs stage-2 data | builders-wave (follow-on, not yet drafted), account-data (PR 561, in review) |
-| builder: companies | plan 11 W10 | missing | none | valuation (being drafted), builders-wave (follow-on, not yet drafted) |
+| builder: companies | plan 11 W10 | missing | none | valuation (in review, PR 607), builders-wave (follow-on, not yet drafted) |
 | builders: report x4 | plan 11 W10 | design exists, not built | PR 500 report-page-producer builds the risks block only. Altered: four data blocks each a later design. Owner 2026-11-09: reports computed per request; the US open report is built last | report-page-producer (PR 500, merged) for the risks block; the other blocks: builders-wave (follow-on, not yet drafted); US open report last |
-| web macro/market pages | plan 11 W10 | design exists, not built | macro-page-wiring (macro live); missing-pages.md#market-page-view (schema, view, no producer, no route) | market-page-producer (being revised; holds the index IV); macro: macro-page-wiring (merged) |
+| web macro/market pages | plan 11 W10 | design exists, not built | macro-page-wiring (macro live); missing-pages.md#market-page-view (schema, view, no producer, no route) | market-page-producer (in review, PR 604; holds the index IV); macro: macro-page-wiring (merged) |
 | option candidates page builder (option_page, stock_option_page) | plan 11 W11 | missing | option-pages-v22 Left out: builders each its own design | builders-wave, compute-stage2 |
 | full scan builder | plan 11 W11 | missing | same | builders-wave |
 | structures page builder (structures_list, structure_detail) | plan 11 W11 | missing | tracking-household-reports Left out | builders-wave |
@@ -162,13 +162,13 @@ the plan asks for it and no design allowed the drop.
 | pages: vM JSON, no browser computation | plan 1.5 | covered, wired | AGENTS.md, web | - |
 | gaps said once; closed market not stale; JPY with approx USD | plan 1.5 | covered, code only (not wired to data) | pages/gaps, option-pages-v22 (approx_usd_text) | - |
 | notify: Telegram never account-derived | plan 1.6 | covered, wired | ADR 0010; notify.md; #537 amendment. Altered: ADR 0010 amendment: market alert may carry rule title and public figure (owner 2026-11-08) | - |
-| report files immutable, atomic | plan 1.6 | covered, wired | PR 500 serves per request, no stored report. Why: plan: stored immutable files; PR 500: computed per request. Altered, pending owner (question 5). Altered, owner 2026-11-09: reports computed per request; plan 1.6 stored immutable files not built. Status says the producer, not wiring | report-page-producer (PR 500, merged) |
+| report files immutable, atomic | plan 1.6 | deferred by plan or owner | PR 500 serves per request, no stored report. Why: plan: stored immutable files; PR 500: computed per request. Altered, pending owner (question 5). Altered, owner 2026-11-09: reports computed per request; plan 1.6 stored immutable files not built. Status says the producer, not wiring | report-page-producer (PR 500, merged) |
 | stock history two bases, weekly adjusted_last re-pull | plan 1.8 | missing | see W5-6 | bars (follow-on, not yet drafted) |
 | intraday quote storage kept permanently, monthly partitions | plan 1.3 | missing | quote_snapshot job exists; no partitioning or retention design | bars (follow-on, not yet drafted) |
 | pyside size.toml and import-linter locks | plan 3.8 | missing | not found on main (no size.toml, no import-linter config); pyside ci covers ruff, mypy, pytest only | pyside-guards (follow-on, not yet drafted) |
-| market.spx_close | plan 5.5 | missing | no bars/index close dataset; home card is sample | bars (follow-on, not yet drafted); or market-page-producer (being revised; holds the index IV) if the figure is read from FRED |
+| market.spx_close | plan 5.5 | missing | no bars/index close dataset; home card is sample | bars (follow-on, not yet drafted); or market-page-producer (in review, PR 604; holds the index IV) if the figure is read from FRED |
 | market.sp500_vs_200d | plan 5.5 | covered, code only (not wired to data) | v2 built (compute-figures Decision 6); job unwired in cmd/ot; pages empty. Altered: v2 supersedes v1; v1 Python untouched | - |
-| market.index_iv | plan 5.5 | missing | no index IV job; Decision 3.2 gives it to the market-page-producer design (index-iv folded in); it does not wait for `bars`. Owner 2026-11-09: FRED VIXCLS/VXNCLS/RVXCLS | market-page-producer (being revised; holds the index IV) |
+| market.index_iv | plan 5.5 | missing | no index IV job; Decision 3.2 gives it to the market-page-producer design (index-iv folded in); it does not wait for `bars`. Owner 2026-11-09: FRED VIXCLS/VXNCLS/RVXCLS | market-page-producer (in review, PR 604; holds the index IV) |
 | home.options_summary.* (2) | plan 5.5 | missing | needs trades dataset | account-data (PR 561, in review), compute-stage2 (follow-on, not yet drafted) |
 | home.household.* (5) | plan 5.5 | missing | needs account dataset | account-data (PR 561, in review), compute-stage2 (follow-on, not yet drafted) |
 | home.options.* (4) | plan 5.5 | missing | needs positions and fills | account-data (PR 561, in review), compute-stage2 (follow-on, not yet drafted) |
@@ -183,15 +183,15 @@ the plan asks for it and no design allowed the drop.
 | US close / US open / JP close reports | board 2-4 | design exists, not built | report-page.md; PR 500 risks block only; four data blocks + six open blocks missing. Altered: close-report valuation sections dropped by owner (Left out) | builders-wave (follow-on, not yet drafted); report-page-producer (PR 500, merged) for the risks block; US open report last |
 | Option page | board 5 | design exists, not built | option-pages-v22.md (view) | builders-wave (follow-on, not yet drafted), compute-stage2 (follow-on, not yet drafted) |
 | Positions | board 6 | design exists, not built | tracking-household-reports Left out; stays as is (owner 2026-11-08). Altered: stays as is (owner 2026-11-08) | account-data (PR 561, in review) |
-| Market | board 7 | design exists, not built | missing-pages.md (schema, view; no route, no producer) | market-page-producer (being revised; holds the index IV) |
+| Market | board 7 | design exists, not built | missing-pages.md (schema, view; no route, no producer) | market-page-producer (in review, PR 604; holds the index IV) |
 | Macro | board 8 | covered, code only (not wired to data) | macro-page-wiring.md (FRED indicators live); ease score and events gap. Altered: ease score and events gapped. Ease score: ease-v2 (PR 560, merged), no producer yet; events still gapped | ease-v2 (PR 560, merged); events: left out - asked of the owner (question 4: what feeds the macro events list) |
 | Indicator detail | board 9 | design exists, not built | tracking-household-reports (v2 view) | builders-wave (follow-on, not yet drafted) |
 | Review | board 10 | deferred by plan or owner | tracking-household-reports Left out. Why: owner: not now, decided at strategy | left out - owner 2026-11-08, not now |
 | Household | board 12 | design exists, not built | view with fixture; no builder or data | builders-wave (follow-on, not yet drafted), account-data (PR 561, in review) |
-| Companies | board 13 | design exists, not built | carried schema and view; valuation (估值一眼, 市场在赌的增长, 五问) has no design. Altered: no design for valuation method. Owner 2026-11-09: fundamentals from SEC companyfacts and EDINET | valuation (being drafted), builders-wave (follow-on, not yet drafted) |
+| Companies | board 13 | design exists, not built | carried schema and view; valuation (估值一眼, 市场在赌的增长, 五问) has no design. Altered: no design for valuation method. Owner 2026-11-09: fundamentals from SEC companyfacts and EDINET | valuation (in review, PR 607), builders-wave (follow-on, not yet drafted) |
 | Price lines | board 14 | design exists, not built | view; no save handler, storage or route | after the builders, owner 2026-11-09; bars (follow-on, not yet drafted) |
 | Core | board 15 | design exists, not built | view; no producer | after the builders, owner 2026-11-09; bars (follow-on, not yet drafted) |
-| Diagnosis 10 years | board 16 | design exists, not built | view; no producer; needs annual-report data | after the builders, owner 2026-11-09; bars (follow-on, not yet drafted), valuation (being drafted) for annual-report data |
+| Diagnosis 10 years | board 16 | design exists, not built | view; no producer; needs annual-report data | after the builders, owner 2026-11-09; bars (follow-on, not yet drafted), valuation (in review, PR 607) for annual-report data |
 | Full scan | board 17 | design exists, not built | option-pages-v22.md | builders-wave (follow-on, not yet drafted) |
 | One-stock option | board 18 | covered, code only (not wired to data) | option_data_page live at /options/data; stock page no builder | builders-wave (follow-on, not yet drafted) |
 | Option result | board 19 | design exists, not built | tracking-household-reports Left out | builders-wave (follow-on, not yet drafted), account-data (PR 561, in review) |
