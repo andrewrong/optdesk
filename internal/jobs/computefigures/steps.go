@@ -1,0 +1,326 @@
+package computefigures
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
+
+	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
+)
+
+const (
+	tableOptionEod   = "obs.option_eod"
+	tableSeriesPoint = "obs.series_point"
+	tableReadings    = "readings.reading"
+)
+
+// runState is one Run: what it has stored and the first failure.
+type runState struct {
+	j        *job
+	ctx      context.Context
+	day      contracts.Day
+	returned int
+	usable   int
+	failed   int
+	firstErr contracts.TypedError
+}
+
+func (r *runState) fail(kind contracts.ErrorKind, err error) {
+	r.failed++
+	if r.firstErr == nil || (r.firstErr.Kind() != contracts.Retryable && kind == contracts.Retryable) {
+		r.firstErr = &typedError{kind: kind, err: err}
+	}
+}
+
+// failStore records a failed read or write: a store error is retryable, a cancelled context too.
+func (r *runState) failStore(err error) { r.fail(contracts.Retryable, err) }
+
+// runIv30 computes the IV30 of each underlying from the stored option rows.
+func (r *runState) runIv30(ts []target) {
+	for _, t := range ts {
+		if r.ctx.Err() != nil {
+			r.failStore(r.ctx.Err())
+			return
+		}
+		in := inputs{ComputeStores: r.j.stores, ops: r.j.ops, units: r.j.units, rateSeries: r.j.m.RateSeries,
+			rateMaxAge: t.rule.MaxAgeDays}
+		chain, rate, err := ivInput(r.ctx, in, t.subj.id, r.day)
+		var f compute.Figure
+		switch {
+		case errors.Is(err, errNoRate), errors.Is(err, errNoSession):
+			f = r.missing(t, compute.NoInput, "")
+		case errors.Is(err, errStaleRate):
+			f = r.missing(t, compute.StaleInput, rate.Day)
+			f.StaleRate = true
+		case err != nil:
+			r.failStore(err)
+			continue
+		default:
+			f = r.j.figs.Iv30(t.rule.ID, chain, rate, r.day)
+		}
+		inputsOf := []input{
+			{table: tableOptionEod, keys: []string{strconv.FormatInt(t.subj.id, 10) + "|" + string(r.day)}},
+			{table: tableSeriesPoint, keys: []string{r.j.m.RateSeries}},
+		}
+		r.store(t, f, hashLines(chainLines(chain, rate)), inputsOf)
+	}
+}
+
+func chainLines(chain []compute.ExpiryQuotes, rate compute.Point) []string {
+	lines := []string{"rate|" + string(rate.Day) + "|" + fnum(rate.Value)}
+	for _, e := range chain {
+		for _, q := range e.Strikes {
+			lines = append(lines, fmt.Sprintf("chain|%d|%s|%s|%s|%s|%s|%t|%t", e.MinutesToExpiry, fnum(q.Strike),
+				fnum(q.CallIV), fnum(q.PutIV), fnum(q.CallMid), fnum(q.PutMid), q.HasCall, q.HasPut))
+		}
+	}
+	return lines
+}
+
+func fnum(v float64) string { return strconv.FormatFloat(v, 'g', -1, 64) }
+
+// hashLines is the sha256 of the sorted lines, the rows_sha256 of a reading.
+func hashLines(lines []string) string {
+	sorted := append([]string(nil), lines...)
+	sort.Strings(sorted)
+	sum := sha256.Sum256([]byte(strings.Join(sorted, "\n")))
+	return hex.EncodeToString(sum[:])
+}
+
+// window is the number of calendar days of inputs a series figure reads before the as-of day.
+func window(rule compute.Rule) int {
+	if rule.Years > 0 {
+		return rule.Years*366 + 7
+	}
+	return 2*max(rule.Window, rule.N) + 14
+}
+
+// runMarket computes the figures on FRED series.
+func (r *runState) runMarket(ts []target) {
+	for _, t := range ts {
+		if r.ctx.Err() != nil {
+			r.failStore(r.ctx.Err())
+			return
+		}
+		from := shiftDay(r.day, -window(t.rule))
+		var series []compute.Series
+		var lines []string
+		bad := false
+		for _, id := range t.spec.Series {
+			pts, err := r.j.stores.Series.SeriesPoints(r.ctx, id, from, r.day)
+			if err != nil {
+				r.failStore(fmt.Errorf("computefigures: series %s: %w", id, err))
+				bad = true
+				break
+			}
+			s := r.j.ops.FromSeriesPoints(pts)
+			series = append(series, s)
+			for _, p := range s {
+				lines = append(lines, id+"|"+string(p.Day)+"|"+fnum(p.Value))
+			}
+		}
+		if bad {
+			continue
+		}
+		var f compute.Figure
+		switch t.spec.Method {
+		case methodRatio:
+			f = r.j.figs.Ratio(t.rule.ID, series[0], series[1], r.day)
+		case methodPercent:
+			f = r.j.figs.PercentileInYears(t.rule.ID, series[0], r.day)
+		default:
+			f = r.j.figs.MovingAverageGap(t.rule.ID, series[0], r.day)
+		}
+		r.store(t, f, hashLines(lines), []input{{table: tableSeriesPoint, keys: t.spec.Series}})
+	}
+}
+
+// runIvStats computes IVP and IVR from the stored IV30 readings; no ok IV30 reading of the as-of day gives no_input.
+func (r *runState) runIvStats(ts []target) {
+	for _, t := range ts {
+		if r.ctx.Err() != nil {
+			r.failStore(r.ctx.Err())
+			return
+		}
+		from := shiftDay(r.day, -window(t.rule))
+		rows, err := r.j.stores.Readings.LatestReadings(r.ctx, r.j.m.Iv30, kindUnderlying, t.subj.name, from, r.day)
+		if err != nil {
+			r.failStore(fmt.Errorf("computefigures: iv30 readings: %w", err))
+			continue
+		}
+		var series compute.Series
+		var lines []string
+		todayOK := false
+		for _, rec := range rows {
+			if rec.State != "ok" || rec.Value == nil {
+				continue
+			}
+			v, perr := strconv.ParseFloat(*rec.Value, 64)
+			if perr != nil {
+				continue
+			}
+			d := dayOf(rec.Day)
+			series = append(series, compute.Point{Day: d, Value: v})
+			lines = append(lines, string(d)+"|"+*rec.Value)
+			if d == r.day {
+				todayOK = true
+			}
+		}
+		var f compute.Figure
+		switch {
+		case !todayOK:
+			f = r.missing(t, compute.NoInput, "")
+		case t.rule.ID == r.j.m.Ivp:
+			f = r.j.figs.IvPercentile(t.rule.ID, series, r.day)
+		default:
+			f = r.j.figs.IvRank(t.rule.ID, series, r.day)
+		}
+		key := r.j.m.Iv30 + "|" + kindUnderlying + "|" + t.subj.name
+		r.store(t, f, hashLines(lines), []input{{table: tableReadings, keys: []string{key}}})
+	}
+}
+
+// missing is the figure the job itself finds missing, before the core is asked.
+func (r *runState) missing(t target, reason compute.Reason, dataDay contracts.Day) compute.Figure {
+	return compute.Figure{ID: t.rule.ID, Version: t.rule.Version, Subject: t.subj.name, Day: r.day, DataDay: dataDay,
+		Status: compute.StatusMissing, Reason: reason}
+}
+
+func reasonCode(r compute.Reason) int {
+	switch r {
+	case compute.NoInput:
+		return 1
+	case compute.ShortHistory:
+		return 2
+	case compute.StaleInput:
+		return 3
+	case compute.ZeroRange:
+		return 4
+	case compute.BadInput:
+		return 5
+	default:
+		return 5
+	}
+}
+
+// store builds the reading of f and writes it: an equal state, reason and rows_sha256 of the newest rev is
+// skipped, anything else is written as the next rev.
+func (r *runState) store(t target, f compute.Figure, rowsHash string, in []input) {
+	rec, err := r.record(t, f, rowsHash, in)
+	if err != nil {
+		r.fail(contracts.Permanent, err)
+		return
+	}
+	prev, err := r.j.stores.Readings.LatestReadings(r.ctx, rec.Name, rec.SubjectKind, rec.Subject, r.day, r.day)
+	if err != nil {
+		r.failStore(fmt.Errorf("computefigures: readings: %w", err))
+		return
+	}
+	rec.Rev = 1
+	if n := len(prev); n > 0 {
+		p := prev[n-1]
+		if p.State == rec.State && p.RowsSha256 == rec.RowsSha256 && sameReason(p.ReasonCode, rec.ReasonCode) {
+			r.usable++
+			return
+		}
+		rec.Rev = p.Rev + 1
+	}
+	if _, err := r.j.stores.Readings.InsertReadings(r.ctx, []contracts.ReadingRecord{rec}); err != nil {
+		r.failStore(fmt.Errorf("computefigures: insert readings: %w", err))
+		return
+	}
+	r.usable++
+}
+
+func sameReason(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+// record builds the reading of f at rev 0. A value the units cannot write is stored as bad_input.
+func (r *runState) record(t target, f compute.Figure, rowsHash string, in []input) (contracts.ReadingRecord, error) {
+	rule := t.rule
+	rec := contracts.ReadingRecord{
+		Name: rule.ID, Version: rule.Version, SubjectKind: t.subj.kind, Subject: t.subj.name,
+		Day: dateOf(r.day), Currency: "",
+		Origin: "compute_figures", Cutoff: slotName,
+		JobRunID:   uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(r.day)+"|"+r.j.m.ID+"|"+slotName)).String(),
+		RecordedAt: r.j.clk.Now().UTC(), RowsSha256: rowsHash,
+	}
+	if f.Status == compute.StatusOK {
+		text, err := r.j.units.RoundHalfEven(f.Value, rule.Scale)
+		if err != nil {
+			f.Status, f.Reason = compute.StatusMissing, compute.BadInput
+		} else {
+			rec.State, rec.Value = "ok", &text
+		}
+	}
+	if f.Status != compute.StatusOK {
+		code := reasonCode(f.Reason)
+		rec.State, rec.ReasonCode = "missing_input", &code
+	}
+	setString(&rec.Unit, rule.Unit)
+	for _, i := range in {
+		e := grow(&rec.Inputs)
+		e.InputTable, e.Keys, e.CodeVersion, e.ConventionVersion = i.table, i.keys, rule.Hash, rule.Convention
+	}
+	for _, p := range parameters(rule, rule.ID == r.j.m.Iv30, f) {
+		e := grow(&rec.Parameters)
+		e.Param, e.ValueNum, e.ValueTag = p.name, p.num, p.tag
+	}
+	return rec, nil
+}
+
+type input struct {
+	table string
+	keys  []string
+}
+
+type param struct {
+	name string
+	num  *float64
+	tag  *string
+}
+
+// grow appends a zero element to *s and returns it, so the generated element types need no name here.
+func grow[E any](s *[]E) *E {
+	var z E
+	*s = append(*s, z)
+	return &(*s)[len(*s)-1]
+}
+
+// setString sets a string-kinded enum field from text.
+func setString[T ~string](dst *T, v string) { *dst = T(v) }
+
+func parameters(rule compute.Rule, iv30 bool, f compute.Figure) []param {
+	num := func(name string, v int) param {
+		x := float64(v)
+		return param{name: name, num: &x}
+	}
+	tag := func(name, v string) param { return param{name: name, tag: &v} }
+	var ps []param
+	if f.DataDay != "" {
+		ps = append(ps, tag("data_day", string(f.DataDay)))
+	}
+	ps = append(ps, num("observations", f.Observations))
+	if iv30 {
+		ps = append(ps, tag("stale_rate", strconv.FormatBool(f.StaleRate)))
+	}
+	if rule.Window > 0 {
+		ps = append(ps, num("window", rule.Window))
+	}
+	if rule.Years > 0 {
+		ps = append(ps, num("years", rule.Years))
+	}
+	return ps
+}

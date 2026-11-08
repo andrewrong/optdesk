@@ -1,0 +1,44 @@
+# Manifest of the compute_figures job: figure ids and FRED series names only; every number is in the rules table.
+id = "compute_figures"
+rate_series = "DGS3MO"
+iv30 = "market.iv30_own"
+ivp = "market.ivp_own"
+ivr = "market.ivr_own"
+
+[[market]]
+id = "market.vix_term_ratio"
+method = "ratio"
+series = ["VIXCLS", "VXVCLS"]
+
+[[market]]
+id = "market.vix_pctile_3y"
+method = "percentile"
+series = ["VIXCLS"]
+
+[[market]]
+id = "market.vxn_pctile_3y"
+method = "percentile"
+series = ["VXNCLS"]
+
+[[market]]
+id = "market.rvx_pctile_3y"
+method = "percentile"
+series = ["RVXCLS"]
+
+[[market]]
+id = "market.sp500_pctile_3y"
+method = "percentile"
+series = ["SP500"]
+
+[[market]]
+id = "market.sp500_vs_200d"
+method = "ma_gap"
+series = ["SP500"]
+
+# Proposed slot: 20 minutes after the close of the session; the owner confirms.
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "20m"
+run_bound = "10m"
+restart_sensitive = false
