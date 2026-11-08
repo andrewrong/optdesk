@@ -43,6 +43,18 @@ afterEach(async () => {
 })
 
 describe('MacroCard (macro_summary v2)', () => {
+  it('renders the title as a link to titleHref', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<MacroCard payload={ok} titleHref="/macro" />)
+    })
+    const a = host.querySelector('[data-slot=card-title] a')
+    expect(a?.getAttribute('href')).toBe('/macro')
+    expect(a?.textContent).toBe(ok.card.title)
+  })
+
   it('shows title, say, ease and stale text of ok as sent', async () => {
     await show(ok)
     expect(host.querySelector('[data-slot=card-title]')?.textContent).toBe(ok.card.title)

@@ -34,135 +34,135 @@
         {
           "label": "09-15",
           "close": 101.0,
-          "ma200": 98.1,
-          "band_low": 96.1,
-          "band_high": 100.1
+          "ma200": 98.4,
+          "band_low": 96.3,
+          "band_high": 100.5
         },
         {
           "label": "09-16",
           "close": 100.8,
-          "ma200": 98.2,
-          "band_low": 96.2,
-          "band_high": 100.2
+          "ma200": 98.8,
+          "band_low": 96.6,
+          "band_high": 101.0
         },
         {
           "label": "09-17",
           "close": 100.6,
-          "ma200": 98.3,
+          "ma200": 98.6,
           "band_low": 96.3,
-          "band_high": 100.3
+          "band_high": 100.9
         },
         {
           "label": "09-18",
           "close": 101.6,
           "ma200": 98.4,
-          "band_low": 96.4,
-          "band_high": 100.4
+          "band_low": 96.0,
+          "band_high": 100.8
         },
         {
           "label": "09-21",
           "close": 102.6,
-          "ma200": 98.5,
-          "band_low": 96.5,
-          "band_high": 100.5
+          "ma200": 98.2,
+          "band_low": 96.2,
+          "band_high": 100.2
         },
         {
           "label": "09-22",
           "close": 102.4,
-          "ma200": 98.6,
-          "band_low": 96.6,
-          "band_high": 100.6
+          "ma200": 98.0,
+          "band_low": 95.9,
+          "band_high": 100.1
         },
         {
           "label": "09-23",
           "close": 102.2,
-          "ma200": 98.7,
-          "band_low": 96.7,
-          "band_high": 100.7
+          "ma200": 98.4,
+          "band_low": 96.2,
+          "band_high": 100.6
         },
         {
           "label": "09-24",
           "close": 103.2,
           "ma200": 98.8,
-          "band_low": 96.8,
-          "band_high": 100.8
+          "band_low": 96.5,
+          "band_high": 101.1
         },
         {
           "label": "09-25",
           "close": 104.2,
-          "ma200": 98.9,
-          "band_low": 96.9,
-          "band_high": 100.9
+          "ma200": 99.2,
+          "band_low": 96.8,
+          "band_high": 101.6
         },
         {
           "label": "09-28",
           "close": 104.0,
-          "ma200": 99.0,
-          "band_low": 97.0,
-          "band_high": 101.0
-        },
-        {
-          "label": "09-29",
-          "close": 103.8,
-          "ma200": 99.1,
-          "band_low": 97.1,
-          "band_high": 101.1
-        },
-        {
-          "label": "09-30",
-          "close": 104.8,
-          "ma200": 99.2,
-          "band_low": 97.2,
-          "band_high": 101.2
-        },
-        {
-          "label": "10-01",
-          "close": 105.8,
-          "ma200": 99.3,
-          "band_low": 97.3,
-          "band_high": 101.3
-        },
-        {
-          "label": "10-02",
-          "close": 105.6,
-          "ma200": 99.4,
-          "band_low": 97.4,
-          "band_high": 101.4
-        },
-        {
-          "label": "10-05",
-          "close": 105.4,
-          "ma200": 99.5,
-          "band_low": 97.5,
-          "band_high": 101.5
-        },
-        {
-          "label": "10-06",
-          "close": 106.4,
           "ma200": 99.6,
           "band_low": 97.6,
           "band_high": 101.6
         },
         {
+          "label": "09-29",
+          "close": 103.8,
+          "ma200": 99.4,
+          "band_low": 97.3,
+          "band_high": 101.5
+        },
+        {
+          "label": "09-30",
+          "close": 104.8,
+          "ma200": 99.2,
+          "band_low": 97.0,
+          "band_high": 101.4
+        },
+        {
+          "label": "10-01",
+          "close": 105.8,
+          "ma200": 99.0,
+          "band_low": 96.7,
+          "band_high": 101.3
+        },
+        {
+          "label": "10-02",
+          "close": 105.6,
+          "ma200": 98.8,
+          "band_low": 96.4,
+          "band_high": 101.2
+        },
+        {
+          "label": "10-05",
+          "close": 105.4,
+          "ma200": 99.2,
+          "band_low": 97.2,
+          "band_high": 101.2
+        },
+        {
+          "label": "10-06",
+          "close": 106.4,
+          "ma200": 99.6,
+          "band_low": 97.5,
+          "band_high": 101.7
+        },
+        {
           "label": "10-07",
           "close": 107.4,
-          "ma200": 99.7,
-          "band_low": 97.7,
-          "band_high": 101.7
+          "ma200": 100.0,
+          "band_low": 97.8,
+          "band_high": 102.2
         },
         {
           "label": "10-08",
           "close": 107.2,
-          "ma200": 99.8,
-          "band_low": 97.8,
-          "band_high": 101.8
+          "ma200": 100.4,
+          "band_low": 98.1,
+          "band_high": 102.7
         },
         {
           "label": "10-09",
           "close": 107.0,
-          "ma200": 99.9,
-          "band_low": 97.9,
-          "band_high": 101.9
+          "ma200": 100.2,
+          "band_low": 97.8,
+          "band_high": 102.6
         },
         {
           "label": "10-12",
@@ -174,65 +174,65 @@
         {
           "label": "10-13",
           "close": 109.0,
-          "ma200": 100.1,
-          "band_low": 98.1,
-          "band_high": 102.1
+          "ma200": 99.8,
+          "band_low": 97.7,
+          "band_high": 101.9
         },
         {
           "label": "10-14",
           "close": 108.8,
-          "ma200": 100.2,
-          "band_low": 98.2,
-          "band_high": 102.2
+          "ma200": 99.6,
+          "band_low": 97.4,
+          "band_high": 101.8
         },
         {
           "label": "10-15",
           "close": 108.6,
-          "ma200": 100.3,
-          "band_low": 98.3,
+          "ma200": 100.0,
+          "band_low": 97.7,
           "band_high": 102.3
         },
         {
           "label": "10-16",
           "close": 109.6,
           "ma200": 100.4,
-          "band_low": 98.4,
-          "band_high": 102.4
+          "band_low": 98.0,
+          "band_high": 102.8
         },
         {
           "label": "10-19",
           "close": 110.6,
-          "ma200": 100.5,
-          "band_low": 98.5,
-          "band_high": 102.5
-        },
-        {
-          "label": "10-20",
-          "close": 110.4,
-          "ma200": 100.6,
-          "band_low": 98.6,
-          "band_high": 102.6
-        },
-        {
-          "label": "10-21",
-          "close": 110.2,
-          "ma200": 100.7,
-          "band_low": 98.7,
-          "band_high": 102.7
-        },
-        {
-          "label": "10-22",
-          "close": 111.2,
           "ma200": 100.8,
           "band_low": 98.8,
           "band_high": 102.8
         },
         {
+          "label": "10-20",
+          "close": 110.4,
+          "ma200": 101.2,
+          "band_low": 99.1,
+          "band_high": 103.3
+        },
+        {
+          "label": "10-21",
+          "close": 110.2,
+          "ma200": 101.0,
+          "band_low": 98.8,
+          "band_high": 103.2
+        },
+        {
+          "label": "10-22",
+          "close": 111.2,
+          "ma200": 100.8,
+          "band_low": 98.5,
+          "band_high": 103.1
+        },
+        {
           "label": "10-23",
           "close": 112.2,
-          "ma200": 100.9,
-          "band_low": 98.9,
-          "band_high": 102.9
+          "ma200": 100.6,
+          "band_low": 98.2,
+          "band_high": 103.0
         }
       ],
       "series_names": [

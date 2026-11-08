@@ -48,6 +48,18 @@ afterEach(async () => {
 const tile = (id: string) => host.querySelector<HTMLElement>(`[data-tile=${id}]`)!
 
 describe('HouseholdCard', () => {
+  it('renders the title as a link to titleHref', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    await act(async () => {
+      root = createRoot(host)
+      root.render(<HouseholdCard payload={fixture('ok.json')} titleHref="/household" />)
+    })
+    const a = host.querySelector('[data-slot=card-title] a')
+    expect(a?.getAttribute('href')).toBe('/household')
+    expect(a?.textContent).toBe(ok.card.title)
+  })
+
   it('is registered for the schema household_summary', () => {
     expect(registration.schema).toBe('household_summary')
   })
