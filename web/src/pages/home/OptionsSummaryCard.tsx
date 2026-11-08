@@ -1,7 +1,7 @@
 // The 期权概览 card of the home page (options_summary v3). Every visible string is a `text`, `label` or `caption`
 // field of the payload; this file formats and computes nothing. A Gap figure shows its text, never a zero.
 import { Chart } from '@/charts/Chart'
-import type { ChartSpec } from '@/charts/spec'
+import type { ChartPoint, ChartSpec } from '@/charts/spec'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
@@ -17,6 +17,8 @@ const TILE_KEYS = [
   'max_loss_usd',
 ] as const satisfies readonly (keyof Tiles)[]
 
+type Point = Payload['card']['premium_series_6m'][number]
+type Figure = Point['premium'] | Point['closed']
 type Tile = Tiles[(typeof TILE_KEYS)[number]]
 
 function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
@@ -46,18 +48,21 @@ function TileBlock({ tileKey, tile }: { tileKey: string; tile: Tile }) {
 
 export function OptionsSummaryCard({ payload }: { payload: Payload }) {
   const { card } = payload
+  const points = (pick: (point: Point) => Figure) =>
+    card.premium_series_6m.map((point): ChartPoint => {
+      const figure = pick(point)
+      return {
+        value: figure.kind === 'gap' ? null : figure.value,
+        text: figure.text,
+        label: figure.text,
+      }
+    })
   const spec: ChartSpec = {
     kind: 'bar',
     categories: card.premium_series_6m.map((point) => point.label),
     series: [
-      {
-        name: card.premium_series_text,
-        points: card.premium_series_6m.map((point) =>
-          point.premium.kind === 'gap'
-            ? { value: null, text: point.premium.text }
-            : { value: point.premium.value, text: point.premium.text },
-        ),
-      },
+      { name: card.premium_series_text, points: points((point) => point.premium) },
+      { name: '已了结', points: points((point) => point.closed) },
     ],
   }
   return (

@@ -23,10 +23,17 @@ export const ok = {
   say: '五张卡片，一页看完。',
   gap_line: '今天没有缺口',
   block_links: [
+    { href: '/macro', text: '宏观页' },
+    { href: '/market', text: '市场页' },
     { href: '/household', text: '家庭页' },
+    { href: '/companies', text: '持仓公司页' },
     { href: '/options', text: '期权页' },
   ],
-  report_links: [{ href: '/report/weekly', text: '周报' }],
+  report_links: [
+    { href: '/report/weekly', text: '周报' },
+    { href: '/report/monthly', text: '月报' },
+    { href: '/report/quarterly', text: '季报' },
+  ],
   household,
   companies: held,
   macro,

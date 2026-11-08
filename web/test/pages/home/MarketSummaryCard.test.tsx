@@ -7,6 +7,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MarketSummaryCard, registration } from '@/pages/home/MarketSummaryCard'
+import type { ChartSpec } from '@/charts/spec'
 import { App } from '@/shell/App'
 import { validate } from '@/types/market_summary'
 
@@ -15,6 +16,18 @@ import { validate } from '@/types/market_summary'
 const read = (dir: string, name: string) =>
   JSON.parse(readFileSync(path.resolve(import.meta.dirname, '../../../fixtures', dir, name), 'utf8'))
 const fixture = (name: string) => read('v3/market-summary', name)
+
+const drawn: ChartSpec[] = []
+vi.mock('@/charts/Chart', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/charts/Chart')>()
+  return {
+    ...actual,
+    Chart: (props: Parameters<typeof actual.Chart>[0]) => {
+      drawn.push(props.spec)
+      return actual.Chart(props)
+    },
+  }
+})
 
 let root: Root | null = null
 let host: HTMLElement
@@ -75,8 +88,9 @@ describe('MarketSummaryCard', () => {
   it('shows the text of a Gap figure and invents no digit', async () => {
     const payload = fixture('gap.json')
     await show(<MarketSummaryCard payload={payload} />)
-    const gapRow = payload.card.index_table.rows[1]
-    const cells = [...host.querySelectorAll('[data-index-table] tbody tr')][1]?.textContent ?? ''
+    const at = payload.card.index_table.rows.findIndex((r: { name: string }) => r.name === 'N225')
+    const gapRow = payload.card.index_table.rows[at]
+    const cells = [...host.querySelectorAll('[data-index-table] tbody tr')][at]?.textContent ?? ''
     expect(cells).toContain(gapRow.iv.text)
     expect(cells).toContain(gapRow.iv_minus_rv20.text)
     // The row's own text, minus the texts of its figures, holds no digit.
@@ -88,6 +102,34 @@ describe('MarketSummaryCard', () => {
     expect(rest).not.toMatch(/\d/)
     const level = payload.card.vol_indices[2].level
     expect(host.querySelector('[data-vol-indices]')?.textContent).toContain(level.text)
+  })
+
+  it('draws the three named series over at least 30 points', async () => {
+    const payload = fixture('ok.json')
+    drawn.length = 0
+    await show(<MarketSummaryCard payload={payload} />)
+    const spec = drawn[drawn.length - 1]!
+    expect(new Set(spec.series.map((s) => s.name))).toEqual(new Set(payload.card.chart.series_names))
+    expect(payload.card.chart.series_names).toHaveLength(3)
+    expect(spec.categories.length).toBeGreaterThanOrEqual(30)
+  })
+
+  it('shows the SPX, NDX and RUT rows of ok', async () => {
+    await show(<MarketSummaryCard payload={fixture('ok.json')} />)
+    const rows = [...host.querySelectorAll('[data-index-table] tbody tr')].map((r) => r.textContent ?? '')
+    for (const name of ['SPX', 'NDX', 'RUT']) {
+      expect(rows.some((text) => text.includes(name))).toBe(true)
+    }
+  })
+
+  it('shows the N225 gap text of gap', async () => {
+    const payload = fixture('gap.json')
+    await show(<MarketSummaryCard payload={payload} />)
+    const row = payload.card.index_table.rows.find((r: { name: string }) => r.name === 'N225')
+    const shown = [...host.querySelectorAll('[data-index-table] tbody tr')].find((r) =>
+      r.textContent?.includes('N225'),
+    )
+    expect(shown?.textContent).toContain(row.iv.text)
   })
 
   it('shows the stale label', async () => {

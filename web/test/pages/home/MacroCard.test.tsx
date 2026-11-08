@@ -71,6 +71,35 @@ describe('MacroCard (macro_summary v2)', () => {
     )
   })
 
+  it('draws the fixed -2 to +2 scale with the neutral band texts and the stored marker', async () => {
+    await show(ok)
+    const ticks = [...host.querySelectorAll('[data-ticks] span')].map((s) => s.textContent)
+    expect(ticks[0]).toBe('-2')
+    expect(ticks[ticks.length - 1]).toBe('+2')
+    expect(host.textContent).toContain('-0.5')
+    expect(host.textContent).toContain('+0.5')
+    expect(host.querySelector('[data-marker]')?.getAttribute('aria-valuenow')).toBe(
+      String(ok.card.ease.marker_percent.value),
+    )
+  })
+
+  it('shows the previous value of each event, and the missing text on the last one only', async () => {
+    await show(ok)
+    const cells = [...host.querySelectorAll('[data-events] tbody tr')].map(
+      (r) => r.querySelectorAll('td')[2]?.textContent,
+    )
+    const last = ok.card.events.length - 1
+    ok.card.events.forEach((event, index) => {
+      if (index < last) {
+        expect(typeof event.previous).toBe('string')
+        expect(cells[index]).toBe(event.previous)
+      } else {
+        expect(typeof event.previous).toBe('object')
+        expect(cells[index]).toBe((event.previous as { text: string }).text)
+      }
+    })
+  })
+
   it('shows the notes, the gaps and the data times text of ok', async () => {
     await show(ok)
     expect(host.querySelector('[data-gaps]')?.textContent).toBe(ok.card.gaps[0].text)

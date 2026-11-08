@@ -5,36 +5,36 @@ export const ok = {
   "card": {
     "data_times_text": "松紧度数据日 10-23；事件日期按发布日历，无发布时间。",
     "ease": {
-      "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 34 到 66。",
+      "aria_text": "松紧度 +0.2，中性，较上周 −0.2；固定刻度 -2 到 +2，中性带 -0.5 到 +0.5。",
       "figure": {
-        "text": "56",
+        "text": "+0.2",
         "unit": "index_points",
-        "value": 56
+        "value": 0.2
       },
       "marker_percent": {
-        "text": "56",
+        "text": "55",
         "unit": "percent_of_track",
-        "value": 56
+        "value": 55
       },
       "neutral_band": {
         "high": {
-          "text": "66%",
+          "text": "+0.5",
           "unit": "percent_of_track",
-          "value": 66
+          "value": 62.5
         },
         "low": {
-          "text": "34%",
+          "text": "-0.5",
           "unit": "percent_of_track",
-          "value": 34
+          "value": 37.5
         }
       },
-      "reading_text": "当前 56，中性；固定刻度 0 到 100。",
+      "reading_text": "当前 +0.2，中性；固定刻度 -2 到 +2。",
       "ticks": [
+        "-2",
+        "-1",
         "0",
-        "25",
-        "50",
-        "75",
-        "100"
+        "+1",
+        "+2"
       ],
       "week_change": {
         "text": "−0.2",
@@ -46,20 +46,23 @@ export const ok = {
       {
         "date": "2026-10-28",
         "name_text": "美国 CPI",
-        "previous": {
-          "reason": "no_data",
-          "text": "前值暂缺"
-        },
+        "previous": "3.0%（9月）",
         "when_text": "周三 10-28"
       },
       {
         "date": "2026-11-06",
         "name_text": "美国非农就业",
+        "previous": "+12.0 万（9月）",
+        "when_text": "周五 11-06"
+      },
+      {
+        "date": "2026-11-17",
+        "name_text": "美国零售销售",
         "previous": {
           "reason": "no_data",
           "text": "前值暂缺"
         },
-        "when_text": "周五 11-06"
+        "when_text": "周二 11-17"
       }
     ],
     "gaps": [

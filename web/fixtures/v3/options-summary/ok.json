@@ -16,7 +16,7 @@
   "run_status": "ok",
   "card": {
     "title": "期权概览",
-    "say": "本月卖出 3 笔，收取权利金 +$310。",
+    "say": "本月卖出 5 组，收取权利金 +$310。",
     "subtitle": "示例数据",
     "stale": {
       "data_time": "2026-10-23T21:00:00Z",
@@ -29,7 +29,7 @@
         "figure": {
           "kind": "value",
           "value": 3,
-          "text": "3 笔",
+          "text": "5 组",
           "unit": "structures"
         },
         "caption": "示例"
