@@ -8,12 +8,18 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CardNotes } from '@/pages/home/CardNotes'
+import { StaleAlert } from '@/pages/home/StaleAlert'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/price_lines_page'
 
 // The native controls wear the border, ring and size classes of button.tsx.
 const FIELD =
   'h-8 rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:border-input dark:bg-input/30'
+
+// StaleAlert compares `stale_after` with the clock. The producer already decided `is_stale`, so the view hands
+// StaleAlert a bound no clock can cross, on the producer's side of the decision; the payload's `stale_after` is not read.
+const ALWAYS_PAST = '1970-01-01T00:00:00Z'
+const ALWAYS_FUTURE = '9999-12-31T23:59:59Z'
 
 type Market = Payload['rows'][number]['market']
 
@@ -101,10 +107,10 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
         <p className="text-sm text-muted-foreground">{payload.intro}</p>
       </header>
       {payload.stale ? (
-        <Alert variant={payload.stale.is_stale ? 'destructive' : 'default'} data-stale={payload.stale.is_stale}>
-          <Info aria-hidden />
-          <AlertDescription>{payload.stale.text}</AlertDescription>
-        </Alert>
+        <StaleAlert
+          stale={{ text: payload.stale.text, stale_after: payload.stale.is_stale ? ALWAYS_PAST : ALWAYS_FUTURE }}
+          generatedAt={payload.generated_at}
+        />
       ) : null}
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
       {payload.saved !== null ? <Message kind="saved">{payload.saved}</Message> : null}
