@@ -14,7 +14,9 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -182,6 +184,9 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobQuoteSnapshot}, nil
 	}
+	d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error) {
+		return idJob{id: jobComputeFigures}, nil
+	}
 	d.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
 		n := r.dials.Add(1)
 		if r.dialErrs != nil {
@@ -251,8 +256,12 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 	return <-done
 }
 
+// jobComputeFigures is the id of the fourth job; scheduler.go and preflight.go never name it.
+const jobComputeFigures = "compute_figures"
+
 const noKeyEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\n" +
-	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n"
+	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\n"
 
 func TestSchedulerLocksOnce(t *testing.T) {
 	t.Parallel()
@@ -271,7 +280,7 @@ func TestSchedulerLocksOnce(t *testing.T) {
 	if b, _ := r.sl.build.Load().(string); b != "dev" || r.inst.build != "dev" {
 		t.Fatalf("build %q, lock build %q", b, r.inst.build)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("jobs %v", got)
 	}
 }
@@ -374,7 +383,7 @@ func TestSchedulerErrorsHoldNoSecret(t *testing.T) {
 	t.Parallel()
 	const secret = "postgres://sentinel-user:sentinel-pw@h/db"
 	env := "OT_PG_DSN_RUNNER=" + secret + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=sentinel-key\n" +
-		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\n"
+		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\n"
 	steps := map[string]func(r *schedRig){
 		"open fence": func(r *schedRig) {
 			r.a.deps.openFence = func(_ context.Context, dsn string) (store.InstanceFence, error) {
@@ -429,10 +438,10 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	r := newSchedRig(t, noKeyEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	if len(r.sched.disabled) != 1 || r.sched.disabled[jobFredSeries] == "" {
@@ -450,10 +459,10 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	r.dialErrs = func(int32) error { return errors.New("no socket") }
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobFredSeries}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); len(got) != 3 {
+	if got := ids(r.sched.jobs); len(got) != 4 {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
@@ -486,13 +495,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if !slices.Equal(ran, []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -519,7 +528,7 @@ func TestSchedulerFredStaysDisabledUntilRestart(t *testing.T) {
 		if got := r.sched.disabled[jobFredSeries]; got != first || got == "" {
 			t.Fatalf("reason %q, first %q", got, first)
 		}
-		if got := r.lastBuild(); !slices.Equal(got, []string{jobOptionEod, jobQuoteSnapshot}) {
+		if got := r.lastBuild(); !slices.Equal(got, []string{jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
 			t.Fatalf("reconciler jobs %v", got)
 		}
 		if len(r.sched.disabled) != 1 {
@@ -538,7 +547,6 @@ func TestSchedulerDoesNotStartTheSite(t *testing.T) {
 	d.newHandler = func([]byte) http.Handler { called.Add(1); return nil }
 	d.macroPage = func(*time.Location, string) pages.Page { called.Add(1); return pages.Page{} }
 	d.optionDataPage = func(*time.Location, string, sitePageInput) pages.Page { called.Add(1); return pages.Page{} }
-	d.openOptionCatalog = nil
 	done := r.start()
 	r.waitStarted(t, done)
 	_ = r.stop(t, done)
@@ -654,5 +662,34 @@ func TestSchedulerNeedsTelegramLines(t *testing.T) {
 	}
 	if r.inst.count() != 0 {
 		t.Fatal("the lock was tried before the missing line was reported")
+	}
+}
+
+func TestSchedulerWiresFourJobs(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	done := r.start()
+	r.waitStarted(t, done)
+	want := []string{jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+	if got := ids(r.sched.jobs); !slices.Equal(got, want) {
+		t.Fatalf("scheduler jobs %v, want %v", got, want)
+	}
+	if got := r.lastBuild(); !slices.Equal(got, want) {
+		t.Fatalf("reconciler jobs %v, want %v", got, want)
+	}
+	if len(r.sched.disabled) != 0 {
+		t.Fatalf("disabled %v", r.sched.disabled)
+	}
+	_ = r.stop(t, done)
+}
+
+func TestSchedulerNeedsReadingsDSN(t *testing.T) {
+	t.Parallel()
+	env := strings.Replace(fullEnv, "OT_PG_DSN_READINGS=readings-dsn\n", "", 1)
+	r := newSchedRig(t, env)
+	done := r.start()
+	err := <-done
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) {
+		t.Fatalf("err %v", err)
 	}
 }
