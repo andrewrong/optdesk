@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
-Revision: 2 (adversarial review `events-adversarial.md` answered; revision 1 was 7e88e93)
+Revision: 3 (adversarial review `events-adversarial.md` answered in revision 2; revision 3 adds the free-plan call budget and the design review fixes; revision 1 was 7e88e93)
 
 Source: advisor 2026-11-08: earnings dates and ex-dividend dates are blocking dependencies of the option-candidate gates, and an early-assignment and ex-dividend guard for short calls is a missing seller need. Restart plan v2.5 section 1 and 11, row W5-6 (`Reference.Dividends`, tick 456, "scheduled only if the probe passes") and 11.1 item 4 (tick 456 on Japanese stocks, 日股). The owner dropped the scanner and Stooq.
 Read on main at 3aac781: `AGENTS.md`, `docs/design/modules.md`, `docs/design/ease-v2.md`, `docs/design/account-data.md` (on `origin/design/account-data`), `internal/{sources,broker,jobs,store}/api.go`, `contracts/datasets/obs.quote_snapshot.r1.json`, `migrations/0007_quote_snapshot.sql`, `pyside/src/optdesk/ibkr/{api,spec}.py`.
@@ -20,11 +20,11 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 
 ## Decisions
 
-1. One owner-edited list, `$OT_HOME/watch.toml`: one `[[underlying]]` per company with `issuer` (`cik:<10 digits>` for a US company, `edinet:<code>` for a Japanese one), `market` (`US` or `JP`), and the IBKR contract fields (`symbol`, `sec_type`, `exchange`, `currency`, `con_id`) and an optional `report_date_override` (`YYYY-MM-DD`, the owner's own word for one company, see Decision 5). Typed `jobs.WatchEntry{Issuer, Market, ReportDateOverride string; Contract broker.Contract}` in `internal/jobs/api.go`, read by a loader in `cmd/ot`. The valuation design reuses the same file and type for its subjects (a revision of that draft, not made here). Every row below is keyed by `issuer`, with the symbol kept as the vendor or IBKR sent it, so share classes (BRK.B, BRK-B) do not split a company.
+1. One owner-edited list, `$OT_HOME/watch.toml`: one `[[underlying]]` per company with `issuer` (`cik:<10 digits>` for a US company, `edinet:<code>` for a Japanese one), `market` (`US` or `JP`), and the IBKR contract fields (`symbol`, `sec_type`, `exchange`, `currency`, `con_id`) and an optional `report_date_override` (`YYYY-MM-DD`, the owner's own word for one company, see Decision 5). Typed `jobs.WatchEntry{Issuer, Market, ReportDateOverride string; Contract broker.Contract}` in `internal/jobs/api.go`, read by a loader in `cmd/ot`. The valuation design reads the same file through its own loader and type, not by importing `jobs` (a module below `jobs` in the layers may not import it); a revision of that draft, not made here. Every row below is keyed by `issuer`, with the symbol kept as the vendor or IBKR sent it, so share classes (BRK.B, BRK-B) do not split a company.
 2. Dividends: IBKR tick 456 through `pyside`, as the old system and plan v2.5 row W5-6 have it; no new account. The tick is four comma-separated values (past 12 months, next 12 months, next ex-date `YYYYMMDD`, next amount). IBKR does not say declared or projected, so the guard treats every ex-date as projected.
 3. Earnings: Alpha Vantage `EARNINGS_CALENDAR` (`horizon=3month`), ported from the old source (header found by name; a notice body for a wrong key or used-up quota is an error, never `absent`; fewer than 500 rows is refused). Confirmed by the owner 2026-11-09; it is the only source the old system had; IBKR gives no earnings date through `pyside`. A new outside service for optdesk: `second-opinion case: new outside service`. The key `ALPHA_VANTAGE_API_KEY` is read by the `.env` loader and passed in; it never enters an error, log or row.
 4. What a gate may do with these rows (the gates are the next design; this is the contract they get). A vendor earnings date is never a company confirmation. Until a design ports the SEC estimated window, a `listed` date can only refuse or mark a candidate, never clear it; the date is `unconfirmed` unless its `time_of_day` is `pre-market` or `post-market` and the row is at most 2 days old (the old rule's two tests, without the window). `absent`, `unsupported` and `error` all mean unknown, never "no results before expiry", and an unknown or missing date gates as blocked (the candidate waits; it is not cleared); with `horizon=3month` an expiry beyond three months cannot be judged either.
-5. Japan, earnings: Alpha Vantage does not list Japanese companies. The JP route is J-Quants `GET https://api.jquants.com/v2/fins/earnings-date` (JPX's own API, all listed companies with the date history, fields `PubDate` and `SchDate`; the `/v2/equities/earnings-calendar` endpoint lists only March and September fiscal year companies, so it is not used). Owner 2026-11-09: "a, 我应该有账户，我之前注册过" (an account exists). Auth of the current V2 API is one header `x-api-key` and nothing else (V2 refuses `x-api-key` with `Authorization`; the V1 mail, password and refresh token flow is gone). The env key is `JQUANTS_API_KEY`, read by the `.env` loader and passed in, never in an error, log or row; the owner puts the value from the J-Quants dashboard in the service `.env`. option-trader never used J-Quants (no match in its code), so no earlier key name exists to reuse. Rows have `source` `jquants`; a pagination key is followed until empty; an empty `SchDate` (undecided) is `absent`. A new outside service: `second-opinion case: new outside service; owner's word 2026-11-09 given`. The JPX 決算発表予定日 Excel is left out, not a fallback: it is the same JPX data a day behind the API, its terms for automated download were not found, and it adds a second source, an xlsx dependency and a layout that changes per period for a case the gate already covers (a failed or missing J-Quants answer writes `error` or `absent`, which gates as blocked per Decision 4, never as cleared). The free plan's window and delay for this endpoint are unchecked: issue 15 begins by reading the plan page and stops, reporting, if the window cannot cover the next quarter. A JP company without a date gets `absent` (companies can be missing for weeks), and the gate sees unknown, so blocked. `report_date_override` is only an owner override for one company, stored as a `listed` row with `source` `owner` and winning over the vendor's row for that day. For dividends the probe covers JP symbols (plan 11.1 item 4 asks for them); a market whose probe fails gets `unsupported` dividend rows.
+5. Japan, earnings: Alpha Vantage does not list Japanese companies. The JP route is J-Quants `GET https://api.jquants.com/v2/fins/earnings-date` (JPX's own API, all listed companies with the date history, fields `PubDate` and `SchDate`; the `/v2/equities/earnings-calendar` endpoint lists only March and September fiscal year companies, so it is not used). Owner 2026-11-09: "a, 我应该有账户，我之前注册过" (an account exists). Auth of the current V2 API is one header `x-api-key` and nothing else (V2 refuses `x-api-key` with `Authorization`; the V1 mail, password and refresh token flow is gone). The env key is `JQUANTS_API_KEY`, read by the `.env` loader and passed in, never in an error, log or row; the owner puts the value from the J-Quants dashboard in the service `.env`. option-trader never used J-Quants (no match in its code), so no earlier key name exists to reuse. Rows have `source` `jquants`; a pagination key is followed until empty; an empty `SchDate` (undecided) is `absent`. A new outside service: `second-opinion case: new outside service; owner's word 2026-11-09 given`. The JPX 決算発表予定日 Excel is left out, not a fallback: it is the same JPX data a day behind the API, its terms for automated download were not found, and it adds a second source, an xlsx dependency and a layout that changes per period for a case the gate already covers (a failed or missing J-Quants answer writes `error` or `absent`, which gates as blocked per Decision 4, never as cleared). The J-Quants account is the free plan (owner 2026-11-09: "免费版，所以要省着调用"), so calls are budgeted (Decision 12) and the plan's data delay and window shape the gate (Decision 12). A JP company without a date gets `absent` (companies can be missing for weeks), and the gate sees unknown, so blocked. `report_date_override` is only an owner override for one company, stored as a `listed` row with `source` `owner` and winning over the vendor's row for that day. For dividends the probe covers JP symbols (plan 11.1 item 4 asks for them); a market whose probe fails gets `unsupported` dividend rows.
 6. Probe first, checkable: `ot probe dividends` asks IBKR for a fixed list: three US payers, one US non-payer, one US ETF, two JP payers. Per symbol: `ok` (parsable next ex-date), `no_value`, `timeout` (nothing in 10 s) or `error`. Per market the last lines are `probe: US pass|fail` and `probe: JP pass|fail`; a market passes when every payer is `ok`; for the non-payer and the ETF `no_value` and `timeout` are both fine, `error` is not. The owner runs it on the gateway machine (plan 11.1) and commits the output as `docs/design/event-sources-probe.txt`. `dividend-datasets` and later dividend issues Depend on `dividends-probe` and check that file in Acceptance 1 (`grep -c "^probe: US pass" ...` prints 1); if it prints 0 the worker stops and reports, it does not edit the file. Plan 11.1 stop rule: a failed market is not scheduled.
 7. Shapes (append-only; an error is a row, a later success is a new attempt):
    - `obs.earnings_date` r1: key `(observed_on, issuer, attempt)`; `symbol`, `market`, `status` (`listed`, `absent`, `unsupported`, `error`), `report_date` (earliest listed date on or after `observed_on`), `fiscal_period_end`, `time_of_day`, `estimate` (currency not stored), `error_code`, `source` (`alphavantage`, `jquants`, `owner`), `received_at`.
@@ -33,7 +33,13 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 8. Role `ot_w_events` (INSERT only on both tables) is added in `internal/store/setup/setup.go` with `store.DSNEnvEvents = "OT_PG_DSN_EVENTS"`, read in `cmd/ot/runonce.go` and listed in the preflight. `ot_ro_pages` reads. `ot setup pg` and `ot migrate` for the new role are the owner's, run before the jobs (the job is off with a named line while the DSN line is missing).
 9. The short-call guard needs the next ex-date and amount per share and `received_at` freshness; its rule (extrinsic value against the dividend) is the next design.
 10. Order against `origin/design/account-data`, which edits the same files. Rule: an events issue that edits a file named here is `after` the account-data issue that edits it, and both keep a Files-bounded diff. Shared files and the account-data issues: `generate.sh`, `records.go`, docs/contracts datasets (`account-proto`); `internal/broker/api.go` (`account-broker-api`); `internal/store/api.go` (`account-store-api`); `setup.go` (`account-store-migration`, which also takes migration 0016); `cmd/ot/runonce.go`, `wire.go` (`account-wire`); `transport.py` (`account-guard-id`); `server.py` (`account-pyside-executions`). Migration numbers are written "next free at cut time" everywhere. `store/api.go` is 490 lines plus account-data's: the store issues check it stays under 600 and, if not, report instead of splitting.
-11. Cut order: earnings first (issues 1 to 6 and 15, 16, no probe), the probe chain (7 to 10) in parallel with it, dividends (11 to 14) after the probe. Seventeen issues: the watch list, the dividend side and the two Japanese sources have their own issues; the gate is what stops wasted dividend work.
+11. Cut order: earnings first (issues 1 to 6 and 15, 16, no probe), the probe chain (7 to 10) in parallel with it, dividends (11 to 14) after the probe. Sixteen issues: the watch list, the dividend side and the two Japanese sources have their own issues; the gate is what stops wasted dividend work.
+12. Call budget (owner 2026-11-09: the J-Quants account is the FREE plan, "免费版，所以要省着调用"; the Alpha Vantage key is the free tier, about 25 calls a day). The rule, the same for both earnings sources:
+   - At most one outside call per job run. `earnings_refresh` makes one Alpha Vantage call (the one `EARNINGS_CALENDAR` csv covers all US issuers) and one J-Quants call, never one per symbol.
+   - At most one run per day: the job is keyed by the `XNYS` session day and does nothing when a non-`error` row of the day exists for the source; a manual `run-once` on the same day does not call again either.
+   - No automatic retry loop, inside a run or across runs of a day. A failure is recorded as an `error` row (attempt 1) and gates as blocked (Decision 4) until the next day's run. A 429 or any limit answer (J-Quants 429, the Alpha Vantage notice body) is recorded as `error` with `error_code` `rate_limited` and is not retried.
+   - J-Quants, one request: the v2 docs for `/v2/fins/earnings-date` could not be read offline (the spec page is script-rendered and a search returned no parameter list), so the parameters are unverified. Working assumption to confirm in issue 15 from the owner's own dashboard docs, not by a test call: a request without `code` returns the announcement dates of all listed companies with the `pagination_key` cursor, and `/v2/fins/summary` of the same family takes `date` or `code`. If a bulk request is confirmed, the source makes that one request (pages followed by the cursor count as one logical call but are capped: at most 5 pages per run, then `error` `page_cap`). Fallback if it takes `code` only: per symbol for the watch-list JP issuers only (never the whole market), skipping an issuer whose stored `listed` date is still in the future and was fetched within the last 7 days (N = 7), and capped at 20 calls per run (the rest keep their stored row); the cap and N are keys of `earningsrefresh/job.toml`.
+   - Free plan delay and window: the J-Quants free plan is known to serve data with a delay (about 12 weeks for the price data; the delay for this endpoint is unverified) and a limited history. The gate rule: a J-Quants date is `unconfirmed` (Decision 4) whenever `received_at` minus the vendor's own publication stamp is not known to be under 2 days; with the free plan that is every JP date until the owner confirms otherwise, so JP dates can only refuse or mark a candidate, never clear it, and a JP company whose date is missing because of the lag is `absent`, which gates as blocked. The job stores the date as listed and leaves that judgement to the gate (`source` `jquants` is the signal).
 
 ## Modules
 
@@ -43,7 +49,7 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 | 2 earnings-store (interface and implementation) | store | after 1, account-store-api, account-store-migration |
 | 3 earnings-source (interface and implementation) | sources | after 1 |
 | 4 earnings-job (interface and implementation) | jobs | after 2, 3 |
-| 5 watch-loader-earnings-wire | ot | after 4, account-wire |
+| 5 watch-loader-earnings-wire | ot | after 4, 6, account-wire |
 | 6 events-docs-modules | docs | after 4 |
 | 7 reference-proto (interface) | contracts | after 1 |
 | 8 pyside-dividends (interface and implementation) | pyside | after 7, account-guard-id, account-pyside-executions |
@@ -54,12 +60,12 @@ Goal: two stored, readable facts per underlying: the next results date and the n
 | 13 dividend-job (interface and implementation) | jobs | after 12, 4, 6 |
 | 14 dividend-wire | ot | after 13, 5, 16 |
 | 15 jquants-earnings-source (interface and implementation) | sources | after 3 |
-| 16 jquants-earnings-wire | ot | after 15, 5 |
+| 16 jquants-earnings-wire | ot | after 15, 5, 6 |
 
 ## Interface
 
 - contracts: datasets of Decision 7 (generated Go, docs); `reference.proto`: `service ReferenceService { rpc Dividends(stream ContractKey) returns (stream DividendProjection); }` as plan v2.5 line 170 (the plan's `TradingHours` rpc is not part of this design); `ContractKey` (symbol, sec_type, exchange, currency, con_id) is new in this file; `DividendProjection` has the key, `status`, the four values as optional text decimals, `error_code`, `received_at`.
-- store: `EarningsDateWriter/Reader`, `DividendWriter/Reader`, `store.DSNEnvEvents`. sources: `EarningsConfig{BaseURL, APIKey, Clock}`, `EarningsRow`, `EarningsSource`, `NewAlphaVantageFunc`; `NewJQuantsFunc` (issue 15, same `EarningsSource`). broker: `Broker.Dividends(ctx, []Contract) ([]DividendProjection, error)`. jobs: `WatchEntry`, `NewEarningsRefreshFunc`, `NewDividendCaptureFunc`, each taking `[]WatchEntry`.
+- store: `EarningsDateWriter/Reader`, `DividendWriter/Reader`, `store.DSNEnvEvents`. sources: `EarningsConfig{BaseURL, APIKey, Clock}`, `EarningsRow`, `EarningsSource`, `NewAlphaVantageFunc`; `NewJQuantsFunc` (issue 15, same `EarningsSource`, declared in `internal/sources/api.go` by issue 15). broker: a separate `ReferenceClient` interface with `Dividends(ctx, []Contract) ([]DividendProjection, error)` and its own dial type `NewReferenceFunc` in `internal/broker/api.go`; `Broker` is unchanged, so `unreachableBroker` and the test fakes keep compiling. jobs: `WatchEntry`, `NewEarningsRefreshFunc`, `NewDividendCaptureFunc`, each taking `[]WatchEntry`.
 - pyside: `ReferenceService` servicer registered in `transport.py`; the Protocol in `ibkr/api.py`.
 
 ## Issues
@@ -68,17 +74,17 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 1 earnings-datasets (interface)
 - Module: contracts. Size: M. Depends on: none.
-- Files: contracts/datasets/obs.earnings_date.r1.json, contracts/generate.sh, internal/contracts/gen/records.go, docs/contracts/datasets/obs.earnings_date.md, contracts/fixtures/obs.earnings_date.r1.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/schema_test.go
+- Files: contracts/datasets/obs.earnings_date.r1.json, contracts/generate.sh, internal/contracts/gen/records.go, docs/contracts/datasets/obs.earnings_date.md, contracts/fixtures/obs.earnings_date.r1.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/schema_test.go, internal/contracts/api.go, internal/contracts/api_test.go
 - Design: docs/design/event-sources.md#Decisions (7). Contracts: obs.earnings_date r1 (new). `records.go` is generated and skipped by the ratchet; nothing to report.
 - Order: after `account-proto` (same generated files).
-- Goal: schema with the status enum and the key of Decision 7, generated record, fixtures `listed`, `absent`, `unsupported`, `error` (synthetic), manifest hashes.
+- Goal: schema with the status enum and the key of Decision 7, generated record exposed as `contracts.EarningsDate` in `internal/contracts/api.go` (the store interface names it), fixtures `listed`, `absent`, `unsupported`, `error` (synthetic), manifest hashes.
 - Acceptance: 1. `grep -c "unsupported" contracts/datasets/obs.earnings_date.r1.json` is at least 1 and `grep -c "obs.earnings_date" internal/contracts/gen/records.go` is at least 1. 2. `go test ./internal/contracts -race -count=1` passes with `TestEarningsDateFixtureValues` once (a row per status; `absent`, `unsupported` and `error` have null `report_date`). 3. the diff line.
 - Checked by CI: the generated-code check; `TestFixtureManifest`; `scripts/hygiene`.
 
 ### 2 earnings-store (interface and implementation)
 - Module: store. Size: L. Depends on: earnings-datasets.
-- Files: internal/store/api.go, internal/store/api_events_test.go, migrations/NNNN_events.sql, internal/store/events/earnings.go, internal/store/events/earnings_test.go, internal/store/events/earnings_pg_test.go, internal/store/setup/setup.go, internal/store/setup/setup_test.go, docs/contracts/store.md
-- Design: docs/design/event-sources.md#Decisions (7, 8, 10). The contract test is a new file (`api_test.go` is 800 lines). NNNN is the next free at cut time.
+- Files: internal/store/api.go, internal/store/api_events_test.go, migrations/NNNN_events.sql, internal/store/events/earnings.go, internal/store/events/earnings_test.go, internal/store/events/earnings_pg_test.go, internal/store/setup/setup.go, internal/store/setup/setup_test.go, docs/contracts/store.md, arch.toml, .go-arch-lint.yml
+- Design: docs/design/event-sources.md#Decisions (7, 8, 10). `arch.toml` and `.go-arch-lint.yml` are regenerated for the new `internal/store/events` package (a module plus repo-file pair). The contract test is a new file (`api_test.go` is 800 lines). NNNN is the next free at cut time.
 - Order: after 1, `account-store-api`, `account-store-migration`.
 - Goal: `EarningsDateWriter/Reader`, `DSNEnvEvents`, table and view `rd.earnings_date_r1`, role `ot_w_events` INSERT only, reader returns the highest attempt per day.
 - Acceptance: 1. `grep -c "EarningsDateWriter\|EarningsDateReader\|DSNEnvEvents" internal/store/api.go` is at least 3 and `wc -l < internal/store/api.go` is under 600. 2. `go test ./internal/store/... -race -count=1` passes with `TestReaderTakesHighestAttempt` once; `grep -c "go:build pg" internal/store/events/earnings_pg_test.go` prints 1; `grep -c "ot_w_events" internal/store/setup/setup.go` is at least 1. 3. `grep -c "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_events.sql` prints 0; the diff line.
@@ -86,35 +92,37 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 3 earnings-source (interface and implementation)
 - Module: sources. Size: M. Depends on: earnings-datasets. Second-opinion case: new outside service.
-- Files: internal/sources/api.go, internal/sources/api_test.go, internal/sources/alphavantage/client.go, internal/sources/alphavantage/parse.go, internal/sources/alphavantage/client_test.go, internal/sources/alphavantage/testdata/calendar.csv, internal/sources/alphavantage/testdata/notice.json, docs/contracts/sources.md
-- Design: docs/design/event-sources.md#Decisions (3)
+- Files: internal/sources/api.go, internal/sources/api_test.go, internal/sources/alphavantage/client.go, internal/sources/alphavantage/parse.go, internal/sources/alphavantage/client_test.go, internal/sources/alphavantage/testdata/calendar.csv, internal/sources/alphavantage/testdata/notice.json, docs/contracts/sources.md, arch.toml, .go-arch-lint.yml
+- Design: docs/design/event-sources.md#Decisions (3, 12). `arch.toml` and `.go-arch-lint.yml` are regenerated for the new package (a module plus repo-file pair).
+- Call budget (Decision 12): `Fetch` makes exactly one HTTP request, follows no redirect loop and never retries; a notice body is `error` with `error_code` `rate_limited`.
 - Order: after 1.
 - Goal: `EarningsSource.Fetch(ctx)` over recorded bodies in tests; the key only in the query; notice, non-csv and short bodies are typed errors.
-- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestParseByHeaderName`, `TestNoticeBodyIsError`, `TestShortCalendarIsError`, `TestKeyNeverInError` once each. 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/alphavantage/*.go` prints 0; `grep -c "EarningsSource" internal/sources/api.go` is at least 1. 3. the diff line.
+- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestParseByHeaderName`, `TestNoticeBodyIsError`, `TestShortCalendarIsError`, `TestKeyNeverInError`, `TestOneCallPerFetch`, `TestNoticeIsRateLimitedNoRetry` once each (a fake HTTP client counts calls: exactly 1 per `Fetch`, also after a notice body or a 5xx). 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/alphavantage/*.go` prints 0; `grep -c "EarningsSource" internal/sources/api.go` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`. No new module dependency (`encoding/csv`).
 
 ### 4 earnings-job (interface and implementation)
 - Module: jobs. Size: M. Depends on: earnings-store, earnings-source.
-- Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/earningsrefresh/job.toml, internal/jobs/earningsrefresh/run.go, internal/jobs/earningsrefresh/run_test.go, docs/contracts/jobs.md
-- Design: docs/design/event-sources.md#Decisions (1, 4, 5, 7). The job takes one `EarningsSource` per market; a market without a source gets `unsupported`.
+- Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/earningsrefresh/job.toml, internal/jobs/earningsrefresh/run.go, internal/jobs/earningsrefresh/run_test.go, docs/contracts/jobs.md, arch.toml, .go-arch-lint.yml
+- Design: docs/design/event-sources.md#Decisions (1, 4, 5, 7, 12). `arch.toml` and `.go-arch-lint.yml` are regenerated for the new package (a module plus repo-file pair).
+- Call budget (Decision 12): one `Fetch` per source per run, at most one run per session day, no retry; a day with a non-`error` row for a source is skipped without a call, and an `error` row of the day is not retried until the next day. The job takes one `EarningsSource` per market; a market without a source gets `unsupported`.
 - Order: after 2, 3.
-- Goal: `WatchEntry`, `NewEarningsRefreshFunc`; once per `XNYS` session day after the close, one fetch, one row per entry: `listed` (earliest date on or after the day) or `absent` from the source of its market, `unsupported` for a market with no source, and a `report_date_override` as a `listed` row with `source` `owner` that wins; a source error writes an `error` row per entry (the next run gets the next attempt) and fails the run.
-- Acceptance: 1. `go test ./internal/jobs/... -race -count=1` passes with `TestListedTakesEarliestOnOrAfterDay`, `TestMarketWithoutSourceIsUnsupported`, `TestOwnerOverrideWins`, `TestSourceErrorWritesErrorRows`, `TestRerunNextAttempt` once each. 2. `grep -c 'id = "earnings_refresh"' internal/jobs/earningsrefresh/job.toml` prints 1; `grep -c "time.Sleep\|time.Now()" internal/jobs/earningsrefresh/*.go` prints 0. 3. the diff line.
+- Goal: `WatchEntry`, `NewEarningsRefreshFunc`; once per `XNYS` session day after the close, one fetch, one row per entry: `listed` (earliest date on or after the day) or `absent` from the source of its market, `unsupported` for a market with no source, and a `report_date_override` as a `listed` row with `source` `owner` that wins; a source error writes an `error` row per entry (attempt 1 of the day; no retry the same day, the next day's run starts again) and fails the run.
+- Acceptance: 1. `go test ./internal/jobs/... -race -count=1` passes with `TestListedTakesEarliestOnOrAfterDay`, `TestMarketWithoutSourceIsUnsupported`, `TestOwnerOverrideWins`, `TestSourceErrorWritesErrorRows`, `TestOneFetchPerSourcePerRun`, `TestSecondRunSameDayMakesNoCall`, `TestErrorDayNotRetried`, `TestRateLimitedRecordedNoRetry` once each, on fake sources that count calls (never more than 1 per source per run, 0 on a second run of the same day, 0 after an `error` row of that day). 2. `grep -c 'id = "earnings_refresh"' internal/jobs/earningsrefresh/job.toml` prints 1; `grep -c "time.Sleep\|time.Now()" internal/jobs/earningsrefresh/*.go` prints 0. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`; the size rule.
 
 ### 5 watch-loader-earnings-wire
 - Module: ot. Size: M. Depends on: earnings-job.
-- Files: cmd/ot/watch.go, cmd/ot/watch_test.go, cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/env.go, docs/contracts/ot.md
-- Design: docs/design/event-sources.md#Decisions (1, 3, 8)
-- Order: after 4, `account-wire`.
-- Goal: load `$OT_HOME/watch.toml` (an unknown market, a duplicate issuer or a malformed issuer or a malformed `report_date_override` is a named refusal), register `earnings_refresh` in `run-once` and the scheduler, read `OT_PG_DSN_EVENTS` and `ALPHA_VANTAGE_API_KEY`; a missing key or DSN disables only this job with a named line; values never printed.
-- Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestWatchLoad`, `TestWatchRefusals` (covers the override),  `TestEarningsRefreshRegistered`, `TestMissingKeyDisablesOnlyEarnings` once each. 2. `grep -c "watch.toml\|OT_PG_DSN_EVENTS\|ALPHA_VANTAGE_API_KEY" docs/contracts/ot.md` is at least 3; `grep -c "ALPHA_VANTAGE_API_KEY=[A-Za-z0-9]" cmd/ot/*_test.go | grep -vc ":0"` prints 0. 3. the diff line.
+- Files: cmd/ot/watch.go, cmd/ot/watch_test.go, cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/env.go, cmd/ot/preflight.go, cmd/ot/preflight_test.go, docs/contracts/ot.md
+- Design: docs/design/event-sources.md#Decisions (1, 3, 8, 12)
+- Order: after 4, 6 (the `ot` import list of modules.md), `account-wire`.
+- Goal: load `$OT_HOME/watch.toml` (an unknown market, a duplicate issuer or a malformed issuer or a malformed `report_date_override` is a named refusal), register `earnings_refresh` in `run-once` and the scheduler, read `OT_PG_DSN_EVENTS` and `ALPHA_VANTAGE_API_KEY` and list them in the preflight; the scheduler runs `earnings_refresh` once per session day and `run-once` makes no second call the same day (Decision 12); a missing key or DSN disables only this job with a named line; values never printed.
+- Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestWatchLoad`, `TestWatchRefusals` (covers the override),  `TestEarningsRefreshRegistered`, `TestMissingKeyDisablesOnlyEarnings`, `TestEarningsRefreshOncePerDayScheduled` once each (fake source counting calls: one scheduler tick pair on one day gives 1 call). 2. `grep -c "watch.toml\|OT_PG_DSN_EVENTS\|ALPHA_VANTAGE_API_KEY" docs/contracts/ot.md` is at least 3; `grep -c "ALPHA_VANTAGE_API_KEY=[A-Za-z0-9]" cmd/ot/*_test.go | grep -vc ":0"` prints 0. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
 ### 6 events-docs-modules
 - Module: docs. Size: S. Depends on: earnings-job.
-- Files: docs/design/modules.md
-- Design: docs/design/event-sources.md#Modules
+- Files: docs/design/modules.md, arch.toml
+- Design: docs/design/event-sources.md#Modules. `arch.toml` is derived from the `ot` import list of modules.md (a docs plus repo-file pair).
 - Order: after 4 (and after the other designs' edits of the same sentence).
 - Goal: add `internal/sources/alphavantage`, `internal/sources/jquants`, `internal/jobs/earningsrefresh`, `internal/store/events` to the one-constructor and implementation lists (the dividend package follows in 13).
 - Acceptance: 1. `grep -c "alphavantage\|earningsrefresh\|store/events" docs/design/modules.md` is at least 3. 2. the diff line.
@@ -122,10 +130,10 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 7 reference-proto (interface)
 - Module: contracts. Size: S. Depends on: earnings-datasets.
-- Files: contracts/proto/ibkr/v1/reference.proto, contracts/generate.sh, internal/contracts/genpb/ibkr/v1/reference.pb.go, internal/contracts/genpb/ibkr/v1/reference_grpc.pb.go, pyside/src/optdesk/contracts/genpb/ibkr/v1/reference_pb2.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/reference_pb2.pyi, pyside/src/optdesk/contracts/genpb/ibkr/v1/reference_pb2_grpc.py
+- Files: contracts/proto/ibkr/v1/reference.proto, contracts/generate.sh, internal/contracts/genpb/ibkr/v1/reference.pb.go, internal/contracts/genpb/ibkr/v1/reference_grpc.pb.go, pyside/src/optdesk/contracts/genpb/ibkr/v1/reference_pb2.py, pyside/src/optdesk/contracts/genpb/ibkr/v1/reference_pb2.pyi, pyside/src/optdesk/contracts/genpb/ibkr/v1/reference_pb2_grpc.py, pyside/src/optdesk/contracts/api.py, pyside/tests/contracts/test_contracts_api.py
 - Design: docs/design/event-sources.md#Interface. The proto path is owner-only (the owner merges it).
 - Order: after 1.
-- Goal: the service and messages of the Interface section, generated output with its source.
+- Goal: the service and messages of the Interface section, generated output with its source, and the re-export of the `ReferenceService` messages in the contracts `api.py` (the pyside servicer of issue 8 imports them only there).
 - Acceptance: 1. `grep -c "rpc Dividends(stream ContractKey) returns (stream DividendProjection)" contracts/proto/ibkr/v1/reference.proto` prints 1; `grep -ci "account_id\|password\|token" contracts/proto/ibkr/v1/reference.proto` prints 0. 2. `git diff $(git merge-base HEAD origin/main) -- contracts/proto | grep -c '^-[^-]'` prints 0; `cd pyside && uv run pytest tests/contracts -q` passes. 3. the diff line.
 - Checked by CI: the generated-code check; pyside and ci-go workflows.
 
@@ -141,9 +149,9 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 ### 9 broker-dividends (interface and implementation)
 - Module: broker. Size: M. Depends on: reference-proto.
 - Files: internal/broker/api.go, internal/broker/api_test.go, internal/broker/grpcbroker/dividends.go, internal/broker/grpcbroker/dividends_test.go, docs/contracts/broker.md
-- Design: docs/design/event-sources.md#Interface
+- Design: docs/design/event-sources.md#Interface. `Broker` is left unchanged on purpose: other types implement it outside these Files.
 - Order: after 7, `account-broker-api`.
-- Goal: `Broker.Dividends` and `DividendProjection` (pointer numbers for unset); the client over an in-process fake server; a status the server did not set is an error.
+- Goal: the `ReferenceClient` interface with `Dividends`, `NewReferenceFunc` and `DividendProjection` (pointer numbers for unset); the client over an in-process fake server; a status the server did not set is an error.
 - Acceptance: 1. `go test ./internal/broker/... -race -count=1` passes with `TestDividendsContract`, `TestDividendsUnsetStatusIsError` once each. 2. `go list -deps ./internal/broker | grep -c "grpcbroker\|genpb"` prints 0. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
@@ -158,10 +166,10 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 11 dividend-datasets (interface)
 - Module: contracts. Size: M. Depends on: dividends-probe.
-- Files: contracts/datasets/obs.dividend_expectation.r1.json, contracts/generate.sh, internal/contracts/gen/records.go, docs/contracts/datasets/obs.dividend_expectation.md, contracts/fixtures/obs.dividend_expectation.r1.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/schema_test.go
+- Files: contracts/datasets/obs.dividend_expectation.r1.json, contracts/generate.sh, internal/contracts/gen/records.go, docs/contracts/datasets/obs.dividend_expectation.md, contracts/fixtures/obs.dividend_expectation.r1.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/schema_test.go, internal/contracts/api.go, internal/contracts/api_test.go
 - Design: docs/design/event-sources.md#Decisions (6, 7). Contracts: obs.dividend_expectation r1 (new).
 - Order: after 10, 7 and the probe file.
-- Goal: schema, generated record, one fixture per status.
+- Goal: schema, generated record exposed as `contracts.DividendExpectation` in `internal/contracts/api.go`, one fixture per status.
 - Acceptance: 1. `grep -c "^probe: US pass" docs/design/event-sources-probe.txt` prints 1 (else stop and report). 2. `go test ./internal/contracts -race -count=1` passes with `TestDividendFixtureValues` once (`no_value`, `unsupported`, `error` rows have null `next_ex_date` and `next_amount`). 3. the diff line.
 - Checked by CI: the generated-code check; `TestFixtureManifest`.
 
@@ -176,10 +184,10 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 13 dividend-job (interface and implementation)
 - Module: jobs. Size: M. Depends on: dividend-store, earnings-job.
-- Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/dividendcapture/job.toml, internal/jobs/dividendcapture/run.go, internal/jobs/dividendcapture/run_test.go, docs/contracts/jobs.md, docs/design/modules.md
-- Design: docs/design/event-sources.md#Decisions (2, 5, 6, 7)
+- Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/dividendcapture/job.toml, internal/jobs/dividendcapture/run.go, internal/jobs/dividendcapture/run_test.go, docs/contracts/jobs.md, docs/design/modules.md, arch.toml, .go-arch-lint.yml
+- Design: docs/design/event-sources.md#Decisions (2, 5, 6, 7). This entry spans two modules, jobs and docs (`modules.md`), plus the regenerated `arch.toml` and `.go-arch-lint.yml` for the new package: a declared module pair.
 - Order: after 12, 4, 6 (modules.md) and the probe file.
-- Goal: `NewDividendCaptureFunc`; once per session day after the close, ask `broker.Dividends` for the entries of the markets whose probe passed (`unsupported` rows for the others), write `present`, `no_value`, and a `timeout` as `error` with `error_code`, per stock; one stock failing does not stop the others.
+- Goal: `NewDividendCaptureFunc`; once per session day after the close, ask `ReferenceClient.Dividends` for the entries of the markets listed in the `passed_markets` key of `internal/jobs/dividendcapture/job.toml` (the owner copies the passed markets from the probe file; this is the run-time input) (`unsupported` rows for the others), write `present`, `no_value`, and a `timeout` as `error` with `error_code`, per stock; one stock failing does not stop the others.
 - Acceptance: 1. `grep -c "^probe: US pass" docs/design/event-sources-probe.txt` prints 1 (else stop and report). 2. `go test ./internal/jobs/... -race -count=1` passes with `TestPresentRow`, `TestNoValueRow`, `TestTimeoutIsErrorRow`, `TestUnpassedMarketIsUnsupported`, `TestOneStockFailsOthersWritten` once each. 3. `grep -c "dividendcapture" docs/design/modules.md` is at least 1; the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
@@ -194,20 +202,21 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ### 15 jquants-earnings-source (interface and implementation)
 - Module: sources. Size: M. Depends on: earnings-source. Second-opinion case: new outside service; owner's word 2026-11-09 given.
-- Files: internal/sources/jquants/client.go, internal/sources/jquants/parse.go, internal/sources/jquants/client_test.go, internal/sources/jquants/testdata/earnings_date.json, internal/sources/jquants/testdata/earnings_date_page2.json, docs/contracts/sources.md
-- Design: docs/design/event-sources.md#Decisions (5). Own code over `net/http` and `encoding/json`, no new dependency. The first step reads the J-Quants plan page for the free plan's window and delay of `/v2/fins/earnings-date` and stops, reporting in the pull request, if the window cannot cover the next quarter.
+- Files: internal/sources/jquants/client.go, internal/sources/jquants/parse.go, internal/sources/jquants/client_test.go, internal/sources/jquants/testdata/earnings_date.json, internal/sources/jquants/testdata/earnings_date_page2.json, internal/sources/api.go, internal/sources/api_test.go, docs/contracts/sources.md, arch.toml, .go-arch-lint.yml
+- Design: docs/design/event-sources.md#Decisions (5, 12). Own code over `net/http` and `encoding/json`, no new dependency. `arch.toml` and `.go-arch-lint.yml` are regenerated for the new package (a module plus repo-file pair). The plan is settled (free, owner 2026-11-09), so no network step is left to the worker.
+- Call budget (Decision 12): one request per `Fetch` (bulk, pages by cursor capped at 5), never a request per symbol; no retry on any status; a 429 is `error` with `error_code` `rate_limited`. If the bulk request is not confirmed by the owner's dashboard docs (parameters unverified), the fallback is per symbol for watch-list JP issuers only, skipping an issuer whose stored `listed` date is in the future and was fetched within `refetch_days` (7), capped by `max_calls` (20) from `job.toml`.
 - Order: after 3 (same `docs/contracts/sources.md`).
-- Goal: `NewJQuantsFunc` returns an `EarningsSource` over recorded bodies: the key only in the `x-api-key` header, pages followed by the pagination key, the latest `SchDate` on or after the day per company, 5-digit code normalised to 4, an empty `SchDate` is `absent`; a 401 or 403, a 429 and a non-JSON body are typed errors.
-- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJQuantsParse`, `TestJQuantsPagination`, `TestJQuantsEmptyDateIsAbsent`, `TestJQuantsKeyNeverInError`, `TestJQuantsAuthErrorIsTyped` once each, on the recorded files in `testdata` and no network. 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jquants/*.go` prints 0; `grep -c "jquants" docs/contracts/sources.md` is at least 1. 3. the diff line.
+- Goal: `NewJQuantsFunc` returns an `EarningsSource` over recorded bodies: the key only in the `x-api-key` header, pages followed by the pagination key, the latest `SchDate` on or after the day per company, 5-digit code normalised to 4, an empty `SchDate` is `absent`; a 401 or 403, a 429 and a non-JSON body are typed errors, and no error is retried.
+- Acceptance: 1. `go test ./internal/sources/... -race -count=1` passes with `TestJQuantsParse`, `TestJQuantsPagination`, `TestJQuantsEmptyDateIsAbsent`, `TestJQuantsKeyNeverInError`, `TestJQuantsAuthErrorIsTyped`, `TestJQuantsOneCallPerFetch`, `TestJQuantsRateLimitedNoRetry`, `TestJQuantsPageCap`, `TestJQuantsFallbackSkipsFutureFetched` once each, with a fake client that counts calls (one call for a one-page body, at most 5 for pages, exactly 1 after a 429 or 5xx, the fallback only for the listed JP issuers and 0 for a fresh future date), on the recorded files in `testdata` and no network. 2. `grep -c "time.Sleep\|http.Get\|os.Getenv" internal/sources/jquants/*.go` prints 0; `grep -c "jquants" docs/contracts/sources.md` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
 ### 16 jquants-earnings-wire
 - Module: ot. Size: S. Depends on: jquants-earnings-source, watch-loader-earnings-wire.
 - Files: cmd/ot/runonce.go, cmd/ot/runonce_test.go, cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/env.go, docs/contracts/ot.md
-- Design: docs/design/event-sources.md#Decisions (5)
-- Order: after 15, 5 (same files), `account-wire`. Issue 14 is after 16 for the same files.
-- Goal: pass `NewJQuantsFunc` as the `JP` source of `earnings_refresh`, reading `JQUANTS_API_KEY`; a missing key disables only the JP source with a named line (JP entries get `unsupported`) and the value is never printed; a J-Quants failure writes `error` rows for JP entries only.
-- Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestJPSourceWired`, `TestJQuantsFailureOnlyJPRows`, `TestMissingJQuantsKeyNamedLine` once each. 2. `grep -c "JQUANTS_API_KEY" docs/contracts/ot.md` is at least 1. 3. the diff line.
+- Design: docs/design/event-sources.md#Decisions (5, 12)
+- Order: after 15, 5, 6 (same files, and the `ot` import list of modules.md), `account-wire`. Issue 14 is after 16 for the same files.
+- Goal: pass `NewJQuantsFunc` as the `JP` source of `earnings_refresh`, reading `JQUANTS_API_KEY`; a missing key disables only the JP source with a named line (JP entries get `unsupported`) and the value is never printed; a J-Quants failure writes `error` rows for JP entries only; the J-Quants source is called at most once per day (no second call from a manual `run-once` or a scheduler tick the same day, no retry after an `error`).
+- Acceptance: 1. `go test ./cmd/ot -race -count=1` passes with `TestJPSourceWired`, `TestJQuantsFailureOnlyJPRows`, `TestMissingJQuantsKeyNamedLine`, `TestJQuantsOneCallPerDay`, `TestJQuantsErrorDayNotRetried` once each (fake client counting calls: 1 for two ticks on one day, 0 further after an `error`). 2. `grep -c "JQUANTS_API_KEY" docs/contracts/ot.md` is at least 1. 3. the diff line.
 - Checked by CI: ci-go; `go run ./scripts/arch --check`.
 
 ## Checked by CI
@@ -223,8 +232,8 @@ Each entry: Module, Goal, Files, Design, Order, Acceptance, Checked by CI. "the 
 
 ## Open questions for the owner
 
-1. Is the old Alpha Vantage key still valid, and is the free quota (about 25 calls a day by my knowledge) enough? (The source itself is settled, 2026-11-09.)
-2. J-Quants is settled (account exists, 2026-11-09); which plan is it on? The free plan's window may not reach the next quarter. If a market's dividend probe fails: a hand-kept file, or no guard for it?
+1. Is the old Alpha Vantage key still valid? The free tier (about 25 calls a day) is enough: the job makes one call per day (Decision 12). Settled 2026-11-09: J-Quants is the free plan, so one call per run, no retry.
+2. If a market's dividend probe fails: a hand-kept file, or no guard for it?
 
 ## Left out
 
