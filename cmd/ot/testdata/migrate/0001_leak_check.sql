@@ -1,0 +1,1 @@
+-- leak check: a migration file for the --dir check

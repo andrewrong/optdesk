@@ -88,7 +88,9 @@ const (
 
 var sentinels = []string{sentDSN, sentPassword, sentVerifier}
 
-func leakErr() error { return fmt.Errorf("dial %s pw %s verifier %s", sentDSN, sentPassword, sentVerifier) }
+func leakErr() error {
+	return fmt.Errorf("dial %s pw %s verifier %s", sentDSN, sentPassword, sentVerifier)
+}
 
 // leakApp builds an app whose env, .env and every opener hold or return the sentinels.
 func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
@@ -119,7 +121,7 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 // leakRows is the table of commands that take a DSN, with the arguments that reach the failing step.
 var leakRows = map[string][]string{
 	"calendar": {"load", "testdata/calendar_synthetic.json"},
-	"migrate":  {"--dir", "."},
+	"migrate":  {"--dir", "testdata/migrate"},
 	"setup":    {"pg"},
 	"page":     {"--day", "2026-03-04"},
 	"run-once": {"--day", "2026-03-04"},
