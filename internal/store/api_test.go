@@ -13,6 +13,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/atombender/go-jsonschema/pkg/types"
 )
 
 type memSeries struct{ rows []contracts.SeriesPoint }
@@ -796,5 +797,53 @@ func TestSentContract(t *testing.T) {
 	got, err := s.SentSince(ctx, "2026-11-05")
 	if sends != 1 || err != nil || len(got) != 1 || got[0].RuleID != "vix_high" || store.DSNEnvAlerts != "OT_PG_DSN_ALERTS" {
 		t.Fatalf("sends %d got %+v err %v", sends, got, err)
+	}
+}
+
+// memReadingView is a fake ReadingViewReader over fixed rows: it filters by key and range and sorts by day.
+type memReadingView struct {
+	rows   []contracts.ReadingRecord
+	closed bool
+}
+
+func (m *memReadingView) WinnerReadings(_ context.Context, name, subjectKind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
+	out := []contracts.ReadingRecord{}
+	for _, r := range m.rows {
+		d := contracts.Day(r.Day.Format(time.DateOnly))
+		if r.Name == name && r.SubjectKind == subjectKind && r.Subject == subject && d >= from && d <= to {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Day.Before(out[j].Day.Time) })
+	return out, nil
+}
+
+func (m *memReadingView) Close() error { m.closed = true; return nil }
+
+func TestReadingViewReaderContract(t *testing.T) {
+	t.Parallel()
+	row := func(day contracts.Day) contracts.ReadingRecord {
+		d, err := time.Parse(time.DateOnly, string(day))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return contracts.ReadingRecord{Name: "market.ivp_own", Subject: "SPX", Day: types.SerializableDate{Time: d}}
+	}
+	var open store.OpenReadingViewFunc = func(context.Context, string) (store.ReadingViewReader, error) {
+		return &memReadingView{rows: []contracts.ReadingRecord{row("2026-11-05"), row("2026-11-04")}}, nil
+	}
+	r, err := open(context.Background(), "dsn")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r.Close() }()
+	ctx := context.Background()
+	got, err := r.WinnerReadings(ctx, "market.ivp_own", "", "SPX", "2026-11-04", "2026-11-05")
+	if err != nil || len(got) != 2 || got[0].Day.Format(time.DateOnly) != "2026-11-04" || got[1].Day.Format(time.DateOnly) != "2026-11-05" {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+	none, err := r.WinnerReadings(ctx, "market.ivp_own", "", "SPX", "2026-12-01", "2026-12-02")
+	if err != nil || none == nil || len(none) != 0 {
+		t.Fatalf("no rows: got %#v err %v, want empty non-nil slice", none, err)
 	}
 }
