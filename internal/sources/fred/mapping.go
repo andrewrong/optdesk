@@ -40,6 +40,13 @@ func parseDay(s string) (types.SerializableDate, error) {
 var seriesUnits = map[string]contracts.SeriesUnit{
 	"DGS10": contracts.SeriesUnit("percent"),
 	"DGS2":  "percent",
+	// Market series: FRED's units text is "Index" for these five and "Percent" for DGS3MO.
+	"DGS3MO": "percent",
+	"SP500":  "index_points",
+	"VIXCLS": "index_points",
+	"VXNCLS": "index_points",
+	"RVXCLS": "index_points",
+	"VXVCLS": "index_points",
 }
 
 // mapObservations maps the body of a FRED series/observations response to records.
