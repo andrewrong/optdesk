@@ -7,5 +7,10 @@
   {"series_id": "VXNCLS", "units": "Index"},
   {"series_id": "RVXCLS", "units": "Index"},
   {"series_id": "VXVCLS", "units": "Index"},
-  {"series_id": "DGS3MO", "units": "Percent"}
+  {"series_id": "DGS3MO", "units": "Percent"},
+  {"series_id": "WALCL", "units": "Millions of U.S. Dollars"},
+  {"series_id": "WDTGAL", "units": "Millions of U.S. Dollars"},
+  {"series_id": "RRPONTSYD", "units": "Billions of U.S. Dollars"},
+  {"series_id": "DFF", "units": "Percent"},
+  {"series_id": "BAMLH0A0HYM2", "units": "Percent"}
 ]
