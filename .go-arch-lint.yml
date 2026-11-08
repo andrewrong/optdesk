@@ -51,6 +51,8 @@ components:
     in: internal/store/snapshot
   compute:
     in: internal/compute
+  compute/alertrules:
+    in: internal/compute/alertrules
   compute/figures:
     in: internal/compute/figures
   compute/gonumstats:
@@ -69,6 +71,8 @@ components:
     in: internal/jobs
   jobs/calendarrefresh:
     in: internal/jobs/calendarrefresh
+  jobs/computefigures:
+    in: internal/jobs/computefigures
   jobs/fredseries:
     in: internal/jobs/fredseries
   jobs/optioneod:
@@ -192,6 +196,11 @@ deps:
   compute:
     mayDependOn:
       - contracts
+  compute/alertrules:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/figures:
     mayDependOn:
       - contracts
@@ -250,6 +259,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/computefigures:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/fredseries:
     mayDependOn:
       - contracts
@@ -298,52 +318,68 @@ deps:
     mayDependOn:
       - contracts
       - store
+      - compute
   notify/core:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   notify/dryrun:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   notify/telegram:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   pages:
     mayDependOn:
       - contracts
       - store
+      - compute
   pages/embed:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/macro_page:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/macro_rates:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/option_data_page:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   ot:
     mayDependOn:
       - contracts
@@ -378,6 +414,7 @@ deps:
       - pages/embed
       - compute/rules
       - store/reading
+      - jobs/computefigures
       - compute/own
       - compute/gonumstats
       - compute/figures
@@ -387,6 +424,7 @@ deps:
       - jobs/serieshistory
       - clock/calendarcli
       - jobs/calendarrefresh
+      - compute/alertrules
   compute/contracttest:
     mayDependOn:
       - contracts
@@ -396,20 +434,26 @@ deps:
     mayDependOn:
       - contracts
       - store
+      - compute
       - notify
       - contracts/genpb
+      - compute/contracttest
   pages/gaps:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   pages/home_page:
     mayDependOn:
       - contracts
       - store
+      - compute
       - pages
       - contracts/genpb
+      - compute/contracttest
   store/migrate:
     mayDependOn:
       - contracts

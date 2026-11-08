@@ -381,12 +381,70 @@ func TestReconcileReleasesLeaseWhenCancelled(t *testing.T) {
 func TestReconcileDeadlineIsCloseAtPlusBound(t *testing.T) {
 	t.Parallel()
 	closeAt := utc("2026-11-04T21:00:00Z")
-	now := utc("2026-11-04T23:00:00Z")
-	if got, want := deadlineFor(&fakeJob{}, closeAt, now), closeAt.Add(30*time.Minute); !got.Equal(want) {
-		t.Fatalf("deadline %v, want CloseAt+RunBound %v", got, want)
+	before := utc("2026-11-04T20:00:00Z")
+	late := utc("2026-11-04T23:00:00Z")
+	if got, want := deadlineFor(&fakeJob{}, closeAt, before), closeAt.Add(30*time.Minute); !got.Equal(want) {
+		t.Fatalf("start before close: deadline %v, want CloseAt+RunBound %v", got, want)
 	}
-	if got, want := deadlineFor(&fakeJob{}, time.Time{}, now), now.Add(30*time.Minute); !got.Equal(want) {
+	if got, want := deadlineFor(&fakeJob{}, closeAt, late), late.Add(30*time.Minute); !got.Equal(want) {
+		t.Fatalf("start after close: deadline %v, want start+RunBound %v", got, want)
+	}
+	if got, want := deadlineFor(&fakeJob{}, time.Time{}, late), late.Add(30*time.Minute); !got.Equal(want) {
 		t.Fatalf("no window: deadline %v, want now+RunBound %v", got, want)
+	}
+}
+
+// ctxJob is a blockJob that reports whether its context was already done when Run began.
+type ctxJob struct {
+	*blockJob
+	startErr chan error
+}
+
+func (j *ctxJob) Run(ctx context.Context, d contracts.Day, ks []contracts.ExpectedKey) contracts.JobResult {
+	j.startErr <- ctx.Err()
+	return j.blockJob.Run(ctx, d, ks)
+}
+
+func TestRunKeyLateRunDeadlineFromStart(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// 23:00 is two hours after the 21:00 close, so CloseAt + RunBound is long past.
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T23:00:00Z"))
+	led := newRkLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	job := &ctxJob{blockJob: newBlockJob(contracts.JobResult{Returned: 1, Usable: 1}), startErr: make(chan error, 1)}
+	rec, _ := NewReconciler(led, &rkSched{renewed: make(chan store.Lease, 256)}, oneDay(), clk, []contracts.Job{job}, runner.WindowRule{CalendarID: "XNYS"}, nil)
+	done := make(chan error, 1)
+	go func() { done <- rec.Reconcile(ctx, "2026-11-04") }()
+	if err := <-job.startErr; err != nil {
+		t.Fatalf("a late run began with a done context: %v", err)
+	}
+	if err := clk.BlockUntilContext(ctx, 3); err != nil {
+		t.Fatal(err)
+	}
+	clk.Advance(29 * time.Minute)
+	clk.Advance(2 * time.Minute)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	runs, _ := led.Runs(ctx, rkDay)
+	if len(runs) != 1 || runs[0].Status != store.RunPartial {
+		t.Fatalf("runs = %+v, want one partial cut RunBound after its start", runs)
+	}
+}
+
+func TestBackfillAfterCloseRunsToItsBound(t *testing.T) {
+	t.Parallel()
+	l := bfSetup(rkDay, keyA)
+	l.present[rkDay] = map[contracts.ExpectedKey]store.PresentStatus{keyA: store.StatusNoValue}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+	// afterClose is 2026-11-06, two days after the close of rkDay.
+	res, err := newBackfiller(l, afterClose(), job).Backfill(context.Background(), rkDay, nil)
+	if err != nil || len(res.Filled) != 1 || res.Filled[0] != keyA {
+		t.Fatalf("res %+v err %v", res, err)
+	}
+	if got := l.present[rkDay][keyA]; got != store.StatusPresent {
+		t.Fatalf("closed day backfill: key mark %q, want present", got)
 	}
 }
 

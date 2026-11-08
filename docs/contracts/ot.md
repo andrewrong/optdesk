@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-`ot` is the optdesk binary, the composition root (`cmd/ot`). It selects the profile and the log handler through `internal/profile`, and dispatches to eight subcommands: `backfill`, `calendar`, `migrate`, `page`, `run-once`, `serve`, `setup` and `version`. A subcommand registers itself in an `init()`; a name registered twice panics. Without a command, or with a name that is not registered, `ot` prints `usage: ot <command> [args]` and the sorted list of commands on standard error.
+`ot` is the optdesk binary, the composition root (`cmd/ot`). It selects the profile and the log handler through `internal/profile`, and dispatches to 9 subcommands: `backfill`, `calendar`, `migrate`, `page`, `run-once`, `serve`, `series-load`, `setup` and `version`. A subcommand registers itself in an `init()`; a name registered twice panics. Without a command, or with a name that is not registered, `ot` prints `usage: ot <command> [args]` and the sorted list of commands on standard error.
 
 The subcommands:
 
@@ -11,6 +11,7 @@ The subcommands:
 - `ot page [--day DAY] [--out FILE]`: builds the macro rates page once and writes its bytes.
 - `ot serve [--day DAY] [--addr ADDR]`: serves the macro rates page over HTTP until interrupted.
 - `ot serve --site [--day DAY] [--addr ADDR]`: serves the option data page per underlying until interrupted. Routes (under the root of the site): `/` answers 302 to `/options/data`; `/options/data` serves the underlying with the greatest latest `session_day` of the catalog (lowest id on a tie; id 0 and the empty page when the catalog is empty); `/options/data/<id>` serves a positive integer id; any other path is 404 and a method other than GET and HEAD is 405. The page is built per request; the catalog is asked with `since` 7 days before the build day, its entries are the page's choices (the instrument name, else `Underlying <id>`; `/options/data/<id>`); the names of the chosen id and of at most 50 catalog ids come from one read per request, and an id with no name or of type `option` keeps `Underlying <id>`. With an empty catalog the page carries the note `No option data is stored yet; collection has not run.`, the underlying label `No underlying yet` and no name read; a non-empty catalog adds no note. A build or catalog error answers 500 with a fixed text and logs `component=ot status=failed` only. `--site` with `--name` is an error naming both flags. The five stores (option_eod, quote_snapshot, the option_eod catalog, option terms and instrument names) are opened once at start with `OT_PG_DSN_PAGES` and closed on exit; the demo profile opens none and serves in-process demo readers (two underlyings).
+- `ot series-load --series ID [--series ID ...] --from DAY --to DAY`: loads the history of FRED series once, through `deps.newSeriesHistory` (`jobs.SeriesHistoryLoader`); `ot` only wires it: it builds the FRED source and the series writer and calls `Load` once. `--series` is repeatable and all three flags are required, with no default; a day that is not `YYYY-MM-DD` is an error. Real profile only (the demo profile is refused with `series-load needs a real profile; the demo profile opens no store`). It prints one line `<series> fetched <n>` per series, the count of points fetched, and no value. The range rules are the loader's. A loader error is shown by its class only (`retryable`, `permanent`, ...), because its text may hold a key. The owner runs it with the window the owner chooses; no CI step runs it.
 - `ot setup pg`: sets up the PostgreSQL roles through `store.SetupFunc`, under the administrative DSN.
 - `ot version`: prints the version and the profile.
 - `ot migrate [--dir DIR]`: applies the migration files of a directory under the administrative DSN, as the owner role.
@@ -28,6 +29,8 @@ Flags (each command parses its own; an unknown flag or a bad flag value is a fla
 | `--site` | serve | off; with it `--name` is refused |
 | `--addr` | serve | `127.0.0.1:8080` (the loopback host on port :8080) |
 | `--dir` | migrate | `migrations` |
+| `--series` | series-load (required, repeatable) | none |
+| `--from`, `--to` | series-load (required) | none; a day `YYYY-MM-DD` |
 
 `ot migrate` takes no argument besides `--dir`. `ot setup` takes exactly one argument, `pg`. `ot calendar load FILE [FILE ...]` needs `load` and at least one file; any other form prints the usage line `usage: ot calendar load FILE [FILE ...]` as the error.
 
@@ -40,13 +43,13 @@ Environment names (names only; no value is written in this document, in a log or
 | `OT_ZONE` | process environment | the profile (real profile only; unset or invalid stops the start) |
 | `OT_PG_ADMIN_DSN` | process environment | `ot setup pg`, `ot migrate` |
 | `OT_PG_DSN_RUNNER` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (session-day store and ledger) |
-| `OT_PG_DSN_SERIES_FRED` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (series store) |
+| `OT_PG_DSN_SERIES_FRED` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot series-load` (series store) |
 | `OT_PG_DSN_OPTION_EOD` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (option_eod writer) |
 | `OT_PG_DSN_QUOTE_SNAPSHOT` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (quote_snapshot writer) |
 | `OT_PG_DSN_MASTER` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (instrument store) |
 | `OT_PG_DSN_LOADER` | `$OT_HOME/.env` | `ot calendar load` (session-day store) |
 | `OT_PG_DSN_PAGES` | `$OT_HOME/.env` | `ot page` and `ot serve` (series reader), and `ot serve --site` (the five option stores), real profile only |
-| `FRED_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (FRED source) |
+| `FRED_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot series-load` (FRED source) |
 
 All six lines read by `ot run-once` and `ot backfill` (the three above, `OT_PG_DSN_RUNNER`, `OT_PG_DSN_SERIES_FRED` and `FRED_API_KEY`) are required; a missing one is an error that names the line.
 

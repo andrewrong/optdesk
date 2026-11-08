@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
+	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
@@ -42,6 +43,7 @@ type deps struct {
 	setup              store.SetupFunc
 	newFRED            sources.NewFREDFunc
 	newFredSeries      jobs.NewFredSeriesFunc
+	newSeriesHistory   jobs.NewSeriesHistoryFunc
 	newRunner          runner.NewWithRuleFunc
 	newBackfiller      runner.NewBackfillerWithRuleFunc
 	dialBroker         broker.DialFunc
@@ -76,6 +78,7 @@ func newDeps() deps {
 		setup:              setup.Setup,
 		newFRED:            fred.New,
 		newFredSeries:      fredseries.New,
+		newSeriesHistory:   serieshistory.New,
 		newRunner:          reconcile.NewWithRule,
 		newBackfiller:      reconcile.NewBackfillerWithRule,
 		dialBroker:         grpcbroker.Dial,
