@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/readings.reading.r1.json",
+  "title": "ReadingRecord",
+  "description": "readings.reading r1: one stored figure value of one subject on one day, with the inputs and parameters that made it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "subject_kind", "subject", "day", "rev", "value", "unit", "currency", "state", "reason_code", "origin", "cutoff", "job_run_id", "recorded_at", "rows_sha256", "inputs", "parameters"],
+  "x-dataset": "readings.reading",
+  "x-revision": "r1",
+  "x-primary-key": ["name", "version", "subject_kind", "subject", "day", "rev"],
+  "properties": {
+    "name": {"type": "string", "description": "Register id of the figure, for example market.ivp_own."},
+    "version": {"type": "integer", "minimum": 1, "description": "Version of the register entry that made the reading."},
+    "subject_kind": {"type": "string", "description": "Kind of the subject: underlying or market."},
+    "subject": {"type": "string", "description": "Subject id: a symbol, underlying:<id> or a FRED id."},
+    "day": {"type": "string", "format": "date", "description": "As-of session date of the reading."},
+    "rev": {"type": "integer", "minimum": 1, "description": "Revision of the reading for its key; a later rev replaces an earlier one."},
+    "value": {"type": ["string", "null"], "pattern": "^-?[0-9]{1,26}(\\.[0-9]{1,12})?$", "description": "Value as decimal text, at most 12 places; null when the state is missing_input."},
+    "unit": {"$ref": "#/$defs/reading_unit"},
+    "currency": {"type": "string", "description": "Currency code when the unit is money, empty otherwise."},
+    "state": {"type": "string", "enum": ["ok", "missing_input"], "description": "ok: the value was computed; missing_input: an input was missing and the value is null."},
+    "reason_code": {"type": ["integer", "null"], "minimum": 1, "maximum": 5, "description": "Why the reading is missing, 1 to 5 (3 is stale_input); null when the state is ok."},
+    "origin": {"type": "string", "enum": ["compute_figures"], "description": "Job that wrote the reading."},
+    "cutoff": {"type": "string", "description": "Cutoff of the inputs; the text session_close."},
+    "job_run_id": {"type": "string", "format": "uuid", "description": "Deterministic identifier of the run that wrote the reading, a uuid."},
+    "recorded_at": {"type": "string", "format": "date-time", "description": "Instant the reading was recorded, UTC."},
+    "rows_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the sorted input rows in a fixed text form, 64 lower-case hex digits."},
+    "inputs": {
+      "type": "array",
+      "description": "Input tables the reading was computed from.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["input_table", "code_version", "convention_version", "keys"],
+        "properties": {
+          "input_table": {"type": "string", "description": "Table the input rows came from."},
+          "code_version": {"type": "string", "description": "Hash of the rule that made the reading."},
+          "convention_version": {"type": "string", "description": "Version of the conventions the rule used."},
+          "keys": {"type": "array", "items": {"type": "string"}, "description": "Keys of the input rows."}
+        }
+      }
+    },
+    "parameters": {
+      "type": "array",
+      "description": "Parameters the rule ran with.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["param", "value_num", "value_tag"],
+        "properties": {
+          "param": {"type": "string", "description": "Parameter name, for example window."},
+          "value_num": {"type": ["number", "null"], "description": "Numeric value; null when the parameter is a tag."},
+          "value_tag": {"type": ["string", "null"], "description": "Text value; null when the parameter is numeric."}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "reading_unit": {
+      "title": "ReadingUnit",
+      "type": "string",
+      "enum": ["decimal", "percent", "vol_point", "per_calendar_day", "count", "days", "money", "ratio", "text_tag"],
+      "description": "Unit of a reading value (schema v3 reading_unit)."
+    }
+  }
+}

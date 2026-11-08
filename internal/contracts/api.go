@@ -64,3 +64,6 @@ type Job interface {
 	// Run fetches and stores the records of keys for day.
 	Run(ctx context.Context, day Day, keys []ExpectedKey) JobResult
 }
+
+// ReadingRecord is the record of dataset readings.reading r1, generated from contracts/datasets.
+type ReadingRecord = gen.ReadingRecord
