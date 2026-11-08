@@ -16,41 +16,40 @@ const optionPageFixturesDir = "../../contracts/fixtures"
 func TestOptionDataPageFixtures(t *testing.T) {
 	t.Parallel()
 	s := compilePageV2(t, "page.option_data_page.v1.json")
-	load := loadOptionPageFixture
 	for _, name := range []string{"ok", "terms", "gap", "stale", "choices", "jpy"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if err := s.Validate(load(t, name)); err != nil {
+			if err := s.Validate(loadOptionPageFixture(t, name)); err != nil {
 				t.Fatalf("%s: %v", name, err)
 			}
 		})
 	}
 	t.Run("jpy-shape", func(t *testing.T) {
 		t.Parallel()
-		checkJPYShape(t, load(t, "jpy"))
+		checkJPYShape(t, loadOptionPageFixture(t, "jpy"))
 	})
 	t.Run("jpy-bad-approx-usd-text", func(t *testing.T) {
 		t.Parallel()
-		v, u := jpyObjects(t, load(t, "jpy"))
+		v, u := jpyObjects(t, loadOptionPageFixture(t, "jpy"))
 		price, _ := u["price"].(map[string]any)
 		price["approx_usd_text"] = strings.Repeat("x", 201)
 		wantLeaf(t, s.Validate(v), leaf{"/underlying/price/approx_usd_text", "maxLength"})
 	})
 	t.Run("jpy-bad-earnings-tone", func(t *testing.T) {
 		t.Parallel()
-		v, u := jpyObjects(t, load(t, "jpy"))
+		v, u := jpyObjects(t, loadOptionPageFixture(t, "jpy"))
 		u["earnings_tone"] = "red"
 		wantLeaf(t, s.Validate(v), leaf{"/underlying/earnings_tone", "enum"})
 	})
 	t.Run("jpy-unknown-underlying-key", func(t *testing.T) {
 		t.Parallel()
-		v, u := jpyObjects(t, load(t, "jpy"))
+		v, u := jpyObjects(t, loadOptionPageFixture(t, "jpy"))
 		u["bogus"] = "x"
 		wantLeaf(t, s.Validate(v), leaf{"/underlying", "additionalProperties"})
 	})
 	t.Run("choices-bad-href", func(t *testing.T) {
 		t.Parallel()
-		v, ok := load(t, "choices").(map[string]any)
+		v, ok := loadOptionPageFixture(t, "choices").(map[string]any)
 		if !ok {
 			t.Fatal("choices is not an object")
 		}
@@ -72,7 +71,7 @@ func TestOptionDataPageFixtures(t *testing.T) {
 	})
 	t.Run("bad-version", func(t *testing.T) {
 		t.Parallel()
-		err := s.Validate(load(t, "bad-version"))
+		err := s.Validate(loadOptionPageFixture(t, "bad-version"))
 		ve, ok := err.(*jsonschema.ValidationError)
 		if !ok {
 			t.Fatalf("err = %v, want a validation error", err)
