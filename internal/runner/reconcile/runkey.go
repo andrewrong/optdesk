@@ -14,8 +14,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ runner.NewKeyRunnerFunc = NewKeyRunner
-
 const (
 	// beat is the period of the heartbeat of a run and of the renewal of the run lease.
 	beat = 30 * time.Second
@@ -62,8 +60,13 @@ func (k *keyRunner) RunKey(
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cut := k.clk.AfterFunc(deadline.Sub(now), cancel)
-	defer cut.Stop()
+	// A deadline that is not after the start (a run begun after the window close and its
+	// bound) cuts nothing: that case is as unbounded as it was before the key runner, and
+	// the follow-up of the design settles its bound.
+	if deadline.After(now) {
+		cut := k.clk.AfterFunc(deadline.Sub(now), cancel)
+		defer cut.Stop()
+	}
 	stop := k.heartbeat(wctx, runCtx, rec)
 
 	res := job.Run(runCtx, day, []contracts.ExpectedKey{key})
@@ -172,18 +175,14 @@ func runBound(job contracts.Job) time.Duration {
 	return defaultRunBound
 }
 
-// deadlineFor is the end of a run started at now: the later of the window close and now,
-// plus the run bound of the job. Decision 8 of docs/design/scheduler.md says the window's
-// CloseAt plus the bound; that cuts a run started more than one bound after the close
-// before it starts, and a dataset with no window has no CloseAt. The existing late-run
-// behaviour (TestFullCycleLateRun) needs the later of the two, so this is a stated departure
-// that the design file is to be amended for.
+// deadlineFor is the end of a run: the window's CloseAt plus the run bound of the job
+// (Decision 8 of docs/design/scheduler.md); a dataset with no window has no CloseAt, so
+// its deadline is now plus the bound.
 func deadlineFor(job contracts.Job, closeAt, now time.Time) time.Time {
-	base := now
-	if closeAt.After(base) {
-		base = closeAt
+	if closeAt.IsZero() {
+		return now.Add(runBound(job))
 	}
-	return base.Add(runBound(job))
+	return closeAt.Add(runBound(job))
 }
 
 // withClockwork returns clk as a clockwork.Clock: itself when it is one, else a clock whose
@@ -201,45 +200,3 @@ type nowClock struct {
 }
 
 func (c nowClock) Now() time.Time { return c.now.Now() }
-
-// holdLease takes ops.run_lease and, with a SchedulerLedger, renews it every 30 s of the
-// clock until release is called. A failed renewal cancels the returned context and its
-// error becomes the result of the call. release stops the renewal and frees the lease even
-// when ctx was cancelled (a drain); it sets *errp when the call had no error of its own.
-func (r *reconciler) holdLease(ctx context.Context) (context.Context, func(errp *error), error) {
-	lease, err := r.ledger.Acquire(ctx, owner, leaseTTL)
-	if err != nil {
-		return ctx, nil, err
-	}
-	wctx := context.WithoutCancel(ctx)
-	runCtx, cancel := context.WithCancel(ctx)
-	var (
-		mu       sync.Mutex
-		renewErr error
-		stop     = func() {}
-	)
-	if r.sched != nil {
-		stop = every(runCtx, r.fclk, func() bool {
-			mu.Lock()
-			defer mu.Unlock()
-			l, err := r.sched.RenewLease(wctx, lease, leaseTTL)
-			if err != nil {
-				renewErr = err
-				cancel()
-				return false
-			}
-			lease = l
-			return true
-		})
-	}
-	return runCtx, func(errp *error) {
-		stop()
-		cancel()
-		mu.Lock()
-		defer mu.Unlock()
-		_ = r.ledger.Release(wctx, lease)
-		if renewErr != nil && *errp == nil {
-			*errp = renewErr
-		}
-	}, nil
-}

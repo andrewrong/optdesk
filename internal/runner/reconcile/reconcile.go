@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -54,8 +55,6 @@ func New(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contract
 func NewWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule runner.WindowRule) runner.Reconciler {
 	return newReconciler(l, nil, cal, clk, jobs, rule, nil)
 }
-
-var _ runner.NewReconcilerFunc = NewReconciler
 
 // NewReconciler builds the reconciler and backfiller pair of the scheduler. Both renew
 // ops.run_lease through sched every 30 s while they run and release it by defer when
@@ -337,4 +336,46 @@ func (r *reconciler) run(
 	}
 	_, marked := present[k]
 	return rec, marked, nil
+}
+
+// holdLease takes ops.run_lease and, with a SchedulerLedger, renews it every 30 s of the
+// clock until release is called. A failed renewal cancels the returned context and its
+// error becomes the result of the call. release stops the renewal and frees the lease even
+// when ctx was cancelled (a drain); it sets *errp when the call had no error of its own.
+func (r *reconciler) holdLease(ctx context.Context) (context.Context, func(errp *error), error) {
+	lease, err := r.ledger.Acquire(ctx, owner, leaseTTL)
+	if err != nil {
+		return ctx, nil, err
+	}
+	wctx := context.WithoutCancel(ctx)
+	runCtx, cancel := context.WithCancel(ctx)
+	var (
+		mu       sync.Mutex
+		renewErr error
+		stop     = func() {}
+	)
+	if r.sched != nil {
+		stop = every(runCtx, r.fclk, func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			l, err := r.sched.RenewLease(wctx, lease, leaseTTL)
+			if err != nil {
+				renewErr = err
+				cancel()
+				return false
+			}
+			lease = l
+			return true
+		})
+	}
+	return runCtx, func(errp *error) {
+		stop()
+		cancel()
+		mu.Lock()
+		defer mu.Unlock()
+		_ = r.ledger.Release(wctx, lease)
+		if renewErr != nil && *errp == nil {
+			*errp = renewErr
+		}
+	}, nil
 }

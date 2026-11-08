@@ -14,10 +14,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var (
-	_ runner.NewKeyRunnerFunc  = NewKeyRunner
-	_ runner.NewReconcilerFunc = NewReconciler
-)
+var _ runner.NewKeyRunnerFunc = NewKeyRunner
+
+var _ runner.NewReconcilerFunc = NewReconciler
 
 const rkDay contracts.Day = "2026-11-04"
 
@@ -318,7 +317,7 @@ func TestReconcileAndBackfillUseRunKey(t *testing.T) {
 func TestRunLeaseRenewedWhileRunning(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
 	led := newRkLedger()
 	led.cursor = store.Cursor{Day: "2026-11-03"}
 	sched := &rkSched{renewed: make(chan store.Lease, 8)}
@@ -351,7 +350,7 @@ func TestRunLeaseRenewedWhileRunning(t *testing.T) {
 
 func TestReconcileReleasesLeaseWhenCancelled(t *testing.T) {
 	t.Parallel()
-	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
 	led := newRkLedger()
 	led.cursor = store.Cursor{Day: "2026-11-03"}
 	sched := &rkSched{renewed: make(chan store.Lease, 8)}
@@ -376,5 +375,36 @@ func TestReconcileReleasesLeaseWhenCancelled(t *testing.T) {
 	runs, _ := led.Runs(context.Background(), rkDay)
 	if len(runs) != 1 || runs[0].Status != store.RunAbandoned {
 		t.Fatalf("runs = %+v, want one abandoned", runs)
+	}
+}
+
+func TestReconcileDeadlineIsCloseAtPlusBound(t *testing.T) {
+	t.Parallel()
+	closeAt := utc("2026-11-04T21:00:00Z")
+	now := utc("2026-11-04T23:00:00Z")
+	if got, want := deadlineFor(&fakeJob{}, closeAt, now), closeAt.Add(30*time.Minute); !got.Equal(want) {
+		t.Fatalf("deadline %v, want CloseAt+RunBound %v", got, want)
+	}
+	if got, want := deadlineFor(&fakeJob{}, time.Time{}, now), now.Add(30*time.Minute); !got.Equal(want) {
+		t.Fatalf("no window: deadline %v, want now+RunBound %v", got, want)
+	}
+}
+
+func TestRunKeyPastDeadlineDoesNotCut(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	led := newRkLedger()
+	job := newBlockJob(contracts.JobResult{Returned: 1, Usable: 1})
+	close(job.release)
+	run, err := NewKeyRunner(led, nil, clk).RunKey(context.Background(), job, rkDay, keyA, 1, time.Time{}, clk.Now().Add(-time.Minute), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.Status != store.RunDone {
+		t.Fatalf("status %s, want done: a past deadline cuts nothing", run.Status)
+	}
+	present, _ := led.Present(context.Background(), rkDay)
+	if present[keyA] != store.StatusPresent {
+		t.Fatalf("present = %v", present)
 	}
 }
