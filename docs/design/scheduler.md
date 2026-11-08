@@ -150,20 +150,22 @@ Runner (`internal/runner/api.go`, added beside `Reconciler`, `Backfiller` and `W
 - Module: store. Size: S. Depends on: none.
 - Order: first.
 - Design: docs/design/scheduler.md#Interface
-- Files: internal/store/api.go, internal/store/api_test.go, docs/contracts/store.md
+- Files: internal/store/api.go, internal/store/scheduler_api_test.go, docs/contracts/store.md
+
+The existing `internal/store/api_test.go` is near the 800-line limit, so the contract tests of this entry live in their own file, `internal/store/scheduler_api_test.go` (under 600 lines), and `api_test.go` stays untouched.
 
 - Goal: add the store declarations of the Interface section to `internal/store/api.go`, declarations only, with the contract test from both sides (a fake that implements `InstanceFence`, `SchedulerLedger` and `GapReader`, and a caller that uses them) and a section of `docs/contracts/store.md` saying who writes and who reads,
   and recording the two views and their grants (`ot_ro_pages` reads views of `rd` only, as schema v3 says, and has no grant on an `ops` table).
 
 Acceptance:
 
-1. `grep -rhE "^func (TestInstanceFenceContract|TestSchedulerLedgerContract|TestGapReaderContract)\(" internal/store/api_test.go | wc -l` prints 3 (the tests of this issue exist by name; `go test` runs them under Checked by CI).
+1. `grep -rhE "^func (TestInstanceFenceContract|TestSchedulerLedgerContract|TestGapReaderContract)\(" internal/store/scheduler_api_test.go | wc -l` prints 3 (the tests of this issue exist by name; `go test` runs them under Checked by CI).
 2. `grep -c "type InstanceFence interface\|type SchedulerLedger interface\|type GapReader interface\|type Expectation struct" internal/store/api.go` prints 4; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep -c '^-[^-]'` prints 0; `grep -c "ReportedAt\|HeartbeatAt\|Closed bool" internal/store/api.go` is at least 3 (the fields of `Gap`, `SchedulerStatus` and `Expectation`).
-3. `grep -c "var _ store.OpenFenceFunc\|var _ store.OpenSchedulerLedgerFunc\|var _ store.OpenGapReaderFunc" internal/store/api_test.go` prints 3.
-4. `grep -c "rd.job_gap_r1\|rd.expectation_r1" docs/contracts/store.md` is at least 2; `grep -c "t.Parallel()" internal/store/api_test.go` is at least `grep -c "^func Test" internal/store/api_test.go`.
+3. `grep -c "var _ store.OpenFenceFunc\|var _ store.OpenSchedulerLedgerFunc\|var _ store.OpenGapReaderFunc" internal/store/scheduler_api_test.go` prints 3.
+4. `grep -c "rd.job_gap_r1\|rd.expectation_r1" docs/contracts/store.md` is at least 2; `grep -c "t.Parallel()" internal/store/scheduler_api_test.go` is at least `grep -c "^func Test" internal/store/scheduler_api_test.go`.
 5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the three paths of the Files line.
 
-Checked by CI: ci-go runs (`go test ./internal/store -run 'TestInstanceFenceContract|TestSchedulerLedgerContract|TestGapReaderContract' -race -count=1` passes and `grep -c "t.Parallel()" internal/store/api_test.go` is at least `grep -c "^func Test" internal/store/api_test.go`; `go vet ./internal/store` passes); the rest of ci-go (`go test ./...`, go-arch-lint, golangci-lint); checks (`Contracts: unchanged`); the design verdict (the result matches the Interface part of `docs/design/scheduler.md`).
+Checked by CI: ci-go runs (`go test ./internal/store -run 'TestInstanceFenceContract|TestSchedulerLedgerContract|TestGapReaderContract' -race -count=1` passes and `grep -c "t.Parallel()" internal/store/scheduler_api_test.go` is at least `grep -c "^func Test" internal/store/scheduler_api_test.go`; `go vet ./internal/store` passes); the rest of ci-go (`go test ./...`, go-arch-lint, golangci-lint); checks (`Contracts: unchanged`); the design verdict (the result matches the Interface part of `docs/design/scheduler.md`).
 
 ### sched-runner-interface (interface)
 

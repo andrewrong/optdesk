@@ -88,9 +88,9 @@ Checked by CI: `sh contracts/generate.sh && git diff --exit-code internal/contra
 - Module: store. Size: S. Depends on: reading-dataset.
 - Order: after 1 (reading-dataset), which declares `contracts.ReadingRecord`. Interface change: `internal/store/api.go`.
 - Design: docs/design/compute-figures.md#Interface
-- Files: internal/store/api.go, internal/store/api_test.go, docs/contracts/store.md
+- Files: internal/store/api.go, internal/store/reading_api_test.go, docs/contracts/store.md
 
-- Goal: `ReadingWriter`, `ReadingReader`, `ReadingStore`, `OpenReadingFunc` and `DSNEnvReadings` as in the Interface section, with the doc comments of the neighbours; `docs/contracts/store.md` states the table key, the winner rule of `rd.reading_r1`, the `reading_unit` enum and the grants (Decision 1); `api_test.go` tests the contract from both sides with a fake store.
+- Goal: `ReadingWriter`, `ReadingReader`, `ReadingStore`, `OpenReadingFunc` and `DSNEnvReadings` as in the Interface section, with the doc comments of the neighbours; `docs/contracts/store.md` states the table key, the winner rule of `rd.reading_r1`, the `reading_unit` enum and the grants (Decision 1); `internal/store/reading_api_test.go` (its own file, because the existing `api_test.go` is near the 800-line limit) tests the contract from both sides with a fake store.
 
 Acceptance:
 
