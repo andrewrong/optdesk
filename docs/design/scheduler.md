@@ -2,7 +2,7 @@
 
 Author: the optdesk designer (first draft)
 Owner approved: (pending)
-Revision: 6 (after the design session of b2e7ead; after the adversarial review, the owner's resident-service requirement, optdesk-advisor's opinion of 2026-11-08 and the owner's decisions of 2026-11-08 on boot, deploy and the way)
+Revision: 8 (after the design session of b2e7ead; after the adversarial review, the owner's resident-service requirement, optdesk-advisor's opinion of 2026-11-08 and the owner's decisions of 2026-11-08 on boot, deploy and the way)
 
 Source: owner request of 2026-11-08 ("a scheduler design now, every later job needs it; do not repeat option-trader's mistakes"), the 20 lessons of option-trader's scheduler (the advisor's list of 2026-11-08,
 kept by the author, not in the repository), `docs/contracts/runner.md` ("Jobs and slots: None yet ... scheduling slots belong to the follow-up wiring design"), the adversarial review of revision 1 (kept by the author), and optdesk-advisor's opinion of 2026-11-08.
@@ -88,7 +88,7 @@ What main holds today: `ot run-once` and `ot backfill` (`cmd/ot/runonce.go`, `cm
 | 3 | publish awaited on the scheduler path | the scheduler publishes nothing, it writes `ops.*` rows (Decisions 2, 9); the loop only waits and dispatches |
 | 4 | two serves ran together | Decision 5: advisory lock before any other open, released by the database on death, build id in `ops.scheduler_state`; Decision 10: bounded drain; hand commands refuse while it lives (Decision 6) |
 | 5 | hand backfill held the only lane 150 min | partly: Decision 8 gives every run a deadline (`RunBound`) and Decision 6 keeps hand commands out while the scheduler lives; parallel lanes and a yielding backfill are stage 2 |
-| 6 | CLI took the store lock; file lock | file lock: not applicable (PostgreSQL has row locks and roles). One writer role: the scheduler and the commands use `ot_runner`, and the commands refuse while the scheduler runs (Decision 6) |
+| 6 | CLI took the store lock; file lock | file lock: not applicable (PostgreSQL has row locks and roles). Writers: `ot_runner` for the ledger and the runs; a job may open its own store with a role named in its design (calendar: `ot_loader`; compute: `ot_w_readings`), listed in the deploy runbook; the scheduler and the commands use `ot_runner` for the rest, and the commands refuse while the scheduler runs (Decision 6) |
 | 7 | restarts abandoned running jobs, retry spent | Decision 7: `abandoned_stop` and lapsed-lease runs are not counted; Decision 10: `can-restart` records "not now" (advice) |
 | 8 | EOD capture replanned from zero 5 times | stage 2 (`Resumable` units); stage 1 gives the restart advice of Decision 10 and keeps writes idempotent, so a restart repeats keys, it does not corrupt them. Not prevented in stage 1; the cost is the repeat of the key in hand |
 | 9 | partial refresh, its recovery killed, slot undone | Decision 7: only a verdict spends the allowance; Decision 8: a cut run with rows is `partial`, repaired on the next tick |
