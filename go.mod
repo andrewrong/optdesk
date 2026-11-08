@@ -4,6 +4,7 @@ go 1.27.1
 
 require (
 	github.com/atombender/go-jsonschema v0.16.0
+	github.com/go-telegram/bot v1.27.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/jonboulle/clockwork v0.5.0
