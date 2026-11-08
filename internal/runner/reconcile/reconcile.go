@@ -32,6 +32,8 @@ const (
 	reasonEmptyBeforeClose = "empty_before_close"
 	// The reason "expired" explains a key whose last run ended retryable and whose window has closed.
 	reasonExpired = "expired"
+	// reasonCrashedRepeatedly is written at the close on the latest of three crashed or abandoned_stop runs.
+	reasonCrashedRepeatedly = "crashed_repeatedly"
 )
 
 type reconciler struct {
@@ -219,14 +221,15 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			continue
 		}
 		crashed, start, reason := r.nextAttempt(byKey[k], closeAt)
-		if !start {
-			complete = false
-			continue
-		}
+		// A lapsed run is closed as crashed even when the brake stops the key.
 		if crashed != nil {
 			if err := r.markCrashed(ctx, *crashed); err != nil {
 				return false, err
 			}
+		}
+		if !start {
+			complete = false
+			continue
 		}
 		_, ok, err := r.run(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, reason)
 		if err != nil {
@@ -258,57 +261,114 @@ func (r *reconciler) putWindows(ctx context.Context, p plan, s clock.Session) (m
 	return closes, nil
 }
 
-// nextAttempt decides whether a run starts for a missing key. Runs that ended empty or
-// retryable before the window close do not count toward the cap of two (repair and crash re-run). A running
-// run with a live lease is pending: nothing starts. An expired one is returned as crashed
-// and re-run once. closeAt is the close of the key's dataset window, zero when it has none.
+// crashBrake is the number of crashed or abandoned_stop runs of one key that stops it (Decision 7).
+const crashBrake = 3
+
+// isCrash reports whether run ended without a verdict: crashed (a lapsed lease) or abandoned_stop.
+// Such a run does not count toward the two-run cap; three of them stop the key.
+func isCrash(run store.Run) bool {
+	return run.ReasonCode == reasonCrashed || run.ReasonCode == reasonAbandonedStop
+}
+
+// isRetryable reports whether run ended with a retryable error that is not a crash.
+func isRetryable(run store.Run) bool {
+	return run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && !isCrash(run)
+}
+
+// nextAttempt decides whether a run starts for a missing key (Decisions 7 and 8). A run counts
+// when it is a verdict: partial, or done (a Permanent error, a false Postcondition, a retryable
+// error with no window). Runs that are empty_before_close, retryable before the close, crashed
+// or abandoned_stop do not count. A run starts when no run is running, fewer than two runs count,
+// the key is not stopped by the brake (three crashed or abandoned_stop runs: crashed_repeatedly,
+// written by expireIfClosed at the close) and either no run counts or the latest counted run is
+// RunPartial: the second run is only for a partial. A running run with a live lease is pending:
+// nothing starts. A lapsed one is returned as crashed (it does not count) and the key goes on by
+// the same rule. closeAt is the close of the key's dataset window, zero when it has none.
 func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *store.Run, start bool, reason string) {
 	now := r.clk.Now()
 	if !closeAt.IsZero() && now.After(closeAt) {
 		reason = reasonLate
 	}
 	beforeClose := !closeAt.IsZero() && now.Before(closeAt)
-	counted := 0
-	var running *store.Run
+	crashes, counted := 0, 0
+	var latest *store.Run
 	for i, run := range runs {
-		if run.ReasonCode == reasonEmptyBeforeClose {
-			continue
+		switch {
+		case run.Status == store.RunRunning:
+			if !run.LeaseUntil.Before(now) {
+				return nil, false, ""
+			}
+			if crashed == nil {
+				crashed = &runs[i]
+			}
+		case isCrash(run):
+			crashes++
+		case run.ReasonCode == reasonEmptyBeforeClose, beforeClose && isRetryable(run):
+		default:
+			counted++
+			latest = &runs[i]
 		}
-		if beforeClose && run.Status == store.RunDone && run.ErrorCode == string(contracts.Retryable) && run.ReasonCode != reasonCrashed {
-			continue
-		}
-		counted++
-		if run.Status == store.RunRunning {
-			running = &runs[i]
+	}
+	if crashed != nil {
+		crashes++
+	}
+	if crashes >= crashBrake || counted >= 2 || (latest != nil && latest.Status != store.RunPartial) {
+		return crashed, false, ""
+	}
+	return crashed, true, reason
+}
+
+// closeRow picks the row of the Close table of Decision 8 for the runs of a missing key whose
+// window has closed: the index of the run to rewrite, the reason it gets, or ok false when no
+// row matches. Retryable runs are not counted by rows 2 and 4.
+func closeRow(runs []store.Run) (idx int, reason string, ok bool) {
+	crashes, latest := 0, -1
+	lastCrash := -1
+	for i, run := range runs {
+		switch {
+		case isCrash(run):
+			crashes++
+			lastCrash = i
+		case run.ReasonCode == reasonEmptyBeforeClose, isRetryable(run):
+		default:
+			latest = i
 		}
 	}
 	switch {
-	case running != nil:
-		if counted == 1 && running.LeaseUntil.Before(now) {
-			return running, true, reason
-		}
-		return nil, false, ""
-	case counted == 0:
-		return nil, true, reason
+	case crashes >= crashBrake: // row 1 wins over row 2
+		return lastCrash, reasonCrashedRepeatedly, true
+	case latest >= 0 && runs[latest].Status == store.RunPartial: // row 2
+		return latest, reasonExpired, true
+	case isRetryable(runs[len(runs)-1]): // row 3
+		return len(runs) - 1, reasonExpired, true
+	case latest >= 0: // row 4: done without a mark
+		return latest, reasonExpired, true
 	}
-	return nil, false, ""
+	return 0, "", false
 }
 
-// expireIfClosed makes the absence of k final when its last run ended retryable and the window
-// has closed: no_value, with the last run explained as expired. It reports whether it did.
+// expireIfClosed closes a missing key at its window close by the Close table of Decision 8:
+// the key becomes no_value and the run the row names is explained (crashed_repeatedly or
+// expired). A key with a running run, with no window, or that no row matches is left alone.
+// It reports whether it closed the key.
 func (r *reconciler) expireIfClosed(
 	ctx context.Context, runs []store.Run, closeAt time.Time, day contracts.Day, k contracts.ExpectedKey,
 ) (bool, error) {
 	if len(runs) == 0 || closeAt.IsZero() || r.clk.Now().Before(closeAt) {
 		return false, nil
 	}
-	// A crashed run also carries the code, but it is not a vendor answer: it is never expired.
-	last := runs[len(runs)-1]
-	if last.Status != store.RunDone || last.ErrorCode != string(contracts.Retryable) || last.ReasonCode == reasonCrashed {
+	for _, run := range runs {
+		if run.Status == store.RunRunning {
+			return false, nil
+		}
+	}
+	idx, reason, ok := closeRow(runs)
+	if !ok {
 		return false, nil
 	}
-	last.ReasonCode = reasonExpired
-	if err := r.ledger.RecordRun(ctx, last); err != nil {
+	run := runs[idx]
+	run.ReasonCode = reason
+	if err := r.ledger.RecordRun(ctx, run); err != nil {
 		return false, err
 	}
 	return true, r.ledger.MarkPresent(ctx, day, k, store.StatusNoValue)

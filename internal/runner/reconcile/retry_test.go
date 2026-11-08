@@ -236,12 +236,13 @@ func TestCrashedRunIsNotExpired(t *testing.T) {
 	if _, ok := present[keyA]; ok {
 		t.Fatalf("keyA = %q, want missing", present[keyA])
 	}
-	for _, r := range led.runs[day] {
+	for _, r := range led.runs[day][:2] {
 		if r.ReasonCode == "expired" {
 			t.Fatalf("crashed run %s was expired", r.ID)
 		}
 	}
-	if job.calls() != 0 || led.cursor.Day != "2026-11-03" {
-		t.Fatalf("calls=%d cursor=%s, want no run and cursor held", job.calls(), led.cursor.Day)
+	// A crashed run does not count (runner v4): below the brake of three a late run starts.
+	if runs := led.runs[day]; job.calls() != 1 || len(runs) != 3 || runs[2].ReasonCode != "late" || led.cursor.Day != "2026-11-03" {
+		t.Fatalf("calls=%d runs=%+v cursor=%s, want a third late run and cursor held", job.calls(), led.runs[day], led.cursor.Day)
 	}
 }
