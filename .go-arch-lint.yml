@@ -69,6 +69,8 @@ components:
     in: internal/jobs
   jobs/calendarrefresh:
     in: internal/jobs/calendarrefresh
+  jobs/computefigures:
+    in: internal/jobs/computefigures
   jobs/fredseries:
     in: internal/jobs/fredseries
   jobs/optioneod:
@@ -250,6 +252,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/computefigures:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/fredseries:
     mayDependOn:
       - contracts
@@ -378,6 +391,7 @@ deps:
       - pages/embed
       - compute/rules
       - store/reading
+      - jobs/computefigures
       - compute/own
       - compute/gonumstats
       - compute/figures
