@@ -34,12 +34,15 @@ func TestPlanHash(t *testing.T) {
 
 func TestEmbeddedManifest(t *testing.T) {
 	t.Parallel()
-	want := []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS"}
+	want := []string{"DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS",
+		"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2"}
+	wantWindowed := []string{"WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2"}
 	m, err := parseManifest(manifestBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if m.Version != 1 || m.ID != "fred_series" || !slices.Equal(m.Series, want) ||
+		!slices.Equal(m.Windowed, wantWindowed) || m.LookbackDays != 14 ||
 		m.Window.Rule != "after_close" || m.Window.LatenessHours != 96 {
 		t.Fatalf("manifest = %+v", m)
 	}
@@ -50,5 +53,59 @@ func TestEmbeddedManifest(t *testing.T) {
 	keys, _, err := j.Plan(context.Background(), "2026-11-05")
 	if err != nil || len(keys) != len(want) {
 		t.Fatalf("keys %v err %v", keys, err)
+	}
+}
+
+func manifestWith(extra string) []byte {
+	return []byte("version = 1\nid = \"fred_series\"\nseries = [\"DGS10\", \"WALCL\"]\n" + extra)
+}
+
+func TestWindowedIDNotInSeriesRefused(t *testing.T) {
+	t.Parallel()
+	_, err := parseManifest(manifestWith("windowed = [\"DFF\"]\nlookback_days = 14\n"))
+	if err == nil {
+		t.Fatal("windowed id outside series accepted")
+	}
+	if _, err := parseManifest(manifestWith("windowed = [\"WALCL\"]\nlookback_days = 14\n")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLookbackOutOfRangeRefused(t *testing.T) {
+	t.Parallel()
+	for _, n := range []string{"0", "32"} {
+		if _, err := parseManifest(manifestWith("windowed = [\"WALCL\"]\nlookback_days = " + n + "\n")); err == nil {
+			t.Fatalf("lookback_days %s accepted", n)
+		}
+	}
+	for _, n := range []string{"1", "31"} {
+		if _, err := parseManifest(manifestWith("windowed = [\"WALCL\"]\nlookback_days = " + n + "\n")); err != nil {
+			t.Fatalf("lookback_days %s: %v", n, err)
+		}
+	}
+}
+
+func TestPlanHashCoversWindowed(t *testing.T) {
+	t.Parallel()
+	day := contracts.Day("2026-11-05")
+	hash := func(extra string) string {
+		_, h, err := planFrom(manifestWith(extra), day)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return h
+	}
+	base := hash("windowed = [\"WALCL\"]\nlookback_days = 14\n")
+	if base != hash("windowed = [\"WALCL\"]\nlookback_days = 14\n") {
+		t.Fatal("same input, different hashes")
+	}
+	if base == hash("windowed = [\"WALCL\"]\nlookback_days = 15\n") {
+		t.Fatal("another lookback_days gave the same hash")
+	}
+	if base == hash("windowed = [\"WALCL\", \"DGS10\"]\nlookback_days = 14\n") {
+		t.Fatal("another windowed list gave the same hash")
+	}
+	if hash("windowed = [\"WALCL\", \"DGS10\"]\nlookback_days = 14\n") != hash("windowed = [\"DGS10\", \"WALCL\"]\nlookback_days = 14\n") {
+		t.Fatal("windowed order changed the hash")
 	}
 }
