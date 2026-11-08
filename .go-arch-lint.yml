@@ -111,6 +111,8 @@ components:
     in: cmd/ot
   compute/contracttest:
     in: internal/compute/contracttest
+  compute/sharpmove:
+    in: internal/compute/sharpmove
   notify/notifytest:
     in: internal/notify/notifytest
   pages/gaps:
@@ -453,6 +455,11 @@ deps:
       - compute/alertrules
       - pages/risks_block
   compute/contracttest:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/sharpmove:
     mayDependOn:
       - contracts
       - compute

@@ -15,6 +15,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
+	"github.com/andrewrong/optdesk/internal/notify"
+	"github.com/andrewrong/optdesk/internal/notify/core"
+	"github.com/andrewrong/optdesk/internal/notify/dryrun"
+	"github.com/andrewrong/optdesk/internal/notify/telegram"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
@@ -72,6 +76,9 @@ type deps struct {
 	newGapSyncer        func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
 	newFwClock          func() clockwork.Clock
 	notifyContext       func(context.Context) (context.Context, context.CancelFunc)
+	newNotifier         notify.NewNotifierFunc
+	newTelegramSender   notify.NewTelegramSenderFunc
+	newDryRunSender     notify.NewDryRunSenderFunc
 }
 
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
@@ -115,6 +122,9 @@ func newDeps() deps {
 		newGapSyncer:        sched.NewGapSyncer,
 		newFwClock:          clockwork.NewRealClock,
 		notifyContext:       stopOnSignal,
+		newNotifier:         core.New,
+		newTelegramSender:   telegram.New,
+		newDryRunSender:     dryrun.New,
 	}
 }
 
