@@ -1631,13 +1631,13 @@ pages = []
 formula = """
 The own IV30 of GLOSSARY.md (convention iv30_v1): per expiration the ATM IV is the mean of the call and put IBKR model IV (iv_decimal) at the strike nearest the forward F = K* + exp(rT)(C-P), K* the strike with the smallest |C-P| (the lower strike wins ties); the two expirations around 30 days are joined by the Cboe VIX variance interpolation, no extrapolation; one of exactly 30 days is used alone; expirations of 0 or 1 day are ignored. The rate is DGS3MO as a decimal."""
 inputs = """
-The option_daily rows of the as-of day (status 1, the latest received_at per instrument) with the contract terms; DGS3MO (the prior value with stale_rate when the day has none), the newest point no older than 8 calendar days."""
+The option_daily rows of the as-of day (status 1, the latest received_at per instrument) with the contract terms; DGS3MO (the prior value with stale_rate when the day has none), the newest point no older than 4 calendar days."""
 period_date = "The as-of session day of the option rows."
 currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places. IV as a decimal: 0.2 is 20 vol points."
 excludes = """
 Any IV the tool solves itself; a quote without an IBKR model IV (iv_decimal not above 0); an expiration of 0 or 1 day; extrapolation beyond the nearest two expirations."""
 gap_text = """
-No usable expiration pair: missing, no_input. No rate: missing, no_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input, zero_range or bad_input), never as a zero."""
+No usable expiration pair: missing, no_input. No rate: missing, no_input. A rate older than 4 calendar days: missing, stale_input; a rate of 1 to 4 days old is used with stale_rate. A missing input is stored as missing with a reason code (no_input, short_history, stale_input, zero_range or bad_input), never as a zero."""
 implemented_by = [
   "internal/compute/figures.(*calc).Iv30",
   "internal/compute/figures.strikeStar",
@@ -1645,7 +1645,10 @@ implemented_by = [
 source_hash = "03cf7d637f3e2b5f1a4e81f5cf0565662b9dbcd4f6c21ec50c11f97e4677c183"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
-history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+history = [
+  "2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet.",
+  "2026-11-08 v1: the rate age in inputs corrected from 8 to 4 calendar days (rules.json MaxAgeDays), stale_rate and stale_input added to gap_text; docs/design/compute-figures.md#docs-iv30-rate-age.",
+]
 
 [[figure]]
 id = "market.ivp_own"
