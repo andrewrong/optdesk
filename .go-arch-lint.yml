@@ -335,8 +335,8 @@ deps:
       - notify/core
       - notify/telegram
       - notify/dryrun
-      - clock/calendarcli
       - jobs/serieshistory
+      - clock/calendarcli
   compute/contracttest:
     mayDependOn:
       - contracts
