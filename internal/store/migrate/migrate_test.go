@@ -188,19 +188,13 @@ func TestMigration0008(t *testing.T) {
 	}
 }
 
-// TestMigrationsEndWith0011 lists the migration files up to 0011: 0010 and 0011 follow 0009; 0010 creates the name view for the
+// TestMigrationsEndWith0011 lists the migration files: 0010 and 0011 follow 0009; 0010 creates the name view for the
 // page role and drops it, 0011 grants INSERT and column SELECT on the terms table to the master writer and revokes it.
 func TestMigrationsEndWith0011(t *testing.T) {
 	t.Parallel()
 	files, err := filepath.Glob("../../../migrations/*.sql")
 	if err != nil || len(files) < 11 {
 		t.Fatalf("migrations: %v, %v", files, err)
-	}
-	// Later migrations may follow 0011; the test reads the files up to it.
-	for i, f := range files {
-		if filepath.Base(f) == "0011_option_terms_writer.sql" {
-			files = files[:i+1]
-		}
 	}
 	n := len(files)
 	if filepath.Base(files[n-3]) != "0009_master_option_terms.sql" || filepath.Base(files[n-2]) != "0010_instrument_names_view.sql" ||
