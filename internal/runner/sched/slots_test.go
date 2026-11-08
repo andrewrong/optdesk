@@ -37,8 +37,37 @@ func (f fakeCal) Session(_ context.Context, id string, day contracts.Day) (clock
 	return clock.Session{CalendarID: id, Day: day}, nil
 }
 
-func (f fakeCal) NextSession(context.Context, string, contracts.Day) (clock.Session, error) {
-	return clock.Session{}, unknownErr{}
+type noValueErr struct{}
+
+func (noValueErr) Error() string             { return "no later session" }
+func (noValueErr) Kind() contracts.ErrorKind { return contracts.NoValue }
+
+// NextSession returns the first session row of the calendar after day, in row order by date; a calendar
+// with no rows is unknown and none after day is a NoValue error.
+func (f fakeCal) NextSession(_ context.Context, id string, day contracts.Day) (clock.Session, error) {
+	known := false
+	var best *contracts.SessionDay
+	for i, r := range f.rows {
+		if r.CalendarID != id {
+			continue
+		}
+		known = true
+		d := r.SessionDay.Format(dayLayout)
+		if !r.IsSession || d <= string(day) {
+			continue
+		}
+		if best == nil || d < best.SessionDay.Format(dayLayout) {
+			best = &f.rows[i]
+		}
+	}
+	if !known {
+		return clock.Session{}, unknownErr{}
+	}
+	if best == nil {
+		return clock.Session{}, noValueErr{}
+	}
+	return clock.Session{CalendarID: id, Day: contracts.Day(best.SessionDay.Format(dayLayout)), IsSession: true,
+		OpenAt: best.OpenAt, CloseAt: best.CloseAt, EarlyClose: best.EarlyClose}, nil
 }
 
 func sd(day string) types.SerializableDate {
