@@ -147,3 +147,32 @@ func TestAccountReaderContract(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// fakeHistory answers the bars of the query, or a Retryable error when down is set.
+type fakeHistory struct{ down bool }
+
+func (f fakeHistory) Bars(_ context.Context, q broker.BarQuery) ([]broker.Bar, error) {
+	if f.down {
+		return nil, typedErr{contracts.Retryable}
+	}
+	return []broker.Bar{{Day: q.End, Open: "1", High: "2", Low: "0.5", Close: "1.5"}}, nil
+}
+
+func (fakeHistory) Close() error { return nil }
+
+var _ broker.HistoryClient = fakeHistory{}
+
+func TestHistoryClientFake(t *testing.T) {
+	t.Parallel()
+	var h broker.HistoryClient = fakeHistory{}
+	bars, err := h.Bars(context.Background(), broker.BarQuery{Kind: broker.BarTrades, DurationDays: 5, End: "2026-11-06"})
+	if err != nil || len(bars) != 1 || bars[0].Day != "2026-11-06" || bars[0].Close != "1.5" || bars[0].Volume != nil {
+		t.Fatalf("got %+v, %v", bars, err)
+	}
+	if _, err := broker.HistoryClient(fakeHistory{down: true}).Bars(context.Background(), broker.BarQuery{}); !retryable(err) {
+		t.Fatalf("want a Retryable TypedError, got %v", err)
+	}
+	if err := h.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
