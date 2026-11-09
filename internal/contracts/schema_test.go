@@ -394,3 +394,81 @@ func TestEarningsDateStatusRulesEnforced(t *testing.T) {
 		}
 	}
 }
+
+func copyRec(b map[string]any, f func(map[string]any)) map[string]any {
+	m := map[string]any{}
+	for k, v := range b {
+		m[k] = v
+	}
+	f(m)
+	return m
+}
+
+func TestPriceBarFixtureValues(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.price_bar")
+	recs, _ := loadRecords(t, "obs.price_bar")
+	if len(recs) != 2 {
+		t.Fatalf("want 2 records, got %d", len(recs))
+	}
+	for i, r := range recs {
+		if err := s.Validate(r); err != nil {
+			t.Fatalf("record %d: %v", i, err)
+		}
+	}
+	if recs[0]["basis"] != "trades" || recs[0]["adjust_epoch"] != float64(1) || recs[0]["volume"] == nil {
+		t.Fatalf("record 0 must be a trades row of epoch 1 with a volume: %v", recs[0])
+	}
+	if recs[1]["basis"] != "adjusted_last" || recs[1]["adjust_epoch"] != float64(2) {
+		t.Fatalf("record 1 must be an adjusted_last row of epoch 2: %v", recs[1])
+	}
+	if v, ok := recs[1]["volume"]; !ok || v != nil {
+		t.Fatalf("record 1 must carry a null volume, key present: %v", recs[1])
+	}
+	cases := map[string]map[string]any{
+		"basis midpoint":    copyRec(recs[0], func(m map[string]any) { m["basis"] = "midpoint" }),
+		"epoch zero":        copyRec(recs[0], func(m map[string]any) { m["adjust_epoch"] = 0 }),
+		"close a number":    copyRec(recs[0], func(m map[string]any) { m["close"] = 1.5 }),
+		"volume a number":   copyRec(recs[0], func(m map[string]any) { m["volume"] = 10 }),
+		"source other":      copyRec(recs[0], func(m map[string]any) { m["source"] = "fred" }),
+		"no volume key":     copyRec(recs[0], func(m map[string]any) { delete(m, "volume") }),
+		"unknown field":     copyRec(recs[0], func(m map[string]any) { m["extra"] = 1 }),
+		"session_day text":  copyRec(recs[0], func(m map[string]any) { m["session_day"] = "yesterday" }),
+		"instrument_id str": copyRec(recs[0], func(m map[string]any) { m["instrument_id"] = "x" }),
+	}
+	for label, rec := range cases {
+		if err := s.Validate(rec); err == nil {
+			t.Fatalf("%s must be rejected", label)
+		}
+	}
+}
+
+func TestFxRateFixtureValues(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.fx_rate")
+	recs, _ := loadRecords(t, "obs.fx_rate")
+	if len(recs) != 1 {
+		t.Fatalf("want 1 record, got %d", len(recs))
+	}
+	if err := s.Validate(recs[0]); err != nil {
+		t.Fatal(err)
+	}
+	if recs[0]["source"] != "ibkr_midpoint" {
+		t.Fatalf("source: %v", recs[0]["source"])
+	}
+	cases := map[string]map[string]any{
+		"pair lowercase": copyRec(recs[0], func(m map[string]any) { m["pair"] = "usdjpy" }),
+		"pair slash":     copyRec(recs[0], func(m map[string]any) { m["pair"] = "USD/JPY" }),
+		"rate zero":      copyRec(recs[0], func(m map[string]any) { m["rate"] = "0" }),
+		"rate zero dec":  copyRec(recs[0], func(m map[string]any) { m["rate"] = "0.000" }),
+		"rate negative":  copyRec(recs[0], func(m map[string]any) { m["rate"] = "-1.5" }),
+		"rate a number":  copyRec(recs[0], func(m map[string]any) { m["rate"] = 150.2 }),
+		"source other":   copyRec(recs[0], func(m map[string]any) { m["source"] = "ibkr" }),
+		"unknown field":  copyRec(recs[0], func(m map[string]any) { m["extra"] = 1 }),
+	}
+	for label, rec := range cases {
+		if err := s.Validate(rec); err == nil {
+			t.Fatalf("%s must be rejected", label)
+		}
+	}
+}

@@ -56,7 +56,9 @@ type FlexReport struct {
 
 // FlexStatement is one account statement. AccountID is returned only so that the job can map it to an
 // alias and drop it; it is never logged. Trades holds the EXECUTION-level trade rows as text;
-// OtherLevels counts the rows of other levels.
+// OtherLevels counts the rows of other levels. Sections holds the rows of every other direct child of
+// the statement, keyed by row element name, each row a text map of every attribute as sent (the account
+// attributes included; the job drops them); the container rule is in docs/contracts/sources.md.
 type FlexStatement struct {
 	AccountID     string
 	FromDate      string
@@ -65,6 +67,7 @@ type FlexStatement struct {
 	WhenGenerated string
 	Trades        []map[string]string
 	OtherLevels   int
+	Sections      map[string][]map[string]string
 }
 
 // FlexConfig holds the arguments of NewFlexFunc. Token is passed in by the caller; this package reads

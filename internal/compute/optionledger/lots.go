@@ -3,6 +3,9 @@ package optionledger
 import (
 	"math/big"
 	"sort"
+
+	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 // piece is an open lot or the part a close left (Decision 8): a lot closed in two steps
@@ -25,6 +28,10 @@ type piece struct {
 	commission      *big.Rat
 	status          string
 	early           bool
+	openDate        string
+	openPrice       string
+	fills           []compute.LedgerFill
+	broker          *big.Rat // fifoPnlRealized share of the closing row; nil when it has none
 }
 
 type lot struct {
@@ -64,6 +71,10 @@ func matchOptions(evs []event) ([]piece, []string) {
 			p.closeTx = e.txID
 			p.closeDate = e.tradeDate
 			p.status = statusOf(e.kind)
+			p.fills = append(p.fills, fillOf(e, e.kind, new(big.Rat).Neg(signed), take, e.qty))
+			if e.fifo != nil {
+				p.broker = share(e.fifo, take, e.qty)
+			}
 			p.early = e.kind == kindAssign && e.expiry != "" && e.tradeDate < e.expiry
 			out = append(out, p)
 			l.rem.Sub(l.rem, signed)
@@ -102,11 +113,30 @@ func matchOptions(evs []event) ([]piece, []string) {
 
 func newPiece(open event, n int, qty *big.Rat) piece {
 	return piece{
+		openDate: open.tradeDate, openPrice: open.priceText,
+		fills:  []compute.LedgerFill{fillOf(open, kindOpen, qty, qty, open.qty)},
 		openTx: open.txID, n: n, openKey: open.timeKey,
 		underlying: open.underlying, contract: open.contract, markKeys: open.markKeys,
 		currency: open.currency, putCall: open.putCall, expiry: open.expiry,
 		strike: open.strike, qty: new(big.Rat).Set(qty), mult: open.mult,
 	}
+}
+
+// fillOf prints one row of a piece: qty is the signed part of the row the piece holds,
+// part and whole give the share of the commission.
+func fillOf(e event, action string, qty, part, whole *big.Rat) compute.LedgerFill {
+	return compute.LedgerFill{
+		Day: dayOf(e.tradeDate), Action: action, Quantity: trimmed(qty),
+		Price: e.priceText, Commission: fixed4(share(e.commission, part, whole)),
+	}
+}
+
+// dayOf turns YYYYMMDD into YYYY-MM-DD; anything else gives the empty day.
+func dayOf(d string) contracts.Day {
+	if len(d) != 8 {
+		return ""
+	}
+	return contracts.Day(d[:4] + "-" + d[4:6] + "-" + d[6:])
 }
 
 func statusOf(kind string) string {

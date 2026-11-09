@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.price_bar.r1.json",
+  "title": "PriceBar",
+  "description": "obs.price_bar r1: one daily bar of one instrument under one basis; a restated day is a new adjust_epoch row, an existing row is never changed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["instrument_id", "basis", "adjust_epoch", "session_day", "open", "high", "low", "close", "volume", "currency", "source", "received_at"],
+  "x-dataset": "obs.price_bar",
+  "x-revision": "r1",
+  "x-primary-key": ["instrument_id", "basis", "adjust_epoch", "session_day"],
+  "properties": {
+    "instrument_id": {"type": "integer", "description": "Instrument the bar belongs to."},
+    "basis": {"type": "string", "enum": ["trades", "adjusted_last"], "description": "trades: traded prices as printed; adjusted_last: last prices adjusted for splits and dividends."},
+    "adjust_epoch": {"type": "integer", "minimum": 1, "description": "Epoch of the pull, from 1; a restated day is written again under the next epoch, and readers take the highest epoch of an instrument and basis."},
+    "session_day": {"type": "string", "format": "date", "description": "Session day the bar covers."},
+    "open": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Opening price as decimal text."},
+    "high": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Highest price as decimal text."},
+    "low": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Lowest price as decimal text."},
+    "close": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Closing price as decimal text."},
+    "volume": {"type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Volume as decimal text; null when the source gives none (adjusted_last rows). The key is always present."},
+    "currency": {"type": "string", "minLength": 1, "description": "Currency code of the prices, for example USD."},
+    "source": {"type": "string", "enum": ["ibkr"], "description": "Where the row came from."},
+    "received_at": {"type": "string", "format": "date-time", "description": "Instant the row was received, UTC."}
+  }
+}

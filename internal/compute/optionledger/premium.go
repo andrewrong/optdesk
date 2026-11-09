@@ -133,19 +133,32 @@ func (m markSet) stockMark(name string) (*big.Rat, bool) {
 
 // position builds the printed figures of a piece (Decision 9).
 func (p piece) position(alias string, ms markSet) compute.LedgerPosition {
-	out := compute.LedgerPosition{
-		PositionID:    alias + ":" + p.openTx + ":" + strconv.Itoa(p.n),
-		Alias:         alias,
-		Underlying:    p.underlying,
-		Contract:      p.contract,
-		Status:        p.status,
-		Early:         p.early,
-		Quantity:      trimmed(p.qty),
-		Multiplier:    trimmed(p.mult),
-		Currency:      p.currency,
-		PremiumIncome: fixed4(p.premium),
-		Commissions:   fixed4(p.commission),
+	broker := ""
+	if p.broker != nil {
+		broker = fixed4(p.broker)
 	}
+	out := compute.LedgerPosition{
+		PositionID:     alias + ":" + p.openTx + ":" + strconv.Itoa(p.n),
+		Alias:          alias,
+		Underlying:     p.underlying,
+		Contract:       p.contract,
+		Status:         p.status,
+		Early:          p.early,
+		Quantity:       trimmed(p.qty),
+		Multiplier:     trimmed(p.mult),
+		Currency:       p.currency,
+		PremiumIncome:  fixed4(p.premium),
+		Commissions:    fixed4(p.commission),
+		Right:          p.putCall,
+		Expiry:         string(dayOf(p.expiry)),
+		Strike:         trimmed(p.strike),
+		OpenedOn:       dayOf(p.openDate),
+		ClosedOn:       dayOf(p.closeDate),
+		OpenPrice:      p.openPrice,
+		Fills:          p.fills,
+		BrokerRealized: broker,
+	}
+
 	net := new(big.Rat).Sub(p.premium, p.commission)
 	if p.status != "open" {
 		out.RealizedPnL = fixed4(net)
