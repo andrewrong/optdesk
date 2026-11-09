@@ -74,3 +74,31 @@ type CalendarObserver func(clock.SessionDayChange)
 
 // NewCalendarRefreshFunc is the constructor of the calendar_refresh job (internal/jobs/calendarrefresh.New).
 type NewCalendarRefreshFunc func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, CalendarObserver) (contracts.Job, error)
+
+// WatchEntry is one [[underlying]] of $OT_HOME/watch.toml (docs/design/event-sources.md Decision 1), one
+// field per key. Issuer is cik:<10 digits> for a US company and edinet:<code> for a Japanese one; Market is
+// US or JP; Contract is the IBKR contract of the company.
+type WatchEntry struct {
+	Issuer string
+	Market string
+	// ReportDateOverride is the owner's own report date, YYYY-MM-DD; empty is unset. The owner's word wins over
+	// any automatic value: the job writes only an owner row for such an entry and no vendor row.
+	ReportDateOverride string
+	// BuyPrice is the price the owner would buy at: decimal text in the currency of the contract, positive,
+	// at most 4 places; empty is unset. The owner's word wins over any automatic value.
+	BuyPrice string
+	// SalePrice is the price the owner would sell at: decimal text in the currency of the contract, positive,
+	// at most 4 places, not below BuyPrice; empty is unset. The owner's word wins over any automatic value.
+	SalePrice string
+	Contract  broker.Contract
+}
+
+// NewEarningsRefreshFunc is the constructor of the earnings_refresh job (internal/jobs/earningsrefresh.New).
+// The map holds one EarningsSource per market, keyed US or JP; a market with no entry (or a nil source) gets
+// unsupported rows with source none. The job runs once per XNYS session day after the close, makes one Fetch
+// per source per run and never retries: a source that has a row of the day, error included, is not called
+// again, and a second run of the day writes no row for an entry that has one and returns the same Permanent
+// error when a row of the day is error. The reader is how the job sees the rows of the day.
+type NewEarningsRefreshFunc func(
+	map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []WatchEntry, clock.Clock,
+) (contracts.Job, error)

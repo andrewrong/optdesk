@@ -127,6 +127,8 @@ components:
     in: internal/compute/contracttest
   compute/sharpmove:
     in: internal/compute/sharpmove
+  jobs/earningsrefresh:
+    in: internal/jobs/earningsrefresh
   notify/notifytest:
     in: internal/notify/notifytest
   pages/gaps:
@@ -535,6 +537,17 @@ deps:
       - contracts
       - compute
       - contracts/genpb
+  jobs/earningsrefresh:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   notify/notifytest:
     mayDependOn:
       - contracts
