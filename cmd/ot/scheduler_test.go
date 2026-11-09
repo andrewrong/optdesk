@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/alertrules"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/notify"
@@ -130,6 +131,16 @@ type schedRig struct {
 	opened   atomic.Int32
 	runErr   error
 	built    chan struct{} // closed when the scheduler constructor was called
+
+	alertsMu  sync.Mutex
+	gapCfg    notify.Config
+	alertCfg  notify.Config
+	alertDeps notify.AlertDeps
+	viewDSN   string
+	sentDSN   string
+	viewReads atomic.Int32
+	sentOpen  atomic.Int32
+	sentShut  atomic.Int32
 }
 
 func (r *schedRig) lastBuild() []string {
@@ -149,7 +160,7 @@ func ids(jobs []contracts.Job) []string {
 
 func newSchedRig(t *testing.T, env string) *schedRig {
 	t.Helper()
-	a, errb := testApp(t, env+telegramEnv)
+	a, errb := testApp(t, env+telegramEnv+alertsEnv)
 	r := &schedRig{
 		a: a, errb: errb, inst: &fakeInstFence{}, sl: &fakeSchedLedger{}, fw: clockwork.NewFakeClock(),
 		gaps: &fakeGaps{}, notifier: &fakeNotifier{}, built: make(chan struct{}),
@@ -211,7 +222,32 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		r.builds = append(r.builds, ids(jobs))
 		return fakeRec{ids: ids(jobs), mu: &r.mu, last: &r.reconned}, nil
 	}
-	d.newNotifier = func(notify.GapSource, notify.Sender, clockwork.Clock, notify.Config) (notify.Notifier, error) {
+	d.newNotifier = func(_ notify.GapSource, _ notify.Sender, _ clockwork.Clock, c notify.Config) (notify.Notifier, error) {
+		r.alertsMu.Lock()
+		r.gapCfg = c
+		r.alertsMu.Unlock()
+		return r.notifier, nil
+	}
+	d.alertRules = alertrules.DefaultRules
+	d.loadAlertRules = alertrules.Load
+	d.evaluateAlerts = alertrules.Evaluate
+	d.openSent = func(_ context.Context, dsn string) (store.SentStore, error) {
+		r.alertsMu.Lock()
+		r.sentDSN = dsn
+		r.alertsMu.Unlock()
+		r.sentOpen.Add(1)
+		return fakeSent{r: r}, nil
+	}
+	d.openReadingView = func(_ context.Context, dsn string) (store.ReadingViewReader, error) {
+		r.alertsMu.Lock()
+		r.viewDSN = dsn
+		r.alertsMu.Unlock()
+		return schedView{r: r}, nil
+	}
+	d.newAlertNotifier = func(ad notify.AlertDeps, _ notify.Sender, _ clockwork.Clock, c notify.Config) (notify.AlertNotifier, error) {
+		r.alertsMu.Lock()
+		r.alertCfg, r.alertDeps = c, ad
+		r.alertsMu.Unlock()
 		return r.notifier, nil
 	}
 	d.newTelegramSender = func(string, string, notify.TelegramOptions) (notify.Sender, error) { return nil, nil }
@@ -601,12 +637,29 @@ type fakeNotifier struct {
 	panics bool
 	gaps   *fakeGaps
 	synced []int // the number of gap passes seen at each notify pass
+
+	order       []string // "gaps" and "alerts" in the order of the calls
+	alertPasses int
+	alertErr    error
+	alertPanics bool
+}
+
+func (f *fakeNotifier) NotifyAlerts(context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.alertPasses++
+	f.order = append(f.order, "alerts")
+	if f.alertPanics {
+		panic("boom")
+	}
+	return 0, f.alertErr
 }
 
 func (f *fakeNotifier) NotifyGaps(context.Context) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.passes++
+	f.order = append(f.order, "gaps")
 	if f.gaps != nil {
 		f.gaps.mu.Lock()
 		f.synced = append(f.synced, len(f.gaps.seen))

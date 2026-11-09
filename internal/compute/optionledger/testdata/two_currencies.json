@@ -1,0 +1,153 @@
+{
+ "Input": {
+  "Alias": "a",
+  "Trades": [
+   {
+    "TransactionID": "5001",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "ABC",
+     "underlyingSymbol": "ABC",
+     "conid": "111",
+     "strike": "50",
+     "expiry": "20260220",
+     "putCall": "P",
+     "multiplier": "100",
+     "quantity": "-1",
+     "proceeds": "100",
+     "ibCommission": "-0.65",
+     "currency": "USD",
+     "openCloseIndicator": "O",
+     "notes": "",
+     "tradeDate": "20260105",
+     "orderTime": "20260105;093000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "5002",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "ABC",
+     "underlyingSymbol": "ABC",
+     "conid": "111",
+     "strike": "50",
+     "expiry": "20260220",
+     "putCall": "P",
+     "multiplier": "100",
+     "quantity": "1",
+     "proceeds": "0",
+     "ibCommission": "0",
+     "currency": "USD",
+     "openCloseIndicator": "C",
+     "notes": "Ep",
+     "tradeDate": "20260220",
+     "orderTime": "20260220;160000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "5003",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "BBB",
+     "underlyingSymbol": "BBB",
+     "conid": "666",
+     "strike": "3000",
+     "expiry": "20260220",
+     "putCall": "P",
+     "multiplier": "100",
+     "quantity": "-1",
+     "proceeds": "5000",
+     "ibCommission": "-50",
+     "currency": "JPY",
+     "openCloseIndicator": "O",
+     "notes": "",
+     "tradeDate": "20260106",
+     "orderTime": "20260106;093000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "5004",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "BBB",
+     "underlyingSymbol": "BBB",
+     "conid": "666",
+     "strike": "3000",
+     "expiry": "20260220",
+     "putCall": "P",
+     "multiplier": "100",
+     "quantity": "1",
+     "proceeds": "0",
+     "ibCommission": "0",
+     "currency": "JPY",
+     "openCloseIndicator": "C",
+     "notes": "Ep",
+     "tradeDate": "20260220",
+     "orderTime": "20260220;160000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   }
+  ],
+  "Marks": [],
+  "SessionDays": [],
+  "AsOf": "2026-04-01"
+ },
+ "Params": {
+  "MarkMaxAgeSessions": 5
+ },
+ "Expected": {
+  "RuleVersion": 1,
+  "Positions": [
+   {
+    "PositionID": "a:5001:1",
+    "Alias": "a",
+    "Underlying": "ABC",
+    "Contract": "111",
+    "Status": "expired",
+    "Early": false,
+    "Quantity": "-1",
+    "Multiplier": "100",
+    "Currency": "USD",
+    "PremiumIncome": "100.0000",
+    "Commissions": "0.6500",
+    "RealizedPnL": "99.3500",
+    "Mark": "",
+    "MarkDay": "",
+    "MarkStatus": "",
+    "UnrealizedPnL": ""
+   },
+   {
+    "PositionID": "a:5003:1",
+    "Alias": "a",
+    "Underlying": "BBB",
+    "Contract": "666",
+    "Status": "expired",
+    "Early": false,
+    "Quantity": "-1",
+    "Multiplier": "100",
+    "Currency": "JPY",
+    "PremiumIncome": "5000.0000",
+    "Commissions": "50.0000",
+    "RealizedPnL": "4950.0000",
+    "Mark": "",
+    "MarkDay": "",
+    "MarkStatus": "",
+    "UnrealizedPnL": ""
+   }
+  ],
+  "Cycles": [],
+  "Unresolved": [],
+  "Review": []
+ }
+}

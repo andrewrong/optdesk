@@ -8,6 +8,498 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// obs.earnings_date r1: one answer about the next earnings date of one issuer on
+// one day; append only, an error is a row and a later success is a new attempt.
+type EarningsDate struct {
+	// Attempt number of the day, from 1; a later attempt never replaces an earlier
+	// row.
+	Attempt int `json:"attempt" yaml:"attempt" mapstructure:"attempt"`
+
+	// Error code when status is error, for example rate_limited; empty otherwise.
+	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Estimate of the source as decimal text, currency not stored; null when none.
+	Estimate *string `json:"estimate" yaml:"estimate" mapstructure:"estimate"`
+
+	// End of the fiscal period the report covers; null when the source does not say.
+	FiscalPeriodEnd *types.SerializableDate `json:"fiscal_period_end" yaml:"fiscal_period_end" mapstructure:"fiscal_period_end"`
+
+	// The issuer text of the watch list: cik:<10 digits>, or edinet:<code>.
+	Issuer string `json:"issuer" yaml:"issuer" mapstructure:"issuer"`
+
+	// Market of the issuer.
+	Market EarningsDateMarket `json:"market" yaml:"market" mapstructure:"market"`
+
+	// Session day (XNYS) the row answers for.
+	ObservedOn types.SerializableDate `json:"observed_on" yaml:"observed_on" mapstructure:"observed_on"`
+
+	// Instant the row was produced, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Earliest listed date on or after observed_on; null unless status is listed. The
+	// key is always present.
+	ReportDate *types.SerializableDate `json:"report_date" yaml:"report_date" mapstructure:"report_date"`
+
+	// Where the row came from; owner is a report_date_override (the only row of that
+	// issuer that day, attempt 1); none is a status unsupported row, since no source
+	// produced it. Never null.
+	Source EarningsDateSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// listed: the source gave a date; absent: the source has no date for the issuer;
+	// unsupported: no source covers the issuer; error: the source failed. Only listed
+	// carries a report_date.
+	Status EarningsDateStatus `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Symbol as the vendor or the watch list gave it.
+	Symbol string `json:"symbol" yaml:"symbol" mapstructure:"symbol"`
+
+	// Time text of the source, for example pre-market or post-market; empty when
+	// none.
+	TimeOfDay string `json:"time_of_day" yaml:"time_of_day" mapstructure:"time_of_day"`
+}
+
+type EarningsDateMarket string
+
+const EarningsDateMarketJP EarningsDateMarket = "JP"
+const EarningsDateMarketUS EarningsDateMarket = "US"
+
+var enumValues_EarningsDateMarket = []interface{}{
+	"US",
+	"JP",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDateMarket) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EarningsDateMarket {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EarningsDateMarket, v)
+	}
+	*j = EarningsDateMarket(v)
+	return nil
+}
+
+type EarningsDateSource string
+
+const EarningsDateSourceAlphavantage EarningsDateSource = "alphavantage"
+const EarningsDateSourceJquants EarningsDateSource = "jquants"
+const EarningsDateSourceNone EarningsDateSource = "none"
+const EarningsDateSourceOwner EarningsDateSource = "owner"
+
+var enumValues_EarningsDateSource = []interface{}{
+	"alphavantage",
+	"jquants",
+	"owner",
+	"none",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDateSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EarningsDateSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EarningsDateSource, v)
+	}
+	*j = EarningsDateSource(v)
+	return nil
+}
+
+type EarningsDateStatus string
+
+const EarningsDateStatusAbsent EarningsDateStatus = "absent"
+const EarningsDateStatusError EarningsDateStatus = "error"
+const EarningsDateStatusListed EarningsDateStatus = "listed"
+const EarningsDateStatusUnsupported EarningsDateStatus = "unsupported"
+
+var enumValues_EarningsDateStatus = []interface{}{
+	"listed",
+	"absent",
+	"unsupported",
+	"error",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDateStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EarningsDateStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EarningsDateStatus, v)
+	}
+	*j = EarningsDateStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDate) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["attempt"]; raw != nil && !ok {
+		return fmt.Errorf("field attempt in EarningsDate: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in EarningsDate: required")
+	}
+	if _, ok := raw["estimate"]; raw != nil && !ok {
+		return fmt.Errorf("field estimate in EarningsDate: required")
+	}
+	if _, ok := raw["fiscal_period_end"]; raw != nil && !ok {
+		return fmt.Errorf("field fiscal_period_end in EarningsDate: required")
+	}
+	if _, ok := raw["issuer"]; raw != nil && !ok {
+		return fmt.Errorf("field issuer in EarningsDate: required")
+	}
+	if _, ok := raw["market"]; raw != nil && !ok {
+		return fmt.Errorf("field market in EarningsDate: required")
+	}
+	if _, ok := raw["observed_on"]; raw != nil && !ok {
+		return fmt.Errorf("field observed_on in EarningsDate: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in EarningsDate: required")
+	}
+	if _, ok := raw["report_date"]; raw != nil && !ok {
+		return fmt.Errorf("field report_date in EarningsDate: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in EarningsDate: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in EarningsDate: required")
+	}
+	if _, ok := raw["symbol"]; raw != nil && !ok {
+		return fmt.Errorf("field symbol in EarningsDate: required")
+	}
+	if _, ok := raw["time_of_day"]; raw != nil && !ok {
+		return fmt.Errorf("field time_of_day in EarningsDate: required")
+	}
+	type Plain EarningsDate
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Symbol) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "symbol", 1)
+	}
+	*j = EarningsDate(plain)
+	return nil
+}
+
+// optionledger.flex_fetch r1: one Flex request pair (one window of one query of
+// one login) with its outcome and counts; insert only. No token and no account
+// number is stored.
+type FlexFetch struct {
+	// Flex error code as text when the service gave one; empty otherwise.
+	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Kind of the error when failed, for example network or flex_error; empty when
+	// ok.
+	ErrorKind string `json:"error_kind" yaml:"error_kind" mapstructure:"error_kind"`
+
+	// Identifier of the fetch.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Instant the request pair finished, UTC.
+	FinishedAt time.Time `json:"finished_at" yaml:"finished_at" mapstructure:"finished_at"`
+
+	// First day of the window.
+	FirstDate types.SerializableDate `json:"first_date" yaml:"first_date" mapstructure:"first_date"`
+
+	// Last day of the window.
+	LastDate types.SerializableDate `json:"last_date" yaml:"last_date" mapstructure:"last_date"`
+
+	// Name of the login of flex.toml.
+	Login string `json:"login" yaml:"login" mapstructure:"login"`
+
+	// Version of the report parser.
+	ParserVersion string `json:"parser_version" yaml:"parser_version" mapstructure:"parser_version"`
+
+	// Flex query id, digits, as text.
+	QueryID string `json:"query_id" yaml:"query_id" mapstructure:"query_id"`
+
+	// SHA-256 of the report, 64 lower-case hex digits; empty when no report arrived.
+	// The report itself is not kept.
+	RawSha256 string `json:"raw_sha256" yaml:"raw_sha256" mapstructure:"raw_sha256"`
+
+	// Rows stored as revision 1.
+	RowsNew int `json:"rows_new" yaml:"rows_new" mapstructure:"rows_new"`
+
+	// Trade rows parsed from mapped statements.
+	RowsParsed int `json:"rows_parsed" yaml:"rows_parsed" mapstructure:"rows_parsed"`
+
+	// Rows stored as a later revision.
+	RowsRevised int `json:"rows_revised" yaml:"rows_revised" mapstructure:"rows_revised"`
+
+	// Rows equal to the latest stored revision, not written.
+	RowsUnchanged int `json:"rows_unchanged" yaml:"rows_unchanged" mapstructure:"rows_unchanged"`
+
+	// Instant the request pair started, UTC.
+	StartedAt time.Time `json:"started_at" yaml:"started_at" mapstructure:"started_at"`
+
+	// Number of statements in the report.
+	Statements int `json:"statements" yaml:"statements" mapstructure:"statements"`
+
+	// Statements of an account the allow-list does not map; not stored.
+	StatementsUnmapped int `json:"statements_unmapped" yaml:"statements_unmapped" mapstructure:"statements_unmapped"`
+
+	// ok: the report was parsed and stored; failed: the window failed and nothing but
+	// this record was stored.
+	Status FlexFetchStatus `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+type FlexFetchStatus string
+
+const FlexFetchStatusFailed FlexFetchStatus = "failed"
+const FlexFetchStatusOk FlexFetchStatus = "ok"
+
+var enumValues_FlexFetchStatus = []interface{}{
+	"ok",
+	"failed",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexFetchStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FlexFetchStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FlexFetchStatus, v)
+	}
+	*j = FlexFetchStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexFetch) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in FlexFetch: required")
+	}
+	if _, ok := raw["error_kind"]; raw != nil && !ok {
+		return fmt.Errorf("field error_kind in FlexFetch: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexFetch: required")
+	}
+	if _, ok := raw["finished_at"]; raw != nil && !ok {
+		return fmt.Errorf("field finished_at in FlexFetch: required")
+	}
+	if _, ok := raw["first_date"]; raw != nil && !ok {
+		return fmt.Errorf("field first_date in FlexFetch: required")
+	}
+	if _, ok := raw["last_date"]; raw != nil && !ok {
+		return fmt.Errorf("field last_date in FlexFetch: required")
+	}
+	if _, ok := raw["login"]; raw != nil && !ok {
+		return fmt.Errorf("field login in FlexFetch: required")
+	}
+	if _, ok := raw["parser_version"]; raw != nil && !ok {
+		return fmt.Errorf("field parser_version in FlexFetch: required")
+	}
+	if _, ok := raw["query_id"]; raw != nil && !ok {
+		return fmt.Errorf("field query_id in FlexFetch: required")
+	}
+	if _, ok := raw["raw_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field raw_sha256 in FlexFetch: required")
+	}
+	if _, ok := raw["rows_new"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_new in FlexFetch: required")
+	}
+	if _, ok := raw["rows_parsed"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_parsed in FlexFetch: required")
+	}
+	if _, ok := raw["rows_revised"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_revised in FlexFetch: required")
+	}
+	if _, ok := raw["rows_unchanged"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_unchanged in FlexFetch: required")
+	}
+	if _, ok := raw["started_at"]; raw != nil && !ok {
+		return fmt.Errorf("field started_at in FlexFetch: required")
+	}
+	if _, ok := raw["statements"]; raw != nil && !ok {
+		return fmt.Errorf("field statements in FlexFetch: required")
+	}
+	if _, ok := raw["statements_unmapped"]; raw != nil && !ok {
+		return fmt.Errorf("field statements_unmapped in FlexFetch: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in FlexFetch: required")
+	}
+	type Plain FlexFetch
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	*j = FlexFetch(plain)
+	return nil
+}
+
+// optionledger.flex_trade_row r1: one revision of one Flex trade row of level
+// EXECUTION, attributes as sent, as text; insert only. No account number is
+// stored: the alias is the only identity.
+type FlexTradeRow struct {
+	// Account alias of the row, the label mapped by the allow-list.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// JSON object as text: every attribute of the Trade row as sent, every value
+	// text.
+	Attributes string `json:"attributes" yaml:"attributes" mapstructure:"attributes"`
+
+	// SHA-256 of the attributes text, 64 lower-case hex digits.
+	AttributesSha256 string `json:"attributes_sha256" yaml:"attributes_sha256" mapstructure:"attributes_sha256"`
+
+	// Identifier of the fetch record that brought the row; for an import, the
+	// identifier of the import.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Level of detail of the Flex row, for example EXECUTION.
+	LevelOfDetail string `json:"level_of_detail" yaml:"level_of_detail" mapstructure:"level_of_detail"`
+
+	// Instant the row was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Revision of the row for its transaction; 1 for a new key, a changed row is the
+	// next revision.
+	Revision int `json:"revision" yaml:"revision" mapstructure:"revision"`
+
+	// Position of the row in its report.
+	RowIndex int `json:"row_index" yaml:"row_index" mapstructure:"row_index"`
+
+	// Writer of the row: flex for a fetch, ot_import for the import of option-trader
+	// history.
+	Source FlexTradeRowSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// Flex transactionID of the row, as text.
+	TransactionID string `json:"transaction_id" yaml:"transaction_id" mapstructure:"transaction_id"`
+}
+
+type FlexTradeRowSource string
+
+const FlexTradeRowSourceFlex FlexTradeRowSource = "flex"
+const FlexTradeRowSourceOtImport FlexTradeRowSource = "ot_import"
+
+var enumValues_FlexTradeRowSource = []interface{}{
+	"flex",
+	"ot_import",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexTradeRowSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FlexTradeRowSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FlexTradeRowSource, v)
+	}
+	*j = FlexTradeRowSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexTradeRow) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in FlexTradeRow: required")
+	}
+	if _, ok := raw["attributes"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes in FlexTradeRow: required")
+	}
+	if _, ok := raw["attributes_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes_sha256 in FlexTradeRow: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexTradeRow: required")
+	}
+	if _, ok := raw["level_of_detail"]; raw != nil && !ok {
+		return fmt.Errorf("field level_of_detail in FlexTradeRow: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in FlexTradeRow: required")
+	}
+	if _, ok := raw["revision"]; raw != nil && !ok {
+		return fmt.Errorf("field revision in FlexTradeRow: required")
+	}
+	if _, ok := raw["row_index"]; raw != nil && !ok {
+		return fmt.Errorf("field row_index in FlexTradeRow: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in FlexTradeRow: required")
+	}
+	if _, ok := raw["transaction_id"]; raw != nil && !ok {
+		return fmt.Errorf("field transaction_id in FlexTradeRow: required")
+	}
+	type Plain FlexTradeRow
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	if len(plain.LevelOfDetail) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "level_of_detail", 1)
+	}
+	if len(plain.TransactionID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "transaction_id", 1)
+	}
+	*j = FlexTradeRow(plain)
+	return nil
+}
+
 // obs.fundamental_fact r1: one filed value of one concept of one issuer, as a
 // filing reported it; append only.
 type FundamentalFact struct {
@@ -846,7 +1338,8 @@ type ReadingRecord struct {
 	// Register id of the figure, for example market.ivp_own.
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
 
-	// Job that wrote the reading.
+	// Writer of the reading: the job compute_figures, or the owner command
+	// owner_command (the band approval of ot approve-band).
 	Origin ReadingRecordOrigin `json:"origin" yaml:"origin" mapstructure:"origin"`
 
 	// Parameters the rule ran with.
@@ -930,9 +1423,11 @@ func (j *ReadingRecordInputsElem) UnmarshalJSON(b []byte) error {
 type ReadingRecordOrigin string
 
 const ReadingRecordOriginComputeFigures ReadingRecordOrigin = "compute_figures"
+const ReadingRecordOriginOwnerCommand ReadingRecordOrigin = "owner_command"
 
 var enumValues_ReadingRecordOrigin = []interface{}{
 	"compute_figures",
+	"owner_command",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

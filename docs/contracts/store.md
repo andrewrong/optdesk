@@ -60,6 +60,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - The verifier is built with 16 random bytes of salt, 4096 iterations and no SASLprep (passwords are ASCII and made by `Setup`).
 - `setup.MigrateUp` logs migration names only, never the DSN, a password, a verifier or a pgx error.
 - On a database made before `0005`, `ot setup pg` must run before `ot migrate`: `0005` fails when the role `ot_loader` is missing.
+- Migration naming and order: a design entry names its migration `migrations/NNNN_<name>.sql` with NNNN the next free number at cut time; acceptance greps use the glob `migrations/*_<name>.sql`. `setup.MigrateUp` applies out of order (`goose.WithAllowOutofOrder(true)`): a lower version that lands after a higher one is applied on a database that already has the higher ones, because each module's migration is its own schema, tables, views and grants and the shared prerequisites are `0002` to `0006`. A duplicate version is caught by the pg job (goose refuses two files with one version) and the worker renames the file.
 
 - `ResolveInstrument` runs in one transaction that first takes `pg_advisory_xact_lock(hashtext(scheme || ':' || value))` over the key, then looks the key up, and on a miss inserts the instrument (`recorded_at` and `valid_from` are the database's `now()`) and the identifiers `key` and `extra`. It never closes an identifier. For a new `option` whose `extra` holds an `osi` identifier of 21 characters (symbol padded to 6, `yymmdd` in 2000 to 2099, `C` or `P`, strike times 1000 in 8 digits) it also inserts the current row of `master.option_terms` in the same transaction: `right`, `strike` and `expiration_date` from the `osi`, `strike_currency` from `Currency`, `multiplier` from `LotSize`, and the text `unknown` for `exercise_style` and `settlement_type`. The insert runs between `SAVEPOINT option_terms` and `RELEASE SAVEPOINT option_terms` with `ON CONFLICT (instrument_id) WHERE valid_to IS NULL DO NOTHING`; on any error the transaction does `ROLLBACK TO SAVEPOINT option_terms` and commits, so the call still returns the id and a nil error and the option has no terms row. After the transaction has committed, that rollback writes one `WARN` line through the store's logger (`slog.Default()` unless a test sets one): message `option terms insert rolled back`, attributes `component=store`, `status=rolled_back`, `instrument_id=<n>` and `err=<class>`, where `err` is the SQLSTATE of the error (for example `42501`) or `other` when it has none, never an error text, because a database message can carry values. A terms insert skipped by `ON CONFLICT DO NOTHING` is not a failure and is not logged; nor is a call whose transaction fails. The same holds for an `osi` that does not parse, a type other than `option`, an option with no `osi` and an existing key: no terms statement, no error. An `osi` that already names another instrument (an SPX and an SPXW option, or an adjusted one, give the same `osi`) is a `Permanent` error as before. The table is versioned and the code never updates it: a later correction of the `unknown` defaults closes the row by setting `valid_to` and inserts a new version. Options that exist before the writer has no row (no backfill). An `extra` identifier that already names an instrument is a `Permanent` error and nothing is written; so is an unknown scheme, an empty value, a `Type` outside the three, a `Currency` that is not three upper-case letters or a decimal that does not parse, all before any statement.
 - Migration `0008` adds the foreign keys `obs.option_eod.instrument_id`, `obs.option_eod.underlying_id` and `obs.quote_snapshot.instrument_id` to `master.instrument(instrument_id)`; compression of both hypertables is switched off while they are added and on again with the settings of `0006` and `0007`, the tables being empty. `0008` fails when the role `ot_w_master` is missing: `ot setup pg` must run before `ot migrate`.
@@ -97,6 +98,30 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 - Grants (recorded here, made by migration `0012` in another entry): both views belong to `ot_owner`, which can read `ops`; `SELECT` on both views to `ot_ro_pages` and `ot_runner`. `ot_ro_pages` reads views of `rd` only and has no grant on an `ops` table, as schema v3 says.
 - Constructors: `OpenFenceFunc`, `OpenSchedulerLedgerFunc`, `OpenGapReaderFunc` (the last opens with the line `DSNEnvPages`).
 
+## Fundamental facts
+
+Declared in `internal/store/api.go`: `FactWriter` (`InsertFacts`), `FactReader` (`FactsFiledBy`), `FactStore` (both and `Close`), `OpenFactStoreFunc` and `DSNEnvFundamental` (`OT_PG_DSN_FUNDAMENTAL`). `internal/store/fundamental.Open` is the implementation. Design: `docs/design/valuation.md#Decisions` (6).
+
+- Table `obs.fundamental_fact` (migration `0017`), append only. Key `(source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end)`; `period_start_key` is `NOT NULL` and holds `0001-01-01` for an absent `period_start`, so a repeated instant fact is a duplicate. `InsertFacts` inserts `ON CONFLICT DO NOTHING` on that key in one transaction: a rerun adds 0 rows.
+- View `rd.fundamental_fact_r1` returns `period_start` as NULL again for `0001-01-01`. `FactsFiledBy(ctx, source, subject, cutoff)` reads the view only and returns every row of the source and subject with `filed` on or before the cutoff, no winner picked; none gives an empty slice; a bad cutoff is `Permanent`, a database error `Retryable`.
+- Grants: `ot_w_fundamental` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_FUNDAMENTAL`) has `INSERT` on the table and `SELECT` on the view; `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role has UPDATE, DELETE or TRUNCATE. One implementation serves the figures job (opened with `DSNEnvFundamental`) and the page (opened with `DSNEnvPages`).
+
+## Earnings dates
+
+Declared in `internal/store/api.go`: `EarningsDateWriter` (`InsertEarningsDate`), `EarningsDateReader` (`EarningsDates`), `EarningsDateStore` (both and `Close`), `OpenEarningsDateStoreFunc` and `DSNEnvEvents` (`OT_PG_DSN_EVENTS`, role `ot_w_events`). `internal/store/events.OpenEarningsDate` is the implementation; the row is `contracts.EarningsDate`. Design: `docs/design/event-sources.md#Decisions` (7, 8, 10).
+
+- Table `obs.earnings_date` (migration `0020`), append only, key `(observed_on, issuer, attempt)`; the enums, `attempt >= 1`, a `report_date` only for `listed` and source `none` for `unsupported` are table checks. `InsertEarningsDate` inserts `ON CONFLICT DO NOTHING`: a row whose key exists stays as it is and the call returns no error. An empty issuer or an attempt below 1 is `Permanent`, a database error `Retryable`.
+- View `rd.earnings_date_r1`. `EarningsDates(ctx, issuer, from, to)` reads the view only, inclusive, ascending by day, the highest `attempt` of each day only; none gives an empty slice; a bad or reversed day range is `Permanent`.
+- Grants: `ot_w_events` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_EVENTS`) has `INSERT` on the table and `SELECT` on the view (the job reads the rows of the day); `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role but the owner has UPDATE, DELETE or TRUNCATE. The rows hold dates, status words and vendor text, no account data.
+
+## Option candidates
+
+Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`.
+
+## Option ledger
+
+Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
+
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
@@ -114,6 +139,8 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 
 - v12: migration `0016` (`rd.reading_parameter_r1`, `SELECT` to `ot_ro_pages` and `ot_w_readings`); `reading.OpenView` and `store.ReadingViewReader.WinnerReadings`. Migrate before deploying the reader.
 
+- v13: migration `0020` (`obs.earnings_date`, `rd.earnings_date_r1`); role `ot_w_events` and the new line `OT_PG_DSN_EVENTS`; `events.OpenEarningsDate`. Migrate and run `ot setup pg` before deploying the code.
+
 ## Contract tests
 
 - `internal/store/scheduler_api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
@@ -125,7 +152,11 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 - `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
 - `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
 - `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
+- `internal/store/api_events_test.go`: `TestEarningsDateContractFromBothSides` and `TestEarningsDSNEnvName` hold `EarningsDateStore` and its line name from both sides.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
+- `internal/store/api_candidate_test.go`: `TestCandidateContract` holds `CandidateWriter`, `CandidateReader` and `DSNEnvCandidate` from both sides (two runs of a day read as the newer one, ranked rows first).
+
+- `internal/store/optionledger_api_test.go`: `TestOptionLedgerWriterContract` (revision rule and import rule from both sides) and `TestOptionLedgerReaderContract`.
 
 - `internal/store/instrument/resolve_test.go` and `read_test.go`: `TestResolveCreates`, `TestResolveSame`, `TestResolveLock`, `TestResolveExtraTaken`, `TestResolveChecks` and `TestInstruments` against an in-test fake.
 - `internal/store/instrument/instrument_pg_test.go` (build tag `pg`): `TestMigration0008PG`, `TestForeignKeysPG`, `TestConcurrentResolvePG` and `TestMasterGrantsPG`.

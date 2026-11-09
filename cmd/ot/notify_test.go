@@ -216,3 +216,17 @@ var _ runner.GapSyncer = notifyingGaps{}
 
 // The leak table of env_test.go is owned by another file of the package; the row of ot notify joins it here.
 func init() { leakRows["notify"] = []string{"--once"} }
+
+func TestAlertAndGapNotifiersShareOneConfig(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	done := r.start()
+	r.waitStarted(t, done)
+	_ = r.stop(t, done)
+	if r.gapCfg.Zone == nil || r.gapCfg != r.alertCfg {
+		t.Fatalf("gap config %+v, alert config %+v", r.gapCfg, r.alertCfg)
+	}
+	if r.alertCfg.QuietFrom != "" || r.alertCfg.QuietTo != "" {
+		t.Fatalf("the scheduler turned the quiet hours off: %+v", r.alertCfg)
+	}
+}

@@ -203,8 +203,8 @@ func TestReadingRejects(t *testing.T) {
 	t.Parallel()
 	s := compileDataset(t, "readings.reading")
 	recs, _ := loadRecords(t, "readings.reading")
-	if len(recs) != 3 {
-		t.Fatalf("want 3 records, got %d", len(recs))
+	if len(recs) != 4 {
+		t.Fatalf("want 4 records, got %d", len(recs))
 	}
 	mutate := func(i int, f func(map[string]any)) map[string]any {
 		m := map[string]any{}
@@ -248,5 +248,149 @@ func TestReadingRejects(t *testing.T) {
 	}
 	if err := s.Validate(mutate(0, func(m map[string]any) { m["value"] = "-12345.123456789012"; m["reason_code"] = nil })); err != nil {
 		t.Fatalf("signed value with 12 decimals: %v", err)
+	}
+}
+
+func TestOptionLedgerDatasetFiles(t *testing.T) {
+	t.Parallel()
+	hash := strings.Repeat("ab", 32)
+	row := map[string]any{
+		"alias": "a", "level_of_detail": "EXECUTION", "transaction_id": "1234567", "revision": 1,
+		"fetch_id": "f1", "row_index": 0, "source": "flex",
+		"attributes":        `{"quantity":"-1","tradePrice":"1.25"}`,
+		"attributes_sha256": hash, "recorded_at": "2026-01-02T03:04:05Z",
+	}
+	fetch := map[string]any{
+		"fetch_id": "f1", "login": "main", "query_id": "123456", "first_date": "2025-12-01", "last_date": "2026-01-01",
+		"started_at": "2026-01-02T03:04:00Z", "finished_at": "2026-01-02T03:04:05Z", "status": "ok",
+		"error_kind": "", "error_code": "", "raw_sha256": hash, "parser_version": "1",
+		"statements": 2, "statements_unmapped": 1, "rows_parsed": 3, "rows_new": 1, "rows_revised": 1, "rows_unchanged": 1,
+	}
+	with := func(base map[string]any, k string, v any) map[string]any {
+		m := map[string]any{}
+		for kk, vv := range base {
+			m[kk] = vv
+		}
+		m[k] = v
+		return m
+	}
+	cases := []struct {
+		name string
+		rec  map[string]any
+		bad  map[string]map[string]any
+	}{
+		{"optionledger.flex_trade_row", row, map[string]map[string]any{
+			"revision 0":        with(row, "revision", 0),
+			"attributes object": with(row, "attributes", map[string]any{"quantity": "-1"}),
+			"source other":      with(row, "source", "manual"),
+			"short hash":        with(row, "attributes_sha256", "abc"),
+			"account number":    with(row, "account_number", "U1"),
+			"alias upper":       with(row, "alias", "A"),
+		}},
+		{"optionledger.flex_fetch", fetch, map[string]map[string]any{
+			"status other":      with(fetch, "status", "done"),
+			"count number text": with(fetch, "rows_new", "1"),
+			"negative count":    with(fetch, "rows_parsed", -1),
+			"query id letters":  with(fetch, "query_id", "abc"),
+			"token":             with(fetch, "token", "x"),
+		}},
+	}
+	for _, c := range cases {
+		s := compileDataset(t, c.name)
+		if err := s.Validate(c.rec); err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		for label, rec := range c.bad {
+			if err := s.Validate(rec); err == nil {
+				t.Fatalf("%s: %s must be rejected", c.name, label)
+			}
+		}
+	}
+}
+
+func TestEarningsDateFixtureValues(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.earnings_date")
+	recs, _ := loadRecords(t, "obs.earnings_date")
+	want := []struct {
+		status, source string
+		hasDate        bool
+	}{
+		{"listed", "alphavantage", true},
+		{"absent", "alphavantage", false},
+		{"unsupported", "none", false},
+		{"error", "jquants", false},
+	}
+	if len(recs) != len(want) {
+		t.Fatalf("want %d records, got %d", len(want), len(recs))
+	}
+	for i, w := range want {
+		r := recs[i]
+		if err := s.Validate(r); err != nil {
+			t.Fatalf("record %d: %v", i, err)
+		}
+		if r["status"] != w.status || r["source"] != w.source {
+			t.Fatalf("record %d: status %v source %v, want %s %s", i, r["status"], r["source"], w.status, w.source)
+		}
+		date, present := r["report_date"]
+		if !present {
+			t.Fatalf("record %d: report_date key must be present", i)
+		}
+		if (date != nil) != w.hasDate {
+			t.Fatalf("record %d: report_date %v, has date want %v", i, date, w.hasDate)
+		}
+	}
+
+	mutate := func(base map[string]any, f func(map[string]any)) map[string]any {
+		m := map[string]any{}
+		for k, v := range base {
+			m[k] = v
+		}
+		f(m)
+		return m
+	}
+	cases := map[string]map[string]any{
+		"status unknown":     mutate(recs[0], func(m map[string]any) { m["status"] = "present" }),
+		"source null":        mutate(recs[2], func(m map[string]any) { m["source"] = nil }),
+		"source fmp":         mutate(recs[0], func(m map[string]any) { m["source"] = "fmp" }),
+		"no attempt":         mutate(recs[0], func(m map[string]any) { delete(m, "attempt") }),
+		"attempt zero":       mutate(recs[0], func(m map[string]any) { m["attempt"] = 0 }),
+		"issuer is a ticker": mutate(recs[0], func(m map[string]any) { m["issuer"] = "AAPL" }),
+		"market unknown":     mutate(recs[0], func(m map[string]any) { m["market"] = "HK" }),
+		"estimate a number":  mutate(recs[0], func(m map[string]any) { m["estimate"] = 1.5 }),
+		"unknown field":      mutate(recs[0], func(m map[string]any) { m["extra"] = 1 }),
+	}
+	for label, rec := range cases {
+		if err := s.Validate(rec); err == nil {
+			t.Fatalf("%s must be rejected", label)
+		}
+	}
+}
+
+func TestEarningsDateStatusRulesEnforced(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.earnings_date")
+	recs, _ := loadRecords(t, "obs.earnings_date")
+	cp := func(b map[string]any) map[string]any {
+		m := map[string]any{}
+		for k, v := range b {
+			m[k] = v
+		}
+		return m
+	}
+	unsupportedWithVendor := cp(recs[2]) // status unsupported
+	unsupportedWithVendor["source"] = "alphavantage"
+	absentWithDate := cp(recs[1]) // status absent
+	absentWithDate["report_date"] = "2027-01-29"
+	listedWithoutDate := cp(recs[0])
+	listedWithoutDate["report_date"] = nil
+	for label, r := range map[string]map[string]any{
+		"unsupported row with a vendor source": unsupportedWithVendor,
+		"absent row with a report_date":        absentWithDate,
+		"listed row without a report_date":     listedWithoutDate,
+	} {
+		if err := s.Validate(r); err == nil {
+			t.Errorf("%s must be rejected (Decision 7)", label)
+		}
 	}
 }

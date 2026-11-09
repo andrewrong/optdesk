@@ -235,6 +235,14 @@ const (
 	DSNEnvReadings = "OT_PG_DSN_READINGS"
 	// DSNEnvAlerts names the line that holds the DSN of the role ot_w_alerts.
 	DSNEnvAlerts = "OT_PG_DSN_ALERTS"
+	// DSNEnvEvents names the line that holds the DSN of the role ot_w_events.
+	DSNEnvEvents = "OT_PG_DSN_EVENTS"
+	// DSNEnvFundamental names the line that holds the DSN of the role ot_w_fundamental.
+	DSNEnvFundamental = "OT_PG_DSN_FUNDAMENTAL"
+	// DSNEnvCandidate names the line that holds the DSN of the role ot_w_candidate.
+	DSNEnvCandidate = "OT_PG_DSN_CANDIDATE"
+	// DSNEnvOptionLedger names the line that holds the DSN of the role ot_w_optionledger.
+	DSNEnvOptionLedger = "OT_PG_DSN_OPTION_LEDGER"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -488,3 +496,206 @@ type ReadingViewReader interface {
 // OpenReadingViewFunc opens the view reader from a DSN of the role ot_ro_pages (the page process)
 // or ot_w_readings (the notify pass of risk-alerts); both hold SELECT on the views (internal/store/reading.OpenView).
 type OpenReadingViewFunc func(ctx context.Context, dsn string) (ReadingViewReader, error)
+
+// FactWriter appends the filed facts of obs.fundamental_fact.
+type FactWriter interface {
+	// InsertFacts inserts the rows ON CONFLICT DO NOTHING on the eight-column key
+	// (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end), so a rerun adds 0 rows.
+	// An absent PeriodStart is stored as period_start_key 0001-01-01 and read back as nil.
+	InsertFacts(ctx context.Context, rows []contracts.FundamentalFact) error
+}
+
+// FactReader reads the facts through the view rd.fundamental_fact_r1.
+type FactReader interface {
+	// FactsFiledBy returns every row of the source and subject with filed on or before cutoff, no winner picked;
+	// none gives an empty slice. The order is unspecified.
+	FactsFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error)
+}
+
+// FactStore is one store for both sides: the figures job opens it with the line DSNEnvFundamental
+// (role ot_w_fundamental, INSERT on the table and SELECT on the view), the page with DSNEnvPages
+// (role ot_ro_pages, SELECT on the view only; its InsertFacts fails).
+type FactStore interface {
+	FactWriter
+	FactReader
+	Close() error
+}
+
+// OpenFactStoreFunc opens the fact store (internal/store/fundamental.Open).
+type OpenFactStoreFunc func(ctx context.Context, dsn string) (FactStore, error)
+
+// EarningsDateWriter appends the rows of obs.earnings_date (docs/design/event-sources.md Decision 7).
+type EarningsDateWriter interface {
+	// InsertEarningsDate inserts one row ON CONFLICT DO NOTHING on the key (observed_on, issuer, attempt):
+	// a row whose key exists stays as it is and the call returns no error. A row with no issuer or an
+	// attempt below 1 is Permanent, a database error Retryable.
+	InsertEarningsDate(ctx context.Context, row contracts.EarningsDate) error
+}
+
+// EarningsDateReader reads the rows through the view rd.earnings_date_r1.
+type EarningsDateReader interface {
+	// EarningsDates returns the rows of one issuer with observed_on from from to to, inclusive, ascending by
+	// day, only the highest attempt of each day; none gives an empty slice. A bad day is Permanent.
+	EarningsDates(ctx context.Context, issuer string, from, to contracts.Day) ([]contracts.EarningsDate, error)
+}
+
+// EarningsDateStore is one store for both sides: the earnings job opens it with the line DSNEnvEvents
+// (role ot_w_events, INSERT on the table and SELECT on the view), a page with DSNEnvPages (role ot_ro_pages,
+// SELECT on the view only; its InsertEarningsDate fails).
+type EarningsDateStore interface {
+	EarningsDateWriter
+	EarningsDateReader
+	Close() error
+}
+
+// OpenEarningsDateStoreFunc opens the earnings store (internal/store/events.OpenEarningsDate).
+type OpenEarningsDateStoreFunc func(ctx context.Context, dsn string) (EarningsDateStore, error)
+
+// Candidate is one row of candidates.option_candidate r1 as plain text and numbers (design
+// docs/design/option-candidates.md): money is decimal text, an optional column is a nil pointer, Gates is the
+// ordered JSON array text of the gate results, Marks the JSON array text of the marks and Fits the JSON object
+// text from alias to fit, no_fit or unknown. The key is (SessionDay, RunID, Kind, InstrumentID, Alias);
+// Alias is empty for puts.
+type Candidate struct {
+	SessionDay       contracts.Day
+	RunID            string
+	Kind             string // short_put, covered_call or held_call_guard
+	InstrumentID     int
+	Alias            string
+	RuleVersion      string
+	Issuer           string
+	UnderlyingID     int
+	Expiry           contracts.Day
+	DTE              int
+	Right            string // put or call
+	Strike           string
+	Multiplier       int
+	BidEod           string
+	Ask              *string
+	Spot             *string
+	BuyPrice         *string
+	SalePrice        *string
+	BreakEven        string
+	AnnualizedYield  *string
+	Delta            *string
+	Iv               *string
+	Status           string // ok, blocked or unknown
+	Gates            string
+	Marks            string
+	Fits             string
+	NextEarnings     *contracts.Day
+	EarningsState    string
+	NextExDate       *contracts.Day
+	ExAmount         *string
+	Extrinsic        *string
+	Rank             *int
+	RankInUnderlying *int
+	ComputedAt       time.Time
+}
+
+// CandidateWriter appends the rows of candidates.option_candidate (role ot_w_candidate, line DSNEnvCandidate).
+type CandidateWriter interface {
+	// InsertCandidates inserts the rows, insert-only: a rerun carries a new RunID and adds rows, none is
+	// replaced. It returns the number of rows inserted; no rows inserts none and makes no database call.
+	InsertCandidates(ctx context.Context, rows []Candidate) (int, error)
+}
+
+// CandidateReader reads the rows through the view rd.option_candidate_r1.
+type CandidateReader interface {
+	// Candidates returns the rows of one kind of one day written by the newest run of that day (the latest
+	// ComputedAt), ranked rows first in ascending Rank, then the rest; a day or kind with no rows gives an
+	// empty slice, never nil. A zero day or an unknown kind is an error.
+	Candidates(ctx context.Context, day contracts.Day, kind string) ([]Candidate, error)
+}
+
+// FlexTradeRow is one stored <Trade> row of schema optionledger (design docs/design/option-ledger.md,
+// Decision 5) as plain text: Attributes is the JSON object text of every attribute as sent, without accountId
+// and acctAlias, and AttributesSHA256 the lower-case hex hash of it. The key is (Alias, LevelOfDetail,
+// TransactionID, Revision); Alias is the only identity and no account number is held. Source is flex or
+// ot_import. Revision and RecordedAt are set by the store on RecordFlexFetch and read back by the reader.
+type FlexTradeRow struct {
+	Alias            string
+	LevelOfDetail    string
+	TransactionID    string
+	Revision         int
+	Attributes       string
+	AttributesSHA256 string
+	Source           string
+	RecordedAt       time.Time
+}
+
+// FlexFetchRecord is the record of one request pair of one report (Decision 5): the login name and query id,
+// the first and last day asked, the start and finish times, the status (ok or a failure), the error kind and
+// code (empty when ok), the hash of the raw report, the parser version and the counts. No token, account
+// number or row content is held.
+type FlexFetchRecord struct {
+	Login             string
+	QueryID           string
+	FirstDay          contracts.Day
+	LastDay           contracts.Day
+	StartedAt         time.Time
+	FinishedAt        time.Time
+	Status            string
+	ErrorKind         string
+	ErrorCode         string
+	RawSHA256         string
+	ParserVersion     string
+	Statements        int
+	UnmappedStatement int
+	RowsParsed        int
+	RowsNew           int
+	RowsRevised       int
+	RowsUnchanged     int
+}
+
+// FlexInsert counts what RecordFlexFetch did with the rows of one report.
+type FlexInsert struct {
+	New, Revised, Unchanged int
+}
+
+// FlexImportResult counts what ImportFlexTradeRows did with the rows given.
+type FlexImportResult struct {
+	Inserted, Same, Conflict int
+}
+
+// OptionLedgerWriter appends to schema optionledger (role ot_w_optionledger, line DSNEnvOptionLedger):
+// insert-only, nothing is updated or deleted.
+type OptionLedgerWriter interface {
+	// RecordFlexFetch writes the fetch record and its rows in one transaction, so a failure leaves neither.
+	// The revision rule of Decision 5 is applied per row on the key (Alias, LevelOfDetail, TransactionID):
+	// a new key is written as revision 1 (New), a row whose AttributesSHA256 equals that of the highest stored
+	// revision is not written (Unchanged), a changed hash is written as the next revision (Revised). The
+	// Revision of a row given is ignored. A row whose Attributes hold the key accountId or acctAlias is an error
+	// and nothing is written. No rows still writes the record.
+	RecordFlexFetch(ctx context.Context, rec FlexFetchRecord, rows []FlexTradeRow) (FlexInsert, error)
+	// ImportFlexTradeRows writes imported rows (Source ot_import, Revision as given) in one transaction under
+	// Decision 6: a row is inserted only when its key (Alias, LevelOfDetail, TransactionID, Revision) is absent
+	// and no stored row of that transaction has the same AttributesSHA256; a row whose hash equals a stored one
+	// is Same and not written; a key that exists with another hash is a Conflict, counted and not written.
+	// No rows makes no database call.
+	ImportFlexTradeRows(ctx context.Context, rows []FlexTradeRow) (FlexImportResult, error)
+}
+
+// OptionLedgerReader reads schema optionledger through the views rd.flex_trade_row_r1 and rd.flex_fetch_r1.
+type OptionLedgerReader interface {
+	// FlexTradeRows returns the highest revision of every transaction of the alias, sorted by TransactionID;
+	// an alias with no rows gives an empty slice, never nil.
+	FlexTradeRows(ctx context.Context, alias string) ([]FlexTradeRow, error)
+	// LatestOkFetch returns the record of the newest fetch of the login and query id whose Status is ok, and
+	// true; false when there is none.
+	LatestOkFetch(ctx context.Context, login, queryID string) (FlexFetchRecord, bool, error)
+	// StoredAliases returns every alias that has a stored row, ascending, each once; none gives an empty slice.
+	StoredAliases(ctx context.Context) ([]string, error)
+}
+
+// OptionLedgerStore is one store for both sides: the job opens it with the line DSNEnvOptionLedger (role
+// ot_w_optionledger, INSERT and SELECT), a page with DSNEnvPages for the reader only.
+type OptionLedgerStore interface {
+	OptionLedgerWriter
+	OptionLedgerReader
+	// Close releases the connection.
+	Close() error
+}
+
+// OpenOptionLedgerFunc opens the option ledger store (internal/store/optionledger.Open).
+type OpenOptionLedgerFunc func(ctx context.Context, dsn string) (OptionLedgerStore, error)

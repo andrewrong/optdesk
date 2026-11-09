@@ -43,6 +43,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/alert"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 	"github.com/andrewrong/optdesk/internal/store/reading"
@@ -108,6 +109,9 @@ type deps struct {
 	newNotifier             notify.NewNotifierFunc
 	newTelegramSender       notify.NewTelegramSenderFunc
 	newDryRunSender         notify.NewDryRunSenderFunc
+	openSent                store.OpenSentFunc
+	newAlertNotifier        notify.NewAlertNotifierFunc
+	loadAlertRules          compute.LoadAlertRulesFunc
 }
 
 // calendarArgs is what follows the uv program in the command of calendar_refresh, that is
@@ -180,6 +184,9 @@ func newDeps() deps {
 		newNotifier:             core.New,
 		newTelegramSender:       telegram.New,
 		newDryRunSender:         dryrun.New,
+		openSent:                alert.Open,
+		newAlertNotifier:        core.NewAlerts,
+		loadAlertRules:          alertrules.Load,
 	}
 }
 
