@@ -165,6 +165,8 @@ components:
     in: internal/pages/gaps
   pages/home_page:
     in: internal/pages/home_page
+  pages/settings_page:
+    in: internal/pages/settings_page
   store/fundamental:
     in: internal/store/fundamental
   store/migrate:
@@ -847,6 +849,17 @@ deps:
       - contracts/genpb
       - compute/contracttest
   pages/home_page:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - store/bar
+      - store/ownerset
+      - compute/settingsapi
+      - pages
+      - contracts/genpb
+      - compute/contracttest
+  pages/settings_page:
     mayDependOn:
       - contracts
       - store
