@@ -76,6 +76,8 @@ The four entries that edit `.go-arch-lint.yml` (3, 4, 7, 10) are one serial chai
 - jobs (entries 7, 10, 12): `NewBarsRefreshFunc func(broker.Broker, broker.HistoryClient, store.InstrumentResolver, bar.PriceBarWriter, bar.PriceBarReader, []WatchEntry, clock.Clock) (contracts.Job, error)`; `NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)`; `ComputeStores.PriceBars bar.PriceBarReader`. Job ids `bars_refresh` and `fx_refresh`; run keys `{obs.price_bar, <issuer or index:SYMBOL>}` and `{obs.fx_rate, USDJPY}`; a key is present when its newest stored `trades` day (or rate day) is on or after the first row this run wrote or found, `Usable` counts such keys.
 - compute (entry 11): no interface change; a rule row and a register entry.
 
+Landed in #817 (entry 1, #815), #865 (entry 2, #864), #856 (entry 3, #845), #889 (entry 5, #885), #943 (entry 6, #937).
+
 ## Issues
 
 Every test calls `t.Parallel()` (Python: `pytest -n auto`), writes files only under a temporary directory, uses a fake clock, never sleeps, opens no port, and touches no live broker or database (a test that needs PostgreSQL carries the tag `pg`). Acceptance is checked offline by reading, grep and git; test runs are under "Checked by CI". `BASE` below is `git merge-base HEAD origin/main`.
