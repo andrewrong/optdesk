@@ -22,8 +22,6 @@ const (
 	reasonNotComputedYet = "not_computed_yet"
 )
 
-const dayLayout = "2006-01-02"
-
 // oldRow is one line of the old figure.jsonl. A nil Value is a figure the exporter could not read; Reason
 // then says path_not_found when the page path was missing.
 type oldRow struct {
