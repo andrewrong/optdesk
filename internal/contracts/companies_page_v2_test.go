@@ -78,50 +78,56 @@ func TestCompaniesPageV2Fixtures(t *testing.T) {
 	})
 	t.Run("input-parses", func(t *testing.T) {
 		t.Parallel()
-		b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", "page.companies_page.v2.input.json"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var in struct {
-			Today    string            `json:"today"`
-			Subjects []json.RawMessage `json:"subjects"`
-			Readings []json.RawMessage `json:"readings"`
-			Facts    []json.RawMessage `json:"facts"`
-			Series   []struct {
-				SeriesID        string `json:"series_id"`
-				ObservationDate string `json:"observation_date"`
-			} `json:"series"`
-			Instruments []struct {
-				ID     int    `json:"id"`
-				Symbol string `json:"symbol"`
-			} `json:"instruments"`
-			Quotes     []json.RawMessage          `json:"quotes"`
-			OptionRows []struct{ Strike string }  `json:"option_rows"`
-			OwnerText  map[string]map[string]any  `json:"owner_text"`
-			Figures    map[string]json.RawMessage `json:"figures"`
-		}
-		if err := json.Unmarshal(b, &in); err != nil {
-			t.Fatal(err)
-		}
-		if in.Today == "" || len(in.Subjects) == 0 || len(in.Readings) == 0 || len(in.Facts) == 0 ||
-			len(in.Quotes) == 0 || len(in.OwnerText) == 0 {
-			t.Fatalf("an input section is empty: %+v", in)
-		}
-		if len(in.Series) == 0 || in.Series[0].SeriesID != "DGS10" {
-			t.Errorf("series = %v, want DGS10 points", in.Series)
-		}
-		for _, o := range in.OptionRows {
-			if o.Strike == "" {
-				t.Error("an option row has no strike")
-			}
-		}
-		for _, inst := range in.Instruments {
-			if _, ok := in.Figures[inst.Symbol]; !ok {
-				t.Errorf("no figures for instrument symbol %s", inst.Symbol)
-			}
-		}
-		if len(in.Instruments) == 0 {
-			t.Error("no instruments")
-		}
+		checkCompaniesV2Input(t)
 	})
+}
+
+// checkCompaniesV2Input parses the input fixture and checks the sections a builder test reads.
+func checkCompaniesV2Input(t *testing.T) {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", "page.companies_page.v2.input.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var in struct {
+		Today    string            `json:"today"`
+		Subjects []json.RawMessage `json:"subjects"`
+		Readings []json.RawMessage `json:"readings"`
+		Facts    []json.RawMessage `json:"facts"`
+		Series   []struct {
+			SeriesID        string `json:"series_id"`
+			ObservationDate string `json:"observation_date"`
+		} `json:"series"`
+		Instruments []struct {
+			ID     int    `json:"id"`
+			Symbol string `json:"symbol"`
+		} `json:"instruments"`
+		Quotes     []json.RawMessage          `json:"quotes"`
+		OptionRows []struct{ Strike string }  `json:"option_rows"`
+		OwnerText  map[string]map[string]any  `json:"owner_text"`
+		Figures    map[string]json.RawMessage `json:"figures"`
+	}
+	if err := json.Unmarshal(b, &in); err != nil {
+		t.Fatal(err)
+	}
+	if in.Today == "" || len(in.Subjects) == 0 || len(in.Readings) == 0 || len(in.Facts) == 0 ||
+		len(in.Quotes) == 0 || len(in.OwnerText) == 0 {
+		t.Fatalf("an input section is empty: %+v", in)
+	}
+	if len(in.Series) == 0 || in.Series[0].SeriesID != "DGS10" {
+		t.Errorf("series = %v, want DGS10 points", in.Series)
+	}
+	for _, o := range in.OptionRows {
+		if o.Strike == "" {
+			t.Error("an option row has no strike")
+		}
+	}
+	for _, inst := range in.Instruments {
+		if _, ok := in.Figures[inst.Symbol]; !ok {
+			t.Errorf("no figures for instrument symbol %s", inst.Symbol)
+		}
+	}
+	if len(in.Instruments) == 0 {
+		t.Error("no instruments")
+	}
 }
