@@ -283,7 +283,7 @@ Checked by CI: `go test ./internal/jobs/... -race -count=1`, ci-go.
 
 - Stooq source and coarse layer, the 15 s FX stream, the scanner and composite scoring: dropped by the owner 2026-11-09, `alignment-v25.md` (Decision 3 and its Left out). Only daily FX is built. No second source of closes; a name IBKR gives no history for has an HV30 gap `short_history` or `no_input`.
 - Permanent intraday quote storage (listed with "bars" in `alignment-v25.md` Decision 3): owner 2026-11-09: not now. Not designed here; `obs.quote_snapshot` is insert-only on main and no retention job was found by grep, but what the owner means by "permanent" is not stated. Asked: it is its own small design if the owner wants a rule.
-- Indices TOPX and XAUUSD (glossary "Index closes (RUT, TOPX)", "Spot gold"): display-only rows with no designed consumer; question B.
+- Indices TOPX and XAUUSD (glossary "Index closes (RUT, TOPX)", "Spot gold"): display-only rows with no designed consumer (owner 2026-11-09 chose the four indices only).
 - Held names that are not on `watch.toml`: no bars; the owner adds them to the file.
 - The 20-year history and Timescale (plan 11.1 probes) and the Historical rpc for the live index IV (`alignment-v25.md`): this rpc has `BarKind` words for bars only; IV bars are a later additive enum value after the CBOE probe.
 - RV20, IV minus RV20, beta, the 200-day line on IBKR closes, IV rank and the ITM probability: they read these tables but belong to the compute and page designs that name them (`market-page-producer.md`, `option-candidates.md`).
