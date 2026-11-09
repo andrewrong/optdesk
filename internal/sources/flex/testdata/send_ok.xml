@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlexStatementResponse timestamp="09 November, 2026 10:00 AM EST">
+<Status>Success</Status>
+<ReferenceCode>1234567890</ReferenceCode>
+<Url>https://example.invalid/ignored</Url>
+</FlexStatementResponse>
