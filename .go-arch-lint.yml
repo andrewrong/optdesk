@@ -77,6 +77,8 @@ components:
     in: internal/compute/optioncand
   compute/optionledger:
     in: internal/compute/optionledger
+  compute/optionnotice:
+    in: internal/compute/optionnotice
   compute/own:
     in: internal/compute/own
   compute/rules:
@@ -311,6 +313,11 @@ deps:
       - compute
       - contracts/genpb
   compute/optionledger:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/optionnotice:
     mayDependOn:
       - contracts
       - compute
@@ -623,6 +630,7 @@ deps:
       - pages/option_candidates_page
       - pages/structures_page
       - pages/option_result_page
+      - compute/optionnotice
       - sources/alphavantage
       - sources/jquants
       - jobs/earningsrefresh
