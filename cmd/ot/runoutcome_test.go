@@ -112,3 +112,12 @@ func TestRunOnceLeftOutLine(t *testing.T) {
 		t.Fatalf("out %q", out.String())
 	}
 }
+
+// The fakes of runonce_option_test.go answer the read-back of printOutcomes with an empty day.
+func (evLedger) Present(context.Context, contracts.Day) (map[contracts.ExpectedKey]store.PresentStatus, error) {
+	return nil, nil
+}
+func (evLedger) Runs(context.Context, contracts.Day) ([]store.Run, error) { return nil, nil }
+func (namedJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return nil, "", nil
+}

@@ -97,19 +97,15 @@ func (f evLedger) Close() error { return f.c.close() }
 func (f evLedger) Cursor(context.Context) (store.Cursor, error) {
 	return store.Cursor{Day: f.d}, nil
 }
-func (f evLedger) Present(context.Context, contracts.Day) (map[contracts.ExpectedKey]store.PresentStatus, error) {
-	return nil, nil
-}
-func (f evLedger) Runs(context.Context, contracts.Day) ([]store.Run, error) { return nil, nil }
-func (f evSeries) Close() error                                             { return f.c.close() }
-func (f evEod) Close() error                                                { return f.c.close() }
-func (f evSnap) Close() error                                               { return f.c.close() }
-func (f evInstr) Close() error                                              { return f.c.close() }
-func (f evBroker) Close() error                                             { return f.c.close() }
-func (f evCat) Close() error                                                { return f.c.close() }
-func (f evTerms) Close() error                                              { return f.c.close() }
-func (f evNames) Close() error                                              { return f.c.close() }
-func (f evReading) Close() error                                            { return f.c.close() }
+func (f evSeries) Close() error  { return f.c.close() }
+func (f evEod) Close() error     { return f.c.close() }
+func (f evSnap) Close() error    { return f.c.close() }
+func (f evInstr) Close() error   { return f.c.close() }
+func (f evBroker) Close() error  { return f.c.close() }
+func (f evCat) Close() error     { return f.c.close() }
+func (f evTerms) Close() error   { return f.c.close() }
+func (f evNames) Close() error   { return f.c.close() }
+func (f evReading) Close() error { return f.c.close() }
 
 func (f evEvents) Close() error { return f.c.close() }
 
@@ -134,9 +130,6 @@ type namedJob struct {
 }
 
 func (j namedJob) ID() string { return j.id }
-func (namedJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
-	return nil, "", nil
-}
 func (namedJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
 	return contracts.JobResult{}
 }
