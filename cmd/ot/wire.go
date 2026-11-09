@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -22,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
+	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
@@ -42,9 +44,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/alert"
+	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 	"github.com/andrewrong/optdesk/internal/store/reading"
@@ -114,6 +118,11 @@ type deps struct {
 	openSent                store.OpenSentFunc
 	newAlertNotifier        notify.NewAlertNotifierFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
+	newEarningsRefresh      jobs.NewEarningsRefreshFunc
+	newAlphaVantage         sources.NewEarningsFunc
+	openEarningsDates       store.OpenEarningsDateStoreFunc
+	// readFile reads watch.toml; nil means os.ReadFile.
+	readFile func(string) ([]byte, error)
 }
 
 // calendarArgs is what follows the uv program in the command of calendar_refresh, that is
@@ -190,6 +199,10 @@ func newDeps() deps {
 		openSent:                alert.Open,
 		newAlertNotifier:        core.NewAlerts,
 		loadAlertRules:          alertrules.Load,
+		newEarningsRefresh:      earningsrefresh.New,
+		newAlphaVantage:         alphavantage.New,
+		openEarningsDates:       eventstore.OpenEarningsDate,
+		readFile:                os.ReadFile,
 	}
 }
 

@@ -203,6 +203,11 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
 		return idJob{id: jobCalendarRefresh}, nil
 	}
+	d.newEarningsRefresh = func(
+		map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock,
+	) (contracts.Job, error) {
+		return idJob{id: jobEarningsRefresh}, nil
+	}
 	d.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
 		n := r.dials.Add(1)
 		if r.dialErrs != nil {
@@ -299,6 +304,8 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 
 // jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
 // never name them.
+var allSixJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+
 const (
 	jobComputeFigures  = "compute_figures"
 	jobCalendarRefresh = "calendar_refresh"
@@ -306,7 +313,7 @@ const (
 
 const noKeyEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\n" +
 	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
-	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n" + eventsEnv
 
 func TestSchedulerLocksOnce(t *testing.T) {
 	t.Parallel()
@@ -325,7 +332,7 @@ func TestSchedulerLocksOnce(t *testing.T) {
 	if b, _ := r.sl.build.Load().(string); b != "dev" || r.inst.build != "dev" {
 		t.Fatalf("build %q, lock build %q", b, r.inst.build)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, allSixJobs) {
 		t.Fatalf("jobs %v", got)
 	}
 }
@@ -483,10 +490,10 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	r := newSchedRig(t, noKeyEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobOptionEod, jobQuoteSnapshot}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, allSixJobs) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	if len(r.sched.disabled) != 1 || r.sched.disabled[jobFredSeries] == "" {
@@ -504,10 +511,10 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	r.dialErrs = func(int32) error { return errors.New("no socket") }
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries}) {
+	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); len(got) != 5 {
+	if got := ids(r.sched.jobs); len(got) != 6 {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
@@ -540,13 +547,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, allSixJobs) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}) {
+	if !slices.Equal(ran, allSixJobs) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -573,7 +580,7 @@ func TestSchedulerFredStaysDisabledUntilRestart(t *testing.T) {
 		if got := r.sched.disabled[jobFredSeries]; got != first || got == "" {
 			t.Fatalf("reason %q, first %q", got, first)
 		}
-		if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobOptionEod, jobQuoteSnapshot}) {
+		if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobOptionEod, jobQuoteSnapshot}) {
 			t.Fatalf("reconciler jobs %v", got)
 		}
 		if len(r.sched.disabled) != 1 {
@@ -727,12 +734,12 @@ func TestSchedulerNeedsTelegramLines(t *testing.T) {
 	}
 }
 
-func TestSchedulerWiresFiveJobs(t *testing.T) {
+func TestSchedulerWiresSixJobs(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	want := []string{jobCalendarRefresh, jobComputeFigures, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+	want := allSixJobs
 	if got := ids(r.sched.jobs); !slices.Equal(got, want) {
 		t.Fatalf("scheduler jobs %v, want %v", got, want)
 	}

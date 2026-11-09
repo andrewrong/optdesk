@@ -30,7 +30,11 @@ const maxSocketPath = 104
 type runOnceConfig struct {
 	runnerDSN, seriesDSN, optionEodDSN, quoteSnapshotDSN, masterDSN, fredKey string
 	pagesDSN, readingsDSN, loaderDSN, calendarUV                             string
-	socketPath                                                               string
+	// eventsDSN and alphaKey belong to earnings_refresh alone: an empty one leaves that job out, never the run.
+	eventsDSN, alphaKey string
+	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
+	watch      []jobs.WatchEntry
+	socketPath string
 }
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) { return loadConfig(a, false) }
@@ -53,6 +57,8 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		readingsDSN:      env[store.DSNEnvReadings],
 		loaderDSN:        env[store.DSNEnvLoader],
 		calendarUV:       env[envCalendarUV],
+		eventsDSN:        env[store.DSNEnvEvents],
+		alphaKey:         env[envAlphaKey],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -64,11 +70,25 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", l.name)
 		}
 	}
+	if c.watch, err = loadWatch(a); err != nil {
+		return runOnceConfig{}, err
+	}
 	c.socketPath = filepath.Join(a.getenv("OT_HOME"), "run", "ibkr.sock")
 	if len(c.socketPath) >= maxSocketPath {
 		return runOnceConfig{}, fmt.Errorf("socket path too long")
 	}
 	return c, nil
+}
+
+// earningsOff is the reason earnings_refresh is left out, or "" when it runs. It names a line, never a value.
+func (c runOnceConfig) earningsOff() string {
+	switch {
+	case c.eventsDSN == "":
+		return reasonNoEventsDSN
+	case c.alphaKey == "":
+		return reasonNoAlphaKey
+	}
+	return ""
 }
 
 func runOnce(a *app, args []string) error {
@@ -116,7 +136,7 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return nil
 	}
 	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
-		rec := a.deps.newRunner(w.ledger, w.cal, clk, w.jobs, runner.WindowRule{})
+		rec := a.deps.newRunner(w.ledger, w.cal, clk, w.runnable(a.log), runner.WindowRule{})
 		return rec.Reconcile(ctx, day)
 	})
 }
@@ -130,8 +150,21 @@ type wiring struct {
 	brokerUp bool
 	// factory builds a job anew for the probe of ot scheduler; its stores stay open until use returns.
 	factory jobFactory
+	// earningsOff is the reason the last job of jobs, earnings_refresh, is left out of run-once and backfill; the
+	// scheduler keeps the job in jobs so that its ticker knows the schedule (preflight.go).
+	earningsOff string
 	// dial dials the broker anew; the broker it returns is closed when withWiring returns.
 	dial func(ctx context.Context) (broker.Broker, error)
+}
+
+// runnable is jobs without earnings_refresh when its line is missing; the left-out job is logged by id and
+// reason. earnings_refresh is always the last of jobs.
+func (w wiring) runnable(log *slog.Logger) []contracts.Job {
+	if w.earningsOff == "" || len(w.jobs) == 0 {
+		return w.jobs
+	}
+	log.Warn("job left out", "component", "ot", "job", jobEarningsRefresh, "status", w.earningsOff)
+	return w.jobs[:len(w.jobs)-1]
 }
 
 // jobFactory builds the jobs over the stores withWiring opened.
@@ -149,7 +182,34 @@ type jobFactory struct {
 	log     *slog.Logger
 	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
 	loader store.SessionDayStore
+	// events, earn and watch are what earnings_refresh gets: its store, one source per market and watch.toml.
+	events store.EarningsDateStore
+	earn   map[string]sources.EarningsSource
+	watch  []jobs.WatchEntry
 }
+
+// earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the watch list.
+func (f jobFactory) earningsRefresh() (contracts.Job, error) {
+	j, err := f.d.newEarningsRefresh(f.earn, f.events, f.events, f.watch, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build earnings_refresh job failed")
+	}
+	return j, nil
+}
+
+// noEventsStore stands in for the events store when OT_PG_DSN_EVENTS is empty: the job is left out, so it is
+// never called.
+type noEventsStore struct{}
+
+func (noEventsStore) InsertEarningsDate(context.Context, contracts.EarningsDate) error {
+	return errors.New(reasonNoEventsDSN)
+}
+
+func (noEventsStore) EarningsDates(context.Context, string, contracts.Day, contracts.Day) ([]contracts.EarningsDate, error) {
+	return nil, errors.New(reasonNoEventsDSN)
+}
+
+func (noEventsStore) Close() error { return nil }
 
 // calendarRefresh builds calendar_refresh over the loader store; the command is the uv program of the .env
 // line (default uv) and calendarArgs, run by calendarcli.Exec in the default temporary directory.
@@ -262,22 +322,25 @@ func withWiring(
 		return err
 	}
 	defer closeCompute()
-	var src sources.Source = noKeySource{}
-	if cfg.fredKey != "" {
-		src, err = d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
-		if err != nil {
-			return fmt.Errorf("build FRED source failed")
-		}
+	src, err := fredSource(d, cfg, clk)
+	if err != nil {
+		return err
 	}
+	events, earn, closeEvents, err := openEarnings(ctx, d, cfg)
+	if err != nil {
+		return err
+	}
+	defer closeEvents()
 	brk, brokerUp := dialOrStandIn(ctx, a, cfg.socketPath)
 	defer func() { _ = brk.Close() }()
 	var extra brokerSet
 	defer extra.closeAll()
 	return wireJobs(a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
-		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log}, ledger)
+		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
+			events: events, earn: earn, watch: cfg.watch}, ledger)
 }
 
-// wireJobs builds the five jobs over the open stores and calls use.
+// wireJobs builds the six jobs over the open stores and calls use.
 func wireJobs(
 	a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *brokerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
@@ -302,8 +365,13 @@ func wireJobs(
 	if err != nil {
 		return err
 	}
+	earnJob, err := f.earningsRefresh()
+	if err != nil {
+		return err
+	}
 	return use(wiring{
-		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob, figJob, calJob}, brokerUp: brokerUp, factory: f,
+		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob, figJob, calJob, earnJob}, brokerUp: brokerUp, factory: f,
+		earningsOff: cfg.earningsOff(),
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
 			if err != nil {
@@ -429,4 +497,39 @@ func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.
 	closers = append(closers, rd.Close)
 	cs.Readings = rd
 	return cs, closeAll, nil
+}
+
+// openEarnings opens the earnings store with the events line (the stand-in when the line is empty) and builds the
+// Alpha Vantage source (none when the key is empty). The returned func closes the store. No error holds a DSN or a key.
+func openEarnings(ctx context.Context, d deps, cfg runOnceConfig) (store.EarningsDateStore, map[string]sources.EarningsSource, func(), error) {
+	var events store.EarningsDateStore = noEventsStore{}
+	if cfg.eventsDSN != "" {
+		var err error
+		events, err = d.openEarningsDates(ctx, cfg.eventsDSN)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("open earnings store with %s failed", store.DSNEnvEvents)
+		}
+	}
+	earn := map[string]sources.EarningsSource{}
+	if cfg.alphaKey != "" {
+		av, err := d.newAlphaVantage(sources.EarningsConfig{BaseURL: alphaVantageBaseURL, APIKey: cfg.alphaKey})
+		if err != nil {
+			_ = events.Close()
+			return nil, nil, nil, fmt.Errorf("build Alpha Vantage source failed")
+		}
+		earn["US"] = av
+	}
+	return events, earn, func() { _ = events.Close() }, nil
+}
+
+// fredSource is the FRED source, or the stand-in that answers permanent when the key is empty.
+func fredSource(d deps, cfg runOnceConfig, clk clock.Clock) (sources.Source, error) {
+	if cfg.fredKey == "" {
+		return noKeySource{}, nil
+	}
+	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
+	if err != nil {
+		return nil, fmt.Errorf("build FRED source failed")
+	}
+	return src, nil
 }

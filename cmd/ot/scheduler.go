@@ -157,7 +157,7 @@ func runScheduler(
 		rec, _ := d.newReconciler(w.ledger, sl, w.cal, fw, jobs, runner.WindowRule{}, kr)
 		return rec
 	}
-	p := &prober{w: w, hasKey: cfg.fredKey != ""}
+	p := &prober{w: w, hasKey: cfg.fredKey != "", earningsOff: cfg.earningsOff()}
 	rec := newSwapReconciler(enabled, build, p.probe, a.log)
 	nf, err := newNotifier(a, ledgerGaps{sl}, sender, fw, true)
 	if err != nil {

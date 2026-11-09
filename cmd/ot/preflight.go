@@ -12,16 +12,20 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 )
 
-// The job ids of the three jobs ot wires, and the reasons a job is left out (Decision 8 of
+// The job ids of the jobs ot wires by name, and the reasons a job is left out (Decision 8 of
 // docs/design/scheduler.md). A reason holds no key and no path.
 const (
-	jobFredSeries    = "fred_series"
-	jobOptionEod     = "option_eod"
-	jobQuoteSnapshot = "quote_snapshot"
+	jobFredSeries      = "fred_series"
+	jobOptionEod       = "option_eod"
+	jobQuoteSnapshot   = "quote_snapshot"
+	jobEarningsRefresh = "earnings_refresh"
 
 	reasonNoFredKey  = "FRED_API_KEY is not set"
 	reasonBrokerDown = "broker is not reachable"
 	reasonBuildJob   = "the job could not be built"
+
+	reasonNoEventsDSN = "OT_PG_DSN_EVENTS is not set"
+	reasonNoAlphaKey  = "ALPHA_VANTAGE_API_KEY is not set"
 )
 
 // noKeySource stands in for the FRED source when FRED_API_KEY is empty: fred_series is left out, so it
@@ -38,6 +42,9 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 	if cfg.fredKey == "" {
 		out[jobFredSeries] = reasonNoFredKey
 	}
+	if r := cfg.earningsOff(); r != "" {
+		out[jobEarningsRefresh] = r
+	}
 	if !brokerUp {
 		out[jobOptionEod] = reasonBrokerDown
 		out[jobQuoteSnapshot] = reasonBrokerDown
@@ -51,6 +58,9 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 type prober struct {
 	w      wiring
 	hasKey bool
+	// earningsOff is the reason earnings_refresh was left out at start; its lines are read once, so it stays out
+	// until the process restarts.
+	earningsOff string
 
 	mu  sync.Mutex
 	brk broker.Broker // the broker of the last passing dial, nil before one
@@ -63,6 +73,11 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 			return nil, reasonNoFredKey
 		}
 		return p.built(p.w.factory.fred())
+	case jobEarningsRefresh:
+		if p.earningsOff != "" {
+			return nil, p.earningsOff
+		}
+		return p.built(p.w.factory.earningsRefresh())
 	case jobOptionEod, jobQuoteSnapshot:
 		b, err := p.broker(ctx)
 		if err != nil {
