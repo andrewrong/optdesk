@@ -29,6 +29,7 @@ const (
 
 	title           = "宏观"
 	sentence        = "宏观指标来自已存储的序列；松紧度和事件暂无数据。"
+	sentenceEase    = "宏观指标来自已存储的序列；事件暂无数据。"
 	easeTitle       = "松紧度"
 	eventsTitle     = "本周与下周"
 	indicatorsTitle = "指标"
@@ -111,7 +112,7 @@ type viewModel struct {
 	EventsTitle     string         `json:"events_title"`
 	IndicatorsTitle string         `json:"indicators_title"`
 	NotesTitle      string         `json:"notes_title"`
-	Ease            gap            `json:"ease"`
+	Ease            any            `json:"ease"`
 	Events          []struct{}     `json:"events"`
 	Indicators      []indicatorRow `json:"indicators"`
 	Notes           []string       `json:"notes"`
@@ -143,7 +144,8 @@ func validate(c Config) error {
 }
 
 // Build returns the page.macro_page.v1 JSON for day, read from r. The page is partial: the
-// ease and the events are no_data gaps. generatedAt is written in c.Zone.
+// events are a no_data gap, and so is the ease unless c.Read returns a stored macro.ease
+// reading with a value. generatedAt is written in c.Zone.
 func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 	d, err := time.Parse(dayLayout, string(day))
 	if err != nil {
@@ -176,6 +178,18 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 			{Reason: "no_data", Text: "松紧度暂无数据"},
 			{Reason: "no_data", Text: "事件日历暂无数据"},
 		},
+	}
+	if c.Read != nil {
+		block, reading, err := easeFor(ctx, c, d)
+		if err != nil {
+			return nil, err
+		}
+		if block != nil {
+			vm.Ease = block
+			vm.Sentence = sentenceEase
+			vm.Gaps = vm.Gaps[1:]
+			vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "macro_ease", DataTime: midnight(reading.dataDay, c.Zone)})
+		}
 	}
 	var oldest *time.Time
 	for _, ind := range c.Indicators {
