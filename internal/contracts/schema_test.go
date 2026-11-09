@@ -498,3 +498,60 @@ func TestFxRateFixtureValues(t *testing.T) {
 		}
 	}
 }
+
+func TestDividendFixtureValues(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.dividend_expectation")
+	recs, _ := loadRecords(t, "obs.dividend_expectation")
+	want := []struct {
+		status, source string
+		hasNext        bool
+	}{
+		{"present", "ibkr_tick_456", true},
+		{"no_value", "ibkr_tick_456", false},
+		{"unsupported", "none", false},
+		{"error", "ibkr_tick_456", false},
+	}
+	if len(recs) != len(want) {
+		t.Fatalf("want %d records, got %d", len(want), len(recs))
+	}
+	for i, w := range want {
+		r := recs[i]
+		if err := s.Validate(r); err != nil {
+			t.Fatalf("record %d: %v", i, err)
+		}
+		if r["status"] != w.status || r["source"] != w.source {
+			t.Fatalf("record %d: status %v source %v, want %s %s", i, r["status"], r["source"], w.status, w.source)
+		}
+		for _, k := range []string{"next_ex_date", "next_amount"} {
+			v, present := r[k]
+			if !present {
+				t.Fatalf("record %d: %s key must be present", i, k)
+			}
+			if (v != nil) != w.hasNext {
+				t.Fatalf("record %d: %s %v, has value want %v", i, k, v, w.hasNext)
+			}
+		}
+	}
+
+	cases := map[string]map[string]any{
+		"status unknown":       copyRec(recs[0], func(m map[string]any) { m["status"] = "listed" }),
+		"source null":          copyRec(recs[2], func(m map[string]any) { m["source"] = nil }),
+		"source vendor":        copyRec(recs[0], func(m map[string]any) { m["source"] = "fmp" }),
+		"unsupported ibkr":     copyRec(recs[2], func(m map[string]any) { m["source"] = "ibkr_tick_456" }),
+		"attempt zero":         copyRec(recs[0], func(m map[string]any) { m["attempt"] = 0 }),
+		"issuer is a ticker":   copyRec(recs[0], func(m map[string]any) { m["issuer"] = "AAPL" }),
+		"amount a number":      copyRec(recs[0], func(m map[string]any) { m["next_amount"] = 0.26 }),
+		"no_value with date":   copyRec(recs[1], func(m map[string]any) { m["next_ex_date"] = "2026-11-12" }),
+		"no_value with amount": copyRec(recs[1], func(m map[string]any) { m["next_amount"] = "0.26" }),
+		"error with date":      copyRec(recs[3], func(m map[string]any) { m["next_ex_date"] = "2026-11-12" }),
+		"present without date": copyRec(recs[0], func(m map[string]any) { m["next_ex_date"] = nil }),
+		"present no amount":    copyRec(recs[0], func(m map[string]any) { m["next_amount"] = nil }),
+		"unknown field":        copyRec(recs[0], func(m map[string]any) { m["extra"] = 1 }),
+	}
+	for label, rec := range cases {
+		if err := s.Validate(rec); err == nil {
+			t.Fatalf("%s must be rejected", label)
+		}
+	}
+}
