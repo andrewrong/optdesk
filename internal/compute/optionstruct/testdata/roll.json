@@ -1,0 +1,9 @@
+{"cases":[
+{"name":"roll","quotes":[
+ {"Underlying":"AAPL","Right":"P","Strike":"90","Expiry":"2026-12-18","Day":"2026-11-06","Bid":"0.55","Ask":"0.65"},
+ {"Underlying":"AAPL","Right":"P","Strike":"90","Expiry":"2027-01-15","Day":"2026-11-06","Bid":"1.10","Ask":"1.30"},
+ {"Underlying":"AAPL","Right":"P","Strike":"90","Expiry":"2027-02-19","Day":"2026-11-06","Bid":"9.00","Ask":"9.20"}]},
+{"name":"no_roll","quotes":[
+ {"Underlying":"AAPL","Right":"P","Strike":"90","Expiry":"2026-12-18","Day":"2026-11-06","Bid":"0.55","Ask":"0.65"},
+ {"Underlying":"AAPL","Right":"P","Strike":"90","Expiry":"2027-02-19","Day":"2026-11-06","Bid":"9.00","Ask":"9.20"}]}
+]}
