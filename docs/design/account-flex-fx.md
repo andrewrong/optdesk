@@ -102,7 +102,7 @@ Checked by CI: ci-go; the design verdict.
 ### 3 flexsection-store-api (interface)
 
 Module: store, plus repo (licensed pair: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `arch.toml`, `.go-arch-lint.yml`). Size: S.
-Files: `internal/store/flexsection/api.go`, `internal/store/flexsection/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`, `arch.toml`, `.go-arch-lint.yml`
+Files: `internal/store/flexsection/api.go`, `internal/store/flexsection/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/account-flex-fx.md#interface
 Order: after 1; before 4 and 7 (the three edit `.go-arch-lint.yml` in that order); cut only after the issue `bar-store-api` of `docs/design/market-bars.md` has landed, which edits `scripts/arch/main.go` first.
 Goal: the package of the Interface table, declarations only, with a contract test from both sides (a fake `Store` and a caller that records sections and reads rows and statuses back), the package added to `declarationsOnly` of `scripts/arch/main.go` and its test, the component in `.go-arch-lint.yml`, and `docs/contracts/store.md` recording the revision rule and the views.
@@ -118,7 +118,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` printing `arch: ok`; the d
 ### 4 flexsection-jobs-api (interface)
 
 Module: jobs, plus repo (licensed pair: `.go-arch-lint.yml`). Size: S.
-Files: `internal/jobs/api.go`, `internal/jobs/flex_section_api_test.go`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
+Files: `internal/jobs/api.go`, `internal/jobs/flex_section_api_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/account-flex-fx.md#interface
 Order: after 3; before 7 (`.go-arch-lint.yml` chain 3, 4, 7); cut only after `bar-store-api` of `docs/design/market-bars.md` has landed, because `jobs`, a root component, may import `store/flexsection` only under the root-component rule that issue adds to `scripts/arch`.
 Goal: the field `Sections flexsection.Writer` in `OptionLedgerStores`, additions only, with a contract test from both sides (a caller that builds the job with the field set and with it nil, a fake writer) in a new file; `docs/contracts/jobs.md` records that nil switches the step off and the delivery rule of Decision 10.
@@ -163,7 +163,7 @@ Checked by CI: ci-go; `go test -tags pg ./internal/store/...` (GitHub CI only). 
 ### 7 flexsection-store-impl
 
 Module: store, plus repo (licensed pair: `.go-arch-lint.yml`). Size: M.
-Files: `internal/store/flexsectionpg/store.go`, `internal/store/flexsectionpg/queries.go`, `internal/store/flexsectionpg/store_test.go`, `internal/store/flexsectionpg/pg_test.go`, `.go-arch-lint.yml`
+Files: `internal/store/flexsectionpg/store.go`, `internal/store/flexsectionpg/queries.go`, `internal/store/flexsectionpg/store_test.go`, `internal/store/flexsectionpg/pg_test.go`
 Design: docs/design/account-flex-fx.md#decisions (Decisions 6, 8, 9)
 Order: after 3, 4 and 6 (`.go-arch-lint.yml` chain 3, 4, 7).
 Goal: `flexsectionpg.Open` returns a `flexsection.Store` over the DSN of `store.DSNEnvOptionLedger`: one transaction per `RecordSections` with the revision rule (the highest revision of the key is read and the next written there, `ON CONFLICT DO NOTHING` as a second guard), a refusal of attributes that hold `accountId` or `acctAlias`, and a reader over the two views only.

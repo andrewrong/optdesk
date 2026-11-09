@@ -50,6 +50,8 @@ store, `internal/store/mark/api.go` (declarations only, package `mark`):
 
 jobs, `internal/jobs/api.go`: `type NewPositionMarksFunc func(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock) (contracts.Job, error)`: `market` is the one market-data gateway (Decision 6), `aliases` the accounts whose positions are marked, the main one first. The job reads the newest capture of the day per alias from `acct`, maps each position by Decision 10, calls `Snapshot` in batches with `KindSnapshot`, applies Decision 2 and writes the rows.
 
+Landed in #848 (entry 1, #825), #952 (entry 2, #852).
+
 ## Issues
 
 Every test calls `t.Parallel()`, writes files only under a temporary directory, uses a fake clock, never sleeps, opens no port, and touches no live broker or database (a test that needs PostgreSQL carries the tag `pg`). Acceptance is checked offline by reading, grep and git; test runs are under "Checked by CI".
@@ -70,7 +72,7 @@ Acceptance:
 ### 2 position-marks-store-api (interface)
 
 Module: store, plus repo (the licensed pair: `scripts/arch`, `arch.toml` and `.go-arch-lint.yml`). Size: S.
-Files: `internal/store/mark/api.go`, `internal/store/mark/api_test.go`, `internal/store/api.go`, `internal/store/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`, `arch.toml`, `.go-arch-lint.yml`
+Files: `internal/store/mark/api.go`, `internal/store/mark/api_test.go`, `internal/store/api.go`, `internal/store/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/position-marks.md#Interface
 Order: after 1; no longer waits for market-bars: it adds `internal/store/mark` to the `declarationsOnly` list of `scripts/arch/main.go`, and creates that list and its two derivation rules (a root component of a dependent row, and a sub-package of the same row, may import a listed package) when entry `bar-store-api` of market-bars has not landed first; whichever lands second merges the list; before 3 and 5 (each of 3 and 5 edits `.go-arch-lint.yml`, strict order 2, 3, 5).
 Goal: the declarations of `## Interface` in the new package, `DSNEnvPositionMark` in the store interface, the contract test from both sides (a fake writer and reader in the test), the component of `store/mark` in `.go-arch-lint.yml`.
@@ -84,7 +86,7 @@ Acceptance:
 ### 3 position-marks-store-pg
 
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
-Files: `migrations/NNNN_position_mark.sql`, `internal/store/markpg/store.go`, `internal/store/markpg/store_test.go`, `internal/store/markpg/store_pg_test.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `docs/contracts/store.md`, `.go-arch-lint.yml`
+Files: `migrations/NNNN_position_mark.sql`, `internal/store/markpg/store.go`, `internal/store/markpg/store_test.go`, `internal/store/markpg/store_pg_test.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `docs/contracts/store.md`
 Design: docs/design/position-marks.md#Decisions
 Order: after 2 (shares `docs/contracts/store.md` and `.go-arch-lint.yml`); before 5. `NNNN` is the next free migration number at cut time and is renumbered before merge if another migration takes it (the file name is fixed when the issue is cut).
 Goal: the table `account.position_mark`, the view `rd.account_position_mark_r1`, the role `ot_w_posmark` made by setup, and `markpg.Open` implementing `mark.Store`.
@@ -111,7 +113,7 @@ Acceptance:
 ### 5 position-marks-job
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
-Files: `internal/jobs/positionmarks/doc.go`, `internal/jobs/positionmarks/job.toml`, `internal/jobs/positionmarks/manifest.go`, `internal/jobs/positionmarks/plan.go`, `internal/jobs/positionmarks/mark.go`, `internal/jobs/positionmarks/run.go`, `internal/jobs/positionmarks/plan_test.go`, `internal/jobs/positionmarks/mark_test.go`, `internal/jobs/positionmarks/run_test.go`, `internal/jobs/positionmarks/testdata/probe_snapshot.json`, `.go-arch-lint.yml`
+Files: `internal/jobs/positionmarks/doc.go`, `internal/jobs/positionmarks/job.toml`, `internal/jobs/positionmarks/manifest.go`, `internal/jobs/positionmarks/plan.go`, `internal/jobs/positionmarks/mark.go`, `internal/jobs/positionmarks/run.go`, `internal/jobs/positionmarks/plan_test.go`, `internal/jobs/positionmarks/mark_test.go`, `internal/jobs/positionmarks/run_test.go`, `internal/jobs/positionmarks/testdata/probe_snapshot.json`
 Design: docs/design/position-marks.md#Decisions
 Order: after 2, 3 and 4 (2 and 3 share `.go-arch-lint.yml`: strict order 2, 3, 5). Waits, not on main yet: the account capture job (its manifest gives the slot this one is an offset of; until it lands the offset is written against the name `account_capture`). The import rule is on main (#768) and its `scripts/arch` code comes with entry 2 or with `bar-store-api` of market-bars, whichever lands first. The probe of Decision 10 is a separate window step, outside this entry's acceptance and closing condition; the fixture here is synthetic.
 Goal: the job of Decisions 1 to 6: plan (one `broker.Contract` per position, kind by security type), `MarkOf` (Decision 2), run (per alias, retry fills missing rows only, main-alias failure rule), manifest with the slot ten minutes after the account job.

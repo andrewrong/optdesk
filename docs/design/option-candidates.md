@@ -111,7 +111,7 @@ Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` with the six n
 ### 2 candidate-compute-interface (interface)
 
 Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
-Files: `internal/compute/api.go`, `internal/compute/api_test.go`, `docs/contracts/compute.md`, `internal/compute/optioncand/doc.go`, `.go-arch-lint.yml`
+Files: `internal/compute/api.go`, `internal/compute/api_test.go`, `docs/contracts/compute.md`, `internal/compute/optioncand/doc.go`
 Design: docs/design/option-candidates.md#Interface
 Order: first; it opens the `.go-arch-lint.yml` chain.
 Goal: the compute types of `## Interface` with doc comments for each gate word and reason code, and a paragraph of `docs/contracts/compute.md` that fixes the promises: exact arithmetic, the float-to-decimal step, `DGS3MO` is percent, unknown is not a pass, only `ok` rows ranked, yield and break-even formulas. `CandidateInput` carries the run day, the chain day and the session-day list, so the session ages and `chain_fresh` of issue 3 need no interface change. The contract test uses a fake `OptionCandidates` and a caller that builds the session-day list and checks the order of the gate results and that a blocked row has no rank.
@@ -168,7 +168,7 @@ Checked by CI: `go test ./internal/store -run TestCandidateContract -race -count
 
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Second opinion: a new database role, `ot_w_candidate`; `ot_w_candidate` has INSERT and SELECT on the table, USAGE on schema `rd` and SELECT on `rd.option_candidate_r1`; `ot_ro_pages` has SELECT on the view; nothing else, no UPDATE, DELETE or TRUNCATE.
-Files: `migrations/NNNN_candidates.sql` (NNNN the next free number at cut time; migrations apply out of order, #693; the other designs write their numbers the same way, so no number is claimed here), `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`), `.go-arch-lint.yml`
+Files: `migrations/NNNN_candidates.sql` (NNNN the next free number at cut time; migrations apply out of order, #693; the other designs write their numbers the same way, so no number is claimed here), `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`)
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 9, 13)
 Order: after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store`; they share `setup.go`, `.go-arch-lint.yml` and the next free migration number (this entry rebases on whichever lands first and takes the next free number at cut time). It does not wait for the dividend chain.
 Goal: a table `candidates.option_candidate` with the dataset key, insert-only, a view `rd.option_candidate_r1` over it, the role `ot_w_candidate` (INSERT and SELECT on the table, created in `internal/store/setup/setup.go` with the line `OT_PG_DSN_CANDIDATE`, as `ot_w_alerts` is) and `SELECT` on the view `rd.option_candidate_r1` for the pages role `ot_ro_pages` (the pages read the view and nothing else, as `0006_option_eod.sql` does); `candidate.Open(ctx, dsn)` implements both interfaces; the reader returns the newest run of the day. The reader of `candidate.Open` reads the view `rd.option_candidate_r1` only and names no base table; the job reads through the reader with the role `ot_w_candidate`, so the migration grants `USAGE ON SCHEMA rd` and `SELECT` on that view to `ot_w_candidate`.
@@ -183,7 +183,7 @@ Checked by CI: `go test ./internal/store/candidate ./internal/store/setup -race 
 ### 7 candidates-job-puts (interface and implementation)
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
-Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
+Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 4, 5, 9, 13, 15)
 Order: after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job`; they create job packages and regenerate `.go-arch-lint.yml`, and this entry rebases on the last of them.
 Goal: `optioncandidates.New` (the type `NewOptionCandidatesJobFunc`) runs at `session_close` plus 30 minutes; for each watched US underlying it reads the newest chain day, the terms (in chunks of 500 ids), the earnings rows, the newest account captures per alias and `DGS3MO`, converts floats to decimal text (Decision 4), calls `Evaluate` for `short_put` and writes the rows under a new run id. A nil reader gives `unknown` gates, not an error; a store error is a failed run with a named code. The job holds no dividend reader.
@@ -198,7 +198,7 @@ Checked by CI: `go test ./internal/jobs/optioncandidates -race -count=1`, ci-go,
 ### 8 candidate-text
 
 Module: pages, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
-Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`, `.go-arch-lint.yml`
+Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`
 Design: docs/design/option-candidates.md#Interface
 Order: after 5, 2, 6, 7; this is the `.go-arch-lint.yml` chain.
 Goal: `Format(rows, all)` returns the plain text of the stored rows in the stored order: for `ok` rows company, kind, alias, expiry, strike, bid, annualized yield, break-even and marks; with `all` the blocked and unknown rows with their gate reasons; a line per JP entry is not its job (the command adds it). No sort, no arithmetic.
@@ -236,7 +236,7 @@ Checked by CI: `go test ./internal/compute/optioncand -race -count=1` (it includ
 ### 11 candidates-job-calls (interface and implementation)
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
-Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/calls_test.go`, `internal/jobs/optioncandidates/job.toml`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
+Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/calls_test.go`, `internal/jobs/optioncandidates/job.toml`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Interface
 Order: after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job`; it shares `api.go`, `api_test.go`, `jobs.md` with 1, `job.toml` with 7 and `.go-arch-lint.yml` with 2, 6, 7, 8.
 Goal: `NewOptionCandidatesCallsFunc` adds the dividend reader and the call and guard kinds to the same run; `NewOptionCandidatesJobFunc` and puts behave as before; `div_guard_factor` joins `job.toml`.

@@ -161,7 +161,7 @@ Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a f
 ### 1 builders-wave-compute-interface (interface)
 
 Module: compute, plus repo (judged interface entry). Size: M.
-Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `docs/contracts/compute.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`, `.go-arch-lint.yml`
+Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `docs/contracts/compute.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/builders-wave.md#Interface
 Order: after the market-bars entry `bar-store-api` (it introduces `declarationsOnly` and the own-row derive).
 Goal: the declarations of `## Interface`, no function, with a contract test from both sides (a fake `PageFigures`; a caller that fills every input field and reads every output field), with `compute.FigureValue` as the one figure type. `internal/compute/blockapi` is added to `declarationsOnly` in `scripts/arch/main.go`, with a test case in `scripts/arch/main_test.go`.
@@ -175,7 +175,7 @@ Checked by CI: `go test ./internal/compute/blockapi ./scripts/arch -race -count=
 ### 2 page-figures-household
 
 Module: compute, plus repo (`.go-arch-lint.yml`). Size: M.
-Files: `internal/compute/pagefig/pagefig.go`, `internal/compute/pagefig/household.go`, `internal/compute/pagefig/household_test.go`, `.go-arch-lint.yml`
+Files: `internal/compute/pagefig/pagefig.go`, `internal/compute/pagefig/household.go`, `internal/compute/pagefig/household_test.go`
 Design: docs/design/builders-wave.md#Decisions (3, 4, 6, 7)
 Order: after 1; entry 3 edits `pagefig.go` after it.
 Goal: `pagefig.New()` returns a `blockapi.PageFigures`; `Household` fills overview, cash after, stress (constants 10, 20 and 30 percent), obligations, income, month change, accounts and trend from the input; a JPY line needs `UsdJpy`; the other methods return empty results until entry 3.
@@ -203,7 +203,7 @@ Checked by CI: `go test ./internal/compute/pagefig -race -count=1`, the `checks.
 ### 4 household-page-builder
 
 Module: pages, plus repo (`.go-arch-lint.yml`). Size: M.
-Files: `internal/pages/household_page/page.go`, `internal/pages/household_page/builder.go`, `internal/pages/household_page/blocks.go`, `internal/pages/household_page/strings.go`, `internal/pages/household_page/builder_test.go`, `internal/pages/household_page/purity_test.go`, `docs/contracts/pages.md`, `.go-arch-lint.yml`
+Files: `internal/pages/household_page/page.go`, `internal/pages/household_page/builder.go`, `internal/pages/household_page/blocks.go`, `internal/pages/household_page/strings.go`, `internal/pages/household_page/builder_test.go`, `internal/pages/household_page/purity_test.go`, `docs/contracts/pages.md`
 Design: docs/design/builders-wave.md#Decisions (2, 5, 6, 7)
 Order: after 1, 2; entry 5 edits `docs/contracts/pages.md` and `.go-arch-lint.yml` after it. Waits (tested on fakes): `internal/store/account`, `internal/store/optionledger`, `option-positions-ledger-terms` of `docs/design/option-positions.md` (it fills the `LedgerPosition` terms `Right`, `Expiry`, `Strike`, `OpenedOn`, `ClosedOn`, which the declarations on main already carry).
 Goal: `NewPage(c, alias)` reads `Values`, the history, the month start and the replayed ledger, calls `Figures().Household`, and writes `household_page` v1: `scope` the alias, one `scopes` entry, each mark-needing block (composition, allocation, concentration, long term, movers) its `gap` with `missing_quote`; an unknown alias or a nil reader gives a gap page.
@@ -217,7 +217,7 @@ Checked by CI: `go test ./internal/pages/household_page -race -count=1`, `go run
 ### 5 report-blocks
 
 Module: pages, plus repo (`.go-arch-lint.yml`). Size: L.
-Files: `internal/pages/report_blocks/common.go`, `internal/pages/report_blocks/strings.go`, `internal/pages/report_blocks/actions.go`, `internal/pages/report_blocks/account_moves.go`, `internal/pages/report_blocks/market_watch.go`, `internal/pages/report_blocks/blocks_test.go`, `internal/pages/report_page/builder.go`, `internal/pages/report_page/blocks.go`, `internal/pages/report_page/builder_test.go`, `docs/contracts/pages.md`, `.go-arch-lint.yml`
+Files: `internal/pages/report_blocks/common.go`, `internal/pages/report_blocks/strings.go`, `internal/pages/report_blocks/actions.go`, `internal/pages/report_blocks/account_moves.go`, `internal/pages/report_blocks/market_watch.go`, `internal/pages/report_blocks/blocks_test.go`, `internal/pages/report_page/builder.go`, `internal/pages/report_page/blocks.go`, `internal/pages/report_page/builder_test.go`, `docs/contracts/pages.md`
 Design: docs/design/builders-wave.md#Decisions (8, 9)
 Order: after 1, 3, 4. Waits (fakes): `internal/store/account`, `internal/store/optionledger`, `option-positions-ledger-terms` of `docs/design/option-positions.md` (the obligations of the meter `cash_after_assignment` come from the replayed ledger).
 Goal: `Actions`, `AccountMoves` and `MarketWatch` write the three blocks of Decision 8 as `report_page` v2 block JSON; `report_page.Config` gains the three `BlockFunc` fields, a non-nil function's bytes replace the `not_built` block, `market` `JP` gives `jp_slice_missing` gap blocks without calling them.

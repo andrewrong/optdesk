@@ -44,7 +44,7 @@ diff, with an offline grep where it is about behaviour.
 
 The `page.macro_page.v1` builder: the indicator rows from stored series, the ease and the events as named gaps.
   Goal: `macro_page.Build(ctx, r, c, day, generatedAt)` returns the JSON of `contracts/schemas/page.macro_page.v1.json`, with one indicator row per configured series filled from stored points.
-  Files: internal/pages/macro_page/builder.go, internal/pages/macro_page/builder_test.go, arch.toml, .go-arch-lint.yml.
+  Files: internal/pages/macro_page/builder.go, internal/pages/macro_page/builder_test.go, .go-arch-lint.yml.
   Design: docs/design/pages-builders.md#pages-macro-page
   Required fields of the schema and where each value comes from (the acceptance items refer to this table):
 
