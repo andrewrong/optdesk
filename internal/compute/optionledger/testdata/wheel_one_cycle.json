@@ -1,0 +1,203 @@
+{
+ "Input": {
+  "Alias": "a",
+  "Trades": [
+   {
+    "TransactionID": "1001",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "ABC",
+     "underlyingSymbol": "ABC",
+     "conid": "111",
+     "strike": "50",
+     "expiry": "20260220",
+     "putCall": "P",
+     "multiplier": "100",
+     "quantity": "-2",
+     "proceeds": "300",
+     "ibCommission": "-1.30",
+     "currency": "USD",
+     "openCloseIndicator": "O",
+     "notes": "",
+     "tradeDate": "20260105",
+     "orderTime": "20260105;093000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "1002",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "ABC",
+     "underlyingSymbol": "ABC",
+     "conid": "111",
+     "strike": "50",
+     "expiry": "20260220",
+     "putCall": "P",
+     "multiplier": "100",
+     "quantity": "2",
+     "proceeds": "0",
+     "ibCommission": "0",
+     "currency": "USD",
+     "openCloseIndicator": "C",
+     "notes": "A",
+     "tradeDate": "20260220",
+     "orderTime": "20260220;160000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "1003",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "STK",
+     "symbol": "ABC",
+     "quantity": "200",
+     "tradePrice": "50",
+     "proceeds": "-10000",
+     "ibCommission": "-1.00",
+     "currency": "USD",
+     "notes": "A",
+     "tradeDate": "20260220",
+     "orderTime": "20260220;160000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "1004",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "ABC",
+     "underlyingSymbol": "ABC",
+     "conid": "222",
+     "strike": "55",
+     "expiry": "20260320",
+     "putCall": "C",
+     "multiplier": "100",
+     "quantity": "-2",
+     "proceeds": "160",
+     "ibCommission": "-1.30",
+     "currency": "USD",
+     "openCloseIndicator": "O",
+     "notes": "",
+     "tradeDate": "20260225",
+     "orderTime": "20260225;100000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "1005",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "OPT",
+     "symbol": "ABC",
+     "underlyingSymbol": "ABC",
+     "conid": "222",
+     "strike": "55",
+     "expiry": "20260320",
+     "putCall": "C",
+     "multiplier": "100",
+     "quantity": "2",
+     "proceeds": "0",
+     "ibCommission": "0",
+     "currency": "USD",
+     "openCloseIndicator": "C",
+     "notes": "A",
+     "tradeDate": "20260320",
+     "orderTime": "20260320;160000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   },
+   {
+    "TransactionID": "1006",
+    "Revision": 1,
+    "Attributes": {
+     "assetCategory": "STK",
+     "symbol": "ABC",
+     "quantity": "-200",
+     "tradePrice": "55",
+     "proceeds": "11000",
+     "ibCommission": "-1.00",
+     "currency": "USD",
+     "notes": "A",
+     "tradeDate": "20260320",
+     "orderTime": "20260320;160000",
+     "transactionType": "ExchTrade",
+     "levelOfDetail": "EXECUTION"
+    }
+   }
+  ],
+  "Marks": [],
+  "SessionDays": [],
+  "AsOf": "2026-04-01"
+ },
+ "Params": {
+  "MarkMaxAgeSessions": 5
+ },
+ "Expected": {
+  "RuleVersion": 1,
+  "Positions": [
+   {
+    "PositionID": "a:1001:1",
+    "Alias": "a",
+    "Underlying": "ABC",
+    "Contract": "111",
+    "Status": "assigned",
+    "Early": false,
+    "Quantity": "-2",
+    "Multiplier": "100",
+    "Currency": "USD",
+    "PremiumIncome": "300.0000",
+    "Commissions": "1.3000",
+    "RealizedPnL": "298.7000",
+    "Mark": "",
+    "MarkDay": "",
+    "MarkStatus": "",
+    "UnrealizedPnL": ""
+   },
+   {
+    "PositionID": "a:1004:1",
+    "Alias": "a",
+    "Underlying": "ABC",
+    "Contract": "222",
+    "Status": "assigned",
+    "Early": false,
+    "Quantity": "-2",
+    "Multiplier": "100",
+    "Currency": "USD",
+    "PremiumIncome": "160.0000",
+    "Commissions": "1.3000",
+    "RealizedPnL": "158.7000",
+    "Mark": "",
+    "MarkDay": "",
+    "MarkStatus": "",
+    "UnrealizedPnL": ""
+   }
+  ],
+  "Cycles": [
+   {
+    "CycleID": "a:ABC:1003",
+    "Alias": "a",
+    "Underlying": "ABC",
+    "Currency": "USD",
+    "Shares": "0",
+    "CostBasisPerShare": "50.0000",
+    "StockRealizedPnL": "999.0000",
+    "UnrealizedStockPnL": "",
+    "PremiumIncome": "460.0000",
+    "StockCommissions": "2.0000",
+    "PremiumOutsideCycles": "0.0000"
+   }
+  ],
+  "Unresolved": [],
+  "Review": []
+ }
+}
