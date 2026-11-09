@@ -113,6 +113,8 @@ components:
     in: internal/jobs/earningsrefresh
   jobs/fredseries:
     in: internal/jobs/fredseries
+  jobs/optioncandidates:
+    in: internal/jobs/optioncandidates
   jobs/optioneod:
     in: internal/jobs/optioneod
   jobs/optionledger:
@@ -522,6 +524,20 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/optioncandidates:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - store/bar
+      - store/ownerset
+      - compute/settingsapi
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/optioneod:
     mayDependOn:
       - contracts
@@ -807,6 +823,7 @@ deps:
       - store/account
       - compute/optioncand
       - store/candidate
+      - jobs/optioncandidates
       - compute/optionledger
       - jobs/optionledger
       - sources/flex
