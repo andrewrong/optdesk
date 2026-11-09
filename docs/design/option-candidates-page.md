@@ -144,7 +144,7 @@ Frontend stack lines:
 ### 5 option-candidates-page-route
 
 Module: ot. Size: M.
-Files: `cmd/ot/candidates_site.go` (new), `cmd/ot/candidates_site_test.go` (new), `cmd/ot/site.go`, `cmd/ot/site_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/demo.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `docs/contracts/ot.md`
+Files: `cmd/ot/candidates_site.go` (new), `cmd/ot/candidates_site_test.go` (new), `cmd/ot/site.go`, `cmd/ot/site_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `docs/contracts/ot.md`
 Design: docs/design/option-candidates-page.md#Decisions (Decisions 2, 3, 9, 10)
 Order: after 2, 3; wiring only.
 Goal: `siteHandler` serves `options/candidates` (`siteCandidatesRoute`) with the day of `--day` or today in the zone and `ot page --name option_candidates_page` builds the same page; `openSiteReaders` opens the candidate store once with the one pages line `OT_PG_DSN_PAGES` through `candidate.Open` and adds it to `siteReaders`; the demo profile serves a fixed demo reader (a few ok and blocked rows of each kind) and opens no store; a failed build answers 500 with the fixed text; the ninth bar item is the web issue's (4) and `cmd/ot` holds no bar (`grep -c "期权候选" cmd/ot/*.go` prints 0); the day of a build is the day given, the lookback of Decision 3 is the builder's. `deps.optionCandidatesPage` and `siteCandidatesRoute` are frozen by this entry (Interface).

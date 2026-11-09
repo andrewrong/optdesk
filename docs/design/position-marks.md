@@ -50,6 +50,8 @@ store, `internal/store/mark/api.go` (declarations only, package `mark`):
 
 jobs, `internal/jobs/api.go`: `type NewPositionMarksFunc func(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock) (contracts.Job, error)`: `market` is the one market-data gateway (Decision 6), `aliases` the accounts whose positions are marked, the main one first. The job reads the newest capture of the day per alias from `acct`, maps each position by Decision 10, calls `Snapshot` in batches with `KindSnapshot`, applies Decision 2 and writes the rows.
 
+Landed in #848 (entry 1, #825), #952 (entry 2, #852).
+
 ## Issues
 
 Every test calls `t.Parallel()`, writes files only under a temporary directory, uses a fake clock, never sleeps, opens no port, and touches no live broker or database (a test that needs PostgreSQL carries the tag `pg`). Acceptance is checked offline by reading, grep and git; test runs are under "Checked by CI".
