@@ -81,6 +81,8 @@ components:
     in: internal/compute/optionledger
   compute/optionnotice:
     in: internal/compute/optionnotice
+  compute/optionstruct:
+    in: internal/compute/optionstruct
   compute/own:
     in: internal/compute/own
   compute/rules:
@@ -344,6 +346,11 @@ deps:
       - contracts
       - compute
       - contracts/genpb
+  compute/optionstruct:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/own:
     mayDependOn:
       - contracts
@@ -422,6 +429,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -599,6 +607,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -697,6 +706,7 @@ deps:
       - sources/flex
       - pages/market_page
       - pages/option_candidates_page
+      - compute/optionstruct
       - pages/structures_page
       - pages/option_result_page
       - compute/optionnotice
