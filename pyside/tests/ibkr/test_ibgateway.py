@@ -11,6 +11,7 @@ import pytest
 from ib_async import Contract, ContractDetails, OptionChain, RequestError, Ticker
 from kit.fakeclock import FakeClock
 
+from optdesk.ibkr.api import DividendKey, DividendReading
 from optdesk.ibkr.ibgateway import IbGateway
 from optdesk.ibkr.model import QuoteRow, QuoteTarget
 from optdesk.ibkr.spec import AmbiguousResolve, BrokerError
@@ -62,6 +63,7 @@ class FakeIb:
         self.chain_rows: list[OptionChain] = []
         self.autofill = False
         self.refuse = False
+        self.fail: Exception | None = None
         self.tickers: dict[int, Ticker] = {}
         self.subscribed: list[int] = []
         self.cancelled: list[int] = []
@@ -102,6 +104,8 @@ class FakeIb:
         ticker = Ticker(contract=contract)
         self.tickers[contract.conId] = ticker
         self.subscribed.append(contract.conId)
+        if self.fail is not None:
+            raise self.fail
         if self.refuse:
             raise OrderRefused("refused as the guard would")
         if self.autofill:
@@ -643,3 +647,47 @@ def test_quote_rows_carry_generation_and_times() -> None:
     assert row.generation == 1 and row.con_id == 61
     assert row.requested_at <= row.sent_at <= row.received_at
     assert dict(row.fields)["bid"] == 1.0
+
+
+def _dividend_keys() -> list[DividendKey]:
+    return [DividendKey("AAPL", "STK", "SMART", "USD", c) for c in (71, 72)]
+
+
+def test_dividends_unexpected_error_is_error_status_per_key(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def run() -> list[DividendReading]:
+        gateway, fake = await opened(FakeClock(), lines=2)
+        fake.fail = ValueError("bad tick")
+        readings: list[DividendReading] = []
+
+        async def keep(reading: DividendReading) -> None:
+            readings.append(reading)
+
+        await gateway.dividends(_dividend_keys(), keep)
+        return readings
+
+    with caplog.at_level(logging.ERROR):
+        readings = asyncio.run(run())
+    assert sorted(r.key.con_id for r in readings) == [71, 72]
+    assert {(r.status, r.error_code) for r in readings} == {("error", 0)}
+    assert {r.past_12m for r in readings} == {None}
+    failed = [
+        r.getMessage() for r in caplog.records if "dividend_failed" in r.getMessage()
+    ]
+    assert len(failed) == 2
+    assert all("ValueError" in m and "bad tick" in m for m in failed)
+    assert all("DU" not in m and "71" not in m and "72" not in m for m in failed)
+
+
+def test_dividends_connection_error_still_raises() -> None:
+    async def run() -> None:
+        gateway, _ = make(FakeClock())
+
+        async def keep(reading: DividendReading) -> None:
+            raise AssertionError("no reading expected")
+
+        await gateway.dividends(_dividend_keys(), keep)
+
+    with pytest.raises(ConnectionError):
+        asyncio.run(run())
