@@ -266,6 +266,16 @@ func TestOptionLedgerDatasetFiles(t *testing.T) {
 		"error_kind": "", "error_code": "", "raw_sha256": hash, "parser_version": "1",
 		"statements": 2, "statements_unmapped": 1, "rows_parsed": 3, "rows_new": 1, "rows_revised": 1, "rows_unchanged": 1,
 	}
+	sectionRow := map[string]any{
+		"alias": "a", "section": "CashTransaction", "row_key": "777", "revision": 1,
+		"fetch_id": "f1", "row_index": 0,
+		"attributes":        `{"amount":"1.5"}`,
+		"attributes_sha256": hash, "recorded_at": "2026-01-02T03:04:05Z",
+	}
+	sectionStatus := map[string]any{
+		"fetch_id": "f1", "alias": "a", "section": "CashTransaction", "state": "present",
+		"row_count": 2, "rows_refused": 0, "recorded_at": "2026-01-02T03:04:05Z",
+	}
 	with := func(base map[string]any, k string, v any) map[string]any {
 		m := map[string]any{}
 		for kk, vv := range base {
@@ -293,6 +303,22 @@ func TestOptionLedgerDatasetFiles(t *testing.T) {
 			"negative count":    with(fetch, "rows_parsed", -1),
 			"query id letters":  with(fetch, "query_id", "abc"),
 			"token":             with(fetch, "token", "x"),
+		}},
+		{"optionledger.flex_section_row", sectionRow, map[string]map[string]any{
+			"revision 0":        with(sectionRow, "revision", 0),
+			"attributes object": with(sectionRow, "attributes", map[string]any{"amount": "1"}),
+			"short hash":        with(sectionRow, "attributes_sha256", "abc"),
+			"account number":    with(sectionRow, "account_number", "U1"),
+			"account id":        with(sectionRow, "accountId", "U1"),
+			"section empty":     with(sectionRow, "section", ""),
+			"section spaced":    with(sectionRow, "section", "Cash Transaction"),
+			"row key empty":     with(sectionRow, "row_key", ""),
+		}},
+		{"optionledger.flex_section_status", sectionStatus, map[string]map[string]any{
+			"state other":   with(sectionStatus, "state", "missing"),
+			"negative":      with(sectionStatus, "rows_refused", -1),
+			"account":       with(sectionStatus, "account_number", "U1"),
+			"section empty": with(sectionStatus, "section", ""),
 		}},
 	}
 	for _, c := range cases {
