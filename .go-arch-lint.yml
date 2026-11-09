@@ -159,6 +159,8 @@ components:
     in: internal/compute/contracttest
   compute/ruleparam:
     in: internal/compute/ruleparam
+  compute/settingsform:
+    in: internal/compute/settingsform
   compute/sharpmove:
     in: internal/compute/sharpmove
   notify/notifytest:
@@ -820,6 +822,12 @@ deps:
       - contracts/genpb
       - compute/settingsapi
   compute/ruleparam:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+      - compute/settingsapi
+  compute/settingsform:
     mayDependOn:
       - contracts
       - compute
