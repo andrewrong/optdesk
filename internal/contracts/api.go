@@ -22,6 +22,9 @@ type QuoteSnapshot = gen.QuoteSnapshot
 // FundamentalFact is the record of dataset obs.fundamental_fact r1, generated from contracts/datasets.
 type FundamentalFact = gen.FundamentalFact
 
+// OptionCandidate is the record of dataset candidates.option_candidate r1, generated from contracts/datasets.
+type OptionCandidate = gen.OptionCandidate
+
 // SeriesUnit is the unit enum of obs.series_point r1.
 type SeriesUnit = gen.SeriesUnit
 
