@@ -177,7 +177,7 @@ func (x *SnapshotResponse) GetQuote() *Quote {
 // BarsRequest asks for the daily bars of one contract. The contract has con_id and
 // duration_days is 1 to 730, else the call is INVALID_ARGUMENT; so is an unset kind.
 // end_day is YYYY-MM-DD, or empty for now; a non-empty end_day with
-// BAR_KIND_ADJUSTED_LAST is INVALID_ARGUMENT.
+// the adjusted-last kind is INVALID_ARGUMENT.
 type BarsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Contract      *ContractSpec          `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"`
