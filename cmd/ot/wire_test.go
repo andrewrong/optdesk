@@ -22,8 +22,8 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 69 {
-		t.Fatalf("deps has %d fields, want 69", v.NumField())
+	if v.NumField() != 75 {
+		t.Fatalf("deps has %d fields, want 75", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {
@@ -170,6 +170,7 @@ func TestDemoProfileOpensNoStore(t *testing.T) {
 			}
 		})
 	}
+	t.Run("serve", demoServeOpensNoStore)
 }
 
 func TestComputeFiguresJobGetsEase(t *testing.T) {

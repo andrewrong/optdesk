@@ -109,7 +109,7 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `option_eod_jp`, `trading_class`, `ledger_dataset`, `stop_after` (additive; `optioneod.NewJP`).
 - v1: `earnings_refresh`, `jobs.WatchEntry`, `jobs.NewEarningsRefreshFunc`.
 - v1: `option_ledger`, interface only (`jobs.OptionLedgerStores`, `jobs.OptionLedgerConfig`, `jobs.FlexRun`, `jobs.NewOptionLedgerJobFunc`, `jobs.ImportOptionTraderFunc`, `jobs.ImportResult`, `jobs.FlexAttributesSHA256Func`), with `optionledger.AttributesSHA256`.
-- v1: `jobs.OptionLedgerStores.Sections` (`flexsection.Writer`, additive; `docs/design/account-flex-fx.md`): nil switches the Flex section step off, and the other fields and `jobs.NewOptionLedgerJobFunc` are unchanged. Delivery rule (Decision 10): nothing the section step handles reaches notify; a job result or `job_event` carries a job id, a status and an alias only, never a cash amount, balance, net value or position. Test: `internal/jobs/flex_section_api_test.go` `TestOptionLedgerStoresSectionsContract`.
+- v1: `jobs.OptionLedgerStores.Sections` (`flexsection.Writer`, additive; `docs/design/account-flex-fx.md`): nil switches the Flex section step off, and the other fields and `jobs.NewOptionLedgerJobFunc` are unchanged. Delivery rule (Decision 10): nothing the section step handles reaches notify; a job result or `job_event` carries a job id, a status and an alias only, never a cash amount, balance, net value or position. Test: `internal/jobs/flex_section_api_test.go` `TestOptionLedgerStoresSectionsSet`, `TestOptionLedgerStoresSectionsNil`.
 
 ## Contract tests
 
