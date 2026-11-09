@@ -61,22 +61,24 @@ func runPage(a *app, args []string) error {
 	}
 	ctx := context.Background()
 	var page pages.Page
-	var open func() (store.SeriesReader, func(), error)
-	if *name == reportName {
-		p, closeReport, err := reportPage(ctx, a, *market, *slot)
-		if err != nil {
-			return err
-		}
-		defer closeReport()
-		page = p
-		open = func() (store.SeriesReader, func(), error) { return nil, func() {}, nil }
-	} else {
-		p, closePage, err := pageNamed(a, *name)
-		if err != nil {
-			return err
-		}
-		defer closePage()
-		page = p
+	var closePage func()
+	var err error
+	withSeries := true
+	switch *name {
+	case reportName:
+		page, closePage, err = reportPage(ctx, a, *market, *slot)
+		withSeries = false
+	case marketName:
+		page, closePage, err = marketPage(ctx, a)
+	default:
+		page, closePage, err = pageNamed(a, *name)
+	}
+	if err != nil {
+		return err
+	}
+	defer closePage()
+	open := func() (store.SeriesReader, func(), error) { return nil, func() {}, nil }
+	if withSeries {
 		open = func() (store.SeriesReader, func(), error) { return seriesReader(ctx, a) }
 	}
 	clk := a.deps.newClock()

@@ -384,3 +384,41 @@ func TestMacroPageReaderOpenErrorIsReported(t *testing.T) {
 		t.Fatalf("err %v", err)
 	}
 }
+
+func TestPageMarketFlags(t *testing.T) {
+	t.Parallel()
+	newApp := func(t *testing.T) (*app, *bytes.Buffer) {
+		t.Helper()
+		a, _ := testApp(t, "")
+		a.profile.Name = "demo"
+		var out bytes.Buffer
+		a.stdout = &out
+		a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
+		a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page { return fakePage("macro_page", "MACRO") }
+		a.deps.reportPage = func(string, string, *time.Location, report_page.RiskBlockFunc) pages.Page {
+			return fakePage("report_page", "REPORT")
+		}
+		a.deps.marketPage = func(*time.Location, string, string, string, compute.ReadingFunc) pages.Page {
+			return fakePage("market_page", "MARKET")
+		}
+		return a, &out
+	}
+	a, out := newApp(t)
+	if err := runPage(a, []string{"--name", "market_page"}); err != nil || out.String() != "MARKET" {
+		t.Fatalf("out %q err %v", out, err)
+	}
+	a, out = newApp(t)
+	if err := runPage(a, []string{"--name", "market_page", "--day", "x"}); err == nil || out.Len() != 0 {
+		t.Fatalf("bad day: err %v out %q", err, out)
+	}
+	for name, want := range map[string]string{"macro_rates": "RATES", "macro_page": "MACRO"} {
+		a, out := newApp(t)
+		if err := runPage(a, []string{"--name", name}); err != nil || out.String() != want {
+			t.Errorf("%s: %q %v", name, out, err)
+		}
+	}
+	a, out = newApp(t)
+	if err := runPage(a, []string{"--name", "report_page", "--market", "us", "--slot", "open"}); err != nil || out.String() != "REPORT" {
+		t.Errorf("report_page: %q %v", out, err)
+	}
+}
