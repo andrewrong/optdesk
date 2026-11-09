@@ -40,6 +40,11 @@ class MarketDataServiceStub:
                 request_serializer=ibkr_dot_v1_dot_marketdata__pb2.SnapshotRequest.SerializeToString,
                 response_deserializer=ibkr_dot_v1_dot_marketdata__pb2.SnapshotResponse.FromString,
                 _registered_method=True)
+        self.Bars = channel.unary_unary(
+                '/ibkr.v1.MarketDataService/Bars',
+                request_serializer=ibkr_dot_v1_dot_marketdata__pb2.BarsRequest.SerializeToString,
+                response_deserializer=ibkr_dot_v1_dot_marketdata__pb2.BarsResponse.FromString,
+                _registered_method=True)
 
 
 class MarketDataServiceServicer:
@@ -53,6 +58,13 @@ class MarketDataServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Bars(self, request, context):
+        """Bars returns the daily bars of one contract, oldest first.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_MarketDataServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -60,6 +72,11 @@ def add_MarketDataServiceServicer_to_server(servicer, server):
                     servicer.Snapshot,
                     request_deserializer=ibkr_dot_v1_dot_marketdata__pb2.SnapshotRequest.FromString,
                     response_serializer=ibkr_dot_v1_dot_marketdata__pb2.SnapshotResponse.SerializeToString,
+            ),
+            'Bars': grpc.unary_unary_rpc_method_handler(
+                    servicer.Bars,
+                    request_deserializer=ibkr_dot_v1_dot_marketdata__pb2.BarsRequest.FromString,
+                    response_serializer=ibkr_dot_v1_dot_marketdata__pb2.BarsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -90,6 +107,33 @@ class MarketDataService:
             '/ibkr.v1.MarketDataService/Snapshot',
             ibkr_dot_v1_dot_marketdata__pb2.SnapshotRequest.SerializeToString,
             ibkr_dot_v1_dot_marketdata__pb2.SnapshotResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Bars(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ibkr.v1.MarketDataService/Bars',
+            ibkr_dot_v1_dot_marketdata__pb2.BarsRequest.SerializeToString,
+            ibkr_dot_v1_dot_marketdata__pb2.BarsResponse.FromString,
             options,
             channel_credentials,
             insecure,

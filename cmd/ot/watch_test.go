@@ -18,7 +18,7 @@ symbol = "AAPL"
 sec_type = "STK"
 exchange = "SMART"
 currency = "USD"
-con_id = 265598
+con_id = 1001
 report_date_override = "2026-11-20"
 buy_price = "150.5"
 sale_price = "200"
@@ -30,7 +30,7 @@ symbol = "7203"
 sec_type = "STK"
 exchange = "TSEJ"
 currency = "JPY"
-con_id = 14081
+con_id = 1002
 `
 
 func TestWatchLoad(t *testing.T) {
@@ -45,11 +45,11 @@ func TestWatchLoad(t *testing.T) {
 	want := []jobs.WatchEntry{
 		{
 			Issuer: "cik:0000320193", Market: "US", ReportDateOverride: "2026-11-20", BuyPrice: "150.5", SalePrice: "200",
-			Contract: broker.Contract{SecType: "STK", Symbol: "AAPL", Exchange: "SMART", Currency: "USD", ConID: 265598},
+			Contract: broker.Contract{SecType: "STK", Symbol: "AAPL", Exchange: "SMART", Currency: "USD", ConID: 1001},
 		},
 		{
 			Issuer: "edinet:E02144", Market: "JP",
-			Contract: broker.Contract{SecType: "STK", Symbol: "7203", Exchange: "TSEJ", Currency: "JPY", ConID: 14081},
+			Contract: broker.Contract{SecType: "STK", Symbol: "7203", Exchange: "TSEJ", Currency: "JPY", ConID: 1002},
 		},
 	}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
