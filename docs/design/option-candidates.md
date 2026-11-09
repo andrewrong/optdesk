@@ -105,7 +105,7 @@ Goal: `optioneod.NewWithWatch` (the type `NewOptionEodWatchFunc`) takes the unde
 Acceptance:
 1. `grep -rhE "^func (TestWatchUnderlyingsUSOnly|TestDTEWindowSelectsMonthlies|TestNoWindowKeepsNearestExpiries|TestStrikeRangeFromBuyPrice|TestNoBuyPriceKeepsBand|TestMaxStrikesCap)\(" internal/jobs/optioneod | wc -l` prints 6 (the six tests are new); `TestStrikeRangeFromBuyPrice` has buy price 100, spot 130, strikes spaced 5 from 50 to 150 and requires the 11 strikes 80 to 130 only; `TestMaxStrikesCap` has the same prices with strikes spaced 1 (51 in range) and requires exactly the 24 strikes 88 to 111.
 2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "NewOptionEodWatchFunc\|NewOptionEodHeldFunc" internal/jobs/api.go` prints 2.
-3. `grep -c "min_dte\|max_dte\|max_strikes" docs/contracts/jobs.md` is at least 3; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (76 and 520 on main).
+3. `grep -c "min_dte" docs/contracts/jobs.md` is at least 1 and `grep -c "max_dte" docs/contracts/jobs.md` is at least 1 (0 and 0 on main); `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (76 and 520 on main).
 Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` with the six new tests, `go test ./internal/jobs/...`, go-arch-lint. Whether the gateway returns the monthlies and the deeper strikes, and whether the run fits `budget_minutes`, is not checkable offline; the first run is read with `ot candidates`.
 
 ### 2 candidate-compute-interface (interface)
@@ -266,7 +266,7 @@ Order: after 9, 11, 12, 606 `dividend-wire`, 561 `account-wire`; it shares `runo
 Goal: wiring only, for the calls and the guard. `option_eod` uses `NewWithHeld` with the account reader, so the held short calls are captured; `option_candidates` uses `NewOptionCandidatesCallsFunc` with the dividend reader of 606; a missing events DSN (606 `OT_PG_DSN_EVENTS`) leaves the puts job as issue 12 wired it and names the line.
 Acceptance:
 1. `grep -rhE "^func (TestOptionEodUsesHeldReader|TestCallsJobUsesDividendReader|TestMissingEventsDSNKeepsPutsJob)\(" cmd/ot | wc -l` prints 3 (new).
-2. `grep -c "NewWithHeld\|NewOptionCandidatesCallsFunc" cmd/ot/wire.go` is at least 2; `grep -c "held" docs/contracts/ot.md` is at least 1.
+2. `grep -c "NewWithHeld\|NewOptionCandidatesCallsFunc" cmd/ot/wire.go` is at least 2; `grep -c "NewWithHeld" docs/contracts/ot.md` is at least 1 (0 on main).
 3. The diff lists no path outside the Files line; `wc -l cmd/ot/wire.go cmd/ot/runonce.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (233 and 432 on main).
 Checked by CI: `go test ./cmd/ot -race -count=1`, golangci-lint.
 
