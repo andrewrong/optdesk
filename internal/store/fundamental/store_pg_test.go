@@ -173,7 +173,7 @@ func TestFactsFiledByOnBothRolesPG(t *testing.T) {
 	}
 	defer func() { _ = p.Close() }()
 	for role, r := range map[string]store.FactReader{"ot_w_fundamental": w, "ot_ro_pages": p} {
-		got, err := r.FactsFiledBy(ctx, "cik:0000320193", "2025-06-30")
+		got, err := r.FactsFiledBy(ctx, "sec", "cik:0000320193", "2025-06-30")
 		if err != nil || len(got) != 2 {
 			t.Fatalf("%s: %d rows, %v; want 2", role, len(got), err)
 		}
@@ -182,7 +182,7 @@ func TestFactsFiledByOnBothRolesPG(t *testing.T) {
 				t.Errorf("%s: instant fact has period_start %v", role, g.PeriodStart)
 			}
 		}
-		if all, _ := r.FactsFiledBy(ctx, "cik:0000320193", "2026-02-01"); len(all) != 3 {
+		if all, _ := r.FactsFiledBy(ctx, "sec", "cik:0000320193", "2026-02-01"); len(all) != 3 {
 			t.Errorf("%s: %d rows by the late day, want 3", role, len(all))
 		}
 	}

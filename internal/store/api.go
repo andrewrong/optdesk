@@ -501,9 +501,9 @@ type FactWriter interface {
 
 // FactReader reads the facts through the view rd.fundamental_fact_r1.
 type FactReader interface {
-	// FactsFiledBy returns every row of the subject with filed on or before cutoff, no winner picked;
+	// FactsFiledBy returns every row of the source and subject with filed on or before cutoff, no winner picked;
 	// none gives an empty slice. The order is unspecified.
-	FactsFiledBy(ctx context.Context, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error)
+	FactsFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error)
 }
 
 // FactStore is one store for both sides: the figures job opens it with the line DSNEnvFundamental

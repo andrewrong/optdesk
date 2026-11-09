@@ -43,11 +43,11 @@ func (m *memFacts) InsertFacts(_ context.Context, rows []contracts.FundamentalFa
 	return nil
 }
 
-func (m *memFacts) FactsFiledBy(_ context.Context, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
+func (m *memFacts) FactsFiledBy(_ context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
 	c, _ := time.Parse(time.DateOnly, string(cutoff))
 	out := []contracts.FundamentalFact{}
 	for _, r := range m.rows {
-		if r.Subject == subject && !r.Filed.After(c) {
+		if string(r.Source) == source && r.Subject == subject && !r.Filed.After(c) {
 			out = append(out, r)
 		}
 	}
@@ -99,19 +99,42 @@ func TestFactContractFromBothSides(t *testing.T) {
 
 	// Reader side: every row of the subject filed on or before the cutoff, none of another subject,
 	// and the recast beside the original once it is filed.
-	got, err := r.FactsFiledBy(ctx, "cik:0000320193", "2025-12-31")
+	got, err := r.FactsFiledBy(ctx, "sec", "cik:0000320193", "2025-12-31")
 	if err != nil || len(got) != 2 {
 		t.Fatalf("by 2025-12-31: %d rows, %v; want 2 (duration, instant)", len(got), err)
 	}
-	got, err = r.FactsFiledBy(ctx, "cik:0000320193", "2026-02-01")
+	got, err = r.FactsFiledBy(ctx, "sec", "cik:0000320193", "2026-02-01")
 	if err != nil || len(got) != 3 {
 		t.Fatalf("by 2026-02-01: %d rows, %v; want 3 (the recast is kept beside the original)", len(got), err)
 	}
-	got, err = r.FactsFiledBy(ctx, "cik:0000999999", "2026-12-31")
+	got, err = r.FactsFiledBy(ctx, "sec", "cik:0000999999", "2026-12-31")
 	if err != nil || got == nil || len(got) != 0 {
 		t.Fatalf("unknown subject: %v, %v; want an empty slice", got, err)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestFactsFiledBySourceParam: the reader takes the source beside the subject and returns only that source's rows.
+func TestFactsFiledBySourceParam(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	m := newMemFacts()
+	var r store.FactReader = m
+	sec := mkFact("cik:0000320193", "a1", "Assets", "", "2024-12-31", "2025-02-01", "900")
+	edinet := sec
+	edinet.Source = "edinet"
+	if err := m.InsertFacts(ctx, []contracts.FundamentalFact{sec, edinet}); err != nil {
+		t.Fatal(err)
+	}
+	for _, src := range []string{"sec", "edinet"} {
+		got, err := r.FactsFiledBy(ctx, src, "cik:0000320193", "2026-11-09")
+		if err != nil || len(got) != 1 || string(got[0].Source) != src {
+			t.Errorf("source %s: %v, %v; want its one row", src, got, err)
+		}
+	}
+	if got, _ := r.FactsFiledBy(ctx, "fmp", "cik:0000320193", "2026-11-09"); len(got) != 0 {
+		t.Errorf("unknown source returned %d rows", len(got))
 	}
 }

@@ -33,7 +33,7 @@ ON CONFLICT DO NOTHING`
 
 	selectFactsSQL = `SELECT source, subject, doc_id, taxonomy, concept, unit, period_start, period_end,
  currency, value, form, filed, retrieved_at, raw_sha256
-FROM rd.fundamental_fact_r1 WHERE subject = $1 AND filed <= $2::text::date
+FROM rd.fundamental_fact_r1 WHERE source = $1 AND subject = $2 AND filed <= $3::text::date
 ORDER BY filed, doc_id, taxonomy, concept, unit, period_start NULLS FIRST, period_end`
 )
 
@@ -102,13 +102,13 @@ func (s *factStore) InsertFacts(ctx context.Context, rows []contracts.Fundamenta
 	return nil
 }
 
-// FactsFiledBy returns every row of the subject filed on or before cutoff, read from the view only.
-func (s *factStore) FactsFiledBy(ctx context.Context, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
+// FactsFiledBy returns every row of the source and subject filed on or before cutoff, read from the view only.
+func (s *factStore) FactsFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error) {
 	if _, err := time.Parse(time.DateOnly, string(cutoff)); err != nil {
 		return nil, permanent(fmt.Errorf("fundamental: bad cutoff %q: %w", cutoff, err))
 	}
 	out := []contracts.FundamentalFact{}
-	err := s.db.Select(ctx, selectFactsSQL, []any{subject, string(cutoff)}, func(sc scanner) error {
+	err := s.db.Select(ctx, selectFactsSQL, []any{source, subject, string(cutoff)}, func(sc scanner) error {
 		var f contracts.FundamentalFact
 		var source string
 		var start *time.Time

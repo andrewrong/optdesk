@@ -56,7 +56,7 @@ func (f *fakeDB) Select(_ context.Context, _ string, args []any, scan func(scann
 	}
 	for _, k := range f.order {
 		r := f.rows[k]
-		if r.subject == args[0].(string) && r.filed <= args[1].(string) {
+		if r.source == args[0].(string) && r.subject == args[1].(string) && r.filed <= args[2].(string) {
 			if err := scan(rowScanner{r}); err != nil {
 				return err
 			}
@@ -150,7 +150,7 @@ func TestFactsFiledByRoundTrip(t *testing.T) {
 	if err := s.InsertFacts(ctx, []contracts.FundamentalFact{dur, inst, late}); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.FactsFiledBy(ctx, "cik:0000320193", "2025-06-30")
+	got, err := s.FactsFiledBy(ctx, "sec", "cik:0000320193", "2025-06-30")
 	if err != nil || len(got) != 2 {
 		t.Fatalf("got %d rows, %v; want 2", len(got), err)
 	}
@@ -169,10 +169,10 @@ func TestFactsFiledByRoundTrip(t *testing.T) {
 			t.Errorf("row = %+v", g)
 		}
 	}
-	if all, _ := s.FactsFiledBy(ctx, "cik:0000320193", "2026-02-01"); len(all) != 3 {
+	if all, _ := s.FactsFiledBy(ctx, "sec", "cik:0000320193", "2026-02-01"); len(all) != 3 {
 		t.Errorf("by the late day: %d rows, want 3", len(all))
 	}
-	none, err := s.FactsFiledBy(ctx, "cik:1", "2026-02-01")
+	none, err := s.FactsFiledBy(ctx, "sec", "cik:1", "2026-02-01")
 	if err != nil || none == nil || len(none) != 0 {
 		t.Errorf("unknown subject = %v, %v; want empty slice", none, err)
 	}
@@ -194,14 +194,14 @@ func TestBadInputIsPermanentAndErrorsAreRetryable(t *testing.T) {
 	if err := s.InsertFacts(ctx, []contracts.FundamentalFact{bad}); kind(err) != contracts.Permanent || db.execs != 0 {
 		t.Errorf("empty doc id: %v, %d execs", err, db.execs)
 	}
-	if _, err := s.FactsFiledBy(ctx, "cik:1", "yesterday"); kind(err) != contracts.Permanent {
+	if _, err := s.FactsFiledBy(ctx, "sec", "cik:1", "yesterday"); kind(err) != contracts.Permanent {
 		t.Errorf("bad cutoff: %v", err)
 	}
 	db.failed = errors.New("down")
 	if err := s.InsertFacts(ctx, []contracts.FundamentalFact{fact("a", "Assets", "", "2024-12-31", "2025-02-01")}); kind(err) != contracts.Retryable {
 		t.Errorf("insert error: %v", err)
 	}
-	if _, err := s.FactsFiledBy(ctx, "cik:1", "2025-01-01"); kind(err) != contracts.Retryable {
+	if _, err := s.FactsFiledBy(ctx, "sec", "cik:1", "2025-01-01"); kind(err) != contracts.Retryable {
 		t.Errorf("select error: %v", err)
 	}
 }
@@ -211,7 +211,7 @@ func TestUnknownSourceInViewRefused(t *testing.T) {
 	db := newFake()
 	db.rows[[8]string{"fmp"}] = fakeRow{source: "fmp", subject: "cik:1", startKey: noStart, end: "2024-12-31", filed: "2025-01-01"}
 	db.order = [][8]string{{"fmp"}}
-	if _, err := (&factStore{db: db}).FactsFiledBy(context.Background(), "cik:1", "2025-01-02"); err == nil {
+	if _, err := (&factStore{db: db}).FactsFiledBy(context.Background(), "fmp", "cik:1", "2025-01-02"); err == nil {
 		t.Error("a source outside the dataset enum was returned")
 	}
 }
