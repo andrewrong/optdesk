@@ -43,6 +43,7 @@
     "extrinsic": {"type": ["string", "null"], "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Extrinsic value per share as decimal text; null when not computed."},
     "rank": {"type": ["integer", "null"], "minimum": 1, "description": "Position of an ok row in the run; null when not ranked."},
     "rank_in_underlying": {"type": ["integer", "null"], "minimum": 1, "description": "Position of an ok row within its underlying; null when not ranked."},
-    "computed_at": {"type": "string", "format": "date-time", "description": "Instant the run computed the row, UTC; the newest run of a day is the one with the latest computed_at."}
+    "computed_at": {"type": "string", "format": "date-time", "description": "Instant the run computed the row, UTC; the newest run of a day is the one with the latest computed_at."},
+    "settings_version": {"type": ["integer", "null"], "minimum": 0, "description": "Version of the owner settings (ownerset Version) the run used; null when the row was computed without owner settings."}
   }
 }

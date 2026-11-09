@@ -1298,6 +1298,10 @@ type OptionCandidate struct {
 	// Run day: the session day the rows were computed for.
 	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
 
+	// Version of the owner settings (ownerset Version) the run used; null when the
+	// row was computed without owner settings.
+	SettingsVersion *int `json:"settings_version,omitempty" yaml:"settings_version,omitempty" mapstructure:"settings_version,omitempty"`
+
 	// Price of the underlying at the capture as decimal text; null when absent.
 	Spot *string `json:"spot" yaml:"spot" mapstructure:"spot"`
 
