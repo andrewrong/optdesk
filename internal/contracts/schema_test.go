@@ -250,3 +250,60 @@ func TestReadingRejects(t *testing.T) {
 		t.Fatalf("signed value with 12 decimals: %v", err)
 	}
 }
+
+func TestOptionLedgerDatasetFiles(t *testing.T) {
+	t.Parallel()
+	hash := strings.Repeat("ab", 32)
+	row := map[string]any{
+		"alias": "a", "level_of_detail": "EXECUTION", "transaction_id": "1234567", "revision": 1,
+		"fetch_id": "f1", "row_index": 0, "source": "flex",
+		"attributes":        `{"quantity":"-1","tradePrice":"1.25"}`,
+		"attributes_sha256": hash, "recorded_at": "2026-01-02T03:04:05Z",
+	}
+	fetch := map[string]any{
+		"fetch_id": "f1", "login": "main", "query_id": "123456", "first_date": "2025-12-01", "last_date": "2026-01-01",
+		"started_at": "2026-01-02T03:04:00Z", "finished_at": "2026-01-02T03:04:05Z", "status": "ok",
+		"error_kind": "", "error_code": "", "raw_sha256": hash, "parser_version": "1",
+		"statements": 2, "statements_unmapped": 1, "rows_parsed": 3, "rows_new": 1, "rows_revised": 1, "rows_unchanged": 1,
+	}
+	with := func(base map[string]any, k string, v any) map[string]any {
+		m := map[string]any{}
+		for kk, vv := range base {
+			m[kk] = vv
+		}
+		m[k] = v
+		return m
+	}
+	cases := []struct {
+		name string
+		rec  map[string]any
+		bad  map[string]map[string]any
+	}{
+		{"optionledger.flex_trade_row", row, map[string]map[string]any{
+			"revision 0":        with(row, "revision", 0),
+			"attributes object": with(row, "attributes", map[string]any{"quantity": "-1"}),
+			"source other":      with(row, "source", "manual"),
+			"short hash":        with(row, "attributes_sha256", "abc"),
+			"account number":    with(row, "account_number", "U1"),
+			"alias upper":       with(row, "alias", "A"),
+		}},
+		{"optionledger.flex_fetch", fetch, map[string]map[string]any{
+			"status other":      with(fetch, "status", "done"),
+			"count number text": with(fetch, "rows_new", "1"),
+			"negative count":    with(fetch, "rows_parsed", -1),
+			"query id letters":  with(fetch, "query_id", "abc"),
+			"token":             with(fetch, "token", "x"),
+		}},
+	}
+	for _, c := range cases {
+		s := compileDataset(t, c.name)
+		if err := s.Validate(c.rec); err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		for label, rec := range c.bad {
+			if err := s.Validate(rec); err == nil {
+				t.Fatalf("%s: %s must be rejected", c.name, label)
+			}
+		}
+	}
+}
