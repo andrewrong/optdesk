@@ -324,3 +324,11 @@ func TestNewWithoutEaseHasNoEaseKey(t *testing.T) {
 }
 
 var _ store.SeriesReader = (*seriesSpy)(nil)
+
+func TestEaseSpecRefusesSwappedSeries(t *testing.T) {
+	t.Parallel()
+	e := easeSpec{ID: "macro.ease", Series: []string{"WDTGAL", "WALCL", "RRPONTSYD", "DGS10", "DFF", "SP500", "BAMLH0A0HYM2"}}
+	if err := checkEaseSpec(e); err == nil {
+		t.Fatal("swapped WALCL/WDTGAL accepted; runEase would feed WDTGAL as WALCL")
+	}
+}

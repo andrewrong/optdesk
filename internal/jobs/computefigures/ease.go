@@ -6,14 +6,20 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 )
 
-// easeSeriesCount is the number of series of compute.EaseSeries; the [ease] series of job.toml list them in
-// the order of its fields: WALCL, WDTGAL, RRPONTSYD, DGS10, DFF, SP500, BAMLH0A0HYM2.
-const easeSeriesCount = 7
+// easeSeriesIDs are the series of compute.EaseSeries in the order of its fields. runEase places the series of
+// [ease] into those fields by position, so the manifest must list exactly these ids in this order.
+var easeSeriesIDs = []string{"WALCL", "WDTGAL", "RRPONTSYD", "DGS10", "DFF", "SP500", "BAMLH0A0HYM2"}
 
-// checkEaseSpec requires the [ease] table to name the figure and the seven series.
+// checkEaseSpec requires the [ease] table to name the figure and the seven series in the order of the fields,
+// so that a reordered manifest cannot feed one series as another.
 func checkEaseSpec(e easeSpec) error {
-	if e.ID == "" || len(e.Series) != easeSeriesCount {
-		return fmt.Errorf("computefigures: manifest: [ease] needs an id and %d series", easeSeriesCount)
+	if e.ID == "" || len(e.Series) != len(easeSeriesIDs) {
+		return fmt.Errorf("computefigures: manifest: [ease] needs an id and %d series", len(easeSeriesIDs))
+	}
+	for i, id := range easeSeriesIDs {
+		if e.Series[i] != id {
+			return fmt.Errorf("computefigures: manifest: [ease] series %d is %q, want %q", i, e.Series[i], id)
+		}
 	}
 	return nil
 }
