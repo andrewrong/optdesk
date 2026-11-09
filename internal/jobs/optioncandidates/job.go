@@ -192,10 +192,16 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			Rate: rate, RateDay: rateDay, Accounts: accts, Kinds: []compute.CandidateKind{compute.KindShortPut},
 		}
 		for _, c := range j.rule.Evaluate(in, j.params) {
-			rows = append(rows, toStoreRow(c, day, runID, ul, ev, now))
+			row, err := toStoreRow(c, day, runID, ul, ev, now)
+			if err != nil {
+				return fail("map_candidate_failed", err)
+			}
+			rows = append(rows, row)
 		}
 	}
-	rankRun(rows)
+	if err := rankRun(rows); err != nil {
+		return fail("rank_candidates_failed", err)
+	}
 	if _, err := j.st.Candidates.InsertCandidates(ctx, rows); err != nil {
 		return fail("write_candidates_failed", err)
 	}

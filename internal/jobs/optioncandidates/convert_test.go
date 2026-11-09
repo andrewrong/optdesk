@@ -39,8 +39,18 @@ func TestRankRunOrdersAcrossUnderlyings(t *testing.T) {
 		{Status: "blocked", AnnualizedYield: y("0.90"), DTE: 30, Strike: "50", InstrumentID: 2},
 		{Status: "ok", AnnualizedYield: y("0.20"), DTE: 30, Strike: "50", InstrumentID: 3},
 	}
-	rankRun(rows)
+	if err := rankRun(rows); err != nil {
+		t.Fatal(err)
+	}
 	if *rows[2].Rank != 1 || *rows[0].Rank != 2 || rows[1].Rank != nil {
 		t.Fatalf("ranks %v %v %v", rows[0].Rank, rows[1].Rank, rows[2].Rank)
+	}
+}
+
+func TestRankRunRefusesBadYield(t *testing.T) {
+	t.Parallel()
+	bad := "abc"
+	if err := rankRun([]store.Candidate{{Status: "ok", AnnualizedYield: &bad, Strike: "50"}}); err == nil {
+		t.Fatal("a yield that is not a number was ranked")
 	}
 }

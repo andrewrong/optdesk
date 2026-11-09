@@ -2,6 +2,7 @@ package optioncandidates
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -123,9 +124,15 @@ func fitsText(f map[string]string) string {
 }
 
 // toStoreRow maps one rule row to a stored row. The ranks are set by rankRun.
-func toStoreRow(c compute.Candidate, day contracts.Day, runID string, ul underlyingRef, ev chainEarnings, now time.Time) store.Candidate {
-	id, _ := strconv.Atoi(c.InstrumentID)
-	mult, _ := strconv.Atoi(strings.SplitN(c.Multiplier, ".", 2)[0])
+func toStoreRow(c compute.Candidate, day contracts.Day, runID string, ul underlyingRef, ev chainEarnings, now time.Time) (store.Candidate, error) {
+	id, err := strconv.Atoi(c.InstrumentID)
+	if err != nil {
+		return store.Candidate{}, fmt.Errorf("instrument id is not a number")
+	}
+	mult, err := strconv.Atoi(strings.SplitN(c.Multiplier, ".", 2)[0])
+	if err != nil {
+		return store.Candidate{}, fmt.Errorf("multiplier of instrument %d is not a number", id)
+	}
 	right := "put"
 	if c.Right == "C" {
 		right = "call"
@@ -147,37 +154,41 @@ func toStoreRow(c compute.Candidate, day contracts.Day, runID string, ul underly
 		r := c.RankInUnderlying
 		row.RankInUnderlying = &r
 	}
-	return row
+	return row, nil
 }
 
 // rankRun sets Rank of the ok rows of the whole run: yield descending, then DTE, strike and instrument id
 // ascending (Decision 8). Rows that are not ok keep no rank.
-func rankRun(rows []store.Candidate) {
+func rankRun(rows []store.Candidate) error {
 	var ok []int
 	for i, r := range rows {
 		if r.Status == "ok" {
 			ok = append(ok, i)
 		}
 	}
-	rat := func(s *string) *big.Rat {
-		if s == nil {
-			return new(big.Rat)
+	rats := map[int][2]*big.Rat{}
+	for _, i := range ok {
+		y, strike := new(big.Rat), new(big.Rat)
+		if rows[i].AnnualizedYield == nil {
+			return fmt.Errorf("an ok row of instrument %d has no yield", rows[i].InstrumentID)
 		}
-		v, good := new(big.Rat).SetString(*s)
-		if !good {
-			return new(big.Rat)
+		if _, good := y.SetString(*rows[i].AnnualizedYield); !good {
+			return fmt.Errorf("yield of instrument %d is not a number", rows[i].InstrumentID)
 		}
-		return v
+		if _, good := strike.SetString(rows[i].Strike); !good {
+			return fmt.Errorf("strike of instrument %d is not a number", rows[i].InstrumentID)
+		}
+		rats[i] = [2]*big.Rat{y, strike}
 	}
 	sort.SliceStable(ok, func(a, b int) bool {
 		x, y := rows[ok[a]], rows[ok[b]]
-		if c := rat(x.AnnualizedYield).Cmp(rat(y.AnnualizedYield)); c != 0 {
+		if c := rats[ok[a]][0].Cmp(rats[ok[b]][0]); c != 0 {
 			return c > 0
 		}
 		if x.DTE != y.DTE {
 			return x.DTE < y.DTE
 		}
-		if c := rat(&x.Strike).Cmp(rat(&y.Strike)); c != 0 {
+		if c := rats[ok[a]][1].Cmp(rats[ok[b]][1]); c != 0 {
 			return c < 0
 		}
 		return x.InstrumentID < y.InstrumentID
@@ -186,4 +197,5 @@ func rankRun(rows []store.Candidate) {
 		n := pos + 1
 		rows[i].Rank = &n
 	}
+	return nil
 }

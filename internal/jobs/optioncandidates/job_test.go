@@ -259,3 +259,23 @@ func checkRow(t *testing.T, a store.Candidate) {
 		t.Fatalf("row %+v", a)
 	}
 }
+
+func TestBadInstrumentIDFailsRun(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	row := compute.Candidate{Kind: compute.KindShortPut, InstrumentID: "x", Multiplier: "100", Status: "blocked"}
+	j, err := New(f.stores(), badRule{row}, []jobs.WatchEntry{usEntry()}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), runDay, nil)
+	if res.Err == nil || !strings.Contains(res.Err.Error(), "map_candidate_failed") || len(f.written) != 0 {
+		t.Fatalf("result %+v, %d writes", res, len(f.written))
+	}
+}
+
+type badRule struct{ c compute.Candidate }
+
+func (b badRule) Evaluate(compute.CandidateInput, compute.CandidateParams) []compute.Candidate {
+	return []compute.Candidate{b.c}
+}
