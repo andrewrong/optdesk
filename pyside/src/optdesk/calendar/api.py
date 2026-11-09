@@ -17,7 +17,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol, TextIO, runtime_checkable
 
-SUPPORTED_CALENDARS: tuple[str, ...] = ("XNYS",)
+SUPPORTED_CALENDARS: tuple[str, ...] = ("XNYS", "XTKS")
 
 
 @dataclass(frozen=True)
