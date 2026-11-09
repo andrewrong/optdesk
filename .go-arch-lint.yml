@@ -37,6 +37,8 @@ components:
     in: internal/store
   store/alert:
     in: internal/store/alert
+  store/candidate:
+    in: internal/store/candidate
   store/instrument:
     in: internal/store/instrument
   store/ops:
@@ -183,6 +185,11 @@ deps:
     mayDependOn:
       - contracts
   store/alert:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
+  store/candidate:
     mayDependOn:
       - contracts
       - store
@@ -504,6 +511,7 @@ deps:
       - pages/risks_block
       - compute/ease
       - compute/optioncand
+      - store/candidate
       - compute/optionledger
       - pages/market_page
   compute/contracttest:
