@@ -92,3 +92,13 @@ func TestParseEmptyIsReset(t *testing.T) {
 		t.Fatalf("got %+v want %+v", got.Params, want)
 	}
 }
+
+func TestParseNamesFirstUnknownKeyInOrder(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < 20; i++ {
+		_, err := newForm().Parse(map[string][]string{"param.zzz": {"1"}, "param.aaa": {"1"}, "param.mmm": {"1"}}, shown, cur())
+		if err == nil || !strings.Contains(err.Error(), "aaa") {
+			t.Fatalf("first unknown key not named: %v", err)
+		}
+	}
+}

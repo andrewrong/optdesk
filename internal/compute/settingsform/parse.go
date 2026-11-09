@@ -2,6 +2,7 @@ package settingsform
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -21,7 +22,12 @@ func (f form) Parse(values map[string][]string, shown []int64, cur settingsapi.F
 	for _, s := range specs {
 		known[s.Key] = true
 	}
+	names := make([]string, 0, len(values))
 	for name := range values {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
 		if k, ok := strings.CutPrefix(name, paramPrefix); ok && !known[k] {
 			return out, fmt.Errorf("settings form: unknown key %q", k)
 		}
