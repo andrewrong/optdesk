@@ -146,6 +146,8 @@ type deps struct {
 	openEarningsDates       store.OpenEarningsDateStoreFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
+	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
+	ext map[string]any
 }
 
 // calendarArgs is what follows the uv program in the command of calendar_refresh, that is
@@ -159,8 +161,15 @@ const envCalendarUV = "OT_CALENDAR_UV"
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
 var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 
-// newDeps returns the real constructors.
+// newDeps returns the real constructors and the deps of each command from extDeps.
 func newDeps() deps {
+	d := newBaseDeps()
+	d.ext = newExt()
+	return d
+}
+
+// newBaseDeps returns the real constructors of the fields of deps other than ext.
+func newBaseDeps() deps {
 	stats := gonumstats.New()
 	sops := own.NewSeriesOps()
 	rl := rules.New()
