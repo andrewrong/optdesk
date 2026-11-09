@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -89,15 +90,59 @@ func telegramSender(a *app) (notify.Sender, error) {
 
 // newNotifier builds the notifier in the owner's zone; quiet false turns the quiet hours off (an empty window).
 func newNotifier(a *app, src notify.GapSource, s notify.Sender, clk clockwork.Clock, quiet bool) (notify.Notifier, error) {
-	c := notify.Config{Zone: a.profile.Zone}
-	if !quiet {
-		c.QuietFrom, c.QuietTo = "00:00", "00:00"
-	}
-	n, err := a.deps.newNotifier(src, s, clk, c)
+	n, err := a.deps.newNotifier(src, s, clk, notifyConfig(a, quiet))
 	if err != nil {
 		return nil, errors.New("build the notifier failed")
 	}
 	return n, nil
+}
+
+// notifyConfig is the one Config of both notifiers, gaps and alerts, so they share the quiet window and the zone.
+func notifyConfig(a *app, quiet bool) notify.Config {
+	c := notify.Config{Zone: a.profile.Zone}
+	if !quiet {
+		c.QuietFrom, c.QuietTo = "00:00", "00:00"
+	}
+	return c
+}
+
+// alertsDSN reads the line OT_PG_DSN_ALERTS of .env through deps.readEnv; a missing line names the key only.
+func alertsDSN(a *app) (string, error) {
+	env, err := a.envFile()
+	if err != nil {
+		return "", err
+	}
+	if env[store.DSNEnvAlerts] == "" {
+		return "", fmt.Errorf("%s is missing in .env", store.DSNEnvAlerts)
+	}
+	return env[store.DSNEnvAlerts], nil
+}
+
+// newAlertNotifier opens the sent store (alerts DSN) and the winner reader (readings DSN) and builds the alert
+// notifier over the same Config as the gap notifier. The reader is WinnerReadings of the view and no other
+// reader, so the alert reads the rows the page reads. The returned close function closes both stores;
+// no error text holds a DSN.
+func newAlertNotifier(
+	ctx context.Context, a *app, alertsDSN, readingsDSN string, rules compute.AlertRules, s notify.Sender, clk clockwork.Clock, quiet bool,
+) (notify.AlertNotifier, func(), error) {
+	sent, err := a.deps.openSent(ctx, alertsDSN)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open sent store with %s failed", store.DSNEnvAlerts)
+	}
+	view, err := a.deps.openReadingView(ctx, readingsDSN)
+	if err != nil {
+		_ = sent.Close()
+		return nil, nil, fmt.Errorf("open reading view with %s failed", store.DSNEnvReadings)
+	}
+	closeAll := func() { _ = sent.Close(); _ = view.Close() }
+	n, err := a.deps.newAlertNotifier(notify.AlertDeps{
+		Rules: rules, Evaluate: a.deps.evaluateAlerts, Read: view.WinnerReadings, Sent: sent,
+	}, s, clk, notifyConfig(a, quiet))
+	if err != nil {
+		closeAll()
+		return nil, nil, errors.New("build the alert notifier failed")
+	}
+	return n, closeAll, nil
 }
 
 // errorClass names an error without its text, which may hold a secret.
@@ -130,14 +175,16 @@ func (readOnlyGaps) MarkGapReported(context.Context, store.Gap, time.Time) error
 // notifyingGaps is the gap syncer the scheduler gets: it runs the gap pass, then one notify pass. A failed or
 // panicking notify pass is logged by class and never reaches the ticker.
 type notifyingGaps struct {
-	inner runner.GapSyncer
-	n     notify.Notifier
-	log   *slog.Logger
+	inner  runner.GapSyncer
+	n      notify.Notifier
+	alerts notify.AlertNotifier // nil: no alert pass
+	log    *slog.Logger
 }
 
 func (g notifyingGaps) Sync(ctx context.Context, day contracts.Day, disabled map[string]string) error {
 	err := g.inner.Sync(ctx, day, disabled)
 	g.notify(ctx)
+	g.notifyAlerts(ctx)
 	return err
 }
 
@@ -149,5 +196,20 @@ func (g notifyingGaps) notify(ctx context.Context) {
 	}()
 	if _, err := g.n.NotifyGaps(ctx); err != nil {
 		g.log.Warn("notify failed", "component", "ot", "class", errorClass(err))
+	}
+}
+
+// notifyAlerts is the alert pass, after the gap pass; it fails and panics on its own, apart from the gap pass.
+func (g notifyingGaps) notifyAlerts(ctx context.Context) {
+	if g.alerts == nil {
+		return
+	}
+	defer func() {
+		if recover() != nil {
+			g.log.Error("alert notify panicked", "component", "ot", "class", "panic")
+		}
+	}()
+	if _, err := g.alerts.NotifyAlerts(ctx); err != nil {
+		g.log.Warn("alert notify failed", "component", "ot", "class", errorClass(err))
 	}
 }

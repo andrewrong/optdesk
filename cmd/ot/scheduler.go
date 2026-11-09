@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -65,6 +66,14 @@ func schedulerCmd(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
+	alertsDSN, err := alertsDSN(a)
+	if err != nil {
+		return err
+	}
+	rules, err := loadAlertRules(a, "")
+	if err != nil {
+		return err
+	}
 	ln, err := listenHealth(a.getenv)
 	if err != nil {
 		return err
@@ -79,7 +88,7 @@ func schedulerCmd(a *app, args []string) error {
 	}
 	defer func() { _ = fence.Close() }() // the ticker closes it on drain too; Close is safe twice
 	err = withWiring(ctx, a, a.deps.newClock(), cfg, nil, func(w wiring) error {
-		return runScheduler(ctx, a, fw, cfg, fence, ln, sender, w)
+		return runScheduler(ctx, a, fw, cfg, fence, ln, sender, w, alertsDSN, rules)
 	})
 	switch {
 	case err == nil:
@@ -123,6 +132,7 @@ func lockFence(ctx context.Context, a *app, clk clockwork.Clock, cfg runOnceConf
 // runScheduler builds the scheduler over the open stores and runs it until it stops.
 func runScheduler(
 	ctx context.Context, a *app, fw clockwork.Clock, cfg runOnceConfig, fence store.Fence, ln net.Listener, sender notify.Sender, w wiring,
+	alertsDSN string, rules compute.AlertRules,
 ) error {
 	d := a.deps
 	sl, err := d.openSchedulerLedger(ctx, cfg.runnerDSN)
@@ -153,7 +163,12 @@ func runScheduler(
 	if err != nil {
 		return err
 	}
-	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, log: a.log}
+	an, closeAlerts, err := newAlertNotifier(ctx, a, alertsDSN, cfg.readingsDSN, rules, sender, fw, true)
+	if err != nil {
+		return err
+	}
+	defer closeAlerts()
+	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, log: a.log}
 	s := d.newScheduler(fence, sl, w.ledger, w.cal, fw, rec, gaps, w.jobs, disabled, execIdentity)
 
 	srv := &http.Server{Handler: healthHandler(s, fw), ReadHeaderTimeout: 5 * time.Second}
