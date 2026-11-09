@@ -39,6 +39,8 @@ const (
 	roleAlerts        = "ot_w_alerts" // INSERT and SELECT on alerts.sent only (migrations/0015_alerts.sql)
 
 	roleFundamental = "ot_w_fundamental" // INSERT on obs.fundamental_fact, SELECT on rd.fundamental_fact_r1 (migrations/0017_fundamental_fact.sql)
+
+	roleEvents = "ot_w_events" // INSERT on obs.earnings_date, SELECT on rd.earnings_date_r1 (migrations/0020_events.sql)
 )
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
@@ -56,12 +58,13 @@ var roles = []roleSpec{
 	{roleReadings, store.DSNEnvReadings},
 	{roleAlerts, store.DSNEnvAlerts},           // ot_w_alerts, line OT_PG_DSN_ALERTS
 	{roleFundamental, store.DSNEnvFundamental}, // ot_w_fundamental, line OT_PG_DSN_FUNDAMENTAL
+	{roleEvents, store.DSNEnvEvents},           // ot_w_events, line OT_PG_DSN_EVENTS
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the eleven roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the twelve roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -138,7 +141,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 	grant := "REVOKE ALL ON DATABASE " + ident(Database) + " FROM PUBLIC; GRANT CONNECT ON DATABASE " + ident(Database) +
 		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader) +
 		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings) + ", " + ident(roleAlerts) +
-		", " + ident(roleFundamental)
+		", " + ident(roleFundamental) + ", " + ident(roleEvents)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}

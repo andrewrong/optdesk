@@ -235,6 +235,8 @@ const (
 	DSNEnvReadings = "OT_PG_DSN_READINGS"
 	// DSNEnvAlerts names the line that holds the DSN of the role ot_w_alerts.
 	DSNEnvAlerts = "OT_PG_DSN_ALERTS"
+	// DSNEnvEvents names the line that holds the DSN of the role ot_w_events.
+	DSNEnvEvents = "OT_PG_DSN_EVENTS"
 	// DSNEnvFundamental names the line that holds the DSN of the role ot_w_fundamental.
 	DSNEnvFundamental = "OT_PG_DSN_FUNDAMENTAL"
 	// DSNEnvCandidate names the line that holds the DSN of the role ot_w_candidate.
@@ -521,6 +523,33 @@ type FactStore interface {
 
 // OpenFactStoreFunc opens the fact store (internal/store/fundamental.Open).
 type OpenFactStoreFunc func(ctx context.Context, dsn string) (FactStore, error)
+
+// EarningsDateWriter appends the rows of obs.earnings_date (docs/design/event-sources.md Decision 7).
+type EarningsDateWriter interface {
+	// InsertEarningsDate inserts one row ON CONFLICT DO NOTHING on the key (observed_on, issuer, attempt):
+	// a row whose key exists stays as it is and the call returns no error. A row with no issuer or an
+	// attempt below 1 is Permanent, a database error Retryable.
+	InsertEarningsDate(ctx context.Context, row contracts.EarningsDate) error
+}
+
+// EarningsDateReader reads the rows through the view rd.earnings_date_r1.
+type EarningsDateReader interface {
+	// EarningsDates returns the rows of one issuer with observed_on from from to to, inclusive, ascending by
+	// day, only the highest attempt of each day; none gives an empty slice. A bad day is Permanent.
+	EarningsDates(ctx context.Context, issuer string, from, to contracts.Day) ([]contracts.EarningsDate, error)
+}
+
+// EarningsDateStore is one store for both sides: the earnings job opens it with the line DSNEnvEvents
+// (role ot_w_events, INSERT on the table and SELECT on the view), a page with DSNEnvPages (role ot_ro_pages,
+// SELECT on the view only; its InsertEarningsDate fails).
+type EarningsDateStore interface {
+	EarningsDateWriter
+	EarningsDateReader
+	Close() error
+}
+
+// OpenEarningsDateStoreFunc opens the earnings store (internal/store/events.OpenEarningsDate).
+type OpenEarningsDateStoreFunc func(ctx context.Context, dsn string) (EarningsDateStore, error)
 
 // Candidate is one row of candidates.option_candidate r1 as plain text and numbers (design
 // docs/design/option-candidates.md): money is decimal text, an optional column is a nil pointer, Gates is the
