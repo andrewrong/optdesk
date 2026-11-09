@@ -137,7 +137,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	pagesH := sitePages(a, clk, dayFlag, rd, newHandler, assets)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
+		if strings.TrimPrefix(r.URL.Path, "/") == siteHealthRoute {
 			serveHealth(a, clk, rd, w, r)
 			return
 		}
@@ -208,6 +208,9 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		}
 	})
 }
+
+// siteHealthRoute is the path of the health check, under the root of the site.
+const siteHealthRoute = "health"
 
 // siteHealthTimeout bounds the one series read of GET /health.
 const siteHealthTimeout = 2 * time.Second
