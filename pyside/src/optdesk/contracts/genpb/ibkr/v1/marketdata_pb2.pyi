@@ -7,6 +7,7 @@ from collections import abc as _abc
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from optdesk.contracts.genpb.ibkr.v1 import contract_pb2 as _contract_pb2
 from optdesk.contracts.genpb.ibkr.v1 import quote_pb2 as _quote_pb2
 from optdesk.contracts.genpb.ibkr.v1 import quote_types_pb2 as _quote_types_pb2
@@ -20,6 +21,26 @@ else:
     from typing_extensions import TypeAlias as _TypeAlias, Never as _Never
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class _BarKind:
+    ValueType = _typing.NewType("ValueType", _builtins.int)
+    V: _TypeAlias = ValueType  # noqa: Y015
+
+class _BarKindEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_BarKind.ValueType], _builtins.type):
+    DESCRIPTOR: _descriptor.EnumDescriptor
+    BAR_KIND_UNSPECIFIED: _BarKind.ValueType  # 0
+    BAR_KIND_TRADES: _BarKind.ValueType  # 1
+    BAR_KIND_ADJUSTED_LAST: _BarKind.ValueType  # 2
+    BAR_KIND_MIDPOINT: _BarKind.ValueType  # 3
+
+class BarKind(_BarKind, metaclass=_BarKindEnumTypeWrapper):
+    """BarKind is the series of daily bars that is asked for."""
+
+BAR_KIND_UNSPECIFIED: BarKind.ValueType  # 0
+BAR_KIND_TRADES: BarKind.ValueType  # 1
+BAR_KIND_ADJUSTED_LAST: BarKind.ValueType  # 2
+BAR_KIND_MIDPOINT: BarKind.ValueType  # 3
+Global___BarKind: _TypeAlias = BarKind  # noqa: Y015
 
 @_typing.final
 class SnapshotRequest(_message.Message):
@@ -71,3 +92,100 @@ class SnapshotResponse(_message.Message):
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
 Global___SnapshotResponse: _TypeAlias = SnapshotResponse  # noqa: Y015
+
+@_typing.final
+class BarsRequest(_message.Message):
+    """BarsRequest asks for the daily bars of one contract. The contract has con_id and
+    duration_days is 1 to 730, else the call is INVALID_ARGUMENT; so is an unset kind.
+    end_day is YYYY-MM-DD, or empty for now; a non-empty end_day with
+    BAR_KIND_ADJUSTED_LAST is INVALID_ARGUMENT.
+    """
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    CONTRACT_FIELD_NUMBER: _builtins.int
+    KIND_FIELD_NUMBER: _builtins.int
+    DURATION_DAYS_FIELD_NUMBER: _builtins.int
+    END_DAY_FIELD_NUMBER: _builtins.int
+    kind: Global___BarKind.ValueType
+    duration_days: _builtins.int
+    end_day: _builtins.str
+    @_builtins.property
+    def contract(self) -> _contract_pb2.ContractSpec: ...
+    def __init__(
+        self,
+        *,
+        contract: _contract_pb2.ContractSpec | None = ...,
+        kind: Global___BarKind.ValueType = ...,
+        duration_days: _builtins.int = ...,
+        end_day: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _typing.Literal["contract", b"contract"]  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["contract", b"contract", "duration_days", b"duration_days", "end_day", b"end_day", "kind", b"kind"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___BarsRequest: _TypeAlias = BarsRequest  # noqa: Y015
+
+@_typing.final
+class Bar(_message.Message):
+    """Bar is one daily bar. Prices and volume are decimal text; volume is unset when
+    the broker has none.
+    """
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    DAY_FIELD_NUMBER: _builtins.int
+    OPEN_FIELD_NUMBER: _builtins.int
+    HIGH_FIELD_NUMBER: _builtins.int
+    LOW_FIELD_NUMBER: _builtins.int
+    CLOSE_FIELD_NUMBER: _builtins.int
+    VOLUME_FIELD_NUMBER: _builtins.int
+    day: _builtins.str
+    open: _builtins.str
+    high: _builtins.str
+    low: _builtins.str
+    close: _builtins.str
+    volume: _builtins.str
+    def __init__(
+        self,
+        *,
+        day: _builtins.str = ...,
+        open: _builtins.str = ...,
+        high: _builtins.str = ...,
+        low: _builtins.str = ...,
+        close: _builtins.str = ...,
+        volume: _builtins.str | None = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _typing.Literal["_volume", b"_volume", "volume", b"volume"]  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["_volume", b"_volume", "close", b"close", "day", b"day", "high", b"high", "low", b"low", "open", b"open", "volume", b"volume"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    _WhichOneofReturnType__volume: _TypeAlias = _typing.Literal["volume"]  # noqa: Y015
+    _WhichOneofArgType__volume: _TypeAlias = _typing.Literal["_volume", b"_volume"]  # noqa: Y015
+    def WhichOneof(self, oneof_group: _WhichOneofArgType__volume) -> _WhichOneofReturnType__volume | None: ...
+
+Global___Bar: _TypeAlias = Bar  # noqa: Y015
+
+@_typing.final
+class BarsResponse(_message.Message):
+    """BarsResponse holds the bars of the request, oldest first."""
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    BARS_FIELD_NUMBER: _builtins.int
+    @_builtins.property
+    def bars(self) -> _containers.RepeatedCompositeFieldContainer[Global___Bar]: ...
+    def __init__(
+        self,
+        *,
+        bars: _abc.Iterable[Global___Bar] | None = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["bars", b"bars"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___BarsResponse: _TypeAlias = BarsResponse  # noqa: Y015

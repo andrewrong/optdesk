@@ -12,6 +12,9 @@ option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
 service MarketDataService {
   // Snapshot streams one quote per requested contract.
   rpc Snapshot(SnapshotRequest) returns (stream SnapshotResponse);
+
+  // Bars returns the daily bars of one contract, oldest first.
+  rpc Bars(BarsRequest) returns (BarsResponse);
 }
 
 // SnapshotRequest asks for one kind of quote for many contracts. Every contract
@@ -25,4 +28,39 @@ message SnapshotRequest {
 // answers complete.
 message SnapshotResponse {
   Quote quote = 1;
+}
+
+// BarKind is the series of daily bars that is asked for.
+enum BarKind {
+  BAR_KIND_UNSPECIFIED = 0;
+  BAR_KIND_TRADES = 1;
+  BAR_KIND_ADJUSTED_LAST = 2;
+  BAR_KIND_MIDPOINT = 3;
+}
+
+// BarsRequest asks for the daily bars of one contract. The contract has con_id and
+// duration_days is 1 to 730, else the call is INVALID_ARGUMENT; so is an unset kind.
+// end_day is YYYY-MM-DD, or empty for now; a non-empty end_day with
+// BAR_KIND_ADJUSTED_LAST is INVALID_ARGUMENT.
+message BarsRequest {
+  ContractSpec contract = 1;
+  BarKind kind = 2;
+  int32 duration_days = 3;
+  string end_day = 4;
+}
+
+// Bar is one daily bar. Prices and volume are decimal text; volume is unset when
+// the broker has none.
+message Bar {
+  string day = 1;
+  string open = 2;
+  string high = 3;
+  string low = 4;
+  string close = 5;
+  optional string volume = 6;
+}
+
+// BarsResponse holds the bars of the request, oldest first.
+message BarsResponse {
+  repeated Bar bars = 1;
 }
