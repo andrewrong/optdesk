@@ -55,6 +55,7 @@ Environment names (names only; no value is written in this document, in a log or
 | `OT_PG_DSN_READINGS` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (readings store of `compute_figures`; `ot setup pg` creates it after migration 0013) |
 | `OT_PG_DSN_LOADER` | `$OT_HOME/.env` | `ot calendar load` (session-day store), and `ot run-once`, `ot backfill` and `ot scheduler` (the second session-day store, handed to `calendar_refresh` alone; role `ot_loader`, `master.session_day`, column UPDATE on the four session columns) |
 | `OT_PG_DSN_PAGES` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the catalog, option_eod, terms, names and series stores of `compute_figures`), `ot page` (series reader, and for `report_page` the reading-view reader) and `ot serve` (the six stores: series and the five option stores), real profile only |
+| `OT_PG_DSN_ALERTS` | `$OT_HOME/.env` | no `ot` command reads it yet; `ot setup pg` writes the line (role `ot_w_alerts`; `alert.Open` opens it later) |
 | `FRED_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot series-load` (FRED source) |
 | `OT_CALENDAR_UV` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (optional: the path of `uv`, default `uv` on `PATH`; `calendar_refresh` runs it with `run --no-sync --project pyside python -m optdesk.calendar`) |
 
@@ -62,7 +63,7 @@ All nine lines read by `ot run-once` and `ot backfill` (the three above, `OT_PG_
 
 The broker socket is `$OT_HOME/run/ibkr.sock`, created by the pyside service; `ot` only connects to it and creates, writes and chmods nothing there. A path of 104 bytes or more is refused before any store is opened with the error `socket path too long` (the text holds no path). The dial is made once, before `Reconcile`; when it fails, `ot` logs the failure once (step name only) and the two option jobs get a stand-in broker whose every call answers a retryable error `broker is not reachable`, so the option keys end retryable while `fred_series` still runs. The runs inside a day are several calls of `ot run-once` a day by `ot scheduler`; the cursor holds while a slot key is open.
 
-The `OT_PG_` names are the constants `store.AdminDSNEnv`, `store.DSNEnvRunner`, `store.DSNEnvSeriesFred` and `store.DSNEnvPages` and `store.DSNEnvLoader` of `internal/store/api.go`. A name that is unset or empty is an error that names the variable and no value (`OT_PG_ADMIN_DSN is not set`, `OT_PG_DSN_PAGES is missing in .env`).
+The `OT_PG_` names are the constants `store.AdminDSNEnv`, `store.DSNEnvRunner`, `store.DSNEnvSeriesFred` and `store.DSNEnvPages`, `store.DSNEnvLoader`, `store.DSNEnvOptionEod`, `store.DSNEnvQuoteSnapshot`, `store.DSNEnvMaster`, `store.DSNEnvReadings` and `store.DSNEnvAlerts` of `internal/store/api.go`. A name that is unset or empty is an error that names the variable and no value (`OT_PG_ADMIN_DSN is not set`, `OT_PG_DSN_PAGES is missing in .env`).
 
 `.env` rules (`setup.ReadEnv`, called through `deps.readEnv`):
 
