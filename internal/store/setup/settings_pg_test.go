@@ -5,6 +5,8 @@ package setup
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -110,6 +112,49 @@ func checkSettingsPrivileges(ctx context.Context, t *testing.T, inDB *pgx.Conn) 
 		var ok bool
 		if err := inDB.QueryRow(ctx, `SELECT has_table_privilege($1, $2, $3)`, c.role, c.object, c.priv).Scan(&ok); err != nil || ok != c.want {
 			t.Errorf("%s %s on %s = %v, %v; want %v", c.role, c.priv, c.object, ok, err, c.want)
+		}
+	}
+}
+
+// TestSettingsDownKeepsRunnerReadOfOtherViews: the Down section of the settings migration takes back what that
+// migration granted and nothing more: ot_runner and ot_ro_pages keep USAGE on rd and their other views.
+func TestSettingsDownKeepsRunnerReadOfOtherViews(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newScratch(t, true)
+	if err := migrateWith(ctx, s.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), quietLog()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	files, err := filepath.Glob(filepath.Join(migrationsDir, "*_settings.sql"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("settings migration = %v, %v", files, err)
+	}
+	raw, err := os.ReadFile(files[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, down, ok := strings.Cut(string(raw), "-- +goose Down")
+	if !ok {
+		t.Fatal("no Down section")
+	}
+	inDB, err := pgx.Connect(ctx, adminDSN(t, s.db))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = inDB.Close(ctx) })
+	if _, err := inDB.Exec(ctx, down); err != nil {
+		t.Fatalf("down: %v", err)
+	}
+	for _, role := range []string{roleRunner, roleRoPages} {
+		var usage, view bool
+		if err := inDB.QueryRow(ctx, `SELECT has_schema_privilege($1, 'rd', 'USAGE')`, role).Scan(&usage); err != nil || !usage {
+			t.Errorf("%s lost USAGE on rd after settings down: %v, %v", role, usage, err)
+		}
+		if err := inDB.QueryRow(ctx, `SELECT has_table_privilege($1, 'rd.option_candidate_r1', 'SELECT')`, role).Scan(&view); err != nil {
+			t.Fatal(err)
+		}
+		if role == roleRoPages && !view {
+			t.Errorf("%s lost SELECT on rd.option_candidate_r1", role)
 		}
 	}
 }

@@ -60,12 +60,11 @@ GRANT SELECT ON rd.rule_param_r1 TO ot_runner;
 GRANT SELECT ON rd.option_exclusion_r1 TO ot_runner;
 
 -- +goose Down
+-- USAGE on rd for ot_runner and ot_ro_pages was granted by earlier migrations and stays.
 REVOKE SELECT ON rd.option_exclusion_r1 FROM ot_runner;
 REVOKE SELECT ON rd.rule_param_r1 FROM ot_runner;
-REVOKE USAGE ON SCHEMA rd FROM ot_runner;
 REVOKE SELECT ON rd.option_exclusion_r1 FROM ot_ro_pages;
 REVOKE SELECT ON rd.rule_param_r1 FROM ot_ro_pages;
-REVOKE USAGE ON SCHEMA rd FROM ot_ro_pages;
 REVOKE SELECT ON rd.option_exclusion_r1 FROM ot_w_settings;
 REVOKE SELECT ON rd.rule_param_r1 FROM ot_w_settings;
 REVOKE USAGE ON SCHEMA rd FROM ot_w_settings;
