@@ -1,0 +1,987 @@
+{
+  "$defs": {
+    "Cell": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "default": "none",
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "price_state": {
+          "enum": [
+            "band",
+            "owner override",
+            "awaiting approval",
+            "expired"
+          ],
+          "type": "string",
+          "description": "The state of a price line cell: the band, the owner's own price, the band not yet approved, or the approval older than 90 days."
+        },
+        "hand_price": {
+          "$ref": "#/$defs/Text",
+          "description": "The owner's hand-entered buy price as text, shown beside the band; never changed."
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Cell",
+      "type": "object",
+      "description": "A table cell. A price line cell may carry price_state and hand_price."
+    },
+    "ChangesBlock": {
+      "additionalProperties": false,
+      "description": "``lines`` are the changes; ``sentence`` is the one state sentence (近 7 天没有变化, or the\nreading is not usable); ``note`` is ``数据日 月-日`` when the reading is of an earlier day.",
+      "properties": {
+        "lines": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Lines",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "sentence": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sentence"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "lines"
+      ],
+      "title": "ChangesBlock",
+      "type": "object"
+    },
+    "Column": {
+      "additionalProperties": false,
+      "description": "A column head; ``numeric`` columns are right-aligned by the browser.",
+      "properties": {
+        "numeric": {
+          "title": "Numeric",
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "numeric"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "CoreBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "basis_note": {
+          "$ref": "#/$defs/Text"
+        },
+        "low_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "high_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "treasury": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Treasury"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "The newest DGS10 point within 7 days of today, or a Gap."
+        },
+        "jp_rate": {
+          "anyOf": [
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "A Japanese name has no rate to compare with: always a Gap."
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CoreRow"
+          },
+          "maxItems": 200
+        },
+        "legend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          },
+          "maxItems": 20
+        },
+        "snapshot_text": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "basis_note",
+        "low_text",
+        "high_text",
+        "treasury",
+        "jp_rate",
+        "rows",
+        "legend",
+        "snapshot_text"
+      ]
+    },
+    "CoreRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "price_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "cyclical": {
+          "type": "boolean"
+        },
+        "flag": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "returns": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ReturnPoint"
+              },
+              "minItems": 1,
+              "maxItems": 6
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ]
+        }
+      },
+      "required": [
+        "symbol",
+        "price_text",
+        "cyclical",
+        "flag",
+        "returns"
+      ],
+      "description": "One company at one cost (the bare strike of a shown offer): the returns at that cost, no rank and no verdict."
+    },
+    "DiagGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Class named by the producer; the view orders groups by array position."
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          },
+          "maxItems": 12
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DiagRow"
+              },
+              {
+                "$ref": "common.v1.json#/$defs/Gap"
+              }
+            ]
+          },
+          "maxItems": 200
+        },
+        "legend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "columns",
+        "rows",
+        "legend"
+      ]
+    },
+    "DiagRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "latest_fy": {
+          "$ref": "#/$defs/Text"
+        },
+        "latest": {
+          "$ref": "#/$defs/Text"
+        },
+        "rank_text": {
+          "$ref": "#/$defs/Text"
+        },
+        "extra": {
+          "$ref": "#/$defs/Text"
+        },
+        "usual": {
+          "$ref": "#/$defs/Text"
+        },
+        "years": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/YearRow"
+          },
+          "maxItems": 12
+        }
+      },
+      "required": [
+        "symbol",
+        "latest_fy",
+        "latest",
+        "rank_text",
+        "extra",
+        "usual",
+        "years"
+      ],
+      "description": "Ten-year ratios and ranks as produced text (metric id: assigned by compute)."
+    },
+    "DiagnosisBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "basis_note": {
+          "$ref": "#/$defs/Text"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DiagGroup"
+          },
+          "maxItems": 10
+        }
+      },
+      "required": [
+        "basis_note",
+        "groups"
+      ]
+    },
+    "Figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "description": "A number the producer wrote; the view prints text."
+    },
+    "GlanceBlock": {
+      "additionalProperties": false,
+      "description": "``note`` is the price-lines state sentence, present only when the lines are not usable.",
+      "properties": {
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "tiles": {
+          "items": {
+            "$ref": "#/$defs/Tile"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Tiles",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "tiles"
+      ],
+      "title": "GlanceBlock",
+      "type": "object"
+    },
+    "Header": {
+      "additionalProperties": false,
+      "description": "``line`` is ``月-日 · 家庭持有 N 家``; ``held_count`` is N, None without a held reading.",
+      "properties": {
+        "data_day": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Data Day",
+          "type": "string"
+        },
+        "held_count": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Held Count"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "data_day"
+      ],
+      "title": "Header",
+      "type": "object"
+    },
+    "HoldingRow": {
+      "additionalProperties": false,
+      "description": "One held company: a cell per column, and its moat lines (the owner's record as written, or\n``护城河记录未填``).",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Cells",
+          "type": "array"
+        },
+        "moat": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Moat",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells",
+        "moat"
+      ],
+      "title": "HoldingRow",
+      "type": "object"
+    },
+    "HoldingsBlock": {
+      "additionalProperties": false,
+      "description": "``volatility_note`` is the label line of the 波动 column (the own series and the data day);\nabsent on a payload made before the column.",
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/HoldingRow"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        },
+        "volatility_note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Volatility Note"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "title": "HoldingsBlock",
+      "type": "object"
+    },
+    "QuestionRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "$ref": "#/$defs/Text"
+        },
+        "q1": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "Return on tangible capital."
+        },
+        "q2": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "Growth cost."
+        },
+        "q3": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "Pricing power."
+        },
+        "q4": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Figure"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "Cash behind profit."
+        },
+        "fifth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "$ref": "common.v1.json#/$defs/Gap"
+            }
+          ],
+          "description": "The owner's own text for the fifth question, or a Gap when none is entered."
+        }
+      },
+      "required": [
+        "symbol",
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "fifth"
+      ],
+      "description": "Q1 to Q4 as figures from filings or a Gap; Q5 has no figure."
+    },
+    "QuestionsBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "basis_note": {
+          "$ref": "#/$defs/Text"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QuestionRow"
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "basis_note",
+        "rows"
+      ]
+    },
+    "ReturnPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assumption": {
+          "$ref": "#/$defs/Text"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "marker_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Position of the dot on the bar, 0 to 100 (metric id: assigned by compute)",
+          "x-decimals": 1
+        }
+      },
+      "required": [
+        "assumption",
+        "text",
+        "marker_percent"
+      ],
+      "description": "Return at the cost under one assumption; the text is produced."
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Tile": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "text"
+      ],
+      "title": "Tile",
+      "type": "object"
+    },
+    "Treasury": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "marker_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Position of the treasury mark on the bar, 0 to 100 (metric id: assigned by compute)",
+          "x-decimals": 1
+        }
+      },
+      "required": [
+        "text",
+        "marker_percent"
+      ]
+    },
+    "WatchBlock": {
+      "additionalProperties": false,
+      "description": "Rows, or one state sentence naming the file (not filled / unreadable) and no rows.",
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 12,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/WatchRow"
+          },
+          "maxItems": 200,
+          "title": "Rows",
+          "type": "array"
+        },
+        "sentence": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sentence"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "columns",
+        "rows"
+      ],
+      "title": "WatchBlock",
+      "type": "object"
+    },
+    "WatchRow": {
+      "additionalProperties": false,
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Cells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cells"
+      ],
+      "title": "WatchRow",
+      "type": "object"
+    },
+    "YearRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fy": {
+          "$ref": "#/$defs/Text"
+        },
+        "revenue": {
+          "$ref": "#/$defs/Text"
+        },
+        "margin": {
+          "$ref": "#/$defs/Text"
+        },
+        "extra": {
+          "$ref": "#/$defs/Text"
+        },
+        "bar_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Width of the mini bar, 0 to 100 (metric id: assigned by compute)",
+          "x-decimals": 1
+        }
+      },
+      "required": [
+        "fy",
+        "revenue",
+        "margin",
+        "extra",
+        "bar_percent"
+      ]
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.companies_page.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "changes": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ChangesBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "core": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CoreBlock"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ]
+    },
+    "data_times": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "diagnosis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DiagnosisBlock"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ]
+    },
+    "gaps": {
+      "items": {
+        "$ref": "common.v1.json#/$defs/Gap"
+      },
+      "maxItems": 20,
+      "title": "Gaps",
+      "type": "array"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "glance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GlanceBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "header": {
+      "$ref": "#/$defs/Header"
+    },
+    "holdings": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HoldingsBlock"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "notes": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Notes",
+      "type": "array"
+    },
+    "questions": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QuestionsBlock"
+        },
+        {
+          "$ref": "common.v1.json#/$defs/Gap"
+        }
+      ]
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "companies_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "stale": {
+      "$ref": "common.v1.json#/$defs/StaleLabel"
+    },
+    "stale_after": {
+      "$ref": "common.v1.json#/$defs/Timestamp"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "unvalued": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Unvalued"
+    },
+    "watch_list": {
+      "$ref": "#/$defs/WatchBlock"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "header",
+    "changes",
+    "glance",
+    "holdings",
+    "unvalued",
+    "watch_list",
+    "notes",
+    "gaps",
+    "stale",
+    "core",
+    "diagnosis",
+    "questions"
+  ],
+  "title": "CompaniesPageV2",
+  "type": "object",
+  "description": "companies_page v1 plus core, diagnosis and questions, each the block or a Gap (docs/design/valuation.md#Decisions 12)."
+}
