@@ -518,3 +518,23 @@ func TestNewComputeFiguresEaseFuncEaseBeforeClock(t *testing.T) {
 	}
 	_ = f
 }
+
+// watchLoader is a fake of the cmd/ot loader: a caller reads the prices of an entry from it.
+type watchLoader struct{ entries []jobs.WatchEntry }
+
+func (l watchLoader) Load() []jobs.WatchEntry { return l.entries }
+
+func TestWatchEntryPrices(t *testing.T) {
+	t.Parallel()
+	l := watchLoader{entries: []jobs.WatchEntry{
+		{Issuer: "cik:0000320193", Market: "US", BuyPrice: "150.5", SalePrice: "190", Contract: broker.Contract{Symbol: "AAPL"}},
+		{Issuer: "edinet:E02144", Market: "JP", Contract: broker.Contract{Symbol: "7203"}},
+	}}
+	got := l.Load()
+	if got[0].BuyPrice != "150.5" || got[0].SalePrice != "190" {
+		t.Fatalf("prices %q %q", got[0].BuyPrice, got[0].SalePrice)
+	}
+	if got[1].BuyPrice != "" || got[1].SalePrice != "" {
+		t.Fatal("an unset price is the empty text")
+	}
+}
