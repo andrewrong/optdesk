@@ -113,3 +113,17 @@ func doubles(q broker.Quote) map[string]*float64 {
 		"vega": q.Vega, "theta": q.Theta, "und_price": q.UndPrice,
 	}
 }
+
+func TestFromExecutionsTimeUTC(t *testing.T) {
+	t.Parallel()
+	got, err := fromExecutions(&pb.ExecutionsResponse{
+		Account: "a", Collected: true,
+		Executions: []*pb.Execution{{ExecId: "1", Time: "2026-11-09T09:00:00-05:00"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := time.Date(2026, 11, 9, 14, 0, 0, 0, time.UTC); !got.Executions[0].Time.Equal(want) || got.Executions[0].Time.Location() != time.UTC {
+		t.Fatalf("got %v", got.Executions[0].Time)
+	}
+}

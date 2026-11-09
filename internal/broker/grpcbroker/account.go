@@ -10,30 +10,7 @@ import (
 	pb "github.com/andrewrong/optdesk/internal/contracts/genpb"
 )
 
-// Account is the answer of one gateway: the alias of its entry (never an account id), the session
-// generation and the rows. Values or Positions is empty when the gateway does not collect it.
-type Account struct {
-	Alias      string
-	Generation int64
-	Values     []AccountValue
-	Positions  []Position
-}
-
-// AccountValue is one summary row; Value is the received decimal text.
-type AccountValue struct {
-	Tag      string
-	Value    string
-	Currency string
-}
-
-// Position is one open position; Quantity and AvgCost are the received decimal text.
-type Position struct {
-	Contract broker.Contract
-	Quantity string
-	AvgCost  string
-}
-
-// AccountClient reads the account of one gateway over a Unix socket. It keeps no state between calls.
+// AccountClient implements broker.AccountReader: it reads the account of one gateway over a Unix socket. It keeps no state between calls.
 type AccountClient struct {
 	conn    *grpc.ClientConn
 	acc     pb.AccountServiceClient
@@ -52,33 +29,26 @@ func DialAccount(ctx context.Context, socketPath string, o broker.Options) (*Acc
 }
 
 // Account makes the one call, with no retry. An answer with no alias or a negative generation is Permanent.
-func (c *AccountClient) Account(ctx context.Context) (Account, error) {
+func (c *AccountClient) Account(ctx context.Context) (broker.Account, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	resp, err := c.acc.Account(ctx, &pb.AccountRequest{})
 	if err != nil {
-		return Account{}, wrapErr(ctx, "account", err)
+		return broker.Account{}, wrapErr(ctx, "account", err)
 	}
-	if resp.GetAccount() == "" {
-		return Account{}, permanent("account: answer has no alias")
+	return fromAccount(resp)
+}
+
+// Executions makes the one call, with no retry. An answer with no alias, a negative generation or
+// an execution whose time is not RFC 3339 is Permanent.
+func (c *AccountClient) Executions(ctx context.Context) (broker.Executions, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	resp, err := c.acc.Executions(ctx, &pb.ExecutionsRequest{})
+	if err != nil {
+		return broker.Executions{}, wrapErr(ctx, "executions", err)
 	}
-	if resp.GetGeneration() < 0 {
-		return Account{}, permanent("account: negative generation")
-	}
-	out := Account{
-		Alias: resp.GetAccount(), Generation: resp.GetGeneration(),
-		Values:    make([]AccountValue, 0, len(resp.GetValues())),
-		Positions: make([]Position, 0, len(resp.GetPositions())),
-	}
-	for _, v := range resp.GetValues() {
-		out.Values = append(out.Values, AccountValue{Tag: v.GetTag(), Value: v.GetValue(), Currency: v.GetCurrency()})
-	}
-	for _, p := range resp.GetPositions() {
-		out.Positions = append(out.Positions, Position{
-			Contract: fromSpec(p.GetContract()), Quantity: p.GetQuantity(), AvgCost: p.GetAvgCost(),
-		})
-	}
-	return out, nil
+	return fromExecutions(resp)
 }
 
 // Close releases the connection.
