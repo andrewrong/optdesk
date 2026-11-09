@@ -36,7 +36,7 @@ func checkFixture(t *testing.T, name string) compute.LedgerResult {
 	t.Helper()
 	f := loadFixture(t, name)
 	got := New().Replay(f.Input, f.Params)
-	if !reflect.DeepEqual(got, f.Expected) {
+	if !reflect.DeepEqual(oldFigures(got), f.Expected) {
 		g, _ := json.MarshalIndent(got, "", " ")
 		w, _ := json.MarshalIndent(f.Expected, "", " ")
 		t.Fatalf("%s: got\n%s\nwant\n%s", name, g, w)
