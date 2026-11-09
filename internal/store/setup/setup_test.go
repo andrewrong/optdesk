@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 func TestEnvfile(t *testing.T) {
@@ -111,8 +112,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 14 {
-		t.Fatalf("%d roles, want 14", len(roles))
+	if len(roles) != 15 {
+		t.Fatalf("%d roles, want 15", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -260,4 +261,20 @@ func TestAccountRoleInList(t *testing.T) {
 		}
 	}
 	t.Error("ot_w_account is not in the role list")
+}
+
+func TestBarRoleSpec(t *testing.T) {
+	t.Parallel()
+	if roleBar != "ot_w_bar" || bar.DSNEnvBar != "OT_PG_DSN_BAR" {
+		t.Fatalf("role %q, line %q", roleBar, bar.DSNEnvBar)
+	}
+	for _, r := range roles {
+		if r.name == roleBar {
+			if r.envKey != "OT_PG_DSN_BAR" {
+				t.Errorf("ot_w_bar line = %q", r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_bar is not in the role list")
 }

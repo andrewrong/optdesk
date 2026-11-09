@@ -93,20 +93,30 @@ func TestPairsFiltersTradingClass(t *testing.T) {
 	}
 }
 
-func TestPairsWithoutTradingClassUnchanged(t *testing.T) {
+func TestChainOfClassRule(t *testing.T) {
 	t.Parallel()
-	chains := []broker.Chain{{Exchange: "ARCA", TradingClass: "A"}, {Exchange: "SMART", TradingClass: "B"}, {Exchange: "SMART", TradingClass: "C"}}
-	m := manifest{}
-	c, ok := m.chainOf(chains, underlying{Exchange: "SMART"})
-	if !ok || c.TradingClass != "B" {
-		t.Fatalf("got %+v %v", c, ok)
+	chains := []broker.Chain{
+		{Exchange: "ARCA", TradingClass: "B"},
+		{Exchange: "SMART", TradingClass: "2B"},
+		{Exchange: "SMART", TradingClass: "B", Multiplier: "100"},
 	}
-	c, ok = m.chainOf(chains, underlying{Exchange: "XXX"})
-	if !ok || c.TradingClass != "A" {
-		t.Fatalf("fallback %+v %v", c, ok)
+	m := manifest{}
+	c, class, ok := m.chainOf(chains, underlying{Symbol: "B", Exchange: "SMART"})
+	if !ok || c.Exchange != "SMART" || c.TradingClass != "B" || class != "B" {
+		t.Fatalf("got %+v %q %v", c, class, ok)
+	}
+	if _, class, ok = m.chainOf(chains, underlying{Symbol: "B", Exchange: "XXX"}); ok || class != "B" {
+		t.Fatal("no chain on the exchange must give none")
+	}
+	if _, _, ok = m.chainOf(chains, underlying{Symbol: "Q", Exchange: "SMART"}); ok {
+		t.Fatal("no chain of the symbol class must give none, not the first chain")
+	}
+	m.TradingClass = "2B"
+	if c, class, ok = m.chainOf(chains, underlying{Symbol: "B", Exchange: "SMART"}); !ok || c.TradingClass != "2B" || class != "2B" {
+		t.Fatalf("manifest class %+v %v", c, ok)
 	}
 	m.TradingClass = "Z"
-	if _, ok := m.chainOf(chains, underlying{Exchange: "SMART"}); ok {
+	if _, class, ok = m.chainOf(chains, underlying{Symbol: "B", Exchange: "SMART"}); ok || class != "Z" {
 		t.Fatal("class without chain must give none")
 	}
 }

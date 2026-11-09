@@ -17,8 +17,8 @@ bind-mounted into a container (OrbStack running; `docker run --rm -v <dir>:/sock
 `/sock/s.sock`), gave `ConnectionRefusedError` twice and the host listener never saw a connection.
 OrbStack does not forward a host Unix socket through a bind mount here. The broker jobs reach
 pyside only by the sockets under `$OT_HOME/run/` (`docs/deploy/pyside.md`), so a container cannot
-reach them and the scheduler cannot run in one. `ot serve` stays in docker: it reads PostgreSQL
-only and names no broker and no socket. PostgreSQL is in docker and is the only state.
+reach them and the scheduler cannot run in one. `ot serve` is also a host service, see `docs/deploy/serve.md`: it reads PostgreSQL
+only and names no broker and no socket.
 
 ## The entry for services.toml
 
@@ -30,8 +30,9 @@ way = "host"                 # the broker sockets are Unix sockets on the host; 
 repo   = "andrewrong/optdesk"
 boot   = true                  # in crew: started and restarted by the keeper the owner starts, not a start at machine boot
 deploy = "auto"                # crew deploys on merge and rolls back by itself; set only after the first deploy below
-build  = ["<go path>", "build", "-o", "<binary path>", "./cmd/ot"]
-run    = ["<binary path>", "scheduler"]
+deploy_paths = ["<deploy path>", "<deploy path>"]   # the paths of the repository whose change redeploys the scheduler
+build  = ["env", "PATH=<go dir>", "HOME=<home>", "sh", "-c", "go build -o bin/ot ./cmd/ot"]
+run    = ["bin/ot", "scheduler"]
 health = "http://127.0.0.1:<health port>/health"
 env    = { OT_HOME = "<OT_HOME of ot>", OT_SCHED_HEALTH_PORT = "<health port>" }
 ```
@@ -42,9 +43,12 @@ no other key gives a restart after a crash. It does not start anything at machin
 Until the first deploy is done, write `deploy = "owner"` in its place (the first deploy below); the
 owner changes it to `"auto"` afterwards and no `deploy = "owner"` stays.
 
+`build` and `run` are explained in `docs/deploy/serve.md`, The build line. `deploy_paths` lists the paths whose change
+redeploys the scheduler; the owner fills it in.
+
 The secrets are not in the entry: the DSNs and `FRED_API_KEY` are lines of `$OT_HOME/.env`, which
 `ot` reads. The health port is one number written twice, in crew's `health` URL and in
-`OT_SCHED_HEALTH_PORT` (unset gives 8765); it must differ from every other port on the machine, and
+`OT_SCHED_HEALTH_PORT` (unset gives 8765, so `<health port>` is 8765 unless the owner sets another); it must differ from every other port on the machine, and
 the listener is on `127.0.0.1` only. `OT_HOME` must equal the `OT_HOME` of `ot` and of pyside,
 because the broker socket is `$OT_HOME/run/ibkr.sock`.
 
