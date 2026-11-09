@@ -12,7 +12,13 @@ from kit.sockdir import short_socket_dir
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr import spec
-from optdesk.ibkr.model import ChainRow, QuoteRow, ResolveResult, SessionState
+from optdesk.ibkr.model import (
+    ChainRow,
+    QuoteRow,
+    QuoteTarget,
+    ResolveResult,
+    SessionState,
+)
 from optdesk.ibkr.transport import build_server
 
 
@@ -46,6 +52,7 @@ class FakeGateway:
         default_factory=lambda: ResolveResult(True, 7)
     )
     rows: list[QuoteRow] = field(default_factory=list)
+    seen: list[QuoteTarget] = field(default_factory=list)
     quote_error: BaseException | None = None
     hang: bool = False
     released: asyncio.Event = field(default_factory=asyncio.Event)
@@ -81,9 +88,10 @@ class FakeGateway:
     async def quotes(
         self,
         kind: str,
-        con_ids: Sequence[int],
+        targets: Sequence[QuoteTarget],
         on_quote: Callable[[QuoteRow], Awaitable[None]],
     ) -> None:
+        self.seen.extend(targets)
         try:
             for item in self.rows:
                 await on_quote(item)
@@ -214,6 +222,29 @@ def test_snapshot_zero_con_id_is_invalid_argument() -> None:
             ]
 
     assert asyncio.run(run()) == [grpc.StatusCode.INVALID_ARGUMENT] * 2
+
+
+def test_snapshot_passes_spec_fields() -> None:
+    async def run() -> list[QuoteTarget]:
+        gateway = FakeGateway(rows=[row(7)])
+        async with serving(gateway) as channel:
+            stub = pb.MarketDataServiceStub(channel)
+            request = pb.SnapshotRequest(
+                kind=pb.QUOTE_KIND_SNAPSHOT,
+                contracts=[
+                    pb.ContractSpec(
+                        sec_type=pb.SEC_TYPE_OPTION,
+                        con_id=7,
+                        exchange="OSE.JPN",
+                        currency="JPY",
+                        trading_class="225",
+                    )
+                ],
+            )
+            [item async for item in stub.Snapshot(request)]
+        return gateway.seen
+
+    assert asyncio.run(run()) == [QuoteTarget(7, "OSE.JPN", "JPY", "225", "OPT")]
 
 
 def test_snapshot_cancel_releases_lines() -> None:

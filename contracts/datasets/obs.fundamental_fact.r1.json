@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.fundamental_fact.r1.json",
+  "title": "FundamentalFact",
+  "description": "obs.fundamental_fact r1: one filed value of one concept of one issuer, as a filing reported it; append only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source", "subject", "taxonomy", "concept", "unit", "currency", "period_start", "period_end", "value", "form", "doc_id", "filed", "retrieved_at", "raw_sha256"],
+  "x-dataset": "obs.fundamental_fact",
+  "x-revision": "r1",
+  "x-primary-key": ["source", "subject", "doc_id", "taxonomy", "concept", "unit", "period_start", "period_end"],
+  "properties": {
+    "source": {"type": "string", "enum": ["sec", "edinet"], "description": "Where the fact came from; a later source extends the enum additively."},
+    "subject": {"type": "string", "pattern": "^(cik:[0-9]{10}|edinet:[A-Za-z0-9]+)$", "description": "The issuer text of the watch list: cik:<10 digits>, or edinet:<code>."},
+    "taxonomy": {"type": "string", "minLength": 1, "description": "Taxonomy of the concept, for example us-gaap, dei or sec."},
+    "concept": {"type": "string", "minLength": 1, "description": "Concept name in the taxonomy."},
+    "unit": {"type": "string", "minLength": 1, "description": "Unit of the value, for example USD, shares, JPY or sic."},
+    "currency": {"type": "string", "pattern": "^([A-Z]{3})?$", "description": "Currency code of a money value; empty when the unit is not money."},
+    "period_start": {"type": ["string", "null"], "format": "date", "description": "First day of the period of a duration fact; null for an instant fact. The key is always present."},
+    "period_end": {"type": "string", "format": "date", "description": "Last day of the period, or the day of an instant fact."},
+    "value": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "The value as decimal text."},
+    "form": {"type": "string", "description": "Form of the filing, for example 10-K."},
+    "doc_id": {"type": "string", "minLength": 1, "description": "Identifier of the filing document: the accession number or the EDINET document id."},
+    "filed": {"type": "string", "format": "date", "description": "Day the filing was filed."},
+    "retrieved_at": {"type": "string", "format": "date-time", "description": "Instant the fact was retrieved, UTC."},
+    "raw_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the raw source document, lower-case hex."}
+  }
+}

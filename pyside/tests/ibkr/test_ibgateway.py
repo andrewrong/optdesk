@@ -12,7 +12,7 @@ from ib_async import Contract, ContractDetails, OptionChain, RequestError, Ticke
 from kit.fakeclock import FakeClock
 
 from optdesk.ibkr.ibgateway import IbGateway
-from optdesk.ibkr.model import QuoteRow
+from optdesk.ibkr.model import QuoteRow, QuoteTarget
 from optdesk.ibkr.spec import AmbiguousResolve, BrokerError
 from optdesk.ibkr.transport import OrderRefused
 
@@ -241,7 +241,7 @@ def test_account_never_leaves_gateway(caplog: pytest.LogCaptureFixture) -> None:
         async def keep(row: QuoteRow) -> None:
             rows.append(row)
 
-        await gateway.quotes("snapshot", [5], keep)
+        await gateway.quotes("snapshot", [QuoteTarget(5)], keep)
         out.extend(rows)
         return out
 
@@ -402,7 +402,9 @@ async def collect(
     async def keep(row: QuoteRow) -> None:
         rows.append(row)
 
-    return rows, asyncio.ensure_future(gateway.quotes(kind, con_ids, keep))
+    return rows, asyncio.ensure_future(
+        gateway.quotes(kind, [QuoteTarget(c) for c in con_ids], keep)
+    )
 
 
 def test_quotes_send_exchange() -> None:
@@ -420,6 +422,45 @@ def test_quotes_send_exchange() -> None:
 
     for kind in ("snapshot", "option_eod"):
         assert asyncio.run(run(kind)) == ["SMART"]
+
+
+def _sent_contract(targets: list[QuoteTarget]) -> Contract:
+    async def run() -> Contract:
+        clock = FakeClock()
+        gateway, fake = await opened(clock, lines=1)
+        fake.autofill = True
+        rows: list[QuoteRow] = []
+
+        async def keep(row: QuoteRow) -> None:
+            rows.append(row)
+
+        task = asyncio.ensure_future(gateway.quotes("snapshot", targets, keep))
+        await spin(50)
+        await clock.advance(21)
+        await task
+        contract = fake.tickers[targets[0].con_id].contract
+        assert contract is not None
+        return contract
+
+    return asyncio.run(run())
+
+
+def test_quotes_forward_exchange() -> None:
+    jp = _sent_contract([QuoteTarget(7, "OSE.JPN", "JPY", "225")])
+    assert (jp.conId, jp.exchange, jp.currency, jp.tradingClass) == (
+        7,
+        "OSE.JPN",
+        "JPY",
+        "225",
+    )
+    opt = _sent_contract([QuoteTarget(8, "OSE.JPN", "JPY", "225", "OPT")])
+    assert opt.secType == "OPT"
+
+
+def test_quotes_default_smart() -> None:
+    contract = _sent_contract([QuoteTarget(5)])
+    assert contract.conId == 5 and contract.exchange == "SMART"
+    assert (contract.currency, contract.tradingClass, contract.secType) == ("", "", "")
 
 
 def test_quotes_contract_keeps_con_id() -> None:
@@ -459,7 +500,7 @@ def test_quotes_release_line_when_send_is_refused() -> None:
         fake.refuse = True
         raised: type[BaseException] | None = None
         try:
-            await gateway.quotes("snapshot", [21], _drop)
+            await gateway.quotes("snapshot", [QuoteTarget(21)], _drop)
         except OrderRefused as exc:
             raised = type(exc)
         await spin()

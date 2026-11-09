@@ -8,6 +8,482 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// obs.fundamental_fact r1: one filed value of one concept of one issuer, as a
+// filing reported it; append only.
+type FundamentalFact struct {
+	// Concept name in the taxonomy.
+	Concept string `json:"concept" yaml:"concept" mapstructure:"concept"`
+
+	// Currency code of a money value; empty when the unit is not money.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Identifier of the filing document: the accession number or the EDINET document
+	// id.
+	DocID string `json:"doc_id" yaml:"doc_id" mapstructure:"doc_id"`
+
+	// Day the filing was filed.
+	Filed types.SerializableDate `json:"filed" yaml:"filed" mapstructure:"filed"`
+
+	// Form of the filing, for example 10-K.
+	Form string `json:"form" yaml:"form" mapstructure:"form"`
+
+	// Last day of the period, or the day of an instant fact.
+	PeriodEnd types.SerializableDate `json:"period_end" yaml:"period_end" mapstructure:"period_end"`
+
+	// First day of the period of a duration fact; null for an instant fact. The key
+	// is always present.
+	PeriodStart *types.SerializableDate `json:"period_start" yaml:"period_start" mapstructure:"period_start"`
+
+	// SHA-256 of the raw source document, lower-case hex.
+	RawSha256 string `json:"raw_sha256" yaml:"raw_sha256" mapstructure:"raw_sha256"`
+
+	// Instant the fact was retrieved, UTC.
+	RetrievedAt time.Time `json:"retrieved_at" yaml:"retrieved_at" mapstructure:"retrieved_at"`
+
+	// Where the fact came from; a later source extends the enum additively.
+	Source FundamentalFactSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// The issuer text of the watch list: cik:<10 digits>, or edinet:<code>.
+	Subject string `json:"subject" yaml:"subject" mapstructure:"subject"`
+
+	// Taxonomy of the concept, for example us-gaap, dei or sec.
+	Taxonomy string `json:"taxonomy" yaml:"taxonomy" mapstructure:"taxonomy"`
+
+	// Unit of the value, for example USD, shares, JPY or sic.
+	Unit string `json:"unit" yaml:"unit" mapstructure:"unit"`
+
+	// The value as decimal text.
+	Value string `json:"value" yaml:"value" mapstructure:"value"`
+}
+
+type FundamentalFactSource string
+
+const FundamentalFactSourceEdinet FundamentalFactSource = "edinet"
+const FundamentalFactSourceSec FundamentalFactSource = "sec"
+
+var enumValues_FundamentalFactSource = []interface{}{
+	"sec",
+	"edinet",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FundamentalFactSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FundamentalFactSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FundamentalFactSource, v)
+	}
+	*j = FundamentalFactSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FundamentalFact) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["concept"]; raw != nil && !ok {
+		return fmt.Errorf("field concept in FundamentalFact: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in FundamentalFact: required")
+	}
+	if _, ok := raw["doc_id"]; raw != nil && !ok {
+		return fmt.Errorf("field doc_id in FundamentalFact: required")
+	}
+	if _, ok := raw["filed"]; raw != nil && !ok {
+		return fmt.Errorf("field filed in FundamentalFact: required")
+	}
+	if _, ok := raw["form"]; raw != nil && !ok {
+		return fmt.Errorf("field form in FundamentalFact: required")
+	}
+	if _, ok := raw["period_end"]; raw != nil && !ok {
+		return fmt.Errorf("field period_end in FundamentalFact: required")
+	}
+	if _, ok := raw["period_start"]; raw != nil && !ok {
+		return fmt.Errorf("field period_start in FundamentalFact: required")
+	}
+	if _, ok := raw["raw_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field raw_sha256 in FundamentalFact: required")
+	}
+	if _, ok := raw["retrieved_at"]; raw != nil && !ok {
+		return fmt.Errorf("field retrieved_at in FundamentalFact: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in FundamentalFact: required")
+	}
+	if _, ok := raw["subject"]; raw != nil && !ok {
+		return fmt.Errorf("field subject in FundamentalFact: required")
+	}
+	if _, ok := raw["taxonomy"]; raw != nil && !ok {
+		return fmt.Errorf("field taxonomy in FundamentalFact: required")
+	}
+	if _, ok := raw["unit"]; raw != nil && !ok {
+		return fmt.Errorf("field unit in FundamentalFact: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in FundamentalFact: required")
+	}
+	type Plain FundamentalFact
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Concept) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "concept", 1)
+	}
+	if len(plain.DocID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "doc_id", 1)
+	}
+	if len(plain.Taxonomy) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "taxonomy", 1)
+	}
+	if len(plain.Unit) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "unit", 1)
+	}
+	*j = FundamentalFact(plain)
+	return nil
+}
+
+// candidates.option_candidate r1: one evaluated option candidate of one run, with
+// its gates; insert only, a rerun is a new run_id.
+type OptionCandidate struct {
+	// Account alias of the row; empty for puts.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Annualized yield as decimal text to 6 places; null when not computed.
+	AnnualizedYield *string `json:"annualized_yield" yaml:"annualized_yield" mapstructure:"annualized_yield"`
+
+	// End-of-day ask as decimal text; null when absent.
+	Ask *string `json:"ask" yaml:"ask" mapstructure:"ask"`
+
+	// End-of-day bid at the freeze as decimal text; an estimate of the premium, not a
+	// fill.
+	BidEod string `json:"bid_eod" yaml:"bid_eod" mapstructure:"bid_eod"`
+
+	// Break-even per share as decimal text: strike minus bid for a put, strike plus
+	// bid for a call.
+	BreakEven string `json:"break_even" yaml:"break_even" mapstructure:"break_even"`
+
+	// Owner buy price per share as decimal text; null when unset.
+	BuyPrice *string `json:"buy_price" yaml:"buy_price" mapstructure:"buy_price"`
+
+	// Instant the run computed the row, UTC; the newest run of a day is the one with
+	// the latest computed_at.
+	ComputedAt time.Time `json:"computed_at" yaml:"computed_at" mapstructure:"computed_at"`
+
+	// Delta as decimal text; null when absent.
+	Delta *string `json:"delta" yaml:"delta" mapstructure:"delta"`
+
+	// Calendar days from the chain day to the expiry.
+	Dte int `json:"dte" yaml:"dte" mapstructure:"dte"`
+
+	// State of the earnings row: listed, absent, unsupported, error or none.
+	EarningsState string `json:"earnings_state" yaml:"earnings_state" mapstructure:"earnings_state"`
+
+	// Dividend amount per share of the next ex-date as decimal text; null when none.
+	ExAmount *string `json:"ex_amount" yaml:"ex_amount" mapstructure:"ex_amount"`
+
+	// Expiry date of the contract.
+	Expiry types.SerializableDate `json:"expiry" yaml:"expiry" mapstructure:"expiry"`
+
+	// Extrinsic value per share as decimal text; null when not computed.
+	Extrinsic *string `json:"extrinsic" yaml:"extrinsic" mapstructure:"extrinsic"`
+
+	// JSON object text from alias to fit, no_fit or unknown; empty object text when
+	// no alias applies.
+	Fits string `json:"fits" yaml:"fits" mapstructure:"fits"`
+
+	// Ordered JSON array text of the gate results, each {gate, status, reason}.
+	Gates string `json:"gates" yaml:"gates" mapstructure:"gates"`
+
+	// Identifier of the option contract.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// Issuer text of the watch list entry of the underlying.
+	Issuer string `json:"issuer" yaml:"issuer" mapstructure:"issuer"`
+
+	// Implied volatility as decimal text (0.25 is 25 percent); null when absent.
+	Iv *string `json:"iv" yaml:"iv" mapstructure:"iv"`
+
+	// Kind of the row.
+	Kind OptionCandidateKind `json:"kind" yaml:"kind" mapstructure:"kind"`
+
+	// JSON array text of the marks of the row, for example itm; empty array text when
+	// none.
+	Marks string `json:"marks" yaml:"marks" mapstructure:"marks"`
+
+	// Shares per contract.
+	Multiplier int `json:"multiplier" yaml:"multiplier" mapstructure:"multiplier"`
+
+	// Next results date from the earnings reader; null when none.
+	NextEarnings *types.SerializableDate `json:"next_earnings" yaml:"next_earnings" mapstructure:"next_earnings"`
+
+	// Next ex-dividend date; null when none.
+	NextExDate *types.SerializableDate `json:"next_ex_date" yaml:"next_ex_date" mapstructure:"next_ex_date"`
+
+	// Position of an ok row in the run; null when not ranked.
+	Rank *int `json:"rank" yaml:"rank" mapstructure:"rank"`
+
+	// Position of an ok row within its underlying; null when not ranked.
+	RankInUnderlying *int `json:"rank_in_underlying" yaml:"rank_in_underlying" mapstructure:"rank_in_underlying"`
+
+	// Right of the contract.
+	Right OptionCandidateRight `json:"right" yaml:"right" mapstructure:"right"`
+
+	// Version of the rule that computed the row.
+	RuleVersion string `json:"rule_version" yaml:"rule_version" mapstructure:"rule_version"`
+
+	// Run id of the runner; a rerun is a new run_id and rows are insert-only.
+	RunID string `json:"run_id" yaml:"run_id" mapstructure:"run_id"`
+
+	// Owner sale price per share as decimal text; null when unset.
+	SalePrice *string `json:"sale_price" yaml:"sale_price" mapstructure:"sale_price"`
+
+	// Run day: the session day the rows were computed for.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Price of the underlying at the capture as decimal text; null when absent.
+	Spot *string `json:"spot" yaml:"spot" mapstructure:"spot"`
+
+	// Row status: blocked if any gate blocked, else unknown if any gate is unknown,
+	// else ok.
+	Status OptionCandidateStatus `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Strike as decimal text.
+	Strike string `json:"strike" yaml:"strike" mapstructure:"strike"`
+
+	// Identifier of the underlying instrument.
+	UnderlyingID int `json:"underlying_id" yaml:"underlying_id" mapstructure:"underlying_id"`
+}
+
+type OptionCandidateKind string
+
+const OptionCandidateKindCoveredCall OptionCandidateKind = "covered_call"
+const OptionCandidateKindHeldCallGuard OptionCandidateKind = "held_call_guard"
+const OptionCandidateKindShortPut OptionCandidateKind = "short_put"
+
+var enumValues_OptionCandidateKind = []interface{}{
+	"short_put",
+	"covered_call",
+	"held_call_guard",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionCandidateKind) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_OptionCandidateKind {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_OptionCandidateKind, v)
+	}
+	*j = OptionCandidateKind(v)
+	return nil
+}
+
+type OptionCandidateRight string
+
+const OptionCandidateRightCall OptionCandidateRight = "call"
+const OptionCandidateRightPut OptionCandidateRight = "put"
+
+var enumValues_OptionCandidateRight = []interface{}{
+	"put",
+	"call",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionCandidateRight) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_OptionCandidateRight {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_OptionCandidateRight, v)
+	}
+	*j = OptionCandidateRight(v)
+	return nil
+}
+
+type OptionCandidateStatus string
+
+const OptionCandidateStatusBlocked OptionCandidateStatus = "blocked"
+const OptionCandidateStatusOk OptionCandidateStatus = "ok"
+const OptionCandidateStatusUnknown OptionCandidateStatus = "unknown"
+
+var enumValues_OptionCandidateStatus = []interface{}{
+	"ok",
+	"blocked",
+	"unknown",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionCandidateStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_OptionCandidateStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_OptionCandidateStatus, v)
+	}
+	*j = OptionCandidateStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionCandidate) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in OptionCandidate: required")
+	}
+	if _, ok := raw["annualized_yield"]; raw != nil && !ok {
+		return fmt.Errorf("field annualized_yield in OptionCandidate: required")
+	}
+	if _, ok := raw["ask"]; raw != nil && !ok {
+		return fmt.Errorf("field ask in OptionCandidate: required")
+	}
+	if _, ok := raw["bid_eod"]; raw != nil && !ok {
+		return fmt.Errorf("field bid_eod in OptionCandidate: required")
+	}
+	if _, ok := raw["break_even"]; raw != nil && !ok {
+		return fmt.Errorf("field break_even in OptionCandidate: required")
+	}
+	if _, ok := raw["buy_price"]; raw != nil && !ok {
+		return fmt.Errorf("field buy_price in OptionCandidate: required")
+	}
+	if _, ok := raw["computed_at"]; raw != nil && !ok {
+		return fmt.Errorf("field computed_at in OptionCandidate: required")
+	}
+	if _, ok := raw["delta"]; raw != nil && !ok {
+		return fmt.Errorf("field delta in OptionCandidate: required")
+	}
+	if _, ok := raw["dte"]; raw != nil && !ok {
+		return fmt.Errorf("field dte in OptionCandidate: required")
+	}
+	if _, ok := raw["earnings_state"]; raw != nil && !ok {
+		return fmt.Errorf("field earnings_state in OptionCandidate: required")
+	}
+	if _, ok := raw["ex_amount"]; raw != nil && !ok {
+		return fmt.Errorf("field ex_amount in OptionCandidate: required")
+	}
+	if _, ok := raw["expiry"]; raw != nil && !ok {
+		return fmt.Errorf("field expiry in OptionCandidate: required")
+	}
+	if _, ok := raw["extrinsic"]; raw != nil && !ok {
+		return fmt.Errorf("field extrinsic in OptionCandidate: required")
+	}
+	if _, ok := raw["fits"]; raw != nil && !ok {
+		return fmt.Errorf("field fits in OptionCandidate: required")
+	}
+	if _, ok := raw["gates"]; raw != nil && !ok {
+		return fmt.Errorf("field gates in OptionCandidate: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in OptionCandidate: required")
+	}
+	if _, ok := raw["issuer"]; raw != nil && !ok {
+		return fmt.Errorf("field issuer in OptionCandidate: required")
+	}
+	if _, ok := raw["iv"]; raw != nil && !ok {
+		return fmt.Errorf("field iv in OptionCandidate: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in OptionCandidate: required")
+	}
+	if _, ok := raw["marks"]; raw != nil && !ok {
+		return fmt.Errorf("field marks in OptionCandidate: required")
+	}
+	if _, ok := raw["multiplier"]; raw != nil && !ok {
+		return fmt.Errorf("field multiplier in OptionCandidate: required")
+	}
+	if _, ok := raw["next_earnings"]; raw != nil && !ok {
+		return fmt.Errorf("field next_earnings in OptionCandidate: required")
+	}
+	if _, ok := raw["next_ex_date"]; raw != nil && !ok {
+		return fmt.Errorf("field next_ex_date in OptionCandidate: required")
+	}
+	if _, ok := raw["rank"]; raw != nil && !ok {
+		return fmt.Errorf("field rank in OptionCandidate: required")
+	}
+	if _, ok := raw["rank_in_underlying"]; raw != nil && !ok {
+		return fmt.Errorf("field rank_in_underlying in OptionCandidate: required")
+	}
+	if _, ok := raw["right"]; raw != nil && !ok {
+		return fmt.Errorf("field right in OptionCandidate: required")
+	}
+	if _, ok := raw["rule_version"]; raw != nil && !ok {
+		return fmt.Errorf("field rule_version in OptionCandidate: required")
+	}
+	if _, ok := raw["run_id"]; raw != nil && !ok {
+		return fmt.Errorf("field run_id in OptionCandidate: required")
+	}
+	if _, ok := raw["sale_price"]; raw != nil && !ok {
+		return fmt.Errorf("field sale_price in OptionCandidate: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in OptionCandidate: required")
+	}
+	if _, ok := raw["spot"]; raw != nil && !ok {
+		return fmt.Errorf("field spot in OptionCandidate: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in OptionCandidate: required")
+	}
+	if _, ok := raw["strike"]; raw != nil && !ok {
+		return fmt.Errorf("field strike in OptionCandidate: required")
+	}
+	if _, ok := raw["underlying_id"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_id in OptionCandidate: required")
+	}
+	type Plain OptionCandidate
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.RuleVersion) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "rule_version", 1)
+	}
+	if len(plain.RunID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "run_id", 1)
+	}
+	*j = OptionCandidate(plain)
+	return nil
+}
+
 // obs.option_eod r1: one option contract on one session day, frozen after the
 // close.
 type OptionEod struct {

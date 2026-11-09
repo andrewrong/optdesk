@@ -29,6 +29,7 @@ from optdesk.ibkr.model import (
     MultipleAccounts,
     PositionRow,
     QuoteRow,
+    QuoteTarget,
     ResolveResult,
 )
 from optdesk.ibkr.timing import Clock, SystemClock
@@ -424,8 +425,17 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
         self, request: pb.SnapshotRequest, context: Context
     ) -> AsyncIterator[pb.SnapshotResponse]:
         kind = _KINDS.get(request.kind)
-        con_ids = [c.con_id for c in request.contracts]
-        if kind is None or not con_ids or any(con_id <= 0 for con_id in con_ids):
+        targets = [
+            QuoteTarget(
+                c.con_id,
+                c.exchange,
+                c.currency,
+                c.trading_class,
+                _SEC_TYPES.get(c.sec_type, ""),
+            )
+            for c in request.contracts
+        ]
+        if kind is None or not targets or any(t.con_id <= 0 for t in targets):
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "snapshot needs a kind and contracts that all carry a con_id",
@@ -436,7 +446,7 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
             await queue.put(row)
 
         work = asyncio.ensure_future(
-            self._shared.gateway.quotes(kind or "", con_ids, on_quote)
+            self._shared.gateway.quotes(kind or "", targets, on_quote)
         )
         work.add_done_callback(lambda _: queue.put_nowait(None))
         started = self._shared.clock.monotonic()
@@ -454,7 +464,7 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
             await context.abort(code, details)
         elapsed = int((self._shared.clock.monotonic() - started) * 1000)
         log_event(
-            _LOG, "rpc_done", rpc="snapshot", count=len(con_ids), elapsed_ms=elapsed
+            _LOG, "rpc_done", rpc="snapshot", count=len(targets), elapsed_ms=elapsed
         )
 
 
