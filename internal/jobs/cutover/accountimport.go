@@ -57,6 +57,9 @@ type linePosition struct {
 type entry struct {
 	capture store.Capture
 	hash    string
+	// empty is true for a line with no positions and no values. The reader cannot tell a stored capture with
+	// no rows from no capture, so such a line is equal to "nothing stored": Same on import, not Missing.
+	empty bool
 }
 
 // loadAccount reads and validates the whole file before anything is stored or written: a line after through,
@@ -76,7 +79,7 @@ func loadAccount(r io.Reader, aliasMap map[string]string, through contracts.Day)
 		if _, err := time.Parse(dayLayout, l.SessionDay); err != nil {
 			return errors.New("session_day is not a day")
 		}
-		if l.SessionDay > string(through) {
+		if contracts.Day(l.SessionDay) > through {
 			return errors.New("session_day is after through")
 		}
 		alias, err := mapAlias(aliasMap, l.Alias)
@@ -112,7 +115,7 @@ func loadAccount(r io.Reader, aliasMap map[string]string, through contracts.Day)
 		if err != nil {
 			return err
 		}
-		out = append(out, entry{capture: c, hash: h})
+		out = append(out, entry{capture: c, hash: h, empty: len(c.Positions) == 0 && len(c.Values) == 0})
 		return nil
 	})
 	if err != nil {
@@ -210,6 +213,8 @@ func ImportAccount(ctx context.Context, r io.Reader, st store.AccountStore, alia
 			return res, err
 		}
 		switch {
+		case !found && e.empty:
+			res.Same++
 		case !found:
 			if err := st.WriteCapture(ctx, e.capture); err != nil {
 				return res, errors.New("storing a capture failed")

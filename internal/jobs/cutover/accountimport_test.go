@@ -167,3 +167,24 @@ func TestImportAccountErrorsHoldNoValue(t *testing.T) {
 }
 
 func (f *fakeAccount) Close() error { return nil }
+
+func TestImportAccountEmptyDayIsSameOnReimport(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	in := `{"alias":"main","session_day":"2026-11-05","at":"2026-11-05T21:00:00Z","status":"ok","values":[],"positions":[]}` + "\n"
+	if _, err := cutover.ImportAccount(context.Background(), strings.NewReader(in), f, nil, through); err != nil {
+		t.Fatal(err)
+	}
+	f.writes = 0
+	res, err := cutover.ImportAccount(context.Background(), strings.NewReader(in), f, nil, through)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Same != 1 || res.Inserted != 0 || f.writes != 0 {
+		t.Fatalf("res = %+v, writes %d", res, f.writes)
+	}
+	v, _ := cutover.VerifyAccount(context.Background(), strings.NewReader(in), f, nil, through)
+	if v.Missing != 0 {
+		t.Fatalf("verify = %+v", v)
+	}
+}

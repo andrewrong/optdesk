@@ -27,6 +27,7 @@ func VerifyAccount(ctx context.Context, r io.Reader, rd store.AccountReader, ali
 			return res, err
 		}
 		switch {
+		case !found && e.empty:
 		case !found:
 			res.Missing++
 		case h != e.hash:
