@@ -11,6 +11,9 @@ service AccountService {
   // Account returns the summary values and the positions of the account of
   // the gateway, read-only.
   rpc Account(AccountRequest) returns (AccountResponse);
+  // Executions returns the executions of the current trading day with their
+  // commissions, read-only.
+  rpc Executions(ExecutionsRequest) returns (ExecutionsResponse);
 }
 
 // AccountRequest carries nothing: the tags are a fixed list of the server.
@@ -28,6 +31,11 @@ message AccountResponse {
   // positions are the open positions; empty when none is open or the gateway
   // does not collect them.
   repeated Position positions = 4;
+  // values_collected is true when the gateway collects the summary values, so
+  // an empty values list can be told from a gateway that does not collect them.
+  bool values_collected = 5;
+  // positions_collected is true when the gateway collects the positions.
+  bool positions_collected = 6;
 }
 
 // AccountValue is one summary row.
@@ -48,4 +56,46 @@ message Position {
   string quantity = 2;
   // avg_cost is canonical decimal text.
   string avg_cost = 3;
+}
+
+// ExecutionsRequest carries nothing: the gateway answers for its own account.
+message ExecutionsRequest {}
+
+// ExecutionsResponse holds the complete executions of one account.
+message ExecutionsResponse {
+  // account is the alias of the gateway's entry, never the account id.
+  string account = 1;
+  // generation is the session generation of PingResponse.
+  int64 generation = 2;
+  // collected is false when the gateway does not collect executions; no
+  // request was sent to the broker then and executions is empty.
+  bool collected = 3;
+  // pending counts the executions left out because their commission report
+  // had not arrived yet; they come in a later answer.
+  int32 pending = 4;
+  // executions holds only rows with their commission; empty when none.
+  repeated Execution executions = 5;
+}
+
+// Execution is one fill with its commission.
+message Execution {
+  // exec_id is the broker's execution id, the key of the row with perm_id.
+  string exec_id = 1;
+  // perm_id is the broker's permanent id of the execution, the dedupe key and
+  // nothing more.
+  int64 perm_id = 2;
+  // time is the fill instant, RFC 3339 UTC text.
+  string time = 3;
+  // contract is the contract traded.
+  ContractSpec contract = 4;
+  // side is BOT or SLD.
+  string side = 5;
+  // quantity is canonical decimal text.
+  string quantity = 6;
+  // price is canonical decimal text.
+  string price = 7;
+  // commission is canonical decimal text, always set.
+  string commission = 8;
+  // commission_currency is the currency code of the commission.
+  string commission_currency = 9;
 }
