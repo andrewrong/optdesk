@@ -113,4 +113,6 @@ type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.O
 // NewOptionEodHeldFunc is the constructor of the option_eod job that also captures the contracts of the short
 // calls the account holds, whatever their DTE (declaration only; its implementation is a later issue). The
 // reader comes after the resolver and the writer, the watch list after the clock.
-type NewOptionEodHeldFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, store.AccountReader, clock.Clock, []WatchEntry) (contracts.Job, error)
+type NewOptionEodHeldFunc func(
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, store.AccountReader, clock.Clock, []WatchEntry,
+) (contracts.Job, error)
