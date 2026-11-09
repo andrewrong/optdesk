@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -57,6 +58,16 @@ type siteReaders struct {
 	names   store.InstrumentNameReader
 	view    store.ReadingViewReader
 	cands   store.CandidateReader
+
+	// the option positions pages: the ledger and account readers (nil until their stores land, which the
+	// builders turn into the gap no_reader), the session days and the compute constructors; eod and terms
+	// above are read by these pages too.
+	ledger     store.OptionLedgerReader
+	account    store.AccountReader
+	sessions   store.SessionDayReader
+	ledgers    compute.NewOptionLedgerFunc
+	structures compute.NewOptionStructuresFunc
+	results    compute.NewOptionResultsFunc
 }
 
 // openSiteReaders returns the demo readers with the demo profile, else the eight stores (series, the
@@ -65,7 +76,8 @@ type siteReaders struct {
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
-		return siteReaders{demoReader{}, d, d, d, d, d, demoView{}, demoCandidates{}}, func() {}, nil
+		rd := siteReaders{series: demoReader{}, eod: d, quotes: d, catalog: d, terms: d, names: d, view: demoView{}, cands: demoCandidates{}}
+		return withPositionsRules(a, rd), func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -127,7 +139,15 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		}
 		cands = cs
 	}
-	return siteReaders{ser, eod, quotes, catalog, terms, names, view, cands}, closeAll, nil
+	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view, cands: cands}
+	return withPositionsRules(a, rd), closeAll, nil
+}
+
+// withPositionsRules sets the compute constructors of the positions pages; the ledger, account and session
+// readers stay nil (ot has no store for them yet).
+func withPositionsRules(a *app, rd siteReaders) siteReaders {
+	rd.ledgers, rd.structures, rd.results = a.deps.newOptionLedger, a.deps.newOptionStructures, a.deps.newOptionResults
+	return rd
 }
 
 // siteHandler serves the routes of the site: health (before any page route), "" (302 to home), the live routes macro, options/data and
@@ -158,6 +178,12 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
 		case path == siteMarketRoute:
 			build = func(ctx context.Context) ([]byte, error) { return buildMarket(ctx, a, clk, dayFlag, rd) }
+		case isPositionsPath(path):
+			kind, sid := positionsRoute(path)
+			q := r.URL.Query()
+			build = func(ctx context.Context) ([]byte, error) {
+				return buildPositions(ctx, a, clk, dayFlag, rd, kind, sid, q)
+			}
 		case path == siteCandidatesRoute:
 			build = func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
 		case path == "report":
@@ -166,8 +192,8 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		case path == siteRoot:
 			build = func(ctx context.Context) ([]byte, error) { return buildSite(ctx, a, clk, dayFlag, rd, 0, false) }
 		case strings.HasPrefix(path, siteRoot+"/"):
-			n, err := strconv.ParseInt(strings.TrimPrefix(path, siteRoot+"/"), 10, 64)
-			if err != nil || n <= 0 || strconv.FormatInt(n, 10) != strings.TrimPrefix(path, siteRoot+"/") {
+			n, ok := siteIDOf(strings.TrimPrefix(path, siteRoot+"/"))
+			if !ok {
 				http.NotFound(w, r)
 				return
 			}
@@ -207,6 +233,13 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 			newHandler(vm).ServeHTTP(w, r)
 		}
 	})
+}
+
+// siteIDOf is the underlying id of the last element of an options/data path: a positive number written
+// without a sign or a leading zero.
+func siteIDOf(s string) (int64, bool) {
+	n, err := strconv.ParseInt(s, 10, 64)
+	return n, err == nil && n > 0 && strconv.FormatInt(n, 10) == s
 }
 
 // siteHealthRoute is the path of the health check, under the root of the site.
