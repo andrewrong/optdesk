@@ -118,6 +118,7 @@ var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 var declarationsOnly = []string{
 	"internal/store/bar", "internal/store/mark", "internal/store/ownerset",
 	"internal/compute/settingsapi", "internal/compute/trackapi", "internal/store/flexsection",
+	"internal/compute/blockapi",
 }
 
 // declListed gives, for each row, the declarationsOnly packages (as component names) that
