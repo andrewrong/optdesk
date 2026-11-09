@@ -95,7 +95,11 @@ func TestPairsFiltersTradingClass(t *testing.T) {
 
 func TestChainOfClassRule(t *testing.T) {
 	t.Parallel()
-	chains := []broker.Chain{{Exchange: "ARCA", TradingClass: "B"}, {Exchange: "SMART", TradingClass: "2B"}, {Exchange: "SMART", TradingClass: "B", Multiplier: "100"}}
+	chains := []broker.Chain{
+		{Exchange: "ARCA", TradingClass: "B"},
+		{Exchange: "SMART", TradingClass: "2B"},
+		{Exchange: "SMART", TradingClass: "B", Multiplier: "100"},
+	}
 	m := manifest{}
 	c, class, ok := m.chainOf(chains, underlying{Symbol: "B", Exchange: "SMART"})
 	if !ok || c.Exchange != "SMART" || c.TradingClass != "B" || class != "B" {
