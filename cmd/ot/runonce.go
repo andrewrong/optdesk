@@ -8,6 +8,8 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -98,8 +100,23 @@ func runOnce(a *app, args []string) error {
 	fs := flag.NewFlagSet("run-once", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
+	dryRun := fs.Bool("dry-run", false, "capture through the live broker into memory; no store, no guard, no write")
+	var jobNames []string
+	fs.Func("job", "with --dry-run: option_eod, option_eod_jp or quote_snapshot (repeatable)", func(v string) error {
+		if !slices.Contains(dryRunJobs, v) {
+			return fmt.Errorf("--job %q is not one of %s", v, strings.Join(dryRunJobs, ", "))
+		}
+		jobNames = append(jobNames, v)
+		return nil
+	})
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if len(jobNames) > 0 && !*dryRun {
+		return fmt.Errorf("--job needs --dry-run")
+	}
+	if *dryRun {
+		return runDryRun(context.Background(), a, jobNames, *dayFlag)
 	}
 	if a.profile.Name == "demo" {
 		return fmt.Errorf("run-once needs a real profile; the demo profile opens no store")
