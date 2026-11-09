@@ -493,3 +493,104 @@ type OptionCandidates interface {
 
 // NewOptionCandidatesFunc builds an OptionCandidates.
 type NewOptionCandidatesFunc func() OptionCandidates
+
+// LedgerTrade is one stored Flex trade row: the latest revision of one transaction. Every
+// attribute value is text, as Flex sent it.
+type LedgerTrade struct {
+	TransactionID string
+	Revision      int
+	Attributes    map[string]string
+}
+
+// LedgerMark is the newest option_eod quote of one contract: Bid and Ask and the
+// underlying close are decimal text, Day is the quote day.
+type LedgerMark struct {
+	Contract        string
+	Day             contracts.Day
+	Bid             string
+	Ask             string
+	UnderlyingClose string
+}
+
+// LedgerInput is everything Replay needs for one alias; the rule has no calendar, no
+// clock and no store. Trades holds the latest revision of each transaction. SessionDays
+// are the XNYS session days in ascending order, supplied by the caller; ages of marks are
+// differences of positions in this list. AsOf is the day of the replay.
+type LedgerInput struct {
+	Alias       string
+	Trades      []LedgerTrade
+	Marks       []LedgerMark
+	SessionDays []contracts.Day
+	AsOf        contracts.Day
+}
+
+// LedgerParams are the limits of the rule: MarkMaxAgeSessions is the oldest mark, in
+// session days, that is still used (a key of job.toml).
+type LedgerParams struct {
+	MarkMaxAgeSessions int
+}
+
+// LedgerPosition is an open lot or the part a close left. Money and quantities are decimal
+// text in the Currency of the contract, rounded half-even to 4 places; no figure adds two
+// currencies. Status is open, closed, expired, assigned or exercised; Early marks
+// an assignment before the expiry date. MarkStatus is ok or no_mark; Mark, MarkDay and
+// UnrealizedPnL are empty without a mark, RealizedPnL is empty while the position is open.
+// PremiumIncome is the cash of its opens plus its closes, Commissions the sum of its rows.
+type LedgerPosition struct {
+	PositionID    string
+	Alias         string
+	Underlying    string
+	Contract      string
+	Status        string
+	Early         bool
+	Quantity      string
+	Multiplier    string
+	Currency      string
+	PremiumIncome string
+	Commissions   string
+	RealizedPnL   string
+	Mark          string
+	MarkDay       contracts.Day
+	MarkStatus    string
+	UnrealizedPnL string
+}
+
+// LedgerCycle is one wheel cycle of an alias and underlying, from the first share event to
+// flat. The numbers are separate and never totalled: StockRealizedPnL, PremiumIncome (the
+// positions that belong to the cycle) and StockCommissions. CostBasisPerShare is the price
+// of the buy row, the strike for an assignment; no premium is subtracted from it.
+// UnrealizedStockPnL is empty without a stock mark. PremiumOutsideCycles is the premium
+// income of the alias and name that belongs to no cycle.
+type LedgerCycle struct {
+	CycleID              string
+	Alias                string
+	Underlying           string
+	Currency             string
+	Shares               string
+	CostBasisPerShare    string
+	StockRealizedPnL     string
+	UnrealizedStockPnL   string
+	PremiumIncome        string
+	StockCommissions     string
+	PremiumOutsideCycles string
+}
+
+// LedgerResult is the replay of one alias. RuleVersion starts at 1. Unresolved lists the
+// transaction ids of closes with no open before them; Review lists the transaction ids of
+// cancel or correction rows. Neither enters a figure.
+type LedgerResult struct {
+	RuleVersion int
+	Positions   []LedgerPosition
+	Cycles      []LedgerCycle
+	Unresolved  []string
+	Review      []string
+}
+
+// OptionLedger replays the stored trade rows of one alias, purely: no I/O and no clock,
+// exact arithmetic on decimal text, no float. The same input gives the same result.
+type OptionLedger interface {
+	Replay(LedgerInput, LedgerParams) LedgerResult
+}
+
+// NewOptionLedgerFunc builds an OptionLedger.
+type NewOptionLedgerFunc func() OptionLedger

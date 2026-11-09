@@ -60,12 +60,24 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - Rank. Only `ok` rows are ranked: annualized yield descending, then DTE, strike and instrument id ascending. A blocked or unknown row has rank 0.
 - Formulas. Annualized yield is `(bid / strike) x (365 / DTE)` for a put and `(bid / spot) x (365 / DTE)` for a call, stored to 6 places. Break-even is `strike - bid` for a put and `strike + bid` for a call. Pure: no I/O, no clock.
 
+## Option ledger
+
+`LedgerTrade`, `LedgerMark`, `LedgerInput`, `LedgerParams`, `LedgerPosition`, `LedgerCycle`, `LedgerResult`, `OptionLedger` and `NewOptionLedgerFunc` are in `internal/compute/api.go`; the implementation (`internal/compute/optionledger`, a stub until its issue lands) is passed in by `cmd/ot`. Design: `docs/design/option-ledger.md#Interface`.
+
+- Kind of a row (Decision 6). An option (`assetCategory` OPT) with `openCloseIndicator` `O` is `open`; `C` with notes holding `Ep` is `expire`, `A` is `assign`, `Ex` is `exercise`, otherwise `close`; stock (STK) is `stock_buy` or `stock_sell` by the sign of `quantity`. A cancel or correction row is not entered in a figure: it is listed in `Review`, never a guess.
+- Matching (Decision 8). Per alias and contract (`conid`, else `symbol:expiry:strike:put_call`) a closing event matches opens first in, first out. A close with no open before it is listed in `Unresolved`, never a negative lot and never in a figure. Long and short are one mechanism (the sign of the quantity). A lot closed in two steps is two positions. Spreads are not grouped. An assignment before the expiry date is `early`. An `assign` or `exercise` closes only the option position; shares come only from the stock row of the delivery.
+- Premium income (Decision 9). Per position, in the currency of the contract, before tax: `premium_income` is the cash of the opens plus the cash of the closes (`proceeds`), `commissions` the sum of `ibCommission` of its rows, `realized_pnl = premium_income - commissions` once the position is closed, expired or assigned; the premium is never moved into a share basis. For an open short, `unrealized_pnl = premium_income - commissions - mark x quantity x multiplier` (the mirror for a long), `mark` the mid of bid and ask of the newest mark. No mark, or one older than `MarkMaxAgeSessions` session days, gives an empty `unrealized_pnl` and `no_mark`; nothing is estimated.
+- Wheel cycle (Decision 10). A cycle starts when shares appear (a `stock_buy`, an assignment shows as one) and ends when flat; shares are first in, first out. `cost_basis_per_share` is the buy price, the strike for an assignment; stock commissions are apart in `stock_commissions`; no premium is subtracted from a basis. `stock_realized_pnl = proceeds of the sale - basis of the shares sold - commissions of the sale`; `unrealized_stock_pnl = (stock_mark - cost_basis_per_share) x shares`. The cycle shows `stock_realized_pnl`, `premium_income` and the commissions as separate numbers; no total hides them.
+- Numbers (Decision 11). Exact (`math/big.Rat` in the implementation), decimal text at every boundary, rounded half-even to 4 places in printed figures. No float. Every figure carries its currency; no function adds two currencies and there is no FX conversion.
+- Input. One alias per call; `Trades` holds the latest revision of each transaction; `SessionDays` are ascending XNYS day texts supplied by the caller, so the rule needs no calendar and no clock. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
 - v2: additions only: the alert rule types and function types above.
 - v3: additions only: the ease types and `Ease` above.
 - v4: additions only: the option candidate types and `OptionCandidates` above.
+- v5: additions only: the ledger types and `OptionLedger` above.
 
 ## Contract tests
 
