@@ -69,23 +69,7 @@ export interface StaleLabel {
  */
 export interface Gap {
   kind: "gap";
-  reason:
-    | "missing_quote"
-    | "no_data"
-    | "unsupported_currency"
-    | "not_built"
-    | "no_reader"
-    | "no_news_source"
-    | "no_rule"
-    | "market_closed"
-    | "stale"
-    | "flex_time_unknown"
-    | "jp_slice_missing"
-    | "missing_input"
-    | "stale_input"
-    | "no_rows"
-    | "no_run"
-    | "unreadable";
+  reason: string;
   text: Text1;
 }
 /**

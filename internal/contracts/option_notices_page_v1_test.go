@@ -84,3 +84,16 @@ func TestOptionNoticesPageCodeIsPattern(t *testing.T) {
 		}
 	}
 }
+
+func TestOptionNoticesPageMainNoCaptureGapValid(t *testing.T) {
+	t.Parallel()
+	inst := noticesMinimal(t)
+	inst["gaps"] = []any{map[string]any{"kind": "gap", "reason": "no_capture", "text": "no capture for main"}}
+	if !pageV1Valid(t, optionNoticesPageV1, inst) {
+		t.Fatal("page gap no_capture (Decision 8) is rejected by the schema")
+	}
+	inst["gaps"] = []any{map[string]any{"kind": "gap", "reason": "No-Capture", "text": "x"}}
+	if pageV1Valid(t, optionNoticesPageV1, inst) {
+		t.Fatal("a gap reason outside the pattern validates")
+	}
+}
