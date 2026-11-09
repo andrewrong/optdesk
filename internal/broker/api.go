@@ -109,3 +109,39 @@ type Options struct {
 
 // DialFunc connects to the service at socketPath.
 type DialFunc func(ctx context.Context, socketPath string, o Options) (Broker, error)
+
+// DividendStatus is the outcome of one dividend request.
+type DividendStatus int
+
+// The statuses of a DividendProjection; the unset status of the proto is an error, never a value.
+const (
+	DividendOK DividendStatus = iota
+	DividendNoValue
+	DividendTimeout
+	DividendError
+)
+
+// DividendProjection is the answer for one contract (IBKR generic tick 456). An unset number or
+// date is nil; NextExDate is YYYYMMDD. Nothing says whether the date is declared or projected.
+type DividendProjection struct {
+	Contract   Contract
+	Status     DividendStatus
+	Past12m    *float64
+	Next12m    *float64
+	NextExDate *string
+	NextAmount *float64
+	ErrorCode  int
+	ReceivedAt time.Time
+}
+
+// ReferenceClient reads reference data. It is separate from Broker. Errors are contracts.TypedError
+// as for Broker.
+type ReferenceClient interface {
+	// Dividends returns one DividendProjection per contract, in the order asked.
+	Dividends(ctx context.Context, cs []Contract) ([]DividendProjection, error)
+	// Close releases the connection.
+	Close() error
+}
+
+// NewReferenceFunc connects a ReferenceClient to the service at socketPath.
+type NewReferenceFunc func(ctx context.Context, socketPath string, o Options) (ReferenceClient, error)
