@@ -151,7 +151,7 @@ func probeMarket(ctx context.Context, a *app, c broker.ReferenceClient, group []
 		switch s.role {
 		case probePayer:
 			ok = ok && p.Status == broker.DividendOK && date != ""
-		default:
+		case probeNonPayer:
 			ok = ok && p.Status != broker.DividendError && text != "error"
 		}
 	}
