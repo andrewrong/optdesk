@@ -46,7 +46,8 @@ serve --addr :8080
 
 `ot serve` listens on `127.0.0.1:8080` by default, which a published port cannot reach, so the
 container sets `--addr :8080`. The compose file publishes container port 8080 on `<bind>:<port>`.
-`GET /health` answers 200 while the process serves; crew polls it.
+`GET /health` is the route of issue #926 (200 when the database answers, 503 when it does not); crew polls it.
+The route is not on the main branch until #926 merges, and this service is not deployed before that.
 
 ## How the keys reach it
 
