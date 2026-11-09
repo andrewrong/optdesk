@@ -1,0 +1,79 @@
+{
+  "schema": "companies_page",
+  "schema_version": 2,
+  "run_id": "run_1",
+  "build_id": "build_1",
+  "scope": "companies_1",
+  "generated_at": "2026-11-06T22:30:00+08:00",
+  "data_times": [
+    {
+      "source": "valuation",
+      "data_time": "2026-11-05T22:00:00Z"
+    },
+    {
+      "source": "quote_snapshot",
+      "data_time": "2026-11-06T15:00:00Z"
+    },
+    {
+      "source": "fred",
+      "data_time": "2026-11-06T21:15:00Z"
+    }
+  ],
+  "run_status": "partial",
+  "title": "Companies",
+  "header": {
+    "title": "Companies",
+    "data_day": "2026-11-06",
+    "line": "11-06 · watching 2 companies",
+    "held_count": null
+  },
+  "changes": null,
+  "glance": null,
+  "holdings": null,
+  "unvalued": null,
+  "watch_list": {
+    "title": "Watch list",
+    "columns": [
+      {
+        "text": "Company",
+        "numeric": false
+      },
+      {
+        "text": "Price line",
+        "numeric": true
+      },
+      {
+        "text": "Last",
+        "numeric": true
+      }
+    ],
+    "rows": [],
+    "sentence": null
+  },
+  "notes": [
+    "Synthetic fixture."
+  ],
+  "gaps": [
+    {
+      "reason": "not_built",
+      "text": "sections not built"
+    }
+  ],
+  "stale": {
+    "data_time": "2026-11-06T22:00:00+08:00",
+    "stale_after": "2026-11-07T22:00:00+08:00",
+    "text": "Data of 11-06"
+  },
+  "core": {
+    "reason": "not_built",
+    "text": "core block not built"
+  },
+  "diagnosis": {
+    "reason": "not_built",
+    "text": "diagnosis block not built"
+  },
+  "questions": {
+    "reason": "no_reader",
+    "text": "no filings reader"
+  }
+}

@@ -105,6 +105,14 @@ Declared in `internal/store/api.go`: `FactWriter` (`InsertFacts`), `FactReader` 
 - View `rd.fundamental_fact_r1` returns `period_start` as NULL again for `0001-01-01`. `FactsFiledBy(ctx, source, subject, cutoff)` reads the view only and returns every row of the source and subject with `filed` on or before the cutoff, no winner picked; none gives an empty slice; a bad cutoff is `Permanent`, a database error `Retryable`.
 - Grants: `ot_w_fundamental` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_FUNDAMENTAL`) has `INSERT` on the table and `SELECT` on the view; `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role has UPDATE, DELETE or TRUNCATE. One implementation serves the figures job (opened with `DSNEnvFundamental`) and the page (opened with `DSNEnvPages`).
 
+## Option candidates
+
+Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`.
+
+## Option ledger
+
+Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
+
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
@@ -134,6 +142,9 @@ Declared in `internal/store/api.go`: `FactWriter` (`InsertFacts`), `FactReader` 
 - `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
 - `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
+- `internal/store/api_candidate_test.go`: `TestCandidateContract` holds `CandidateWriter`, `CandidateReader` and `DSNEnvCandidate` from both sides (two runs of a day read as the newer one, ranked rows first).
+
+- `internal/store/optionledger_api_test.go`: `TestOptionLedgerWriterContract` (revision rule and import rule from both sides) and `TestOptionLedgerReaderContract`.
 
 - `internal/store/instrument/resolve_test.go` and `read_test.go`: `TestResolveCreates`, `TestResolveSame`, `TestResolveLock`, `TestResolveExtraTaken`, `TestResolveChecks` and `TestInstruments` against an in-test fake.
 - `internal/store/instrument/instrument_pg_test.go` (build tag `pg`): `TestMigration0008PG`, `TestForeignKeysPG`, `TestConcurrentResolvePG` and `TestMasterGrantsPG`.
