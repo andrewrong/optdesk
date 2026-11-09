@@ -97,6 +97,8 @@ components:
     in: internal/jobs/calendarrefresh
   jobs/computefigures:
     in: internal/jobs/computefigures
+  jobs/cutover:
+    in: internal/jobs/cutover
   jobs/earningsrefresh:
     in: internal/jobs/earningsrefresh
   jobs/fredseries:
@@ -386,6 +388,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/cutover:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/earningsrefresh:
     mayDependOn:
       - contracts
@@ -597,6 +610,7 @@ deps:
       - jobs/fredseries
       - broker/grpcbroker
       - store/instrument
+      - jobs/cutover
       - jobs/optioneod
       - jobs/quotesnapshot
       - pages/macro_rates
