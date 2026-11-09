@@ -7,8 +7,7 @@ on:
       - 'go.mod'
       - 'go.sum'
       - '.golangci.yml'
-      - '.go-arch-lint.yml'
-      - 'arch.toml'
+      - 'docs/design/modules.md'
       - 'contracts/**'
       - 'migrations/**'
       - '.github/workflows/ci-go.yml'
@@ -42,6 +41,8 @@ jobs:
       # golangci-lint and go-arch-lint are tool directives of go.mod: go tool uses that pin.
       - name: golangci-lint
         run: go tool golangci-lint run ./...
+      - name: generate arch files from modules.md
+        run: go run ./scripts/arch
       - name: go-arch-lint
         run: go tool go-arch-lint check
 
@@ -67,7 +68,7 @@ jobs:
           pkgs=./...
           if [ "$EVENT" = pull_request ]; then
             changed=$(git diff --name-only "$BASE_SHA"...HEAD)
-            if printf '%s\n' "$changed" | grep -qE '^(go\.mod|go\.sum|\.golangci\.yml|\.go-arch-lint\.yml|arch\.toml|contracts/|\.github/)'; then
+            if printf '%s\n' "$changed" | grep -qE '^(go\.mod|go\.sum|\.golangci\.yml|docs/design/modules\.md|contracts/|\.github/)'; then
               pkgs=./...
             else
               printf '%s\n' "$changed" | grep -E '\.go$' | xargs -r -n1 dirname | sort -u | sed "s|^|$mod/|; s|/\.$||" > changed.txt
