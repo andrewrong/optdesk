@@ -16,6 +16,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 var _ store.SetupFunc = Setup
@@ -45,6 +46,8 @@ const (
 	roleCandidate = "ot_w_candidate" // INSERT and SELECT on candidates.option_candidate, SELECT on rd.option_candidate_r1 (migrations/0018_candidates.sql)
 
 	roleAccount = "ot_w_account" // INSERT and SELECT on the account tables, SELECT on rd.account_*_r1 (migrations/0019_account.sql)
+
+	roleBar = "ot_w_bar" // INSERT on obs.price_bar and obs.fx_rate, SELECT on rd.price_bar_r1 and rd.fx_rate_r1 (migrations/0021_bars.sql)
 )
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
@@ -65,12 +68,13 @@ var roles = []roleSpec{
 	{roleEvents, store.DSNEnvEvents},           // ot_w_events, line OT_PG_DSN_EVENTS
 	{roleCandidate, store.DSNEnvCandidate},     // ot_w_candidate, line OT_PG_DSN_CANDIDATE
 	{roleAccount, store.DSNEnvAccount},         // ot_w_account, line OT_PG_DSN_ACCOUNT
+	{roleBar, bar.DSNEnvBar},                   // ot_w_bar, line OT_PG_DSN_BAR
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the fourteen roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the fifteen roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -147,7 +151,8 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 	grant := "REVOKE ALL ON DATABASE " + ident(Database) + " FROM PUBLIC; GRANT CONNECT ON DATABASE " + ident(Database) +
 		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader) +
 		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings) + ", " + ident(roleAlerts) +
-		", " + ident(roleFundamental) + ", " + ident(roleEvents) + ", " + ident(roleCandidate) + ", " + ident(roleAccount)
+		", " + ident(roleFundamental) + ", " + ident(roleEvents) + ", " + ident(roleCandidate) + ", " + ident(roleAccount) +
+		", " + ident(roleBar)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}

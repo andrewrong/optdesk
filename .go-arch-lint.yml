@@ -49,6 +49,8 @@ components:
     in: internal/store/alert
   store/bar:
     in: internal/store/bar
+  store/barpg:
+    in: internal/store/barpg
   store/candidate:
     in: internal/store/candidate
   store/events:
@@ -261,6 +263,14 @@ deps:
       - contracts
       - gaphistory
       - store
+      - store/ownerset
+      - contracts/genpb
+  store/barpg:
+    mayDependOn:
+      - contracts
+      - gaphistory
+      - store
+      - store/bar
       - store/ownerset
       - contracts/genpb
   store/candidate:
@@ -822,6 +832,7 @@ deps:
       - jobs/earningsrefresh
       - store/events
       - store/bar
+      - store/barpg
       - store/ownerset
       - compute/settingsapi
   compute/contracttest:
