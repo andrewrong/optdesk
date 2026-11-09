@@ -137,6 +137,8 @@ components:
     in: internal/pages/home_page
   sources/alphavantage:
     in: internal/sources/alphavantage
+  sources/jquants:
+    in: internal/sources/jquants
   store/events:
     in: internal/store/events
   store/fundamental:
@@ -573,6 +575,12 @@ deps:
       - contracts/genpb
       - compute/contracttest
   sources/alphavantage:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - contracts/genpb
+  sources/jquants:
     mayDependOn:
       - contracts
       - clock
