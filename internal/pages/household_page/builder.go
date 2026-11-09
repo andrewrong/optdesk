@@ -23,7 +23,7 @@ const (
 	sessionLookback    = 150 // calendar days of session days to read
 	historyDays        = 90  // session days of the trend
 	staleSessions      = 3   // an input older than this many session days is a stale_input gap
-	markMaxAgeSessions = 5 // LedgerParams default of structures_page; the replay needs it for marks this page never reads
+	markMaxAgeSessions = 5   // LedgerParams default of structures_page; the replay needs it for marks this page never reads
 	staleAfterDays     = 4
 )
 
