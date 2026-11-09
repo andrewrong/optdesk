@@ -235,6 +235,8 @@ const (
 	DSNEnvReadings = "OT_PG_DSN_READINGS"
 	// DSNEnvAlerts names the line that holds the DSN of the role ot_w_alerts.
 	DSNEnvAlerts = "OT_PG_DSN_ALERTS"
+	// DSNEnvFundamental names the line that holds the DSN of the role ot_w_fundamental.
+	DSNEnvFundamental = "OT_PG_DSN_FUNDAMENTAL"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -488,3 +490,30 @@ type ReadingViewReader interface {
 // OpenReadingViewFunc opens the view reader from a DSN of the role ot_ro_pages (the page process)
 // or ot_w_readings (the notify pass of risk-alerts); both hold SELECT on the views (internal/store/reading.OpenView).
 type OpenReadingViewFunc func(ctx context.Context, dsn string) (ReadingViewReader, error)
+
+// FactWriter appends the filed facts of obs.fundamental_fact.
+type FactWriter interface {
+	// InsertFacts inserts the rows ON CONFLICT DO NOTHING on the eight-column key
+	// (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end), so a rerun adds 0 rows.
+	// An absent PeriodStart is stored as period_start_key 0001-01-01 and read back as nil.
+	InsertFacts(ctx context.Context, rows []contracts.FundamentalFact) error
+}
+
+// FactReader reads the facts through the view rd.fundamental_fact_r1.
+type FactReader interface {
+	// FactsFiledBy returns every row of the source and subject with filed on or before cutoff, no winner picked;
+	// none gives an empty slice. The order is unspecified.
+	FactsFiledBy(ctx context.Context, source, subject string, cutoff contracts.Day) ([]contracts.FundamentalFact, error)
+}
+
+// FactStore is one store for both sides: the figures job opens it with the line DSNEnvFundamental
+// (role ot_w_fundamental, INSERT on the table and SELECT on the view), the page with DSNEnvPages
+// (role ot_ro_pages, SELECT on the view only; its InsertFacts fails).
+type FactStore interface {
+	FactWriter
+	FactReader
+	Close() error
+}
+
+// OpenFactStoreFunc opens the fact store (internal/store/fundamental.Open).
+type OpenFactStoreFunc func(ctx context.Context, dsn string) (FactStore, error)

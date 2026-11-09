@@ -111,8 +111,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 10 {
-		t.Fatalf("%d roles, want 10", len(roles))
+	if len(roles) != 11 {
+		t.Fatalf("%d roles, want 11", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -196,4 +196,20 @@ func TestAlertRoleInList(t *testing.T) {
 		}
 	}
 	t.Error("ot_w_alerts is not in the role list")
+}
+
+func TestFundamentalRoleInList(t *testing.T) {
+	t.Parallel()
+	if roleFundamental != "ot_w_fundamental" || store.DSNEnvFundamental != "OT_PG_DSN_FUNDAMENTAL" {
+		t.Fatalf("role %q, line %q", roleFundamental, store.DSNEnvFundamental)
+	}
+	for _, r := range roles {
+		if r.name == roleFundamental {
+			if r.envKey != store.DSNEnvFundamental {
+				t.Errorf("ot_w_fundamental line = %q", r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_fundamental is not in the role list")
 }

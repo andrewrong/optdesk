@@ -97,6 +97,14 @@ Declared in `internal/store/api.go` beside `OpsLedger` (unchanged); tables, view
 - Grants (recorded here, made by migration `0012` in another entry): both views belong to `ot_owner`, which can read `ops`; `SELECT` on both views to `ot_ro_pages` and `ot_runner`. `ot_ro_pages` reads views of `rd` only and has no grant on an `ops` table, as schema v3 says.
 - Constructors: `OpenFenceFunc`, `OpenSchedulerLedgerFunc`, `OpenGapReaderFunc` (the last opens with the line `DSNEnvPages`).
 
+## Fundamental facts
+
+Declared in `internal/store/api.go`: `FactWriter` (`InsertFacts`), `FactReader` (`FactsFiledBy`), `FactStore` (both and `Close`), `OpenFactStoreFunc` and `DSNEnvFundamental` (`OT_PG_DSN_FUNDAMENTAL`). `internal/store/fundamental.Open` is the implementation. Design: `docs/design/valuation.md#Decisions` (6).
+
+- Table `obs.fundamental_fact` (migration `0017`), append only. Key `(source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end)`; `period_start_key` is `NOT NULL` and holds `0001-01-01` for an absent `period_start`, so a repeated instant fact is a duplicate. `InsertFacts` inserts `ON CONFLICT DO NOTHING` on that key in one transaction: a rerun adds 0 rows.
+- View `rd.fundamental_fact_r1` returns `period_start` as NULL again for `0001-01-01`. `FactsFiledBy(ctx, source, subject, cutoff)` reads the view only and returns every row of the source and subject with `filed` on or before the cutoff, no winner picked; none gives an empty slice; a bad cutoff is `Permanent`, a database error `Retryable`.
+- Grants: `ot_w_fundamental` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_FUNDAMENTAL`) has `INSERT` on the table and `SELECT` on the view; `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role has UPDATE, DELETE or TRUNCATE. One implementation serves the figures job (opened with `DSNEnvFundamental`) and the page (opened with `DSNEnvPages`).
+
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.

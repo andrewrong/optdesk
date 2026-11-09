@@ -125,6 +125,8 @@ components:
     in: internal/pages/gaps
   pages/home_page:
     in: internal/pages/home_page
+  store/fundamental:
+    in: internal/store/fundamental
   store/migrate:
     in: internal/store/migrate
 deps:
@@ -515,6 +517,11 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  store/fundamental:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
   store/migrate:
     mayDependOn:
       - contracts
