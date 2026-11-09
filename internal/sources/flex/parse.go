@@ -134,6 +134,9 @@ func parseReport(body []byte) ([]sources.FlexStatement, error) {
 	for {
 		tok, err := d.Token()
 		if errors.Is(err, io.EOF) {
+			if err := fillSections(body, out); err != nil {
+				return nil, err
+			}
 			return out, nil
 		}
 		if err != nil {
