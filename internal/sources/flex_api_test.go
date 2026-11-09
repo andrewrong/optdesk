@@ -98,3 +98,23 @@ func TestFlexFileLoaderContract(t *testing.T) {
 		t.Fatalf("bad: %v", err)
 	}
 }
+
+func TestFlexFileRequiredLoginContract(t *testing.T) {
+	t.Parallel()
+	load := sources.LoadFlexFileFunc(func(string) (sources.FlexFile, error) {
+		return sources.FlexFile{
+			Logins: []sources.FlexLogin{
+				{Name: "main", TokenEnv: "TOK_MAIN", TradeQueries: []string{"1"}, Required: true},
+				{Name: "second", TokenEnv: "TOK_2", TradeQueries: []string{"2"}},
+			},
+			Accounts: []sources.FlexAccount{{Alias: "a", AccountEnv: "ACC_A"}},
+		}, nil
+	})
+	f, err := load("ok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.Logins[0].Required || f.Logins[1].Required {
+		t.Fatalf("required flags: %+v", f.Logins)
+	}
+}

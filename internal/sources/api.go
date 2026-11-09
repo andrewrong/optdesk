@@ -84,10 +84,13 @@ type FlexFile struct {
 }
 
 // FlexLogin is one [[login]] entry. TokenEnv is the NAME of the variable that holds the token.
+// Required is the `required` key (default false): the login that serves the main account; the loader refuses a file with
+// no required login or with more than one.
 type FlexLogin struct {
 	Name         string
 	TokenEnv     string
 	TradeQueries []string
+	Required     bool
 }
 
 // FlexAccount is one [[account]] entry. AccountEnv is the NAME of the variable that holds the account number.
