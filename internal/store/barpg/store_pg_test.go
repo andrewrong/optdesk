@@ -6,9 +6,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"net"
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -20,26 +22,42 @@ import (
 
 const rolePassword = "pg-test-only"
 
+// connURL builds the URL of database dbname on the server the libpq variables (PGHOST, PGPORT, PGUSER, PGPASSWORD,
+// PGSSLMODE) name; pgx reads them itself, so no variable is read here. user "" is the administrator.
 func connURL(t *testing.T, dbname, user string) string {
 	t.Helper()
-	for _, v := range []string{"PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGDATABASE"} {
-		if os.Getenv(v) == "" {
-			t.Fatalf("missing environment variable %s", v)
-		}
+	cfg, err := pgx.ParseConfig("")
+	if err != nil {
+		t.Fatalf("read libpq environment: %v", err)
+	}
+	if cfg.Host == "" || cfg.User == "" {
+		t.Fatal("PGHOST and PGUSER name no server")
 	}
 	u := url.URL{
 		Scheme: "postgres",
-		User:   url.UserPassword(os.Getenv("PGUSER"), os.Getenv("PGPASSWORD")),
-		Host:   os.Getenv("PGHOST") + ":" + os.Getenv("PGPORT"),
+		User:   url.UserPassword(cfg.User, cfg.Password),
+		Host:   net.JoinHostPort(cfg.Host, strconv.Itoa(int(cfg.Port))),
 		Path:   "/" + dbname,
 	}
 	if user != "" {
 		u.User = url.UserPassword(user, rolePassword)
 	}
-	if m := os.Getenv("PGSSLMODE"); m != "" {
-		u.RawQuery = url.Values{"sslmode": {m}}.Encode()
+	mode := "disable"
+	if cfg.TLSConfig != nil {
+		mode = "prefer"
 	}
+	u.RawQuery = url.Values{"sslmode": {mode}}.Encode()
 	return u.String()
+}
+
+// adminDatabase is the database the administrator connects to (PGDATABASE).
+func adminDatabase(t *testing.T) string {
+	t.Helper()
+	cfg, err := pgx.ParseConfig("")
+	if err != nil || cfg.Database == "" {
+		t.Fatalf("PGDATABASE names no database: %v", err)
+	}
+	return cfg.Database
 }
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
@@ -48,7 +66,7 @@ var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, connURL(t, os.Getenv("PGDATABASE"), ""))
+	admin, err := pgx.Connect(ctx, connURL(t, adminDatabase(t), ""))
 	if err != nil {
 		t.Fatalf("connect admin: %v", err)
 	}

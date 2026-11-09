@@ -1,3 +1,7 @@
+// Package barpg is the bar store over pgx for the DSN line OT_PG_DSN_BAR (role ot_w_bar): the writer of obs.price_bar
+// and obs.fx_rate, insert-only, and the reader of the views rd.price_bar_r1 and rd.fx_rate_r1
+// (docs/design/market-bars.md Decisions 4 and 8). It imports contracts and not internal/store/bar: its test asserts
+// that *Store satisfies bar.BarStore. No statement of this package changes or removes a row.
 package barpg
 
 import (
@@ -63,19 +67,17 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 // Close releases the connections.
 func (s *Store) Close() error { return s.db.Close() }
 
-// InsertPriceBars writes the rows in one transaction (all or none) and returns the number inserted; a key that
-// exists adds none. An empty input makes no database call.
-func (s *Store) InsertPriceBars(ctx context.Context, rows []contracts.PriceBar) (int, error) {
+// insertAll runs one statement per row in one transaction (all or none) and returns the rows added. An empty input
+// makes no database call.
+func insertAll[R any](ctx context.Context, db database, sql string, rows []R, argsOf func(R) []any, what string) (int, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
 	inserted := 0
-	err := s.db.InTx(ctx, func(tx execer) error {
+	err := db.InTx(ctx, func(tx execer) error {
 		inserted = 0
 		for _, r := range rows {
-			n, err := tx.Exec(ctx, insertPriceBarSQL, int64(r.InstrumentID), r.SessionDay.Format(time.DateOnly),
-				string(r.Basis), int32(r.AdjustEpoch), r.Open, r.High, r.Low, r.Close, r.Volume, r.Currency,
-				string(r.Source), r.ReceivedAt)
+			n, err := tx.Exec(ctx, sql, argsOf(r)...)
 			if err != nil {
 				return err
 			}
@@ -84,34 +86,26 @@ func (s *Store) InsertPriceBars(ctx context.Context, rows []contracts.PriceBar) 
 		return nil
 	})
 	if err != nil {
-		return 0, wrap(err, "insert price bars")
+		return 0, wrap(err, what)
 	}
 	return inserted, nil
+}
+
+// InsertPriceBars writes the rows in one transaction (all or none) and returns the number inserted; a key that
+// exists adds none. An empty input makes no database call.
+func (s *Store) InsertPriceBars(ctx context.Context, rows []contracts.PriceBar) (int, error) {
+	return insertAll(ctx, s.db, insertPriceBarSQL, rows, func(r contracts.PriceBar) []any {
+		return []any{int64(r.InstrumentID), r.SessionDay.Format(time.DateOnly), string(r.Basis), int32(r.AdjustEpoch),
+			r.Open, r.High, r.Low, r.Close, r.Volume, r.Currency, string(r.Source), r.ReceivedAt}
+	}, "insert price bars")
 }
 
 // InsertFxRates writes the rows in one transaction and returns the number inserted; a key that exists adds none.
 // An empty input makes no database call.
 func (s *Store) InsertFxRates(ctx context.Context, rows []contracts.FxRate) (int, error) {
-	if len(rows) == 0 {
-		return 0, nil
-	}
-	inserted := 0
-	err := s.db.InTx(ctx, func(tx execer) error {
-		inserted = 0
-		for _, r := range rows {
-			n, err := tx.Exec(ctx, insertFxRateSQL, r.Pair, r.RateDay.Format(time.DateOnly), r.Rate,
-				string(r.Source), r.ReceivedAt)
-			if err != nil {
-				return err
-			}
-			inserted += int(n)
-		}
-		return nil
-	})
-	if err != nil {
-		return 0, wrap(err, "insert fx rates")
-	}
-	return inserted, nil
+	return insertAll(ctx, s.db, insertFxRateSQL, rows, func(r contracts.FxRate) []any {
+		return []any{r.Pair, r.RateDay.Format(time.DateOnly), r.Rate, string(r.Source), r.ReceivedAt}
+	}, "insert fx rates")
 }
 
 // wrap makes a database error Retryable and keeps a typed error as it is.
