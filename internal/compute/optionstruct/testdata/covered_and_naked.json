@@ -1,0 +1,13 @@
+{"cases":[
+{"name":"covered","cycles":[{"CycleID":"c1","Alias":"acct","Underlying":"AAPL","Currency":"USD","Shares":"100","CostBasisPerShare":"80"}],
+ "positions":[{"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"90","Quantity":"-1","OpenPrice":"2.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[{"kind":"covered_call","id":"acct:c1"}],"other":[]},
+{"name":"naked","cycles":[],
+ "positions":[{"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"90","Quantity":"-1","OpenPrice":"2.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[{"kind":"naked_call","id":"acct:c1"}],"other":[]},
+{"name":"first_in_first_out","cycles":[{"CycleID":"c1","Alias":"acct","Underlying":"AAPL","Currency":"USD","Shares":"100","CostBasisPerShare":"80"}],
+ "positions":[
+  {"PositionID":"c2","Right":"C","Expiry":"2026-12-18","Strike":"95","Quantity":"-1","OpenPrice":"1.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-02-02"},
+  {"PositionID":"c1","Right":"C","Expiry":"2026-12-18","Strike":"90","Quantity":"-1","OpenPrice":"2.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[{"kind":"covered_call","id":"acct:c1"},{"kind":"naked_call","id":"acct:c2"}],"other":[]}
+]}

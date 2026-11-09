@@ -1,0 +1,17 @@
+{"cases":[
+{"name":"put_spread","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"-1","OpenPrice":"1.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"1","OpenPrice":"0.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[{"kind":"put_spread","id":"acct:b1"}],"other":[]},
+{"name":"call_spread","positions":[
+ {"PositionID":"s1","Right":"C","Expiry":"2026-12-18","Strike":"100","Quantity":"-2","OpenPrice":"2.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"C","Expiry":"2026-12-18","Strike":"105","Quantity":"2","OpenPrice":"0.80","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[{"kind":"call_spread","id":"acct:s1"}],"other":[]},
+{"name":"short_put","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"90","Quantity":"-1","OpenPrice":"3.00","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[{"kind":"short_put","id":"acct:s1"}],"other":[]},
+{"name":"put_debit_spread","positions":[
+ {"PositionID":"s1","Right":"P","Expiry":"2026-12-18","Strike":"45","Quantity":"-1","OpenPrice":"0.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"},
+ {"PositionID":"b1","Right":"P","Expiry":"2026-12-18","Strike":"50","Quantity":"1","OpenPrice":"1.50","Alias":"acct","Underlying":"AAPL","Currency":"USD","Multiplier":"100","Status":"open","OpenedOn":"2026-01-02","MarkStatus":"no_mark"}],
+ "structures":[],"other":[{"kind":"other","id":"acct:s1"}]}
+]}
