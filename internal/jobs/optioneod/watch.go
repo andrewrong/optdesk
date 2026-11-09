@@ -38,6 +38,40 @@ func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionE
 	return j, nil
 }
 
+// NewWithWatchWindow behaves as NewWithWatch and then replaces min_dte, max_dte and max_strikes of the
+// manifest with each non-zero field of win; a zero field keeps the manifest value. A window that breaks the
+// manifest rule (min_dte above max_dte) gives the error the manifest validation gives.
+func NewWithWatchWindow(
+	b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
+	win jobs.OptionEodWindow, clk clock.Clock,
+) (contracts.Job, error) {
+	if b == nil || res == nil || w == nil || clk == nil {
+		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")
+	}
+	j, err := build(manifestBytes, b, res, w, clk)
+	if err != nil {
+		return nil, err
+	}
+	us, buy, err := watchUnderlyings(watch)
+	if err != nil {
+		return nil, err
+	}
+	j.m.Underlying, j.m.buy = us, buy
+	if win.MinDTE != 0 {
+		j.m.MinDTE = win.MinDTE
+	}
+	if win.MaxDTE != 0 {
+		j.m.MaxDTE = win.MaxDTE
+	}
+	if win.MaxStrikes != 0 {
+		j.m.MaxStrikes = win.MaxStrikes
+	}
+	if err := j.m.validate(); err != nil {
+		return nil, err
+	}
+	return j, nil
+}
+
 // watchUnderlyings keeps the US stock entries, sorted by symbol, and the BuyPrice text of those that have one.
 func watchUnderlyings(watch []jobs.WatchEntry) ([]underlying, map[string]string, error) {
 	var out []underlying

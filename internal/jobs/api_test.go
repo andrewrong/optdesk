@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -619,5 +620,22 @@ func TestOptionCandidatesJobFuncContract(t *testing.T) {
 	}
 	if _, err := f(jobs.CandidateStores{}, nil, []jobs.WatchEntry{{Issuer: "cik:0000000001"}}, nil); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestOptionEodWindowContract(t *testing.T) {
+	t.Parallel()
+	var zero jobs.OptionEodWindow
+	if zero.MinDTE != 0 || zero.MaxDTE != 0 || zero.MaxStrikes != 0 {
+		t.Fatal("the zero window keeps the manifest")
+	}
+	w := jobs.OptionEodWindow{MinDTE: 21, MaxDTE: 45, MaxStrikes: 24}
+	var f jobs.NewOptionEodWatchWindowFunc = func(
+		broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, jobs.OptionEodWindow, clock.Clock,
+	) (contracts.Job, error) {
+		return nil, errors.New(strconv.Itoa(w.MinDTE))
+	}
+	if _, err := f(nil, nil, nil, nil, w, nil); err == nil || err.Error() != "21" {
+		t.Fatalf("the window is the fifth argument, got %v", err)
 	}
 }
