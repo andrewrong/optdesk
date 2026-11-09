@@ -557,7 +557,9 @@ func TestOptionEodWatchFuncOrder(t *testing.T) {
 
 func TestImportAccountFuncContract(t *testing.T) {
 	t.Parallel()
-	var imp jobs.ImportAccountFunc = func(_ context.Context, r io.Reader, _ store.AccountStore, m map[string]string, through contracts.Day) (jobs.ImportResult, error) {
+	var imp jobs.ImportAccountFunc = func(
+		_ context.Context, r io.Reader, _ store.AccountStore, m map[string]string, through contracts.Day,
+	) (jobs.ImportResult, error) {
 		b, err := io.ReadAll(r)
 		if err != nil {
 			return jobs.ImportResult{}, err
