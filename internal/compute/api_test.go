@@ -706,3 +706,56 @@ func TestLedgerPositionTerms(t *testing.T) {
 		t.Fatalf("terms %+v", p)
 	}
 }
+
+type fakeNotices struct {
+	in  *compute.NoticeInput
+	par *compute.NoticeParams
+	out compute.NoticeResult
+}
+
+func (f fakeNotices) Evaluate(i compute.NoticeInput, p compute.NoticeParams) compute.NoticeResult {
+	*f.in, *f.par = i, p
+	return f.out
+}
+
+var _ compute.OptionNotices = fakeNotices{}
+
+func TestOptionNoticesContract(t *testing.T) {
+	t.Parallel()
+	want := compute.NoticeResult{
+		RuleVersion: 1,
+		Notices: []compute.Notice{{
+			Code: "expiry_near", Severity: "warn", Symbol: "AAPL", Contract: "AAPL 20260220 P 150", Expiry: "2026-02-20",
+			Facts: []compute.NoticeFact{{Label: "days", Value: "3"}},
+		}},
+		CashByDate: []compute.CashDay{{Day: "2026-02-20", Currency: "USD", Amount: "15000.0000"}},
+		Cushion:    "0.1200",
+	}
+	var in compute.NoticeInput
+	var par compute.NoticeParams
+	var newFn compute.NewOptionNoticesFunc = func() compute.OptionNotices { return fakeNotices{in: &in, par: &par, out: want} }
+	next := contracts.Day("2026-02-10")
+	pos := compute.NoticePosition{
+		Symbol: "AAPL", SecType: "OPT", Expiry: "2026-02-20", Strike: "150", Right: "P",
+		Multiplier: "100", Quantity: "-1", Currency: "USD",
+	}
+	sent := compute.NoticeInput{
+		Day: "2026-02-17", Alias: "main", CaptureDay: "2026-02-17",
+		Positions: []compute.NoticePosition{pos}, PrevDay: "2026-02-13", PrevPositions: []compute.NoticePosition{pos},
+		Guards:   []compute.NoticeGuard{{Symbol: "AAPL", Expiry: "2026-02-20", Strike: "150", Status: "blocked", Reasons: []string{"earnings"}}},
+		Earnings: []compute.NoticeEarnings{{Symbol: "AAPL", Next: &next}},
+		Values:   []compute.NoticeValue{{Tag: "Cushion", Value: "0.12", Currency: "USD"}},
+	}
+	sentPar := compute.NoticeParams{ExpiryDays: 5, CushionWarn: "0.15", CushionAct: "0.05"}
+	res := newFn().Evaluate(sent, sentPar)
+	if !reflect.DeepEqual(in, sent) || par != sentPar {
+		t.Fatalf("rule saw %+v %+v", in, par)
+	}
+	if !reflect.DeepEqual(res, want) {
+		t.Fatalf("caller read %+v", res)
+	}
+	var def compute.DefaultNoticeParamsFunc = func() compute.NoticeParams { return sentPar }
+	if def() != sentPar {
+		t.Fatalf("params %+v", def())
+	}
+}

@@ -1123,6 +1123,83 @@ func (j *FundamentalFact) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// obs.fx_rate r1: the midpoint rate of one currency pair on one day; insert only.
+type FxRate struct {
+	// Currency pair as six capitals, base then quote, for example USDJPY.
+	Pair string `json:"pair" yaml:"pair" mapstructure:"pair"`
+
+	// Positive rate as decimal text: units of the quote currency for one unit of the
+	// base.
+	Rate string `json:"rate" yaml:"rate" mapstructure:"rate"`
+
+	// Day the rate is for.
+	RateDay types.SerializableDate `json:"rate_day" yaml:"rate_day" mapstructure:"rate_day"`
+
+	// Instant the row was received, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Where the rate came from.
+	Source FxRateSource `json:"source" yaml:"source" mapstructure:"source"`
+}
+
+type FxRateSource string
+
+const FxRateSourceIbkrMidpoint FxRateSource = "ibkr_midpoint"
+
+var enumValues_FxRateSource = []interface{}{
+	"ibkr_midpoint",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FxRateSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FxRateSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FxRateSource, v)
+	}
+	*j = FxRateSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FxRate) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["pair"]; raw != nil && !ok {
+		return fmt.Errorf("field pair in FxRate: required")
+	}
+	if _, ok := raw["rate"]; raw != nil && !ok {
+		return fmt.Errorf("field rate in FxRate: required")
+	}
+	if _, ok := raw["rate_day"]; raw != nil && !ok {
+		return fmt.Errorf("field rate_day in FxRate: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in FxRate: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in FxRate: required")
+	}
+	type Plain FxRate
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = FxRate(plain)
+	return nil
+}
+
 // candidates.option_candidate r1: one evaluated option candidate of one run, with
 // its gates; insert only, a rerun is a new run_id.
 type OptionCandidate struct {
@@ -1664,6 +1741,161 @@ func (j *OptionEod) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*j = OptionEod(plain)
+	return nil
+}
+
+// obs.price_bar r1: one daily bar of one instrument under one basis; a restated
+// day is a new adjust_epoch row, an existing row is never changed.
+type PriceBar struct {
+	// Epoch of the pull, from 1; a restated day is written again under the next
+	// epoch, and readers take the highest epoch of an instrument and basis.
+	AdjustEpoch int `json:"adjust_epoch" yaml:"adjust_epoch" mapstructure:"adjust_epoch"`
+
+	// trades: traded prices as printed; adjusted_last: last prices adjusted for
+	// splits and dividends.
+	Basis PriceBarBasis `json:"basis" yaml:"basis" mapstructure:"basis"`
+
+	// Closing price as decimal text.
+	Close string `json:"close" yaml:"close" mapstructure:"close"`
+
+	// Currency code of the prices, for example USD.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Highest price as decimal text.
+	High string `json:"high" yaml:"high" mapstructure:"high"`
+
+	// Instrument the bar belongs to.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// Lowest price as decimal text.
+	Low string `json:"low" yaml:"low" mapstructure:"low"`
+
+	// Opening price as decimal text.
+	Open string `json:"open" yaml:"open" mapstructure:"open"`
+
+	// Instant the row was received, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Session day the bar covers.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Where the row came from.
+	Source PriceBarSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// Volume as decimal text; null when the source gives none (adjusted_last rows).
+	// The key is always present.
+	Volume *string `json:"volume" yaml:"volume" mapstructure:"volume"`
+}
+
+type PriceBarBasis string
+
+const PriceBarBasisAdjustedLast PriceBarBasis = "adjusted_last"
+const PriceBarBasisTrades PriceBarBasis = "trades"
+
+var enumValues_PriceBarBasis = []interface{}{
+	"trades",
+	"adjusted_last",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PriceBarBasis) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_PriceBarBasis {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_PriceBarBasis, v)
+	}
+	*j = PriceBarBasis(v)
+	return nil
+}
+
+type PriceBarSource string
+
+const PriceBarSourceIbkr PriceBarSource = "ibkr"
+
+var enumValues_PriceBarSource = []interface{}{
+	"ibkr",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PriceBarSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_PriceBarSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_PriceBarSource, v)
+	}
+	*j = PriceBarSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PriceBar) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["adjust_epoch"]; raw != nil && !ok {
+		return fmt.Errorf("field adjust_epoch in PriceBar: required")
+	}
+	if _, ok := raw["basis"]; raw != nil && !ok {
+		return fmt.Errorf("field basis in PriceBar: required")
+	}
+	if _, ok := raw["close"]; raw != nil && !ok {
+		return fmt.Errorf("field close in PriceBar: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in PriceBar: required")
+	}
+	if _, ok := raw["high"]; raw != nil && !ok {
+		return fmt.Errorf("field high in PriceBar: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in PriceBar: required")
+	}
+	if _, ok := raw["low"]; raw != nil && !ok {
+		return fmt.Errorf("field low in PriceBar: required")
+	}
+	if _, ok := raw["open"]; raw != nil && !ok {
+		return fmt.Errorf("field open in PriceBar: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in PriceBar: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in PriceBar: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in PriceBar: required")
+	}
+	if _, ok := raw["volume"]; raw != nil && !ok {
+		return fmt.Errorf("field volume in PriceBar: required")
+	}
+	type Plain PriceBar
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Currency) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "currency", 1)
+	}
+	*j = PriceBar(plain)
 	return nil
 }
 

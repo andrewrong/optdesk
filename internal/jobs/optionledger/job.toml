@@ -1,0 +1,15 @@
+# Manifest of the option_ledger job (docs/design/option-ledger.md, Decisions 4 and 15).
+version = 1
+id = "option_ledger"
+# First day fetched for a query with no stored ok fetch, or when an allow-listed account has no stored row.
+history_from = "2025-12-01"
+# Age in session days after which a mark is no longer used by the figures (read by the ledger reader, not by this job).
+mark_max_age_sessions = 5
+
+# Flex statements are produced after the close.
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "60m"
+run_bound = "30m"
+restart_sensitive = false

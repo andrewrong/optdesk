@@ -1,0 +1,497 @@
+{
+  "$defs": {
+    "ConfirmRow": {
+      "additionalProperties": false,
+      "description": "One change of the preview: the label and the old and new value as text.",
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "new": {
+          "maxLength": 200,
+          "title": "New",
+          "type": "string"
+        },
+        "old": {
+          "maxLength": 200,
+          "title": "Old",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "old",
+        "new"
+      ],
+      "title": "ConfirmRow",
+      "type": "object"
+    },
+    "Gap": {
+      "additionalProperties": false,
+      "description": "A named data gap, used in place of a figure that cannot be computed. Never a zero.",
+      "properties": {
+        "reason": {
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "text"
+      ],
+      "title": "Gap",
+      "type": "object"
+    },
+    "HistoryRow": {
+      "additionalProperties": false,
+      "description": "One past change, newest first. key or instrument_id and value let the view post a revert.",
+      "properties": {
+        "at": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "At",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "excluded": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Excluded"
+        },
+        "instrument_id": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Instrument Id"
+        },
+        "key": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z_]{1,48}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Key"
+        },
+        "kind": {
+          "enum": [
+            "param",
+            "exclusion"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 200,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "kind",
+        "name",
+        "value",
+        "key",
+        "instrument_id",
+        "excluded"
+      ],
+      "title": "HistoryRow",
+      "type": "object"
+    },
+    "OptionExclusionRow": {
+      "additionalProperties": false,
+      "description": "``instrument_id`` is the master id the form posts; ``excluded`` the current flag.",
+      "properties": {
+        "excluded": {
+          "title": "Excluded",
+          "type": "boolean"
+        },
+        "instrument_id": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "title": "Instrument Id",
+          "type": "integer"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        }
+      },
+      "required": [
+        "instrument_id",
+        "symbol",
+        "excluded"
+      ],
+      "title": "OptionExclusionRow",
+      "type": "object"
+    },
+    "ParamRow": {
+      "additionalProperties": false,
+      "description": "One owner parameter, all text. An empty value means the default is in force.",
+      "properties": {
+        "default": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Default",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z_]{1,48}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "int",
+            "decimal"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "max": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Max",
+          "type": "string"
+        },
+        "min": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Min",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 200,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 40,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "unit",
+        "kind",
+        "value",
+        "default",
+        "min",
+        "max"
+      ],
+      "title": "ParamRow",
+      "type": "object"
+    },
+    "SettingsConfirm": {
+      "additionalProperties": false,
+      "description": "The preview answer: the rows to confirm and the form whose token carries the confirm=1 post.",
+      "properties": {
+        "form": {
+          "$ref": "#/$defs/SettingsForm"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/ConfirmRow"
+          },
+          "maxItems": 1000,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rows",
+        "form"
+      ],
+      "title": "SettingsConfirm",
+      "type": "object"
+    },
+    "SettingsForm": {
+      "additionalProperties": false,
+      "description": "Where the form posts and the token it carries: UTC epoch seconds as digits and the lower-case hex MAC.",
+      "properties": {
+        "expires": {
+          "pattern": "^[0-9]{1,12}$",
+          "title": "Expires",
+          "type": "string"
+        },
+        "mac": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Mac",
+          "type": "string"
+        },
+        "post_path": {
+          "const": "/owner-settings",
+          "title": "Post Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "post_path",
+        "expires",
+        "mac"
+      ],
+      "title": "SettingsForm",
+      "type": "object"
+    },
+    "SettingsNotice": {
+      "additionalProperties": false,
+      "description": "The result line after a post.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "saved",
+            "nothing_changed",
+            "error"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "text"
+      ],
+      "title": "SettingsNotice",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.settings_page.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The owner settings page: parameters, option exclusions, the preview of a change and its history. Read-only when form is null.",
+  "properties": {
+    "as_of": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "As Of",
+      "type": "string"
+    },
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "confirm": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SettingsConfirm"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "form": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SettingsForm"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "gap": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Gap"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "history": {
+      "items": {
+        "$ref": "#/$defs/HistoryRow"
+      },
+      "maxItems": 20,
+      "title": "History",
+      "type": "array"
+    },
+    "notice": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SettingsNotice"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "params": {
+      "items": {
+        "$ref": "#/$defs/ParamRow"
+      },
+      "maxItems": 200,
+      "title": "Params",
+      "type": "array"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/OptionExclusionRow"
+      },
+      "maxItems": 1000,
+      "title": "Rows",
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "settings_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "as_of",
+    "rows",
+    "form",
+    "confirm",
+    "history",
+    "params",
+    "notice"
+  ],
+  "title": "SettingsPage",
+  "type": "object"
+}

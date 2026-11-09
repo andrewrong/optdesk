@@ -46,6 +46,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.report_page.v1 | 1 |
 | page.report_page.v2 | 2 |
 | page.settings_page.v1 | 1 |
+| page.settings_page.v2 | 2 |
 | page.stock_option_page.v1 | 1 |
 | page.structure_detail.v1 | 1 |
 | page.structure_detail.v2 | 2 |
