@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-// TestNonTestFilesArePure: the builder copies decimal text; it uses no float, no big number, no sort,
+// TestNoFloatNoSortNoNotify: the builder copies decimal text; it uses no float, no big number, no sort,
 // no notifier, no job, no database and no file access.
-func TestNonTestFilesArePure(t *testing.T) {
+func TestNoFloatNoSortNoNotify(t *testing.T) {
 	t.Parallel()
 	forbiddenImports := []string{"math/big", "sort", "database/sql", "os", "internal/notify", "internal/jobs"}
 	files, err := filepath.Glob("*.go")
