@@ -47,6 +47,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - v6: `internal/pages/market_page`: `Build`, `NewPage` and `Config` write `page.market_page.v1` from stored readings and series points.
 - v7: `internal/pages/option_candidates_page`: `Build` writes `page.option_candidates_page.v1` from `Config.Candidates` (`store.CandidateReader`), once per kind: the build day, else the last day with rows up to 7 days back (a group day before the build day is stale and its rows carry the badge `过期`); `ok` rows go to the main table and `blocked` and `unknown` rows to the second table with their reasons, in the stored order; numeric cells carry `value` as the stored decimal text (`json.Number`); the yield text is shifted two places as text; a kind without rows is the group gap `no_rows`, no stored run the page gap `no_run`, a nil reader `no_reader`. No float, sort, clock or notify.
 - v8: `internal/pages/option_notices_page`: `Build` writes `page.option_notices_page.v1` from `Config.Account` (`store.AccountReader`), `Config.Candidates` and `Config.Earnings` through `Config.Rule`: per alias (`Main` first, then `Aliases`) the latest day with positions up to 7 days back and the one before it, the `held_call_guard` rows of that day and the next listed earnings date of each held option symbol, converted to `compute.NoticeInput` and evaluated with `Config.Params`; one block per alias in the rule's order (status `ok`, `stale` when the data day is older than the build day, or `no_capture` with one note); a missing capture of `Main` is the page gap `no_capture`, a nil reader the gap `no_reader`; a nil `Zone` or `Rule` is an error. Amounts are decimal text with the currency, the cushion text is `Cushion ` plus the rule's text. No float, sort, clock or notify.
+- `internal/pages/candidate_text`: `Format(rows []store.Candidate, all bool) string` is the plain text of stored candidate rows in the stored order: `ok` rows with company, kind, alias, expiry, strike, bid, annualized yield, break-even and marks; with `all` the blocked and unknown rows with the `gate=reason` of each gate that is not a pass; no rows to show gives `no candidates`. Declared in its own package, not in `internal/pages/api.go`: only `cmd/ot` imports it, as wiring. No sort, arithmetic, float or notify.
 
 ## Contract tests
 
@@ -64,6 +65,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `internal/pages/macro_rates/builder_test.go`: `TestBuildGolden`, `TestText`, `TestGapsAndStale`, `TestBuildFixtures`, `TestBuildDemo`, `TestBuildSevenSeries`, `TestBuildErrors`.
 - `internal/pages/embed/inject_test.go`: `TestInjectEscapes`, `TestRenderRejectsBadJSON`, `TestHandlerServesIndex`, `TestHandlerBadViewModel`, `TestHandlerNoBundle500`.
 - `internal/pages/embed/assets_test.go`: `TestAssets`.
+- `internal/pages/candidate_text/format_test.go`: `TestFormatOrderKept`, `TestFormatAllShowsReasons`, `TestFormatEmpty`.
 
 ## Jobs and slots
 
