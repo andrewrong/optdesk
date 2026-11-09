@@ -130,10 +130,6 @@ func TestMarketSiteOpensPagesRoleOnly(t *testing.T) {
 		dsns = append(dsns, d)
 		return cNames{closeCounter: cc}, nil
 	}
-	a.deps.openCandidate = func(_ context.Context, d string) (candidateStore, error) {
-		dsns = append(dsns, d)
-		return cCands{closeCounter: cc}, nil
-	}
 	viewOpens := 0
 	a.deps.openReadingView = func(_ context.Context, d string) (store.ReadingViewReader, error) {
 		viewOpens++

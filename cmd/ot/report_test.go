@@ -147,9 +147,6 @@ func TestReportOpensPagesRoleOnly(t *testing.T) {
 		a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
 			return cNames{closeCounter: closeCounter{&other}}, nil
 		}
-		a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
-			return cCands{closeCounter: closeCounter{&other}}, nil
-		}
 		rd, closeFn, err := openSiteReaders(t.Context(), a)
 		if err != nil {
 			t.Fatal(err)

@@ -119,9 +119,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !track(view, err) {
 		return fail()
 	}
-	cands, err := a.deps.openCandidate(ctx, dsn)
-	if !track(cands, err) {
-		return fail()
+	var cands store.CandidateReader // no opener in deps: no reader, the page shows its gap no_reader
+	if a.deps.openCandidate != nil {
+		cs, err := a.deps.openCandidate(ctx, dsn)
+		if !track(cs, err) {
+			return fail()
+		}
+		cands = cs
 	}
 	return siteReaders{ser, eod, quotes, catalog, terms, names, view, cands}, closeAll, nil
 }
