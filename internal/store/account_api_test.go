@@ -86,8 +86,11 @@ func TestAccountStoreContract(t *testing.T) {
 	at := time.Date(2026, 11, 9, 21, 0, 0, 0, time.UTC)
 	c := store.Capture{
 		ID: "a:2026-11-09:run1", Alias: "a", At: at, SessionDay: "2026-11-09", Status: "ok",
-		Values:    []store.AccountValue{{Tag: "NetLiquidation", Value: "100000.50", Currency: "USD"}, {Tag: "Cushion", Value: "0.8", Currency: "USD"}},
-		Positions: []store.Position{{Symbol: "SPY", SecType: "STK", Quantity: "10", AvgCost: "500.25"}, {Symbol: "AAPL", SecType: "STK", Quantity: "5", AvgCost: "200"}},
+		Values: []store.AccountValue{{Tag: "NetLiquidation", Value: "100000.50", Currency: "USD"}, {Tag: "Cushion", Value: "0.8", Currency: "USD"}},
+		Positions: []store.Position{
+			{Symbol: "SPY", SecType: "STK", Quantity: "10", AvgCost: "500.25"},
+			{Symbol: "AAPL", SecType: "STK", Quantity: "5", AvgCost: "200"},
+		},
 	}
 	if err := s.WriteCapture(ctx, c); err != nil {
 		t.Fatal(err)

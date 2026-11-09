@@ -702,9 +702,8 @@ type OptionLedgerStore interface {
 // OpenOptionLedgerFunc opens the option ledger store (internal/store/optionledger.Open).
 type OpenOptionLedgerFunc func(ctx context.Context, dsn string) (OptionLedgerStore, error)
 
-// Position is one row of account.position r1: the columns of the dataset as plain text and numbers, decimals as
-// text. CaptureID, Alias, CapturedAt and SessionDay repeat the Capture the row belongs to; the Reader fills
-// them, WriteCapture takes them from the Capture and ignores them here.
+// Position is one row of account.position r1, decimals as text. The first four fields repeat the Capture: the
+// Reader fills them, WriteCapture ignores them.
 type Position struct {
 	CaptureID  string
 	Alias      string
@@ -723,8 +722,7 @@ type Position struct {
 	AvgCost    string // decimal text
 }
 
-// AccountValue is one row of account.value r1 (a summary tag such as NetLiquidation), decimals as text. The
-// first four fields repeat the Capture as in Position.
+// AccountValue is one row of account.value r1 (a summary tag), decimals as text; the first four fields as in Position.
 type AccountValue struct {
 	CaptureID  string
 	Alias      string
@@ -735,8 +733,8 @@ type AccountValue struct {
 	Currency   string
 }
 
-// Execution is one row of account.execution r1, decimals as text. The key is (Alias, ExecID). The Reader
-// fills Alias; WriteExecutions takes the alias from its argument.
+// Execution is one row of account.execution r1, decimals as text, key (Alias, ExecID); WriteExecutions takes the alias
+// from its argument.
 type Execution struct {
 	Alias              string
 	ExecID             string
@@ -757,10 +755,8 @@ type Execution struct {
 	CommissionCurrency string
 }
 
-// Capture is one capture of one alias: the row of account.capture r1 with its children. ID is
-// <alias>:<session_day>:<run key> of the scheduler run, so a retry of a run carries the same ID. Status is the
-// word of the capture (ok, or a partial status the job names). Values and Positions are the children; a kind
-// the gateway does not collect is left nil, and a collected kind with no row is an empty slice.
+// Capture is a row of account.capture r1 with its children. ID is <alias>:<session_day>:<run key>, so a retry of a
+// run carries the same ID. A kind the gateway does not collect is nil; a collected kind with no row is empty.
 type Capture struct {
 	ID         string
 	Alias      string
@@ -771,27 +767,23 @@ type Capture struct {
 	Positions  []Position
 }
 
-// AccountWriter writes the account datasets (role ot_w_account, line DSNEnvAccount), insert-only: no row is
-// ever updated or deleted.
+// AccountWriter writes the account datasets (role ot_w_account, line DSNEnvAccount), insert-only.
 type AccountWriter interface {
 	// WriteCapture writes the capture and its children in one transaction. A capture whose ID exists writes
 	// nothing, children included, and returns no error. A database error is Retryable.
 	WriteCapture(ctx context.Context, c Capture) error
-	// WriteExecutions inserts the rows under alias, ON CONFLICT DO NOTHING on (alias, exec_id): a key that
-	// exists stays as it is, so a repeated call adds nothing.
+	// WriteExecutions inserts the rows under alias, ON CONFLICT DO NOTHING on (alias, exec_id).
 	WriteExecutions(ctx context.Context, alias string, rows []Execution) error
 }
 
 // AccountReader reads the account datasets through the views rd.account_*_r1, never the base tables. Every
 // method returns an empty slice, never nil, when there is no row.
 type AccountReader interface {
-	// Positions returns the position rows of the captures of alias on session day day, sorted by key
-	// (capture id, then the order of the dataset's columns).
+	// Positions returns the position rows of alias on session day day, sorted by key.
 	Positions(ctx context.Context, alias, day string) ([]Position, error)
-	// Values returns the value rows of the captures of alias on session day day, sorted by key.
+	// Values returns the value rows of alias on session day day, sorted by key.
 	Values(ctx context.Context, alias, day string) ([]AccountValue, error)
-	// Executions returns the executions of alias with session day from to to, inclusive, sorted by key
-	// (executed_at, then exec_id).
+	// Executions returns the executions of alias with session day from to to, inclusive, sorted by key.
 	Executions(ctx context.Context, alias, from, to string) ([]Execution, error)
 }
 
