@@ -15,8 +15,9 @@ type sectionSpec struct {
 	Element  string
 	Required []string
 	Optional []string
-	// ByLot marks a section whose rows of level LOT are told apart by the optional attributes alone: such a
-	// row with all of them empty is ambiguous and refused.
+	// ByLot marks a section whose rows carry the attribute levelOfDetail (read by that name) and are told
+	// apart at level LOT by the optional attributes alone: such a row with all of them empty is ambiguous
+	// and refused.
 	ByLot bool
 }
 
