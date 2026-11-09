@@ -41,7 +41,10 @@ func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionE
 // NewWithWatchWindow behaves as NewWithWatch and then replaces min_dte, max_dte and max_strikes of the
 // manifest with each non-zero field of win; a zero field keeps the manifest value. A window that breaks the
 // manifest rule (min_dte above max_dte) gives the error the manifest validation gives.
-func NewWithWatchWindow(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry, win jobs.OptionEodWindow, clk clock.Clock) (contracts.Job, error) {
+func NewWithWatchWindow(
+	b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
+	win jobs.OptionEodWindow, clk clock.Clock,
+) (contracts.Job, error) {
 	if b == nil || res == nil || w == nil || clk == nil {
 		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")
 	}
