@@ -673,6 +673,178 @@ func (j *AccountValue) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// obs.dividend_expectation r1: one answer about the expected dividend of one
+// instrument on one day (IBKR generic tick 456); append only, an error is a row
+// and a later success is a new attempt. IBKR does not say declared or projected,
+// so every ex-date is projected.
+type DividendExpectation struct {
+	// Attempt number of the day, from 1; a later attempt never replaces an earlier
+	// row.
+	Attempt int `json:"attempt" yaml:"attempt" mapstructure:"attempt"`
+
+	// Currency of the contract asked, not a claim of the tick; empty when none.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Error code when status is error; empty otherwise.
+	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Instrument (IBKR contract id) the row answers for.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// The issuer text of the watch list: cik:<10 digits>, or edinet:<code>.
+	Issuer string `json:"issuer" yaml:"issuer" mapstructure:"issuer"`
+
+	// Dividends per share expected in the next 12 months as decimal text; null when
+	// the tick gave none.
+	Next12M *string `json:"next_12m" yaml:"next_12m" mapstructure:"next_12m"`
+
+	// Next dividend per share as decimal text; null unless status is present. The key
+	// is always present.
+	NextAmount *string `json:"next_amount" yaml:"next_amount" mapstructure:"next_amount"`
+
+	// Next ex-dividend date, projected; null unless status is present. The key is
+	// always present.
+	NextExDate *types.SerializableDate `json:"next_ex_date" yaml:"next_ex_date" mapstructure:"next_ex_date"`
+
+	// Dividends per share of the past 12 months as decimal text; null when the tick
+	// gave none.
+	Past12M *string `json:"past_12m" yaml:"past_12m" mapstructure:"past_12m"`
+
+	// Instant the row was produced, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Session day (XNYS) the row answers for.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Where the row came from; none is a status unsupported row, since no source
+	// produced it. Never null.
+	Source DividendExpectationSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// present: the tick gave a parsable next ex-date and amount; no_value: the tick
+	// gave none (a non-payer or no answer in time); unsupported: the market failed
+	// its probe and is not asked; error: the request failed. Only present carries
+	// next_ex_date and next_amount.
+	Status DividendExpectationStatus `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+type DividendExpectationSource string
+
+const DividendExpectationSourceIbkrTick456 DividendExpectationSource = "ibkr_tick_456"
+const DividendExpectationSourceNone DividendExpectationSource = "none"
+
+var enumValues_DividendExpectationSource = []interface{}{
+	"ibkr_tick_456",
+	"none",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DividendExpectationSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_DividendExpectationSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_DividendExpectationSource, v)
+	}
+	*j = DividendExpectationSource(v)
+	return nil
+}
+
+type DividendExpectationStatus string
+
+const DividendExpectationStatusError DividendExpectationStatus = "error"
+const DividendExpectationStatusNoValue DividendExpectationStatus = "no_value"
+const DividendExpectationStatusPresent DividendExpectationStatus = "present"
+const DividendExpectationStatusUnsupported DividendExpectationStatus = "unsupported"
+
+var enumValues_DividendExpectationStatus = []interface{}{
+	"present",
+	"no_value",
+	"unsupported",
+	"error",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DividendExpectationStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_DividendExpectationStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_DividendExpectationStatus, v)
+	}
+	*j = DividendExpectationStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DividendExpectation) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["attempt"]; raw != nil && !ok {
+		return fmt.Errorf("field attempt in DividendExpectation: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in DividendExpectation: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in DividendExpectation: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in DividendExpectation: required")
+	}
+	if _, ok := raw["issuer"]; raw != nil && !ok {
+		return fmt.Errorf("field issuer in DividendExpectation: required")
+	}
+	if _, ok := raw["next_12m"]; raw != nil && !ok {
+		return fmt.Errorf("field next_12m in DividendExpectation: required")
+	}
+	if _, ok := raw["next_amount"]; raw != nil && !ok {
+		return fmt.Errorf("field next_amount in DividendExpectation: required")
+	}
+	if _, ok := raw["next_ex_date"]; raw != nil && !ok {
+		return fmt.Errorf("field next_ex_date in DividendExpectation: required")
+	}
+	if _, ok := raw["past_12m"]; raw != nil && !ok {
+		return fmt.Errorf("field past_12m in DividendExpectation: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in DividendExpectation: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in DividendExpectation: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in DividendExpectation: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in DividendExpectation: required")
+	}
+	type Plain DividendExpectation
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = DividendExpectation(plain)
+	return nil
+}
+
 // obs.earnings_date r1: one answer about the next earnings date of one issuer on
 // one day; append only, an error is a row and a later success is a new attempt.
 type EarningsDate struct {
