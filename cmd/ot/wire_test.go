@@ -20,8 +20,8 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 57 {
-		t.Fatalf("deps has %d fields, want 57", v.NumField())
+	if v.NumField() != 63 {
+		t.Fatalf("deps has %d fields, want 63", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {
@@ -57,13 +57,13 @@ func jobIDs(js []contracts.Job) []string {
 	return ids
 }
 
-func TestRunOnceWiresFiveJobs(t *testing.T) {
+func TestRunOnceWiresSixJobs(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh"}
+	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
 	if got := jobIDs(r.jobs); !slices.Equal(got, want) {
 		t.Fatalf("jobs %v, want %v", got, want)
 	}
@@ -191,6 +191,21 @@ func TestComputeFiguresJobGetsEase(t *testing.T) {
 	}
 }
 
+func TestOptionCandidatesPageWiresReader(t *testing.T) {
+	t.Parallel()
+	p := newDeps().optionCandidatesPage(time.UTC, "ot-page", "dev", "candidates", demoCandidates{})
+	if p.Meta.Name != "option_candidates_page" || p.Meta.Schema != "page.option_candidates_page.v1" {
+		t.Fatalf("meta %+v", p.Meta)
+	}
+	b, err := p.Build(t.Context(), nil, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"scope":"candidates"`) || !strings.Contains(string(b), `"run_id":"ot-page"`) {
+		t.Fatalf("page %s", b)
+	}
+}
+
 func TestMarketPageWiresReadings(t *testing.T) {
 	t.Parallel()
 	var called atomic.Int32
@@ -211,5 +226,54 @@ func TestMarketPageWiresReadings(t *testing.T) {
 	}
 	if called.Load() == 0 {
 		t.Fatal("Build did not call the readings function")
+	}
+}
+
+func TestEarningsRefreshRegistered(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	body := "[[underlying]]\nissuer = \"cik:0000320193\"\nmarket = \"US\"\nsymbol = \"AAPL\"\nbuy_price = \"150\"\n"
+	if err := writeFile(r.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
+		t.Fatal(err)
+	}
+	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	got := jobIDs(r.jobs)
+	if len(got) == 0 || got[len(got)-1] != "earnings_refresh" {
+		t.Fatalf("jobs %v", got)
+	}
+	if r.dsn["events"] != "events-dsn" {
+		t.Fatalf("events store opened with %q", r.dsn["events"])
+	}
+	if len(r.earnWatch) != 1 || r.earnWatch[0].Issuer != "cik:0000320193" || r.earnWatch[0].BuyPrice != "150" {
+		t.Fatalf("watch list %+v", r.earnWatch)
+	}
+	if r.avCfg.APIKey != alphaTestKey || r.avCfg.BaseURL != alphaVantageBaseURL {
+		t.Fatalf("source config %+v", r.avCfg)
+	}
+	if len(r.earnSrcs) != 1 {
+		t.Fatalf("sources %v", r.earnSrcs)
+	}
+	if _, ok := r.earnSrcs["JP"]; ok {
+		t.Fatal("JP has no source yet: its entries get unsupported rows")
+	}
+
+	// backfill takes the same six jobs.
+	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 6 {
+		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
+	}
+}
+
+func TestRunOnceRefusesBadWatchList(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	body := "[[underlying]]\nissuer = \"cik:0000320193\"\nmarket = \"XX\"\n"
+	if err := writeFile(r.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
+		t.Fatal(err)
+	}
+	err := runOnce(r.a, nil)
+	if err == nil || !strings.Contains(err.Error(), "cik:0000320193") || strings.Contains(err.Error(), r.a.getenv("OT_HOME")) || len(r.ev.list()) != 0 {
+		t.Fatalf("err %v events %v", err, r.ev.list())
 	}
 }

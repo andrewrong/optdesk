@@ -50,7 +50,7 @@ func backfill(a *app, args []string) error {
 	var runErr, cursorErr error
 	var cursor contracts.Day
 	err = withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
-		b := a.deps.newBackfiller(w.ledger, w.cal, clk, w.jobs, runner.WindowRule{})
+		b := a.deps.newBackfiller(w.ledger, w.cal, clk, w.runnable(a.log), runner.WindowRule{})
 		res, runErr = b.Backfill(ctx, day, datasets)
 		if runErr == nil && res.Refused == runner.RefusedAheadOfCursor {
 			var cur store.Cursor

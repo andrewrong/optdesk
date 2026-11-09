@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.option_tracking_page.v1.json",
+  "title": "OptionTrackingPage",
+  "description": "The option tracking page: per account the open short positions, the recent closes and the reconciliation checks of the ledger. A render of rows a producer writes; nothing is computed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "notes",
+    "gaps",
+    "as_of",
+    "mark_note",
+    "accounts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "option_tracking_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "as_of": {
+      "description": "Date text of the page.",
+      "$ref": "#/$defs/Text"
+    },
+    "mark_note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "accounts": {
+      "description": "One to four accounts.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/Account"
+      }
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Account": {
+      "description": "One account. gap is non-null exactly when open, recent and recon are all null.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "title",
+        "mark_day",
+        "guard_day",
+        "long_legs_left_out",
+        "open",
+        "recent",
+        "recon",
+        "gap"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]{1,16}$"
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "mark_day": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guard_day": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "long_legs_left_out": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PositionTable"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recent": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PositionTable"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recon": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CheckTable"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gap": {
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "open": {
+                  "type": "null"
+                },
+                "recent": {
+                  "type": "null"
+                },
+                "recon": {
+                  "type": "null"
+                },
+                "gap": {
+                  "$ref": "common.v2.json#/$defs/Gap"
+                }
+              }
+            },
+            {
+              "properties": {
+                "gap": {
+                  "type": "null"
+                }
+              },
+              "anyOf": [
+                {
+                  "properties": {
+                    "open": {
+                      "$ref": "#/$defs/PositionTable"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "recent": {
+                      "$ref": "#/$defs/PositionTable"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "recon": {
+                      "$ref": "#/$defs/CheckTable"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "PositionTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Column"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PositionRow"
+          }
+        }
+      }
+    },
+    "CheckTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Column"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CheckRow"
+          }
+        }
+      }
+    },
+    "Column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "align",
+        "hint"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.v2.json#/$defs/Id"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PositionRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "cells"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^pos-[A-Za-z0-9:_-]{1,96}$"
+        },
+        "cells": {
+          "description": "Column id to Cell.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Cell"
+          }
+        }
+      }
+    },
+    "CheckRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "cells"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^chk-[A-Za-z0-9:_-]{1,96}$"
+        },
+        "cells": {
+          "description": "Column id to Cell.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Cell"
+          }
+        }
+      }
+    },
+    "Cell": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ValueCell"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "ValueCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "value",
+        "badges",
+        "tone"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "badges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ]
+        }
+      }
+    }
+  }
+}
