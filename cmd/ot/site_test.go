@@ -730,3 +730,78 @@ func TestSiteReportRoute(t *testing.T) {
 		}
 	})
 }
+
+// healthSeries answers SeriesPoints with err and records the series id and the days it was asked with.
+type healthSeries struct {
+	store.SeriesReader
+	err      error
+	id       string
+	from, to contracts.Day
+	deadline bool
+}
+
+func (h *healthSeries) SeriesPoints(ctx context.Context, id string, from, to contracts.Day) ([]contracts.SeriesPoint, error) {
+	h.id, h.from, h.to = id, from, to
+	_, h.deadline = ctx.Deadline()
+	return nil, h.err
+}
+
+func healthSite(t *testing.T, s store.SeriesReader) (http.Handler, *bytes.Buffer) {
+	t.Helper()
+	a, logb := testApp(t, "")
+	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
+	return siteHandler(a, clk, "2026-01-01", siteReaders{series: s}, echoHandler, http.NotFoundHandler()), logb
+}
+
+func TestSiteHealthOK(t *testing.T) {
+	t.Parallel()
+	s := &healthSeries{}
+	h, _ := healthSite(t, s)
+	for _, m := range []string{http.MethodGet, http.MethodHead} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), m, "/health", nil))
+		if rec.Code != 200 || rec.Header().Get("Content-Type") != "application/json" {
+			t.Fatalf("%s: %d %q", m, rec.Code, rec.Header().Get("Content-Type"))
+		}
+		if m == http.MethodGet && strings.TrimSpace(rec.Body.String()) != `{"status":"ok"}` {
+			t.Fatalf("body %q", rec.Body.String())
+		}
+	}
+	if s.id != "DGS10" || s.from != "2026-11-06" || s.to != "2026-11-06" || !s.deadline {
+		t.Fatalf("read %+v", s)
+	}
+	// the demo reader never fails
+	dh, _ := healthSite(t, demoReader{})
+	rec := httptest.NewRecorder()
+	dh.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health", nil))
+	if rec.Code != 200 {
+		t.Fatalf("demo %d", rec.Code)
+	}
+}
+
+func TestSiteHealthUnavailable(t *testing.T) {
+	t.Parallel()
+	h, logb := healthSite(t, &healthSeries{err: errors.New("secret pgx detail")})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health", nil))
+	if rec.Code != 503 || strings.TrimSpace(rec.Body.String()) != `{"status":"unavailable"}` {
+		t.Fatalf("%d %q", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Content-Type") != "application/json" {
+		t.Fatalf("content type %q", rec.Header().Get("Content-Type"))
+	}
+	out := logb.String()
+	if !strings.Contains(out, "serve health failed") || !strings.Contains(out, "component=ot") || !strings.Contains(out, "status=failed") || strings.Contains(out, "secret") {
+		t.Fatalf("log %q", out)
+	}
+}
+
+func TestSiteHealthMethodNotAllowed(t *testing.T) {
+	t.Parallel()
+	h, _ := healthSite(t, &healthSeries{})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/health", nil))
+	if rec.Code != 405 || rec.Header().Get("Allow") != "GET, HEAD" {
+		t.Fatalf("%d %q", rec.Code, rec.Header().Get("Allow"))
+	}
+}

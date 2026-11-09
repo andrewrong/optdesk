@@ -130,13 +130,17 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	return siteReaders{ser, eod, quotes, catalog, terms, names, view, cands}, closeAll, nil
 }
 
-// siteHandler serves the routes of the site: "" (302 to home), the live routes macro, options/data and
+// siteHandler serves the routes of the site: health (before any page route), "" (302 to home), the live routes macro, options/data and
 // options/data/<id>, the routes report, market and options/candidates, the six sample routes (sample.go) and
 // assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "health" {
+			serveHealth(a, clk, rd, w, r)
+			return
+		}
 		var id int64
 		var build func(context.Context) ([]byte, error)
 		isAsset := false
@@ -195,6 +199,33 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			newHandler(vm).ServeHTTP(w, r)
 		}
 	})
+}
+
+// siteHealthTimeout bounds the one series read of GET /health.
+const siteHealthTimeout = 2 * time.Second
+
+// serveHealth answers GET and HEAD /health: 200 {"status":"ok"} when the series reader answers one range
+// of DGS10 on today's market day, else 503 {"status":"unavailable"}. The error text is never printed.
+func serveHealth(a *app, clk clock.Clock, rd siteReaders, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), siteHealthTimeout)
+	defer cancel()
+	day, err := dayOrDefault(clk, "")
+	if err == nil {
+		_, err = rd.series.SeriesPoints(ctx, "DGS10", day, day)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		a.log.Error("serve health failed", "component", "ot", "status", "failed")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"status":"unavailable"}`)
+		return
+	}
+	_, _ = io.WriteString(w, `{"status":"ok"}`)
 }
 
 // buildMacro builds the first page of deps.pageList (macro_rates) for the requested day from the series reader.
