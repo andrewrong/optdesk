@@ -7,6 +7,8 @@ import os
 import urllib.request
 from collections.abc import Callable
 from datetime import date, timedelta
+from decimal import Decimal
+from itertools import pairwise
 from typing import cast
 
 import grpc
@@ -17,6 +19,7 @@ from optdesk.contracts import api
 
 HEALTH_TIMEOUT_S = 8.0
 MIN_DAYS_OUT = 14
+BAR_DAYS = 30
 
 
 def _stock(
@@ -169,16 +172,26 @@ def test_live_wife_market_data_unimplemented(wife_client: LiveClient) -> None:
     assert code == grpc.StatusCode.UNIMPLEMENTED
 
 
-def test_live_bars_not_implemented(main_client: LiveClient) -> None:
+def test_live_bars_spy_daily(main_client: LiveClient) -> None:
+    spy = _resolved(main_client, _stock("SPY"))
     request = api.BarsRequest(
-        contract=api.ContractSpec(
-            sec_type=api.SEC_TYPE_STOCK,
-            symbol="SPY",
-            exchange="SMART",
-            currency="USD",
-            con_id=1,
-        ),
-        kind=api.BAR_KIND_TRADES,
-        duration_days=5,
+        contract=spy, kind=api.BAR_KIND_TRADES, duration_days=BAR_DAYS, end_day=""
     )
-    assert _code(lambda: main_client.bars(request)) == grpc.StatusCode.UNIMPLEMENTED
+    bars = main_client.bars(request).bars
+    assert len(bars) > 0
+    days = [b.day for b in bars]
+    assert all(a < b for a, b in pairwise(days))
+    for b in bars:
+        low, high = Decimal(b.low), Decimal(b.high)
+        assert low <= Decimal(b.open) <= high
+        assert low <= Decimal(b.close) <= high
+        assert b.HasField("volume")
+        assert Decimal(b.volume) > 0
+
+
+def test_live_bars_requires_con_id(main_client: LiveClient) -> None:
+    request = api.BarsRequest(
+        contract=_stock("SPY"), kind=api.BAR_KIND_TRADES, duration_days=BAR_DAYS
+    )
+    code = _code(lambda: main_client.bars(request))
+    assert code == grpc.StatusCode.INVALID_ARGUMENT

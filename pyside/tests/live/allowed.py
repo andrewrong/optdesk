@@ -11,9 +11,6 @@ ALLOWED_RPCS: frozenset[str] = frozenset(
         "ListChains",
         "Snapshot",
         "Dividends",
+        "Bars",
     }
 )
-
-# Stub calls pinned to one test each: Bars is a planned stub, so exactly one test
-# asserts that it is still UNIMPLEMENTED and fails the day it lands.
-PINNED_STUBS: frozenset[str] = frozenset({"Bars"})
