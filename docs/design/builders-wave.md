@@ -21,23 +21,23 @@ The owner opens `/household` and sees, for his main account, the blocks that nee
 
 1. Scope, the cut that the adversarial read asked for (`scratchpad/adv-builders-wave.md`, 1 to 3). `account-data.md` Decision 1 collects no position prices: `store.Position` has `Quantity` and `AvgCost` and no mark, and no resolver from a position to a quote snapshot exists. So this design builds only what needs `AccountReader.Values` (`NetLiquidation`, `TotalCashValue`, `ExcessLiquidity`, the margin tags), `AccountReader.Executions`, the position quantities (not their value) and the replayed option ledger. Every block that needs a mark is a gap now and a later design (`## Left out`).
 2. Per request, no job, no stored page (`report-page-producer.md` Decision 3). Every block says its `data_times`; an input older than 3 session days is a `stale_input` gap.
-3. Figures live in compute behind declarations of their own: a new package `internal/compute/blockapi` (`api.go`, declarations only), implemented by `internal/compute/pagefig`. Why not `internal/compute/api.go`: it is 596 lines, `option-positions.md` issue 1 takes it to at most 760 (its own acceptance), and the declarations here need about 100 lines even after the cut, so the sum passes 800; the file may not grow past the ceiling and an agent never raises one. Why not `internal/store/api.go`: 799 lines. So the scripts/arch rule stays, as the PR 768 review asked: a root component may import only root components of its depends cell, so no root names `blockapi`; every `pages/<sub>` may import it because `listedImports` gives them the sub-packages that a depends row lists in its entry cell (compute lists `internal/compute/blockapi` now); `compute/pagefig` is the one new edge (a sibling), so `docs/design/modules.md` gets the rule "a sub-package component may import a sub-package listed in the entry cell of its own row" (in this pull request) and the interface entry changes `scripts/arch/main.go` (`listedImports`), its test, `arch.toml` and `.go-arch-lint.yml`. `go run ./scripts/arch --check` was run on this pull request's `arch.toml` with the unchanged script and prints `arch: ok`.
+3. Figures live in compute behind declarations of their own: a new package `internal/compute/blockapi` (`api.go`, declarations only), implemented by `internal/compute/pagefig`. Why not `internal/compute/api.go`: it is 596 lines, `option-positions.md` issue 1 takes it to at most 760 (its own acceptance), and the declarations here need about 100 lines even after the cut, so the sum passes 800; the file may not grow past the ceiling and an agent never raises one. Why not `internal/store/api.go`: 799 lines. The import rule for declarations-only sub-packages (a `pages/<sub>` and `compute/pagefig` importing `compute/blockapi`) is owned by market-bars (PR 768): this design waits for market-bars (PR 768) for the declarations-package import rule, writes none of its own, and changes neither `scripts/arch` nor its test. This pull request edits only the compute entry cell and the import list of `ot` in `docs/design/modules.md`, and regenerates `arch.toml` and `.go-arch-lint.yml` with `go run ./scripts/arch`. The figure type is `compute.FigureValue` (declared by `option-positions.md` issue 1 in `internal/compute/api.go`); `blockapi` imports `compute` for it and declares no figure type of its own.
 4. Decimal text, no float: `math/big.Rat` as `optionledger` and `ease` do (no new dependency). The builders copy text and never round, add or sort a figure. Their tests fail on `float32`, `float64`, `math/big`, `sort` and any import of `internal/notify`.
 5. One account per household page (owner: never pools accounts). `/household?account=<alias>`, main by default; an alias not in the list is a gap page "未知账户"; `scope` is the alias, `scopes` has that one entry; no function takes two aliases; a non-main alias without a capture shows its own gap and never touches the main page.
-6. Household blocks built: `overview` and `accounts` (net liquidation and cash from `Values`; the stock and option cells of `accounts` are `missing_quote` gaps), `cash_after` and `stress` (`TotalCashValue` minus the obligations; a fall of the short puts' underlyings is not needed: stress is the cash left after assignment of all short puts, plus the same at the three fixed steps below applied to the strikes' distance only where an underlying price is stored in the ledger piece, else a gap), `obligations` and `income` (from `compute.OptionLedger.Replay` over `store.OptionLedgerReader.FlexTradeRows`: premium income of the month; a short put's strike times multiplier times contracts), `trend` (`NetLiquidation` of the last 90 session days) and `month_change` (the waterfall of net liquidation from the last session day of the previous month: premium, the rest as "其他"; the trading result needs marks and is the gap `missing_quote`). The formulas are those of the existing `household.*` register entries (version 1, unchanged, no entry added). Stress steps are constants of `pagefig`: 10, 20 and 30 percent (window default — owner may change).
+6. Household blocks built: `overview` and `accounts` (net liquidation and cash from `Values`; the stock and option cells of `accounts` are `missing_quote` gaps), `cash_after` and `stress` (`TotalCashValue` minus the obligations; stress is the cash left after assignment of all short puts; the three stepped rows need an underlying price, which neither `compute.LedgerPosition` nor `ObligationIn` carries, so they are always the gap `missing_quote` until a position-marks design adds it), `obligations` and `income` (from `compute.OptionLedger.Replay` over `store.OptionLedgerReader.FlexTradeRows`; the strike, right, expiry and open and close days come from the `LedgerPosition` terms `Right`, `Expiry`, `Strike`, `OpenedOn`, `ClosedOn` that `option-positions.md` issue 1 declares and issue 2 fills, a wait named in the Order line of entry 4: premium income of the month; a short put's strike times multiplier times contracts), `trend` (`NetLiquidation` of the last 90 session days) and `month_change` (the waterfall of net liquidation from the last session day of the previous month: premium, the rest as "其他"; the trading result needs marks and is the gap `missing_quote`). The formulas are those of the existing `household.*` register entries (version 1, unchanged, no entry added). Stress steps are constants of `pagefig`: 10, 20 and 30 percent (window default — owner may change).
 7. JPY inside one account: `≈USD` only when a USDJPY close of the data day exists (market-bars: a wait); else the gap `unsupported_currency`, and no `approx_usd_total`.
 8. Report blocks built: `actions` (`trades` from the day's executions of the main alias, each classified open, close, expire or exercise by compute from the signed quantity of the contract in the newest earlier capture; `candidates` null), `account_moves` (one row per configured alias, no total row: net liquidation, day amount and day percent from two `Values` captures; `biggest` and `movers` are `missing_quote` gaps; `meters` per account: `margin_buffer` = excess liquidity over net liquidation, `cash_after_assignment` = cash minus the short-put obligations), `market_watch` (`indices` row for the S&P 500 from the stored FRED series `SP500` read with `store.SeriesReader`, which is on main; `companies` the gap `missing_quote`). `global_assets` stays the `not_built` block (needs quotes: `## Left out`). The meters are on the web page only: the builder and its route import no `internal/notify` and no Telegram sender (ADR 0010; `option-positions.md` Decision 11).
 9. The report keeps the shape of `report-page-producer.md`: `report_page.Config` gains `Actions`, `AccountMoves`, `MarketWatch` of the type `BlockFunc` (same shape as `RiskBlockFunc`); a nil function keeps the `not_built` block; the `Build` signature and the risks block are unchanged. `market=jp` builds the three blocks as gap blocks with the reason `jp_slice_missing` (window default — owner may change). The open-only blocks stay absent (the US open report is built last, alignment-v25 Owner column). The functions come from one new package `internal/pages/report_blocks`, which imports no `report_page` and no `risks_block`; `ot` converts.
-10. Companies, after valuation `companies-page-sections`: `header` (`月-日 · 家庭持有 N 家`; N from the held set), `glance` tiles and `changes` (`pagefig` over the states the rows carry and the band readings of two days, no mark); the held set that valuation passes as nil is wired here: the stock positions of the main alias by quantity greater than zero, matched to `Subject.Symbol` (position quantity, no price: window default — owner may change). The held-company values and the volatility column need marks or bars and are left out (`## Left out`).
+10. Companies, after valuation `companies-page-sections`: `header` (`月-日 · 家庭持有 N 家`; N from the held set), `glance` tiles and `changes` (`pagefig` over the states the rows carry and the band readings of two days, no mark); the held set that valuation passes as nil is wired here: the stock positions of the main alias by quantity greater than zero, matched to `Subject.Symbol`, and `held.go` maps each symbol to its issuer (`cik:` or `edinet:`, the key of `companies_page.Config.Held`) through the watch entries (position quantity, no price: window default — owner may change). The held-company values and the volatility column need marks or bars and are left out (`## Left out`).
 11. Frontend: no UI code and no schema change (`Contracts: unchanged`). Libraries: none new.
 
 ## Modules
 
-New directories: `internal/compute/blockapi`, `internal/compute/pagefig` (compute), `internal/pages/household_page`, `internal/pages/report_blocks` (pages). This pull request edits `docs/design/modules.md` (compute entry cell, the own-row import sentence, the import list of `ot`) and regenerates `arch.toml`. Entries 1, 2, 5 and 6 create or first use a component and edit `.go-arch-lint.yml` (regenerated with `go run ./scripts/arch`, never by hand), in that serial order, each from the merged file of the one before.
+New directories: `internal/compute/blockapi`, `internal/compute/pagefig` (compute), `internal/pages/household_page`, `internal/pages/report_blocks` (pages). This pull request edits `docs/design/modules.md` (compute entry cell, the import list of `ot`) and regenerates `arch.toml` and `.go-arch-lint.yml`. Entries 1, 2, 4 and 5 create or first use a component and edit `.go-arch-lint.yml` (regenerated with `go run ./scripts/arch`, never by hand), in that serial order, each from the merged file of the one before.
 
 | # | issue | module | order |
 |---|---|---|---|
-| 1 | builders-wave-compute-interface (interface) | compute, plus docs, plus repo (judged interface entry) | first |
+| 1 | builders-wave-compute-interface (interface) | compute, plus repo (judged interface entry) | first; waits option-positions `option-positions-compute-interface` |
 | 2 | page-figures-household | compute, plus repo (licensed pair) | after 1 |
 | 3 | page-figures-report | compute, plus docs | after 2 |
 | 4 | household-page-builder | pages, plus repo (licensed pair) | after 1, 2 |
@@ -56,11 +56,12 @@ Owner: compute owns `internal/compute/blockapi/api.go` (frozen by issue 1); page
 // Declarations only; the implementation is internal/compute/pagefig.
 package blockapi
 
-import "github.com/andrewrong/optdesk/internal/contracts"
+import (
+	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/contracts"
+)
 
-// FigureValue is a figure as decimal text, or the reason it is missing; exactly one is set.
-// Gap is one of missing_quote, stale_input, missing_input, no_data, unsupported_currency, no_rule.
-type FigureValue struct{ Value, Gap string }
+// Every figure is a compute.FigureValue (decimal text or a Gap; declared in internal/compute/api.go).
 
 // ValueIn is one summary row of the account (tag NetLiquidation, TotalCashValue, ExcessLiquidity, ...).
 type ValueIn struct{ Tag, Value, Currency string }
@@ -78,7 +79,7 @@ type ObligationIn struct{ Underlying, Currency, Strike, Multiplier, Contracts, P
 // MoneyLine is one row of a money block.
 type MoneyLine struct {
 	Name, Currency, Note string
-	Amount, Share        FigureValue
+	Amount, Share        compute.FigureValue
 }
 
 // HouseholdInput is one account on one day (Alias is never the account id; UsdJpy is empty without a rate).
@@ -113,7 +114,7 @@ type AccountMoveIn struct {
 
 // AccountMoveOut is the row and the two meters of one account.
 type AccountMoveOut struct {
-	Net, DayAmount, DayPct, MarginBuffer, CashAfterAssignment FigureValue
+	Net, DayAmount, DayPct, MarginBuffer, CashAfterAssignment compute.FigureValue
 }
 
 // CloseIn is a series: closes newest first with their days.
@@ -126,7 +127,7 @@ type CloseIn struct {
 // MoveLine is the day and five-day percent change of a series.
 type MoveLine struct {
 	Name, Symbol string
-	D1, D5       FigureValue
+	D1, D5       compute.FigureValue
 	DataDay      contracts.Day
 }
 
@@ -158,18 +159,17 @@ Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a f
 
 ### 1 builders-wave-compute-interface (interface)
 
-Module: compute, plus docs and repo (judged interface entry). Size: M.
-Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `docs/contracts/compute.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`, `arch.toml`, `.go-arch-lint.yml`
+Module: compute, plus repo (judged interface entry). Size: M.
+Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `docs/contracts/compute.md`, `.go-arch-lint.yml`
 Design: docs/design/builders-wave.md#Interface
-Order: first.
-Goal: the declarations of `## Interface`, no function, with a contract test from both sides (a fake `PageFigures`; a caller that fills every input field and reads every output field); `scripts/arch` lets a sub-package import a sub-package listed in the entry cell of its own row, with a test, so `compute/pagefig` may import `compute/blockapi`.
+Order: first; waits `option-positions-compute-interface` of `docs/design/option-positions.md` (it declares `compute.FigureValue`), tested on a fake until it lands; waits market-bars (PR 768) for the declarations-package import rule.
+Goal: the declarations of `## Interface`, no function, with a contract test from both sides (a fake `PageFigures`; a caller that fills every input field and reads every output field), with `compute.FigureValue` as the one figure type. `scripts/arch` is not edited here.
 Acceptance:
-1. `api.go` declares `PageFigures`, `NewPageFiguresFunc`, `FigureValue`, `HouseholdInput`, `HouseholdResult`, `AccountMoveIn`, `AccountMoveOut` and no `func` (`grep -n "^func " internal/compute/blockapi/api.go` prints nothing).
+1. `api.go` declares `PageFigures`, `NewPageFiguresFunc`, `HouseholdInput`, `HouseholdResult`, `AccountMoveIn`, `AccountMoveOut` and no `func` and no `type FigureValue` (`grep -n "^func \|^type FigureValue" internal/compute/blockapi/api.go` prints nothing); it uses `compute.FigureValue`.
 2. `git diff $BASE -- internal/compute/api.go internal/store/api.go` is empty.
-3. `arch.toml` lists `compute/blockapi` in the `may_import` of `compute/pagefig`, `pages/household_page` and `pages/report_blocks`, and in no root component.
-4. `scripts/arch/main_test.go` has a test whose name contains `OwnEntry` and `scripts/arch/main.go` names the own-row rule in a comment on `listedImports`.
-5. The api test has no `time.Sleep` and no `time.Now`; `git diff --name-only $BASE` lists only the Files paths, `docs/design/builders-wave.md` and `docs/design/modules.md`.
-Checked by CI: `go test ./internal/compute/blockapi ./scripts/arch -race -count=1`, `go run ./scripts/arch --check`, ci-go.
+3. `.go-arch-lint.yml` names `internal/compute/blockapi` and no root component lists it.
+4. The api test has no `time.Sleep` and no `time.Now`; `git diff --name-only $BASE` lists exactly the Files paths.
+Checked by CI: `go test ./internal/compute/blockapi -race -count=1`, `go run ./scripts/arch --check`, ci-go.
 
 ### 2 page-figures-household
 
@@ -204,7 +204,7 @@ Checked by CI: `go test ./internal/compute/pagefig -race -count=1`, the `checks.
 Module: pages, plus repo (`.go-arch-lint.yml`). Size: M.
 Files: `internal/pages/household_page/page.go`, `internal/pages/household_page/builder.go`, `internal/pages/household_page/blocks.go`, `internal/pages/household_page/strings.go`, `internal/pages/household_page/builder_test.go`, `internal/pages/household_page/purity_test.go`, `docs/contracts/pages.md`, `.go-arch-lint.yml`
 Design: docs/design/builders-wave.md#Decisions (2, 5, 6, 7)
-Order: after 1, 2; entry 5 edits `docs/contracts/pages.md` and `.go-arch-lint.yml` after it. Waits (tested on fakes): `internal/store/account`, `internal/store/optionledger`.
+Order: after 1, 2; entry 5 edits `docs/contracts/pages.md` and `.go-arch-lint.yml` after it. Waits (tested on fakes): `internal/store/account`, `internal/store/optionledger`, `option-positions-compute-interface` and `option-positions-ledger-terms` of `docs/design/option-positions.md` (the `LedgerPosition` terms `Right`, `Expiry`, `Strike`, `OpenedOn`, `ClosedOn`).
 Goal: `NewPage(c, alias)` reads `Values`, the history, the month start and the replayed ledger, calls `Figures().Household`, and writes `household_page` v1: `scope` the alias, one `scopes` entry, each mark-needing block (composition, allocation, concentration, long term, movers) its `gap` with `missing_quote`; an unknown alias or a nil reader gives a gap page.
 Acceptance:
 1. `Meta{Name: "household_page", Schema: "page.household_page.v1"}` is in `page.go`; `builder.go` calls `Household(`; `git diff $BASE -- internal/pages/api.go` is empty.
@@ -274,6 +274,6 @@ Answers to the read-only attack (kept in the dispatcher window's scratch as adv-
 1. Household cannot value real positions: adopted. Decision 1 cuts every mark-needing block to a gap and `## Left out` names what the later design must provide.
 2. Missing mark source and a chain on unbuilt stores: adopted for the marks; the stores stay waits and every entry is tested on fakes, said in the Order line of each.
 3. Simpler, about 8 issues: adopted; 17 became 7 and one `pagefig` package replaces `householdfig` and `pagefig`, and the `.go-arch-lint.yml` chain is 1, 2, 4, 5.
-4. Lock-in of `blockapi` and the import rule: not adopted as asked (a move into `compute/api.go`). The slim declarations are about 100 lines, the sum with `option-positions.md` passes 800, and an agent never raises a ceiling, so the separate package and the one-sentence rule stay (Decision 3). Adopted in part: the proxy and sector lists are left out with the mark blocks; the stress steps stay constants (marked window default).
+4. Lock-in of `blockapi` and the import rule: not adopted as asked (a move into `compute/api.go`). The slim declarations are about 100 lines, the sum with `option-positions.md` passes 800, and an agent never raises a ceiling, so the separate package stays and the import rule is left to market-bars (PR 768) (Decision 3). Adopted in part: the proxy and sector lists are left out with the mark blocks; the stress steps stay constants (marked window default).
 5. False claim that snapshots cover the positions: adopted; the claim is removed. The held set uses the quantity of stock positions only, and `--check` on the unchanged script was run (`arch: ok`).
 6. Slips: adopted; the mark mapping is gone from the issues, exact-count greps are replaced by named symbols and named tests, and every file is held under 600 lines.
