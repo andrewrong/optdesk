@@ -47,7 +47,7 @@ rows above name every other top-level path of the planned tree.
   `internal/store/setup`, `internal/sources/fred`, `internal/jobs/fredseries`, `internal/broker/grpcbroker`, `internal/store/instrument`, `internal/jobs/optioneod`, `internal/jobs/quotesnapshot`, `internal/pages/macro_rates`, `internal/pages/macro_page`, `internal/pages/option_data_page`, `internal/pages/report_page`, `internal/pages/embed`, `internal/compute/rules`, `internal/store/reading`, `internal/jobs/computefigures`, `internal/compute/own`, `internal/compute/gonumstats`, `internal/compute/talibind`, `internal/compute/figures`, `internal/notify/core`, `internal/notify/telegram`, `internal/notify/dryrun`, `internal/jobs/serieshistory`, `internal/clock/calendarcli`, `internal/jobs/calendarrefresh`, `internal/store/alert`, `internal/compute/alertrules`, `internal/pages/risks_block`, `internal/compute/ease`, `internal/store/account`, `internal/jobs/accountcapture`, `internal/compute/optioncand`, `internal/store/candidate`, `internal/jobs/optioncandidates`, `internal/pages/candidate_text`, `internal/compute/optionledger`, `internal/jobs/optionledger`, `internal/store/optionledger`, `internal/sources/flex`, `internal/pages/market_page`, `internal/pages/option_candidates_page`, `internal/compute/optionnotice`, `internal/pages/option_notices_page`.
   Any other import of a package of a module by `cmd/ot` is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
-- **Layers** (plan 2): data = contracts, clock, broker, sources, store, compute (in that order);
+- **Layers** (plan 2): data = contracts, clock, broker, sources, gaphistory, store, compute (in that order);
   scheduling = runner, jobs, notify; front = pages, web. Within a layer a module may depend only on a module
   listed before it in its layer; across layers only scheduling to data and front to data are allowed. No layer
   module depends on the front, on ci or docs (only `ot`, outside the layers, depends on the front), and only `ot` depends on repo (its `internal/profile`).
@@ -83,18 +83,19 @@ rows above name every other top-level path of the planned tree.
 | clock | internal/clock/** docs/contracts/clock.md pyside/src/optdesk/calendar/** pyside/tests/contracts/test_calendar_api.py pyside/tests/calendar/** | internal/clock/api.go pyside/src/optdesk/calendar/api.py | internal/clock/api_test.go pyside/tests/contracts/test_calendar_api.py | contracts |
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
-| store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts |
+| gaphistory | internal/gaphistory/** docs/contracts/gaphistory.md | internal/gaphistory/api.go | internal/gaphistory/api_test.go | contracts |
+| store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts gaphistory |
 | compute | internal/compute/** docs/contracts/compute.md tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
 | jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute |
-| notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store compute |
+| notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store compute gaphistory |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store compute |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/test/** | contracts |
 | pyside | pyside/** pyside/pyproject.toml pyside/uv.lock | pyside/src/optdesk/ibkr/api.py | pyside/tests/contracts/test_ibkr_api.py | contracts |
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md tools/ot-flex-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute |
+| ot | cmd/** docs/contracts/ot.md tools/ot-flex-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
@@ -108,6 +109,7 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | clock | data | the calendar table master.session_day (a yearly generated file, cross-checked against IBKR trading hours) | Clock, Session, Slot, ET/JST/owner-zone conversion | hand-written open and close times (ADR 0004) | docs/contracts/clock.md |
 | broker | data | the pyside gRPC service | typed records, account ids aliased | opening the database, arithmetic, retry amplification | docs/contracts/broker.md and contracts/proto/ibkr/v1 (first issue: week 3-4) |
 | sources | data | FRED, SEC, HTTP, Stooq responses | typed records with source revision and published_at | opening the database; knowing the runner or pages | docs/contracts/sources.md |
+| gaphistory | data | the rows of the view rd.job_gap_r1 as read by store | one read interface, `GapsSince`, with its own `Gap` row type | opening the database, arithmetic, writing | docs/contracts/gaphistory.md |
 | store | data | records | one Writer and one Reader per dataset, migrations, roles rw and ro | being bypassed: only store imports pgx (depguard) | docs/contracts/store.md and docs/contracts/datasets/ |
 | compute | data | typed records | figure values with register id and version | any I/O | docs/contracts/compute.md (first issue: week 8-9) |
 | runner | scheduling | job manifests (window rules), the key set each job Plan returns, the run table | run, attempt, job_event; ops.capture_expected_key and ops.dataset_window; control socket | knowing dataset content (keys are opaque) | docs/contracts/runner.md |
