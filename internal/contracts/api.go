@@ -76,3 +76,9 @@ type Job interface {
 
 // ReadingRecord is the record of dataset readings.reading r1, generated from contracts/datasets.
 type ReadingRecord = gen.ReadingRecord
+
+// PriceBar is the record of dataset obs.price_bar r1, generated from contracts/datasets.
+type PriceBar = gen.PriceBar
+
+// FxRate is the record of dataset obs.fx_rate r1, generated from contracts/datasets.
+type FxRate = gen.FxRate

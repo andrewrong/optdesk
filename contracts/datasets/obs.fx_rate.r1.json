@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.fx_rate.r1.json",
+  "title": "FxRate",
+  "description": "obs.fx_rate r1: the midpoint rate of one currency pair on one day; insert only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pair", "rate_day", "rate", "source", "received_at"],
+  "x-dataset": "obs.fx_rate",
+  "x-revision": "r1",
+  "x-primary-key": ["pair", "rate_day"],
+  "properties": {
+    "pair": {"type": "string", "pattern": "^[A-Z]{6}$", "description": "Currency pair as six capitals, base then quote, for example USDJPY."},
+    "rate_day": {"type": "string", "format": "date", "description": "Day the rate is for."},
+    "rate": {"type": "string", "pattern": "^(0*[1-9][0-9]*(\\.[0-9]+)?|0+\\.[0-9]*[1-9][0-9]*)$", "description": "Positive rate as decimal text: units of the quote currency for one unit of the base."},
+    "source": {"type": "string", "enum": ["ibkr_midpoint"], "description": "Where the rate came from."},
+    "received_at": {"type": "string", "format": "date-time", "description": "Instant the row was received, UTC."}
+  }
+}
