@@ -54,20 +54,36 @@ func runPage(a *app, args []string) error {
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
 	name := fs.String("name", "macro_rates", "page name")
 	out := fs.String("out", "", "file to write (default: standard output)")
+	market := fs.String("market", "", "market us or jp (report_page only)")
+	slot := fs.String("slot", "", "slot open or close (report_page only)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	page, err := pageNamed(a, *name)
-	if err != nil {
-		return err
-	}
 	ctx := context.Background()
+	var page pages.Page
+	var open func() (store.SeriesReader, func(), error)
+	if *name == reportName {
+		p, closeReport, err := reportPage(ctx, a, *market, *slot)
+		if err != nil {
+			return err
+		}
+		defer closeReport()
+		page = p
+		open = func() (store.SeriesReader, func(), error) { return nil, func() {}, nil }
+	} else {
+		p, err := pageNamed(a, *name)
+		if err != nil {
+			return err
+		}
+		page = p
+		open = func() (store.SeriesReader, func(), error) { return seriesReader(ctx, a) }
+	}
 	clk := a.deps.newClock()
 	day, err := dayOrDefault(clk, *dayFlag)
 	if err != nil {
 		return err
 	}
-	r, closeFn, err := seriesReader(ctx, a)
+	r, closeFn, err := open()
 	if err != nil {
 		return err
 	}

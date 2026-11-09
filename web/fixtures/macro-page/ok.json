@@ -7,11 +7,11 @@
     }
   ],
   "ease": {
-    "aria_text": "松紧度 +0.2，中性，较上周 −0.2；固定刻度 -2 到 +2，中性带 -0.5 到 +0.5。",
+    "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 33.5 到 66.5。",
     "figure": {
-      "text": "+0.2",
+      "text": "56",
       "unit": "index_points",
-      "value": 0.24
+      "value": 56.0
     },
     "marker_percent": {
       "text": "56",
@@ -20,23 +20,23 @@
     },
     "neutral_band": {
       "high": {
-        "text": "+0.5",
+        "text": "66.5%",
         "unit": "percent_of_track",
-        "value": 62.5
+        "value": 66.5
       },
       "low": {
-        "text": "-0.5",
+        "text": "33.5%",
         "unit": "percent_of_track",
-        "value": 37.5
+        "value": 33.5
       }
     },
     "reading_text": "中性，较上周 −0.2。",
     "ticks": [
-      "-2",
-      "-1",
       "0",
-      "+1",
-      "+2"
+      "25",
+      "50",
+      "75",
+      "100"
     ],
     "week_change": {
       "text": "−0.2",

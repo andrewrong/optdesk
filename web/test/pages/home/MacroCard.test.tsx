@@ -100,13 +100,13 @@ describe('MacroCard (macro_summary v2)', () => {
     )
   })
 
-  it('draws the fixed -2 to +2 scale with the neutral band texts and the stored marker', async () => {
+  it('draws the fixed 0 to 100 scale with the neutral band texts and the stored marker', async () => {
     await show(ok)
     const ticks = [...host.querySelectorAll('[data-ticks] span')].map((s) => s.textContent)
-    expect(ticks[0]).toBe('-2')
-    expect(ticks[ticks.length - 1]).toBe('+2')
-    expect(host.textContent).toContain('-0.5')
-    expect(host.textContent).toContain('+0.5')
+    expect(ticks[0]).toBe('0')
+    expect(ticks[ticks.length - 1]).toBe('100')
+    expect(host.textContent).toContain('34%')
+    expect(host.textContent).toContain('66%')
     expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
       String(ok.card.ease.marker_percent.value),
     )

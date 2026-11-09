@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -45,21 +46,24 @@ type sitePageInput struct {
 	Choices      []siteChoice
 }
 
-// siteReaders are the five readers the site builds the page from.
+// siteReaders are the seven readers the site builds its live pages from.
 type siteReaders struct {
+	series  store.SeriesReader
 	eod     store.OptionEodReader
 	quotes  store.QuoteSnapshotReader
 	catalog store.OptionEodCatalog
 	terms   store.OptionTermsReader
 	names   store.InstrumentNameReader
+	view    store.ReadingViewReader
 }
 
-// openSiteReaders returns the demo readers with the demo profile, else the five stores opened once
-// with the one .env line of the pages role, and a function that closes them.
+// openSiteReaders returns the demo readers with the demo profile, else the six stores (series and the
+// five option stores) opened once with the one .env line of the pages role, and a function that closes
+// them. A failed open closes the stores already opened.
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
-		return siteReaders{d, d, d, d, d}, func() {}, nil
+		return siteReaders{demoReader{}, d, d, d, d, d, demoView{}}, func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -69,84 +73,125 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if dsn == "" {
 		return siteReaders{}, nil, fmt.Errorf("%s is missing in .env", pagesDSNName)
 	}
-	fail := fmt.Errorf("open option stores with %s failed", pagesDSNName)
 	var closers []func() error
 	closeAll := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
 			_ = closers[i]()
 		}
 	}
+	fail := func() (siteReaders, func(), error) {
+		closeAll()
+		return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
+	}
 	var rd siteReaders
+	ser, err := a.deps.openSeries(ctx, dsn)
+	if err != nil {
+		return fail()
+	}
+	closers = append(closers, ser.Close)
 	eod, err := a.deps.openOptionEod(ctx, dsn)
 	if err != nil {
-		return siteReaders{}, nil, fail
+		return fail()
 	}
 	closers = append(closers, eod.Close)
 	quotes, err := a.deps.openQuoteSnapshot(ctx, dsn)
 	if err != nil {
-		closeAll()
-		return siteReaders{}, nil, fail
+		return fail()
 	}
 	closers = append(closers, quotes.Close)
 	catalog, err := a.deps.openOptionCatalog(ctx, dsn)
 	if err != nil {
-		closeAll()
-		return siteReaders{}, nil, fail
+		return fail()
 	}
 	closers = append(closers, catalog.Close)
 	terms, err := a.deps.openOptionTerms(ctx, dsn)
 	if err != nil {
-		closeAll()
-		return siteReaders{}, nil, fail
+		return fail()
 	}
 	closers = append(closers, terms.Close)
 	names, err := a.deps.openInstrumentName(ctx, dsn)
 	if err != nil {
-		closeAll()
-		return siteReaders{}, nil, fail
+		return fail()
 	}
 	closers = append(closers, names.Close)
-	rd = siteReaders{eod, quotes, catalog, terms, names}
+	view, err := a.deps.openReadingView(ctx, dsn)
+	if err != nil {
+		return fail()
+	}
+	closers = append(closers, view.Close)
+	rd = siteReaders{ser, eod, quotes, catalog, terms, names, view}
 	return rd, closeAll, nil
 }
 
-// siteHandler serves the routes of the site: "" (302 to options/data), options/data and
-// options/data/<id>. The page is built per request; an error answers 500 with a fixed text.
-func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc) http.Handler {
+// siteHandler serves the routes of the site: "" (302 to home), the live routes macro, options/data and
+// options/data/<id>, the route report, the six sample routes (sample.go) and assets/*, which assets answers. A live page is built per request;
+// an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
+func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		var id int64
-		byID := false
+		var build func(context.Context) ([]byte, error)
+		isAsset := false
 		switch {
-		case path == "" || path == siteRoot:
+		case path == "":
+		case path == "macro":
+			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
+		case path == "report":
+			q := r.URL.Query()
+			build = func(ctx context.Context) ([]byte, error) { return buildReport(ctx, a, clk, dayFlag, rd.view, q) }
+		case path == siteRoot:
+			build = func(ctx context.Context) ([]byte, error) { return buildSite(ctx, a, clk, dayFlag, rd, 0, false) }
 		case strings.HasPrefix(path, siteRoot+"/"):
 			n, err := strconv.ParseInt(strings.TrimPrefix(path, siteRoot+"/"), 10, 64)
 			if err != nil || n <= 0 || strconv.FormatInt(n, 10) != strings.TrimPrefix(path, siteRoot+"/") {
 				http.NotFound(w, r)
 				return
 			}
-			id, byID = n, true
+			id = n
+			build = func(ctx context.Context) ([]byte, error) { return buildSite(ctx, a, clk, dayFlag, rd, id, true) }
+		case strings.HasPrefix(path, "assets/") && len(path) > len("assets/"):
+			isAsset = true
 		default:
-			http.NotFound(w, r)
-			return
+			vm, ok := sampleVM(path)
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			build = func(context.Context) ([]byte, error) { return vm, nil }
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if path == "" {
-			http.Redirect(w, r, "/"+siteRoot, http.StatusFound)
-			return
+		switch {
+		case path == "":
+			http.Redirect(w, r, "/"+sampleHome, http.StatusFound)
+		case isAsset:
+			assets.ServeHTTP(w, r)
+		default:
+			vm, err := build(r.Context())
+			if errors.Is(err, errReportQuery) {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+			if err != nil {
+				a.log.Error("serve build failed", "component", "ot", "status", "failed")
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			newHandler(vm).ServeHTTP(w, r)
 		}
-		vm, err := buildSite(r.Context(), a, clk, dayFlag, rd, id, byID)
-		if err != nil {
-			a.log.Error("serve build failed", "component", "ot", "status", "failed")
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-		newHandler(vm).ServeHTTP(w, r)
 	})
+}
+
+// buildMacro builds the first page of deps.pageList (macro_rates) for the requested day from the series reader.
+func buildMacro(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
+	day, err := dayOrDefault(clk, dayFlag)
+	if err != nil {
+		return nil, err
+	}
+	return a.deps.pageList[0].Build(ctx, rd.series, day, clk.Now().UTC())
 }
 
 // buildSite builds the view model of the underlying id, or of the one with the greatest latest day

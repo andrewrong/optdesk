@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io/fs"
+	"net/http"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -12,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock/calendarcli"
 	"github.com/andrewrong/optdesk/internal/clock/realclock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/alertrules"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/own"
@@ -32,6 +34,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
+	"github.com/andrewrong/optdesk/internal/pages/report_page"
+	"github.com/andrewrong/optdesk/internal/pages/risks_block"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
@@ -74,6 +78,11 @@ type deps struct {
 	newOptionEod            jobs.NewOptionEodFunc
 	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
 	openReading             store.OpenReadingFunc
+	openReadingView         store.OpenReadingViewFunc
+	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
+	alertRules              compute.DefaultAlertRulesFunc
+	evaluateAlerts          compute.EvaluateAlertsFunc
+	riskBlock               riskBlockFunc
 	newComputeFigures       jobs.NewComputeFiguresFunc
 	computeFigures          compute.Figures
 	computeRules            compute.Rules
@@ -140,6 +149,11 @@ func newDeps() deps {
 		newOptionEod:            optioneod.New,
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
+		openReadingView:         reading.OpenView,
+		reportPage:              newReportPage,
+		alertRules:              alertrules.DefaultRules,
+		evaluateAlerts:          alertrules.Evaluate,
+		riskBlock:               newRiskBlock,
 		newComputeFigures:       computefigures.New,
 		computeFigures:          figures.New(stats, own.NewRolling(stats), sops, rl),
 		computeRules:            rl,
@@ -202,4 +216,18 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 		Terms:        in.Terms,
 		Choices:      choices,
 	})
+}
+
+// newAssets returns the handler of /assets/* of the web bundle; the one place wire.go calls embed.Assets.
+func newAssets() http.Handler { return embed.Assets() }
+
+// newReportPage builds the page report_page of one market and slot in zone; risks gives its risks block.
+func newReportPage(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page {
+	return report_page.NewPage(report_page.Config{Market: market, Slot: slot, Zone: zone, Risks: risks})
+}
+
+// newRiskBlock is risks_block.Build over the rules, the evaluation and the winner reader.
+func newRiskBlock(ctx context.Context, rules compute.AlertRules, eval compute.EvaluateAlertsFunc, read compute.ReadingFunc,
+	today reportDay, at time.Time) ([]byte, error) {
+	return risks_block.Build(ctx, risks_block.Input{Rules: rules, Evaluate: eval, Read: read, Today: today, GeneratedAt: at})
 }

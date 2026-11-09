@@ -7,14 +7,16 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
-	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -32,16 +34,28 @@ func (f *fakeCatalog) OptionEodLatest(_ context.Context, since contracts.Day) ([
 
 // siteFixture is a site handler over a fake catalog and a fake page that records its input.
 type siteFixture struct {
-	cat      *fakeCatalog
-	inputs   []sitePageInput
-	buildErr error
-	h        http.Handler
+	cat       *fakeCatalog
+	inputs    []sitePageInput
+	buildErr  error
+	macroErr  error
+	macroDays []contracts.Day
+	h         http.Handler
 }
 
 func newSiteFixture(t *testing.T, entries ...store.OptionEodLatest) *siteFixture {
 	t.Helper()
 	a, _ := testApp(t, "")
 	f := &siteFixture{cat: &fakeCatalog{entries: entries}}
+	a.deps.pageList = []pages.Page{{
+		Meta: pages.Meta{Name: "macro_rates"},
+		Build: func(_ context.Context, _ store.SeriesReader, d contracts.Day, _ time.Time) ([]byte, error) {
+			f.macroDays = append(f.macroDays, d)
+			if f.macroErr != nil {
+				return nil, f.macroErr
+			}
+			return []byte("MACRO"), nil
+		},
+	}}
 	a.deps.optionDataPage = func(_ *time.Location, _ string, in sitePageInput) pages.Page {
 		f.inputs = append(f.inputs, in)
 		p := fakePage("option_data_page", "PAGE")
@@ -55,7 +69,7 @@ func newSiteFixture(t *testing.T, entries ...store.OptionEodLatest) *siteFixture
 	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
 	f.h = siteHandler(a, clk, "2026-11-06", siteReaders{catalog: f.cat, names: &fakeNames{}}, func(vm []byte) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
-	})
+	}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ASSET")) }))
 	return f
 }
 
@@ -104,27 +118,25 @@ func TestSiteRoutes(t *testing.T) {
 		t.Parallel()
 		f := newSiteFixture(t, entries...)
 		rec := f.do(http.MethodGet, "/")
-		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/options/data" {
+		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/home" {
 			t.Fatalf("got %d %q", rec.Code, rec.Header().Get("Location"))
 		}
 	})
 	t.Run("not found", func(t *testing.T) {
 		t.Parallel()
-		f := newSiteFixture(t, entries...)
-		for _, p := range []string{"/options/data/0", "/options/data/-1", "/options/data/x", "/options/data/1/2", "/nope", "/options/data/+5", "/options/data/05"} {
-			if rec := f.do(http.MethodGet, p); rec.Code != 404 {
-				t.Errorf("%s: code %d", p, rec.Code)
-			}
-		}
-		if len(f.inputs) != 0 {
-			t.Fatalf("a page was built: %+v", f.inputs)
-		}
+		checkNotFound(t, newSiteFixture(t, entries...))
+	})
+	t.Run("macro and assets", func(t *testing.T) {
+		t.Parallel()
+		checkMacroAssets(t, newSiteFixture(t, entries...))
 	})
 	t.Run("method", func(t *testing.T) {
 		t.Parallel()
 		f := newSiteFixture(t, entries...)
-		if rec := f.do(http.MethodPost, "/options/data"); rec.Code != 405 {
-			t.Fatalf("POST code %d", rec.Code)
+		for _, p := range []string{"/options/data", "/macro", "/home", "/assets/a.js", "/"} {
+			if rec := f.do(http.MethodPost, p); rec.Code != 405 {
+				t.Fatalf("POST %s code %d", p, rec.Code)
+			}
 		}
 		if rec := f.do(http.MethodHead, "/options/data"); rec.Code != 200 {
 			t.Fatalf("HEAD code %d", rec.Code)
@@ -134,6 +146,39 @@ func TestSiteRoutes(t *testing.T) {
 		t.Parallel()
 		checkSiteErrors(t, newSiteFixture(t, entries...))
 	})
+}
+
+func checkNotFound(t *testing.T, f *siteFixture) {
+	t.Helper()
+	paths := []string{
+		"/options/data/0", "/options/data/-1", "/options/data/x", "/options/data/1/2", "/nope",
+		"/options/data/+5", "/options/data/05", "/home/x", "/macro/x", "/assets", "/assets/",
+	}
+	for _, p := range paths {
+		if rec := f.do(http.MethodGet, p); rec.Code != 404 {
+			t.Errorf("%s: code %d", p, rec.Code)
+		}
+	}
+	if len(f.inputs) != 0 || len(f.macroDays) != 0 {
+		t.Fatalf("a page was built: %+v %v", f.inputs, f.macroDays)
+	}
+}
+
+func checkMacroAssets(t *testing.T, f *siteFixture) {
+	t.Helper()
+	if rec := f.do(http.MethodGet, "/macro"); rec.Code != 200 || rec.Body.String() != "MACRO" {
+		t.Fatalf("macro %d %q", rec.Code, rec.Body)
+	}
+	if len(f.macroDays) != 1 || f.macroDays[0] != "2026-11-06" || len(f.inputs) != 0 {
+		t.Fatalf("macro days %v inputs %v", f.macroDays, f.inputs)
+	}
+	if rec := f.do(http.MethodGet, "/assets/a.js"); rec.Code != 200 || rec.Body.String() != "ASSET" {
+		t.Fatalf("asset %d %q", rec.Code, rec.Body)
+	}
+	f.macroErr = errors.New("dsn sentinel-secret")
+	if rec := f.do(http.MethodGet, "/macro"); rec.Code != 500 || strings.Contains(rec.Body.String(), "sentinel") {
+		t.Fatalf("macro error %d %q", rec.Code, rec.Body)
+	}
 }
 
 func checkSiteErrors(t *testing.T, f *siteFixture) {
@@ -170,20 +215,6 @@ func TestSiteChoices(t *testing.T) {
 	}
 }
 
-func TestServeSiteFlags(t *testing.T) {
-	t.Parallel()
-	a, _ := testApp(t, "")
-	a.profile.Name = "demo"
-	err := runServe(a, []string{"--site", "--name", "macro_page"})
-	if err == nil || !strings.Contains(err.Error(), "--site") || !strings.Contains(err.Error(), "--name") {
-		t.Fatalf("err %v", err)
-	}
-	err = runServe(a, []string{"--name", "option_data_page"})
-	if err == nil || !strings.Contains(err.Error(), `unknown page "option_data_page"`) {
-		t.Fatalf("err %v", err)
-	}
-}
-
 func TestSiteDemoOpensNoStore(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")
@@ -208,13 +239,32 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 		t.Error("a store was opened")
 		return nil, errors.New("opened")
 	}
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+		t.Error("a store was opened")
+		return nil, errors.New("opened")
+	}
+	golden, err := os.ReadFile("../../contracts/fixtures/page.macro_rates.v3.golden.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.deps.pageList = []pages.Page{{
+		Meta: pages.Meta{Name: "macro_rates"},
+		Build: func(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error) {
+			return golden, nil
+		},
+	}}
 	a.deps.optionDataPage = newOptionDataPage
 	rd, closeFn, err := openSiteReaders(t.Context(), a)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeFn()
-	h := siteHandler(a, a.deps.newClock(), "", rd, embed.Handler)
+	h := siteHandler(a, a.deps.newClock(), "", rd, echoHandler, http.NotFoundHandler())
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/macro", nil))
+	if rec.Code != 200 || !bytes.Equal(rec.Body.Bytes(), golden) {
+		t.Fatalf("macro: %d %.200q", rec.Code, rec.Body)
+	}
 	for _, p := range []string{"/options/data", "/options/data/9010"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil))
@@ -228,15 +278,20 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 	}
 }
 
+// echoHandler writes the view model as the body, so a test needs no built web bundle.
+func echoHandler(vm []byte) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
+}
+
 func TestSiteMissingDSN(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "OT_PG_DSN_RUNNER=postgres://sentinel-secret\n")
 	a.profile.Name = "real"
-	a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) {
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
 		t.Error("a store was opened")
 		return nil, errors.New("opened")
 	}
-	err := runServe(a, []string{"--site", "--addr", "127.0.0.1:0"})
+	err := runServe(a, []string{"--addr", "127.0.0.1:0"})
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvPages) || strings.Contains(err.Error(), "sentinel") {
 		t.Fatalf("err %v", err)
 	}
@@ -280,7 +335,7 @@ func realSite(t *testing.T, cat *fakeCatalog, names *fakeNames) (http.Handler, *
 	rd := siteReaders{eod: noRows{}, quotes: noRows{}, catalog: cat, terms: noRows{}, names: names}
 	return siteHandler(a, clk, "2026-11-06", rd, func(vm []byte) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(vm) })
-	}), log
+	}, http.NotFoundHandler()), log
 }
 
 type sitePageJSON struct {
@@ -422,4 +477,239 @@ func TestSiteReaderErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDemoReaderSeven(t *testing.T) {
+	t.Parallel()
+	want := map[string]string{
+		"DGS10": "percent", "DGS3MO": "percent", "SP500": "index_points", "VIXCLS": "index_points",
+		"VXNCLS": "index_points", "RVXCLS": "index_points", "VXVCLS": "index_points",
+	}
+	for id, unit := range want {
+		pts, err := demoReader{}.SeriesPoints(t.Context(), id, "2026-11-01", "2026-11-30")
+		if err != nil || len(pts) != 3 {
+			t.Fatalf("%s: %d points, err %v", id, len(pts), err)
+		}
+		for _, p := range pts {
+			if p.SeriesID != id || string(p.Unit) != unit {
+				t.Errorf("%s: point %+v", id, p)
+			}
+		}
+	}
+	if pts, _ := (demoReader{}).SeriesPoints(t.Context(), "NOPE", "2026-11-01", "2026-11-30"); len(pts) != 0 {
+		t.Fatalf("unknown series: %v", pts)
+	}
+}
+
+// closeCounter counts Close calls.
+type closeCounter struct{ n *atomic.Int32 }
+
+func (c closeCounter) Close() error { c.n.Add(1); return nil }
+
+type cSeries struct {
+	store.SeriesStore
+	closeCounter
+}
+
+func (c cSeries) Close() error { return c.closeCounter.Close() }
+
+type cView struct {
+	store.ReadingViewReader
+	closeCounter
+}
+
+func (c cView) Close() error { return c.closeCounter.Close() }
+
+type cEod struct {
+	store.OptionEodStore
+	closeCounter
+}
+
+func (c cEod) Close() error { return c.closeCounter.Close() }
+
+type cQuotes struct {
+	store.QuoteSnapshotStore
+	closeCounter
+}
+
+func (c cQuotes) Close() error { return c.closeCounter.Close() }
+
+type cCatalog struct {
+	store.OptionEodCatalogStore
+	closeCounter
+}
+
+func (c cCatalog) Close() error { return c.closeCounter.Close() }
+
+type cTerms struct {
+	store.OptionTermsStore
+	closeCounter
+}
+
+func (c cTerms) Close() error { return c.closeCounter.Close() }
+
+type cNames struct {
+	store.InstrumentNameStore
+	closeCounter
+}
+
+func (c cNames) Close() error { return c.closeCounter.Close() }
+
+func TestSiteStoresClosed(t *testing.T) {
+	t.Parallel()
+	errOpen := errors.New("open sentinel-secret")
+	for failAt := range 7 {
+		t.Run(strconv.Itoa(failAt), func(t *testing.T) {
+			t.Parallel()
+			a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+			a.profile.Name = "real"
+			var closed atomic.Int32
+			opened := 0
+			step := func() error {
+				if opened == failAt {
+					return errOpen
+				}
+				opened++
+				return nil
+			}
+			cc := closeCounter{&closed}
+			a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+				return cSeries{closeCounter: cc}, step()
+			}
+			a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) {
+				return cEod{closeCounter: cc}, step()
+			}
+			a.deps.openQuoteSnapshot = func(context.Context, string) (store.QuoteSnapshotStore, error) {
+				return cQuotes{closeCounter: cc}, step()
+			}
+			a.deps.openOptionCatalog = func(context.Context, string) (store.OptionEodCatalogStore, error) {
+				return cCatalog{closeCounter: cc}, step()
+			}
+			a.deps.openOptionTerms = func(context.Context, string) (store.OptionTermsStore, error) {
+				return cTerms{closeCounter: cc}, step()
+			}
+			a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
+				return cNames{closeCounter: cc}, step()
+			}
+			a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
+				return cView{closeCounter: cc}, step()
+			}
+			_, _, err := openSiteReaders(t.Context(), a)
+			if err == nil || strings.Contains(err.Error(), "sentinel") {
+				t.Fatalf("err %v", err)
+			}
+			if int(closed.Load()) != failAt {
+				t.Fatalf("closed %d want %d", closed.Load(), failAt)
+			}
+		})
+	}
+	t.Run("all open, closeFn closes all", func(t *testing.T) {
+		t.Parallel()
+		a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+		a.profile.Name = "real"
+		var closed atomic.Int32
+		cc := closeCounter{&closed}
+		a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { return cSeries{closeCounter: cc}, nil }
+		a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) { return cEod{closeCounter: cc}, nil }
+		a.deps.openQuoteSnapshot = func(context.Context, string) (store.QuoteSnapshotStore, error) { return cQuotes{closeCounter: cc}, nil }
+		a.deps.openOptionCatalog = func(context.Context, string) (store.OptionEodCatalogStore, error) {
+			return cCatalog{closeCounter: cc}, nil
+		}
+		a.deps.openOptionTerms = func(context.Context, string) (store.OptionTermsStore, error) { return cTerms{closeCounter: cc}, nil }
+		a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) { return cNames{closeCounter: cc}, nil }
+		a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
+			return cView{closeCounter: cc}, nil
+		}
+		_, closeFn, err := openSiteReaders(t.Context(), a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		closeFn()
+		if closed.Load() != 7 {
+			t.Fatalf("closed %d", closed.Load())
+		}
+	})
+}
+
+// reportSiteApp is an app whose report page and risks block are the real ones over rule.
+func reportSiteApp(t *testing.T, view store.ReadingViewReader) http.Handler {
+	t.Helper()
+	a := reportApp(t, "")
+	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
+	return siteHandler(a, clk, "2026-11-06", siteReaders{view: view}, echoHandler, http.NotFoundHandler())
+}
+
+func TestSiteReportRoute(t *testing.T) {
+	t.Parallel()
+	get := func(h http.Handler, method, target string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, target, nil))
+		return rec
+	}
+	risksOf := func(rec *httptest.ResponseRecorder) string {
+		var p struct {
+			Blocks struct {
+				Risks struct {
+					State string `json:"state"`
+					Items any    `json:"items"`
+				} `json:"risks"`
+			} `json:"blocks"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+			t.Fatalf("%v: %q", err, rec.Body)
+		}
+		items, _ := p.Blocks.Risks.Items.([]any)
+		return p.Blocks.Risks.State + "/" + strconv.Itoa(len(items))
+	}
+	t.Run("built per request", func(t *testing.T) {
+		t.Parallel()
+		v := &fakeView{}
+		h := reportSiteApp(t, v)
+		v.set(viewRow("2026-11-06", "0.9", "2026-11-06"))
+		rec := get(h, http.MethodGet, "/report?market=us&slot=open")
+		if rec.Code != 200 || risksOf(rec) != "ok/1" {
+			t.Fatalf("first: %d %q", rec.Code, rec.Body)
+		}
+		v.set(viewRow("2026-11-06", "0.9", ""))
+		rec = get(h, http.MethodGet, "/report?market=us&slot=open")
+		if rec.Code != 200 || risksOf(rec) != "gap/0" {
+			t.Fatalf("second: %d %q", rec.Code, rec.Body)
+		}
+	})
+	t.Run("bad query is 400", func(t *testing.T) {
+		t.Parallel()
+		h := reportSiteApp(t, &fakeView{})
+		for _, target := range []string{"/report", "/report?market=us", "/report?market=xx&slot=open", "/report?market=us&slot=noon"} {
+			rec := get(h, http.MethodGet, target)
+			if rec.Code != 400 || strings.TrimSpace(rec.Body.String()) != "bad request" {
+				t.Errorf("%s: %d %q", target, rec.Code, rec.Body)
+			}
+		}
+	})
+	t.Run("reader error is 500", func(t *testing.T) {
+		t.Parallel()
+		h := reportSiteApp(t, &fakeView{err: errors.New("dsn sentinel-secret")})
+		rec := get(h, http.MethodGet, "/report?market=us&slot=open")
+		if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
+			t.Fatalf("%d %q", rec.Code, rec.Body)
+		}
+	})
+	t.Run("path and method", func(t *testing.T) {
+		t.Parallel()
+		h := reportSiteApp(t, &fakeView{})
+		if rec := get(h, http.MethodGet, "/report/x?market=us&slot=open"); rec.Code != 404 {
+			t.Errorf("report/x: %d", rec.Code)
+		}
+		if rec := get(h, http.MethodPost, "/report?market=us&slot=open"); rec.Code != 405 {
+			t.Errorf("POST: %d", rec.Code)
+		}
+	})
+	t.Run("other routes as before", func(t *testing.T) {
+		t.Parallel()
+		f := newSiteFixture(t)
+		checkMacroAssets(t, f)
+		if rec := f.do(http.MethodGet, "/options/data"); rec.Code != 200 {
+			t.Fatalf("options/data: %d", rec.Code)
+		}
+	})
 }
