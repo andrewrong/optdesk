@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/optionledger.flex_section_row.r1.json",
+  "title": "FlexSectionRow",
+  "description": "optionledger.flex_section_row r1: one revision of one row of a Flex statement section other than trades, attributes as sent without any account attribute, as text; insert only. No account number is stored: the alias is the only identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alias", "section", "row_key", "revision", "fetch_id", "row_index", "attributes", "attributes_sha256", "recorded_at"],
+  "x-dataset": "optionledger.flex_section_row",
+  "x-revision": "r1",
+  "x-primary-key": ["alias", "section", "row_key", "revision"],
+  "properties": {
+    "alias": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$", "description": "Account alias of the row, the label mapped by the allow-list."},
+    "section": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$", "description": "Row element name of the section in the Flex statement, for example CashTransaction; a pattern, so a later section needs no schema change."},
+    "row_key": {"type": "string", "minLength": 1, "description": "Key attributes of the row joined with a bar, as text; an optional attribute that is absent is the empty text."},
+    "revision": {"type": "integer", "minimum": 1, "description": "Revision of the row for its key; 1 for a new key, a changed row is the next revision."},
+    "fetch_id": {"type": "string", "minLength": 1, "description": "Identifier of the fetch that first wrote this revision."},
+    "row_index": {"type": "integer", "minimum": 0, "description": "Position of the row in its section of the report."},
+    "attributes": {"type": "string", "description": "JSON object as text: every attribute of the row as sent, every value text, the account attributes removed."},
+    "attributes_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the attributes text, 64 lower-case hex digits."},
+    "recorded_at": {"type": "string", "format": "date-time", "description": "Instant the row was recorded, UTC."}
+  }
+}

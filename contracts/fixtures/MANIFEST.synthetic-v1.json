@@ -33,12 +33,13 @@
     {"path": "page.macro_rates.v3.seven.json", "sha256": "84dee32d7c28e248dc269feb4630c4b546246ba3c3591a30dc16bef25a530276"},
     {"path": "page.sample_page.v1.ok.json", "sha256": "044aeefeda80373cc41113728893c8e1b1b4e5fb1a1aee1eddbd482a0576a247"},
     {"path": "page.sample_page.v1.bad-version.json", "sha256": "6c790618b2f53d2d037f9b79468a140dd85e2e37f0272762e47af1de7c764a54"},
-    {"path": "candidates.option_candidate.r1.json", "sha256": "dba334887caab171c711330cc3fb00dca89c53c51ec6502ba4c0c52d5d54995f"},
+    {"path": "candidates.option_candidate.r1.json", "sha256": "700e588e341914ed9ae70e55068f92607749ca068f926806d05f15f4beced296"},
     {"path": "obs.earnings_date.r1.json", "sha256": "131e517888f7ccbc003f3337b3dfd251feeb82f8eab349344df58fb86d3cdeb0"},
     {"path": "page.companies_page.v2.input.json", "sha256": "d83f65a4ab2f621719c0794d99a67ebcb6180e5ee6af06084ddb7712c769ebf5"},
     {"path": "page.companies_page.v2.ok.json", "sha256": "138a563f83a3a9a7334ef692aeb8005417eb349918c7f579dade3fecdbe6e373"},
     {"path": "page.companies_page.v2.gap.json", "sha256": "c37297c2f4c806ddf0232da3c6caf38ad61574992eb63ec9d725a6bc36b93559"},
     {"path": "obs.price_bar.r1.json", "sha256": "882e004dd8cc1191ca183f269c90128eee3d26ac9531f680f927532bc32787c8"},
-    {"path": "obs.fx_rate.r1.json", "sha256": "4dee75f77c641cde0007f292afebd1739a0513211c48a078b893c33bf1f766ca"}
+    {"path": "obs.fx_rate.r1.json", "sha256": "4dee75f77c641cde0007f292afebd1739a0513211c48a078b893c33bf1f766ca"},
+    {"path": "account.position_mark.r1.json", "sha256": "c57dd61959e3ba4c4d07657d1c3112d80433877f37589b3bf49f0d8591822bc4"}
   ]
 }

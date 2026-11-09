@@ -78,6 +78,7 @@ type deps struct {
 	newRunner               runner.NewWithRuleFunc
 	newBackfiller           runner.NewBackfillerWithRuleFunc
 	dialBroker              broker.DialFunc
+	newReference            broker.NewReferenceFunc
 	openInstrument          store.OpenInstrumentFunc
 	openOptionEod           store.OpenOptionEodFunc
 	openQuoteSnapshot       store.OpenQuoteSnapshotFunc
@@ -85,6 +86,7 @@ type deps struct {
 	openOptionTerms         store.OpenOptionTermsFunc
 	openInstrumentName      store.OpenInstrumentNameFunc
 	newOptionEod            jobs.NewOptionEodFunc
+	newOptionEodJP          jobs.NewOptionEodFunc
 	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
@@ -161,6 +163,7 @@ func newDeps() deps {
 		newRunner:               reconcile.NewWithRule,
 		newBackfiller:           reconcile.NewBackfillerWithRule,
 		dialBroker:              grpcbroker.Dial,
+		newReference:            grpcbroker.DialReference,
 		openInstrument:          instrument.Open,
 		openOptionEod:           snapshot.OpenOptionEod,
 		openQuoteSnapshot:       snapshot.OpenQuoteSnapshot,
@@ -168,6 +171,7 @@ func newDeps() deps {
 		openOptionTerms:         instrument.OpenOptionTerms,
 		openInstrumentName:      instrument.OpenInstrumentNames,
 		newOptionEod:            optioneod.New,
+		newOptionEodJP:          optioneod.NewJP,
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
 		openReadingView:         reading.OpenView,

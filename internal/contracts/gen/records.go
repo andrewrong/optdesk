@@ -281,6 +281,195 @@ type AccountPosition struct {
 	Symbol string `json:"symbol" yaml:"symbol" mapstructure:"symbol"`
 }
 
+// account.position_mark r1: one market mark of one held contract of one account
+// capture; append only, a correction is a row with a higher attempt.
+type AccountPositionMark struct {
+	// Alias of the gateway entry, never the account id.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Ask as decimal text; empty when absent.
+	Ask string `json:"ask" yaml:"ask" mapstructure:"ask"`
+
+	// Attempt number from 1; a retry writes a row with the next number.
+	Attempt int `json:"attempt" yaml:"attempt" mapstructure:"attempt"`
+
+	// How the price was derived.
+	Basis AccountPositionMarkBasis `json:"basis" yaml:"basis" mapstructure:"basis"`
+
+	// Bid as decimal text; empty when absent.
+	Bid string `json:"bid" yaml:"bid" mapstructure:"bid"`
+
+	// Identifier of the capture the mark belongs to, as in account.position.
+	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
+
+	// Previous close as decimal text; empty when absent.
+	Close string `json:"close" yaml:"close" mapstructure:"close"`
+
+	// Broker contract id of the position marked.
+	ConID int `json:"con_id" yaml:"con_id" mapstructure:"con_id"`
+
+	// Currency code of the price.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Last trade as decimal text; empty when absent.
+	Last string `json:"last" yaml:"last" mapstructure:"last"`
+
+	// Instant the mark was taken, UTC.
+	MarkedAt time.Time `json:"marked_at" yaml:"marked_at" mapstructure:"marked_at"`
+
+	// Market data type the gateway answered with; 0 when unknown.
+	MarketDataType int `json:"market_data_type" yaml:"market_data_type" mapstructure:"market_data_type"`
+
+	// Mark as decimal text; empty when basis is none.
+	Price string `json:"price" yaml:"price" mapstructure:"price"`
+
+	// Session day (XNYS) of the capture.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Outcome of the request.
+	Status AccountPositionMarkStatus `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+type AccountPositionMarkBasis string
+
+const AccountPositionMarkBasisClose AccountPositionMarkBasis = "close"
+const AccountPositionMarkBasisLast AccountPositionMarkBasis = "last"
+const AccountPositionMarkBasisMid AccountPositionMarkBasis = "mid"
+const AccountPositionMarkBasisNone AccountPositionMarkBasis = "none"
+
+var enumValues_AccountPositionMarkBasis = []interface{}{
+	"mid",
+	"last",
+	"close",
+	"none",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountPositionMarkBasis) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountPositionMarkBasis {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountPositionMarkBasis, v)
+	}
+	*j = AccountPositionMarkBasis(v)
+	return nil
+}
+
+type AccountPositionMarkStatus string
+
+const AccountPositionMarkStatusDisconnected AccountPositionMarkStatus = "disconnected"
+const AccountPositionMarkStatusError AccountPositionMarkStatus = "error"
+const AccountPositionMarkStatusNoData AccountPositionMarkStatus = "no_data"
+const AccountPositionMarkStatusNoSubscription AccountPositionMarkStatus = "no_subscription"
+const AccountPositionMarkStatusOk AccountPositionMarkStatus = "ok"
+const AccountPositionMarkStatusPartial AccountPositionMarkStatus = "partial"
+const AccountPositionMarkStatusTimeout AccountPositionMarkStatus = "timeout"
+
+var enumValues_AccountPositionMarkStatus = []interface{}{
+	"ok",
+	"partial",
+	"no_data",
+	"no_subscription",
+	"timeout",
+	"error",
+	"disconnected",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountPositionMarkStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountPositionMarkStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountPositionMarkStatus, v)
+	}
+	*j = AccountPositionMarkStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountPositionMark) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in AccountPositionMark: required")
+	}
+	if _, ok := raw["ask"]; raw != nil && !ok {
+		return fmt.Errorf("field ask in AccountPositionMark: required")
+	}
+	if _, ok := raw["attempt"]; raw != nil && !ok {
+		return fmt.Errorf("field attempt in AccountPositionMark: required")
+	}
+	if _, ok := raw["basis"]; raw != nil && !ok {
+		return fmt.Errorf("field basis in AccountPositionMark: required")
+	}
+	if _, ok := raw["bid"]; raw != nil && !ok {
+		return fmt.Errorf("field bid in AccountPositionMark: required")
+	}
+	if _, ok := raw["capture_id"]; raw != nil && !ok {
+		return fmt.Errorf("field capture_id in AccountPositionMark: required")
+	}
+	if _, ok := raw["close"]; raw != nil && !ok {
+		return fmt.Errorf("field close in AccountPositionMark: required")
+	}
+	if _, ok := raw["con_id"]; raw != nil && !ok {
+		return fmt.Errorf("field con_id in AccountPositionMark: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in AccountPositionMark: required")
+	}
+	if _, ok := raw["last"]; raw != nil && !ok {
+		return fmt.Errorf("field last in AccountPositionMark: required")
+	}
+	if _, ok := raw["marked_at"]; raw != nil && !ok {
+		return fmt.Errorf("field marked_at in AccountPositionMark: required")
+	}
+	if _, ok := raw["market_data_type"]; raw != nil && !ok {
+		return fmt.Errorf("field market_data_type in AccountPositionMark: required")
+	}
+	if _, ok := raw["price"]; raw != nil && !ok {
+		return fmt.Errorf("field price in AccountPositionMark: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in AccountPositionMark: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in AccountPositionMark: required")
+	}
+	type Plain AccountPositionMark
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Alias) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "alias", 1)
+	}
+	if len(plain.CaptureID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "capture_id", 1)
+	}
+	*j = AccountPositionMark(plain)
+	return nil
+}
+
 type AccountPositionRight string
 
 const AccountPositionRightBlank AccountPositionRight = ""
@@ -853,6 +1042,186 @@ func (j *FlexFetch) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// optionledger.flex_section_row r1: one revision of one row of a Flex statement
+// section other than trades, attributes as sent without any account attribute, as
+// text; insert only. No account number is stored: the alias is the only identity.
+type FlexSectionRow struct {
+	// Account alias of the row, the label mapped by the allow-list.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// JSON object as text: every attribute of the row as sent, every value text, the
+	// account attributes removed.
+	Attributes string `json:"attributes" yaml:"attributes" mapstructure:"attributes"`
+
+	// SHA-256 of the attributes text, 64 lower-case hex digits.
+	AttributesSha256 string `json:"attributes_sha256" yaml:"attributes_sha256" mapstructure:"attributes_sha256"`
+
+	// Identifier of the fetch that first wrote this revision.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Instant the row was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Revision of the row for its key; 1 for a new key, a changed row is the next
+	// revision.
+	Revision int `json:"revision" yaml:"revision" mapstructure:"revision"`
+
+	// Position of the row in its section of the report.
+	RowIndex int `json:"row_index" yaml:"row_index" mapstructure:"row_index"`
+
+	// Key attributes of the row joined with a bar, as text; an optional attribute
+	// that is absent is the empty text.
+	RowKey string `json:"row_key" yaml:"row_key" mapstructure:"row_key"`
+
+	// Row element name of the section in the Flex statement, for example
+	// CashTransaction; a pattern, so a later section needs no schema change.
+	Section string `json:"section" yaml:"section" mapstructure:"section"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexSectionRow) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in FlexSectionRow: required")
+	}
+	if _, ok := raw["attributes"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes in FlexSectionRow: required")
+	}
+	if _, ok := raw["attributes_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes_sha256 in FlexSectionRow: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexSectionRow: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in FlexSectionRow: required")
+	}
+	if _, ok := raw["revision"]; raw != nil && !ok {
+		return fmt.Errorf("field revision in FlexSectionRow: required")
+	}
+	if _, ok := raw["row_index"]; raw != nil && !ok {
+		return fmt.Errorf("field row_index in FlexSectionRow: required")
+	}
+	if _, ok := raw["row_key"]; raw != nil && !ok {
+		return fmt.Errorf("field row_key in FlexSectionRow: required")
+	}
+	if _, ok := raw["section"]; raw != nil && !ok {
+		return fmt.Errorf("field section in FlexSectionRow: required")
+	}
+	type Plain FlexSectionRow
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	if len(plain.RowKey) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "row_key", 1)
+	}
+	*j = FlexSectionRow(plain)
+	return nil
+}
+
+// optionledger.flex_section_status r1: whether one section was in the statement of
+// one alias in one fetch, with its row count and the rows refused; insert only. No
+// account number is stored.
+type FlexSectionStatus struct {
+	// Account alias of the statement, the label mapped by the allow-list.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Identifier of the fetch.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Instant the status was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Rows of the section stored or found unchanged; 0 when absent.
+	RowCount int `json:"row_count" yaml:"row_count" mapstructure:"row_count"`
+
+	// Rows refused for a missing key attribute or a duplicate key.
+	RowsRefused int `json:"rows_refused" yaml:"rows_refused" mapstructure:"rows_refused"`
+
+	// Row element name of the section in the Flex statement, for example
+	// CashTransaction; a pattern, so a later section needs no schema change.
+	Section string `json:"section" yaml:"section" mapstructure:"section"`
+
+	// present: the statement has the section; absent: the Flex query lacks it.
+	State FlexSectionStatusState `json:"state" yaml:"state" mapstructure:"state"`
+}
+
+type FlexSectionStatusState string
+
+const FlexSectionStatusStateAbsent FlexSectionStatusState = "absent"
+const FlexSectionStatusStatePresent FlexSectionStatusState = "present"
+
+var enumValues_FlexSectionStatusState = []interface{}{
+	"present",
+	"absent",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexSectionStatusState) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FlexSectionStatusState {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FlexSectionStatusState, v)
+	}
+	*j = FlexSectionStatusState(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexSectionStatus) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in FlexSectionStatus: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexSectionStatus: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in FlexSectionStatus: required")
+	}
+	if _, ok := raw["row_count"]; raw != nil && !ok {
+		return fmt.Errorf("field row_count in FlexSectionStatus: required")
+	}
+	if _, ok := raw["rows_refused"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_refused in FlexSectionStatus: required")
+	}
+	if _, ok := raw["section"]; raw != nil && !ok {
+		return fmt.Errorf("field section in FlexSectionStatus: required")
+	}
+	if _, ok := raw["state"]; raw != nil && !ok {
+		return fmt.Errorf("field state in FlexSectionStatus: required")
+	}
+	type Plain FlexSectionStatus
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	*j = FlexSectionStatus(plain)
+	return nil
+}
+
 // optionledger.flex_trade_row r1: one revision of one Flex trade row of level
 // EXECUTION, attributes as sent, as text; insert only. No account number is
 // stored: the alias is the only identity.
@@ -1297,6 +1666,10 @@ type OptionCandidate struct {
 
 	// Run day: the session day the rows were computed for.
 	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Version of the owner settings (ownerset Version) the run used; null when the
+	// row was computed without owner settings.
+	SettingsVersion *int `json:"settings_version,omitempty" yaml:"settings_version,omitempty" mapstructure:"settings_version,omitempty"`
 
 	// Price of the underlying at the capture as decimal text; null when absent.
 	Spot *string `json:"spot" yaml:"spot" mapstructure:"spot"`

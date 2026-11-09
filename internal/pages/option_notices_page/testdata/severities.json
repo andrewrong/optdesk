@@ -1,0 +1,16 @@
+{
+  "positions": {
+    "main/2026-11-09": [
+      {"Symbol": "ACME", "SecType": "OPT", "Expiry": "2026-11-09", "Strike": "95", "Right": "P", "Multiplier": "100", "Quantity": "-1", "Currency": "USD"}
+    ]
+  },
+  "values": {"main/2026-11-09": [{"Tag": "Cushion", "Value": "0.04", "Currency": "USD"}]},
+  "notices": [
+    {"Code": "expiry_today", "Severity": "act", "Symbol": "ACME", "Contract": "ACME 2026-11-09 95 P", "Expiry": "2026-11-09"},
+    {"Code": "call_guard", "Severity": "warn", "Symbol": "ACME", "Contract": "ACME 2026-12-18 100 C", "Expiry": "2026-12-18",
+     "Facts": [{"Label": "reason", "Value": "earnings_before_expiry"}]},
+    {"Code": "capture_stale", "Severity": "info", "Facts": [{"Label": "capture_day", "Value": "2026-11-06"}]}
+  ],
+  "cash": [{"Day": "2026-11-09", "Currency": "USD", "Amount": "9500"}],
+  "cushion": "0.04"
+}

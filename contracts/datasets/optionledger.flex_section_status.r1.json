@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/optionledger.flex_section_status.r1.json",
+  "title": "FlexSectionStatus",
+  "description": "optionledger.flex_section_status r1: whether one section was in the statement of one alias in one fetch, with its row count and the rows refused; insert only. No account number is stored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["fetch_id", "alias", "section", "state", "row_count", "rows_refused", "recorded_at"],
+  "x-dataset": "optionledger.flex_section_status",
+  "x-revision": "r1",
+  "x-primary-key": ["fetch_id", "alias", "section"],
+  "properties": {
+    "fetch_id": {"type": "string", "minLength": 1, "description": "Identifier of the fetch."},
+    "alias": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$", "description": "Account alias of the statement, the label mapped by the allow-list."},
+    "section": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$", "description": "Row element name of the section in the Flex statement, for example CashTransaction; a pattern, so a later section needs no schema change."},
+    "state": {"type": "string", "enum": ["present", "absent"], "description": "present: the statement has the section; absent: the Flex query lacks it."},
+    "row_count": {"type": "integer", "minimum": 0, "description": "Rows of the section stored or found unchanged; 0 when absent."},
+    "rows_refused": {"type": "integer", "minimum": 0, "description": "Rows refused for a missing key attribute or a duplicate key."},
+    "recorded_at": {"type": "string", "format": "date-time", "description": "Instant the status was recorded, UTC."}
+  }
+}

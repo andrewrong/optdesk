@@ -1,0 +1,8 @@
+{"cases":[
+{"name":"terms","quotes":[
+ {"Underlying":"AAPL","Right":"P","Strike":"95","Expiry":"2026-12-18","Day":"2026-11-06","Bid":"7.00","Ask":"7.20"},
+ {"Underlying":"AAPL","Right":"C","Strike":"90","Expiry":"2026-12-18","Day":"2026-11-06","Bid":"8.00","Ask":"8.20"},
+ {"Underlying":"AAPL","Right":"P","Strike":"90","Expiry":"2027-01-15","Day":"2026-11-06","Bid":"9.00","Ask":"9.20"},
+ {"Underlying":"MSFT","Right":"P","Strike":"90","Expiry":"2026-12-18","Day":"2026-11-06","Bid":"6.00","Ask":"6.20"},
+ {"Underlying":"AAPL","Right":"P","Strike":"90.0","Expiry":"2026-12-18","Day":"2026-11-06","Bid":"1.00","Ask":"1.20"}]}
+]}
