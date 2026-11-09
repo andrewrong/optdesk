@@ -52,7 +52,7 @@ func TestDatasetFixtures(t *testing.T) {
 
 	names := []string{
 		"master.session_day", "obs.series_point", "obs.option_eod", "obs.quote_snapshot", "readings.reading",
-		"candidates.option_candidate",
+		"candidates.option_candidate", "account.position_mark",
 	}
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
