@@ -12,6 +12,7 @@ from kit.sockdir import short_socket_dir
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr import spec
+from optdesk.ibkr.api import DividendKey, DividendReading
 from optdesk.ibkr.model import (
     ChainRow,
     QuoteRow,
@@ -333,3 +334,71 @@ def test_snapshot_unspecified_kind_is_invalid_argument() -> None:
             return await code_of(drain())
 
     assert asyncio.run(run()) == grpc.StatusCode.INVALID_ARGUMENT
+
+
+@dataclass
+class FakeReference(FakeGateway):
+    readings: list[DividendReading] = field(default_factory=list)
+    keys: list[DividendKey] = field(default_factory=list)
+
+    async def dividends(
+        self,
+        keys: Sequence[DividendKey],
+        on_reading: Callable[[DividendReading], Awaitable[None]],
+    ) -> None:
+        self.keys.extend(keys)
+        for item in self.readings:
+            await on_reading(item)
+
+
+async def dividends(
+    channel: grpc.aio.Channel, keys: list[pb.ContractKey]
+) -> list[pb.DividendProjection]:
+    stub = pb.ReferenceServiceStub(channel)
+    return [item async for item in stub.Dividends(iter(keys))]
+
+
+def test_dividends_stream_one_projection_per_key() -> None:
+    key = DividendKey("AAPL", "STK", "SMART", "USD", 7)
+    gateway = FakeReference(
+        readings=[
+            DividendReading(key, "ok", "1", None, "20260102", "0.25", 0, 3.0),
+            DividendReading(key, "timeout", None, None, None, None, 0, 4.0),
+        ]
+    )
+
+    async def run() -> list[pb.DividendProjection]:
+        async with serving(gateway) as channel:
+            return await dividends(
+                channel,
+                [pb.ContractKey(symbol="AAPL", sec_type=pb.SEC_TYPE_STOCK, con_id=7)],
+            )
+
+    first, second = asyncio.run(run())
+    assert gateway.keys == [DividendKey("AAPL", "STK", "", "", 7)]
+    assert first.status == pb.DIVIDEND_STATUS_OK
+    assert first.key.con_id == 7 and first.key.sec_type == pb.SEC_TYPE_STOCK
+    assert first.HasField("past_12m") and first.past_12m == "1"
+    assert not first.HasField("next_12m")
+    assert first.next_ex_date == "20260102" and first.next_amount == "0.25"
+    assert first.received_at.seconds == 3
+    assert second.status == pb.DIVIDEND_STATUS_TIMEOUT
+    assert not second.HasField("next_ex_date")
+
+
+def test_dividends_without_keys_is_invalid_argument() -> None:
+    async def run() -> grpc.StatusCode:
+        async with serving(FakeReference()) as channel:
+            return await code_of(dividends(channel, []))
+
+    assert asyncio.run(run()) == grpc.StatusCode.INVALID_ARGUMENT
+
+
+def test_dividends_on_gateway_without_reference_is_unimplemented() -> None:
+    async def run() -> grpc.StatusCode:
+        async with serving(FakeGateway()) as channel:
+            return await code_of(
+                dividends(channel, [pb.ContractKey(symbol="AAPL", con_id=7)])
+            )
+
+    assert asyncio.run(run()) == grpc.StatusCode.UNIMPLEMENTED

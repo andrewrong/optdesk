@@ -19,6 +19,8 @@ from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.accounts import read_account
+from optdesk.ibkr.api import DividendKey, DividendReading
+from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
 from optdesk.ibkr.model import (
     AccountRows,
     ChainRow,
@@ -106,6 +108,7 @@ class _Job:
         self.con_id = con_id
         self.event = asyncio.Event()
         self.error: tuple[int, str] | None = None
+        self.on_error: Callable[[int, str], None] | None = None
 
 
 class IbGateway:
@@ -190,6 +193,8 @@ class IbGateway:
             if con_id and job.con_id == con_id and job.error is None:
                 job.error = (code, text)
                 job.event.set()
+                if job.on_error is not None:
+                    job.on_error(code, text)
 
     def _current(self, generation: int) -> bool:
         return self._connected and self._generation == generation
@@ -427,6 +432,95 @@ class IbGateway:
             data_type=data_type,
             fields=fields,
         )
+
+    # --- dividends --------------------------------------------------------
+
+    async def dividends(
+        self,
+        keys: Sequence[DividendKey],
+        on_reading: Callable[[DividendReading], Awaitable[None]],
+    ) -> None:
+        """Call on_reading once per key with its tick 456 reading.
+
+        Each key holds a market-data line while it waits; a lost session raises
+        ConnectionError. ib_async drops a tick it cannot parse, so such a key
+        is answered as a timeout.
+        """
+
+        async def one(key: DividendKey) -> None:
+            async with self._lines.lease():
+                await self._pacer.start()
+                ib, _ = self._session()
+                reading = await self._until_lost(
+                    read_dividend(
+                        self._clock,
+                        key,
+                        lambda k, ticks, on_text, on_error: self._subscribe_dividend(
+                            ib, k, ticks, on_text, on_error
+                        ),
+                    )
+                )
+            await on_reading(reading)
+
+        tasks = [asyncio.ensure_future(one(key)) for key in keys]
+        try:
+            await asyncio.gather(*tasks)
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    def _subscribe_dividend(
+        self,
+        ib: Any,
+        key: DividendKey,
+        ticks: str,
+        on_text: TickText,
+        on_error: TickError,
+    ) -> Release:
+        job = _Job(key.con_id)
+        job.on_error = on_error
+        self._jobs.add(job)
+        contract = Contract(
+            conId=key.con_id,
+            symbol=key.symbol,
+            secType=key.sec_type,
+            exchange=key.exchange or "SMART",
+            currency=key.currency,
+        )
+        ticker = ib.reqMktData(contract, ticks, False, False)
+
+        def watch(*_: object) -> None:
+            found = getattr(ticker, "dividends", None)
+            if found is not None:
+                on_text(_dividend_text(found))
+
+        ticker.updateEvent += watch
+        watch()
+
+        def release() -> None:
+            self._jobs.discard(job)
+            ticker.updateEvent -= watch
+            self._pacer.cancel(lambda: self._cancel(ib, contract))
+
+        return release
+
+
+def _dividend_text(found: Any) -> str:
+    """Rebuild the four-value text of tick 456 from the parsed ib_async value."""
+
+    def number(value: float | None) -> str:
+        return "" if value is None else _decimal_text(value)
+
+    moment = found.nextDate
+    return ",".join(
+        (
+            number(found.past12Months),
+            number(found.next12Months),
+            "" if moment is None else moment.strftime("%Y%m%d"),
+            number(found.nextAmount),
+        )
+    )
 
 
 __all__ = ["IbGateway", "ticker_fields"]
