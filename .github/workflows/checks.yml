@@ -55,7 +55,14 @@ jobs:
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
+          # A dependabot PR that changes no contract file is 'Contracts: unchanged'
+          # by definition; dependabot cannot write the line itself.
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ] && \
+             [ -z "$(git diff --name-only "$BASE_SHA"...HEAD -- contracts/schemas contracts/datasets contracts/proto)" ]; then
+            echo "dependabot PR with no contract change: treated as 'Contracts: unchanged'"; exit 0
+          fi
           line=$(printf '%s\n' "$PR_BODY" | tr -d '\r' | grep -E '^Contracts: ' | head -n 1 || true)
           if [ -z "$line" ]; then echo "body has no 'Contracts:' line"; exit 1; fi
           # Accepted: 'Contracts: unchanged', or one or more '<id> rN->rN+1',
