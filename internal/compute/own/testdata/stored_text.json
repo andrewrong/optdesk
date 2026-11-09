@@ -7,5 +7,6 @@
   {"id": "market.vxn_pctile_3y", "input": 0.0234375, "want": "0.023438"},
   {"id": "market.rvx_pctile_3y", "input": 0, "want": "0.000000"},
   {"id": "market.sp500_pctile_3y", "input": 1, "want": "1.000000"},
-  {"id": "market.sp500_vs_200d", "input": 0.0312, "want": "0.031200"}
+  {"id": "market.sp500_vs_200d", "input": 0.0312, "want": "0.031200"},
+  {"id": "macro.ease", "input": 56.425, "want": "56.42"}
 ]
