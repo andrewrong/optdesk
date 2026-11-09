@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/optionledger.flex_fetch.r1.json",
+  "title": "FlexFetch",
+  "description": "optionledger.flex_fetch r1: one Flex request pair (one window of one query of one login) with its outcome and counts; insert only. No token and no account number is stored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["fetch_id", "login", "query_id", "first_date", "last_date", "started_at", "finished_at", "status", "error_kind", "error_code", "raw_sha256", "parser_version", "statements", "statements_unmapped", "rows_parsed", "rows_new", "rows_revised", "rows_unchanged"],
+  "x-dataset": "optionledger.flex_fetch",
+  "x-revision": "r1",
+  "x-primary-key": ["fetch_id"],
+  "properties": {
+    "fetch_id": {"type": "string", "minLength": 1, "description": "Identifier of the fetch."},
+    "login": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$", "description": "Name of the login of flex.toml."},
+    "query_id": {"type": "string", "pattern": "^[0-9]+$", "description": "Flex query id, digits, as text."},
+    "first_date": {"type": "string", "format": "date", "description": "First day of the window."},
+    "last_date": {"type": "string", "format": "date", "description": "Last day of the window."},
+    "started_at": {"type": "string", "format": "date-time", "description": "Instant the request pair started, UTC."},
+    "finished_at": {"type": "string", "format": "date-time", "description": "Instant the request pair finished, UTC."},
+    "status": {"type": "string", "enum": ["ok", "failed"], "description": "ok: the report was parsed and stored; failed: the window failed and nothing but this record was stored."},
+    "error_kind": {"type": "string", "description": "Kind of the error when failed, for example network or flex_error; empty when ok."},
+    "error_code": {"type": "string", "description": "Flex error code as text when the service gave one; empty otherwise."},
+    "raw_sha256": {"type": "string", "pattern": "^([0-9a-f]{64})?$", "description": "SHA-256 of the report, 64 lower-case hex digits; empty when no report arrived. The report itself is not kept."},
+    "parser_version": {"type": "string", "description": "Version of the report parser."},
+    "statements": {"type": "integer", "minimum": 0, "description": "Number of statements in the report."},
+    "statements_unmapped": {"type": "integer", "minimum": 0, "description": "Statements of an account the allow-list does not map; not stored."},
+    "rows_parsed": {"type": "integer", "minimum": 0, "description": "Trade rows parsed from mapped statements."},
+    "rows_new": {"type": "integer", "minimum": 0, "description": "Rows stored as revision 1."},
+    "rows_revised": {"type": "integer", "minimum": 0, "description": "Rows stored as a later revision."},
+    "rows_unchanged": {"type": "integer", "minimum": 0, "description": "Rows equal to the latest stored revision, not written."}
+  }
+}
