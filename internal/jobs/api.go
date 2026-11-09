@@ -209,3 +209,24 @@ type FigureReport struct {
 // old is figure.jsonl, register the figure register, classes the class file and explained the owner's
 // explained entries.
 type CompareFiguresFunc func(ctx context.Context, old, register, classes, explained io.Reader, rd store.ReadingReader) (FigureReport, error)
+
+// CandidateStores is the stores the option_candidates job uses. Earnings, Accounts and Series may be nil: the
+// gates that need them answer unknown. Catalog lists the underlyings that have a chain and the newest chain day
+// of each (the job takes the id of a symbol from Names); Candidates is the one writer.
+type CandidateStores struct {
+	OptionEod   store.OptionEodReader
+	Catalog     store.OptionEodCatalog
+	Terms       store.OptionTermsReader
+	Names       store.InstrumentNameReader
+	Series      store.SeriesReader
+	Earnings    store.EarningsDateReader
+	Accounts    store.AccountReader
+	Candidates  store.CandidateWriter
+	SessionDays store.SessionDayReader
+}
+
+// NewOptionCandidatesJobFunc is the constructor of the option_candidates job (internal/jobs/optioncandidates.New),
+// anchored at session_close plus 30 minutes on XNYS. For each US stock entry of the list it evaluates
+// compute.KindShortPut and writes the rows under a new run id (one UUID text per Run); a JP entry gives no row
+// and the job names it through its Skipped method. The job holds no dividend reader and sends nothing.
+type NewOptionCandidatesJobFunc func(CandidateStores, compute.OptionCandidates, []WatchEntry, clock.Clock) (contracts.Job, error)
