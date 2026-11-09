@@ -327,7 +327,8 @@ const declFixture = "# Fixture\n\n## Modules\n\n" +
 	"| module | paths | entry | tests | depends |\n" +
 	"| --- | --- | --- | --- | --- |\n" +
 	"| contracts | internal/contracts/** | internal/contracts/api.go internal/contracts/genpb | internal/contracts/api_test.go | |\n" +
-	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go | contracts |\n" +
+	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest " +
+	"internal/compute/trackapi | internal/compute/api_test.go | contracts |\n" +
 	"| store | internal/store/** | internal/store/api.go internal/store/bar | internal/store/api_test.go | contracts |\n" +
 	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts compute store |\n\n" +
 	"The composition root imports one constructor each: `internal/store/bar`, `internal/store/barpg`,\n" +
@@ -342,6 +343,7 @@ var declTree = map[string]string{
 	"internal/jobs/j.go":                 "package jobs\n",
 	"internal/jobs/computefigures/c.go":  "package computefigures\n",
 	"internal/compute/c.go":              "package compute\n",
+	"internal/compute/trackapi/api.go":   "package trackapi\n",
 	"internal/contracts/c.go":            "package contracts\n",
 }
 
@@ -439,6 +441,113 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 	_, rest, _ = strings.Cut(deps, "  store/bar:\n")
 	if hasDep(nextKey.Split(rest, 2)[0], "store/bar") {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
+	}
+}
+
+// blockFixture is a modules table whose compute row lists internal/compute/blockapi.
+const blockFixture = "# Fixture\n\n## Modules\n\n" +
+	"| module | paths | entry | tests | depends |\n" +
+	"| --- | --- | --- | --- | --- |\n" +
+	"| contracts | internal/contracts/** | internal/contracts/api.go | internal/contracts/api_test.go | |\n" +
+	"| compute | internal/compute/** | internal/compute/api.go internal/compute/blockapi | internal/compute/api_test.go | contracts |\n" +
+	"| pages | internal/pages/** | internal/pages/api.go | internal/pages/api_test.go | contracts compute |\n" +
+	"\nThe composition root imports one constructor each: `internal/compute/pagefig`. Any other import is refused.\n"
+
+func TestComputeBlockapiIsDeclarationsOnly(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, map[string]string{
+		"internal/contracts/c.go":          "package contracts\n",
+		"internal/compute/c.go":            "package compute\n",
+		"internal/compute/blockapi/api.go": "package blockapi\n",
+		"internal/compute/pagefig/p.go":    "package pagefig\n",
+		"internal/pages/p.go":              "package pages\n",
+	})
+	toml, _, err := generate(blockFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"pages", "compute/pagefig"} {
+		if b := mayImport(t, string(toml), name); !strings.Contains(b, `"compute/blockapi"`) {
+			t.Fatalf("%s lacks compute/blockapi in arch.toml:\n%s", name, b)
+		}
+	}
+	if b := mayImport(t, string(toml), "compute"); strings.Contains(b, "compute/blockapi") {
+		t.Fatalf("the root compute imports its own declarations package:\n%s", b)
+	}
+}
+
+// markFixture is a modules table whose store row lists internal/store/mark, the
+// declarations-only package of the position marks.
+const markFixture = "# Fixture\n\n## Modules\n\n" +
+	"| module | paths | entry | tests | depends |\n" +
+	"| --- | --- | --- | --- | --- |\n" +
+	"| contracts | internal/contracts/** | internal/contracts/api.go | internal/contracts/api_test.go | |\n" +
+	"| store | internal/store/** | internal/store/api.go internal/store/mark | internal/store/api_test.go | contracts |\n" +
+	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts store |\n\n" +
+	"The composition root imports one constructor each: `internal/store/markpg`. Any other import is refused.\n"
+
+func TestRootAndSubPackageImportStoreMark(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, map[string]string{
+		"internal/contracts/c.go":    "package contracts\n",
+		"internal/store/mark/a.go":   "package mark\n",
+		"internal/store/markpg/s.go": "package markpg\n",
+		"internal/store/s.go":        "package store\n",
+		"internal/jobs/j.go":         "package jobs\n",
+	})
+	toml, yml, err := generate(markFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"jobs", "store/markpg"} {
+		if b := mayImport(t, string(toml), name); !strings.Contains(b, `"store/mark"`) {
+			t.Fatalf("%s lacks store/mark in arch.toml:\n%s", name, b)
+		}
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, jobs, _ := strings.Cut(deps, "  jobs:\n")
+	if !hasDep(nextKey.Split(jobs, 2)[0], "store/mark") {
+		t.Fatalf("the root jobs lacks store/mark in the lint file:\n%s", yml)
+	}
+	if b := mayImport(t, string(toml), "store"); strings.Contains(b, "store/mark") {
+		t.Fatalf("the root store imports its own declarations package:\n%s", b)
+	}
+}
+
+func TestComputeTrackapiIsDeclarationsOnlyPackage(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, declTree)
+	toml, yml, err := generate(declFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"compute/trackapi"`) {
+		t.Fatalf("jobs depends on compute and lacks compute/trackapi:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "contracts"); strings.Contains(b, "compute/trackapi") {
+		t.Fatalf("contracts does not depend on compute but imports compute/trackapi:\n%s", b)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, rest, _ := strings.Cut(deps, "  compute/trackapi:\n")
+	if b := nextKey.Split(rest, 2)[0]; !hasDep(b, "compute") || !hasDep(b, "contracts") {
+		t.Fatalf("compute/trackapi lacks compute or contracts in the lint file:\n%s", yml)
+	}
+}
+
+// TestDeclListedFlexsection: the flexsection package named in an entry cell is a listed
+// declarations-only package of its row.
+func TestDeclListedFlexsection(t *testing.T) {
+	t.Parallel()
+	rows, err := parseModules("# Fixture\n\n## Modules\n\n" +
+		"| module | paths | entry | tests | depends |\n" +
+		"| --- | --- | --- | --- | --- |\n" +
+		"| store | internal/store/** | internal/store/api.go internal/store/flexsection | internal/store/api_test.go | |\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := declListed(rows)["store"]
+	if len(got) != 1 || got[0] != "store/flexsection" {
+		t.Fatalf("declListed = %v", got)
 	}
 }
 

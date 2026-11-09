@@ -14,6 +14,11 @@ from optdesk.ibkr import api
 from optdesk.ibkr.api import (
     DividendKey,
     DividendReading,
+    History,
+    HistoryBar,
+    HistoryKey,
+    HistoryPaced,
+    HistoryRequest,
     Reference,
     Session,
     SessionStatus,
@@ -92,3 +97,26 @@ def test_dividend_reading_is_frozen() -> None:
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         reading.status = "error"  # type: ignore[misc]
+
+
+class _FakeHistory:
+    async def bars(self, request: HistoryRequest) -> Sequence[HistoryBar]:
+        return [HistoryBar("2026-01-02", "1", "2", "0.5", "1.5", None)]
+
+
+def test_fake_satisfies_history_and_caller_reads_bars() -> None:
+    fake = _FakeHistory()
+    assert isinstance(fake, History)
+    key = HistoryKey("SPY", "STK", "SMART", "USD", 1)
+    got = asyncio.run(fake.bars(HistoryRequest(key, "trades", 5, "")))
+    assert [(b.day, b.close, b.volume) for b in got] == [("2026-01-02", "1.5", None)]
+
+
+def test_history_values_are_frozen() -> None:
+    bar = HistoryBar("2026-01-02", "1", "2", "0.5", "1.5", None)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        bar.close = "2"  # type: ignore[misc]
+
+
+def test_history_paced_is_an_exception() -> None:
+    assert issubclass(HistoryPaced, Exception)
