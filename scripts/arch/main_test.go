@@ -453,3 +453,20 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
 	}
 }
+
+// TestDeclListedFlexsection: the flexsection package named in an entry cell is a listed
+// declarations-only package of its row.
+func TestDeclListedFlexsection(t *testing.T) {
+	t.Parallel()
+	rows, err := parseModules("# Fixture\n\n## Modules\n\n" +
+		"| module | paths | entry | tests | depends |\n" +
+		"| --- | --- | --- | --- | --- |\n" +
+		"| store | internal/store/** | internal/store/api.go internal/store/flexsection | internal/store/api_test.go | |\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := declListed(rows)["store"]
+	if len(got) != 1 || got[0] != "store/flexsection" {
+		t.Fatalf("declListed = %v", got)
+	}
+}

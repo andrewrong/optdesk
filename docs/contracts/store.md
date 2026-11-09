@@ -126,6 +126,15 @@ Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, [
 
 Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
 
+## Flex sections
+
+Declared in the declarations-only package `internal/store/flexsection` (not in `internal/store/api.go`): `Writer` (`RecordSections`), `Reader` (`Rows`, `Statuses`), `Store` (both and `Close`), `OpenFunc`, and the plain types `Row`, `Status` and `Insert`; the implementation is `internal/store/flexsectionpg`.
+
+- Revision rule: on `(Alias, Section, RowKey)`. A new key is revision 1; a key whose attributes differ from its newest revision is written at that revision plus one; an identical one is counted `Unchanged` and not written. The `Revision` of a `Row` given to `RecordSections` is ignored.
+- One transaction per `RecordSections`. Attributes that hold `accountId` or `acctAlias` are an error and nothing is written. No rows and no statuses makes no database call.
+- Views: `Rows` reads `rd.flex_section_row_r1` and returns the highest revision of every key sorted by `RowKey`; `Statuses` reads `rd.flex_section_status_r1` and returns the newest status per section of the alias. Neither reads a base table.
+- Contract test: `internal/store/flexsection/api_test.go`: `TestSectionStoreContract`, `TestRecordSectionsRefusesAccountAttributes` and `TestRecordSectionsEmptyMakesNoCall`.
+
 ## Account data
 
 Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExecutions`), `AccountReader` (`Positions`, `Values`, `Executions`, rows sorted by key, an empty slice when none), `AccountStore` (both and `Close`), `OpenAccountFunc`, `DSNEnvAccount` (`OT_PG_DSN_ACCOUNT`, role `ot_w_account`), `Capture` and the plain row types `Execution`, `AccountValue` and `Position` (decimals as text, days as `YYYY-MM-DD` text). `internal/store` imports neither `internal/broker` nor the generated records; the job maps the broker types to these. The implementation is `internal/store/account.Open` (a later issue). Design: `docs/design/account-data.md#Interface`.
