@@ -25,6 +25,7 @@ const (
 	gapNoSessions   = "no_sessions"   // Config.Sessions is nil
 	gapNoEodReaders = "no_eod_reader" // one of Eod, Catalog, Names or Terms is nil
 	gapNoCandidates = "no_candidates" // Config.Candidates is nil
+	gapNoNames      = "no_names"      // Config.Names is nil, so the events have no symbol
 	gapNoAccount    = "no_account"    // Config.Account is nil
 
 	dayLayout       = "2006-01-02"
@@ -35,7 +36,9 @@ const (
 	quoteExtraDays  = 5
 )
 
-var eventKinds = []string{"short_put", "covered_call", "held_call_guard"}
+const kindHeldCallGuard = "held_call_guard"
+
+var eventKinds = []string{"short_put", "covered_call", kindHeldCallGuard}
 
 // gather reads everything the tracker needs for one alias on day and maps it to text. It does
 // no arithmetic. A nil reader is a gap; a reader error is returned.
@@ -76,7 +79,9 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day) (tra
 	}
 	if c.Candidates == nil {
 		gs = append(gs, gapNoCandidates)
-	} else if in.Events, err = eventsOf(ctx, c.Candidates, alias, d); err != nil {
+	} else if c.Names == nil {
+		gs = append(gs, gapNoNames)
+	} else if in.Events, err = eventsOf(ctx, c.Candidates, c.Names, alias, d); err != nil {
 		return in, gs, err
 	}
 	if c.Account == nil {
@@ -304,28 +309,63 @@ func deref[T ~string](p *T) T {
 	return *p
 }
 
-func eventsOf(ctx context.Context, r store.CandidateReader, alias string, d time.Time) ([]trackapi.TrackEvent, error) {
-	var out []trackapi.TrackEvent
+// symbolsOf reads the names of ids in chunks of 500: instrument id to symbol.
+func symbolsOf(ctx context.Context, r store.InstrumentNameReader, ids []int64) (map[int64]string, error) {
+	out := map[int64]string{}
+	for _, ch := range chunks(ids) {
+		rows, err := r.InstrumentNames(ctx, ch)
+		if err != nil {
+			return nil, fmt.Errorf("option_tracking_page: read instrument names: %w", err)
+		}
+		for _, n := range rows {
+			out[n.InstrumentID] = n.Name
+		}
+	}
+	return out, nil
+}
+
+// eventsOf maps the stored candidate rows of the day and the 7 days before it. The underlying of a
+// row is its symbol, found through the name of its UnderlyingID; a row without a name is left out.
+func eventsOf(ctx context.Context, r store.CandidateReader, names store.InstrumentNameReader, alias string, d time.Time) ([]trackapi.TrackEvent, error) {
+	var rows []store.Candidate
+	var ids []int64
+	seen := map[int64]bool{}
 	for back := 0; back <= eventLookback; back++ {
 		day := dayText(d, back)
 		for _, kind := range eventKinds {
-			rows, err := r.Candidates(ctx, day, kind)
+			got, err := r.Candidates(ctx, day, kind)
 			if err != nil {
 				return nil, fmt.Errorf("option_tracking_page: read %s rows of %s: %w", kind, day, err)
 			}
-			for _, c := range rows {
-				if kind == "held_call_guard" && c.Alias != alias {
+			for _, c := range got {
+				if kind == kindHeldCallGuard && c.Alias != alias {
 					continue
 				}
-				e := trackapi.TrackEvent{Underlying: c.Issuer, Expiry: c.Expiry, Strike: c.Strike, Right: side(c.Right),
-					Kind: c.Kind, Day: c.SessionDay, NextEarnings: deref(c.NextEarnings), EarningsState: c.EarningsState,
-					NextExDate: deref(c.NextExDate), ExAmount: deref(c.ExAmount)}
-				if kind == "held_call_guard" {
-					e.GuardStatus, e.GuardReason = c.Status, guardReason(c.Gates)
+				rows = append(rows, c)
+				if id := int64(c.UnderlyingID); !seen[id] && id != 0 {
+					seen[id] = true
+					ids = append(ids, id)
 				}
-				out = append(out, e)
 			}
 		}
+	}
+	symbols, err := symbolsOf(ctx, names, ids)
+	if err != nil {
+		return nil, err
+	}
+	var out []trackapi.TrackEvent
+	for _, c := range rows {
+		sym, ok := symbols[int64(c.UnderlyingID)]
+		if !ok {
+			continue
+		}
+		e := trackapi.TrackEvent{Underlying: sym, Expiry: c.Expiry, Strike: c.Strike, Right: side(c.Right),
+			Kind: c.Kind, Day: c.SessionDay, NextEarnings: deref(c.NextEarnings), EarningsState: c.EarningsState,
+			NextExDate: deref(c.NextExDate), ExAmount: deref(c.ExAmount)}
+		if c.Kind == kindHeldCallGuard {
+			e.GuardStatus, e.GuardReason = c.Status, guardReason(c.Gates)
+		}
+		out = append(out, e)
 	}
 	return out, nil
 }

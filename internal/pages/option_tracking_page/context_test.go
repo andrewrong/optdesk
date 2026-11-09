@@ -306,7 +306,7 @@ func TestFloatBecomesDecimalText(t *testing.T) {
 
 func cand(kind, day, issuer, alias string) store.Candidate {
 	next := contracts.Day("2026-11-20")
-	return store.Candidate{Kind: kind, SessionDay: contracts.Day(day), Issuer: issuer, Alias: alias, Expiry: "2026-12-18",
+	return store.Candidate{Kind: kind, SessionDay: contracts.Day(day), Issuer: issuer, UnderlyingID: 1, Alias: alias, Expiry: "2026-12-18",
 		Strike: "150", Right: "put", NextEarnings: &next, EarningsState: "listed", Status: "block",
 		Gates: `[{"status":"pass","reason":""},{"status":"block","reason":"early_assignment_risk"}]`}
 }
@@ -314,7 +314,7 @@ func cand(kind, day, issuer, alias string) store.Candidate {
 func TestEventsFromAllKinds(t *testing.T) {
 	t.Parallel()
 	r := newRig()
-	r.candidates["2026-11-10|short_put"] = []store.Candidate{cand("short_put", "2026-11-10", "AAPL", "")}
+	r.candidates["2026-11-10|short_put"] = []store.Candidate{cand("short_put", "2026-11-10", "cik:0000320193", "")}
 	r.candidates["2026-11-10|covered_call"] = []store.Candidate{cand("covered_call", "2026-11-10", "AAPL", "main")}
 	r.candidates["2026-11-10|held_call_guard"] = []store.Candidate{cand("held_call_guard", "2026-11-10", "AAPL", "main"),
 		cand("held_call_guard", "2026-11-10", "MSFT", "other")}
@@ -413,5 +413,24 @@ func TestReaderErrorIsReturned(t *testing.T) {
 	c.Candidates = fakeCandidates{err: boom, asked: &[]string{}, mu: &sync.Mutex{}}
 	if _, _, err := gather(context.Background(), c, "main", buildDay); !errors.Is(err, boom) {
 		t.Fatalf("candidates err = %v", err)
+	}
+}
+
+func TestEventUnderlyingIsSymbol(t *testing.T) {
+	t.Parallel()
+	r := newRig()
+	r.names[42] = "AAPL"
+	c := cand("held_call_guard", "2026-11-09", "cik:0000320193", "main")
+	c.UnderlyingID = 42
+	r.candidates["2026-11-09|held_call_guard"] = []store.Candidate{c}
+	lost := cand("short_put", "2026-11-09", "cik:0000000001", "")
+	lost.UnderlyingID = 99 // no name: the row cannot join a position
+	r.candidates["2026-11-09|short_put"] = []store.Candidate{lost}
+	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
+	if err != nil || len(in.Events) != 1 {
+		t.Fatalf("err = %v events = %+v", err, in.Events)
+	}
+	if e := in.Events[0]; e.Underlying != "AAPL" || e.GuardStatus != "block" {
+		t.Fatalf("event = %+v", e)
 	}
 }
