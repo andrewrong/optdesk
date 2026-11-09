@@ -166,11 +166,10 @@ func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day 
 		printKeyLine(a, name, day, "-", "-", 0, [3]int{}, 0, perr)
 		return 1, 1, nil
 	}
-	var slotOffset *int
 	for _, k := range planned {
 		before := sink.len()
 		start := wall.Now()
-		res, err := dryRunKey(ctx, job, clk, name, day, k, &slotOffset)
+		res, err := dryRunKey(ctx, job, clk, name, day, k)
 		if err != nil {
 			return keys, failed, err
 		}
@@ -214,48 +213,43 @@ func dryRunBuild(d deps, name string, b broker.Broker, res store.InstrumentResol
 
 // dryRunKey runs one key with the clock set so that no guard refuses it. The manifest of quote_snapshot (zone,
 // grace) is not readable from here, so its zone is found by trying the slot as local time at every UTC offset
-// of a quarter hour, from -12:00 up: while the offset is behind the manifest zone the guard answers NoValue
-// (a later local time, or another day), and the first answer that is not NoValue is the run at the slot of the
-// manifest zone, inside its window for any grace, zero too. The offset found is kept in found for the other
-// slots. When every offset is refused the answer of the first one is returned.
+// of a quarter hour, from -12:00 up, for each key. The answers run in this order: NoValue while the offset is
+// behind the manifest zone (the guard sees a later local time or another day), then the run at the slot of the
+// zone (inside its window for any grace, zero too), then an empty answer with no error once the offset is ahead
+// (the guard's "not yet", which does nothing). The run is the first answer that is neither NoValue nor empty;
+// when that answer is the empty one, the run is the NoValue before it, which came from inside the window (no
+// quote). A run that is refused at every offset returns its last answer.
 func dryRunKey(ctx context.Context, job contracts.Job, clk *setClock, name string, day contracts.Day,
-	k contracts.ExpectedKey, found **int,
+	k contracts.ExpectedKey,
 ) (contracts.JobResult, error) {
-	keys := []contracts.ExpectedKey{k}
-	if name != jobQuoteSnapshot {
-		at, err := dryRunNow(name, day, k, 0)
-		if err != nil {
-			return contracts.JobResult{}, err
-		}
-		clk.set(at)
-		return job.Run(ctx, day, keys), nil
-	}
 	try := func(m int) (contracts.JobResult, error) {
 		at, err := dryRunNow(name, day, k, m)
 		if err != nil {
 			return contracts.JobResult{}, err
 		}
 		clk.set(at)
-		return job.Run(ctx, day, keys), nil
+		return job.Run(ctx, day, []contracts.ExpectedKey{k}), nil
 	}
-	if *found != nil {
-		return try(**found)
+	if name != jobQuoteSnapshot {
+		return try(0)
 	}
-	var first contracts.JobResult
+	var prev contracts.JobResult
 	for m := -12 * 60; m <= 14*60; m += 15 {
 		r, err := try(m)
 		if err != nil {
 			return r, err
 		}
-		if m == -12*60 {
-			first = r
-		}
-		if r.Err == nil || r.Err.Kind() != contracts.NoValue {
-			*found = &m
+		refused := r.Err != nil && r.Err.Kind() == contracts.NoValue
+		empty := r.Err == nil && r.Returned == 0
+		switch {
+		case empty && m > -12*60:
+			return prev, nil
+		case !refused:
 			return r, nil
 		}
+		prev = r
 	}
-	return first, nil
+	return prev, nil
 }
 
 // dryRunNow is the instant of the fixed clock for key on day: the local time of dryRunTimes, or the slot of a

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -242,7 +243,7 @@ func (j zeroGraceSlotJob) Run(context.Context, contracts.Day, []contracts.Expect
 	if now.Before(at) || now.After(at) {
 		return contracts.JobResult{Err: dryKindErr(contracts.NoValue)}
 	}
-	return contracts.JobResult{}
+	return contracts.JobResult{Returned: 1}
 }
 
 func TestDryRunQuoteSnapshotZeroGraceIsNotRefused(t *testing.T) {
@@ -290,5 +291,43 @@ func TestDryRunQuoteSnapshotOtherZoneIsNotRefused(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "error=no_value") || !strings.Contains(out.String(), "requested=7 ") {
 		t.Fatalf("guard refused a dry-run key: %q", out.String())
+	}
+}
+
+// noQuoteSlotJob: NY zone, grace 5m, two slots; inside the window the broker has no quote (NoValue "no quote").
+type noQuoteSlotJob struct{ clk clock.Clock }
+
+func (noQuoteSlotJob) ID() string { return jobQuoteSnapshot }
+func (noQuoteSlotJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return []contracts.ExpectedKey{{DatasetID: "obs.quote_snapshot", SubjectKey: "0945"}, {DatasetID: "obs.quote_snapshot", SubjectKey: "1200"}}, "h", nil
+}
+
+func (j noQuoteSlotJob) Run(_ context.Context, _ contracts.Day, ks []contracts.ExpectedKey) contracts.JobResult {
+	ny, _ := time.LoadLocation("America/New_York")
+	now := j.clk.Now().In(ny)
+	var hhmm int
+	_, _ = fmt.Sscanf(ks[0].SubjectKey, "%04d", &hhmm)
+	at := time.Date(now.Year(), now.Month(), now.Day(), hhmm/100, hhmm%100, 0, 0, ny)
+	if now.Format("2006-01-02") != "2026-11-10" || now.After(at.Add(5*time.Minute)) {
+		return contracts.JobResult{Err: dryKindErr(contracts.NoValue)}
+	}
+	if now.Before(at) {
+		return contracts.JobResult{} // the guard's "not yet"
+	}
+	return contracts.JobResult{Err: dryKindErr(contracts.NoValue)} // in window, no quote
+}
+
+func TestDryRunQuoteSnapshotNoQuoteIsReported(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	a, out := dryApp(t, &ran)
+	a.deps.newQuoteSnapshot = func(_ broker.Broker, _ store.InstrumentResolver, _ store.QuoteSnapshotWriter, clk clock.Clock) (contracts.Job, error) {
+		return noQuoteSlotJob{clk: clk}, nil
+	}
+	if err := runOnce(a, []string{"--dry-run", "--job", "quote_snapshot", "--day", "2026-11-10"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out.String(), "error=no_value") != 2 || !strings.Contains(out.String(), "status=failed") {
+		t.Fatalf("in-window no quote not reported: %q", out.String())
 	}
 }
