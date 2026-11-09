@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse queryName="Trades" type="AF">
+<FlexStatements count="1">
+<FlexStatement accountId="ACCT_A" fromDate="2026-10-01" toDate="2026-10-31" period="LastMonth" whenGenerated="2026-11-09;10:00:00">
+<Trades>
+<Trade accountId="ACCT_A" transactionID="9001" levelOfDetail="EXECUTION" assetCategory="OPT" symbol="XYZ 261120P00050000" underlyingSymbol="XYZ" putCall="P" strike="50" expiry="2026-11-20" buySell="SELL" openCloseIndicator="O" notes="" quantity="-1" tradePrice="1.25" proceeds="125" ibCommission="-0.65" ibCommissionCurrency="USD" tradeDate="2026-10-05" orderTime="2026-10-05;10:15:00"/>
+<Trade accountId="ACCT_A" transactionID="9002" levelOfDetail="EXECUTION" assetCategory="OPT" symbol="XYZ 261120P00050000" underlyingSymbol="XYZ" putCall="P" strike="50" expiry="2026-11-20" buySell="BUY" openCloseIndicator="C" notes="Ep" quantity="1" tradePrice="0" proceeds="0" ibCommission="0" ibCommissionCurrency="USD" tradeDate="2026-11-20" orderTime="2026-11-20;16:00:00"/>
+<Trade accountId="ACCT_A" transactionID="9001" levelOfDetail="ORDER" assetCategory="OPT" symbol="XYZ 261120P00050000" buySell="SELL" quantity="-1" tradeDate="2026-10-05"/>
+<Trade accountId="ACCT_A" transactionID="9001" levelOfDetail="SUMMARY" assetCategory="OPT" symbol="XYZ 261120P00050000" buySell="SELL" quantity="-1" tradeDate="2026-10-05"/>
+</Trades>
+<CashTransactions><CashTransaction transactionID="5" amount="1"/></CashTransactions>
+</FlexStatement>
+</FlexStatements>
+</FlexQueryResponse>
