@@ -513,6 +513,13 @@ type cSeries struct {
 
 func (c cSeries) Close() error { return c.closeCounter.Close() }
 
+type cView struct {
+	store.ReadingViewReader
+	closeCounter
+}
+
+func (c cView) Close() error { return c.closeCounter.Close() }
+
 type cEod struct {
 	store.OptionEodStore
 	closeCounter
@@ -551,7 +558,7 @@ func (c cNames) Close() error { return c.closeCounter.Close() }
 func TestSiteStoresClosed(t *testing.T) {
 	t.Parallel()
 	errOpen := errors.New("open sentinel-secret")
-	for failAt := range 6 {
+	for failAt := range 7 {
 		t.Run(strconv.Itoa(failAt), func(t *testing.T) {
 			t.Parallel()
 			a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
@@ -584,6 +591,9 @@ func TestSiteStoresClosed(t *testing.T) {
 			a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
 				return cNames{closeCounter: cc}, step()
 			}
+			a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
+				return cView{closeCounter: cc}, step()
+			}
 			_, _, err := openSiteReaders(t.Context(), a)
 			if err == nil || strings.Contains(err.Error(), "sentinel") {
 				t.Fatalf("err %v", err)
@@ -607,13 +617,99 @@ func TestSiteStoresClosed(t *testing.T) {
 		}
 		a.deps.openOptionTerms = func(context.Context, string) (store.OptionTermsStore, error) { return cTerms{closeCounter: cc}, nil }
 		a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) { return cNames{closeCounter: cc}, nil }
+		a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
+			return cView{closeCounter: cc}, nil
+		}
 		_, closeFn, err := openSiteReaders(t.Context(), a)
 		if err != nil {
 			t.Fatal(err)
 		}
 		closeFn()
-		if closed.Load() != 6 {
+		if closed.Load() != 7 {
 			t.Fatalf("closed %d", closed.Load())
+		}
+	})
+}
+
+// reportSiteApp is an app whose report page and risks block are the real ones over rule.
+func reportSiteApp(t *testing.T, view store.ReadingViewReader) http.Handler {
+	t.Helper()
+	a := reportApp(t, "")
+	clk := fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
+	return siteHandler(a, clk, "2026-11-06", siteReaders{view: view}, echoHandler, http.NotFoundHandler())
+}
+
+func TestSiteReportRoute(t *testing.T) {
+	t.Parallel()
+	get := func(h http.Handler, method, target string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, target, nil))
+		return rec
+	}
+	risksOf := func(rec *httptest.ResponseRecorder) string {
+		var p struct {
+			Blocks struct {
+				Risks struct {
+					State string `json:"state"`
+					Items any    `json:"items"`
+				} `json:"risks"`
+			} `json:"blocks"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+			t.Fatalf("%v: %q", err, rec.Body)
+		}
+		items, _ := p.Blocks.Risks.Items.([]any)
+		return p.Blocks.Risks.State + "/" + strconv.Itoa(len(items))
+	}
+	t.Run("built per request", func(t *testing.T) {
+		t.Parallel()
+		v := &fakeView{}
+		h := reportSiteApp(t, v)
+		v.set(viewRow("2026-11-06", "0.9", "2026-11-06"))
+		rec := get(h, http.MethodGet, "/report?market=us&slot=open")
+		if rec.Code != 200 || risksOf(rec) != "ok/1" {
+			t.Fatalf("first: %d %q", rec.Code, rec.Body)
+		}
+		v.set(viewRow("2026-11-06", "0.9", ""))
+		rec = get(h, http.MethodGet, "/report?market=us&slot=open")
+		if rec.Code != 200 || risksOf(rec) != "gap/0" {
+			t.Fatalf("second: %d %q", rec.Code, rec.Body)
+		}
+	})
+	t.Run("bad query is 400", func(t *testing.T) {
+		t.Parallel()
+		h := reportSiteApp(t, &fakeView{})
+		for _, target := range []string{"/report", "/report?market=us", "/report?market=xx&slot=open", "/report?market=us&slot=noon"} {
+			rec := get(h, http.MethodGet, target)
+			if rec.Code != 400 || strings.TrimSpace(rec.Body.String()) != "bad request" {
+				t.Errorf("%s: %d %q", target, rec.Code, rec.Body)
+			}
+		}
+	})
+	t.Run("reader error is 500", func(t *testing.T) {
+		t.Parallel()
+		h := reportSiteApp(t, &fakeView{err: errors.New("dsn sentinel-secret")})
+		rec := get(h, http.MethodGet, "/report?market=us&slot=open")
+		if rec.Code != 500 || strings.TrimSpace(rec.Body.String()) != "internal error" {
+			t.Fatalf("%d %q", rec.Code, rec.Body)
+		}
+	})
+	t.Run("path and method", func(t *testing.T) {
+		t.Parallel()
+		h := reportSiteApp(t, &fakeView{})
+		if rec := get(h, http.MethodGet, "/report/x?market=us&slot=open"); rec.Code != 404 {
+			t.Errorf("report/x: %d", rec.Code)
+		}
+		if rec := get(h, http.MethodPost, "/report?market=us&slot=open"); rec.Code != 405 {
+			t.Errorf("POST: %d", rec.Code)
+		}
+	})
+	t.Run("other routes as before", func(t *testing.T) {
+		t.Parallel()
+		f := newSiteFixture(t)
+		checkMacroAssets(t, f)
+		if rec := f.do(http.MethodGet, "/options/data"); rec.Code != 200 {
+			t.Fatalf("options/data: %d", rec.Code)
 		}
 	})
 }

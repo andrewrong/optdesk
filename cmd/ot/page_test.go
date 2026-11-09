@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -232,5 +233,52 @@ func TestMacroPageDemoGolden(t *testing.T) {
 	}
 	if !bytes.Equal(out.Bytes(), want) {
 		t.Fatalf("output differs from %s:\n%s", path, out.String())
+	}
+}
+
+func TestPageReportFlags(t *testing.T) {
+	t.Parallel()
+	newApp := func(t *testing.T) (*app, *bytes.Buffer, *[]string) {
+		t.Helper()
+		a, _ := testApp(t, "")
+		a.profile.Name = "demo"
+		var out bytes.Buffer
+		a.stdout = &out
+		var got []string
+		a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
+		a.deps.macroPage = func(*time.Location, string) pages.Page { return fakePage("macro_page", "MACRO") }
+		a.deps.reportPage = func(m, s string, _ *time.Location, _ report_page.RiskBlockFunc) pages.Page {
+			got = append(got, m, s)
+			return fakePage("report_page", "REPORT")
+		}
+		return a, &out, &got
+	}
+	a, out, got := newApp(t)
+	if err := runPage(a, []string{"--name", "report_page", "--market", "us", "--slot", "open"}); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "REPORT" || strings.Join(*got, ",") != "US,open" {
+		t.Fatalf("out %q got %v", out.String(), *got)
+	}
+	for _, c := range []struct {
+		args []string
+		flag string
+	}{
+		{[]string{"--slot", "open"}, "--market"},
+		{[]string{"--market", "us"}, "--slot"},
+		{[]string{"--market", "xx", "--slot", "open"}, "--market"},
+		{[]string{"--market", "us", "--slot", "noon"}, "--slot"},
+	} {
+		a, out, _ := newApp(t)
+		err := runPage(a, append([]string{"--name", "report_page"}, c.args...))
+		if err == nil || !strings.Contains(err.Error(), c.flag) || out.Len() != 0 {
+			t.Errorf("%v: err %v out %q", c.args, err, out)
+		}
+	}
+	for name, want := range map[string]string{"macro_rates": "RATES", "macro_page": "MACRO"} {
+		a, out, _ := newApp(t)
+		if err := runPage(a, []string{"--name", name}); err != nil || out.String() != want {
+			t.Errorf("%s: %q %v", name, out, err)
+		}
 	}
 }
