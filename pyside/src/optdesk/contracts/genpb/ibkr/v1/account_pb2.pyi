@@ -46,20 +46,12 @@ class AccountResponse(_message.Message):
     GENERATION_FIELD_NUMBER: _builtins.int
     VALUES_FIELD_NUMBER: _builtins.int
     POSITIONS_FIELD_NUMBER: _builtins.int
-    VALUES_COLLECTED_FIELD_NUMBER: _builtins.int
-    POSITIONS_COLLECTED_FIELD_NUMBER: _builtins.int
     account: _builtins.str
     """account is the alias of the gateway's entry, never the account id."""
     generation: _builtins.int
     """generation is the session generation of PingResponse, so answers of two
     sessions can be told apart.
     """
-    values_collected: _builtins.bool
-    """values_collected is true when the gateway collects the summary values, so
-    an empty values list can be told from a gateway that does not collect them.
-    """
-    positions_collected: _builtins.bool
-    """positions_collected is true when the gateway collects the positions."""
     @_builtins.property
     def values(self) -> _containers.RepeatedCompositeFieldContainer[Global___AccountValue]:
         """values are the summary rows; empty when the gateway does not collect them."""
@@ -77,12 +69,10 @@ class AccountResponse(_message.Message):
         generation: _builtins.int = ...,
         values: _abc.Iterable[Global___AccountValue] | None = ...,
         positions: _abc.Iterable[Global___Position] | None = ...,
-        values_collected: _builtins.bool = ...,
-        positions_collected: _builtins.bool = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["account", b"account", "generation", b"generation", "positions", b"positions", "positions_collected", b"positions_collected", "values", b"values", "values_collected", b"values_collected"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["account", b"account", "generation", b"generation", "positions", b"positions", "values", b"values"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
@@ -149,122 +139,3 @@ class Position(_message.Message):
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
 Global___Position: _TypeAlias = Position  # noqa: Y015
-
-@_typing.final
-class ExecutionsRequest(_message.Message):
-    """ExecutionsRequest carries nothing: the gateway answers for its own account."""
-
-    DESCRIPTOR: _descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
-    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _Never  # noqa: Y015
-    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
-    def WhichOneof(self, oneof_group: _Never) -> None: ...
-
-Global___ExecutionsRequest: _TypeAlias = ExecutionsRequest  # noqa: Y015
-
-@_typing.final
-class ExecutionsResponse(_message.Message):
-    """ExecutionsResponse holds the complete executions of one account."""
-
-    DESCRIPTOR: _descriptor.Descriptor
-
-    ACCOUNT_FIELD_NUMBER: _builtins.int
-    GENERATION_FIELD_NUMBER: _builtins.int
-    COLLECTED_FIELD_NUMBER: _builtins.int
-    PENDING_FIELD_NUMBER: _builtins.int
-    EXECUTIONS_FIELD_NUMBER: _builtins.int
-    account: _builtins.str
-    """account is the alias of the gateway's entry, never the account id."""
-    generation: _builtins.int
-    """generation is the session generation of PingResponse."""
-    collected: _builtins.bool
-    """collected is false when the gateway does not collect executions; no
-    request was sent to the broker then and executions is empty.
-    """
-    pending: _builtins.int
-    """pending counts the executions left out because their commission report
-    had not arrived yet; they come in a later answer.
-    """
-    @_builtins.property
-    def executions(self) -> _containers.RepeatedCompositeFieldContainer[Global___Execution]:
-        """executions holds only rows with their commission; empty when none."""
-
-    def __init__(
-        self,
-        *,
-        account: _builtins.str = ...,
-        generation: _builtins.int = ...,
-        collected: _builtins.bool = ...,
-        pending: _builtins.int = ...,
-        executions: _abc.Iterable[Global___Execution] | None = ...,
-    ) -> None: ...
-    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
-    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["account", b"account", "collected", b"collected", "executions", b"executions", "generation", b"generation", "pending", b"pending"]  # noqa: Y015
-    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
-    def WhichOneof(self, oneof_group: _Never) -> None: ...
-
-Global___ExecutionsResponse: _TypeAlias = ExecutionsResponse  # noqa: Y015
-
-@_typing.final
-class Execution(_message.Message):
-    """Execution is one fill with its commission."""
-
-    DESCRIPTOR: _descriptor.Descriptor
-
-    EXEC_ID_FIELD_NUMBER: _builtins.int
-    PERM_ID_FIELD_NUMBER: _builtins.int
-    TIME_FIELD_NUMBER: _builtins.int
-    CONTRACT_FIELD_NUMBER: _builtins.int
-    SIDE_FIELD_NUMBER: _builtins.int
-    QUANTITY_FIELD_NUMBER: _builtins.int
-    PRICE_FIELD_NUMBER: _builtins.int
-    COMMISSION_FIELD_NUMBER: _builtins.int
-    COMMISSION_CURRENCY_FIELD_NUMBER: _builtins.int
-    exec_id: _builtins.str
-    """exec_id is the broker's execution id, the key of the row with perm_id."""
-    perm_id: _builtins.int
-    """perm_id is the broker's permanent id of the execution, the dedupe key and
-    nothing more.
-    """
-    time: _builtins.str
-    """time is the fill instant, RFC 3339 UTC text."""
-    side: _builtins.str
-    """side is BOT or SLD."""
-    quantity: _builtins.str
-    """quantity is canonical decimal text."""
-    price: _builtins.str
-    """price is canonical decimal text."""
-    commission: _builtins.str
-    """commission is canonical decimal text, always set."""
-    commission_currency: _builtins.str
-    """commission_currency is the currency code of the commission."""
-    @_builtins.property
-    def contract(self) -> _contract_pb2.ContractSpec:
-        """contract is the contract traded."""
-
-    def __init__(
-        self,
-        *,
-        exec_id: _builtins.str = ...,
-        perm_id: _builtins.int = ...,
-        time: _builtins.str = ...,
-        contract: _contract_pb2.ContractSpec | None = ...,
-        side: _builtins.str = ...,
-        quantity: _builtins.str = ...,
-        price: _builtins.str = ...,
-        commission: _builtins.str = ...,
-        commission_currency: _builtins.str = ...,
-    ) -> None: ...
-    _HasFieldArgType: _TypeAlias = _typing.Literal["contract", b"contract"]  # noqa: Y015
-    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["commission", b"commission", "commission_currency", b"commission_currency", "contract", b"contract", "exec_id", b"exec_id", "perm_id", b"perm_id", "price", b"price", "quantity", b"quantity", "side", b"side", "time", b"time"]  # noqa: Y015
-    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
-    def WhichOneof(self, oneof_group: _Never) -> None: ...
-
-Global___Execution: _TypeAlias = Execution  # noqa: Y015

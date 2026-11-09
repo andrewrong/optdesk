@@ -506,12 +506,6 @@ class AccountServicer(pb.AccountServiceServicer):
             ],
         )
 
-    async def Executions(
-        self, request: pb.ExecutionsRequest, context: Context
-    ) -> pb.ExecutionsResponse:
-        # Stub: the real collection lands in account-pyside-executions.
-        return pb.ExecutionsResponse(account=self._alias)
-
 
 def _position_to_proto(row: PositionRow) -> pb.Position:
     return pb.Position(

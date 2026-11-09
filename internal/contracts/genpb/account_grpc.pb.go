@@ -19,8 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountService_Account_FullMethodName    = "/ibkr.v1.AccountService/Account"
-	AccountService_Executions_FullMethodName = "/ibkr.v1.AccountService/Executions"
+	AccountService_Account_FullMethodName = "/ibkr.v1.AccountService/Account"
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -32,9 +31,6 @@ type AccountServiceClient interface {
 	// Account returns the summary values and the positions of the account of
 	// the gateway, read-only.
 	Account(ctx context.Context, in *AccountRequest, opts ...grpc.CallOption) (*AccountResponse, error)
-	// Executions returns the executions of the current trading day with their
-	// commissions, read-only.
-	Executions(ctx context.Context, in *ExecutionsRequest, opts ...grpc.CallOption) (*ExecutionsResponse, error)
 }
 
 type accountServiceClient struct {
@@ -55,16 +51,6 @@ func (c *accountServiceClient) Account(ctx context.Context, in *AccountRequest, 
 	return out, nil
 }
 
-func (c *accountServiceClient) Executions(ctx context.Context, in *ExecutionsRequest, opts ...grpc.CallOption) (*ExecutionsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ExecutionsResponse)
-	err := c.cc.Invoke(ctx, AccountService_Executions_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AccountServiceServer is the server API for AccountService service.
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility.
@@ -74,9 +60,6 @@ type AccountServiceServer interface {
 	// Account returns the summary values and the positions of the account of
 	// the gateway, read-only.
 	Account(context.Context, *AccountRequest) (*AccountResponse, error)
-	// Executions returns the executions of the current trading day with their
-	// commissions, read-only.
-	Executions(context.Context, *ExecutionsRequest) (*ExecutionsResponse, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
@@ -89,9 +72,6 @@ type UnimplementedAccountServiceServer struct{}
 
 func (UnimplementedAccountServiceServer) Account(context.Context, *AccountRequest) (*AccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Account not implemented")
-}
-func (UnimplementedAccountServiceServer) Executions(context.Context, *ExecutionsRequest) (*ExecutionsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Executions not implemented")
 }
 func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 func (UnimplementedAccountServiceServer) testEmbeddedByValue()                        {}
@@ -132,24 +112,6 @@ func _AccountService_Account_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AccountService_Executions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExecutionsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccountServiceServer).Executions(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AccountService_Executions_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccountServiceServer).Executions(ctx, req.(*ExecutionsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -160,10 +122,6 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Account",
 			Handler:    _AccountService_Account_Handler,
-		},
-		{
-			MethodName: "Executions",
-			Handler:    _AccountService_Executions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

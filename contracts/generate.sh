@@ -17,9 +17,6 @@ go tool go-jsonschema -p gen --capitalization ID \
   --schema-root-type "$D/optionledger.flex_trade_row.r1.json=FlexTradeRow" \
   --schema-root-type "$D/optionledger.flex_fetch.r1.json=FlexFetch" \
   --schema-root-type "$D/obs.earnings_date.r1.json=EarningsDate" \
-  --schema-root-type "$D/account.position.r1.json=AccountPosition" \
-  --schema-root-type "$D/account.value.r1.json=AccountValue" \
-  --schema-root-type "$D/account.execution.r1.json=AccountExecution" \
   --schema-output "$D/master.session_day.r1.json=$OUT" \
   --schema-output "$D/obs.series_point.r1.json=$OUT" \
   --schema-output "$D/obs.option_eod.r1.json=$OUT" \
@@ -30,11 +27,8 @@ go tool go-jsonschema -p gen --capitalization ID \
   --schema-output "$D/optionledger.flex_trade_row.r1.json=$OUT" \
   --schema-output "$D/optionledger.flex_fetch.r1.json=$OUT" \
   --schema-output "$D/obs.earnings_date.r1.json=$OUT" \
-  --schema-output "$D/account.position.r1.json=$OUT" \
-  --schema-output "$D/account.value.r1.json=$OUT" \
-  --schema-output "$D/account.execution.r1.json=$OUT" \
   -o "$OUT" \
-  contracts/datasets/master.session_day.r1.json contracts/datasets/obs.series_point.r1.json contracts/datasets/obs.option_eod.r1.json contracts/datasets/obs.quote_snapshot.r1.json contracts/datasets/readings.reading.r1.json contracts/datasets/obs.fundamental_fact.r1.json contracts/datasets/candidates.option_candidate.r1.json contracts/datasets/optionledger.flex_trade_row.r1.json contracts/datasets/optionledger.flex_fetch.r1.json contracts/datasets/obs.earnings_date.r1.json contracts/datasets/account.position.r1.json contracts/datasets/account.value.r1.json contracts/datasets/account.execution.r1.json
+  contracts/datasets/master.session_day.r1.json contracts/datasets/obs.series_point.r1.json contracts/datasets/obs.option_eod.r1.json contracts/datasets/obs.quote_snapshot.r1.json contracts/datasets/readings.reading.r1.json contracts/datasets/obs.fundamental_fact.r1.json contracts/datasets/candidates.option_candidate.r1.json contracts/datasets/optionledger.flex_trade_row.r1.json contracts/datasets/optionledger.flex_fetch.r1.json contracts/datasets/obs.earnings_date.r1.json
 gofmt -w internal/contracts/gen/records.go
 
 go run ./contracts/gendoc -in contracts/datasets -out docs/contracts/datasets

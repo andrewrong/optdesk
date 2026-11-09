@@ -37,10 +37,6 @@ class AccountServiceStub:
     """Account returns the summary values and the positions of the account of
     the gateway, read-only.
     """
-    Executions: _grpc.UnaryUnaryMultiCallable[_account_pb2.ExecutionsRequest, _account_pb2.ExecutionsResponse]
-    """Executions returns the executions of the current trading day with their
-    commissions, read-only.
-    """
 
 @_typing.type_check_only
 class AccountServiceAsyncStub(AccountServiceStub):
@@ -50,10 +46,6 @@ class AccountServiceAsyncStub(AccountServiceStub):
     Account: _aio.UnaryUnaryMultiCallable[_account_pb2.AccountRequest, _account_pb2.AccountResponse]  # type: ignore[assignment]
     """Account returns the summary values and the positions of the account of
     the gateway, read-only.
-    """
-    Executions: _aio.UnaryUnaryMultiCallable[_account_pb2.ExecutionsRequest, _account_pb2.ExecutionsResponse]  # type: ignore[assignment]
-    """Executions returns the executions of the current trading day with their
-    commissions, read-only.
     """
 
 class AccountServiceServicer(metaclass=_abc_1.ABCMeta):
@@ -67,16 +59,6 @@ class AccountServiceServicer(metaclass=_abc_1.ABCMeta):
     ) -> _typing.Union[_account_pb2.AccountResponse, _abc.Awaitable[_account_pb2.AccountResponse]]:
         """Account returns the summary values and the positions of the account of
         the gateway, read-only.
-        """
-
-    @_abc_1.abstractmethod
-    def Executions(
-        self,
-        request: _account_pb2.ExecutionsRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_account_pb2.ExecutionsResponse, _abc.Awaitable[_account_pb2.ExecutionsResponse]]:
-        """Executions returns the executions of the current trading day with their
-        commissions, read-only.
         """
 
 def add_AccountServiceServicer_to_server(servicer: AccountServiceServicer, server: _typing.Union[_grpc.Server, _aio.Server]) -> None: ...
