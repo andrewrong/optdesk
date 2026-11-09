@@ -1,0 +1,37 @@
+{
+  "source": "IBKR TWS API documentation (reqHistoricalData), written by hand; the window replaces it with one real answer after merge",
+  "request": {
+    "barSizeSetting": "1 day",
+    "formatDate": 1,
+    "useRTH": true,
+    "durationStr": "N D for 365 days or fewer, else N Y",
+    "endDateTime": "empty for now, else yyyymmdd-HH:mm:ss (UTC)"
+  },
+  "kinds": {
+    "TRADES": {
+      "whatToShow": "TRADES",
+      "endDateTime": "20260102-23:59:59",
+      "durationStr": "5 D",
+      "rows": [
+        {"date": "20251231", "open": 590.12, "high": 592.5, "low": 588.0, "close": 591.3, "volume": 61234, "barCount": 41234, "average": 590.4},
+        {"date": "20260102", "open": 591.3, "high": 593.0, "low": 589.9, "close": 592.1, "volume": 58321, "barCount": 39876, "average": 591.6}
+      ]
+    },
+    "ADJUSTED_LAST": {
+      "whatToShow": "ADJUSTED_LAST",
+      "endDateTime": "",
+      "durationStr": "2 Y",
+      "rows": [
+        {"date": "20251231", "open": 585.02, "high": 587.4, "low": 582.9, "close": 586.2, "volume": 61234, "barCount": 41234, "average": 585.3}
+      ]
+    },
+    "MIDPOINT": {
+      "whatToShow": "MIDPOINT",
+      "endDateTime": "",
+      "durationStr": "5 D",
+      "rows": [
+        {"date": "20251231", "open": 156.4, "high": 157.1, "low": 155.9, "close": 156.8, "volume": -1, "barCount": -1, "average": -1}
+      ]
+    }
+  }
+}
