@@ -95,7 +95,7 @@ func TestSectionStoreContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer st.Close()
+	defer func() { _ = st.Close() }()
 
 	t0 := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)
 	row := func(k, sha string) flexsection.Row {
