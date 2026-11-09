@@ -1,0 +1,37 @@
+[
+  {
+    "attrs": {
+      "symbol": "ABC 261218P00050000",
+      "quantity": "-1",
+      "tradePrice": "1.25"
+    },
+    "canonical": "{\"quantity\":\"-1\",\"symbol\":\"ABC 261218P00050000\",\"tradePrice\":\"1.25\"}",
+    "sha256": "8ee44f64dd86f5843ecc3fcf1171282b8407afac975d8ed846719b6a72006358"
+  },
+  {
+    "attrs": {
+      "symbol": "XYZ",
+      "description": "naïve 期权 put",
+      "buySell": "SELL"
+    },
+    "canonical": "{\"buySell\":\"SELL\",\"description\":\"naïve 期权 put\",\"symbol\":\"XYZ\"}",
+    "sha256": "4de958b027c2f7c69778ac3c04c3c122fff44b2f377838ac8f1d7c22f91a92d4"
+  },
+  {
+    "attrs": {
+      "accountId": "X0000000",
+      "acctAlias": "a",
+      "transactionID": "T1",
+      "note": "Ep expired",
+      "tradePrice": "2.5",
+      "ibCommission": "-0.65"
+    },
+    "canonical": "{\"ibCommission\":\"-0.65\",\"note\":\"Ep expired\",\"tradePrice\":\"2.5\",\"transactionID\":\"T1\"}",
+    "sha256": "977e889aa83e86f92eebf034f87176ed182e564b2c6167a262f2685466904aa3"
+  },
+  {
+    "attrs": {},
+    "canonical": "{}",
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  }
+]
