@@ -81,6 +81,8 @@ components:
     in: internal/compute/optionledger
   compute/optionnotice:
     in: internal/compute/optionnotice
+  compute/optionresult:
+    in: internal/compute/optionresult
   compute/optionstruct:
     in: internal/compute/optionstruct
   compute/own:
@@ -342,6 +344,11 @@ deps:
       - compute
       - contracts/genpb
   compute/optionnotice:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/optionresult:
     mayDependOn:
       - contracts
       - compute
@@ -707,6 +714,7 @@ deps:
       - pages/market_page
       - pages/option_candidates_page
       - compute/optionstruct
+      - compute/optionresult
       - pages/structures_page
       - pages/option_result_page
       - compute/optionnotice

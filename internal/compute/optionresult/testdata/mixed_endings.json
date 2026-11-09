@@ -1,0 +1,58 @@
+{
+ "Input": {
+  "Alias": "a",
+  "AsOf": "2026-03-10",
+  "Unresolved": ["9001"],
+  "Review": ["9002"],
+  "Positions": [
+   {"PositionID": "p1", "Status": "expired", "Currency": "USD", "Quantity": "-1", "Multiplier": "100", "ClosedOn": "2026-01-16", "RealizedPnL": "199.3500", "BrokerRealized": "199.35", "PremiumIncome": "200.0000", "Fills": [{"Action": "open", "Quantity": "-1", "Price": "2"}]},
+   {"PositionID": "p2", "Status": "assigned", "Currency": "USD", "Quantity": "-2", "Multiplier": "100", "ClosedOn": "2026-02-20", "RealizedPnL": "-1.3000", "BrokerRealized": "-1", "PremiumIncome": "300.0000", "Fills": [{"Action": "open", "Quantity": "-2", "Price": "1.5"}]},
+   {"PositionID": "p3", "Status": "closed", "Currency": "USD", "Quantity": "1", "Multiplier": "100", "ClosedOn": "2026-03-02", "RealizedPnL": "-40.0000", "PremiumIncome": "-40.0000", "Fills": [{"Action": "open", "Quantity": "1", "Price": "1.1"}]},
+   {"PositionID": "p4", "Status": "open", "Currency": "USD", "Quantity": "-1", "Multiplier": "100", "Fills": [{"Action": "open", "Quantity": "-1", "Price": "1"}]},
+   {"PositionID": "p5", "Status": "exercised", "Currency": "JPY", "Quantity": "-1", "Multiplier": "100", "ClosedOn": "2026-03-05", "RealizedPnL": "1500.0000", "BrokerRealized": "1500", "PremiumIncome": "1500.0000", "Fills": [{"Action": "open", "Quantity": "-1", "Price": "20"}]}
+  ]
+ },
+ "Expected": {
+  "Sections": [
+   {
+    "Side": "sold", "Currency": "JPY",
+    "Months": [{"Month": "2026-03", "Realized": "1500.0000", "Running": "1500.0000", "Over": false}],
+    "Endings": [
+     {"Status": "closed", "Count": 0, "Realized": "0.0000"},
+     {"Status": "expired", "Count": 0, "Realized": "0.0000"},
+     {"Status": "assigned", "Count": 0, "Realized": "0.0000"},
+     {"Status": "exercised", "Count": 1, "Realized": "1500.0000"}
+    ],
+    "Realized": "1500.0000", "Premium": "2000.0000", "KeptShare": "0.750000", "AssignedPremium": "0.0000", "AssignedShares": "0.0000",
+    "Reliability": {"Equal": 1, "Differ": 0, "NoBroker": 0, "Unresolved": ["9001"], "Review": ["9002"]}
+   },
+   {
+    "Side": "sold", "Currency": "USD",
+    "Months": [
+     {"Month": "2026-01", "Realized": "199.3500", "Running": "199.3500", "Over": true},
+     {"Month": "2026-02", "Realized": "-1.3000", "Running": "198.0500", "Over": true}
+    ],
+    "Endings": [
+     {"Status": "closed", "Count": 0, "Realized": "0.0000"},
+     {"Status": "expired", "Count": 1, "Realized": "199.3500"},
+     {"Status": "assigned", "Count": 1, "Realized": "-1.3000"},
+     {"Status": "exercised", "Count": 0, "Realized": "0.0000"}
+    ],
+    "Realized": "198.0500", "Premium": "500.0000", "KeptShare": "0.396100", "AssignedPremium": "300.0000", "AssignedShares": "200.0000",
+    "Reliability": {"Equal": 1, "Differ": 1, "NoBroker": 0, "Unresolved": ["9001"], "Review": ["9002"]}
+   },
+   {
+    "Side": "bought", "Currency": "USD",
+    "Months": [{"Month": "2026-03", "Realized": "-40.0000", "Running": "-40.0000", "Over": false}],
+    "Endings": [
+     {"Status": "closed", "Count": 1, "Realized": "-40.0000"},
+     {"Status": "expired", "Count": 0, "Realized": "0.0000"},
+     {"Status": "assigned", "Count": 0, "Realized": "0.0000"},
+     {"Status": "exercised", "Count": 0, "Realized": "0.0000"}
+    ],
+    "Realized": "-40.0000", "Premium": "110.0000", "KeptShare": "", "AssignedPremium": "0.0000", "AssignedShares": "0.0000",
+    "Reliability": {"Equal": 0, "Differ": 0, "NoBroker": 1, "Unresolved": ["9001"], "Review": ["9002"]}
+   }
+  ]
+ }
+}
