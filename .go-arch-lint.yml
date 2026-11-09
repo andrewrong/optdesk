@@ -131,6 +131,8 @@ components:
     in: internal/notify/telegram
   pages:
     in: internal/pages
+  pages/candidate_text:
+    in: internal/pages/candidate_text
   pages/embed:
     in: internal/pages/embed
   pages/macro_page:
@@ -631,6 +633,17 @@ deps:
       - store/bar
       - store/ownerset
       - compute/settingsapi
+  pages/candidate_text:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - store/bar
+      - store/ownerset
+      - compute/settingsapi
+      - pages
+      - contracts/genpb
+      - compute/contracttest
   pages/embed:
     mayDependOn:
       - contracts
@@ -807,6 +820,7 @@ deps:
       - store/account
       - compute/optioncand
       - store/candidate
+      - pages/candidate_text
       - compute/optionledger
       - jobs/optionledger
       - sources/flex
