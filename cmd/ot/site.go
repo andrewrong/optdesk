@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"strconv"
@@ -46,7 +47,7 @@ type sitePageInput struct {
 	Choices      []siteChoice
 }
 
-// siteReaders are the seven readers the site builds its live pages from.
+// siteReaders are the eight readers the site builds its live pages from.
 type siteReaders struct {
 	series  store.SeriesReader
 	eod     store.OptionEodReader
@@ -55,15 +56,16 @@ type siteReaders struct {
 	terms   store.OptionTermsReader
 	names   store.InstrumentNameReader
 	view    store.ReadingViewReader
+	cands   store.CandidateReader
 }
 
-// openSiteReaders returns the demo readers with the demo profile, else the six stores (series and the
-// five option stores) opened once with the one .env line of the pages role, and a function that closes
-// them. A failed open closes the stores already opened.
+// openSiteReaders returns the demo readers with the demo profile, else the eight stores (series, the
+// five option stores, the reading view and the candidate store) opened once with the one .env line of the
+// pages role, and a function that closes them. A failed open closes the stores already opened.
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
-		return siteReaders{demoReader{}, d, d, d, d, d, demoView{}}, func() {}, nil
+		return siteReaders{demoReader{}, d, d, d, d, d, demoView{}, demoCandidates{}}, func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -83,48 +85,54 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		closeAll()
 		return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
 	}
-	var rd siteReaders
+	track := func(c io.Closer, err error) bool {
+		if err == nil {
+			closers = append(closers, c.Close)
+		}
+		return err == nil
+	}
 	ser, err := a.deps.openSeries(ctx, dsn)
-	if err != nil {
+	if !track(ser, err) {
 		return fail()
 	}
-	closers = append(closers, ser.Close)
 	eod, err := a.deps.openOptionEod(ctx, dsn)
-	if err != nil {
+	if !track(eod, err) {
 		return fail()
 	}
-	closers = append(closers, eod.Close)
 	quotes, err := a.deps.openQuoteSnapshot(ctx, dsn)
-	if err != nil {
+	if !track(quotes, err) {
 		return fail()
 	}
-	closers = append(closers, quotes.Close)
 	catalog, err := a.deps.openOptionCatalog(ctx, dsn)
-	if err != nil {
+	if !track(catalog, err) {
 		return fail()
 	}
-	closers = append(closers, catalog.Close)
 	terms, err := a.deps.openOptionTerms(ctx, dsn)
-	if err != nil {
+	if !track(terms, err) {
 		return fail()
 	}
-	closers = append(closers, terms.Close)
 	names, err := a.deps.openInstrumentName(ctx, dsn)
-	if err != nil {
+	if !track(names, err) {
 		return fail()
 	}
-	closers = append(closers, names.Close)
 	view, err := a.deps.openReadingView(ctx, dsn)
-	if err != nil {
+	if !track(view, err) {
 		return fail()
 	}
-	closers = append(closers, view.Close)
-	rd = siteReaders{ser, eod, quotes, catalog, terms, names, view}
-	return rd, closeAll, nil
+	var cands store.CandidateReader // no opener in deps: no reader, the page shows its gap no_reader
+	if a.deps.openCandidate != nil {
+		cs, err := a.deps.openCandidate(ctx, dsn)
+		if !track(cs, err) {
+			return fail()
+		}
+		cands = cs
+	}
+	return siteReaders{ser, eod, quotes, catalog, terms, names, view, cands}, closeAll, nil
 }
 
 // siteHandler serves the routes of the site: "" (302 to home), the live routes macro, options/data and
-// options/data/<id>, the routes report and market, the six sample routes (sample.go) and assets/*, which assets answers. A live page is built per request;
+// options/data/<id>, the routes report, market and options/candidates, the six sample routes (sample.go) and
+// assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +146,8 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
 		case path == siteMarketRoute:
 			build = func(ctx context.Context) ([]byte, error) { return buildMarket(ctx, a, clk, dayFlag, rd) }
+		case path == siteCandidatesRoute:
+			build = func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
 		case path == "report":
 			q := r.URL.Query()
 			build = func(ctx context.Context) ([]byte, error) { return buildReport(ctx, a, clk, dayFlag, rd.view, q) }

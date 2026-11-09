@@ -72,6 +72,14 @@ may_import = ["contracts", "gaphistory", "store"]
 in = "internal/store/alert"
 may_import = ["contracts", "gaphistory", "store"]
 
+[component."store/bar"]
+in = "internal/store/bar"
+may_import = ["contracts", "gaphistory", "store"]
+
+[component."store/barpg"]
+in = "internal/store/barpg"
+may_import = ["contracts", "gaphistory", "store"]
+
 [component."store/candidate"]
 in = "internal/store/candidate"
 may_import = ["contracts", "gaphistory", "store"]
@@ -196,6 +204,10 @@ may_import = ["contracts", "clock", "sources", "broker", "store", "compute"]
 in = "internal/jobs/accountcapture"
 may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
 
+[component."jobs/barsrefresh"]
+in = "internal/jobs/barsrefresh"
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
+
 [component."jobs/calendarrefresh"]
 in = "internal/jobs/calendarrefresh"
 may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
@@ -210,6 +222,10 @@ may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jo
 
 [component."jobs/fredseries"]
 in = "internal/jobs/fredseries"
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
+
+[component."jobs/fxrefresh"]
+in = "internal/jobs/fxrefresh"
 may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jobs"]
 
 [component."jobs/optioncandidates"]
@@ -318,4 +334,4 @@ may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "gaphistory", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/report_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "compute/ease", "store/account", "jobs/accountcapture", "compute/optioncand", "store/candidate", "jobs/optioncandidates", "pages/candidate_text", "compute/optionledger", "jobs/optionledger", "store/optionledger", "sources/flex", "pages/market_page", "pages/option_candidates_page", "compute/optionstruct", "compute/optionresult", "pages/structures_page", "pages/option_result_page", "compute/optionnotice", "pages/option_notices_page", "compute/optiontrack", "pages/option_tracking_page", "sources/alphavantage", "sources/jquants", "jobs/earningsrefresh", "store/events", "compute/blockapi", "compute/pagefig", "pages/household_page", "pages/report_blocks"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "gaphistory", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/report_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "compute/ease", "store/account", "jobs/accountcapture", "compute/optioncand", "store/candidate", "jobs/optioncandidates", "pages/candidate_text", "compute/optionledger", "jobs/optionledger", "store/optionledger", "sources/flex", "pages/market_page", "pages/option_candidates_page", "compute/optionstruct", "compute/optionresult", "pages/structures_page", "pages/option_result_page", "compute/optionnotice", "pages/option_notices_page", "compute/optiontrack", "pages/option_tracking_page", "sources/alphavantage", "sources/jquants", "jobs/earningsrefresh", "store/events", "store/bar", "store/barpg", "jobs/barsrefresh", "jobs/fxrefresh", "compute/blockapi", "compute/pagefig", "pages/household_page", "pages/report_blocks"]
