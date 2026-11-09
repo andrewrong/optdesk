@@ -84,8 +84,8 @@ rows above name every other top-level path of the planned tree.
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
 | gaphistory | internal/gaphistory/** docs/contracts/gaphistory.md | internal/gaphistory/api.go | internal/gaphistory/api_test.go | contracts |
-| store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend | internal/store/api_test.go | contracts gaphistory |
-| compute | internal/compute/** docs/contracts/compute.md tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest internal/compute/trackapi internal/compute/settingsapi internal/compute/blockapi | internal/compute/api_test.go internal/compute/contracttest | contracts |
+| store | internal/store/** migrations/** docs/contracts/store.md docs/contracts/store/** | internal/store/api.go internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend | internal/store/api_test.go | contracts gaphistory |
+| compute | internal/compute/** docs/contracts/compute.md docs/contracts/compute/** tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest internal/compute/trackapi internal/compute/settingsapi internal/compute/blockapi | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
 | jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store compute gaphistory |
@@ -95,7 +95,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory |
+| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
