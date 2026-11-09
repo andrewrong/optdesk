@@ -25,6 +25,7 @@ ALLOWED = {
     "connectAsync",
     "reqContractDetailsAsync",
     "reqSecDefOptParamsAsync",
+    "reqHistoricalDataAsync",
     "reqMarketDataType",
     "reqMktData",
     "cancelMktData",
