@@ -45,6 +45,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - v3: `internal/pages/option_data_page`: `NewPage(Config)` and `Build` for `page.option_data_page.v1`; `Config` is `RunID`, `BuildID`, `Scope`, `Zone`, `UnderlyingID`, `Label`, `Eod` (`store.OptionEodReader`) and `Quotes` (`store.QuoteSnapshotReader`) and `Notes` (texts of the page notes, at most 20); the series reader the caller passes is ignored. v3 also fills three fields: `Choices` (`[]Choice`, the first 50 become `underlyings`; a `Href` outside `^/[A-Za-z0-9/_-]{1,100}$` is an error of `Build`), `Terms` (`store.OptionTermsReader`, one call with the kept rows' ids; fills `expiry`, `right` and `strike`; a reader error is returned) and `Symbol` (`underlying.symbol`); zero values keep the output unchanged.
 - v5: `internal/pages/report_page`: `Build` and `NewPage` for `page.report_page.v2`, with `Config` and `RiskBlockFunc`; the `risks` block is given bytes and four blocks are gap-only.
 - v6: `internal/pages/market_page`: `Build`, `NewPage` and `Config` write `page.market_page.v1` from stored readings and series points.
+- v7: `internal/pages/option_candidates_page`: `Build` writes `page.option_candidates_page.v1` from `Config.Candidates` (`store.CandidateReader`), once per kind: the build day, else the last day with rows up to 7 days back (a group day before the build day is stale and its rows carry the badge `过期`); `ok` rows go to the main table and `blocked` and `unknown` rows to the second table with their reasons, in the stored order; numeric cells carry `value` as the stored decimal text (`json.Number`); the yield text is shifted two places as text; a kind without rows is the group gap `no_rows`, no stored run the page gap `no_run`, a nil reader `no_reader`. No float, sort, clock or notify.
 
 ## Contract tests
 
@@ -53,6 +54,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `internal/pages/macro_rates/page_test.go`: `TestPage`.
 - `internal/pages/macro_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`.
 - `internal/pages/market_page/page_test.go`: `TestNewPageMeta`, `TestConfigContract`.
+- `internal/pages/option_candidates_page/page_test.go`: `TestNewPageMeta`, `TestConfigContract`.
 - `internal/pages/option_data_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`, `TestNewPageCopiesNotes`.
 - `internal/pages/option_data_page/builder_test.go`: `TestBuildValidates`, `TestBuildGolden`, `TestBuildSelection`, `TestBuildGaps`.
 - `internal/pages/option_data_page/choices_test.go`: `TestBuildChoicesGolden` (new), `TestBuildNoNewFields` (new), `TestBuildChoices` (new).

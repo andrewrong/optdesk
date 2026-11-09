@@ -1,0 +1,13 @@
+{
+  "2026-11-09/short_put": [
+    {"Kind": "short_put", "InstrumentID": 111, "Issuer": "ACME", "Expiry": "2026-12-18", "DTE": 39, "Right": "put",
+     "Strike": "95.00", "BidEod": "1.20", "BreakEven": "93.80", "AnnualizedYield": "0.118212", "Status": "blocked",
+     "Gates": "[{\"gate\":\"events\",\"status\":\"block\",\"reason\":\"earnings_before_expiry\"},{\"gate\":\"cash_rate\",\"status\":\"unknown\",\"reason\":\"no_rate\"}]",
+     "Marks": "[\"itm\"]", "Fits": "{\"A\":\"unknown\"}", "NextEarnings": "2026-12-01", "EarningsState": "listed",
+     "RuleVersion": "r1", "ComputedAt": "2026-11-09T21:30:00Z"},
+    {"Kind": "short_put", "InstrumentID": 112, "Issuer": "ACME", "Expiry": "2026-12-18", "DTE": 39, "Right": "put",
+     "Strike": "92.00", "BidEod": "0.90", "BreakEven": "91.10", "Status": "unknown",
+     "Gates": "[{\"gate\":\"chain_fresh\",\"status\":\"unknown\",\"reason\":\"stale_chain\"}]",
+     "Marks": "[]", "Fits": "{}", "EarningsState": "none", "RuleVersion": "r1", "ComputedAt": "2026-11-09T21:30:00Z"}
+  ]
+}

@@ -2,6 +2,8 @@ package option_candidates_page_test
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,7 +48,7 @@ func TestConfigContract(t *testing.T) {
 		},
 	} {
 		out, err := build()
-		if err == nil || err.Error() != "option_candidates_page: not built" || out != nil {
+		if err != nil || !json.Valid(out) || !strings.Contains(string(out), `"schema":"option_candidates_page"`) {
 			t.Fatalf("%s = %q, %v", name, out, err)
 		}
 	}

@@ -28,7 +28,7 @@ func planFrom(data []byte, day contracts.Day) ([]contracts.ExpectedKey, string, 
 func (m manifest) plan(day contracts.Day) ([]contracts.ExpectedKey, string) {
 	keys := make([]contracts.ExpectedKey, 0, len(m.Underlying))
 	for _, u := range m.Underlying {
-		keys = append(keys, contracts.ExpectedKey{DatasetID: datasetID, SubjectKey: u.Symbol})
+		keys = append(keys, contracts.ExpectedKey{DatasetID: m.LedgerDataset, SubjectKey: u.Symbol})
 	}
 	sum := sha256.Sum256([]byte(string(day) + "\n" + m.canonical()))
 	return keys, hex.EncodeToString(sum[:])
