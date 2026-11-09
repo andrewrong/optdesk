@@ -53,3 +53,30 @@ func (demoReader) SeriesPoints(_ context.Context, seriesID string, from, to cont
 	}
 	return out, nil
 }
+
+// demoMarketFigures are the five figures of market_page with the subject each is stored under.
+var demoMarketFigures = map[string]string{
+	"market.vix_pctile_3y": "VIXCLS", "market.vxn_pctile_3y": "VXNCLS", "market.rvx_pctile_3y": "RVXCLS",
+	"market.sp500_vs_200d": "SP500", "market.vix_term_ratio": "VIXCLS",
+}
+
+// demoMarketReadings is the ReadingFunc of market_page in the demo profile: one fixed ok reading
+// of day to, carrying the parameter data_day, for each of the five figures; other figures have no row.
+func demoMarketReadings(ctx context.Context, name, subjectKind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
+	if _, ok := demoMarketFigures[name]; !ok || to < from {
+		return nil, nil
+	}
+	rows, err := demoView{}.WinnerReadings(ctx, name, subjectKind, subject, from, to)
+	if err != nil || len(rows) == 0 {
+		return rows, err
+	}
+	v := "0.5"
+	switch name {
+	case "market.sp500_vs_200d":
+		v = "0.031200"
+	case "market.vix_term_ratio":
+		v = "0.950000"
+	}
+	rows[0].Value = &v
+	return rows, nil
+}

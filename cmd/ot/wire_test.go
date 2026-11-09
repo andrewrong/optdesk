@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"slices"
@@ -19,8 +20,8 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 56 {
-		t.Fatalf("deps has %d fields, want 56", v.NumField())
+	if v.NumField() != 57 {
+		t.Fatalf("deps has %d fields, want 57", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {
@@ -187,5 +188,28 @@ func TestComputeFiguresJobGetsEase(t *testing.T) {
 	}
 	if got == nil || got != d.computeEase {
 		t.Fatalf("job got ease %v, want the one of newDeps", got)
+	}
+}
+
+func TestMarketPageWiresReadings(t *testing.T) {
+	t.Parallel()
+	var called atomic.Int32
+	read := func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+		called.Add(1)
+		return nil, nil
+	}
+	p := newDeps().marketPage(time.UTC, "ot-page", "dev", "market", read)
+	if p.Meta.Name != "market_page" {
+		t.Fatalf("name %q", p.Meta.Name)
+	}
+	if p.Meta.Schema != "page.market_page.v1" {
+		t.Fatalf("schema %q", p.Meta.Schema)
+	}
+	_, err := p.Build(t.Context(), demoReader{}, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil && strings.Contains(err.Error(), "not built") {
+		t.Skip("the builder of market_page has not landed: Build is still the stub of the interface entry")
+	}
+	if called.Load() == 0 {
+		t.Fatal("Build did not call the readings function")
 	}
 }

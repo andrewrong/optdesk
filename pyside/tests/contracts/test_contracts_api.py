@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import pathlib
+from collections.abc import AsyncIterator
 from importlib import resources
 from unittest.mock import MagicMock
 
@@ -12,6 +13,8 @@ import grpc
 
 from optdesk.contracts import api
 from optdesk.contracts.api import (
+    DIVIDEND_STATUS_NO_VALUE,
+    DIVIDEND_STATUS_OK,
     QUOTE_KIND_OPTION_EOD,
     QUOTE_KIND_SNAPSHOT,
     RESOLVE_STATUS_FOUND,
@@ -21,15 +24,20 @@ from optdesk.contracts.api import (
     AccountServiceServicer,
     AccountServiceStub,
     AccountValue,
+    ContractKey,
     ContractSpec,
     ContractsServiceServicer,
     ContractsServiceStub,
+    DividendProjection,
+    DividendStatus,
     ListChainsRequest,
     ListChainsResponse,
     MarketDataServiceServicer,
     MarketDataServiceStub,
     Position,
     Quote,
+    ReferenceServiceServicer,
+    ReferenceServiceStub,
     ResolveContractRequest,
     ResolveContractResponse,
     SessionServiceServicer,
@@ -180,3 +188,42 @@ def test_account_service_surface() -> None:
     assert [v.tag for v in response.values] == ["NetLiquidation"]
     assert [p.contract.symbol for p in response.positions] == ["SPY", "QQQ"]
     assert response.positions[0].quantity == "-2"
+
+
+class _FakeReference(ReferenceServiceServicer):
+    async def Dividends(
+        self,
+        request_iterator: AsyncIterator[ContractKey],
+        context: grpc.aio.ServicerContext[ContractKey, DividendProjection],
+    ) -> AsyncIterator[DividendProjection]:
+        async for key in request_iterator:
+            if key.symbol == "KO":
+                yield DividendProjection(
+                    key=key,
+                    status=DIVIDEND_STATUS_OK,
+                    next_ex_date="20261130",
+                    next_amount="0.51",
+                )
+            else:
+                yield DividendProjection(key=key, status=DIVIDEND_STATUS_NO_VALUE)
+
+
+def test_reference_service_dividends_stream() -> None:
+    assert _public_methods(ReferenceServiceServicer) == {"Dividends"}
+    assert vars(ReferenceServiceStub(MagicMock())).keys() == {"Dividends"}
+
+    async def keys() -> AsyncIterator[ContractKey]:
+        yield ContractKey(symbol="KO", exchange="SMART", currency="USD", con_id=8894)
+        yield ContractKey(symbol="TSLA", exchange="SMART", currency="USD")
+
+    async def run() -> list[DividendProjection]:
+        stream = _FakeReference().Dividends(keys(), MagicMock())
+        return [item async for item in stream]
+
+    answers = asyncio.run(run())
+    assert [a.key.symbol for a in answers] == ["KO", "TSLA"]
+    assert answers[0].key.con_id == 8894
+    assert answers[0].next_ex_date == "20261130"
+    assert answers[0].HasField("past_12m") is False
+    assert answers[1].status == DividendStatus.Value("DIVIDEND_STATUS_NO_VALUE")
+    assert answers[1].HasField("next_ex_date") is False
