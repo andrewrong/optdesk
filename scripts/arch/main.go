@@ -117,7 +117,7 @@ var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 // listed row may import one, and so may the sub-packages of the listed row itself.
 var declarationsOnly = []string{
 	"internal/store/bar", "internal/store/mark", "internal/store/ownerset",
-	"internal/compute/settingsapi", "internal/compute/trackapi",
+	"internal/compute/settingsapi", "internal/compute/trackapi", "internal/store/flexsection",
 }
 
 // declListed gives, for each row, the declarationsOnly packages (as component names) that
