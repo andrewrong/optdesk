@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse queryName="Sections" type="AF">
+<FlexStatements count="1">
+<FlexStatement accountId="ACCT_A" fromDate="2026-10-01" toDate="2026-10-31" period="LastMonth" whenGenerated="2026-11-09;10:00:00">
+<ChangeInNAV accountId="ACCT_A" currency="USD" startingValue="1000.50" endingValue="1010.25" mtm="9.75"/>
+<CashTransactions>
+<CashTransaction accountId="ACCT_A" transactionID="7001" currency="USD" amount="12.50" type="Dividends" dateTime="2026-10-03;20:25:00"/>
+<CashTransaction accountId="ACCT_A" transactionID="7002" currency="USD" amount="-3.00" type="Other Fees" dateTime="2026-10-04;20:25:00"/>
+</CashTransactions>
+<OpenPositions>
+<OpenPosition accountId="ACCT_A" symbol="XYZ 261120P00050000" position="-1" markPrice="1.10" currency="USD"/>
+</OpenPositions>
+<ConversionRates>
+<ConversionRate reportDate="2026-10-31" fromCurrency="USD" toCurrency="JPY" rate="150.125"/>
+</ConversionRates>
+<Trades>
+<Trade accountId="ACCT_A" transactionID="9001" levelOfDetail="EXECUTION" symbol="XYZ" quantity="-1"/>
+</Trades>
+</FlexStatement>
+</FlexStatements>
+</FlexQueryResponse>
