@@ -846,7 +846,8 @@ type ReadingRecord struct {
 	// Register id of the figure, for example market.ivp_own.
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
 
-	// Job that wrote the reading.
+	// Writer of the reading: the job compute_figures, or the owner command
+	// owner_command (the band approval of ot approve-band).
 	Origin ReadingRecordOrigin `json:"origin" yaml:"origin" mapstructure:"origin"`
 
 	// Parameters the rule ran with.
@@ -930,9 +931,11 @@ func (j *ReadingRecordInputsElem) UnmarshalJSON(b []byte) error {
 type ReadingRecordOrigin string
 
 const ReadingRecordOriginComputeFigures ReadingRecordOrigin = "compute_figures"
+const ReadingRecordOriginOwnerCommand ReadingRecordOrigin = "owner_command"
 
 var enumValues_ReadingRecordOrigin = []interface{}{
 	"compute_figures",
+	"owner_command",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

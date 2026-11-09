@@ -203,8 +203,8 @@ func TestReadingRejects(t *testing.T) {
 	t.Parallel()
 	s := compileDataset(t, "readings.reading")
 	recs, _ := loadRecords(t, "readings.reading")
-	if len(recs) != 3 {
-		t.Fatalf("want 3 records, got %d", len(recs))
+	if len(recs) != 4 {
+		t.Fatalf("want 4 records, got %d", len(recs))
 	}
 	mutate := func(i int, f func(map[string]any)) map[string]any {
 		m := map[string]any{}
