@@ -4,6 +4,7 @@ package sources
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -108,3 +109,45 @@ var ErrFlexNotConfigured = errors.New("flex: not configured")
 
 // ErrFlexConfig means flex.toml is unsafe or invalid.
 var ErrFlexConfig = errors.New("flex: bad configuration")
+
+// HTTPDoer is the HTTP client a source is given; *http.Client satisfies it, and a test passes a fake.
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// EarningsConfig holds the arguments of NewEarningsFunc. APIKey is passed in by the caller; this package
+// reads no environment. Symbols are the JP codes of the J-Quants source; Alpha Vantage ignores them.
+// Doer is optional: nil means an http.Client that follows no redirect.
+type EarningsConfig struct {
+	BaseURL string
+	APIKey  string
+	Symbols []string
+	Doer    HTTPDoer
+}
+
+// EarningsListing is one parsed row of an earnings calendar. Dates are YYYY-MM-DD; Estimate is decimal
+// text; empty strings mean the source did not say.
+type EarningsListing struct {
+	Symbol          string
+	ReportDate      contracts.Day
+	FiscalPeriodEnd contracts.Day
+	Estimate        string
+	TimeOfDay       string
+}
+
+// EarningsSource fetches the earnings calendar of one outside service. One Fetch makes the calls the
+// service's budget allows (Alpha Vantage: exactly one request), follows no redirect and never retries.
+// It returns CodedError values only; none holds the key or an address. Only parsed rows are returned.
+type EarningsSource interface {
+	Fetch(ctx context.Context) ([]EarningsListing, error)
+}
+
+// NewEarningsFunc is the constructor of an earnings source (internal/sources/alphavantage.New).
+type NewEarningsFunc func(EarningsConfig) (EarningsSource, error)
+
+// CodedError is a typed error that also names the error_code of the earnings_date row the job writes:
+// rate_limited (a limit answer or a notice body), http_status, network, not_csv, short_calendar.
+type CodedError interface {
+	contracts.TypedError
+	ErrorCode() string
+}
