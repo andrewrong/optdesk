@@ -13,7 +13,7 @@ the form of this runbook is `docs/deploy/scheduler.md`.
 
 ```toml
 [services.optdesk-serve]
-way    = "host"                # a host service under the keeper, like optdesk-pyside and optdesk-scheduler
+way = "host"                # a host service under the keeper, like optdesk-pyside and optdesk-scheduler
 repo   = "andrewrong/optdesk"
 boot   = true                  # in crew: started and restarted by the keeper the owner starts, not a start at machine boot
 deploy = "owner"               # until the first deploy below; the owner then changes it to "auto"
