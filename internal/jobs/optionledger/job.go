@@ -305,6 +305,11 @@ func (r *run) fetch(ctx context.Context, l jobs.FlexRun, queryID string, w windo
 	}
 	r.res.Returned += len(rows)
 	r.res.Usable += ins.New + ins.Revised
+	if r.j.stores.Sections != nil {
+		if err := r.recordSections(ctx, l, sources.FlexRequest{QueryID: queryID, First: w.first, Last: w.last}, rep); err != nil {
+			return "store_error"
+		}
+	}
 	return statusOK
 }
 

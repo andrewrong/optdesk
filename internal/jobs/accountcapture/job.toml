@@ -1,0 +1,11 @@
+# Manifest of the account_capture job. It holds no identity or value: the aliases come from the wiring.
+version = 1
+id = "account_capture"
+
+# Daily anchor on the close of the session (Decision 4 of docs/design/account-data.md).
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "30m"
+run_bound = "10m"
+restart_sensitive = true

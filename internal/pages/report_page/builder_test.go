@@ -306,3 +306,84 @@ func TestNewPageMeta(t *testing.T) {
 		t.Error("page Build differs from Build")
 	}
 }
+
+func blockFuncs(calls *int, marker string) (a, m, w BlockFunc) {
+	mk := func(key string) BlockFunc {
+		return func(context.Context, contracts.Day, time.Time) ([]byte, error) {
+			*calls++
+			return []byte(`{"key":"` + key + `","marker":"` + marker + `"}`), nil
+		}
+	}
+	return mk("actions"), mk("account_moves"), mk("market_watch")
+}
+
+func TestNilBlockFuncKeepsNotBuilt(t *testing.T) {
+	t.Parallel()
+	bl := blocksOf(build(t, cfg("US", "close", riskFile(t, "gap"))))
+	for _, key := range []string{"actions", "account_moves", "market_watch"} {
+		b := bl[key].(map[string]any)
+		gs := b["gaps"].([]any)
+		if b["state"] != "gap" || len(gs) != 1 || gs[0].(map[string]any)["reason"] != "not_built" {
+			t.Errorf("%s = %v, want the not_built block", key, b)
+		}
+	}
+}
+
+func TestFuncBytesReplaceBlock(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	c := cfg("US", "close", riskFile(t, "gap"))
+	c.Actions, c.AccountMoves, c.MarketWatch = blockFuncs(&calls, "x")
+	bl := blocksOf(build(t, c))
+	for _, key := range []string{"actions", "account_moves", "market_watch"} {
+		want := map[string]any{"key": key, "marker": "x"}
+		if !reflect.DeepEqual(bl[key], want) {
+			t.Errorf("%s = %v, want %v", key, bl[key], want)
+		}
+	}
+	if g := bl["global_assets"].(map[string]any)["gaps"].([]any)[0].(map[string]any)["reason"]; g != "not_built" {
+		t.Errorf("global_assets reason = %v", g)
+	}
+	if calls != 3 {
+		t.Errorf("calls = %d, want 3", calls)
+	}
+	c.Actions = func(context.Context, contracts.Day, time.Time) ([]byte, error) { return nil, errors.New("boom") }
+	if _, err := Build(context.Background(), c, day, at); err == nil {
+		t.Error("an error of a block function must be an error of Build")
+	}
+}
+
+func TestJpIsGapWithoutCall(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	c := cfg("JP", "close", riskFile(t, "gap"))
+	c.Actions, c.AccountMoves, c.MarketWatch = blockFuncs(&calls, "x")
+	bl := blocksOf(build(t, c))
+	if calls != 0 {
+		t.Errorf("%d block functions called for JP", calls)
+	}
+	for _, key := range []string{"actions", "account_moves", "market_watch"} {
+		b := bl[key].(map[string]any)
+		gs := b["gaps"].([]any)
+		if b["state"] != "gap" || len(gs) != 1 || gs[0].(map[string]any)["reason"] != "jp_slice_missing" {
+			t.Errorf("%s = %v, want a jp_slice_missing gap block", key, b)
+		}
+	}
+}
+
+func TestRisksBlockUnchanged(t *testing.T) {
+	t.Parallel()
+	raw := riskFile(t, "ok_with_items")
+	var want any
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	for _, market := range []string{"US", "JP"} {
+		c := cfg(market, "close", raw)
+		c.Actions, c.AccountMoves, c.MarketWatch = blockFuncs(&calls, "x")
+		if got := blocksOf(build(t, c))["risks"]; !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: risks = %v, want %v", market, got, want)
+		}
+	}
+}

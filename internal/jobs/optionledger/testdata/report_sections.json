@@ -1,0 +1,27 @@
+{
+  "RawSHA256": "ab",
+  "FetchedAt": "2026-11-10T17:00:00Z",
+  "Statements": [
+    {
+      "AccountID": "ACCT1",
+      "Sections": {
+        "CashTransaction": [
+          {"accountId": "ACCT1", "acctAlias": "x", "transactionID": "t1", "amount": "10.5", "currency": "USD"},
+          {"accountId": "ACCT1", "transactionID": "t2", "amount": "-3", "currency": "USD"}
+        ],
+        "OpenPosition": [
+          {"accountId": "ACCT1", "reportDate": "20261109", "levelOfDetail": "SUMMARY", "conid": "11", "position": "2"}
+        ],
+        "ChangeInNAV": [
+          {"accountId": "ACCT1", "fromDate": "20261101", "toDate": "20261109", "endingValue": "100"}
+        ],
+        "EquitySummaryByReportDateInBase": [
+          {"accountId": "ACCT1", "reportDate": "20261109", "total": "100"}
+        ],
+        "ConversionRate": [
+          {"reportDate": "20261109", "fromCurrency": "USD", "toCurrency": "JPY", "rate": "150"}
+        ]
+      }
+    }
+  ]
+}

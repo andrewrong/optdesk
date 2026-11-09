@@ -11,21 +11,21 @@ var _ blockapi.PageFigures = figures{}
 
 type figures struct{}
 
-// New returns the page figures. Entry 3 fills the report and companies methods.
+// New returns the page figures.
 func New() blockapi.PageFigures { return figures{} }
 
 func (figures) Household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
 	return household(in)
 }
 
-func (figures) Trades(contracts.Day, []blockapi.ExecIn) []blockapi.TradeLine { return nil }
-
-func (figures) AccountMove(blockapi.AccountMoveIn) blockapi.AccountMoveOut {
-	return blockapi.AccountMoveOut{}
+func (figures) Trades(day contracts.Day, in []blockapi.ExecIn) []blockapi.TradeLine {
+	return trades(day, in)
 }
 
-func (figures) Moves([]blockapi.CloseIn) []blockapi.MoveLine { return nil }
+func (figures) AccountMove(in blockapi.AccountMoveIn) blockapi.AccountMoveOut { return accountMove(in) }
 
-func (figures) Glance([]blockapi.CompanyState) []blockapi.MoneyLine { return nil }
+func (figures) Moves(in []blockapi.CloseIn) []blockapi.MoveLine { return moves(in) }
 
-func (figures) Changes([]blockapi.CompanyState) []blockapi.ChangeLine { return nil }
+func (figures) Glance(rows []blockapi.CompanyState) []blockapi.MoneyLine { return glance(rows) }
+
+func (figures) Changes(rows []blockapi.CompanyState) []blockapi.ChangeLine { return changes(rows) }
