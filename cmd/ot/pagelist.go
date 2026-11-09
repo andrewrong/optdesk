@@ -31,7 +31,7 @@ func pageNamed(a *app, name string) (pages.Page, error) {
 	for _, p := range a.deps.pageList {
 		known = append(known, p.Meta.Name)
 	}
-	known = append(known, macroPageName)
+	known = append(known, macroPageName, reportName)
 	return pages.Page{}, fmt.Errorf("unknown page %q; known pages: %s", name, strings.Join(known, ", "))
 }
 
