@@ -274,7 +274,7 @@
           "type": "string"
         },
         "href": {
-          "pattern": "^/structure/[A-Za-z0-9_-]{1,64}$",
+          "pattern": "^\/(structure\/[A-Za-z0-9_-]{1,64}|options\/structures\/[A-Za-z0-9_.~%:-]{1,200})$",
           "title": "Href",
           "type": "string"
         },
