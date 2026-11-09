@@ -1,0 +1,6 @@
+[
+{"observed_on":"2026-11-06","issuer":"cik:0000320193","attempt":1,"symbol":"AAPL","market":"US","status":"listed","report_date":"2027-01-29","fiscal_period_end":"2026-12-31","time_of_day":"post-market","estimate":"2.35","error_code":"","source":"alphavantage","received_at":"2026-11-06T22:00:00Z"},
+{"observed_on":"2026-11-06","issuer":"cik:0001018724","attempt":1,"symbol":"AMZN","market":"US","status":"absent","report_date":null,"fiscal_period_end":null,"time_of_day":"","estimate":null,"error_code":"","source":"alphavantage","received_at":"2026-11-06T22:00:00Z"},
+{"observed_on":"2026-11-06","issuer":"edinet:E02144","attempt":1,"symbol":"7203","market":"JP","status":"unsupported","report_date":null,"fiscal_period_end":null,"time_of_day":"","estimate":null,"error_code":"","source":"none","received_at":"2026-11-06T22:00:00Z"},
+{"observed_on":"2026-11-06","issuer":"edinet:E01777","attempt":1,"symbol":"6758","market":"JP","status":"error","report_date":null,"fiscal_period_end":null,"time_of_day":"","estimate":null,"error_code":"rate_limited","source":"jquants","received_at":"2026-11-06T22:00:00Z"}
+]

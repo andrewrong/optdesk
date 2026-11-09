@@ -33,6 +33,7 @@
     {"path": "page.macro_rates.v3.seven.json", "sha256": "84dee32d7c28e248dc269feb4630c4b546246ba3c3591a30dc16bef25a530276"},
     {"path": "page.sample_page.v1.ok.json", "sha256": "044aeefeda80373cc41113728893c8e1b1b4e5fb1a1aee1eddbd482a0576a247"},
     {"path": "page.sample_page.v1.bad-version.json", "sha256": "6c790618b2f53d2d037f9b79468a140dd85e2e37f0272762e47af1de7c764a54"},
-    {"path": "candidates.option_candidate.r1.json", "sha256": "dba334887caab171c711330cc3fb00dca89c53c51ec6502ba4c0c52d5d54995f"}
+    {"path": "candidates.option_candidate.r1.json", "sha256": "dba334887caab171c711330cc3fb00dca89c53c51ec6502ba4c0c52d5d54995f"},
+    {"path": "obs.earnings_date.r1.json", "sha256": "131e517888f7ccbc003f3337b3dfd251feeb82f8eab349344df58fb86d3cdeb0"}
   ]
 }

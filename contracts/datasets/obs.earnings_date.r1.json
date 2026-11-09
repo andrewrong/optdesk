@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.earnings_date.r1.json",
+  "title": "EarningsDate",
+  "description": "obs.earnings_date r1: one answer about the next earnings date of one issuer on one day; append only, an error is a row and a later success is a new attempt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observed_on", "issuer", "attempt", "symbol", "market", "status", "report_date", "fiscal_period_end", "time_of_day", "estimate", "error_code", "source", "received_at"],
+  "x-dataset": "obs.earnings_date",
+  "x-revision": "r1",
+  "x-primary-key": ["observed_on", "issuer", "attempt"],
+  "properties": {
+    "observed_on": {"type": "string", "format": "date", "description": "Session day (XNYS) the row answers for."},
+    "issuer": {"type": "string", "pattern": "^(cik:[0-9]{10}|edinet:[A-Za-z0-9]+)$", "description": "The issuer text of the watch list: cik:<10 digits>, or edinet:<code>."},
+    "attempt": {"type": "integer", "minimum": 1, "description": "Attempt number of the day, from 1; a later attempt never replaces an earlier row."},
+    "symbol": {"type": "string", "minLength": 1, "description": "Symbol as the vendor or the watch list gave it."},
+    "market": {"type": "string", "enum": ["US", "JP"], "description": "Market of the issuer."},
+    "status": {"type": "string", "enum": ["listed", "absent", "unsupported", "error"], "description": "listed: the source gave a date; absent: the source has no date for the issuer; unsupported: no source covers the issuer; error: the source failed. Only listed carries a report_date."},
+    "report_date": {"type": ["string", "null"], "format": "date", "description": "Earliest listed date on or after observed_on; null unless status is listed. The key is always present."},
+    "fiscal_period_end": {"type": ["string", "null"], "format": "date", "description": "End of the fiscal period the report covers; null when the source does not say."},
+    "time_of_day": {"type": "string", "description": "Time text of the source, for example pre-market or post-market; empty when none."},
+    "estimate": {"type": ["string", "null"], "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Estimate of the source as decimal text, currency not stored; null when none."},
+    "error_code": {"type": "string", "description": "Error code when status is error, for example rate_limited; empty otherwise."},
+    "source": {"type": "string", "enum": ["alphavantage", "jquants", "owner", "none"], "description": "Where the row came from; owner is a report_date_override (the only row of that issuer that day, attempt 1); none is a status unsupported row, since no source produced it. Never null."},
+    "received_at": {"type": "string", "format": "date-time", "description": "Instant the row was produced, UTC."}
+  }
+}

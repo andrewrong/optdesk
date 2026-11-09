@@ -307,3 +307,62 @@ func TestOptionLedgerDatasetFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestEarningsDateFixtureValues(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.earnings_date")
+	recs, _ := loadRecords(t, "obs.earnings_date")
+	want := []struct {
+		status, source string
+		hasDate        bool
+	}{
+		{"listed", "alphavantage", true},
+		{"absent", "alphavantage", false},
+		{"unsupported", "none", false},
+		{"error", "jquants", false},
+	}
+	if len(recs) != len(want) {
+		t.Fatalf("want %d records, got %d", len(want), len(recs))
+	}
+	for i, w := range want {
+		r := recs[i]
+		if err := s.Validate(r); err != nil {
+			t.Fatalf("record %d: %v", i, err)
+		}
+		if r["status"] != w.status || r["source"] != w.source {
+			t.Fatalf("record %d: status %v source %v, want %s %s", i, r["status"], r["source"], w.status, w.source)
+		}
+		date, present := r["report_date"]
+		if !present {
+			t.Fatalf("record %d: report_date key must be present", i)
+		}
+		if (date != nil) != w.hasDate {
+			t.Fatalf("record %d: report_date %v, has date want %v", i, date, w.hasDate)
+		}
+	}
+
+	mutate := func(base map[string]any, f func(map[string]any)) map[string]any {
+		m := map[string]any{}
+		for k, v := range base {
+			m[k] = v
+		}
+		f(m)
+		return m
+	}
+	cases := map[string]map[string]any{
+		"status unknown":     mutate(recs[0], func(m map[string]any) { m["status"] = "present" }),
+		"source null":        mutate(recs[2], func(m map[string]any) { m["source"] = nil }),
+		"source fmp":         mutate(recs[0], func(m map[string]any) { m["source"] = "fmp" }),
+		"no attempt":         mutate(recs[0], func(m map[string]any) { delete(m, "attempt") }),
+		"attempt zero":       mutate(recs[0], func(m map[string]any) { m["attempt"] = 0 }),
+		"issuer is a ticker": mutate(recs[0], func(m map[string]any) { m["issuer"] = "AAPL" }),
+		"market unknown":     mutate(recs[0], func(m map[string]any) { m["market"] = "HK" }),
+		"estimate a number":  mutate(recs[0], func(m map[string]any) { m["estimate"] = 1.5 }),
+		"unknown field":      mutate(recs[0], func(m map[string]any) { m["extra"] = 1 }),
+	}
+	for label, rec := range cases {
+		if err := s.Validate(rec); err == nil {
+			t.Fatalf("%s must be rejected", label)
+		}
+	}
+}
