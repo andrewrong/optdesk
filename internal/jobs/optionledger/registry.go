@@ -15,13 +15,16 @@ type sectionSpec struct {
 	Element  string
 	Required []string
 	Optional []string
+	// ByLot marks a section whose rows of level LOT are told apart by the optional attributes alone: such a
+	// row with all of them empty is ambiguous and refused.
+	ByLot bool
 }
 
 // registry lists the expected sections in the order their status rows are written. A later section is one
 // more row here and no schema change.
 var registry = []sectionSpec{
 	{Element: "CashTransaction", Required: []string{"transactionID"}},
-	{Element: "OpenPosition", Required: []string{"reportDate", "levelOfDetail", "conid"}, Optional: []string{"openDateTime", "originatingTransactionID"}},
+	{Element: "OpenPosition", Required: []string{"reportDate", "levelOfDetail", "conid"}, Optional: []string{"openDateTime", "originatingTransactionID"}, ByLot: true},
 	{Element: "ChangeInNAV", Required: []string{"fromDate", "toDate"}},
 	{Element: "EquitySummaryByReportDateInBase", Required: []string{"reportDate"}},
 	{Element: "ConversionRate", Required: []string{"reportDate", "fromCurrency", "toCurrency"}},
@@ -39,7 +42,7 @@ func sectionByElement(element string) (sectionSpec, bool) {
 
 // rowKey joins the key attributes of a row with "|": the required ones, then the optional ones, an absent
 // optional attribute as empty text. It returns errRowKey when a required attribute is missing or empty, and
-// for an OpenPosition row of level LOT with neither openDateTime nor originatingTransactionID (ambiguous).
+// for a ByLot row (OpenPosition) of level LOT with neither openDateTime nor originatingTransactionID (ambiguous).
 func rowKey(spec sectionSpec, attrs map[string]string) (string, error) {
 	parts := make([]string, 0, len(spec.Required)+len(spec.Optional))
 	for _, a := range spec.Required {
@@ -57,7 +60,7 @@ func rowKey(spec sectionSpec, attrs map[string]string) (string, error) {
 		}
 		parts = append(parts, v)
 	}
-	if spec.Element == "OpenPosition" && attrs["levelOfDetail"] == "LOT" && empty {
+	if spec.ByLot && attrs["levelOfDetail"] == "LOT" && empty {
 		return "", errRowKey
 	}
 	return strings.Join(parts, "|"), nil
