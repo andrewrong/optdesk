@@ -187,18 +187,35 @@ func TestSectionWriteFailureFailsRequiredLogin(t *testing.T) {
 	}
 }
 
-// The name TestResultCarriesNoFigures is taken by job_test.go; this is its section counterpart.
-func TestSectionsResultCarriesNoFigures(t *testing.T) {
+// It moved here from job_test.go: the failed-run result and the section step both carry no figure.
+func TestResultCarriesNoFigures(t *testing.T) {
 	t.Parallel()
-	sec := &fakeSections{err: errors.New("db down 10.5")}
-	j, _, logs := buildS(t, mainLogin(fixtureReport(t)), sec)
+	src := &fakeSource{fail: true}
+	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	res := j.Run(context.Background(), "2026-11-10", nil)
 	if res.Err == nil {
 		t.Fatal("want error")
 	}
+	for _, bad := range []string{"ACCT1", "q1", "symbol", "ABC", "1018"} {
+		if strings.Contains(res.Err.Error(), bad) {
+			t.Fatalf("error text holds %q: %v", bad, res.Err)
+		}
+	}
+	keys, _, err := j.Plan(context.Background(), "2026-11-10")
+	if err != nil || len(keys) != 1 || keys[0].SubjectKey != "a" {
+		t.Fatalf("plan %v %v", keys, err)
+	}
+
+	// the section step: a failed write of the rows leaks no figure into the result or the log
+	sec2 := &fakeSections{err: errors.New("db down 10.5")}
+	j2, _, logs := buildS(t, mainLogin(fixtureReport(t)), sec2)
+	res2 := j2.Run(context.Background(), "2026-11-10", nil)
+	if res2.Err == nil {
+		t.Fatal("want error")
+	}
 	for _, bad := range []string{"10.5", "150", "100", "ACCT1", "t1", "db down"} {
-		if strings.Contains(res.Err.Error(), bad) || strings.Contains(logs.String(), bad) {
-			t.Fatalf("figure %q reached the error or the log: %v %q", bad, res.Err, logs.String())
+		if strings.Contains(res2.Err.Error(), bad) || strings.Contains(logs.String(), bad) {
+			t.Fatalf("figure %q reached the error or the log: %v %q", bad, res2.Err, logs.String())
 		}
 	}
 }
