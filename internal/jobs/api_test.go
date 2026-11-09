@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
@@ -659,5 +660,19 @@ func TestOptionEodWindowContract(t *testing.T) {
 	}
 	if _, err := f(nil, nil, nil, nil, w, nil); err == nil || err.Error() != "21" {
 		t.Fatalf("the window is the fifth argument, got %v", err)
+	}
+}
+
+func TestBarsRefreshContract(t *testing.T) {
+	t.Parallel()
+	var f jobs.NewBarsRefreshFunc = func(
+		broker.Broker, broker.HistoryClient, store.InstrumentResolver, bar.PriceBarWriter, bar.PriceBarReader,
+		[]jobs.WatchEntry, clock.Clock,
+	) (contracts.Job, error) {
+		return fakeJob{id: "bars_refresh"}, nil
+	}
+	j, err := f(nil, nil, nil, nil, nil, nil, nil)
+	if err != nil || j.ID() != "bars_refresh" {
+		t.Fatalf("got %v, %v", j, err)
 	}
 }
