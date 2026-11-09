@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
+	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -123,6 +124,9 @@ type deps struct {
 	newDryRunSender         notify.NewDryRunSenderFunc
 	openSent                store.OpenSentFunc
 	newAlertNotifier        notify.NewAlertNotifierFunc
+	newMorningNotifier      notify.NewMorningNotifierFunc
+	openGapHistory          gaphistory.OpenFunc
+	openGapReader           store.OpenGapReaderFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
 	newEarningsRefresh      jobs.NewEarningsRefreshFunc
 	newAlphaVantage         sources.NewEarningsFunc
@@ -208,6 +212,9 @@ func newDeps() deps {
 		newDryRunSender:         dryrun.New,
 		openSent:                alert.Open,
 		newAlertNotifier:        core.NewAlerts,
+		newMorningNotifier:      core.NewMorningNotifier,
+		openGapHistory:          ops.OpenGapHistory,
+		openGapReader:           ops.OpenGapReader,
 		loadAlertRules:          alertrules.Load,
 		newEarningsRefresh:      earningsrefresh.New,
 		newAlphaVantage:         alphavantage.New,

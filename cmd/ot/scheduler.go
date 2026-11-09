@@ -163,12 +163,22 @@ func runScheduler(
 	if err != nil {
 		return err
 	}
-	an, closeAlerts, err := newAlertNotifier(ctx, a, alertsDSN, cfg.readingsDSN, rules, sender, fw, true)
+	sent, err := openSent(ctx, a, alertsDSN)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = sent.Close() }()
+	an, closeAlerts, err := newAlertNotifier(ctx, a, sent, cfg.readingsDSN, rules, sender, fw, true)
 	if err != nil {
 		return err
 	}
 	defer closeAlerts()
-	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, log: a.log}
+	mn, closeMorning, err := newMorningNotifier(ctx, a, cfg.pagesDSN, sent, sender, fw, true)
+	if err != nil {
+		return err
+	}
+	defer closeMorning()
+	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, morn: mn, log: a.log}
 	s := d.newScheduler(fence, sl, w.ledger, w.cal, fw, rec, gaps, w.jobs, disabled, execIdentity)
 
 	srv := &http.Server{Handler: healthHandler(s, fw), ReadHeaderTimeout: 5 * time.Second}

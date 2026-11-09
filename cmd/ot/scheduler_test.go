@@ -236,6 +236,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		r.alertsMu.Unlock()
 		return r.notifier, nil
 	}
+	morningFakes(d)
 	d.alertRules = alertrules.DefaultRules
 	d.loadAlertRules = alertrules.Load
 	d.evaluateAlerts = alertrules.Evaluate

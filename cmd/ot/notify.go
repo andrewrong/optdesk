@@ -44,6 +44,10 @@ func notifyCmd(a *app, args []string) error {
 	} else if sender, err = telegramSender(a); err != nil {
 		return err
 	}
+	sentDSN, err := alertsDSN(a)
+	if err != nil {
+		return err
+	}
 	ctx := context.Background()
 	fw := a.deps.newFwClock()
 	return withWiring(ctx, a, a.deps.newClock(), cfg, nil, func(wiring) error {
@@ -60,13 +64,41 @@ func notifyCmd(a *app, args []string) error {
 		if err != nil {
 			return err
 		}
-		sent, err := n.NotifyGaps(ctx)
+		count, err := n.NotifyGaps(ctx)
 		if err != nil {
 			return fmt.Errorf("notify failed (%s)", errorClass(err))
 		}
-		_, _ = fmt.Fprintf(a.stdout, "notify: %d gap(s) reported\n", sent)
-		return nil
+		_, _ = fmt.Fprintf(a.stdout, "notify: %d gap(s) reported\n", count)
+		return notifyMorningOnce(ctx, a, cfg.pagesDSN, sentDSN, sender, fw, *quiet, *dry)
 	})
+}
+
+// notifyMorningOnce is the morning pass of `ot notify --once`. With dry the day mark is never written, so
+// the text goes to the dry-run sender only and a later real pass still sends.
+func notifyMorningOnce(ctx context.Context, a *app, pagesDSN, sentDSN string, s notify.Sender, clk clockwork.Clock, quiet, dry bool) error {
+	sent, err := openSent(ctx, a, sentDSN)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = sent.Close() }()
+	if dry {
+		sent = readOnlySent{sent}
+	}
+	m, closeMorning, err := newMorningNotifier(ctx, a, pagesDSN, sent, s, clk, quiet)
+	if err != nil {
+		return err
+	}
+	defer closeMorning()
+	ok, err := m.NotifyMorning(ctx)
+	if err != nil {
+		return fmt.Errorf("notify morning failed (%s)", errorClass(err))
+	}
+	if ok {
+		_, _ = fmt.Fprintln(a.stdout, "notify: morning report sent")
+	} else {
+		_, _ = fmt.Fprintln(a.stdout, "notify: morning report not due")
+	}
+	return nil
 }
 
 // telegramSender reads the token and the chat id from .env and builds the sender. A missing line is an error
@@ -118,23 +150,27 @@ func alertsDSN(a *app) (string, error) {
 	return env[store.DSNEnvAlerts], nil
 }
 
-// newAlertNotifier opens the sent store (alerts DSN) and the winner reader (readings DSN) and builds the alert
-// notifier over the same Config as the gap notifier. The reader is WinnerReadings of the view and no other
-// reader, so the alert reads the rows the page reads. The returned close function closes both stores;
-// no error text holds a DSN.
-func newAlertNotifier(
-	ctx context.Context, a *app, alertsDSN, readingsDSN string, rules compute.AlertRules, s notify.Sender, clk clockwork.Clock, quiet bool,
-) (notify.AlertNotifier, func(), error) {
+// openSent opens the sent store with the line DSNEnvAlerts; no error text holds a DSN.
+func openSent(ctx context.Context, a *app, alertsDSN string) (store.SentStore, error) {
 	sent, err := a.deps.openSent(ctx, alertsDSN)
 	if err != nil {
-		return nil, nil, fmt.Errorf("open sent store with %s failed", store.DSNEnvAlerts)
+		return nil, fmt.Errorf("open sent store with %s failed", store.DSNEnvAlerts)
 	}
+	return sent, nil
+}
+
+// newAlertNotifier opens the winner reader (readings DSN) and builds the alert notifier over the sent store
+// the caller opened and the same Config as the gap notifier. The reader is WinnerReadings of the view and no
+// other reader, so the alert reads the rows the page reads. The returned close function closes the reader and
+// not the sent store; no error text holds a DSN.
+func newAlertNotifier(
+	ctx context.Context, a *app, sent store.SentStore, readingsDSN string, rules compute.AlertRules, s notify.Sender, clk clockwork.Clock, quiet bool,
+) (notify.AlertNotifier, func(), error) {
 	view, err := a.deps.openReadingView(ctx, readingsDSN)
 	if err != nil {
-		_ = sent.Close()
 		return nil, nil, fmt.Errorf("open reading view with %s failed", store.DSNEnvReadings)
 	}
-	closeAll := func() { _ = sent.Close(); _ = view.Close() }
+	closeAll := func() { _ = view.Close() }
 	n, err := a.deps.newAlertNotifier(notify.AlertDeps{
 		Rules: rules, Evaluate: a.deps.evaluateAlerts, Read: view.WinnerReadings, Sent: sent,
 	}, s, clk, notifyConfig(a, quiet))
@@ -144,6 +180,35 @@ func newAlertNotifier(
 	}
 	return n, closeAll, nil
 }
+
+// newMorningNotifier opens the gap history and the gap reader with the line DSNEnvPages and builds the morning
+// notifier over the sent store the caller opened, the same Config as the other two notifiers. The returned
+// close function closes the two readers and not the sent store; no error text holds a DSN.
+func newMorningNotifier(
+	ctx context.Context, a *app, pagesDSN string, sent store.SentStore, s notify.Sender, clk clockwork.Clock, quiet bool,
+) (notify.MorningNotifier, func(), error) {
+	hist, err := a.deps.openGapHistory(ctx, pagesDSN)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open gap history with %s failed", store.DSNEnvPages)
+	}
+	expect, err := a.deps.openGapReader(ctx, pagesDSN)
+	if err != nil {
+		_ = hist.Close()
+		return nil, nil, fmt.Errorf("open gap reader with %s failed", store.DSNEnvPages)
+	}
+	closeAll := func() { _ = hist.Close(); _ = expect.Close() }
+	n, err := a.deps.newMorningNotifier(notify.MorningDeps{History: hist, Expect: expect, Sent: sent}, s, clk, notifyConfig(a, quiet))
+	if err != nil {
+		closeAll()
+		return nil, nil, errors.New("build the morning notifier failed")
+	}
+	return n, closeAll, nil
+}
+
+// readOnlySent is the sent store of a dry run: it reads the marks and writes none.
+type readOnlySent struct{ store.SentStore }
+
+func (readOnlySent) MarkSent(context.Context, string, contracts.Day) error { return nil }
 
 // errorClass names an error without its text, which may hold a secret.
 func errorClass(err error) string {
@@ -177,7 +242,8 @@ func (readOnlyGaps) MarkGapReported(context.Context, store.Gap, time.Time) error
 type notifyingGaps struct {
 	inner  runner.GapSyncer
 	n      notify.Notifier
-	alerts notify.AlertNotifier // nil: no alert pass
+	alerts notify.AlertNotifier   // nil: no alert pass
+	morn   notify.MorningNotifier // nil: no morning pass
 	log    *slog.Logger
 }
 
@@ -185,6 +251,7 @@ func (g notifyingGaps) Sync(ctx context.Context, day contracts.Day, disabled map
 	err := g.inner.Sync(ctx, day, disabled)
 	g.notify(ctx)
 	g.notifyAlerts(ctx)
+	g.notifyMorning(ctx)
 	return err
 }
 
@@ -211,5 +278,20 @@ func (g notifyingGaps) notifyAlerts(ctx context.Context) {
 	}()
 	if _, err := g.alerts.NotifyAlerts(ctx); err != nil {
 		g.log.Warn("alert notify failed", "component", "ot", "class", errorClass(err))
+	}
+}
+
+// notifyMorning is the morning pass, after the gap and alert passes; it fails and panics on its own.
+func (g notifyingGaps) notifyMorning(ctx context.Context) {
+	if g.morn == nil {
+		return
+	}
+	defer func() {
+		if recover() != nil {
+			g.log.Error("morning notify panicked", "component", "ot", "class", "panic")
+		}
+	}()
+	if _, err := g.morn.NotifyMorning(ctx); err != nil {
+		g.log.Warn("morning notify failed", "component", "ot", "class", errorClass(err))
 	}
 }
