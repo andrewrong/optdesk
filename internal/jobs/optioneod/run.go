@@ -23,6 +23,7 @@ type job struct {
 	m      manifest
 	b      broker.Broker
 	res    store.InstrumentResolver
+	acct   store.AccountReader // nil: no held short calls are captured
 	w      store.OptionEodWriter
 	clk    clock.Clock
 	loc    *time.Location
@@ -222,6 +223,13 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	if len(chains) > 0 {
 		if chain, ok := r.j.m.chainOf(chains, u); ok {
 			out = selectContracts(chain, u, string(r.day), price, r.j.m)
+			if r.j.acct != nil {
+				held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
+				if err != nil {
+					return nil, asTyped(err, contracts.Retryable)
+				}
+				out = addHeld(out, chain, u, held)
+			}
 		}
 	}
 	if len(out) == 0 {
