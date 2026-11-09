@@ -25,7 +25,7 @@ func marketSiteApp(t *testing.T, env string, builds *atomic.Int32, days *[]contr
 		if got != nil {
 			*got = readings
 		}
-		return pages.Page{Meta: pages.Meta{Name: "market_page"}, Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, _ time.Time) ([]byte, error) {
+		build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, _ time.Time) ([]byte, error) {
 			builds.Add(1)
 			if days != nil {
 				*days = append(*days, day)
@@ -39,7 +39,8 @@ func marketSiteApp(t *testing.T, env string, builds *atomic.Int32, days *[]contr
 				v = *rows[0].Value
 			}
 			return []byte(`{"schema":"market_page","indices":"` + v + `"}`), nil
-		}}
+		}
+		return pages.Page{Meta: pages.Meta{Name: "market_page"}, Build: build}
 	}
 	return a
 }
