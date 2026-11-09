@@ -453,3 +453,35 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
 	}
 }
+
+// blockFixture is a modules table whose compute row lists internal/compute/blockapi.
+const blockFixture = "# Fixture\n\n## Modules\n\n" +
+	"| module | paths | entry | tests | depends |\n" +
+	"| --- | --- | --- | --- | --- |\n" +
+	"| contracts | internal/contracts/** | internal/contracts/api.go | internal/contracts/api_test.go | |\n" +
+	"| compute | internal/compute/** | internal/compute/api.go internal/compute/blockapi | internal/compute/api_test.go | contracts |\n" +
+	"| pages | internal/pages/** | internal/pages/api.go | internal/pages/api_test.go | contracts compute |\n" +
+	"\nThe composition root imports one constructor each: `internal/compute/pagefig`. Any other import is refused.\n"
+
+func TestComputeBlockapiIsDeclarationsOnly(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, map[string]string{
+		"internal/contracts/c.go":          "package contracts\n",
+		"internal/compute/c.go":            "package compute\n",
+		"internal/compute/blockapi/api.go": "package blockapi\n",
+		"internal/compute/pagefig/p.go":    "package pagefig\n",
+		"internal/pages/p.go":              "package pages\n",
+	})
+	toml, _, err := generate(blockFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"pages", "compute/pagefig"} {
+		if b := mayImport(t, string(toml), name); !strings.Contains(b, `"compute/blockapi"`) {
+			t.Fatalf("%s lacks compute/blockapi in arch.toml:\n%s", name, b)
+		}
+	}
+	if b := mayImport(t, string(toml), "compute"); strings.Contains(b, "compute/blockapi") {
+		t.Fatalf("the root compute imports its own declarations package:\n%s", b)
+	}
+}
