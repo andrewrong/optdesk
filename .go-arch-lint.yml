@@ -53,6 +53,8 @@ components:
     in: internal/store/instrument
   store/ops:
     in: internal/store/ops
+  store/optionledger:
+    in: internal/store/optionledger
   store/reading:
     in: internal/store/reading
   store/series:
@@ -249,6 +251,12 @@ deps:
       - store
       - contracts/genpb
   store/ops:
+    mayDependOn:
+      - contracts
+      - gaphistory
+      - store
+      - contracts/genpb
+  store/optionledger:
     mayDependOn:
       - contracts
       - gaphistory
@@ -625,6 +633,7 @@ deps:
       - store/candidate
       - compute/optionledger
       - jobs/optionledger
+      - store/optionledger
       - sources/flex
       - pages/market_page
       - pages/option_candidates_page
