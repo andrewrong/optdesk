@@ -84,6 +84,12 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Plain values and decimal text only; no float. Severities are `info`, `warn`, `act`. Pure: no I/O, no clock.
 
+## Option tracking
+
+`TrackQuote`, `TrackEvent`, `TrackHeld`, `TrackInput`, `TrackParams`, `TrackedOption`, `TrackRecon`, `TrackResult`, `OptionTracker` and `NewOptionTrackerFunc` are in `internal/compute/api.go`; `LedgerPosition` gains nothing. Design: `docs/design/option-tracking.md#Interface`.
+
+- Plain values and decimal text only; no float. An empty string is "no value". Order: `Open` by expiry, underlying, strike, position id; `Recent` by closing day descending, then position id; `Recon` by underlying, expiry, strike. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -93,6 +99,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v5: additions only: the ledger types and `OptionLedger` above.
 - v6: additions only: the option structure and result types, `OptionStructures`, `OptionResults` and the eight `LedgerPosition` terms above.
 - v7: additions only: the option notice types, `OptionNotices` and the two function types above.
+- v8: additions only: the option tracking types, `OptionTracker` and `NewOptionTrackerFunc` above.
 
 ## Contract tests
 
