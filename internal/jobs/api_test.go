@@ -264,6 +264,50 @@ func TestNewComputeFiguresFuncContract(t *testing.T) {
 	}
 }
 
+// easeJob is a fake compute_figures job built with an Ease: it adds the ease key only when the Ease is not nil.
+type easeJob struct {
+	computeJob
+	ease compute.Ease
+}
+
+func (j easeJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	keys, h, _ := j.computeJob.Plan(ctx, day)
+	if j.ease != nil {
+		keys = append(keys, contracts.ExpectedKey{DatasetID: "readings.reading", SubjectKey: "macro.ease|market|WALCL"})
+	}
+	return keys, h, nil
+}
+
+type stubEase struct{}
+
+func (stubEase) Ease(string, compute.EaseSeries, contracts.Day) compute.EaseFigure {
+	return compute.EaseFigure{}
+}
+
+func TestNewComputeFiguresEaseFuncContract(t *testing.T) {
+	t.Parallel()
+	var newJob jobs.NewComputeFiguresEaseFunc = func(
+		s jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock,
+		e compute.Ease,
+	) (contracts.Job, error) {
+		return easeJob{computeJob{stores: s, names: []string{"market.iv30_own"}}, e}, nil
+	}
+	for _, tc := range []struct {
+		ease compute.Ease
+		want int
+	}{{nil, 1}, {stubEase{}, 2}} {
+		rd := &fakeReadings{}
+		j, err := newJob(jobs.ComputeStores{Readings: rd}, nil, nil, nil, nil, nil, tc.ease)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids, got := planAndRun(t, j, "2026-11-06")
+		if len(ids) != tc.want || got.Returned != tc.want || got.Usable != tc.want || rd.inserted != tc.want {
+			t.Fatalf("ease %v: ids %v, result %+v, inserted %d, want %d keys", tc.ease, ids, got, rd.inserted, tc.want)
+		}
+	}
+}
+
 type fakeLoader struct{ plans []sources.FetchPlan }
 
 func (l *fakeLoader) Load(_ context.Context, p sources.FetchPlan) ([]jobs.SeriesLoaded, error) {

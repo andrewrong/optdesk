@@ -37,6 +37,12 @@ type marketSpec struct {
 	Series []string `toml:"series"`
 }
 
+// easeSpec is the [ease] table: the figure id and the seven series, the first of which names the subject.
+type easeSpec struct {
+	ID     string   `toml:"id"`
+	Series []string `toml:"series"`
+}
+
 type manifest struct {
 	ID         string        `toml:"id"`
 	RateSeries string        `toml:"rate_series"`
@@ -44,6 +50,7 @@ type manifest struct {
 	Ivp        string        `toml:"ivp"`
 	Ivr        string        `toml:"ivr"`
 	Market     []marketSpec  `toml:"market"`
+	Ease       easeSpec      `toml:"ease"`
 	Schedule   scheduleTable `toml:"schedule"`
 }
 
@@ -55,6 +62,7 @@ type job struct {
 	rules  compute.Rules
 	units  compute.Units
 	ops    compute.SeriesOps
+	ease   compute.Ease // nil: the job stores no ease
 	clk    clock.Clock
 	rule   map[string]compute.Rule
 }
@@ -68,9 +76,17 @@ func (e *typedError) Error() string             { return e.err.Error() }
 func (e *typedError) Unwrap() error             { return e.err }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
-// New is a jobs.NewComputeFiguresFunc. It reads the embedded job.toml and finds every rule it names.
+// New is a jobs.NewComputeFiguresFunc. It reads the embedded job.toml and finds every rule it names. The job
+// it builds stores no ease.
 func New(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
 	ops compute.SeriesOps, clk clock.Clock) (contracts.Job, error) {
+	return NewWithEase(stores, figs, rules, units, ops, clk, nil)
+}
+
+// NewWithEase is a jobs.NewComputeFiguresEaseFunc. With a nil ease it is New; with one the job also plans and
+// stores the key macro.ease|market|WALCL.
+func NewWithEase(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
+	ops compute.SeriesOps, clk clock.Clock, ease compute.Ease) (contracts.Job, error) {
 	if stores.Catalog == nil || stores.OptionEod == nil || stores.Terms == nil || stores.Names == nil ||
 		stores.SessionDays == nil || stores.Series == nil || stores.Readings == nil {
 		return nil, errors.New("computefigures: every store is required")
@@ -89,7 +105,7 @@ func New(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, u
 	if err != nil {
 		return nil, err
 	}
-	j := &job{m: m, sched: sched, stores: stores, figs: figs, rules: rules, units: units, ops: ops, clk: clk,
+	j := &job{m: m, sched: sched, stores: stores, figs: figs, rules: rules, units: units, ops: ops, ease: ease, clk: clk,
 		rule: map[string]compute.Rule{}}
 	if err := j.findRules(); err != nil {
 		return nil, err
@@ -108,6 +124,12 @@ func (j *job) findRules() error {
 			return fmt.Errorf("computefigures: manifest: unknown method of %s", ms.ID)
 		}
 		ids = append(ids, ms.ID)
+	}
+	if j.ease != nil {
+		if err := checkEaseSpec(j.m.Ease); err != nil {
+			return err
+		}
+		ids = append(ids, j.m.Ease.ID)
 	}
 	for _, id := range ids {
 		r, ok := j.rules.Rule(id)
@@ -155,6 +177,9 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 	for _, ms := range j.m.Market {
 		keys = append(keys, keyOf(ms.ID, kindMarket, ms.Series[0]))
 	}
+	if j.ease != nil {
+		keys = append(keys, keyOf(j.m.Ease.ID, kindMarket, j.m.Ease.Series[0]))
+	}
 	sort.Slice(keys, func(a, b int) bool { return keys[a].SubjectKey < keys[b].SubjectKey })
 	h := sha256.New()
 	fmt.Fprintf(h, "%s\n%s\n", j.m.ID, day)
@@ -172,11 +197,12 @@ type target struct {
 	spec marketSpec
 }
 
-// Run runs the steps in order: IV30, the market figures, then IVP and IVR on the stored IV30.
+// Run runs the steps in order: IV30, the market figures, IVP and IVR on the stored IV30, then the ease.
 // A key that fails does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	r := &runState{j: j, ctx: ctx, day: day}
 	var iv30, market, ivs []target
+	var ease *target
 	var under map[string]subject
 	for _, k := range keys {
 		name, kind, subj, ok := parseKey(k.SubjectKey)
@@ -186,6 +212,8 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		}
 		rule, known := j.rule[name]
 		switch {
+		case known && kind == kindMarket && j.isEaseKey(name, subj):
+			ease = &target{rule: rule, subj: subject{kind: kind, name: subj}}
 		case known && kind == kindMarket:
 			spec, found := j.marketSpec(name, subj)
 			if !found {
@@ -227,6 +255,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r.runIv30(iv30)
 	r.runMarket(market)
 	r.runIvStats(ivs)
+	if ease != nil {
+		r.runEase(*ease)
+	}
 	if r.noTerms > 0 {
 		slog.Info("computefigures: option rows dropped for want of current terms", "day", string(day), "count", r.noTerms)
 	}

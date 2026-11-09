@@ -44,6 +44,11 @@ type ComputeStores struct {
 // NewComputeFiguresFunc is the constructor of the compute_figures job (internal/jobs/computefigures.New).
 type NewComputeFiguresFunc func(ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error)
 
+// NewComputeFiguresEaseFunc is the constructor of the compute_figures job that also stores the ease figure
+// (internal/jobs/computefigures.NewWithEase). With a nil compute.Ease it builds the same job as
+// NewComputeFiguresFunc; with one the job plans and stores the key macro.ease|market|WALCL.
+type NewComputeFiguresEaseFunc func(ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock, compute.Ease) (contracts.Job, error)
+
 // SeriesLoaded is the count of points fetched for one series.
 type SeriesLoaded struct {
 	SeriesID string
