@@ -18,12 +18,20 @@ const timeLayout = "2006-01-02T15:04:05-07:00"
 // RiskBlockFunc returns the JSON of the RisksBlock of report_page v2 for a day.
 type RiskBlockFunc func(ctx context.Context, day contracts.Day, generatedAt time.Time) ([]byte, error)
 
+// BlockFunc returns the JSON of one block of report_page v2 for a day (same shape as RiskBlockFunc).
+type BlockFunc func(ctx context.Context, day contracts.Day, generatedAt time.Time) ([]byte, error)
+
 // Config is one report: a market (US or JP), a slot (open or close), the owner's zone
-// (generated_at is written in it) and the source of the risks block.
+// (generated_at is written in it), the source of the risks block and the sources of the actions,
+// account_moves and market_watch blocks. A nil one of the three keeps the not_built block; for
+// market JP they are never called and the block is a jp_slice_missing gap.
 type Config struct {
 	Market, Slot string
 	Zone         *time.Location
 	Risks        RiskBlockFunc
+	Actions      BlockFunc
+	AccountMoves BlockFunc
+	MarketWatch  BlockFunc
 }
 
 type banner struct {
@@ -32,10 +40,10 @@ type banner struct {
 }
 
 type blocks struct {
-	Actions      actionsBlock      `json:"actions"`
-	AccountMoves accountMovesBlock `json:"account_moves"`
+	Actions      json.RawMessage   `json:"actions"`
+	AccountMoves json.RawMessage   `json:"account_moves"`
 	Risks        json.RawMessage   `json:"risks"`
-	MarketWatch  marketWatchBlock  `json:"market_watch"`
+	MarketWatch  json.RawMessage   `json:"market_watch"`
 	GlobalAssets globalAssetsBlock `json:"global_assets"`
 }
 
@@ -73,17 +81,35 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	if err != nil {
 		return nil, fmt.Errorf("report_page: risks block: %w", err)
 	}
+	actions, err := c.block(ctx, c.Actions, day, generatedAt, "actions", textActions, func(g gap) any {
+		return actionsBlock{newGapBlock(textActions, g), g}
+	})
+	if err != nil {
+		return nil, err
+	}
+	moves, err := c.block(ctx, c.AccountMoves, day, generatedAt, "account_moves", textMoves, func(g gap) any {
+		return accountMovesBlock{newGapBlock(textMoves, g), g, g}
+	})
+	if err != nil {
+		return nil, err
+	}
+	watch, err := c.block(ctx, c.MarketWatch, day, generatedAt, "market_watch", textWatch, func(g gap) any {
+		return marketWatchBlock{newGapBlock(textWatch, g), g, g}
+	})
+	if err != nil {
+		return nil, err
+	}
 	p := page{
 		Schema: "report_page", SchemaVersion: 2, Market: c.Market, Slot: c.Slot,
 		SessionDate: day, GeneratedAt: generatedAt.In(c.Zone).Format(timeLayout),
 		Title: pageTitle, Say: pageSay, Banner: banner{bannerLeft, bannerRight},
 		StatusLines: []struct{}{},
 		Blocks: blocks{
-			Actions:      actionsBlock{newGapBlock(textActions), notBuilt(textActions)},
-			AccountMoves: accountMovesBlock{newGapBlock(textMoves), notBuilt(textMoves), notBuilt(textMoves)},
+			Actions:      actions,
+			AccountMoves: moves,
 			Risks:        risks,
-			MarketWatch:  marketWatchBlock{newGapBlock(textWatch), notBuilt(textWatch), notBuilt(textWatch)},
-			GlobalAssets: globalAssetsBlock{newGapBlock(textGlobal), notBuilt(textGlobal), notBuilt(textGlobal), chartAria},
+			MarketWatch:  watch,
+			GlobalAssets: globalAssetsBlock{newGapBlock(textGlobal, notBuilt(textGlobal)), notBuilt(textGlobal), notBuilt(textGlobal), chartAria},
 		},
 	}
 	out, err := json.Marshal(p)
@@ -91,4 +117,29 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		return nil, fmt.Errorf("report_page: marshal: %w", err)
 	}
 	return out, nil
+}
+
+// block is the JSON of one of the three blocks: market JP gives the jp_slice_missing gap without
+// calling f, a nil f the not_built gap, otherwise the bytes of f; an error of f is an error of the call.
+func (c Config) block(ctx context.Context, f BlockFunc, day contracts.Day, at time.Time,
+	name string, t blockText, gapped func(gap) any) (json.RawMessage, error) {
+	switch {
+	case c.Market == "JP":
+		return marshalBlock(gapped(jpMissing(t)))
+	case f == nil:
+		return marshalBlock(gapped(notBuilt(t)))
+	}
+	b, err := f(ctx, day, at)
+	if err != nil {
+		return nil, fmt.Errorf("report_page: %s block: %w", name, err)
+	}
+	return b, nil
+}
+
+func marshalBlock(v any) (json.RawMessage, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("report_page: marshal: %w", err)
+	}
+	return b, nil
 }
