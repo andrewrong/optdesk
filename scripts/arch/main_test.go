@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -54,7 +56,7 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-// fixtureModules is a small modules text of its own: three modules and the implementation list that generate reads.
+// fixtureModules is a small modules text of its own: three modules.
 func fixtureModules(gammaDepends string) string {
 	return "# Fixture\n\n## Modules\n\n" +
 		"| module | paths | entry | tests | depends |\n" +
@@ -62,7 +64,7 @@ func fixtureModules(gammaDepends string) string {
 		"| alpha | internal/alpha/** | api.go | internal/alpha/api_test.go | |\n" +
 		"| beta | internal/beta/** | api.go | internal/beta/api_test.go | alpha |\n" +
 		"| gamma | internal/gamma/** | api.go | internal/gamma/api_test.go | " + gammaDepends + " |\n\n" +
-		"The composition root imports one constructor each: `internal/alpha/impl`. Any other import is refused.\n"
+		""
 }
 
 func TestArchWritesBothFiles(t *testing.T) {
@@ -80,77 +82,33 @@ func TestArchWritesBothFiles(t *testing.T) {
 	}
 }
 
-// otImports returns the sub-package imports (those with a slash) of component ot in the generated arch.toml.
-func otImports(t *testing.T, text string) ([]string, string) {
+// otImports returns the import list of component ot in the generated arch.toml.
+func otImports(t *testing.T, text string) string {
 	t.Helper()
 	toml, _, err := generate(text, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := regexp.MustCompile(`(?s)\[component\."ot"\]\nin = "cmd/ot"\nmay_import = \[([^\]]*)\]`).FindSubmatch(toml)
-	if m == nil {
-		t.Fatalf("no component ot in:\n%s", toml)
-	}
-	var got []string
-	for _, q := range regexp.MustCompile(`"([^"]+)"`).FindAllSubmatch(m[1], -1) {
-		if strings.Contains(string(q[1]), "/") {
-			got = append(got, string(q[1]))
-		}
-	}
-	return got, string(m[1])
+	return mayImportOf(t, string(toml), "ot")
 }
 
-func TestArchOTListsImplPackages(t *testing.T) {
+func mayImportOf(t *testing.T, toml, name string) string {
+	t.Helper()
+	_, rest, ok := strings.Cut(toml, "[component."+`"`+name+`"`+"]\n")
+	if !ok {
+		t.Fatalf("no component %s in:\n%s", name, toml)
+	}
+	block, _, _ := strings.Cut(rest, "\n[")
+	return block
+}
+
+func TestArchOTImportsTheRootsOfItsDependsCell(t *testing.T) {
 	t.Parallel()
-	text := modulesText(t)
-	// The list as the text states it: backticked internal/a/b paths after the anchor.
-	_, after, _ := strings.Cut(text, "one constructor each")
-	list, _, _ := strings.Cut(after, "Any other import")
-	var want []string
-	for _, m := range regexp.MustCompile("`internal/([a-z0-9_]+/[a-z0-9_]+)`").FindAllStringSubmatch(list, -1) {
-		want = append(want, m[1])
-	}
-	got, all := otImports(t, text)
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("ot imports %v, text lists %v", got, want)
-	}
+	all := otImports(t, modulesText(t))
 	for _, root := range []string{"contracts", "clock", "sources", "store", "runner", "jobs", "pages", "profile"} {
 		if !strings.Contains(all, `"`+root+`"`) {
 			t.Errorf("ot lacks root component %s", root)
 		}
-	}
-}
-
-func TestArchOTListIsReadFromTheText(t *testing.T) {
-	t.Parallel()
-	text := modulesText(t)
-	const anchor = "one constructor each: "
-	longer := strings.Replace(text, anchor, anchor+"`internal/a/b`, ", 1)
-	if longer == text {
-		t.Fatal("the anchor was not found")
-	}
-	got, _ := otImports(t, longer)
-	found := false
-	for _, g := range got {
-		found = found || g == "a/b"
-	}
-	if !found {
-		t.Fatalf("ot imports %v, want a/b among them", got)
-	}
-}
-
-func TestArchRunFailsWithoutImplAnchor(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	modules := filepath.Join(dir, "modules.md")
-	text := modulesText(t)
-	cut := strings.Replace(text, "one constructor each", "", 1)
-	if cut == text {
-		t.Fatal("the anchor was not found")
-	}
-	write(t, modules, cut)
-	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 2 {
-		t.Fatalf("exit %d, want 2: %s", code, out)
 	}
 }
 
@@ -219,8 +177,9 @@ func TestArchScratchTree(t *testing.T) {
 		src  string
 		pass bool
 	}{
-		{"ot imports a store sub-package outside the list", "cmd/ot/main2.go", imports("main", "internal/store/migrate"), false},
-		{"ot imports a listed implementation package", "cmd/ot/main2.go", imports("main", "internal/store/sessionday"), true},
+		{"ot imports a discovered implementation package", "cmd/ot/main2.go", imports("main", "internal/store/migrate"), true},
+		{"ot imports another discovered implementation package", "cmd/ot/main2.go", imports("main", "internal/store/sessionday"), true},
+		{"ot imports a package of a module outside its depends cell", "cmd/ot/main2.go", imports("main", "internal/web"), false},
 		{"a jobs sub-package imports a store sub-package", "internal/jobs/fred/j.go", imports("fred", "internal/store/sessionday"), false},
 		{"a jobs sub-package imports the store root", "internal/jobs/fred/j.go", imports("fred", "internal/store"), true},
 		{"profile imports another module", "internal/profile/p.go", imports("profile", "internal/store"), false},
@@ -286,8 +245,7 @@ func TestArchDeriveEntryListedSubPackages(t *testing.T) {
 		"| --- | --- | --- | --- | --- |\n" +
 		"| contracts | internal/contracts/** | internal/contracts/api.go internal/contracts/genpb | internal/contracts/api_test.go | |\n" +
 		"| broker | internal/broker/** | internal/broker/api.go | internal/broker/api_test.go | contracts |\n" +
-		"| sources | internal/sources/** | internal/sources/api.go | internal/sources/api_test.go | |\n\n" +
-		"The composition root imports one constructor each: `internal/broker/grpcbroker`. Any other import is refused.\n"
+		"| sources | internal/sources/** | internal/sources/api.go | internal/sources/api_test.go | |\n"
 	dir := scratch(t, map[string]string{
 		"internal/contracts/genpb/g.go":   "package genpb\n",
 		"internal/broker/grpcbroker/d.go": "package grpcbroker\n",
@@ -330,13 +288,11 @@ const declFixture = "# Fixture\n\n## Modules\n\n" +
 	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest " +
 	"internal/compute/trackapi | internal/compute/api_test.go | contracts |\n" +
 	"| store | internal/store/** | internal/store/api.go internal/store/bar | internal/store/api_test.go | contracts |\n" +
-	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts compute store |\n\n" +
-	"The composition root imports one constructor each: `internal/store/bar`, `internal/store/barpg`,\n" +
-	"`internal/jobs/computefigures`. Any other import is refused.\n"
+	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts compute store |\n"
 
 var declTree = map[string]string{
 	"internal/contracts/genpb/g.go":      "package genpb\n",
-	"internal/compute/contracttest/c.go": "package contracttest\n",
+	"internal/compute/contracttest/c.go": "package contracttest\n\nimport _ \"testing\"\n",
 	"internal/store/bar/api.go":          "package bar\n",
 	"internal/store/barpg/s.go":          "package barpg\n",
 	"internal/store/s.go":                "package store\n",
@@ -450,8 +406,7 @@ const blockFixture = "# Fixture\n\n## Modules\n\n" +
 	"| --- | --- | --- | --- | --- |\n" +
 	"| contracts | internal/contracts/** | internal/contracts/api.go | internal/contracts/api_test.go | |\n" +
 	"| compute | internal/compute/** | internal/compute/api.go internal/compute/blockapi | internal/compute/api_test.go | contracts |\n" +
-	"| pages | internal/pages/** | internal/pages/api.go | internal/pages/api_test.go | contracts compute |\n" +
-	"\nThe composition root imports one constructor each: `internal/compute/pagefig`. Any other import is refused.\n"
+	"| pages | internal/pages/** | internal/pages/api.go | internal/pages/api_test.go | contracts compute |\n"
 
 func TestComputeBlockapiIsDeclarationsOnly(t *testing.T) {
 	t.Parallel()
@@ -483,14 +438,13 @@ const markFixture = "# Fixture\n\n## Modules\n\n" +
 	"| --- | --- | --- | --- | --- |\n" +
 	"| contracts | internal/contracts/** | internal/contracts/api.go | internal/contracts/api_test.go | |\n" +
 	"| store | internal/store/** | internal/store/api.go internal/store/mark | internal/store/api_test.go | contracts |\n" +
-	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts store |\n\n" +
-	"The composition root imports one constructor each: `internal/store/markpg`. Any other import is refused.\n"
+	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts store |\n"
 
 func TestRootAndSubPackageImportStoreMark(t *testing.T) {
 	t.Parallel()
 	dir := scratch(t, map[string]string{
 		"internal/contracts/c.go":    "package contracts\n",
-		"internal/store/mark/a.go":   "package mark\n",
+		"internal/store/mark/api.go": "package mark\n",
 		"internal/store/markpg/s.go": "package markpg\n",
 		"internal/store/s.go":        "package store\n",
 		"internal/jobs/j.go":         "package jobs\n",
@@ -531,23 +485,6 @@ func TestComputeTrackapiIsDeclarationsOnlyPackage(t *testing.T) {
 	_, rest, _ := strings.Cut(deps, "  compute/trackapi:\n")
 	if b := nextKey.Split(rest, 2)[0]; !hasDep(b, "compute") || !hasDep(b, "contracts") {
 		t.Fatalf("compute/trackapi lacks compute or contracts in the lint file:\n%s", yml)
-	}
-}
-
-// TestDeclListedFlexsection: the flexsection package named in an entry cell is a listed
-// declarations-only package of its row.
-func TestDeclListedFlexsection(t *testing.T) {
-	t.Parallel()
-	rows, err := parseModules("# Fixture\n\n## Modules\n\n" +
-		"| module | paths | entry | tests | depends |\n" +
-		"| --- | --- | --- | --- | --- |\n" +
-		"| store | internal/store/** | internal/store/api.go internal/store/flexsection | internal/store/api_test.go | |\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := declListed(rows)["store"]
-	if len(got) != 1 || got[0] != "store/flexsection" {
-		t.Fatalf("declListed = %v", got)
 	}
 }
 
@@ -608,5 +545,194 @@ func TestRootImportsDividendDeclarations(t *testing.T) {
 	}
 	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"store/dividend"`) {
 		t.Fatalf("jobs lacks store/dividend in arch.toml:\n%s", b)
+	}
+}
+
+// treeModules is the table of the tree tests: b depends on a and contracts, ot on a and b but not on c.
+const treeModules = "# Fixture\n\n## Modules\n\n" +
+	"| module | paths | entry | tests | depends |\n" +
+	"| --- | --- | --- | --- | --- |\n" +
+	"| contracts | internal/contracts/** | | | |\n" +
+	"| a | internal/a/** | | | |\n" +
+	"| b | internal/b/** | | | a contracts |\n" +
+	"| c | internal/c/** | | | |\n" +
+	"| ot | cmd/** | | | a b |\n"
+
+// treeFiles holds one package of each kind: decl (api.go alone), kit (imports "testing"),
+// impl (api.go and x.go), the generated pair, and an implementation package of the row c.
+var treeFiles = map[string]string{
+	"internal/contracts/api.go":     "package contracts\n",
+	"internal/contracts/gen/g.go":   "package gen\n",
+	"internal/contracts/genpb/g.go": "package genpb\n",
+	"internal/a/api.go":             "package a\n",
+	"internal/a/decl/api.go":        "package decl\n",
+	"internal/a/kit/k.go":           "package kit\n\nimport _ \"testing\"\n",
+	"internal/a/impl/api.go":        "package impl\n",
+	"internal/a/impl/x.go":          "package impl\n",
+	"internal/a/sub/s.go":           "package sub\n",
+	"internal/b/api.go":             "package b\n",
+	"internal/b/sub/s.go":           "package sub\n",
+	"internal/c/api.go":             "package c\n",
+	"internal/c/impl/x.go":          "package impl\n",
+	"cmd/ot/main.go":                "package main\n\nfunc main() {}\n",
+}
+
+// lintDeps returns the mayDependOn list of a component in the generated lint file.
+func lintDeps(t *testing.T, files map[string]string, component string) []string {
+	t.Helper()
+	dir := t.TempDir()
+	for p, src := range files {
+		write(t, filepath.Join(dir, p), src)
+	}
+	_, yml, err := generate(treeModules, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, rest, ok := strings.Cut(deps, "\n  "+component+":\n")
+	if !ok {
+		_, rest, ok = strings.Cut(deps, "  "+component+":\n")
+	}
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, l := range strings.Split(nextKey.Split(rest, 2)[0], "\n") {
+		if d, ok := strings.CutPrefix(strings.TrimSpace(l), "- "); ok {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+type edge struct {
+	from string
+	to   string
+	want bool
+}
+
+func checkEdges(t *testing.T, edges []edge) {
+	t.Helper()
+	for _, e := range edges {
+		got := slices.Contains(lintDeps(t, treeFiles, e.from), e.to)
+		if got != e.want {
+			t.Errorf("%s imports %s = %v, want %v", e.from, e.to, got, e.want)
+		}
+	}
+}
+
+func TestTreeDeclarationsOnlyPackageIsImportable(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"b", "a/decl", true},
+		{"b/sub", "a/decl", true},
+		{"a/sub", "a/decl", true},
+		{"ot", "a/decl", true},
+		{"c", "a/decl", false},
+		{"a/decl", "a/decl", false},
+	})
+}
+
+func TestTreeTestKitIsImportedBySubPackagesOfDependentsOnly(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"b/sub", "a/kit", true},
+		{"b", "a/kit", false},
+		{"a/sub", "a/kit", false},
+		{"ot", "a/kit", false},
+	})
+}
+
+func TestTreeImplementationPackageIsImportedByOTOnly(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"ot", "a/impl", true},
+		{"b", "a/impl", false},
+		{"b/sub", "a/impl", false},
+		{"a/sub", "a/impl", false},
+	})
+}
+
+func TestTreeImplementationPackageOfARowOutsideTheDependsCellOfOT(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"ot", "c/impl", false},
+		{"ot", "b/sub", true},
+		{"ot", "profile", false},
+	})
+}
+
+func TestTreeGenpbIsImportedBySubPackagesOfDependentsOfContracts(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"b/sub", "contracts/genpb", true},
+		{"b", "contracts/genpb", false},
+		{"a/sub", "contracts/genpb", false},
+		{"ot", "contracts/genpb", false},
+	})
+}
+
+func TestTreeGenIsImportedByTheRootContractsOnly(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"contracts", "contracts/gen", true},
+		{"b", "contracts/gen", false},
+		{"b/sub", "contracts/gen", false},
+		{"ot", "contracts/gen", false},
+	})
+}
+
+func TestTreeClassifiesByFiles(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for p, src := range map[string]string{
+		"internal/a/withdoc/api.go":     "package withdoc\n",
+		"internal/a/withdoc/doc.go":     "package withdoc\n",
+		"internal/a/apikit/api.go":      "package apikit\n\nimport _ \"testing\"\n",
+		"internal/a/onlytest/x_test.go": "package onlytest\n",
+		"internal/a/noapi/x.go":         "package noapi\n",
+		"internal/contracts/genpb/g.go": "package genpb\n\nimport _ \"testing\"\n",
+	} {
+		write(t, filepath.Join(dir, p), src)
+	}
+	rows, err := parseModules(treeModules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dirs, err := goDirs(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgs, err := discover(dir, dirs, rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]kind{}
+	for _, p := range pkgs {
+		got[p.dir] = p.kind
+	}
+	want := map[string]kind{
+		"internal/a/withdoc":       kindDecl,
+		"internal/a/apikit":        kindKit,
+		"internal/a/noapi":         kindImpl,
+		"internal/contracts/genpb": kindGenerated,
+	}
+	if !maps.Equal(got, want) {
+		t.Fatalf("kinds = %v, want %v", got, want)
+	}
+}
+
+func TestOwnerRowIsTheFirstMatchingRow(t *testing.T) {
+	t.Parallel()
+	rows := []row{
+		{name: "first", paths: []string{"internal/x/special/**"}},
+		{name: "second", paths: []string{"internal/x/**"}},
+	}
+	for dir, want := range map[string]string{
+		"internal/x/special": "first", "internal/x/other": "second", "internal/y/z": "",
+	} {
+		if got := ownerRow(rows, dir); got != want {
+			t.Errorf("ownerRow(%s) = %q, want %q", dir, got, want)
+		}
 	}
 }
