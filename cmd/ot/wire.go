@@ -85,6 +85,7 @@ type deps struct {
 	openOptionTerms         store.OpenOptionTermsFunc
 	openInstrumentName      store.OpenInstrumentNameFunc
 	newOptionEod            jobs.NewOptionEodFunc
+	newOptionEodJP          jobs.NewOptionEodFunc
 	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
@@ -168,6 +169,7 @@ func newDeps() deps {
 		openOptionTerms:         instrument.OpenOptionTerms,
 		openInstrumentName:      instrument.OpenInstrumentNames,
 		newOptionEod:            optioneod.New,
+		newOptionEodJP:          optioneod.NewJP,
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
 		openReadingView:         reading.OpenView,
