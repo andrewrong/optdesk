@@ -129,7 +129,7 @@ candidates (interface change of `store/candidate`, owner 2026-11-09): dataset co
 
 jobs, additive in `internal/jobs/api.go`: `type OptionEodWindow struct { MinDTE, MaxDTE, MaxStrikes int }` and `type NewOptionEodWatchWindowFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, OptionEodWindow, clock.Clock) (contracts.Job, error)` (a zero field keeps the manifest value); and, issue 14, `type SettingsVersionFunc func(ctx context.Context, at time.Time) (int64, error)`.
 
-Landed in #927 (entry 4 ruleparam-impl, #918).
+Landed in #824 (entry 1 settings-page-schema, #821), #901 (entry 2 ownerset-api, #822), #913 (entry 3 settings-compute-api, #827), #927 (entry 4 ruleparam-impl, #918), #961 (entry 5 settingsform-impl, #919), #960 (entry 7 settings-page-builder, #920), #839 (entry 12 candidate-settings-version-dataset, #823).
 
 ## Issues
 
