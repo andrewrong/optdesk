@@ -185,7 +185,7 @@ Checked by CI: ci-go; the design verdict.
 - Module: store. Size: M. Depends on: account-store-api and #693.
 - Order: after 6 (account-store-api) and after #693 (store: out-of-order migrations, WithAllowOutofOrder).
 - Design: docs/design/account-data.md#Decisions (Decisions 5 and 6; second-opinion case)
-- Files: migrations/0019_account.sql, internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/account_pg_test.go
+- Files: migrations/NNNN_account.sql (landed as 0019, #740), internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/account_pg_test.go
 
 - Goal: schema `account` with `account.capture`, `account.position`, `account.value` (foreign key to the capture) and `account.execution`, columns of the datasets (`numeric` for money and quantity); the role `ot_w_account` (INSERT and SELECT only) made by `setup` with the DSN line `OT_PG_DSN_ACCOUNT`; the views `rd.account_capture_r1`, `rd.account_position_r1`, `rd.account_value_r1` and `rd.account_execution_r1` (pass-through, owner `ot_owner`) with SELECT for `ot_ro_pages` on the views only; `ot_w_account` has INSERT and SELECT on the base tables, USAGE on schema `rd` and SELECT on the four views (its Reader reads them). The migration writes one statement per line, in this form: `CREATE VIEW rd.account_<name>_r1 ...` (plain `CREATE VIEW`), `GRANT SELECT ON rd.account_<name>_r1 TO ot_ro_pages;`, `GRANT SELECT ON rd.account_<name>_r1 TO ot_w_account;` for each of the four names, and `GRANT USAGE ON SCHEMA rd TO ot_w_account;`.
 
