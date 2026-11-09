@@ -94,7 +94,7 @@ Frontend stack lines: none (no UI code in this entry).
 ### 2 option-positions-ledger-terms
 
 Module: compute. Size: S.
-Files: `internal/compute/optionledger/premium.go`, `internal/compute/optionledger/premium_test.go`, `internal/compute/optionledger/lots.go`, `internal/compute/optionledger/lots_test.go`
+Files: `internal/compute/optionledger/premium.go`, `internal/compute/optionledger/premium_test.go`, `internal/compute/optionledger/lots.go`, `internal/compute/optionledger/lots_test.go`, `internal/compute/optionledger/replay.go`, `internal/compute/optionledger/replay_test.go`
 Design: docs/design/option-positions.md#Decisions (Decision 3)
 Order: after 1.
 Goal: `Replay` fills `Right`, `Expiry`, `Strike`, `OpenedOn`, `ClosedOn`, `OpenPrice`, `Fills` and `BrokerRealized` on every position it prints; no existing figure changes.
