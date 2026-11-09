@@ -537,22 +537,12 @@ type LedgerParams struct {
 // UnrealizedPnL are empty without a mark, RealizedPnL is empty while the position is open.
 // PremiumIncome is the cash of its opens plus its closes, Commissions the sum of its rows.
 type LedgerPosition struct {
-	PositionID    string
-	Alias         string
-	Underlying    string
-	Contract      string
-	Status        string
-	Early         bool
-	Quantity      string
-	Multiplier    string
-	Currency      string
-	PremiumIncome string
-	Commissions   string
-	RealizedPnL   string
-	Mark          string
-	MarkDay       contracts.Day
-	MarkStatus    string
-	UnrealizedPnL string
+	PositionID string
+	Alias      string
+	Underlying string
+	Contract   string
+	Status     string
+	Early      bool
 
 	// Terms: Right is P or C; ClosedOn is empty while open; Fills are the rows in order;
 	// BrokerRealized is the broker's realized figure, empty when it reports none.
@@ -564,6 +554,17 @@ type LedgerPosition struct {
 	OpenPrice      string
 	Fills          []LedgerFill
 	BrokerRealized string
+
+	Quantity      string
+	Multiplier    string
+	Currency      string
+	PremiumIncome string
+	Commissions   string
+	RealizedPnL   string
+	Mark          string
+	MarkDay       contracts.Day
+	MarkStatus    string
+	UnrealizedPnL string
 }
 
 // LedgerCycle is one wheel cycle of an alias and underlying, from the first share event to
@@ -621,9 +622,7 @@ type StructureQuote struct {
 }
 
 // HeldOption is one option row of the newest capture.
-type HeldOption struct {
-	Underlying, Right, Strike, Expiry, Quantity string
-}
+type HeldOption struct{ Underlying, Right, Strike, Expiry, Quantity string }
 
 // StructureInput is the input of one alias; SessionDays are ascending XNYS days. Pure.
 type StructureInput struct {
@@ -637,6 +636,7 @@ type StructureInput struct {
 	SessionDays []contracts.Day
 }
 
+// StructureParams holds the parameters of Evaluate.
 type StructureParams struct {
 	MarkMaxAgeSessions int
 	CaptureTarget      string
@@ -657,6 +657,7 @@ type Structure struct {
 	CaptureParam, ExitDTEParam            string
 }
 
+// StructureLeg is one leg of a structure.
 type StructureLeg struct {
 	PositionID, Right, Strike, Expiry, Quantity, Multiplier, OpenPrice, Mid, LegPnL, MarkStatus string
 }
@@ -675,9 +676,8 @@ type FigureValue struct {
 	Gap   string
 }
 
-type PayoffPoint struct {
-	Price, PnL string
-}
+// PayoffPoint is one point of the payoff at expiry.
+type PayoffPoint struct{ Price, PnL string }
 
 // GreekSet is the net greeks of a structure on Day.
 type GreekSet struct {
@@ -685,9 +685,8 @@ type GreekSet struct {
 	Day                       contracts.Day
 }
 
-type StructureLevel struct {
-	Name, Price, Distance string
-}
+// StructureLevel is a named price level and its distance.
+type StructureLevel struct{ Name, Price, Distance string }
 
 // StructureResult holds Structures in the order of Decision 12; Other the unrecognised kinds.
 type StructureResult struct {
@@ -718,9 +717,8 @@ type ResultInput struct {
 	AsOf               contracts.Day
 }
 
-type ResultSummary struct {
-	Sections []ResultSection
-}
+// ResultSummary is the result of an alias by side and currency.
+type ResultSummary struct{ Sections []ResultSection }
 
 // ResultSection is one side and currency; money is decimal text, KeptShare a 6-place ratio or empty.
 type ResultSection struct {

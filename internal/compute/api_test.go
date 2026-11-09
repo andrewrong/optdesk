@@ -671,7 +671,7 @@ var _ compute.OptionResults = fakeResults{}
 func TestOptionResultsContract(t *testing.T) {
 	t.Parallel()
 	want := compute.ResultSummary{Sections: []compute.ResultSection{{
-		Side: "short", Currency: "USD",
+		Side: "sold", Currency: "USD",
 		Months:   []compute.ResultMonth{{Month: "2026-01", Realized: "10.0000", Running: "10.0000", Over: true}},
 		Endings:  []compute.ResultEnding{{Status: "expired", Count: 2, Realized: "10.0000"}},
 		Realized: "10.0000", Premium: "12.0000", KeptShare: "0.833333", AssignedPremium: "1.0000", AssignedShares: "100.0000",
@@ -704,5 +704,15 @@ func TestLedgerPositionTerms(t *testing.T) {
 		p.OpenPrice != "1.20" || p.BrokerRealized != "30.00" || f.Day != "2026-01-02" || f.Action != "open" || f.Quantity != "-1" ||
 		f.Price != "1.20" || f.Commission != "1.00" {
 		t.Fatalf("terms %+v", p)
+	}
+}
+
+func TestLedgerTermsFollowEarly(t *testing.T) {
+	t.Parallel()
+	typ := reflect.TypeOf(compute.LedgerPosition{})
+	early, _ := typ.FieldByName("Early")
+	right, _ := typ.FieldByName("Right")
+	if right.Index[0] != early.Index[0]+1 {
+		t.Fatalf("Right at %d, want right after Early at %d", right.Index[0], early.Index[0])
 	}
 }
