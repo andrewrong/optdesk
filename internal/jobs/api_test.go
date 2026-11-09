@@ -541,10 +541,14 @@ func TestWatchEntryPrices(t *testing.T) {
 
 func TestOptionEodWatchFuncOrder(t *testing.T) {
 	t.Parallel()
-	var _ jobs.NewOptionEodWatchFunc = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+	var _ jobs.NewOptionEodWatchFunc = func(
+		broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock,
+	) (contracts.Job, error) {
 		return nil, nil
 	}
-	var _ jobs.NewOptionEodHeldFunc = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, store.AccountReader, clock.Clock) (contracts.Job, error) {
+	var _ jobs.NewOptionEodHeldFunc = func(
+		broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, store.AccountReader, clock.Clock,
+	) (contracts.Job, error) {
 		return nil, nil
 	}
 }
