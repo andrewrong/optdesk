@@ -3,7 +3,6 @@ package structures_page
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -27,22 +26,22 @@ type Config struct {
 	Structures     compute.NewOptionStructuresFunc
 }
 
-func notBuilt(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error) {
-	return nil, errors.New("structures_page: not built")
-}
-
 // NewListPage is the structures_list page of alias.
 func NewListPage(c Config, alias string) pages.Page {
 	return pages.Page{
-		Meta:  pages.Meta{Name: "structures_list", Schema: "page.structures_list.v1"},
-		Build: notBuilt,
+		Meta: pages.Meta{Name: "structures_list", Schema: "page.structures_list.v1"},
+		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+			return buildList(ctx, c, alias, day, at)
+		},
 	}
 }
 
 // NewDetailPage is the structure_detail page of the structure structureID of alias.
 func NewDetailPage(c Config, alias, structureID string) pages.Page {
 	return pages.Page{
-		Meta:  pages.Meta{Name: "structure_detail", Schema: "page.structure_detail.v3"},
-		Build: notBuilt,
+		Meta: pages.Meta{Name: "structure_detail", Schema: "page.structure_detail.v3"},
+		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+			return buildDetail(ctx, c, alias, structureID, day, at)
+		},
 	}
 }

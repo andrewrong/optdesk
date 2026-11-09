@@ -13,6 +13,9 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 `internal/store/reading` holds the Reader and the Writer of stored figure values, `readings.reading` r1 (with the children `reading_input`, `reading_input_key` and `reading_parameter`). `reading.Open` returns a `store.ReadingStore` (`InsertReadings`, `LatestReadings`, `Close`) from the line `store.DSNEnvReadings` (`OT_PG_DSN_READINGS`) of the role `ot_w_readings`.
 
 `internal/store/bar` declares, in `api.go` only (no implementation in the package), the store of two append-only datasets: `obs.price_bar r1` (daily bars, `trades` and `adjusted_last`) and `obs.fx_rate r1` (the daily USD.JPY rate). `bar.BarStore` is `PriceBarWriter`, `PriceBarReader`, `FxRateWriter`, `FxRateReader` and `Close`; `bar.OpenBarFunc` opens it from the line `bar.DSNEnvBar` (`OT_PG_DSN_BAR`) of the role `ot_w_bar`. The implementation is `internal/store/barpg`.
+`internal/store/ownerset` declares, in `api.go` only, the owner's settings store: `ownerset.Reader` (`Params`, `Exclusions`, `History`, `Version`, `Close`, all read as of a time), `ownerset.Writer` (`Apply` of a `Change`, one transaction, unchanged fields insert nothing), `ownerset.Store` (both) and `ownerset.OpenFunc`, from the line `ownerset.DSNEnvSettings` (`OT_PG_DSN_SETTINGS`). Design: `docs/design/settings-form.md#Interface`.
+
+`internal/store/mark` declares, in `api.go` only, the store of position marks, `account.position_mark r1` (insert-only, one row per position of a capture, key `(capture_id, con_id, attempt)`). `mark.Writer.WriteMarks` writes the rows in one transaction and leaves a row whose key exists as it is (a correction is a row with a higher `Attempt`); `mark.Reader.Marks(alias, day)` returns the rows of the newest capture of that day that has marks, the highest `Attempt` of each `ConID`, sorted by `ConID`, an empty slice when none. `mark.Store` is both with `Close`; `mark.OpenFunc` opens it from the line `mark.DSNEnvPositionMark` (`OT_PG_DSN_POSMARK`) of the role `ot_w_posmark`. The implementation is `internal/store/markpg`.
 
 ## Inputs
 
@@ -118,6 +121,14 @@ Declared in `internal/store/api.go`: `EarningsDateWriter` (`InsertEarningsDate`)
 - View `rd.earnings_date_r1`. `EarningsDates(ctx, issuer, from, to)` reads the view only, inclusive, ascending by day, the highest `attempt` of each day only; none gives an empty slice; a bad or reversed day range is `Permanent`.
 - Grants: `ot_w_events` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_EVENTS`) has `INSERT` on the table and `SELECT` on the view (the job reads the rows of the day); `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role but the owner has UPDATE, DELETE or TRUNCATE. The rows hold dates, status words and vendor text, no account data.
 
+## Dividend expectations
+
+Declared in `internal/store/dividend` (declarations only, so `internal/store/api.go` stays under the size rule; precedent `internal/store/ownerset`): `Writer` (`InsertDividend`), `Reader` (`Dividends`), `Store` (both and `Close`) and `OpenFunc`. `internal/store/events.OpenDividend` is the implementation; the row is `contracts.DividendExpectation`; the line is `DSNEnvEvents` (role `ot_w_events`). Design: `docs/design/event-sources.md#Decisions` (7, 8) and entry 12.
+
+- Table `obs.dividend_expectation` (migration `0023`), append only, key `(session_day, instrument_id, attempt)`; the enums, `attempt >= 1`, `next_ex_date` and `next_amount` only for `present` and source `none` for `unsupported` are table checks. `InsertDividend` inserts `ON CONFLICT DO NOTHING`: a row whose key exists stays as it is and the call returns no error. An `instrument_id` of 0 or an attempt below 1 is `Permanent`, a database error `Retryable`.
+- View `rd.dividend_expectation_r1`. `Dividends(ctx, instrumentID, from, to)` reads the view only, inclusive, ascending by day, the highest `attempt` of each day only; none gives an empty slice; a bad or reversed day range is `Permanent`.
+- Grants: `ot_w_events` has `INSERT` on the table and `SELECT` on the view; `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role but the owner has UPDATE, DELETE or TRUNCATE.
+
 ## Option candidates
 
 Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`.
@@ -125,6 +136,15 @@ Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, [
 ## Option ledger
 
 Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
+
+## Flex sections
+
+Declared in the declarations-only package `internal/store/flexsection` (not in `internal/store/api.go`): `Writer` (`RecordSections`), `Reader` (`Rows`, `Statuses`), `Store` (both and `Close`), `OpenFunc`, and the plain types `Row`, `Status` and `Insert`; the implementation is `internal/store/flexsectionpg`.
+
+- Revision rule: on `(Alias, Section, RowKey)`. A new key is revision 1; a key whose attributes differ from its newest revision is written at that revision plus one; an identical one is counted `Unchanged` and not written. The `Revision` of a `Row` given to `RecordSections` is ignored.
+- One transaction per `RecordSections`. Attributes that hold `accountId` or `acctAlias` are an error and nothing is written. No rows and no statuses makes no database call.
+- Views: `Rows` reads `rd.flex_section_row_r1` and returns the highest revision of every key sorted by `RowKey`; `Statuses` reads `rd.flex_section_status_r1` and returns the newest status per section of the alias. Neither reads a base table.
+- Contract test: `internal/store/flexsection/api_test.go`: `TestSectionStoreContract`, `TestRecordSectionsRefusesAccountAttributes` and `TestRecordSectionsEmptyMakesNoCall`.
 
 ## Account data
 
@@ -154,6 +174,8 @@ Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExec
 
 - v13: migration `0020` (`obs.earnings_date`, `rd.earnings_date_r1`); role `ot_w_events` and the new line `OT_PG_DSN_EVENTS`; `events.OpenEarningsDate`. Migrate and run `ot setup pg` before deploying the code.
 
+- v14: migration `0023` (`obs.dividend_expectation`, `rd.dividend_expectation_r1`); `dividend.Store` and `events.OpenDividend`, on the role and line of v13. Migrate before deploying the code.
+
 ## Contract tests
 
 - `internal/store/scheduler_api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
@@ -164,6 +186,7 @@ Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExec
 - `internal/store/snapshot/optioneod_test.go`, `quotesnapshot_test.go` and `screen_test.go`: `TestInsertSQL`, `TestInsertScreensSentinels`, `TestReaderRangeAndOrder`, `TestQuoteInsertSQL`, `TestQuoteInsertScreensSentinels`, `TestQuoteReaderRangeAndOrder` and `TestScreenSentinel` (SQL strings, transaction, empty input, context, sentinels, range and order, against an in-test fake).
 - `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
 - `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
+- `internal/store/ownerset/api_test.go`: `TestStoreContractApplyTwiceAndAsOf`, `TestStoreContractHistoryNewestFirst` and `TestDSNEnvSettingsName` hold the Store from both sides against an in-test fake.
 - `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
 - `internal/store/api_events_test.go`: `TestEarningsDateContractFromBothSides` and `TestEarningsDSNEnvName` hold `EarningsDateStore` and its line name from both sides.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
@@ -187,3 +210,4 @@ None. Store runs nothing and owns no slot; jobs and runner call it.
 - `SELECT *` or a column outside the table.
 - Embedding `migrations/` in the migrate package, or registering a global SQL driver in a test.
 - A connection default (host, user, password, database) in code.
+- `internal/store/dividend/api_test.go`: `TestStoreContractFromBothSides` holds `dividend.Store` from both sides; `internal/store/events/dividends_test.go`: `TestDividendWriterKeepsExistingKey`, `TestDividendReaderTakesHighestAttempt`, `TestDividendRowRoundTrip`, `TestDividendBadInputIsPermanentAndErrorsAreRetryable` and `TestDividendUnknownEnumInViewRefused`; `dividends_pg_test.go` (build tag `pg`): the three `...PG` tests.

@@ -141,3 +141,53 @@ func TestNoBuyPriceKeepsBand(t *testing.T) {
 		t.Fatalf("strikes %v, want the 10 percent band %v", got, want)
 	}
 }
+
+func windowJob(t *testing.T, win jobs.OptionEodWindow) (*job, error) {
+	t.Helper()
+	c, err := NewWithWatchWindow(newBroker(), &fakeResolver{}, &fakeWriter{},
+		[]jobs.WatchEntry{watchEntry("US", "AAA", "STK", "50", 1)}, win, clockwork.NewFakeClock())
+	if err != nil {
+		return nil, err
+	}
+	return c.(*job), nil
+}
+
+func TestWindowOverridesManifest(t *testing.T) {
+	t.Parallel()
+	j, err := windowJob(t, jobs.OptionEodWindow{MinDTE: 7, MaxDTE: 30, MaxStrikes: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j.m.MinDTE != 7 || j.m.MaxDTE != 30 || j.m.MaxStrikes != 10 {
+		t.Fatalf("window %d %d %d, want 7 30 10", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
+	}
+	j, err = windowJob(t, jobs.OptionEodWindow{MaxDTE: 60})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j.m.MinDTE != 21 || j.m.MaxDTE != 60 || j.m.MaxStrikes != 24 {
+		t.Fatalf("partial window %d %d %d, want 21 60 24", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
+	}
+}
+
+func TestZeroWindowKeepsManifest(t *testing.T) {
+	t.Parallel()
+	j, err := windowJob(t, jobs.OptionEodWindow{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j.m.MinDTE != 21 || j.m.MaxDTE != 45 || j.m.MaxStrikes != 24 {
+		t.Fatalf("window %d %d %d, want the manifest 21 45 24", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
+	}
+}
+
+func TestWindowMinAboveMaxFails(t *testing.T) {
+	t.Parallel()
+	_, err := windowJob(t, jobs.OptionEodWindow{MinDTE: 50, MaxDTE: 40})
+	if err == nil {
+		t.Fatal("min_dte above max_dte must be refused")
+	}
+	if want := (manifest{MinDTE: 50, MaxDTE: 40}).validate(); want == nil || err.Error() != want.Error() {
+		t.Fatalf("error %v, want the validate error %v", err, want)
+	}
+}

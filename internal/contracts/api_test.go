@@ -104,3 +104,15 @@ func TestPriceBarAndFxRateAlias(t *testing.T) {
 		t.Fatal("alias of the generated record")
 	}
 }
+
+func TestDividendExpectationAlias(t *testing.T) {
+	t.Parallel()
+	var d contracts.DividendExpectation
+	g := gen.DividendExpectation(d)
+	g.Issuer = "cik:0000320193"
+	g.Attempt = 1
+	d = g
+	if d.Issuer != "cik:0000320193" || d.Attempt != 1 {
+		t.Fatal("alias of the generated record")
+	}
+}

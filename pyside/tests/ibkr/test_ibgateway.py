@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, Self
 
 import pytest
-from ib_async import Contract, ContractDetails, OptionChain, RequestError, Ticker
+from ib_async import (
+    Contract,
+    ContractDetails,
+    Dividends,
+    OptionChain,
+    RequestError,
+    Ticker,
+)
 from kit.fakeclock import FakeClock
 
+from optdesk.ibkr.api import DividendKey, DividendReading
 from optdesk.ibkr.ibgateway import IbGateway
 from optdesk.ibkr.model import QuoteRow, QuoteTarget
 from optdesk.ibkr.spec import AmbiguousResolve, BrokerError
@@ -62,7 +71,11 @@ class FakeIb:
         self.chain_rows: list[OptionChain] = []
         self.autofill = False
         self.refuse = False
+        self.fail: Exception | None = None
         self.tickers: dict[int, Ticker] = {}
+        self.dividends: Dividends | None = None
+        self.mkt_contracts: list[Contract] = []
+        self.cancel_contracts: list[Contract] = []
         self.subscribed: list[int] = []
         self.cancelled: list[int] = []
         self.disconnected = False
@@ -99,9 +112,14 @@ class FakeIb:
         self, contract: Contract, ticks: str, snap: bool, regulatory: bool
     ) -> Ticker:
         self._stamp()
+        hash(contract)  # ib_async hashes it; a conId of 0 raises ValueError
+        self.mkt_contracts.append(contract)
         ticker = Ticker(contract=contract)
+        ticker.dividends = self.dividends
         self.tickers[contract.conId] = ticker
         self.subscribed.append(contract.conId)
+        if self.fail is not None:
+            raise self.fail
         if self.refuse:
             raise OrderRefused("refused as the guard would")
         if self.autofill:
@@ -111,6 +129,7 @@ class FakeIb:
     def cancelMktData(self, contract: Contract) -> bool:
         self._stamp()
         self.cancelled.append(contract.conId)
+        self.cancel_contracts.append(contract)
         return True
 
     def disconnect(self) -> None:
@@ -643,3 +662,113 @@ def test_quote_rows_carry_generation_and_times() -> None:
     assert row.generation == 1 and row.con_id == 61
     assert row.requested_at <= row.sent_at <= row.received_at
     assert dict(row.fields)["bid"] == 1.0
+
+
+def _dividend_keys() -> list[DividendKey]:
+    return [DividendKey("AAPL", "STK", "SMART", "USD", c) for c in (71, 72)]
+
+
+def test_dividends_unexpected_error_is_error_status_per_key(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def run() -> list[DividendReading]:
+        gateway, fake = await opened(FakeClock(), lines=2)
+        fake.fail = ValueError("bad tick")
+        readings: list[DividendReading] = []
+
+        async def keep(reading: DividendReading) -> None:
+            readings.append(reading)
+
+        await gateway.dividends(_dividend_keys(), keep)
+        return readings
+
+    with caplog.at_level(logging.ERROR):
+        readings = asyncio.run(run())
+    assert sorted(r.key.con_id for r in readings) == [71, 72]
+    assert {(r.status, r.error_code) for r in readings} == {("error", 0)}
+    assert {r.past_12m for r in readings} == {None}
+    failed = [
+        r.getMessage() for r in caplog.records if "dividend_failed" in r.getMessage()
+    ]
+    assert len(failed) == 2
+    assert all("ValueError" in m and "bad tick" in m for m in failed)
+    assert all("DU" not in m and "71" not in m and "72" not in m for m in failed)
+
+
+def test_dividends_connection_error_still_raises() -> None:
+    async def run() -> None:
+        gateway, _ = make(FakeClock())
+
+        async def keep(reading: DividendReading) -> None:
+            raise AssertionError("no reading expected")
+
+        await gateway.dividends(_dividend_keys(), keep)
+
+    with pytest.raises(ConnectionError):
+        asyncio.run(run())
+
+
+def _zero_key() -> DividendKey:
+    return DividendKey("AAPL", "STK", "SMART", "USD", 0)
+
+
+def _detail(con_id: int) -> ContractDetails:
+    return ContractDetails(contract=Contract(conId=con_id, symbol="AAPL"))
+
+
+async def _read_zero(
+    details: list[ContractDetails], fake_error: Exception | None = None
+) -> tuple[list[DividendReading], FakeIb]:
+    gateway, fake = await opened(FakeClock(), lines=2)
+    fake.fail = fake_error
+    fake.dividends = Dividends(1.0, 2.0, datetime.date(2026, 12, 1), 0.25)
+
+    async def found(contract: Contract) -> list[ContractDetails]:
+        return details
+
+    fake.details = found
+    readings: list[DividendReading] = []
+
+    async def keep(reading: DividendReading) -> None:
+        readings.append(reading)
+
+    await gateway.dividends([_zero_key()], keep)
+    return readings, fake
+
+
+def test_dividends_con_id_zero_key_is_resolved_and_read() -> None:
+    readings, fake = asyncio.run(_read_zero([_detail(265598)]))
+    assert [(r.key, r.status) for r in readings] == [(_zero_key(), "ok")]
+    assert fake.subscribed == [265598]
+    assert fake.cancelled == [265598]
+    assert fake.mkt_contracts == fake.cancel_contracts
+    assert fake.mkt_contracts[0] is fake.cancel_contracts[0]
+
+
+def test_dividends_con_id_zero_no_match_is_no_value() -> None:
+    readings, fake = asyncio.run(_read_zero([]))
+    assert [(r.key, r.status, r.error_code) for r in readings] == [
+        (_zero_key(), "no_value", 0)
+    ]
+    assert fake.subscribed == []
+
+
+def test_dividends_con_id_zero_ambiguous_is_error_status() -> None:
+    readings, fake = asyncio.run(_read_zero([_detail(1), _detail(2)]))
+    assert [(r.key, r.status, r.error_code) for r in readings] == [
+        (_zero_key(), "error", 0)
+    ]
+    assert fake.subscribed == []
+
+
+def test_dividends_failed_log_message_is_cut(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.ERROR):
+        readings, _ = asyncio.run(_read_zero([_detail(5)], ValueError("x" * 300)))
+    assert [r.status for r in readings] == ["error"]
+    failed = [
+        r.getMessage() for r in caplog.records if "dividend_failed" in r.getMessage()
+    ]
+    assert len(failed) == 1
+    assert len(failed[0].split("message=", 1)[1]) <= 120

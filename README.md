@@ -15,8 +15,7 @@ go run ./cmd/ot version        # starts under the demo profile when $OT_HOME is 
 ## Checks
 
 ```sh
-go run ./scripts/arch          # regenerate arch.toml and .go-arch-lint.yml from modules.md
-go run ./scripts/arch --check  # fail when they differ from modules.md
+go run ./scripts/arch          # generate arch.toml and .go-arch-lint.yml from modules.md (not committed)
 go tool go-arch-lint check     # the import limits
 go tool golangci-lint run ./...
 go run ./scripts/ratchet       # file size rule (600 new, 800 base, docs/design/ratchet.json)

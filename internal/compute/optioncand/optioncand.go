@@ -1,6 +1,6 @@
-// Package optioncand is the rule behind compute.OptionCandidates for short puts: the gates
-// in order, the status rule and the ranking by annualized yield, on exact rationals. It
-// performs no I/O and reads no clock; every date and every age comes from the input.
+// Package optioncand is the rule behind compute.OptionCandidates for short puts, covered
+// calls and held-call guards: the gates in order, the status rule and the ranking
+// by annualized yield, on exact rationals. It performs no I/O and reads no clock; every date and every age comes from the input.
 package optioncand
 
 import (
@@ -13,36 +13,53 @@ const statusOK = "ok"
 
 type candidates struct{}
 
-// New returns the rule. Only short_put is evaluated; other kinds in the input are ignored.
+// New returns the rule. It evaluates the kinds named in the input; an empty list means short_put only.
 func New() compute.OptionCandidates { return candidates{} }
 
-// Evaluate returns one row per put contract with DTE in MinDTE..MaxDTE, ok rows ranked first.
+// Evaluate returns the rows of each wanted kind (puts, then covered calls, then held-call
+// guards), each kind ranked on its own with ok rows first.
 func (candidates) Evaluate(in compute.CandidateInput, p compute.CandidateParams) []compute.Candidate {
-	if !wantsPuts(in.Kinds) {
-		return nil
-	}
 	spot, spotOK := parseDec(in.Spot)
-	var rows []scored
-	for _, q := range in.Quotes {
-		if q.Right != "P" {
-			continue
+	var puts, calls, guards []scored
+	wantPut, wantCall := wants(in.Kinds, compute.KindShortPut), wants(in.Kinds, compute.KindCoveredCall)
+	held := map[string]bool{}
+	if wants(in.Kinds, compute.KindHeldCallGuard) {
+		for _, id := range in.OpenShortIDs {
+			held[id] = true
 		}
+	}
+	for _, q := range in.Quotes {
 		dte, ok := dayDiff(in.ChainDay, q.Expiry)
 		strike, strikeOK := parseDec(q.Strike)
-		if !ok || !strikeOK || strike.Sign() <= 0 || dte < 1 || dte < p.MinDTE || dte > p.MaxDTE {
+		if !ok || !strikeOK || strike.Sign() <= 0 {
 			continue
 		}
-		rows = append(rows, evaluatePut(in, p, q, dte, strike, spot, spotOK))
+		inWindow := dte >= 1 && dte >= p.MinDTE && dte <= p.MaxDTE
+		switch q.Right {
+		case "P":
+			if wantPut && inWindow {
+				puts = append(puts, evaluatePut(in, p, q, dte, strike, spot, spotOK))
+			}
+		case "C":
+			if wantCall && inWindow {
+				calls = append(calls, evaluateCall(in, p, q, dte, strike, spot, spotOK)...)
+			}
+			if held[q.InstrumentID] {
+				guards = append(guards, evaluateHeldGuard(in, p, q, dte, strike)...)
+			}
+		}
 	}
-	return order(rows)
+	out := order(puts)
+	out = append(out, order(calls)...)
+	return append(out, order(guards)...)
 }
 
-func wantsPuts(kinds []compute.CandidateKind) bool {
+func wants(kinds []compute.CandidateKind, kind compute.CandidateKind) bool {
 	if len(kinds) == 0 {
-		return true
+		return kind == compute.KindShortPut
 	}
 	for _, k := range kinds {
-		if k == compute.KindShortPut {
+		if k == kind {
 			return true
 		}
 	}

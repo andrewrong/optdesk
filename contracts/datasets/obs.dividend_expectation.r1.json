@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/obs.dividend_expectation.r1.json",
+  "title": "DividendExpectation",
+  "description": "obs.dividend_expectation r1: one answer about the expected dividend of one instrument on one day (IBKR generic tick 456); append only, an error is a row and a later success is a new attempt. IBKR does not say declared or projected, so every ex-date is projected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_day", "instrument_id", "attempt", "issuer", "status", "past_12m", "next_12m", "next_amount", "next_ex_date", "currency", "error_code", "source", "received_at"],
+  "x-dataset": "obs.dividend_expectation",
+  "x-revision": "r1",
+  "x-primary-key": ["session_day", "instrument_id", "attempt"],
+  "properties": {
+    "session_day": {"type": "string", "format": "date", "description": "Session day (XNYS) the row answers for."},
+    "instrument_id": {"type": "integer", "description": "Instrument (IBKR contract id) the row answers for."},
+    "attempt": {"type": "integer", "minimum": 1, "description": "Attempt number of the day, from 1; a later attempt never replaces an earlier row."},
+    "issuer": {"type": "string", "pattern": "^(cik:[0-9]{10}|edinet:[A-Za-z0-9]+)$", "description": "The issuer text of the watch list: cik:<10 digits>, or edinet:<code>."},
+    "status": {"type": "string", "enum": ["present", "no_value", "unsupported", "error"], "description": "present: the tick gave a parsable next ex-date and amount; no_value: the tick gave none (a non-payer or no answer in time); unsupported: the market failed its probe and is not asked; error: the request failed. Only present carries next_ex_date and next_amount."},
+    "past_12m": {"type": ["string", "null"], "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Dividends per share of the past 12 months as decimal text; null when the tick gave none."},
+    "next_12m": {"type": ["string", "null"], "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Dividends per share expected in the next 12 months as decimal text; null when the tick gave none."},
+    "next_amount": {"type": ["string", "null"], "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Next dividend per share as decimal text; null unless status is present. The key is always present."},
+    "next_ex_date": {"type": ["string", "null"], "format": "date", "description": "Next ex-dividend date, projected; null unless status is present. The key is always present."},
+    "currency": {"type": "string", "pattern": "^([A-Z]{3})?$", "description": "Currency of the contract asked, not a claim of the tick; empty when none."},
+    "error_code": {"type": "string", "description": "Error code when status is error; empty otherwise."},
+    "source": {"type": "string", "enum": ["ibkr_tick_456", "none"], "description": "Where the row came from; none is a status unsupported row, since no source produced it. Never null."},
+    "received_at": {"type": "string", "format": "date-time", "description": "Instant the row was produced, UTC."}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "unsupported"}}, "required": ["status"]}, "then": {"properties": {"source": {"const": "none"}}}, "else": {"properties": {"source": {"const": "ibkr_tick_456"}}}},
+    {"if": {"properties": {"status": {"const": "present"}}, "required": ["status"]}, "then": {"properties": {"next_ex_date": {"type": "string"}, "next_amount": {"type": "string"}}}, "else": {"properties": {"next_ex_date": {"type": "null"}, "next_amount": {"type": "null"}}}}
+  ]
+}

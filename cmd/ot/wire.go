@@ -18,8 +18,12 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/ease"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
+	"github.com/andrewrong/optdesk/internal/compute/optionledger"
+	"github.com/andrewrong/optdesk/internal/compute/optionresult"
+	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
+	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -39,14 +43,17 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
+	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
+	"github.com/andrewrong/optdesk/internal/pages/structures_page"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
+	"github.com/andrewrong/optdesk/internal/sources/jquants"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/alert"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
@@ -109,6 +116,12 @@ type deps struct {
 	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 	openCandidate           openCandidateFunc
+	structuresListPage      func(c structures_page.Config, alias string) pages.Page
+	structureDetailPage     func(c structures_page.Config, alias, structureID string) pages.Page
+	optionResultPage        func(c option_result_page.Config, alias string) pages.Page
+	newOptionLedger         compute.NewOptionLedgerFunc
+	newOptionStructures     compute.NewOptionStructuresFunc
+	newOptionResults        compute.NewOptionResultsFunc
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
@@ -123,12 +136,18 @@ type deps struct {
 	newDryRunSender         notify.NewDryRunSenderFunc
 	openSent                store.OpenSentFunc
 	newAlertNotifier        notify.NewAlertNotifierFunc
+	newMorningNotifier      notify.NewMorningNotifierFunc
+	openGapHistory          gaphistory.OpenFunc
+	openGapReader           store.OpenGapReaderFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
 	newEarningsRefresh      jobs.NewEarningsRefreshFunc
 	newAlphaVantage         sources.NewEarningsFunc
+	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
+	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
+	ext map[string]any
 }
 
 // calendarArgs is what follows the uv program in the command of calendar_refresh, that is
@@ -142,8 +161,15 @@ const envCalendarUV = "OT_CALENDAR_UV"
 // defaultReadEnv is the reader used when deps.readEnv is nil (a test deps literal without newDeps).
 var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 
-// newDeps returns the real constructors.
+// newDeps returns the real constructors and the deps of each command from extDeps.
 func newDeps() deps {
+	d := newBaseDeps()
+	d.ext = newExt()
+	return d
+}
+
+// newBaseDeps returns the real constructors of the fields of deps other than ext.
+func newBaseDeps() deps {
 	stats := gonumstats.New()
 	sops := own.NewSeriesOps()
 	rl := rules.New()
@@ -194,6 +220,12 @@ func newDeps() deps {
 		marketPage:              newMarketPageOf,
 		optionDataPage:          newOptionDataPage,
 		openCandidate:           openCandidateStore,
+		structuresListPage:      structures_page.NewListPage,
+		structureDetailPage:     structures_page.NewDetailPage,
+		optionResultPage:        option_result_page.NewPage,
+		newOptionLedger:         optionledger.New,
+		newOptionStructures:     optionstruct.New,
+		newOptionResults:        optionresult.New,
 		optionCandidatesPage:    newOptionCandidatesPage,
 		openFence:               ops.OpenFence,
 		openSchedulerLedger:     ops.OpenSchedulerLedger,
@@ -208,9 +240,13 @@ func newDeps() deps {
 		newDryRunSender:         dryrun.New,
 		openSent:                alert.Open,
 		newAlertNotifier:        core.NewAlerts,
+		newMorningNotifier:      core.NewMorningNotifier,
+		openGapHistory:          ops.OpenGapHistory,
+		openGapReader:           ops.OpenGapReader,
 		loadAlertRules:          alertrules.Load,
 		newEarningsRefresh:      earningsrefresh.New,
 		newAlphaVantage:         alphavantage.New,
+		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
 		readFile:                os.ReadFile,
 	}

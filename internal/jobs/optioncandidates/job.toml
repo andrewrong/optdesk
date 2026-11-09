@@ -1,0 +1,23 @@
+# Manifest of the option_candidates job: once per XNYS session day, thirty minutes after the close.
+version = 1
+id = "option_candidates"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+zone = "America/New_York"
+offset = "30m"
+run_bound = "10m"
+restart_sensitive = false
+
+# Limits of the put rule (design option-candidates, Decision 15).
+[params]
+min_dte = 21
+max_dte = 45
+min_bid_size = 1
+max_spread = "0.10"
+min_open_interest = 10
+div_guard_factor = "1.0"
+max_rate_age_days = 7
+max_event_age_sessions = 2
+min_report_gap_days = 60
