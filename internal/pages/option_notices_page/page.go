@@ -3,7 +3,6 @@ package option_notices_page
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -33,9 +32,4 @@ func NewPage(c Config) pages.Page {
 			return Build(ctx, c, r, day, at)
 		},
 	}
-}
-
-// Build writes the page of day; the interface stub answers an error until the builder lands.
-func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
-	return nil, errors.New("option_notices_page: not built")
 }
