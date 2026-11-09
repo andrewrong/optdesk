@@ -80,12 +80,13 @@ func TestNoSectionsGivesEmptyMap(t *testing.T) {
 
 func TestEntityInSectionStillRefused(t *testing.T) {
 	t.Parallel()
-	body := `<!DOCTYPE x [<!ENTITY e "v">]><FlexQueryResponse><FlexStatements><FlexStatement accountId="ACCT_A"><ChangeInNAV a="&e;"/></FlexStatement></FlexStatements></FlexQueryResponse>`
+	const tail = `<FlexQueryResponse><FlexStatements><FlexStatement accountId="ACCT_A"><ChangeInNAV a="&e;"/>` +
+		`</FlexStatement></FlexStatements></FlexQueryResponse>`
+	body := `<!DOCTYPE x [<!ENTITY e "v">]>` + tail
 	if _, err := parseReport([]byte(body)); err == nil {
 		t.Fatal("accepted")
 	}
-	body = `<FlexQueryResponse><FlexStatements><FlexStatement accountId="ACCT_A"><ChangeInNAV a="&e;"/></FlexStatement></FlexStatements></FlexQueryResponse>`
-	if _, err := parseReport([]byte(body)); err == nil {
+	if _, err := parseReport([]byte(tail)); err == nil {
 		t.Fatal("undeclared entity accepted")
 	}
 }
