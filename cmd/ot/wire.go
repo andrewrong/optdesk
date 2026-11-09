@@ -34,6 +34,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
+	"github.com/andrewrong/optdesk/internal/pages/market_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
@@ -97,6 +98,7 @@ type deps struct {
 	ownerDSN                func(adminDSN string) (string, error)
 	readEnv                 store.ReadEnvFunc
 	macroPage               func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page
+	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
@@ -172,6 +174,7 @@ func newDeps() deps {
 		ownerDSN:                setup.OwnerDSN,
 		readEnv:                 setup.ReadEnv,
 		macroPage:               newMacroPage,
+		marketPage:              newMarketPageOf,
 		optionDataPage:          newOptionDataPage,
 		openFence:               ops.OpenFence,
 		openSchedulerLedger:     ops.OpenSchedulerLedger,
@@ -204,6 +207,11 @@ func newMacroPage(zone *time.Location, buildID string, read compute.ReadingFunc)
 		},
 	}
 	return macro_page.NewPage(cfg)
+}
+
+// newMarketPageOf builds the page market_page in zone from the plain arguments; the one place that names market_page.Config.
+func newMarketPageOf(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page {
+	return market_page.NewPage(market_page.Config{RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Readings: readings})
 }
 
 // newOptionDataPage builds the page option_data_page of one underlying in zone; the symbol and the notes come
