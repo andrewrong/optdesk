@@ -52,10 +52,11 @@ func TestConfigContract(t *testing.T) {
 	}
 	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	day := contracts.Day("2026-01-02")
-	// the detail page is built by a later issue; the list page is built (list_test.go)
-	_, err := structures_page.NewDetailPage(c, "main", "main:T1:1").Build(context.Background(), noSeries{}, day, at)
-	if err == nil || err.Error() != "structures_page: not built" {
-		t.Fatalf("detail: err = %v", err)
+	if _, err := structures_page.NewDetailPage(structures_page.Config{}, "main", "main:T1:1").Build(context.Background(), noSeries{}, day, at); err == nil {
+		t.Fatal("detail: a nil zone gave no error")
+	}
+	if _, err := structures_page.NewDetailPage(c, "nobody", "main:T1:1").Build(context.Background(), noSeries{}, day, at); err == nil {
+		t.Fatal("detail: an unknown alias gave no error")
 	}
 	if _, err := structures_page.NewListPage(structures_page.Config{}, "main").Build(context.Background(), noSeries{}, day, at); err == nil {
 		t.Fatal("list: a nil zone gave no error")
