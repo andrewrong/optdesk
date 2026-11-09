@@ -69,6 +69,21 @@ from optdesk.contracts.genpb.ibkr.v1.quote_types_pb2 import (
     QuoteKind,
     QuoteStatus,
 )
+from optdesk.contracts.genpb.ibkr.v1.reference_pb2 import (
+    DIVIDEND_STATUS_ERROR,
+    DIVIDEND_STATUS_NO_VALUE,
+    DIVIDEND_STATUS_OK,
+    DIVIDEND_STATUS_TIMEOUT,
+    DIVIDEND_STATUS_UNSPECIFIED,
+    ContractKey,
+    DividendProjection,
+    DividendStatus,
+)
+from optdesk.contracts.genpb.ibkr.v1.reference_pb2_grpc import (
+    ReferenceServiceServicer,
+    ReferenceServiceStub,
+    add_ReferenceServiceServicer_to_server,
+)
 from optdesk.contracts.genpb.ibkr.v1.resolve_pb2 import (
     RESOLVE_STATUS_FOUND,
     RESOLVE_STATUS_NOT_LISTED,
@@ -93,6 +108,11 @@ from optdesk.contracts.genpb.ibkr.v1.session_pb2_grpc import (
 )
 
 __all__ = [
+    "DIVIDEND_STATUS_ERROR",
+    "DIVIDEND_STATUS_NO_VALUE",
+    "DIVIDEND_STATUS_OK",
+    "DIVIDEND_STATUS_TIMEOUT",
+    "DIVIDEND_STATUS_UNSPECIFIED",
     "MARKET_DATA_TYPE_DELAYED",
     "MARKET_DATA_TYPE_DELAYED_FROZEN",
     "MARKET_DATA_TYPE_FROZEN",
@@ -126,9 +146,12 @@ __all__ = [
     "AccountServiceStub",
     "AccountValue",
     "Chain",
+    "ContractKey",
     "ContractSpec",
     "ContractsServiceServicer",
     "ContractsServiceStub",
+    "DividendProjection",
+    "DividendStatus",
     "ListChainsRequest",
     "ListChainsResponse",
     "MarketDataServiceServicer",
@@ -140,6 +163,8 @@ __all__ = [
     "Quote",
     "QuoteKind",
     "QuoteStatus",
+    "ReferenceServiceServicer",
+    "ReferenceServiceStub",
     "ResolveContractRequest",
     "ResolveContractResponse",
     "ResolveStatus",
@@ -152,5 +177,6 @@ __all__ = [
     "add_AccountServiceServicer_to_server",
     "add_ContractsServiceServicer_to_server",
     "add_MarketDataServiceServicer_to_server",
+    "add_ReferenceServiceServicer_to_server",
     "add_SessionServiceServicer_to_server",
 ]

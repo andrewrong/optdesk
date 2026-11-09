@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package ibkr.v1;
+
+import "google/protobuf/timestamp.proto";
+import "ibkr/v1/contract.proto";
+
+option go_package = "github.com/andrewrong/optdesk/internal/contracts/genpb";
+
+// ReferenceService reads reference data of listed instruments from one gateway.
+service ReferenceService {
+  // Dividends asks for the dividend projection (generic tick 456) of each
+  // contract key received and answers one DividendProjection per key. A key
+  // the gateway does not answer within the server's wait is a TIMEOUT answer,
+  // never a missing one.
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc Dividends(stream ContractKey) returns (stream DividendProjection);
+}
+
+// ContractKey names a listed contract without any option field.
+message ContractKey {
+  string symbol = 1;
+  SecType sec_type = 2;
+  string exchange = 3;
+  string currency = 4;
+  // con_id is the IBKR contract id, 0 when unknown.
+  int64 con_id = 5;
+}
+
+// DividendStatus is the outcome of one dividend request.
+enum DividendStatus {
+  DIVIDEND_STATUS_UNSPECIFIED = 0;
+  // OK means the tick held a parsable next ex-date.
+  DIVIDEND_STATUS_OK = 1;
+  // NO_VALUE means the tick was empty or malformed; never read it as zero.
+  DIVIDEND_STATUS_NO_VALUE = 2;
+  // TIMEOUT means the gateway sent nothing within the wait.
+  DIVIDEND_STATUS_TIMEOUT = 3;
+  DIVIDEND_STATUS_ERROR = 4;
+}
+
+// DividendProjection is the answer for one ContractKey.
+message DividendProjection {
+  ContractKey key = 1;
+  DividendStatus status = 2;
+  // past_12m and next_12m are per-share totals as canonical decimal text.
+  optional string past_12m = 3;
+  optional string next_12m = 4;
+  // next_ex_date is YYYYMMDD.
+  optional string next_ex_date = 5;
+  // next_amount is per share, canonical decimal text.
+  optional string next_amount = 6;
+  // error_code is the IBKR code, 0 when none.
+  int32 error_code = 7;
+  google.protobuf.Timestamp received_at = 8;
+}
