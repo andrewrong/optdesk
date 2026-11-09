@@ -59,7 +59,13 @@ type manifest struct {
 	BudgetMinutes        int           `toml:"budget_minutes"`
 	FreezeAfter          string        `toml:"freeze_after"`
 	OptionPriceIncrement string        `toml:"option_price_increment"`
-	Underlying           []underlying  `toml:"underlying"`
+	// TradingClass, when set, makes the chain choice take the chain of that trading class on the underlying's exchange.
+	TradingClass string `toml:"trading_class"`
+	// LedgerDataset is the dataset id of the plan keys; default obs.option_eod.
+	LedgerDataset string `toml:"ledger_dataset"`
+	// StopAfter (HHMM in the zone) makes a run at or after that local time return NoValue; unset when empty.
+	StopAfter  string       `toml:"stop_after"`
+	Underlying []underlying `toml:"underlying"`
 
 	sched schedule
 	// buy maps a symbol to the BuyPrice text of its watch entry; empty for a manifest without a watch list.
@@ -114,6 +120,9 @@ func (m *manifest) applyDefaults() {
 	if m.BudgetMinutes == 0 {
 		m.BudgetMinutes = defaultBudget
 	}
+	if m.LedgerDataset == "" {
+		m.LedgerDataset = datasetID
+	}
 	if m.FreezeAfter == "" {
 		m.FreezeAfter = defaultFreezeAfter
 	}
@@ -134,6 +143,11 @@ func (m manifest) validate() error {
 	}
 	if _, err := parseHHMM(m.FreezeAfter); err != nil {
 		return fmt.Errorf("optioneod: manifest: freeze_after must be HHMM")
+	}
+	if m.StopAfter != "" {
+		if _, err := parseHHMM(m.StopAfter); err != nil {
+			return fmt.Errorf("optioneod: manifest: stop_after must be HHMM")
+		}
 	}
 	for _, u := range m.Underlying {
 		if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
@@ -162,6 +176,15 @@ func (m manifest) canonical() string {
 		m.Window.Calendar, m.MaxExpiries, m.StrikeBand, m.MaxStrikesPerSide, m.Chunk, m.BudgetMinutes, m.FreezeAfter, m.OptionPriceIncrement)
 	if m.MinDTE != 0 || m.MaxDTE != 0 || m.MaxStrikes != 0 {
 		fmt.Fprintf(&b, "|dte%d-%d|%d", m.MinDTE, m.MaxDTE, m.MaxStrikes)
+	}
+	if m.TradingClass != "" {
+		fmt.Fprintf(&b, "|class%s", m.TradingClass)
+	}
+	if m.LedgerDataset != datasetID {
+		fmt.Fprintf(&b, "|ledger%s", m.LedgerDataset)
+	}
+	if m.StopAfter != "" {
+		fmt.Fprintf(&b, "|stop%s", m.StopAfter)
 	}
 	for _, u := range m.Underlying {
 		fmt.Fprintf(&b, "\n%+v", u)

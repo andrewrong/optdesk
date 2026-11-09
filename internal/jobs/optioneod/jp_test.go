@@ -1,0 +1,151 @@
+package optioneod
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/jonboulle/clockwork"
+
+	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/contracts"
+)
+
+const jpDay = contracts.Day("2026-11-09")
+
+var jpKey = contracts.ExpectedKey{DatasetID: "obs.option_eod_jp", SubjectKey: "N225"}
+
+func newJPRig(t *testing.T, at string) *rig {
+	t.Helper()
+	loc, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now, err := time.ParseInLocation("2006-01-02 15:04", at, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &rig{b: newBroker(), res: &fakeResolver{}, w: &fakeWriter{}, clk: clockwork.NewFakeClockAt(now)}
+	r.b.price = num(40000)
+	r.b.chains = []broker.Chain{
+		{Exchange: "OSE.JPN", TradingClass: "225W", Multiplier: "1000", Expirations: []string{"20261113"}, Strikes: []string{"40000"}},
+		{Exchange: "OSE.JPN", TradingClass: "N225M", Multiplier: "100", Expirations: []string{"20261113"}, Strikes: []string{"40000"}},
+		{Exchange: "OSE.JPN", TradingClass: "225", Multiplier: "1000", Expirations: []string{"20261113"}, Strikes: []string{"39750", "40000"}},
+	}
+	r.job, err = build(manifestJPBytes, r.b, r.res, r.w, r.clk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+func TestJPManifestSlotAndWindow(t *testing.T) {
+	t.Parallel()
+	r := newJPRig(t, "2026-11-09 16:00")
+	j, err := NewJP(r.b, r.res, r.w, r.clk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jj := j.(*job)
+	if jj.m.Zone != "Asia/Tokyo" || j.ID() != "option_eod_jp" {
+		t.Fatalf("zone %q id %q", jj.m.Zone, j.ID())
+	}
+	cal, anchor, zone, off := jj.Schedule()
+	if cal != "XTKS" || anchor != "time" || zone != "Asia/Tokyo" || off != 15*time.Hour+50*time.Minute {
+		t.Fatalf("schedule %s %s %s %s", cal, anchor, zone, off)
+	}
+	wc, open, closeOff := jj.Window()
+	if wc != "XTKS" || open != 0 || closeOff != 2*time.Hour {
+		t.Fatalf("window %s %s %s", wc, open, closeOff)
+	}
+}
+
+func TestJPPlanKeysUseLedgerDataset(t *testing.T) {
+	t.Parallel()
+	keys, _, err := planFrom(manifestJPBytes, jpDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 1 || keys[0] != jpKey {
+		t.Fatalf("keys %+v", keys)
+	}
+	us, _, err := planFrom(manifestBytes, jpDay)
+	if err != nil || us[0].DatasetID != "obs.option_eod" {
+		t.Fatalf("us keys %+v %v", us, err)
+	}
+}
+
+func TestPairsFiltersTradingClass(t *testing.T) {
+	t.Parallel()
+	r := newJPRig(t, "2026-11-09 16:00")
+	res := r.run(jpDay, jpKey)
+	if res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	rows := r.w.all()
+	if len(rows) != 4 || len(r.b.snaps) != 2 {
+		t.Fatalf("rows %d snaps %d", len(rows), len(r.b.snaps))
+	}
+	for _, c := range r.b.snaps[1].cs {
+		if c.TradingClass != "225" || c.Multiplier != "1000" {
+			t.Fatalf("contract %+v", c)
+		}
+	}
+}
+
+func TestPairsWithoutTradingClassUnchanged(t *testing.T) {
+	t.Parallel()
+	chains := []broker.Chain{{Exchange: "ARCA", TradingClass: "A"}, {Exchange: "SMART", TradingClass: "B"}, {Exchange: "SMART", TradingClass: "C"}}
+	m := manifest{}
+	c, ok := m.chainOf(chains, underlying{Exchange: "SMART"})
+	if !ok || c.TradingClass != "B" {
+		t.Fatalf("got %+v %v", c, ok)
+	}
+	c, ok = m.chainOf(chains, underlying{Exchange: "XXX"})
+	if !ok || c.TradingClass != "A" {
+		t.Fatalf("fallback %+v %v", c, ok)
+	}
+	m.TradingClass = "Z"
+	if _, ok := m.chainOf(chains, underlying{Exchange: "SMART"}); ok {
+		t.Fatal("class without chain must give none")
+	}
+}
+
+func TestStopAfterReturnsNoValue(t *testing.T) {
+	t.Parallel()
+	late := newJPRig(t, "2026-11-09 17:00")
+	res := late.run(jpDay, jpKey)
+	if kindOf(res) != contracts.NoValue || res.Err.Error() != "after session" || late.b.calls() != 0 {
+		t.Fatalf("late: %v calls %d", res.Err, late.b.calls())
+	}
+	ok := newJPRig(t, "2026-11-09 16:59")
+	if res := ok.run(jpDay, jpKey); res.Err != nil || ok.b.calls() == 0 {
+		t.Fatalf("16:59: %v calls %d", res.Err, ok.b.calls())
+	}
+}
+
+func TestJPRowsCurrencyJPY(t *testing.T) {
+	t.Parallel()
+	r := newJPRig(t, "2026-11-09 16:00")
+	if res := r.run(jpDay, jpKey); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	rows := r.w.all()
+	if len(rows) == 0 {
+		t.Fatal("no rows")
+	}
+	for _, row := range rows {
+		if row.Currency != "JPY" {
+			t.Fatalf("currency %q", row.Currency)
+		}
+	}
+}
+
+func TestJPWrongDayNoRows(t *testing.T) {
+	t.Parallel()
+	r := newJPRig(t, "2026-11-09 16:00")
+	res := r.job.Run(context.Background(), "2026-11-08", []contracts.ExpectedKey{jpKey})
+	if kindOf(res) != contracts.NoValue || r.b.calls() != 0 || len(r.w.all()) != 0 {
+		t.Fatalf("%v calls %d", res.Err, r.b.calls())
+	}
+}
