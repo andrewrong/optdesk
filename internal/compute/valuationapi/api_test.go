@@ -107,19 +107,23 @@ func TestStandardValues(t *testing.T) {
 	}
 }
 
-func TestCallerFillsEveryInputAndReadsEveryOutput(t *testing.T) {
+var testFacts = []contracts.FundamentalFact{{Source: "sec", Subject: "cik:0000320193"}}
+
+const testDay = contracts.Day("2026-11-09")
+
+func builtFilings(f *fakes) valuationapi.FilingsResult {
+	return f.buildFilings()(testFacts, testDay, valuationapi.JGAAP)
+}
+
+func TestStandardOfAndBuildFilings(t *testing.T) {
 	t.Parallel()
 	f := &fakes{}
-	facts := []contracts.FundamentalFact{{Source: "sec", Subject: "cik:0000320193"}}
-	day := contracts.Day("2026-11-09")
-
-	std := f.standardOf()(facts)
+	std := f.standardOf()(testFacts)
 	if std != valuationapi.JGAAP || len(f.facts) != 1 {
 		t.Fatalf("standard %q, facts %d", std, len(f.facts))
 	}
-
-	fr := f.buildFilings()(facts, day, std)
-	if f.std != std || f.asOf != day {
+	fr := f.buildFilings()(testFacts, testDay, std)
+	if f.std != std || f.asOf != testDay {
 		t.Fatalf("filings saw std %q asOf %q", f.std, f.asOf)
 	}
 	y := fr.Filings.Years[0]
@@ -129,22 +133,31 @@ func TestCallerFillsEveryInputAndReadsEveryOutput(t *testing.T) {
 		y.FYEnd != "2025-12-31" || y.Filed != "2026-02-01" || y.Values["ocf"] != "12.5" {
 		t.Fatalf("filings result %+v", fr)
 	}
+}
 
-	b := f.band()("AAPL", fr.Filings, day)
+func TestBandAndImplied(t *testing.T) {
+	t.Parallel()
+	f := &fakes{}
+	fr := builtFilings(f)
+	b := f.band()("AAPL", fr.Filings, testDay)
 	if f.id != "AAPL" || b.ID != "AAPL" || b.State != "ok" || b.Value != "80" || b.Low != "64" ||
 		b.RefHigh != "107" || b.Currency != "USD" || b.BaseFYEnd != "2025-12-31" ||
 		len(b.Flags) != 1 || len(b.Reasons) != 1 {
 		t.Fatalf("band %+v", b)
 	}
-
 	im := f.implied()(fr.Filings, "150.25")
 	if f.spot != "150.25" || im.State != "ok" || im.Primary != "0.05" || len(im.Reasons) != 1 ||
 		im.Rates[0].Rate != "0.10" || im.Rates[0].Growth != "0.05" {
 		t.Fatalf("implied %+v", im)
 	}
+}
 
-	an := &valuationapi.Analyst{Growth: "0.08", AsOf: day}
-	rr := f.returnAt()(fr.Filings, []string{"100", "90"}, an, day)
+func TestReturnAtPriceLines(t *testing.T) {
+	t.Parallel()
+	f := &fakes{}
+	fr := builtFilings(f)
+	an := &valuationapi.Analyst{Growth: "0.08", AsOf: testDay}
+	rr := f.returnAt()(fr.Filings, []string{"100", "90"}, an, testDay)
 	if f.analyst != an || len(f.costs) != 2 || len(rr.Lines) != 8 || rr.State != "ok" ||
 		len(rr.Flags) != 1 || len(rr.Reasons) != 1 {
 		t.Fatalf("return %+v", rr)
@@ -158,17 +171,28 @@ func TestCallerFillsEveryInputAndReadsEveryOutput(t *testing.T) {
 			t.Errorf("line %d key %q, want %q", i, rr.Lines[i].Key, k)
 		}
 	}
-	if f.returnAt()(fr.Filings, nil, nil, day); f.analyst != nil {
+}
+
+func TestReturnAtPriceNilAnalyst(t *testing.T) {
+	t.Parallel()
+	f := &fakes{}
+	f.analyst = &valuationapi.Analyst{}
+	f.returnAt()(valuationapi.Filings{}, nil, nil, testDay)
+	if f.analyst != nil {
 		t.Errorf("a nil analyst must reach the function as nil")
 	}
+}
 
-	q := f.questions()(fr.Filings, day)
+func TestQuestionsAndDiagnosis(t *testing.T) {
+	t.Parallel()
+	f := &fakes{}
+	fr := builtFilings(f)
+	q := f.questions()(fr.Filings, testDay)
 	if len(q.Questions) != 2 || q.Questions[0].Key != "Q1" || q.Questions[0].Value != "0.2" ||
 		q.Questions[0].State != "ok" || q.Questions[0].Reason != "r" || q.Questions[1].State != "missing_input" {
 		t.Fatalf("questions %+v", q)
 	}
-
-	d := f.diagnosis()(fr.Filings, day)
+	d := f.diagnosis()(fr.Filings, testDay)
 	if d.Group != "financial" || d.Figures[0].Key != "roe" || d.Figures[0].State != "ok" ||
 		d.Figures[0].Value != "0.11" || d.Figures[0].Reason != "r" {
 		t.Fatalf("diagnosis %+v", d)
