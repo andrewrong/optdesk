@@ -9,6 +9,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
@@ -201,5 +202,76 @@ func TestAlertNotifierContract(t *testing.T) {
 	}
 	if len(snd.texts) != 1 || len(sent.marked) != 1 || sent.marked[0].RuleID != "r1" {
 		t.Fatalf("texts = %v, marked = %v", snd.texts, sent.marked)
+	}
+}
+
+type fakeHistory struct{ gaps []gaphistory.Gap }
+
+func (f *fakeHistory) GapsSince(context.Context, time.Time) ([]gaphistory.Gap, error) {
+	return f.gaps, nil
+}
+
+func (f *fakeHistory) Close() error { return nil }
+
+type fakeExpect struct{}
+
+func (fakeExpect) OpenGaps(context.Context) ([]store.Gap, error) { return nil, nil }
+func (fakeExpect) Expectations(context.Context, contracts.Day, contracts.Day) ([]store.Expectation, error) {
+	return nil, nil
+}
+func (fakeExpect) Close() error { return nil }
+
+type fakeMorning struct {
+	deps   notify.MorningDeps
+	sender notify.Sender
+}
+
+func (n *fakeMorning) NotifyMorning(ctx context.Context) (bool, error) {
+	day := contracts.Day("2026-11-09")
+	marks, err := n.deps.Sent.SentSince(ctx, day)
+	if err != nil {
+		return false, err
+	}
+	for _, m := range marks {
+		if m.RuleID == notify.MorningRuleID && m.Day == day {
+			return false, nil
+		}
+	}
+	if _, err := n.deps.History.GapsSince(ctx, time.Unix(0, 0)); err != nil {
+		return false, err
+	}
+	if err := n.sender.Send(ctx, "morning"); err != nil {
+		return false, err
+	}
+	return true, n.deps.Sent.MarkSent(ctx, notify.MorningRuleID, day)
+}
+
+func TestMorningContract(t *testing.T) {
+	t.Parallel()
+	if notify.DefaultMorningFrom != "08:00" || notify.DefaultMorningUntil != "12:00" || notify.MorningRuleID != "morning_report" {
+		t.Fatal("morning constants changed")
+	}
+	cfg := notify.Config{MorningFrom: "08:30", MorningUntil: "11:00", Zone: time.UTC}
+	var newFn notify.NewMorningNotifierFunc = func(d notify.MorningDeps, s notify.Sender, _ clockwork.Clock, _ notify.Config) (notify.MorningNotifier, error) {
+		return &fakeMorning{deps: d, sender: s}, nil
+	}
+	sent := &fakeSentStore{}
+	snd := &fakeSender{}
+	deps := notify.MorningDeps{History: &fakeHistory{}, Expect: fakeExpect{}, Sent: sent}
+	n, err := newFn(deps, snd, clockwork.NewFakeClock(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := n.NotifyMorning(context.Background())
+	if err != nil || !ok {
+		t.Fatalf("NotifyMorning = %v, %v", ok, err)
+	}
+	if len(snd.texts) != 1 || len(sent.marked) != 1 || sent.marked[0].RuleID != notify.MorningRuleID {
+		t.Fatalf("texts = %v, marked = %v", snd.texts, sent.marked)
+	}
+	sent.marks = sent.marked
+	ok, err = n.NotifyMorning(context.Background())
+	if err != nil || ok || len(snd.texts) != 1 {
+		t.Fatalf("second NotifyMorning = %v, %v, texts %d", ok, err, len(snd.texts))
 	}
 }

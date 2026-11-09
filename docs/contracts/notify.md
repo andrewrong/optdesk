@@ -32,7 +32,14 @@ Says missed work once, as one plain-text message. The scheduler process calls `N
 - Public-subject rule: only results that are `fired` and `Public` (the rule's subject is in `public_subjects` of the rules) are sent; a non-public result is never sent.
 - Mark-after-send rule: `SentStore.MarkSent(ctx, ruleID, day)` is called only after `Sender.Send` returned nil, and only for the alerts printed, never for one behind "and M more". A failed send marks nothing; a failed mark is retried at the next pass, the one case where an alert can repeat. Results with a mark in `alerts.sent` are not sent again.
 
+## Morning report
+
+- `MorningNotifier.NotifyMorning(ctx) (bool, error)` is a third pass beside `NotifyGaps` and `NotifyAlerts`, built by `notify.NewMorningNotifierFunc(MorningDeps, Sender, clock, Config)` (`internal/notify/core.NewMorning`). `MorningDeps{History, Expect, Sent}` names `gaphistory.Reader`, `store.GapReader` and `store.SentStore`. The return value is true when a message was sent.
+- `Config` gains `MorningFrom` and `MorningUntil` ("HH:MM" in `Zone`; empty means `DefaultMorningFrom` 08:00 and `DefaultMorningUntil` 12:00). Outside that window the pass returns false and reads nothing.
+- One message per calendar day, sent even when nothing happened; the day is marked in `alerts.sent` under `MorningRuleID` (`morning_report`) only after a confirmed send. Design: `docs/design/option-notices.md`.
+
 ## Version history
 
 - v1: interface declared (stage 1).
 - v2: alert notifier interface declared (additions only).
+- v3: morning notifier interface declared (additions only).
