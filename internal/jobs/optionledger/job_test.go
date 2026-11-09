@@ -254,3 +254,60 @@ func TestNonRequiredFailureNoGap(t *testing.T) {
 		t.Fatalf("writes %+v", e.w.recs)
 	}
 }
+
+func TestOneFetchPerDayAcrossPlanKeys(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{rep: report(oneTrade("ACCT1", "7"))}
+	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j.cfg.Accounts = map[string]string{"ACCT1": "a", "ACCT2": "b"}
+	keys, _, err := j.Plan(context.Background(), "2026-11-10")
+	if err != nil || len(keys) != 2 {
+		t.Fatalf("keys %v %v", keys, err)
+	}
+	for _, k := range keys { // as runner/reconcile/runkey.go:72 does
+		j.Run(context.Background(), "2026-11-10", []contracts.ExpectedKey{k})
+	}
+	if len(src.calls) != 1 {
+		t.Fatalf("Flex fetched %d times for one window in one day, want 1", len(src.calls))
+	}
+}
+
+func TestRetriedKeyDoesNotFetchAgainAndIsPresent(t *testing.T) {
+	t.Parallel()
+	// a non-required login fails; every row of the other is unchanged (Usable 0)
+	bad := &fakeSource{fail: true}
+	j, _ := build(t, []jobs.FlexRun{{Name: "second", QueryIDs: []string{"q2"}, Source: bad}}, nil)
+	ctx := context.Background()
+	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
+		t.Fatal("present before any run")
+	}
+	for i := 0; i < 3; i++ { // the runner retries a missing key
+		if res := j.Run(ctx, "2026-11-10", nil); res.Err != nil {
+			t.Fatal(res.Err)
+		}
+	}
+	if len(bad.calls) != 1 {
+		t.Fatalf("fetched %d times, want 1", len(bad.calls))
+	}
+	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); !ok {
+		t.Fatal("key must be present after a day that failed no required login")
+	}
+}
+
+func TestRequiredFailureKeyStaysMissingWithoutRefetch(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{fail: true}
+	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	ctx := context.Background()
+	for i := 0; i < 2; i++ {
+		if res := j.Run(ctx, "2026-11-10", nil); res.Err == nil {
+			t.Fatal("want error")
+		}
+	}
+	if len(src.calls) != 1 {
+		t.Fatalf("fetched %d times, want 1", len(src.calls))
+	}
+	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
+		t.Fatal("a failed required login must not mark the key present")
+	}
+}

@@ -39,9 +39,9 @@ func loadFixture(t *testing.T) (fixture, []sources.FlexStatement) {
 func TestAccountAttributesRemovedBeforeHash(t *testing.T) {
 	t.Parallel()
 	_, sts := loadFixture(t)
-	alias, rows, ok, err := mapStatement(map[string]string{"TESTACCT1": "a"}, sts[0])
-	if err != nil || !ok || alias != "a" || len(rows) != 1 {
-		t.Fatalf("map: %v %v %q %d", err, ok, alias, len(rows))
+	rows, ok, err := mapStatement(map[string]string{"TESTACCT1": "a"}, sts[0])
+	if err != nil || !ok || len(rows) != 1 || rows[0].Alias != "a" {
+		t.Fatalf("map: %v %v %d", err, ok, len(rows))
 	}
 	var got map[string]string
 	if err := json.Unmarshal([]byte(rows[0].Attributes), &got); err != nil {
@@ -70,7 +70,7 @@ func TestAccountAttributesRemovedBeforeHash(t *testing.T) {
 func TestHashEqualsFixtureHash(t *testing.T) {
 	t.Parallel()
 	f, sts := loadFixture(t)
-	_, rows, _, err := mapStatement(map[string]string{"TESTACCT1": "a"}, sts[0])
+	rows, _, err := mapStatement(map[string]string{"TESTACCT1": "a"}, sts[0])
 	if err != nil {
 		t.Fatal(err)
 	}

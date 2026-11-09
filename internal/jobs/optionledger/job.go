@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 	"time"
 	// The zone database is embedded so that a zone name loads on every machine.
 	_ "time/tzdata"
@@ -57,6 +58,11 @@ type job struct {
 	clk      clock.Clock
 	loc      *time.Location
 	log      *slog.Logger
+
+	// The runner calls Run once per key of Plan; Flex is fetched once per day, so the first complete Run of a
+	// day is remembered and the calls that follow, for the other keys or a retry of the key, return it.
+	mu   sync.Mutex
+	done map[contracts.Day]contracts.JobResult
 }
 
 type typedError struct {
@@ -102,7 +108,7 @@ func newJob(s jobs.OptionLedgerStores, cfg jobs.OptionLedgerConfig, clk clock.Cl
 	if _, err := time.Parse(dayLayout, cfg.HistoryFrom); err != nil {
 		return nil, errors.New("optionledger: history_from is not a day")
 	}
-	return &job{m: m, offset: offset, runBound: bound, stores: s, cfg: cfg, clk: clk, loc: loc, log: log}, nil
+	return &job{m: m, offset: offset, runBound: bound, stores: s, cfg: cfg, clk: clk, loc: loc, log: log, done: map[contracts.Day]contracts.JobResult{}}, nil
 }
 
 // ID is the job id of the manifest.
@@ -148,14 +154,39 @@ type run struct {
 	stored   map[string]bool
 	storeErr error
 	degraded map[string]bool
-	required []string
-	res      contracts.JobResult
+	// failedRequired holds the names of the required logins that failed.
+	failedRequired []string
+	res            contracts.JobResult
 }
 
-// Run fetches every query of every login once per window; a failed window stops that query for the run and
-// is not retried. A failure of a login without Required is one degraded log record and leaves the result ok;
-// a failure of a Required login fails the result.
-func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
+// Run fetches every query of every login once per window, once per day whatever the keys: the keys are
+// the aliases of Plan and every one of them gets the result of the day's one fetch, a retry of a key
+// included, so a failed window is not retried that day. A failed window stops that query for the run. A
+// failure of a login without Required is one degraded log record and leaves the result ok; a failure of a
+// Required login fails the result. A run cut by ctx is not remembered.
+func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if res, ok := j.done[day]; ok {
+		return res
+	}
+	res := j.fetchAll(ctx)
+	if ctx.Err() == nil {
+		j.done[day] = res
+	}
+	return res
+}
+
+// Postcondition is true when the day's fetch has run to its end without failing the result: a day whose
+// rows were all unchanged, or whose only failures were of logins without Required, leaves no key missing.
+func (j *job) Postcondition(_ context.Context, day, _, _ string) (bool, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	res, ok := j.done[contracts.Day(day)]
+	return ok && res.Err == nil, nil
+}
+
+func (j *job) fetchAll(ctx context.Context) contracts.JobResult {
 	now := j.clk.Now().In(j.loc)
 	yesterday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -1)
 	r := &run{j: j, last: contracts.Day(yesterday.Format(dayLayout)), degraded: map[string]bool{}}
@@ -174,8 +205,8 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 			r.query(ctx, l, q)
 		}
 	}
-	if len(r.required) > 0 {
-		r.res.Err = &typedError{kind: contracts.Permanent, err: fmt.Errorf("optionledger: required login %s failed", r.required[0])}
+	if len(r.failedRequired) > 0 {
+		r.res.Err = &typedError{kind: contracts.Permanent, err: fmt.Errorf("optionledger: required login %s failed", r.failedRequired[0])}
 	}
 	return r.res
 }
@@ -184,7 +215,7 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 // without Required, the failed result for a Required one.
 func (r *run) fail(l jobs.FlexRun, status string) {
 	if l.Required {
-		r.required = append(r.required, l.Name)
+		r.failedRequired = append(r.failedRequired, l.Name)
 		return
 	}
 	if !r.degraded[l.Name] {
@@ -239,7 +270,7 @@ func (r *run) fetch(ctx context.Context, l jobs.FlexRun, queryID string, w windo
 		rec.RawSHA256 = rep.RawSHA256
 		rec.Statements = len(rep.Statements)
 		for _, st := range rep.Statements {
-			_, sr, ok, merr := mapStatement(r.j.cfg.Accounts, st)
+			sr, ok, merr := mapStatement(r.j.cfg.Accounts, st)
 			if merr != nil {
 				err = merr
 				break
@@ -261,7 +292,9 @@ func (r *run) fetch(ctx context.Context, l jobs.FlexRun, queryID string, w windo
 			rec.ErrorKind = "bad_report"
 		}
 		rec.ErrorCode = errorCode(err)
-		_, _ = r.j.stores.Ledger.RecordFlexFetch(ctx, rec, nil)
+		if _, rerr := r.j.stores.Ledger.RecordFlexFetch(ctx, rec, nil); rerr != nil {
+			return "store_error"
+		}
 		return statusFailed
 	}
 	rec.Status = statusOK
