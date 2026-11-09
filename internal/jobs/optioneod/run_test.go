@@ -58,6 +58,7 @@ type fakeBroker struct {
 	status      map[int64]broker.Status
 	snaps       []snapCall
 	resolves    int
+	resolved    []broker.Contract // every contract given to ResolveContract
 	afterSnap   func(optionCalls int)
 	snapErr     error
 	chainErr    error
@@ -92,6 +93,7 @@ func (b *fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chai
 
 func (b *fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
 	b.resolves++
+	b.resolved = append(b.resolved, c)
 	if b.resolveErr != nil {
 		return broker.Resolved{}, b.resolveErr
 	}
@@ -270,6 +272,8 @@ func TestCaptureIDStable(t *testing.T) {
 	r := newRig(t, "2026-11-06 17:00")
 	first := r.run(testDay, testKey)
 	second := r.run(testDay, testKey)
+	r.b.chains = append(r.b.chains, broker.Chain{Exchange: "SMART", TradingClass: "OTHER", Multiplier: "100",
+		Expirations: r.b.chains[0].Expirations, Strikes: r.b.chains[0].Strikes})
 	other := r.run(testDay, contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "OTHER"})
 	if first.Err != nil || second.Err != nil || other.Err != nil {
 		t.Fatal(first, second, other)
@@ -465,5 +469,72 @@ func TestNewRequiresPorts(t *testing.T) {
 	}
 	if cal, open, closeOff := w.Window(); cal != "XNYS" || open != 0 || closeOff != 5*time.Hour {
 		t.Fatal(cal, open, closeOff)
+	}
+}
+
+// spyRig is a rig whose first underlying is SPY, with no trading_class in the manifest.
+func spyRig(t *testing.T, chains []broker.Chain) *rig {
+	t.Helper()
+	r := newRig(t, "2026-11-06 17:00")
+	var err error
+	r.job, err = build([]byte(strings.Replace(runToml, `symbol = "TEST"`, `symbol = "SPY"`, 1)), r.b, r.res, r.w, r.clk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.b.chains = chains
+	return r
+}
+
+func TestChainPrefersSymbolClassOverFirst(t *testing.T) {
+	t.Parallel()
+	r := spyRig(t, []broker.Chain{
+		{Exchange: "SMART", TradingClass: "2SPY", Multiplier: "100", Expirations: []string{"20261106"}, Strikes: []string{"95", "100", "105", "200"}},
+		{Exchange: "SMART", TradingClass: "SPY", Multiplier: "100", Expirations: []string{"20261105", "20261106", "20261113"},
+			Strikes: []string{"90", "95", "100", "105", "110", "200"}},
+	})
+	k := contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "SPY"}
+	if res := r.run(testDay, k); res.Err != nil || res.Returned == 0 {
+		t.Fatalf("%+v", res)
+	}
+	n := 0
+	for _, s := range r.b.snaps {
+		if s.kind != broker.KindSnapshot {
+			for _, c := range s.cs {
+				n++
+				if c.TradingClass != "SPY" {
+					t.Fatalf("snapshot contract %+v", c)
+				}
+			}
+		}
+	}
+	if n == 0 {
+		t.Fatal("no option contract snapshotted")
+	}
+	if len(r.b.resolved) == 0 {
+		t.Fatal("no contract resolved")
+	}
+	for _, c := range r.b.resolved {
+		if c.TradingClass != "SPY" {
+			t.Fatalf("resolved contract %+v", c)
+		}
+	}
+}
+
+func TestChainNoSymbolClassFailsKey(t *testing.T) {
+	t.Parallel()
+	r := spyRig(t, []broker.Chain{{Exchange: "SMART", TradingClass: "2SPY", Multiplier: "100",
+		Expirations: []string{"20261106"}, Strikes: []string{"95", "100", "105"}}})
+	k := contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "SPY"}
+	res := r.run(testDay, k)
+	if kindOf(res) != contracts.Permanent || !strings.Contains(res.Err.Error(), "no chain of trading class SPY") {
+		t.Fatalf("%+v", res)
+	}
+	for _, s := range r.b.snaps {
+		if s.kind != broker.KindSnapshot {
+			t.Fatalf("option snapshot called: %+v", s)
+		}
+	}
+	if len(r.w.calls) != 0 {
+		t.Fatal("rows written")
 	}
 }
