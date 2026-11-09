@@ -321,7 +321,7 @@ Frontend stack lines: none (no UI code in this entry).
 ### 12 candidate-settings-version-dataset (interface)
 
 Module: contracts. Size: S.
-Files: `contracts/datasets/candidates.option_candidate.r1.json`, `internal/contracts/gen/records.go`, `docs/contracts/datasets/candidates.option_candidate.md`, `contracts/fixtures/candidates.option_candidate.r1.json`
+Files: `contracts/datasets/candidates.option_candidate.r1.json`, `internal/contracts/gen/records.go`, `docs/contracts/datasets/candidates.option_candidate.md`, `contracts/fixtures/candidates.option_candidate.r1.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`
 Design: docs/design/settings-form.md#Interface (owner 2026-11-09; an interface change of the dataset of `option-candidates.md` entry 4, which is on main)
 Order: first; it shares no file with another entry of this design.
 Goal: one nullable integer column `settings_version` in the dataset r1, additive (no existing field changes, the primary key is unchanged), with the generated Go record and the document committed together; the fixture gains the field on one row and omits it on another.
