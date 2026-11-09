@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: owner answers 2026-11-09 (the four questions); the pull request approval is pending
 Date: 2026-11-09
-Revision: 4 (owner answers of 2026-11-09 applied; the call wiring split into issue 13, the held-call reader declared; revision 2 was 186019a)
+Revision: 5 (the Order of the five entries that share `.go-arch-lint.yml` is one serial chain, issue 6 names its migration number and its new role, counts refreshed at b0913fe, acceptance by grep and wc only; revision 4 was merged as 612, revision 2 was 186019a)
 
 Source: owner 2026-11-09: options trading comes first and is done completely before valuation; the owner types a buy price per company by hand for now (the automated valuation, pull request 607, is parked). Binding owner decisions: a put qualifies when strike minus premium is at most the buy price; gates plus annualized-yield order, no composite score; earnings dates and ex-dividend dates gate; an early-assignment and ex-dividend guard for short calls; the margin cushion and the assignment cash never go to Telegram; two IBKR accounts, alias A and B. Dispatcher direction: puts first, they do not wait for the dividend chain; the option side must be usable soon.
 Read on main at 4a73feb: `AGENTS.md`, `docs/design/modules.md`, `docs/design/ease-v2.md`, `docs/design/report-page-producer.md`, `docs/design/option-jobs.md`, `docs/design/option-pages-v22.md`, `contracts/datasets/obs.option_eod.r1.json`, `internal/jobs/api.go`, `internal/jobs/optioneod/{job.toml,select.go}`, `internal/store/api.go`, `internal/compute/api.go`, `arch.toml`, `contracts/proto/ibkr/v1`. On branches in review: `docs/design/event-sources.md` (606), `docs/design/account-data.md` (561), `docs/design/valuation.md` (607, only its `watch.toml` lines).
@@ -72,16 +72,16 @@ New directories: `internal/compute/optioncand`, `internal/jobs/optioncandidates`
 | 3 | compute-put-candidates | compute | after 2 |
 | 4 | candidate-dataset (interface) | contracts | after 561 `account-proto`, 606 `earnings-datasets` |
 | 5 | candidate-store-api (interface) | store | after 4, 561 `account-store-api`, 606 `earnings-store` |
-| 6 | candidate-store-impl | store, plus repo (licensed pair) | after 5, 561 `account-store-migration` and `account-store-impl`, 606 `earnings-store` |
-| 7 | candidates-job-puts (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 3, 6, 561 `account-job`, 606 `earnings-job` |
-| 8 | candidate-text | pages, plus repo (licensed pair) | after 5 |
+| 6 | candidate-store-impl | store, plus repo (licensed pair) | after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store` |
+| 7 | candidates-job-puts (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job` |
+| 8 | candidate-text | pages, plus repo (licensed pair) | after 5, 2, 6, 7 |
 | 9 | option-eod-held-calls | jobs | after 1, 561 `account-store-impl` |
 | 10 | compute-call-candidates | compute | after 3 |
-| 11 | candidates-job-calls (interface and implementation) | jobs, plus repo (licensed pair) | after 7, 9, 10, 606 `dividend-store` and `dividend-job` |
+| 11 | candidates-job-calls (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job` |
 | 12 | candidates-wire | ot | after 7, 8, 606 `watch-loader-earnings-wire`, 561 `account-wire` |
-| 13 | candidates-wire-calls | ot | after 11, 12, 9, 606 `dividend-wire`, 561 `account-wire` |
+| 13 | candidates-wire-calls | ot | after 9, 11, 12, 606 `dividend-wire`, 561 `account-wire` |
 
-Puts are complete at issue 12 without 9 to 11 and 13; the owner sees puts in `ot candidates` as soon as 1 to 8 and 12 have merged.
+The five entries that edit `.go-arch-lint.yml` (2, 6, 7, 8, 11) are one serial chain in that order, each naming every earlier one of the five; every pair of entries that share any file names each other. Puts are complete at issue 12 without 9 to 11 and 13; the owner sees puts in `ot candidates` as soon as 1 to 8 and 12 have merged.
 
 ## Interface
 
@@ -99,175 +99,177 @@ Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a f
 
 Module: jobs. Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioneod/job.toml`, `internal/jobs/optioneod/select.go`, `internal/jobs/optioneod/select_test.go`, `internal/jobs/optioneod/manifest.go`, `internal/jobs/optioneod/plan.go`, `internal/jobs/optioneod/plan_test.go`, `internal/jobs/optioneod/run.go`, `internal/jobs/optioneod/run_test.go`, `internal/jobs/optioneod/watch.go`, `internal/jobs/optioneod/watch_test.go`, `docs/contracts/jobs.md`
-Design: docs/design/option-candidates.md#decisions (Decision 10)
-Order: after 606 `earnings-job` (it declares `WatchEntry` with `BuyPrice` and `SalePrice` in the same `api.go`, `api_test.go`, `jobs.md`) and 561 `account-store-api` (the `store.AccountReader` named by `NewOptionEodHeldFunc`).
+Design: docs/design/option-candidates.md#Decisions (Decision 10)
+Order: after 606 `earnings-job`, 561 `account-store-api`; 606 `earnings-job` declares `WatchEntry` with `BuyPrice` and `SalePrice` in the same `api.go`, `api_test.go`, `jobs.md`, and 561 `account-store-api` declares the `store.AccountReader` that `NewOptionEodHeldFunc` names.
 Goal: `optioneod.NewWithWatch` (the type `NewOptionEodWatchFunc`) takes the underlyings from the `WatchEntry` list (US stock entries only); expiries are those with DTE in `min_dte..max_dte`; the strikes of an entry with a `BuyPrice` run from `0.80 x BuyPrice` to `max(BuyPrice x 1.05, spot)`, at most `max_strikes`; an entry without one keeps the 10 percent band. It also declares `NewOptionEodHeldFunc` (declaration only; issue 9 implements it). `optioneod.New` and `NewOptionEodFunc` are unchanged and the manifest without the new keys behaves as today, byte for byte.
 Acceptance:
-1. `go test ./internal/jobs/optioneod -race -count=1` passes with `TestWatchUnderlyingsUSOnly`, `TestDTEWindowSelectsMonthlies`, `TestNoWindowKeepsNearestExpiries`, `TestStrikeRangeFromBuyPrice`, `TestNoBuyPriceKeepsBand`, `TestMaxStrikesCap` each present once (`grep -c` of each name is 1); `TestStrikeRangeFromBuyPrice` has buy price 100, spot 130, strikes spaced 5 from 50 to 150 and requires the 11 strikes 80 to 130 only; `TestMaxStrikesCap` has the same prices with strikes spaced 1 (51 in range) and requires exactly the 24 strikes 88 to 111.
+1. `grep -rhE "^func (TestWatchUnderlyingsUSOnly|TestDTEWindowSelectsMonthlies|TestNoWindowKeepsNearestExpiries|TestStrikeRangeFromBuyPrice|TestNoBuyPriceKeepsBand|TestMaxStrikesCap)\(" internal/jobs/optioneod | wc -l` prints 6 (the six tests are new); `TestStrikeRangeFromBuyPrice` has buy price 100, spot 130, strikes spaced 5 from 50 to 150 and requires the 11 strikes 80 to 130 only; `TestMaxStrikesCap` has the same prices with strikes spaced 1 (51 in range) and requires exactly the 24 strikes 88 to 111.
 2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "NewOptionEodWatchFunc\|NewOptionEodHeldFunc" internal/jobs/api.go` prints 2.
-3. `grep -c "min_dte\|max_dte\|max_strikes" docs/contracts/jobs.md` is at least 3; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (68 and 467 on main).
-Checked by CI: `go test ./internal/jobs/...`, go-arch-lint. Whether the gateway returns the monthlies and the deeper strikes, and whether the run fits `budget_minutes`, is not checkable offline; the first run is read with `ot candidates`.
+3. `grep -c "min_dte" docs/contracts/jobs.md` is at least 1 and `grep -c "max_dte" docs/contracts/jobs.md` is at least 1 (0 and 0 on main); `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; each new file is under 600 lines; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (76 and 520 on main).
+Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` with the six new tests, `go test ./internal/jobs/...`, go-arch-lint. Whether the gateway returns the monthlies and the deeper strikes, and whether the run fits `budget_minutes`, is not checkable offline; the first run is read with `ot candidates`.
 
 ### 2 candidate-compute-interface (interface)
 
 Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/compute/api.go`, `internal/compute/api_test.go`, `docs/contracts/compute.md`, `internal/compute/optioncand/doc.go`, `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#interface
-Order: first.
+Design: docs/design/option-candidates.md#Interface
+Order: first; it opens the `.go-arch-lint.yml` chain.
 Goal: the compute types of `## Interface` with doc comments for each gate word and reason code, and a paragraph of `docs/contracts/compute.md` that fixes the promises: exact arithmetic, the float-to-decimal step, `DGS3MO` is percent, unknown is not a pass, only `ok` rows ranked, yield and break-even formulas. `CandidateInput` carries the run day, the chain day and the session-day list, so the session ages and `chain_fresh` of issue 3 need no interface change. The contract test uses a fake `OptionCandidates` and a caller that builds the session-day list and checks the order of the gate results and that a blocked row has no rank.
 Acceptance:
 1. `grep -c "OptionCandidates\|CandidateInput\|CandidateParams\|GateResult" internal/compute/api.go` is at least 4; `git diff $(git merge-base HEAD origin/main) -- internal/compute/api.go | grep '^-' | grep -vc '^---'` prints 0.
-2. `go test ./internal/compute -race -count=1` passes; `grep -c "time.Sleep\|time.Now()" internal/compute/api_test.go` prints 0; `wc -l < internal/compute/api_test.go` prints less than 800 (464 on main).
+2. `grep -c "^func TestOptionCandidatesContract" internal/compute/api_test.go` prints 1 (new); `grep -c "time.Sleep\|time.Now()" internal/compute/api_test.go` prints 0; `wc -l < internal/compute/api_test.go` prints less than 800 (464 on main).
 3. `grep -c "annualized\|break-even\|percent" docs/contracts/compute.md` is at least 3; `go list -deps ./internal/compute | grep -c "internal/compute/optioncand"` prints 0.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the Files line.
-Checked by CI: ci-go, `go run ./scripts/arch --check` (prints `arch: ok`), `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`.
+Checked by CI: `go test ./internal/compute -race -count=1` with the new `TestOptionCandidatesContract`, ci-go, `go run ./scripts/arch --check` (prints `arch: ok`), `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`.
 
 ### 3 compute-put-candidates
 
 Module: compute. Size: L.
 Files: `internal/compute/optioncand/optioncand.go`, `internal/compute/optioncand/put.go`, `internal/compute/optioncand/events.go`, `internal/compute/optioncand/rank.go`, `internal/compute/optioncand/exact.go`, `internal/compute/optioncand/put_test.go`, `internal/compute/optioncand/events_test.go`, `internal/compute/optioncand/rank_test.go`, `internal/compute/optioncand/exact_test.go`, `internal/compute/optioncand/purity_test.go`, `internal/compute/optioncand/testdata/`
-Design: docs/design/option-candidates.md#decisions (Decisions 4 to 8)
+Design: docs/design/option-candidates.md#Decisions (Decisions 4 to 8)
 Order: after 2.
 Goal: `New()` returns an `OptionCandidates` that applies, for `short_put`, the gates of Decision 7 in order, the status rule of Decision 5 and the ranking of Decision 8 on `big.Rat`.
 Acceptance:
-1. `grep -rhE "^func (TestBuyPriceBoundary|TestNoBuyPriceBlocks|TestQuoteGate|TestEarningsListedInsideBlocks|TestEarningsAfterExpiryMarks|TestEarningsUnknownBlocks|TestEarningsAbsentAfterRecentReport|TestEventAgeInSessions|TestStaleChain|TestFundingPerAlias|TestNoFxIsUnknown|TestCashRatePercent|TestUnknownIsNotPass|TestRankByYield|TestRankTieOrder|TestBlockedHasNoRank|TestDeterministic|TestNoFloatNoClockNoIO)\(" internal/compute/optioncand | wc -l` prints 18, and `go test ./internal/compute/optioncand -race -count=1` passes.
+1. `grep -rhE "^func (TestBuyPriceBoundary|TestNoBuyPriceBlocks|TestQuoteGate|TestEarningsListedInsideBlocks|TestEarningsAfterExpiryMarks|TestEarningsUnknownBlocks|TestEarningsAbsentAfterRecentReport|TestEventAgeInSessions|TestStaleChain|TestFundingPerAlias|TestNoFxIsUnknown|TestCashRatePercent|TestUnknownIsNotPass|TestRankByYield|TestRankTieOrder|TestBlockedHasNoRank|TestDeterministic|TestNoFloatNoClockNoIO)\(" internal/compute/optioncand | wc -l` prints 18 (the 18 tests are new).
 2. `TestBuyPriceBoundary`: strike 100, bid "2.00", buy price "98.00" passes, bid "1.99" blocks. `TestCashRatePercent`: a rate text "4.20" compares as 0.042 (a yield 0.05 passes, 0.04 blocks). `TestEventAgeInSessions`: a row dated Friday is fresh on Monday and a row from Wednesday is stale on the next Monday, with a session-day list in the input and no clock. `TestEarningsAbsentAfterRecentReport`: `absent` with a `listed` date R 40 days back and an expiry 15 days ahead (15 < 60 - 40) passes with the mark `earnings_beyond_horizon`; with an expiry 30 days ahead (30 is not below 20) or with no earlier date it is `unknown`.
 3. `TestNoFloatNoClockNoIO` parses the package files with `go/parser` and fails on any identifier `float32` or `float64`, any import of `os`, `net/http`, `database/sql`, `time` calls `Now` or `Sleep`, or an import of `internal/store`, `internal/notify` or `internal/jobs` (the AST ignores comments, so a word in a comment cannot fail it).
 4. `TestDeterministic` runs the same input shuffled 20 times (fixed seed) and requires identical output; `grep -c "t.Parallel()"` of each test file is at least its count of `^func Test`.
 5. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line (`testdata/` counts as one); each new file is under 600 lines.
-Checked by CI: ci-go, golangci-lint, go-arch-lint. Whether the advisor-set limits suit the owner is decided by reading the first stored day.
+Checked by CI: `go test ./internal/compute/optioncand -race -count=1`, ci-go, golangci-lint, go-arch-lint. Whether the advisor-set limits suit the owner is decided by reading the first stored day.
 
 ### 4 candidate-dataset (interface)
 
 Module: contracts. Size: M.
 Files: `contracts/datasets/candidates.option_candidate.r1.json`, `contracts/generate.sh`, `internal/contracts/gen/records.go`, `internal/contracts/api.go`, `docs/contracts/datasets/candidates.option_candidate.md`, `contracts/fixtures/candidates.option_candidate.r1.json`, `contracts/fixtures/MANIFEST.synthetic-v1.json`, `internal/contracts/schema_test.go`
-Design: docs/design/option-candidates.md#interface
-Order: after 561 `account-proto` and 606 `earnings-datasets` (the same `generate.sh`, `records.go`).
+Design: docs/design/option-candidates.md#Interface
+Order: after 561 `account-proto`, 606 `earnings-datasets`; they share `generate.sh` and `records.go`.
 Goal: the dataset of the Interface section, with the generated Go record and its document committed together; the fixture is marked synthetic.
 Acceptance:
 1. `test -f contracts/datasets/candidates.option_candidate.r1.json`, and `bash contracts/generate.sh && git diff --exit-code internal/contracts/gen` leaves no change.
-2. `go test ./internal/contracts -race -count=1` passes with the fixture validated; `grep -c "candidates.option_candidate" contracts/fixtures/MANIFEST.synthetic-v1.json` is at least 1.
+2. `grep -c "candidates.option_candidate" contracts/fixtures/MANIFEST.synthetic-v1.json internal/contracts/schema_test.go` prints at least 1 for each file (the fixture is validated by `TestDatasetFixtures` once the name is in its list).
 3. `grep -c '"run_id"\|"rule_version"' contracts/datasets/candidates.option_candidate.r1.json` is at least 2, and its `x-primary-key` equals `["session_day","run_id","kind","instrument_id","alias"]`.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
-Checked by CI: the generate check of `checks.yml`; the pull request body carries `Contracts: changed`.
+Checked by CI: `go test ./internal/contracts -race -count=1`, the generate check of `checks.yml`; the pull request body carries `Contracts: changed`.
 
 ### 5 candidate-store-api (interface)
 
 Module: store. Size: S.
 Files: `internal/store/api.go`, `internal/store/api_candidate_test.go`, `docs/contracts/store.md`
-Design: docs/design/option-candidates.md#interface
-Order: after 4, 561 `account-store-api`, 606 `earnings-store` (the same `api.go`, `store.md`).
+Design: docs/design/option-candidates.md#Interface
+Order: after 4, 561 `account-store-api`, 606 `earnings-store`; they share `api.go` and `store.md`.
 Goal: `CandidateWriter`, `CandidateReader`, `store.Candidate`, `DSNEnvCandidate`, declarations only. `internal/store/api_test.go` is 800 lines and is not edited; the contract test is the new file `internal/store/api_candidate_test.go`: a fake on one side, a caller that reads a day written by two runs and sees only the newer run, ranked rows first.
 Acceptance:
 1. `grep -c "type CandidateWriter interface\|type CandidateReader interface" internal/store/api.go` prints 2; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "database/sql\|pgx" internal/store/api.go` equals its count on main; `wc -l < internal/store/api.go` prints less than 800 (490 on main, before the 561 and 606 additions).
-2. `go test ./internal/store -run TestCandidateContract -race -count=1` passes; the diff does not list `internal/store/api_test.go`.
+2. `grep -c "^func TestCandidateContract" internal/store/api_candidate_test.go` prints 1 (new); `git diff --name-only $(git merge-base HEAD origin/main) | grep -c '^internal/store/api_test.go$'` prints 0.
 3. `grep -c "OT_PG_DSN_CANDIDATE\|CandidateReader" docs/contracts/store.md` is at least 2.
-Checked by CI: ci-go, go-arch-lint.
+Checked by CI: `go test ./internal/store -run TestCandidateContract -race -count=1`, ci-go, go-arch-lint.
 
 ### 6 candidate-store-impl
 
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
-Files: `migrations/NNNN_candidates.sql` (NNNN the next free number at cut time), `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`), `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#decisions (Decisions 1, 9, 13)
-Order: after 5; after 561 `account-store-migration` and `account-store-impl`, 606 `earnings-store` (same `setup.go`, the migration number and `.go-arch-lint.yml`: this entry takes the next free number at cut time and rebases on whichever lands first). It does not wait for the dividend chain.
-Goal: a table `candidates.option_candidate` with the dataset key, insert-only, the role `ot_w_candidate` (INSERT and SELECT) and `SELECT` for the pages role; `candidate.Open(ctx, dsn)` implements both interfaces; the reader returns the newest run of the day.
+Second opinion: a new database role, `ot_w_candidate`; it is INSERT and SELECT on the table and SELECT on the `rd` view for the pages role, nothing else, no UPDATE, DELETE or TRUNCATE.
+Files: `migrations/NNNN_candidates.sql` (NNNN the next free number at cut time, 0018 today: main holds up to 0016 and 561 `account-store-migration` claims 0017), `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`), `.go-arch-lint.yml`
+Design: docs/design/option-candidates.md#Decisions (Decisions 1, 9, 13)
+Order: after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store`; they share `setup.go`, the migration number and `.go-arch-lint.yml` (this entry takes the next free number at cut time and rebases on whichever lands first). It does not wait for the dividend chain.
+Goal: a table `candidates.option_candidate` with the dataset key, insert-only, a view `rd.option_candidate_r1` over it, the role `ot_w_candidate` (INSERT and SELECT on the table, created in `internal/store/setup/setup.go` with the line `OT_PG_DSN_CANDIDATE`, as `ot_w_alerts` is) and `SELECT` on the view `rd.option_candidate_r1` for the pages role `ot_ro_pages` (the pages read the view and nothing else, as `0006_option_eod.sql` does); `candidate.Open(ctx, dsn)` implements both interfaces; the reader returns the newest run of the day.
 Acceptance:
 1. `grep -c "CREATE TABLE candidates.option_candidate\|ot_w_candidate" migrations/NNNN_candidates.sql` is at least 2 and `grep -ci "GRANT.*\(UPDATE\|DELETE\)" migrations/NNNN_candidates.sql` prints 0.
-2. `go test ./internal/store/candidate ./internal/store/setup -race -count=1` passes without a database (query text, row mapping, an empty day gives an empty slice, a zero day is an error, two runs give the newer one).
+   1a. `grep -c "CREATE VIEW rd.option_candidate_r1" migrations/NNNN_candidates.sql` prints 1; `grep -c "GRANT SELECT ON rd.option_candidate_r1 TO ot_ro_pages" migrations/NNNN_candidates.sql` prints 1; `grep -c "GRANT.*candidates.option_candidate TO" migrations/NNNN_candidates.sql` prints 1 (only `ot_w_candidate` touches the table, `ot_runner` gets nothing); `grep -rl "store/candidate" internal/notify` prints nothing.
+2. `grep -rhE "^func (TestInsertQueryText|TestRowMapping|TestEmptyDayEmptySlice|TestZeroDayIsError|TestTwoRunsNewerWins|TestCandidateRoleSpec)\(" internal/store/candidate internal/store/setup | wc -l` prints 6 (new; the first five need no database: query text, row mapping, an empty day gives an empty slice, a zero day is an error, two runs give the newer one; `TestCandidateRoleSpec` pins role `ot_w_candidate` and the line `OT_PG_DSN_CANDIDATE` in the role list, as the alerts role is pinned).
 3. `grep -rl "os.Getenv" internal/store/candidate` prints nothing (the DSN is passed in); `wc -l < internal/store/setup/setup.go` prints less than 800 (252 on main).
 4. `grep -c "^func TestCandidateRoundTrip\|^func TestCandidateNewestRunWins" internal/store/candidate/store_pg_test.go` prints 2 and the file starts with `//go:build pg`; the diff lists no path outside the Files line.
-Checked by CI: the two `pg` tests run only in GitHub CI; `go run ./scripts/arch --check`.
+Checked by CI: `go test ./internal/store/candidate ./internal/store/setup -race -count=1`; the two `pg` tests run only in GitHub CI; `go run ./scripts/arch --check`.
 
 ### 7 candidates-job-puts (interface and implementation)
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#decisions (Decisions 1, 4, 5, 9, 13, 15)
-Order: after 1, 3, 6, 561 `account-job` and 606 `earnings-job` (they create job packages and regenerate `.go-arch-lint.yml`; this entry rebases on the last of them).
+Design: docs/design/option-candidates.md#Decisions (Decisions 1, 4, 5, 9, 13, 15)
+Order: after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job`; they create job packages and regenerate `.go-arch-lint.yml`, and this entry rebases on the last of them.
 Goal: `optioncandidates.New` (the type `NewOptionCandidatesJobFunc`) runs at `session_close` plus 30 minutes; for each watched US underlying it reads the newest chain day, the terms (in chunks of 500 ids), the earnings rows, the newest account captures per alias and `DGS3MO`, converts floats to decimal text (Decision 4), calls `Evaluate` for `short_put` and writes the rows under a new run id. A nil reader gives `unknown` gates, not an error; a store error is a failed run with a named code. The job holds no dividend reader.
 Acceptance:
-1. `go test ./internal/jobs/optioncandidates -race -count=1` passes with `TestNilEarningsIsUnknown`, `TestRerunIsNewRun`, `TestOnlyUSEntries`, `TestAliasesAandBAreSeparate`, `TestStoreErrorFailsRun`, `TestScheduleIsCloseAfterEod`, `TestSessionDaysSupplied`, `TestTermsChunkedAt500`, `TestStaleChainDay`, `TestJPEntryNamedNotSilent` each present once.
-2. `TestFloatToDecimal` in `convert_test.go` feeds 1.99, 0.1, 100.00049, 100.00004 and 1e-7 and requires the texts "1.99", "0.1", "100.0005", "100" and "0" (shortest round-trip text, then half-even to 4 places, trailing zeros dropped); the test for `DGS3MO` "4.20" requires the ratio 0.042.
+1. `grep -rhE "^func (TestNilEarningsIsUnknown|TestRerunIsNewRun|TestOnlyUSEntries|TestAliasesAandBAreSeparate|TestStoreErrorFailsRun|TestScheduleIsCloseAfterEod|TestSessionDaysSupplied|TestTermsChunkedAt500|TestStaleChainDay|TestJPEntryNamedNotSilent|TestFloatToDecimal|TestRateRatio)\(" internal/jobs/optioncandidates | wc -l` prints 12 (the twelve tests are new).
+2. `TestFloatToDecimal` in `convert_test.go` feeds 1.99, 0.1, 100.00049, 100.00004 and 1e-7 and requires the texts "1.99", "0.1", "100.0005", "100" and "0" (shortest round-trip text, then half-even to 4 places, trailing zeros dropped); `TestRateRatio` for `DGS3MO` "4.20" requires the ratio 0.042.
 3. `grep -rl "internal/notify\|telegram" internal/jobs/optioncandidates` prints nothing; `go list -deps ./internal/jobs/optioncandidates | grep -c "internal/notify"` prints 0; `grep -rc "Dividend" internal/jobs/optioncandidates/job.go` prints 0.
 4. `grep -c "min_dte\|max_dte\|min_bid_size\|max_spread\|min_open_interest\|max_rate_age_days\|max_event_age_sessions\|min_report_gap_days" internal/jobs/optioncandidates/job.toml` is 8.
-5. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; the diff lists no path outside the Files line; each new file is under 600 lines; `wc -l < internal/jobs/api.go` and `wc -l < internal/jobs/api_test.go` print less than 800 (68 and 467 on main).
-Checked by CI: ci-go, go-arch-lint, `go run ./scripts/arch --check`.
+5. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; the diff lists no path outside the Files line; each new file is under 600 lines; `wc -l < internal/jobs/api.go` and `wc -l < internal/jobs/api_test.go` print less than 800 (76 and 520 on main).
+Checked by CI: `go test ./internal/jobs/optioncandidates -race -count=1`, ci-go, go-arch-lint, `go run ./scripts/arch --check`.
 
 ### 8 candidate-text
 
 Module: pages, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`, `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#interface
-Order: after 5.
+Design: docs/design/option-candidates.md#Interface
+Order: after 5, 2, 6, 7; this is the `.go-arch-lint.yml` chain.
 Goal: `Format(rows, all)` returns the plain text of the stored rows in the stored order: for `ok` rows company, kind, alias, expiry, strike, bid, annualized yield, break-even and marks; with `all` the blocked and unknown rows with their gate reasons; a line per JP entry is not its job (the command adds it). No sort, no arithmetic.
 Acceptance:
-1. `go test ./internal/pages/candidate_text -race -count=1` passes with `TestFormatOrderKept`, `TestFormatAllShowsReasons`, `TestFormatEmpty` each present once.
+1. `grep -rhE "^func (TestFormatOrderKept|TestFormatAllShowsReasons|TestFormatEmpty)\(" internal/pages/candidate_text | wc -l` prints 3 (new).
 2. `grep -rc "sort\.\|big\.\|float64" internal/pages/candidate_text/format.go` prints 0; `grep -c "candidate_text" docs/contracts/pages.md` is at least 1.
 3. The diff lists no path outside the Files line.
-Checked by CI: ci-go, go-arch-lint.
+Checked by CI: `go test ./internal/pages/candidate_text -race -count=1`, ci-go, go-arch-lint.
 
 ### 9 option-eod-held-calls
 
 Module: jobs. Size: M.
 Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/held_test.go`, `internal/jobs/optioneod/run.go`, `internal/jobs/optioneod/run_test.go`, `internal/jobs/optioneod/plan.go`, `internal/jobs/optioneod/plan_test.go`
-Design: docs/design/option-candidates.md#decisions (Decisions 10 and 12)
-Order: after 1 (same files), 561 `account-store-impl`.
+Design: docs/design/option-candidates.md#Decisions (Decisions 10 and 12)
+Order: after 1, 561 `account-store-impl`; it shares `run.go` and `plan.go` with 1.
 Goal: `optioneod.NewWithHeld` (the type `NewOptionEodHeldFunc`, declared by issue 1) takes a `store.AccountReader` (a nil reader behaves as `NewWithWatch`) and adds the expiry and strike of every open short call of a watched underlying, from the newest `account.position` capture, to the day's contract list whatever its DTE.
 Acceptance:
-1. `go test ./internal/jobs/optioneod -race -count=1` passes with `TestHeldCallAddedAtTenDTE`, `TestHeldCallDeduplicated`, `TestNilAccountReaderUnchanged` each present once.
+1. `grep -rhE "^func (TestHeldCallAddedAtTenDTE|TestHeldCallDeduplicated|TestNilAccountReaderUnchanged)\(" internal/jobs/optioneod | wc -l` prints 3 (new).
 2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep -c .` prints 0; the diff lists no path outside the Files line.
-Checked by CI: ci-go.
+Checked by CI: `go test ./internal/jobs/optioneod -race -count=1`, ci-go.
 
 ### 10 compute-call-candidates
 
 Module: compute. Size: M.
 Files: `internal/compute/optioncand/call.go`, `internal/compute/optioncand/guard.go`, `internal/compute/optioncand/call_test.go`, `internal/compute/optioncand/guard_test.go`, `internal/compute/optioncand/testdata/`
-Design: docs/design/option-candidates.md#decisions (Decisions 11 and 12)
+Design: docs/design/option-candidates.md#Decisions (Decisions 11 and 12)
 Order: after 3.
 Goal: `Evaluate` handles `covered_call` (gates of Decision 11) and `held_call_guard` (Decision 12), same status rule and ranking.
 Acceptance:
-1. `grep -rhE "^func (TestCallFreeShares|TestCallStrikeFloorAvgCost|TestCallStrikeFloorSalePrice|TestGuardExtrinsicBelowDividend|TestGuardNoValuePasses|TestGuardUnknownStaleRow|TestGuardHeldCall|TestCallOneRowPerAlias)\(" internal/compute/optioncand | wc -l` prints 8, and `go test ./internal/compute/optioncand -race -count=1` passes (including `TestNoFloatNoClockNoIO` of issue 3).
+1. `grep -rhE "^func (TestCallFreeShares|TestCallStrikeFloorAvgCost|TestCallStrikeFloorSalePrice|TestGuardExtrinsicBelowDividend|TestGuardNoValuePasses|TestGuardUnknownStaleRow|TestGuardHeldCall|TestCallOneRowPerAlias)\(" internal/compute/optioncand | wc -l` prints 8 (the eight tests are new).
 2. `TestGuardExtrinsicBelowDividend`: spot "110", strike "100", bid "10.40", dividend "0.50" gives extrinsic 0.40 and blocks; bid "10.60" passes.
 3. The diff lists no path outside the Files line; each new file is under 600 lines.
-Checked by CI: ci-go, golangci-lint, go-arch-lint.
+Checked by CI: `go test ./internal/compute/optioncand -race -count=1` (it includes `TestNoFloatNoClockNoIO` of issue 3), ci-go, golangci-lint, go-arch-lint.
 
 ### 11 candidates-job-calls (interface and implementation)
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/calls_test.go`, `internal/jobs/optioncandidates/job.toml`, `docs/contracts/jobs.md`, `.go-arch-lint.yml`
-Design: docs/design/option-candidates.md#interface
-Order: after 7 (same files), 9, 10, 606 `dividend-store` and `dividend-job`.
+Design: docs/design/option-candidates.md#Interface
+Order: after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job`; it shares `api.go`, `api_test.go`, `jobs.md` with 1, `job.toml` with 7 and `.go-arch-lint.yml` with 2, 6, 7, 8.
 Goal: `NewOptionCandidatesCallsFunc` adds the dividend reader and the call and guard kinds to the same run; `NewOptionCandidatesJobFunc` and puts behave as before; `div_guard_factor` joins `job.toml`.
 Acceptance:
-1. `go test ./internal/jobs/optioncandidates -race -count=1` passes with `TestCallsNeedDividendReader`, `TestPutsUnchangedByCalls`, `TestHeldCallGuardRows` each present once; `grep -c "div_guard_factor" internal/jobs/optioncandidates/job.toml` prints 1.
-2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -rl "internal/notify" internal/jobs/optioncandidates` prints nothing; the diff lists no path outside the Files line; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (68 and 467 on main); each new file is under 600 lines.
-Checked by CI: ci-go, go-arch-lint.
+1. `grep -rhE "^func (TestCallsNeedDividendReader|TestPutsUnchangedByCalls|TestHeldCallGuardRows)\(" internal/jobs/optioncandidates | wc -l` prints 3 (new); `grep -c "div_guard_factor" internal/jobs/optioncandidates/job.toml` prints 1.
+2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -rl "internal/notify" internal/jobs/optioncandidates` prints nothing; the diff lists no path outside the Files line; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (76 and 520 on main); each new file is under 600 lines.
+Checked by CI: `go test ./internal/jobs/optioncandidates -race -count=1`, ci-go, go-arch-lint.
 
 ### 12 candidates-wire
 
 Module: ot. Size: M.
 Files: `cmd/ot/candidates.go`, `cmd/ot/candidates_test.go`, `cmd/ot/runonce.go`, `cmd/ot/runonce_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/scheduler.go`, `cmd/ot/main.go`, `cmd/ot/env.go`, `docs/contracts/ot.md`
-Design: docs/design/option-candidates.md#decisions (Decision 9)
-Order: after 7, 8, 606 `watch-loader-earnings-wire`, 561 `account-wire` (the same `runonce.go`, `wire.go`, `env.go`).
-Goal: wiring only, for the puts. `option_candidates` registers in `run-once` after `option_eod`, `earnings_refresh` and `account_capture`, and in the scheduler; `option_eod` uses `NewWithWatch`; a missing `OT_PG_DSN_CANDIDATE` disables only this job with a named line; `ot candidates` opens the store, calls `candidate_text.Format` and prints it, with one line per JP entry of the watch list ("no option route: see option-candidates-jp").
+Design: docs/design/option-candidates.md#Decisions (Decision 9)
+Order: after 7, 8, 606 `watch-loader-earnings-wire`, 561 `account-wire`; they share `runonce.go`, `wire.go` and `env.go`.
+Goal: wiring only, for the puts. `option_candidates` registers in `run-once` after `option_eod`, `earnings_refresh` and `account_capture`, and in the scheduler; `option_eod` uses `NewWithWatch`; a missing `OT_PG_DSN_CANDIDATE` disables only this job with a named line; `ot candidates` opens the store, calls `candidate_text.Format` and prints it, with one line per JP entry of the watch list ("no option route: see option-candidates-jp"). `ot candidates` reads through the pages DSN (`OT_PG_DSN_PAGES`, role `ot_ro_pages`, the view `rd.option_candidate_r1`), not through `OT_PG_DSN_CANDIDATE`; the job writes through `OT_PG_DSN_CANDIDATE`.
 Acceptance:
-1. `go test ./cmd/ot -race -count=1` passes with `TestCandidatesCommandPrints`, `TestCandidatesRegisteredAfterInputs`, `TestMissingCandidateDSNDisablesOnlyIt`, `TestCandidatesNamesJPEntry` each present once.
+1. `grep -rhE "^func (TestCandidatesCommandPrints|TestCandidatesRegisteredAfterInputs|TestMissingCandidateDSNDisablesOnlyIt|TestCandidatesNamesJPEntry)\(" cmd/ot | wc -l` prints 4 (new).
 2. `grep -c "OT_PG_DSN_CANDIDATE\|ot candidates" docs/contracts/ot.md` is at least 2; `grep -c "sort\.\|big\.\|float64" cmd/ot/candidates.go` prints 0; `grep -c "notify\|telegram" cmd/ot/candidates.go` prints 0.
-3. The diff lists no path outside the Files line; each new file is under 600 lines; `wc -l cmd/ot/wire.go cmd/ot/runonce.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (209 and 432 on main).
-Checked by CI: `go test ./cmd/ot`, golangci-lint. The owner runs `ot migrate`, `ot setup pg` and adds `OT_PG_DSN_CANDIDATE` to `.env` before the first run.
+3. The diff lists no path outside the Files line; each new file is under 600 lines; `wc -l cmd/ot/wire.go cmd/ot/runonce.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (233 and 432 on main).
+Checked by CI: `go test ./cmd/ot -race -count=1`, golangci-lint. The owner runs `ot migrate`, `ot setup pg` and adds `OT_PG_DSN_CANDIDATE` to `.env` before the first run.
 
 ### 13 candidates-wire-calls
 
 Module: ot. Size: S.
 Files: `cmd/ot/runonce.go`, `cmd/ot/runonce_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `docs/contracts/ot.md`
-Design: docs/design/option-candidates.md#decisions (Decisions 11 and 12)
-Order: after 11, 12 (same files), 9, 606 `dividend-wire`, 561 `account-wire`.
+Design: docs/design/option-candidates.md#Decisions (Decisions 11 and 12)
+Order: after 9, 11, 12, 606 `dividend-wire`, 561 `account-wire`; it shares `runonce.go`, `wire.go` and `ot.md` with 12.
 Goal: wiring only, for the calls and the guard. `option_eod` uses `NewWithHeld` with the account reader, so the held short calls are captured; `option_candidates` uses `NewOptionCandidatesCallsFunc` with the dividend reader of 606; a missing events DSN (606 `OT_PG_DSN_EVENTS`) leaves the puts job as issue 12 wired it and names the line.
 Acceptance:
-1. `go test ./cmd/ot -race -count=1` passes with `TestOptionEodUsesHeldReader`, `TestCallsJobUsesDividendReader`, `TestMissingEventsDSNKeepsPutsJob` each present once.
-2. `grep -c "NewWithHeld\|NewOptionCandidatesCallsFunc" cmd/ot/wire.go` is at least 2; `grep -c "held" docs/contracts/ot.md` is at least 1.
-3. The diff lists no path outside the Files line; `wc -l cmd/ot/wire.go cmd/ot/runonce.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (209 and 432 on main).
-Checked by CI: `go test ./cmd/ot`, golangci-lint.
+1. `grep -rhE "^func (TestOptionEodUsesHeldReader|TestCallsJobUsesDividendReader|TestMissingEventsDSNKeepsPutsJob)\(" cmd/ot | wc -l` prints 3 (new).
+2. `grep -c "NewWithHeld\|NewOptionCandidatesCallsFunc" cmd/ot/wire.go` is at least 2; `grep -c "NewWithHeld" docs/contracts/ot.md` is at least 1 (0 on main).
+3. The diff lists no path outside the Files line; `wc -l cmd/ot/wire.go cmd/ot/runonce.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (233 and 432 on main).
+Checked by CI: `go test ./cmd/ot -race -count=1`, golangci-lint.
 
 ## Left out
 
