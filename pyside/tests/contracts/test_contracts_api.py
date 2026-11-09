@@ -287,3 +287,17 @@ def test_reference_service_dividends_stream() -> None:
     assert answers[0].HasField("past_12m") is False
     assert answers[1].status == DividendStatus.Value("DIVIDEND_STATUS_NO_VALUE")
     assert answers[1].HasField("next_ex_date") is False
+
+
+def test_account_servicer_executions_stub() -> None:
+    from optdesk.ibkr.transport import AccountServicer
+
+    servicer = AccountServicer(MagicMock(), "B", ())
+
+    async def run() -> ExecutionsResponse:
+        return await servicer.Executions(ExecutionsRequest(), MagicMock())
+
+    response = asyncio.run(run())
+    assert response.account == "B"
+    assert response.collected is False
+    assert len(response.executions) == 0
