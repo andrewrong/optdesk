@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
-Revision: 5 (advisor amendments: rd views for pages, transport.py back in account-pyside-executions, the Contracts form; revision 4 was the Order cells name issues, the table follows the section order, Files equal the repository; revision 3 was the answer to the design review of 90176f9; revision 2 was after the adversarial pass, `account-adversarial.md` in the scratchpad of the review)
+Revision: 6 (revision 6 writes the Order cells as entry numbers so that the shared-file pair check reads them; advisor amendments: rd views for pages, transport.py back in account-pyside-executions, the Contracts form; revision 4 was the Order cells name issues, the table follows the section order, Files equal the repository; revision 3 was the answer to the design review of 90176f9; revision 2 was after the adversarial pass, `account-adversarial.md` in the scratchpad of the review)
 Source: owner decisions of 2026-11-08, binding: (1) account data, all of it, before cut-over (a); (2) the margin cushion and the assignment cash are shown only on a page or as a local notice, never on Telegram (5 a; ADR 0010 stands for account data); (3) tracking is stage 1 (7 a). The advisor named the seller needs that are missing: an early-assignment and ex-dividend guard, cost basis and wheel, assignment cash by date per account, the margin cushion. Plan: `docs/design/alignment-v25.md` on `origin/design/alignment-v25` (rows `account job`, `Flex job`, `account collection with partial status`, `ot import`; "stage 2" of `docs/design/risk-alerts.md` Decision 12).
 Read on main at eb7321d: `AGENTS.md`, `docs/design/modules.md`, `broker.md`, `pyside-account-b.md`, `pyside-ibkr-transport.md`, `risk-alerts.md`, `store-week2.md`, `ot-collect.md`, `contracts/proto/ibkr/v1/account.proto`, `internal/broker/grpcbroker/account.go`, `pyside/src/optdesk/ibkr/accounts.py`, `migrations/0015_alerts.sql`, `internal/store/api.go`, `internal/jobs/quotesnapshot/`. option-trader (read-only): `src/option_trader/sources/ibkr/account_reader.py` (reqPositions, accountSummary, portfolio prices, orders) and `src/option_trader/private_book/executions.py` (executions and cash events come from a stored Flex report, not from the API). No credential, `.env` or service data was read.
 
@@ -91,7 +91,7 @@ Checked by CI: the generated-code check (`sh contracts/generate.sh` leaves no di
 ### account-guard-id
 
 - Module: pyside (owner-only path). Size: S. Depends on: none.
-- Order: any time; account-pyside-executions waits for it.
+- Order: any time; entry 3 (account-pyside-executions) waits for it.
 - Design: docs/design/account-data.md#Decisions (Decision 3; second-opinion case, owner merges)
 - Files: pyside/src/optdesk/ibkr/transport.py, pyside/tests/ibkr/test_guard.py
 
@@ -109,7 +109,7 @@ Checked by CI: the pyside workflow (`uv sync --locked`, ruff, mypy --strict, pyt
 ### account-pyside-executions
 
 - Module: pyside (owner-only path, owner merges: the Files include `transport.py`, which account-guard-id edits first, and `ibgateway.py`). Size: M. Depends on: account-proto and account-guard-id.
-- Order: after account-proto and account-guard-id.
+- Order: after 1, 2 (account-proto, account-guard-id).
 - Design: docs/design/account-data.md#Decisions (Decisions 2 and 3; second-opinion case)
 - Files: pyside/src/optdesk/ibkr/accounts.py, pyside/src/optdesk/ibkr/model.py, pyside/src/optdesk/ibkr/server.py, pyside/src/optdesk/ibkr/gateways.py, pyside/src/optdesk/ibkr/transport.py, pyside/src/optdesk/ibkr/ibgateway.py, pyside/tests/ibkr/test_executions.py, pyside/tests/ibkr/test_gateways.py
 
@@ -127,7 +127,7 @@ Checked by CI: the pyside workflow; the design verdict.
 ### account-broker-api
 
 - Module: broker. Size: S. Depends on: account-proto.
-- Order: after account-proto.
+- Order: after 1 (account-proto).
 - Design: docs/design/account-data.md#Interface (broker row; interface change of `internal/broker/api.go`)
 - Files: internal/broker/api.go, internal/broker/api_test.go, docs/contracts/broker.md
 
@@ -145,7 +145,7 @@ Checked by CI: ci-go; the design verdict.
 ### account-broker-impl
 
 - Module: broker. Size: M. Depends on: account-broker-api (the interface; account-proto comes with it).
-- Order: after account-broker-api.
+- Order: after 4 (account-broker-api).
 - Design: docs/design/account-data.md#Interface (broker row; implementation of the interface of account-broker-api)
 - Files: internal/broker/grpcbroker/account.go, internal/broker/grpcbroker/account_test.go, internal/broker/grpcbroker/convert.go, internal/broker/grpcbroker/convert_test.go
 
@@ -162,7 +162,7 @@ Checked by CI: ci-go; the design verdict.
 ### account-store-api
 
 - Module: store. Size: S. Depends on: account-proto (for the dataset names only).
-- Order: after account-proto.
+- Order: after 1 (account-proto).
 - Design: docs/design/account-data.md#Interface (store row; interface change of `internal/store/api.go`)
 - Files: internal/store/api.go, internal/store/account_api_test.go, docs/contracts/store.md
 
@@ -180,7 +180,7 @@ Checked by CI: ci-go; the design verdict.
 ### account-store-migration
 
 - Module: store. Size: M. Depends on: account-store-api.
-- Order: after account-store-api.
+- Order: after 6 (account-store-api).
 - Design: docs/design/account-data.md#Decisions (Decisions 5 and 6; second-opinion case)
 - Files: migrations/0017_account.sql, internal/store/setup/setup.go, internal/store/setup/setup_test.go, internal/store/setup/account_pg_test.go
 
@@ -199,7 +199,7 @@ Checked by CI: ci-go; the `pg` job in GitHub CI (`TestAccountMigration`: it appl
 ### account-store-impl
 
 - Module: store and repo (judged two-module entry: `.go-arch-lint.yml` is a repo path, regenerated by `go run ./scripts/arch`; precedent `risk-alerts.md` `alerts-store-interface`). Size: M. Depends on: account-store-migration.
-- Order: after account-store-migration. account-job follows it (both regenerate `.go-arch-lint.yml`).
+- Order: after 7 (account-store-migration). Entry 9 (account-job) follows it (both regenerate `.go-arch-lint.yml`).
 - Design: docs/design/account-data.md#Decisions (Decisions 5 and 10)
 - Files: internal/store/account/doc.go, internal/store/account/store.go, internal/store/account/read.go, internal/store/account/store_test.go, internal/store/account/store_pg_test.go, .go-arch-lint.yml
 
@@ -219,7 +219,7 @@ Checked by CI: ci-go; the `pg` job (`TestAccountStore`: write, rewrite the same 
 ### account-job
 
 - Module: jobs and repo (judged two-module entry: `.go-arch-lint.yml`, as above). Size: M. Depends on: account-broker-api, account-store-api and account-store-impl (the interfaces only for code: the job imports neither implementation; account-store-impl is a dependency only because both issues regenerate `.go-arch-lint.yml`; the implementations are wired in account-wire).
-- Order: after account-broker-api, account-store-api and account-store-impl (so that `.go-arch-lint.yml` is regenerated once on top of account-store-impl).
+- Order: after 4, 6, 8 (account-broker-api, account-store-api, account-store-impl; so that `.go-arch-lint.yml` is regenerated once on top of account-store-impl).
 - Design: docs/design/account-data.md#Decisions (Decisions 2 to 5, 7 and 8; second-opinion case: the new account access)
 - Files: internal/jobs/accountcapture/job.go, internal/jobs/accountcapture/job.toml, internal/jobs/accountcapture/schedule.go, internal/jobs/accountcapture/job_test.go, internal/jobs/accountcapture/schedule_test.go, .go-arch-lint.yml
 
@@ -237,7 +237,7 @@ Checked by CI: ci-go; the `arch.toml` check; the design verdict.
 ### account-wire
 
 - Module: ot. Size: S. Depends on: account-broker-impl, account-store-impl and account-job.
-- Order: after account-broker-impl, account-store-impl and account-job.
+- Order: after 5, 8, 9 (account-broker-impl, account-store-impl, account-job).
 - Design: docs/design/account-data.md#Decisions (Decision 8)
 - Files: cmd/ot/account.go, cmd/ot/account_test.go, cmd/ot/runonce.go, cmd/ot/wire.go, docs/contracts/ot.md
 
