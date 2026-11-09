@@ -35,11 +35,14 @@ func pageNamed(a *app, name string) (pages.Page, func(), error) {
 		}
 		return a.deps.macroPage(a.profile.Zone, buildIDOf(version), read), closeRead, nil
 	}
+	if name == candidatesName {
+		return candidatesPageNamed(context.Background(), a)
+	}
 	known := make([]string, 0, len(a.deps.pageList)+1)
 	for _, p := range a.deps.pageList {
 		known = append(known, p.Meta.Name)
 	}
-	known = append(known, macroPageName, reportName)
+	known = append(known, macroPageName, reportName, candidatesName)
 	return pages.Page{}, nil, fmt.Errorf("unknown page %q; known pages: %s", name, strings.Join(known, ", "))
 }
 

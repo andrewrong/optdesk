@@ -20,8 +20,8 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 61 {
-		t.Fatalf("deps has %d fields, want 61", v.NumField())
+	if v.NumField() != 63 {
+		t.Fatalf("deps has %d fields, want 63", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {
@@ -188,6 +188,21 @@ func TestComputeFiguresJobGetsEase(t *testing.T) {
 	}
 	if got == nil || got != d.computeEase {
 		t.Fatalf("job got ease %v, want the one of newDeps", got)
+	}
+}
+
+func TestOptionCandidatesPageWiresReader(t *testing.T) {
+	t.Parallel()
+	p := newDeps().optionCandidatesPage(time.UTC, "ot-page", "dev", "candidates", demoCandidates{})
+	if p.Meta.Name != "option_candidates_page" || p.Meta.Schema != "page.option_candidates_page.v1" {
+		t.Fatalf("meta %+v", p.Meta)
+	}
+	b, err := p.Build(t.Context(), nil, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"scope":"candidates"`) || !strings.Contains(string(b), `"run_id":"ot-page"`) {
+		t.Fatalf("page %s", b)
 	}
 }
 
