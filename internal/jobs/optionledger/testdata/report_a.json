@@ -1,0 +1,29 @@
+{
+  "raw_sha256": "00",
+  "statements": [
+    {
+      "account_id": "TESTACCT1",
+      "trades": [
+        {
+          "accountId": "TESTACCT1",
+          "acctAlias": "label",
+          "levelOfDetail": "EXECUTION",
+          "quantity": "-1",
+          "symbol": "ABC 261218P00050000",
+          "tradePrice": "1.25",
+          "transactionID": "1001"
+        }
+      ]
+    },
+    {
+      "account_id": "OTHERACCT",
+      "trades": [
+        {"accountId": "OTHERACCT", "levelOfDetail": "EXECUTION", "transactionID": "2002", "symbol": "XYZ"}
+      ]
+    }
+  ],
+  "expected": {
+    "canonical": "{\"levelOfDetail\":\"EXECUTION\",\"quantity\":\"-1\",\"symbol\":\"ABC 261218P00050000\",\"tradePrice\":\"1.25\",\"transactionID\":\"1001\"}",
+    "sha256": "921eab5d30c2195f284f25ad008e7f5f008ef5fbe67e2b31f4b598123613fdda"
+  }
+}
