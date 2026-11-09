@@ -37,6 +37,8 @@ components:
     in: internal/sources/fred
   sources/jquants:
     in: internal/sources/jquants
+  gaphistory:
+    in: internal/gaphistory
   store:
     in: internal/store
   store/alert:
@@ -97,6 +99,8 @@ components:
     in: internal/jobs/fredseries
   jobs/optioneod:
     in: internal/jobs/optioneod
+  jobs/optionledger:
+    in: internal/jobs/optionledger
   jobs/quotesnapshot:
     in: internal/jobs/quotesnapshot
   jobs/serieshistory:
@@ -199,57 +203,71 @@ deps:
       - clock
       - sources
       - contracts/genpb
+  gaphistory:
+    mayDependOn:
+      - contracts
   store:
     mayDependOn:
       - contracts
+      - gaphistory
   store/alert:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/candidate:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/events:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/instrument:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/ops:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/reading:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/series:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/sessionday:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/setup:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/snapshot:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   compute:
@@ -382,6 +400,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/optionledger:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/quotesnapshot:
     mayDependOn:
       - contracts
@@ -409,11 +438,13 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
   notify/core:
     mayDependOn:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -422,6 +453,7 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -430,6 +462,7 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -515,6 +548,7 @@ deps:
       - pages
       - profile
       - compute
+      - gaphistory
       - clock/realclock
       - clock/calendar
       - runner/reconcile
@@ -555,6 +589,7 @@ deps:
       - compute/optioncand
       - store/candidate
       - compute/optionledger
+      - jobs/optionledger
       - pages/market_page
       - pages/option_candidates_page
       - sources/alphavantage
@@ -576,6 +611,7 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -598,10 +634,12 @@ deps:
   store/fundamental:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/migrate:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb

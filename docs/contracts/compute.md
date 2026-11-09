@@ -71,6 +71,13 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - Numbers (Decision 11). Exact (`math/big.Rat` in the implementation), decimal text at every boundary, rounded half-even to 4 places in printed figures. No float. Every figure carries its currency; no function adds two currencies and there is no FX conversion.
 - Input. One alias per call; `Trades` holds the latest revision of each transaction; `SessionDays` are ascending XNYS day texts supplied by the caller, so the rule needs no calendar and no clock. Pure: no I/O, no clock.
 
+## Option structures and results
+
+`LedgerFill`, `StructureQuote`, `HeldOption`, `StructureInput`, `StructureParams`, `Structure`, `StructureLeg`, `StructureFigures`, `FigureValue`, `PayoffPoint`, `GreekSet`, `StructureLevel`, `StructureResult`, `CaptureDiff`, `OptionStructures`, `NewOptionStructuresFunc`, `ResultInput`, `ResultSummary`, `ResultSection`, `ResultMonth`, `ResultEnding`, `ResultReliability`, `OptionResults` and `NewOptionResultsFunc` are in `internal/compute/api.go`, and `LedgerPosition` gains `Right`, `Expiry`, `Strike`, `OpenedOn`, `ClosedOn`, `OpenPrice`, `Fills` and `BrokerRealized`. Design: `docs/design/option-positions.md#Interface`.
+
+- `FigureValue` is a `Value` or a `Gap` (`missing_quote`, `stale_input`, `unsupported_currency`, `no_rule`, `no_data`, `missing_input`); exactly one is set.
+- Money and shares are decimal text rounded half-even to 4 places; `KeptShare` is a ratio of 6 places or empty. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -78,6 +85,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v3: additions only: the ease types and `Ease` above.
 - v4: additions only: the option candidate types and `OptionCandidates` above.
 - v5: additions only: the ledger types and `OptionLedger` above.
+- v6: additions only: the option structure and result types, `OptionStructures`, `OptionResults` and the eight `LedgerPosition` terms above.
 
 ## Contract tests
 
