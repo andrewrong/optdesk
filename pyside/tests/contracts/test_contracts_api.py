@@ -13,6 +13,10 @@ import grpc
 
 from optdesk.contracts import api
 from optdesk.contracts.api import (
+    BAR_KIND_ADJUSTED_LAST,
+    BAR_KIND_MIDPOINT,
+    BAR_KIND_TRADES,
+    BAR_KIND_UNSPECIFIED,
     DIVIDEND_STATUS_NO_VALUE,
     DIVIDEND_STATUS_OK,
     QUOTE_KIND_OPTION_EOD,
@@ -24,6 +28,9 @@ from optdesk.contracts.api import (
     AccountServiceServicer,
     AccountServiceStub,
     AccountValue,
+    Bar,
+    BarsRequest,
+    BarsResponse,
     ContractKey,
     ContractSpec,
     ContractsServiceServicer,
@@ -46,6 +53,7 @@ from optdesk.contracts.api import (
     SessionServiceServicer,
     SessionServiceStub,
     SnapshotRequest,
+    SnapshotResponse,
     add_AccountServiceServicer_to_server,
 )
 
@@ -301,3 +309,58 @@ def test_account_servicer_executions_stub() -> None:
     assert response.account == "B"
     assert response.collected is False
     assert len(response.executions) == 0
+
+
+class _FakeBars(MarketDataServiceServicer):
+    async def Snapshot(
+        self,
+        request: SnapshotRequest,
+        context: grpc.aio.ServicerContext[SnapshotRequest, SnapshotResponse],
+    ) -> AsyncIterator[SnapshotResponse]:
+        yield SnapshotResponse()
+
+    async def Bars(
+        self,
+        request: BarsRequest,
+        context: grpc.aio.ServicerContext[BarsRequest, BarsResponse],
+    ) -> BarsResponse:
+        return BarsResponse(
+            bars=[
+                Bar(
+                    day="2026-11-06",
+                    open="1.5",
+                    high="2",
+                    low="1",
+                    close="1.75",
+                    volume="100",
+                ),
+                Bar(day="2026-11-09", open="1", high="1", low="1", close="1"),
+            ]
+        )
+
+
+def test_bars_request_and_response_round_trip() -> None:
+    assert (
+        BAR_KIND_UNSPECIFIED,
+        BAR_KIND_TRADES,
+        BAR_KIND_ADJUSTED_LAST,
+        BAR_KIND_MIDPOINT,
+    ) == (0, 1, 2, 3)
+    request = BarsRequest(
+        contract=ContractSpec(symbol="SPY", con_id=756733),
+        kind=BAR_KIND_TRADES,
+        duration_days=5,
+    )
+    assert request.end_day == ""
+    assert BarsRequest.FromString(request.SerializeToString()) == request
+
+    async def run() -> BarsResponse:
+        # Called in process: the context is not used by the fake.
+        return await _FakeBars().Bars(request, MagicMock())
+
+    response = asyncio.run(run())
+    assert [b.day for b in response.bars] == ["2026-11-06", "2026-11-09"]
+    assert response.bars[0].HasField("volume")
+    assert response.bars[0].close == "1.75"
+    assert not response.bars[1].HasField("volume")
+    assert BarsResponse.FromString(response.SerializeToString()) == response

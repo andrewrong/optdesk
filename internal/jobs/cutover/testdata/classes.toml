@@ -1,0 +1,7 @@
+[[class]]
+prefix = "demo"
+class = "replayable"
+
+[[class]]
+id = "demo.fresh"
+class = "new"

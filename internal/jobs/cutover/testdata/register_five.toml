@@ -1,0 +1,24 @@
+[[figure]]
+id = "demo.alpha"
+version = 1
+agreed_in = "carried over from option-trader"
+
+[[figure]]
+id = "demo.beta"
+version = 1
+agreed_in = "carried over from option-trader"
+
+[[figure]]
+id = "demo.gamma"
+version = 1
+agreed_in = "carried over from option-trader"
+
+[[figure]]
+id = "demo.fresh"
+version = 1
+agreed_in = "docs/design/demo.md"
+
+[[figure]]
+id = "demo.delta"
+version = 1
+agreed_in = "carried over from option-trader"

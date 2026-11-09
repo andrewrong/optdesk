@@ -1,0 +1,4 @@
+[[explained]]
+id = "demo.beta"
+reason = "the old page rounds the month end before summing"
+date = "2026-11-09"
