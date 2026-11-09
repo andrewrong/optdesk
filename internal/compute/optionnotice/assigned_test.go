@@ -45,3 +45,15 @@ func TestAssignmentNeedsStockRise(t *testing.T) {
 		}
 	}
 }
+
+func TestAssignmentSeenWhenPrevCaptureIsExpiryDay(t *testing.T) {
+	t.Parallel()
+	in := compute.NoticeInput{
+		Day: "2026-11-09", CaptureDay: "2026-11-09", PrevDay: "2026-11-06",
+		PrevPositions: []compute.NoticePosition{shortOpt("AAA", "2026-11-06", "50", "P", "-2"), stock("AAA", "0")},
+		Positions:     []compute.NoticePosition{stock("AAA", "200")},
+	}
+	if got := codes(eval(in)); !reflect.DeepEqual(got, []string{"assignment_seen:act"}) {
+		t.Fatalf("put held on its expiry day, gone next capture, shares appeared: got %v", got)
+	}
+}

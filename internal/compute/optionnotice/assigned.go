@@ -8,7 +8,7 @@ import (
 )
 
 // assignmentNotices raises assignment_seen (act) for a short put of the previous captured
-// day that expired by the capture day, is no longer held, while the stock of its symbol
+// day (expiry on or after that day) that expired by the capture day, is no longer held, while the stock of its symbol
 // rose. The cash is strike x multiplier x contracts, fixed to two places.
 func assignmentNotices(in compute.NoticeInput) []compute.Notice {
 	prevDay, ok1 := parseDay(string(in.PrevDay))
@@ -19,7 +19,7 @@ func assignmentNotices(in compute.NoticeInput) []compute.Notice {
 	prev, cur := parseOptions(in.PrevPositions), parseOptions(in.Positions)
 	var out []compute.Notice
 	for _, h := range prev {
-		if !h.short() || h.right != "P" || h.expDays <= prevDay || h.expDays > capDay || stillHeld(cur, h) {
+		if !h.short() || h.right != "P" || h.expDays < prevDay || h.expDays > capDay || stillHeld(cur, h) {
 			continue
 		}
 		rise := stockQty(in.Positions, h.symbol)
