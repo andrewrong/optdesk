@@ -76,7 +76,7 @@ The four entries that edit `.go-arch-lint.yml` (3, 4, 7, 10) are one serial chai
 - jobs (entries 7, 10, 12): `NewBarsRefreshFunc func(broker.Broker, broker.HistoryClient, store.InstrumentResolver, bar.PriceBarWriter, bar.PriceBarReader, []WatchEntry, clock.Clock) (contracts.Job, error)`; `NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)`; `ComputeStores.PriceBars bar.PriceBarReader`. Job ids `bars_refresh` and `fx_refresh`; run keys `{obs.price_bar, <issuer or index:SYMBOL>}` and `{obs.fx_rate, USDJPY}`; a key is present when its newest stored `trades` day (or rate day) is on or after the first row this run wrote or found, `Usable` counts such keys.
 - compute (entry 11): no interface change; a rule row and a register entry.
 
-Landed in #817 (entry 1, #815), #865 (entry 2, #864), #856 (entry 3, #845), #889 (entry 5, #885), #943 (entry 6, #937).
+Landed in #817 (entry 1, #815), #865 (entry 2, #864), #856 (entry 3, #845), #938 (entry 4, #863), #889 (entry 5, #885), #943 (entry 6, #937).
 
 ## Issues
 
@@ -135,7 +135,7 @@ Checked by CI: `go test ./internal/store/bar ./scripts/arch -race -count=1`, `go
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`, for the new package). Size: M. Second opinion: a new database role `ot_w_bar`.
 Files: `migrations/0021_bars.sql` (the number taken when #938 landed), `internal/store/barpg/store.go`, `internal/store/barpg/read.go`, `internal/store/barpg/store_test.go`, `internal/store/barpg/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`
 Design: docs/design/market-bars.md#Decisions (4, 8, 9) and #Modules. The implementation is its own package `internal/store/barpg`, not in `internal/store/bar` (declarations only).
-Order: after 1, 3 (the `.go-arch-lint.yml` chain is 3, 4, 7, 10). It shares `setup.go`, `setup_test.go` and the next free migration number with the store entries of other designs and rebases on whichever lands first.
+Order: after 1, 3 (the `.go-arch-lint.yml` chain is 3, 4, 7, 10). Landed in #938 (issue #863), which took migration number 0021.
 Goal: tables `obs.price_bar` and `obs.fx_rate` with the dataset keys and CHECKs (`basis` in the two words, `adjust_epoch >= 1`, `pair` six capitals, rate and prices parse as positive decimals), views `rd.price_bar_r1` (rows of the highest epoch of each instrument and basis) and `rd.fx_rate_r1`, role `ot_w_bar` (INSERT on the tables, SELECT on the views, USAGE on `obs` and `rd`; line `OT_PG_DSN_BAR`) and SELECT on both views for `ot_ro_pages`; `barpg.Open(ctx, dsn)` returns a `*barpg.Store` with the methods of `bar.BarStore` (the package imports `contracts` and no `store/bar`; its test asserts `var _ bar.BarStore = (*Store)(nil)`); readers read the views only; inserts are `ON CONFLICT DO NOTHING`, one call one transaction.
 Acceptance:
 1. `grep -c "CREATE TABLE obs.price_bar\|CREATE TABLE obs.fx_rate\|CREATE VIEW rd.price_bar_r1\|CREATE VIEW rd.fx_rate_r1" migrations/*_bars.sql` prints 4; `grep -ci "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_bars.sql` prints 0.
