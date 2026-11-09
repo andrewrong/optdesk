@@ -7,8 +7,18 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 )
 
-// companyStates are the price states a company row can carry, in display order.
-var companyStates = []string{"band", "owner override", "awaiting approval", "expired", "unvalued"}
+// The price states a company row can carry (the price_state enum of page.companies_page.v2, plus
+// unvalued). CompanyState.State must be one of them, or the row is not counted.
+const (
+	stateBand     = "band"
+	stateOverride = "owner override"
+	stateAwaiting = "awaiting approval"
+	stateExpired  = "expired"
+	stateUnvalued = "unvalued"
+)
+
+// companyStates are the states in display order.
+var companyStates = []string{stateBand, stateOverride, stateAwaiting, stateExpired, stateUnvalued}
 
 // glance is the figure of the companies glance tiles: one line per state, in the order of
 // companyStates, its Amount the count of rows in that state (0 when none). A row with another
