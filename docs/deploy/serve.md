@@ -19,7 +19,7 @@ a container is enough for it.
 [services.optdesk-serve]
 way     = "docker"
 repo    = "andrewrong/optdesk"
-health  = "http://<bind>:<port>/health"   # the host address and the published port of the container
+health  = "http://<bind>:<port>/home"     # a route `ot serve` serves today; it reads no store, so it shows the process is up, not the database
 secrets = ["optdesk.env"]                  # the file under the secrets directory that holds the DSN lines
 root    = "<root of services.toml>"        # the service directory is created under it
 deploy  = "owner"                          # set to "auto" only after the first deploy below
@@ -46,10 +46,9 @@ serve --addr :8080
 
 `ot serve` listens on `127.0.0.1:8080` by default, which a published port cannot reach, so the
 container sets `--addr :8080`. The compose file publishes container port 8080 on `<bind>:<port>`.
-Today `ot serve` does not answer `/health`: it answers 404 there, and `/home` answers 200. The route `GET /health`
-(200 when the database answers, 503 when it does not) is the work of issue #926 and is not on the main
-branch yet. The `health` URL above is the one crew will poll once #926 has merged; the first deploy
-below waits for it.
+The health check is `GET /home`, a sample route that answers 200 and reads no store. `ot serve` has no
+`/health` route: it answers 404 there. A `/health` endpoint that checks the database is a separate pending
+change (issue #926); when it has merged, the `health` URL of the entry may be moved to it.
 
 ## How the keys reach it
 
@@ -87,15 +86,14 @@ container itself. The database must accept the connection from the docker networ
 
 The first deploy is the owner's. Owner lines, in order:
 
-1. The main branch must already hold #926 (the `/health` route), this runbook, the compose file and the Dockerfile (deploy
+1. The main branch must already hold this runbook, the compose file and the Dockerfile (deploy
    fetches the default branch of the repository), and the migrations must be applied (`ot migrate`).
 2. Create `optdesk.env` under the secrets directory with the line `OT_PG_DSN_PAGES` and `<pg-host>`
    in its DSN, and create the service directory under `<root>`.
 3. Add the entry with `deploy = "owner"` and merge it.
 4. Run `crew cap optdesk-serve deploy` as a dry run, then `crew cap --apply optdesk-serve deploy`;
    apply needs a terminal.
-5. Request `http://<bind>:<port>/home` and `http://<bind>:<port>/health`: both must answer 200
-   (`/health` only exists once #926 has merged, which step 1 requires).
+5. Request `http://<bind>:<port>/home`: it must answer 200.
 6. Change the entry to `deploy = "auto"` and merge it. From then on crew deploys on merge and rolls
    back by itself.
 
