@@ -79,6 +79,10 @@ type evNames struct {
 	store.InstrumentNameStore
 	c evc
 }
+type evEvents struct {
+	store.EarningsDateStore
+	c evc
+}
 type evReading struct {
 	store.ReadingStore
 	c evc
@@ -102,6 +106,8 @@ func (f evCat) Close() error     { return f.c.close() }
 func (f evTerms) Close() error   { return f.c.close() }
 func (f evNames) Close() error   { return f.c.close() }
 func (f evReading) Close() error { return f.c.close() }
+
+func (f evEvents) Close() error { return f.c.close() }
 
 // brokerJob is a job whose Run asks the broker it was built with, as the option jobs do.
 type brokerJob struct {
@@ -153,6 +159,11 @@ type rig struct {
 	calStore   store.SessionDayStore // the store handed to calendar_refresh
 	argv       []string
 	observer   jobs.CalendarObserver
+	// what earnings_refresh was built with
+	earnSrcs  map[string]sources.EarningsSource
+	earnStore store.EarningsDateWriter
+	earnWatch []jobs.WatchEntry
+	avCfg     sources.EarningsConfig
 }
 
 // loaderDSN is the value of the loader line of the rig's .env.
@@ -287,6 +298,22 @@ func newRig(t *testing.T, env string) *rig {
 		r.compute = cs
 		return namedJob{id: "compute_figures"}, r.fail["figjob"]
 	}
+	d.openEarningsDates = func(_ context.Context, dsn string) (store.EarningsDateStore, error) {
+		if err := step("events", dsn); err != nil {
+			return nil, err
+		}
+		return evEvents{c: evc{"events", r.ev}}, nil
+	}
+	d.newAlphaVantage = func(cfg sources.EarningsConfig) (sources.EarningsSource, error) {
+		r.avCfg = cfg
+		return nil, r.fail["avsrc"]
+	}
+	d.newEarningsRefresh = func(
+		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, _ store.EarningsDateReader, entries []jobs.WatchEntry, _ clock.Clock,
+	) (contracts.Job, error) {
+		r.earnSrcs, r.earnStore, r.earnWatch = srcs, w, entries
+		return namedJob{id: "earnings_refresh"}, r.fail["earnjob"]
+	}
 	d.dialBroker = func(_ context.Context, path string, _ broker.Options) (broker.Broker, error) {
 		r.ev.add("open broker")
 		r.socket = path
@@ -322,7 +349,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	t.Parallel()
 	env := "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
 		"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
-		"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
+		"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n" + eventsEnv
 	r := newRig(t, env)
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
@@ -347,7 +374,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}) {
 		t.Errorf("jobs %v", ids)
 	}
 }
@@ -363,7 +390,7 @@ func TestRunOnceRule(t *testing.T) {
 	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 5 {
+	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 6 {
 		t.Fatalf("rules %+v %+v, jobs %d", r.rule, r.backRule, len(r.jobs))
 	}
 }
@@ -489,7 +516,7 @@ func TestRunOnceDialFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "from reconcile") {
 		t.Fatalf("err %v, want what Reconcile returned", err)
 	}
-	if len(r.jobs) != 5 {
+	if len(r.jobs) != 6 {
 		t.Fatalf("Reconcile got %d jobs", len(r.jobs))
 	}
 	for _, j := range r.jobs[1:3] {
@@ -554,7 +581,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}) {
 		t.Fatalf("jobs %v", ids)
 	}
 	c := r.compute
@@ -566,7 +593,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	}
 	// backfill hands the runner the same four jobs.
 	r.jobs = nil
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 5 {
+	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 6 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }

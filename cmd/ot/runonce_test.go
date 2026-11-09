@@ -24,7 +24,19 @@ import (
 
 const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
 	"OT_PG_DSN_OPTION_EOD=eod-dsn\nOT_PG_DSN_QUOTE_SNAPSHOT=snap-dsn\nOT_PG_DSN_MASTER=master-dsn\n" +
-	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n"
+	"OT_PG_DSN_PAGES=pages-dsn\nOT_PG_DSN_READINGS=readings-dsn\nOT_PG_DSN_LOADER=loader-dsn\n" + eventsEnv
+
+// eventsEnv holds the two lines of earnings_refresh; the key value starts with a character no real key does.
+const alphaTestKey = "-test-alpha"
+
+const eventsEnv = "OT_PG_DSN_EVENTS=events-dsn\n" + "ALPHA_VANTAGE_API_KEY=" + alphaTestKey + "\n"
+
+type fakeEvents struct {
+	store.EarningsDateStore
+	n *atomic.Int32
+}
+
+func (f fakeEvents) Close() error { f.n.Add(1); return nil }
 
 type fakeSD struct {
 	store.SessionDayStore
@@ -170,6 +182,16 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newRunner: func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Reconciler {
 			return recRunner{day}
 		},
+		openEarningsDates: func(context.Context, string) (store.EarningsDateStore, error) {
+			opened.Add(1)
+			return fakeEvents{n: closed}, nil
+		},
+		newAlphaVantage: func(sources.EarningsConfig) (sources.EarningsSource, error) { return nil, nil },
+		newEarningsRefresh: func(
+			map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock,
+		) (contracts.Job, error) {
+			return fakeJob{}, nil
+		},
 	}
 }
 
@@ -222,7 +244,7 @@ func TestRunOnceClosesStores(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, nil); err != nil || opened.Load() != 14 || closed.Load() != 14 {
+	if err := runOnce(a, nil); err != nil || opened.Load() != 15 || closed.Load() != 15 {
 		t.Fatalf("err %v opened %d closed %d", err, opened.Load(), closed.Load())
 	}
 	// A failure after two stores are open closes them too.
