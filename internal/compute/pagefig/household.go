@@ -112,8 +112,8 @@ func household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
 		Overview:    overview(net, netR, netOK, in.UsdJpy),
 		Accounts:    accounts(net, netR, netOK, cash, cashR, cashOK, in.UsdJpy),
 		Obligations: obligations(in),
-		Income:      income(in.Obligations),
-		Trend:       trend(in.History),
+		Income:      income(in.Obligations, in.UsdJpy),
+		Trend:       trend(in.History, string(in.Day)),
 	}
 	after := cashAfter(cash, cashR, cashOK, in)
 	r.CashAfter = []blockapi.MoneyLine{after}
@@ -224,12 +224,12 @@ func premium(obs []blockapi.ObligationIn) (currencies []string, sums map[string]
 }
 
 // income is the figure household.income: the premium income of the month, one row per currency.
-// A JPY row keeps its yen, with the rate only for the display-only ≈USD.
-func income(obs []blockapi.ObligationIn) []blockapi.MoneyLine {
+// A JPY row follows the rule of line: it needs the rate, else it is the gap unsupported_currency.
+func income(obs []blockapi.ObligationIn, usdJpy string) []blockapi.MoneyLine {
 	cur, sums, _ := premium(obs)
 	var rows []blockapi.MoneyLine
 	for _, c := range cur {
-		rows = append(rows, blockapi.MoneyLine{Name: "本月权利金", Currency: c, Amount: compute.FigureValue{Value: money(sums[c])}})
+		rows = append(rows, line("本月权利金", c, sums[c], usdJpy))
 	}
 	return rows
 }
@@ -259,9 +259,10 @@ func monthChange(in blockapi.HouseholdInput, end blockapi.ValueIn, endR *big.Rat
 	return rows
 }
 
-// trend is the figure household.trend: the net liquidation of the last 90 session days, oldest first.
-func trend(h []blockapi.DayValue) []blockapi.DayValue {
-	out := slices.Clone(h)
+// trend is the figure household.trend: the net liquidation of the last 90 session days, oldest
+// first; days after the data day (when it is given) are left out.
+func trend(h []blockapi.DayValue, day string) []blockapi.DayValue {
+	out := slices.DeleteFunc(slices.Clone(h), func(d blockapi.DayValue) bool { return day != "" && string(d.Day) > day })
 	slices.SortStableFunc(out, func(a, b blockapi.DayValue) int { return strings.Compare(string(a.Day), string(b.Day)) })
 	if len(out) > trendDays {
 		out = out[len(out)-trendDays:]

@@ -144,3 +144,27 @@ func TestNewIsPageFigures(t *testing.T) {
 		t.Fatal("AccountMove is empty")
 	}
 }
+
+func TestJpyIncomeNeedsRate(t *testing.T) {
+	t.Parallel()
+	o := blockapi.ObligationIn{Underlying: "7203", Currency: "JPY", Strike: "2000", Multiplier: "100", Contracts: "1", PremiumIncome: "5000"}
+	in := blockapi.HouseholdInput{Values: vals("1000000", "500000", "JPY"), Obligations: []blockapi.ObligationIn{o}}
+	got := New().Household(in).Income
+	if len(got) != 1 || got[0].Amount.Gap != "unsupported_currency" {
+		t.Fatalf("JPY income without rate: %+v", got)
+	}
+	in.UsdJpy = "150"
+	got = New().Household(in).Income
+	if got[0].Amount.Value != "5000.00" || got[0].Note != "≈USD 33" {
+		t.Fatalf("JPY income with rate: %+v", got)
+	}
+}
+
+func TestTrendDropsDaysAfterDataDay(t *testing.T) {
+	t.Parallel()
+	h := []blockapi.DayValue{{Day: "2026-01-03"}, {Day: "2026-01-02"}, {Day: "2026-01-01"}}
+	got := New().Household(blockapi.HouseholdInput{Day: "2026-01-02", History: h}).Trend
+	if len(got) != 2 || got[1].Day != "2026-01-02" {
+		t.Fatalf("trend: %+v", got)
+	}
+}
