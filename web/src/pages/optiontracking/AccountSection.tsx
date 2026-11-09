@@ -42,7 +42,7 @@ function cellOf(cell: PayloadCell): Cell {
   }
 }
 
-function TableBlock({ name, table }: { name: string; table: Table }) {
+function PayloadTable({ name, table }: { name: string; table: Table }) {
   const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({ id, label, align, hint }))
   return (
     <div data-table={name} className="min-w-0 overflow-x-auto">
@@ -61,7 +61,7 @@ function Fold({ value, title, table }: { value: string; title: string; table: Ta
     <AccordionItem value={value}>
       <AccordionTrigger>{title}</AccordionTrigger>
       <AccordionContent>
-        <TableBlock name={value} table={table} />
+        <PayloadTable name={value} table={table} />
       </AccordionContent>
     </AccordionItem>
   )
@@ -88,7 +88,7 @@ export function AccountSection({ account }: { account: Account }) {
           </Alert>
         ) : (
           <>
-            {account.open ? <TableBlock name="open" table={account.open} /> : null}
+            {account.open ? <PayloadTable name="open" table={account.open} /> : null}
             <Accordion type="multiple">
               {account.recent ? <Fold value="recent" title="最近 30 天了结" table={account.recent} /> : null}
               {account.recon ? <Fold value="recon" title="Flex 与账户核对" table={account.recon} /> : null}
