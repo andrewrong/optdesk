@@ -20,8 +20,18 @@ import grpc
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr import spec
-from optdesk.ibkr.api import DividendKey, DividendReading, Reference
+from optdesk.ibkr.api import (
+    DividendKey,
+    DividendReading,
+    History,
+    HistoryBar,
+    HistoryKey,
+    HistoryPaced,
+    HistoryRequest,
+    Reference,
+)
 from optdesk.ibkr.gateways import GatewaySpec
+from optdesk.ibkr.history import wire_request
 from optdesk.ibkr.model import (
     AccountGateway,
     AccountRows,
@@ -114,6 +124,7 @@ WORDS = frozenset(
         "executions",
         "multiple_accounts",
         "dividends",
+        "bars",
         spec.STATUS_NO_VALUE,
         spec.STATUS_TIMEOUT,
         spec.OPTION_EOD,
@@ -293,6 +304,8 @@ def _status_of(exc: BaseException) -> tuple[grpc.StatusCode, str]:
         return grpc.StatusCode.DEADLINE_EXCEEDED, "the gateway did not answer in time"
     if isinstance(exc, ConnectionError | OSError):
         return grpc.StatusCode.UNAVAILABLE, "the gateway is not connected"
+    if isinstance(exc, HistoryPaced):
+        return grpc.StatusCode.RESOURCE_EXHAUSTED, "historical requests are paced"
     if isinstance(exc, MultipleAccounts):
         return grpc.StatusCode.FAILED_PRECONDITION, FAILED_ACCOUNTS_TEXT
     if isinstance(exc, spec.AmbiguousResolve):
@@ -476,11 +489,69 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
         )
 
     async def Bars(self, request: pb.BarsRequest, context: Context) -> pb.BarsResponse:
-        """Stub until the history entry replaces it."""
-        await context.abort(
-            grpc.StatusCode.UNIMPLEMENTED, "bars are not implemented yet"
+        """Daily bars of one contract; the pacer of the gateway may refuse with RESOURCE_EXHAUSTED."""
+        gateway = self._shared.gateway
+        if not isinstance(gateway, History):
+            await context.abort(
+                grpc.StatusCode.UNIMPLEMENTED, "this gateway serves no history"
+            )
+        kind = _BAR_KINDS.get(request.kind)
+        c = request.contract
+        asked = HistoryRequest(
+            HistoryKey(
+                c.symbol,
+                _SEC_TYPES.get(c.sec_type, ""),
+                c.exchange,
+                c.currency,
+                c.con_id,
+            ),
+            kind or "",
+            request.duration_days,
+            request.end_day,
         )
-        raise NotImplementedError  # abort raises; unreachable
+        problem = _bars_problem(asked)
+        if problem:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, problem)
+        rows = await self._shared.call(
+            "bars", context, cast(History, gateway).bars(asked), count=len
+        )
+        return pb.BarsResponse(bars=[_bar_to_proto(row) for row in rows])
+
+
+_BAR_KINDS = {
+    pb.BAR_KIND_TRADES: "trades",
+    pb.BAR_KIND_ADJUSTED_LAST: "adjusted_last",
+    pb.BAR_KIND_MIDPOINT: "midpoint",
+}
+_MAX_BAR_DAYS = 730
+
+
+def _bars_problem(asked: HistoryRequest) -> str:
+    """Return why a bars request is refused, or an empty text."""
+    if asked.key.con_id <= 0:
+        return "bars needs a contract with a con_id"
+    if not asked.kind:
+        return "bars needs a kind"
+    if not 1 <= asked.duration_days <= _MAX_BAR_DAYS:
+        return "bars needs duration_days from 1 to 730"
+    if asked.end_day and asked.kind == "adjusted_last":
+        return "adjusted_last bars take no end_day"
+    try:
+        wire_request(asked)
+    except ValueError as exc:
+        return str(exc)
+    return ""
+
+
+def _bar_to_proto(row: HistoryBar) -> pb.Bar:
+    return pb.Bar(
+        day=row.day,
+        open=row.open,
+        high=row.high,
+        low=row.low,
+        close=row.close,
+        volume=row.volume,
+    )
 
 
 _DIVIDEND_STATUSES = {
