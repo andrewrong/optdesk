@@ -10,6 +10,7 @@ import pytest
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.spec import (
+    DIVIDENDS,
     OPTION_EOD,
     SNAPSHOT,
     TABLE,
@@ -43,11 +44,11 @@ def test_snapshot_kind_ticks() -> None:
     assert row.generic_ticks == ""
     assert row.release_fields == {"bid", "ask"}
     assert row.timeout_s == 20
-    assert set(TABLE) == {OPTION_EOD, UNDERLYING_IV, SNAPSHOT}
+    assert set(TABLE) == {OPTION_EOD, UNDERLYING_IV, SNAPSHOT, DIVIDENDS}
 
 
 def test_timeout_is_twenty_seconds() -> None:
-    assert all(row.timeout_s == 20 for row in TABLE.values())
+    assert all(row.timeout_s == 20 for kind, row in TABLE.items() if kind != DIVIDENDS)
     with pytest.raises(UnknownKind):
         kind_spec("weekly")
 
@@ -105,3 +106,11 @@ def test_no_strategy_in_spec() -> None:
                 "price" in n or "strike" in n or "expiry" in n for n in names
             )
             assert not (takes_number and returns in ("float", "int")), node.name
+
+
+def test_tick_456_in_spec() -> None:
+    row = kind_spec(DIVIDENDS)
+    assert row.generic_ticks == "456"
+    assert row.timeout_s == 10
+    assert not is_complete(row, {})
+    assert is_complete(row, {"dividend_tick": 1.0})

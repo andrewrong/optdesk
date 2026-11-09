@@ -14,12 +14,15 @@ from dataclasses import dataclass
 OPTION_EOD = "option_eod"
 UNDERLYING_IV = "underlying_iv"
 SNAPSHOT = "snapshot"
+DIVIDENDS = "dividends"
 
 STATUS_OK = "ok"
 STATUS_PARTIAL = "partial"
 STATUS_NO_DATA = "no_data"
 STATUS_NO_SUBSCRIPTION = "no_subscription"
 STATUS_ERROR = "error"
+STATUS_NO_VALUE = "no_value"
+STATUS_TIMEOUT = "timeout"
 STATUS_DISCONNECTED = "disconnected"
 
 CODE_NOT_LISTED = 200
@@ -67,6 +70,14 @@ TABLE: Mapping[str, KindSpec] = {
             "event_ts",
         ),
         timeout_s=20,
+    ),
+    # Tick 456 arrives once as one text of four values; the marker field is
+    # set when it has arrived, whatever it holds.
+    DIVIDENDS: KindSpec(
+        generic_ticks="456",
+        release_fields=frozenset({"dividend_tick"}),
+        wanted_fields=("dividend_tick",),
+        timeout_s=10,
     ),
 }
 
