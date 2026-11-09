@@ -44,25 +44,15 @@ class _FakeBuilder:
             day = first
             while day <= last:
                 if day.weekday() in WEEKEND:
-                    sentinel = datetime.datetime.combine(
-                        day, datetime.time.min, tzinfo=UTC
-                    )
+                    sentinel = datetime.datetime.combine(day, datetime.time.min, tzinfo=UTC)
                     rows.append(SessionRow(cid, day, False, sentinel, sentinel, False))
                 else:
-                    start = datetime.datetime.combine(
-                        day, datetime.time(hour=14), tzinfo=UTC
-                    )
+                    start = datetime.datetime.combine(day, datetime.time(hour=14), tzinfo=UTC)
                     span = datetime.timedelta(hours=3 if day == EARLY_DAY else 6)
-                    rows.append(
-                        SessionRow(
-                            cid, day, True, start, start + span, day == EARLY_DAY
-                        )
-                    )
+                    rows.append(SessionRow(cid, day, True, start, start + span, day == EARLY_DAY))
                 day += datetime.timedelta(days=1)
         stamp = generated_at.isoformat()
-        return CalendarFile(
-            CalendarProvenance("fake", "1", "lib", "1", stamp), tuple(rows)
-        )
+        return CalendarFile(CalendarProvenance("fake", "1", "lib", "1", stamp), tuple(rows))
 
 
 class _FakeRenderer:
@@ -97,9 +87,7 @@ class _FakeCommand:
         return 0
 
 
-def _build(
-    ids: Sequence[str], first: datetime.date, last: datetime.date
-) -> CalendarFile:
+def _build(ids: Sequence[str], first: datetime.date, last: datetime.date) -> CalendarFile:
     builder: Builder = _FakeBuilder()
     return builder(ids, first, last, datetime.datetime(2024, 2, 1, tzinfo=UTC))
 
@@ -142,9 +130,7 @@ def test_rule3_non_session_day() -> None:
     assert closed
     for r in closed:
         assert r.early_close is False
-        midnight = datetime.datetime.combine(
-            r.session_day, datetime.time.min, tzinfo=UTC
-        )
+        midnight = datetime.datetime.combine(r.session_day, datetime.time.min, tzinfo=UTC)
         assert r.open_at == midnight
         assert r.close_at == midnight
 
@@ -176,9 +162,7 @@ def test_command_through_protocol() -> None:
     out, err = io.StringIO(), io.StringIO()
     assert command([], lambda: datetime.datetime(2024, 1, 1, tzinfo=UTC), out, err) == 2
     assert err.getvalue() != ""
-    assert (
-        command(["x"], lambda: datetime.datetime(2024, 1, 1, tzinfo=UTC), out, err) == 0
-    )
+    assert command(["x"], lambda: datetime.datetime(2024, 1, 1, tzinfo=UTC), out, err) == 0
     assert out.getvalue().startswith("2024-01-01")
 
 
