@@ -67,14 +67,14 @@ New directories: `internal/compute/optioncand`, `internal/jobs/optioncandidates`
 
 | # | issue | module | order |
 |---|---|---|---|
-| 1 | option-eod-watch (interface and implementation) | jobs | after 606 `earnings-job` |
+| 1 | option-eod-watch (interface and implementation) | jobs | after 606 `earnings-job`, 561 `account-store-api` |
 | 2 | candidate-compute-interface (interface) | compute, plus repo (licensed pair) | first |
 | 3 | compute-put-candidates | compute | after 2 |
 | 4 | candidate-dataset (interface) | contracts | after 561 `account-proto`, 606 `earnings-datasets` |
 | 5 | candidate-store-api (interface) | store | after 4, 561 `account-store-api`, 606 `earnings-store` |
 | 6 | candidate-store-impl | store, plus repo (licensed pair) | after 5, 561 `account-store-migration` and `account-store-impl`, 606 `earnings-store` |
 | 7 | candidates-job-puts (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 3, 6, 561 `account-job`, 606 `earnings-job` |
-| 8 | candidate-text | pages | after 5 |
+| 8 | candidate-text | pages, plus repo (licensed pair) | after 5 |
 | 9 | option-eod-held-calls | jobs | after 1, 561 `account-store-impl` |
 | 10 | compute-call-candidates | compute | after 3 |
 | 11 | candidates-job-calls (interface and implementation) | jobs, plus repo (licensed pair) | after 7, 9, 10, 606 `dividend-store` and `dividend-job` |
@@ -159,7 +159,7 @@ Design: docs/design/option-candidates.md#interface
 Order: after 4, 561 `account-store-api`, 606 `earnings-store` (the same `api.go`, `store.md`).
 Goal: `CandidateWriter`, `CandidateReader`, `store.Candidate`, `DSNEnvCandidate`, declarations only. `internal/store/api_test.go` is 800 lines and is not edited; the contract test is the new file `internal/store/api_candidate_test.go`: a fake on one side, a caller that reads a day written by two runs and sees only the newer run, ranked rows first.
 Acceptance:
-1. `grep -c "type CandidateWriter interface\|type CandidateReader interface" internal/store/api.go` prints 2; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "database/sql\|pgx" internal/store/api.go` equals its count on main; `wc -l < internal/store/api.go` prints less than 600 (490 on main, before the 561 and 606 additions).
+1. `grep -c "type CandidateWriter interface\|type CandidateReader interface" internal/store/api.go` prints 2; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -c "database/sql\|pgx" internal/store/api.go` equals its count on main; `wc -l < internal/store/api.go` prints less than 800 (490 on main, before the 561 and 606 additions).
 2. `go test ./internal/store -run TestCandidateContract -race -count=1` passes; the diff does not list `internal/store/api_test.go`.
 3. `grep -c "OT_PG_DSN_CANDIDATE\|CandidateReader" docs/contracts/store.md` is at least 2.
 Checked by CI: ci-go, go-arch-lint.
@@ -240,7 +240,7 @@ Order: after 7 (same files), 9, 10, 606 `dividend-store` and `dividend-job`.
 Goal: `NewOptionCandidatesCallsFunc` adds the dividend reader and the call and guard kinds to the same run; `NewOptionCandidatesJobFunc` and puts behave as before; `div_guard_factor` joins `job.toml`.
 Acceptance:
 1. `go test ./internal/jobs/optioncandidates -race -count=1` passes with `TestCallsNeedDividendReader`, `TestPutsUnchangedByCalls`, `TestHeldCallGuardRows` each present once; `grep -c "div_guard_factor" internal/jobs/optioncandidates/job.toml` prints 1.
-2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -rl "internal/notify" internal/jobs/optioncandidates` prints nothing; the diff lists no path outside the Files line.
+2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep '^-' | grep -vc '^---'` prints 0; `grep -rl "internal/notify" internal/jobs/optioncandidates` prints nothing; the diff lists no path outside the Files line; `wc -l internal/jobs/api.go internal/jobs/api_test.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (68 and 467 on main); each new file is under 600 lines.
 Checked by CI: ci-go, go-arch-lint.
 
 ### 12 candidates-wire
@@ -266,7 +266,7 @@ Goal: wiring only, for the calls and the guard. `option_eod` uses `NewWithHeld` 
 Acceptance:
 1. `go test ./cmd/ot -race -count=1` passes with `TestOptionEodUsesHeldReader`, `TestCallsJobUsesDividendReader`, `TestMissingEventsDSNKeepsPutsJob` each present once.
 2. `grep -c "NewWithHeld\|NewOptionCandidatesCallsFunc" cmd/ot/wire.go` is at least 2; `grep -c "held" docs/contracts/ot.md` is at least 1.
-3. The diff lists no path outside the Files line.
+3. The diff lists no path outside the Files line; `wc -l cmd/ot/wire.go cmd/ot/runonce.go | grep -v total | awk '$1>=800' | wc -l` prints 0 (209 and 432 on main).
 Checked by CI: `go test ./cmd/ot`, golangci-lint.
 
 ## Left out
