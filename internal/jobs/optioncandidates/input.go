@@ -226,7 +226,7 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 	// The newest row is the one observed last; the reader's order is not relied on (ties keep the later row).
 	last := rows[0]
 	for _, r := range rows[1:] {
-		if !r.ObservedOn.Before(last.ObservedOn) {
+		if !r.ObservedOn.Before(last.ObservedOn.Time) {
 			last = r
 		}
 	}
