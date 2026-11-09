@@ -111,6 +111,8 @@ components:
     in: internal/pages/macro_rates
   pages/market_page:
     in: internal/pages/market_page
+  pages/option_candidates_page:
+    in: internal/pages/option_candidates_page
   pages/option_data_page:
     in: internal/pages/option_data_page
   pages/report_page:
@@ -436,6 +438,14 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  pages/option_candidates_page:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - pages
+      - contracts/genpb
+      - compute/contracttest
   pages/option_data_page:
     mayDependOn:
       - contracts
@@ -514,6 +524,7 @@ deps:
       - store/candidate
       - compute/optionledger
       - pages/market_page
+      - pages/option_candidates_page
   compute/contracttest:
     mayDependOn:
       - contracts
