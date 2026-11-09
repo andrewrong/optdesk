@@ -118,7 +118,7 @@ Checked by CI: the generated-code check (buf lint and generate), `uv sync --lock
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`, regenerated for the new package). Size: S.
 Files: `internal/store/bar/api.go`, `internal/store/bar/api_test.go`, `docs/contracts/store.md`, `.go-arch-lint.yml`
 Design: docs/design/market-bars.md#Interface (store). `internal/store/api.go` is not edited (799 lines on main); the interface file of this package is `internal/store/bar/api.go`, listed in the entry cell of the store row by this pull request.
-Order: after 1 (`contracts.PriceBar`, `contracts.FxRate`); the `.go-arch-lint.yml` chain is 3, 7, 8 in that order.
+Order: after 1 (`contracts.PriceBar`, `contracts.FxRate`); the `.go-arch-lint.yml` chain is 3, 7, 10 in that order.
 Goal: the writer, reader, store and open types of `## Interface` and `DSNEnvBar` in package `bar`, declarations only, with doc comments that fix the promises: insert-only, one call one transaction, readers return the winner rows (highest epoch of the pair), ascending by day; `LatestFxRate` has no fallback. The contract test has a fake store and a caller that checks the winner rule on a two-epoch fake and the not-found answer.
 Acceptance:
 1. `grep -c "^type PriceBarWriter interface\|^type PriceBarReader interface\|^type FxRateWriter interface\|^type FxRateReader interface\|^type BarStore interface\|^type OpenBarFunc " internal/store/bar/api.go` prints 6; `grep -c 'DSNEnvBar = "OT_PG_DSN_BAR"' internal/store/bar/api.go` prints 1.
@@ -167,31 +167,59 @@ Goal: `History` protocol and the three dataclasses in `api.py` (declarations onl
 Acceptance:
 1. `grep -c "class BarKey\|class BarsRequest\|class Bar\b\|class History(Protocol)" pyside/src/optdesk/ibkr/api.py` prints 4; `grep -c "return " pyside/src/optdesk/ibkr/api.py` equals `git show origin/main:pyside/src/optdesk/ibkr/api.py | grep -c "return "` (no logic added).
 2. `grep -c "async def Bars" pyside/src/optdesk/ibkr/transport.py` prints 1; `grep -c "RESOURCE_EXHAUSTED\|INVALID_ARGUMENT" pyside/src/optdesk/ibkr/transport.py` is at least the count on main plus 2.
-3. `grep -c "def test_pacer_limits_to_55_per_10_minutes\|def test_identical_request_waits_15_seconds\|def test_wait_over_300_seconds_is_paced\|def test_kind_maps_to_tws_word\|def test_duration_days_maps_to_tws_string\|def test_missing_con_id_is_invalid" pyside/tests/ibkr/test_history.py` prints 6.
+3. `grep -c "def test_pacer_limits_to_55_per_10_minutes\|def test_identical_request_waits_15_seconds\|def test_wait_over_300_seconds_is_paced\|def test_kind_maps_to_tws_word\|def test_duration_days_maps_to_tws_string\|def test_missing_con_id_is_invalid" pyside/tests/ibkr/test_history.py` prints 8.
 4. `grep -c "sleep(" pyside/tests/ibkr/test_history.py` prints 0; `grep -c "TRADES\|ADJUSTED_LAST\|MIDPOINT" pyside/src/optdesk/ibkr/history.py` is at least 3; each new file is under 600 lines (`awk 'END{print NR}' pyside/src/optdesk/ibkr/history.py` is below 600).
 5. `git diff --name-only BASE` lists no path outside the Files line.
 Checked by CI: the pyside workflow (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`).
 
-### 7 bars-job
+### 7 bars-job-manifest (interface)
 
-Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
-Files: `.go-arch-lint.yml`, `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/barsrefresh/doc.go`, `internal/jobs/barsrefresh/job.toml`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/plan.go`, `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/restate.go`, `internal/jobs/barsrefresh/manifest_test.go`, `internal/jobs/barsrefresh/plan_test.go`, `internal/jobs/barsrefresh/run_test.go`, `internal/jobs/barsrefresh/restate_test.go`, `docs/contracts/jobs.md`
-Design: docs/design/market-bars.md#Decisions (3 to 7, 11)
-Order: after 3, 4, 5; the `.go-arch-lint.yml` chain is 3, 7, 8; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 8 and 10 (before 8, 10).
-Goal: `barsrefresh.New` (`NewBarsRefreshFunc`): one key per `WatchEntry` (key = its `Issuer`) and per `[[index]]` (key = `index:<symbol>`); `Run` for a key resolves the instrument id (Decision 6), pulls `trades` (5 days, or `backfill_days` when nothing is stored or after a restatement), applies the rule of Decision 4 and inserts; pulls `adjusted_last` when none is stored or the newest is 7 or more calendar days before the run day (`adjusted_cadence_days`), with the same rule; a source error for one key is that key's failure, the other keys are unaffected; a name with no bars is `Usable` 0, never an invented close. Manifest: `id`, `backfill_days = 400`, `daily_days = 5`, `restate_tolerance = "0.00001"`, `adjusted_cadence_days = 7`, `[[index]]` tables, `[schedule]` (XNYS, `session_close`, `10m`, `run_bound` `10m`). Money is `math/big.Rat`, never float.
+Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
+Files: `.go-arch-lint.yml`, `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`, `internal/jobs/barsrefresh/doc.go`, `internal/jobs/barsrefresh/job.toml`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/manifest_test.go`
+Design: docs/design/market-bars.md#Decisions (4, 6, 7)
+Order: after 3; the `.go-arch-lint.yml` chain is 3, 7, 10; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 10 and 12.
+Goal: `NewBarsRefreshFunc` (declaration only; entry 8 implements it) and the manifest loader `barsrefresh.LoadManifest` with `job.toml`: `id`, `backfill_days = 400`, `daily_days = 5`, `restate_tolerance = "0.00001"`, `adjusted_cadence_days = 7`, `backfill_names_per_run = 10`, `[[index]]` tables (SPX, NDX, RUT, N225), `[schedule]` (XNYS, `session_close`, `10m`, `run_bound` `10m`). A malformed value (non-positive days, a tolerance that is not a decimal, an index without symbol, exchange and currency) is a named refusal. The contract test uses a fake constructor and a caller.
 Acceptance:
-1. `grep -rhE "^func (TestPlanOneKeyPerEntryAndIndex|TestFirstPullBacksFill|TestDailyPullInsertsOnlyNewDays|TestRestatedDayRepullsUnderNextEpoch|TestWithinToleranceIsNotRestated|TestAdjustedPulledWhenSevenDaysOld|TestAdjustedSkippedWhenFresh|TestOneKeyFailureDoesNotStopOthers|TestIndexConIDResolvedOnce|TestNoBarsIsUnusableNotZero|TestPacedIsRetryable)\(" internal/jobs/barsrefresh | awk 'END{print NR}'` prints 11 (new); `TestRestatedDayRepullsUnderNextEpoch` has a stored close 100.0000 and a pulled 50.0000 for one day and requires every pulled row to carry epoch 2; `TestWithinToleranceIsNotRestated` has 100.0000 and 100.0005 and requires no epoch 2 row (the difference is 5e-6 relative, below the tolerance 1e-5).
-2. `grep -c 'id = "bars_refresh"' internal/jobs/barsrefresh/job.toml` prints 1; `grep -c "backfill_days\|restate_tolerance\|adjusted_cadence_days" internal/jobs/barsrefresh/job.toml` prints 3; `grep -c "NewBarsRefreshFunc" internal/jobs/api.go` prints 1; `git diff BASE -- internal/jobs/api.go | grep -c '^-[^-]'` prints 0.
-3. `grep -c "float32\|float64\|time.Sleep\|time.Now()" internal/jobs/barsrefresh/restate.go internal/jobs/barsrefresh/run.go` prints 0 on both; `grep -c "big.Rat" internal/jobs/barsrefresh/restate.go` is at least 1; `grep -c "t.Parallel()" internal/jobs/barsrefresh/run_test.go` is at least the count of `^func Test` there.
-4. `grep -c "bars_refresh\|restate" docs/contracts/jobs.md` is at least 2 (0 on main); `grep -c "internal/jobs/barsrefresh" .go-arch-lint.yml` is at least 1; every new file is under 600 lines (`awk 'END{print NR}'` of each is below 600); `git diff --name-only BASE` lists no path outside the Files line.
-Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`, ci-go, golangci-lint.
+1. `grep -c "^type NewBarsRefreshFunc " internal/jobs/api.go` prints 1; `git diff BASE -- internal/jobs/api.go | grep -c '^-[^-]'` prints 0.
+2. `grep -c 'id = "bars_refresh"' internal/jobs/barsrefresh/job.toml` prints 1; `grep -c "backfill_days\|restate_tolerance\|adjusted_cadence_days\|backfill_names_per_run\|daily_days" internal/jobs/barsrefresh/job.toml` prints 5; `grep -c "^\[\[index\]\]" internal/jobs/barsrefresh/job.toml` prints 4.
+3. `grep -rhE "^func (TestManifestLoads|TestManifestRefusesBadDays|TestManifestRefusesBadTolerance|TestManifestRefusesIncompleteIndex|TestBarsRefreshContract)\(" internal/jobs | awk 'END{print NR}'` prints 5 (new); `grep -c "time.Sleep\|time.Now()" internal/jobs/barsrefresh/manifest.go` prints 0.
+4. `grep -c "bars_refresh\|backfill_names_per_run" docs/contracts/jobs.md` is at least 2 (0 on main); `grep -c "internal/jobs/barsrefresh" .go-arch-lint.yml` is at least 1; `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`, ci-go.
 
-### 8 fx-job
+### 8 bars-job-run
+
+Module: jobs. Size: M.
+Files: `internal/jobs/barsrefresh/job.go`, `internal/jobs/barsrefresh/plan.go`, `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/restate.go`, `internal/jobs/barsrefresh/plan_test.go`, `internal/jobs/barsrefresh/run_test.go`, `internal/jobs/barsrefresh/restate_test.go`
+Design: docs/design/market-bars.md#Decisions (3 to 7, 11)
+Order: after 4, 5, 7; it shares `internal/jobs/barsrefresh/run.go` with 9 (before 9).
+Goal: `barsrefresh.New` (the type of entry 7): one key per `WatchEntry` (its `Issuer`) and per `[[index]]` (`index:<symbol>`); `Run` for a key resolves the instrument id (Decision 6), pulls `trades` (5 days; `backfill_days` when nothing is stored, at most `backfill_names_per_run` names a day, a name past the cap answers with no request and no error; or after a restatement), applies the restatement rule of Decision 4 in `restate.go` and inserts; one key's source error is that key's failure only; a name with no bars is `Usable` 0, never an invented close. Exact `math/big.Rat`, no float.
+Acceptance:
+1. `grep -rhE "^func (TestPlanOneKeyPerEntryAndIndex|TestFirstPullBackfills|TestBackfillCapDefersWithoutRequest|TestDailyPullInsertsOnlyNewDays|TestRestatedDayRepullsUnderNextEpoch|TestWithinToleranceIsNotRestated|TestOneKeyFailureDoesNotStopOthers|TestIndexConIDResolvedOnce|TestNoBarsIsUnusableNotZero|TestPacedIsRetryable)\(" internal/jobs/barsrefresh | awk 'END{print NR}'` prints 10 (new).
+2. `TestRestatedDayRepullsUnderNextEpoch` has a stored close 100.0000 and a pulled 50.0000 for one day and requires every pulled row to carry epoch 2; `TestWithinToleranceIsNotRestated` has 100.0000 and 100.0005 (5e-6 relative, below 1e-5) and requires no epoch 2 row; `TestBackfillCapDefersWithoutRequest` has 3 names, cap 2, and requires 2 requests and 1 empty answer without error.
+3. `grep -c "float32\|float64\|time.Sleep\|time.Now()" internal/jobs/barsrefresh/restate.go internal/jobs/barsrefresh/run.go` prints 0 on both lines; `grep -c "big.Rat" internal/jobs/barsrefresh/restate.go` is at least 1; `grep -c "t.Parallel()" internal/jobs/barsrefresh/run_test.go` is at least the count of `^func Test` there.
+4. `grep -c "ADJUSTED_LAST\|BarAdjustedLast" internal/jobs/barsrefresh/run.go` prints 0 (entry 9 adds it); each new file is under 600 lines; `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, ci-go, golangci-lint.
+
+### 9 bars-job-adjusted
+
+Module: jobs. Size: S.
+Files: `internal/jobs/barsrefresh/run.go`, `internal/jobs/barsrefresh/adjusted.go`, `internal/jobs/barsrefresh/adjusted_test.go`
+Design: docs/design/market-bars.md#Decisions (3, 4)
+Order: after 5, 8; it shares `internal/jobs/barsrefresh/run.go` with 8 (after 8).
+Goal: the weekly step of Decision 4: for a key with no stored `adjusted_last` winner row, or whose newest winner row was received `adjusted_cadence_days` or more calendar days before the run day, one request for the whole `backfill_days` window with an empty end date, every row inserted under epoch + 1 in one call; no diff test; a failed request leaves the stored rows as they are and fails that key only.
+Acceptance:
+1. `grep -rhE "^func (TestAdjustedPulledWhenNone|TestAdjustedPulledAtSevenDays|TestAdjustedSkippedWhenFresh|TestAdjustedWritesWholeWindowAsNextEpoch|TestAdjustedFailureKeepsStoredRows)\(" internal/jobs/barsrefresh | awk 'END{print NR}'` prints 5 (new); `TestAdjustedWritesWholeWindowAsNextEpoch` has stored epoch 1 rows and an answer whose every value differs by a dividend factor and requires all answered rows at epoch 2, and a second case where nothing differs and still requires epoch 2.
+2. `grep -c "restate\|Tolerance" internal/jobs/barsrefresh/adjusted.go` prints 0 (no diff test for this basis).
+3. `grep -c "BarAdjustedLast" internal/jobs/barsrefresh/adjusted.go` is at least 1; `grep -c "float32\|float64\|time.Sleep\|time.Now()" internal/jobs/barsrefresh/adjusted.go` prints 0.
+4. `git diff BASE -- internal/jobs/barsrefresh/run.go | grep -c '^-[^-]'` is at most 3 (the call site only); `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/... -race -count=1`, ci-go.
+
+### 10 fx-job
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `.go-arch-lint.yml`, `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/fxrefresh/doc.go`, `internal/jobs/fxrefresh/job.toml`, `internal/jobs/fxrefresh/run.go`, `internal/jobs/fxrefresh/run_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/market-bars.md#Decisions (9)
-Order: after 3, 4, 5, 7 (`.go-arch-lint.yml` chain 3, 7, 8; `internal/jobs/api.go`, `api_test.go`, `jobs.md` shared with 7 and 10, before 10).
+Order: after 3, 4, 5, 7 (`.go-arch-lint.yml` chain 3, 7, 10; `internal/jobs/api.go`, `api_test.go`, `jobs.md` shared with 7 and 10, before 10).
 Goal: `fxrefresh.New` (`NewFxRefreshFunc`), one key `{obs.fx_rate, USDJPY}`; `Run` resolves the USD.JPY cash contract once through `Broker.ResolveContract` (exchange IDEALPRO, currency JPY; not listed is Permanent), asks `MIDPOINT` for 5 days, inserts one row per bar day not stored (`rate` = the close text, `source` `ibkr_midpoint`), leaves a stored day as it is, and fabricates nothing when the answer is empty; no default rate exists in the package.
 Acceptance:
 1. `grep -rhE "^func (TestOneKeyUSDJPY|TestInsertsOnlyNewDays|TestStoredDayLeftAsIs|TestEmptyAnswerWritesNothing|TestNotListedIsPermanent|TestPacedIsRetryable|TestNoDefaultRate)\(" internal/jobs/fxrefresh | awk 'END{print NR}'` prints 7 (new).
@@ -200,7 +228,7 @@ Acceptance:
 4. `grep -c "internal/jobs/fxrefresh" .go-arch-lint.yml` is at least 1; `git diff BASE -- internal/jobs/api.go | grep -c '^-[^-]'` prints 0; `git diff --name-only BASE` lists no path outside the Files line.
 Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`, ci-go.
 
-### 9 hv30-rule
+### 11 hv30-rule
 
 Module: compute, plus docs (judged two-module entry: the register is under docs; precedent `compute-rules` of `docs/design/compute-figures.md`). Size: S.
 Files: `internal/compute/rules/rules.json`, `internal/compute/rules/rules_test.go`, `docs/conventions/register.toml`
@@ -214,12 +242,12 @@ Acceptance:
 4. `git diff BASE -- docs/conventions/register.toml | grep -c '^+source_hash = "pending-recompute"'` prints 0 (the entry carries the real 64-hex hash of the other Go ids' method); `git diff --name-only BASE` lists exactly the Files line.
 Checked by CI: `go test ./internal/compute/rules -race -count=1` (`TestHashesMatchSource`, `TestRulesMatchRegister`, `TestNoPendingForGoIds`, `TestRegisterEntriesComplete`), ci-go.
 
-### 10 hv30-step
+### 12 hv30-step
 
 Module: jobs. Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/computefigures/job.go`, `internal/jobs/computefigures/job.toml`, `internal/jobs/computefigures/hv.go`, `internal/jobs/computefigures/hv_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/market-bars.md#Decisions (10)
-Order: after 3, 7, 8, 9; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 7 and 8, and `job.go` with no other entry of this design.
+Order: after 3, 7, 10, 11; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 7 and 10, and `job.go` with no other entry of this design.
 Goal: `ComputeStores.PriceBars` (nil: the step is skipped and `Plan` and `Run` are byte for byte as today); with it set, the manifest key `hv30 = "market.hv30_own"` plans one key `market.hv30_own|underlying|<name>` per subject of the day, `Run` reads the winner `trades` rows (Decision 10), builds the `compute.Series` at the edge and stores the figure of `Figures.HistoricalVol` as a reading with the existing writer (state ok or missing with the figure's reason; the rows hash and the parameters `data_day`, `observations`, `window`).
 Acceptance:
 1. `grep -rhE "^func (TestHv30StoredForSubject|TestHv30ShortHistoryIsMissing|TestHv30NoBarsIsNoInput|TestHv30StaleIsMissing|TestNilPriceBarsSkipsStep|TestHv30UsesTradesBasisOnly|TestHv30ClosesAscendingLast31)\(" internal/jobs/computefigures | awk 'END{print NR}'` prints 7 (new); `TestHv30StoredForSubject` feeds 31 closes alternating 100 and 101 and requires the stored value to equal the hand-worked `stdev(30 log returns) x sqrt(252)` at 6 places half-even, written in the test as a literal.
@@ -228,12 +256,12 @@ Acceptance:
 4. `grep -c "hv30\|PriceBars" docs/contracts/jobs.md` is at least 2; each new file is under 600 lines; `git diff --name-only BASE` lists no path outside the Files line.
 Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, ci-go.
 
-### 11 bars-wire
+### 13 bars-wire
 
 Module: ot. Size: M.
 Files: `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/runonce.go`, `cmd/ot/runonce_test.go`, `cmd/ot/env.go`, `cmd/ot/preflight.go`, `cmd/ot/preflight_test.go`, `docs/contracts/ot.md`
 Design: docs/design/market-bars.md#Decisions (6, 7, 8, 10)
-Order: after 4, 7, 8, 10 and after `docs/design/event-sources.md` `watch-loader-earnings-wire` (the `watch.toml` loader, `runonce.go`, `wire.go`, `env.go`, `preflight.go` are shared with it and with the account wire; this entry rebases on whichever lands first).
+Order: after 4, 8, 9, 10, 12 and after `docs/design/event-sources.md` `watch-loader-earnings-wire` (the `watch.toml` loader, `runonce.go`, `wire.go`, `env.go`, `preflight.go` are shared with it and with the account wire; this entry rebases on whichever lands first).
 Goal: register `bars_refresh` and `fx_refresh` in `run-once` and the scheduler with the `WatchEntry` list of the loader, open `bar.Open` with `OT_PG_DSN_BAR`, dial `grpcbroker.DialHistory`, give `computefigures` the bar reader opened with the pages DSN as `ComputeStores.PriceBars`; a missing DSN or an unreachable broker disables only these jobs (and the HV step) with a named line, values never printed; `OT_PG_DSN_BAR` joins the preflight list.
 Acceptance:
 1. `grep -rhE "^func (TestBarsRefreshRegistered|TestFxRefreshRegistered|TestMissingBarDSNDisablesOnlyBars|TestComputeFiguresGetsPriceBars|TestBrokerDownDisablesBarJobs)\(" cmd/ot | awk 'END{print NR}'` prints 5 (new).
@@ -252,5 +280,20 @@ Checked by CI: `go test ./cmd/ot -race -count=1`, `go run ./scripts/arch --check
 - RV20, IV minus RV20, beta, the 200-day line on IBKR closes, IV rank and the ITM probability: they read these tables but belong to the compute and page designs that name them (`market-page-producer.md`, `option-candidates.md`).
 - Reconciliation of own HV30 against IBKR's (`Quote.HistoricalVol`, glossary: "recorded, never shown"): not recorded here; a mismatch record is a later step of the figures job.
 - FX: the 15 s stream (owner, dropped), decision-grade observations, ECB cross-check, `fx_override` and the internal 16:27 fix of ADR 0004; pairs other than USDJPY; the consumers (funding gates, JPY structures, P and L in USD) which keep their gaps until their designs read `LatestFxRate`.
+- Readers, found by grep in the existing designs (this design edits none of them):
+  - HV30 (`market.hv30_own`): `docs/design/option-pages-v22.md` (the `vol_line` and `iv_line` text, "HV30 and IVP wait for the compute design"), `docs/design/tracking-household-reports.md` and `docs/design/home-board-1.md` (producer-written HV30), `docs/design/missing-pages.md`; the builders are the builders-wave of `alignment-v25.md` Decision 3 item 8 (option pages, home members, companies). No design reads it today.
+  - `adjusted_last`: no existing design reads it; the first readers are the price lines, core and diagnosis boards, which `alignment-v25.md` Decision 3 items 3 and 8 say wait for `bars` and come after the builders (`docs/design/missing-pages.md` holds their schemas).
+  - The USD.JPY rate: no design reads it; the named places that will are the FX lines in `option-candidates.md` Left out, the JPY gap `unsupported_currency` in `option-positions.md` Left out, the no-conversion line in `option-ledger.md` Left out, and the account-data follow-up of `alignment-v25.md` Decision 3 item 4 (Flex and daily FX).
 - Pages, schemas and builders that print HV30 (`vol_line`, `iv_line`, `hv30` fields, `volatility_note`): not edited; the builders-wave cites `market.hv30_own` by id and version.
 - Scoring and the scanner: another design.
+
+## Adversarial
+
+Answers to `adv-market-bars.md` (in the scratchpad of this run, read at 1997907).
+
+1. Gap, no reader, Goal overclaims: adopted. The Goal now claims only stored values and readings; `## Left out` names, by grep, the design or builder that will read HV30, `adjusted_last` and the JPY rate. No page is edited.
+2. Risk, a 6-day-old ex-dividend missed: adopted through the alternative of 3 (Decision 4): the weekly pull is unconditional and re-pulls the whole window as a new epoch, so no ex-date is missed beyond the 7-day staleness, which is stated. Entry 8 holds the trades diff rule and entry 9 the adjusted step.
+3. Cut `adjusted_last` and `adjust_epoch`: not adopted; `alignment-v25.md` Decision 3 item 3 names them, so a cut is the owner's. The simpler re-pull of the second alternative is adopted (answer 2).
+4. `MIDPOINT` in `BarKind` that the table rejects: kept, with the reason in Decision 3: one rpc serves the FX job, which writes `obs.fx_rate`; `obs.price_bar` accepts only the two bases.
+5. IBKR units and the empty end date, and no probe: adopted. Decision 7 says `N D` up to 365 and years above, an empty end date for every kind; the probe is folded into entry 6 as a recorded-shape fixture (`bars_shapes.json`) replaced by one real answer after merge, since no test may use a live broker and a separate probe entry would add a tool for one answer.
+6. Slip: adopted in part. Issue 7 is split into 7, 8 and 9 (at most 8 files each; the generated entries 1, 2 and 4 stay larger); the first backfill is resumable with a per-day cap (question E); Order lines are plain, both directions. Not removable by design: the owner merges for 2 and 6, and 13 waits for the watch loader.
