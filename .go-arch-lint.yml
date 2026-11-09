@@ -278,6 +278,7 @@ deps:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/reading:
     mayDependOn:
@@ -430,6 +431,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -607,6 +609,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
