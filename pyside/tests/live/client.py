@@ -63,5 +63,4 @@ class LiveClient:
         return list(stream)
 
     def bars(self, request: api.BarsRequest) -> api.BarsResponse:
-        """The pinned stub call: used by the one test that expects UNIMPLEMENTED."""
         return self._market.Bars(request, timeout=CHAINS_TIMEOUT_S)
