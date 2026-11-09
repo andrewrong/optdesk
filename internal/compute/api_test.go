@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"math"
+	"reflect"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -583,5 +584,125 @@ func TestOptionLedgerContractFake(t *testing.T) {
 	if res.RuleVersion != 1 || res.Positions[0].PositionID != "a:t1:1" || res.Positions[0].PremiumIncome != "1.2500" ||
 		res.Cycles[0].CycleID != "a:AAA:t1" || len(res.Unresolved) != 1 || res.Review != nil {
 		t.Fatalf("caller read %+v", res)
+	}
+}
+
+type fakeStructures struct {
+	in  *compute.StructureInput
+	p   *compute.StructureParams
+	out compute.StructureResult
+}
+
+func (f fakeStructures) Evaluate(in compute.StructureInput, p compute.StructureParams) compute.StructureResult {
+	*f.in, *f.p = in, p
+	return f.out
+}
+
+var _ compute.OptionStructures = fakeStructures{}
+
+func TestOptionStructuresContract(t *testing.T) {
+	t.Parallel()
+	want := compute.StructureResult{
+		Structures: []compute.Structure{{
+			ID: "a:s1", Alias: "a", Underlying: "AAA", Currency: "USD", Kind: "short_put",
+			Legs: []compute.StructureLeg{{
+				PositionID: "p1", Right: "P", Strike: "50", Expiry: "2026-02-20", Quantity: "-1", Multiplier: "100",
+				OpenPrice: "1.20", Mid: "0.90", LegPnL: "30.0000", MarkStatus: "ok",
+			}},
+			Figures: compute.StructureFigures{
+				MaxLoss: compute.FigureValue{Value: "4880.0000"}, MaxGain: compute.FigureValue{Gap: "no_data"},
+				BreakEven: compute.FigureValue{Value: "48.8"}, UnrealizedPnL: compute.FigureValue{Value: "30"},
+				EarnedShare: compute.FigureValue{Value: "0.25"}, ExpiryDistance: compute.FigureValue{Value: "10"},
+				CloseCost: compute.FigureValue{Value: "90"}, RollCredit: compute.FigureValue{Gap: "missing_quote"},
+				RollNet: compute.FigureValue{Gap: "missing_input"}, RecentCommission: compute.FigureValue{Value: "1"},
+				CashAfter: compute.FigureValue{Gap: "no_rule"},
+			},
+			Payoff: []compute.PayoffPoint{{Price: "50", PnL: "120.0000"}},
+			Greeks: compute.GreekSet{
+				Delta: compute.FigureValue{Value: "-0.3"}, Gamma: compute.FigureValue{Value: "0.01"},
+				Theta: compute.FigureValue{Value: "-0.02"}, Vega: compute.FigureValue{Gap: "stale_input"}, Day: "2026-01-06",
+			},
+			Levels: []compute.StructureLevel{{Name: "strike", Price: "50", Distance: "5"}},
+			Decide: true, CaptureParam: "0.5", ExitDTEParam: "21",
+		}},
+		Other: []compute.Structure{{Kind: "other", Currency: "EUR", Figures: compute.StructureFigures{CashAfter: compute.FigureValue{Gap: "unsupported_currency"}}}},
+		Diff:  compute.CaptureDiff{CaptureOnly: []string{"x"}, LedgerOnly: []string{"y"}, Skipped: "no_capture"},
+	}
+	var in compute.StructureInput
+	var params compute.StructureParams
+	var newFn compute.NewOptionStructuresFunc = func() compute.OptionStructures {
+		return fakeStructures{in: &in, p: &params, out: want}
+	}
+	sent := compute.StructureInput{
+		Alias:     "a",
+		Positions: []compute.LedgerPosition{{PositionID: "p1"}},
+		Cycles:    []compute.LedgerCycle{{CycleID: "c1"}},
+		Quotes: []compute.StructureQuote{{
+			Underlying: "AAA", Right: "P", Strike: "50", Expiry: "2026-02-20", Day: "2026-01-05",
+			Bid: "1", Ask: "1.1", UnderlyingClose: "55", Delta: "-0.3", Gamma: "0.01", Theta: "-0.02", Vega: "0.05",
+		}},
+		Held:        []compute.HeldOption{{Underlying: "AAA", Right: "P", Strike: "50", Expiry: "2026-02-20", Quantity: "-1"}},
+		HeldDay:     "2026-01-05",
+		AsOf:        "2026-01-06",
+		SessionDays: []contracts.Day{"2026-01-05", "2026-01-06"},
+	}
+	sentParams := compute.StructureParams{MarkMaxAgeSessions: 5, CaptureTarget: "0.5", ExitDTE: 21, CommissionDays: 30}
+	res := newFn().Evaluate(sent, sentParams)
+	if !reflect.DeepEqual(in, sent) || params != sentParams {
+		t.Fatalf("rule saw %+v %+v", in, params)
+	}
+	if !reflect.DeepEqual(res, want) {
+		t.Fatalf("caller read %+v", res)
+	}
+}
+
+type fakeResults struct {
+	in  *compute.ResultInput
+	out compute.ResultSummary
+}
+
+func (f fakeResults) Summarise(in compute.ResultInput) compute.ResultSummary {
+	*f.in = in
+	return f.out
+}
+
+var _ compute.OptionResults = fakeResults{}
+
+func TestOptionResultsContract(t *testing.T) {
+	t.Parallel()
+	want := compute.ResultSummary{Sections: []compute.ResultSection{{
+		Side: "sold", Currency: "USD",
+		Months:   []compute.ResultMonth{{Month: "2026-01", Realized: "10.0000", Running: "10.0000", Over: true}},
+		Endings:  []compute.ResultEnding{{Status: "expired", Count: 2, Realized: "10.0000"}},
+		Realized: "10.0000", Premium: "12.0000", KeptShare: "0.833333", AssignedPremium: "1.0000", AssignedShares: "100.0000",
+		Reliability: compute.ResultReliability{Equal: 1, Differ: 2, NoBroker: 3, Unresolved: []string{"t0"}, Review: []string{"t9"}},
+	}}}
+	var in compute.ResultInput
+	var newFn compute.NewOptionResultsFunc = func() compute.OptionResults { return fakeResults{in: &in, out: want} }
+	sent := compute.ResultInput{
+		Alias: "a", Positions: []compute.LedgerPosition{{PositionID: "p1"}},
+		Unresolved: []string{"t0"}, Review: []string{"t9"}, AsOf: "2026-01-06",
+	}
+	res := newFn().Summarise(sent)
+	if !reflect.DeepEqual(in, sent) {
+		t.Fatalf("rule saw %+v", in)
+	}
+	if !reflect.DeepEqual(res, want) {
+		t.Fatalf("caller read %+v", res)
+	}
+}
+
+func TestLedgerPositionTerms(t *testing.T) {
+	t.Parallel()
+	p := compute.LedgerPosition{
+		PositionID: "p1", Right: "C", Expiry: "2026-02-20", Strike: "55", OpenedOn: "2026-01-02", ClosedOn: "2026-01-20",
+		OpenPrice: "1.20", BrokerRealized: "30.00",
+		Fills: []compute.LedgerFill{{Day: "2026-01-02", Action: "open", Quantity: "-1", Price: "1.20", Commission: "1.00"}},
+	}
+	f := p.Fills[0]
+	if p.Right != "C" || p.Expiry != "2026-02-20" || p.Strike != "55" || p.OpenedOn != "2026-01-02" || p.ClosedOn != "2026-01-20" ||
+		p.OpenPrice != "1.20" || p.BrokerRealized != "30.00" || f.Day != "2026-01-02" || f.Action != "open" || f.Quantity != "-1" ||
+		f.Price != "1.20" || f.Commission != "1.00" {
+		t.Fatalf("terms %+v", p)
 	}
 }
