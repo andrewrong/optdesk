@@ -66,7 +66,7 @@ Items under `Checked by CI` are decided by the workflows of the head commit; eve
 
 The broker declarations, the arch derivation of entry-listed sub-packages and the stub package
   Goal: `internal/broker/api.go` declares the types of `## Interface`, and `scripts/arch` derives that a sub-package of a row that depends on contracts may import `contracts/genpb`, the sub-package the contracts entry cell lists; `broker/grpcbroker` is the first user.
-  Files: internal/broker/api.go, internal/broker/api_test.go, internal/broker/grpcbroker/doc.go, scripts/arch/main.go, scripts/arch/main_test.go, .go-arch-lint.yml
+  Files: internal/broker/api.go, internal/broker/api_test.go, internal/broker/grpcbroker/doc.go, scripts/arch/main.go, scripts/arch/main_test.go
   Design: docs/design/broker.md#interface
   Cross-module: broker and repo, licensed by this design (see `## Modules`).
   Acceptance:

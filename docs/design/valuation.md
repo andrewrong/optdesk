@@ -143,7 +143,7 @@ Checked by CI: ci-go, ci-web (`tsc`, `eslint`, `vitest`, the build); the generat
 
 - Module: store, plus repo (`.go-arch-lint.yml`, the lint lines of the new component). Size: M. Order: after 1 and 10, and after the merged events `earnings-store` and account-data edits of `internal/store/api.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go` and `docs/contracts/store.md` (read at cut time).
 - Design: docs/design/valuation.md#Decisions (6)
-- Files: internal/store/api.go, internal/store/api_fact_test.go, internal/store/setup/setup.go, internal/store/setup/setup_test.go, migrations/NNNN_fundamental_fact.sql, internal/store/fundamental/store.go, internal/store/fundamental/store_test.go, internal/store/fundamental/store_pg_test.go, docs/contracts/store.md, .go-arch-lint.yml
+- Files: internal/store/api.go, internal/store/api_fact_test.go, internal/store/setup/setup.go, internal/store/setup/setup_test.go, migrations/NNNN_fundamental_fact.sql, internal/store/fundamental/store.go, internal/store/fundamental/store_test.go, internal/store/fundamental/store_pg_test.go, docs/contracts/store.md
 
 - Goal: `FactWriter`, `FactReader`, `FactStore`, `OpenFactStoreFunc` and `DSNEnvFundamental` in `api.go`; the contract test in the new file from both sides with a fake; role `ot_w_fundamental` (INSERT on the base table and SELECT on the view, line `OT_PG_DSN_FUNDAMENTAL`) made by `setup.Setup` in `setup.go`, with its test; the table `obs.fundamental_fact` (append only, no update or delete grant) whose primary key is `(source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end)`, where `period_start_key` is `NOT NULL` and holds `0001-01-01` for an absent `period_start` (the view returns NULL again), so a repeated instant fact is a duplicate; a view `rd.fundamental_fact_r1` granted SELECT to `ot_ro_pages` and to `ot_w_fundamental` (neither role reads the base table); `FactsFiledBy` reads the view only, so one implementation serves the figures job opened with `DSNEnvFundamental` and the page opened with `DSNEnvPages`, and returns every row of the subject filed on or before the cutoff. `NNNN` is the next free number at cut time.
 
@@ -159,7 +159,7 @@ Checked by CI: `go run ./scripts/arch --check` prints `arch: ok`; ci-go-pg (inse
 
 - Module: sources, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 1, 4 and 10 (4 first: both edit `.go-arch-lint.yml`). Second-opinion case: new outside service (`data.sec.gov`; public CIK only; the User-Agent contact text comes from the environment).
 - Design: docs/design/valuation.md#Decisions (5, 6)
-- Files: internal/sources/api.go, internal/sources/api_test.go, internal/sources/sec/client.go, internal/sources/sec/mapping.go, internal/sources/sec/pacing.go, internal/sources/sec/client_test.go, internal/sources/sec/mapping_test.go, internal/sources/sec/testdata/companyfacts_sample.json, internal/sources/sec/testdata/submissions_sample.json, .go-arch-lint.yml
+- Files: internal/sources/api.go, internal/sources/api_test.go, internal/sources/sec/client.go, internal/sources/sec/mapping.go, internal/sources/sec/pacing.go, internal/sources/sec/client_test.go, internal/sources/sec/mapping_test.go, internal/sources/sec/testdata/companyfacts_sample.json, internal/sources/sec/testdata/submissions_sample.json
 
 - Goal: `Cursor`, `FactPlan`, `FactSource`, both configs and both constructor types (additive); `sec.New` fetches `/api/xbrl/companyfacts/CIK##########.json` and maps each kept concept to a `FundamentalFact` (`subject` the issuer text, `accn` as `doc_id`, `filed`, `form`, `raw_sha256`, `retrieved_at` from the clock), and `/submissions/CIK##########.json` for the SIC code, kept as one fact (taxonomy `sec`, concept `StandardIndustrialClassification`, unit `sic`, `period_end` the retrieval day) so the bank and cyclical rule of Decision 5 has its input; pacing as the FRED package (reused if possible), both requests counted; an error never carries the User-Agent.
 
@@ -176,7 +176,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`.
 
 - Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M. Order: after 1, 4, 5 and 10 (4 and 5 first: all edit `.go-arch-lint.yml`); `internal/compute/api.go` is in this issue only.
 - Design: docs/design/valuation.md#Interface
-- Files: internal/compute/api.go, internal/compute/api_valuation_test.go, docs/contracts/compute.md, internal/compute/valuation/doc.go, .go-arch-lint.yml
+- Files: internal/compute/api.go, internal/compute/api_valuation_test.go, docs/contracts/compute.md, internal/compute/valuation/doc.go
 
 - Goal: the function types and result types of Interface with doc comments (text decimals, `Standard` with `US_GAAP`, `J_GAAP`, `IFRS`, `FilingsResult` carrying the SIC text, states, reasons of Decision 5, the four line keys `SPENDING_STAYS`, `SPENDING_EARNS`, `ANALYST_PATH`, `SPENDING_EARNS_ANALYST`, no verdict word); a fake of each, a caller test in the new file; `doc.go` as a package clause so the lint file names the component.
 
@@ -191,7 +191,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`; `go run
 
 - Module: jobs, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 4, 5, 6 and 10 (6 first: both edit `.go-arch-lint.yml`), and after the merge of events `earnings-job` (adds `WatchEntry` to `internal/jobs/api.go`) and of the account-data edits of `internal/jobs/api.go` and `docs/contracts/jobs.md`, read at cut time.
 - Design: docs/design/valuation.md#Decisions (6, 9)
-- Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/fundamentals/job.toml, internal/jobs/fundamentals/plan.go, internal/jobs/fundamentals/run.go, internal/jobs/fundamentals/run_test.go, docs/contracts/jobs.md, .go-arch-lint.yml
+- Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/fundamentals/job.toml, internal/jobs/fundamentals/plan.go, internal/jobs/fundamentals/run.go, internal/jobs/fundamentals/run_test.go, docs/contracts/jobs.md
 
 - Goal: `NewFundamentalsFunc` and job `fundamentals` shaped like `fredseries`: plan keys are the `cik:` entries of the watch list; the US window after the SEC publish time; writes through `FactWriter`; an entry with no CIK is skipped with a typed reason; `edinet:` entries are skipped and named while `edinet` is nil (they are fetched by issue 23).
 
@@ -222,7 +222,7 @@ Checked by CI: ci-go.
 - Module: pages, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 3, 4, 5, 6, 7, 10 and 13 (the register id `valuation.buy_band`; 4, 5, 6 and 7 first: all edit `.go-arch-lint.yml`).
 - Design: docs/design/valuation.md#Decisions (3, 5, 9, 12)
 - Note: until section funcs exist (issue 16) the core, diagnosis and questions blocks are `Gap`; issue 16 edits `builder.go` to fill them. The hand price is only displayed, never changed.
-- Files: internal/pages/companies_page/builder.go, internal/pages/companies_page/band.go, internal/pages/companies_page/builder_test.go, internal/pages/companies_page/band_test.go, .go-arch-lint.yml
+- Files: internal/pages/companies_page/builder.go, internal/pages/companies_page/band.go, internal/pages/companies_page/builder_test.go, internal/pages/companies_page/band_test.go
 
 - Goal: `Subject`, `Config` (with `Series`), `OwnerText`, `PriceOverride` (Interface) and `Build` returning v2; rows from `Subjects` (no import of `internal/jobs`); the price line cell reads `valuation.buy_band` (band, `owner override` when given; `awaiting approval` without a `valuation.band_approval` reading from `Config.Read` (`WinnerReadings`) whose value equals the band's 8% value; `expired` when `Today` is more than 90 days after the approval `day`), `unvalued` with the reason text for a `missing_input`, the moat text from `OwnerText`; `Subject.HandPrice` shown beside the band as `hand_price`; every other block a `Gap`; the builder holds no formula.
 
@@ -237,7 +237,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`; the siz
 
 - Module: docs, plus repo (`arch.toml`, generated). Size: S. Order: after the merge of events `events-docs-modules` (the same sentence of modules.md, read at cut time); issues 4 to 7, 9 and 19 follow it.
 - Design: docs/design/valuation.md#Modules
-- Files: docs/design/modules.md, arch.toml
+- Files: docs/design/modules.md
 
 - Goal: add `internal/store/fundamental`, `internal/sources/sec`, `internal/sources/edinet`, `internal/compute/valuation`, `internal/jobs/fundamentals` and `internal/pages/companies_page` to the implementation list of `cmd/ot`, then `go run ./scripts/arch`; no row and no depends cell changes.
 
@@ -377,7 +377,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`. Not ver
 
 - Module: sources, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 4, 5, 6, 7, 9, 10 and 18 (all edit `.go-arch-lint.yml`). Second-opinion case: new outside service (`api.edinet-fsa.go.jp`, API key from the environment variable `EDINET_API_KEY`).
 - Design: docs/design/valuation.md#Decisions (8)
-- Files: internal/sources/edinet/client.go, internal/sources/edinet/cursor.go, internal/sources/edinet/client_test.go, internal/sources/edinet/testdata/documents_list.json, .go-arch-lint.yml
+- Files: internal/sources/edinet/client.go, internal/sources/edinet/cursor.go, internal/sources/edinet/client_test.go, internal/sources/edinet/testdata/documents_list.json
 
 - Goal: `edinet.New`: list a day's documents (annual securities reports, form code 030000 and amendments), download the XBRL CSV of a document id, return rows with document id, filing day and `raw_sha256`; the key goes in the query and never in an error or a log line; day chunks driven through the `Cursor` interface of issue 5 (a fake in the test), so a backfill scans the days after the last one saved; no file or database access here.
 

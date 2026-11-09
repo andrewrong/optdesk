@@ -60,7 +60,7 @@ Checked by CI: ci-go and checks run on the pull request; until entry 2 the files
 ### 2 arch-untrack (repo)
 
 Module: repo. Size: S.
-Files: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `.gitignore`, `README.md`, `arch.toml`, `.go-arch-lint.yml`
+Files: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `.gitignore`, `README.md`
 Design: docs/design/arch-generated.md (Decisions 1, 3, 4)
 Order: after 1 (ci-go must already generate; the window merges 1 first). The overlap of its Files with queued package issues is accepted once.
 Goal: the files are deleted from git and ignored; `--check` is removed; README names the two commands.

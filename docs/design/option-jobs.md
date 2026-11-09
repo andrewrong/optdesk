@@ -96,7 +96,7 @@ Items under `Checked by CI` are decided by the workflows of the head commit; eve
 
 The constructor types, the capture id type and the stub packages
   Goal: `internal/jobs/api.go` declares `CaptureID`, `NewOptionEodFunc` and `NewQuoteSnapshotFunc` as in `## Interface`, `google/uuid` is a direct require, and the two job packages exist as stubs the lint knows.
-  Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/optioneod/doc.go, internal/jobs/quotesnapshot/doc.go, go.mod, arch.toml, .go-arch-lint.yml
+  Files: internal/jobs/api.go, internal/jobs/api_test.go, internal/jobs/optioneod/doc.go, internal/jobs/quotesnapshot/doc.go, go.mod
   Design: docs/design/option-jobs.md#interface
   Cross-module: jobs and repo, licensed by this design (see `## Modules`). Attached after the interface entries of `docs/design/broker.md` and `docs/design/store-master.md` merged (the types it names must exist).
   Acceptance:
