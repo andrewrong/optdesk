@@ -85,3 +85,22 @@ func TestEarningsDateAlias(t *testing.T) {
 		t.Fatal("alias of the generated record")
 	}
 }
+
+func TestPriceBarAndFxRateAlias(t *testing.T) {
+	t.Parallel()
+	var b contracts.PriceBar
+	gb := gen.PriceBar(b)
+	gb.AdjustEpoch = 2
+	gb.Volume = nil
+	b = gb
+	if b.AdjustEpoch != 2 || b.Volume != nil {
+		t.Fatal("alias of the generated record")
+	}
+	var f contracts.FxRate
+	gf := gen.FxRate(f)
+	gf.Pair = "USDJPY"
+	f = gf
+	if f.Pair != "USDJPY" {
+		t.Fatal("alias of the generated record")
+	}
+}
