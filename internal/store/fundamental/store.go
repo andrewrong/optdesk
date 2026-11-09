@@ -21,13 +21,15 @@ var _ store.OpenFactStoreFunc = Open
 // noStart is the period_start_key of a fact with no period_start (an instant fact).
 const noStart = "0001-01-01"
 
+// No conflict target: naming one needs SELECT on the table, which no role holds; the primary key is the only
+// unique index, so DO NOTHING acts on the eight-column key.
 // Dates travel as text and are cast in SQL, so no driver date range matters.
 const (
 	insertFactSQL = `INSERT INTO obs.fundamental_fact
  (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end,
   currency, value, form, filed, retrieved_at, raw_sha256)
 VALUES ($1, $2, $3, $4, $5, $6, $7::text::date, $8::text::date, $9, $10, $11, $12::text::date, $13, $14)
-ON CONFLICT (source, subject, doc_id, taxonomy, concept, unit, period_start_key, period_end) DO NOTHING`
+ON CONFLICT DO NOTHING`
 
 	selectFactsSQL = `SELECT source, subject, doc_id, taxonomy, concept, unit, period_start, period_end,
  currency, value, form, filed, retrieved_at, raw_sha256
