@@ -3,7 +3,7 @@
 The guard refuses every order message of the TWS client and every message
 outside a short allowlist; it is installed on the client before it connects.
 The log filter keeps account shapes out of every record. The servicers turn
-the three services of ibkr.v1 into calls on a Gateway. Generated types are
+the services of ibkr.v1 into calls on a Gateway. Generated types are
 imported through optdesk.contracts.api only.
 """
 
@@ -20,6 +20,7 @@ import grpc
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr import spec
+from optdesk.ibkr.api import DividendKey, DividendReading, Reference
 from optdesk.ibkr.gateways import GatewaySpec
 from optdesk.ibkr.model import (
     AccountGateway,
@@ -108,6 +109,9 @@ WORDS = frozenset(
         "snapshot",
         "account",
         "multiple_accounts",
+        "dividends",
+        spec.STATUS_NO_VALUE,
+        spec.STATUS_TIMEOUT,
         spec.OPTION_EOD,
         spec.UNDERLYING_IV,
         spec.SNAPSHOT,
@@ -468,6 +472,93 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
         )
 
 
+_DIVIDEND_STATUSES = {
+    spec.STATUS_OK: pb.DIVIDEND_STATUS_OK,
+    spec.STATUS_NO_VALUE: pb.DIVIDEND_STATUS_NO_VALUE,
+    spec.STATUS_TIMEOUT: pb.DIVIDEND_STATUS_TIMEOUT,
+    spec.STATUS_ERROR: pb.DIVIDEND_STATUS_ERROR,
+}
+
+
+def dividend_to_proto(reading: DividendReading) -> pb.DividendProjection:
+    """Convert a reading; a value that is None stays unset, never zero."""
+    key = reading.key
+    projection = pb.DividendProjection(
+        key=pb.ContractKey(
+            symbol=key.symbol,
+            sec_type=_SEC_TYPE_VALUES.get(key.sec_type, pb.SEC_TYPE_UNSPECIFIED),
+            exchange=key.exchange,
+            currency=key.currency,
+            con_id=key.con_id,
+        ),
+        status=_DIVIDEND_STATUSES.get(reading.status, pb.DIVIDEND_STATUS_ERROR),
+        past_12m=reading.past_12m,
+        next_12m=reading.next_12m,
+        next_ex_date=reading.next_ex_date,
+        next_amount=reading.next_amount,
+        error_code=reading.error_code,
+    )
+    projection.received_at.FromNanoseconds(int(reading.received_at * 1e9))
+    return projection
+
+
+class ReferenceServicer(pb.ReferenceServiceServicer):
+    """ReferenceService: the dividend projection of each contract key received."""
+
+    def __init__(self, shared: _Servicers) -> None:
+        self._shared = shared
+
+    async def Dividends(
+        self, request_iterator: AsyncIterator[pb.ContractKey], context: Context
+    ) -> AsyncIterator[pb.DividendProjection]:
+        gateway = self._shared.gateway
+        if not isinstance(gateway, Reference):
+            await context.abort(
+                grpc.StatusCode.UNIMPLEMENTED, "this gateway serves no reference data"
+            )
+        keys = [
+            DividendKey(
+                key.symbol,
+                _SEC_TYPES.get(key.sec_type, ""),
+                key.exchange,
+                key.currency,
+                key.con_id,
+            )
+            async for key in request_iterator
+        ]
+        if not keys or any(not k.symbol and k.con_id <= 0 for k in keys):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "dividends needs keys that each carry a symbol or a con_id",
+            )
+        queue: asyncio.Queue[DividendReading | None] = asyncio.Queue()
+
+        async def on_reading(reading: DividendReading) -> None:
+            await queue.put(reading)
+
+        work = asyncio.ensure_future(
+            cast(Reference, gateway).dividends(keys, on_reading)
+        )
+        work.add_done_callback(lambda _: queue.put_nowait(None))
+        started = self._shared.clock.monotonic()
+        try:
+            while (reading := await queue.get()) is not None:
+                yield dividend_to_proto(reading)
+            failure = work.exception()
+        finally:
+            if not work.done():
+                work.cancel()
+            await asyncio.gather(work, return_exceptions=True)
+        if failure is not None:
+            code, details = _status_of(failure)
+            log_event(_LOG, "rpc_failed", rpc="dividends", code=code.value[0])
+            await context.abort(code, details)
+        elapsed = int((self._shared.clock.monotonic() - started) * 1000)
+        log_event(
+            _LOG, "rpc_done", rpc="dividends", count=len(keys), elapsed_ms=elapsed
+        )
+
+
 class AccountServicer(pb.AccountServiceServicer):
     """AccountService: the summary and the positions of the one account of a gateway."""
 
@@ -540,8 +631,8 @@ def build_server(
 ) -> grpc.aio.Server:
     """Return a grpc.aio server over gateway; it is not bound.
 
-    Without spec: Session, Contracts and MarketData. With spec, by its collect
-    words: Session always, Contracts and MarketData with market_data, Account
+    Without spec: Session, Contracts, MarketData and Reference. With spec, by its collect
+    words: Session always, Contracts, MarketData and Reference with market_data, Account
     with account_summary or positions (and spec.account as the alias answered).
     """
     shared = _Servicers(gateway, clock or SystemClock())
@@ -551,6 +642,7 @@ def build_server(
     if "market_data" in collect:
         pb.add_ContractsServiceServicer_to_server(ContractsServicer(shared), server)
         pb.add_MarketDataServiceServicer_to_server(MarketDataServicer(shared), server)
+        pb.add_ReferenceServiceServicer_to_server(ReferenceServicer(shared), server)
     if spec is not None and ("account_summary" in collect or "positions" in collect):
         pb.add_AccountServiceServicer_to_server(
             AccountServicer(shared, spec.account, collect), server

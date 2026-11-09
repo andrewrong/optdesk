@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 import ast
+import asyncio
 import dataclasses
 import inspect
+from collections.abc import Awaitable, Callable, Sequence
 
 import pytest
 
 from optdesk.ibkr import api
-from optdesk.ibkr.api import Session, SessionStatus
+from optdesk.ibkr.api import (
+    DividendKey,
+    DividendReading,
+    Reference,
+    Session,
+    SessionStatus,
+)
 
 
 class _FakeSession:
@@ -37,8 +45,50 @@ def test_session_status_is_frozen() -> None:
 
 def test_api_declares_only() -> None:
     tree = ast.parse(inspect.getsource(api))
-    funcs = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    funcs = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
     assert funcs
     for f in funcs:
         assert len(f.body) <= 2
-        assert all(isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant) for s in f.body)
+        assert all(
+            isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant)
+            for s in f.body
+        )
+
+
+class _FakeReference:
+    async def dividends(
+        self,
+        keys: Sequence[DividendKey],
+        on_reading: Callable[[DividendReading], Awaitable[None]],
+    ) -> None:
+        for key in keys:
+            await on_reading(
+                DividendReading(key, "no_value", None, None, None, None, 0, 1.0)
+            )
+
+
+def test_fake_satisfies_reference_and_caller_reads_readings() -> None:
+    fake = _FakeReference()
+    assert isinstance(fake, Reference)
+    seen: list[DividendReading] = []
+
+    async def collect(reading: DividendReading) -> None:
+        seen.append(reading)
+
+    key = DividendKey("AAPL", "STK", "SMART", "USD", 1)
+    asyncio.run(fake.dividends([key], collect))
+    assert [(r.key, r.status, r.next_ex_date) for r in seen] == [
+        (key, "no_value", None)
+    ]
+
+
+def test_dividend_reading_is_frozen() -> None:
+    reading = DividendReading(
+        DividendKey("A", "STK", "", "", 0), "ok", None, None, None, None, 0, 0.0
+    )
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        reading.status = "error"  # type: ignore[misc]
