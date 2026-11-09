@@ -23,13 +23,17 @@ const (
 var noData = compute.FigureValue{Gap: gapNoData}
 
 // Evaluate recognises the open positions of the input (Decision 4), sets the figures that
-// need no mark (Decision 6), the payoff (Decision 8) and the levels, and orders the
-// structures by Decision 12: the most negative max loss first, gaps last, then ID. The
-// figures that need marks are left as FigureValue{Gap: "no_data"}.
-func (structures) Evaluate(in compute.StructureInput, _ compute.StructureParams) compute.StructureResult {
+// need no mark (Decision 6), the payoff (Decision 8) and the levels, fills the marked figures,
+// the Greeks, the compare row and Decide (Decisions 6, 7, 13) from the quotes of the input,
+// and orders the structures by Decision 12: the most negative max loss first, gaps last, then
+// ID. The capture diff is Decision 2. A quote set that is empty gives FigureValue{Gap: "no_data"}.
+func (structures) Evaluate(in compute.StructureInput, params compute.StructureParams) compute.StructureResult {
 	var res compute.StructureResult
-	for _, u := range recognise(in) {
+	m := marker{quotes: in.Quotes, params: params, asOf: in.AsOf, days: in.SessionDays}
+	units := recognise(in)
+	for _, u := range units {
 		s := build(in.Alias, u)
+		m.fill(&s, u)
 		if u.kind == kindOther {
 			res.Other = append(res.Other, s)
 		} else {
@@ -38,6 +42,7 @@ func (structures) Evaluate(in compute.StructureInput, _ compute.StructureParams)
 	}
 	slices.SortStableFunc(res.Structures, compareStructures)
 	slices.SortStableFunc(res.Other, func(a, b compute.Structure) int { return cmp.Compare(a.ID, b.ID) })
+	res.Diff = captureDiff(in, units)
 	return res
 }
 
