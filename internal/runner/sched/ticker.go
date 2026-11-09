@@ -3,8 +3,10 @@ package sched
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"maps"
 	"slices"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -60,6 +62,8 @@ func New(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, ca
 	if t.disabled == nil {
 		t.disabled = map[string]string{}
 	}
+	t.log = slog.Default()
+	t.known = t.probeKnown()
 	t.lastTick.Store(clk.Now().UnixNano())
 	t.held.Store(true)
 	return t
@@ -81,6 +85,9 @@ type ticker struct {
 	gaps  runner.GapSyncer
 	jobs  []contracts.Job
 	exe   runner.ExecIdentityFunc
+
+	known map[string]bool // the calendars of the jobs, other than defaultCalendar, that answered at construction
+	log   *slog.Logger
 
 	disabled map[string]string // owned by the worker goroutine once Run has started
 
@@ -345,7 +352,7 @@ func (t *ticker) refresh(ctx context.Context) {
 	slots := t.slots()
 	cctx, cancel := context.WithTimeout(ctx, ledgerTimeout)
 	defer cancel()
-	starts, err := NextStarts(cctx, t.cal, slots, now.Add(-scheduleLookback), scheduleDays)
+	starts, err := nextStarts(cctx, t.cal, slots, now.Add(-scheduleLookback), scheduleDays, t.known, t.log)
 	if err != nil {
 		if p := t.starts.Load(); p != nil {
 			starts = *p
@@ -456,26 +463,84 @@ func (t *ticker) disabledCopy() map[string]string {
 	return c
 }
 
-// walked lists the session days a Reconcile of today walks: the session days after the cursor through
-// today, in order; with no cursor, today alone when it is a session.
+// jobCalendars lists the distinct calendars of the jobs, in order: that of the window of each job
+// (defaultCalendar when it names none); defaultCalendar alone when there is no job.
+func (t *ticker) jobCalendars() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, j := range t.jobs {
+		id := defaultCalendar
+		if w, ok := j.(runner.Windowed); ok {
+			if c, _, _ := w.Window(); c != "" {
+				id = c
+			}
+		}
+		if !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	if len(out) == 0 {
+		out = append(out, defaultCalendar)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// probeKnown asks every calendar of the jobs, the window and the slot ones, but defaultCalendar for
+// the session of today; the ones that answer are the known set.
+func (t *ticker) probeKnown() map[string]bool {
+	known := map[string]bool{}
+	if t.cal == nil {
+		return known
+	}
+	ids := t.jobCalendars()
+	for _, s := range t.slots() {
+		ids = append(ids, s.CalendarID)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), ledgerTimeout)
+	defer cancel()
+	today := dayOf(t.clk.Now())
+	for _, id := range ids {
+		if id == defaultCalendar || id == "" || known[id] {
+			continue
+		}
+		if _, err := t.cal.Session(ctx, id, today); err == nil {
+			known[id] = true
+		}
+	}
+	return known
+}
+
+// walked lists the session days a Reconcile of today walks: the days after the cursor through today
+// that are a session of at least one calendar of the jobs, in order; with no cursor, today alone when
+// it is a session of one. A calendar that fails ends its own list.
 func (t *ticker) walked(ctx context.Context, cursor, today contracts.Day) []contracts.Day {
 	cctx, cancel := context.WithTimeout(ctx, ledgerTimeout)
 	defer cancel()
-	if cursor == "" {
-		if s, err := t.cal.Session(cctx, defaultCalendar, today); err == nil && s.IsSession {
-			return []contracts.Day{today}
+	set := map[contracts.Day]bool{}
+	for _, id := range t.jobCalendars() {
+		if cursor == "" {
+			if s, err := t.cal.Session(cctx, id, today); err == nil && s.IsSession {
+				set[today] = true
+			}
+			continue
 		}
-		return nil
+		from := cursor
+		for from < today {
+			s, err := t.cal.NextSession(cctx, id, from)
+			if err != nil || s.Day > today {
+				break
+			}
+			set[s.Day] = true
+			from = s.Day
+		}
 	}
 	var out []contracts.Day
-	for cursor < today {
-		s, err := t.cal.NextSession(cctx, defaultCalendar, cursor)
-		if err != nil || s.Day > today {
-			break
-		}
-		out = append(out, s.Day)
-		cursor = s.Day
+	for d := range set {
+		out = append(out, d)
 	}
+	slices.Sort(out)
 	return out
 }
 

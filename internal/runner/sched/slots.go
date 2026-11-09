@@ -3,7 +3,9 @@ package sched
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -32,8 +34,19 @@ type Start struct {
 // from. A day that is not a session of the slot's calendar gives no start. session_open and
 // session_close are read from cal (so an early close moves the slot) plus Offset; time is Offset of
 // wall time since midnight of the day in the named Zone. An unknown calendar, zone or anchor is an
-// error naming the job. It reads no clock, store or file.
+// error naming the job. It reads no clock, store or file, and drops no slot: every calendar error is
+// returned (nextStarts drops the slots of a known calendar that runs out).
 func NextStarts(ctx context.Context, cal clock.Calendar, jobs []runner.Slot, from time.Time, days int) ([]Start, error) {
+	return nextStarts(ctx, cal, jobs, from, days, nil, slog.Default())
+}
+
+// nextStarts is NextStarts with the known calendars: the calendars that answered when the ticker was
+// built. A slot whose calendar is known, is not defaultCalendar (the rule's) and fails with
+// UnknownCalendar or NoValue is dropped from that day on, with one log line per call and calendar;
+// the slots of the other jobs are returned. Any other error is returned naming the job.
+func nextStarts(
+	ctx context.Context, cal clock.Calendar, jobs []runner.Slot, from time.Time, days int, known map[string]bool, log *slog.Logger,
+) ([]Start, error) {
 	zones := map[string]*time.Location{}
 	for _, j := range jobs {
 		if j.Anchor == anchorTime {
@@ -51,12 +64,21 @@ func NextStarts(ctx context.Context, cal clock.Calendar, jobs []runner.Slot, fro
 	f := from.UTC()
 	first := time.Date(f.Year(), f.Month(), f.Day(), 0, 0, 0, 0, time.UTC)
 	var out []Start
+	dropped := map[string]bool{}
 	for d := 0; d < days; d++ {
 		date := first.AddDate(0, 0, d)
 		day := contracts.Day(date.Format(dayLayout))
 		for _, j := range jobs {
+			if dropped[j.CalendarID] {
+				continue
+			}
 			s, err := cal.Session(ctx, j.CalendarID, day)
 			if err != nil {
+				if j.CalendarID != defaultCalendar && known[j.CalendarID] && runsOut(err) {
+					dropped[j.CalendarID] = true
+					log.Warn(fmt.Sprintf("calendar %s: %v, jobs dropped", j.CalendarID, err))
+					continue
+				}
 				return nil, fmt.Errorf("job %s: %w", j.JobID, err)
 			}
 			if !s.IsSession {
@@ -84,4 +106,10 @@ func NextStarts(ctx context.Context, cal clock.Calendar, jobs []runner.Slot, fro
 // wallTime is the instant at which the wall clock of loc shows offset since midnight of date.
 func wallTime(date time.Time, loc *time.Location, offset time.Duration) time.Time {
 	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, int(offset), loc)
+}
+
+// runsOut reports whether err says the calendar has no answer for the day: UnknownCalendar or NoValue.
+func runsOut(err error) bool {
+	var te contracts.TypedError
+	return errors.As(err, &te) && (te.Kind() == contracts.UnknownCalendar || te.Kind() == contracts.NoValue)
 }
