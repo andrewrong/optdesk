@@ -150,7 +150,9 @@ type wiring struct {
 	brokerUp bool
 	// factory builds a job anew for the probe of ot scheduler; its stores stay open until use returns.
 	factory jobFactory
-	// earningsOff is the reason the last job of jobs, earnings_refresh, is left out of run-once and backfill; the
+	// earn is the earnings_refresh job held in jobs.
+	earn contracts.Job
+	// earningsOff is the reason earn is left out of run-once and backfill; the
 	// scheduler keeps the job in jobs so that its ticker knows the schedule (preflight.go).
 	earningsOff string
 	// dial dials the broker anew; the broker it returns is closed when withWiring returns.
@@ -166,7 +168,7 @@ func (w wiring) runnable(log *slog.Logger) []contracts.Job {
 	log.Warn("job left out", "component", "ot", "job", jobEarningsRefresh, "status", w.earningsOff)
 	out := make([]contracts.Job, 0, len(w.jobs))
 	for _, j := range w.jobs {
-		if j.ID() != jobEarningsRefresh {
+		if j != w.earn {
 			out = append(out, j)
 		}
 	}
@@ -377,7 +379,7 @@ func wireJobs(
 	}
 	return use(wiring{
 		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob, figJob, calJob, earnJob}, brokerUp: brokerUp, factory: f,
-		earningsOff: cfg.earningsOff(),
+		earn: earnJob, earningsOff: cfg.earningsOff(),
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
 			if err != nil {
