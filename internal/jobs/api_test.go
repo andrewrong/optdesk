@@ -608,3 +608,16 @@ func TestCompareFiguresFuncContract(t *testing.T) {
 		}
 	}
 }
+
+func TestOptionCandidatesJobFuncContract(t *testing.T) {
+	t.Parallel()
+	var f jobs.NewOptionCandidatesJobFunc = func(st jobs.CandidateStores, r compute.OptionCandidates, w []jobs.WatchEntry, c clock.Clock) (contracts.Job, error) {
+		if st.Earnings != nil || st.Accounts != nil || st.Series != nil || r != nil || len(w) != 1 || c != nil {
+			t.Fatal("arguments did not arrive as given")
+		}
+		return nil, nil
+	}
+	if _, err := f(jobs.CandidateStores{}, nil, []jobs.WatchEntry{{Issuer: "cik:0000000001"}}, nil); err != nil {
+		t.Fatal(err)
+	}
+}
