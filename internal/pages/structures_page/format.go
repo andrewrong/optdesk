@@ -72,9 +72,7 @@ func midnight(day contracts.Day, zone *time.Location) (string, error) {
 	return t.Format(time.RFC3339), nil
 }
 
-// hrefOf is the detail route of a structure id, path-escaped (Decision 5). The carried schema pattern for href
-// is ^/structure/[A-Za-z0-9_-]{1,64}$, which no id of the form <alias>:<position> can match; the schema belongs to
-// contracts and changes in its own issue, with the web fixtures that use the old route.
+// hrefOf is the detail route of a structure id, path-escaped (Decision 5).
 func hrefOf(id string) string { return routePrefix + url.PathEscape(id) }
 
 // clip keeps a text within the schema's 200 characters.

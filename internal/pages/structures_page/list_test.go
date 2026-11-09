@@ -3,7 +3,6 @@ package structures_page
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -194,21 +193,17 @@ func TestHrefIsStructureRoute(t *testing.T) {
 	}
 }
 
-// schemaOf compiles the carried schema. Its href pattern is the old /structure/<id> route and does not
-// admit the route of Decision 5 (/options/structures/<alias>:<position>), so the test relaxes that one
-// pattern and keeps every other rule.
+// schemaOf compiles the carried schema as it is.
 func schemaOf(t *testing.T) *jsonschema.Schema {
 	t.Helper()
 	raw, err := os.ReadFile("../../../contracts/schemas/page.structures_list.v1.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var doc map[string]any
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+	if err != nil {
 		t.Fatal(err)
 	}
-	href := doc["$defs"].(map[string]any)["StructureRow"].(map[string]any)["properties"].(map[string]any)["href"].(map[string]any)
-	href["pattern"] = `^/options/structures/[A-Za-z0-9_:%-]{1,200}$`
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
 	if err := c.AddResource("schema.json", doc); err != nil {
