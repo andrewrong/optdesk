@@ -49,6 +49,7 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 
 `computefigures.New(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock)` builds the job `compute_figures` (type `jobs.NewComputeFiguresFunc`); the design is `docs/design/compute-figures.md`. `jobs.ComputeStores` holds the seven store interfaces the job uses: `Catalog` (`store.OptionEodCatalog`), `OptionEod` (`store.OptionEodReader`), `Terms` (`store.OptionTermsReader`), `Names` (`store.InstrumentNameReader`), `SessionDays` (`store.SessionDayReader`), `Series` (`store.SeriesReader`) and `Readings` (`store.ReadingStore`). The job is declared here; its implementation is a later issue.
 
+- Ease: `computefigures.NewWithEase` (type `jobs.NewComputeFiguresEaseFunc`) takes a `compute.Ease` after the `compute.SeriesOps` and before the clock; `New` is `NewWithEase` with nil. Only a job built with an `Ease` plans the key `{readings.reading, "macro.ease|market|WALCL"}`, and its `Postcondition` is a reading row of the as-of day, ok or missing, like every other key; a job built with nil has no `macro.ease` key and runs no ease step. The job reads the seven series of `[ease]` in `job.toml` and stores the reading of `docs/design/ease-v2.md` Decision 7. The ease is stored after the market figures and after IVP and IVR, so its failure (a series read that fails leaves the key without a row, named by the postcondition) stops no other key.
 - Keys: one `{readings.reading, "name|subject_kind|subject"}` per (rule, subject). `subject_kind` is `underlying` (subject is the symbol of `InstrumentNames`, else `underlying:<id>`) or `market` (subject is the FRED id of the first input).
 - Steps, in order: IV30, then the market figures, then IVP and IVR from the stored IV30 readings, so a missing IV30 gives a missing IVP with `no_input`. A step that fails does not stop the others; its keys are written missing or stay absent, and the postcondition names them.
 - As-of day: the slot day. `Postcondition`: every planned key has a reading row for the as-of day, ok or missing.
@@ -81,12 +82,13 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `fred_series`, manifest version 1.
 - v1: `option_eod`, manifest version 1.
 - v1: `compute_figures`, interface only (`jobs.ComputeStores`, `jobs.NewComputeFiguresFunc`).
+- v1: `compute_figures` stores `macro.ease` when built with an `Ease` (`jobs.NewComputeFiguresEaseFunc`, additive).
 - v1: `SeriesHistoryLoader`, with `internal/jobs/serieshistory`.
 - v1: `calendar_refresh`, interface only (`jobs.CalendarObserver`, `jobs.NewCalendarRefreshFunc`).
 
 ## Contract tests
 
-- `internal/jobs/api_test.go`: `TestRegistryContract`, `TestNewComputeFiguresFuncContract`, `TestNewSeriesHistoryFuncContract`, `TestCalendarRefreshContract`, `TestCalendarRefreshErrorClasses`, the interface.
+- `internal/jobs/api_test.go`: `TestRegistryContract`, `TestNewComputeFiguresFuncContract`, `TestNewComputeFiguresEaseFuncContract`, `TestNewSeriesHistoryFuncContract`, `TestCalendarRefreshContract`, `TestCalendarRefreshErrorClasses`, the interface.
 - `internal/jobs/fredseries/plan_test.go`: `TestPlanHash`, `TestEmbeddedManifest`.
 - `schedule_test.go` of each of the three packages: `TestEmbeddedSchedule`, `TestBadScheduleTable`.
 - `internal/jobs/fredseries/window_test.go`: `TestWindowOf`, `TestWindowErrors`, `TestEmbeddedWindow`.

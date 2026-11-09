@@ -35,6 +35,11 @@ id = "market.sp500_vs_200d"
 method = "ma_gap"
 series = ["SP500"]
 
+# The ease figure is stored only when the job is built with an Ease; the first series names its subject.
+[ease]
+id = "macro.ease"
+series = ["WALCL", "WDTGAL", "RRPONTSYD", "DGS10", "DFF", "SP500", "BAMLH0A0HYM2"]
+
 # Proposed slot: 20 minutes after the close of the session; the owner confirms.
 [schedule]
 calendar = "XNYS"

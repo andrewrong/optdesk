@@ -3,14 +3,17 @@ package computefigures
 import (
 	"context"
 	"encoding/hex"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/pelletier/go-toml/v2"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -424,5 +427,21 @@ func TestDroppedRowsAreCounted(t *testing.T) {
 	_, dropped, err := listSubjects(context.Background(), f.stores(), dayD)
 	if err != nil || dropped != 1 {
 		t.Fatalf("later-only count %d err %v, want 1", dropped, err)
+	}
+}
+
+func TestNewWithEaseNilPlansLikeNew(t *testing.T) {
+	t.Parallel()
+	f := world()
+	a := newJob(t, f, newFigs())
+	b, err := NewWithEase(f.stores(), newFigs(), rules.New(), own.NewUnits(), own.NewSeriesOps(), nil,
+		clockwork.NewFakeClockAt(closeD.Add(20*time.Minute)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ka, ha, _ := a.Plan(context.Background(), dayD)
+	kb, hb, _ := b.Plan(context.Background(), dayD)
+	if ha != hb || !reflect.DeepEqual(ka, kb) {
+		t.Fatalf("plans differ: %v %s vs %v %s", ka, ha, kb, hb)
 	}
 }

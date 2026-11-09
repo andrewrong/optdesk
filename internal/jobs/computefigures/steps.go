@@ -72,7 +72,7 @@ func (r *runState) runIv30(ts []target) {
 			{table: tableOptionEod, keys: []string{strconv.FormatInt(t.subj.id, 10) + "|" + string(r.day)}},
 			{table: tableSeriesPoint, keys: []string{r.j.m.RateSeries}},
 		}
-		r.store(t, f, hashLines(chainLines(chain, rate)), inputsOf)
+		r.store(t, f, hashLines(chainLines(chain, rate)), inputsOf, figureParams(t.rule, true))
 	}
 }
 
@@ -141,7 +141,7 @@ func (r *runState) runMarket(ts []target) {
 		default:
 			f = r.j.figs.MovingAverageGap(t.rule.ID, series[0], r.day)
 		}
-		r.store(t, f, hashLines(lines), []input{{table: tableSeriesPoint, keys: t.spec.Series}})
+		r.store(t, f, hashLines(lines), []input{{table: tableSeriesPoint, keys: t.spec.Series}}, figureParams(t.rule, false))
 	}
 }
 
@@ -186,7 +186,7 @@ func (r *runState) runIvStats(ts []target) {
 			f = r.j.figs.IvRank(t.rule.ID, series, r.day)
 		}
 		key := r.j.m.Iv30 + "|" + kindUnderlying + "|" + t.subj.name
-		r.store(t, f, hashLines(lines), []input{{table: tableReadings, keys: []string{key}}})
+		r.store(t, f, hashLines(lines), []input{{table: tableReadings, keys: []string{key}}}, figureParams(t.rule, false))
 	}
 }
 
@@ -215,8 +215,8 @@ func reasonCode(r compute.Reason) int {
 
 // store builds the reading of f and writes it: an equal state, reason and rows_sha256 of the newest rev is
 // skipped, anything else is written as the next rev.
-func (r *runState) store(t target, f compute.Figure, rowsHash string, in []input) {
-	rec, err := r.record(t, f, rowsHash, in)
+func (r *runState) store(t target, f compute.Figure, rowsHash string, in []input, ps paramsOf) {
+	rec, err := r.record(t, f, rowsHash, in, ps)
 	if err != nil {
 		r.fail(contracts.Permanent, err)
 		return
@@ -254,8 +254,9 @@ func sameReason(a, b *int) bool {
 	return *a == *b
 }
 
-// record builds the reading of f at rev 0. A value the units cannot write is stored as bad_input.
-func (r *runState) record(t target, f compute.Figure, rowsHash string, in []input) (contracts.ReadingRecord, error) {
+// record builds the reading of f at rev 0. A value the units cannot write is stored as bad_input, and ps
+// then sees the figure as missing.
+func (r *runState) record(t target, f compute.Figure, rowsHash string, in []input, ps paramsOf) (contracts.ReadingRecord, error) {
 	rule := t.rule
 	rec := contracts.ReadingRecord{
 		Name: rule.ID, Version: rule.Version, SubjectKind: t.subj.kind, Subject: t.subj.name,
@@ -281,7 +282,7 @@ func (r *runState) record(t target, f compute.Figure, rowsHash string, in []inpu
 		e := grow(&rec.Inputs)
 		e.InputTable, e.Keys, e.CodeVersion, e.ConventionVersion = i.table, i.keys, rule.Hash, rule.Convention
 	}
-	for _, p := range parameters(rule, rule.ID == r.j.m.Iv30, f) {
+	for _, p := range ps(f) {
 		e := grow(&rec.Parameters)
 		e.Param, e.ValueNum, e.ValueTag = p.name, p.num, p.tag
 	}
@@ -308,6 +309,14 @@ func grow[E any](s *[]E) *E {
 
 // setString sets a string-kinded enum field from text.
 func setString[T ~string](dst *T, v string) { *dst = T(v) }
+
+// paramsOf builds the parameters of a reading from the figure as stored.
+type paramsOf func(f compute.Figure) []param
+
+// figureParams is the parameter list of an IV30 or a market figure.
+func figureParams(rule compute.Rule, iv30 bool) paramsOf {
+	return func(f compute.Figure) []param { return parameters(rule, iv30, f) }
+}
 
 func parameters(rule compute.Rule, iv30 bool, f compute.Figure) []param {
 	num := func(name string, v int) param {
