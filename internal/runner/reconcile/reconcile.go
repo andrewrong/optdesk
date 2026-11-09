@@ -7,8 +7,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
@@ -46,6 +46,12 @@ type reconciler struct {
 	// sched renews the run lease on fclk while a call runs; nil (the commands) renews nothing.
 	sched store.SchedulerLedger
 	fclk  clockwork.Clock
+	// known is the set of the calendars of the jobs, other than the rule's, that answered Session
+	// at the first walk (the constructors take no context); a calendar of it that later runs out is
+	// logged and loses its jobs, any other calendar's error is returned.
+	known     map[string]bool
+	knownOnce sync.Once
+	log       *slog.Logger
 }
 
 // New builds the reconciler with the default window rule (DefaultCalendarID, no offsets).
@@ -75,7 +81,7 @@ func newReconciler(
 	if kr == nil {
 		kr = NewKeyRunner(l, sched, fclk)
 	}
-	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk}
+	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default()}
 }
 
 // Reconcile handles every session day after the cursor up to day, in order. A day that is
@@ -83,9 +89,6 @@ func newReconciler(
 // it are still reconciled. The cursor is set to a day only when that day and every day
 // before it are done, so every day at or before the cursor is complete.
 func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err error) {
-	if err := checkCalendars(r.jobs, r.rule); err != nil {
-		return err
-	}
 	ctx, release, err := r.holdLease(ctx)
 	if err != nil {
 		return err
@@ -96,13 +99,13 @@ func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err erro
 	if err != nil {
 		return err
 	}
-	sessions, err := r.sessions(ctx, cur.Day, day)
+	days, by, err := r.walk(ctx, cur.Day, day)
 	if err != nil {
 		return err
 	}
 	prefix := true // every day walked so far is done
-	for _, s := range sessions {
-		done, err := r.reconcileDay(ctx, s)
+	for _, d := range days {
+		done, err := r.reconcileOn(ctx, d, by[d])
 		if err != nil {
 			return err
 		}
@@ -112,41 +115,11 @@ func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err erro
 		if !prefix {
 			continue
 		}
-		if err := r.ledger.SetCursor(ctx, store.Cursor{Day: s.Day}); err != nil {
+		if err := r.ledger.SetCursor(ctx, store.Cursor{Day: d}); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// sessions lists the session days after from up to and including to. With no cursor
-// (empty from) only day to itself is considered.
-func (r *reconciler) sessions(ctx context.Context, from, to contracts.Day) ([]clock.Session, error) {
-	id := calendarIDOf(r.rule)
-	if from == "" {
-		s, err := r.cal.Session(ctx, id, to)
-		if err != nil || !s.IsSession {
-			return nil, err
-		}
-		return []clock.Session{s}, nil
-	}
-	var out []clock.Session
-	for from < to {
-		s, err := r.cal.NextSession(ctx, id, from)
-		if err != nil {
-			var te contracts.TypedError
-			if errors.As(err, &te) && te.Kind() == contracts.NoValue {
-				break
-			}
-			return nil, err
-		}
-		if s.Day > to {
-			break
-		}
-		out = append(out, s)
-		from = s.Day
-	}
-	return out, nil
 }
 
 // plan is the merged plan of all jobs for a day.
@@ -156,10 +129,15 @@ type plan struct {
 	hash string
 }
 
-func (r *reconciler) plan(ctx context.Context, day contracts.Day) (plan, error) {
+// plan merges the plans of the jobs for day. With sess, a job is planned only when its own calendar
+// has a session in it; with nil sess every job is planned.
+func (r *reconciler) plan(ctx context.Context, day contracts.Day, sess daySessions) (plan, error) {
 	p := plan{job: map[contracts.ExpectedKey]contracts.Job{}}
 	h := sha256.New()
 	for _, j := range r.jobs {
+		if _, ok := sess[r.jobCalendar(j)]; sess != nil && !ok {
+			continue
+		}
 		keys, hash, err := j.Plan(ctx, day)
 		if err != nil {
 			return plan{}, fmt.Errorf("plan %s %s: %w", j.ID(), day, err)
@@ -185,8 +163,13 @@ func (r *reconciler) plan(ctx context.Context, day contracts.Day) (plan, error) 
 // reconcileDay plans the day, puts its windows, starts the repair and crash re-runs
 // and reports whether every expected key is present or no_value.
 func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, error) {
-	day := s.Day
-	p, err := r.plan(ctx, day)
+	return r.reconcileOn(ctx, s.Day, daySessions{calendarIDOf(r.rule): s})
+}
+
+// reconcileOn is reconcileDay for a day that may be a session of several calendars: sess holds the
+// session of each calendar that has one.
+func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess daySessions) (bool, error) {
+	p, err := r.plan(ctx, day, sess)
 	if err != nil {
 		return false, err
 	}
@@ -197,7 +180,7 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 			return false, err
 		}
 	}
-	closes, err := r.putWindows(ctx, p, s)
+	closes, err := r.putWindows(ctx, p, sess)
 	if err != nil {
 		return false, err
 	}
@@ -246,8 +229,9 @@ func (r *reconciler) reconcileDay(ctx context.Context, s clock.Session) (bool, e
 	return complete, nil
 }
 
-// putWindows puts the window of every dataset of the plan and returns the close of each.
-func (r *reconciler) putWindows(ctx context.Context, p plan, s clock.Session) (map[string]time.Time, error) {
+// putWindows puts the window of every dataset of the plan, from the session of the calendar of the job
+// that planned it, and returns the close of each.
+func (r *reconciler) putWindows(ctx context.Context, p plan, sess daySessions) (map[string]time.Time, error) {
 	closes := map[string]time.Time{}
 	seen := map[string]bool{}
 	for _, k := range p.keys {
@@ -255,7 +239,7 @@ func (r *reconciler) putWindows(ctx context.Context, p plan, s clock.Session) (m
 			continue
 		}
 		seen[k.DatasetID] = true
-		w, ok := windowFor(ruleOf(p.job[k], r.rule), k.DatasetID, s)
+		w, ok := windowFor(ruleOf(p.job[k], r.rule), k.DatasetID, sess[r.jobCalendar(p.job[k])])
 		if !ok {
 			continue
 		}

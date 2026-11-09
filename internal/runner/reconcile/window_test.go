@@ -2,7 +2,6 @@ package reconcile
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -143,39 +142,6 @@ func TestWindowedJobWithoutMethod(t *testing.T) {
 			}
 			if len(led.puts) != 1 || led.puts[0].CloseAt != tc.want {
 				t.Fatalf("puts = %+v, want close %v", led.puts, tc.want)
-			}
-		})
-	}
-}
-
-func TestWindowCalendarMismatch(t *testing.T) {
-	t.Parallel()
-	mk := func(cal string) windowedJob {
-		return windowedJob{fakeJob: &fakeJob{id: "jpx-job", keys: []contracts.ExpectedKey{keyOf("ds")}}, calendarID: cal}
-	}
-	t.Run("mismatch", func(t *testing.T) {
-		t.Parallel()
-		led := &countingLedger{fakeLedger: newLedger()}
-		led.cursor = store.Cursor{Day: "2026-11-03"}
-		clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
-		r := New(led, windowCal(), clk, []contracts.Job{mk("XJPX")})
-		err := r.Reconcile(context.Background(), "2026-11-04")
-		if err == nil || !strings.Contains(err.Error(), "jpx-job") {
-			t.Fatalf("err = %v, want one naming the job id", err)
-		}
-		if led.acquires != 0 || led.expecteds != 0 || len(led.puts) != 0 {
-			t.Fatalf("acquires=%d expecteds=%d puts=%d, want none", led.acquires, led.expecteds, len(led.puts))
-		}
-	})
-	for _, id := range []string{"", "XNYS"} {
-		t.Run("pass "+id, func(t *testing.T) {
-			t.Parallel()
-			led := newLedger()
-			led.cursor = store.Cursor{Day: "2026-11-03"}
-			clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
-			r := New(led, windowCal(), clk, []contracts.Job{mk(id)})
-			if err := r.Reconcile(context.Background(), "2026-11-04"); err != nil {
-				t.Fatal(err)
 			}
 		})
 	}

@@ -119,7 +119,7 @@ func (r *reconciler) backfillPlan(
 	if err != nil {
 		return nil, plan{}, err
 	}
-	p, err := r.plan(ctx, day)
+	p, err := r.plan(ctx, day, nil)
 	if err != nil {
 		return nil, plan{}, err
 	}
