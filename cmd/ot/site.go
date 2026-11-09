@@ -135,12 +135,20 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 // assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
+	pagesH := sitePages(a, clk, dayFlag, rd, newHandler, assets)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "health" {
+		if r.URL.Path == "/health" {
 			serveHealth(a, clk, rd, w, r)
 			return
 		}
+		pagesH.ServeHTTP(w, r)
+	})
+}
+
+// sitePages serves every route of the site but /health.
+func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
 		var id int64
 		var build func(context.Context) ([]byte, error)
 		isAsset := false
