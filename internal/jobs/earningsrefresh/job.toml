@@ -1,0 +1,11 @@
+# Manifest of the earnings_refresh job: once per XNYS session day after the close, one fetch per market source.
+version = 1
+id = "earnings_refresh"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+zone = "America/New_York"
+offset = "30m"
+run_bound = "10m"
+restart_sensitive = false
