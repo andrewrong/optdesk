@@ -237,6 +237,8 @@ const (
 	DSNEnvAlerts = "OT_PG_DSN_ALERTS"
 	// DSNEnvFundamental names the line that holds the DSN of the role ot_w_fundamental.
 	DSNEnvFundamental = "OT_PG_DSN_FUNDAMENTAL"
+	// DSNEnvCandidate names the line that holds the DSN of the role ot_w_candidate.
+	DSNEnvCandidate = "OT_PG_DSN_CANDIDATE"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -517,3 +519,60 @@ type FactStore interface {
 
 // OpenFactStoreFunc opens the fact store (internal/store/fundamental.Open).
 type OpenFactStoreFunc func(ctx context.Context, dsn string) (FactStore, error)
+
+// Candidate is one row of candidates.option_candidate r1 as plain text and numbers (design
+// docs/design/option-candidates.md): money is decimal text, an optional column is a nil pointer, Gates is the
+// ordered JSON array text of the gate results, Marks the JSON array text of the marks and Fits the JSON object
+// text from alias to fit, no_fit or unknown. The key is (SessionDay, RunID, Kind, InstrumentID, Alias);
+// Alias is empty for puts.
+type Candidate struct {
+	SessionDay       contracts.Day
+	RunID            string
+	Kind             string // short_put, covered_call or held_call_guard
+	InstrumentID     int
+	Alias            string
+	RuleVersion      string
+	Issuer           string
+	UnderlyingID     int
+	Expiry           contracts.Day
+	DTE              int
+	Right            string // put or call
+	Strike           string
+	Multiplier       int
+	BidEod           string
+	Ask              *string
+	Spot             *string
+	BuyPrice         *string
+	SalePrice        *string
+	BreakEven        string
+	AnnualizedYield  *string
+	Delta            *string
+	Iv               *string
+	Status           string // ok, blocked or unknown
+	Gates            string
+	Marks            string
+	Fits             string
+	NextEarnings     *contracts.Day
+	EarningsState    string
+	NextExDate       *contracts.Day
+	ExAmount         *string
+	Extrinsic        *string
+	Rank             *int
+	RankInUnderlying *int
+	ComputedAt       time.Time
+}
+
+// CandidateWriter appends the rows of candidates.option_candidate (role ot_w_candidate, line DSNEnvCandidate).
+type CandidateWriter interface {
+	// InsertCandidates inserts the rows, insert-only: a rerun carries a new RunID and adds rows, none is
+	// replaced. It returns the number of rows inserted; no rows inserts none and makes no database call.
+	InsertCandidates(ctx context.Context, rows []Candidate) (int, error)
+}
+
+// CandidateReader reads the rows through the view rd.option_candidate_r1.
+type CandidateReader interface {
+	// Candidates returns the rows of one kind of one day written by the newest run of that day (the latest
+	// ComputedAt), ranked rows first in ascending Rank, then the rest; a day or kind with no rows gives an
+	// empty slice, never nil. A zero day or an unknown kind is an error.
+	Candidates(ctx context.Context, day contracts.Day, kind string) ([]Candidate, error)
+}
