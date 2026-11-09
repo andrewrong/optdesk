@@ -66,51 +66,51 @@ may_import = ["contracts", "gaphistory"]
 
 [component."store/account"]
 in = "internal/store/account"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/alert"]
 in = "internal/store/alert"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/bar"]
 in = "internal/store/bar"
-may_import = ["contracts", "gaphistory", "store"]
+may_import = ["contracts", "gaphistory", "store", "store/ownerset"]
 
 [component."store/barpg"]
 in = "internal/store/barpg"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/candidate"]
 in = "internal/store/candidate"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/events"]
 in = "internal/store/events"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/flexsection"]
 in = "internal/store/flexsection"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/flexsectionpg"]
 in = "internal/store/flexsectionpg"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/instrument"]
 in = "internal/store/instrument"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/markpg"]
 in = "internal/store/markpg"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/ops"]
 in = "internal/store/ops"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/optionledger"]
 in = "internal/store/optionledger"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/ownerset"]
 in = "internal/store/ownerset"
@@ -118,27 +118,27 @@ may_import = ["contracts", "gaphistory", "store", "store/bar"]
 
 [component."store/ownersetpg"]
 in = "internal/store/ownersetpg"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/reading"]
 in = "internal/store/reading"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/series"]
 in = "internal/store/series"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/sessionday"]
 in = "internal/store/sessionday"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/setup"]
 in = "internal/store/setup"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."store/snapshot"]
 in = "internal/store/snapshot"
-may_import = ["contracts", "gaphistory", "store", "store/bar"]
+may_import = ["contracts", "gaphistory", "store", "store/bar", "store/ownerset"]
 
 [component."compute"]
 in = "internal/compute"
@@ -206,155 +206,155 @@ may_import = ["contracts", "compute", "compute/blockapi"]
 
 [component."runner"]
 in = "internal/runner"
-may_import = ["contracts", "clock", "store", "store/bar"]
+may_import = ["contracts", "clock", "store", "store/bar", "store/ownerset"]
 
 [component."runner/reconcile"]
 in = "internal/runner/reconcile"
-may_import = ["contracts", "clock", "store", "store/bar", "runner"]
+may_import = ["contracts", "clock", "store", "store/bar", "store/ownerset", "runner"]
 
 [component."runner/sched"]
 in = "internal/runner/sched"
-may_import = ["contracts", "clock", "store", "store/bar", "runner"]
+may_import = ["contracts", "clock", "store", "store/bar", "store/ownerset", "runner"]
 
 [component."jobs"]
 in = "internal/jobs"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi"]
 
 [component."jobs/accountcapture"]
 in = "internal/jobs/accountcapture"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/barsrefresh"]
 in = "internal/jobs/barsrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/calendarrefresh"]
 in = "internal/jobs/calendarrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/computefigures"]
 in = "internal/jobs/computefigures"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/cutover"]
 in = "internal/jobs/cutover"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/earningsrefresh"]
 in = "internal/jobs/earningsrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/fredseries"]
 in = "internal/jobs/fredseries"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/fxrefresh"]
 in = "internal/jobs/fxrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/optioncandidates"]
 in = "internal/jobs/optioncandidates"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/optioneod"]
 in = "internal/jobs/optioneod"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/optionledger"]
 in = "internal/jobs/optionledger"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/positionmarks"]
 in = "internal/jobs/positionmarks"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/quotesnapshot"]
 in = "internal/jobs/quotesnapshot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."jobs/serieshistory"]
 in = "internal/jobs/serieshistory"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "compute/blockapi", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "jobs"]
 
 [component."notify"]
 in = "internal/notify"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "compute/blockapi"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/blockapi"]
 
 [component."notify/core"]
 in = "internal/notify/core"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "compute/blockapi", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/blockapi", "notify"]
 
 [component."notify/dryrun"]
 in = "internal/notify/dryrun"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "compute/blockapi", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/blockapi", "notify"]
 
 [component."notify/telegram"]
 in = "internal/notify/telegram"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "compute/blockapi", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/blockapi", "notify"]
 
 [component."pages"]
 in = "internal/pages"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi"]
 
 [component."pages/candidate_text"]
 in = "internal/pages/candidate_text"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/embed"]
 in = "internal/pages/embed"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/household_page"]
 in = "internal/pages/household_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/macro_page"]
 in = "internal/pages/macro_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/macro_rates"]
 in = "internal/pages/macro_rates"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/market_page"]
 in = "internal/pages/market_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/option_candidates_page"]
 in = "internal/pages/option_candidates_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/option_data_page"]
 in = "internal/pages/option_data_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/option_notices_page"]
 in = "internal/pages/option_notices_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/option_result_page"]
 in = "internal/pages/option_result_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/option_tracking_page"]
 in = "internal/pages/option_tracking_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/report_blocks"]
 in = "internal/pages/report_blocks"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/report_page"]
 in = "internal/pages/report_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/risks_block"]
 in = "internal/pages/risks_block"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."pages/structures_page"]
 in = "internal/pages/structures_page"
-may_import = ["contracts", "store", "compute", "store/bar", "compute/blockapi", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/blockapi", "pages"]
 
 [component."profile"]
 in = "internal/profile"
