@@ -50,7 +50,7 @@ One row is added to `docs/design/modules.md`, before the store row: `| gaphistor
 | 9 | option-notices-page-interface (interface) | pages, plus repo (licensed pair) | after 1, 2, 3, 8 |
 | 10 | option-notices-page-builder | pages | after 1, 2, 9 |
 | 11 | option-notices-view | web | after 1, 12, `option-positions-nav` and `option-candidates-page-view` |
-| 12 | option-notices-route | ot | after 9, 10, 7 and after `option-candidates-page-route` |
+| 12 | option-notices-route | ot | after 7, 9, 10 and after `option-candidates-page-route` |
 
 Entry 11 cannot start until `option-candidates-page-view` (and `option-positions-nav`, which also edits `TopNav.tsx`) has merged, and entry 12 not until `option-candidates-page-route` has(issues 4 and 5 of `docs/design/option-candidates-page.md`); they share `TopNav.tsx`, `site.go`, `wire.go`, `demo.go`, `pagelist.go` and `ot.md` with them. Issues 1 to 10 do not wait.
 
@@ -150,7 +150,7 @@ Design: docs/design/option-notices.md#Decisions (Decisions 1 to 4)
 Order: after 5. No other entry edits these files; `core.go` and `alerts.go` are not touched.
 Goal: `NewMorningNotifier` implements `NewMorningNotifierFunc`. `NotifyMorning`: with the clock before `MorningFrom` or at or after `MorningUntil` in `Config.Zone`, return false and read nothing; with `SentSince` holding `(morning_report, KL date)`, return false; otherwise read `GapsSince(previous 08:00 KL)`, the expectations through `Expect.Expectations` for the last 7 calendar days, taking as the previous session day the newest `ExpectedDay` in the rows returned (no calendar, no clock beyond the injected one), and the open gaps count, build the text of Decision 2, `Send` it once, then `MarkSent(MorningRuleID, KL date)`; a failed send returns the error and marks nothing (the next tick retries inside the window); a failed mark after a send returns the error (at-least-once, as `notify.md` Decision 6). A gap printed in "self-healed" is never marked reported.
 Acceptance:
-1. `grep -rhE "^func (TestBeforeFromSendsNothing|TestAfterUntilSendsNothing|TestSendsOncePerKLDay|TestSecondTickSameDayIsNoop|TestNextDaySendsAgain|TestQuietDayStillSends|TestSelfHealedListed|TestOpenGapsOnlyCounted|TestLateExpectationListed|TestMoreThan20LinesCut|TestSendFailureMarksNothing|TestMarkFailureReturnsError|TestNeverMarksGapReported|TestZoneIsKL)\(" internal/notify/core | wc -l` prints 14.
+1. `grep -rhE "^func (TestBeforeFromSendsNothing|TestAfterUntilSendsNothing|TestSendsOncePerKLDay|TestSecondTickSameDayIsNoop|TestNextDaySendsAgain|TestQuietDayStillSends|TestSelfHealedListed|TestUnclearedGapsCounted|TestLateExpectationListed|TestMoreThan20LinesCut|TestSendFailureMarksNothing|TestMarkFailureReturnsError|TestNeverMarksGapReported|TestZoneIsKL)\(" internal/notify/core | wc -l` prints 14.
 2. `morning_purity_test.go` has `TestNoAccountTypesNoTelegramLeak`: it parses the non-test `.go` files of `internal/notify` (all sub-packages) with `go/parser` and fails on any identifier among `Position`, `Candidate`, `Cushion`, `ExcessLiquidity`, `AccountReader`, `AccountValue`, `OptionLedger`, `NoticeResult`, `CashByDate`, or an import of `internal/pages`, `internal/jobs` or a path containing `optionnotice`; `grep -c "^func TestNoAccountTypesNoTelegramLeak" internal/notify/core/morning_purity_test.go` prints 1.
 3. `grep -c "MarkGapReported" internal/notify/core/morning.go` prints 0; `grep -c "time.Now\|time.Sleep" internal/notify/core/morning.go internal/notify/core/morning_text.go` prints 0 for both files; each new `.go` file is under 600 lines.
 4. `grep -c "t.Parallel()"` of each new test file is at least its count of `^func Test`; the tests use `clockwork.NewFakeClock` and fakes of `gaphistory.Reader`, `store.GapReader`, `SentStore` and `Sender`, no network.
@@ -162,7 +162,7 @@ Checked by CI: `go test ./internal/notify/... -race -count=1`; ci-go.
 Module: ot. Size: S.
 Files: `cmd/ot/notify.go`, `cmd/ot/notify_test.go`, `cmd/ot/scheduler.go`, `cmd/ot/morning_test.go`, `docs/contracts/ot.md`
 Design: docs/design/option-notices.md#Decisions (Decisions 2 and 3)
-Order: after 4, 5 and 6; before 12, which names `cmd/ot` files but not these. `cmd/ot/notify.go` already holds `notifyingGaps`, whose method `notifyAlerts` the morning call follows.
+Order: after 4, 5, 6; before 12, which names `cmd/ot` files but not these. `cmd/ot/notify.go` already holds `notifyingGaps`, whose method `notifyAlerts` the morning call follows.
 Goal: `notifyingGaps` also calls `NotifyMorning` after the gap and alert passes, with a morning notifier built from `core.NewMorningNotifier`, the sender it already has, `gaphistory.OpenFunc` (`ops.OpenGapHistory`) opened with the line the gap reader of the same file already uses, and the sent store it already opens; an error is logged by `errorClass` and never stops the tick. `ot notify --once` prints the morning text through the dry-run sender and sends nothing when `--dry-run` is set; the quiet-hours flag semantics stay. `docs/contracts/ot.md` records the call.
 Acceptance:
 1. `grep -c "NotifyMorning" cmd/ot/notify.go` is at least 1; `grep -c "OT_PG_DSN" cmd/ot/notify.go` is not greater than at the merge base (`git show $(git merge-base HEAD origin/main):cmd/ot/notify.go | grep -c "OT_PG_DSN"`): no new DSN line.
@@ -234,7 +234,7 @@ Frontend stack lines: no new dependency; React and the shared table and card com
 Module: ot. Size: M.
 Files: `cmd/ot/notices_site.go`, `cmd/ot/notices_site_test.go`, `cmd/ot/site.go`, `cmd/ot/site_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/demo.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `docs/contracts/ot.md`
 Design: docs/design/option-notices.md#Decisions (Decisions 7, 8 and 10)
-Order: after 9 and 10, and after `option-candidates-page-route`, which edits `site.go`, `site_test.go`, `wire.go`, `wire_test.go`, `demo.go`, `pagelist.go`, `pagelist_test.go` and `ot.md`; also after 7 (`docs/contracts/ot.md`).
+Order: after 7, 9, 10, and after `option-candidates-page-route`, which edits `site.go`, `site_test.go`, `wire.go`, `wire_test.go`, `demo.go`, `pagelist.go`, `pagelist_test.go` and `ot.md`; also after 7 (`docs/contracts/ot.md`).
 Goal: `siteHandler` serves `options/notices` (`siteNoticesRoute`) with the day of `--day` or today in the zone and `ot page --name option_notices_page` builds the same page; `openSiteReaders` opens the account, candidate and earnings stores once with the one pages line `OT_PG_DSN_PAGES` and adds them to `siteReaders`; `Config.Main` and `Config.Aliases` come from the profile exactly as the account job reads them (no account id, only the aliases); `compute.DefaultNoticeParamsFunc` gives `Params`; the demo profile serves a fixed demo result (one notice of each severity, a second alias with `no_capture`) and opens no store; a failed build answers 500 with the fixed text; the bar is the web issue's and `cmd/ot` holds no bar (`grep -c "提示" cmd/ot/*.go` prints 0).
 Acceptance:
 1. `grep -rhE "^func (TestNoticesRouteServesPage|TestNoticesRouteOnlyGet|TestNoticesDemoNeedsNoStore|TestNoticesUsesPagesDSN|TestNoticesBuildErrorIs500|TestPageCommandBuildsNotices)\(" cmd/ot | wc -l` prints 6.
