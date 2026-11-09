@@ -36,27 +36,32 @@ func (j sectionJob) Run(ctx context.Context, _ contracts.Day, _ []contracts.Expe
 	return contracts.JobResult{Returned: ins.New}
 }
 
-func TestOptionLedgerStoresSectionsContract(t *testing.T) {
-	t.Parallel()
+func newSectionJob(t *testing.T, st jobs.OptionLedgerStores) contracts.Job {
+	t.Helper()
 	newJob := jobs.NewOptionLedgerJobFunc(func(s jobs.OptionLedgerStores, _ jobs.OptionLedgerConfig, _ clock.Clock) (contracts.Job, error) {
 		return sectionJob{w: s.Sections}, nil
 	})
+	job, err := newJob(st, jobs.OptionLedgerConfig{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return job
+}
 
+func TestOptionLedgerStoresSectionsSet(t *testing.T) {
+	t.Parallel()
 	fake := &fakeSections{}
 	var w flexsection.Writer = fake
-	on, err := newJob(jobs.OptionLedgerStores{Sections: w}, jobs.OptionLedgerConfig{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := on.Run(context.Background(), "2026-11-09", nil).Returned; got != 1 || fake.calls != 1 {
+	job := newSectionJob(t, jobs.OptionLedgerStores{Sections: w})
+	if got := job.Run(context.Background(), "2026-11-09", nil).Returned; got != 1 || fake.calls != 1 {
 		t.Fatalf("Sections set: returned %d, calls %d", got, fake.calls)
 	}
+}
 
-	off, err := newJob(jobs.OptionLedgerStores{}, jobs.OptionLedgerConfig{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := off.Run(context.Background(), "2026-11-09", nil).Returned; got != 0 || fake.calls != 1 {
-		t.Fatalf("Sections nil: returned %d, calls %d", got, fake.calls)
+func TestOptionLedgerStoresSectionsNil(t *testing.T) {
+	t.Parallel()
+	job := newSectionJob(t, jobs.OptionLedgerStores{})
+	if got := job.Run(context.Background(), "2026-11-09", nil).Returned; got != 0 {
+		t.Fatalf("Sections nil: returned %d", got)
 	}
 }
