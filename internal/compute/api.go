@@ -301,3 +301,195 @@ type Ease interface {
 
 // NewEaseFunc builds an Ease that reads its rule from the given Rules.
 type NewEaseFunc func(Rules) Ease
+
+// CandidateKind says which rule a Candidate row comes from: "short_put", "covered_call"
+// or "held_call_guard" (a short call the owner already holds, judged by the guard).
+type CandidateKind string
+
+const (
+	KindShortPut      CandidateKind = "short_put"
+	KindCoveredCall   CandidateKind = "covered_call"
+	KindHeldCallGuard CandidateKind = "held_call_guard"
+)
+
+// GateStatus is the verdict of one gate: "pass", "block" or "unknown". Unknown is never a
+// pass: it marks the row and keeps its reason.
+type GateStatus string
+
+const (
+	GatePass    GateStatus = "pass"
+	GateBlock   GateStatus = "block"
+	GateUnknown GateStatus = "unknown"
+)
+
+// GateResult is the verdict of one gate on one row. Gate is the gate word:
+//
+//	short_put:       buy_price, quote, events, funding, cash_rate (in this order)
+//	covered_call:    shares, strike_floor, quote, events, guard (in this order)
+//	held_call_guard: guard
+//
+// Reason is the first reason code of the gate when Status is not pass, else empty. Codes:
+//
+//	buy_price:    no_buy_price (block: no BuyPrice), above_buy_price (block)
+//	quote:        no_quote, no_bid, no_ask, small_bid_size, wide_spread, low_open_interest
+//	              (block); delayed_data (unknown: market data type 3 or 4)
+//	events:       earnings_before_expiry (block); earnings_unsupported, earnings_error,
+//	              no_earnings, stale_earnings, beyond_horizon, stale_chain (unknown)
+//	funding:      no_fit (block), no_fx, stale_account, no_account (unknown)
+//	cash_rate:    yield_below_cash (block; a yield equal to the rate blocks too);
+//	              no_rate, stale_rate (unknown)
+//	shares:       no_free_shares (block)
+//	strike_floor: below_floor (block); no_floor (unknown)
+//	guard:        early_assignment_risk (block); no_dividend_info, stale_dividend (unknown)
+type GateResult struct {
+	Gate   string
+	Status GateStatus
+	Reason string
+}
+
+// OptionQuote is one captured option contract of the chain day. Decimals are text:
+// the caller converts each float with strconv.FormatFloat(v, 'f', -1, 64) and rounds
+// half-even to 4 places; an empty text means the value is absent.
+type OptionQuote struct {
+	InstrumentID string
+	Expiry       contracts.Day
+	Right        string // "P" or "C"
+	Strike       string
+	Multiplier   string
+	Bid          string
+	Ask          string
+	BidSize      int
+	OpenInterest int
+	Delta        string
+	IV           string
+	// MarketDataType is the IBKR market data type: 1 live, 2 frozen, 3 delayed, 4 delayed frozen.
+	MarketDataType int
+	// QuoteOK is the row status of the capture: true when the row is "ok".
+	QuoteOK bool
+}
+
+// EarningsInfo is the earnings row of an underlying (as the reader of 606 gives it).
+// State is "listed", "absent", "unsupported" or "error"; Next is the next results date,
+// Previous the newest earlier listed date, RowDay the day the row was written; each is
+// empty when unknown. Override replaces the vendor date when set.
+type EarningsInfo struct {
+	State    string
+	Next     contracts.Day
+	Previous contracts.Day
+	RowDay   contracts.Day
+	Override contracts.Day
+}
+
+// DividendInfo is the dividend row of an underlying: State is "present", "no_value",
+// "error" or "unsupported"; NextExDate is the next ex-date and Amount the amount per
+// share (decimal text); RowDay is the day the row was written.
+type DividendInfo struct {
+	State      string
+	NextExDate contracts.Day
+	Amount     string
+	RowDay     contracts.Day
+}
+
+// AliasFunds is the newest account capture of one alias: Funds is AvailableFunds (decimal
+// text) in Currency, Shares the stock shares held, AvgCost their average cost (decimal
+// text), OpenShortCalls the contracts of open short calls on the underlying and
+// CaptureDay the capture day. Alias is "A" or "B".
+type AliasFunds struct {
+	Alias          string
+	Funds          string
+	Currency       string
+	Shares         int
+	AvgCost        string
+	OpenShortCalls int
+	CaptureDay     contracts.Day
+}
+
+// CandidateInput is everything Evaluate needs for one underlying; the rule has no calendar,
+// no clock and no store. Days are YYYY-MM-DD texts; money, rates and prices are decimal
+// text. RunDay is the day of the run, ChainDay the day of the quotes (gate events and
+// every row: a ChainDay that is not the latest session day on or before RunDay gives
+// unknown stale_chain). SessionDays are the XNYS session days in ascending order, from
+// the oldest input date (earnings row, account capture, chain day) to RunDay, supplied by
+// the caller; every age in sessions is a difference of positions in this list. Rate is
+// DGS3MO in percent (4.20 means 4.2 percent) with RateDay its day; empty when absent.
+// BuyPrice and SalePrice are the owner's prices, empty when unset. Spot is the underlying
+// price on ChainDay. Nil Dividend or empty Accounts make their gates unknown.
+type CandidateInput struct {
+	RunDay       contracts.Day
+	ChainDay     contracts.Day
+	SessionDays  []contracts.Day
+	Underlying   string
+	Spot         string
+	Quotes       []OptionQuote
+	BuyPrice     string
+	SalePrice    string
+	Earnings     *EarningsInfo
+	Dividend     *DividendInfo
+	Rate         string
+	RateDay      contracts.Day
+	Accounts     []AliasFunds
+	Kinds        []CandidateKind
+	OpenShortIDs []string // instrument ids of open short calls, for held_call_guard
+}
+
+// Candidate is one evaluated row. Status is "ok" (every gate passed), "unknown" (no gate
+// blocked, one is unknown) or "blocked" (a gate blocked). Gates holds the results in the
+// order of GateResult. Rank is the 1-based position among the ok rows of the run and
+// RankInUnderlying within the underlying; both are 0 for a row that is not ok. Marks are
+// words: itm, earnings_unconfirmed, earnings_beyond_horizon, no_dividend. Fits maps an
+// alias to fit, no_fit or unknown. AnnualizedYield and BreakEven are decimal text
+// (yield to 6 places). GuardVerdict is risk, ok or unknown for held_call_guard rows.
+type Candidate struct {
+	Kind             CandidateKind
+	Underlying       string
+	InstrumentID     string
+	Alias            string
+	Expiry           contracts.Day
+	DTE              int
+	Right            string
+	Strike           string
+	Multiplier       string
+	Bid              string
+	Ask              string
+	Spot             string
+	BuyPrice         string
+	SalePrice        string
+	BreakEven        string
+	AnnualizedYield  string
+	Delta            string
+	IV               string
+	Extrinsic        string
+	Status           string
+	Gates            []GateResult
+	Marks            []string
+	Fits             map[string]string
+	GuardVerdict     string
+	Rank             int
+	RankInUnderlying int
+}
+
+// CandidateParams are the limits of the rules (keys of job.toml): MinDTE and MaxDTE
+// (calendar days), MinBidSize, MaxSpread (decimal text, ratio), MinOpenInterest,
+// DivGuardFactor (decimal text), MaxRateAgeDays, MaxEventAgeSessions, MinReportGapDays.
+type CandidateParams struct {
+	MinDTE              int
+	MaxDTE              int
+	MinBidSize          int
+	MaxSpread           string
+	MinOpenInterest     int
+	DivGuardFactor      string
+	MaxRateAgeDays      int
+	MaxEventAgeSessions int
+	MinReportGapDays    int
+}
+
+// OptionCandidates evaluates the contracts of one underlying, purely: no I/O and no
+// clock, exact arithmetic on decimal text. The result holds one row per contract and
+// kind (per alias for calls), with every gate in order; ok rows are ranked by annualized
+// yield descending, then DTE, strike and instrument id ascending; other rows have no rank.
+type OptionCandidates interface {
+	Evaluate(CandidateInput, CandidateParams) []Candidate
+}
+
+// NewOptionCandidatesFunc builds an OptionCandidates.
+type NewOptionCandidatesFunc func() OptionCandidates
