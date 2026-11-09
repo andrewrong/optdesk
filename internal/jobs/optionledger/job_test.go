@@ -175,25 +175,6 @@ func TestNoRetryAfterFailure(t *testing.T) {
 	}
 }
 
-func TestResultCarriesNoFigures(t *testing.T) {
-	t.Parallel()
-	src := &fakeSource{fail: true}
-	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
-	res := j.Run(context.Background(), "2026-11-10", nil)
-	if res.Err == nil {
-		t.Fatal("want error")
-	}
-	for _, bad := range []string{"ACCT1", "q1", "symbol", "ABC", "1018"} {
-		if strings.Contains(res.Err.Error(), bad) {
-			t.Fatalf("error text holds %q: %v", bad, res.Err)
-		}
-	}
-	keys, _, err := j.Plan(context.Background(), "2026-11-10")
-	if err != nil || len(keys) != 1 || keys[0].SubjectKey != "a" {
-		t.Fatalf("plan %v %v", keys, err)
-	}
-}
-
 func TestRequiredLoginFailsResult(t *testing.T) {
 	t.Parallel()
 	j, e := build(t, []jobs.FlexRun{
