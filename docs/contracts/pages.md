@@ -12,6 +12,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `macro_rates.Page()` returns `Meta{macro_rates, page.macro_rates.v3}` with the package `Build`.
 - `embed.Handler(viewModel) http.Handler` and `embed.Assets() http.Handler`: the package embeds `all:dist` (`internal/pages/embed/dist`, written by `pnpm --dir web build`, not committed; only `dist/.gitignore` is). `Handler` writes the view model into `dist/index.html`; `Assets` answers request paths `/assets/*` from `dist/assets`: another path, an unclean path or a missing file is 404, a method other than GET and HEAD is 405. When `index.html` is absent `Handler` answers 500 with the text `web bundle not built: run pnpm --dir web build` (no path in the body).
 - `macro_page.NewPage(c)` returns `Meta{macro_page, page.macro_page.v1}`; its `Build` uses a copy of `c` whose `Indicators` is copied at construction.
+- `market_page.Build(ctx, c Config, r store.SeriesReader, day, generatedAt)` and `market_page.NewPage(c Config)` (page name `market_page`, schema `page.market_page.v1`): `Config` is `RunID`, `BuildID`, `Scope`, `Zone` (`generated_at` is written in it) and `Readings`, a `compute.ReadingFunc`; a nil `Zone` or `Readings`, a nil series reader, a bad day or id is an error of `Build`, and so is a reader error (never a Gap).
 - Zone rule: no pages code names a zone; `macro_page.Config.Zone` is given by the caller.
 
 ## Inputs
@@ -27,6 +28,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `gaps[]`: a nil value yields one `no_value` gap with the `series_id` and the date of the point. A series whose last point is more than 4 calendar days before the day, or that has no point in range, yields one `stale` gap with the day as `date`; a stale last point with a nil value gives that one gap only.
 - `embed.Handler`: `text/html` with the view model in the vm element; `embed.Render` returns the page bytes or an error for a view model that is not JSON (the handler answers 500).
 - `report_page.Build(ctx, c Config, day, generatedAt)` and `report_page.NewPage(c Config)` (page name `report_page`, schema `page.report_page.v2`): `Config` is `Market` (`US` or `JP`), `Slot` (`open` or `close`), `Zone` (`generated_at` is written in it) and `Risks`, a `RiskBlockFunc` (`func(ctx, day, generatedAt) ([]byte, error)`). The `risks` block is the bytes `Risks` returns, embedded unchanged; an error of `Risks`, a market or slot outside the lists, or a nil `Zone` or `Risks` is an error of `Build`. The other four blocks (`actions`, `account_moves`, `market_watch`, `global_assets`) are gap-only: state `gap`, one `Gap` of reason `not_built`, each required figure field a `Gap` of reason `not_built`. No optional block is written. The package computes no figure; only `ot` imports it.
+- `market_page.Build` output: the weather headline and sentence from `market.sp500_vs_200d` (signed `percent`, `+3.12%`, half-even); `rank_3y` of SPX, NDX and RUT from the three percentile readings, unit `share_percent` (whole percent, `68%`, JSON number from the exact decimal text; N225 is a `no_data` Gap); the term cells from stored `VIXCLS` and `VXVCLS` points, unit `index_points` (two decimals; the ratio of `market.vix_term_ratio` in the term sentence has unit `ratio`, two decimals). `data_times` has one entry per series, `stale` is the oldest data day, `run_status` is `ok` or `partial` (never `failed`; permanent Gaps do not count) and the envelope `gaps` copy the Gap blocks in page order. The Gap blocks `weather.chart`, `breadth` and the `iv`, `rv20`, `iv_minus_rv20` cells are `not_built`. Numbers are shifted and rounded half-even as decimal text (`math/big`), never as floats.
 
 ## Invariants
 
@@ -42,6 +44,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - v4: `macro_rates` writes `page.macro_rates.v3` for seven series; `embed` embeds the built bundle (`all:dist`), adds `Assets` and the 500 text; the stub page is gone.
 - v3: `internal/pages/option_data_page`: `NewPage(Config)` and `Build` for `page.option_data_page.v1`; `Config` is `RunID`, `BuildID`, `Scope`, `Zone`, `UnderlyingID`, `Label`, `Eod` (`store.OptionEodReader`) and `Quotes` (`store.QuoteSnapshotReader`) and `Notes` (texts of the page notes, at most 20); the series reader the caller passes is ignored. v3 also fills three fields: `Choices` (`[]Choice`, the first 50 become `underlyings`; a `Href` outside `^/[A-Za-z0-9/_-]{1,100}$` is an error of `Build`), `Terms` (`store.OptionTermsReader`, one call with the kept rows' ids; fills `expiry`, `right` and `strike`; a reader error is returned) and `Symbol` (`underlying.symbol`); zero values keep the output unchanged.
 - v5: `internal/pages/report_page`: `Build` and `NewPage` for `page.report_page.v2`, with `Config` and `RiskBlockFunc`; the `risks` block is given bytes and four blocks are gap-only.
+- v6: `internal/pages/market_page`: `Build`, `NewPage` and `Config` write `page.market_page.v1` from stored readings and series points.
 
 ## Contract tests
 
@@ -49,6 +52,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `internal/pages/api_test.go`: `TestPagesPageContract`.
 - `internal/pages/macro_rates/page_test.go`: `TestPage`.
 - `internal/pages/macro_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`.
+- `internal/pages/market_page/page_test.go`: `TestNewPageMeta`, `TestConfigContract`.
 - `internal/pages/option_data_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`, `TestNewPageCopiesNotes`.
 - `internal/pages/option_data_page/builder_test.go`: `TestBuildValidates`, `TestBuildGolden`, `TestBuildSelection`, `TestBuildGaps`.
 - `internal/pages/option_data_page/choices_test.go`: `TestBuildChoicesGolden` (new), `TestBuildNoNewFields` (new), `TestBuildChoices` (new).
