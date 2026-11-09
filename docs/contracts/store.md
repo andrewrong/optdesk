@@ -106,6 +106,14 @@ Declared in `internal/store/api.go`: `FactWriter` (`InsertFacts`), `FactReader` 
 - View `rd.fundamental_fact_r1` returns `period_start` as NULL again for `0001-01-01`. `FactsFiledBy(ctx, source, subject, cutoff)` reads the view only and returns every row of the source and subject with `filed` on or before the cutoff, no winner picked; none gives an empty slice; a bad cutoff is `Permanent`, a database error `Retryable`.
 - Grants: `ot_w_fundamental` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_FUNDAMENTAL`) has `INSERT` on the table and `SELECT` on the view; `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role has UPDATE, DELETE or TRUNCATE. One implementation serves the figures job (opened with `DSNEnvFundamental`) and the page (opened with `DSNEnvPages`).
 
+## Earnings dates
+
+Declared in `internal/store/api.go`: `EarningsDateWriter` (`InsertEarningsDate`), `EarningsDateReader` (`EarningsDates`), `EarningsDateStore` (both and `Close`), `OpenEarningsDateStoreFunc` and `DSNEnvEvents` (`OT_PG_DSN_EVENTS`, role `ot_w_events`). `internal/store/events.OpenEarningsDate` is the implementation; the row is `contracts.EarningsDate`. Design: `docs/design/event-sources.md#Decisions` (7, 8, 10).
+
+- Table `obs.earnings_date` (migration `0020`), append only, key `(observed_on, issuer, attempt)`; the enums, `attempt >= 1`, a `report_date` only for `listed` and source `none` for `unsupported` are table checks. `InsertEarningsDate` inserts `ON CONFLICT DO NOTHING`: a row whose key exists stays as it is and the call returns no error. An empty issuer or an attempt below 1 is `Permanent`, a database error `Retryable`.
+- View `rd.earnings_date_r1`. `EarningsDates(ctx, issuer, from, to)` reads the view only, inclusive, ascending by day, the highest `attempt` of each day only; none gives an empty slice; a bad or reversed day range is `Permanent`.
+- Grants: `ot_w_events` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_EVENTS`) has `INSERT` on the table and `SELECT` on the view (the job reads the rows of the day); `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role but the owner has UPDATE, DELETE or TRUNCATE. The rows hold dates, status words and vendor text, no account data.
+
 ## Option candidates
 
 Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`.
@@ -131,6 +139,8 @@ Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` app
 
 - v12: migration `0016` (`rd.reading_parameter_r1`, `SELECT` to `ot_ro_pages` and `ot_w_readings`); `reading.OpenView` and `store.ReadingViewReader.WinnerReadings`. Migrate before deploying the reader.
 
+- v13: migration `0020` (`obs.earnings_date`, `rd.earnings_date_r1`); role `ot_w_events` and the new line `OT_PG_DSN_EVENTS`; `events.OpenEarningsDate`. Migrate and run `ot setup pg` before deploying the code.
+
 ## Contract tests
 
 - `internal/store/scheduler_api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
@@ -142,6 +152,7 @@ Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` app
 - `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
 - `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
 - `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
+- `internal/store/api_events_test.go`: `TestEarningsDateContractFromBothSides` and `TestEarningsDSNEnvName` hold `EarningsDateStore` and its line name from both sides.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
 - `internal/store/api_candidate_test.go`: `TestCandidateContract` holds `CandidateWriter`, `CandidateReader` and `DSNEnvCandidate` from both sides (two runs of a day read as the newer one, ranked rows first).
 
