@@ -19,6 +19,7 @@ from optdesk.ibkr.ibgateway import IbGateway
 from optdesk.ibkr.model import QuoteRow, QuoteTarget
 from optdesk.ibkr.spec import OPTION_EOD
 
+GATEWAY_PORT = 4002
 _ID = {"quotes": "1", "details": "9", "chains": "78", "summary": "62", "pos": "61"}
 
 
@@ -30,7 +31,7 @@ async def _connected(stub: RealIb) -> IbGateway:
     gateway = IbGateway(
         lambda client: None,
         host="127.0.0.1",
-        port=4002,
+        port=GATEWAY_PORT,
         client_id=33,
         clock=FakeClock(),
         ib_factory=lambda: stub.ib,
@@ -40,6 +41,23 @@ async def _connected(stub: RealIb) -> IbGateway:
     return gateway
 
 
+async def _turn() -> None:
+    """Give the event loop one turn."""
+    turn: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+    asyncio.get_running_loop().call_soon(turn.set_result, None)
+    await turn
+
+
+async def _until(stub: RealIb, task: asyncio.Future[Any], count: int) -> None:
+    """Turn the loop until count messages are sent; raise the error of a task that ended first."""
+    for _ in range(200):
+        if len(stub.sent) >= count or task.done():
+            break
+        await _turn()
+    if task.done() and len(stub.sent) < count:
+        task.result()
+
+
 async def _drive(
     stub: RealIb, call: Callable[[IbGateway], Awaitable[Any]]
 ) -> list[list[str]]:
@@ -47,12 +65,7 @@ async def _drive(
     gateway = await _connected(stub)
     task = asyncio.ensure_future(call(gateway))
     try:
-        for _ in range(200):
-            if stub.sent or task.done():
-                break
-            await asyncio.sleep(0)
-        if task.done() and not stub.sent:
-            task.result()
+        await _until(stub, task, 1)
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
@@ -87,24 +100,14 @@ def test_real_ib_dividends_send() -> None:
         key = DividendKey("SPY", "STK", "SMART", "USD", 0)
         task = asyncio.ensure_future(gateway.dividends([key], noop))
         try:
-            for _ in range(200):
-                if stub.sent or task.done():
-                    break
-                await asyncio.sleep(0)
-            if task.done() and not stub.sent:
-                task.result()
+            await _until(stub, task, 1)
             lookup = sent_messages(stub)
             # answer the conId lookup as the broker would, then wait for the subscription
             req_id = int(lookup[0][2])
             found = ContractDetails(contract=Contract(conId=756733, symbol="SPY"))
             stub.ib.wrapper.contractDetails(req_id, found)
             stub.ib.wrapper.contractDetailsEnd(req_id)
-            for _ in range(200):
-                if len(stub.sent) > 1 or task.done():
-                    break
-                await asyncio.sleep(0)
-            if task.done() and len(stub.sent) < 2:
-                task.result()
+            await _until(stub, task, 2)
         finally:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
