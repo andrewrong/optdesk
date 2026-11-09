@@ -68,3 +68,30 @@ func TestCallerBranchesOnRetryableTypedError(t *testing.T) {
 		t.Fatal("a plain or nil error must not be retryable")
 	}
 }
+
+type fakeReference struct{}
+
+func (fakeReference) Dividends(_ context.Context, cs []broker.Contract) ([]broker.DividendProjection, error) {
+	out := make([]broker.DividendProjection, len(cs))
+	for i, c := range cs {
+		out[i] = broker.DividendProjection{Contract: c, Status: broker.DividendNoValue}
+	}
+	return out, nil
+}
+
+func (fakeReference) Close() error { return nil }
+
+func TestReferenceClientBuiltByNewReferenceFunc(t *testing.T) {
+	t.Parallel()
+	var f broker.NewReferenceFunc = func(context.Context, string, broker.Options) (broker.ReferenceClient, error) {
+		return fakeReference{}, nil
+	}
+	c, err := f(context.Background(), "x", broker.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.Dividends(context.Background(), []broker.Contract{{Symbol: "KO"}})
+	if err != nil || len(got) != 1 || got[0].Contract.Symbol != "KO" || got[0].Past12m != nil {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+}
