@@ -25,7 +25,7 @@ func TestWatchUnderlyingsUSOnly(t *testing.T) {
 		watchEntry("US", "IDX", "IND", "", 4),
 		watchEntry("US", "AAA", "STK", "", 1),
 	}
-	j, err := NewWithWatch(newBroker(), &fakeResolver{}, &fakeWriter{}, clockwork.NewFakeClock(), watch)
+	j, err := NewWithWatch(newBroker(), &fakeResolver{}, &fakeWriter{}, watch, clockwork.NewFakeClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestWatchUnderlyingsUSOnly(t *testing.T) {
 	if !reflect.DeepEqual(got, []string{"AAA", "ZZZ"}) {
 		t.Fatalf("keys %v, want the US stock entries AAA and ZZZ", got)
 	}
-	if _, err := NewWithWatch(newBroker(), &fakeResolver{}, &fakeWriter{}, clockwork.NewFakeClock(), watch[1:3]); err == nil {
+	if _, err := NewWithWatch(newBroker(), &fakeResolver{}, &fakeWriter{}, watch[1:3], clockwork.NewFakeClock()); err == nil {
 		t.Fatal("a list with no US stock entry must be refused")
 	}
 }

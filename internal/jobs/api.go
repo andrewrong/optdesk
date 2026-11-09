@@ -107,12 +107,12 @@ type NewEarningsRefreshFunc func(
 // list (internal/jobs/optioneod.NewWithWatch): the US stock entries, each with a key per symbol. Expiries are
 // those with DTE in min_dte..max_dte of job.toml; the strikes of an entry with a BuyPrice run from
 // 0.80 x BuyPrice to max(1.05 x BuyPrice, spot), at most max_strikes, the nearest BuyPrice kept; an entry
-// without a BuyPrice keeps the strike_band. The list comes after the clock.
-type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, []WatchEntry) (contracts.Job, error)
+// without a BuyPrice keeps the strike_band. The list comes before the clock.
+type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock) (contracts.Job, error)
 
 // NewOptionEodHeldFunc is the constructor of the option_eod job that also captures the contracts of the short
 // calls the account holds, whatever their DTE (declaration only; its implementation is a later issue). The
-// reader comes after the resolver and the writer, the watch list after the clock.
+// watch list comes after the writer, the reader after the list and the clock last.
 type NewOptionEodHeldFunc func(
-	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, store.AccountReader, clock.Clock, []WatchEntry,
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, store.AccountReader, clock.Clock,
 ) (contracts.Job, error)

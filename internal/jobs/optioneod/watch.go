@@ -19,7 +19,7 @@ import (
 // NewWithWatch builds the option_eod job from the embedded job.toml with the underlyings of the US stock
 // entries of watch (market US, sec_type STK); the [[underlying]] tables of job.toml are not used. The DTE
 // window and max_strikes of job.toml apply, and an entry with a BuyPrice gets the strike range of that price.
-func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, clk clock.Clock, watch []jobs.WatchEntry) (contracts.Job, error) {
+func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
 	if b == nil || res == nil || w == nil || clk == nil {
 		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")
 	}
