@@ -184,7 +184,9 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobQuoteSnapshot}, nil
 	}
-	d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock) (contracts.Job, error) {
+	d.newComputeFigures = func(
+		jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
+	) (contracts.Job, error) {
 		return idJob{id: jobComputeFigures}, nil
 	}
 	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
