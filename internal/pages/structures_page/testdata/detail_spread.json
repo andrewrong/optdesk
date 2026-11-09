@@ -1,0 +1,170 @@
+{
+ "Result": {
+  "Structures": [
+   {
+    "ID": "main:T101:1",
+    "Alias": "main",
+    "Underlying": "MSFT",
+    "Currency": "USD",
+    "Kind": "put_spread",
+    "Legs": [
+     {
+      "PositionID": "main:T101:1",
+      "Right": "P",
+      "Strike": "300",
+      "Expiry": "2026-12-18",
+      "Quantity": "1",
+      "Multiplier": "100",
+      "OpenPrice": "1",
+      "Mid": "1.1",
+      "LegPnL": "10.0000",
+      "MarkStatus": "ok"
+     },
+     {
+      "PositionID": "main:T101:2",
+      "Right": "P",
+      "Strike": "310",
+      "Expiry": "2026-12-18",
+      "Quantity": "-1",
+      "Multiplier": "100",
+      "OpenPrice": "2.5",
+      "Mid": "1.2",
+      "LegPnL": "130.0000",
+      "MarkStatus": "ok"
+     }
+    ],
+    "Figures": {
+     "MaxLoss": {
+      "Value": "-850.0000",
+      "Gap": ""
+     },
+     "MaxGain": {
+      "Value": "150.0000",
+      "Gap": ""
+     },
+     "BreakEven": {
+      "Value": "308.5000",
+      "Gap": ""
+     },
+     "UnrealizedPnL": {
+      "Value": "140.0000",
+      "Gap": ""
+     },
+     "EarnedShare": {
+      "Value": "0.200000",
+      "Gap": ""
+     },
+     "ExpiryDistance": {
+      "Value": "-0.031250",
+      "Gap": ""
+     }
+    },
+    "Payoff": [
+     {
+      "Price": "238.0000",
+      "PnL": "-850.0000"
+     },
+     {
+      "Price": "300.0000",
+      "PnL": "-850.0000"
+     },
+     {
+      "Price": "310.0000",
+      "PnL": "150.0000"
+     },
+     {
+      "Price": "372.0000",
+      "PnL": "150.0000"
+     }
+    ],
+    "Greeks": {
+     "Delta": {
+      "Value": "12.5",
+      "Gap": ""
+     },
+     "Gamma": {
+      "Value": "-0.4",
+      "Gap": ""
+     },
+     "Theta": {
+      "Value": "3.1",
+      "Gap": ""
+     },
+     "Vega": {
+      "Value": "-8.2",
+      "Gap": ""
+     },
+     "Day": "2026-11-06"
+    },
+    "Levels": [
+     {
+      "Name": "long_strike",
+      "Price": "300",
+      "Distance": "-0.062500"
+     },
+     {
+      "Name": "short_strike",
+      "Price": "310",
+      "Distance": "-0.031250"
+     },
+     {
+      "Name": "break_even",
+      "Price": "308.5000",
+      "Distance": "-0.035938"
+     }
+    ],
+    "Decide": false,
+    "CaptureParam": "",
+    "ExitDTEParam": ""
+   }
+  ]
+ },
+ "Positions": [
+  {
+   "PositionID": "main:T101:1",
+   "Alias": "main",
+   "Underlying": "MSFT",
+   "Status": "open",
+   "Right": "P",
+   "Expiry": "2026-12-18",
+   "Strike": "300",
+   "OpenedOn": "2026-10-19",
+   "OpenPrice": "1",
+   "Quantity": "1",
+   "Multiplier": "100",
+   "Currency": "USD",
+   "Fills": [
+    {
+     "Day": "2026-10-19",
+     "Action": "open",
+     "Quantity": "1",
+     "Price": "1",
+     "Commission": "0.6500"
+    }
+   ]
+  },
+  {
+   "PositionID": "main:T101:2",
+   "Alias": "main",
+   "Underlying": "MSFT",
+   "Status": "open",
+   "Right": "P",
+   "Expiry": "2026-12-18",
+   "Strike": "310",
+   "OpenedOn": "2026-10-19",
+   "OpenPrice": "2.5",
+   "Quantity": "-1",
+   "Multiplier": "100",
+   "Currency": "USD",
+   "Fills": [
+    {
+     "Day": "2026-10-19",
+     "Action": "open",
+     "Quantity": "-1",
+     "Price": "2.5",
+     "Commission": "0.6500"
+    }
+   ]
+  }
+ ]
+}
