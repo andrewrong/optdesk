@@ -15,6 +15,8 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 `internal/store/bar` declares, in `api.go` only (no implementation in the package), the store of two append-only datasets: `obs.price_bar r1` (daily bars, `trades` and `adjusted_last`) and `obs.fx_rate r1` (the daily USD.JPY rate). `bar.BarStore` is `PriceBarWriter`, `PriceBarReader`, `FxRateWriter`, `FxRateReader` and `Close`; `bar.OpenBarFunc` opens it from the line `bar.DSNEnvBar` (`OT_PG_DSN_BAR`) of the role `ot_w_bar`. The implementation is `internal/store/barpg`.
 `internal/store/ownerset` declares, in `api.go` only, the owner's settings store: `ownerset.Reader` (`Params`, `Exclusions`, `History`, `Version`, `Close`, all read as of a time), `ownerset.Writer` (`Apply` of a `Change`, one transaction, unchanged fields insert nothing), `ownerset.Store` (both) and `ownerset.OpenFunc`, from the line `ownerset.DSNEnvSettings` (`OT_PG_DSN_SETTINGS`). Design: `docs/design/settings-form.md#Interface`.
 
+`internal/store/mark` declares, in `api.go` only, the store of position marks, `account.position_mark r1` (insert-only, one row per position of a capture, key `(capture_id, con_id, attempt)`). `mark.Writer.WriteMarks` writes the rows in one transaction and leaves a row whose key exists as it is (a correction is a row with a higher `Attempt`); `mark.Reader.Marks(alias, day)` returns the rows of the newest capture of that day that has marks, the highest `Attempt` of each `ConID`, sorted by `ConID`, an empty slice when none. `mark.Store` is both with `Close`; `mark.OpenFunc` opens it from the line `mark.DSNEnvPositionMark` (`OT_PG_DSN_POSMARK`) of the role `ot_w_posmark`. The implementation is `internal/store/markpg`.
+
 ## Inputs
 
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.
@@ -126,6 +128,15 @@ Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, [
 ## Option ledger
 
 Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
+
+## Flex sections
+
+Declared in the declarations-only package `internal/store/flexsection` (not in `internal/store/api.go`): `Writer` (`RecordSections`), `Reader` (`Rows`, `Statuses`), `Store` (both and `Close`), `OpenFunc`, and the plain types `Row`, `Status` and `Insert`; the implementation is `internal/store/flexsectionpg`.
+
+- Revision rule: on `(Alias, Section, RowKey)`. A new key is revision 1; a key whose attributes differ from its newest revision is written at that revision plus one; an identical one is counted `Unchanged` and not written. The `Revision` of a `Row` given to `RecordSections` is ignored.
+- One transaction per `RecordSections`. Attributes that hold `accountId` or `acctAlias` are an error and nothing is written. No rows and no statuses makes no database call.
+- Views: `Rows` reads `rd.flex_section_row_r1` and returns the highest revision of every key sorted by `RowKey`; `Statuses` reads `rd.flex_section_status_r1` and returns the newest status per section of the alias. Neither reads a base table.
+- Contract test: `internal/store/flexsection/api_test.go`: `TestSectionStoreContract`, `TestRecordSectionsRefusesAccountAttributes` and `TestRecordSectionsEmptyMakesNoCall`.
 
 ## Account data
 
