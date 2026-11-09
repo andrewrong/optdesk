@@ -51,7 +51,7 @@ const (
 	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0022_optionledger.sql)
 
 	// roleSettings: INSERT and SELECT on the two settings tables, SELECT on rd.rule_param_r1 and rd.option_exclusion_r1
-	// (migrations/0024_settings.sql).
+	// (migrations/0025_settings.sql).
 	roleSettings = "ot_w_settings"
 )
 

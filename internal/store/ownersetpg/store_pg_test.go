@@ -65,7 +65,7 @@ func adminDatabase(t *testing.T) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newDatabase makes a throwaway database with the roles, the schema rd and migration 0024, dropped in t.Cleanup.
+// newDatabase makes a throwaway database with the roles, the schema rd and migration 0025, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
@@ -107,7 +107,7 @@ func newDatabase(t *testing.T) string {
 			t.Errorf("drop database %s: %v", name, err)
 		}
 	})
-	raw, err := os.ReadFile("../../../migrations/0024_settings.sql")
+	raw, err := os.ReadFile("../../../migrations/0025_settings.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func newDatabase(t *testing.T) string {
 		t.Fatal(err)
 	}
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
-		t.Fatalf("apply 0024: %v", err)
+		t.Fatalf("apply 0025: %v", err)
 	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_settings, ot_ro_pages, ot_runner`); err != nil {
 		t.Fatal(err)
