@@ -151,6 +151,8 @@ components:
     in: internal/profile
   ot:
     in: cmd/ot
+  compute/blockapi:
+    in: internal/compute/blockapi
   compute/contracttest:
     in: internal/compute/contracttest
   compute/sharpmove:
@@ -315,56 +317,67 @@ deps:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/ease:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/figures:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/gonumstats:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/optioncand:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/optionledger:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/optionnotice:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/optionstruct:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/own:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/rules:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   compute/talibind:
     mayDependOn:
       - contracts
       - compute
+      - compute/blockapi
       - contracts/genpb
   runner:
     mayDependOn:
@@ -397,6 +410,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
   jobs/calendarrefresh:
     mayDependOn:
       - contracts
@@ -406,6 +420,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -418,6 +433,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -430,6 +446,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -442,6 +459,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -454,6 +472,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -466,6 +485,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -478,6 +498,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -490,6 +511,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -502,6 +524,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -512,6 +535,7 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - compute/blockapi
   notify/core:
     mayDependOn:
       - contracts
@@ -519,6 +543,7 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - compute/blockapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -529,6 +554,7 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - compute/blockapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -539,6 +565,7 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - compute/blockapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -548,12 +575,14 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
   pages/embed:
     mayDependOn:
       - contracts
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -563,6 +592,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -572,6 +602,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -581,6 +612,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -590,6 +622,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -599,6 +632,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -608,6 +642,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -617,6 +652,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -626,6 +662,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -635,6 +672,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -644,6 +682,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -716,16 +755,23 @@ deps:
       - jobs/earningsrefresh
       - store/events
       - store/bar
+  compute/blockapi:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/contracttest:
     mayDependOn:
       - contracts
       - compute
       - contracts/genpb
+      - compute/blockapi
   compute/sharpmove:
     mayDependOn:
       - contracts
       - compute
       - contracts/genpb
+      - compute/blockapi
   notify/notifytest:
     mayDependOn:
       - contracts
@@ -733,6 +779,7 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - compute/blockapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -742,6 +789,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -751,6 +799,7 @@ deps:
       - store
       - compute
       - store/bar
+      - compute/blockapi
       - pages
       - contracts/genpb
       - compute/contracttest
