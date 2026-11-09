@@ -158,13 +158,19 @@ type wiring struct {
 }
 
 // runnable is jobs without earnings_refresh when its line is missing; the left-out job is logged by id and
-// reason. earnings_refresh is always the last of jobs.
+// reason.
 func (w wiring) runnable(log *slog.Logger) []contracts.Job {
-	if w.earningsOff == "" || len(w.jobs) == 0 {
+	if w.earningsOff == "" {
 		return w.jobs
 	}
 	log.Warn("job left out", "component", "ot", "job", jobEarningsRefresh, "status", w.earningsOff)
-	return w.jobs[:len(w.jobs)-1]
+	out := make([]contracts.Job, 0, len(w.jobs))
+	for _, j := range w.jobs {
+		if j.ID() != jobEarningsRefresh {
+			out = append(out, j)
+		}
+	}
+	return out
 }
 
 // jobFactory builds the jobs over the stores withWiring opened.

@@ -58,9 +58,6 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 type prober struct {
 	w      wiring
 	hasKey bool
-	// earningsOff is the reason earnings_refresh was left out at start; its lines are read once, so it stays out
-	// until the process restarts.
-	earningsOff string
 
 	mu  sync.Mutex
 	brk broker.Broker // the broker of the last passing dial, nil before one
@@ -74,8 +71,9 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		}
 		return p.built(p.w.factory.fred())
 	case jobEarningsRefresh:
-		if p.earningsOff != "" {
-			return nil, p.earningsOff
+		// the lines are read once at start, so a missing one keeps the job out until the process restarts
+		if p.w.earningsOff != "" {
+			return nil, p.w.earningsOff
 		}
 		return p.built(p.w.factory.earningsRefresh())
 	case jobOptionEod, jobQuoteSnapshot:
