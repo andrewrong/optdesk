@@ -118,7 +118,10 @@ func (f fakeAccount) Executions(context.Context) (broker.Executions, error) {
 		Generation: 3,
 		Collected:  true,
 		Pending:    1,
-		Executions: []broker.Execution{{ExecID: "e1", Contract: broker.Contract{Symbol: "KO"}, Side: "BOT", Quantity: "1", Price: "60.1", Commission: "0.35", CommissionCurrency: "USD"}},
+		Executions: []broker.Execution{{
+			ExecID: "e1", Contract: broker.Contract{Symbol: "KO"}, Side: "BOT", Quantity: "1", Price: "60.1",
+			Commission: "0.35", CommissionCurrency: "USD",
+		}},
 	}, nil
 }
 
