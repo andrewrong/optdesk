@@ -13,14 +13,16 @@ go tool go-jsonschema -p gen --capitalization ID \
   --schema-root-type "$D/obs.quote_snapshot.r1.json=QuoteSnapshot" \
   --schema-root-type "$D/readings.reading.r1.json=ReadingRecord" \
   --schema-root-type "$D/obs.fundamental_fact.r1.json=FundamentalFact" \
+  --schema-root-type "$D/candidates.option_candidate.r1.json=OptionCandidate" \
   --schema-output "$D/master.session_day.r1.json=$OUT" \
   --schema-output "$D/obs.series_point.r1.json=$OUT" \
   --schema-output "$D/obs.option_eod.r1.json=$OUT" \
   --schema-output "$D/obs.quote_snapshot.r1.json=$OUT" \
   --schema-output "$D/readings.reading.r1.json=$OUT" \
   --schema-output "$D/obs.fundamental_fact.r1.json=$OUT" \
+  --schema-output "$D/candidates.option_candidate.r1.json=$OUT" \
   -o "$OUT" \
-  contracts/datasets/master.session_day.r1.json contracts/datasets/obs.series_point.r1.json contracts/datasets/obs.option_eod.r1.json contracts/datasets/obs.quote_snapshot.r1.json contracts/datasets/readings.reading.r1.json contracts/datasets/obs.fundamental_fact.r1.json
+  contracts/datasets/master.session_day.r1.json contracts/datasets/obs.series_point.r1.json contracts/datasets/obs.option_eod.r1.json contracts/datasets/obs.quote_snapshot.r1.json contracts/datasets/readings.reading.r1.json contracts/datasets/obs.fundamental_fact.r1.json contracts/datasets/candidates.option_candidate.r1.json
 gofmt -w internal/contracts/gen/records.go
 
 go run ./contracts/gendoc -in contracts/datasets -out docs/contracts/datasets

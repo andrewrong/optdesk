@@ -50,7 +50,7 @@ func loadRecords(t *testing.T, name string) ([]map[string]any, []byte) {
 func TestDatasetFixtures(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"master.session_day", "obs.series_point", "obs.option_eod", "obs.quote_snapshot", "readings.reading"} {
+	for _, name := range []string{"master.session_day", "obs.series_point", "obs.option_eod", "obs.quote_snapshot", "readings.reading", "candidates.option_candidate"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			s := compileDataset(t, name)
