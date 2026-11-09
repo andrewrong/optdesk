@@ -1,0 +1,148 @@
+{
+ "Structures": [
+  {
+   "ID": "main:T200:1",
+   "Alias": "main",
+   "Underlying": "9984",
+   "Currency": "JPY",
+   "Kind": "short_put",
+   "Legs": [
+    {
+     "PositionID": "main:T200:1",
+     "Right": "P",
+     "Strike": "9000",
+     "Expiry": "2026-12-11",
+     "Quantity": "-1",
+     "Multiplier": "100",
+     "OpenPrice": "2.5",
+     "Mid": "",
+     "LegPnL": "",
+     "MarkStatus": "no_mark"
+    }
+   ],
+   "Figures": {
+    "MaxLoss": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "MaxGain": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "BreakEven": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "UnrealizedPnL": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "EarnedShare": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "ExpiryDistance": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "CloseCost": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "RollCredit": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "RollNet": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "RecentCommission": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    },
+    "CashAfter": {
+     "Value": "",
+     "Gap": "unsupported_currency"
+    }
+   },
+   "CaptureParam": "0.50",
+   "ExitDTEParam": "21"
+  },
+  {
+   "ID": "main:T201:1",
+   "Alias": "main",
+   "Underlying": "TSLA",
+   "Currency": "USD",
+   "Kind": "naked_call",
+   "Legs": [
+    {
+     "PositionID": "main:T201:1",
+     "Right": "C",
+     "Strike": "300",
+     "Expiry": "2026-12-18",
+     "Quantity": "-1",
+     "Multiplier": "100",
+     "OpenPrice": "2.5",
+     "Mid": "",
+     "LegPnL": "",
+     "MarkStatus": "no_mark"
+    }
+   ],
+   "Figures": {
+    "MaxLoss": {
+     "Value": "",
+     "Gap": "no_rule"
+    },
+    "MaxGain": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "BreakEven": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "UnrealizedPnL": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "EarnedShare": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "ExpiryDistance": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "CloseCost": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "RollCredit": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "RollNet": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "RecentCommission": {
+     "Value": "",
+     "Gap": "missing_quote"
+    },
+    "CashAfter": {
+     "Value": "",
+     "Gap": "missing_quote"
+    }
+   },
+   "CaptureParam": "0.50",
+   "ExitDTEParam": "21"
+  }
+ ],
+ "Other": [],
+ "Diff": {
+  "CaptureOnly": [],
+  "LedgerOnly": [],
+  "Skipped": "no_capture"
+ }
+}
