@@ -31,14 +31,20 @@ components:
     in: internal/broker/grpcbroker
   sources:
     in: internal/sources
+  sources/alphavantage:
+    in: internal/sources/alphavantage
   sources/fred:
     in: internal/sources/fred
+  sources/jquants:
+    in: internal/sources/jquants
   store:
     in: internal/store
   store/alert:
     in: internal/store/alert
   store/candidate:
     in: internal/store/candidate
+  store/events:
+    in: internal/store/events
   store/instrument:
     in: internal/store/instrument
   store/ops:
@@ -85,10 +91,14 @@ components:
     in: internal/jobs/calendarrefresh
   jobs/computefigures:
     in: internal/jobs/computefigures
+  jobs/earningsrefresh:
+    in: internal/jobs/earningsrefresh
   jobs/fredseries:
     in: internal/jobs/fredseries
   jobs/optioneod:
     in: internal/jobs/optioneod
+  jobs/optionledger:
+    in: internal/jobs/optionledger
   jobs/quotesnapshot:
     in: internal/jobs/quotesnapshot
   jobs/serieshistory:
@@ -127,20 +137,12 @@ components:
     in: internal/compute/contracttest
   compute/sharpmove:
     in: internal/compute/sharpmove
-  jobs/earningsrefresh:
-    in: internal/jobs/earningsrefresh
   notify/notifytest:
     in: internal/notify/notifytest
   pages/gaps:
     in: internal/pages/gaps
   pages/home_page:
     in: internal/pages/home_page
-  sources/alphavantage:
-    in: internal/sources/alphavantage
-  sources/jquants:
-    in: internal/sources/jquants
-  store/events:
-    in: internal/store/events
   store/fundamental:
     in: internal/store/fundamental
   store/migrate:
@@ -181,7 +183,19 @@ deps:
     mayDependOn:
       - contracts
       - clock
+  sources/alphavantage:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - contracts/genpb
   sources/fred:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - contracts/genpb
+  sources/jquants:
     mayDependOn:
       - contracts
       - clock
@@ -196,6 +210,11 @@ deps:
       - store
       - contracts/genpb
   store/candidate:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
+  store/events:
     mayDependOn:
       - contracts
       - store
@@ -332,6 +351,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/earningsrefresh:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/fredseries:
     mayDependOn:
       - contracts
@@ -344,6 +374,17 @@ deps:
       - contracts/genpb
       - compute/contracttest
   jobs/optioneod:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
+  jobs/optionledger:
     mayDependOn:
       - contracts
       - clock
@@ -527,8 +568,13 @@ deps:
       - compute/optioncand
       - store/candidate
       - compute/optionledger
+      - jobs/optionledger
       - pages/market_page
       - pages/option_candidates_page
+      - sources/alphavantage
+      - sources/jquants
+      - jobs/earningsrefresh
+      - store/events
   compute/contracttest:
     mayDependOn:
       - contracts
@@ -539,17 +585,6 @@ deps:
       - contracts
       - compute
       - contracts/genpb
-  jobs/earningsrefresh:
-    mayDependOn:
-      - contracts
-      - clock
-      - sources
-      - broker
-      - store
-      - compute
-      - jobs
-      - contracts/genpb
-      - compute/contracttest
   notify/notifytest:
     mayDependOn:
       - contracts
@@ -574,23 +609,6 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
-  sources/alphavantage:
-    mayDependOn:
-      - contracts
-      - clock
-      - sources
-      - contracts/genpb
-  sources/jquants:
-    mayDependOn:
-      - contracts
-      - clock
-      - sources
-      - contracts/genpb
-  store/events:
-    mayDependOn:
-      - contracts
-      - store
-      - contracts/genpb
   store/fundamental:
     mayDependOn:
       - contracts
