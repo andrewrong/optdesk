@@ -108,7 +108,9 @@ func ownerSession(ctx context.Context, c execer, log *slog.Logger) error {
 
 // gooseUp applies the migrations of fsys with goose's default version table, which lands in meta by search_path.
 func gooseUp(ctx context.Context, db *sql.DB, fsys fs.FS) error {
-	p, err := goose.NewProvider(goose.DialectPostgres, db, fsys)
+	// Out of order: a lower version that lands after a higher one is applied too, as each module's migration is
+	// its own schema and no order between modules is needed.
+	p, err := goose.NewProvider(goose.DialectPostgres, db, fsys, goose.WithAllowOutofOrder(true))
 	if err == nil {
 		_, err = p.Up(ctx)
 	}
