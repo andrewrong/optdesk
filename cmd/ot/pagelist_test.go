@@ -38,7 +38,7 @@ func TestPageNamedUnknown(t *testing.T) {
 	a, _ := testApp(t, "")
 	a.deps.pageList = []pages.Page{fakePage("alpha", "a"), fakePage("beta", "b")}
 	_, err := pageNamed(a, "nosuch")
-	want := `unknown page "nosuch"; known pages: alpha, beta, macro_page`
+	want := `unknown page "nosuch"; known pages: alpha, beta, macro_page, report_page`
 	if err == nil || err.Error() != want {
 		t.Fatalf("err %v, want %s", err, want)
 	}
@@ -92,5 +92,16 @@ func TestMacroPageRealBuild(t *testing.T) {
 	if m["schema"] != "macro_page" || m["schema_version"] != float64(1) || p.Meta.Schema != "page.macro_page.v1" ||
 		m["run_id"] != "ot-page" || m["scope"] != "macro" || m["build_id"] != "dev" {
 		t.Fatalf("meta %+v page %s", p.Meta, b)
+	}
+}
+
+func TestUnknownPageListsReports(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.deps.pageList = []pages.Page{fakePage("alpha", "a")}
+	_, err := pageNamed(a, "nosuch")
+	want := `unknown page "nosuch"; known pages: alpha, macro_page, report_page`
+	if err == nil || err.Error() != want {
+		t.Fatalf("err %v, want %s", err, want)
 	}
 }
