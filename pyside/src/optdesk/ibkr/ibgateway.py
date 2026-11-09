@@ -3,13 +3,16 @@
 The only file of src that imports ib_async. The connection is made on the
 client after the guard is installed, with ib_async's async methods only; every
 send waits for the message pacer first. The objects of ib_async are named `ib`
-and `ib.client` and nothing else of ours is. This file never logs: it returns
-statuses and raises errors, and the transport turns them into records.
+and `ib.client` and nothing else of ours is. This file returns statuses and
+raises errors, and the transport turns them into records; its one log record is
+`dividend_failed`, written through the stdlib logger of this module when a key
+fails with an unexpected exception (type name and message only).
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import math
 from collections.abc import Awaitable, Callable, Sequence
 from decimal import Decimal
@@ -38,6 +41,8 @@ from optdesk.ibkr.pacing import (
     MessagePacer,
 )
 from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
+
+_log = logging.getLogger(__name__)
 
 _PRICE_FIELDS = (
     ("bid", "bid"),
@@ -453,21 +458,41 @@ class IbGateway:
 
         Each key holds a market-data line while it waits; a lost session raises
         ConnectionError. ib_async drops a tick it cannot parse, so such a key
-        is answered as a timeout.
+        is answered as a timeout. Any other exception of a key (not a lost
+        session, not a BrokerError) answers that key with status error, code 0.
         """
 
         async def one(key: DividendKey) -> None:
-            async with self._lines.lease():
-                await self._pacer.start()
-                ib, _ = self._session()
-                reading = await self._until_lost(
-                    read_dividend(
-                        self._clock,
-                        key,
-                        lambda k, ticks, on_text, on_error: self._subscribe_dividend(
-                            ib, k, ticks, on_text, on_error
-                        ),
+            try:
+                async with self._lines.lease():
+                    await self._pacer.start()
+                    ib, _ = self._session()
+                    reading = await self._until_lost(
+                        read_dividend(
+                            self._clock,
+                            key,
+                            lambda k, ticks, on_text, on_error: (
+                                self._subscribe_dividend(
+                                    ib, k, ticks, on_text, on_error
+                                )
+                            ),
+                        )
                     )
+            except (ConnectionError, spec.BrokerError):
+                raise
+            except Exception as exc:  # noqa: BLE001
+                _log.error(
+                    "dividend_failed type=%s message=%s", type(exc).__name__, exc
+                )
+                reading = DividendReading(
+                    key,
+                    spec.STATUS_ERROR,
+                    None,
+                    None,
+                    None,
+                    None,
+                    0,
+                    self._clock.now().timestamp(),
                 )
             await on_reading(reading)
 
