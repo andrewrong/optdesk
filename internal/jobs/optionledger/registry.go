@@ -24,7 +24,12 @@ type sectionSpec struct {
 // more row here and no schema change.
 var registry = []sectionSpec{
 	{Element: "CashTransaction", Required: []string{"transactionID"}},
-	{Element: "OpenPosition", Required: []string{"reportDate", "levelOfDetail", "conid"}, Optional: []string{"openDateTime", "originatingTransactionID"}, ByLot: true},
+	{
+		Element:  "OpenPosition",
+		Required: []string{"reportDate", "levelOfDetail", "conid"},
+		Optional: []string{"openDateTime", "originatingTransactionID"},
+		ByLot:    true,
+	},
 	{Element: "ChangeInNAV", Required: []string{"fromDate", "toDate"}},
 	{Element: "EquitySummaryByReportDateInBase", Required: []string{"reportDate"}},
 	{Element: "ConversionRate", Required: []string{"reportDate", "fromCurrency", "toCurrency"}},
