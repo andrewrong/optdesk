@@ -37,6 +37,8 @@ components:
     in: internal/sources/fred
   sources/jquants:
     in: internal/sources/jquants
+  gaphistory:
+    in: internal/gaphistory
   store:
     in: internal/store
   store/alert:
@@ -201,57 +203,71 @@ deps:
       - clock
       - sources
       - contracts/genpb
+  gaphistory:
+    mayDependOn:
+      - contracts
   store:
     mayDependOn:
       - contracts
+      - gaphistory
   store/alert:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/candidate:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/events:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/instrument:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/ops:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/reading:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/series:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/sessionday:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/setup:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/snapshot:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   compute:
@@ -422,11 +438,13 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
   notify/core:
     mayDependOn:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -435,6 +453,7 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -443,6 +462,7 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -528,6 +548,7 @@ deps:
       - pages
       - profile
       - compute
+      - gaphistory
       - clock/realclock
       - clock/calendar
       - runner/reconcile
@@ -590,6 +611,7 @@ deps:
       - contracts
       - store
       - compute
+      - gaphistory
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -612,10 +634,12 @@ deps:
   store/fundamental:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
   store/migrate:
     mayDependOn:
       - contracts
+      - gaphistory
       - store
       - contracts/genpb
