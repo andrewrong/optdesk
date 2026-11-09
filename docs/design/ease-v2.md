@@ -81,7 +81,7 @@ Owner: compute (`compute.Ease` and its types, `internal/compute/api.go`), ot (th
 - Module: compute, plus repo (the licensed pair, `.go-arch-lint.yml`). Size: S. Depends on: none.
 - Order: first (1). Interface change: `internal/compute/api.go` gains the types of the Interface section; additive. It also creates the package `internal/compute/ease` as a package clause only, so that the generated lint file names the component before the implementation lands.
 - Design: docs/design/ease-v2.md#Interface
-- Files: internal/compute/api.go, internal/compute/api_test.go, docs/contracts/compute.md, internal/compute/ease/doc.go, .go-arch-lint.yml
+- Files: internal/compute/api.go, internal/compute/api_test.go, docs/contracts/compute.md, internal/compute/ease/doc.go
 
 - Goal: `EaseSeries`, `EaseBand`, `EasePart`, `EaseFigure`, `Ease` and `NewEaseFunc` with doc comments (units of each series, the four input names in order, the reasons, the band words), and the paragraph of `docs/contracts/compute.md` that says what `Ease` promises: exact arithmetic, the value to 2 places half-even, four parts always, `Band` empty when missing. `api_test.go` tests the contract from both sides with a fake `Ease`: a caller sees four parts in the order of the doc, and the fake and a table of constants agree.
 

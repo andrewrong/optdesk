@@ -69,7 +69,7 @@ Entries 3 and 4 add files to the package that entry 1 creates and share no file;
 ### 1 cutover-api (interface)
 
 Module: jobs, plus repo (licensed pair: `.go-arch-lint.yml` is generated from the directory). Size: M.
-Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`, `internal/jobs/cutover/doc.go`, `internal/jobs/cutover/jsonl.go`, `internal/jobs/cutover/jsonl_test.go`, `.go-arch-lint.yml`
+Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`, `internal/jobs/cutover/doc.go`, `internal/jobs/cutover/jsonl.go`, `internal/jobs/cutover/jsonl_test.go`
 Design: docs/design/cut-over.md#Interface
 Order: first. It shares no file with another entry; it creates the package `internal/jobs/cutover`, its `.go-arch-lint.yml` component and the helper `jsonl.go` that 3 and 4 use, so 3 and 4 wait only on this interface entry and share no file.
 Goal: the Interface section: `VerifyResult`, `ImportAccountFunc`, `VerifyAccountFunc`, `FigureStatus`, `FigureResult`, `FigureReport`, `CompareFiguresFunc`, declarations only, with a test of the contract from both sides; the package with its shared JSON Lines reader and canonical hash.

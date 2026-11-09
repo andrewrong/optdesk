@@ -83,7 +83,7 @@ Items under `Checked by CI` are decided by the workflows of the head commit; eve
 
 The declarations and the stub package
   Goal: `internal/store/api.go` declares the types of `## Interface` and `internal/store/instrument` exists as a stub that the lint knows.
-  Files: internal/store/api.go, internal/store/api_test.go, internal/store/instrument/doc.go, .go-arch-lint.yml
+  Files: internal/store/api.go, internal/store/api_test.go, internal/store/instrument/doc.go
   Design: docs/design/store-master.md#interface
   Cross-module: store and repo, licensed by this design (see `## Modules`).
   Acceptance:

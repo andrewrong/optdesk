@@ -92,7 +92,7 @@ Owner: compute. Frozen by `compute-interface`; read by every issue here, by `com
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: S. Depends on: none.
 - Order: first. Interface change: new file `internal/compute/api.go`; the modules.md edits above are in the tree. This is the first Go file under `internal/compute`, and `scripts/arch` keeps a component only for a directory that holds Go files, so the issue adds the `compute` component to `.go-arch-lint.yml`. `arch.toml` already holds the compute components from this design's modules.md edits and does not change (a tree with `internal/compute/api.go` and `internal/compute/own/` regenerates only `.go-arch-lint.yml`), so no issue lists it.
 - Design: docs/design/compute-core.md#Interface
-- Files: internal/compute/api.go, internal/compute/api_test.go, docs/contracts/compute.md, .go-arch-lint.yml
+- Files: internal/compute/api.go, internal/compute/api_test.go, docs/contracts/compute.md
 
 - Goal: the declarations of the Interface section and the contract document; `api_test.go` tests the contract from both sides (a fake of each of the seven interfaces, a caller through the interface only).
 
@@ -113,7 +113,7 @@ Checked by CI: `go test ./internal/compute -race -count=1`; the `checks` arch ch
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-interface.
 - Order: after 1 (compute-interface). This is the first fixture of the core: `units.json` (P:33).
 - Design: docs/design/compute-core.md#Decisions
-- Files: internal/compute/contracttest/golden.go, internal/compute/contracttest/golden_test.go, internal/compute/contracttest/testdata/units.json, internal/compute/contracttest/testdata/stats.json, internal/compute/contracttest/testdata/series.json, internal/compute/contracttest/testdata/figures.json, .go-arch-lint.yml
+- Files: internal/compute/contracttest/golden.go, internal/compute/contracttest/golden_test.go, internal/compute/contracttest/testdata/units.json, internal/compute/contracttest/testdata/stats.json, internal/compute/contracttest/testdata/series.json, internal/compute/contracttest/testdata/figures.json
 
 - Goal: the loader of the embedded fixtures (`golden.go`, `//go:embed testdata/*.json`) and four hand-worked files; every case has `name`, `group`, `input`, `expected`, `tolerance`; a case of a hand file has a `working` string that shows the arithmetic, and a generated file (one that starts with a `provenance` object, as `indicators.json` and `iv30_independent.json` of `compute-golden-generator` do) needs no `working`, so the loader and `TestFixtureShape` accept both shapes and the generator edits no file of this issue. `units.json` first: `theta_per_calendar_day` (-36.5 per year gives -0.1), `vega_per_vol_point` (25 per unit of vol gives 0.25), `iv_decimal` (percent 25 gives 0.25) and `half_even` at scale 2 and 0 (0.125 gives "0.12", 0.375 "0.38", 2.5 "2", 3.5 "4", -2.5 "-2", 0.5 "0") and at scale 6 (0.0078125 "0.007812", 0.0234375 "0.023438", -0.0078125 "-0.007812"; each exact in binary). `stats.json` and `series.json`: literals small enough to check by hand; a case of 252 or 200 values is written as a ramp spec `{"ramp": {"from": 1, "step": 1, "count": 252}}` that the loader expands, with its answer worked in `working` by arithmetic (REV1:C6) (vintage choice with a `no_value` row, alignment with a gap, log returns, rolling windows, percent rank with ties at both `Compare`). `figures.json`: its `group` is the name of the `Figures` method and the `input` of each case carries a `rule` object (the numbers of one `Rule`) from which the suite builds a fake `Rules`, so no case needs the real rules table: HV of constant log returns, IVP at 251 and 252 valid sessions with ties, IVR with zero range, MA gap at 199 and 200 closes, percentile in 3 years (day excluded, gap skipped, `Below` against `AtOrBelow`), ratio, and Iv30 for two properties exact by hand (an exact 30-day expiry alone; two expiries with equal IV give that IV); one case for each `Reason`. The independent cross-check of Iv30 and the TA-Lib indicators come with `compute-golden-generator`.
 
@@ -151,7 +151,7 @@ Checked by CI: `go test ./internal/compute/contracttest -race -count=1`.
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-contracttest.
 - Order: after 1, 2, 3 (compute-interface, compute-fixtures-hand, compute-contracttest); 1 and 2 edit `.go-arch-lint.yml` too.
 - Design: docs/design/compute-core.md#Decisions
-- Files: internal/compute/own/units.go, internal/compute/own/series.go, internal/compute/own/rolling.go, internal/compute/own/own_test.go, .go-arch-lint.yml
+- Files: internal/compute/own/units.go, internal/compute/own/series.go, internal/compute/own/rolling.go, internal/compute/own/own_test.go
 
 - Goal: our own glue behind the interfaces: `own.NewUnits` (conversions; `RoundHalfEven` through `math/big`: the exact value of the float as a `big.Rat`, scaled, rounded half to even), `own.NewSeriesOps` (Decision 7, align, log returns) and `own.NewRolling` (the window loop over the injected `Stats`). No library, no `time`.
 
@@ -170,7 +170,7 @@ Checked by CI: `go test ./internal/compute/own -race -count=1`; the `checks` arc
 - Module: compute, plus repo (judged: `go.mod`, `go.sum`, the regenerated `.go-arch-lint.yml`). Size: S. Depends on: compute-contracttest.
 - Order: after 1, 2, 3, 4 (compute-interface, compute-fixtures-hand, compute-contracttest, compute-own-glue); 1, 2 and 4 edit `.go-arch-lint.yml` too.
 - Design: docs/design/compute-core.md#Decisions
-- Files: internal/compute/gonumstats/stats.go, internal/compute/gonumstats/stats_test.go, go.mod, go.sum, .go-arch-lint.yml
+- Files: internal/compute/gonumstats/stats.go, internal/compute/gonumstats/stats_test.go, go.mod, go.sum
 
 - Goal: `gonumstats.New` (`compute.NewStatsFunc`) with gonum v0.17.0: `stat.Mean`, `stat.StdDev`; `PercentileRank` counts values below or at or below `x` itself (ours: the tie rule is the glossary's). Bad input is a `contracts.TypedError`, never NaN.
 - New direct dependency: `gonum.org/v1/gonum` v0.17.0, BSD-3-Clause; widely used, stable API, permissive. The pull request states `go mod graph | grep gonum`.
@@ -189,7 +189,7 @@ Checked by CI: `go test ./internal/compute/gonumstats -race -count=1`; the `chec
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-own-glue, compute-gonum-stats.
 - Order: after 1, 2, 4, 5 (compute-interface, compute-fixtures-hand, compute-own-glue, compute-gonum-stats); all four edit `.go-arch-lint.yml` too.
 - Design: docs/design/compute-core.md#Interface
-- Files: internal/compute/figures/figures.go, internal/compute/figures/series.go, internal/compute/figures/series_test.go, internal/compute/figures/iv_pending.go, internal/compute/figures/iv_pending_test.go, internal/compute/contracttest/testdata/figures.json, .go-arch-lint.yml
+- Files: internal/compute/figures/figures.go, internal/compute/figures/series.go, internal/compute/figures/series_test.go, internal/compute/figures/iv_pending.go, internal/compute/figures/iv_pending_test.go, internal/compute/contracttest/testdata/figures.json
 
 - Goal: `figures.New` (`compute.NewFiguresFunc`) with `HistoricalVol` (HV(n), GLOSSARY.md line 65: sample stdev of the last `N` log returns times the square root of `TradingDays`; `N`+1 closes else `short_history`; a zero or negative close `bad_input`), `MovingAverageGap` (through `Rolling.Mean`, not `Indicators`), `PercentileInYears` (GLOSSARY.md line 87 for the four index ids: calendar years before the day, day excluded, missing skipped, `Observations` the count, `short_history` when the history does not reach back `Years`) and `Ratio`. Every method reads its numbers from `Rules`, applies `MaxAgeDays` against `asOf` (`stale_input`), sets `DataDay`, and leaves nothing to a caller. The type is `calc` (receiver of every method). The three IV methods (`Iv30`, `IvPercentile`, `IvRank`) are stubs that return a missing `bad_input`, and live only in `iv_pending.go` with their test `TestUnfinishedAreMissing` in `iv_pending_test.go`, so that `compute-figures-iv` removes both files and never edits `figures.go` (REV1:2).
 
@@ -248,7 +248,7 @@ Checked by CI: `go test ./internal/compute/contracttest ./internal/compute/figur
 - Module: compute, plus repo (judged: `go.mod`, `go.sum`, the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-golden-generator.
 - Order: after 1, 2, 4, 5, 6, 8 (compute-interface, compute-fixtures-hand, compute-own-glue, compute-gonum-stats, compute-figures-series, compute-golden-generator); 5 also edits `go.mod` and `go.sum`, and 1, 2, 4, 5 and 6 the arch files.
 - Design: docs/design/compute-core.md#Decisions
-- Files: internal/compute/contracttest/indicators.go, internal/compute/talibind/indicators.go, internal/compute/talibind/wrap.go, internal/compute/talibind/indicators_test.go, internal/compute/talibind/testdata/divergence.json, go.mod, go.sum, .go-arch-lint.yml
+- Files: internal/compute/contracttest/indicators.go, internal/compute/talibind/indicators.go, internal/compute/talibind/wrap.go, internal/compute/talibind/indicators_test.go, internal/compute/talibind/testdata/divergence.json, go.mod, go.sum
 
 - Goal: the `Indicators` suite, of the same shape as the others, `Indicators(t contracttest.T, newIndicators compute.NewIndicatorsFunc)` (the caller passes `contracttest.Wrap(t)`; `T` is the seam of `compute-contracttest`), and `talibind.New` (`compute.NewIndicatorsFunc`): the shortest adapter over go-talib (NaN for padding, `Permanent` for a bad period or unequal lengths), and `wrap.go` with our own corrected function for each one the parity test shows diverging from TA-Lib (EMA seeding is the suspect; a divergence is wrapped to parity, not accepted); `divergence.json` lists each wrapped function with `reason`, `first_index` and `max_abs_diff`. Nothing in the figures uses `Indicators`: it is ready for the pages that need an indicator.
 - New direct dependency: `github.com/markcheno/go-talib`, MIT, pinned by pseudo-version (no tags; pure Go; float64 slices). The pull request states `go mod graph`; a reviewer who judges "maintained" differently needs the owner's word.
