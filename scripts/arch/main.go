@@ -1,9 +1,10 @@
 // Command arch derives arch.toml and .go-arch-lint.yml from the depends column of
-// docs/design/modules.md.
+// docs/design/modules.md and from the tree.
 //
-// arch.toml depends on the table only. .go-arch-lint.yml also reads the tree, because
-// go-arch-lint rejects a component whose directory is absent and flags a package that
-// belongs to no component.
+// The tree tells the kind of each internal/<row>/<package> directory by its files:
+// generated, declarations-only (api.go alone), test kit (a non-test file imports
+// "testing") or implementation. go-arch-lint also rejects a component whose directory
+// is absent and flags a package that belongs to no component.
 package main
 
 import (
@@ -11,9 +12,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -42,10 +46,7 @@ type component struct {
 	deps []string
 }
 
-var (
-	internalGlob = regexp.MustCompile(`^internal/([^/*]+)/\*\*$`)
-	implPackage  = regexp.MustCompile("`(internal/[a-z0-9_]+/[a-z0-9_]+)`")
-)
+var internalGlob = regexp.MustCompile(`^internal/([^/*]+)/\*\*$`)
 
 // parseModules reads the rows of the table under "## Modules".
 func parseModules(text string) ([]row, error) {
@@ -78,24 +79,6 @@ func parseModules(text string) ([]row, error) {
 	return rows, nil
 }
 
-// parseImpl reads the implementation packages that the composition root may import:
-// the backticked internal/<a>/<b> paths after "one constructor each" and before "Any other import".
-func parseImpl(text string) ([]string, error) {
-	_, rest, ok := strings.Cut(text, "one constructor each")
-	if !ok {
-		return nil, errors.New("no 'one constructor each' list")
-	}
-	list, _, _ := strings.Cut(rest, "Any other import")
-	var out []string
-	for _, m := range implPackage.FindAllStringSubmatch(list, -1) {
-		out = append(out, m[1])
-	}
-	if len(out) == 0 {
-		return nil, errors.New("the implementation list is empty")
-	}
-	return out, nil
-}
-
 // rootName gives the component name of a row, or "" when the row has no Go package.
 func rootName(r row) (name, dir string) {
 	for _, p := range r.paths {
@@ -112,24 +95,111 @@ func rootName(r row) (name, dir string) {
 // generated lists the generated sub-packages; each gets an empty may_import.
 var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 
-// declarationsOnly lists the packages of declarations only that an entry cell may name:
-// unlike a test kit or generated output, the root component of a row that depends on the
-// listed row may import one, and so may the sub-packages of the listed row itself.
-var declarationsOnly = []string{
-	"internal/store/bar", "internal/store/mark", "internal/store/ownerset",
-	"internal/compute/settingsapi", "internal/compute/trackapi", "internal/store/flexsection",
-	"internal/compute/blockapi", "internal/store/dividend",
+// importableGenerated lists the generated packages that the sub-packages of the dependents
+// of their row may import; the other generated packages are importable by their root only.
+var importableGenerated = []string{"internal/contracts/genpb"}
+
+// kind is what the files of a package directory say about it.
+type kind int
+
+const (
+	kindImpl      kind = iota // any other package with a non-test .go file
+	kindGenerated             // listed in generated, never an implementation package
+	kindDecl                  // api.go and no other non-test .go file except doc.go
+	kindKit                   // a non-test file imports "testing"
+)
+
+// pkg is a package directory internal/<a>/<b> found in the tree, with the row that owns it.
+type pkg struct {
+	dir  string
+	kind kind
+	row  string
 }
 
-// declListed gives, for each row, the declarationsOnly packages (as component names) that
-// its entry cell lists.
-func declListed(rows []row) map[string][]string {
-	out := map[string][]string{}
+// ownerRow gives the first row whose path glob matches dir, or "".
+func ownerRow(rows []row, dir string) string {
 	for _, r := range rows {
-		for _, e := range r.entry {
-			if slices.Contains(declarationsOnly, e) {
-				out[r.name] = append(out[r.name], strings.TrimPrefix(e, "internal/"))
+		for _, p := range r.paths {
+			if base, ok := strings.CutSuffix(p, "/**"); ok {
+				if dir == base || strings.HasPrefix(dir, base+"/") {
+					return r.name
+				}
+			} else if ok, _ := path.Match(p, dir); ok {
+				return r.name
 			}
+		}
+	}
+	return ""
+}
+
+// classify reads the non-test .go files of the package directory abs (rel is its tree path);
+// a directory with none gives ok false.
+func classify(abs, rel string) (k kind, ok bool, err error) {
+	ents, err := os.ReadDir(abs)
+	if err != nil {
+		return 0, false, err
+	}
+	var files []string
+	for _, e := range ents {
+		n := e.Name()
+		if !e.IsDir() && strings.HasSuffix(n, ".go") && !strings.HasSuffix(n, "_test.go") {
+			files = append(files, n)
+		}
+	}
+	if len(files) == 0 {
+		return 0, false, nil
+	}
+	if slices.Contains(generated, rel) {
+		return kindGenerated, true, nil
+	}
+	api, other := false, false
+	for _, n := range files {
+		f, err := parser.ParseFile(token.NewFileSet(), filepath.Join(abs, n), nil, parser.ImportsOnly)
+		if err != nil {
+			return 0, false, err
+		}
+		for _, imp := range f.Imports {
+			if imp.Path.Value == `"testing"` {
+				return kindKit, true, nil
+			}
+		}
+		if n == "api.go" {
+			api = true
+		} else if n != "doc.go" {
+			other = true
+		}
+	}
+	if api && !other {
+		return kindDecl, true, nil
+	}
+	return kindImpl, true, nil
+}
+
+// discover classifies every internal/<a>/<b> directory of dirs (as goDirs lists them).
+func discover(root string, dirs []string, rows []row) ([]pkg, error) {
+	var out []pkg
+	for _, d := range dirs {
+		parts := strings.Split(d, "/")
+		if len(parts) != 3 || parts[0] != "internal" {
+			continue
+		}
+		k, ok, err := classify(filepath.Join(root, filepath.FromSlash(d)), d)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, pkg{d, k, ownerRow(rows, d)})
+		}
+	}
+	return out, nil
+}
+
+// owned gives the components (without "internal/") of the packages of a row of one of the kinds.
+func owned(pkgs []pkg, rowName string, kinds ...kind) []string {
+	var out []string
+	for _, p := range pkgs {
+		if p.row == rowName && slices.Contains(kinds, p.kind) {
+			out = append(out, strings.TrimPrefix(p.dir, "internal/"))
 		}
 	}
 	return out
@@ -145,18 +215,10 @@ func addUnique(xs, add []string, self string) []string {
 	return xs
 }
 
-// listedImports gives, for each root component, the sub-package components that the entry
-// cells of the rows it depends on list: its own sub-packages may import them.
-func listedImports(rows []row) map[string][]string {
-	entries := map[string][]string{}
-	for _, r := range rows {
-		for _, e := range r.entry {
-			if implPackage.MatchString("`" + e + "`") {
-				entries[r.name] = append(entries[r.name], strings.TrimPrefix(e, "internal/"))
-			}
-		}
-	}
-	decl := declListed(rows)
+// listedImports gives, for each root component, the sub-package components that its own
+// sub-packages may import: the declarations-only packages and test kits of the rows it
+// depends on, the importable generated packages of those rows, and its own declarations-only packages.
+func listedImports(rows []row, pkgs []pkg) map[string][]string {
 	out := map[string][]string{}
 	for _, r := range rows {
 		name, _ := rootName(r)
@@ -164,23 +226,33 @@ func listedImports(rows []row) map[string][]string {
 			continue
 		}
 		for _, d := range r.depends {
-			out[name] = append(out[name], entries[d]...)
+			out[name] = append(out[name], owned(pkgs, d, kindDecl, kindKit)...)
+			for _, g := range importableGenerated {
+				if ownerRow(rows, g) == d {
+					out[name] = append(out[name], strings.TrimPrefix(g, "internal/"))
+				}
+			}
 		}
-		out[name] = append(out[name], decl[r.name]...) // its own declarations
+		out[name] = append(out[name], owned(pkgs, r.name, kindDecl)...)
 	}
 	return out
 }
 
-// derive builds the components from the table alone (arch.toml): the root of each row,
-// the implementation packages named in the text, contracts/gen and contracts/genpb.
-func derive(rows []row, impl []string) ([]component, error) {
+// derive builds the components from the table and the discovered packages (arch.toml): the
+// root of each row, its sub-packages, and contracts/gen and contracts/genpb. cmd/ot imports
+// the root of each row in its depends cell and every discovered implementation or
+// declarations-only package of those rows.
+func derive(rows []row, pkgs []pkg) ([]component, error) {
 	byRow := map[string]string{}
 	for _, r := range rows {
 		if n, _ := rootName(r); n != "" {
 			byRow[r.name] = n
 		}
 	}
-	decl := declListed(rows)
+	dirs := slices.Clone(generated)
+	for _, p := range pkgs {
+		dirs = append(dirs, p.dir)
+	}
 	var out []component
 	for _, r := range rows {
 		name, dir := rootName(r)
@@ -195,11 +267,11 @@ func derive(rows []row, impl []string) ([]component, error) {
 			}
 			deps = append(deps, dn)
 		}
-		if name == "ot" {
-			deps = append(deps, subNames(impl)...) // the text lists what cmd/ot imports
-		} else {
-			for _, d := range r.depends {
-				deps = addUnique(deps, decl[d], "")
+		for _, d := range r.depends {
+			if name == "ot" {
+				deps = append(deps, owned(pkgs, d, kindImpl, kindDecl)...)
+			} else {
+				deps = addUnique(deps, owned(pkgs, d, kindDecl), "")
 			}
 		}
 		if name == "contracts" {
@@ -209,8 +281,8 @@ func derive(rows []row, impl []string) ([]component, error) {
 		if name == "ot" {
 			continue
 		}
-		for _, sub := range subsOf(name, append(append([]string{}, impl...), generated...)) {
-			subs := addUnique(subDeps(deps, name), decl[r.name], name+"/"+sub)
+		for _, sub := range subsOf(name, dirs) {
+			subs := addUnique(subDeps(deps, name), owned(pkgs, r.name, kindDecl), name+"/"+sub)
 			if slices.Contains(generated, "internal/"+name+"/"+sub) {
 				subs = nil // generated output imports no component of the repository
 			}
@@ -218,14 +290,6 @@ func derive(rows []row, impl []string) ([]component, error) {
 		}
 	}
 	return out, nil
-}
-
-func subNames(pkgs []string) []string {
-	var out []string
-	for _, p := range pkgs {
-		out = append(out, strings.TrimPrefix(p, "internal/"))
-	}
-	return out
 }
 
 func subsOf(name string, pkgs []string) []string {
@@ -236,7 +300,7 @@ func subsOf(name string, pkgs []string) []string {
 		}
 	}
 	sort.Strings(out)
-	return out
+	return slices.Compact(out)
 }
 
 // subDeps is what a sub-package may import: the row's roots and the root of its own row.
@@ -384,19 +448,19 @@ func generate(modules, root string) (toml, yml []byte, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	impl, err := parseImpl(modules)
-	if err != nil {
-		return nil, nil, err
-	}
-	table, err := derive(rows, impl)
-	if err != nil {
-		return nil, nil, err
-	}
 	dirs, err := goDirs(root)
 	if err != nil {
 		return nil, nil, err
 	}
-	comps, exclude := deriveTree(table, dirs, listedImports(rows))
+	pkgs, err := discover(root, dirs, rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	table, err := derive(rows, pkgs)
+	if err != nil {
+		return nil, nil, err
+	}
+	comps, exclude := deriveTree(table, dirs, listedImports(rows, pkgs))
 	return renderTOML(table), renderYAML(comps, exclude), nil
 }
 
