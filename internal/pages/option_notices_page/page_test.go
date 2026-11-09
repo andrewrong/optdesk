@@ -2,7 +2,7 @@ package option_notices_page_test
 
 import (
 	"context"
-	"strings"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -12,7 +12,19 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-type fakeAccount struct{ store.AccountReader }
+type fakeAccount struct{}
+
+func (fakeAccount) Positions(context.Context, string, string) ([]store.Position, error) {
+	return []store.Position{}, nil
+}
+
+func (fakeAccount) Values(context.Context, string, string) ([]store.AccountValue, error) {
+	return []store.AccountValue{}, nil
+}
+
+func (fakeAccount) Executions(context.Context, string, string, string) ([]store.Execution, error) {
+	return []store.Execution{}, nil
+}
 
 type fakeCandidates struct{}
 
@@ -55,12 +67,25 @@ func TestConfigContract(t *testing.T) {
 	}
 	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	day := contracts.Day("2026-01-02")
-	_, err := option_notices_page.Build(context.Background(), c, noSeries{}, day, at)
-	if err == nil || !strings.Contains(err.Error(), "option_notices_page: not built") {
-		t.Fatalf("Build error = %v", err)
-	}
-	_, err = option_notices_page.NewPage(c).Build(context.Background(), noSeries{}, day, at)
-	if err == nil || !strings.Contains(err.Error(), "not built") {
-		t.Fatalf("NewPage Build error = %v", err)
+	for name, build := range map[string]func() ([]byte, error){
+		"Build": func() ([]byte, error) { return option_notices_page.Build(context.Background(), c, noSeries{}, day, at) },
+		"NewPage": func() ([]byte, error) {
+			return option_notices_page.NewPage(c).Build(context.Background(), noSeries{}, day, at)
+		},
+	} {
+		b, err := build()
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		var out struct {
+			Schema string `json:"schema"`
+			Day    string `json:"day"`
+		}
+		if err := json.Unmarshal(b, &out); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if out.Schema != "option_notices_page" || out.Day != "2026-01-02" {
+			t.Errorf("%s: output %+v", name, out)
+		}
 	}
 }

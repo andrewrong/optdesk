@@ -39,6 +39,14 @@ from optdesk.contracts.genpb.ibkr.v1.contract_pb2 import (
     SecType,
 )
 from optdesk.contracts.genpb.ibkr.v1.marketdata_pb2 import (
+    BAR_KIND_ADJUSTED_LAST,
+    BAR_KIND_MIDPOINT,
+    BAR_KIND_TRADES,
+    BAR_KIND_UNSPECIFIED,
+    Bar,
+    BarKind,
+    BarsRequest,
+    BarsResponse,
     SnapshotRequest,
     SnapshotResponse,
 )
@@ -111,6 +119,10 @@ from optdesk.contracts.genpb.ibkr.v1.session_pb2_grpc import (
 )
 
 __all__ = [
+    "BAR_KIND_ADJUSTED_LAST",
+    "BAR_KIND_MIDPOINT",
+    "BAR_KIND_TRADES",
+    "BAR_KIND_UNSPECIFIED",
     "DIVIDEND_STATUS_ERROR",
     "DIVIDEND_STATUS_NO_VALUE",
     "DIVIDEND_STATUS_OK",
@@ -148,6 +160,10 @@ __all__ = [
     "AccountServiceServicer",
     "AccountServiceStub",
     "AccountValue",
+    "Bar",
+    "BarKind",
+    "BarsRequest",
+    "BarsResponse",
     "Chain",
     "ContractKey",
     "ContractSpec",

@@ -21,6 +21,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// BarKind is the series of daily bars that is asked for.
+type BarKind int32
+
+const (
+	BarKind_BAR_KIND_UNSPECIFIED   BarKind = 0
+	BarKind_BAR_KIND_TRADES        BarKind = 1
+	BarKind_BAR_KIND_ADJUSTED_LAST BarKind = 2
+	BarKind_BAR_KIND_MIDPOINT      BarKind = 3
+)
+
+// Enum value maps for BarKind.
+var (
+	BarKind_name = map[int32]string{
+		0: "BAR_KIND_UNSPECIFIED",
+		1: "BAR_KIND_TRADES",
+		2: "BAR_KIND_ADJUSTED_LAST",
+		3: "BAR_KIND_MIDPOINT",
+	}
+	BarKind_value = map[string]int32{
+		"BAR_KIND_UNSPECIFIED":   0,
+		"BAR_KIND_TRADES":        1,
+		"BAR_KIND_ADJUSTED_LAST": 2,
+		"BAR_KIND_MIDPOINT":      3,
+	}
+)
+
+func (x BarKind) Enum() *BarKind {
+	p := new(BarKind)
+	*p = x
+	return p
+}
+
+func (x BarKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BarKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_ibkr_v1_marketdata_proto_enumTypes[0].Descriptor()
+}
+
+func (BarKind) Type() protoreflect.EnumType {
+	return &file_ibkr_v1_marketdata_proto_enumTypes[0]
+}
+
+func (x BarKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BarKind.Descriptor instead.
+func (BarKind) EnumDescriptor() ([]byte, []int) {
+	return file_ibkr_v1_marketdata_proto_rawDescGZIP(), []int{0}
+}
+
 // SnapshotRequest asks for one kind of quote for many contracts. Every contract
 // has con_id, else the call is INVALID_ARGUMENT.
 type SnapshotRequest struct {
@@ -121,6 +174,209 @@ func (x *SnapshotResponse) GetQuote() *Quote {
 	return nil
 }
 
+// BarsRequest asks for the daily bars of one contract. The contract has con_id and
+// duration_days is 1 to 730, else the call is INVALID_ARGUMENT; so is an unset kind.
+// end_day is YYYY-MM-DD, or empty for now; a non-empty end_day with
+// the adjusted-last kind is INVALID_ARGUMENT.
+type BarsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Contract      *ContractSpec          `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"`
+	Kind          BarKind                `protobuf:"varint,2,opt,name=kind,proto3,enum=ibkr.v1.BarKind" json:"kind,omitempty"`
+	DurationDays  int32                  `protobuf:"varint,3,opt,name=duration_days,json=durationDays,proto3" json:"duration_days,omitempty"`
+	EndDay        string                 `protobuf:"bytes,4,opt,name=end_day,json=endDay,proto3" json:"end_day,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BarsRequest) Reset() {
+	*x = BarsRequest{}
+	mi := &file_ibkr_v1_marketdata_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BarsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BarsRequest) ProtoMessage() {}
+
+func (x *BarsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_marketdata_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BarsRequest.ProtoReflect.Descriptor instead.
+func (*BarsRequest) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_marketdata_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *BarsRequest) GetContract() *ContractSpec {
+	if x != nil {
+		return x.Contract
+	}
+	return nil
+}
+
+func (x *BarsRequest) GetKind() BarKind {
+	if x != nil {
+		return x.Kind
+	}
+	return BarKind_BAR_KIND_UNSPECIFIED
+}
+
+func (x *BarsRequest) GetDurationDays() int32 {
+	if x != nil {
+		return x.DurationDays
+	}
+	return 0
+}
+
+func (x *BarsRequest) GetEndDay() string {
+	if x != nil {
+		return x.EndDay
+	}
+	return ""
+}
+
+// Bar is one daily bar. Prices and volume are decimal text; volume is unset when
+// the broker has none.
+type Bar struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Day           string                 `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`
+	Open          string                 `protobuf:"bytes,2,opt,name=open,proto3" json:"open,omitempty"`
+	High          string                 `protobuf:"bytes,3,opt,name=high,proto3" json:"high,omitempty"`
+	Low           string                 `protobuf:"bytes,4,opt,name=low,proto3" json:"low,omitempty"`
+	Close         string                 `protobuf:"bytes,5,opt,name=close,proto3" json:"close,omitempty"`
+	Volume        *string                `protobuf:"bytes,6,opt,name=volume,proto3,oneof" json:"volume,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Bar) Reset() {
+	*x = Bar{}
+	mi := &file_ibkr_v1_marketdata_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Bar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Bar) ProtoMessage() {}
+
+func (x *Bar) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_marketdata_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Bar.ProtoReflect.Descriptor instead.
+func (*Bar) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_marketdata_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Bar) GetDay() string {
+	if x != nil {
+		return x.Day
+	}
+	return ""
+}
+
+func (x *Bar) GetOpen() string {
+	if x != nil {
+		return x.Open
+	}
+	return ""
+}
+
+func (x *Bar) GetHigh() string {
+	if x != nil {
+		return x.High
+	}
+	return ""
+}
+
+func (x *Bar) GetLow() string {
+	if x != nil {
+		return x.Low
+	}
+	return ""
+}
+
+func (x *Bar) GetClose() string {
+	if x != nil {
+		return x.Close
+	}
+	return ""
+}
+
+func (x *Bar) GetVolume() string {
+	if x != nil && x.Volume != nil {
+		return *x.Volume
+	}
+	return ""
+}
+
+// BarsResponse holds the bars of the request, oldest first.
+type BarsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Bars          []*Bar                 `protobuf:"bytes,1,rep,name=bars,proto3" json:"bars,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BarsResponse) Reset() {
+	*x = BarsResponse{}
+	mi := &file_ibkr_v1_marketdata_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BarsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BarsResponse) ProtoMessage() {}
+
+func (x *BarsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_marketdata_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BarsResponse.ProtoReflect.Descriptor instead.
+func (*BarsResponse) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_marketdata_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *BarsResponse) GetBars() []*Bar {
+	if x != nil {
+		return x.Bars
+	}
+	return nil
+}
+
 var File_ibkr_v1_marketdata_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_marketdata_proto_rawDesc = "" +
@@ -130,9 +386,30 @@ const file_ibkr_v1_marketdata_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\x12.ibkr.v1.QuoteKindR\x04kind\x123\n" +
 	"\tcontracts\x18\x02 \x03(\v2\x15.ibkr.v1.ContractSpecR\tcontracts\"8\n" +
 	"\x10SnapshotResponse\x12$\n" +
-	"\x05quote\x18\x01 \x01(\v2\x0e.ibkr.v1.QuoteR\x05quote2V\n" +
+	"\x05quote\x18\x01 \x01(\v2\x0e.ibkr.v1.QuoteR\x05quote\"\xa4\x01\n" +
+	"\vBarsRequest\x121\n" +
+	"\bcontract\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\x12$\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x10.ibkr.v1.BarKindR\x04kind\x12#\n" +
+	"\rduration_days\x18\x03 \x01(\x05R\fdurationDays\x12\x17\n" +
+	"\aend_day\x18\x04 \x01(\tR\x06endDay\"\x8f\x01\n" +
+	"\x03Bar\x12\x10\n" +
+	"\x03day\x18\x01 \x01(\tR\x03day\x12\x12\n" +
+	"\x04open\x18\x02 \x01(\tR\x04open\x12\x12\n" +
+	"\x04high\x18\x03 \x01(\tR\x04high\x12\x10\n" +
+	"\x03low\x18\x04 \x01(\tR\x03low\x12\x14\n" +
+	"\x05close\x18\x05 \x01(\tR\x05close\x12\x1b\n" +
+	"\x06volume\x18\x06 \x01(\tH\x00R\x06volume\x88\x01\x01B\t\n" +
+	"\a_volume\"0\n" +
+	"\fBarsResponse\x12 \n" +
+	"\x04bars\x18\x01 \x03(\v2\f.ibkr.v1.BarR\x04bars*k\n" +
+	"\aBarKind\x12\x18\n" +
+	"\x14BAR_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fBAR_KIND_TRADES\x10\x01\x12\x1a\n" +
+	"\x16BAR_KIND_ADJUSTED_LAST\x10\x02\x12\x15\n" +
+	"\x11BAR_KIND_MIDPOINT\x10\x032\x8b\x01\n" +
 	"\x11MarketDataService\x12A\n" +
-	"\bSnapshot\x12\x18.ibkr.v1.SnapshotRequest\x1a\x19.ibkr.v1.SnapshotResponse0\x01B8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
+	"\bSnapshot\x12\x18.ibkr.v1.SnapshotRequest\x1a\x19.ibkr.v1.SnapshotResponse0\x01\x123\n" +
+	"\x04Bars\x12\x14.ibkr.v1.BarsRequest\x1a\x15.ibkr.v1.BarsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
 var (
 	file_ibkr_v1_marketdata_proto_rawDescOnce sync.Once
@@ -146,25 +423,35 @@ func file_ibkr_v1_marketdata_proto_rawDescGZIP() []byte {
 	return file_ibkr_v1_marketdata_proto_rawDescData
 }
 
-var file_ibkr_v1_marketdata_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_ibkr_v1_marketdata_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_ibkr_v1_marketdata_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_ibkr_v1_marketdata_proto_goTypes = []any{
-	(*SnapshotRequest)(nil),  // 0: ibkr.v1.SnapshotRequest
-	(*SnapshotResponse)(nil), // 1: ibkr.v1.SnapshotResponse
-	(QuoteKind)(0),           // 2: ibkr.v1.QuoteKind
-	(*ContractSpec)(nil),     // 3: ibkr.v1.ContractSpec
-	(*Quote)(nil),            // 4: ibkr.v1.Quote
+	(BarKind)(0),             // 0: ibkr.v1.BarKind
+	(*SnapshotRequest)(nil),  // 1: ibkr.v1.SnapshotRequest
+	(*SnapshotResponse)(nil), // 2: ibkr.v1.SnapshotResponse
+	(*BarsRequest)(nil),      // 3: ibkr.v1.BarsRequest
+	(*Bar)(nil),              // 4: ibkr.v1.Bar
+	(*BarsResponse)(nil),     // 5: ibkr.v1.BarsResponse
+	(QuoteKind)(0),           // 6: ibkr.v1.QuoteKind
+	(*ContractSpec)(nil),     // 7: ibkr.v1.ContractSpec
+	(*Quote)(nil),            // 8: ibkr.v1.Quote
 }
 var file_ibkr_v1_marketdata_proto_depIdxs = []int32{
-	2, // 0: ibkr.v1.SnapshotRequest.kind:type_name -> ibkr.v1.QuoteKind
-	3, // 1: ibkr.v1.SnapshotRequest.contracts:type_name -> ibkr.v1.ContractSpec
-	4, // 2: ibkr.v1.SnapshotResponse.quote:type_name -> ibkr.v1.Quote
-	0, // 3: ibkr.v1.MarketDataService.Snapshot:input_type -> ibkr.v1.SnapshotRequest
-	1, // 4: ibkr.v1.MarketDataService.Snapshot:output_type -> ibkr.v1.SnapshotResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 0: ibkr.v1.SnapshotRequest.kind:type_name -> ibkr.v1.QuoteKind
+	7, // 1: ibkr.v1.SnapshotRequest.contracts:type_name -> ibkr.v1.ContractSpec
+	8, // 2: ibkr.v1.SnapshotResponse.quote:type_name -> ibkr.v1.Quote
+	7, // 3: ibkr.v1.BarsRequest.contract:type_name -> ibkr.v1.ContractSpec
+	0, // 4: ibkr.v1.BarsRequest.kind:type_name -> ibkr.v1.BarKind
+	4, // 5: ibkr.v1.BarsResponse.bars:type_name -> ibkr.v1.Bar
+	1, // 6: ibkr.v1.MarketDataService.Snapshot:input_type -> ibkr.v1.SnapshotRequest
+	3, // 7: ibkr.v1.MarketDataService.Bars:input_type -> ibkr.v1.BarsRequest
+	2, // 8: ibkr.v1.MarketDataService.Snapshot:output_type -> ibkr.v1.SnapshotResponse
+	5, // 9: ibkr.v1.MarketDataService.Bars:output_type -> ibkr.v1.BarsResponse
+	8, // [8:10] is the sub-list for method output_type
+	6, // [6:8] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_ibkr_v1_marketdata_proto_init() }
@@ -175,18 +462,20 @@ func file_ibkr_v1_marketdata_proto_init() {
 	file_ibkr_v1_contract_proto_init()
 	file_ibkr_v1_quote_proto_init()
 	file_ibkr_v1_quote_types_proto_init()
+	file_ibkr_v1_marketdata_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ibkr_v1_marketdata_proto_rawDesc), len(file_ibkr_v1_marketdata_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      1,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_ibkr_v1_marketdata_proto_goTypes,
 		DependencyIndexes: file_ibkr_v1_marketdata_proto_depIdxs,
+		EnumInfos:         file_ibkr_v1_marketdata_proto_enumTypes,
 		MessageInfos:      file_ibkr_v1_marketdata_proto_msgTypes,
 	}.Build()
 	File_ibkr_v1_marketdata_proto = out.File

@@ -78,6 +78,7 @@ type deps struct {
 	newRunner               runner.NewWithRuleFunc
 	newBackfiller           runner.NewBackfillerWithRuleFunc
 	dialBroker              broker.DialFunc
+	newReference            broker.NewReferenceFunc
 	openInstrument          store.OpenInstrumentFunc
 	openOptionEod           store.OpenOptionEodFunc
 	openQuoteSnapshot       store.OpenQuoteSnapshotFunc
@@ -162,6 +163,7 @@ func newDeps() deps {
 		newRunner:               reconcile.NewWithRule,
 		newBackfiller:           reconcile.NewBackfillerWithRule,
 		dialBroker:              grpcbroker.Dial,
+		newReference:            grpcbroker.DialReference,
 		openInstrument:          instrument.Open,
 		openOptionEod:           snapshot.OpenOptionEod,
 		openQuoteSnapshot:       snapshot.OpenQuoteSnapshot,

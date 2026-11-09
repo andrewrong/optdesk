@@ -1,0 +1,5 @@
+{"name":"demo.alpha","version":1,"subject_kind":"market","subject":"X","day":"2026-11-02","value":"1.25","places":1,"from":"page"}
+{"name":"demo.alpha","version":1,"subject_kind":"market","subject":"X","day":"2026-11-03","value":"2.00","places":1,"from":"page"}
+{"name":"demo.beta","version":1,"subject_kind":"market","subject":"X","day":"2026-11-02","value":"5.0","places":1,"from":"page"}
+{"name":"demo.gamma","version":1,"subject_kind":"market","subject":"X","day":"2026-11-02","value":"7","places":0,"from":"page"}
+{"name":"demo.delta","version":1,"subject_kind":"market","subject":"X","day":"2026-11-02","value":null,"places":0,"from":"page","reason":"path_not_found"}
