@@ -76,7 +76,7 @@
     "gaps": {
       "type": "array",
       "items": {
-        "$ref": "common.v2.json#/$defs/Gap"
+        "$ref": "#/$defs/Gap"
       }
     },
     "chain_day": {
@@ -202,7 +202,7 @@
         "gap": {
           "oneOf": [
             {
-              "$ref": "common.v2.json#/$defs/Gap"
+              "$ref": "#/$defs/Gap"
             },
             {
               "type": "null"
@@ -222,7 +222,7 @@
                   "type": "null"
                 },
                 "gap": {
-                  "$ref": "common.v2.json#/$defs/Gap"
+                  "$ref": "#/$defs/Gap"
                 }
               }
             },
@@ -369,7 +369,7 @@
           "$ref": "#/$defs/ValueCell"
         },
         {
-          "$ref": "common.v2.json#/$defs/Gap"
+          "$ref": "#/$defs/Gap"
         }
       ]
     },
@@ -439,6 +439,46 @@
         "code": {
           "type": "string",
           "pattern": "^[a-z_]{1,48}$"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    },
+    "Gap": {
+      "description": "A named data gap, used in place of a value that cannot be shown. Never a zero. The reasons of common.v2 plus no_rows (a group without rows in its lookback), no_run (no stored run) and unreadable (a stored value that cannot be shown).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reason",
+        "text"
+      ],
+      "properties": {
+        "kind": {
+          "const": "gap",
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "missing_quote",
+            "no_data",
+            "unsupported_currency",
+            "not_built",
+            "no_reader",
+            "no_news_source",
+            "no_rule",
+            "market_closed",
+            "stale",
+            "flex_time_unknown",
+            "jp_slice_missing",
+            "missing_input",
+            "stale_input",
+            "no_rows",
+            "no_run",
+            "unreadable"
+          ]
         },
         "text": {
           "$ref": "#/$defs/Text"

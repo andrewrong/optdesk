@@ -19,22 +19,6 @@ export type Timestamp2 = string;
 export type IsStale = boolean;
 export type Text = string;
 export type Text1 = string;
-export type Kind = "gap";
-export type Reason =
-  | "missing_quote"
-  | "no_data"
-  | "unsupported_currency"
-  | "not_built"
-  | "no_reader"
-  | "no_news_source"
-  | "no_rule"
-  | "market_closed"
-  | "stale"
-  | "flex_time_unknown"
-  | "jp_slice_missing"
-  | "missing_input"
-  | "stale_input";
-export type Text2 = string;
 /**
  * One kind of candidate. gap is non-null exactly when main and other are both null.
  */
@@ -157,12 +141,28 @@ export interface StaleLabel {
   text: Text;
 }
 /**
- * A named data gap, used in place of a figure that cannot be computed. Never a zero.
+ * A named data gap, used in place of a value that cannot be shown. Never a zero. The reasons of common.v2 plus no_rows (a group without rows in its lookback), no_run (no stored run) and unreadable (a stored value that cannot be shown).
  */
 export interface Gap {
-  kind: Kind;
-  reason: Reason;
-  text: Text2;
+  kind: "gap";
+  reason:
+    | "missing_quote"
+    | "no_data"
+    | "unsupported_currency"
+    | "not_built"
+    | "no_reader"
+    | "no_news_source"
+    | "no_rule"
+    | "market_closed"
+    | "stale"
+    | "flex_time_unknown"
+    | "jp_slice_missing"
+    | "missing_input"
+    | "stale_input"
+    | "no_rows"
+    | "no_run"
+    | "unreadable";
+  text: Text1;
 }
 export interface Table {
   columns: Column[];
@@ -185,7 +185,7 @@ export interface Row {
   /**
    * Only on other rows; empty on main rows.
    */
-  reasons: Reason1[];
+  reasons: Reason[];
 }
 export interface ValueCell {
   text: string;
@@ -196,7 +196,7 @@ export interface ValueCell {
 /**
  * Why a row is blocked or unknown. gate and code are patterns, not enums, so a new gate needs no schema change.
  */
-export interface Reason1 {
+export interface Reason {
   gate: string;
   status: "block" | "unknown";
   code: string;
