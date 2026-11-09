@@ -107,6 +107,7 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `option_eod` with a watch list, `min_dte`, `max_dte`, `max_strikes` (additive; `jobs.NewOptionEodWatchFunc`, `jobs.NewOptionEodHeldFunc`).
 - v1: `option_eod_jp`, `trading_class`, `ledger_dataset`, `stop_after` (additive; `optioneod.NewJP`).
 - v1: `earnings_refresh`, `jobs.WatchEntry`, `jobs.NewEarningsRefreshFunc`.
+- v1: `option_ledger`, interface only (`jobs.OptionLedgerStores`, `jobs.OptionLedgerConfig`, `jobs.FlexRun`, `jobs.NewOptionLedgerJobFunc`, `jobs.ImportOptionTraderFunc`, `jobs.ImportResult`, `jobs.FlexAttributesSHA256Func`), with `optionledger.AttributesSHA256`.
 
 ## Contract tests
 
@@ -129,3 +130,9 @@ There is no test yet: the wrapping of an untyped fetch error as `Permanent` and 
 - Importing another jobs package or pgx.
 - `time.Sleep`, or reading the system time.
 - Writing a missing value as 0.
+
+## Option ledger
+
+- `jobs.FlexAttributesSHA256Func` (implemented by `internal/jobs/optionledger.AttributesSHA256`, shared by the `option_ledger` job and the option-trader import): remove the keys `accountId` and `acctAlias`; encode the rest as one JSON object, keys ascending by byte order, no whitespace, strings in UTF-8 with only `"`, `\` and control characters below 0x20 escaped and no HTML escaping; the hash is the lower-case hex SHA-256 of that text. Control characters are written `\b \t \n \f \r` or `\u00xx`. `internal/jobs/optionledger/testdata/attrs_hash.json` lists `{attrs, canonical, sha256}` entries.
+- `jobs.FlexRun` carries `Required`; a login whose token variable is empty reaches the job with a nil `Source`. The constructor accepts it and never fails for a missing token; `Run` returns a failed result when the login is `Required`, else skips it with the `degraded` log record.
+- Contract tests: `internal/jobs/optionledger_api_test.go` `TestOptionLedgerJobContract`, `TestOptionLedgerImportContract`; `internal/jobs/optionledger/hash_test.go` `TestAttributesSHA256Fixture`, `TestAttributesSHA256Ignores`, `TestAttributesSHA256KeyOrder`.
