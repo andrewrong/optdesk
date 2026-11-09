@@ -1146,7 +1146,7 @@ history = ["2026-11-03 v1: source IBKR SPX close, FRED back-fill only (ask 1863:
 id = "market.sp500_vs_200d"
 version = 2
 title_zh = "SPX 与 200 日线的差（FRED，第二版）"
-pages = []
+pages = ["market_page.weather.sentence"]
 formula = """
 The newest stored FRED SP500 close over the simple mean of the last 200 FRED SP500 values, minus 1; every one of the 200 must be present. No IBKR splice. Synthetic: a mean of 100 and a newest close of 103.12 give 0.0312 (+3.12%; the page makes the percent)."""
 inputs = """
@@ -1163,7 +1163,7 @@ implemented_by = [
 source_hash = "4c36c030baea6946aeb17504f18e17647d323968a2f3315cdc77989fb052cac8"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
-history = ["2026-11-08 v2: source FRED SP500 only, mean of the last 200 values, unit ratio, half-even at 6 places (new entry beside v1, which is unchanged); Advisor: agrees (2026-11-08)."]
+history = ["2026-11-08 v2: source FRED SP500 only, mean of the last 200 values, unit ratio, half-even at 6 places (new entry beside v1, which is unchanged); Advisor: agrees (2026-11-08).", "2026-11-10 read by market_page through pages/market_page; formula, inputs and source_hash unchanged"]
 
 [[figure]]
 id = "structure.max_loss"
@@ -1557,7 +1557,7 @@ history = ["2026-11-10 v1: registered by docs/design/option-positions.md Decisio
 id = "market.vix_pctile_3y"
 version = 1
 title_zh = "VIX三年分位"
-pages = []
+pages = ["market_page.indices.rows.rank_3y"]
 formula = """
 The share of the stored daily VIXCLS values in the 3 calendar years before the day, the day excluded, that are strictly below the value of the day (compare Below, the N225_IV rule of GLOSSARY.md). 0 to 1; the count of observations is stored beside it. Synthetic: four earlier values 10, 20, 30, 40 and a value of the day 30 give 0.5."""
 inputs = """
@@ -1574,13 +1574,13 @@ implemented_by = [
 source_hash = "94dc0713f8318283f5bf712c9926decec47b3e6fff444b1d53be4ecc68af58ae"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
-history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet.", "2026-11-10 read by market_page through pages/market_page; formula, inputs and source_hash unchanged"]
 
 [[figure]]
 id = "market.vxn_pctile_3y"
 version = 1
 title_zh = "VXN三年分位"
-pages = []
+pages = ["market_page.indices.rows.rank_3y"]
 formula = """
 The share of the stored daily VXNCLS values in the 3 calendar years before the day, the day excluded, that are strictly below the value of the day (compare Below, the N225_IV rule of GLOSSARY.md). 0 to 1; the count of observations is stored beside it. Synthetic: four earlier values 10, 20, 30, 40 and a value of the day 30 give 0.5."""
 inputs = """
@@ -1597,13 +1597,13 @@ implemented_by = [
 source_hash = "9eec19fd5ecd9e1375ea5d39d60c0404f12d76497d1670ea473030bc396b73b3"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
-history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet.", "2026-11-10 read by market_page through pages/market_page; formula, inputs and source_hash unchanged"]
 
 [[figure]]
 id = "market.rvx_pctile_3y"
 version = 1
 title_zh = "RVX三年分位"
-pages = []
+pages = ["market_page.indices.rows.rank_3y"]
 formula = """
 The share of the stored daily RVXCLS values in the 3 calendar years before the day, the day excluded, that are strictly below the value of the day (compare Below, the N225_IV rule of GLOSSARY.md). 0 to 1; the count of observations is stored beside it. Synthetic: four earlier values 10, 20, 30, 40 and a value of the day 30 give 0.5."""
 inputs = """
@@ -1620,7 +1620,7 @@ implemented_by = [
 source_hash = "869e1909e45e1f187cef023110a7bba8b450e02f5c71634546bb028dd394d811"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
-history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet.", "2026-11-10 read by market_page through pages/market_page; formula, inputs and source_hash unchanged"]
 
 [[figure]]
 id = "market.sp500_pctile_3y"
@@ -1722,7 +1722,7 @@ history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision
 id = "market.vix_term_ratio"
 version = 1
 title_zh = "VIX 期限结构比"
-pages = []
+pages = ["market_page.term.sentence"]
 formula = """
 VIXCLS over VXVCLS (VIX over VIX3M) of the same day. Synthetic: 18.0 over 20.0 gives 0.9."""
 inputs = """
@@ -1739,7 +1739,7 @@ implemented_by = [
 source_hash = "4ef9212f67cd918b8144449419fa9df31e6126ac2d6ef1061dd9f0eaa209150c"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
-history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet.", "2026-11-10 read by market_page through pages/market_page; formula, inputs and source_hash unchanged"]
 
 [[figure]]
 id = "macro.ease"
