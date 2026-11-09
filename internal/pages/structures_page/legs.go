@@ -70,8 +70,8 @@ func (b *builder) legRow(l compute.StructureLeg) any {
 		return mkGap("unsupported_currency")
 	}
 	qty, okQ := intText(l.Quantity)
-	strike, okS := numberLiteral(l.Strike)
-	price, okP := numberLiteral(l.OpenPrice)
+	strike, okS := usdCell(l.Strike)
+	price, okP := usdCell(l.OpenPrice)
 	if !okQ || !okS || !okP || l.Expiry == "" {
 		return mkGap(reasonMissing)
 	}
@@ -80,8 +80,8 @@ func (b *builder) legRow(l compute.StructureLeg) any {
 		side = "卖出"
 	}
 	return leg{
-		SideText: side, RightText: rightText(l.Right), Strike: usd{Value: strike, Text: l.Strike, Unit: "usd"},
-		ExpiryText: l.Expiry, Quantity: qty, Price: usd{Value: price, Text: l.OpenPrice, Unit: "usd"},
+		SideText: side, RightText: rightText(l.Right), Strike: strike,
+		ExpiryText: l.Expiry, Quantity: qty, Price: price,
 		Label: b.legLabel(l), Mark: b.note(b.legMoney(l, l.Mid)), PnL: b.note(b.legMoney(l, l.LegPnL)),
 	}
 }
@@ -91,11 +91,11 @@ func (b *builder) legMoney(l compute.StructureLeg, text string) any {
 	if l.MarkStatus != "ok" || text == "" {
 		return b.missingQuote()
 	}
-	n, ok := numberLiteral(text)
+	u, ok := usdCell(text)
 	if !ok {
 		return mkGap(reasonMissing)
 	}
-	return usd{Value: n, Text: text, Unit: "usd"}
+	return u
 }
 
 // fills lists the rows of the pieces of the legs, in the order of the legs and of the rows.
@@ -127,7 +127,7 @@ func (b *builder) fills() []fill {
 
 func (b *builder) fillRow(l compute.StructureLeg, f compute.LedgerFill) (fill, bool) {
 	qty, okQ := intText(f.Quantity)
-	price, okP := numberLiteral(f.Price)
+	price, okP := usdCell(f.Price)
 	if !okQ || !okP {
 		return fill{}, false
 	}
@@ -143,11 +143,11 @@ func (b *builder) fillRow(l compute.StructureLeg, f compute.LedgerFill) (fill, b
 		day = "时间未知"
 	}
 	var fee any
-	if n, ok := numberLiteral(f.Commission); ok {
-		fee = usd{Value: n, Text: f.Commission, Unit: "usd"}
+	if u, ok := usdCell(f.Commission); ok {
+		fee = u
 	} else {
 		fee = b.note(mkGap(reasonNoData))
 	}
 	return fill{TimeText: day, ActionText: action, LegText: b.legLabel(l), Quantity: qty,
-		Price: usd{Value: price, Text: f.Price, Unit: "usd"}, Fee: fee}, true
+		Price: price, Fee: fee}, true
 }

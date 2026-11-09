@@ -131,7 +131,7 @@ func buildDetail(ctx context.Context, c Config, alias, structureID string, day c
 		return json.Marshal(vm)
 	}
 	b := newBuilder(c, s, in)
-	b.fill(vm, day)
+	b.fill(vm)
 	return json.Marshal(vm)
 }
 
@@ -198,7 +198,7 @@ func (b *builder) foreign() bool { return b.s.Currency != "" && b.s.Currency != 
 // missingQuote is the gap of a figure that needs a quote.
 func (b *builder) missingQuote() gap { return mkGap(b.reasonOf(compute.FigureValue{Gap: reasonQuote})) }
 
-func (b *builder) fill(vm *detailModel, day contracts.Day) {
+func (b *builder) fill(vm *detailModel) {
 	s := b.s
 	kind := kindTexts[s.Kind]
 	if kind == "" {
@@ -211,17 +211,17 @@ func (b *builder) fill(vm *detailModel, day contracts.Day) {
 	expiry := earliestExpiry(s)
 	vm.Subline = clip(kind + " · 到期 " + expiry + " · 账户 " + s.Alias)
 	vm.Tiles = tiles{
-		PnL:       tile{"当前盈亏", b.note(b.money(s.Figures.UnrealizedPnL)), "按中间价估值"},
-		MaxGain:   tile{"最大盈利", b.note(b.money(s.Figures.MaxGain)), "到期时"},
-		MaxLoss:   tile{"最大亏损", b.note(b.maxLossCell(s)), "到期时"},
-		BreakEven: tile{"盈亏平衡", b.note(b.money(s.Figures.BreakEven)), breakEvenCaption(s)},
+		PnL:       tile{Label: "当前盈亏", Figure: b.note(b.money(s.Figures.UnrealizedPnL)), Caption: "按中间价估值"},
+		MaxGain:   tile{Label: "最大盈利", Figure: b.note(b.money(s.Figures.MaxGain)), Caption: "到期时"},
+		MaxLoss:   tile{Label: "最大亏损", Figure: b.note(b.maxLossCell(s)), Caption: "到期时"},
+		BreakEven: tile{Label: "盈亏平衡", Figure: b.note(b.money(s.Figures.BreakEven)), Caption: breakEvenCaption(s)},
 	}
 	vm.Legs = b.legs()
 	vm.LegsTotal = legsTotal{Label: "合计", PnL: b.note(b.money(s.Figures.UnrealizedPnL))} // the one compute value, not a sum
 	vm.Payoff = b.note(b.payoff())
 	vm.Greeks = b.note(b.greeks())
 	vm.KeyLevels = b.levels()
-	vm.Timeline = b.timeline(day)
+	vm.Timeline = b.timeline()
 	vm.Fills = b.fills()
 	vm.Sentence = b.sentence()
 	if s.Greeks.Day != "" {
@@ -271,7 +271,7 @@ func (b *builder) levels() []level {
 		return out
 	}
 	for _, lv := range b.s.Levels {
-		n, ok := numberLiteral(lv.Price)
+		price, ok := usdCell(lv.Price)
 		if !ok {
 			b.addGap(mkGap(reasonMissing))
 			continue
@@ -288,7 +288,7 @@ func (b *builder) levels() []level {
 				dist = mkGap(reasonMissing)
 			}
 		}
-		out = append(out, level{Name: clip(t[0]), Price: usd{Value: n, Text: lv.Price, Unit: "usd"}, Note: t[1], Distance: b.note(dist)})
+		out = append(out, level{Name: clip(t[0]), Price: price, Note: t[1], Distance: b.note(dist)})
 	}
 	return out
 }
@@ -300,4 +300,10 @@ func intText(s string) (int, bool) {
 		return 0, false
 	}
 	return n, true
+}
+
+// usdCell is the Usd cell of a stored decimal text that is a JSON number.
+func usdCell(text string) (usd, bool) {
+	n, ok := numberLiteral(text)
+	return usd{Value: n, Text: text, Unit: "usd"}, ok
 }

@@ -1,13 +1,6 @@
 package structures_page
 
-import (
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"time"
-
-	"github.com/andrewrong/optdesk/internal/contracts"
-)
+import "encoding/json"
 
 type sharePercent struct {
 	Value json.Number `json:"value"`
@@ -22,24 +15,16 @@ type stage struct {
 	DaysText string       `json:"days_text"`
 }
 
-// shareOf is hundredths of a percent as the schema's SharePercent; the arithmetic is on whole numbers.
-func shareOf(h int) sharePercent {
-	text := fmt.Sprintf("%d.%02d", h/100, h%100)
-	return sharePercent{Value: json.Number(text), Text: text + "%", Unit: "share_percent"}
-}
+// The two ends of the timeline are fixed text: compute gives no day count and no elapsed share, and a page
+// computes nothing (Decision 12), so no stage for today and no count of days is written.
+var (
+	startShare = sharePercent{Value: "0", Text: "0%", Unit: "share_percent"}
+	endShare   = sharePercent{Value: "100", Text: "100%", Unit: "share_percent"}
+)
 
-// dayCount is the whole days from a to b, on the dates alone.
-func dayCount(a, b string) (int, bool) {
-	ta, errA := time.Parse(dayLayout, a)
-	tb, errB := time.Parse(dayLayout, b)
-	if errA != nil || errB != nil {
-		return 0, false
-	}
-	return int(tb.Sub(ta) / (24 * time.Hour)), true
-}
-
-// timeline is the three stages of the structure from the day it was opened to its first expiry.
-func (b *builder) timeline(asOf contracts.Day) []stage {
+// timeline is the two stages of the structure, the day it was opened and its first expiry, both dates copied
+// from the ledger piece and the legs. Without an opening day there are no stages and a named gap.
+func (b *builder) timeline() []stage {
 	opened := ""
 	for _, l := range b.s.Legs {
 		if d := string(b.pos[l.PositionID].OpenedOn); d != "" && (opened == "" || d < opened) {
@@ -47,24 +32,12 @@ func (b *builder) timeline(asOf contracts.Day) []stage {
 		}
 	}
 	expiry := earliestExpiry(b.s)
-	total, okT := dayCount(opened, expiry)
-	gone, okG := dayCount(opened, string(asOf))
-	if opened == "" || !okT || !okG {
+	if opened == "" || expiry == "-" {
 		b.addGap(mkGap(reasonMissing))
 		return []stage{}
 	}
-	left, _ := dayCount(string(asOf), expiry)
-	share := 10000
-	if total > 0 {
-		share = min(max(gone, 0)*10000/total, 10000)
-	}
-	todayText := "已持有 " + strconv.Itoa(max(gone, 0)) + " 天，距到期 " + strconv.Itoa(max(left, 0)) + " 天"
-	if left < 0 {
-		todayText = "已过到期日 " + strconv.Itoa(-left) + " 天"
-	}
 	return []stage{
-		{Name: "开仓", DateText: opened, Elapsed: shareOf(0), DaysText: "第 0 天"},
-		{Name: "今天", DateText: string(asOf), Elapsed: shareOf(share), DaysText: todayText},
-		{Name: "到期", DateText: expiry, Elapsed: shareOf(10000), DaysText: "共 " + strconv.Itoa(max(total, 0)) + " 天"},
+		{Name: "开仓", DateText: opened, Elapsed: startShare, DaysText: "开仓日"},
+		{Name: "到期", DateText: expiry, Elapsed: endShare, DaysText: "到期日"},
 	}
 }
