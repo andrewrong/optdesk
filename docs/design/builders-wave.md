@@ -4,7 +4,7 @@ Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
 Revision: 3 (revision 2 was the slim scope after the adversarial read: only blocks that need account values, the executions and the option ledger, no position marks; 7 issues)
-Revision note: revision 3 makes modules.md carry every edit this design claims: `blockapi` joins the `declarationsOnly` parenthesis, the `ot` import list gains `pagefig`, `household_page` and `report_blocks`, `arch.toml` is regenerated, and the two wording faults of the declarations-only paragraph, including the `ownerset` listing, are fixed in the lines this pull request already edits)
+Revision note: revision 3 makes modules.md carry every edit this design claims: `blockapi` joins the `declarationsOnly` parenthesis, the `ot` import list gains `pagefig`, `household_page` and `report_blocks`, `arch.toml` is regenerated, and the two wording faults of the declarations-only paragraph, including the `ownerset` listing, are fixed in the lines this pull request already edits.
 
 Status: draft for design review. No owner-only path is touched (no `contracts/proto`, no `.github`, no `ratchet.json`, no `services.toml`, no `transport.py`).
 
