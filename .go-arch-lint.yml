@@ -157,6 +157,8 @@ components:
     in: cmd/ot
   compute/contracttest:
     in: internal/compute/contracttest
+  compute/ruleparam:
+    in: internal/compute/ruleparam
   compute/sharpmove:
     in: internal/compute/sharpmove
   notify/notifytest:
@@ -812,6 +814,12 @@ deps:
       - store/ownerset
       - compute/settingsapi
   compute/contracttest:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+      - compute/settingsapi
+  compute/ruleparam:
     mayDependOn:
       - contracts
       - compute
