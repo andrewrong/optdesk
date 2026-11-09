@@ -49,6 +49,10 @@ Declared in `internal/sources/api.go` (declarations only; the client and loader 
 - `[[account]]`: `alias` (the label `a` or `b`), `account_env` (the NAME of the variable holding the account number); this is the allow-list.
 - Tokens and account numbers live only in the environment; they never appear in a log, error, fixture or row.
 
+### Flex sections (container rule, Decision 3)
+
+`FlexStatement.Sections` is keyed by row element name; each row is a text map of every attribute as sent (`accountId` and `acctAlias` included; the job drops them). `Trades` and `OtherLevels` are unchanged. The container rule: for each direct child of a statement other than `Trades`, if it has child elements, each child is a row under the child's element name (`<CashReport>` holds `<CashReportCurrency>` rows: key `CashReportCurrency`); if it has none, its own attributes are one row under its own name (`<ChangeInNAV .../>`: key `ChangeInNAV`, one row). A section the report lacks has no key.
+
 ### Error kinds (Decision 4)
 
 - `LoadFlexFileFunc`: `ErrFlexNotConfigured` (no file) and `ErrFlexConfig` (bad or unsafe file); texts name entry and field only, never a value.

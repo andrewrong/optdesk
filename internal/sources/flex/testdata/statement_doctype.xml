@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE FlexQueryResponse [<!ENTITY x "invented">]>
+<FlexQueryResponse queryName="Trades" type="AF">
+<FlexStatements count="1">
+<FlexStatement accountId="ACCT_A" fromDate="2026-10-01" toDate="2026-10-31" period="LastMonth" whenGenerated="2026-11-09;10:00:00">
+<Trades><Trade transactionID="1" levelOfDetail="EXECUTION" notes="&x;"/></Trades>
+</FlexStatement>
+</FlexStatements>
+</FlexQueryResponse>
