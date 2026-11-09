@@ -89,8 +89,8 @@ func (s *memSink) InsertQuoteSnapshots(_ context.Context, rows []contracts.Quote
 	return nil
 }
 
-// since returns the ok, partial and no_data counts of the rows taken after the first n.
-func (s *memSink) since(n int) (total, ok, partial, noData int) {
+// countSince returns the ok, partial and no_data counts of the rows taken after the first n.
+func (s *memSink) countSince(n int) (total, ok, partial, noData int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, st := range s.statuses[n:] {
@@ -163,7 +163,7 @@ func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day 
 	}
 	planned, _, perr := job.Plan(ctx, day)
 	if perr != nil {
-		line(a, name, day, "-", "-", 0, [3]int{}, 0, perr)
+		printKeyLine(a, name, day, "-", "-", 0, [3]int{}, 0, perr)
 		return 1, 1, nil
 	}
 	for _, k := range planned {
@@ -175,8 +175,8 @@ func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day 
 		before := sink.len()
 		start := wall.Now()
 		res := job.Run(ctx, day, []contracts.ExpectedKey{k})
-		_, ok, partial, noData := sink.since(before)
-		line(a, name, day, k.DatasetID, k.SubjectKey, res.Returned, [3]int{ok, partial, noData}, wall.Now().Sub(start), res.Err)
+		_, ok, partial, noData := sink.countSince(before)
+		printKeyLine(a, name, day, k.DatasetID, k.SubjectKey, res.Returned, [3]int{ok, partial, noData}, wall.Now().Sub(start), res.Err)
 		keys++
 		if res.Err != nil {
 			failed++
@@ -185,7 +185,7 @@ func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day 
 	return keys, failed, nil
 }
 
-func line(a *app, job string, day contracts.Day, dataset, subject string, requested int, c [3]int, elapsed time.Duration, err error) {
+func printKeyLine(a *app, job string, day contracts.Day, dataset, subject string, requested int, c [3]int, elapsed time.Duration, err error) {
 	code := "none"
 	if err != nil {
 		code = string(contracts.Permanent)
@@ -213,8 +213,8 @@ func dryRunBuild(d deps, name string, b broker.Broker, res store.InstrumentResol
 	return nil, fmt.Errorf("--job %q is not one of %v", name, dryRunJobs)
 }
 
-// dryRunNow is the instant of the fixed clock for key on day: the local time of dryRunTimes, or one minute
-// after the slot of a quote_snapshot key (inside its grace).
+// dryRunNow is the instant of the fixed clock for key on day: the local time of dryRunTimes, or the slot of a
+// quote_snapshot key itself (inside its window for any grace, zero too).
 func dryRunNow(job string, day contracts.Day, k contracts.ExpectedKey) (time.Time, error) {
 	d, err := time.Parse(time.DateOnly, string(day))
 	if err != nil {
@@ -225,8 +225,6 @@ func dryRunNow(job string, day contracts.Day, k contracts.ExpectedKey) (time.Tim
 		zone, hhmm = t.zone, t.hhmm
 	} else if _, err := fmt.Sscanf(k.SubjectKey, "%04d", &hhmm); err != nil {
 		return time.Time{}, fmt.Errorf("slot %q is not HHMM", k.SubjectKey)
-	} else {
-		hhmm++
 	}
 	loc, err := time.LoadLocation(zone)
 	if err != nil {

@@ -225,3 +225,37 @@ func TestDryRunRejectsOtherJobs(t *testing.T) {
 		t.Errorf("something ran: %q %v", out.String(), ran)
 	}
 }
+
+// zeroGraceSlotJob applies the guard of quote_snapshot with grace_minutes = 0 in New York: the clock must be
+// exactly the slot.
+type zeroGraceSlotJob struct{ clk clock.Clock }
+
+func (zeroGraceSlotJob) ID() string { return jobQuoteSnapshot }
+func (zeroGraceSlotJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return []contracts.ExpectedKey{{DatasetID: "obs.quote_snapshot", SubjectKey: "0945"}}, "h", nil
+}
+
+func (j zeroGraceSlotJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
+	ny, _ := time.LoadLocation("America/New_York")
+	now := j.clk.Now().In(ny)
+	at := time.Date(now.Year(), now.Month(), now.Day(), 9, 45, 0, 0, ny)
+	if now.Before(at) || now.After(at) {
+		return contracts.JobResult{Err: dryKindErr(contracts.NoValue)}
+	}
+	return contracts.JobResult{}
+}
+
+func TestDryRunQuoteSnapshotZeroGraceIsNotRefused(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	a, out := dryApp(t, &ran)
+	a.deps.newQuoteSnapshot = func(_ broker.Broker, _ store.InstrumentResolver, _ store.QuoteSnapshotWriter, clk clock.Clock) (contracts.Job, error) {
+		return zeroGraceSlotJob{clk: clk}, nil
+	}
+	if err := runOnce(a, []string{"--dry-run", "--job", "quote_snapshot", "--day", "2026-11-10"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "error=no_value") || !strings.Contains(out.String(), "error=none") {
+		t.Fatalf("guard refused a dry-run key: %q", out.String())
+	}
+}
