@@ -1,0 +1,26 @@
+{
+  "2026-11-09/short_put": [
+    {"Kind": "short_put", "InstrumentID": 101, "Issuer": "ACME", "Expiry": "2026-12-18", "DTE": 39, "Right": "put",
+     "Strike": "95.00", "BidEod": "1.20", "BreakEven": "93.80", "AnnualizedYield": "0.118212", "Delta": "-0.25", "Iv": "0.31",
+     "Status": "ok", "Gates": "[{\"gate\":\"buy_price\",\"status\":\"pass\",\"reason\":\"\"}]", "Marks": "[\"earnings_unconfirmed\"]",
+     "Fits": "{\"A\":\"fit\",\"B\":\"no_fit\"}", "NextEarnings": "2027-01-20", "EarningsState": "listed", "Rank": 1,
+     "RuleVersion": "r1", "ComputedAt": "2026-11-09T21:30:00Z"},
+    {"Kind": "short_put", "InstrumentID": 102, "Issuer": "ACME", "Expiry": "2026-12-18", "DTE": 39, "Right": "put",
+     "Strike": "90.00", "BidEod": "0.60", "BreakEven": "89.40", "AnnualizedYield": "0.062400", "Status": "ok",
+     "Gates": "[]", "Marks": "[]", "Fits": "{}", "EarningsState": "absent", "Rank": 2, "RuleVersion": "r1",
+     "ComputedAt": "2026-11-09T21:30:00Z"}
+  ],
+  "2026-11-09/covered_call": [
+    {"Kind": "covered_call", "InstrumentID": 201, "Alias": "A", "Issuer": "ACME", "Expiry": "2026-12-18", "DTE": 39, "Right": "call",
+     "Strike": "110.00", "BidEod": "0.90", "BreakEven": "110.90", "AnnualizedYield": "0.075000", "Extrinsic": "0.90",
+     "NextExDate": "2026-12-01", "ExAmount": "0.25", "Status": "ok", "Gates": "[]", "Marks": "[\"no_dividend\"]",
+     "Fits": "{}", "EarningsState": "listed", "NextEarnings": "2027-01-20", "Rank": 1, "RuleVersion": "r1",
+     "ComputedAt": "2026-11-09T21:30:00Z"}
+  ],
+  "2026-11-08/held_call_guard": [
+    {"Kind": "held_call_guard", "InstrumentID": 301, "Alias": "A", "Issuer": "ACME", "Expiry": "2026-12-18", "DTE": 40, "Right": "call",
+     "Strike": "100.00", "BidEod": "0.10", "BreakEven": "100.10", "Extrinsic": "0.10", "NextExDate": "2026-12-01", "ExAmount": "0.25",
+     "Status": "blocked", "Gates": "[{\"gate\":\"guard\",\"status\":\"block\",\"reason\":\"early_assignment_risk\"}]",
+     "Marks": "[]", "Fits": "{}", "EarningsState": "listed", "RuleVersion": "r1", "ComputedAt": "2026-11-08T21:30:00Z"}
+  ]
+}

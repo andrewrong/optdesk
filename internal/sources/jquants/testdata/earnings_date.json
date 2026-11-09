@@ -1,0 +1,7 @@
+{
+  "data": [
+    {"PubDate": "2026-06-29", "SchDate": "2026-08-04", "FQName": "第1四半期", "FYE": "2027-03-31", "Code": "99990", "CoName": "テスト株式会社", "CoNameEn": "Test Corp"},
+    {"PubDate": "2026-03-30", "SchDate": "2026-05-12", "FQName": "通期", "FYE": "2026-03-31", "Code": "99990", "CoName": "テスト株式会社", "CoNameEn": "Test Corp"},
+    {"PubDate": "2026-02-01", "SchDate": "", "FQName": "第3四半期", "FYE": "2026-03-31", "Code": "99990", "CoName": "テスト株式会社", "CoNameEn": "Test Corp"}
+  ]
+}

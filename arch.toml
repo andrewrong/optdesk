@@ -48,53 +48,57 @@ may_import = ["contracts", "clock", "sources"]
 in = "internal/sources/fred"
 may_import = ["contracts", "clock", "sources"]
 
+[component."gaphistory"]
+in = "internal/gaphistory"
+may_import = ["contracts"]
+
 [component."store"]
 in = "internal/store"
-may_import = ["contracts"]
+may_import = ["contracts", "gaphistory"]
 
 [component."store/account"]
 in = "internal/store/account"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/alert"]
 in = "internal/store/alert"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/candidate"]
 in = "internal/store/candidate"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/instrument"]
 in = "internal/store/instrument"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/ops"]
 in = "internal/store/ops"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/optionledger"]
 in = "internal/store/optionledger"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/reading"]
 in = "internal/store/reading"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/series"]
 in = "internal/store/series"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/sessionday"]
 in = "internal/store/sessionday"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/setup"]
 in = "internal/store/setup"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."store/snapshot"]
 in = "internal/store/snapshot"
-may_import = ["contracts", "store"]
+may_import = ["contracts", "gaphistory", "store"]
 
 [component."compute"]
 in = "internal/compute"
@@ -122,6 +126,10 @@ may_import = ["contracts", "compute"]
 
 [component."compute/optionledger"]
 in = "internal/compute/optionledger"
+may_import = ["contracts", "compute"]
+
+[component."compute/optionnotice"]
+in = "internal/compute/optionnotice"
 may_import = ["contracts", "compute"]
 
 [component."compute/optionresult"]
@@ -202,19 +210,19 @@ may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "jo
 
 [component."notify"]
 in = "internal/notify"
-may_import = ["contracts", "store", "compute"]
+may_import = ["contracts", "store", "compute", "gaphistory"]
 
 [component."notify/core"]
 in = "internal/notify/core"
-may_import = ["contracts", "store", "compute", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "notify"]
 
 [component."notify/dryrun"]
 in = "internal/notify/dryrun"
-may_import = ["contracts", "store", "compute", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "notify"]
 
 [component."notify/telegram"]
 in = "internal/notify/telegram"
-may_import = ["contracts", "store", "compute", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "notify"]
 
 [component."pages"]
 in = "internal/pages"
@@ -248,6 +256,10 @@ may_import = ["contracts", "store", "compute", "pages"]
 in = "internal/pages/option_data_page"
 may_import = ["contracts", "store", "compute", "pages"]
 
+[component."pages/option_notices_page"]
+in = "internal/pages/option_notices_page"
+may_import = ["contracts", "store", "compute", "pages"]
+
 [component."pages/option_result_page"]
 in = "internal/pages/option_result_page"
 may_import = ["contracts", "store", "compute", "pages"]
@@ -274,4 +286,4 @@ may_import = []
 
 [component."ot"]
 in = "cmd/ot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/report_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "compute/ease", "store/account", "jobs/accountcapture", "compute/optioncand", "store/candidate", "jobs/optioncandidates", "pages/candidate_text", "compute/optionledger", "jobs/optionledger", "store/optionledger", "sources/flex", "pages/market_page", "pages/option_candidates_page", "compute/optionstruct", "compute/optionresult", "pages/structures_page", "pages/option_result_page", "compute/optiontrack", "pages/option_tracking_page"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "runner", "jobs", "notify", "pages", "profile", "compute", "gaphistory", "clock/realclock", "clock/calendar", "runner/reconcile", "runner/sched", "store/sessionday", "store/series", "store/snapshot", "store/ops", "store/setup", "sources/fred", "jobs/fredseries", "broker/grpcbroker", "store/instrument", "jobs/optioneod", "jobs/quotesnapshot", "pages/macro_rates", "pages/macro_page", "pages/option_data_page", "pages/report_page", "pages/embed", "compute/rules", "store/reading", "jobs/computefigures", "compute/own", "compute/gonumstats", "compute/talibind", "compute/figures", "notify/core", "notify/telegram", "notify/dryrun", "jobs/serieshistory", "clock/calendarcli", "jobs/calendarrefresh", "store/alert", "compute/alertrules", "pages/risks_block", "compute/ease", "store/account", "jobs/accountcapture", "compute/optioncand", "store/candidate", "jobs/optioncandidates", "pages/candidate_text", "compute/optionledger", "jobs/optionledger", "store/optionledger", "sources/flex", "pages/market_page", "pages/option_candidates_page", "compute/optionstruct", "compute/optionresult", "pages/structures_page", "pages/option_result_page", "compute/optionnotice", "pages/option_notices_page", "compute/optiontrack", "pages/option_tracking_page"]
