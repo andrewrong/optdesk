@@ -131,6 +131,8 @@ components:
     in: internal/pages/option_candidates_page
   pages/option_data_page:
     in: internal/pages/option_data_page
+  pages/option_notices_page:
+    in: internal/pages/option_notices_page
   pages/option_result_page:
     in: internal/pages/option_result_page
   pages/report_page:
@@ -538,6 +540,14 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  pages/option_notices_page:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - pages
+      - contracts/genpb
+      - compute/contracttest
   pages/option_result_page:
     mayDependOn:
       - contracts
@@ -631,6 +641,7 @@ deps:
       - pages/structures_page
       - pages/option_result_page
       - compute/optionnotice
+      - pages/option_notices_page
       - sources/alphavantage
       - sources/jquants
       - jobs/earningsrefresh
