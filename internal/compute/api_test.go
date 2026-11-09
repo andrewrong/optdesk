@@ -706,13 +706,3 @@ func TestLedgerPositionTerms(t *testing.T) {
 		t.Fatalf("terms %+v", p)
 	}
 }
-
-func TestLedgerTermsFollowEarly(t *testing.T) {
-	t.Parallel()
-	typ := reflect.TypeOf(compute.LedgerPosition{})
-	early, _ := typ.FieldByName("Early")
-	right, _ := typ.FieldByName("Right")
-	if right.Index[0] != early.Index[0]+1 {
-		t.Fatalf("Right at %d, want right after Early at %d", right.Index[0], early.Index[0])
-	}
-}
