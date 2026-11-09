@@ -1780,3 +1780,99 @@ source_hash = "0800cdc376ccf2148dcbe85a5cb0e20e5c78d8394ebe4b5bc95becc1e6f2d60a"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/ease-v2.md"
 history = ["2026-11-08 v2: ported from option-trader macro.ease v2 (issue 827: only the HY OAS points differ from its version 1) by docs/design/ease-v2.md; owner delegated the ease producer to the advisor (alignment answers 2026-11-08); no version 1 here; band words are the page's, not option-trader's 变紧 / 没怎么变 / 变松."]
+
+[[figure]]
+id = "report.trade_kind"
+version = 1
+title_zh = "报告页：成交类型"
+pages = ["report_page.actions"]
+formula = """
+Each execution of the day is open, close or expire. The signed fill is positive for BOT and negative for SLD; the prior is the signed quantity of the same contract in the newest earlier capture. A fill that starts a position (prior 0) or has the sign of the prior is open; a fill against the prior is close, and expire when an option closes at price 0."""
+inputs = """
+The day's executions of the main alias; the signed quantity of each contract in the newest earlier capture."""
+period_date = "The session day of the execution."
+currency = "Not a money figure: kind text."
+excludes = """
+Assignment or exercise (the data does not tell it from a close); a fill that crosses zero counts as close."""
+gap_text = """
+No readable prior quantity: the row has no kind, never a guess."""
+implemented_by = [
+  "internal/compute/pagefig.trades",
+  "internal/compute/pagefig.tradeKind",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/builders-wave.md"
+history = ["2026-11-10 v1: registered by docs/design/builders-wave.md Decision 8 (issue 1011); computed in internal/compute/pagefig."]
+
+[[figure]]
+id = "report.account_day"
+version = 1
+title_zh = "报告页：账户当日变化"
+pages = ["report_page.account_moves"]
+formula = """
+Net liquidation of the newest capture; the day amount is it minus the net liquidation of the prior capture; the day percent is the amount over the prior, times 100. Exact rationals, rounded half-even to 2 places."""
+inputs = """
+Two AccountReader.Values captures of one account (tag NetLiquidation)."""
+period_date = "The data day of the newest capture."
+currency = "The account currency; two captures in different currencies are not compared."
+excludes = """
+A total row over accounts; position marks (biggest, movers)."""
+gap_text = """
+A missing or unreadable capture: missing_input. Different currencies: unsupported_currency. A prior of zero or less (percent): no_data."""
+implemented_by = [
+  "internal/compute/pagefig.accountMove",
+  "internal/compute/pagefig.percent",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/builders-wave.md"
+history = ["2026-11-10 v1: registered by docs/design/builders-wave.md Decision 8 (issue 1011); computed in internal/compute/pagefig."]
+
+[[figure]]
+id = "report.margin_buffer"
+version = 1
+title_zh = "报告页：保证金缓冲与指派后现金"
+pages = ["report_page.account_moves"]
+formula = """
+margin_buffer is ExcessLiquidity over NetLiquidation, times 100, rounded half-even to 2 places. cash_after_assignment is TotalCashValue minus the sum over the short puts of strike x multiplier x contracts, signed (negative is a shortfall). The meters are on the web page only, never sent to Telegram."""
+inputs = """
+AccountReader.Values of the newest capture (NetLiquidation, ExcessLiquidity, TotalCashValue); the short-put obligations of the replayed option ledger."""
+period_date = "The data day of the capture."
+currency = "The account currency; an obligation in another currency is not netted."
+excludes = """
+Any notification; a stress step (needs a price)."""
+gap_text = """
+A missing or unreadable input: missing_input. Mixed currencies: unsupported_currency. Net liquidation of zero or less: no_data (buffer)."""
+implemented_by = [
+  "internal/compute/pagefig.accountMove",
+  "internal/compute/pagefig.cashLeft",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/builders-wave.md"
+history = ["2026-11-10 v1: registered by docs/design/builders-wave.md Decision 8 (issue 1011); computed in internal/compute/pagefig."]
+
+[[figure]]
+id = "report.market_move"
+version = 1
+title_zh = "报告页：行情日变化与五日变化"
+pages = ["report_page.market_watch"]
+formula = """
+Per series, the one-day change is the newest close over the one before, minus 1, and the five-day change is the newest over the sixth close (the close five sessions earlier), minus 1, each times 100, rounded half-even to 2 places. Closes are listed newest first."""
+inputs = """
+Stored closes of a series with their days (the S&P 500 from FRED SP500)."""
+period_date = "The day of the newest close of each series."
+currency = "Percent."
+excludes = """
+Company quotes (missing_quote); any series that is not stored."""
+gap_text = """
+Too few closes (five-day needs six): no_data. An unreadable or non-positive close: missing_input. A series more than three weekdays behind the newest series of the request: stale_input."""
+implemented_by = [
+  "internal/compute/pagefig.moves",
+  "internal/compute/pagefig.change",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/builders-wave.md"
+history = ["2026-11-10 v1: registered by docs/design/builders-wave.md Decision 8 (issue 1011); computed in internal/compute/pagefig."]

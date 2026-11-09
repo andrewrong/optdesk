@@ -134,17 +134,6 @@ func TestStockCellsAreMissingQuote(t *testing.T) {
 	}
 }
 
-func TestNewIsPageFigures(t *testing.T) {
-	t.Parallel()
-	f := New()
-	if len(f.Trades("2026-01-01", nil)) != 0 || len(f.Moves(nil)) != 0 || len(f.Glance(nil)) != 0 || len(f.Changes(nil)) != 0 {
-		t.Fatal("other methods are empty until entry 3")
-	}
-	if f.AccountMove(blockapi.AccountMoveIn{}) != (blockapi.AccountMoveOut{}) {
-		t.Fatal("AccountMove is empty")
-	}
-}
-
 func TestJpyIncomeNeedsRate(t *testing.T) {
 	t.Parallel()
 	o := blockapi.ObligationIn{Underlying: "7203", Currency: "JPY", Strike: "2000", Multiplier: "100", Contracts: "1", PremiumIncome: "5000"}
