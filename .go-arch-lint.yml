@@ -33,6 +33,8 @@ components:
     in: internal/sources
   sources/alphavantage:
     in: internal/sources/alphavantage
+  sources/flex:
+    in: internal/sources/flex
   sources/fred:
     in: internal/sources/fred
   sources/jquants:
@@ -186,6 +188,12 @@ deps:
       - contracts
       - clock
   sources/alphavantage:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - contracts/genpb
+  sources/flex:
     mayDependOn:
       - contracts
       - clock
@@ -590,6 +598,7 @@ deps:
       - store/candidate
       - compute/optionledger
       - jobs/optionledger
+      - sources/flex
       - pages/market_page
       - pages/option_candidates_page
       - sources/alphavantage
