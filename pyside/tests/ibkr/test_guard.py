@@ -12,7 +12,7 @@ from optdesk.ibkr import transport
 from optdesk.ibkr.transport import NotAllowed, OrderRefused, check, install_guard
 
 ORDER_IDS = (3, 4, 21, 58)
-ALLOWED_IDS = (1, 2, 9, 20, 25, 49, 59, 71, 78)
+ALLOWED_IDS = (1, 2, 7, 9, 20, 25, 49, 59, 71, 78)
 
 
 class _Conn:
@@ -67,7 +67,7 @@ def test_allowlist_passes() -> None:
 
 
 def test_unknown_id_refused() -> None:
-    for message_id in (5, 7, 6, 0):
+    for message_id in (5, 10, 6, 0):
         with pytest.raises(NotAllowed):
             check(message_id)
     with pytest.raises(NotAllowed):

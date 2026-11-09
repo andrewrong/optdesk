@@ -41,7 +41,7 @@ ORDER_IDS = frozenset(
     {3, 4, 21, 58}
 )  # placeOrder, cancelOrder, exercise, global cancel
 ALLOWED_IDS = frozenset(
-    {1, 2, 9, 20, 25, 49, 59, 71, 78}
+    {1, 2, 7, 9, 20, 25, 49, 59, 71, 78}
     | {61, 62, 63, 64}  # reqPositions, reqAccountSummary and their two cancels
 )
 
