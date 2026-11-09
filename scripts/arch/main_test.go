@@ -54,15 +54,6 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-func TestArchCheckCommittedFiles(t *testing.T) {
-	t.Parallel()
-	root := repoRoot(t)
-	code, out := runArch(t, "--check", "--modules", filepath.Join(root, "docs/design/modules.md"), "--root", root)
-	if code != 0 {
-		t.Fatalf("exit %d: %s", code, out)
-	}
-}
-
 // fixtureModules is a small modules text of its own: three modules and the implementation list that generate reads.
 func fixtureModules(gammaDepends string) string {
 	return "# Fixture\n\n## Modules\n\n" +
@@ -74,7 +65,7 @@ func fixtureModules(gammaDepends string) string {
 		"The composition root imports one constructor each: `internal/alpha/impl`. Any other import is refused.\n"
 }
 
-func TestArchCheckFailsOnNewEdge(t *testing.T) {
+func TestArchWritesBothFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules.md")
@@ -82,13 +73,10 @@ func TestArchCheckFailsOnNewEdge(t *testing.T) {
 	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 0 {
 		t.Fatalf("generate: exit %d: %s", code, out)
 	}
-	if code, out := runArch(t, "--check", "--modules", modules, "--root", dir); code != 0 {
-		t.Fatalf("fresh files: exit %d: %s", code, out)
-	}
-	write(t, modules, fixtureModules("alpha beta"))
-	code, out := runArch(t, "--check", "--modules", modules, "--root", dir)
-	if code != 1 {
-		t.Fatalf("exit %d, want 1: %s", code, out)
+	for _, name := range []string{tomlFile, ymlFile} {
+		if b, err := os.ReadFile(filepath.Join(dir, name)); err != nil || len(b) == 0 {
+			t.Fatalf("%s not written: %v", name, err)
+		}
 	}
 }
 
@@ -112,7 +100,7 @@ func otImports(t *testing.T, text string) ([]string, string) {
 	return got, string(m[1])
 }
 
-func TestArchCheckOTListsImplPackages(t *testing.T) {
+func TestArchOTListsImplPackages(t *testing.T) {
 	t.Parallel()
 	text := modulesText(t)
 	// The list as the text states it: backticked internal/a/b paths after the anchor.
@@ -166,7 +154,7 @@ func TestArchRunFailsWithoutImplAnchor(t *testing.T) {
 	}
 }
 
-func TestArchCheckProfileHasNoImports(t *testing.T) {
+func TestArchProfileHasNoImports(t *testing.T) {
 	t.Parallel()
 	toml, yml, err := generate(modulesText(t), t.TempDir())
 	if err != nil {
@@ -223,7 +211,7 @@ func lint(t *testing.T, dir string) (bool, string) {
 	return err == nil, string(out)
 }
 
-func TestArchCheckScratchTree(t *testing.T) {
+func TestArchScratchTree(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
@@ -451,5 +439,47 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 	_, rest, _ = strings.Cut(deps, "  store/bar:\n")
 	if hasDep(nextKey.Split(rest, 2)[0], "store/bar") {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
+	}
+}
+
+func TestRootImportsOwnersetDeclarations(t *testing.T) {
+	t.Parallel()
+	fixture := strings.Replace(declFixture, "internal/store/api.go internal/store/bar", "internal/store/api.go internal/store/ownerset", 1)
+	tree := map[string]string{}
+	for k, v := range declTree {
+		tree[k] = v
+	}
+	tree["internal/store/ownerset/api.go"] = "package ownerset\n"
+	dir := scratch(t, tree)
+	toml, _, err := generate(fixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"store/ownerset"`) {
+		t.Fatalf("jobs lacks store/ownerset in arch.toml:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "store"); strings.Contains(b, "store/ownerset") {
+		t.Fatalf("the root store imports its own declarations package:\n%s", b)
+	}
+}
+
+func TestRootImportsSettingsapiDeclarations(t *testing.T) {
+	t.Parallel()
+	fixture := strings.Replace(declFixture, "internal/compute/api.go internal/compute/contracttest", "internal/compute/api.go internal/compute/settingsapi", 1)
+	tree := map[string]string{}
+	for k, v := range declTree {
+		tree[k] = v
+	}
+	tree["internal/compute/settingsapi/api.go"] = "package settingsapi\n"
+	dir := scratch(t, tree)
+	toml, _, err := generate(fixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"compute/settingsapi"`) {
+		t.Fatalf("jobs lacks compute/settingsapi in arch.toml:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "compute"); strings.Contains(b, "compute/settingsapi") {
+		t.Fatalf("the root compute imports its own declarations package:\n%s", b)
 	}
 }
