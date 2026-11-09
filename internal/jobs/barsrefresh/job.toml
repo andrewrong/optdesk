@@ -1,0 +1,45 @@
+# Manifest of the bars_refresh job. The index exchanges and symbols are proposals the owner sets.
+version = 1
+id = "bars_refresh"
+backfill_days = 400
+daily_days = 5
+restate_tolerance = "0.00001"
+adjusted_cadence_days = 7
+backfill_names_per_run = 10
+deepen_days = 1825
+deepen_piece_days = 730
+deepen_names_per_run = 0
+
+[[index]]
+symbol = "SPX"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+con_id = 0
+
+[[index]]
+symbol = "NDX"
+sec_type = "IND"
+exchange = "NASDAQ"
+currency = "USD"
+con_id = 0
+
+[[index]]
+symbol = "RUT"
+sec_type = "IND"
+exchange = "RUSSELL"
+currency = "USD"
+con_id = 0
+
+[[index]]
+symbol = "N225"
+sec_type = "IND"
+exchange = "OSE.JPN"
+currency = "JPY"
+con_id = 0
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "10m"
+run_bound = "10m"
