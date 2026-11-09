@@ -63,6 +63,8 @@ components:
     in: internal/compute/gonumstats
   compute/optioncand:
     in: internal/compute/optioncand
+  compute/optionledger:
+    in: internal/compute/optionledger
   compute/own:
     in: internal/compute/own
   compute/rules:
@@ -105,6 +107,8 @@ components:
     in: internal/pages/macro_page
   pages/macro_rates:
     in: internal/pages/macro_rates
+  pages/market_page:
+    in: internal/pages/market_page
   pages/option_data_page:
     in: internal/pages/option_data_page
   pages/report_page:
@@ -242,6 +246,11 @@ deps:
       - contracts
       - compute
       - contracts/genpb
+  compute/optionledger:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
   compute/own:
     mayDependOn:
       - contracts
@@ -408,6 +417,14 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  pages/market_page:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - pages
+      - contracts/genpb
+      - compute/contracttest
   pages/option_data_page:
     mayDependOn:
       - contracts
@@ -483,6 +500,8 @@ deps:
       - pages/risks_block
       - compute/ease
       - compute/optioncand
+      - compute/optionledger
+      - pages/market_page
   compute/contracttest:
     mayDependOn:
       - contracts

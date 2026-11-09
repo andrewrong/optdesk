@@ -543,3 +543,45 @@ func TestOptionCandidatesContract(t *testing.T) {
 		}
 	}
 }
+
+var _ compute.OptionLedger = fakeLedger{}
+
+// fakeLedger records what the rule received and returns one position and one cycle.
+type fakeLedger struct {
+	in *compute.LedgerInput
+	p  *compute.LedgerParams
+}
+
+func (f fakeLedger) Replay(in compute.LedgerInput, p compute.LedgerParams) compute.LedgerResult {
+	*f.in, *f.p = in, p
+	return compute.LedgerResult{
+		RuleVersion: 1,
+		Positions: []compute.LedgerPosition{{
+			PositionID: in.Alias + ":" + in.Trades[0].TransactionID + ":1", Alias: in.Alias,
+			Status: "open", PremiumIncome: "1.2500", Currency: "USD", MarkStatus: "no_mark",
+		}},
+		Cycles:     []compute.LedgerCycle{{CycleID: in.Alias + ":AAA:t1", StockRealizedPnL: "0.0000"}},
+		Unresolved: []string{"t0"},
+	}
+}
+
+func TestOptionLedgerContractFake(t *testing.T) {
+	t.Parallel()
+	var in compute.LedgerInput
+	var params compute.LedgerParams
+	var newFn compute.NewOptionLedgerFunc = func() compute.OptionLedger { return fakeLedger{in: &in, p: &params} }
+	res := newFn().Replay(compute.LedgerInput{
+		Alias:       "a",
+		Trades:      []compute.LedgerTrade{{TransactionID: "t1", Revision: 2, Attributes: map[string]string{"assetCategory": "OPT"}}},
+		Marks:       []compute.LedgerMark{{Contract: "c1", Day: "2026-01-05", Bid: "1.00", Ask: "1.10", UnderlyingClose: "100.00"}},
+		SessionDays: []contracts.Day{"2026-01-02", "2026-01-05"},
+		AsOf:        "2026-01-05",
+	}, compute.LedgerParams{MarkMaxAgeSessions: 5})
+	if in.Alias != "a" || in.Trades[0].Revision != 2 || in.SessionDays[1] != "2026-01-05" || params.MarkMaxAgeSessions != 5 {
+		t.Fatalf("rule saw %+v %+v", in, params)
+	}
+	if res.RuleVersion != 1 || res.Positions[0].PositionID != "a:t1:1" || res.Positions[0].PremiumIncome != "1.2500" ||
+		res.Cycles[0].CycleID != "a:AAA:t1" || len(res.Unresolved) != 1 || res.Review != nil {
+		t.Fatalf("caller read %+v", res)
+	}
+}

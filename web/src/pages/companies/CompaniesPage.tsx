@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { CompaniesPageV2 } from '@/generated/companies_page.v2'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/companies_page'
 import { CardNotes } from '../home/CardNotes'
@@ -17,7 +18,14 @@ export { validate as validateCompaniesPage } from '@/types/companies_page'
 export type { Payload as CompaniesPagePayload } from '@/types/companies_page'
 
 type Head = { numeric?: boolean; text: string }
-type Cells = { text: string; tone?: 'up' | 'down' | 'flat' | 'none' }[]
+type Cells = {
+  text: string
+  tone?: 'up' | 'down' | 'flat' | 'none'
+  price_state?: string
+  hand_price?: string
+}[]
+type Gap = { reason: string; text: string }
+const isGap = (v: object): v is Gap => 'reason' in v
 
 function Section({
   name,
@@ -45,7 +53,130 @@ const columnsOf = (heads: Head[]): Column[] =>
     align: head.numeric ? 'right' : 'left',
   }))
 const rowOf = (cells: Cells) =>
-  Object.fromEntries(cells.map((cell, i) => [`c${i}`, { text: cell.text, tone: cell.tone }]))
+  Object.fromEntries(
+    cells.map((cell, i) => [
+      `c${i}`,
+      {
+        text: cell.text,
+        tone: cell.tone,
+        // The price-line label is shown in a Badge; the own price is shown under the band. Both are Python's text.
+        source: cell.price_state,
+        note: cell.hand_price ? `hand price: ${cell.hand_price}` : undefined,
+      },
+    ]),
+  )
+const figureCell = (v: { text: string } | Gap | string) =>
+  typeof v === 'string' ? { text: v } : v
+
+function V2Blocks({ payload }: { payload: CompaniesPageV2 }) {
+  const { core, diagnosis, questions } = payload
+  return (
+    <>
+      <Section name="core" title="Core">
+        {isGap(core) ? (
+          <p data-gap>{core.text}</p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">{core.basis_note}</p>
+            <p>
+              {core.low_text} – {core.high_text} · {core.treasury.text}
+              {' · '}
+              {core.jp_rate.text}
+            </p>
+            <DataTable
+              columns={[
+                { id: 'symbol', label: 'Company' },
+                { id: 'price', label: 'Cost', align: 'right' },
+                { id: 'assumption', label: 'Case' },
+                { id: 'ret', label: 'Return', align: 'right' },
+              ]}
+              rows={core.rows.flatMap((row) => {
+                const head = { symbol: { text: row.symbol }, price: { text: row.price_text } }
+                if (isGap(row.returns)) {
+                  return [{ ...head, assumption: { text: '' }, ret: row.returns }]
+                }
+                return row.returns.map((r) => ({
+                  ...head,
+                  assumption: { text: r.assumption },
+                  ret: { text: r.text },
+                }))
+              })}
+            />
+            {core.rows.some((r) => r.flag) ? (
+              <ul className="list-disc pl-4">
+                {core.rows.flatMap((r) =>
+                  r.flag ? [<li key={r.symbol}>{`${r.symbol}: ${r.flag}`}</li>] : [],
+                )}
+              </ul>
+            ) : null}
+            <ul className="list-disc pl-4">
+              {core.legend.map((line, i) => (
+                <li key={`${i}-${line}`}>{line}</li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground">{core.snapshot_text}</p>
+          </>
+        )}
+      </Section>
+      <Section name="diagnosis" title="Diagnosis">
+        {isGap(diagnosis) ? (
+          <p data-gap>{diagnosis.text}</p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">{diagnosis.basis_note}</p>
+            {diagnosis.groups.map((group) => {
+              const columns = group.columns.map((label, i) => ({ id: `c${i}`, label }))
+              const rows = group.rows.map((r) => {
+                if (isGap(r)) return { c0: r }
+                const cells = [r.symbol, r.latest_fy, r.latest, r.rank_text]
+                return Object.fromEntries(
+                  cells.map((text, i) => [
+                    `c${i}`,
+                    { text, note: i === 0 ? `${r.extra} · ${r.usual}` : undefined },
+                  ]),
+                )
+              })
+              return (
+                <div key={group.key} data-group={group.key} className="space-y-2">
+                  <h3 className="font-medium">{group.title}</h3>
+                  <DataTable columns={columns} rows={rows} />
+                  <ul className="list-disc pl-4">
+                    {group.legend.map((line, i) => (
+                      <li key={`${i}-${line}`}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </>
+        )}
+      </Section>
+      <Section name="questions" title="Questions">
+        {isGap(questions) ? (
+          <p data-gap>{questions.text}</p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">{questions.basis_note}</p>
+            <DataTable
+              columns={['Company', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5'].map((label, i) => ({
+                id: `c${i}`,
+                label,
+              }))}
+              rows={questions.rows.map((row) => ({
+                c0: { text: row.symbol },
+                c1: figureCell(row.q1),
+                c2: figureCell(row.q2),
+                c3: figureCell(row.q3),
+                c4: figureCell(row.q4),
+                c5: figureCell(row.fifth),
+              }))}
+            />
+          </>
+        )}
+      </Section>
+    </>
+  )
+}
 
 export function CompaniesPage({ payload }: { payload: Payload }) {
   const { changes, glance, holdings, watch_list: watch } = payload
@@ -113,6 +244,7 @@ export function CompaniesPage({ payload }: { payload: Payload }) {
           {payload.unvalued ? <p data-unvalued>{payload.unvalued}</p> : null}
         </Section>
       ) : null}
+      {'core' in payload ? <V2Blocks payload={payload} /> : null}
       <Section name="watch_list" title={watch.title}>
         {watch.sentence ? <p>{watch.sentence}</p> : null}
         {watch.rows.length > 0 ? (
