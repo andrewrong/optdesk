@@ -48,6 +48,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
+	"github.com/andrewrong/optdesk/internal/sources/jquants"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/alert"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
@@ -130,6 +131,7 @@ type deps struct {
 	loadAlertRules          compute.LoadAlertRulesFunc
 	newEarningsRefresh      jobs.NewEarningsRefreshFunc
 	newAlphaVantage         sources.NewEarningsFunc
+	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
@@ -218,6 +220,7 @@ func newDeps() deps {
 		loadAlertRules:          alertrules.Load,
 		newEarningsRefresh:      earningsrefresh.New,
 		newAlphaVantage:         alphavantage.New,
+		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
 		readFile:                os.ReadFile,
 	}
