@@ -44,12 +44,6 @@ type job struct {
 	log     *slog.Logger
 }
 
-// degradedRecord is the one log record of a non-main alias that failed: an alias and a status only.
-type degradedRecord struct {
-	Alias  string
-	Status string
-}
-
 type typedError struct {
 	kind contracts.ErrorKind
 	text string
@@ -108,7 +102,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			}
 			if alias == j.main {
 				if res.Err == nil {
-					res.Err = &typedError{kind: kindOf(status), text: "account_capture: alias " + alias + " status " + status}
+					res.Err = &typedError{kind: contracts.Retryable, text: "account_capture: alias " + alias + " status " + status}
 				}
 				continue
 			}
@@ -117,9 +111,6 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	}
 	return res
 }
-
-// kindOf is Retryable for both statuses: a retry the same day picks up what is missing.
-func kindOf(string) contracts.ErrorKind { return contracts.Retryable }
 
 // captureAlias reads and writes one alias and returns its status: ok, pending or failed.
 func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day, key string) string {

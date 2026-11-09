@@ -275,16 +275,60 @@ func TestNoGapForNonMain(t *testing.T) {
 	}
 }
 
+// recordHandler is a slog.Handler that keeps every record it receives.
+type recordHandler struct {
+	mu   *sync.Mutex
+	recs *[]slog.Record
+}
+
+func (h recordHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (h recordHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	*h.recs = append(*h.recs, r)
+	return nil
+}
+func (h recordHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h recordHandler) WithGroup(string) slog.Handler      { return h }
+
+func TestDegradedLogCarriesAliasAndStatusOnly(t *testing.T) {
+	t.Parallel()
+	bad := goodReader("b")
+	bad.accErr = errors.New("x")
+	var recs []slog.Record
+	h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
+	rs := map[string]broker.AccountReader{"a": goodReader("a"), "b": bad}
+	j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClock()}, slog.New(h))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, _ := j.Plan(context.Background(), testDay)
+	j.Run(context.Background(), testDay, keys)
+	if len(recs) != 1 {
+		t.Fatalf("got %d log records, want 1", len(recs))
+	}
+	var names []string
+	recs[0].Attrs(func(a slog.Attr) bool {
+		names = append(names, a.Key)
+		if a.Value.Kind() != slog.KindString {
+			t.Errorf("attribute %s is %s, not a string", a.Key, a.Value.Kind())
+		}
+		return true
+	})
+	if !reflect.DeepEqual(names, []string{"alias", "status"}) {
+		t.Fatalf("attributes %v", names)
+	}
+}
+
 func TestResultCarriesAliasAndStatusOnly(t *testing.T) {
 	t.Parallel()
-	for _, typ := range []reflect.Type{reflect.TypeOf(degradedRecord{}), reflect.TypeOf(typedError{})} {
-		for i := 0; i < typ.NumField(); i++ {
-			if k := typ.Field(i).Type.Kind(); k != reflect.String && k != reflect.Interface {
-				t.Errorf("%s.%s is %s", typ.Name(), typ.Field(i).Name, typ.Field(i).Type)
-			}
+	// The error of the run is a string-only type; JobResult's only numbers are the two counts of aliases.
+	typ := reflect.TypeOf(typedError{})
+	for i := 0; i < typ.NumField(); i++ {
+		if k := typ.Field(i).Type.Kind(); k != reflect.String && k != reflect.Int {
+			t.Errorf("%s.%s is %s", typ.Name(), typ.Field(i).Name, typ.Field(i).Type)
 		}
 	}
-	// JobResult: the only numbers are the two counts of aliases.
 	rt := reflect.TypeOf(contracts.JobResult{})
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
@@ -295,6 +339,14 @@ func TestResultCarriesAliasAndStatusOnly(t *testing.T) {
 		} else if f.Type.Kind() != reflect.Interface {
 			t.Errorf("JobResult.%s is %s", f.Name, f.Type)
 		}
+	}
+	// The text of the error names the alias and the status only.
+	bad := goodReader("a")
+	bad.accErr = errors.New("balance 123456")
+	e := setup(t, "a", map[string]*fakeReader{"a": bad})
+	res := run(e)
+	if res.Err == nil || strings.Contains(res.Err.Error(), "123456") || !strings.Contains(res.Err.Error(), "alias a status failed") {
+		t.Fatalf("err = %v", res.Err)
 	}
 }
 
