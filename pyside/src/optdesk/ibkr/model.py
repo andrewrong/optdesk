@@ -165,6 +165,47 @@ class AccountRows:
     positions: tuple[PositionRow, ...] = ()
 
 
+@dataclass(frozen=True)
+class ExecutionRow:
+    """One fill with its commission, without the account or the order it belongs to.
+
+    time is RFC 3339 UTC text; side is BOT or SLD; the numbers are decimal text.
+    The contract fields are those of PositionRow.
+    """
+
+    exec_id: str
+    perm_id: int
+    time: str
+    sec_type: str
+    symbol: str
+    con_id: int
+    exchange: str
+    currency: str
+    expiry: str
+    strike: str
+    right: str
+    multiplier: str
+    trading_class: str
+    side: str
+    quantity: str
+    price: str
+    commission: str
+    commission_currency: str
+
+
+@dataclass(frozen=True)
+class ExecutionRows:
+    """The complete executions of one account; pending counts those left out.
+
+    A row is complete when its commission report is in. pending is the number of
+    executions whose report had not come within the deadline.
+    """
+
+    generation: int
+    executions: tuple[ExecutionRow, ...] = ()
+    pending: int = 0
+
+
 class MultipleAccounts(Exception):
     """The login reports no account or more than one; carries no count and no id."""
 
@@ -175,8 +216,15 @@ class MultipleAccounts(Exception):
 
 
 class AccountGateway(Protocol):
-    """A broker that serves the summary and the positions of its one account."""
+    """A broker that serves the summary, the positions and the executions of its one account."""
 
     async def account(self, *, summary: bool, positions: bool) -> AccountRows:
         """Read the asked lists in one call; raise MultipleAccounts for a login of several."""
+        ...
+
+    async def executions(self) -> ExecutionRows:
+        """Read the executions of the day with their commissions.
+
+        Raise MultipleAccounts for a login of several.
+        """
         ...

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-COLLECT_WORDS = ("market_data", "account_summary", "positions")
+COLLECT_WORDS = ("market_data", "account_summary", "positions", "executions")
 DEFAULT_CLIENT_ID = 33
 DEFAULT_MARKET_DATA_TYPE = 1
 FALLBACK_NAME = "default"

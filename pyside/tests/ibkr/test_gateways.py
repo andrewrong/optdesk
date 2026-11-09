@@ -119,6 +119,12 @@ def test_bad_collect_word(tmp_path: Path) -> None:
     fails(tmp_path, text, "collect", "orders")
 
 
+def test_executions_is_a_collect_word(tmp_path: Path) -> None:
+    text = entry().replace('["market_data"]', '["market_data", "executions"]')
+    specs, _ = load_gateways(write(tmp_path, text))
+    assert specs[0].collect == ("market_data", "executions")
+
+
 def test_empty_collect(tmp_path: Path) -> None:
     fails(tmp_path, entry().replace('["market_data"]', "[]"), "collect")
 
