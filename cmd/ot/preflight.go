@@ -82,24 +82,25 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 			return nil, p.w.earningsOff
 		}
 		return p.built(p.w.factory.earningsRefresh())
-	case jobOptionEod, jobOptionEodJP, jobQuoteSnapshot:
+	case jobOptionEod, jobQuoteSnapshot:
+		b, err := p.broker(ctx)
+		if err != nil {
+			return nil, reasonBrokerDown
+		}
+		if id == jobOptionEod {
+			return p.built(p.w.factory.optionEod(b))
+		}
+		return p.built(p.w.factory.quoteSnapshot(b))
+	case jobOptionEodJP:
 		// option_eod_jp checks the XTKS session for today before the broker
-		if id == jobOptionEodJP {
-			if r := xtksReason(ctx, p.w.cal, p.w.factory.clk); r != "" {
-				return nil, r
-			}
+		if r := xtksReason(ctx, p.w.cal, p.w.factory.clk); r != "" {
+			return nil, r
 		}
 		b, err := p.broker(ctx)
 		if err != nil {
 			return nil, reasonBrokerDown
 		}
-		switch id {
-		case jobOptionEod:
-			return p.built(p.w.factory.optionEod(b))
-		case jobOptionEodJP:
-			return p.built(p.w.factory.optionEodJP(b))
-		}
-		return p.built(p.w.factory.quoteSnapshot(b))
+		return p.built(p.w.factory.optionEodJP(b))
 	}
 	return nil, "unknown job"
 }

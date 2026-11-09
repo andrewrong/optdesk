@@ -14,7 +14,9 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
@@ -277,6 +279,14 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return us(jobQuoteSnapshot), nil
 	}
+	d.newComputeFigures = func(
+		jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
+	) (contracts.Job, error) {
+		return us(jobComputeFigures), nil
+	}
+	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+		return us(jobCalendarRefresh), nil
+	}
 	done := r.start()
 	// the first refresh, before XTKS runs out: JP is scheduled at 15:50 JST of the 9th
 	<-pl.puts
@@ -296,7 +306,7 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 		t.Fatalf("scheduler: %v", err)
 	}
 	now := fw.Now()
-	for _, id := range []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot} {
+	for _, id := range []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot, jobComputeFigures, jobCalendarRefresh} {
 		if st := pl.state(id); !st.NextStart.After(now) {
 			t.Errorf("%s has no start after %s: %v", id, now, st.NextStart)
 		}
