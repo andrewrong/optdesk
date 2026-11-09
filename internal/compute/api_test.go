@@ -462,3 +462,84 @@ func TestEaseWords(t *testing.T) {
 		}
 	}
 }
+
+// fakeCandidates answers like a rule that obeys the contract: it ranks only the ok rows.
+type fakeCandidates struct{ sessions *[]contracts.Day }
+
+func (f fakeCandidates) Evaluate(in compute.CandidateInput, _ compute.CandidateParams) []compute.Candidate {
+	*f.sessions = in.SessionDays
+	gates := func(buy compute.GateStatus) []compute.GateResult {
+		g := []compute.GateResult{{Gate: "buy_price", Status: buy}}
+		if buy == compute.GateBlock {
+			g[0].Reason = "no_buy_price"
+		}
+		for _, name := range []string{"quote", "events", "funding", "cash_rate"} {
+			g = append(g, compute.GateResult{Gate: name, Status: compute.GatePass})
+		}
+		return g
+	}
+	return []compute.Candidate{
+		{Kind: compute.KindShortPut, Status: "ok", Gates: gates(compute.GatePass), Rank: 1, RankInUnderlying: 1},
+		{Kind: compute.KindShortPut, Status: "blocked", Gates: gates(compute.GateBlock)},
+	}
+}
+
+// candidatesCaller builds the session-day list (ascending, oldest input date to the run
+// day) and calls through the interface only.
+func candidatesCaller(c compute.OptionCandidates, days []contracts.Day) []compute.Candidate {
+	return c.Evaluate(compute.CandidateInput{
+		RunDay:      days[len(days)-1],
+		ChainDay:    days[len(days)-1],
+		SessionDays: days,
+		Underlying:  "AAA",
+		Spot:        "100.00",
+		Rate:        "4.20",
+	}, compute.CandidateParams{MinDTE: 21, MaxDTE: 45})
+}
+
+func TestOptionCandidatesContract(t *testing.T) {
+	t.Parallel()
+	var seen []contracts.Day
+	var newFn compute.NewOptionCandidatesFunc = func() compute.OptionCandidates {
+		return fakeCandidates{sessions: &seen}
+	}
+	days := []contracts.Day{"2026-01-02", "2026-01-05", "2026-01-06"}
+	rows := candidatesCaller(newFn(), days)
+	if len(seen) != 3 || seen[0] != "2026-01-02" || seen[2] != "2026-01-06" {
+		t.Fatalf("rule saw session days %v, want %v", seen, days)
+	}
+	order := []string{"buy_price", "quote", "events", "funding", "cash_rate"}
+	for i, r := range rows {
+		if len(r.Gates) != len(order) {
+			t.Fatalf("row %d has %d gates, want %d", i, len(r.Gates), len(order))
+		}
+		for j, g := range r.Gates {
+			if g.Gate != order[j] {
+				t.Errorf("row %d gate %d is %q, want %q", i, j, g.Gate, order[j])
+			}
+		}
+		blocked := false
+		for _, g := range r.Gates {
+			blocked = blocked || g.Status == compute.GateBlock
+		}
+		if blocked && (r.Status != "blocked" || r.Rank != 0 || r.RankInUnderlying != 0) {
+			t.Errorf("row %d is blocked but has status %q rank %d/%d", i, r.Status, r.Rank, r.RankInUnderlying)
+		}
+	}
+	if rows[0].Rank != 1 {
+		t.Errorf("ok row rank %d, want 1", rows[0].Rank)
+	}
+	words := map[string]string{
+		string(compute.KindShortPut):      "short_put",
+		string(compute.KindCoveredCall):   "covered_call",
+		string(compute.KindHeldCallGuard): "held_call_guard",
+		string(compute.GatePass):          "pass",
+		string(compute.GateBlock):         "block",
+		string(compute.GateUnknown):       "unknown",
+	}
+	for got, want := range words {
+		if got != want {
+			t.Errorf("word %q, want %q", got, want)
+		}
+	}
+}

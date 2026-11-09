@@ -48,11 +48,24 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - Band. `Band` is `tighter`, `steady` or `looser`, and empty when the figure is missing.
 - Unknown id. A missing figure with reason `bad_input`, as `Figures`. Pure: no I/O, no clock.
 
+## Option candidates
+
+`CandidateKind`, `GateStatus`, `GateResult`, `OptionQuote`, `EarningsInfo`, `DividendInfo`, `AliasFunds`, `CandidateInput`, `Candidate`, `CandidateParams`, `OptionCandidates` and `NewOptionCandidatesFunc` are in `internal/compute/api.go`; the implementation (`internal/compute/optioncand`, a stub until its issue lands) is passed in by `cmd/ot`. Design: `docs/design/option-candidates.md#Interface`.
+
+- Arithmetic. Exact (`math/big.Rat` in the implementation), no float. Money, rates, prices and the `DGS3MO` rate are decimal text.
+- Float to decimal. The caller converts each stored float with `strconv.FormatFloat(v, 'f', -1, 64)` and rounds half-even to 4 places before it reaches `CandidateInput`, so 1.99 is 199/100 and 0.1 is 1/10.
+- Rate. `DGS3MO` is percent: the text "4.20" is the ratio 0.042 (`value / 100`).
+- Days. `CandidateInput` carries the run day, the chain day and the XNYS session days as ascending day texts (oldest input date to the run day), so every age in sessions is a difference of positions and the rule needs no calendar and no clock. A chain day that is not the latest session day on or before the run day gives `unknown` `stale_chain`.
+- Status. Each gate is `pass`, `block` or `unknown`; unknown is not a pass. The row is `blocked` if any gate blocked, else `unknown` if any is unknown, else `ok`. Gate results come in the fixed order of the rule of the kind (see the doc comment of `GateResult`).
+- Rank. Only `ok` rows are ranked: annualized yield descending, then DTE, strike and instrument id ascending. A blocked or unknown row has rank 0.
+- Formulas. Annualized yield is `(bid / strike) x (365 / DTE)` for a put and `(bid / spot) x (365 / DTE)` for a call, stored to 6 places. Break-even is `strike - bid` for a put and `strike + bid` for a call. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
 - v2: additions only: the alert rule types and function types above.
 - v3: additions only: the ease types and `Ease` above.
+- v4: additions only: the option candidate types and `OptionCandidates` above.
 
 ## Contract tests
 
