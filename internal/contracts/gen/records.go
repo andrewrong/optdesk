@@ -240,7 +240,8 @@ type AccountPosition struct {
 	// Average cost as decimal text.
 	AvgCost string `json:"avg_cost" yaml:"avg_cost" mapstructure:"avg_cost"`
 
-	// Identifier of the capture, a uuid.
+	// Identifier of the capture, text of the form <alias>:<session_day>:<run key>; a
+	// retry of the same run writes the same id.
 	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
 
 	// Instant the capture was taken, UTC.
@@ -403,6 +404,9 @@ func (j *AccountPosition) UnmarshalJSON(b []byte) error {
 	if len(plain.Alias) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "alias", 1)
 	}
+	if len(plain.CaptureID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "capture_id", 1)
+	}
 	if len(plain.Symbol) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "symbol", 1)
 	}
@@ -415,7 +419,8 @@ type AccountValue struct {
 	// Alias of the gateway entry, never the account id.
 	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
 
-	// Identifier of the capture, a uuid.
+	// Identifier of the capture, text of the form <alias>:<session_day>:<run key>; a
+	// retry of the same run writes the same id.
 	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
 
 	// Instant the capture was taken, UTC.
@@ -468,6 +473,9 @@ func (j *AccountValue) UnmarshalJSON(b []byte) error {
 	}
 	if len(plain.Alias) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "alias", 1)
+	}
+	if len(plain.CaptureID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "capture_id", 1)
 	}
 	if len(plain.Tag) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "tag", 1)

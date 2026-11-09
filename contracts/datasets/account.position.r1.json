@@ -10,7 +10,7 @@
   "x-revision": "r1",
   "x-primary-key": ["capture_id", "con_id"],
   "properties": {
-    "capture_id": {"type": "string", "format": "uuid", "description": "Identifier of the capture, a uuid."},
+    "capture_id": {"type": "string", "minLength": 1, "description": "Identifier of the capture, text of the form <alias>:<session_day>:<run key>; a retry of the same run writes the same id."},
     "alias": {"type": "string", "minLength": 1, "description": "Alias of the gateway entry, never the account id."},
     "captured_at": {"type": "string", "format": "date-time", "description": "Instant the capture was taken, UTC."},
     "session_day": {"type": "string", "format": "date", "description": "Session day (XNYS) of the capture."},

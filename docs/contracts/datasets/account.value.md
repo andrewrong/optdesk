@@ -6,7 +6,7 @@ account.value r1: one summary row of one account capture; append only.
 
 | column | type | nullable | meaning |
 |---|---|---|---|
-| capture_id | string (uuid) | no | Identifier of the capture, a uuid. |
+| capture_id | string | no | Identifier of the capture, text of the form <alias>:<session_day>:<run key>; a retry of the same run writes the same id. |
 | alias | string | no | Alias of the gateway entry, never the account id. |
 | captured_at | string (date-time) | no | Instant the capture was taken, UTC. |
 | session_day | string (date) | no | Session day (XNYS) of the capture. |
