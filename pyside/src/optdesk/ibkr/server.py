@@ -120,7 +120,16 @@ class Supervised(Protocol):
     async def status(self) -> SessionState: ...
 
 
-async def supervise(gateway: Supervised, clock: Clock) -> None:
+def _gateway_line(logger: logging.Logger, event: str, name: str, **fields: int) -> None:
+    """Log `event gateway=<name> [field=int ...]`; the name is the configured one only.
+
+    Own code until `gateway` is in transport.FIELDS, which log_event then replaces.
+    """
+    parts = [f"gateway={name}", *(f"{key}={value}" for key, value in fields.items())]
+    logger.info("%s %s", event, " ".join(parts))
+
+
+async def supervise(gateway: Supervised, clock: Clock, name: str) -> None:
     """Keep the session open: connect, poll, and reconnect with a capped backoff.
 
     Runs until cancelled.
@@ -130,16 +139,16 @@ async def supervise(gateway: Supervised, clock: Clock) -> None:
         try:
             await gateway.open_session()
         except Exception:  # noqa: BLE001 - any connect failure means retry
-            log_event(_LOG, "connect_failed")
+            _gateway_line(_LOG, "connect_failed", name)
             await clock.sleep(delay)
             delay = next_delay(delay)
             continue
         state = await gateway.status()
-        log_event(_LOG, "connect_ok", generation=state.generation)
+        _gateway_line(_LOG, "connect_ok", name, generation=state.generation)
         delay = BACKOFF_FIRST_S
         while (await gateway.status()).connected:
             await clock.sleep(POLL_S)
-        log_event(_LOG, "session_lost")
+        _gateway_line(_LOG, "session_lost", name)
 
 
 GatewayFactory = Callable[[GatewaySpec], Gateway]
@@ -237,7 +246,7 @@ async def serve(
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(sig, stopping.set)
         supervisors = [
-            asyncio.ensure_future(supervise(gateways[spec.name], clock))
+            asyncio.ensure_future(supervise(gateways[spec.name], clock, spec.name))
             for spec in config.gateways
         ]
         log_event(_LOG, "server_started")
