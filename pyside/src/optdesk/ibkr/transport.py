@@ -26,6 +26,9 @@ from optdesk.ibkr.model import (
     AccountGateway,
     AccountRows,
     ChainRow,
+    ExecutionRow,
+    ExecutionRows,
+    ExecutionsGateway,
     Gateway,
     MultipleAccounts,
     PositionRow,
@@ -108,6 +111,7 @@ WORDS = frozenset(
         "resolve_contract",
         "snapshot",
         "account",
+        "executions",
         "multiple_accounts",
         "dividends",
         spec.STATUS_NO_VALUE,
@@ -569,6 +573,7 @@ class AccountServicer(pb.AccountServiceServicer):
         self._alias = alias
         self._summary = "account_summary" in collect
         self._positions = "positions" in collect
+        self._executions = "executions" in collect
 
     async def Account(
         self, request: pb.AccountRequest, context: Context
@@ -587,6 +592,8 @@ class AccountServicer(pb.AccountServiceServicer):
         return pb.AccountResponse(
             account=self._alias,
             generation=rows.generation,
+            values_collected=self._summary,
+            positions_collected=self._positions,
             values=[
                 pb.AccountValue(tag=v.tag, value=v.value, currency=v.currency)
                 for v in (rows.values if self._summary else ())
@@ -600,26 +607,56 @@ class AccountServicer(pb.AccountServiceServicer):
     async def Executions(
         self, request: pb.ExecutionsRequest, context: Context
     ) -> pb.ExecutionsResponse:
-        # Stub: the real collection lands in account-pyside-executions.
-        return pb.ExecutionsResponse(account=self._alias)
+        if not self._executions:
+            return pb.ExecutionsResponse(account=self._alias, collected=False)
+        gateway = cast(ExecutionsGateway, self._shared.gateway)
+        rows: ExecutionRows = await self._shared.call(
+            "executions",
+            context,
+            gateway.executions(),
+            lambda r: len(r.executions),
+        )
+        return pb.ExecutionsResponse(
+            account=self._alias,
+            generation=rows.generation,
+            collected=True,
+            pending=rows.pending,
+            executions=[_execution_to_proto(e) for e in rows.executions],
+        )
+
+
+def _contract_to_proto(row: PositionRow | ExecutionRow) -> pb.ContractSpec:
+    return pb.ContractSpec(
+        sec_type=_SEC_TYPE_VALUES.get(row.sec_type, pb.SEC_TYPE_UNSPECIFIED),
+        symbol=row.symbol,
+        exchange=row.exchange,
+        currency=row.currency,
+        expiry=row.expiry,
+        strike=row.strike,
+        right=_RIGHT_VALUES.get(row.right, pb.RIGHT_UNSPECIFIED),
+        multiplier=row.multiplier,
+        trading_class=row.trading_class,
+        con_id=row.con_id,
+    )
+
+
+def _execution_to_proto(row: ExecutionRow) -> pb.Execution:
+    return pb.Execution(
+        exec_id=row.exec_id,
+        perm_id=row.perm_id,
+        time=row.time,
+        contract=_contract_to_proto(row),
+        side=row.side,
+        quantity=row.quantity,
+        price=row.price,
+        commission=row.commission,
+        commission_currency=row.commission_currency,
+    )
 
 
 def _position_to_proto(row: PositionRow) -> pb.Position:
     return pb.Position(
-        contract=pb.ContractSpec(
-            sec_type=_SEC_TYPE_VALUES.get(row.sec_type, pb.SEC_TYPE_UNSPECIFIED),
-            symbol=row.symbol,
-            exchange=row.exchange,
-            currency=row.currency,
-            expiry=row.expiry,
-            strike=row.strike,
-            right=_RIGHT_VALUES.get(row.right, pb.RIGHT_UNSPECIFIED),
-            multiplier=row.multiplier,
-            trading_class=row.trading_class,
-            con_id=row.con_id,
-        ),
-        quantity=row.quantity,
-        avg_cost=row.avg_cost,
+        contract=_contract_to_proto(row), quantity=row.quantity, avg_cost=row.avg_cost
     )
 
 
@@ -643,7 +680,9 @@ def build_server(
         pb.add_ContractsServiceServicer_to_server(ContractsServicer(shared), server)
         pb.add_MarketDataServiceServicer_to_server(MarketDataServicer(shared), server)
         pb.add_ReferenceServiceServicer_to_server(ReferenceServicer(shared), server)
-    if spec is not None and ("account_summary" in collect or "positions" in collect):
+    if spec is not None and (
+        {"account_summary", "positions", "executions"} & set(collect)
+    ):
         pb.add_AccountServiceServicer_to_server(
             AccountServicer(shared, spec.account, collect), server
         )

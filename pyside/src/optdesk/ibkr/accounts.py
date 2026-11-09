@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from optdesk.ibkr.model import (
     AccountRows,
     AccountValueRow,
+    ExecutionRow,
+    ExecutionRows,
     MultipleAccounts,
     PositionRow,
 )
@@ -42,6 +45,9 @@ DEADLINE_S = 20.0
 # Far above the counter of client.getReqId, which starts at 0; calls to one
 # gateway are serialized, so one id is in flight at a time.
 SUMMARY_REQ_ID = 2_000_000_000
+EXECUTIONS_REQ_ID = SUMMARY_REQ_ID + 1
+# How often the commission reports still missing are looked for after the end marker.
+COMMISSION_POLL_S = 0.25
 _POSITIONS_KEY = "positions"
 
 
@@ -62,20 +68,25 @@ def _strike(value: object) -> str:
     )
 
 
+def _contract_fields(contract: Any) -> dict[str, Any]:
+    return {
+        "sec_type": str(contract.secType),
+        "symbol": str(contract.symbol),
+        "con_id": int(contract.conId),
+        "exchange": str(contract.exchange),
+        "currency": str(contract.currency),
+        "expiry": str(contract.lastTradeDateOrContractMonth),
+        "strike": _strike(contract.strike),
+        "right": str(contract.right) if contract.right in ("P", "C") else "",
+        "multiplier": str(contract.multiplier),
+        "trading_class": str(contract.tradingClass),
+    }
+
+
 def position_row(position: Any) -> PositionRow:
     """Rebuild one position from typed fields; the account of position is dropped."""
-    contract = position.contract
     return PositionRow(
-        sec_type=str(contract.secType),
-        symbol=str(contract.symbol),
-        con_id=int(contract.conId),
-        exchange=str(contract.exchange),
-        currency=str(contract.currency),
-        expiry=str(contract.lastTradeDateOrContractMonth),
-        strike=_strike(contract.strike),
-        right=str(contract.right) if contract.right in ("P", "C") else "",
-        multiplier=str(contract.multiplier),
-        trading_class=str(contract.tradingClass),
+        **_contract_fields(position.contract),
         quantity=decimal_text(float(position.position)),
         avg_cost=decimal_text(float(position.avgCost)),
     )
@@ -119,10 +130,7 @@ async def read_account(
     Raises MultipleAccounts unless the login reports exactly one account, and
     TimeoutError when the end messages do not come within DEADLINE_S of clock.
     """
-    accounts = list(ib.managedAccounts())
-    if len(accounts) != 1:
-        raise MultipleAccounts
-    account = str(accounts[0])
+    account = _one_account(ib)
     client = ib.client
     seen: list[Any] = []
     waiting: list[Awaitable[Any]] = []
@@ -172,3 +180,74 @@ def _cancel_positions(client: Any) -> None:
         client.cancelPositions()
     except ConnectionError:
         pass  # the session is gone; its subscriptions went with it
+
+
+def _instant(value: datetime) -> str:
+    moment = value.replace(tzinfo=UTC) if value.tzinfo is None else value
+    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _has_commission(fill: Any) -> bool:
+    return bool(fill.commissionReport.execId == fill.execution.execId)
+
+
+def execution_row(fill: Any) -> ExecutionRow:
+    """Rebuild one complete fill from typed fields; account and order ids are dropped."""
+    execution = fill.execution
+    report = fill.commissionReport
+    return ExecutionRow(
+        exec_id=str(execution.execId),
+        perm_id=int(execution.permId),
+        time=_instant(execution.time),
+        side=str(execution.side),
+        quantity=decimal_text(float(execution.shares)),
+        price=decimal_text(float(execution.price)),
+        commission=decimal_text(float(report.commission)),
+        commission_currency=str(report.currency),
+        **_contract_fields(fill.contract),
+    )
+
+
+def _one_account(ib: Any) -> str:
+    accounts = list(ib.managedAccounts())
+    if len(accounts) != 1:
+        raise MultipleAccounts
+    return str(accounts[0])
+
+
+async def read_executions(
+    ib: Any, pacer: MessagePacer, clock: Clock, *, generation: int
+) -> ExecutionRows:
+    """Read the executions of the day of the one account of ib, complete rows only.
+
+    Sends reqExecutions (id 7) once and waits for the end marker, then for the
+    commission reports still missing, both within DEADLINE_S of clock. A fill
+    whose report is not in by then is counted in pending and not answered.
+    Raises MultipleAccounts unless the login reports exactly one account, and
+    TimeoutError when the end marker does not come in time.
+    """
+    account = _one_account(ib)
+    client = ib.client
+    started = clock.monotonic()
+    waiting = ib.wrapper.startReq(EXECUTIONS_REQ_ID)
+    await pacer.start()
+    # reqExecutions of the client: id 7, message version 3, an empty filter
+    client.send(7, 3, EXECUTIONS_REQ_ID, 0, "", "", "", "", "", "")
+    fills = await with_timeout(clock, waiting, DEADLINE_S)
+    mine = {
+        fill.execution.execId: fill
+        for fill in fills
+        if fill.execution.acctNumber == account
+    }
+    while (
+        any(not _has_commission(f) for f in mine.values())
+        and clock.monotonic() - started < DEADLINE_S
+    ):
+        await clock.sleep(COMMISSION_POLL_S)
+    complete = [f for f in mine.values() if _has_commission(f)]
+    rows = sorted(map(execution_row, complete), key=lambda r: (r.time, r.exec_id))
+    return ExecutionRows(
+        generation=generation,
+        executions=tuple(rows),
+        pending=len(mine) - len(complete),
+    )

@@ -18,12 +18,13 @@ from typing import Any
 from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
-from optdesk.ibkr.accounts import read_account
+from optdesk.ibkr.accounts import read_account, read_executions
 from optdesk.ibkr.api import DividendKey, DividendReading
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
 from optdesk.ibkr.model import (
     AccountRows,
     ChainRow,
+    ExecutionRows,
     QuoteRow,
     QuoteTarget,
     ResolveResult,
@@ -317,6 +318,14 @@ class IbGateway:
                     summary=summary,
                     positions=positions,
                 )
+            )
+
+    async def executions(self) -> ExecutionRows:
+        """Read the executions of the day, complete rows only; calls are serialized."""
+        async with self._account_lock:
+            ib, generation = self._session()
+            return await self._until_lost(
+                read_executions(ib, self._pacer, self._clock, generation=generation)
             )
 
     # --- quotes -----------------------------------------------------------
