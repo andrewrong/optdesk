@@ -1,0 +1,449 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.option_candidates_page.v1.json",
+  "title": "OptionCandidatesPage",
+  "description": "The option candidates page: the stored short puts, covered calls and guard rows of the last run. A render of rows a producer writes; nothing is computed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "stale",
+    "title",
+    "notes",
+    "gaps",
+    "chain_day",
+    "computed_at",
+    "rule_version",
+    "estimate_note",
+    "groups"
+  ],
+  "properties": {
+    "schema": {
+      "const": "option_candidates_page",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "build_id": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "scope": {
+      "$ref": "common.v2.json#/$defs/Id"
+    },
+    "generated_at": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    },
+    "data_times": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/SourceTime"
+      }
+    },
+    "run_status": {
+      "$ref": "common.v2.json#/$defs/RunStatus"
+    },
+    "stale": {
+      "oneOf": [
+        {
+          "$ref": "common.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "#/$defs/Text"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Text"
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "common.v2.json#/$defs/Gap"
+      }
+    },
+    "chain_day": {
+      "description": "Date text of the option chain day, or null.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "computed_at": {
+      "description": "Time the run was computed, text in the owner zone, or null.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rule_version": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "estimate_note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "groups": {
+      "description": "One to three groups in the order short_put, covered_call, held_call_guard.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/Group"
+      }
+    },
+    "stale_after": {
+      "$ref": "common.v2.json#/$defs/Timestamp"
+    }
+  },
+  "$defs": {
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "Group": {
+      "description": "One kind of candidate. gap is non-null exactly when main and other are both null.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "title",
+        "day",
+        "stale",
+        "counts",
+        "main",
+        "other",
+        "gap"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "short_put",
+            "covered_call",
+            "held_call_guard"
+          ]
+        },
+        "title": {
+          "$ref": "#/$defs/Text"
+        },
+        "day": {
+          "description": "Date text of the rows of this group, or null.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stale": {
+          "description": "True when day is before the build day.",
+          "type": "boolean"
+        },
+        "counts": {
+          "$ref": "#/$defs/Counts"
+        },
+        "main": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Table"
+            }
+          ]
+        },
+        "other": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/Table"
+            }
+          ]
+        },
+        "gap": {
+          "oneOf": [
+            {
+              "$ref": "common.v2.json#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "main": {
+                  "type": "null"
+                },
+                "other": {
+                  "type": "null"
+                },
+                "gap": {
+                  "$ref": "common.v2.json#/$defs/Gap"
+                }
+              }
+            },
+            {
+              "properties": {
+                "gap": {
+                  "type": "null"
+                }
+              },
+              "anyOf": [
+                {
+                  "properties": {
+                    "main": {
+                      "$ref": "#/$defs/Table"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "other": {
+                      "$ref": "#/$defs/Table"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "Counts": {
+      "description": "The stored row counts of the group.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "blocked",
+        "unknown"
+      ],
+      "properties": {
+        "ok": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Column"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Row"
+          }
+        }
+      }
+    },
+    "Column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "align",
+        "hint"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.v2.json#/$defs/Id"
+        },
+        "label": {
+          "$ref": "#/$defs/Text"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "hint": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "cells",
+        "reasons"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^cand-[A-Za-z0-9_-]{1,64}$"
+        },
+        "cells": {
+          "description": "Column id to Cell.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Cell"
+          }
+        },
+        "reasons": {
+          "description": "Only on other rows; empty on main rows.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reason"
+          }
+        }
+      }
+    },
+    "Cell": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ValueCell"
+        },
+        {
+          "$ref": "common.v2.json#/$defs/Gap"
+        }
+      ]
+    },
+    "ValueCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "value",
+        "badges",
+        "tone"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "badges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Text"
+          }
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down",
+            "flat",
+            "none"
+          ]
+        }
+      }
+    },
+    "Reason": {
+      "description": "Why a row is blocked or unknown. gate and code are patterns, not enums, so a new gate needs no schema change.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gate",
+        "status",
+        "code",
+        "text"
+      ],
+      "properties": {
+        "gate": {
+          "type": "string",
+          "pattern": "^[a-z_]{1,32}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "block",
+            "unknown"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z_]{1,48}$"
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        }
+      }
+    }
+  }
+}
