@@ -112,6 +112,35 @@ func rootName(r row) (name, dir string) {
 // generated lists the generated sub-packages; each gets an empty may_import.
 var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 
+// declarationsOnly lists the packages of declarations only that an entry cell may name:
+// unlike a test kit or generated output, the root component of a row that depends on the
+// listed row may import one, and so may the sub-packages of the listed row itself.
+var declarationsOnly = []string{"internal/store/bar"}
+
+// declListed gives, for each row, the declarationsOnly packages (as component names) that
+// its entry cell lists.
+func declListed(rows []row) map[string][]string {
+	out := map[string][]string{}
+	for _, r := range rows {
+		for _, e := range r.entry {
+			if slices.Contains(declarationsOnly, e) {
+				out[r.name] = append(out[r.name], strings.TrimPrefix(e, "internal/"))
+			}
+		}
+	}
+	return out
+}
+
+// addUnique appends the names of add that xs lacks, leaving self out.
+func addUnique(xs, add []string, self string) []string {
+	for _, a := range add {
+		if a != self && !slices.Contains(xs, a) {
+			xs = append(xs, a)
+		}
+	}
+	return xs
+}
+
 // listedImports gives, for each root component, the sub-package components that the entry
 // cells of the rows it depends on list: its own sub-packages may import them.
 func listedImports(rows []row) map[string][]string {
@@ -123,6 +152,7 @@ func listedImports(rows []row) map[string][]string {
 			}
 		}
 	}
+	decl := declListed(rows)
 	out := map[string][]string{}
 	for _, r := range rows {
 		name, _ := rootName(r)
@@ -132,6 +162,7 @@ func listedImports(rows []row) map[string][]string {
 		for _, d := range r.depends {
 			out[name] = append(out[name], entries[d]...)
 		}
+		out[name] = append(out[name], decl[r.name]...) // its own declarations
 	}
 	return out
 }
@@ -145,6 +176,7 @@ func derive(rows []row, impl []string) ([]component, error) {
 			byRow[r.name] = n
 		}
 	}
+	decl := declListed(rows)
 	var out []component
 	for _, r := range rows {
 		name, dir := rootName(r)
@@ -160,7 +192,11 @@ func derive(rows []row, impl []string) ([]component, error) {
 			deps = append(deps, dn)
 		}
 		if name == "ot" {
-			deps = append(deps, subNames(impl)...)
+			deps = append(deps, subNames(impl)...) // the text lists what cmd/ot imports
+		} else {
+			for _, d := range r.depends {
+				deps = addUnique(deps, decl[d], "")
+			}
 		}
 		if name == "contracts" {
 			deps = append(deps, "contracts/gen")
@@ -170,7 +206,7 @@ func derive(rows []row, impl []string) ([]component, error) {
 			continue
 		}
 		for _, sub := range subsOf(name, append(append([]string{}, impl...), generated...)) {
-			subs := subDeps(deps, name)
+			subs := addUnique(subDeps(deps, name), decl[r.name], name+"/"+sub)
 			if slices.Contains(generated, "internal/"+name+"/"+sub) {
 				subs = nil // generated output imports no component of the repository
 			}
@@ -287,7 +323,7 @@ func deriveTree(table []component, dirs []string, listed map[string][]string) (c
 	}
 	for i, c := range order {
 		if root, _, ok := strings.Cut(c.name, "/"); ok {
-			order[i].deps = append(slices.Clone(c.deps), listed[root]...)
+			order[i].deps = addUnique(slices.Clone(c.deps), listed[root], c.name)
 		}
 	}
 	names := map[string]bool{}
