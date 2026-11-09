@@ -50,7 +50,7 @@ func connURL(t *testing.T, dbname, user string) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newDatabase makes a throwaway database with the roles and migration 0021, dropped in t.Cleanup.
+// newDatabase makes a throwaway database with the roles and migration 0022, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
@@ -92,7 +92,7 @@ func newDatabase(t *testing.T) string {
 			t.Errorf("drop database %s: %v", name, err)
 		}
 	})
-	raw, err := os.ReadFile("../../../migrations/0021_optionledger.sql")
+	raw, err := os.ReadFile("../../../migrations/0022_optionledger.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func newDatabase(t *testing.T) string {
 	}
 	defer func() { _ = c.Close(ctx) }()
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
-		t.Fatalf("apply 0021: %v", err)
+		t.Fatalf("apply 0022: %v", err)
 	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_optionledger, ot_ro_pages`); err != nil {
 		t.Fatal(err)

@@ -32,6 +32,8 @@ type runOnceConfig struct {
 	pagesDSN, readingsDSN, loaderDSN, calendarUV                             string
 	// eventsDSN and alphaKey belong to earnings_refresh alone: an empty one leaves that job out, never the run.
 	eventsDSN, alphaKey string
+	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
+	jquantsKey string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
 	watch      []jobs.WatchEntry
 	socketPath string
@@ -59,6 +61,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		calendarUV:       env[envCalendarUV],
 		eventsDSN:        env[store.DSNEnvEvents],
 		alphaKey:         env[envAlphaKey],
+		jquantsKey:       env[envJQuantsKey],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -119,7 +122,6 @@ func runOnce(a *app, args []string) error {
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
 		return fmt.Errorf("run-once %s: %w", day, err)
 	}
-	a.log.Info("run-once "+string(day)+" done", "component", "ot", "status", "ok")
 	return nil
 }
 
@@ -136,8 +138,12 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return nil
 	}
 	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
-		rec := a.deps.newRunner(w.ledger, w.cal, clk, w.runnable(a.log), runner.WindowRule{})
-		return rec.Reconcile(ctx, day)
+		js := w.runnable(a.log)
+		rec := a.deps.newRunner(w.ledger, w.cal, clk, js, runner.WindowRule{})
+		if err := rec.Reconcile(ctx, day); err != nil {
+			return err
+		}
+		return printOutcomes(ctx, a.stdout, w.ledger, js, day, w.earningsOff)
 	})
 }
 
@@ -273,6 +279,15 @@ func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
 	return j, nil
 }
 
+// optionEodJP builds option_eod_jp over the same stores as option_eod.
+func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
+	j, err := f.d.newOptionEodJP(b, f.inst, f.eod, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build option_eod_jp job failed")
+	}
+	return j, nil
+}
+
 func (f jobFactory) quoteSnapshot(b broker.Broker) (contracts.Job, error) {
 	j, err := f.d.newQuoteSnapshot(b, f.inst, f.snap, f.clk)
 	if err != nil {
@@ -334,7 +349,7 @@ func withWiring(
 	if err != nil {
 		return err
 	}
-	events, earn, closeEvents, err := openEarnings(ctx, d, cfg)
+	events, earn, closeEvents, err := openEarnings(ctx, a, d, cfg)
 	if err != nil {
 		return err
 	}
@@ -343,14 +358,15 @@ func withWiring(
 	defer func() { _ = brk.Close() }()
 	var extra brokerSet
 	defer extra.closeAll()
-	return wireJobs(a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
+	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
 		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
 			events: events, earn: earn, watch: cfg.watch}, ledger)
 }
 
-// wireJobs builds the six jobs over the open stores and calls use.
+// wireJobs builds the jobs over the open stores and calls use. option_eod_jp comes after option_eod and
+// is left out, with one named line, when the XTKS calendar answers an error for today (Decision 13).
 func wireJobs(
-	a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
+	ctx context.Context, a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *brokerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
 	fredJob, err := f.fred()
@@ -360,6 +376,16 @@ func wireJobs(
 	eodJob, err := f.optionEod(brk)
 	if err != nil {
 		return err
+	}
+	jobList := []contracts.Job{fredJob, eodJob}
+	if reason := xtksReason(ctx, cal, f.clk); reason != "" {
+		a.log.Warn(reason, "component", "ot", "job", jobOptionEodJP)
+	} else {
+		jpJob, err := f.optionEodJP(brk)
+		if err != nil {
+			return err
+		}
+		jobList = append(jobList, jpJob)
 	}
 	snapJob, err := f.quoteSnapshot(brk)
 	if err != nil {
@@ -378,7 +404,7 @@ func wireJobs(
 		return err
 	}
 	return use(wiring{
-		ledger: ledger, cal: cal, jobs: []contracts.Job{fredJob, eodJob, snapJob, figJob, calJob, earnJob}, brokerUp: brokerUp, factory: f,
+		ledger: ledger, cal: cal, jobs: append(jobList, snapJob, figJob, calJob, earnJob), brokerUp: brokerUp, factory: f,
 		earn: earnJob, earningsOff: cfg.earningsOff(),
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
@@ -508,8 +534,9 @@ func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.
 }
 
 // openEarnings opens the earnings store with the events line (the stand-in when the line is empty) and builds the
-// Alpha Vantage source (none when the key is empty). The returned func closes the store. No error holds a DSN or a key.
-func openEarnings(ctx context.Context, d deps, cfg runOnceConfig) (store.EarningsDateStore, map[string]sources.EarningsSource, func(), error) {
+// Alpha Vantage source (none when the key is empty) and the J-Quants source over the JP symbols of the watch list
+// (none, with one logged line naming the key, when its key is empty). The returned func closes the store. No error holds a DSN or a key.
+func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (store.EarningsDateStore, map[string]sources.EarningsSource, func(), error) {
 	var events store.EarningsDateStore = noEventsStore{}
 	if cfg.eventsDSN != "" {
 		var err error
@@ -527,6 +554,16 @@ func openEarnings(ctx context.Context, d deps, cfg runOnceConfig) (store.Earning
 		}
 		earn["US"] = av
 	}
+	if cfg.jquantsKey == "" {
+		a.log.Warn("JP earnings source left out", "component", "ot", "status", reasonNoJQuantsKey)
+	} else {
+		jq, err := d.newJQuants(sources.EarningsConfig{BaseURL: jquantsBaseURL, APIKey: cfg.jquantsKey, Symbols: jpSymbols(cfg.watch)})
+		if err != nil {
+			_ = events.Close()
+			return nil, nil, nil, fmt.Errorf("build J-Quants source failed")
+		}
+		earn["JP"] = jq
+	}
 	return events, earn, func() { _ = events.Close() }, nil
 }
 
@@ -540,4 +577,15 @@ func fredSource(d deps, cfg runOnceConfig, clk clock.Clock) (sources.Source, err
 		return nil, fmt.Errorf("build FRED source failed")
 	}
 	return src, nil
+}
+
+// jpSymbols is the symbol of each JP entry of the watch list, in file order: the codes one J-Quants call each.
+func jpSymbols(watch []jobs.WatchEntry) []string {
+	var out []string
+	for _, e := range watch {
+		if e.Market == "JP" {
+			out = append(out, e.Contract.Symbol)
+		}
+	}
+	return out
 }

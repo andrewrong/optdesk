@@ -475,6 +475,13 @@ class MarketDataServicer(pb.MarketDataServiceServicer):
             _LOG, "rpc_done", rpc="snapshot", count=len(targets), elapsed_ms=elapsed
         )
 
+    async def Bars(self, request: pb.BarsRequest, context: Context) -> pb.BarsResponse:
+        """Stub until the history entry replaces it."""
+        await context.abort(
+            grpc.StatusCode.UNIMPLEMENTED, "bars are not implemented yet"
+        )
+        raise NotImplementedError  # abort raises; unreachable
+
 
 _DIVIDEND_STATUSES = {
     spec.STATUS_OK: pb.DIVIDEND_STATUS_OK,

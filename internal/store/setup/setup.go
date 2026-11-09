@@ -16,6 +16,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 var _ store.SetupFunc = Setup
@@ -46,7 +47,8 @@ const (
 
 	roleAccount = "ot_w_account" // INSERT and SELECT on the account tables, SELECT on rd.account_*_r1 (migrations/0019_account.sql)
 
-	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0021_optionledger.sql)
+	roleBar          = "ot_w_bar"          // INSERT on obs.price_bar and obs.fx_rate, SELECT on rd.price_bar_r1 and rd.fx_rate_r1 (migrations/0021_bars.sql)
+	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0022_optionledger.sql)
 )
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
@@ -67,13 +69,14 @@ var roles = []roleSpec{
 	{roleEvents, store.DSNEnvEvents},             // ot_w_events, line OT_PG_DSN_EVENTS
 	{roleCandidate, store.DSNEnvCandidate},       // ot_w_candidate, line OT_PG_DSN_CANDIDATE
 	{roleAccount, store.DSNEnvAccount},           // ot_w_account, line OT_PG_DSN_ACCOUNT
+	{roleBar, bar.DSNEnvBar},                     // ot_w_bar, line OT_PG_DSN_BAR
 	{roleOptionLedger, store.DSNEnvOptionLedger}, // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the fifteen roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the sixteen roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -151,7 +154,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader) +
 		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings) + ", " + ident(roleAlerts) +
 		", " + ident(roleFundamental) + ", " + ident(roleEvents) + ", " + ident(roleCandidate) + ", " + ident(roleAccount) +
-		", " + ident(roleOptionLedger)
+		", " + ident(roleBar) + ", " + ident(roleOptionLedger)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}

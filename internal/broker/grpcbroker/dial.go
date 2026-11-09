@@ -23,6 +23,7 @@ const (
 	defaultCallTimeout     = 25 * time.Second
 	defaultSnapshotTimeout = 60 * time.Second
 	defaultResolveInFlight = 5
+	defaultHistoryTimeout  = 330 * time.Second
 )
 
 type client struct {
@@ -58,6 +59,9 @@ func withDefaults(o broker.Options) broker.Options {
 	}
 	if o.ResolveInFlight <= 0 {
 		o.ResolveInFlight = defaultResolveInFlight
+	}
+	if o.HistoryTimeout <= 0 {
+		o.HistoryTimeout = defaultHistoryTimeout
 	}
 	return o
 }

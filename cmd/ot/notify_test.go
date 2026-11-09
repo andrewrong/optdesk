@@ -72,6 +72,8 @@ func newNotifyRig(t *testing.T, env string) *notifyRig {
 	d.newFwClock = func() clockwork.Clock { return clockwork.NewFakeClockAt(time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)) }
 	d.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return r.sl, nil }
 	d.newNotifier = core.New
+	morningFakes(d)
+	d.openSent = func(context.Context, string) (store.SentStore, error) { return &memSent{}, nil }
 	d.newDryRunSender = dryrun.New
 	d.newTelegramSender = func(token, chat string, _ notify.TelegramOptions) (notify.Sender, error) {
 		return senderFunc(func(_ context.Context, text string) error {
@@ -86,11 +88,11 @@ type senderFunc func(context.Context, string) error
 
 func (f senderFunc) Send(ctx context.Context, text string) error { return f(ctx, text) }
 
-const notifyEnv = fullEnv + telegramEnv
+const notifyEnv = fullEnv + telegramEnv + alertsEnv
 
 func TestNotifyDryRunMarksNothing(t *testing.T) {
 	t.Parallel()
-	r := newNotifyRig(t, fullEnv) // a dry run needs no token
+	r := newNotifyRig(t, fullEnv+alertsEnv) // a dry run needs no token
 	if err := notifyCmd(r.a, []string{"--once", "--dry-run"}); err != nil {
 		t.Fatal(err)
 	}
@@ -137,8 +139,8 @@ func TestNotifyQuietFlagKeepsQuietHours(t *testing.T) {
 func TestNotifyMissingTokenNamesVariableOnly(t *testing.T) {
 	t.Parallel()
 	for name, c := range map[string]struct{ env, want, secret string }{
-		"token":   {fullEnv + "OT_TELEGRAM_CHAT_ID=1000001\n", "OT_TELEGRAM_TOKEN", "1000001"},
-		"chat id": {fullEnv + "OT_TELEGRAM_TOKEN=test-token\n", "OT_TELEGRAM_CHAT_ID", "test-token"},
+		"token":   {fullEnv + "OT_TELEGRAM_CHAT_ID=1000001\n" + alertsEnv, "OT_TELEGRAM_TOKEN", "1000001"},
+		"chat id": {fullEnv + alertsEnv + "OT_TELEGRAM_TOKEN=test-token\n", "OT_TELEGRAM_CHAT_ID", "test-token"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

@@ -192,6 +192,9 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobOptionEod}, nil
 	}
+	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+		return idJob{id: jobOptionEodJP}, nil
+	}
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobQuoteSnapshot}, nil
 	}
@@ -233,6 +236,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		r.alertsMu.Unlock()
 		return r.notifier, nil
 	}
+	morningFakes(d)
 	d.alertRules = alertrules.DefaultRules
 	d.loadAlertRules = alertrules.Load
 	d.evaluateAlerts = alertrules.Evaluate
@@ -305,6 +309,9 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 // jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
 // never name them.
 var allSixJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+
+// allSevenJobs is allSixJobs with option_eod_jp, in id order.
+var allSevenJobs = slices.Sorted(slices.Values(append(slices.Clone(allSixJobs), jobOptionEodJP)))
 
 const (
 	jobComputeFigures  = "compute_figures"
@@ -508,17 +515,18 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
+	r.a.deps.newCalendar = func(clock.SessionSource) clock.Calendar { return &jpCal{last: jpLastDay} }
 	r.dialErrs = func(int32) error { return errors.New("no socket") }
 	done := r.start()
 	r.waitStarted(t, done)
 	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); len(got) != 6 {
+	if got := ids(r.sched.jobs); len(got) != 7 {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
-	if len(d) != 2 || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
+	if len(d) != 3 || d[jobOptionEodJP] == "" || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
 		t.Fatalf("disabled %v", d)
 	}
 	if err := r.stop(t, done); err != nil {
@@ -529,6 +537,7 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	t.Parallel()
 	r := newSchedRig(t, fullEnv)
+	r.a.deps.newCalendar = func(clock.SessionSource) clock.Calendar { return &jpCal{last: jpLastDay} }
 	r.dialErrs = func(n int32) error {
 		if n == 1 {
 			return errors.New("no socket")
@@ -537,7 +546,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	}
 	done := r.start()
 	r.waitStarted(t, done)
-	if d := r.sched.disabled; len(d) != 2 {
+	if d := r.sched.disabled; len(d) != 3 {
 		t.Fatalf("disabled after start %v", d)
 	}
 	r.tick()
@@ -547,13 +556,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, allSixJobs) {
+	if got := r.lastBuild(); !slices.Equal(got, allSevenJobs) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, allSixJobs) {
+	if !slices.Equal(ran, allSevenJobs) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -564,7 +573,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 		t.Fatalf("a second tick dialed: %d", r.dials.Load())
 	}
 	_ = r.stop(t, done)
-	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 2 {
+	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 3 {
 		t.Fatalf("re-enabled lines %d: %q", n, r.errb.String())
 	}
 }

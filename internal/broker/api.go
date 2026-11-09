@@ -100,11 +100,12 @@ type Broker interface {
 }
 
 // Options bounds the calls of a client; a zero field takes its default
-// (CallTimeout 25s, SnapshotTimeout 60s, ResolveInFlight 5).
+// (CallTimeout 25s, SnapshotTimeout 60s, ResolveInFlight 5, HistoryTimeout 330s).
 type Options struct {
 	CallTimeout     time.Duration
 	SnapshotTimeout time.Duration
 	ResolveInFlight int
+	HistoryTimeout  time.Duration
 }
 
 // DialFunc connects to the service at socketPath.
@@ -206,3 +207,46 @@ type AccountReader interface {
 	// Close releases the connection.
 	Close() error
 }
+
+// BarKind is the series of daily bars that is asked for. The zero value is unset and an error.
+type BarKind int
+
+// The kinds of ibkr.v1 BarKind, without the unset one.
+const (
+	BarTrades BarKind = iota + 1
+	BarAdjustedLast
+	BarMidpoint
+)
+
+// Bar is one daily bar. Day is YYYY-MM-DD; prices and Volume are decimal text, never floats;
+// Volume is nil when the broker has none.
+type Bar struct {
+	Day    string
+	Open   string
+	High   string
+	Low    string
+	Close  string
+	Volume *string
+}
+
+// BarQuery asks for the daily bars of one contract. The contract has a ConID and DurationDays is
+// 1 to 730. End is the last day, YYYY-MM-DD, or empty for now; a non-empty End with BarAdjustedLast
+// is refused by the service.
+type BarQuery struct {
+	Contract     Contract
+	Kind         BarKind
+	DurationDays int
+	End          string
+}
+
+// HistoryClient reads daily bars. It is separate from Broker. Errors are contracts.TypedError as
+// for Broker, and RESOURCE_EXHAUSTED (the service's pacing limit) is Retryable.
+type HistoryClient interface {
+	// Bars returns the bars of the query, oldest first.
+	Bars(ctx context.Context, q BarQuery) ([]Bar, error)
+	// Close releases the connection.
+	Close() error
+}
+
+// NewHistoryFunc connects a HistoryClient to the service at socketPath.
+type NewHistoryFunc func(ctx context.Context, socketPath string, o Options) (HistoryClient, error)

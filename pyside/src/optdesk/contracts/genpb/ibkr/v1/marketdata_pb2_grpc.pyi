@@ -35,6 +35,8 @@ class MarketDataServiceStub:
     def __new__(cls, channel: _aio.Channel) -> MarketDataServiceAsyncStub: ...
     Snapshot: _grpc.UnaryStreamMultiCallable[_marketdata_pb2.SnapshotRequest, _marketdata_pb2.SnapshotResponse]
     """Snapshot streams one quote per requested contract."""
+    Bars: _grpc.UnaryUnaryMultiCallable[_marketdata_pb2.BarsRequest, _marketdata_pb2.BarsResponse]
+    """Bars returns the daily bars of one contract, oldest first."""
 
 @_typing.type_check_only
 class MarketDataServiceAsyncStub(MarketDataServiceStub):
@@ -43,6 +45,8 @@ class MarketDataServiceAsyncStub(MarketDataServiceStub):
     def __init__(self, channel: _aio.Channel) -> None: ...
     Snapshot: _aio.UnaryStreamMultiCallable[_marketdata_pb2.SnapshotRequest, _marketdata_pb2.SnapshotResponse]  # type: ignore[assignment]
     """Snapshot streams one quote per requested contract."""
+    Bars: _aio.UnaryUnaryMultiCallable[_marketdata_pb2.BarsRequest, _marketdata_pb2.BarsResponse]  # type: ignore[assignment]
+    """Bars returns the daily bars of one contract, oldest first."""
 
 class MarketDataServiceServicer(metaclass=_abc_1.ABCMeta):
     """MarketDataService serves short snapshots of the broker's market data."""
@@ -54,5 +58,13 @@ class MarketDataServiceServicer(metaclass=_abc_1.ABCMeta):
         context: _ServicerContext,
     ) -> _typing.Union[_abc.Iterator[_marketdata_pb2.SnapshotResponse], _abc.AsyncIterator[_marketdata_pb2.SnapshotResponse]]:
         """Snapshot streams one quote per requested contract."""
+
+    @_abc_1.abstractmethod
+    def Bars(
+        self,
+        request: _marketdata_pb2.BarsRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_marketdata_pb2.BarsResponse, _abc.Awaitable[_marketdata_pb2.BarsResponse]]:
+        """Bars returns the daily bars of one contract, oldest first."""
 
 def add_MarketDataServiceServicer_to_server(servicer: MarketDataServiceServicer, server: _typing.Union[_grpc.Server, _aio.Server]) -> None: ...
