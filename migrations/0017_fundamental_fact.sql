@@ -34,6 +34,7 @@ FROM obs.fundamental_fact;
 ALTER VIEW rd.fundamental_fact_r1 OWNER TO ot_owner;
 
 GRANT USAGE ON SCHEMA obs, rd TO ot_w_fundamental;
+GRANT USAGE ON SCHEMA rd TO ot_ro_pages;
 GRANT INSERT ON obs.fundamental_fact TO ot_w_fundamental;
 GRANT SELECT ON rd.fundamental_fact_r1 TO ot_ro_pages;
 GRANT SELECT ON rd.fundamental_fact_r1 TO ot_w_fundamental;
