@@ -21,6 +21,7 @@ const (
 	defaultBand        = 0.10
 	defaultPerSide     = 8
 	defaultChunk       = 50
+	defaultMaxStrikes  = 24
 	defaultBudget      = 8
 )
 
@@ -51,6 +52,9 @@ type manifest struct {
 	MaxExpiries          int           `toml:"max_expiries"`
 	StrikeBand           float64       `toml:"strike_band"`
 	MaxStrikesPerSide    int           `toml:"max_strikes_per_side"`
+	MinDTE               int           `toml:"min_dte"`
+	MaxDTE               int           `toml:"max_dte"`
+	MaxStrikes           int           `toml:"max_strikes"`
 	Chunk                int           `toml:"chunk"`
 	BudgetMinutes        int           `toml:"budget_minutes"`
 	FreezeAfter          string        `toml:"freeze_after"`
@@ -58,6 +62,8 @@ type manifest struct {
 	Underlying           []underlying  `toml:"underlying"`
 
 	sched schedule
+	// buy maps a symbol to the BuyPrice text of its watch entry; empty for a manifest without a watch list.
+	buy map[string]string
 }
 
 // parseManifest decodes data and gives every missing optional key its default.
@@ -120,6 +126,9 @@ func (m manifest) validate() error {
 	if m.MaxExpiries < 0 || m.MaxStrikesPerSide < 0 || m.Chunk < 0 || m.BudgetMinutes < 0 || m.StrikeBand < 0 {
 		return fmt.Errorf("optioneod: manifest: counts and the band must not be negative")
 	}
+	if m.MinDTE < 0 || m.MaxDTE < 0 || m.MaxStrikes < 0 || (m.MaxDTE > 0 && m.MinDTE > m.MaxDTE) {
+		return fmt.Errorf("optioneod: manifest: min_dte, max_dte and max_strikes must not be negative and min_dte must not exceed max_dte")
+	}
 	if _, err := time.LoadLocation(m.Zone); err != nil {
 		return fmt.Errorf("optioneod: manifest: zone is unknown")
 	}
@@ -151,8 +160,14 @@ func (m manifest) canonical() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d|%s|%s|%s|%d|%s|%d|%g|%d|%d|%d|%s|%s", m.Version, m.ID, m.Zone, m.Window.Rule, *m.Window.LatenessHours,
 		m.Window.Calendar, m.MaxExpiries, m.StrikeBand, m.MaxStrikesPerSide, m.Chunk, m.BudgetMinutes, m.FreezeAfter, m.OptionPriceIncrement)
+	if m.MinDTE != 0 || m.MaxDTE != 0 || m.MaxStrikes != 0 {
+		fmt.Fprintf(&b, "|dte%d-%d|%d", m.MinDTE, m.MaxDTE, m.MaxStrikes)
+	}
 	for _, u := range m.Underlying {
 		fmt.Fprintf(&b, "\n%+v", u)
+		if bp := m.buy[u.Symbol]; bp != "" {
+			fmt.Fprintf(&b, "|buy%s", bp)
+		}
 	}
 	return b.String()
 }

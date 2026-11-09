@@ -13,13 +13,29 @@ type strikeValue struct {
 	value float64
 }
 
-// selectContracts picks the pairs to collect from one chain: the nearest maxExpiries expirations on or after
+// selectContracts picks the pairs to collect from one chain. With max_dte set the expirations are those with DTE
+// in min_dte..max_dte, and a symbol with a BuyPrice takes its strikes from rangeStrikes (watch.go). Otherwise: the nearest maxExpiries expirations on or after
 // day (YYYY-MM-DD), and of the strikes those inside price*(1-band) to price*(1+band), at most perSide below the
 // price and at most perSide at or above it, nearest first; both rights. Strikes compare by value and are sent on as
 // the text the chain gave. The result is ordered by expiry, strike and right (C before P).
 func selectContracts(chain broker.Chain, u underlying, day string, price float64, m manifest) []broker.Contract {
-	expiries := nearestExpiries(chain.Expirations, strings.ReplaceAll(day, "-", ""), m.MaxExpiries)
-	strikes := nearestStrikes(chain.Strikes, price, m.StrikeBand, m.MaxStrikesPerSide)
+	d := strings.ReplaceAll(day, "-", "")
+	var expiries []string
+	if m.MaxDTE > 0 {
+		expiries = dteExpiries(chain.Expirations, d, m.MinDTE, m.MaxDTE)
+	} else {
+		expiries = nearestExpiries(chain.Expirations, d, m.MaxExpiries)
+	}
+	var strikes []strikeValue
+	if bp := m.buy[u.Symbol]; bp != "" {
+		limit := m.MaxStrikes
+		if limit == 0 {
+			limit = defaultMaxStrikes
+		}
+		strikes = rangeStrikes(chain.Strikes, bp, price, limit)
+	} else {
+		strikes = nearestStrikes(chain.Strikes, price, m.StrikeBand, m.MaxStrikesPerSide)
+	}
 	out := make([]broker.Contract, 0, len(expiries)*len(strikes)*2)
 	for _, e := range expiries {
 		for _, s := range strikes {
