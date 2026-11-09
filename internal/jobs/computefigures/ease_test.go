@@ -18,6 +18,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
+var easeSeriesWant = []string{"WALCL", "WDTGAL", "RRPONTSYD", "DGS10", "DFF", "SP500", "BAMLH0A0HYM2"}
+
 const easeKey = "macro.ease|market|WALCL"
 
 // fakeEase answers with one figure and records what it was asked.
@@ -65,8 +67,8 @@ func okFigure() compute.EaseFigure {
 
 func easeJob2(t *testing.T, s jobs.ComputeStores, figs compute.Figures, e compute.Ease) contracts.Job {
 	t.Helper()
-	j, err := NewWithEase(s, figs, rules.New(), own.NewUnits(), own.NewSeriesOps(),
-		clockwork.NewFakeClockAt(closeD.Add(20*time.Minute)), e)
+	j, err := NewWithEase(s, figs, rules.New(), own.NewUnits(), own.NewSeriesOps(), e,
+		clockwork.NewFakeClockAt(closeD.Add(20*time.Minute)))
 	if err != nil {
 		t.Fatalf("NewWithEase: %v", err)
 	}
@@ -135,7 +137,7 @@ func TestEaseStoresOkReading(t *testing.T) {
 		checkPartParams(t, r, p)
 	}
 	if len(r.Inputs) != 1 || r.Inputs[0].InputTable != "obs.series_point" ||
-		!reflect.DeepEqual(r.Inputs[0].Keys, easeSeriesIDs) {
+		!reflect.DeepEqual(r.Inputs[0].Keys, easeSeriesWant) {
 		t.Fatalf("inputs %+v", r.Inputs)
 	}
 }
@@ -171,7 +173,7 @@ func TestEaseReadsLookbackWindow(t *testing.T) {
 	s := f.stores()
 	s.Series = spy
 	runAll(t, easeJob2(t, s, newFigs(), &fakeEase{fig: okFigure()}))
-	for _, id := range easeSeriesIDs {
+	for _, id := range easeSeriesWant {
 		got, ok := spy.asked[id]
 		if !ok || got[0] != shiftDay(dayD, -266) || got[1] != dayD {
 			t.Fatalf("%s asked %v (%v), want %s..%s", id, got, ok, shiftDay(dayD, -266), dayD)

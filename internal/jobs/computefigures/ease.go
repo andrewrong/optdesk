@@ -6,18 +6,14 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 )
 
-// easeSeriesIDs are the seven FRED series of compute.EaseSeries, in the order of its fields.
-var easeSeriesIDs = []string{"WALCL", "WDTGAL", "RRPONTSYD", "DGS10", "DFF", "SP500", "BAMLH0A0HYM2"}
+// easeSeriesCount is the number of series of compute.EaseSeries; the [ease] series of job.toml list them in
+// the order of its fields: WALCL, WDTGAL, RRPONTSYD, DGS10, DFF, SP500, BAMLH0A0HYM2.
+const easeSeriesCount = 7
 
-// checkEaseSpec requires the [ease] table to name the figure and the seven series, in the order of the fields.
+// checkEaseSpec requires the [ease] table to name the figure and the seven series.
 func checkEaseSpec(e easeSpec) error {
-	if e.ID == "" || len(e.Series) != len(easeSeriesIDs) {
-		return fmt.Errorf("computefigures: manifest: [ease] needs an id and %d series", len(easeSeriesIDs))
-	}
-	for i, id := range easeSeriesIDs {
-		if e.Series[i] != id {
-			return fmt.Errorf("computefigures: manifest: [ease] series %d is %q, want %q", i, e.Series[i], id)
-		}
+	if e.ID == "" || len(e.Series) != easeSeriesCount {
+		return fmt.Errorf("computefigures: manifest: [ease] needs an id and %d series", easeSeriesCount)
 	}
 	return nil
 }
@@ -35,9 +31,9 @@ func (r *runState) runEase(t target) {
 		return
 	}
 	from := shiftDay(r.day, -lookbackDays(t.rule))
-	got := make([]compute.Series, len(easeSeriesIDs))
+	got := make([]compute.Series, len(r.j.m.Ease.Series))
 	var lines []string
-	for i, id := range easeSeriesIDs {
+	for i, id := range r.j.m.Ease.Series {
 		pts, err := r.j.stores.Series.SeriesPoints(r.ctx, id, from, r.day)
 		if err != nil {
 			r.failStore(fmt.Errorf("computefigures: series %s: %w", id, err))

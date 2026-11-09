@@ -287,8 +287,8 @@ func (stubEase) Ease(string, compute.EaseSeries, contracts.Day) compute.EaseFigu
 func TestNewComputeFiguresEaseFuncContract(t *testing.T) {
 	t.Parallel()
 	var newJob jobs.NewComputeFiguresEaseFunc = func(
-		s jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ clock.Clock,
-		e compute.Ease,
+		s jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps,
+		e compute.Ease, _ clock.Clock,
 	) (contracts.Job, error) {
 		return easeJob{computeJob{stores: s, names: []string{"market.iv30_own"}}, e}, nil
 	}
@@ -297,7 +297,7 @@ func TestNewComputeFiguresEaseFuncContract(t *testing.T) {
 		want int
 	}{{nil, 1}, {stubEase{}, 2}} {
 		rd := &fakeReadings{}
-		j, err := newJob(jobs.ComputeStores{Readings: rd}, nil, nil, nil, nil, nil, tc.ease)
+		j, err := newJob(jobs.ComputeStores{Readings: rd}, nil, nil, nil, nil, tc.ease, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -508,4 +508,13 @@ func TestCalendarRefreshErrorClasses(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewComputeFiguresEaseFuncEaseBeforeClock(t *testing.T) {
+	t.Parallel()
+	var f jobs.NewComputeFiguresEaseFunc = func(jobs.ComputeStores, compute.Figures, compute.Rules,
+		compute.Units, compute.SeriesOps, compute.Ease, clock.Clock) (contracts.Job, error) {
+		return nil, nil
+	}
+	_ = f
 }

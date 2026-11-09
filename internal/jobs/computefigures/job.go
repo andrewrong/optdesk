@@ -80,13 +80,13 @@ func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 // it builds stores no ease.
 func New(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
 	ops compute.SeriesOps, clk clock.Clock) (contracts.Job, error) {
-	return NewWithEase(stores, figs, rules, units, ops, clk, nil)
+	return NewWithEase(stores, figs, rules, units, ops, nil, clk)
 }
 
 // NewWithEase is a jobs.NewComputeFiguresEaseFunc. With a nil ease it is New; with one the job also plans and
 // stores the key macro.ease|market|WALCL.
 func NewWithEase(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
-	ops compute.SeriesOps, clk clock.Clock, ease compute.Ease) (contracts.Job, error) {
+	ops compute.SeriesOps, ease compute.Ease, clk clock.Clock) (contracts.Job, error) {
 	if stores.Catalog == nil || stores.OptionEod == nil || stores.Terms == nil || stores.Names == nil ||
 		stores.SessionDays == nil || stores.Series == nil || stores.Readings == nil {
 		return nil, errors.New("computefigures: every store is required")
