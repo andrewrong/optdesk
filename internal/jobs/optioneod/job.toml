@@ -5,6 +5,10 @@ zone = "America/New_York"
 max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
+# Used only with a watch list (NewWithWatch): DTE window of the expiries and the cap of strikes per buy-price range.
+min_dte = 21
+max_dte = 45
+max_strikes = 24
 chunk = 50
 budget_minutes = 8
 freeze_after = "1615"

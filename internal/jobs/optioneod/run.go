@@ -14,7 +14,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ jobs.NewOptionEodFunc = New
+var (
+	_ jobs.NewOptionEodFunc      = New
+	_ jobs.NewOptionEodWatchFunc = NewWithWatch
+)
 
 type job struct {
 	m      manifest
@@ -56,7 +59,13 @@ func New(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter,
 	if b == nil || res == nil || w == nil || clk == nil {
 		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")
 	}
-	return build(manifestBytes, b, res, w, clk)
+	j, err := build(manifestBytes, b, res, w, clk)
+	if err != nil {
+		return nil, err
+	}
+	// Without a watch list the job keeps the nearest max_expiries and the strike band, as before.
+	j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes = 0, 0, 0
+	return j, nil
 }
 
 func build(data []byte, b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, clk clock.Clock) (*job, error) {
