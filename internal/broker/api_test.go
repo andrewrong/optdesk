@@ -95,3 +95,52 @@ func TestReferenceClientBuiltByNewReferenceFunc(t *testing.T) {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 }
+
+// fakeAccount answers one account with an alias and the flags of what its gateway collects.
+type fakeAccount struct{ down bool }
+
+func (f fakeAccount) Account(context.Context) (broker.Account, error) {
+	if f.down {
+		return broker.Account{}, typedErr{contracts.Retryable}
+	}
+	return broker.Account{
+		Alias:              "main",
+		Generation:         3,
+		Values:             []broker.AccountValue{{Tag: "NetLiquidation", Value: "100000.50", Currency: "USD"}},
+		ValuesCollected:    true,
+		PositionsCollected: false,
+	}, nil
+}
+
+func (f fakeAccount) Executions(context.Context) (broker.Executions, error) {
+	return broker.Executions{
+		Alias:      "main",
+		Generation: 3,
+		Collected:  true,
+		Pending:    1,
+		Executions: []broker.Execution{{ExecID: "e1", Contract: broker.Contract{Symbol: "KO"}, Side: "BOT", Quantity: "1", Price: "60.1", Commission: "0.35", CommissionCurrency: "USD"}},
+	}, nil
+}
+
+func (fakeAccount) Close() error { return nil }
+
+var _ broker.AccountReader = fakeAccount{}
+
+func TestAccountReaderContract(t *testing.T) {
+	t.Parallel()
+	var r broker.AccountReader = fakeAccount{}
+	a, err := r.Account(context.Background())
+	if err != nil || a.Alias != "main" || !a.ValuesCollected || a.PositionsCollected || a.Values[0].Value != "100000.50" || len(a.Positions) != 0 {
+		t.Fatalf("got %+v, %v", a, err)
+	}
+	e, err := r.Executions(context.Background())
+	if err != nil || !e.Collected || e.Pending != 1 || len(e.Executions) != 1 || e.Executions[0].Commission != "0.35" {
+		t.Fatalf("got %+v, %v", e, err)
+	}
+	if _, err := broker.AccountReader(fakeAccount{down: true}).Account(context.Background()); !retryable(err) {
+		t.Fatalf("want a Retryable TypedError, got %v", err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -16,6 +16,10 @@ The Go client of the pyside IBKR service. `broker.Broker` (`internal/broker/api.
 
 `broker.ReferenceClient` is a separate port (`Broker` is unchanged): `Dividends(ctx, cs)` returns one `DividendProjection` per contract in the order asked, and `Close()`. `broker.NewReferenceFunc` is its dial type; `grpcbroker.DialReference(ctx, socketPath, o)` implements it over `ibkr.v1.ReferenceService` (`Retryable` when the socket is not reachable). `DividendProjection` has the contract, `Status` (`DividendOK`, `DividendNoValue`, `DividendTimeout`, `DividendError`), `Past12m`, `Next12m`, `NextAmount` (`*float64`, nil when unset), `NextExDate` (`*string`, `YYYYMMDD`, nil when unset), `ErrorCode` and `ReceivedAt`. Answers are matched to contracts by `ConID`, or by symbol, exchange and currency when the `ConID` is 0. A status the server did not set, a number that does not parse, an unknown `SecType` and a contract with no answer are `Permanent` errors; `SnapshotTimeout` bounds one call. No stored answers, no retries.
 
+## Account reader
+
+`broker.AccountReader` (`internal/broker/api.go`) is a separate port: `Account(ctx)`, `Executions(ctx)` and `Close()`. `Account` has the alias, `Generation`, `Values []AccountValue`, `Positions []Position` and the flags `ValuesCollected` and `PositionsCollected` (false: the gateway does not collect that part). `Executions` has the alias, `Generation`, `Collected`, `Pending` (fills left out for want of a commission report) and `Executions []Execution`. Money and quantities are decimal text; `Execution.Time` is UTC; no order id and no account id. `grpcbroker.AccountClient` implements it. Contract test: `TestAccountReaderContract`.
+
 ## Error kinds
 
 Every error is a `contracts.TypedError`. `UNAVAILABLE` and `DEADLINE_EXCEEDED` are `Retryable`; `INVALID_ARGUMENT`, `FAILED_PRECONDITION` and every other code are `Permanent`. The text of an error holds the code and never the socket path. A cancelled context gives an error that wraps `context.Canceled` and is `Permanent`.

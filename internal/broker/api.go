@@ -145,3 +145,64 @@ type ReferenceClient interface {
 
 // NewReferenceFunc connects a ReferenceClient to the service at socketPath.
 type NewReferenceFunc func(ctx context.Context, socketPath string, o Options) (ReferenceClient, error)
+
+// AccountValue is one account summary row; Value is decimal text.
+type AccountValue struct {
+	Tag      string
+	Value    string
+	Currency string
+}
+
+// Position is one open position; Quantity and AvgCost are decimal text, never floats.
+type Position struct {
+	Contract Contract
+	Quantity string
+	AvgCost  string
+}
+
+// Account is the answer of one gateway. Alias is the gateway label, never an account id.
+// ValuesCollected and PositionsCollected are false when the gateway does not collect that part;
+// its slice is empty then, which is not the same as collected and empty.
+type Account struct {
+	Alias              string
+	Generation         int64
+	Values             []AccountValue
+	Positions          []Position
+	ValuesCollected    bool
+	PositionsCollected bool
+}
+
+// Execution is one complete fill with its commission. Time is the fill instant in UTC; numbers are
+// decimal text. It carries no order id and no account id.
+type Execution struct {
+	ExecID             string
+	PermID             int64
+	Time               time.Time
+	Contract           Contract
+	Side               string
+	Quantity           string
+	Price              string
+	Commission         string
+	CommissionCurrency string
+}
+
+// Executions is the answer of one gateway. Collected is false when the gateway does not collect
+// executions; Pending counts the fills left out because their commission report had not arrived.
+type Executions struct {
+	Alias      string
+	Generation int64
+	Collected  bool
+	Pending    int
+	Executions []Execution
+}
+
+// AccountReader reads the account of one gateway. It is separate from Broker. Errors are
+// contracts.TypedError as for Broker.
+type AccountReader interface {
+	// Account returns the values and positions of the gateway.
+	Account(ctx context.Context) (Account, error)
+	// Executions returns the complete executions of the gateway.
+	Executions(ctx context.Context) (Executions, error)
+	// Close releases the connection.
+	Close() error
+}
