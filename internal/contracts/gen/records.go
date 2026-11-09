@@ -1042,6 +1042,186 @@ func (j *FlexFetch) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// optionledger.flex_section_row r1: one revision of one row of a Flex statement
+// section other than trades, attributes as sent without any account attribute, as
+// text; insert only. No account number is stored: the alias is the only identity.
+type FlexSectionRow struct {
+	// Account alias of the row, the label mapped by the allow-list.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// JSON object as text: every attribute of the row as sent, every value text, the
+	// account attributes removed.
+	Attributes string `json:"attributes" yaml:"attributes" mapstructure:"attributes"`
+
+	// SHA-256 of the attributes text, 64 lower-case hex digits.
+	AttributesSha256 string `json:"attributes_sha256" yaml:"attributes_sha256" mapstructure:"attributes_sha256"`
+
+	// Identifier of the fetch that first wrote this revision.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Instant the row was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Revision of the row for its key; 1 for a new key, a changed row is the next
+	// revision.
+	Revision int `json:"revision" yaml:"revision" mapstructure:"revision"`
+
+	// Position of the row in its section of the report.
+	RowIndex int `json:"row_index" yaml:"row_index" mapstructure:"row_index"`
+
+	// Key attributes of the row joined with a bar, as text; an optional attribute
+	// that is absent is the empty text.
+	RowKey string `json:"row_key" yaml:"row_key" mapstructure:"row_key"`
+
+	// Row element name of the section in the Flex statement, for example
+	// CashTransaction; a pattern, so a later section needs no schema change.
+	Section string `json:"section" yaml:"section" mapstructure:"section"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexSectionRow) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in FlexSectionRow: required")
+	}
+	if _, ok := raw["attributes"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes in FlexSectionRow: required")
+	}
+	if _, ok := raw["attributes_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes_sha256 in FlexSectionRow: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexSectionRow: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in FlexSectionRow: required")
+	}
+	if _, ok := raw["revision"]; raw != nil && !ok {
+		return fmt.Errorf("field revision in FlexSectionRow: required")
+	}
+	if _, ok := raw["row_index"]; raw != nil && !ok {
+		return fmt.Errorf("field row_index in FlexSectionRow: required")
+	}
+	if _, ok := raw["row_key"]; raw != nil && !ok {
+		return fmt.Errorf("field row_key in FlexSectionRow: required")
+	}
+	if _, ok := raw["section"]; raw != nil && !ok {
+		return fmt.Errorf("field section in FlexSectionRow: required")
+	}
+	type Plain FlexSectionRow
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	if len(plain.RowKey) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "row_key", 1)
+	}
+	*j = FlexSectionRow(plain)
+	return nil
+}
+
+// optionledger.flex_section_status r1: whether one section was in the statement of
+// one alias in one fetch, with its row count and the rows refused; insert only. No
+// account number is stored.
+type FlexSectionStatus struct {
+	// Account alias of the statement, the label mapped by the allow-list.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Identifier of the fetch.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Instant the status was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Rows of the section stored or found unchanged; 0 when absent.
+	RowCount int `json:"row_count" yaml:"row_count" mapstructure:"row_count"`
+
+	// Rows refused for a missing key attribute or a duplicate key.
+	RowsRefused int `json:"rows_refused" yaml:"rows_refused" mapstructure:"rows_refused"`
+
+	// Row element name of the section in the Flex statement, for example
+	// CashTransaction; a pattern, so a later section needs no schema change.
+	Section string `json:"section" yaml:"section" mapstructure:"section"`
+
+	// present: the statement has the section; absent: the Flex query lacks it.
+	State FlexSectionStatusState `json:"state" yaml:"state" mapstructure:"state"`
+}
+
+type FlexSectionStatusState string
+
+const FlexSectionStatusStateAbsent FlexSectionStatusState = "absent"
+const FlexSectionStatusStatePresent FlexSectionStatusState = "present"
+
+var enumValues_FlexSectionStatusState = []interface{}{
+	"present",
+	"absent",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexSectionStatusState) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FlexSectionStatusState {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FlexSectionStatusState, v)
+	}
+	*j = FlexSectionStatusState(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexSectionStatus) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in FlexSectionStatus: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexSectionStatus: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in FlexSectionStatus: required")
+	}
+	if _, ok := raw["row_count"]; raw != nil && !ok {
+		return fmt.Errorf("field row_count in FlexSectionStatus: required")
+	}
+	if _, ok := raw["rows_refused"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_refused in FlexSectionStatus: required")
+	}
+	if _, ok := raw["section"]; raw != nil && !ok {
+		return fmt.Errorf("field section in FlexSectionStatus: required")
+	}
+	if _, ok := raw["state"]; raw != nil && !ok {
+		return fmt.Errorf("field state in FlexSectionStatus: required")
+	}
+	type Plain FlexSectionStatus
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	*j = FlexSectionStatus(plain)
+	return nil
+}
+
 // optionledger.flex_trade_row r1: one revision of one Flex trade row of level
 // EXECUTION, attributes as sent, as text; insert only. No account number is
 // stored: the alias is the only identity.
