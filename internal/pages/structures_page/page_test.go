@@ -52,13 +52,12 @@ func TestConfigContract(t *testing.T) {
 	}
 	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	day := contracts.Day("2026-01-02")
-	for name, build := range map[string]func(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error){
-		"list":   structures_page.NewListPage(c, "main").Build,
-		"detail": structures_page.NewDetailPage(c, "main", "main:T1:1").Build,
-	} {
-		_, err := build(context.Background(), noSeries{}, day, at)
-		if err == nil || err.Error() != "structures_page: not built" {
-			t.Fatalf("%s: err = %v", name, err)
-		}
+	// the detail page is built by a later issue; the list page is built (list_test.go)
+	_, err := structures_page.NewDetailPage(c, "main", "main:T1:1").Build(context.Background(), noSeries{}, day, at)
+	if err == nil || err.Error() != "structures_page: not built" {
+		t.Fatalf("detail: err = %v", err)
+	}
+	if _, err := structures_page.NewListPage(structures_page.Config{}, "main").Build(context.Background(), noSeries{}, day, at); err == nil {
+		t.Fatal("list: a nil zone gave no error")
 	}
 }

@@ -1,0 +1,6 @@
+[
+{"session_day":"2026-11-10","instrument_id":265598,"attempt":1,"issuer":"cik:0000320193","status":"present","past_12m":"1.02","next_12m":"1.04","next_amount":"0.26","next_ex_date":"2026-11-12","currency":"USD","error_code":"","source":"ibkr_tick_456","received_at":"2026-11-10T22:00:00Z"},
+{"session_day":"2026-11-10","instrument_id":76792991,"attempt":1,"issuer":"cik:0001318605","status":"no_value","past_12m":null,"next_12m":null,"next_amount":null,"next_ex_date":null,"currency":"USD","error_code":"","source":"ibkr_tick_456","received_at":"2026-11-10T22:00:00Z"},
+{"session_day":"2026-11-10","instrument_id":14503451,"attempt":1,"issuer":"edinet:E02144","status":"unsupported","past_12m":null,"next_12m":null,"next_amount":null,"next_ex_date":null,"currency":"JPY","error_code":"","source":"none","received_at":"2026-11-10T22:00:00Z"},
+{"session_day":"2026-11-10","instrument_id":272093,"attempt":1,"issuer":"cik:0000789019","status":"error","past_12m":null,"next_12m":null,"next_amount":null,"next_ex_date":null,"currency":"USD","error_code":"request_failed","source":"ibkr_tick_456","received_at":"2026-11-10T22:00:00Z"}
+]

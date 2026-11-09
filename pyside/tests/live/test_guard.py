@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from live.allowed import ALLOWED_RPCS, PINNED_STUBS
+from live.allowed import ALLOWED_RPCS
 from optdesk.contracts import api
 
 HERE = Path(__file__).parent
@@ -39,15 +39,13 @@ def _sources() -> dict[str, str]:
 def test_guard_allowed_rpcs_exist_in_generated_stubs() -> None:
     rpcs = _generated_rpcs()
     assert ALLOWED_RPCS <= rpcs
-    assert PINNED_STUBS <= rpcs
-    assert not (ALLOWED_RPCS & PINNED_STUBS)
 
 
 def test_guard_only_allowed_methods_are_called() -> None:
     sources = _sources()
     used = set(re.findall(r"_stub\.(\w+)\(|self\._\w+\.(\w+)\(", sources["client.py"]))
     called = {a or b for a, b in used}
-    assert called <= ALLOWED_RPCS | PINNED_STUBS
+    assert called <= ALLOWED_RPCS
     rpcs = _generated_rpcs()
     for name, text in sources.items():
         if name in ("client.py", "test_guard.py"):
