@@ -3,10 +3,11 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
-Revision: 4
+Revision: 5
 Revision note: revision 2 follows the adversarial read (the window scratchpad file adv-hotspots.md, answered in `## Adversarial`): the entry-cell edit is dropped for tree discovery of both package kinds, the `deps` change is smaller, the dataset and fixture changes are left out (only two issues hit them, and the fixture claim was false), and the migration says plainly which issues keep their hunks.
 Revision 3 follows the design verdict on f2ff88f: `internal/contracts/genpb` stays importable by the sub-packages of dependents of contracts (Decision 1, acceptance 4 of issue 1); issue 2 rewrites the `ot` import sentence and line 27 of `modules.md` so that the row states the enforced rule; the stale revision-1 references in `## Adversarial` are renamed; the owning row of a new `api.go` package, the expected edges and the rejected alternatives are written down; and the facts are read again on e1c3fed (the `deps` struct has 69 fields, not 65; 822, 827, 883, 843 and 863 landed; 908, 926 and 942 are new).
 Revision 4 follows the design verdict on 5f9122d: the text of `modules.md` that states the rules of Decision 1 moves into issue 1 as one judged two-module entry (repo and docs), so the lint and the text never disagree between merges, and issue 2 keeps the three contract-directory globs and has no order; the test kit and `internal/profile` are stated in Decision 1; issue 2 names Decisions 1 and 3; the line numbers of `scripts/arch/main.go` are read again on 6a68e41.
+Revision 5 follows the refusal of `crew issue check` ("entries 1 and 2 of docs/design/parallel-hotspots.md share docs/design/modules.md and neither names the other in Order: after"): issue 2 is ordered after issue 1, so the two entries that edit `modules.md` no longer run in parallel; Decision 5, entries 1 and 2, Migration and Adversarial say the same.
 
 Status: draft for design review.
 
@@ -40,7 +41,7 @@ Two issues of different modules never name the same file for H1, H3 and H4: a ne
 2. H3, one deps source per command, no reflect. A command's file declares `type <name>Deps struct{...}` and in `init` puts a constructor into a package map keyed by the command name (`extDeps["accountimport"] = func() any { return accountImportDeps{...} }`); `deps` gets one field `ext map[string]any`, filled by `newDeps` from that map; the command reads it with `depsOf[T any](d deps, name string) T`; a test builds a `deps` with `ext` set to fakes. The `NumField() != 69` assertion in `TestNewDepsFilled` is removed (the loop that checks each field is not nil stays), so no later issue edits that number. The 69 existing fields stay. Cost: about 25 lines in `cmd/ot/depsext.go`; a missing key is a type-assertion panic at the command, caught by the command's own test, not by the compiler; `deps` has two sources (field, map) until old fields move one by one; no library fits (a DI framework is heavier than the struct). Own implementation, because the glue is a map and a generic function; it sits behind `depsOf`, which a library could replace (owner 2026-11-08).
 3. H4, one contract document per package or command: `docs/contracts/store/<package>.md`, `docs/contracts/compute/<package>.md`, `docs/contracts/ot/<command>.md`. The three old files stay unchanged, as indexes. A new document is in the `docs` row (`docs/**`) until its module's row takes the glob, and a store issue editing a docs-row path is a path of another module (AGENTS.md), so issue 2 adds the three globs to the three rows, once. Cost: one small `modules.md` edit, one extra link for readers. Unknown: whether crew reads the "contract document" column or the contract cell to check an interface issue; if it compares to the file `docs/contracts/store.md` the new files need a crew change (Left out).
 4. Own code and libraries: none new beyond Decisions 1 and 2.
-5. Order: issue 1 after #894 (same files for the code). The code and the text that states its rules are one judged two-module entry (repo and docs: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `docs/design/modules.md`, as `modules.md` allows for an issue whose files belong to two rows), because the text and the lint must change together: the code alone leaves `generate` failing on a missing "one constructor each" list if the text is not yet rewritten, and the text alone leaves the lint stricter than the row says, or the reverse. Issue 2 (the three contract-directory globs, other hunks of the same file) and issue 3 have no order with any other issue; two hunks of `modules.md` from issues 1 and 2 may conflict once on rebase, textually, never in meaning.
+5. Order: issue 1 after #894 (same files for the code). The code and the text that states its rules are one judged two-module entry (repo and docs: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `docs/design/modules.md`, as `modules.md` allows for an issue whose files belong to two rows), because the text and the lint must change together: the code alone leaves `generate` failing on a missing "one constructor each" list if the text is not yet rewritten, and the text alone leaves the lint stricter than the row says, or the reverse. Issue 2 (the three contract-directory globs, other hunks of the same file) is after issue 1, because both edit `modules.md` and the check wants the order named; issue 2 edits only the three paths cells, so it does not conflict with the text of issue 1 in meaning. Issue 3 has no order with any other issue.
 
 ## Modules
 
@@ -59,7 +60,7 @@ Every test calls `t.Parallel()`, writes files only under a temporary directory, 
 Module: repo and docs (judged two-module entry: the code in `scripts/arch` and the text of `docs/design/modules.md` that states its rules land together, so the lint and the row never disagree). Size: M.
 Files: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `docs/design/modules.md`
 Design: docs/design/parallel-hotspots.md (Decisions 1 and 5)
-Order: after #894 (same two `scripts/arch` files; its overlap is accepted once). No order with issue 2 or 3.
+Order: after #894 (same two `scripts/arch` files; its overlap is accepted once). Issue 2 is after this issue; no order with issue 3.
 Goal: declarations-only, test-kit and implementation packages come from the tree; the Go list and the backtick scan are gone; the text of `modules.md` states the rules the code enforces.
 Acceptance:
 1. `grep -nw "declarationsOnly" scripts/arch/main.go` prints nothing, and `grep -nw "implPackage" scripts/arch/main.go` prints nothing.
@@ -81,7 +82,7 @@ Checked by CI: `go test ./scripts/arch -race -count=1`; ci-go generates (from th
 Module: docs. Size: S.
 Files: `docs/design/modules.md`
 Design: docs/design/parallel-hotspots.md (Decisions 1 and 3; Decision 1 gives the owning-row rule that the new globs extend)
-Order: independent (it edits only the paths cells of three rows; issue 1 edits the text, not those cells).
+Order: after 1 (both edit `docs/design/modules.md`; it edits only the paths cells of three rows, issue 1 the text and the judged entry).
 Goal: the three module rows own the per-package contract directories.
 Acceptance:
 1. `grep -n "^| store |" docs/design/modules.md | grep -c "docs/contracts/store/\*\*"` prints 1; the same with the row `compute` and `docs/contracts/compute/\*\*` prints 1; the same with the row `ot` and `docs/contracts/ot/\*\*` prints 1.
@@ -121,7 +122,7 @@ An issue already started (a pull request or a worker session) keeps its hunks: i
 | 926 site | H4 | `ot.md` becomes `docs/contracts/ot/site.md` (after issue 2) | ot.md hunk |
 | 942 dryrun | H4 | `ot.md` becomes `docs/contracts/ot/dryrun.md` (after issue 2) | ot.md hunk |
 
-The body mentions of `modules.md` in 852 854 855 (a cell edit) need no edit of an issue: the window does not edit the cell any more, and a cell edit already made is harmless. #894 (pull request 912) is open and not merged at e1c3fed; issue 1 starts after it lands; issues 2 and 3 do not wait for it.
+The body mentions of `modules.md` in 852 854 855 (a cell edit) need no edit of an issue: the window does not edit the cell any more, and a cell edit already made is harmless. #894 (pull request 912) is open and not merged at e1c3fed; issue 1 starts after it lands; issue 2 starts after issue 1 and so after #894; issue 3 does not wait for it.
 
 ## Left out
 
@@ -137,7 +138,7 @@ The body mentions of `modules.md` in 852 854 855 (a cell edit) need no edit of a
 
 Read: the window scratchpad file adv-hotspots.md.
 
-1. Gap against the goal. Adopted: the goal now names only H1, H3 and H4; `internal/store/api.go` and `runonce.go`/`scheduler.go` are in Left out as still colliding; `modules.md` is shared for new rows of the table and stays so; the serial gates are one (issue 1 after #894; issues 2 and 3 free), down from five.
+1. Gap against the goal. Adopted: the goal now names only H1, H3 and H4; `internal/store/api.go` and `runonce.go`/`scheduler.go` are in Left out as still colliding; `modules.md` is shared for new rows of the table and stays so; the serial gates are one (issue 1 after #894; issue 2 after issue 1; issue 3 free), down from five.
 2. Biggest risk (the entry-cell removal breaks the lint). Adopted: verified at `implPackage` (47, used 90 and 150), `derive` and `listedImports`; the cells are not edited, and issue 1 replaces both readers with the tree. The revision-1 text for the entry-cell removal is gone. Revision 2 has a Decision 2 (deps per command) and an issue 3 that are unrelated to it.
 3. Simpler way. Adopted: tree discovery for both kinds and no cell edit (the revision-1 entry-cell decision and the revision-1 package-list decision, now merged in Decision 1); `NumField() != 69` dropped (H3). Not adopted: an `//arch:decl` marker in each package (a second convention to learn, where the `api.go` rule is already in `modules.md`); H5 and H6 moved to Left out as proposed.
 4. Lock-in. Adopted: the `api.go`, `doc.go` and `"testing"` rules are named as CI inputs (Decision 1); the `sums/` marker, `*_r1.go` naming and the reflect registry are gone (a string-keyed map, no reflect; the two sources of `deps` are named as a cost). Per-package contract directories need crew changes: kept, stated as unknown in Decision 3 and Left out.
