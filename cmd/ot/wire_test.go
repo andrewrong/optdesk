@@ -19,8 +19,8 @@ import (
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 53 {
-		t.Fatalf("deps has %d fields, want 53", v.NumField())
+	if v.NumField() != 56 {
+		t.Fatalf("deps has %d fields, want 56", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {

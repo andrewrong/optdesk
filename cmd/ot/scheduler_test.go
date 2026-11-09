@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/alertrules"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/notify"
@@ -130,7 +131,39 @@ type schedRig struct {
 	opened   atomic.Int32
 	runErr   error
 	built    chan struct{} // closed when the scheduler constructor was called
+
+	alertsMu  sync.Mutex
+	gapCfg    notify.Config
+	alertCfg  notify.Config
+	alertDeps notify.AlertDeps
+	viewDSN   string
+	sentDSN   string
+	viewReads atomic.Int32
+	sentOpen  atomic.Int32
+	sentShut  atomic.Int32
 }
+
+// alertsEnv is the synthetic line of the alerts DSN; it is not real.
+const alertsEnv = "OT_PG_DSN_ALERTS=alerts-dsn\n"
+
+// schedView is the winner reader of the rig; it counts its reads.
+type schedView struct {
+	store.ReadingViewReader
+	r *schedRig
+}
+
+func (v schedView) WinnerReadings(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+	v.r.viewReads.Add(1)
+	return nil, nil
+}
+func (schedView) Close() error { return nil }
+
+type fakeSent struct {
+	store.SentStore
+	r *schedRig
+}
+
+func (s fakeSent) Close() error { s.r.sentShut.Add(1); return nil }
 
 func (r *schedRig) lastBuild() []string {
 	r.mu.Lock()
@@ -149,7 +182,7 @@ func ids(jobs []contracts.Job) []string {
 
 func newSchedRig(t *testing.T, env string) *schedRig {
 	t.Helper()
-	a, errb := testApp(t, env+telegramEnv)
+	a, errb := testApp(t, env+telegramEnv+alertsEnv)
 	r := &schedRig{
 		a: a, errb: errb, inst: &fakeInstFence{}, sl: &fakeSchedLedger{}, fw: clockwork.NewFakeClock(),
 		gaps: &fakeGaps{}, notifier: &fakeNotifier{}, built: make(chan struct{}),
@@ -211,7 +244,32 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		r.builds = append(r.builds, ids(jobs))
 		return fakeRec{ids: ids(jobs), mu: &r.mu, last: &r.reconned}, nil
 	}
-	d.newNotifier = func(notify.GapSource, notify.Sender, clockwork.Clock, notify.Config) (notify.Notifier, error) {
+	d.newNotifier = func(_ notify.GapSource, _ notify.Sender, _ clockwork.Clock, c notify.Config) (notify.Notifier, error) {
+		r.alertsMu.Lock()
+		r.gapCfg = c
+		r.alertsMu.Unlock()
+		return r.notifier, nil
+	}
+	d.alertRules = alertrules.DefaultRules
+	d.loadAlertRules = alertrules.Load
+	d.evaluateAlerts = alertrules.Evaluate
+	d.openSent = func(_ context.Context, dsn string) (store.SentStore, error) {
+		r.alertsMu.Lock()
+		r.sentDSN = dsn
+		r.alertsMu.Unlock()
+		r.sentOpen.Add(1)
+		return fakeSent{r: r}, nil
+	}
+	d.openReadingView = func(_ context.Context, dsn string) (store.ReadingViewReader, error) {
+		r.alertsMu.Lock()
+		r.viewDSN = dsn
+		r.alertsMu.Unlock()
+		return schedView{r: r}, nil
+	}
+	d.newAlertNotifier = func(ad notify.AlertDeps, _ notify.Sender, _ clockwork.Clock, c notify.Config) (notify.AlertNotifier, error) {
+		r.alertsMu.Lock()
+		r.alertCfg, r.alertDeps = c, ad
+		r.alertsMu.Unlock()
 		return r.notifier, nil
 	}
 	d.newTelegramSender = func(string, string, notify.TelegramOptions) (notify.Sender, error) { return nil, nil }
@@ -601,12 +659,29 @@ type fakeNotifier struct {
 	panics bool
 	gaps   *fakeGaps
 	synced []int // the number of gap passes seen at each notify pass
+
+	order       []string // "gaps" and "alerts" in the order of the calls
+	alertPasses int
+	alertErr    error
+	alertPanics bool
+}
+
+func (f *fakeNotifier) NotifyAlerts(context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.alertPasses++
+	f.order = append(f.order, "alerts")
+	if f.alertPanics {
+		panic("boom")
+	}
+	return 0, f.alertErr
 }
 
 func (f *fakeNotifier) NotifyGaps(context.Context) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.passes++
+	f.order = append(f.order, "gaps")
 	if f.gaps != nil {
 		f.gaps.mu.Lock()
 		f.synced = append(f.synced, len(f.gaps.seen))
@@ -710,5 +785,73 @@ func TestSchedulerNeedsLoaderDSN(t *testing.T) {
 	err := <-r.start()
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || strings.Contains(err.Error(), "loader-dsn") {
 		t.Fatalf("err %v", err)
+	}
+}
+
+func TestSchedulerCallsNotifyAlertsAfterGaps(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	done := r.start()
+	r.waitStarted(t, done)
+	r.tick()
+	_ = r.stop(t, done)
+	if got := r.notifier.order; !slices.Equal(got, []string{"gaps", "alerts"}) {
+		t.Fatalf("order %v, want [gaps alerts]", got)
+	}
+}
+
+func TestSchedulerSurvivesNotifyAlertsError(t *testing.T) {
+	t.Parallel()
+	for name, set := range map[string]func(*fakeNotifier){
+		"error": func(n *fakeNotifier) { n.alertErr = errors.New("send to https://api.example/bot-secret-token failed") },
+		"panic": func(n *fakeNotifier) { n.alertPanics = true },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := newSchedRig(t, fullEnv)
+			set(r.notifier)
+			done := r.start()
+			r.waitStarted(t, done)
+			r.tick()
+			r.tick()
+			if err := r.stop(t, done); err != nil {
+				t.Fatalf("the scheduler stopped: %v", err)
+			}
+			if r.notifier.alertPasses != 2 || len(r.gaps.seen) != 2 {
+				t.Fatalf("alert passes %d, gap passes %d, want 2 and 2", r.notifier.alertPasses, len(r.gaps.seen))
+			}
+			if strings.Contains(r.errb.String(), "secret") || !strings.Contains(r.errb.String(), "alert notify") {
+				t.Fatalf("log %q", r.errb.String())
+			}
+		})
+	}
+}
+
+func TestSchedulerAlertsReadWinnerRows(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	done := r.start()
+	r.waitStarted(t, done)
+	_ = r.stop(t, done)
+	if r.sentDSN != "alerts-dsn" || r.viewDSN != "readings-dsn" {
+		t.Fatalf("sent DSN %q, view DSN %q", r.sentDSN, r.viewDSN)
+	}
+	if _, err := r.alertDeps.Read(t.Context(), "n", "k", "s", "2026-11-01", "2026-11-06"); err != nil || r.viewReads.Load() != 1 {
+		t.Fatalf("read err %v, view reads %d", err, r.viewReads.Load())
+	}
+	if r.alertDeps.Evaluate == nil || len(r.alertDeps.Rules.Rules) == 0 || r.sentShut.Load() != 1 {
+		t.Fatalf("deps %+v, sent closed %d", r.alertDeps, r.sentShut.Load())
+	}
+}
+
+func TestSchedulerNeedsAlertsDSN(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, fullEnv)
+	if err := writeFile(r.a.getenv("OT_HOME")+"/.env", fullEnv+telegramEnv); err != nil {
+		t.Fatal(err)
+	}
+	err := <-r.start()
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvAlerts) || r.inst.count() != 0 {
+		t.Fatalf("err %v, lock tries %d", err, r.inst.count())
 	}
 }
