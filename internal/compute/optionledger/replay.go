@@ -43,6 +43,8 @@ type event struct {
 	qty        *big.Rat
 	mult       *big.Rat
 	price      *big.Rat // stock rows only
+	priceText  string   // the tradePrice of an option row as Flex wrote it, trimmed
+	fifo       *big.Rat // fifoPnlRealized of the row; nil when the row has none
 	proceeds   *big.Rat
 	commission *big.Rat // a cost, positive
 }
@@ -187,6 +189,10 @@ func parseEvent(t compute.LedgerTrade, cat string, notes map[string]bool) (event
 	}
 	if e.strike, ok = dec(a["strike"]); !ok {
 		return e, false
+	}
+	e.priceText = strings.TrimSpace(a["tradePrice"])
+	if f, ok := dec(a["fifoPnlRealized"]); ok {
+		e.fifo = f
 	}
 	composite := strings.Join([]string{strings.TrimSpace(a["symbol"]), e.expiry, trimmed(e.strike), e.putCall}, ":")
 	e.contract = composite
