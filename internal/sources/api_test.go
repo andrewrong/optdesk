@@ -34,3 +34,22 @@ func TestSourceContract(t *testing.T) {
 		t.Fatalf("got %+v err %v", got, err)
 	}
 }
+
+type fakeEarnings struct{}
+
+func (fakeEarnings) Fetch(context.Context) ([]sources.EarningsListing, error) {
+	return []sources.EarningsListing{{Symbol: "AAPL", ReportDate: "2026-11-10"}}, nil
+}
+
+func TestEarningsSourceContract(t *testing.T) {
+	t.Parallel()
+	newSource := sources.NewEarningsFunc(func(sources.EarningsConfig) (sources.EarningsSource, error) { return fakeEarnings{}, nil })
+	src, err := newSource(sources.EarningsConfig{BaseURL: "http://unused.invalid", APIKey: "k", Symbols: []string{"7203"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := src.Fetch(context.Background())
+	if err != nil || len(got) != 1 || got[0].Symbol != "AAPL" {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+}

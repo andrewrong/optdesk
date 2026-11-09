@@ -53,3 +53,12 @@ Declared in `internal/sources/api.go` (declarations only; the client and loader 
 
 - `LoadFlexFileFunc`: `ErrFlexNotConfigured` (no file) and `ErrFlexConfig` (bad or unsafe file); texts name entry and field only, never a value.
 - `FlexSource.Fetch`: `contracts.TypedError` values naming the kind `network`, `http_status`, `flex_error`, `in_progress`, `too_large` or `not_report` and the code; none holds the token, the query id or an address. A login whose token variable is empty fails alone as `not_configured`.
+
+## Earnings (Alpha Vantage) declarations
+
+Declared in `internal/sources/api.go`: `EarningsSource`, `EarningsConfig` (`BaseURL`, `APIKey`, `Symbols`, `Doer`), `EarningsListing`, `NewEarningsFunc`, `HTTPDoer`, `CodedError`. The client is `internal/sources/alphavantage` (`New`). The package reads no environment: the wiring reads `ALPHA_VANTAGE_API_KEY` and passes it in. `Symbols` are the JP codes of the J-Quants source; Alpha Vantage ignores them.
+
+- `Fetch(ctx)` makes exactly one `GET /query?function=EARNINGS_CALENDAR&horizon=3month&apikey=...` over the injected `HTTPDoer` (nil: an `http.Client` whose `CheckRedirect` returns `http.ErrUseLastResponse`). It never retries and follows no redirect (a 3xx is a `http_status` error); Decision 12 of `docs/design/event-sources.md` limits the job to one `Fetch` a day.
+- The body is read through `io.LimitReader` (16 MiB); only parsed rows (`EarningsListing`) are returned; the raw csv is never logged or kept. Columns are found by header name (`symbol`, `reportDate` required; `fiscalDateEnding`, `estimate`, `timeOfTheDay` optional); a row with no symbol or no date is skipped.
+- Errors are `CodedError` values (`contracts.TypedError` plus `ErrorCode()`): a JSON notice body (wrong key or used-up quota) and HTTP 429 are `rate_limited`, never an empty result; a body that is not csv (or lacks the required header names) is `not_csv`; fewer than 500 data rows is `short_calendar`; other statuses are `http_status` (code only); transport failure and cancellation are `network`. The key is only in the query and never in an error: a transport error is replaced by a fixed message.
+- Contract tests (`internal/sources/alphavantage`): `TestParseByHeaderName`, `TestNoticeBodyIsError`, `TestShortCalendarIsError`, `TestKeyNeverInError`, `TestOneCallPerFetch`, `TestNoticeIsRateLimitedNoRetry`; `TestEarningsSourceContract` in `internal/sources`; the wiring `var _ sources.NewEarningsFunc = New`.

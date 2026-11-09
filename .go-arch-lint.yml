@@ -129,6 +129,8 @@ components:
     in: internal/pages/gaps
   pages/home_page:
     in: internal/pages/home_page
+  sources/alphavantage:
+    in: internal/sources/alphavantage
   store/events:
     in: internal/store/events
   store/fundamental:
@@ -538,6 +540,12 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  sources/alphavantage:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - contracts/genpb
   store/events:
     mayDependOn:
       - contracts
