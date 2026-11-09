@@ -3,10 +3,12 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
-Revision: 1
+Revision: 2
 
-Status: draft, not yet a pull request. Builds on main at 28d0e86: `internal/compute` (`Figures.HistoricalVol`, `Rules`), `internal/jobs/computefigures` (the figures job, readings), `internal/jobs/earningsrefresh` and `jobs.WatchEntry` (#752), `internal/store/instrument` (`InstrumentResolver`), `internal/broker` (`ReferenceClient` as the pattern for a second client), `ibkr.v1.MarketDataService`, `docs/design/alignment-v25.md`. Not on main yet: the watch loader in `cmd/ot` (`docs/design/event-sources.md` entry `watch-loader-earnings-wire`), which entry 11 needs for `watch.toml`.
-Needs the owner (owner-only paths): `contracts/proto/ibkr/v1/marketdata.proto` (entry 2) and `pyside/src/optdesk/ibkr/transport.py` (entry 6: the servicer method of the new rpc lives there; no other file can host it). No ratchet ceiling is needed: the store interface goes in the new declarations-only package `internal/store/bar` (`api.go`), not in `internal/store/api.go` (799 lines on main), and its implementation in `internal/store/barpg`.
+Revision note: revision 2 adds `pyside/src/optdesk/ibkr/transport.py` to entry 2. Regenerating `marketdata_pb2_grpc.pyi` makes `MarketDataServicer.Bars` abstract, so without a `Bars` method on the servicer class of `transport.py` the pyside `mypy --strict` check fails at the line that instantiates it until entry 6 lands. Entry 2 adds a stub `Bars` that answers `UNIMPLEMENTED`; entry 6 replaces it.
+
+Status: draft, not yet a pull request. Builds on main at 28d0e86: `internal/compute` (`Figures.HistoricalVol`, `Rules`), `internal/jobs/computefigures` (the figures job, readings), `internal/jobs/earningsrefresh` and `jobs.WatchEntry` (#752), `internal/store/instrument` (`InstrumentResolver`), `internal/broker` (`ReferenceClient` as the pattern for a second client), `ibkr.v1.MarketDataService`, `docs/design/alignment-v25.md`. Not on main yet: the watch loader in `cmd/ot` (`docs/design/event-sources.md` entry `watch-loader-earnings-wire`), which entry 13 needs for `watch.toml`.
+Needs the owner (owner-only paths): `contracts/proto/ibkr/v1/marketdata.proto` (entry 2) and `pyside/src/optdesk/ibkr/transport.py` (entry 2 adds a stub `Bars` that answers `UNIMPLEMENTED`, entry 6 the servicer method of the new rpc; no other file can host it). No ratchet ceiling is needed: the store interface goes in the new declarations-only package `internal/store/bar` (`api.go`), not in `internal/store/api.go` (799 lines on main), and its implementation in `internal/store/barpg`.
 Source: plan v2.5 section 11 rows W5-6 "daily bars (trades + weekly adjusted_last), Stooq" and "FX job", W8-9 "HV", W3-4 "store tables ... fx, bars"; the gap table of 2026-11-09 ("Daily bars / HV30 / Stooq / FX / hv30_own: NOT DESIGNED"); `docs/design/alignment-v25.md` Decision 3 item 3 and the rows "weekly adjusted_last re-pull with adjust_epoch", "stock history two bases". Owner 2026-11-09: Stooq coarse layer, scanner and the 15 s FX stream are dropped.
 Scoring and the scanner are another design and are not here.
 
@@ -49,7 +51,7 @@ No new row; one changed cell: the entry cell of the store row gains `internal/st
 | # | issue | module | order |
 |---|---|---|---|
 | 1 | bar-datasets (interface) | contracts | first |
-| 2 | bars-proto (interface) | contracts (owner-only proto) | first |
+| 2 | bars-proto (interface) | contracts, plus pyside (judged two-module entry: the owner-only transport.py stub) | first |
 | 3 | bar-store-api (interface) | store, plus repo (licensed pair: scripts/arch, .go-arch-lint.yml) | after 1 |
 | 4 | bar-store-impl | store, plus repo (licensed pair) | after 1, 3 |
 | 5 | broker-history (interface and implementation) | broker | after 2 |
@@ -95,11 +97,11 @@ Checked by CI: the generated-code check, `go test ./internal/contracts -race -co
 
 ### 2 bars-proto (interface)
 
-Module: contracts. Size: S. The proto path is owner-only (the owner merges it).
-Files: `contracts/proto/ibkr/v1/marketdata.proto`, `internal/contracts/genpb/marketdata.pb.go`, `internal/contracts/genpb/marketdata_grpc.pb.go`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2.pyi`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2_grpc.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2_grpc.pyi`, `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`
+Module: contracts, plus pyside (judged two-module entry: the owner-only transport.py stub). Size: S. The proto path and `transport.py` are owner-only (the owner merges it).
+Files: `contracts/proto/ibkr/v1/marketdata.proto`, `internal/contracts/genpb/marketdata.pb.go`, `internal/contracts/genpb/marketdata_grpc.pb.go`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2.pyi`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2_grpc.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2_grpc.pyi`, `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`, `pyside/src/optdesk/ibkr/transport.py`
 Design: docs/design/market-bars.md#Interface (contracts, proto)
-Order: first. It shares `pyside/src/optdesk/contracts/api.py` and `pyside/tests/contracts/test_contracts_api.py` with entries of other designs that add messages; it rebases on whichever lands first.
-Goal: the rpc, enum and three messages of `## Interface` (`duration_days` stays 1 to 730; the optional `end_day` lets the job ask a longer history in pieces), the generated output with its source, and the re-export of `BarsRequest`, `BarsResponse`, `Bar` and `BarKind` in the contracts `api.py` (pyside imports generated code only there).
+Order: first. It shares `pyside/src/optdesk/contracts/api.py` and `pyside/tests/contracts/test_contracts_api.py` with entries of other designs that add messages, and `pyside/src/optdesk/ibkr/transport.py` with entry 6, `docs/design/event-sources.md` `pyside-dividends` and the account-data pyside entries; it rebases on whichever lands first.
+Goal: the rpc, enum and three messages of `## Interface` (`duration_days` stays 1 to 730; the optional `end_day` lets the job ask a longer history in pieces), the generated output with its source, and the re-export of `BarsRequest`, `BarsResponse`, `Bar` and `BarKind` in the contracts `api.py` (pyside imports generated code only there), and a stub `Bars` method on the servicer class of `transport.py` that answers `UNIMPLEMENTED` (the regenerated `.pyi` makes `Bars` abstract, and pyside `mypy --strict` would otherwise fail; entry 6 replaces the stub).
 Acceptance:
 1. `grep -c "rpc Bars(BarsRequest) returns (BarsResponse)" contracts/proto/ibkr/v1/marketdata.proto` prints 1; `grep -c "BAR_KIND_TRADES\|BAR_KIND_ADJUSTED_LAST\|BAR_KIND_MIDPOINT" contracts/proto/ibkr/v1/marketdata.proto` prints 3.
 2. `grep -ci "account_id\|password\|token\|float\|double" contracts/proto/ibkr/v1/marketdata.proto` prints 0 (decimal text only).
@@ -107,7 +109,8 @@ Acceptance:
 4. `git diff BASE -- contracts/proto | grep -c '^-[^-]'` prints 0 (additive: `Snapshot` and its messages are unchanged).
 5. `grep -c "BarsRequest" internal/contracts/genpb/marketdata.pb.go pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2.pyi pyside/src/optdesk/contracts/api.py` prints three counts, each at least 1.
 6. `git diff --name-only BASE` lists no path outside the Files line.
-Checked by CI: the generated-code check (buf lint and generate), `uv sync --locked`, `pytest -n auto` in `pyside` (`tests/contracts`), ci-go.
+7. `grep -c "def Bars" pyside/src/optdesk/ibkr/transport.py` prints 1 and `grep -c "UNIMPLEMENTED" pyside/src/optdesk/ibkr/transport.py` prints at least 1.
+Checked by CI: the generated-code check (buf lint and generate), `uv sync --locked`, `mypy --strict` and `pytest -n auto` in `pyside` (`tests/contracts`), ci-go.
 
 ### 3 bar-store-api (interface)
 
@@ -162,7 +165,7 @@ Module: pyside. Size: M. `pyside/src/optdesk/ibkr/transport.py` is owner-only (t
 Files: `pyside/src/optdesk/ibkr/api.py`, `pyside/src/optdesk/ibkr/history.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/contracts/test_ibkr_api.py`, `pyside/tests/ibkr/test_history.py`, `pyside/tests/ibkr/test_transport.py`, `pyside/tests/ibkr/fixtures/bars_shapes.json`
 Design: docs/design/market-bars.md#Decisions (2, 3, 7)
 Order: after 2 (messages in the contracts `api.py`). It shares `api.py`, `ibgateway.py`, `transport.py` and `test_ibkr_api.py` with `docs/design/event-sources.md` `pyside-dividends` and the account-data pyside entries and rebases on whichever lands first.
-Goal: `History` protocol and the three dataclasses (`HistoryKey`, `HistoryRequest`, `HistoryBar`, named apart from the generated `BarsRequest` and `Bar`) in `api.py` (declarations only); `history.py` holds the pacer (at most 55 requests per 10 minutes, no identical request within 15 seconds, a wait of at most 300 seconds on the injected clock, then a paced answer) and the mapping of `duration_days` to a TWS duration string and of the three kinds to `TRADES`, `ADJUSTED_LAST`, `MIDPOINT` with bar size 1 day and `formatDate` 1; `ibgateway.py` adapts it to the gateway; `transport.py` adds `MarketDataServicer.Bars` (a missing `con_id` or a duration outside 1 to 730 is INVALID_ARGUMENT; the paced answer is RESOURCE_EXHAUSTED; no account id in a log line). `history.py` maps `duration_days` to `N D` (365 or fewer) or `N Y` and `end_day` to IBKR's end-date text (empty stays empty; the servicer refuses an `end_day` with `ADJUSTED_LAST`); `bars_shapes.json` is the recorded shape (request words and answer rows for `TRADES`, `ADJUSTED_LAST` and `MIDPOINT`, written from the IBKR documentation; the window replaces it with one real answer after merge: this is the probe, folded into this entry so that no extra entry or tool is needed). The test file defines its own fake gateway and uses the fake clock of the kit.
+Goal: `History` protocol and the three dataclasses (`HistoryKey`, `HistoryRequest`, `HistoryBar`, named apart from the generated `BarsRequest` and `Bar`) in `api.py` (declarations only); `history.py` holds the pacer (at most 55 requests per 10 minutes, no identical request within 15 seconds, a wait of at most 300 seconds on the injected clock, then a paced answer) and the mapping of `duration_days` to a TWS duration string and of the three kinds to `TRADES`, `ADJUSTED_LAST`, `MIDPOINT` with bar size 1 day and `formatDate` 1; `ibgateway.py` adapts it to the gateway; `transport.py` replaces the stub of entry 2 with `MarketDataServicer.Bars` (a missing `con_id` or a duration outside 1 to 730 is INVALID_ARGUMENT; the paced answer is RESOURCE_EXHAUSTED; no account id in a log line). `history.py` maps `duration_days` to `N D` (365 or fewer) or `N Y` and `end_day` to IBKR's end-date text (empty stays empty; the servicer refuses an `end_day` with `ADJUSTED_LAST`); `bars_shapes.json` is the recorded shape (request words and answer rows for `TRADES`, `ADJUSTED_LAST` and `MIDPOINT`, written from the IBKR documentation; the window replaces it with one real answer after merge: this is the probe, folded into this entry so that no extra entry or tool is needed). The test file defines its own fake gateway and uses the fake clock of the kit.
 Acceptance:
 1. `grep -c "class HistoryKey\|class HistoryRequest\|class HistoryBar\|class History(Protocol)" pyside/src/optdesk/ibkr/api.py` prints 4; `grep -c "return " pyside/src/optdesk/ibkr/api.py` equals `git show origin/main:pyside/src/optdesk/ibkr/api.py | grep -c "return "` (no logic added).
 2. `grep -c "async def Bars" pyside/src/optdesk/ibkr/transport.py` prints 1; `grep -c "RESOURCE_EXHAUSTED\|INVALID_ARGUMENT" pyside/src/optdesk/ibkr/transport.py` is at least the count on main plus 2.
