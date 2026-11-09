@@ -129,10 +129,14 @@ components:
     in: internal/pages/option_candidates_page
   pages/option_data_page:
     in: internal/pages/option_data_page
+  pages/option_result_page:
+    in: internal/pages/option_result_page
   pages/report_page:
     in: internal/pages/report_page
   pages/risks_block:
     in: internal/pages/risks_block
+  pages/structures_page:
+    in: internal/pages/structures_page
   profile:
     in: internal/profile
   ot:
@@ -527,6 +531,14 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  pages/option_result_page:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - pages
+      - contracts/genpb
+      - compute/contracttest
   pages/report_page:
     mayDependOn:
       - contracts
@@ -536,6 +548,14 @@ deps:
       - contracts/genpb
       - compute/contracttest
   pages/risks_block:
+    mayDependOn:
+      - contracts
+      - store
+      - compute
+      - pages
+      - contracts/genpb
+      - compute/contracttest
+  pages/structures_page:
     mayDependOn:
       - contracts
       - store
@@ -601,6 +621,8 @@ deps:
       - sources/flex
       - pages/market_page
       - pages/option_candidates_page
+      - pages/structures_page
+      - pages/option_result_page
       - sources/alphavantage
       - sources/jquants
       - jobs/earningsrefresh
