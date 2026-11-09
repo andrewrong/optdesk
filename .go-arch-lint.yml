@@ -89,6 +89,8 @@ components:
     in: internal/jobs/fredseries
   jobs/optioneod:
     in: internal/jobs/optioneod
+  jobs/optionledger:
+    in: internal/jobs/optionledger
   jobs/quotesnapshot:
     in: internal/jobs/quotesnapshot
   jobs/serieshistory:
@@ -354,6 +356,17 @@ deps:
       - jobs
       - contracts/genpb
       - compute/contracttest
+  jobs/optionledger:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - broker
+      - store
+      - compute
+      - jobs
+      - contracts/genpb
+      - compute/contracttest
   jobs/quotesnapshot:
     mayDependOn:
       - contracts
@@ -527,6 +540,7 @@ deps:
       - compute/optioncand
       - store/candidate
       - compute/optionledger
+      - jobs/optionledger
       - pages/market_page
       - pages/option_candidates_page
   compute/contracttest:
