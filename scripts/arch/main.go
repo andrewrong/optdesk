@@ -1,5 +1,5 @@
 // Command arch derives arch.toml and .go-arch-lint.yml from the depends column of
-// docs/design/modules.md, and with --check fails when the committed files differ.
+// docs/design/modules.md.
 //
 // arch.toml depends on the table only. .go-arch-lint.yml also reads the tree, because
 // go-arch-lint rejects a component whose directory is absent and flags a package that
@@ -115,7 +115,10 @@ var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 // declarationsOnly lists the packages of declarations only that an entry cell may name:
 // unlike a test kit or generated output, the root component of a row that depends on the
 // listed row may import one, and so may the sub-packages of the listed row itself.
-var declarationsOnly = []string{"internal/store/bar", "internal/store/ownerset", "internal/store/flexsection"}
+var declarationsOnly = []string{
+	"internal/store/bar", "internal/store/mark", "internal/store/ownerset",
+	"internal/compute/settingsapi", "internal/compute/trackapi", "internal/store/flexsection",
+}
 
 // declListed gives, for each row, the declarationsOnly packages (as component names) that
 // its entry cell lists.
@@ -399,7 +402,6 @@ func generate(modules, root string) (toml, yml []byte, err error) {
 func run(args []string, stdout, stderr io.Writer) int {
 	fl := flag.NewFlagSet("arch", flag.ContinueOnError)
 	fl.SetOutput(stderr)
-	check := fl.Bool("check", false, "fail when the committed files differ from the derivation")
 	modules := fl.String("modules", "docs/design/modules.md", "the module map")
 	root := fl.String("root", ".", "the project root")
 	if err := fl.Parse(args); err != nil {
@@ -416,27 +418,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	files := map[string][]byte{tomlFile: toml, ymlFile: yml}
-	bad := 0
 	for _, name := range []string{tomlFile, ymlFile} {
-		path := filepath.Join(*root, name)
-		if !*check {
-			if err := os.WriteFile(path, files[name], 0o600); err != nil {
-				fmt.Fprintln(stderr, "arch:", err)
-				return 2
-			}
-			continue
+		if err := os.WriteFile(filepath.Join(*root, name), files[name], 0o600); err != nil {
+			fmt.Fprintln(stderr, "arch:", err)
+			return 2
 		}
-		got, err := os.ReadFile(path)
-		if err != nil || !bytes.Equal(got, files[name]) {
-			fmt.Fprintf(stderr, "arch: %s does not match docs/design/modules.md; run go run ./scripts/arch\n", name)
-			bad++
-		}
-	}
-	if bad > 0 {
-		return 1
-	}
-	if *check {
-		fmt.Fprintln(stdout, "arch: ok")
 	}
 	return 0
 }

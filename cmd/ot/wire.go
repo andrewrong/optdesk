@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
+	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
@@ -47,6 +48,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
+	"github.com/andrewrong/optdesk/internal/sources/jquants"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/alert"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
@@ -123,9 +125,13 @@ type deps struct {
 	newDryRunSender         notify.NewDryRunSenderFunc
 	openSent                store.OpenSentFunc
 	newAlertNotifier        notify.NewAlertNotifierFunc
+	newMorningNotifier      notify.NewMorningNotifierFunc
+	openGapHistory          gaphistory.OpenFunc
+	openGapReader           store.OpenGapReaderFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
 	newEarningsRefresh      jobs.NewEarningsRefreshFunc
 	newAlphaVantage         sources.NewEarningsFunc
+	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
@@ -208,9 +214,13 @@ func newDeps() deps {
 		newDryRunSender:         dryrun.New,
 		openSent:                alert.Open,
 		newAlertNotifier:        core.NewAlerts,
+		newMorningNotifier:      core.NewMorningNotifier,
+		openGapHistory:          ops.OpenGapHistory,
+		openGapReader:           ops.OpenGapReader,
 		loadAlertRules:          alertrules.Load,
 		newEarningsRefresh:      earningsrefresh.New,
 		newAlphaVantage:         alphavantage.New,
+		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
 		readFile:                os.ReadFile,
 	}
