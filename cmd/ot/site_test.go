@@ -239,6 +239,10 @@ func TestSiteDemoOpensNoStore(t *testing.T) {
 		t.Error("a store was opened")
 		return nil, errors.New("opened")
 	}
+	a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
+		t.Error("a store was opened")
+		return nil, errors.New("opened")
+	}
 	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
 		t.Error("a store was opened")
 		return nil, errors.New("opened")
@@ -555,10 +559,17 @@ type cNames struct {
 
 func (c cNames) Close() error { return c.closeCounter.Close() }
 
+type cCands struct {
+	store.CandidateReader
+	closeCounter
+}
+
+func (c cCands) Close() error { return c.closeCounter.Close() }
+
 func TestSiteStoresClosed(t *testing.T) {
 	t.Parallel()
 	errOpen := errors.New("open sentinel-secret")
-	for failAt := range 7 {
+	for failAt := range 8 {
 		t.Run(strconv.Itoa(failAt), func(t *testing.T) {
 			t.Parallel()
 			a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
@@ -594,6 +605,9 @@ func TestSiteStoresClosed(t *testing.T) {
 			a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
 				return cView{closeCounter: cc}, step()
 			}
+			a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
+				return cCands{closeCounter: cc}, step()
+			}
 			_, _, err := openSiteReaders(t.Context(), a)
 			if err == nil || strings.Contains(err.Error(), "sentinel") {
 				t.Fatalf("err %v", err)
@@ -620,12 +634,15 @@ func TestSiteStoresClosed(t *testing.T) {
 		a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
 			return cView{closeCounter: cc}, nil
 		}
+		a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
+			return cCands{closeCounter: cc}, nil
+		}
 		_, closeFn, err := openSiteReaders(t.Context(), a)
 		if err != nil {
 			t.Fatal(err)
 		}
 		closeFn()
-		if closed.Load() != 7 {
+		if closed.Load() != 8 {
 			t.Fatalf("closed %d", closed.Load())
 		}
 	})
