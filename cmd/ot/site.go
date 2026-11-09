@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -45,7 +46,7 @@ type sitePageInput struct {
 	Choices      []siteChoice
 }
 
-// siteReaders are the six readers the site builds its live pages from.
+// siteReaders are the seven readers the site builds its live pages from.
 type siteReaders struct {
 	series  store.SeriesReader
 	eod     store.OptionEodReader
@@ -53,6 +54,7 @@ type siteReaders struct {
 	catalog store.OptionEodCatalog
 	terms   store.OptionTermsReader
 	names   store.InstrumentNameReader
+	view    store.ReadingViewReader
 }
 
 // openSiteReaders returns the demo readers with the demo profile, else the six stores (series and the
@@ -61,7 +63,7 @@ type siteReaders struct {
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
-		return siteReaders{demoReader{}, d, d, d, d, d}, func() {}, nil
+		return siteReaders{demoReader{}, d, d, d, d, d, demoView{}}, func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -112,12 +114,17 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	closers = append(closers, names.Close)
-	rd = siteReaders{ser, eod, quotes, catalog, terms, names}
+	view, err := a.deps.openReadingView(ctx, dsn)
+	if err != nil {
+		return fail()
+	}
+	closers = append(closers, view.Close)
+	rd = siteReaders{ser, eod, quotes, catalog, terms, names, view}
 	return rd, closeAll, nil
 }
 
 // siteHandler serves the routes of the site: "" (302 to home), the live routes macro, options/data and
-// options/data/<id>, the six sample routes (sample.go) and assets/*, which assets answers. A live page is built per request;
+// options/data/<id>, the route report, the six sample routes (sample.go) and assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +136,9 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 		case path == "":
 		case path == "macro":
 			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
+		case path == "report":
+			q := r.URL.Query()
+			build = func(ctx context.Context) ([]byte, error) { return buildReport(ctx, a, clk, dayFlag, rd.view, q) }
 		case path == siteRoot:
 			build = func(ctx context.Context) ([]byte, error) { return buildSite(ctx, a, clk, dayFlag, rd, 0, false) }
 		case strings.HasPrefix(path, siteRoot+"/"):
@@ -161,6 +171,10 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			assets.ServeHTTP(w, r)
 		default:
 			vm, err := build(r.Context())
+			if errors.Is(err, errReportQuery) {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
 			if err != nil {
 				a.log.Error("serve build failed", "component", "ot", "status", "failed")
 				http.Error(w, "internal error", http.StatusInternalServerError)
