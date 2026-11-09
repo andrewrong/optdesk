@@ -316,7 +316,7 @@ def test_no_order_rpc() -> None:
         for name in vars(servicer)
         if name[0].isupper()
     }
-    assert names == {"ping", "listchains", "resolvecontract", "snapshot"}
+    assert names == {"ping", "listchains", "resolvecontract", "snapshot", "bars"}
 
 
 def test_snapshot_unspecified_kind_is_invalid_argument() -> None:

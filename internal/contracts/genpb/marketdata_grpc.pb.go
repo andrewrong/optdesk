@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MarketDataService_Snapshot_FullMethodName = "/ibkr.v1.MarketDataService/Snapshot"
+	MarketDataService_Bars_FullMethodName     = "/ibkr.v1.MarketDataService/Bars"
 )
 
 // MarketDataServiceClient is the client API for MarketDataService service.
@@ -30,6 +31,8 @@ const (
 type MarketDataServiceClient interface {
 	// Snapshot streams one quote per requested contract.
 	Snapshot(ctx context.Context, in *SnapshotRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SnapshotResponse], error)
+	// Bars returns the daily bars of one contract, oldest first.
+	Bars(ctx context.Context, in *BarsRequest, opts ...grpc.CallOption) (*BarsResponse, error)
 }
 
 type marketDataServiceClient struct {
@@ -59,6 +62,16 @@ func (c *marketDataServiceClient) Snapshot(ctx context.Context, in *SnapshotRequ
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MarketDataService_SnapshotClient = grpc.ServerStreamingClient[SnapshotResponse]
 
+func (c *marketDataServiceClient) Bars(ctx context.Context, in *BarsRequest, opts ...grpc.CallOption) (*BarsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BarsResponse)
+	err := c.cc.Invoke(ctx, MarketDataService_Bars_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MarketDataServiceServer is the server API for MarketDataService service.
 // All implementations must embed UnimplementedMarketDataServiceServer
 // for forward compatibility.
@@ -67,6 +80,8 @@ type MarketDataService_SnapshotClient = grpc.ServerStreamingClient[SnapshotRespo
 type MarketDataServiceServer interface {
 	// Snapshot streams one quote per requested contract.
 	Snapshot(*SnapshotRequest, grpc.ServerStreamingServer[SnapshotResponse]) error
+	// Bars returns the daily bars of one contract, oldest first.
+	Bars(context.Context, *BarsRequest) (*BarsResponse, error)
 	mustEmbedUnimplementedMarketDataServiceServer()
 }
 
@@ -79,6 +94,9 @@ type UnimplementedMarketDataServiceServer struct{}
 
 func (UnimplementedMarketDataServiceServer) Snapshot(*SnapshotRequest, grpc.ServerStreamingServer[SnapshotResponse]) error {
 	return status.Error(codes.Unimplemented, "method Snapshot not implemented")
+}
+func (UnimplementedMarketDataServiceServer) Bars(context.Context, *BarsRequest) (*BarsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Bars not implemented")
 }
 func (UnimplementedMarketDataServiceServer) mustEmbedUnimplementedMarketDataServiceServer() {}
 func (UnimplementedMarketDataServiceServer) testEmbeddedByValue()                           {}
@@ -112,13 +130,36 @@ func _MarketDataService_Snapshot_Handler(srv interface{}, stream grpc.ServerStre
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MarketDataService_SnapshotServer = grpc.ServerStreamingServer[SnapshotResponse]
 
+func _MarketDataService_Bars_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BarsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MarketDataServiceServer).Bars(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MarketDataService_Bars_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MarketDataServiceServer).Bars(ctx, req.(*BarsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MarketDataService_ServiceDesc is the grpc.ServiceDesc for MarketDataService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MarketDataService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "ibkr.v1.MarketDataService",
 	HandlerType: (*MarketDataServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Bars",
+			Handler:    _MarketDataService_Bars_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Snapshot",
