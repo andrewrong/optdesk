@@ -122,6 +122,15 @@ Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, [
 
 Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
 
+## Account data
+
+Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExecutions`), `AccountReader` (`Positions`, `Values`, `Executions`, rows sorted by key, an empty slice when none), `AccountStore` (both and `Close`), `OpenAccountFunc`, `DSNEnvAccount` (`OT_PG_DSN_ACCOUNT`, role `ot_w_account`), `Capture` and the plain row types `Execution`, `AccountValue` and `Position` (decimals as text, days as `YYYY-MM-DD` text). `internal/store` imports neither `internal/broker` nor the generated records; the job maps the broker types to these. The implementation is `internal/store/account.Open` (a later issue). Design: `docs/design/account-data.md#Interface`.
+
+- Schema `account`: tables `account.capture`, `account.position`, `account.value` and `account.execution`; the Reader reads the views `rd.account_*_r1`.
+- Keys (Decision 5): the capture id is `<alias>:<session_day>:<run key>`, so a retry of a run writes the same id; an execution is keyed by `(alias, exec_id)`. Every row carries the alias, never an account id.
+- Insert-only rule: rows are never updated or deleted. A `account.capture` whose id exists writes nothing, children included; `WriteExecutions` is `ON CONFLICT DO NOTHING`. `ot_w_account` has INSERT and SELECT only.
+- Delivery rule (Decision 7): nothing of account data reaches notify; a job result carries a job id, a status and an alias only.
+
 ## Version history
 
 - v1: `master.session_day r1` Writer and Reader, migration runner.
