@@ -92,28 +92,35 @@ func readEase(ctx context.Context, read compute.ReadingFunc, day time.Time) (*ea
 		return nil, fmt.Errorf("macro_page: %s value %q outside 0 to 100", easeName, *best.Value)
 	}
 	out := &easeReading{value: v, dataDay: day}
+	out.band, out.dataDay = readParams(best, day)
+	if _, ok := bandWords[out.band]; !ok {
+		return nil, nil
+	}
+	return out, nil
+}
+
+// readParams returns the band tag and the newest <input>.data_day of a reading (Decision 7);
+// fallback is the data day when none is stored.
+func readParams(r *contracts.ReadingRecord, fallback time.Time) (string, time.Time) {
+	var band string
 	var newest time.Time
-	for _, p := range best.Parameters {
+	for _, p := range r.Parameters {
 		if p.ValueTag == nil {
 			continue
 		}
 		switch {
 		case p.Param == "band":
-			out.band = *p.ValueTag
+			band = *p.ValueTag
 		case strings.HasSuffix(p.Param, ".data_day"):
-			// Decision 7: the data day of the reading is the newest of its inputs.
 			if t, err := time.Parse(dayLayout, *p.ValueTag); err == nil && t.After(newest) {
 				newest = t
 			}
 		}
 	}
-	if !newest.IsZero() {
-		out.dataDay = newest
+	if newest.IsZero() {
+		newest = fallback
 	}
-	if _, ok := bandWords[out.band]; !ok {
-		return nil, nil
-	}
-	return out, nil
+	return band, newest
 }
 
 // roundHalfUp rounds r to places decimals, halves away from zero, and returns the exact
