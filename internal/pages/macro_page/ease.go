@@ -77,11 +77,16 @@ func readEase(ctx context.Context, read compute.ReadingFunc, day time.Time) (*ea
 		if r.Name != easeName || r.Version != easeVersion || r.Day.Format(dayLayout) != string(d) {
 			continue
 		}
+		// The winner is the ok row of the highest rev when there is one; a missing row
+		// of any rev gives no value, so it never beats an ok row.
+		if string(r.State) != "ok" || r.Value == nil {
+			continue
+		}
 		if best == nil || r.Rev > best.Rev {
 			best = r
 		}
 	}
-	if best == nil || string(best.State) != "ok" || best.Value == nil {
+	if best == nil {
 		return nil, nil
 	}
 	if !decimalText.MatchString(*best.Value) {

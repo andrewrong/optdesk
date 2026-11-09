@@ -210,3 +210,14 @@ func TestEaseDataTimeIsNewestInputDataDay(t *testing.T) {
 		t.Fatalf("data_times[0] = %v", dt)
 	}
 }
+
+func TestEaseWinnerOkOverNewerMissing(t *testing.T) {
+	t.Parallel()
+	ok := easeRow(t, easeDay, "56.42", "steady")
+	missing := easeRow(t, easeDay, "", "")
+	missing.Rev = 2
+	e, isMap := easeBuild(t, ok, missing)["ease"].(map[string]any)
+	if !isMap || e["figure"] == nil {
+		t.Fatalf("winner ok rev 1 not shown: %v", e)
+	}
+}
