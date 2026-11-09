@@ -63,6 +63,8 @@ components:
     in: internal/compute/gonumstats
   compute/optioncand:
     in: internal/compute/optioncand
+  compute/optionledger:
+    in: internal/compute/optionledger
   compute/own:
     in: internal/compute/own
   compute/rules:
@@ -238,6 +240,11 @@ deps:
       - compute
       - contracts/genpb
   compute/optioncand:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+  compute/optionledger:
     mayDependOn:
       - contracts
       - compute
@@ -483,6 +490,7 @@ deps:
       - pages/risks_block
       - compute/ease
       - compute/optioncand
+      - compute/optionledger
   compute/contracttest:
     mayDependOn:
       - contracts
