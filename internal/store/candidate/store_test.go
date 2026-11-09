@@ -1,0 +1,186 @@
+package candidate
+
+import (
+	"context"
+	"reflect"
+	"sort"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
+)
+
+var (
+	_ store.CandidateWriter = (*Store)(nil)
+	_ store.CandidateReader = (*Store)(nil)
+)
+
+// fakeDB keeps the argument lists of the inserted rows and replays them to the scan of a query, filtered by the
+// day and the kind the query is given and ordered as the query orders (rank first, nulls last, then the key).
+type fakeDB struct {
+	rows    [][]any
+	inserts int
+	lastSQL string
+}
+
+func (f *fakeDB) InsertAll(_ context.Context, sql string, rows [][]any) error {
+	f.inserts++
+	f.lastSQL = sql
+	f.rows = append(f.rows, rows...)
+	return nil
+}
+
+func (f *fakeDB) Select(_ context.Context, sql string, args []any, scan func(scanner) error) error {
+	f.lastSQL = sql
+	var got [][]any
+	for _, r := range f.rows {
+		if r[0].(time.Time).Equal(args[0].(time.Time)) && r[2].(string) == args[1].(string) {
+			got = append(got, r)
+		}
+	}
+	sort.SliceStable(got, func(i, j int) bool {
+		ri, rj := got[i][31].(*int), got[j][31].(*int)
+		switch {
+		case ri == nil:
+			return false
+		case rj == nil:
+			return true
+		}
+		return *ri < *rj
+	})
+	for _, r := range got {
+		if err := scan(argScanner(r)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *fakeDB) Close() error { return nil }
+
+// argScanner hands the stored argument of column i to the destination i.
+type argScanner []any
+
+func (a argScanner) Scan(dest ...any) error {
+	for i, d := range dest {
+		reflect.ValueOf(d).Elem().Set(reflect.ValueOf(a[i]))
+	}
+	return nil
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func sample(runID string, at time.Time, rank *int) store.Candidate {
+	return store.Candidate{
+		SessionDay: "2026-11-06", RunID: runID, Kind: "short_put", InstrumentID: 42, Alias: "",
+		RuleVersion: "v1", Issuer: "AAPL", UnderlyingID: 7, Expiry: "2026-12-18", DTE: 42, Right: "put",
+		Strike: "180", Multiplier: 100, BidEod: "2.15", Ask: ptr("2.2"), Spot: ptr("190.5"), BuyPrice: ptr("178"),
+		BreakEven: "177.85", AnnualizedYield: ptr("0.103855"), Delta: ptr("-0.21"), Iv: ptr("0.31"), Status: "ok",
+		Gates: `[{"gate":"buy_price","result":"pass"}]`, Marks: `[]`, Fits: `{"A":"fit","B":"unknown"}`,
+		NextEarnings: ptr(contracts.Day("2027-01-28")), EarningsState: "listed", Rank: rank, RankInUnderlying: rank,
+		ComputedAt: at,
+	}
+}
+
+func TestInsertQueryText(t *testing.T) {
+	t.Parallel()
+	db := &fakeDB{}
+	s := &Store{db: db}
+	n, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))})
+	if err != nil || n != 1 {
+		t.Fatalf("insert = %d, %v", n, err)
+	}
+	q := db.lastSQL
+	if !strings.HasPrefix(q, "INSERT INTO candidates.option_candidate (session_day, run_id, kind, instrument_id, alias,") {
+		t.Errorf("insert text = %q", q)
+	}
+	for _, bad := range []string{"ON CONFLICT", "UPDATE", "DELETE"} {
+		if strings.Contains(q, bad) {
+			t.Errorf("insert text holds %s: insert-only", bad)
+		}
+	}
+	if got := strings.Count(q, "$"); got != len(db.rows[0]) || got != 34 {
+		t.Errorf("placeholders = %d, args = %d, want 34 each", got, len(db.rows[0]))
+	}
+
+	none, err := s.InsertCandidates(context.Background(), nil)
+	if err != nil || none != 0 || db.inserts != 1 {
+		t.Errorf("no rows: %d, %v, inserts %d; want 0, nil, 1", none, err, db.inserts)
+	}
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{{RunID: "r"}}); err == nil {
+		t.Error("a row with no session day was accepted")
+	}
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{{SessionDay: "2026-11-06", Kind: "short_put"}}); err == nil {
+		t.Error("a row with no run id was accepted")
+	}
+	if _, err := s.Candidates(context.Background(), "2026-11-06", "short_put"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(db.lastSQL, "FROM rd.option_candidate_r1") || strings.Contains(db.lastSQL, "candidates.option_candidate") {
+		t.Errorf("select text = %q; it reads the view only", db.lastSQL)
+	}
+}
+
+func TestRowMapping(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: &fakeDB{}}
+	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 {
+		t.Fatalf("read = %v, %v", got, err)
+	}
+	if !reflect.DeepEqual(got[0], in) {
+		t.Errorf("row = %+v\nwant  %+v", got[0], in)
+	}
+}
+
+func TestEmptyDayEmptySlice(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: &fakeDB{}}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "covered_call")
+	if err != nil || got == nil || len(got) != 0 {
+		t.Errorf("got %#v, %v; want an empty non-nil slice", got, err)
+	}
+}
+
+func TestZeroDayIsError(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: &fakeDB{}}
+	if _, err := s.Candidates(context.Background(), "", "short_put"); err == nil {
+		t.Error("a zero day was accepted")
+	}
+	if _, err := s.Candidates(context.Background(), "2026-11-06", "bogus"); err == nil {
+		t.Error("an unknown kind was accepted")
+	}
+}
+
+func TestTwoRunsNewerWins(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: &fakeDB{}}
+	t0 := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
+	older := []store.Candidate{sample("old", t0, ptr(1)), sample("old", t0, ptr(2))}
+	older[1].InstrumentID = 43
+	newer := []store.Candidate{sample("new", t0.Add(time.Hour), nil), sample("new", t0.Add(time.Hour), ptr(1))}
+	newer[0].InstrumentID = 44
+	newer[0].Status = "unknown"
+	if _, err := s.InsertCandidates(context.Background(), append(older, newer...)); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("read = %d rows, %v", len(got), err)
+	}
+	for _, c := range got {
+		if c.RunID != "new" {
+			t.Errorf("row of run %q; only the newer run is returned", c.RunID)
+		}
+	}
+	if got[0].Rank == nil || *got[0].Rank != 1 || got[1].Rank != nil {
+		t.Errorf("ranked rows must come first: %v, %v", got[0].Rank, got[1].Rank)
+	}
+}

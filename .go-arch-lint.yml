@@ -37,6 +37,8 @@ components:
     in: internal/store
   store/alert:
     in: internal/store/alert
+  store/candidate:
+    in: internal/store/candidate
   store/instrument:
     in: internal/store/instrument
   store/ops:
@@ -129,6 +131,8 @@ components:
     in: internal/pages/gaps
   pages/home_page:
     in: internal/pages/home_page
+  sources/alphavantage:
+    in: internal/sources/alphavantage
   store/events:
     in: internal/store/events
   store/fundamental:
@@ -181,6 +185,11 @@ deps:
     mayDependOn:
       - contracts
   store/alert:
+    mayDependOn:
+      - contracts
+      - store
+      - contracts/genpb
+  store/candidate:
     mayDependOn:
       - contracts
       - store
@@ -502,6 +511,7 @@ deps:
       - pages/risks_block
       - compute/ease
       - compute/optioncand
+      - store/candidate
       - compute/optionledger
       - pages/market_page
   compute/contracttest:
@@ -538,6 +548,12 @@ deps:
       - pages
       - contracts/genpb
       - compute/contracttest
+  sources/alphavantage:
+    mayDependOn:
+      - contracts
+      - clock
+      - sources
+      - contracts/genpb
   store/events:
     mayDependOn:
       - contracts

@@ -124,7 +124,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 }
 
 // siteHandler serves the routes of the site: "" (302 to home), the live routes macro, options/data and
-// options/data/<id>, the route report, the six sample routes (sample.go) and assets/*, which assets answers. A live page is built per request;
+// options/data/<id>, the routes report and market, the six sample routes (sample.go) and assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +136,8 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 		case path == "":
 		case path == "macro":
 			build = func(ctx context.Context) ([]byte, error) { return buildMacro(ctx, a, clk, dayFlag, rd) }
+		case path == siteMarketRoute:
+			build = func(ctx context.Context) ([]byte, error) { return buildMarket(ctx, a, clk, dayFlag, rd) }
 		case path == "report":
 			q := r.URL.Query()
 			build = func(ctx context.Context) ([]byte, error) { return buildReport(ctx, a, clk, dayFlag, rd.view, q) }
