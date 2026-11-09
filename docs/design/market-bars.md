@@ -77,7 +77,7 @@ The three entries that edit `.go-arch-lint.yml` (3, 7, 10) are one serial chain 
 - broker (entry 5): `type BarKind int` (`BarTrades`, `BarAdjustedLast`, `BarMidpoint`); `type Bar struct{ Day, Open, High, Low, Close string; Volume *string }`; `HistoryClient.Bars(ctx, c Contract, kind BarKind, days int) ([]Bar, error)` and `Close() error`; `NewHistoryFunc func(ctx, socketPath string, o Options) (HistoryClient, error)`; `Options.HistoryTimeout`.
 - pyside (entry 6): in `ibkr/api.py` `BarKey`, `BarsRequest`, `Bar` (frozen dataclasses, prices as text) and `class History(Protocol)` with `async def bars(self, req) -> Sequence[Bar]`; implementation in `history.py` (pacer on the injected clock), the gateway adapter in `ibgateway.py`, the servicer method `Bars` in `transport.py`.
 - jobs (entries 7, 10, 12): `NewBarsRefreshFunc func(broker.Broker, broker.HistoryClient, store.InstrumentResolver, bar.PriceBarWriter, bar.PriceBarReader, []WatchEntry, clock.Clock) (contracts.Job, error)`; `NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)`; `ComputeStores.PriceBars bar.PriceBarReader`. Job ids `bars_refresh` and `fx_refresh`; run keys `{obs.price_bar, <issuer or index:SYMBOL>}` and `{obs.fx_rate, USDJPY}`; a key is present when its newest stored `trades` day (or rate day) is on or after the first row this run wrote or found, `Usable` counts such keys.
-- compute (entry 9): no interface change; a rule row and a register entry.
+- compute (entry 11): no interface change; a rule row and a register entry.
 
 ## Issues
 
