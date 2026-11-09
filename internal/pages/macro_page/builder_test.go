@@ -289,3 +289,15 @@ func TestBuildErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildSentenceDropsEaseWhenFilled(t *testing.T) {
+	t.Parallel()
+	m := easeBuild(t, easeRow(t, easeDay, "56.42", "steady"))
+	if m["sentence"] != "宏观指标来自已存储的序列；事件暂无数据。" {
+		t.Errorf("sentence %v", m["sentence"])
+	}
+	m = easeBuild(t)
+	if m["sentence"] != "宏观指标来自已存储的序列；松紧度和事件暂无数据。" {
+		t.Errorf("sentence without a reading %v", m["sentence"])
+	}
+}
