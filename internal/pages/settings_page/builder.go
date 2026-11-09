@@ -86,10 +86,13 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, _ contracts.Day,
 	}
 
 	ids, flagged := underlyingIDs(latest, flags)
+	if len(ids) > maxRows {
+		return nil, fmt.Errorf("settings_page: %d underlyings, the page lists at most %d", len(ids), maxRows)
+	}
 
 	nameIDs := slices.Clone(ids)
 	for _, h := range limit(hist, maxHistory) {
-		if h.Kind != "param" {
+		if h.Kind != kindParam {
 			nameIDs = append(nameIDs, h.InstrumentID)
 		}
 	}
@@ -127,7 +130,7 @@ func underlyingIDs(latest []store.OptionEodLatest, flags []ownerset.Exclusion) (
 		ids = append(ids, f.InstrumentID)
 	}
 	slices.Sort(ids)
-	return limit(slices.Compact(ids), maxRows), flagged
+	return slices.Compact(ids), flagged
 }
 
 // readNames reads the names of ids in calls of at most maxNames, the reader's limit.

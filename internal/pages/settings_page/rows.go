@@ -15,6 +15,8 @@ const (
 	maxRows    = 1000
 	maxNames   = 500
 	postPath   = "/owner-settings"
+
+	kindParam = "param"
 )
 
 type gap struct {
@@ -138,7 +140,7 @@ func newHistoryRows(h []ownerset.HistoryRow, specs []settingsapi.RuleParamSpec, 
 	rows := make([]historyRow, 0, len(h))
 	for _, r := range limit(h, maxHistory) {
 		row := historyRow{At: r.SetAt.In(zone).Format(time.RFC3339), Kind: r.Kind}
-		if r.Kind == "param" {
+		if r.Kind == kindParam {
 			key := r.Key
 			row.Key, row.Value = &key, clip(r.Value)
 			row.Name = key

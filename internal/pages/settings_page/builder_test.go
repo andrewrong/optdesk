@@ -346,3 +346,16 @@ func TestBuildValidatesAgainstSchema(t *testing.T) {
 		t.Fatalf("reader error = %v", err)
 	}
 }
+
+func TestBuildRefusesMoreRowsThanTheSchemaHolds(t *testing.T) {
+	t.Parallel()
+	ids := make([]int64, 1001)
+	for i := range ids {
+		ids[i] = int64(i + 1)
+	}
+	c := baseConfig()
+	c.Catalog = fakeCatalog{ids: ids}
+	if _, err := Build(t.Context(), c, nil, "2026-11-06", fixedAt); err == nil {
+		t.Fatal("1001 underlyings built, a flag could be cut silently")
+	}
+}
