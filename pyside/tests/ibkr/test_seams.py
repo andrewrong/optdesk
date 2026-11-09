@@ -10,7 +10,14 @@ from datetime import timedelta
 import pytest
 from kit.fakeclock import FakeClock
 
-from optdesk.ibkr.model import ChainRow, Gateway, QuoteRow, ResolveResult, SessionState
+from optdesk.ibkr.model import (
+    ChainRow,
+    Gateway,
+    QuoteRow,
+    QuoteTarget,
+    ResolveResult,
+    SessionState,
+)
 from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
 
 
@@ -44,11 +51,11 @@ class _FakeGateway:
     async def quotes(
         self,
         kind: str,
-        con_ids: Sequence[int],
+        targets: Sequence[QuoteTarget],
         on_quote: Callable[[QuoteRow], Awaitable[None]],
     ) -> None:
-        for con_id in con_ids:
-            await on_quote(QuoteRow(con_id, "ok", 1, 1, 0.0, 0.0, 0.0))
+        for target in targets:
+            await on_quote(QuoteRow(target.con_id, "ok", 1, 1, 0.0, 0.0, 0.0))
 
 
 def test_fake_gateway_satisfies_protocol() -> None:
@@ -60,7 +67,7 @@ def test_fake_gateway_satisfies_protocol() -> None:
 
     async def run() -> ResolveResult:
         await gateway.open_session()
-        await gateway.quotes("option_eod", [3, 4], collect)
+        await gateway.quotes("option_eod", [QuoteTarget(3), QuoteTarget(4)], collect)
         return await gateway.resolve(
             sec_type="STK",
             symbol="SPY",

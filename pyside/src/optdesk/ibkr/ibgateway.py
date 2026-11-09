@@ -23,6 +23,7 @@ from optdesk.ibkr.model import (
     AccountRows,
     ChainRow,
     QuoteRow,
+    QuoteTarget,
     ResolveResult,
     SessionState,
 )
@@ -318,18 +319,18 @@ class IbGateway:
     async def quotes(
         self,
         kind: str,
-        con_ids: Sequence[int],
+        targets: Sequence[QuoteTarget],
         on_quote: Callable[[QuoteRow], Awaitable[None]],
     ) -> None:
         row_spec = spec.kind_spec(kind)
         generation = self._generation
 
-        async def one(con_id: int) -> None:
+        async def one(target: QuoteTarget) -> None:
             async with self._snapshots.lease():
-                row = await self._quote(row_spec, con_id, generation)
+                row = await self._quote(row_spec, target, generation)
             await on_quote(row)
 
-        tasks = [asyncio.ensure_future(one(con_id)) for con_id in con_ids]
+        tasks = [asyncio.ensure_future(one(target)) for target in targets]
         try:
             await asyncio.gather(*tasks)
         finally:
@@ -344,8 +345,9 @@ class IbGateway:
             pass  # the session is gone; its lines went with it
 
     async def _quote(
-        self, row_spec: spec.KindSpec, con_id: int, generation: int
+        self, row_spec: spec.KindSpec, target: QuoteTarget, generation: int
     ) -> QuoteRow:
+        con_id = target.con_id
         requested = self._clock.now().timestamp()
 
         def row(status: str, **rest: Any) -> QuoteRow:
@@ -369,7 +371,13 @@ class IbGateway:
                 return row(spec.STATUS_DISCONNECTED)
             job = _Job(con_id)
             self._jobs.add(job)
-            contract = Contract(conId=con_id, exchange="SMART")
+            contract = Contract(conId=con_id, exchange=target.exchange or "SMART")
+            if target.currency:
+                contract.currency = target.currency
+            if target.trading_class:
+                contract.tradingClass = target.trading_class
+            if target.sec_type:
+                contract.secType = target.sec_type
             sent = self._clock.now().timestamp()
             ticker: Any = None
             watch: Callable[..., None] | None = None

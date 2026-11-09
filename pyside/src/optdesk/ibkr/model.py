@@ -58,6 +58,20 @@ class QuoteRow:
     error_text: str = ""
 
 
+@dataclass(frozen=True)
+class QuoteTarget:
+    """One contract to quote: the con_id and the venue fields the caller asked for.
+
+    An empty field means "not given"; sec_type is the TWS word ("STK", "OPT").
+    """
+
+    con_id: int
+    exchange: str = ""
+    currency: str = ""
+    trading_class: str = ""
+    sec_type: str = ""
+
+
 class SessionState(NamedTuple):
     """State of the broker session."""
 
@@ -102,10 +116,13 @@ class Gateway(Protocol):
     async def quotes(
         self,
         kind: str,
-        con_ids: Sequence[int],
+        targets: Sequence[QuoteTarget],
         on_quote: Callable[[QuoteRow], Awaitable[None]],
     ) -> None:
-        """Call on_quote once per contract, in the order answers complete."""
+        """Call on_quote once per target, in the order answers complete.
+
+        The exchange is SMART when the target's exchange is empty.
+        """
         ...
 
 
