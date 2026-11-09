@@ -1747,8 +1747,14 @@ implemented_by = [
   "internal/compute/ease.weeklyNetLiquidity",
   "internal/compute/ease.changeBack",
   "internal/compute/ease.fedFundsChange",
+  "internal/compute/ease.usChange",
+  "internal/compute/ease.hyLevel",
+  "internal/compute/ease.age",
+  "internal/compute/ease.ratsByDay",
+  "internal/compute/ease.noFigure",
+  "internal/compute/ease.sortedDays",
 ]
-source_hash = "518ff1d1426a18d099460a493f6f29bcb1effd8e3c032535cc85ad3cf2756b10"
+source_hash = "0800cdc376ccf2148dcbe85a5cb0e20e5c78d8394ebe4b5bc95becc1e6f2d60a"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/ease-v2.md"
 history = ["2026-11-08 v2: ported from option-trader macro.ease v2 (issue 827: only the HY OAS points differ from its version 1) by docs/design/ease-v2.md; owner delegated the ease producer to the advisor (alignment answers 2026-11-08); no version 1 here; band words are the page's, not option-trader's 变紧 / 没怎么变 / 变松."]

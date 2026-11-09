@@ -556,6 +556,12 @@ func TestHashCoversEaseHelpers(t *testing.T) {
 		"ratOfFloat":    "ease.go",
 		"wholeHalfUp":   "ease.go",
 		"weekdaysAfter": "ease.go",
+		"usChange":      "ease.go",
+		"hyLevel":       "ease.go",
+		"age":           "ease.go",
+		"ratsByDay":     "netliquidity.go",
+		"noFigure":      "netliquidity.go",
+		"sortedDays":    "netliquidity.go",
 	}
 	// whitespace only: blank lines before the function change nothing.
 	for name, file := range helpers {
@@ -620,12 +626,22 @@ func TestHashCoversEaseScoreLogic(t *testing.T) {
 			e = c
 		}
 	}
-	f, _ := findFigure(figs, e.ID, e.Version)
+	f, ok := findFigure(figs, e.ID, e.Version)
+	if !ok {
+		t.Fatal("macro.ease not in the register")
+	}
 	tmp := t.TempDir()
 	dst := copyPackage(t, root, tmp, "ease")
 	p := filepath.Join(dst, "ease.go")
-	b, _ := os.ReadFile(p)
-	s := strings.Replace(string(b), "obs[days[n-1-p.usLookback]]", "obs[days[n-p.usLookback]]", 1)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	from := "obs[days[n-1-p.usLookback]]"
+	if !strings.Contains(string(b), from) {
+		t.Fatalf("ease.go lacks %q", from)
+	}
+	s := strings.Replace(string(b), from, "obs[days[n-p.usLookback]]", 1)
 	if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
 		t.Fatal(err)
 	}
