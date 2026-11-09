@@ -64,36 +64,28 @@ func TestOtmPercentRounding(t *testing.T) {
 	// Decision 5: put (spot - strike) / strike, call (strike - spot) / strike, times 100;
 	// positive out of the money, so a put at spot 105 over strike 100 is out of the money.
 	cases := []struct {
-		c      func(*compute.LedgerPosition)
+		right  string
 		strike string
 		spot   string
 		want   string
 	}{
-		{nil, "100", "105", "5.00"},
-		{nil, "100", "95", "-5.00"},
-		{call, "100", "95", "5.00"},
-		{call, "100", "105", "-5.00"},
-		{nil, "1000", "999.95", "0.00"},  // -0.005 is a half: to even, zero
-		{nil, "1000", "1000.05", "0.00"}, // 0.005
-		{nil, "1000", "1000.15", "0.02"}, // 0.015 is a half: to even, 0.02
-		{nil, "1000", "1000.25", "0.02"}, // 0.025 is a half: to even, 0.02
-		{nil, "1000", "999.85", "-0.02"}, // -0.015
-		{nil, "1000", "999.75", "-0.02"}, // -0.025
+		{"P", "100", "105", "5.00"},
+		{"P", "100", "95", "-5.00"},
+		{"C", "100", "95", "5.00"},
+		{"C", "100", "105", "-5.00"},
+		{"P", "1000", "999.95", "0.00"},  // -0.005 is a half: to even, zero
+		{"P", "1000", "1000.05", "0.00"}, // 0.005
+		{"P", "1000", "1000.15", "0.02"}, // 0.015 is a half: to even, 0.02
+		{"P", "1000", "1000.25", "0.02"}, // 0.025 is a half: to even, 0.02
+		{"P", "1000", "999.85", "-0.02"}, // -0.015
+		{"P", "1000", "999.75", "-0.02"}, // -0.025
 	}
 	for _, c := range cases {
-		p := pos("a", func(p *compute.LedgerPosition) {
-			p.Strike = c.strike
-			if c.c != nil {
-				c.c(p)
-			}
-		})
+		p := pos("a", func(p *compute.LedgerPosition) { p.Strike, p.Right = c.strike, c.right })
 		q := quote("1", "1.2", c.spot)
-		if c.c != nil {
-			q.Right = "C"
-		}
-		q.Strike = c.strike
+		q.Strike, q.Right = c.strike, c.right
 		if r := one(t, p, q); r.OtmPercent != c.want {
-			t.Errorf("strike %s spot %s: %q want %q", c.strike, c.spot, r.OtmPercent, c.want)
+			t.Errorf("%s strike %s spot %s: %q want %q", c.right, c.strike, c.spot, r.OtmPercent, c.want)
 		}
 	}
 }
