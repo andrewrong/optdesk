@@ -2,7 +2,7 @@
 
 Author: the optdesk designer
 Owner approved: the owner's decisions below are binding (goal, source, EDINET automation); the advisor's of 2026-11-08 (port ADR 0008 and 0023 in meaning); the rest is for the design review
-Revision: 9 (crew issue check applied: direct Order names for the 14 pairs that share a file, the sections of issues 22 and 23 in the order of the table, the Contracts line of issue 2 (the form of #411), the web test path and test names under 32 characters; revision 8: design verdict on revision 7 applied, plus a strict read: serial order of the lint-file issues, the web type placeholder and the generated page type, named tests; revision 7: design verdict on revision 6 applied; revision 6: design verdict on revision 5 applied; revision 5: design verdict on revision 4 applied; revision 4: design verdict on revision 3 applied; revision 3: owner answers of 2026-11-09; revision 2: adversarial review adopted, watch list shared with event-sources)
+Revision: 10 (Order cells of 3, 15 and 21 written as plain comma lists, which crew issue check parses; revision 9: crew issue check applied: direct Order names for the 14 pairs that share a file, the sections of issues 22 and 23 in the order of the table, the Contracts line of issue 2 (the form of #411), the web test path and test names under 32 characters; revision 8: design verdict on revision 7 applied, plus a strict read: serial order of the lint-file issues, the web type placeholder and the generated page type, named tests; revision 7: design verdict on revision 6 applied; revision 6: design verdict on revision 5 applied; revision 5: design verdict on revision 4 applied; revision 4: design verdict on revision 3 applied; revision 3: owner answers of 2026-11-09; revision 2: adversarial review adopted, watch list shared with event-sources)
 
 Source: the owner's goal "value investing plus option selling", the loop company value, buy price band, strike, candidates, ledger, tracking; the advisor of 2026-11-08; the adversarial review of revision 1 (dispatcher scratchpad, not in the repository).
 Read in option-trader at 4704569f (read only): `docs/adr/0008-valuation-and-acquisition-policy.md`, `0023-return-at-price.md`, `src/option_trader/valuation/` (`fcf_yield.py`, `reverse_dcf.py`, `price_return.py`, `five_questions.py`, `diagnosis.py`, `filing_rows.py`, `facts.py`), its `params/*.toml`, `sources/fmp/analyst_estimates.py`.
@@ -126,7 +126,7 @@ Checked by CI: ci-go; the fixture manifest test; the generated code equals a fre
 
 ### companies-page-v2 (interface)
 
-- Module: contracts. Size: M. Order: after 1 and 2 (the manifest). Contracts: adds `contracts/schemas/page.companies_page.v2.json`.
+- Module: contracts. Size: M. Order: after 1, 2 (the manifest). Contracts: adds `contracts/schemas/page.companies_page.v2.json`.
 - Design: docs/design/valuation.md#Decisions (12, 13)
 - Files: contracts/schemas/page.companies_page.v2.json, contracts/fixtures/page.companies_page.v2.input.json, contracts/fixtures/page.companies_page.v2.ok.json, contracts/fixtures/page.companies_page.v2.gap.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/companies_page_v2_test.go, docs/contracts/page-schemas.md, web/src/generated/companies_page.v2.ts
 
@@ -312,7 +312,7 @@ Checked by CI: ci-go.
 
 ### compute-questions-diagnosis
 
-- Module: compute, plus docs. Size: L. Order: after 13 and 14 (same register, rules and glossary files).
+- Module: compute, plus docs. Size: L. Order: after 13, 14 (same register, rules and glossary files).
 - Design: docs/design/valuation.md#Decisions (1, 11, 12)
 - Files: internal/compute/valuation/questions.go, internal/compute/valuation/capital.go, internal/compute/valuation/diagnosis.go, internal/compute/valuation/questions_test.go, internal/compute/valuation/diagnosis_test.go, internal/compute/rules/rules.json, docs/conventions/register.toml, docs/GLOSSARY.md
 
@@ -405,7 +405,7 @@ Checked by CI: ci-go.
 
 ### valuation-compute-jp
 
-- Module: compute, plus docs (`docs/conventions/register.toml`). Size: M. Order: after 11 (creates `params.go`), 13, 14 and 15 (same register and rules files) and 20 (the concept names).
+- Module: compute, plus docs (`docs/conventions/register.toml`). Size: M. Order: after 11, 13, 14, 15, 20 (11 creates `params.go`; 13, 14 and 15 share the register and rules files; 20 gives the concept names).
 - Design: docs/design/valuation.md#Decisions (1, 8, 11)
 - Files: internal/compute/valuation/params_jp.json, internal/compute/valuation/params.go, internal/compute/valuation/params_jp_test.go, internal/compute/rules/rules.json, docs/conventions/register.toml
 
