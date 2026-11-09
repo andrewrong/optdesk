@@ -23,7 +23,7 @@ const (
 	sessionLookback    = 150 // calendar days of session days to read
 	historyDays        = 90  // session days of the trend
 	staleSessions      = 3   // an input older than this many session days is a stale_input gap
-	markMaxAgeSessions = 5
+	markMaxAgeSessions = 5 // LedgerParams default of structures_page; the replay needs it for marks this page never reads
 	staleAfterDays     = 4
 )
 
@@ -66,26 +66,26 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, err
 	}
-	cap, err := c.capture(ctx, alias, sessions)
+	snap, err := c.capture(ctx, alias, sessions)
 	if err != nil {
 		return nil, err
 	}
-	if cap.day == "" {
+	if snap.day == "" {
 		return marshal(gapPage(c, alias, scopes, at, "no_data", textNoCapture))
 	}
-	if lag := len(sessions) - 1 - slices.Index(sessions, contracts.Day(cap.day)); lag > staleSessions {
+	if lag := len(sessions) - 1 - slices.Index(sessions, contracts.Day(snap.day)); lag > staleSessions {
 		return marshal(gapPage(c, alias, scopes, at, "stale_input", textStale))
 	}
-	obligations, ledgerAt, err := c.obligations(ctx, alias, sessions, contracts.Day(cap.day))
+	obligations, ledgerAt, err := c.obligations(ctx, alias, sessions, contracts.Day(snap.day))
 	if err != nil {
 		return nil, err
 	}
 	res := c.Figures().Household(blockapi.HouseholdInput{
-		Alias: alias, Whose: tag.Whose, Day: contracts.Day(cap.day),
-		Values: valuesIn(cap.values), MonthStart: valuesIn(cap.monthStart),
-		History: cap.history, Obligations: obligations,
+		Alias: alias, Whose: tag.Whose, Day: contracts.Day(snap.day),
+		Values: valuesIn(snap.values), MonthStart: valuesIn(snap.monthStart),
+		History: snap.history, Obligations: obligations,
 	})
-	return marshal(c.assemble(alias, tag, scopes, cap, ledgerAt, res, at))
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
