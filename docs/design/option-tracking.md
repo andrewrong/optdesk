@@ -85,6 +85,8 @@ Marked: the schema is owned by contracts and frozen by issue 1; the Go types of 
   `func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error)` (the `pages.Builder` shape; `r` is unused; `at` is `generated_at` in UTC, the builder reads no clock).
 - ot: `deps.optionTrackingPage func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page`, where `trackingReaders` is a private type that issue 8 defines in `cmd/ot/tracking_site.go`: one field per reader of `Config` (`Ledger store.OptionLedgerReader`, `Account store.AccountReader`, `Candidates store.CandidateReader`, `Eod store.OptionEodReader`, `Catalog store.OptionEodCatalog`, `Names store.InstrumentNameReader`, `Terms store.OptionTermsReader`, `Sessions store.SessionDayReader`), nil when its store did not open; route constant `siteTrackingRoute = "options/tracking"`.
 
+Landed in #788 (entry 1 option-tracking-schema, #785), #949 (entry 2 option-tracking-compute-api, #786), #957 (entry 3 option-tracking-rule, #813).
+
 ## Issues
 
 Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a fake clock, never sleeps, opens no port, and touches no live broker or database. Acceptance items are decided by reading, grep or git; the commands run by CI are on the `Checked by CI` line of each entry.

@@ -129,6 +129,8 @@ candidates (interface change of `store/candidate`, owner 2026-11-09): dataset co
 
 jobs, additive in `internal/jobs/api.go`: `type OptionEodWindow struct { MinDTE, MaxDTE, MaxStrikes int }` and `type NewOptionEodWatchWindowFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, OptionEodWindow, clock.Clock) (contracts.Job, error)` (a zero field keeps the manifest value); and, issue 14, `type SettingsVersionFunc func(ctx context.Context, at time.Time) (int64, error)`.
 
+Landed in #927 (entry 4 ruleparam-impl, #918).
+
 ## Issues
 
 Every test calls `t.Parallel()`, writes files only under `t.TempDir()`, uses a fake clock, never sleeps, opens no port, and touches no live broker or database. Acceptance items are decided by reading, grep or git; the commands run by CI are on the `Checked by CI` line of each entry. The pull request body of each entry carries a `Contracts:` line (`Contracts: unchanged` except entry 1).
