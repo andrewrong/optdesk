@@ -243,6 +243,8 @@ const (
 	DSNEnvCandidate = "OT_PG_DSN_CANDIDATE"
 	// DSNEnvOptionLedger names the line that holds the DSN of the role ot_w_optionledger.
 	DSNEnvOptionLedger = "OT_PG_DSN_OPTION_LEDGER"
+	// DSNEnvAccount names the line that holds the DSN of the role ot_w_account.
+	DSNEnvAccount = "OT_PG_DSN_ACCOUNT"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -699,3 +701,107 @@ type OptionLedgerStore interface {
 
 // OpenOptionLedgerFunc opens the option ledger store (internal/store/optionledger.Open).
 type OpenOptionLedgerFunc func(ctx context.Context, dsn string) (OptionLedgerStore, error)
+
+// Position is one row of account.position r1: the columns of the dataset as plain text and numbers, decimals as
+// text. CaptureID, Alias, CapturedAt and SessionDay repeat the Capture the row belongs to; the Reader fills
+// them, WriteCapture takes them from the Capture and ignores them here.
+type Position struct {
+	CaptureID  string
+	Alias      string
+	CapturedAt time.Time
+	SessionDay string // YYYY-MM-DD
+	Symbol     string
+	SecType    string
+	Exchange   string
+	Currency   string
+	Expiry     string // YYYY-MM-DD, empty when the instrument has none
+	Strike     string // decimal text, empty when the instrument has none
+	Multiplier string // decimal text
+	Right      string // put or call, empty when the instrument has none
+	ConID      int64
+	Quantity   string // decimal text
+	AvgCost    string // decimal text
+}
+
+// AccountValue is one row of account.value r1 (a summary tag such as NetLiquidation), decimals as text. The
+// first four fields repeat the Capture as in Position.
+type AccountValue struct {
+	CaptureID  string
+	Alias      string
+	CapturedAt time.Time
+	SessionDay string // YYYY-MM-DD
+	Tag        string
+	Value      string // decimal text
+	Currency   string
+}
+
+// Execution is one row of account.execution r1, decimals as text. The key is (Alias, ExecID). The Reader
+// fills Alias; WriteExecutions takes the alias from its argument.
+type Execution struct {
+	Alias              string
+	ExecID             string
+	PermID             int64
+	ExecutedAt         time.Time
+	SessionDay         string // YYYY-MM-DD
+	Symbol             string
+	SecType            string
+	Expiry             string // YYYY-MM-DD, empty when the instrument has none
+	Strike             string // decimal text, empty when the instrument has none
+	Right              string // put or call, empty when the instrument has none
+	Multiplier         string // decimal text
+	Currency           string
+	Side               string
+	Quantity           string // decimal text
+	Price              string // decimal text
+	Commission         string // decimal text
+	CommissionCurrency string
+}
+
+// Capture is one capture of one alias: the row of account.capture r1 with its children. ID is
+// <alias>:<session_day>:<run key> of the scheduler run, so a retry of a run carries the same ID. Status is the
+// word of the capture (ok, or a partial status the job names). Values and Positions are the children; a kind
+// the gateway does not collect is left nil, and a collected kind with no row is an empty slice.
+type Capture struct {
+	ID         string
+	Alias      string
+	At         time.Time
+	SessionDay string // YYYY-MM-DD
+	Status     string
+	Values     []AccountValue
+	Positions  []Position
+}
+
+// AccountWriter writes the account datasets (role ot_w_account, line DSNEnvAccount), insert-only: no row is
+// ever updated or deleted.
+type AccountWriter interface {
+	// WriteCapture writes the capture and its children in one transaction. A capture whose ID exists writes
+	// nothing, children included, and returns no error. A database error is Retryable.
+	WriteCapture(ctx context.Context, c Capture) error
+	// WriteExecutions inserts the rows under alias, ON CONFLICT DO NOTHING on (alias, exec_id): a key that
+	// exists stays as it is, so a repeated call adds nothing.
+	WriteExecutions(ctx context.Context, alias string, rows []Execution) error
+}
+
+// AccountReader reads the account datasets through the views rd.account_*_r1, never the base tables. Every
+// method returns an empty slice, never nil, when there is no row.
+type AccountReader interface {
+	// Positions returns the position rows of the captures of alias on session day day, sorted by key
+	// (capture id, then the order of the dataset's columns).
+	Positions(ctx context.Context, alias, day string) ([]Position, error)
+	// Values returns the value rows of the captures of alias on session day day, sorted by key.
+	Values(ctx context.Context, alias, day string) ([]AccountValue, error)
+	// Executions returns the executions of alias with session day from to to, inclusive, sorted by key
+	// (executed_at, then exec_id).
+	Executions(ctx context.Context, alias, from, to string) ([]Execution, error)
+}
+
+// AccountStore is one store for both sides.
+type AccountStore interface {
+	AccountWriter
+	AccountReader
+	// Close releases the connection.
+	Close() error
+}
+
+// OpenAccountFunc opens the account store with the line DSNEnvAccount (internal/store/account.Open).
+type OpenAccountFunc func(ctx context.Context, dsn string) (AccountStore, error)
