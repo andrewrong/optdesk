@@ -55,6 +55,8 @@ components:
     in: internal/store/instrument
   store/ops:
     in: internal/store/ops
+  store/ownerset:
+    in: internal/store/ownerset
   store/reading:
     in: internal/store/reading
   store/series:
@@ -87,6 +89,8 @@ components:
     in: internal/compute/own
   compute/rules:
     in: internal/compute/rules
+  compute/settingsapi:
+    in: internal/compute/settingsapi
   compute/talibind:
     in: internal/compute/talibind
   runner:
@@ -238,12 +242,14 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/bar:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/ownerset
       - contracts/genpb
   store/candidate:
     mayDependOn:
@@ -251,6 +257,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/events:
     mayDependOn:
@@ -258,6 +265,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/instrument:
     mayDependOn:
@@ -265,8 +273,17 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/ops:
+    mayDependOn:
+      - contracts
+      - gaphistory
+      - store
+      - store/bar
+      - store/ownerset
+      - contracts/genpb
+  store/ownerset:
     mayDependOn:
       - contracts
       - gaphistory
@@ -279,6 +296,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/series:
     mayDependOn:
@@ -286,6 +304,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/sessionday:
     mayDependOn:
@@ -293,6 +312,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/setup:
     mayDependOn:
@@ -300,6 +320,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   store/snapshot:
     mayDependOn:
@@ -307,6 +328,7 @@ deps:
       - gaphistory
       - store
       - store/bar
+      - store/ownerset
       - contracts/genpb
   compute:
     mayDependOn:
@@ -315,48 +337,63 @@ deps:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/ease:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/figures:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/gonumstats:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/optioncand:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/optionledger:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/optionnotice:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/optionstruct:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/own:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   compute/rules:
+    mayDependOn:
+      - contracts
+      - compute
+      - compute/settingsapi
+      - contracts/genpb
+  compute/settingsapi:
     mayDependOn:
       - contracts
       - compute
@@ -365,6 +402,7 @@ deps:
     mayDependOn:
       - contracts
       - compute
+      - compute/settingsapi
       - contracts/genpb
   runner:
     mayDependOn:
@@ -372,12 +410,14 @@ deps:
       - clock
       - store
       - store/bar
+      - store/ownerset
   runner/reconcile:
     mayDependOn:
       - contracts
       - clock
       - store
       - store/bar
+      - store/ownerset
       - runner
       - contracts/genpb
   runner/sched:
@@ -386,6 +426,7 @@ deps:
       - clock
       - store
       - store/bar
+      - store/ownerset
       - runner
       - contracts/genpb
   jobs:
@@ -397,6 +438,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
   jobs/calendarrefresh:
     mayDependOn:
       - contracts
@@ -406,6 +449,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -418,6 +463,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -430,6 +477,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -442,6 +491,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -454,6 +505,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -466,6 +519,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -478,6 +533,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -490,6 +547,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -502,6 +561,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -512,6 +573,8 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
   notify/core:
     mayDependOn:
       - contracts
@@ -519,6 +582,8 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -529,6 +594,8 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -539,6 +606,8 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -548,12 +617,16 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
   pages/embed:
     mayDependOn:
       - contracts
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -563,6 +636,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -572,6 +647,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -581,6 +658,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -590,6 +669,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -599,6 +680,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -608,6 +691,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -617,6 +702,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -626,6 +713,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -635,6 +724,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -644,6 +735,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -716,16 +809,20 @@ deps:
       - jobs/earningsrefresh
       - store/events
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
   compute/contracttest:
     mayDependOn:
       - contracts
       - compute
       - contracts/genpb
+      - compute/settingsapi
   compute/sharpmove:
     mayDependOn:
       - contracts
       - compute
       - contracts/genpb
+      - compute/settingsapi
   notify/notifytest:
     mayDependOn:
       - contracts
@@ -733,6 +830,8 @@ deps:
       - compute
       - gaphistory
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -742,6 +841,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -751,6 +852,8 @@ deps:
       - store
       - compute
       - store/bar
+      - store/ownerset
+      - compute/settingsapi
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -761,6 +864,7 @@ deps:
       - store
       - contracts/genpb
       - store/bar
+      - store/ownerset
   store/migrate:
     mayDependOn:
       - contracts
@@ -768,3 +872,4 @@ deps:
       - store
       - contracts/genpb
       - store/bar
+      - store/ownerset

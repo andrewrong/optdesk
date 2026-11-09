@@ -453,3 +453,45 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
 	}
 }
+
+func TestRootImportsOwnersetDeclarations(t *testing.T) {
+	t.Parallel()
+	fixture := strings.Replace(declFixture, "internal/store/api.go internal/store/bar", "internal/store/api.go internal/store/ownerset", 1)
+	tree := map[string]string{}
+	for k, v := range declTree {
+		tree[k] = v
+	}
+	tree["internal/store/ownerset/api.go"] = "package ownerset\n"
+	dir := scratch(t, tree)
+	toml, _, err := generate(fixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"store/ownerset"`) {
+		t.Fatalf("jobs lacks store/ownerset in arch.toml:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "store"); strings.Contains(b, "store/ownerset") {
+		t.Fatalf("the root store imports its own declarations package:\n%s", b)
+	}
+}
+
+func TestRootImportsSettingsapiDeclarations(t *testing.T) {
+	t.Parallel()
+	fixture := strings.Replace(declFixture, "internal/compute/api.go internal/compute/contracttest", "internal/compute/api.go internal/compute/settingsapi", 1)
+	tree := map[string]string{}
+	for k, v := range declTree {
+		tree[k] = v
+	}
+	tree["internal/compute/settingsapi/api.go"] = "package settingsapi\n"
+	dir := scratch(t, tree)
+	toml, _, err := generate(fixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"compute/settingsapi"`) {
+		t.Fatalf("jobs lacks compute/settingsapi in arch.toml:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "compute"); strings.Contains(b, "compute/settingsapi") {
+		t.Fatalf("the root compute imports its own declarations package:\n%s", b)
+	}
+}

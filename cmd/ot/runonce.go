@@ -32,6 +32,8 @@ type runOnceConfig struct {
 	pagesDSN, readingsDSN, loaderDSN, calendarUV                             string
 	// eventsDSN and alphaKey belong to earnings_refresh alone: an empty one leaves that job out, never the run.
 	eventsDSN, alphaKey string
+	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
+	jquantsKey string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
 	watch      []jobs.WatchEntry
 	socketPath string
@@ -59,6 +61,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		calendarUV:       env[envCalendarUV],
 		eventsDSN:        env[store.DSNEnvEvents],
 		alphaKey:         env[envAlphaKey],
+		jquantsKey:       env[envJQuantsKey],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -343,7 +346,7 @@ func withWiring(
 	if err != nil {
 		return err
 	}
-	events, earn, closeEvents, err := openEarnings(ctx, d, cfg)
+	events, earn, closeEvents, err := openEarnings(ctx, a, d, cfg)
 	if err != nil {
 		return err
 	}
@@ -528,8 +531,9 @@ func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.
 }
 
 // openEarnings opens the earnings store with the events line (the stand-in when the line is empty) and builds the
-// Alpha Vantage source (none when the key is empty). The returned func closes the store. No error holds a DSN or a key.
-func openEarnings(ctx context.Context, d deps, cfg runOnceConfig) (store.EarningsDateStore, map[string]sources.EarningsSource, func(), error) {
+// Alpha Vantage source (none when the key is empty) and the J-Quants source over the JP symbols of the watch list
+// (none, with one logged line naming the key, when its key is empty). The returned func closes the store. No error holds a DSN or a key.
+func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (store.EarningsDateStore, map[string]sources.EarningsSource, func(), error) {
 	var events store.EarningsDateStore = noEventsStore{}
 	if cfg.eventsDSN != "" {
 		var err error
@@ -547,6 +551,16 @@ func openEarnings(ctx context.Context, d deps, cfg runOnceConfig) (store.Earning
 		}
 		earn["US"] = av
 	}
+	if cfg.jquantsKey == "" {
+		a.log.Warn("JP earnings source left out", "component", "ot", "status", reasonNoJQuantsKey)
+	} else {
+		jq, err := d.newJQuants(sources.EarningsConfig{BaseURL: jquantsBaseURL, APIKey: cfg.jquantsKey, Symbols: jpSymbols(cfg.watch)})
+		if err != nil {
+			_ = events.Close()
+			return nil, nil, nil, fmt.Errorf("build J-Quants source failed")
+		}
+		earn["JP"] = jq
+	}
 	return events, earn, func() { _ = events.Close() }, nil
 }
 
@@ -560,4 +574,15 @@ func fredSource(d deps, cfg runOnceConfig, clk clock.Clock) (sources.Source, err
 		return nil, fmt.Errorf("build FRED source failed")
 	}
 	return src, nil
+}
+
+// jpSymbols is the symbol of each JP entry of the watch list, in file order: the codes one J-Quants call each.
+func jpSymbols(watch []jobs.WatchEntry) []string {
+	var out []string
+	for _, e := range watch {
+		if e.Market == "JP" {
+			out = append(out, e.Contract.Symbol)
+		}
+	}
+	return out
 }
