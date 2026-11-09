@@ -216,11 +216,15 @@ class MultipleAccounts(Exception):
 
 
 class AccountGateway(Protocol):
-    """A broker that serves the summary, the positions and the executions of its one account."""
+    """A broker that serves the summary and the positions of its one account."""
 
     async def account(self, *, summary: bool, positions: bool) -> AccountRows:
         """Read the asked lists in one call; raise MultipleAccounts for a login of several."""
         ...
+
+
+class ExecutionsGateway(Protocol):
+    """A broker that serves the executions of its one account, complete rows only."""
 
     async def executions(self) -> ExecutionRows:
         """Read the executions of the day with their commissions.

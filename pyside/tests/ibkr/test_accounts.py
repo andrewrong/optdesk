@@ -23,7 +23,6 @@ from optdesk.ibkr.model import (
     AccountGateway,
     AccountRows,
     AccountValueRow,
-    ExecutionRows,
     Gateway,
     MultipleAccounts,
     PositionRow,
@@ -398,9 +397,6 @@ class FakeAccounts:
         if self.error is not None:
             raise self.error
         return self.rows
-
-    async def executions(self) -> ExecutionRows:
-        return ExecutionRows(self.rows.generation)
 
     async def status(self) -> Any:
         return None

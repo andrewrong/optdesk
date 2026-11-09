@@ -47,7 +47,7 @@ def other_acct() -> str:
 
 async def settle() -> None:
     for _ in range(20):
-        await asyncio.sleep(0)
+        await FakeClock().sleep(0)  # yields the loop one turn, waits for no time
 
 
 class Conn:

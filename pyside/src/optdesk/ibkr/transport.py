@@ -28,6 +28,7 @@ from optdesk.ibkr.model import (
     ChainRow,
     ExecutionRow,
     ExecutionRows,
+    ExecutionsGateway,
     Gateway,
     MultipleAccounts,
     PositionRow,
@@ -608,7 +609,7 @@ class AccountServicer(pb.AccountServiceServicer):
     ) -> pb.ExecutionsResponse:
         if not self._executions:
             return pb.ExecutionsResponse(account=self._alias, collected=False)
-        gateway = cast(AccountGateway, self._shared.gateway)
+        gateway = cast(ExecutionsGateway, self._shared.gateway)
         rows: ExecutionRows = await self._shared.call(
             "executions",
             context,
