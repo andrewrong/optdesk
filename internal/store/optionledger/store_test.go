@@ -7,11 +7,14 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/store"
 )
+
+var fetchSeq atomic.Int64
 
 var fixedNow = time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
 
@@ -55,6 +58,11 @@ func (t fakeTx) Exec(_ context.Context, sql string, args ...any) (int64, error) 
 	case insertFetchSQL:
 		if t.db.failOn != "" {
 			return 0, errors.New(t.db.failOn)
+		}
+		for _, f := range t.db.fetches {
+			if reflect.DeepEqual([]any{f[0], f[1], f[4]}, []any{args[0], args[1], args[4]}) {
+				return 0, nil // ON CONFLICT DO NOTHING
+			}
 		}
 		t.db.fetches = append(t.db.fetches, args)
 		return 1, nil
@@ -175,10 +183,12 @@ func row(tx, hash string) store.FlexTradeRow {
 	}
 }
 
+// fetchRec returns a record that differs from every earlier one in its start time, the last part of its key.
 func fetchRec() store.FlexFetchRecord {
+	at := fixedNow.Add(time.Duration(fetchSeq.Add(1)) * time.Second)
 	return store.FlexFetchRecord{
 		Login: "main", QueryID: "123", FirstDay: "2026-10-01", LastDay: "2026-11-08",
-		StartedAt: fixedNow, FinishedAt: fixedNow.Add(time.Minute), Status: "ok", ParserVersion: "1",
+		StartedAt: at, FinishedAt: at.Add(time.Minute), Status: "ok", ParserVersion: "1",
 		Statements: 1, RowsParsed: 3,
 	}
 }
@@ -352,9 +362,9 @@ func TestLatestOkFetchMapsRecord(t *testing.T) {
 	if _, ok, err := s.LatestOkFetch(ctx, "main", "123"); err != nil || ok {
 		t.Fatalf("empty: %v, %v", ok, err)
 	}
-	bad := fetchRec()
+	bad, want := fetchRec(), fetchRec()
 	bad.Status, bad.StartedAt, bad.FinishedAt = "failed", fixedNow.Add(2*time.Hour), fixedNow.Add(3*time.Hour)
-	for _, r := range []store.FlexFetchRecord{fetchRec(), bad} {
+	for _, r := range []store.FlexFetchRecord{want, bad} {
 		if _, err := s.RecordFlexFetch(ctx, r, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -363,7 +373,6 @@ func TestLatestOkFetchMapsRecord(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("got %v, %v", ok, err)
 	}
-	want := fetchRec()
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("record = %+v\nwant     %+v", got, want)
 	}
@@ -434,5 +443,22 @@ func TestStoredAttributesHoldNoAccountKey(t *testing.T) {
 				t.Errorf("stored attributes hold %s", k)
 			}
 		}
+	}
+}
+
+func TestDuplicateFetchRecordFailsAndKeepsNoRows(t *testing.T) {
+	t.Parallel()
+	s, db := newStore()
+	ctx := context.Background()
+	rec := fetchRec()
+	if _, err := s.RecordFlexFetch(ctx, rec, nil); err != nil {
+		t.Fatal(err)
+	}
+	// Same login, query id and start time: the record is not written, so the rows of the call are not kept either.
+	if _, err := s.RecordFlexFetch(ctx, rec, []store.FlexTradeRow{row("t1", "h1")}); err == nil {
+		t.Fatal("a duplicate fetch record was accepted")
+	}
+	if len(db.rows) != 0 || len(db.fetches) != 1 {
+		t.Errorf("%d rows and %d records kept, want 0 and 1", len(db.rows), len(db.fetches))
 	}
 }

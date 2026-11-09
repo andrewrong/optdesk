@@ -109,8 +109,14 @@ func (s *Store) RecordFlexFetch(ctx context.Context, rec store.FlexFetchRecord, 
 				return fmt.Errorf("revision %d of %s/%s/%s exists: a concurrent writer", next, r.Alias, r.LevelOfDetail, r.TransactionID)
 			}
 		}
-		_, err := t.Exec(ctx, insertFetchSQL, fetchArgs(rec, first, last, out)...)
-		return err
+		n, err := t.Exec(ctx, insertFetchSQL, fetchArgs(rec, first, last, out)...)
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return fmt.Errorf("a fetch record of %s/%s started at %s exists", rec.Login, rec.QueryID, rec.StartedAt)
+		}
+		return nil
 	})
 	if err != nil {
 		return store.FlexInsert{}, wrap("record fetch", err)
