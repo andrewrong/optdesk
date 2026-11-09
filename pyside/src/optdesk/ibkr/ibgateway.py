@@ -22,8 +22,14 @@ from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.accounts import read_account, read_executions
-from optdesk.ibkr.api import DividendKey, DividendReading
+from optdesk.ibkr.api import (
+    DividendKey,
+    DividendReading,
+    HistoryBar,
+    HistoryRequest,
+)
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
+from optdesk.ibkr.history import HistoryReader, WireRequest
 from optdesk.ibkr.model import (
     AccountRows,
     ChainRow,
@@ -146,6 +152,7 @@ class IbGateway:
         self._lines = LineBudget(lines)
         self._snapshots = LineBudget(snapshots)
         self._lane = DetailsLane(self._clock)
+        self._history = HistoryReader(self._clock)
         self._ib: Any = None
         self._connected = False
         self._generation = 0
@@ -563,6 +570,59 @@ class IbGateway:
             self._pacer.cancel(lambda: self._cancel(ib, contract))
 
         return release
+
+    # --- history ----------------------------------------------------------
+
+    async def bars(self, request: HistoryRequest) -> Sequence[HistoryBar]:
+        """Return the daily bars of the request, oldest first.
+
+        Paced by the history pacer (HistoryPaced) and by the message pacer; a
+        lost session raises ConnectionError and a refusal of the broker raises
+        BrokerError.
+        """
+        key = request.key
+        contract = Contract(
+            conId=key.con_id,
+            symbol=key.symbol,
+            secType=key.sec_type,
+            exchange=key.exchange or "SMART",
+            currency=key.currency,
+        )
+
+        async def fetch(words: WireRequest) -> Sequence[HistoryBar]:
+            ib, generation = self._session()
+            try:
+                found = await self._send_details(
+                    generation,
+                    lambda: ib.reqHistoricalDataAsync(
+                        contract,
+                        words.end_date,
+                        words.duration,
+                        words.bar_size,
+                        words.what_to_show,
+                        True,
+                        words.format_date,
+                    ),
+                )
+            except RequestError as exc:
+                raise spec.BrokerError(exc.code, exc.message) from exc
+            return [_history_bar(bar) for bar in found]
+
+        return await self._history.bars(request, fetch)
+
+
+def _history_bar(bar: Any) -> HistoryBar:
+    moment = bar.date
+    day = moment.isoformat() if hasattr(moment, "isoformat") else str(moment)
+    volume = _number(bar.volume)
+    return HistoryBar(
+        day[:10],
+        _decimal_text(float(bar.open)),
+        _decimal_text(float(bar.high)),
+        _decimal_text(float(bar.low)),
+        _decimal_text(float(bar.close)),
+        None if volume is None or volume < 0 else _decimal_text(volume),
+    )
 
 
 def _dividend_text(found: Any) -> str:

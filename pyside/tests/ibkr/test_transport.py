@@ -12,7 +12,13 @@ from kit.sockdir import short_socket_dir
 
 from optdesk.contracts import api as pb
 from optdesk.ibkr import spec
-from optdesk.ibkr.api import DividendKey, DividendReading
+from optdesk.ibkr.api import (
+    DividendKey,
+    DividendReading,
+    HistoryBar,
+    HistoryPaced,
+    HistoryRequest,
+)
 from optdesk.ibkr.model import (
     ChainRow,
     QuoteRow,
@@ -400,5 +406,111 @@ def test_dividends_on_gateway_without_reference_is_unimplemented() -> None:
             return await code_of(
                 dividends(channel, [pb.ContractKey(symbol="AAPL", con_id=7)])
             )
+
+    assert asyncio.run(run()) == grpc.StatusCode.UNIMPLEMENTED
+
+
+@dataclass
+class FakeHistory(FakeGateway):
+    answer: list[HistoryBar] = field(default_factory=list)
+    asked: list[HistoryRequest] = field(default_factory=list)
+    paced: bool = False
+
+    async def bars(self, request: HistoryRequest) -> Sequence[HistoryBar]:
+        self.asked.append(request)
+        if self.paced:
+            raise HistoryPaced("paced")
+        return self.answer
+
+
+async def bars(
+    channel: grpc.aio.Channel,
+    *,
+    con_id: int = 7,
+    kind: pb.BarKind.ValueType = pb.BAR_KIND_TRADES,
+    days: int = 5,
+    end_day: str = "",
+) -> pb.BarsResponse:
+    return await pb.MarketDataServiceStub(channel).Bars(
+        pb.BarsRequest(
+            contract=contract(con_id), kind=kind, duration_days=days, end_day=end_day
+        )
+    )
+
+
+def test_bars_answer_maps_rows_and_unset_volume() -> None:
+    gateway = FakeHistory(
+        answer=[
+            HistoryBar("2026-01-02", "1", "2", "0.5", "1.5", "100"),
+            HistoryBar("2026-01-05", "1.5", "2", "1", "1.75", None),
+        ]
+    )
+
+    async def run() -> pb.BarsResponse:
+        async with serving(gateway) as channel:
+            return await bars(channel, kind=pb.BAR_KIND_MIDPOINT, days=400)
+
+    got = asyncio.run(run())
+    assert [(b.day, b.close) for b in got.bars] == [
+        ("2026-01-02", "1.5"),
+        ("2026-01-05", "1.75"),
+    ]
+    assert got.bars[0].volume == "100" and not got.bars[1].HasField("volume")
+    assert gateway.asked[0].kind == "midpoint" and gateway.asked[0].duration_days == 400
+    assert gateway.asked[0].key.con_id == 7 and gateway.asked[0].key.sec_type == "STK"
+
+
+def test_missing_con_id_is_invalid() -> None:
+    async def run() -> grpc.StatusCode:
+        async with serving(FakeHistory()) as channel:
+            return await code_of(bars(channel, con_id=0))
+
+    assert asyncio.run(run()) == grpc.StatusCode.INVALID_ARGUMENT
+
+
+def test_duration_outside_range_is_invalid() -> None:
+    async def run() -> list[grpc.StatusCode]:
+        async with serving(FakeHistory()) as channel:
+            return [await code_of(bars(channel, days=days)) for days in (0, -1, 731)]
+
+    assert set(asyncio.run(run())) == {grpc.StatusCode.INVALID_ARGUMENT}
+
+
+def test_unset_kind_and_bad_end_day_are_invalid() -> None:
+    async def run() -> list[grpc.StatusCode]:
+        async with serving(FakeHistory()) as channel:
+            return [
+                await code_of(bars(channel, kind=pb.BAR_KIND_UNSPECIFIED)),
+                await code_of(bars(channel, end_day="2026/01/02")),
+            ]
+
+    assert set(asyncio.run(run())) == {grpc.StatusCode.INVALID_ARGUMENT}
+
+
+def test_end_day_with_adjusted_last_is_invalid() -> None:
+    gateway = FakeHistory()
+
+    async def run() -> grpc.StatusCode:
+        async with serving(gateway) as channel:
+            return await code_of(
+                bars(channel, kind=pb.BAR_KIND_ADJUSTED_LAST, end_day="2026-01-02")
+            )
+
+    assert asyncio.run(run()) == grpc.StatusCode.INVALID_ARGUMENT
+    assert gateway.asked == []
+
+
+def test_paced_answer_is_resource_exhausted() -> None:
+    async def run() -> grpc.StatusCode:
+        async with serving(FakeHistory(paced=True)) as channel:
+            return await code_of(bars(channel))
+
+    assert asyncio.run(run()) == grpc.StatusCode.RESOURCE_EXHAUSTED
+
+
+def test_bars_on_gateway_without_history_is_unimplemented() -> None:
+    async def run() -> grpc.StatusCode:
+        async with serving(FakeGateway()) as channel:
+            return await code_of(bars(channel))
 
     assert asyncio.run(run()) == grpc.StatusCode.UNIMPLEMENTED
