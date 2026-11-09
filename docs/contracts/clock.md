@@ -6,7 +6,7 @@ Read-only time and session calendar. `clock.Clock` gives the current time throug
 
 ## Inputs
 
-- A `clock.SessionSource`: `SessionDays(ctx, calendarID, from, to)` returns `master.session_day r1` rows, inclusive. A known calendar has a row for every day, session or not.
+- A `clock.SessionSource`: `SessionDays(ctx, calendarID, from, to)` returns `master.session_day r1` rows, inclusive. A known calendar has a row for every day, session or not. The calendars the generator (`optdesk.calendar`) supports are `XNYS` and `XTKS`; an XTKS row carries the first open and the last close of its session (the lunch break is not stored), and the owner loads the XTKS file with `ot calendar load`.
 - Days as `contracts.Day` (`YYYY-MM-DD`, market zone).
 - For zone conversion, an instant and an IANA zone name; the owner zone is given by the caller and no zone is hard-coded for it.
 
