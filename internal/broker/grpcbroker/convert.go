@@ -2,6 +2,7 @@ package grpcbroker
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -120,6 +121,60 @@ func fromQuote(q *pb.Quote, now clock.Clock) (broker.Quote, error) {
 	if q.GetEventTs() != nil {
 		t := q.GetEventTs().AsTime().UTC()
 		out.EventTs = &t
+	}
+	return out, nil
+}
+
+// fromAccount converts an account answer; no alias or a negative generation is a Permanent error.
+func fromAccount(r *pb.AccountResponse) (broker.Account, error) {
+	if r.GetAccount() == "" {
+		return broker.Account{}, permanent("account: answer has no alias")
+	}
+	if r.GetGeneration() < 0 {
+		return broker.Account{}, permanent("account: negative generation")
+	}
+	out := broker.Account{
+		Alias: r.GetAccount(), Generation: r.GetGeneration(),
+		Values:             make([]broker.AccountValue, 0, len(r.GetValues())),
+		Positions:          make([]broker.Position, 0, len(r.GetPositions())),
+		ValuesCollected:    r.GetValuesCollected(),
+		PositionsCollected: r.GetPositionsCollected(),
+	}
+	for _, v := range r.GetValues() {
+		out.Values = append(out.Values, broker.AccountValue{Tag: v.GetTag(), Value: v.GetValue(), Currency: v.GetCurrency()})
+	}
+	for _, p := range r.GetPositions() {
+		out.Positions = append(out.Positions, broker.Position{
+			Contract: fromSpec(p.GetContract()), Quantity: p.GetQuantity(), AvgCost: p.GetAvgCost(),
+		})
+	}
+	return out, nil
+}
+
+// fromExecutions converts an executions answer; no alias, a negative generation or a time that is
+// not RFC 3339 is a Permanent error. The time is returned in UTC; decimals stay text.
+func fromExecutions(r *pb.ExecutionsResponse) (broker.Executions, error) {
+	if r.GetAccount() == "" {
+		return broker.Executions{}, permanent("executions: answer has no alias")
+	}
+	if r.GetGeneration() < 0 {
+		return broker.Executions{}, permanent("executions: negative generation")
+	}
+	out := broker.Executions{
+		Alias: r.GetAccount(), Generation: r.GetGeneration(),
+		Collected: r.GetCollected(), Pending: int(r.GetPending()),
+		Executions: make([]broker.Execution, 0, len(r.GetExecutions())),
+	}
+	for _, e := range r.GetExecutions() {
+		t, err := time.Parse(time.RFC3339, e.GetTime())
+		if err != nil {
+			return broker.Executions{}, permanent("executions: time is not RFC 3339")
+		}
+		out.Executions = append(out.Executions, broker.Execution{
+			ExecID: e.GetExecId(), PermID: e.GetPermId(), Time: t.UTC(),
+			Contract: fromSpec(e.GetContract()), Side: e.GetSide(), Quantity: e.GetQuantity(),
+			Price: e.GetPrice(), Commission: e.GetCommission(), CommissionCurrency: e.GetCommissionCurrency(),
+		})
 	}
 	return out, nil
 }
