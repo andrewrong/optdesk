@@ -3,7 +3,6 @@ package option_result_page
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -28,8 +27,8 @@ type Config struct {
 func NewPage(c Config, alias string) pages.Page {
 	return pages.Page{
 		Meta: pages.Meta{Name: "option_result_page", Schema: "page.option_result_page.v1"},
-		Build: func(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error) {
-			return nil, errors.New("option_result_page: not built")
+		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+			return build(ctx, c, alias, day, at)
 		},
 	}
 }
