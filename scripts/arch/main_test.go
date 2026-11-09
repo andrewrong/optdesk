@@ -592,3 +592,21 @@ func TestRootImportsSettingsapiDeclarations(t *testing.T) {
 		t.Fatalf("the root compute imports its own declarations package:\n%s", b)
 	}
 }
+
+func TestRootImportsDividendDeclarations(t *testing.T) {
+	t.Parallel()
+	fixture := strings.Replace(declFixture, "internal/store/api.go internal/store/bar", "internal/store/api.go internal/store/dividend", 1)
+	tree := map[string]string{}
+	for k, v := range declTree {
+		tree[k] = v
+	}
+	tree["internal/store/dividend/api.go"] = "package dividend\n"
+	dir := scratch(t, tree)
+	toml, _, err := generate(fixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"store/dividend"`) {
+		t.Fatalf("jobs lacks store/dividend in arch.toml:\n%s", b)
+	}
+}

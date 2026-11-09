@@ -121,6 +121,14 @@ Declared in `internal/store/api.go`: `EarningsDateWriter` (`InsertEarningsDate`)
 - View `rd.earnings_date_r1`. `EarningsDates(ctx, issuer, from, to)` reads the view only, inclusive, ascending by day, the highest `attempt` of each day only; none gives an empty slice; a bad or reversed day range is `Permanent`.
 - Grants: `ot_w_events` (LOGIN, made by `setup.Setup`, line `OT_PG_DSN_EVENTS`) has `INSERT` on the table and `SELECT` on the view (the job reads the rows of the day); `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role but the owner has UPDATE, DELETE or TRUNCATE. The rows hold dates, status words and vendor text, no account data.
 
+## Dividend expectations
+
+Declared in `internal/store/dividend` (declarations only, so `internal/store/api.go` stays under the size rule; precedent `internal/store/ownerset`): `Writer` (`InsertDividend`), `Reader` (`Dividends`), `Store` (both and `Close`) and `OpenFunc`. `internal/store/events.OpenDividend` is the implementation; the row is `contracts.DividendExpectation`; the line is `DSNEnvEvents` (role `ot_w_events`). Design: `docs/design/event-sources.md#Decisions` (7, 8) and entry 12.
+
+- Table `obs.dividend_expectation` (migration `0023`), append only, key `(session_day, instrument_id, attempt)`; the enums, `attempt >= 1`, `next_ex_date` and `next_amount` only for `present` and source `none` for `unsupported` are table checks. `InsertDividend` inserts `ON CONFLICT DO NOTHING`: a row whose key exists stays as it is and the call returns no error. An `instrument_id` of 0 or an attempt below 1 is `Permanent`, a database error `Retryable`.
+- View `rd.dividend_expectation_r1`. `Dividends(ctx, instrumentID, from, to)` reads the view only, inclusive, ascending by day, the highest `attempt` of each day only; none gives an empty slice; a bad or reversed day range is `Permanent`.
+- Grants: `ot_w_events` has `INSERT` on the table and `SELECT` on the view; `ot_ro_pages` has `SELECT` on the view. Neither role reads the table; the page role cannot write; no role but the owner has UPDATE, DELETE or TRUNCATE.
+
 ## Option candidates
 
 Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`.
@@ -166,6 +174,8 @@ Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExec
 
 - v13: migration `0020` (`obs.earnings_date`, `rd.earnings_date_r1`); role `ot_w_events` and the new line `OT_PG_DSN_EVENTS`; `events.OpenEarningsDate`. Migrate and run `ot setup pg` before deploying the code.
 
+- v14: migration `0023` (`obs.dividend_expectation`, `rd.dividend_expectation_r1`); `dividend.Store` and `events.OpenDividend`, on the role and line of v13. Migrate before deploying the code.
+
 ## Contract tests
 
 - `internal/store/scheduler_api_test.go`: `TestInstanceFenceContract`, `TestSchedulerLedgerContract` and `TestGapReaderContract` hold the scheduler declarations from both sides.
@@ -200,3 +210,4 @@ None. Store runs nothing and owns no slot; jobs and runner call it.
 - `SELECT *` or a column outside the table.
 - Embedding `migrations/` in the migrate package, or registering a global SQL driver in a test.
 - A connection default (host, user, password, database) in code.
+- `internal/store/dividend/api_test.go`: `TestStoreContractFromBothSides` holds `dividend.Store` from both sides; `internal/store/events/dividends_test.go`: `TestDividendWriterKeepsExistingKey`, `TestDividendReaderTakesHighestAttempt`, `TestDividendRowRoundTrip`, `TestDividendBadInputIsPermanentAndErrorsAreRetryable` and `TestDividendUnknownEnumInViewRefused`; `dividends_pg_test.go` (build tag `pg`): the three `...PG` tests.
