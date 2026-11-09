@@ -23,10 +23,12 @@ type job struct {
 	m      manifest
 	b      broker.Broker
 	res    store.InstrumentResolver
+	acct   store.AccountReader // nil: no held short calls are captured
 	w      store.OptionEodWriter
 	clk    clock.Clock
 	loc    *time.Location
 	freeze int // minutes after midnight, local
+	stop   int // stop_after in minutes after midnight, local; -1 when unset
 
 	cal         string
 	open, close time.Duration
@@ -82,7 +84,11 @@ func build(data []byte, b broker.Broker, res store.InstrumentResolver, w store.O
 		return nil, errors.New("optioneod: manifest: zone is unknown")
 	}
 	freeze, _ := parseHHMM(m.FreezeAfter)
-	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, freeze: freeze, cal: cal, open: open, close: closeOff}, nil
+	stop := -1
+	if m.StopAfter != "" {
+		stop, _ = parseHHMM(m.StopAfter)
+	}
+	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, freeze: freeze, stop: stop, cal: cal, open: open, close: closeOff}, nil
 }
 
 // ID is the job id of the manifest.
@@ -95,7 +101,11 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if string(day) != local.Format(time.DateOnly) {
 		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
 	}
-	if local.Hour()*60+local.Minute() < j.freeze {
+	minutes := local.Hour()*60 + local.Minute()
+	if j.stop >= 0 && minutes >= j.stop {
+		return contracts.JobResult{Err: newErr(contracts.NoValue, "after session")}
+	}
+	if minutes < j.freeze {
 		return contracts.JobResult{}
 	}
 	dayTime, err := time.Parse(time.DateOnly, string(day))
@@ -200,7 +210,7 @@ func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.
 	return 0, newErr(contracts.Retryable, "no price of %s", u.Symbol)
 }
 
-// pairs lists the chains and selects from the first chain on the underlying's exchange, else the first chain.
+// pairs lists the chains and selects from the chain chainOf picks.
 func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]broker.Contract, contracts.TypedError) {
 	if terr := r.checkBudget(); terr != nil {
 		return nil, terr
@@ -211,14 +221,16 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	}
 	var out []broker.Contract
 	if len(chains) > 0 {
-		chain := chains[0]
-		for _, c := range chains {
-			if c.Exchange == u.Exchange {
-				chain = c
-				break
+		if chain, ok := r.j.m.chainOf(chains, u); ok {
+			out = selectContracts(chain, u, string(r.day), price, r.j.m)
+			if r.j.acct != nil {
+				held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
+				if err != nil {
+					return nil, asTyped(err, contracts.Retryable)
+				}
+				out = addHeld(out, chain, u, held)
 			}
 		}
-		out = selectContracts(chain, u, string(r.day), price, r.j.m)
 	}
 	if len(out) == 0 {
 		return nil, newErr(contracts.Permanent, "empty selection for %s", u.Symbol)
@@ -291,4 +303,24 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture
 	res.Returned += len(rows)
 	res.Usable += usable
 	return nil
+}
+
+// chainOf picks the chain to select from. With trading_class set it is the first chain of that class on the
+// underlying's exchange, and none when there is no such chain; otherwise the first chain on the underlying's
+// exchange, else the first chain.
+func (m manifest) chainOf(chains []broker.Chain, u underlying) (broker.Chain, bool) {
+	if m.TradingClass != "" {
+		for _, c := range chains {
+			if c.Exchange == u.Exchange && c.TradingClass == m.TradingClass {
+				return c, true
+			}
+		}
+		return broker.Chain{}, false
+	}
+	for _, c := range chains {
+		if c.Exchange == u.Exchange {
+			return c, true
+		}
+	}
+	return chains[0], true
 }

@@ -35,6 +35,12 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 
 `optioneod.NewWithWatch(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock)` (type `jobs.NewOptionEodWatchFunc`) builds the same job with the underlyings of the US stock entries of the watch list (`Market` US, `Contract.SecType` STK; the `[[underlying]]` tables of `job.toml` are not used; an empty result or a repeated symbol is an error). Three optional manifest keys apply only to it: `min_dte` and `max_dte` (calendar days from the run day, both inclusive; with `max_dte` set the expiries are all those with DTE in `min_dte..max_dte` instead of the nearest `max_expiries`; `job.toml` sets 21 and 45) and `max_strikes` (default 24). The strikes of an entry with a `BuyPrice` run from `0.80 x BuyPrice` to `max(1.05 x BuyPrice, spot)`, exact decimal arithmetic; when more than `max_strikes` fall in the range the nearest `BuyPrice` are kept, a tie keeping the lower strike; `strike_band` and `max_strikes_per_side` do not apply to it. An entry without a `BuyPrice` keeps the `strike_band`. `optioneod.New` ignores the three keys and behaves as before; a manifest without them has the same plan hash as before. `jobs.NewOptionEodHeldFunc` (the `store.AccountReader` comes after the watch list, before the clock) is declared only; it has no implementation yet.
 
+`optioneod.NewJP(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock)` (type `jobs.NewOptionEodFunc`) builds the job `option_eod_jp` from its embedded `job_jp.toml`; the design is `docs/design/option-capture-jp.md#Decisions`. It has one underlying, N225 (`IND`, `OSE.JPN`, JPY, `con_id` 14087999), zone `Asia/Tokyo`, window calendar `XTKS` with lateness 2 hours, slot `time` 15h50m in `Asia/Tokyo` on `XTKS`, `freeze_after` 1550. Three optional top-level manifest keys, absent from `job.toml` (whose plan hash is unchanged); each is added to the plan hash only when set:
+
+- `trading_class`: when set, the chain is the first of that trading class on the underlying's exchange, none is an empty selection, `Permanent`; `job_jp.toml` sets `225`.
+- `ledger_dataset`: the dataset id of the plan keys, default `obs.option_eod`; `job_jp.toml` sets `obs.option_eod_jp`; the table written stays `obs.option_eod`.
+- `stop_after`: HHMM in the zone; a run at or after it, with the right day, is `NoValue` with "after session" and calls no port; `job_jp.toml` sets 1700.
+
 ## Schedule
 
 Each of the three jobs holds a `[schedule]` table in its embedded `job.toml`, read with go-toml/v2 beside `[window]`, and answers three optional plain-value methods (standard-library types only; no job package imports `internal/runner`, and a job has no preflight, which `cmd/ot` owns):
@@ -99,6 +105,7 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `SeriesHistoryLoader`, with `internal/jobs/serieshistory`.
 - v1: `calendar_refresh`, interface only (`jobs.CalendarObserver`, `jobs.NewCalendarRefreshFunc`).
 - v1: `option_eod` with a watch list, `min_dte`, `max_dte`, `max_strikes` (additive; `jobs.NewOptionEodWatchFunc`, `jobs.NewOptionEodHeldFunc`).
+- v1: `option_eod_jp`, `trading_class`, `ledger_dataset`, `stop_after` (additive; `optioneod.NewJP`).
 - v1: `earnings_refresh`, `jobs.WatchEntry`, `jobs.NewEarningsRefreshFunc`.
 
 ## Contract tests
@@ -109,7 +116,7 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - `schedule_test.go` of each of the three packages: `TestEmbeddedSchedule`, `TestBadScheduleTable`.
 - `internal/jobs/fredseries/window_test.go`: `TestWindowOf`, `TestWindowErrors`, `TestEmbeddedWindow`.
 - `internal/jobs/fredseries/run_test.go`: `TestRunWritesOnce`, `TestPlanLateRunRecovery`.
-- `internal/jobs/optioneod`: `TestPlan`, `TestManifestDefaults`, `TestSelect`, `TestRunWritesRows`, `TestCaptureIDStable`, `TestNotListed`, `TestBudget`, `TestGuards`, `TestErrors`, `TestWatchUnderlyingsUSOnly`, `TestDTEWindowSelectsMonthlies`, `TestNoWindowKeepsNearestExpiries`, `TestStrikeRangeFromBuyPrice`, `TestNoBuyPriceKeepsBand`, `TestMaxStrikesCap`.
+- `internal/jobs/optioneod`: `TestPlan`, `TestManifestDefaults`, `TestSelect`, `TestRunWritesRows`, `TestCaptureIDStable`, `TestNotListed`, `TestBudget`, `TestGuards`, `TestErrors`, `TestWatchUnderlyingsUSOnly`, `TestDTEWindowSelectsMonthlies`, `TestNoWindowKeepsNearestExpiries`, `TestStrikeRangeFromBuyPrice`, `TestNoBuyPriceKeepsBand`, `TestMaxStrikesCap`, `TestJPManifestSlotAndWindow`, `TestJPPlanKeysUseLedgerDataset`, `TestPairsFiltersTradingClass`, `TestPairsWithoutTradingClassUnchanged`, `TestStopAfterReturnsNoValue`, `TestJPRowsCurrencyJPY`, `TestJPWrongDayNoRows`, `TestUSPlanHashPinned`.
 
 There is no test yet: the wrapping of an untyped fetch error as `Permanent` and the `Retryable` kind of a failed `InsertSeriesPoints` have no test (the fake writer never fails and no test gives the source an untyped error).
 
