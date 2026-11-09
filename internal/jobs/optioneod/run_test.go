@@ -58,6 +58,7 @@ type fakeBroker struct {
 	status      map[int64]broker.Status
 	snaps       []snapCall
 	resolves    int
+	resolved    []broker.Contract // every contract given to ResolveContract
 	afterSnap   func(optionCalls int)
 	snapErr     error
 	chainErr    error
@@ -92,6 +93,7 @@ func (b *fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chai
 
 func (b *fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
 	b.resolves++
+	b.resolved = append(b.resolved, c)
 	if b.resolveErr != nil {
 		return broker.Resolved{}, b.resolveErr
 	}
@@ -508,9 +510,12 @@ func TestChainPrefersSymbolClassOverFirst(t *testing.T) {
 	if n == 0 {
 		t.Fatal("no option contract snapshotted")
 	}
-	for _, c := range r.res.calls {
-		if c.spec.Type == "option" && !strings.HasPrefix(c.extra[0].Value, "SPY ") {
-			t.Fatalf("resolved %+v", c)
+	if len(r.b.resolved) == 0 {
+		t.Fatal("no contract resolved")
+	}
+	for _, c := range r.b.resolved {
+		if c.TradingClass != "SPY" {
+			t.Fatalf("resolved contract %+v", c)
 		}
 	}
 }
