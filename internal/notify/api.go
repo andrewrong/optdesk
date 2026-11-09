@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -23,6 +24,12 @@ const (
 	DefaultQuietFrom = "23:00"
 	// DefaultQuietTo is the end of the default quiet hours; the window may cross midnight.
 	DefaultQuietTo = "07:00"
+	// DefaultMorningFrom is the earliest time of the morning report, "HH:MM" in Config.Zone.
+	DefaultMorningFrom = "08:00"
+	// DefaultMorningUntil is the time from which the morning report is no longer sent that day.
+	DefaultMorningUntil = "12:00"
+	// MorningRuleID is the rule id of the day mark of the morning report in alerts.sent.
+	MorningRuleID = "morning_report"
 )
 
 // ErrSend is the error class of a failed delivery. Its text never holds a token, a chat id or a URL.
@@ -54,6 +61,8 @@ type Notifier interface {
 type Config struct {
 	// QuietFrom and QuietTo are "HH:MM" in Zone.
 	QuietFrom, QuietTo string
+	// MorningFrom and MorningUntil are "HH:MM" in Zone; empty means DefaultMorningFrom and DefaultMorningUntil.
+	MorningFrom, MorningUntil string
 	// Zone is the owner's zone (profile.Zone).
 	Zone *time.Location
 }
@@ -100,3 +109,27 @@ type AlertNotifier interface {
 // NewAlertNotifierFunc is the constructor of the alert notifier (internal/notify/core.NewAlerts);
 // it fails only on a bad Config or an incomplete AlertDeps.
 type NewAlertNotifierFunc func(AlertDeps, Sender, clockwork.Clock, Config) (AlertNotifier, error)
+
+// MorningDeps are the inputs of the morning report besides the sender, the clock and the Config.
+type MorningDeps struct {
+	// History reads the gaps cleared or seen since the previous morning (gaphistory.Reader).
+	History gaphistory.Reader
+	// Expect reads the open gaps and the expectations of the last 7 calendar days.
+	Expect store.GapReader
+	// Sent holds the day mark of the report under MorningRuleID (alerts.sent).
+	Sent store.SentStore
+}
+
+// MorningNotifier makes one pass of the morning report.
+//
+// NotifyMorning sends at most one text per calendar day in Config.Zone, inside the window
+// MorningFrom to MorningUntil, even when nothing happened, and marks (MorningRuleID, day) only
+// after the send was confirmed (at-least-once delivery). It returns true when a message was
+// sent; outside the window or after the mark it returns false and reads nothing.
+type MorningNotifier interface {
+	NotifyMorning(ctx context.Context) (bool, error)
+}
+
+// NewMorningNotifierFunc is the constructor of the morning notifier (internal/notify/core.NewMorning);
+// it fails only on a bad Config or an incomplete MorningDeps.
+type NewMorningNotifierFunc func(MorningDeps, Sender, clockwork.Clock, Config) (MorningNotifier, error)

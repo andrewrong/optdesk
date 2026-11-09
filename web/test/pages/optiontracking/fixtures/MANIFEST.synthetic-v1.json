@@ -1,0 +1,4 @@
+{
+  "marker": "synthetic-v1",
+  "files": ["ok.ts", "no-marks.ts", "gap.ts", "bad-version.json"]
+}
