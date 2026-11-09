@@ -83,7 +83,7 @@ rows above name every other top-level path of the planned tree.
 | clock | internal/clock/** docs/contracts/clock.md pyside/src/optdesk/calendar/** pyside/tests/contracts/test_calendar_api.py pyside/tests/calendar/** | internal/clock/api.go pyside/src/optdesk/calendar/api.py | internal/clock/api_test.go pyside/tests/contracts/test_calendar_api.py | contracts |
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
-| store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go | internal/store/api_test.go | contracts |
+| store | internal/store/** migrations/** docs/contracts/store.md | internal/store/api.go internal/store/bar | internal/store/api_test.go | contracts |
 | compute | internal/compute/** docs/contracts/compute.md tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
 | jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute |
