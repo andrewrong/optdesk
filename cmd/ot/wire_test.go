@@ -202,6 +202,9 @@ func TestMarketPageWiresReadings(t *testing.T) {
 	if p.Meta.Name != "market_page" {
 		t.Fatalf("name %q", p.Meta.Name)
 	}
+	if p.Meta.Schema != "page.market_page.v1" {
+		t.Fatalf("schema %q", p.Meta.Schema)
+	}
 	_, err := p.Build(t.Context(), demoReader{}, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
 	if err != nil && strings.Contains(err.Error(), "not built") {
 		t.Skip("the builder of market_page has not landed: Build is still the stub of the interface entry")
