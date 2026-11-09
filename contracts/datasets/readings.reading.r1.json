@@ -21,7 +21,7 @@
     "currency": {"type": "string", "description": "Currency code when the unit is money, empty otherwise."},
     "state": {"type": "string", "enum": ["ok", "missing_input"], "description": "ok: the value was computed; missing_input: an input was missing and the value is null."},
     "reason_code": {"type": ["integer", "null"], "minimum": 1, "maximum": 5, "description": "Why the reading is missing, 1 to 5 (3 is stale_input); null when the state is ok."},
-    "origin": {"type": "string", "enum": ["compute_figures"], "description": "Job that wrote the reading."},
+    "origin": {"type": "string", "enum": ["compute_figures", "owner_command"], "description": "Writer of the reading: the job compute_figures, or the owner command owner_command (the band approval of ot approve-band)."},
     "cutoff": {"type": "string", "description": "Cutoff of the inputs; the text session_close."},
     "job_run_id": {"type": "string", "format": "uuid", "description": "Deterministic identifier of the run that wrote the reading, a uuid."},
     "recorded_at": {"type": "string", "format": "date-time", "description": "Instant the reading was recorded, UTC."},
