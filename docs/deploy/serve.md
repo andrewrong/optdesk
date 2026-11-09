@@ -1,6 +1,6 @@
 # Deploying ot serve as a crew host service
 
-`ot serve` is the web server of the one `ot` binary: it serves the pages and `/health`, and reads
+`ot serve` is the web server of the one `ot` binary: it serves the pages and reads
 PostgreSQL only. It is a separate process from `ot scheduler`. Like `ot scheduler` and optdesk-pyside it
 runs on the host under the keeper of agent-crew: its whole definition is one entry in `services.toml`.
 This repository holds no `deploy/` file. Every value below in angle brackets is a placeholder the owner
@@ -20,13 +20,12 @@ deploy = "owner"               # until the first deploy below; the owner then ch
 deploy_paths = ["<deploy path>", "<deploy path>"]   # the paths of the repository whose change redeploys ot serve
 build  = ["env", "PATH=<mise shims and go dir>", "HOME=<home>", "sh", "-c", "pnpm install --frozen-lockfile && pnpm --dir web build && go build -o bin/ot ./cmd/ot"]
 run    = ["bin/ot", "serve", "--addr", "<addr>"]
-health = "http://<loopback>:<port>/health"
+# no health key yet: ot serve has no /health route (see Health)
 env    = { OT_HOME = "<OT_HOME of the scheduler and pyside>" }
 ```
 
 - `<addr>` is `<loopback>:8080` to listen on the loopback only, or `:8080` to listen on every
-  interface. `<port>` in `health` is the port of `<addr>`, one number written twice; it must differ
-  from every other port on the machine.
+  interface. The port must differ from every other port on the machine.
 - `deploy_paths` lists the paths whose change redeploys the service; the owner fills it in. The
   paths of the web front end (`web/`), of the embedded bundle and of the Go code `ot serve` builds
   from belong in it.
@@ -38,7 +37,7 @@ env    = { OT_HOME = "<OT_HOME of the scheduler and pyside>" }
 ## The secrets are not in the entry
 
 `ot` reads `OT_PG_DSN_PAGES` from `$OT_HOME/.env` (`cmd/ot/env.go` reads the file;
-`cmd/ot/site.go` names the variable), so the entry holds no key and no DSN. A missing line makes
+`store.DSNEnvPages` is the name), so the entry holds no key and no DSN. A missing line makes
 `ot serve` refuse at start and name the variable.
 
 ## The build line
@@ -61,10 +60,12 @@ the build ran in, so `run` needs no absolute path.
 
 ## Health
 
-`health` is `http://<loopback>:<port>/health`. `/health` answers 200 while the server is up and
-its database is reachable, else 503. crew opens a Fault after 3 failures in 5 minutes and does not
-restart the service on a failed poll; `crew cap` status ok means only a live tmux pane. A replaced
-binary is picked up by crew's deploy, which restarts the service.
+`ot serve` has no `/health` route yet: `GET /health` gets 404 from the site handler. `/health` is
+served by `ot scheduler` only (`docs/contracts/ot.md`). So the entry above has no `health` key; a
+`health = "http://<loopback>:<port>/health"` line is added once the issue `serve-health` lands the
+route, and not before, or crew's poll would get 404 and open a Fault after 3 failures in 5 minutes.
+Until then `crew cap` status ok means only a live tmux pane. A replaced binary is picked up by
+crew's deploy, which restarts the service.
 
 ## First deploy
 
@@ -78,7 +79,7 @@ The first deploy is the owner's. Owner lines, in order:
    are found under the `PATH` of the `build` entry.
 4. Add the entry with `deploy = "owner"` and merge it.
 5. Run `crew cap optdesk-serve deploy` as a dry run, then `crew cap --apply optdesk-serve deploy`.
-6. Open the health URL: it must answer 200.
+6. Open a page of the site on `<addr>` (the home page): it must answer 200.
 7. Change the entry to `deploy = "auto"` and merge it. From then on crew deploys on merge and rolls
    back by itself, and no `deploy = "owner"` stays.
 

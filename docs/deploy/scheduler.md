@@ -43,8 +43,7 @@ no other key gives a restart after a crash. It does not start anything at machin
 Until the first deploy is done, write `deploy = "owner"` in its place (the first deploy below); the
 owner changes it to `"auto"` afterwards and no `deploy = "owner"` stays.
 
-`build` is one argv started in the release directory (see `docs/deploy/serve.md`, The build line); the
-relative `run[0]`, `bin/ot`, resolves against `current`. `deploy_paths` lists the paths whose change
+`build` and `run` are explained in `docs/deploy/serve.md`, The build line. `deploy_paths` lists the paths whose change
 redeploys the scheduler; the owner fills it in.
 
 The secrets are not in the entry: the DSNs and `FRED_API_KEY` are lines of `$OT_HOME/.env`, which
