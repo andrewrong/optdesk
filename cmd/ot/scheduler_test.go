@@ -521,7 +521,7 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
-	if len(d) != 2 || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
+	if len(d) != 3 || d[jobOptionEodJP] == "" || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
 		t.Fatalf("disabled %v", d)
 	}
 	if err := r.stop(t, done); err != nil {

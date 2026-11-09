@@ -104,7 +104,7 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 	return nil, "unknown job"
 }
 
-// xtksReason is reasonNoXTKS when the XTKS calendar answers an error for today (a nil calendar answers none),
+// xtksReason is reasonNoXTKS when the XTKS calendar answers an error for today, or when there is no calendar,
 // else "".
 func xtksReason(ctx context.Context, cal clock.Calendar, clk clock.Clock) string {
 	if cal == nil {
