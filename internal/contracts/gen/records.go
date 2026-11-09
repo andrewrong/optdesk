@@ -8,6 +8,474 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// account.execution r1: one fill with its commission; append only, no order id and
+// no account id.
+type AccountExecution struct {
+	// Alias of the gateway entry, never the account id.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Commission as decimal text, always set.
+	Commission string `json:"commission" yaml:"commission" mapstructure:"commission"`
+
+	// Currency code of the commission.
+	CommissionCurrency string `json:"commission_currency" yaml:"commission_currency" mapstructure:"commission_currency"`
+
+	// Currency code of the contract.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Broker execution id.
+	ExecID string `json:"exec_id" yaml:"exec_id" mapstructure:"exec_id"`
+
+	// Fill instant, UTC.
+	ExecutedAt time.Time `json:"executed_at" yaml:"executed_at" mapstructure:"executed_at"`
+
+	// Expiry YYYYMMDD, options only; empty otherwise.
+	Expiry string `json:"expiry" yaml:"expiry" mapstructure:"expiry"`
+
+	// Multiplier as decimal text; empty when none.
+	Multiplier string `json:"multiplier" yaml:"multiplier" mapstructure:"multiplier"`
+
+	// Broker permanent id of the execution, the dedupe key and nothing more.
+	PermID int `json:"perm_id" yaml:"perm_id" mapstructure:"perm_id"`
+
+	// Fill price as decimal text.
+	Price string `json:"price" yaml:"price" mapstructure:"price"`
+
+	// Quantity as decimal text.
+	Quantity string `json:"quantity" yaml:"quantity" mapstructure:"quantity"`
+
+	// Option right; empty for a non-option.
+	Right AccountExecutionRight `json:"right" yaml:"right" mapstructure:"right"`
+
+	// Kind of the contract.
+	SecType AccountExecutionSecType `json:"sec_type" yaml:"sec_type" mapstructure:"sec_type"`
+
+	// Session day (XNYS) of the fill.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// BOT bought, SLD sold.
+	Side AccountExecutionSide `json:"side" yaml:"side" mapstructure:"side"`
+
+	// Strike as decimal text, options only; empty otherwise.
+	Strike string `json:"strike" yaml:"strike" mapstructure:"strike"`
+
+	// Symbol of the contract traded.
+	Symbol string `json:"symbol" yaml:"symbol" mapstructure:"symbol"`
+}
+
+type AccountExecutionRight string
+
+const AccountExecutionRightBlank AccountExecutionRight = ""
+const AccountExecutionRightCall AccountExecutionRight = "call"
+const AccountExecutionRightPut AccountExecutionRight = "put"
+
+var enumValues_AccountExecutionRight = []interface{}{
+	"",
+	"put",
+	"call",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountExecutionRight) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountExecutionRight {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountExecutionRight, v)
+	}
+	*j = AccountExecutionRight(v)
+	return nil
+}
+
+type AccountExecutionSecType string
+
+const AccountExecutionSecTypeIndex AccountExecutionSecType = "index"
+const AccountExecutionSecTypeOption AccountExecutionSecType = "option"
+const AccountExecutionSecTypeStock AccountExecutionSecType = "stock"
+
+var enumValues_AccountExecutionSecType = []interface{}{
+	"stock",
+	"index",
+	"option",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountExecutionSecType) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountExecutionSecType {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountExecutionSecType, v)
+	}
+	*j = AccountExecutionSecType(v)
+	return nil
+}
+
+type AccountExecutionSide string
+
+const AccountExecutionSideBOT AccountExecutionSide = "BOT"
+const AccountExecutionSideSLD AccountExecutionSide = "SLD"
+
+var enumValues_AccountExecutionSide = []interface{}{
+	"BOT",
+	"SLD",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountExecutionSide) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountExecutionSide {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountExecutionSide, v)
+	}
+	*j = AccountExecutionSide(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountExecution) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in AccountExecution: required")
+	}
+	if _, ok := raw["commission"]; raw != nil && !ok {
+		return fmt.Errorf("field commission in AccountExecution: required")
+	}
+	if _, ok := raw["commission_currency"]; raw != nil && !ok {
+		return fmt.Errorf("field commission_currency in AccountExecution: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in AccountExecution: required")
+	}
+	if _, ok := raw["exec_id"]; raw != nil && !ok {
+		return fmt.Errorf("field exec_id in AccountExecution: required")
+	}
+	if _, ok := raw["executed_at"]; raw != nil && !ok {
+		return fmt.Errorf("field executed_at in AccountExecution: required")
+	}
+	if _, ok := raw["expiry"]; raw != nil && !ok {
+		return fmt.Errorf("field expiry in AccountExecution: required")
+	}
+	if _, ok := raw["multiplier"]; raw != nil && !ok {
+		return fmt.Errorf("field multiplier in AccountExecution: required")
+	}
+	if _, ok := raw["perm_id"]; raw != nil && !ok {
+		return fmt.Errorf("field perm_id in AccountExecution: required")
+	}
+	if _, ok := raw["price"]; raw != nil && !ok {
+		return fmt.Errorf("field price in AccountExecution: required")
+	}
+	if _, ok := raw["quantity"]; raw != nil && !ok {
+		return fmt.Errorf("field quantity in AccountExecution: required")
+	}
+	if _, ok := raw["right"]; raw != nil && !ok {
+		return fmt.Errorf("field right in AccountExecution: required")
+	}
+	if _, ok := raw["sec_type"]; raw != nil && !ok {
+		return fmt.Errorf("field sec_type in AccountExecution: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in AccountExecution: required")
+	}
+	if _, ok := raw["side"]; raw != nil && !ok {
+		return fmt.Errorf("field side in AccountExecution: required")
+	}
+	if _, ok := raw["strike"]; raw != nil && !ok {
+		return fmt.Errorf("field strike in AccountExecution: required")
+	}
+	if _, ok := raw["symbol"]; raw != nil && !ok {
+		return fmt.Errorf("field symbol in AccountExecution: required")
+	}
+	type Plain AccountExecution
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Alias) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "alias", 1)
+	}
+	if len(plain.ExecID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "exec_id", 1)
+	}
+	if len(plain.Symbol) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "symbol", 1)
+	}
+	*j = AccountExecution(plain)
+	return nil
+}
+
+// account.position r1: one open position of one account capture; append only.
+type AccountPosition struct {
+	// Alias of the gateway entry, never the account id.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Average cost as decimal text.
+	AvgCost string `json:"avg_cost" yaml:"avg_cost" mapstructure:"avg_cost"`
+
+	// Identifier of the capture, a uuid.
+	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
+
+	// Instant the capture was taken, UTC.
+	CapturedAt time.Time `json:"captured_at" yaml:"captured_at" mapstructure:"captured_at"`
+
+	// Broker contract id.
+	ConID int `json:"con_id" yaml:"con_id" mapstructure:"con_id"`
+
+	// Currency code of the contract.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Exchange of the contract; empty when none.
+	Exchange string `json:"exchange" yaml:"exchange" mapstructure:"exchange"`
+
+	// Expiry YYYYMMDD, options only; empty otherwise.
+	Expiry string `json:"expiry" yaml:"expiry" mapstructure:"expiry"`
+
+	// Multiplier as decimal text; empty when none.
+	Multiplier string `json:"multiplier" yaml:"multiplier" mapstructure:"multiplier"`
+
+	// Signed quantity as decimal text.
+	Quantity string `json:"quantity" yaml:"quantity" mapstructure:"quantity"`
+
+	// Option right; empty for a non-option.
+	Right AccountPositionRight `json:"right" yaml:"right" mapstructure:"right"`
+
+	// Kind of the contract.
+	SecType AccountPositionSecType `json:"sec_type" yaml:"sec_type" mapstructure:"sec_type"`
+
+	// Session day (XNYS) of the capture.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Strike as decimal text, options only; empty otherwise.
+	Strike string `json:"strike" yaml:"strike" mapstructure:"strike"`
+
+	// Symbol of the contract held.
+	Symbol string `json:"symbol" yaml:"symbol" mapstructure:"symbol"`
+}
+
+type AccountPositionRight string
+
+const AccountPositionRightBlank AccountPositionRight = ""
+const AccountPositionRightCall AccountPositionRight = "call"
+const AccountPositionRightPut AccountPositionRight = "put"
+
+var enumValues_AccountPositionRight = []interface{}{
+	"",
+	"put",
+	"call",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountPositionRight) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountPositionRight {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountPositionRight, v)
+	}
+	*j = AccountPositionRight(v)
+	return nil
+}
+
+type AccountPositionSecType string
+
+const AccountPositionSecTypeIndex AccountPositionSecType = "index"
+const AccountPositionSecTypeOption AccountPositionSecType = "option"
+const AccountPositionSecTypeStock AccountPositionSecType = "stock"
+
+var enumValues_AccountPositionSecType = []interface{}{
+	"stock",
+	"index",
+	"option",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountPositionSecType) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_AccountPositionSecType {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_AccountPositionSecType, v)
+	}
+	*j = AccountPositionSecType(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountPosition) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in AccountPosition: required")
+	}
+	if _, ok := raw["avg_cost"]; raw != nil && !ok {
+		return fmt.Errorf("field avg_cost in AccountPosition: required")
+	}
+	if _, ok := raw["capture_id"]; raw != nil && !ok {
+		return fmt.Errorf("field capture_id in AccountPosition: required")
+	}
+	if _, ok := raw["captured_at"]; raw != nil && !ok {
+		return fmt.Errorf("field captured_at in AccountPosition: required")
+	}
+	if _, ok := raw["con_id"]; raw != nil && !ok {
+		return fmt.Errorf("field con_id in AccountPosition: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in AccountPosition: required")
+	}
+	if _, ok := raw["exchange"]; raw != nil && !ok {
+		return fmt.Errorf("field exchange in AccountPosition: required")
+	}
+	if _, ok := raw["expiry"]; raw != nil && !ok {
+		return fmt.Errorf("field expiry in AccountPosition: required")
+	}
+	if _, ok := raw["multiplier"]; raw != nil && !ok {
+		return fmt.Errorf("field multiplier in AccountPosition: required")
+	}
+	if _, ok := raw["quantity"]; raw != nil && !ok {
+		return fmt.Errorf("field quantity in AccountPosition: required")
+	}
+	if _, ok := raw["right"]; raw != nil && !ok {
+		return fmt.Errorf("field right in AccountPosition: required")
+	}
+	if _, ok := raw["sec_type"]; raw != nil && !ok {
+		return fmt.Errorf("field sec_type in AccountPosition: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in AccountPosition: required")
+	}
+	if _, ok := raw["strike"]; raw != nil && !ok {
+		return fmt.Errorf("field strike in AccountPosition: required")
+	}
+	if _, ok := raw["symbol"]; raw != nil && !ok {
+		return fmt.Errorf("field symbol in AccountPosition: required")
+	}
+	type Plain AccountPosition
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Alias) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "alias", 1)
+	}
+	if len(plain.Symbol) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "symbol", 1)
+	}
+	*j = AccountPosition(plain)
+	return nil
+}
+
+// account.value r1: one summary row of one account capture; append only.
+type AccountValue struct {
+	// Alias of the gateway entry, never the account id.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// Identifier of the capture, a uuid.
+	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
+
+	// Instant the capture was taken, UTC.
+	CapturedAt time.Time `json:"captured_at" yaml:"captured_at" mapstructure:"captured_at"`
+
+	// Currency code of the value.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Session day (XNYS) of the capture.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Summary tag, for example NetLiquidation.
+	Tag string `json:"tag" yaml:"tag" mapstructure:"tag"`
+
+	// Value as decimal text.
+	Value string `json:"value" yaml:"value" mapstructure:"value"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AccountValue) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in AccountValue: required")
+	}
+	if _, ok := raw["capture_id"]; raw != nil && !ok {
+		return fmt.Errorf("field capture_id in AccountValue: required")
+	}
+	if _, ok := raw["captured_at"]; raw != nil && !ok {
+		return fmt.Errorf("field captured_at in AccountValue: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in AccountValue: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in AccountValue: required")
+	}
+	if _, ok := raw["tag"]; raw != nil && !ok {
+		return fmt.Errorf("field tag in AccountValue: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in AccountValue: required")
+	}
+	type Plain AccountValue
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Alias) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "alias", 1)
+	}
+	if len(plain.Tag) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "tag", 1)
+	}
+	*j = AccountValue(plain)
+	return nil
+}
+
 // obs.earnings_date r1: one answer about the next earnings date of one issuer on
 // one day; append only, an error is a row and a later success is a new attempt.
 type EarningsDate struct {

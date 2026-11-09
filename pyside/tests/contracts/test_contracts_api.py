@@ -30,6 +30,9 @@ from optdesk.contracts.api import (
     ContractsServiceStub,
     DividendProjection,
     DividendStatus,
+    Execution,
+    ExecutionsRequest,
+    ExecutionsResponse,
     ListChainsRequest,
     ListChainsResponse,
     MarketDataServiceServicer,
@@ -43,6 +46,7 @@ from optdesk.contracts.api import (
     SessionServiceServicer,
     SessionServiceStub,
     SnapshotRequest,
+    add_AccountServiceServicer_to_server,
 )
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
@@ -156,6 +160,8 @@ class _FakeAccount(AccountServiceServicer):
         return AccountResponse(
             account="B",
             generation=3,
+            values_collected=True,
+            positions_collected=False,
             values=[AccountValue(tag="NetLiquidation", value="100.5", currency="USD")],
             positions=[
                 Position(
@@ -167,17 +173,42 @@ class _FakeAccount(AccountServiceServicer):
             ],
         )
 
+    async def Executions(
+        self,
+        request: ExecutionsRequest,
+        context: grpc.aio.ServicerContext[ExecutionsRequest, ExecutionsResponse],
+    ) -> ExecutionsResponse:
+        return ExecutionsResponse(
+            account="B",
+            generation=3,
+            collected=True,
+            pending=1,
+            executions=[
+                Execution(
+                    exec_id="0001",
+                    perm_id=77,
+                    time="2026-11-09T15:30:00Z",
+                    contract=ContractSpec(symbol="SPY"),
+                    side="BOT",
+                    quantity="2",
+                    price="1.25",
+                    commission="0",
+                    commission_currency="USD",
+                )
+            ],
+        )
+
 
 def _public_methods(cls: type) -> set[str]:
     return {n for n in dir(cls) if not n.startswith("_")}
 
 
 def test_account_service_surface() -> None:
-    assert _public_methods(AccountServiceServicer) == {"Account"}
+    assert _public_methods(AccountServiceServicer) == {"Account", "Executions"}
     channel = MagicMock()
     stub = AccountServiceStub(channel)
     assert _public_methods(type(stub)) == set()
-    assert vars(stub).keys() == {"Account"}
+    assert vars(stub).keys() == {"Account", "Executions"}
 
     async def run() -> AccountResponse:
         return await _FakeAccount().Account(AccountRequest(), MagicMock())
@@ -188,6 +219,35 @@ def test_account_service_surface() -> None:
     assert [v.tag for v in response.values] == ["NetLiquidation"]
     assert [p.contract.symbol for p in response.positions] == ["SPY", "QQQ"]
     assert response.positions[0].quantity == "-2"
+    assert response.values_collected is True
+    assert response.positions_collected is False
+
+    async def run_executions() -> ExecutionsResponse:
+        return await _FakeAccount().Executions(ExecutionsRequest(), MagicMock())
+
+    executions = asyncio.run(run_executions())
+    assert (executions.account, executions.collected, executions.pending) == (
+        "B",
+        True,
+        1,
+    )
+    assert executions.executions[0].perm_id == 77
+    assert executions.executions[0].commission == "0"
+    assert executions.executions[0].contract.symbol == "SPY"
+
+
+def test_account_service_registers_on_server() -> None:
+    server = MagicMock()
+    add_AccountServiceServicer_to_server(_FakeAccount(), server)
+    (handlers,) = server.add_generic_rpc_handlers.call_args.args
+    (generic,) = handlers
+    assert generic.service_name() == "ibkr.v1.AccountService"
+    assert (
+        server.add_registered_method_handlers.call_args.args[0]
+        == "ibkr.v1.AccountService"
+    )
+    methods = server.add_registered_method_handlers.call_args.args[1]
+    assert set(methods) == {"Account", "Executions"}
 
 
 class _FakeReference(ReferenceServiceServicer):

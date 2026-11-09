@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/account.value.r1.json",
+  "title": "AccountValue",
+  "description": "account.value r1: one summary row of one account capture; append only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capture_id", "alias", "captured_at", "session_day", "tag", "value", "currency"],
+  "x-dataset": "account.value",
+  "x-revision": "r1",
+  "x-primary-key": ["capture_id", "tag", "currency"],
+  "properties": {
+    "capture_id": {"type": "string", "format": "uuid", "description": "Identifier of the capture, a uuid."},
+    "alias": {"type": "string", "minLength": 1, "description": "Alias of the gateway entry, never the account id."},
+    "captured_at": {"type": "string", "format": "date-time", "description": "Instant the capture was taken, UTC."},
+    "session_day": {"type": "string", "format": "date", "description": "Session day (XNYS) of the capture."},
+    "tag": {"type": "string", "minLength": 1, "description": "Summary tag, for example NetLiquidation."},
+    "value": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Value as decimal text."},
+    "currency": {"type": "string", "description": "Currency code of the value."}
+  }
+}
