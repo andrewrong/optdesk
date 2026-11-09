@@ -105,7 +105,7 @@ it('shows the stale label', async () => {
 
 it('shows the left-out count of long legs and the page notes', async () => {
   const text = await show(ok)
-  expect(text).toContain('3')
+  expect(host.querySelector('[data-left-out]')?.textContent).toContain('3')
   for (const note of ok.notes) expect(text).toContain(note)
 })
 
