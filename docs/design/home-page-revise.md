@@ -119,7 +119,7 @@ Size: S
 ### home-revise-sharpmove
 
 Module: compute (plus `.go-arch-lint.yml`, a judged cross-module entry: the lint lines of the new component, as PR #519)
-Files: internal/compute/sharpmove/sharpmove.go, internal/compute/sharpmove/sharpmove_test.go, .go-arch-lint.yml
+Files: internal/compute/sharpmove/sharpmove.go, internal/compute/sharpmove/sharpmove_test.go
 Design: docs/design/home-page-revise.md#decisions (5)
 Depends: home-revise-sharp-interface
 Goal: a pure function says whether a day change and a 5-day change are sharp, and the limits are exported for the builder's note; `ot` will wire them to the types of the interface issue.

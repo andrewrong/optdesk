@@ -140,7 +140,7 @@ Checked by CI: `pnpm --dir web run generate:types` with `git diff --exit-code we
 - Module: pages. Size: M. Depends on: home-page-v2-schema.
 - Order: after home-page-v2-schema. `Compose` is a pure function and has no caller yet (the builders and the route are Left out); the owner wants this backend work in parallel with the view.
 - Design: docs/design/home-page.md#Decisions
-- Files: internal/pages/home_page/compose.go, internal/pages/home_page/compose_test.go, internal/pages/home_page/testdata/household.json, internal/pages/home_page/testdata/companies.json, internal/pages/home_page/testdata/macro.json, internal/pages/home_page/testdata/market.json, internal/pages/home_page/testdata/options.json, arch.toml, .go-arch-lint.yml
+- Files: internal/pages/home_page/compose.go, internal/pages/home_page/compose_test.go, internal/pages/home_page/testdata/household.json, internal/pages/home_page/testdata/companies.json, internal/pages/home_page/testdata/macro.json, internal/pages/home_page/testdata/market.json, internal/pages/home_page/testdata/options.json
 
 - Goal: the function of Decisions 5 and 6. Signature: `func Compose(in Input, generatedAt time.Time) ([]byte, error)`, with `Input` holding `RunID`, `BuildID`, `Scope`, `Zone *time.Location`, `Title`,
   `Say`, `GapLine`, `BlockLinks`, `ReportLinks` (a slice of `Link{Href, Text string}`) and the five members as `[]byte` fields `Household`, `Companies`, `Macro`, `Market`, `Options`.
