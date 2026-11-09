@@ -1003,52 +1003,53 @@ history = ["2026-11-03 v1: registered from the code as it is (slot as the code h
 
 [[figure]]
 id = "structure.leg_pnl"
-version = 1
+version = 2
 title_zh = "持仓结构页：每条腿的盈亏、标记价（Mid）与合计"
 pages = ["structure_detail.legs.pnl", "structure_detail.legs.mark", "structure_detail.legs_total.pnl"]
 formula = """
-The profit of one leg now, in USD, signed: signed quantity (contracts, short negative) x multiplier x (Mid - opening price). Mid is the stored snapshot market price per share of the leg (the gateway's market_price), not a bid/ask midpoint. The 合计 row is the sum of the legs' profits at full precision, rounded half up to the cent, and equals the 浮盈亏 tile of the same page. Synthetic: short put 1 x 100 x (1.00 - 1.50) = +50; long put 1 x 100 x (0.40 - 0.50) = -10; 合计 +40."""
+The profit of one leg now, signed: signed quantity (contracts, short negative) x multiplier x (mark - opening price). The mark is the mid of the bid and ask of the stored IBKR quote of the leg, rounded half-even to 4 places; a quote with a bid of zero or no ask has no mark (Decision 7). The opening price is the Flex tradePrice of the opening row of the ledger position, per share, as decimal text (version 1 used the gateway's snapshot market price and cost basis). The 合计 row is the exact sum of the legs' profits, written to 4 places half-even, and equals structure.unrealized_pnl. Synthetic: short put 1 x 100 x (1.00 - 1.50) = +50.0000; long put 1 x 100 x (0.40 - 0.50) = -10.0000; total +40.0000."""
 inputs = """
-The legs of the structure with signed quantity and multiplier from the instrument master; the opening price per share and the stored snapshot market price per share of each leg from the household gateways' newest complete snapshots."""
-period_date = "The newest complete snapshot of each gateway at build time; the opening price is the position's cost basis per share."
-currency = "USD. A leg in another currency is not converted: it has no profit figure until FX is wired."
+The ledger positions of the structure (Flex replay): right, strike, expiry, signed quantity, multiplier, OpenPrice; the stored IBKR quote of each leg (bid, ask, day), matched by (underlying, right, strike, expiry)."""
+period_date = "The day of the stored quote; the opening price is that of the opening Flex row."
+currency = "The contract currency, exact decimal text. A JPY structure is not converted and has a gap."
 excludes = """
-Fees and commissions; assignment, exercise and expiry; any bid/ask midpoint; an unresolved leg of the book (the whole 合计 is then a Gap)."""
+Commissions (shown by structure.recent_commission); assignment, exercise and expiry; the last traded price; any price optdesk would compute itself."""
 gap_text = """
-A leg without a stored mark: no_data '缺少标记价' in Mid and in 盈亏, and 合计 (and the tile) the existing no_data '缺少持仓标记价，浮盈亏无法计算'. A JPY leg: no_data '日元腿暂不计盈亏' in 盈亏 and 合计. An unresolved leg: 合计 is no_data '有腿未解析，无法按已知的腿计算'. A partial sum is never shown; never a zero."""
+A leg without a mark is a gap with a named reason: missing_quote (no mark), stale_input (the quote is older than MarkMaxAgeSessions session days), unsupported_currency (a JPY structure: figures are in the contract currency, no FX), no_rule (an 'other' structure or a naked call), no_data (an input is absent). A partial sum is never shown; never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structure_detail_builder._leg_pnl",
-  "option_trader.viewmodels.structure_detail_builder._total_pnl",
-  "option_trader.viewmodels.structure_detail_builder._pnl_figure",
+  "internal/compute/optionstruct.marker.markOf",
+  "internal/compute/optionstruct.midOf",
+  "internal/compute/optionstruct.unrealized",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: agrees."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: agrees.", "2026-11-10 v2: the mark is the mid of the stored IBKR bid and ask, the opening price is the Flex tradePrice of the ledger, gaps are named reasons; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.level_distance"
-version = 1
+version = 2
 title_zh = "持仓结构页：关键价位的距现价"
 pages = ["structure_detail.key_levels.distance"]
 formula = """
-(price - spot) / spot x 100, as a signed percent with one decimal, rounded half up (away from zero on a tie): '+0.6%', '-4.4%'; a result that rounds to zero is '0.0%'. The 现价 row itself shows '—'. The 盈亏平衡 tile caption uses the same figure for the break-even: '现价下方 P%' or '现价上方 P%' (P the absolute value). Synthetic: spot 52, strike 50 gives -3.8%, strike 45 gives -13.5%, break-even 49 gives -5.8%."""
+(price - spot) / spot of a level (a strike of a leg or the break-even of the expiry payoff), as an exact ratio written with 6 decimals, rounded half-even, signed: '-0.038462'. The page moves the point two places for a percent and does not round the stored digits. Spot is the underlying close of the stored quote of the structure. Synthetic: spot 52, strike 50 gives -0.038462; strike 45 gives -0.134615."""
 inputs = """
-The price of the level (a strike of a leg or the break-even of the expiry payoff) and the stored underlying close of the legs' newest common session."""
-period_date = "The stored underlying close of the newest session on which every leg has one."
-currency = "None: a ratio of two USD prices, shown as a percent."
+The price of the level (strike of a leg, or the break-even of Decision 6); the underlying close carried by the stored IBKR quote of the legs."""
+period_date = "The day of the stored quote (stale beyond MarkMaxAgeSessions session days)."
+currency = "None: a ratio of two prices of one currency."
 excludes = """
-Any intraday price; the one-standard-deviation band; a spot of zero or less (treated as no spot)."""
+Any intraday price; the one-standard-deviation band; a spot of zero or less."""
 gap_text = """
-No stored underlying close: every cell of the column is the same no_data '无收盘价，距现价无法计算' and the 盈亏平衡 caption is '无收盘价'. Never a zero."""
+No quote, or none with an underlying close: a gap with the reason missing_quote; an older quote: stale_input; a JPY structure: unsupported_currency. The cell is a gap, never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structure_detail_builder._distance",
-  "option_trader.viewmodels.structure_detail_builder._break_even_caption",
+  "internal/compute/optionstruct.distance",
+  "internal/compute/optionstruct.marker.fillDistances",
+  "internal/compute/optionstruct.marker.spotOf",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: agrees."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered with the structure page rebuild; Advisor: agrees.", "2026-11-10 v2: ratio of exact rationals with 6 decimals instead of a one-decimal percent; spot from the stored quote; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "option.candidates.earnings_date"
@@ -1166,129 +1167,124 @@ history = ["2026-11-08 v2: source FRED SP500 only, mean of the last 200 values, 
 
 [[figure]]
 id = "structure.max_loss"
-version = 1
+version = 2
 title_zh = "持仓结构页与结构列表：最大亏损"
 pages = ["structure_detail.tiles.max_loss.figure", "structure_detail.payoff.max_loss", "structures_list.groups.rows.max_loss"]
 formula = """
-The worst expiry profit of the structure in USD, signed (a loss is negative), for one position: the minimum, over the corners of the expiry payoff (underlying price 0 and every strike of the legs), of sum(signed quantity x multiplier x (intrinsic value at that price - opening price)), rounded half up to the cent. Intrinsic value is max(strike - price, 0) for a put and max(price - strike, 0) for a call; the payoff is linear between corners and flat above the top strike, so the minimum is at a corner. A structure whose payoff is unbounded above (net short calls) has no figure and is not built. The list page copies this figure from each structure's detail page and orders its rows by it, the most negative first. Synthetic: short put 50 at 1.50 and long put 45 at 0.50, one contract each, multiplier 100: (5 - 1.00) x 100 = -400.00; a single short put 90 at 3.00: 300 - 9,000 = -8,700.00."""
+The worst expiry result of the structure, signed (a loss is negative), over the corners of the expiry payoff, in the contract currency, written to 4 places half-even. Short put: -(strike x multiplier x contracts - premium). Long put or long call: -premium. Vertical spread: the net credit minus the width x multiplier x contracts. Premium is the opening price from the Flex ledger x multiplier x contracts. Covered call: no number (gap no_rule). Naked call: unbounded, gap no_rule with the text 无上限. Synthetic: short put 50 at 1.50 and long put 45 at 0.50, one contract each, multiplier 100: (1.00 - 5.00) x 100 = -400.0000; a single short put 90 at 3.00: 300 - 9,000 = -8,700.0000."""
 inputs = """
-The legs of the structure with signed quantity, strike, right and multiplier from the instrument master; the opening price per share of each leg from the household gateways' newest complete snapshots."""
-period_date = "At expiry of the legs; the opening prices are those of the newest complete snapshot of each gateway at build time."
-currency = "USD. A structure in another currency is not built."
+The ledger positions of the structure: strike, right, signed quantity, multiplier, OpenPrice."""
+period_date = "At expiry of the legs; opening prices from the Flex ledger."
+currency = "The contract currency, exact decimal text; a JPY structure is not converted."
 excludes = """
-Fees and commissions; assignment and early exercise; the current mark (this is the expiry result, not the profit now); any stress or margin figure."""
+Commissions; assignment and early exercise; the current mark; any stress or margin figure."""
 gap_text = """
-A structure the page cannot express (legs of different expiries, an unbounded payoff, no break-even, no opening price, no stored implied volatility with a spot) is not built and not listed; the list says once how many were left out. A structure with an unresolved leg: no_data '有腿未解析，无法按已知的腿计算'. Never a zero."""
+An 'other' structure (diagonal, calendar, straddle, collar, three or more legs), a naked call and a covered call: no_rule. An unparsable input: no_data. Never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structure_detail_builder.expiry_pnl",
-  "option_trader.viewmodels.structure_detail_builder._intrinsic",
-  "option_trader.viewmodels.structure_detail_builder._payoff_extremes",
-  "option_trader.viewmodels.structures_list.build_structures_list",
+  "internal/compute/optionstruct.risk",
+  "internal/compute/optionstruct.spreadRisk",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed.", "2026-11-10 v2: opening price and terms from the Flex ledger; recognition by optionstruct (no_rule for other, naked and covered calls); 4-place decimal text; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.max_gain"
-version = 1
+version = 2
 title_zh = "持仓结构页与结构列表：最大盈利"
 pages = ["structure_detail.tiles.max_gain.figure", "structure_detail.payoff.max_gain", "structures_list.groups.rows.max_gain"]
 formula = """
-The best expiry profit of the structure in USD, signed, for one position: the maximum, over the corners of the expiry payoff (underlying price 0 and every strike of the legs), of sum(signed quantity x multiplier x (intrinsic value at that price - opening price)), rounded half up to the cent. The list page copies this figure from each structure's detail page. Synthetic: short put 50 at 1.50 and long put 45 at 0.50, one contract each, multiplier 100: (1.50 - 0.50) x 100 = +100.00."""
+The best expiry result, signed, over the corners of the expiry payoff, in the contract currency, 4 places half-even. Short put and short call: the premium (opening price from the Flex ledger x multiplier x contracts). Vertical spread: the net credit. Long put: strike x multiplier x contracts minus premium. Covered call: (strike - basis) x shares + premium, the basis being the strike or purchase price of the cycle and never reduced by the premium, which is shown apart. Long call: unbounded, gap no_rule. Synthetic: short put 50 at 1.50 and long put 45 at 0.50: +100.0000."""
 inputs = """
-The legs of the structure with signed quantity, strike, right and multiplier from the instrument master; the opening price per share of each leg from the household gateways' newest complete snapshots."""
-period_date = "At expiry of the legs; the opening prices are those of the newest complete snapshot of each gateway at build time."
-currency = "USD. A structure in another currency is not built."
+The ledger positions of the structure: strike, right, signed quantity, multiplier, OpenPrice; the cost basis of the alias cycle for a covered call."""
+period_date = "At expiry of the legs; opening prices from the Flex ledger."
+currency = "The contract currency, exact decimal text."
 excludes = """
-Fees and commissions; assignment and early exercise; the current mark; any probability of reaching the figure."""
+Commissions; assignment and early exercise; the current mark; any probability of reaching the figure."""
 gap_text = """
-As structure.max_loss: a structure the page cannot express is not built and not listed; an unresolved leg gives no_data '有腿未解析，无法按已知的腿计算'. Never a zero."""
+A long call or an 'other' structure: no_rule. A covered call without a cycle basis: missing. Never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structure_detail_builder.expiry_pnl",
-  "option_trader.viewmodels.structure_detail_builder._intrinsic",
-  "option_trader.viewmodels.structure_detail_builder._payoff_extremes",
-  "option_trader.viewmodels.structures_list.build_structures_list",
+  "internal/compute/optionstruct.risk",
+  "internal/compute/optionstruct.coveredRisk",
+  "internal/compute/optionstruct.spreadRisk",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed.", "2026-11-10 v2: opening price from the Flex ledger; the covered call has a max gain from the cycle basis, the premium never deducted from the basis; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.unrealized_pnl"
-version = 1
+version = 2
 title_zh = "持仓结构页与结构列表：浮盈亏"
 pages = ["structure_detail.tiles.pnl.figure", "structures_list.groups.rows.pnl"]
 formula = """
-The profit of the structure now, in USD, signed: the sum over its legs of signed quantity (contracts, short negative) x multiplier x (stored mark per share - opening price per share), rounded half up to the cent. It equals the 合计 row of the legs table (structure.leg_pnl). The list page copies this figure from each structure's detail page. Synthetic: short put 1 x 100 x (1.00 - 1.50) = +50; long put 1 x 100 x (0.40 - 0.50) = -10; total +40."""
+The profit of the structure now: the sum over its legs of signed quantity x multiplier x (mark - opening price), exact, written to 4 places half-even. The mark is the mid of the stored IBKR bid and ask (rounded half-even to 4 places; no bid or no ask is no mark); the opening price is the Flex tradePrice of the ledger. It equals the 合计 of structure.leg_pnl. Synthetic: +50 and -10 give +40.0000."""
 inputs = """
-The legs of the structure with signed quantity and multiplier from the instrument master; the opening price per share and the stored snapshot market price per share of each leg from the household gateways' newest complete snapshots."""
-period_date = "The newest complete snapshot of each gateway at build time."
-currency = "USD. A structure with a leg in another currency has no figure."
+The ledger positions of the structure (Flex replay) and the stored IBKR quote of each leg."""
+period_date = "The day of the stored quotes."
+currency = "The contract currency, exact decimal text; a JPY structure has a gap."
 excludes = """
-Fees and commissions; assignment, exercise and expiry; any bid/ask midpoint."""
+Commissions; assignment, exercise and expiry; the last traded price."""
 gap_text = """
-A leg without a stored mark: no_data '缺少持仓标记价，浮盈亏无法计算' in the cell, on the list the same Gap. A JPY leg: no_data '日元腿暂不计盈亏'. An unresolved leg: no_data '有腿未解析，无法按已知的腿计算'. A partial sum is never shown; never a zero."""
+Any leg without a usable mark makes the sum a gap with that reason (missing_quote (no mark), stale_input (the quote is older than MarkMaxAgeSessions session days), unsupported_currency (a JPY structure: figures are in the contract currency, no FX), no_rule (an 'other' structure or a naked call), no_data (an input is absent)). A partial sum is never shown; never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structure_detail_builder._leg_pnl",
-  "option_trader.viewmodels.structure_detail_builder._total_pnl",
-  "option_trader.viewmodels.structure_detail_builder._pnl_figure",
-  "option_trader.viewmodels.structures_list.build_structures_list",
+  "internal/compute/optionstruct.unrealized",
+  "internal/compute/optionstruct.marker.fill",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered as a recording of build_structure_detail; no arithmetic changed; Advisor: agrees.", "2026-11-04 v1: page path moved under groups, build_structures_list now groups the rows; no arithmetic changed.", "2026-11-04 v1: build_structures_list takes the compare inputs; source hash re-pinned, no arithmetic changed.", "2026-11-10 v2: mid of the stored IBKR quote, opening price from the Flex ledger, named gap reasons; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.earned_share"
-version = 1
+version = 2
 title_zh = "结构列表：已赚 %（已收权利金中已落袋的比例）"
 pages = ["structures_list.groups.rows.earned"]
 formula = """
-(credit - buyback) / credit x 100, as a percent with one decimal, rounded half up (away from zero on a tie): '60.0%', '-20.0%'; negative when buying back costs more than was received. credit is the opening price per share of the nearest short leg (earliest expiry, the lower strike on a tie) and buyback its stored snapshot mark per share, as structure.leg_pnl v1 reads them. The arithmetic is held_actions.earned_share, the same function that tests the held-alert captured share. Synthetic: credit 1.50, mark 0.60 gives 60.0%; credit 2.00, mark 1.50 gives 25.0%; credit 1.00, mark 1.20 gives -20.0%."""
+structure.unrealized_pnl divided by the opening net premium, as an exact ratio written with 6 decimals, half-even: '0.600000' for 60 percent, negative when the buy-back costs more than was received. The opening net premium is the sum over the legs of -(signed quantity x multiplier x opening price), the opening price from the Flex ledger; the mark behind the pnl is the mid. The page moves the point two places. Synthetic: credit 150, pnl +90 gives 0.600000; credit 100, pnl -20 gives -0.200000."""
 inputs = """
-The opening price per share and the stored snapshot market price per share of the nearest short leg, from the household gateways' newest complete snapshots."""
-period_date = "The newest complete snapshot of each gateway at build time."
-currency = "None: a ratio of two USD prices of one leg, shown as a percent."
+The unrealized pnl of the structure and the ledger opening prices, quantities and multipliers of its legs."""
+period_date = "The day of the stored quotes."
+currency = "None: a ratio of two amounts of one currency."
 excludes = """
-The long legs of the structure; fees; any bid/ask midpoint; the 50% profit-take threshold (a later issue with owner parameters)."""
+Commissions; the 50 percent profit-take threshold (DefaultCaptureTarget of optionstruct is a parameter, not part of this figure)."""
 gap_text = """
-No stored mark, or a credit that is not positive, or a JPY leg: no_data '无报价，已赚无法计算' in the cell and once in the list note. A structure with no short leg: no_data '无卖出腿，已赚无法计算'. Never a zero."""
+The pnl is a gap: the same reason. An opening net premium that is not positive (a debit structure): no_data. Never a zero."""
 implemented_by = [
-  "option_trader.reports.held_actions.earned_share",
-  "option_trader.viewmodels.structure_detail_builder.earned_text",
+  "internal/compute/optionstruct.earnedShare",
+  "internal/compute/optionstruct.fixed6",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-04"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees.", "2026-11-10 v2: premium kept now over the opening net premium, from the mid; ratio with 6 decimals instead of a one-decimal percent; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.expiry_distance"
-version = 1
+version = 2
 title_zh = "结构列表：距现价（最近到期的卖出腿行权价）"
 pages = ["structures_list.groups.rows.distance"]
 formula = """
-structure.level_distance v1 applied to the strike of the nearest short leg (earliest expiry, the lower strike on a tie): (strike - spot) / spot x 100, a signed percent with one decimal, rounded half up: '-3.8%', '+5.0%'. Synthetic: spot 52, strike 50 gives -3.8%; spot 100, strike 105 gives +5.0%."""
+structure.level_distance applied to the strike of the nearest short leg (earliest expiry): (strike - spot) / spot, an exact ratio written with 6 decimals, half-even. Synthetic: spot 52, strike 50 gives -0.038462; spot 100, strike 105 gives 0.050000."""
 inputs = """
-The strike of the nearest short leg and the stored underlying close of the legs' newest common session."""
-period_date = "The stored underlying close of the newest session on which every leg has one."
-currency = "None: a ratio of two USD prices, shown as a percent."
+The strike of the nearest short leg from the ledger; the underlying close of the stored IBKR quote."""
+period_date = "The day of the stored quote."
+currency = "None: a ratio of two prices."
 excludes = """
-Any intraday price; the long legs; a spot of zero or less (treated as no spot)."""
+Any intraday price; the long legs; a spot of zero or less."""
 gap_text = """
-No stored underlying close: no_data '无收盘价，距现价无法计算' in the cell and once in the list note. A structure with no short leg: no_data '无卖出腿，距现价无法计算'. Never a zero."""
+No quote with an underlying close: missing_quote; an older one: stale_input; JPY: unsupported_currency; an 'other' structure: no_rule; no short leg: no_data. Never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structure_detail_builder._distance",
-  "option_trader.viewmodels.structure_detail_builder.leg_distance",
+  "internal/compute/optionstruct.distance",
+  "internal/compute/optionstruct.marker.fillDistances",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-04"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-04 v1: registered with the held options list; Advisor: agrees.", "2026-11-10 v2: ratio with 6 decimals; spot from the stored IBKR quote; named gap reasons; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "option.candidates.iv_context"
@@ -1463,73 +1459,99 @@ history = ["2026-11-03 v1: registered; Advisor: agrees"]
 
 [[figure]]
 id = "structure.close_cost"
-version = 1
+version = 2
 title_zh = "结构列表：平仓成本（标记价）"
 pages = ["structures_list.groups.rows.compare.close_cost"]
 formula = """
-The stored snapshot mark per share of the nearest short leg (earliest expiry, the lower strike on a tie) x multiplier x contracts, the market price structure.leg_pnl v1 uses, in the contract currency; the label says 标记价, not Mid. Gross: no fee is deducted and the owner is not asked for one. Synthetic: mark 0.60, multiplier 100, one contract gives $60.00."""
+The mid of the stored IBKR bid and ask of the single short leg (rounded half-even to 4 places) x multiplier x contracts, in the contract currency, 4 places half-even; the owner's rule 'mark at mid' replaces the snapshot price of version 1. Gross: no commission is deducted. Compare.cash_after is the premium income minus the commissions minus this close cost, of the same leg. Synthetic: mid 0.60, multiplier 100, one contract gives 60.0000."""
 inputs = """
-The stored snapshot market price per share of the nearest short leg from the household gateways' newest complete snapshots; the leg's multiplier and signed contracts from the instrument master and the book."""
-period_date = "The newest complete snapshot of each gateway at build time."
-currency = "The contract currency: $ for USD, JPY for yen; nothing is converted and a yen cell carries no USD figure."
+The stored IBKR quote of the short leg; its multiplier and contracts from the ledger position; for cash_after the premium income and commissions of the position."""
+period_date = "The day of the stored quote."
+currency = "The contract currency; nothing is converted."
 excludes = """
-Fees and commissions; any bid/ask midpoint; the long legs of the structure."""
+Commissions; the last traded price; the long legs. Filled only for a structure with exactly one short leg and no long leg."""
 gap_text = """
-No stored mark: no_data '无标记价，平仓成本无法计算'. A structure with no short leg: no_data '无卖出腿，平仓成本无法计算'. Never a zero."""
+No usable mark: the reason (missing_quote (no mark), stale_input (the quote is older than MarkMaxAgeSessions session days), unsupported_currency (a JPY structure: figures are in the contract currency, no FX), no_rule (an 'other' structure or a naked call), no_data (an input is absent)); cash_after is a gap with the same reason. Never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structures_list.close_cost",
+  "internal/compute/optionstruct.closeCost",
+  "internal/compute/optionstruct.cashAfter",
+  "internal/compute/optionstruct.midOf",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees.", "2026-11-10 v2: the close cost is the mid of the stored IBKR quote; cash_after added with it; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.roll_credit"
-version = 1
+version = 2
 title_zh = "结构列表：滚仓净收（下月同行权价）"
 pages = ["structures_list.groups.rows.compare.roll_net"]
 formula = """
-Roll credit minus 平仓成本 (structure.close_cost). The roll credit is the per-share bid (the evaluation's facts.bid, gross) the stored scan gives for the same symbol, right and strike at the next monthly expiry after the short leg's expiry (third-Friday rule for US, every listed JP expiry), x multiplier x contracts; the roll contract is named in the cell (for example 11月20日 50 put). Gross: no fee is deducted. Synthetic: bid 1.10 x 100 x 1 = 110.00; 110.00 - 60.00 = +$50.00."""
+The bid of the stored IBKR quote of the same underlying, right and strike at the next monthly expiry after the short leg's expiry (the first third-Friday date after it, by date arithmetic in the rule) x multiplier x contracts, 4 places half-even; the net (Compare.roll_net) is this credit minus structure.close_cost. Gross. Synthetic: bid 1.10 x 100 x 1 = 110.0000; minus close cost 60.0000 gives 50.0000."""
 inputs = """
-The stored short-put and covered-call scans of the market (read_stored_scan): the listed expiries of the symbol and the per-share bid of the contract with the same right and strike; the 平仓成本 of the structure; the multiplier and contracts of its short leg."""
-period_date = "The newest stored scan of the session day or the day before."
-currency = "The contract currency, as structure.close_cost."
+The stored IBKR quote set of the underlying (bid, day, terms); the close cost; the multiplier and contracts of the short leg."""
+period_date = "The day of the stored quote of the roll contract."
+currency = "The contract currency; nothing is converted."
 excludes = """
-Fees and commissions; premium_net of the scan (per contract and net of the opening fee); any live quote (nothing is fetched); a structure with more than one short leg."""
+Commissions; the last traded price; a structure with more than one short leg or any long leg."""
 gap_text = """
-The stored scan holds no such contract: no_data '扫描中无下月同行权价合约'. The contract has no bid: no_data '扫描中下月同行权价合约无买价'. No stored scan: no_data '无候选扫描，滚仓净收无法计算'. 平仓成本 is a gap: no_data '平仓成本缺失，滚仓净收无法计算'. More than one short leg: no_data '仅单卖腿结构可比较'. Never a zero."""
+The quote set has no such contract, or it has no bid: no_data. An old quote: stale_input. The close cost is a gap: the net has its reason. Never a zero."""
 implemented_by = [
-  "option_trader.viewmodels.structures_list.roll_net",
-  "option_trader.viewmodels.structures_list.next_monthly",
+  "internal/compute/optionstruct.marker.roll",
+  "internal/compute/optionstruct.nextMonthly",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees.", "2026-11-04 v1: the roll credit is the stored scan's per-share bid (facts.bid) as the owner decided; premium_net is per contract and net of the opening fee, so it is not used."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees.", "2026-11-04 v1: the roll credit is the stored scan's per-share bid (facts.bid) as the owner decided; premium_net is per contract and net of the opening fee, so it is not used.", "2026-11-10 v2: the credit is the bid of the stored IBKR quote at the next third-Friday expiry, minus the mid close cost; no_data when the quote set lacks the contract; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
 
 [[figure]]
 id = "structure.recent_commission"
-version = 1
+version = 2
 title_zh = "结构列表：最近佣金（IBKR 每张）"
 pages = ["structures_list.groups.rows.compare.recent_commission"]
 formula = """
-The absolute ibCommission divided by the absolute quantity of the newest stored Flex option trade (levelOfDetail EXECUTION, assetCategory OPT, newest by dateTime) whose currency equals the market's (USD for US, JPY for JP) and whose ibCommissionCurrency equals that currency; shown as its own figure with its trade date in the text, for example $0.65/张（11-02）. Flex reports ibCommission negative for a charge and per trade row, not per contract. Synthetic: quantity 1, ibCommission -0.65 on 2026-11-02 gives $0.65/张（11-02）."""
+The sum of the commissions of the Flex fills (LedgerFill.Commission) of all legs of the structure on the last CommissionDays (30) days up to the day of the evaluation, exact decimal text as the ledger holds it (Flex reports a charge as a negative number), 4 places half-even. Synthetic: fills of -0.65 and -0.65 inside the window and -0.65 outside give -1.3000."""
 inputs = """
-The stored Flex trade rows: dateTime, tradeDate, quantity, ibCommission, currency, ibCommissionCurrency, levelOfDetail and assetCategory."""
-period_date = "The trade date of the newest matching row, in the text of the cell."
-currency = "The market's currency: $ for USD, JPY for yen; nothing is converted."
+The Fills of the ledger positions of the legs: Day and Commission."""
+period_date = "The 30 days up to the day of the evaluation."
+currency = "The contract currency of the fills; nothing is converted."
 excludes = """
-Any fee in 平仓成本 or 滚仓净收 (those stay gross); the fee of this structure's own fills; a row whose commission currency differs from its currency."""
+Fills outside the window; any fee in close_cost or roll_credit (those stay gross)."""
 gap_text = """
-No matching stored row: no_data '无IBKR佣金记录'. Never a zero."""
+No fill at all: no_data. A commission that does not parse: missing. Never a zero from absence."""
 implemented_by = [
-  "option_trader.reports.structure_detail_publish.recent_commission",
+  "internal/compute/optionstruct.marker.recentCommission",
 ]
 source_hash = "pending-recompute"
-agreed_on = "2026-11-03"
-agreed_in = "carried over from option-trader"
-history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees."]
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-03 v1: registered with the held-structure compare row; Advisor: agrees.", "2026-11-10 v2: the commissions of the last 30 days of the legs, from the Flex ledger rows, instead of the newest stored trade per contract; by docs/design/option-positions.md Decisions 6, 7 and 9 (issue 978); source_hash is recomputed when the Go code lands."]
+
+[[figure]]
+id = "option.result.kept_share"
+version = 1
+title_zh = "期权盈亏页：权利金留存比例（卖出侧）"
+pages = ["option_result_page.sections.figures"]
+formula = """
+For the sold side of one alias and one currency: the realized P&L of its closed ledger positions (premium income minus commissions, the ledger's RealizedPnL) divided by the opening premium of the same positions, as an exact ratio written with 6 decimals, rounded half-even: '0.750000' for 75 percent. The page moves the point two places. Assigned premium and shares are shown apart and the cost basis stays the strike, never reduced by premium (Decision 9). Synthetic: opening premium 200.0000 and realized 150.0000 give 0.750000."""
+inputs = """
+The closed LedgerPosition rows of one alias and currency with side sold: Status, ClosedOn, PremiumIncome, Commissions and RealizedPnL from the Flex replay."""
+period_date = "All closed positions of the alias up to the as-of session day; a month not yet over is muted on the page, not left out of the share."
+currency = "None: a ratio of two amounts of one currency. Currencies are never added: one section per currency and side."
+excludes = """
+Open positions; the bought side (it has no kept share); Unresolved and Review ids (counted in the reliability figures, never in a figure); the broker's own realized figure (compared, not used)."""
+gap_text = """
+No closed sold position, or an opening premium of zero: the figure is empty and the page shows no share. Never a zero."""
+implemented_by = [
+  "internal/compute/optionresult.results.Summarise",
+  "internal/compute/optionresult.section",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/option-positions.md"
+history = ["2026-11-10 v1: registered by docs/design/option-positions.md Decision 9 (issue 978); computed at build time, nothing is stored."]
 
 [[figure]]
 id = "market.vix_pctile_3y"
