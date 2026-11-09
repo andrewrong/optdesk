@@ -84,11 +84,23 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Plain values and decimal text only; no float. Severities are `info`, `warn`, `act`. Pure: no I/O, no clock.
 
+## Option tracking
+
+`TrackQuote`, `TrackEvent`, `TrackHeld`, `TrackInput`, `TrackParams`, `TrackedOption`, `TrackRecon`, `TrackResult`, `OptionTracker` and `NewOptionTrackerFunc` are in `internal/compute/trackapi/api.go` (a declarations-only package, `api.go` and its test); `compute.LedgerPosition` is the one position type and gains nothing. Design: `docs/design/option-tracking.md#Interface`.
+
+- Plain values and decimal text only; no float. An empty string is "no value". Order: `Open` by expiry, underlying, strike, position id; `Recent` by closing day descending, then position id; `Recon` by underlying, expiry, strike. Pure: no I/O, no clock.
+
 ## Rule parameters and settings form
 
 `RuleParamSpec`, `RuleParams`, `NewRuleParamsFunc`, `FormToken`, `FormRequest`, `FormField`, `FormState`, `FormChange`, `SettingsForm` and `NewSettingsFormFunc` are declared in the package `internal/compute/settingsapi` (declarations only, imports `time` only), not in `internal/compute/api.go`. `RuleParams` is the registry of the twelve owner parameters; `SettingsForm` issues the form token, guards a POST and parses a posted form. Design: `docs/design/settings-form.md#Interface`.
 
 - Text only; no float. Pure: the clock is passed in.
+
+## Page figures
+
+`PageFigures`, `NewPageFiguresFunc`, `HouseholdInput`, `HouseholdResult`, `AccountMoveIn`, `AccountMoveOut` and their line types are declared in `internal/compute/blockapi/api.go` (declarations only; the implementation is `internal/compute/pagefig`). Design: `docs/design/builders-wave.md#Interface`.
+
+- Every figure is a `compute.FigureValue`; `blockapi` declares no figure type of its own. Pure: no I/O, no clock.
 
 ## Version history
 
@@ -100,9 +112,12 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v6: additions only: the option structure and result types, `OptionStructures`, `OptionResults` and the eight `LedgerPosition` terms above.
 - v7: additions only: the option notice types, `OptionNotices` and the two function types above.
 - v8: additions only: the package `internal/compute/settingsapi` above.
+- v9: additions only: the package `internal/compute/trackapi` above (option tracking types, `OptionTracker` and `NewOptionTrackerFunc`).
+- v10: additions only: `PageFigures` and its types in `internal/compute/blockapi` above.
 
 ## Contract tests
 
+- `internal/compute/blockapi/api_test.go` tests `PageFigures` from both sides: a fake and a caller that fills every input field and reads every output field.
 - `internal/compute/api_test.go` tests the contract from both sides: a fake of each interface and a caller through the interface only; `TestAlertContract` does so for `EvaluateAlertsFunc` and `LoadAlertRulesFunc`.
 - `internal/compute/settingsapi/api_test.go` tests `RuleParams` and `SettingsForm` from both sides: a fake of each and a caller that resolves a stored map and parses a posted form.
 - The golden suites per interface (`internal/compute/contracttest`) come with later issues.

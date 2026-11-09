@@ -1,4 +1,4 @@
-"""Interface of the ibkr module: the session probe and the dividend reads of ibkr.v1.
+"""Interface of the ibkr module: the session probe, the dividend reads and the bars of ibkr.v1.
 
 Declarations only. Mirrors contracts/proto/ibkr/v1/session.proto and
 reference.proto by hand and imports no generated code.
@@ -67,4 +67,57 @@ class Reference(Protocol):
         on_reading: Callable[[DividendReading], Awaitable[None]],
     ) -> None:
         """Call on_reading once per key, in the order answers complete."""
+        ...
+
+
+@dataclass(frozen=True)
+class HistoryKey:
+    """A listed contract whose daily bars are asked for; sec_type is the TWS word ("STK")."""
+
+    symbol: str
+    sec_type: str
+    exchange: str
+    currency: str
+    con_id: int
+
+
+@dataclass(frozen=True)
+class HistoryRequest:
+    """One request for daily bars.
+
+    kind is "trades", "adjusted_last" or "midpoint". duration_days is 1 to 730.
+    end_day is YYYY-MM-DD or empty for now; it is empty with "adjusted_last".
+    """
+
+    key: HistoryKey
+    kind: str
+    duration_days: int
+    end_day: str
+
+
+@dataclass(frozen=True)
+class HistoryBar:
+    """One daily bar: day is YYYY-MM-DD, prices and volume are decimal text.
+
+    volume is None when the broker has none.
+    """
+
+    day: str
+    open: str
+    high: str
+    low: str
+    close: str
+    volume: str | None
+
+
+class HistoryPaced(Exception):
+    """The pacer would wait longer than its limit; the request was not sent."""
+
+
+@runtime_checkable
+class History(Protocol):
+    """A broker session that serves daily bars."""
+
+    async def bars(self, request: HistoryRequest) -> Sequence[HistoryBar]:
+        """Return the bars of the request, oldest first; raise HistoryPaced when paced."""
         ...

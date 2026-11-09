@@ -22,8 +22,14 @@ from ib_async import IB, Contract, RequestError
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.accounts import read_account, read_executions
-from optdesk.ibkr.api import DividendKey, DividendReading
+from optdesk.ibkr.api import (
+    DividendKey,
+    DividendReading,
+    HistoryBar,
+    HistoryRequest,
+)
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
+from optdesk.ibkr.history import HistoryReader, WireRequest
 from optdesk.ibkr.model import (
     AccountRows,
     ChainRow,
@@ -43,6 +49,8 @@ from optdesk.ibkr.pacing import (
 from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
 
 _log = logging.getLogger(__name__)
+
+_DIVIDEND_LOG_MAX = 120  # characters of an exception text kept in dividend_failed
 
 _PRICE_FIELDS = (
     ("bid", "bid"),
@@ -144,6 +152,7 @@ class IbGateway:
         self._lines = LineBudget(lines)
         self._snapshots = LineBudget(snapshots)
         self._lane = DetailsLane(self._clock)
+        self._history = HistoryReader(self._clock)
         self._ib: Any = None
         self._connected = False
         self._generation = 0
@@ -466,14 +475,38 @@ class IbGateway:
             try:
                 async with self._lines.lease():
                     await self._pacer.start()
-                    ib, _ = self._session()
+                    ib, generation = self._session()
+                    con_id = key.con_id
+                    if con_id <= 0:
+                        matches = await self._send_details(
+                            generation,
+                            lambda: ib.reqContractDetailsAsync(
+                                Contract(
+                                    symbol=key.symbol,
+                                    secType=key.sec_type,
+                                    exchange=key.exchange or "SMART",
+                                    currency=key.currency,
+                                )
+                            ),
+                        )
+                        if len(matches) != 1:
+                            await on_reading(
+                                self._unanswered(
+                                    key,
+                                    spec.STATUS_NO_VALUE
+                                    if not matches
+                                    else spec.STATUS_ERROR,
+                                )
+                            )
+                            return
+                        con_id = matches[0].contract.conId
                     reading = await self._until_lost(
                         read_dividend(
                             self._clock,
                             key,
                             lambda k, ticks, on_text, on_error: (
                                 self._subscribe_dividend(
-                                    ib, k, ticks, on_text, on_error
+                                    ib, k, con_id, ticks, on_text, on_error
                                 )
                             ),
                         )
@@ -482,18 +515,11 @@ class IbGateway:
                 raise
             except Exception as exc:  # noqa: BLE001
                 _log.error(
-                    "dividend_failed type=%s message=%s", type(exc).__name__, exc
+                    "dividend_failed type=%s message=%s",
+                    type(exc).__name__,
+                    str(exc)[:_DIVIDEND_LOG_MAX],
                 )
-                reading = DividendReading(
-                    key,
-                    spec.STATUS_ERROR,
-                    None,
-                    None,
-                    None,
-                    None,
-                    0,
-                    self._clock.now().timestamp(),
-                )
+                reading = self._unanswered(key, spec.STATUS_ERROR)
             await on_reading(reading)
 
         tasks = [asyncio.ensure_future(one(key)) for key in keys]
@@ -504,19 +530,25 @@ class IbGateway:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
+    def _unanswered(self, key: DividendKey, status: str) -> DividendReading:
+        return DividendReading(
+            key, status, None, None, None, None, 0, self._clock.now().timestamp()
+        )
+
     def _subscribe_dividend(
         self,
         ib: Any,
         key: DividendKey,
+        con_id: int,
         ticks: str,
         on_text: TickText,
         on_error: TickError,
     ) -> Release:
-        job = _Job(key.con_id)
+        job = _Job(con_id)
         job.on_error = on_error
         self._jobs.add(job)
         contract = Contract(
-            conId=key.con_id,
+            conId=con_id,
             symbol=key.symbol,
             secType=key.sec_type,
             exchange=key.exchange or "SMART",
@@ -538,6 +570,59 @@ class IbGateway:
             self._pacer.cancel(lambda: self._cancel(ib, contract))
 
         return release
+
+    # --- history ----------------------------------------------------------
+
+    async def bars(self, request: HistoryRequest) -> Sequence[HistoryBar]:
+        """Return the daily bars of the request, oldest first.
+
+        Paced by the history pacer (HistoryPaced) and by the message pacer; a
+        lost session raises ConnectionError and a refusal of the broker raises
+        BrokerError.
+        """
+        key = request.key
+        contract = Contract(
+            conId=key.con_id,
+            symbol=key.symbol,
+            secType=key.sec_type,
+            exchange=key.exchange or "SMART",
+            currency=key.currency,
+        )
+
+        async def fetch(words: WireRequest) -> Sequence[HistoryBar]:
+            ib, generation = self._session()
+            try:
+                found = await self._send_details(
+                    generation,
+                    lambda: ib.reqHistoricalDataAsync(
+                        contract,
+                        words.end_date,
+                        words.duration,
+                        words.bar_size,
+                        words.what_to_show,
+                        True,
+                        words.format_date,
+                    ),
+                )
+            except RequestError as exc:
+                raise spec.BrokerError(exc.code, exc.message) from exc
+            return [_history_bar(bar) for bar in found]
+
+        return await self._history.bars(request, fetch)
+
+
+def _history_bar(bar: Any) -> HistoryBar:
+    moment = bar.date
+    day = moment.isoformat() if hasattr(moment, "isoformat") else str(moment)
+    volume = _number(bar.volume)
+    return HistoryBar(
+        day[:10],
+        _decimal_text(float(bar.open)),
+        _decimal_text(float(bar.high)),
+        _decimal_text(float(bar.low)),
+        _decimal_text(float(bar.close)),
+        None if volume is None or volume < 0 else _decimal_text(volume),
+    )
 
 
 def _dividend_text(found: Any) -> str:

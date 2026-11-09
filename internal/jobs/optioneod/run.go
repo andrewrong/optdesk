@@ -210,7 +210,7 @@ func (r *runState) price(ctx context.Context, u underlying) (float64, contracts.
 	return 0, newErr(contracts.Retryable, "no price of %s", u.Symbol)
 }
 
-// pairs lists the chains and selects from the chain chainOf picks.
+// pairs lists the chains and selects from the chain chainOf picks; no such chain is a Permanent failure.
 func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]broker.Contract, contracts.TypedError) {
 	if terr := r.checkBudget(); terr != nil {
 		return nil, terr
@@ -219,18 +219,20 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	if err != nil {
 		return nil, asTyped(err, contracts.Permanent)
 	}
-	var out []broker.Contract
-	if len(chains) > 0 {
-		if chain, ok := r.j.m.chainOf(chains, u); ok {
-			out = selectContracts(chain, u, string(r.day), price, r.j.m)
-			if r.j.acct != nil {
-				held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
-				if err != nil {
-					return nil, asTyped(err, contracts.Retryable)
-				}
-				out = addHeld(out, chain, u, held)
-			}
+	if len(chains) == 0 {
+		return nil, newErr(contracts.Permanent, "empty selection for %s", u.Symbol)
+	}
+	chain, class, ok := r.j.m.chainOf(chains, u)
+	if !ok {
+		return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
+	}
+	out := selectContracts(chain, u, string(r.day), price, r.j.m)
+	if r.j.acct != nil {
+		held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
+		if err != nil {
+			return nil, asTyped(err, contracts.Retryable)
 		}
+		out = addHeld(out, chain, u, held)
 	}
 	if len(out) == 0 {
 		return nil, newErr(contracts.Permanent, "empty selection for %s", u.Symbol)
@@ -305,22 +307,21 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture
 	return nil
 }
 
-// chainOf picks the chain to select from. With trading_class set it is the first chain of that class on the
-// underlying's exchange, and none when there is no such chain; otherwise the first chain on the underlying's
-// exchange, else the first chain.
-func (m manifest) chainOf(chains []broker.Chain, u underlying) (broker.Chain, bool) {
-	if m.TradingClass != "" {
-		for _, c := range chains {
-			if c.Exchange == u.Exchange && c.TradingClass == m.TradingClass {
-				return c, true
-			}
-		}
-		return broker.Chain{}, false
+// chainOf picks the chain to select from, whatever order the gateway lists the chains in: the first chain on the
+// underlying's exchange whose trading class is the manifest's trading_class, or the underlying's symbol when none is
+// set. There is no fallback to another chain: it reports ok false, and the class it looked for.
+func (m manifest) chainOf(chains []broker.Chain, u underlying) (chain broker.Chain, class string, ok bool) {
+	class = m.TradingClass
+	if class == "" {
+		class = u.Symbol
 	}
 	for _, c := range chains {
-		if c.Exchange == u.Exchange {
-			return c, true
+		if c.Exchange != u.Exchange {
+			continue
+		}
+		if m.TradingClass != "" && c.TradingClass == m.TradingClass || m.TradingClass == "" && c.TradingClass == u.Symbol {
+			return c, class, true
 		}
 	}
-	return chains[0], true
+	return broker.Chain{}, class, false
 }
