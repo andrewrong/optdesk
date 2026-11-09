@@ -1533,7 +1533,7 @@ history = ["2026-11-03 v1: registered with the held-structure compare row; Advis
 id = "option.result.kept_share"
 version = 1
 title_zh = "期权盈亏页：权利金留存比例（卖出侧）"
-pages = ["option_result_page.sections.kept_share"]
+pages = ["option_result_page.sections.figures"]
 formula = """
 For the sold side of one alias and one currency: the realized P&L of its closed ledger positions (premium income minus commissions, the ledger's RealizedPnL) divided by the opening premium of the same positions, as an exact ratio written with 6 decimals, rounded half-even: '0.750000' for 75 percent. The page moves the point two places. Assigned premium and shares are shown apart and the cost basis stays the strike, never reduced by premium (Decision 9). Synthetic: opening premium 200.0000 and realized 150.0000 give 0.750000."""
 inputs = """
