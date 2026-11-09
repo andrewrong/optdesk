@@ -32,7 +32,10 @@ func TestReaderContract(t *testing.T) {
 	t.Parallel()
 	t0 := time.Date(2026, 11, 2, 1, 0, 0, 0, time.UTC)
 	rows := []gaphistory.Gap{
-		{JobID: "j1", DatasetID: "d1", Day: contracts.Day("2026-11-02"), Reason: "missed", FirstSeenAt: t0, ReportedAt: t0.Add(time.Hour), ClearedAt: t0.Add(2 * time.Hour)},
+		{
+			JobID: "j1", DatasetID: "d1", Day: contracts.Day("2026-11-02"), Reason: "missed",
+			FirstSeenAt: t0, ReportedAt: t0.Add(time.Hour), ClearedAt: t0.Add(2 * time.Hour),
+		},
 		{JobID: "j2", DatasetID: "d2", Day: contracts.Day("2026-11-03"), Reason: "failed", FirstSeenAt: t0.Add(24 * time.Hour)},
 	}
 	var open gaphistory.OpenFunc = func(context.Context, string) (gaphistory.Reader, error) {
