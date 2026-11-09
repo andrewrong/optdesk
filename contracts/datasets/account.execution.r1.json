@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/account.execution.r1.json",
+  "title": "AccountExecution",
+  "description": "account.execution r1: one fill with its commission; append only, no order id and no account id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alias", "exec_id", "perm_id", "executed_at", "session_day", "symbol", "sec_type", "expiry", "strike", "right", "multiplier", "currency", "side", "quantity", "price", "commission", "commission_currency"],
+  "x-dataset": "account.execution",
+  "x-revision": "r1",
+  "x-primary-key": ["alias", "exec_id"],
+  "properties": {
+    "alias": {"type": "string", "minLength": 1, "description": "Alias of the gateway entry, never the account id."},
+    "exec_id": {"type": "string", "minLength": 1, "description": "Broker execution id."},
+    "perm_id": {"type": "integer", "description": "Broker permanent id of the execution, the dedupe key and nothing more."},
+    "executed_at": {"type": "string", "format": "date-time", "description": "Fill instant, UTC."},
+    "session_day": {"type": "string", "format": "date", "description": "Session day (XNYS) of the fill."},
+    "symbol": {"type": "string", "minLength": 1, "description": "Symbol of the contract traded."},
+    "sec_type": {"type": "string", "enum": ["stock", "index", "option"], "description": "Kind of the contract."},
+    "expiry": {"type": "string", "description": "Expiry YYYYMMDD, options only; empty otherwise."},
+    "strike": {"type": "string", "description": "Strike as decimal text, options only; empty otherwise."},
+    "right": {"type": "string", "enum": ["", "put", "call"], "description": "Option right; empty for a non-option."},
+    "multiplier": {"type": "string", "description": "Multiplier as decimal text; empty when none."},
+    "currency": {"type": "string", "description": "Currency code of the contract."},
+    "side": {"type": "string", "enum": ["BOT", "SLD"], "description": "BOT bought, SLD sold."},
+    "quantity": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Quantity as decimal text."},
+    "price": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Fill price as decimal text."},
+    "commission": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Commission as decimal text, always set."},
+    "commission_currency": {"type": "string", "description": "Currency code of the commission."}
+  }
+}

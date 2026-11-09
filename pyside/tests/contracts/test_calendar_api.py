@@ -147,7 +147,7 @@ def test_generate_error_message() -> None:
 
 
 def test_supported_calendars() -> None:
-    assert SUPPORTED_CALENDARS == ("XNYS",)
+    assert SUPPORTED_CALENDARS == ("XNYS", "XTKS")
 
 
 def test_renderer_text_is_json_with_keys() -> None:

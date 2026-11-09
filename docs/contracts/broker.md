@@ -12,6 +12,10 @@ The Go client of the pyside IBKR service. `broker.Broker` (`internal/broker/api.
 - `Close()` releases the connection.
 - `SecType` is `STK`, `IND` or `OPT`; `Right` is `P` or `C`; empty is unspecified.
 
+## Reference client
+
+`broker.ReferenceClient` is a separate port (`Broker` is unchanged): `Dividends(ctx, cs)` returns one `DividendProjection` per contract in the order asked, and `Close()`. `broker.NewReferenceFunc` is its dial type; `grpcbroker.DialReference(ctx, socketPath, o)` implements it over `ibkr.v1.ReferenceService` (`Retryable` when the socket is not reachable). `DividendProjection` has the contract, `Status` (`DividendOK`, `DividendNoValue`, `DividendTimeout`, `DividendError`), `Past12m`, `Next12m`, `NextAmount` (`*float64`, nil when unset), `NextExDate` (`*string`, `YYYYMMDD`, nil when unset), `ErrorCode` and `ReceivedAt`. Answers are matched to contracts by `ConID`, or by symbol, exchange and currency when the `ConID` is 0. A status the server did not set, a number that does not parse, an unknown `SecType` and a contract with no answer are `Permanent` errors; `SnapshotTimeout` bounds one call. No stored answers, no retries.
+
 ## Error kinds
 
 Every error is a `contracts.TypedError`. `UNAVAILABLE` and `DEADLINE_EXCEEDED` are `Retryable`; `INVALID_ARGUMENT`, `FAILED_PRECONDITION` and every other code are `Permanent`. The text of an error holds the code and never the socket path. A cancelled context gives an error that wraps `context.Canceled` and is `Permanent`.
@@ -32,4 +36,4 @@ Every error is a `contracts.TypedError`. `UNAVAILABLE` and `DEADLINE_EXCEEDED` a
 
 ## Contract tests
 
-`internal/broker/grpcbroker`: `TestSnapshotOrder`, `TestQuoteFields`, `TestKinds`, `TestResolveNotListed`, `TestListChains`, `TestErrorKinds`, `TestResolveInFlight`, `TestTimeouts`, `TestDialRefuses`, `TestAccountValues`, `TestAccountPositions`, `TestAccountErrorKinds`, `TestAccountCallTimeout`, `TestDialAccountRefuses`, `TestAccountEmptyAliasRefused`.
+`internal/broker/grpcbroker`: `TestSnapshotOrder`, `TestQuoteFields`, `TestKinds`, `TestResolveNotListed`, `TestListChains`, `TestErrorKinds`, `TestResolveInFlight`, `TestTimeouts`, `TestDialRefuses`, `TestAccountValues`, `TestAccountPositions`, `TestAccountErrorKinds`, `TestAccountCallTimeout`, `TestDialAccountRefuses`, `TestAccountEmptyAliasRefused`, `TestDividendsContract`, `TestDividendsUnsetStatusIsError`.

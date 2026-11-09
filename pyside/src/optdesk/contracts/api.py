@@ -11,6 +11,9 @@ from optdesk.contracts.genpb.ibkr.v1.account_pb2 import (
     AccountRequest,
     AccountResponse,
     AccountValue,
+    Execution,
+    ExecutionsRequest,
+    ExecutionsResponse,
     Position,
 )
 from optdesk.contracts.genpb.ibkr.v1.account_pb2_grpc import (
@@ -152,6 +155,9 @@ __all__ = [
     "ContractsServiceStub",
     "DividendProjection",
     "DividendStatus",
+    "Execution",
+    "ExecutionsRequest",
+    "ExecutionsResponse",
     "ListChainsRequest",
     "ListChainsResponse",
     "MarketDataServiceServicer",
