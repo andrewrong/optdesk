@@ -307,9 +307,10 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 
 // jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
 // never name them.
-var allSevenJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobOptionEodJP, jobQuoteSnapshot}
-
 var allSixJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+
+// allSevenJobs is allSixJobs with option_eod_jp, in id order.
+var allSevenJobs = slices.Sorted(slices.Values(append(slices.Clone(allSixJobs), jobOptionEodJP)))
 
 const (
 	jobComputeFigures  = "compute_figures"
