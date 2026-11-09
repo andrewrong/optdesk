@@ -1,0 +1,4 @@
+[
+{"capture_id":"main:2026-11-06:run1","alias":"main","marked_at":"2026-11-06T21:10:00Z","session_day":"2026-11-06","con_id":100001,"attempt":1,"currency":"USD","price":"2.35","basis":"mid","bid":"2.30","ask":"2.40","last":"2.33","close":"2.28","market_data_type":1,"status":"ok"},
+{"capture_id":"main:2026-11-06:run1","alias":"main","marked_at":"2026-11-06T21:10:00Z","session_day":"2026-11-06","con_id":100002,"attempt":1,"currency":"USD","price":"","basis":"none","bid":"","ask":"","last":"","close":"","market_data_type":0,"status":"no_data"}
+]

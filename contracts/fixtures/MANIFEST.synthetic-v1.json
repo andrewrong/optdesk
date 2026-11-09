@@ -39,6 +39,7 @@
     {"path": "page.companies_page.v2.ok.json", "sha256": "138a563f83a3a9a7334ef692aeb8005417eb349918c7f579dade3fecdbe6e373"},
     {"path": "page.companies_page.v2.gap.json", "sha256": "c37297c2f4c806ddf0232da3c6caf38ad61574992eb63ec9d725a6bc36b93559"},
     {"path": "obs.price_bar.r1.json", "sha256": "882e004dd8cc1191ca183f269c90128eee3d26ac9531f680f927532bc32787c8"},
-    {"path": "obs.fx_rate.r1.json", "sha256": "4dee75f77c641cde0007f292afebd1739a0513211c48a078b893c33bf1f766ca"}
+    {"path": "obs.fx_rate.r1.json", "sha256": "4dee75f77c641cde0007f292afebd1739a0513211c48a078b893c33bf1f766ca"},
+    {"path": "account.position_mark.r1.json", "sha256": "c57dd61959e3ba4c4d07657d1c3112d80433877f37589b3bf49f0d8591822bc4"}
   ]
 }
