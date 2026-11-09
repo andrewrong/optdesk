@@ -87,6 +87,22 @@ func (j *job) locate(ctx context.Context, day contracts.Day, us []jobs.WatchEntr
 		ids = append(ids, l.UnderlyingID)
 		chain[l.UnderlyingID] = l.SessionDay
 	}
+	// The catalog gives the greatest chain day with no upper bound: a rerun of a past day looks for the newest
+	// chain on or before the run day instead (Decision 6).
+	for _, l := range latest {
+		if l.SessionDay <= day {
+			continue
+		}
+		prior, err := j.priorChainDay(ctx, l.UnderlyingID, day)
+		if err != nil {
+			return nil, nil, err
+		}
+		if prior == "" {
+			delete(chain, l.UnderlyingID)
+		} else {
+			chain[l.UnderlyingID] = prior
+		}
+	}
 	bySymbol := map[string]int64{}
 	for start := 0; start < len(ids); start += termsChunk {
 		end := min(start+termsChunk, len(ids))
@@ -106,9 +122,29 @@ func (j *job) locate(ctx context.Context, day contracts.Day, us []jobs.WatchEntr
 			missing = append(missing, e.Contract.Symbol)
 			continue
 		}
+		if _, has := chain[id]; !has {
+			missing = append(missing, e.Contract.Symbol)
+			continue
+		}
 		found = append(found, underlyingRef{issuer: e.Issuer, symbol: e.Contract.Symbol, id: id, chainDay: chain[id]})
 	}
 	return found, missing, nil
+}
+
+// priorChainDay is the newest session day on or before day, within the look-back, that holds rows of the
+// underlying; empty when there is none.
+func (j *job) priorChainDay(ctx context.Context, id int64, day contracts.Day) (contracts.Day, error) {
+	rows, err := j.st.OptionEod.OptionEod(ctx, id, addDays(day, -lookbackDays), day)
+	if err != nil {
+		return "", err
+	}
+	best := contracts.Day("")
+	for _, r := range rows {
+		if d := contracts.Day(r.SessionDay.Format(time.DateOnly)); d <= day && d > best {
+			best = d
+		}
+	}
+	return best, nil
 }
 
 // quotes reads the rows of the chain day, the terms of their contracts (in chunks of 500 ids) and joins them
@@ -187,7 +223,13 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 			info.Previous = d
 		}
 	}
-	last := rows[len(rows)-1]
+	// The newest row is the one observed last; the reader's order is not relied on (ties keep the later row).
+	last := rows[0]
+	for _, r := range rows[1:] {
+		if !r.ObservedOn.Before(last.ObservedOn) {
+			last = r
+		}
+	}
 	info.State = string(last.Status)
 	info.RowDay = contracts.Day(last.ObservedOn.Format(time.DateOnly))
 	if string(last.Status) == "listed" && last.ReportDate != nil {

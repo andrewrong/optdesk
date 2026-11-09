@@ -89,3 +89,26 @@ func dayPtr(s string) *types.SerializableDate {
 	d := day(s)
 	return &d
 }
+
+func TestChainDayNotAfterRunDay(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	f.chainDay = "2026-11-10" // the catalog's newest chain is after the run day
+	build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil)
+	for _, in := range f.inputs {
+		if in.ChainDay > in.RunDay {
+			t.Fatalf("evaluated chain %q for run day %q", in.ChainDay, in.RunDay)
+		}
+	}
+}
+
+func TestRerunUsesNewestChainOnOrBeforeRunDay(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	f.chainDay = "2026-11-06"
+	f.catalogDay = "2026-11-10" // a later capture exists
+	build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil)
+	if len(f.inputs) != 1 || f.inputs[0].ChainDay != "2026-11-06" {
+		t.Fatalf("inputs %+v", f.inputs)
+	}
+}

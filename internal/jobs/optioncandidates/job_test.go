@@ -35,6 +35,7 @@ type fakes struct {
 	mu          sync.Mutex
 	eodRows     []contracts.OptionEod
 	chainDay    contracts.Day
+	catalogDay  contracts.Day // the day the catalog reports when it differs from chainDay
 	termIDs     [][]int64
 	earnings    map[string][]contracts.EarningsDate
 	values      map[string][]store.AccountValue // by alias
@@ -47,13 +48,23 @@ type fakes struct {
 }
 
 func (f *fakes) OptionEod(_ context.Context, id int64, from, to contracts.Day) ([]contracts.OptionEod, error) {
-	if from != f.chainDay || to != f.chainDay {
+	if from != to { // a range: the chain days on or before to
+		if f.chainDay > to {
+			return nil, nil
+		}
+		d, _ := time.Parse(time.DateOnly, string(f.chainDay))
+		return []contracts.OptionEod{{SessionDay: types.SerializableDate{Time: d}}}, nil
+	}
+	if from != f.chainDay {
 		return nil, errors.New("wrong chain day asked")
 	}
 	return f.eodRows, nil
 }
 
 func (f *fakes) OptionEodLatest(context.Context, contracts.Day) ([]store.OptionEodLatest, error) {
+	if f.catalogDay != "" {
+		return []store.OptionEodLatest{{UnderlyingID: 7, SessionDay: f.catalogDay}}, nil
+	}
 	return []store.OptionEodLatest{{UnderlyingID: 7, SessionDay: f.chainDay}}, nil
 }
 
