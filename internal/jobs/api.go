@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/flexsection"
 )
 
 // Registry is the jobs the binary runs.
@@ -119,10 +120,12 @@ type NewOptionEodHeldFunc func(
 	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, store.AccountReader, clock.Clock,
 ) (contracts.Job, error)
 
-// OptionLedgerStores is the two store interfaces the option ledger job uses.
+// OptionLedgerStores is the store interfaces the option ledger job uses.
 type OptionLedgerStores struct {
 	Ledger store.OptionLedgerWriter
 	Read   store.OptionLedgerReader
+	// Sections records the Flex section rows; nil switches the section step off.
+	Sections flexsection.Writer
 }
 
 // FlexRun is one Flex login of the option ledger job. A login whose token variable is empty reaches the job
