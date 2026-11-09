@@ -34,7 +34,7 @@ optdesk is written in three languages: Go (services and the command line), Pytho
 - Tests run in parallel from the first test: no shared state between tests, a temporary directory for every
   file written, no port or file at a fixed place (Go: `t.Parallel()` and `t.TempDir()`; Python: `pytest -n auto`).
 - A test never sleeps. Time comes from a fake clock in the test kit.
-- No test connects to a live broker or places an order. A Go test that needs PostgreSQL carries the build tag
+- No test connects to a live broker or places an order. Exception (owner decision 2026-11-09): tests under `pyside/tests/live/` may connect, read-only, to the deployed pyside sockets; they are skipped unless `OT_LIVE_PYSIDE=1`, never run in CI, and never call an order or any other write rpc. A Go test that needs PostgreSQL carries the build tag
   `pg` and runs only in GitHub CI.
 - Python: `uv sync --locked`, then `ruff check`, `mypy --strict` and `pytest`. The lockfile `uv.lock` is committed.
 - A dev-only generator under `tools/<name>/` is its own uv project with its own committed `uv.lock`; it is not run in CI and nothing at run time imports it.

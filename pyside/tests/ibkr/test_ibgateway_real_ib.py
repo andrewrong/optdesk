@@ -1,0 +1,156 @@
+"""Every IbGateway request path that sends to IB, run through a real ib_async IB.
+
+The send of the IB is stubbed (real_ib.py); the library's own validation, hashing
+and encoding run, so a request it refuses raises here as it does live.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+from ib_async import IB, Contract, ContractDetails
+from kit.fakeclock import FakeClock
+from real_ib import RealIb, real_ib, sent_messages
+
+from optdesk.ibkr.api import DividendKey, DividendReading
+from optdesk.ibkr.ibgateway import IbGateway
+from optdesk.ibkr.model import QuoteRow, QuoteTarget
+from optdesk.ibkr.spec import OPTION_EOD
+
+GATEWAY_PORT = 4002
+_ID = {"quotes": "1", "details": "9", "chains": "78", "summary": "62", "pos": "61"}
+
+
+async def _connected(stub: RealIb) -> IbGateway:
+    async def connect_async(host: str, port: int, client_id: int) -> None:
+        return None
+
+    stub.ib.client.connectAsync = connect_async  # type: ignore[method-assign,assignment]
+    gateway = IbGateway(
+        lambda client: None,
+        host="127.0.0.1",
+        port=GATEWAY_PORT,
+        client_id=33,
+        clock=FakeClock(),
+        ib_factory=lambda: stub.ib,
+    )
+    await gateway.open_session()
+    stub.sent.clear()
+    return gateway
+
+
+async def _turn() -> None:
+    """Give the event loop one turn."""
+    turn: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+    asyncio.get_running_loop().call_soon(turn.set_result, None)
+    await turn
+
+
+async def _until(stub: RealIb, task: asyncio.Future[Any], count: int) -> None:
+    """Turn the loop until count messages are sent; raise the error of a task that ended first."""
+    for _ in range(200):
+        if len(stub.sent) >= count or task.done():
+            break
+        await _turn()
+    if task.done() and len(stub.sent) < count:
+        task.result()
+
+
+async def _drive(
+    stub: RealIb, call: Callable[[IbGateway], Awaitable[Any]]
+) -> list[list[str]]:
+    """Run call until a message reaches the send stub; a library error is raised."""
+    gateway = await _connected(stub)
+    task = asyncio.ensure_future(call(gateway))
+    try:
+        await _until(stub, task, 1)
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+    return sent_messages(stub)
+
+
+def _run(call: Callable[[IbGateway], Awaitable[Any]]) -> list[list[str]]:
+    return asyncio.run(_drive(real_ib(), call))
+
+
+def test_real_ib_is_a_real_ib() -> None:
+    assert isinstance(real_ib().ib, IB)
+    assert real_ib().ib is not real_ib().ib
+
+
+def test_real_ib_quotes_send() -> None:
+    async def noop(row: QuoteRow) -> None:
+        return None
+
+    sent = _run(lambda g: g.quotes(OPTION_EOD, [QuoteTarget(con_id=756733)], noop))
+    assert sent and sent[0][0] == _ID["quotes"]
+    assert "756733" in sent[0]
+
+
+def test_real_ib_dividends_send() -> None:
+    async def noop(reading: DividendReading) -> None:
+        return None
+
+    async def run() -> tuple[list[list[str]], list[list[str]]]:
+        stub = real_ib()
+        gateway = await _connected(stub)
+        key = DividendKey("SPY", "STK", "SMART", "USD", 0)
+        task = asyncio.ensure_future(gateway.dividends([key], noop))
+        try:
+            await _until(stub, task, 1)
+            lookup = sent_messages(stub)
+            # answer the conId lookup as the broker would, then wait for the subscription
+            req_id = int(lookup[0][2])
+            found = ContractDetails(contract=Contract(conId=756733, symbol="SPY"))
+            stub.ib.wrapper.contractDetails(req_id, found)
+            stub.ib.wrapper.contractDetailsEnd(req_id)
+            await _until(stub, task, 2)
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        return lookup, sent_messages(stub)
+
+    lookup, sent = asyncio.run(run())
+    assert lookup and lookup[0][0] == _ID["details"]
+    assert len(sent) > 1 and sent[1][0] == _ID["quotes"]
+    assert "756733" in sent[1]
+
+
+def test_real_ib_resolve_send() -> None:
+    sent = _run(
+        lambda g: g.resolve(
+            sec_type="STK",
+            symbol="SPY",
+            exchange="SMART",
+            currency="USD",
+            expiry="",
+            strike="",
+            right="",
+            multiplier="",
+            trading_class="",
+        )
+    )
+    assert sent and sent[0][0] == _ID["details"]
+    assert "SPY" in sent[0]
+
+
+def test_real_ib_chains_send() -> None:
+    sent = _run(lambda g: g.chains(sec_type="STK", symbol="SPY", con_id=756733))
+    assert sent and sent[0][0] == _ID["chains"]
+    assert "756733" in sent[0]
+
+
+def test_real_ib_account_send() -> None:
+    sent = _run(lambda g: g.account(summary=True, positions=True))
+    assert sent
+    ids = [message[0] for message in sent]
+    assert _ID["summary"] in ids
+    assert _ID["pos"] in ids
+
+
+def test_real_ib_executions_send() -> None:
+    sent = _run(lambda g: g.executions())
+    assert sent and sent[0][0] == "7"
