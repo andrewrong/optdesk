@@ -18,6 +18,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/ease"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
+	"github.com/andrewrong/optdesk/internal/compute/optionledger"
+	"github.com/andrewrong/optdesk/internal/compute/optionresult"
+	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
@@ -40,8 +43,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
+	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
+	"github.com/andrewrong/optdesk/internal/pages/structures_page"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
@@ -111,6 +116,12 @@ type deps struct {
 	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 	openCandidate           openCandidateFunc
+	structuresListPage      func(c structures_page.Config, alias string) pages.Page
+	structureDetailPage     func(c structures_page.Config, alias, structureID string) pages.Page
+	optionResultPage        func(c option_result_page.Config, alias string) pages.Page
+	newOptionLedger         compute.NewOptionLedgerFunc
+	newOptionStructures     compute.NewOptionStructuresFunc
+	newOptionResults        compute.NewOptionResultsFunc
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
@@ -200,6 +211,12 @@ func newDeps() deps {
 		marketPage:              newMarketPageOf,
 		optionDataPage:          newOptionDataPage,
 		openCandidate:           openCandidateStore,
+		structuresListPage:      structures_page.NewListPage,
+		structureDetailPage:     structures_page.NewDetailPage,
+		optionResultPage:        option_result_page.NewPage,
+		newOptionLedger:         optionledger.New,
+		newOptionStructures:     optionstruct.New,
+		newOptionResults:        optionresult.New,
 		optionCandidatesPage:    newOptionCandidatesPage,
 		openFence:               ops.OpenFence,
 		openSchedulerLedger:     ops.OpenSchedulerLedger,

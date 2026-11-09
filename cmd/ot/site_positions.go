@@ -1,0 +1,128 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/url"
+	"slices"
+	"strings"
+
+	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
+	"github.com/andrewrong/optdesk/internal/pages/structures_page"
+)
+
+// The addresses of the option positions pages under the site root (docs/design/option-positions.md#Interface).
+const (
+	siteStructuresRoute      = "options/structures"
+	siteStructureRoutePrefix = "options/structures/"
+	siteResultRoute          = "options/result"
+)
+
+const (
+	siteAccountQuery = "account" // the query key naming the alias of a page
+	unknownAccount   = "未知账户"
+	demoNoFlexText   = "演示数据中没有 Flex 持仓"
+)
+
+// siteAliases is the alias list of the positions pages; the first is main. The gateways file of
+// account-data.md is not read yet, so the list is the one main account.
+var siteAliases = []string{"main"}
+
+// positionsKind selects which of the three pages a request builds.
+type positionsKind int
+
+const (
+	kindList positionsKind = iota
+	kindDetail
+	kindResult
+)
+
+// isPositionsPath tells whether path (without its leading slash) is a route of the option positions pages;
+// the detail route needs a non-empty id, so "options/structures/" is not one.
+func isPositionsPath(path string) bool {
+	if path == siteStructuresRoute || path == siteResultRoute {
+		return true
+	}
+	return strings.HasPrefix(path, siteStructureRoutePrefix) && len(path) > len(siteStructureRoutePrefix)
+}
+
+// positionsRoute is the page kind of a path accepted by isPositionsPath and, for the detail, the structure id
+// (the server has already unescaped the path).
+func positionsRoute(path string) (positionsKind, string) {
+	switch path {
+	case siteResultRoute:
+		return kindResult, ""
+	case siteStructuresRoute:
+		return kindList, ""
+	}
+	return kindDetail, strings.TrimPrefix(path, siteStructureRoutePrefix)
+}
+
+// buildPositions builds one of the three option positions pages per request for the day of dayFlag or today
+// and the alias of query ("account", main when absent). An alias not in the list, and the demo profile, give
+// the page with its gap text instead of figures. A nil zone is an error.
+func buildPositions(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders, kind positionsKind, id string, q url.Values) ([]byte, error) {
+	if a.profile.Zone == nil {
+		return nil, errors.New("option positions page: no zone")
+	}
+	day, err := dayOrDefault(clk, dayFlag)
+	if err != nil {
+		return nil, err
+	}
+	alias := q.Get(siteAccountQuery)
+	if alias == "" {
+		alias = siteAliases[0]
+	}
+	gapText := ""
+	switch {
+	case !slices.Contains(siteAliases, alias):
+		gapText = unknownAccount
+	case a.profile.Name == "demo":
+		gapText = demoNoFlexText
+	}
+	aliases := siteAliases
+	if gapText != "" {
+		// the builders see no reader: they write their no_reader gap page, whose text the route replaces
+		rd = siteReaders{}
+		aliases = []string{alias}
+	}
+	buildID := buildIDOf(version)
+	st := structures_page.Config{RunID: "ot-serve", BuildID: buildID, Zone: a.profile.Zone, Aliases: aliases,
+		Ledger: rd.ledger, Account: rd.account, Eod: rd.eod, Sessions: rd.sessions, Terms: rd.terms,
+		Ledgers: rd.ledgers, Structures: rd.structures}
+	page := a.deps.structuresListPage(st, alias)
+	switch kind {
+	case kindList:
+	case kindDetail:
+		page = a.deps.structureDetailPage(st, alias, id)
+	case kindResult:
+		page = a.deps.optionResultPage(option_result_page.Config{RunID: "ot-serve", BuildID: buildID,
+			Zone: a.profile.Zone, Aliases: aliases, Ledger: rd.ledger, Sessions: rd.sessions,
+			Ledgers: rd.ledgers, Results: rd.results}, alias)
+	}
+	vm, err := page.Build(ctx, nil, day, clk.Now().UTC())
+	if err != nil || gapText == "" {
+		return vm, err
+	}
+	return withGapText(vm, gapText)
+}
+
+// withGapText writes text into the fields of a gap page view model that carry its sentence or note.
+func withGapText(vm []byte, text string) ([]byte, error) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(vm, &m); err != nil {
+		return nil, err
+	}
+	t, err := json.Marshal(text)
+	if err != nil {
+		return nil, err
+	}
+	for _, k := range []string{"sentence", "note", "nothing"} {
+		if v, ok := m[k]; ok && string(v) != "null" {
+			m[k] = t
+		}
+	}
+	return json.Marshal(m)
+}

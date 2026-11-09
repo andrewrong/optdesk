@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/flexsection"
 )
 
 // Registry is the jobs the binary runs.
@@ -119,10 +120,12 @@ type NewOptionEodHeldFunc func(
 	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, store.AccountReader, clock.Clock,
 ) (contracts.Job, error)
 
-// OptionLedgerStores is the two store interfaces the option ledger job uses.
+// OptionLedgerStores is the store interfaces the option ledger job uses.
 type OptionLedgerStores struct {
 	Ledger store.OptionLedgerWriter
 	Read   store.OptionLedgerReader
+	// Sections records the Flex section rows; nil switches the section step off.
+	Sections flexsection.Writer
 }
 
 // FlexRun is one Flex login of the option ledger job. A login whose token variable is empty reaches the job
@@ -230,3 +233,17 @@ type CandidateStores struct {
 // compute.KindShortPut and writes the rows under a new run id (one UUID text per Run); a JP entry gives no row
 // and the job names it through its Skipped method. The job holds no dividend reader and sends nothing.
 type NewOptionCandidatesJobFunc func(CandidateStores, compute.OptionCandidates, []WatchEntry, clock.Clock) (contracts.Job, error)
+
+// OptionEodWindow is the window the owner settings give the option_eod job: min_dte, max_dte and max_strikes.
+// A zero field keeps the value of the embedded job.toml; a non-zero field replaces it.
+type OptionEodWindow struct {
+	MinDTE, MaxDTE, MaxStrikes int
+}
+
+// NewOptionEodWatchWindowFunc is the constructor of the option_eod job that takes its underlyings from the
+// watch list and its window from the owner settings (internal/jobs/optioneod.NewWithWatchWindow). It behaves
+// as NewOptionEodWatchFunc, then replaces min_dte, max_dte and max_strikes of the manifest with each non-zero
+// field of the window; a window with min_dte above max_dte is an error. The window comes after the list.
+type NewOptionEodWatchWindowFunc func(
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, OptionEodWindow, clock.Clock,
+) (contracts.Job, error)

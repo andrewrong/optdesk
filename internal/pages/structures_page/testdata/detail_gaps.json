@@ -1,0 +1,94 @@
+{
+ "Result": {
+  "Structures": [
+   {
+    "ID": "main:T200:1",
+    "Alias": "main",
+    "Underlying": "NVDA",
+    "Currency": "USD",
+    "Kind": "naked_call",
+    "Legs": [
+     {
+      "PositionID": "main:T200:1",
+      "Right": "C",
+      "Strike": "200",
+      "Expiry": "2027-01-15",
+      "Quantity": "-1",
+      "Multiplier": "100",
+      "OpenPrice": "3",
+      "Mid": "",
+      "LegPnL": "",
+      "MarkStatus": "no_mark"
+     }
+    ],
+    "Figures": {
+     "MaxLoss": {
+      "Value": "",
+      "Gap": "no_rule"
+     },
+     "MaxGain": {
+      "Value": "300.0000",
+      "Gap": ""
+     },
+     "BreakEven": {
+      "Value": "203.0000",
+      "Gap": ""
+     },
+     "UnrealizedPnL": {
+      "Value": "",
+      "Gap": "missing_quote"
+     },
+     "ExpiryDistance": {
+      "Value": "",
+      "Gap": "missing_quote"
+     }
+    },
+    "Payoff": [
+     {
+      "Price": "0.0000",
+      "PnL": "300.0000"
+     },
+     {
+      "Price": "200.0000",
+      "PnL": "300.0000"
+     },
+     {
+      "Price": "240.0000",
+      "PnL": "-3700.0000"
+     }
+    ],
+    "Greeks": {
+     "Delta": {
+      "Value": "",
+      "Gap": "missing_quote"
+     },
+     "Gamma": {
+      "Value": "",
+      "Gap": "missing_quote"
+     },
+     "Theta": {
+      "Value": "",
+      "Gap": "missing_quote"
+     },
+     "Vega": {
+      "Value": "",
+      "Gap": "missing_quote"
+     },
+     "Day": ""
+    },
+    "Levels": [
+     {
+      "Name": "strike",
+      "Price": "200",
+      "Distance": ""
+     },
+     {
+      "Name": "break_even",
+      "Price": "203.0000",
+      "Distance": ""
+     }
+    ]
+   }
+  ]
+ }
+}
