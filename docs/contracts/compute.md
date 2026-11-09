@@ -86,7 +86,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 ## Option tracking
 
-`TrackQuote`, `TrackEvent`, `TrackHeld`, `TrackInput`, `TrackParams`, `TrackedOption`, `TrackRecon`, `TrackResult`, `OptionTracker` and `NewOptionTrackerFunc` are in `internal/compute/api.go`; `LedgerPosition` gains nothing. Design: `docs/design/option-tracking.md#Interface`.
+`TrackQuote`, `TrackEvent`, `TrackHeld`, `TrackInput`, `TrackParams`, `TrackedOption`, `TrackRecon`, `TrackResult`, `OptionTracker` and `NewOptionTrackerFunc` are in `internal/compute/trackapi/api.go` (a declarations-only package, `api.go` and its test); `compute.LedgerPosition` is the one position type and gains nothing. Design: `docs/design/option-tracking.md#Interface`.
 
 - Plain values and decimal text only; no float. An empty string is "no value". Order: `Open` by expiry, underlying, strike, position id; `Recent` by closing day descending, then position id; `Recon` by underlying, expiry, strike. Pure: no I/O, no clock.
 

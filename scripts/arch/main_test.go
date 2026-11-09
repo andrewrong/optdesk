@@ -339,7 +339,8 @@ const declFixture = "# Fixture\n\n## Modules\n\n" +
 	"| module | paths | entry | tests | depends |\n" +
 	"| --- | --- | --- | --- | --- |\n" +
 	"| contracts | internal/contracts/** | internal/contracts/api.go internal/contracts/genpb | internal/contracts/api_test.go | |\n" +
-	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go | contracts |\n" +
+	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest " +
+	"internal/compute/trackapi | internal/compute/api_test.go | contracts |\n" +
 	"| store | internal/store/** | internal/store/api.go internal/store/bar | internal/store/api_test.go | contracts |\n" +
 	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts compute store |\n\n" +
 	"The composition root imports one constructor each: `internal/store/bar`, `internal/store/barpg`,\n" +
@@ -354,6 +355,7 @@ var declTree = map[string]string{
 	"internal/jobs/j.go":                 "package jobs\n",
 	"internal/jobs/computefigures/c.go":  "package computefigures\n",
 	"internal/compute/c.go":              "package compute\n",
+	"internal/compute/trackapi/api.go":   "package trackapi\n",
 	"internal/contracts/c.go":            "package contracts\n",
 }
 
@@ -451,5 +453,25 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 	_, rest, _ = strings.Cut(deps, "  store/bar:\n")
 	if hasDep(nextKey.Split(rest, 2)[0], "store/bar") {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
+	}
+}
+
+func TestComputeTrackapiIsDeclarationsOnlyPackage(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, declTree)
+	toml, yml, err := generate(declFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"compute/trackapi"`) {
+		t.Fatalf("jobs depends on compute and lacks compute/trackapi:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "contracts"); strings.Contains(b, "compute/trackapi") {
+		t.Fatalf("contracts does not depend on compute but imports compute/trackapi:\n%s", b)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, rest, _ := strings.Cut(deps, "  compute/trackapi:\n")
+	if b := nextKey.Split(rest, 2)[0]; !hasDep(b, "compute") || !hasDep(b, "contracts") {
+		t.Fatalf("compute/trackapi lacks compute or contracts in the lint file:\n%s", yml)
 	}
 }
