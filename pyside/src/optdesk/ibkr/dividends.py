@@ -73,14 +73,14 @@ async def read_dividend(
     """Ask for tick 456 of key, wait for it on clock and release the stream."""
     row_spec = spec.kind_spec(spec.DIVIDENDS)
     event = asyncio.Event()
-    got: dict[str, float] = {}
+    arrived: dict[str, float] = {}
     texts: list[str] = []
     failure: list[tuple[int, str]] = []
 
     def on_text(text: str) -> None:
         texts.append(text)
-        got["dividend_tick"] = 1.0
-        if spec.is_complete(row_spec, got):
+        arrived["dividend_tick"] = 1.0
+        if spec.is_complete(row_spec, arrived):
             event.set()
 
     def on_error(code: int, text: str) -> None:
