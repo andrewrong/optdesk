@@ -119,5 +119,5 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | ci | outside the layers | the repo | workflows, Dependabot | secrets in files | none |
 | deploy | outside the layers | host service definitions (owner-only) | deployment files | secrets in files; no week-1 issue | none |
 | repo | outside the layers | none | profile, scripts, lint and arch configuration | business logic | README.md |
-| ot | composition root, outside the layers | the modules (their interface files, and the implementation packages named above for construction) and profile | the `ot` binary | any logic beyond wiring | docs/contracts/ot.md |
+| ot | composition root, outside the layers | the modules (their interface files, and the implementation packages named above for construction) and profile | the `ot` binary; and the dev-only exporter `tools/ot-flex-export/` (its own uv project, not part of the binary, run by hand, imported by nothing at run time) | any logic beyond wiring in `cmd/` | docs/contracts/ot.md |
 | docs | outside the layers | design and decisions | design files, ADRs, ratchet (docs/design/ratchet.json is owner-only) | none | none |
