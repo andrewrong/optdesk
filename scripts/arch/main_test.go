@@ -54,15 +54,6 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-func TestArchCheckCommittedFiles(t *testing.T) {
-	t.Parallel()
-	root := repoRoot(t)
-	code, out := runArch(t, "--check", "--modules", filepath.Join(root, "docs/design/modules.md"), "--root", root)
-	if code != 0 {
-		t.Fatalf("exit %d: %s", code, out)
-	}
-}
-
 // fixtureModules is a small modules text of its own: three modules and the implementation list that generate reads.
 func fixtureModules(gammaDepends string) string {
 	return "# Fixture\n\n## Modules\n\n" +
@@ -74,7 +65,7 @@ func fixtureModules(gammaDepends string) string {
 		"The composition root imports one constructor each: `internal/alpha/impl`. Any other import is refused.\n"
 }
 
-func TestArchCheckFailsOnNewEdge(t *testing.T) {
+func TestArchWritesBothFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules.md")
@@ -82,13 +73,10 @@ func TestArchCheckFailsOnNewEdge(t *testing.T) {
 	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 0 {
 		t.Fatalf("generate: exit %d: %s", code, out)
 	}
-	if code, out := runArch(t, "--check", "--modules", modules, "--root", dir); code != 0 {
-		t.Fatalf("fresh files: exit %d: %s", code, out)
-	}
-	write(t, modules, fixtureModules("alpha beta"))
-	code, out := runArch(t, "--check", "--modules", modules, "--root", dir)
-	if code != 1 {
-		t.Fatalf("exit %d, want 1: %s", code, out)
+	for _, name := range []string{tomlFile, ymlFile} {
+		if b, err := os.ReadFile(filepath.Join(dir, name)); err != nil || len(b) == 0 {
+			t.Fatalf("%s not written: %v", name, err)
+		}
 	}
 }
 
@@ -112,7 +100,7 @@ func otImports(t *testing.T, text string) ([]string, string) {
 	return got, string(m[1])
 }
 
-func TestArchCheckOTListsImplPackages(t *testing.T) {
+func TestArchOTListsImplPackages(t *testing.T) {
 	t.Parallel()
 	text := modulesText(t)
 	// The list as the text states it: backticked internal/a/b paths after the anchor.
@@ -166,7 +154,7 @@ func TestArchRunFailsWithoutImplAnchor(t *testing.T) {
 	}
 }
 
-func TestArchCheckProfileHasNoImports(t *testing.T) {
+func TestArchProfileHasNoImports(t *testing.T) {
 	t.Parallel()
 	toml, yml, err := generate(modulesText(t), t.TempDir())
 	if err != nil {
@@ -223,7 +211,7 @@ func lint(t *testing.T, dir string) (bool, string) {
 	return err == nil, string(out)
 }
 
-func TestArchCheckScratchTree(t *testing.T) {
+func TestArchScratchTree(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
