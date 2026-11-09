@@ -24,8 +24,8 @@ Read on main after the merge of pull request 492 (design, then its code entries)
 - Producer: none. `internal/pages/` holds `macro_rates`, `macro_page`, `option_data_page`, `home_page` (compose only), `gaps` and `embed`; no `report_page`.
   `report-page.md` (Decision 1 and `## Left out`) kept the Go builder out because no account, trade or position dataset exists and "a builder would write gaps only".
 - Pages are built per request, never stored. `pages.Builder` is a function of a day and a time; `option_data_page.NewPage(c)` closes over
-  readers it was given and ignores the series reader; `embed.Handler(vm)` writes the JSON into `<script id="vm">`; `ot serve` builds per request and
-  `ot page` prints the JSON (`cmd/ot/serve.go`, `page.go`). The `pages` row of `modules.md` forbids computing and writing the database.
+  readers it was given and ignores the series reader; `embed.Handler(vm)` writes the JSON into `<script id="vm">`; the `/report` route of `siteHandler` builds per request and
+  `ot page` prints the JSON (`cmd/ot/site.go`, `page.go`). The `pages` row of `modules.md` forbids computing and writing the database.
 - Readings: `compute_figures` (designed, `docs/design/compute-figures.md`) writes `readings.reading`; `store.ReadingReader.LatestReadings` reads the base
   tables, which only `ot_w_readings` can read. The role `ot_ro_pages` has `SELECT` on the view `rd.reading_r1` and nothing on the tables (`docs/contracts/store.md`,
   `migrations/0013_readings.sql`). So no code of the pages role can read a reading today. `store.GapReader` is the precedent: it reads views as `ot_ro_pages`.
@@ -52,13 +52,13 @@ Read on main after the merge of pull request 492 (design, then its code entries)
    `stale_data` gaps, and through the day the request names. The scheduler design is not edited: no `Schedule()`, no window, no slot. The readings are written by `compute_figures` at its own slots; a request before that shows `partial` or `gap` in `risks`, which is the correct answer.
 4. Where it is stored. Nowhere. A reader of the page gets the JSON built from the readings at the time of the request. A page that must be kept (a
    history of reports) is a later design (`## Left out`).
-5. How the web reads it. As every page does: `ot serve --name report_page` serves one route; a request to `?market=us&slot=close` builds the JSON and `embed.Handler` writes it into `<script id="vm">`; the shell picks the
+5. How the web reads it. As every page does: `ot serve` serves it at the site route `/report` (`siteHandler`, `unified-site.md`); a request to `?market=us&slot=close` builds the JSON and `embed.Handler` writes it into `<script id="vm">`; the shell picks the
    view by the `schema` field. The view, its generated type and its fixtures are the other design, `docs/design/report-page.md` (`report-types`, `report-page-view`); this design adds no
    file under `web/` and no schema change (`Contracts: unchanged`). The front end computes nothing; every string in the payload is written here or by `risks_block`.
    Until `report-page-view` lands, the JSON is visible with `ot page` (stdout) and the owner sees the block only through the view; the two designs do not wait for each other.
 6. One page name, two flags. `Meta.Name` is `report_page`, `Meta.Schema` is `page.report_page.v2`; the schema carries `market` and `slot` in its envelope, so one schema serves four reports. The market and slot are fields of `Config`
    (checked by `Build`: a value outside `US|JP` and `open|close` is an error). The command takes them as flags: `ot page --name report_page --market us --slot open` (both required for this name; `us|jp`, `open|close`, lower case, turned
-   into the envelope values by `ot`), and `ot serve --name report_page` serves one route that takes the same two query parameters (`?market=us&slot=open`; a missing or invalid value answers 400 with a fixed text, no error text). The day is `--day`
+   into the envelope values by `ot`), and the site route `/report` takes the same two query parameters (`?market=us&slot=open`; a missing or invalid value answers 400 with a fixed text, no error text). The day is `--day`
    or today as the commands already compute it (`dayOrDefault`). JP calendar days are not handled here (`## Left out`). The advisor chose flags over four names.
 7. Reading readings as `ot_ro_pages`, least privilege kept: the page process holds no writer DSN. A new store reader over views: `store.ReadingViewReader.WinnerReadings(ctx, name, subjectKind, subject, from, to)` with the
    signature of `LatestReadings` (a `compute.ReadingFunc` as a method value; the merged 492 code needs no change), opened from `store.DSNEnvPages`. Two facts decide its shape.
@@ -72,8 +72,8 @@ Read on main after the merge of pull request 492 (design, then its code entries)
 The grants follow the existing pattern for every `rd` view (`migrations/0002:58`, `0006:100`, `0007:70`, `0009:31`, `0010:10`, `0012:77-78`, `0013:104`): `SELECT` on the view to the role that reads it, none on the base table. The migration grants `rd.reading_parameter_r1` to `ot_ro_pages` and `ot_w_readings`. `docs/contracts/store.md` line 75 (the grants of `readings`) names both views.
    This is an interface change of `internal/store/api.go`, so it is its own first entry.
    error: a reading the rules cannot use is not an error of the page, it is a `partial` or `gap` state inside the `risks` block (492 Decision 13).
-8a. Lifecycle of the reader (the `ot` entry). The reader is opened once per process: once per `ot page` command and once at the start of `ot serve --name report_page`, as `serve.go` opens `seriesReader` once before it listens (`defer closeFn()`), and closed on exit.
-   `pageNamed(a, name)` has no context and returns no closer, so `report_page` is not built by it: `page.go` and `serve.go` each test the name `report_page` before calling `pageNamed` and call `report.go` (`reportPage(ctx, a, market, slot) (pages.Page, func(), error)` for the command, a handler over one opened reader for the server).
+8a. Lifecycle of the reader (the `ot` entry). The reader is opened once per process: once per `ot page` command and once at the start of `ot serve`, as `serve.go` opens the site readers with `openSiteReaders` once before it listens (`defer closeFn()`), the report reader among them, and closed on exit.
+   `pageNamed(a, name)` has no context and returns no closer, so `report_page` is not built by it: `page.go` tests the name `report_page` before calling `pageNamed` and calls `report.go` (`reportPage(ctx, a, market, slot) (pages.Page, func(), error)` for the command), and `siteHandler` in `site.go` routes `/report` to a handler over one opened reader.
    `pageNamed` is unchanged except that its known-pages list gains `report_page` after `macro_page`, so the two tests that assert that text change by that one word and are in the entry's Files. The `.env` line is `OT_PG_DSN_PAGES` only.
 9. Libraries. None new. `encoding/json` and `santhosh-tekuri/jsonschema/v6` (already in `go.mod`, used by the 492 block test) check the output against `contracts/schemas/page.report_page.v2.json`. No own
    implementation of anything a mainstream library gives.
@@ -91,7 +91,7 @@ PR 492 has merged and its code entries `alerts-compute-interface`, `alerts-rules
 | report-reading-view-interface (interface) | store | `internal/store/api.go`, `internal/store/api_readingview_test.go` |
 | report-reading-view-impl | store | `migrations/NNNN_reading_parameter_view.sql`, `internal/store/reading/view.go`, `internal/store/reading/view_test.go`, `internal/store/reading/pg_view_test.go`, `internal/store/reading/reading_test.go`, `internal/store/reading/pg_test.go`, `docs/contracts/store.md` |
 | report-page-builder | pages, plus repo (judged two-module entry: `.go-arch-lint.yml`, as `alerts-risks-block` of 492) | `internal/pages/report_page/**`, `docs/contracts/pages.md`, `.go-arch-lint.yml` |
-| report-page-ot | ot | `cmd/ot/report.go`, `cmd/ot/report_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/serve.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot.md` |
+| report-page-ot | ot | `cmd/ot/report.go`, `cmd/ot/report_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/site.go`, `cmd/ot/site_test.go`, `cmd/ot/serve.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot.md` |
 
 ## Interface
 
@@ -191,12 +191,12 @@ Checked by CI: `go build ./...`, `go test ./internal/pages/...`, golangci-lint, 
 ### report-page-ot
 
 Module: ot. Size: M.
-Files: `cmd/ot/report.go`, `cmd/ot/report_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/serve.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot.md`
+Files: `cmd/ot/report.go`, `cmd/ot/report_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/site.go`, `cmd/ot/site_test.go`, `cmd/ot/serve.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/pagelist.go`, `cmd/ot/pagelist_test.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot.md`
 Order: after report-reading-view-impl, report-page-builder (which regenerates `.go-arch-lint.yml`, so this entry does not edit it); it uses the landed code of 492 (`docs/design/risk-alerts.md`): `alertrules.Evaluate`, `Load`, `DefaultRules` and `risks_block.Build`. This entry is serial after report-reading-view-impl and report-page-builder of this cut; 492 no longer holds it back. `cmd/ot/wire.go` is also edited by other open designs (their `deps` fields): the second to merge rebases.
 Design: docs/design/report-page-producer.md#decisions (Decisions 3 to 8a)
-Goal: `ot page --name report_page --market us --slot open` prints the page and `ot serve --name report_page` serves it (`?market=us&slot=open`), built per request from the stored readings read as `ot_ro_pages` through one reader opened once per process, with the `risks` block of 492.
+Goal: `ot page --name report_page --market us --slot open` prints the page and the site route `/report` serves it (`/report?market=us&slot=open`), built per request from the stored readings read as `ot_ro_pages` through one reader opened once per process, with the `risks` block of 492.
 Behaviour:
-- `page.go` and `serve.go` test the name `report_page` before `pageNamed`: `page.go` reads `--market` and `--slot` (both required for this name, else an error that names them), opens the reader once, builds the page with `report.go`, prints it and closes the reader; `serve.go` opens the reader once before it listens (as it does `seriesReader`), serves one handler from `report.go` that reads `market` and `slot` from the query for each request (missing or invalid: 400 with a fixed text), builds per request, and closes the reader on exit. Other names behave as before.
+- `page.go` tests the name `report_page` before `pageNamed`: `page.go` reads `--market` and `--slot` (both required for this name, else an error that names them), opens the reader once, builds the page with `report.go`, prints it and closes the reader; `serve.go` opens the reader once before it listens (with the other site readers, `openSiteReaders`), `siteHandler` in `site.go` serves `/report` with one handler from `report.go` that reads `market` and `slot` from the query for each request (missing or invalid: 400 with a fixed text), builds per request, and closes the reader on exit. Other names behave as before.
 - `pagelist.go`: `pageNamed` keeps its signature; its known-pages list gains `report_page` after `macro_page` and nothing else changes.
 - `report.go` holds `reportPage(ctx, a, market, slot)` (the page, a closer, an error), the handler, and the reader open: the `.env` line `store.DSNEnvPages` only (a missing line is an error that names the variable and no value) and `OpenReadingViewFunc`. `Risks` is a closure over `risks_block.Build` with `Rules` from `alertrules.DefaultRules`, `Evaluate` `alertrules.Evaluate`, `Read` the method value `WinnerReadings`, and `Today`, `GeneratedAt` from the arguments. `Zone` is the zone of the profile (a nil zone is the same error as `macro_page`).
 - With the demo profile no store is opened: a demo `ReadingViewReader` in `report.go` returns fixed synthetic readings, with the parameter `data_day`, for the rule figures (no real quote, no account).
