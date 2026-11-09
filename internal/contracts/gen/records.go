@@ -8,6 +8,211 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// obs.earnings_date r1: one answer about the next earnings date of one issuer on
+// one day; append only, an error is a row and a later success is a new attempt.
+type EarningsDate struct {
+	// Attempt number of the day, from 1; a later attempt never replaces an earlier
+	// row.
+	Attempt int `json:"attempt" yaml:"attempt" mapstructure:"attempt"`
+
+	// Error code when status is error, for example rate_limited; empty otherwise.
+	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Estimate of the source as decimal text, currency not stored; null when none.
+	Estimate *string `json:"estimate" yaml:"estimate" mapstructure:"estimate"`
+
+	// End of the fiscal period the report covers; null when the source does not say.
+	FiscalPeriodEnd *types.SerializableDate `json:"fiscal_period_end" yaml:"fiscal_period_end" mapstructure:"fiscal_period_end"`
+
+	// The issuer text of the watch list: cik:<10 digits>, or edinet:<code>.
+	Issuer string `json:"issuer" yaml:"issuer" mapstructure:"issuer"`
+
+	// Market of the issuer.
+	Market EarningsDateMarket `json:"market" yaml:"market" mapstructure:"market"`
+
+	// Session day (XNYS) the row answers for.
+	ObservedOn types.SerializableDate `json:"observed_on" yaml:"observed_on" mapstructure:"observed_on"`
+
+	// Instant the row was produced, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Earliest listed date on or after observed_on; null unless status is listed. The
+	// key is always present.
+	ReportDate *types.SerializableDate `json:"report_date" yaml:"report_date" mapstructure:"report_date"`
+
+	// Where the row came from; owner is a report_date_override (the only row of that
+	// issuer that day, attempt 1); none is a status unsupported row, since no source
+	// produced it. Never null.
+	Source EarningsDateSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// listed: the source gave a date; absent: the source has no date for the issuer;
+	// unsupported: no source covers the issuer; error: the source failed. Only listed
+	// carries a report_date.
+	Status EarningsDateStatus `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Symbol as the vendor or the watch list gave it.
+	Symbol string `json:"symbol" yaml:"symbol" mapstructure:"symbol"`
+
+	// Time text of the source, for example pre-market or post-market; empty when
+	// none.
+	TimeOfDay string `json:"time_of_day" yaml:"time_of_day" mapstructure:"time_of_day"`
+}
+
+type EarningsDateMarket string
+
+const EarningsDateMarketJP EarningsDateMarket = "JP"
+const EarningsDateMarketUS EarningsDateMarket = "US"
+
+var enumValues_EarningsDateMarket = []interface{}{
+	"US",
+	"JP",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDateMarket) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EarningsDateMarket {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EarningsDateMarket, v)
+	}
+	*j = EarningsDateMarket(v)
+	return nil
+}
+
+type EarningsDateSource string
+
+const EarningsDateSourceAlphavantage EarningsDateSource = "alphavantage"
+const EarningsDateSourceJquants EarningsDateSource = "jquants"
+const EarningsDateSourceNone EarningsDateSource = "none"
+const EarningsDateSourceOwner EarningsDateSource = "owner"
+
+var enumValues_EarningsDateSource = []interface{}{
+	"alphavantage",
+	"jquants",
+	"owner",
+	"none",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDateSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EarningsDateSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EarningsDateSource, v)
+	}
+	*j = EarningsDateSource(v)
+	return nil
+}
+
+type EarningsDateStatus string
+
+const EarningsDateStatusAbsent EarningsDateStatus = "absent"
+const EarningsDateStatusError EarningsDateStatus = "error"
+const EarningsDateStatusListed EarningsDateStatus = "listed"
+const EarningsDateStatusUnsupported EarningsDateStatus = "unsupported"
+
+var enumValues_EarningsDateStatus = []interface{}{
+	"listed",
+	"absent",
+	"unsupported",
+	"error",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDateStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_EarningsDateStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_EarningsDateStatus, v)
+	}
+	*j = EarningsDateStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EarningsDate) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["attempt"]; raw != nil && !ok {
+		return fmt.Errorf("field attempt in EarningsDate: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in EarningsDate: required")
+	}
+	if _, ok := raw["estimate"]; raw != nil && !ok {
+		return fmt.Errorf("field estimate in EarningsDate: required")
+	}
+	if _, ok := raw["fiscal_period_end"]; raw != nil && !ok {
+		return fmt.Errorf("field fiscal_period_end in EarningsDate: required")
+	}
+	if _, ok := raw["issuer"]; raw != nil && !ok {
+		return fmt.Errorf("field issuer in EarningsDate: required")
+	}
+	if _, ok := raw["market"]; raw != nil && !ok {
+		return fmt.Errorf("field market in EarningsDate: required")
+	}
+	if _, ok := raw["observed_on"]; raw != nil && !ok {
+		return fmt.Errorf("field observed_on in EarningsDate: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in EarningsDate: required")
+	}
+	if _, ok := raw["report_date"]; raw != nil && !ok {
+		return fmt.Errorf("field report_date in EarningsDate: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in EarningsDate: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in EarningsDate: required")
+	}
+	if _, ok := raw["symbol"]; raw != nil && !ok {
+		return fmt.Errorf("field symbol in EarningsDate: required")
+	}
+	if _, ok := raw["time_of_day"]; raw != nil && !ok {
+		return fmt.Errorf("field time_of_day in EarningsDate: required")
+	}
+	type Plain EarningsDate
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Symbol) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "symbol", 1)
+	}
+	*j = EarningsDate(plain)
+	return nil
+}
+
 // optionledger.flex_fetch r1: one Flex request pair (one window of one query of
 // one login) with its outcome and counts; insert only. No token and no account
 // number is stored.

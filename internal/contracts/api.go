@@ -25,6 +25,9 @@ type FundamentalFact = gen.FundamentalFact
 // OptionCandidate is the record of dataset candidates.option_candidate r1, generated from contracts/datasets.
 type OptionCandidate = gen.OptionCandidate
 
+// EarningsDate is the record of dataset obs.earnings_date r1, generated from contracts/datasets.
+type EarningsDate = gen.EarningsDate
+
 // SeriesUnit is the unit enum of obs.series_point r1.
 type SeriesUnit = gen.SeriesUnit
 

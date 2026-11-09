@@ -73,3 +73,15 @@ func TestReadingRecordAlias(t *testing.T) {
 		t.Fatal("alias of the generated record")
 	}
 }
+
+func TestEarningsDateAlias(t *testing.T) {
+	t.Parallel()
+	var e contracts.EarningsDate
+	g := gen.EarningsDate(e)
+	g.Issuer = "cik:0000320193"
+	g.Attempt = 1
+	e = g
+	if e.Issuer != "cik:0000320193" || e.Attempt != 1 {
+		t.Fatal("alias of the generated record")
+	}
+}
