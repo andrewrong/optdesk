@@ -168,3 +168,15 @@ func TestTrendDropsDaysAfterDataDay(t *testing.T) {
 		t.Fatalf("trend: %+v", got)
 	}
 }
+
+func TestIncomeWithUnreadablePremiumIsGap(t *testing.T) {
+	t.Parallel()
+	in := blockapi.HouseholdInput{
+		Values:      vals("90000", "50000", "USD"),
+		Obligations: []blockapi.ObligationIn{put("100", "100", "1", "30"), put("50", "100", "1", "x")},
+	}
+	got := New().Household(in).Income
+	if len(got) != 1 || got[0].Amount.Gap == "" {
+		t.Fatalf("income with an unreadable premium must be a gap, got %+v", got)
+	}
+}

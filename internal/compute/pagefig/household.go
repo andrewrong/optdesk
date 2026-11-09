@@ -224,9 +224,13 @@ func premium(obs []blockapi.ObligationIn) (currencies []string, sums map[string]
 }
 
 // income is the figure household.income: the premium income of the month, one row per currency.
+// An obligation with an unreadable premium makes the whole figure the gap missing_input.
 // A JPY row follows the rule of line: it needs the rate, else it is the gap unsupported_currency.
 func income(obs []blockapi.ObligationIn, usdJpy string) []blockapi.MoneyLine {
-	cur, sums, _ := premium(obs)
+	cur, sums, bad := premium(obs)
+	if bad {
+		return []blockapi.MoneyLine{gapLine("本月权利金", obs[0].Currency, "missing_input")}
+	}
 	var rows []blockapi.MoneyLine
 	for _, c := range cur {
 		rows = append(rows, line("本月权利金", c, sums[c], usdJpy))
