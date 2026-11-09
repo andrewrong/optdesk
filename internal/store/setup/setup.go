@@ -49,7 +49,15 @@ const (
 
 	roleBar          = "ot_w_bar"          // INSERT on obs.price_bar and obs.fx_rate, SELECT on rd.price_bar_r1 and rd.fx_rate_r1 (migrations/0021_bars.sql)
 	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0022_optionledger.sql)
+
+	// roleSettings: INSERT and SELECT on the two settings tables, SELECT on rd.rule_param_r1 and rd.option_exclusion_r1
+	// (migrations/0025_settings.sql).
+	roleSettings = "ot_w_settings"
 )
+
+// dsnEnvSettings is the line of roleSettings. It equals ownerset.DSNEnvSettings; setup is a sibling sub-package and
+// does not import ownerset, so the test TestSetupLineEqualsOwnersetConst of cmd/ot holds the two together.
+const dsnEnvSettings = "OT_PG_DSN_SETTINGS"
 
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
 type roleSpec struct{ name, envKey string }
@@ -71,12 +79,13 @@ var roles = []roleSpec{
 	{roleAccount, store.DSNEnvAccount},           // ot_w_account, line OT_PG_DSN_ACCOUNT
 	{roleBar, bar.DSNEnvBar},                     // ot_w_bar, line OT_PG_DSN_BAR
 	{roleOptionLedger, store.DSNEnvOptionLedger}, // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
+	{roleSettings, dsnEnvSettings},               // ot_w_settings, line OT_PG_DSN_SETTINGS
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the sixteen roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the seventeen roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -154,7 +163,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader) +
 		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings) + ", " + ident(roleAlerts) +
 		", " + ident(roleFundamental) + ", " + ident(roleEvents) + ", " + ident(roleCandidate) + ", " + ident(roleAccount) +
-		", " + ident(roleBar) + ", " + ident(roleOptionLedger)
+		", " + ident(roleBar) + ", " + ident(roleOptionLedger) + ", " + ident(roleSettings)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}
