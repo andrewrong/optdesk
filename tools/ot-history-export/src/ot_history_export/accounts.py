@@ -20,7 +20,7 @@ TABLES: dict[str, tuple[str, ...]] = {
     "account_summary": ("snapshot_id", "tag", "value", "currency"),
 }
 
-# An IBKR account id: letters then digits (U1234567, DU1234567). Only aliases leave the old system.
+# An IBKR account id: letters then digits. Only aliases leave the old system.
 _ACCOUNT_ID = re.compile(r"^[A-Za-z]{1,3}[0-9]{5,}$")
 
 
