@@ -25,7 +25,7 @@ func easeRow(t *testing.T, day, value, band string) contracts.ReadingRecord {
 		r.State, r.Value = "missing_input", nil
 		return r
 	}
-	params := `[{"param":"data_day","value_num":null,"value_tag":"` + day + `"}`
+	params := `[{"param":"hy_oas.data_day","value_num":null,"value_tag":"` + day + `"},{"param":"dgs10.data_day","value_num":null,"value_tag":"2026-01-01"}`
 	if band != "" {
 		params += `,{"param":"band","value_num":null,"value_tag":"` + band + `"}`
 	}
@@ -196,5 +196,17 @@ func TestEaseReaderErrorIsError(t *testing.T) {
 	}
 	if _, err := Build(t.Context(), fakeReader{}, c, easeDay, fixedAt); !errors.Is(err, boom) {
 		t.Errorf("err %v", err)
+	}
+}
+
+func TestEaseDataTimeIsNewestInputDataDay(t *testing.T) {
+	t.Parallel()
+	r := easeRow(t, easeDay, "56.42", "steady")
+	older := "2026-11-03"
+	r.Parameters[0].ValueTag = &older // hy_oas.data_day; dgs10.data_day is older still
+	m := easeBuild(t, r)
+	dt := m["data_times"].([]any)[0].(map[string]any)
+	if dt["source"] != "macro_ease" || dt["data_time"] != "2026-11-03T00:00:00+08:00" {
+		t.Fatalf("data_times[0] = %v", dt)
 	}
 }
