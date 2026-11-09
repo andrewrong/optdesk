@@ -47,11 +47,10 @@ type reconciler struct {
 	sched store.SchedulerLedger
 	fclk  clockwork.Clock
 	// known is the set of the calendars of the jobs, other than the rule's, that answered Session
-	// at the first walk (the constructors take no context); a calendar of it that later runs out is
-	// logged and loses its jobs, any other calendar's error is returned.
-	known     map[string]bool
-	knownOnce sync.Once
-	log       *slog.Logger
+	// when the reconciler was built; a calendar of it that later runs out is logged and loses its
+	// jobs, any other calendar's error is returned.
+	known map[string]bool
+	log   *slog.Logger
 }
 
 // New builds the reconciler with the default window rule (DefaultCalendarID, no offsets).
@@ -81,7 +80,9 @@ func newReconciler(
 	if kr == nil {
 		kr = NewKeyRunner(l, sched, fclk)
 	}
-	return &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default()}
+	r := &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default()}
+	r.known = r.probeKnown()
+	return r
 }
 
 // Reconcile handles every session day after the cursor up to day, in order. A day that is
@@ -99,13 +100,13 @@ func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err erro
 	if err != nil {
 		return err
 	}
-	days, by, err := r.walk(ctx, cur.Day, day)
+	days, sessionsByDay, err := r.walk(ctx, cur.Day, day)
 	if err != nil {
 		return err
 	}
 	prefix := true // every day walked so far is done
 	for _, d := range days {
-		done, err := r.reconcileOn(ctx, d, by[d])
+		done, err := r.reconcileOn(ctx, d, sessionsByDay[d])
 		if err != nil {
 			return err
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -50,6 +51,16 @@ func ruleOf(job contracts.Job, def runner.WindowRule) runner.WindowRule {
 	return runner.WindowRule{CalendarID: cal, OpenOffset: open, CloseOffset: closeOff}
 }
 
+// answers reads one session of calendar id at start, when a reconciler is built: the constructors
+// take no context (Decision 6(f): the known set is built at start under a background context). It is
+// a variable so that the read stays outside the call chain of the constructors.
+var answers = func(cal clock.Calendar, id string, day contracts.Day) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err := cal.Session(ctx, id, day)
+	return err == nil
+}
+
 // daySessions maps a calendar id to its session on one day; a calendar with no session is absent.
 type daySessions map[string]clock.Session
 
@@ -77,7 +88,7 @@ func (r *reconciler) calendars() []string {
 
 // probeKnown returns the calendars of the jobs, other than the rule's, that answer Session on the
 // day of the clock now: the known set. A reconciler of one calendar makes no call.
-func (r *reconciler) probeKnown(ctx context.Context) map[string]bool {
+func (r *reconciler) probeKnown() map[string]bool {
 	known := map[string]bool{}
 	if r.cal == nil {
 		return known
@@ -87,7 +98,7 @@ func (r *reconciler) probeKnown(ctx context.Context) map[string]bool {
 		if id == calendarIDOf(r.rule) {
 			continue
 		}
-		if _, err := r.cal.Session(ctx, id, today); err == nil {
+		if answers(r.cal, id, today) {
 			known[id] = true
 		}
 	}
@@ -108,15 +119,14 @@ func kindOf(err error) (contracts.ErrorKind, bool) {
 // its jobs are dropped for the days it cannot answer; any other calendar's error is returned naming
 // its first job (NoValue alone just ends the list).
 func (r *reconciler) walk(ctx context.Context, from, to contracts.Day) ([]contracts.Day, map[contracts.Day]daySessions, error) {
-	r.knownOnce.Do(func() { r.known = r.probeKnown(ctx) })
-	by := map[contracts.Day]daySessions{}
+	sessionsByDay := map[contracts.Day]daySessions{}
 	for _, id := range r.calendars() {
 		list, stop := r.sessions(ctx, id, from, to)
 		for _, s := range list {
-			if by[s.Day] == nil {
-				by[s.Day] = daySessions{}
+			if sessionsByDay[s.Day] == nil {
+				sessionsByDay[s.Day] = daySessions{}
 			}
-			by[s.Day][id] = s
+			sessionsByDay[s.Day][id] = s
 		}
 		if stop == nil {
 			continue
@@ -135,12 +145,12 @@ func (r *reconciler) walk(ctx context.Context, from, to contracts.Day) ([]contra
 			return nil, nil, fmt.Errorf("job %s: calendar %s: %w", r.firstJobOf(id), id, stop)
 		}
 	}
-	days := make([]contracts.Day, 0, len(by))
-	for d := range by {
+	days := make([]contracts.Day, 0, len(sessionsByDay))
+	for d := range sessionsByDay {
 		days = append(days, d)
 	}
 	sort.Slice(days, func(a, b int) bool { return days[a] < days[b] })
-	return days, by, nil
+	return days, sessionsByDay, nil
 }
 
 func (r *reconciler) firstJobOf(calendarID string) string {

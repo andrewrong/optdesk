@@ -259,7 +259,7 @@ func TestCalendarRunsOutDropsOnlyItsJobs(t *testing.T) {
 			t.Fatalf("keys on 2026-11-17 = %q, want ds_a", got)
 		}
 	})
-	t.Run("calendar unknown at the first walk", func(t *testing.T) {
+	t.Run("calendar unknown at construction", func(t *testing.T) {
 		t.Parallel()
 		led := newLedger()
 		led.cursor = store.Cursor{Day: "2026-11-09"}
@@ -282,4 +282,17 @@ func TestCalendarRunsOutDropsOnlyItsJobs(t *testing.T) {
 			t.Fatalf("err = %v, want the UnknownCalendar of XNYS", err)
 		}
 	})
+}
+
+func TestKnownSetBuiltAtConstruction(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-12T23:00:00Z")) // XJPX still answers: its last row is 11-12
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-12"}
+	a, b := twoJobs()
+	r := New(led, runOutCal(true), clk, []contracts.Job{a, b}) // built at start: XJPX known
+	clk.Advance(2 * time.Hour)                                 // the first walk is on 2026-11-13
+	if err := r.Reconcile(context.Background(), "2026-11-13"); err != nil {
+		t.Fatalf("Reconcile = %v, want nil: XJPX answered at construction and only ran out", err)
+	}
 }
