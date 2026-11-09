@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import stat
 import urllib.error
@@ -160,7 +161,7 @@ def test_supervisor_reconnects_with_backoff() -> None:
     async def run() -> tuple[list[float], int]:
         clock = RecordingClock()
         gateway = FlakyGateway(failures=8)
-        task = asyncio.ensure_future(supervise(gateway, clock))
+        task = asyncio.ensure_future(supervise(gateway, clock, "main"))
         for _ in range(12):
             for _ in range(10):
                 await asyncio.sleep(0)
@@ -445,3 +446,31 @@ def test_default_socket_still_needs_market_data() -> None:
         home_box.append(home)
         only = spec("b", 2, collect=("account_summary",))
         asyncio.run(run_serve(make_config(home, only), {"b": AccountFake()}, check))
+
+
+def test_connection_lines_name_their_gateway(caplog: pytest.LogCaptureFixture) -> None:
+    async def run() -> None:
+        clock = FakeClock()
+        down = FakeGateway(fail=True)
+        up = FakeGateway()
+        tasks = [
+            asyncio.ensure_future(supervise(up, clock, "main")),
+            asyncio.ensure_future(supervise(down, clock, "wife")),
+        ]
+        for _ in range(20):
+            await asyncio.sleep(0)
+        up.connected = False
+        for _ in range(20):
+            await clock.advance(30)
+            await asyncio.sleep(0)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    with caplog.at_level(logging.INFO, logger="optdesk.ibkr.server"):
+        asyncio.run(run())
+    lines = [r.getMessage() for r in caplog.records]
+    assert any(m.startswith("connect_ok gateway=main generation=1") for m in lines)
+    assert any(m.startswith("connect_failed gateway=wife") for m in lines)
+    assert any(m.startswith("session_lost gateway=main") for m in lines)
+    assert not any("gateway=wife" in m and m.startswith("connect_ok") for m in lines)
