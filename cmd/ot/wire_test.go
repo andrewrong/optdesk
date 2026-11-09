@@ -10,15 +10,17 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
 func TestNewDepsFilled(t *testing.T) {
 	t.Parallel()
 	v := reflect.ValueOf(newDeps())
-	if v.NumField() != 52 {
-		t.Fatalf("deps has %d fields, want 52", v.NumField())
+	if v.NumField() != 53 {
+		t.Fatalf("deps has %d fields, want 53", v.NumField())
 	}
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).IsNil() {
@@ -164,5 +166,26 @@ func TestDemoProfileOpensNoStore(t *testing.T) {
 				t.Fatalf("err %v opened %d", err, opened.Load())
 			}
 		})
+	}
+}
+
+func TestComputeFiguresJobGetsEase(t *testing.T) {
+	t.Parallel()
+	d := newDeps()
+	if d.computeEase == nil {
+		t.Fatal("computeEase is nil")
+	}
+	var got compute.Ease
+	d.newComputeFigures = func(
+		_ jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, e compute.Ease, _ clock.Clock,
+	) (contracts.Job, error) {
+		got = e
+		return namedJob{id: "compute_figures"}, nil
+	}
+	if _, err := (jobFactory{d: d}).computeFigures(); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got != d.computeEase {
+		t.Fatalf("job got ease %v, want the one of newDeps", got)
 	}
 }

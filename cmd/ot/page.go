@@ -71,10 +71,11 @@ func runPage(a *app, args []string) error {
 		page = p
 		open = func() (store.SeriesReader, func(), error) { return nil, func() {}, nil }
 	} else {
-		p, err := pageNamed(a, *name)
+		p, closePage, err := pageNamed(a, *name)
 		if err != nil {
 			return err
 		}
+		defer closePage()
 		page = p
 		open = func() (store.SeriesReader, func(), error) { return seriesReader(ctx, a) }
 	}

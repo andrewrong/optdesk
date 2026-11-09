@@ -10,6 +10,7 @@ import (
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 )
@@ -37,12 +38,12 @@ func TestPageNamedUnknown(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")
 	a.deps.pageList = []pages.Page{fakePage("alpha", "a"), fakePage("beta", "b")}
-	_, err := pageNamed(a, "nosuch")
+	_, _, err := pageNamed(a, "nosuch")
 	want := `unknown page "nosuch"; known pages: alpha, beta, macro_page, report_page`
 	if err == nil || err.Error() != want {
 		t.Fatalf("err %v, want %s", err, want)
 	}
-	p, err := pageNamed(a, "beta")
+	p, _, err := pageNamed(a, "beta")
 	if err != nil || p.Meta.Name != "beta" {
 		t.Fatalf("beta: %q %v", p.Meta.Name, err)
 	}
@@ -52,11 +53,11 @@ func TestPageNamedNilZone(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")
 	a.profile.Zone = nil
-	a.deps.macroPage = func(*time.Location, string) pages.Page {
+	a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page {
 		t.Error("macroPage called with a nil zone")
 		return pages.Page{}
 	}
-	_, err := pageNamed(a, "macro_page")
+	_, _, err := pageNamed(a, "macro_page")
 	if err == nil || !strings.Contains(err.Error(), "OT_ZONE") {
 		t.Fatalf("err %v", err)
 	}
@@ -80,7 +81,7 @@ func (onePoint) SeriesPoints(_ context.Context, id string, from, to contracts.Da
 
 func TestMacroPageRealBuild(t *testing.T) {
 	t.Parallel()
-	p := newDeps().macroPage(time.UTC, "dev")
+	p := newDeps().macroPage(time.UTC, "dev", nil)
 	b, err := p.Build(t.Context(), onePoint{}, "2026-11-05", time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +100,7 @@ func TestUnknownPageListsReports(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "")
 	a.deps.pageList = []pages.Page{fakePage("alpha", "a")}
-	_, err := pageNamed(a, "nosuch")
+	_, _, err := pageNamed(a, "nosuch")
 	want := `unknown page "nosuch"; known pages: alpha, macro_page, report_page`
 	if err == nil || err.Error() != want {
 		t.Fatalf("err %v, want %s", err, want)

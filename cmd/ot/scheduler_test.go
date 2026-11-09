@@ -184,7 +184,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobQuoteSnapshot}, nil
 	}
-	d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error) {
+	d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobComputeFigures}, nil
 	}
 	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
@@ -552,7 +552,7 @@ func TestSchedulerDoesNotStartTheSite(t *testing.T) {
 	d := &r.a.deps
 	d.pageList = nil
 	d.newHandler = func([]byte) http.Handler { called.Add(1); return nil }
-	d.macroPage = func(*time.Location, string) pages.Page { called.Add(1); return pages.Page{} }
+	d.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page { called.Add(1); return pages.Page{} }
 	d.optionDataPage = func(*time.Location, string, sitePageInput) pages.Page { called.Add(1); return pages.Page{} }
 	done := r.start()
 	r.waitStarted(t, done)
