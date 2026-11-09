@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
@@ -17,12 +18,16 @@ import (
 const (
 	jobFredSeries      = "fred_series"
 	jobOptionEod       = "option_eod"
+	jobOptionEodJP     = "option_eod_jp"
 	jobQuoteSnapshot   = "quote_snapshot"
 	jobEarningsRefresh = "earnings_refresh"
+
+	calendarXTKS = "XTKS"
 
 	reasonNoFredKey  = "FRED_API_KEY is not set"
 	reasonBrokerDown = "broker is not reachable"
 	reasonBuildJob   = "the job could not be built"
+	reasonNoXTKS     = "calendar XTKS is not loaded"
 
 	reasonNoEventsDSN = "OT_PG_DSN_EVENTS is not set"
 	reasonNoAlphaKey  = "ALPHA_VANTAGE_API_KEY is not set"
@@ -47,6 +52,7 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 	}
 	if !brokerUp {
 		out[jobOptionEod] = reasonBrokerDown
+		out[jobOptionEodJP] = reasonBrokerDown
 		out[jobQuoteSnapshot] = reasonBrokerDown
 	}
 	return out
@@ -76,17 +82,38 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 			return nil, p.w.earningsOff
 		}
 		return p.built(p.w.factory.earningsRefresh())
-	case jobOptionEod, jobQuoteSnapshot:
+	case jobOptionEod, jobOptionEodJP, jobQuoteSnapshot:
+		// option_eod_jp checks the XTKS session for today before the broker
+		if id == jobOptionEodJP {
+			if r := xtksReason(ctx, p.w.cal, p.w.factory.clk); r != "" {
+				return nil, r
+			}
+		}
 		b, err := p.broker(ctx)
 		if err != nil {
 			return nil, reasonBrokerDown
 		}
-		if id == jobOptionEod {
+		switch id {
+		case jobOptionEod:
 			return p.built(p.w.factory.optionEod(b))
+		case jobOptionEodJP:
+			return p.built(p.w.factory.optionEodJP(b))
 		}
 		return p.built(p.w.factory.quoteSnapshot(b))
 	}
 	return nil, "unknown job"
+}
+
+// xtksReason is reasonNoXTKS when the XTKS calendar answers an error for today (a nil calendar answers none),
+// else "".
+func xtksReason(ctx context.Context, cal clock.Calendar, clk clock.Clock) string {
+	if cal == nil {
+		return reasonNoXTKS
+	}
+	if _, err := cal.Session(ctx, calendarXTKS, contracts.Day(clk.Now().UTC().Format("2006-01-02"))); err != nil {
+		return reasonNoXTKS
+	}
+	return ""
 }
 
 func (p *prober) built(j contracts.Job, err error) (contracts.Job, string) {
@@ -142,6 +169,8 @@ func (s *swapReconciler) Reconcile(ctx context.Context, day contracts.Day) error
 }
 
 // Probe returns "" when the job id is back and now part of the reconciler, else the reason it stays out.
+// Each rebuild re-probes the enabled option_eod_jp and builds the new reconciler without it when the reason
+// is reasonNoXTKS (Decision 13); the job stays in enabled, so a later probe can bring it back.
 func (s *swapReconciler) Probe(ctx context.Context, id string) string {
 	job, reason := s.probe(ctx, id)
 	if reason != "" {
@@ -149,8 +178,32 @@ func (s *swapReconciler) Probe(ctx context.Context, id string) string {
 	}
 	s.mu.Lock()
 	s.enabled = append(append([]contracts.Job(nil), s.enabled...), job)
-	s.cur = s.build(s.enabled)
+	enabled := s.enabled
+	s.mu.Unlock()
+	run := enabled
+	for _, j := range enabled {
+		if j.ID() != jobOptionEodJP || id == jobOptionEodJP {
+			continue
+		}
+		if _, r := s.probe(ctx, jobOptionEodJP); r == reasonNoXTKS {
+			s.log.Warn(reasonNoXTKS, "component", "ot", "job", jobOptionEodJP)
+			run = withoutJob(enabled, jobOptionEodJP)
+		}
+		break
+	}
+	s.mu.Lock()
+	s.cur = s.build(run)
 	s.mu.Unlock()
 	s.log.Info("job back in the schedule", "component", "ot", "job", id)
 	return ""
+}
+
+func withoutJob(js []contracts.Job, id string) []contracts.Job {
+	out := make([]contracts.Job, 0, len(js))
+	for _, j := range js {
+		if j.ID() != id {
+			out = append(out, j)
+		}
+	}
+	return out
 }

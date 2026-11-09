@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"syscall"
 	"time"
@@ -144,6 +145,9 @@ func runScheduler(
 		return errors.New("record the build in ops.scheduler_state failed")
 	}
 	disabled := startDisabled(cfg, w.brokerUp)
+	if !slices.ContainsFunc(w.jobs, func(j contracts.Job) bool { return j.ID() == jobOptionEodJP }) {
+		delete(disabled, jobOptionEodJP) // left out at wiring, with its own line
+	}
 	var enabled []contracts.Job
 	for _, j := range w.jobs {
 		if reason, off := disabled[j.ID()]; off {
