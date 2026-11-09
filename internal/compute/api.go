@@ -553,6 +553,17 @@ type LedgerPosition struct {
 	MarkDay       contracts.Day
 	MarkStatus    string
 	UnrealizedPnL string
+
+	// Terms: Right is P or C; ClosedOn is empty while open; Fills are the rows in order;
+	// BrokerRealized is the broker's realized figure, empty when it reports none.
+	Right          string
+	Expiry         string
+	Strike         string
+	OpenedOn       contracts.Day
+	ClosedOn       contracts.Day
+	OpenPrice      string
+	Fills          []LedgerFill
+	BrokerRealized string
 }
 
 // LedgerCycle is one wheel cycle of an alias and underlying, from the first share event to
@@ -594,3 +605,155 @@ type OptionLedger interface {
 
 // NewOptionLedgerFunc builds an OptionLedger.
 type NewOptionLedgerFunc func() OptionLedger
+
+// LedgerFill is one row of a position; Action is the kind of the row, numbers are decimal text.
+type LedgerFill struct {
+	Day                                 contracts.Day
+	Action, Quantity, Price, Commission string
+}
+
+// StructureQuote is one option quote of a day; numbers are decimal text, empty when absent.
+type StructureQuote struct {
+	Underlying, Right, Strike, Expiry string
+	Day                               contracts.Day
+	Bid, Ask, UnderlyingClose         string
+	Delta, Gamma, Theta, Vega         string
+}
+
+// HeldOption is one option row of the newest capture.
+type HeldOption struct {
+	Underlying, Right, Strike, Expiry, Quantity string
+}
+
+// StructureInput is the input of one alias; SessionDays are ascending XNYS days. Pure.
+type StructureInput struct {
+	Alias       string
+	Positions   []LedgerPosition
+	Cycles      []LedgerCycle
+	Quotes      []StructureQuote
+	Held        []HeldOption
+	HeldDay     contracts.Day
+	AsOf        contracts.Day
+	SessionDays []contracts.Day
+}
+
+type StructureParams struct {
+	MarkMaxAgeSessions int
+	CaptureTarget      string
+	ExitDTE            int
+	CommissionDays     int
+}
+
+// Structure is one recognised structure. Decide is true when the short leg expires within
+// ExitDTE days or EarnedShare is at least CaptureTarget; the two Param texts are copied.
+type Structure struct {
+	ID, Alias, Underlying, Currency, Kind string
+	Legs                                  []StructureLeg
+	Figures                               StructureFigures
+	Payoff                                []PayoffPoint
+	Greeks                                GreekSet
+	Levels                                []StructureLevel
+	Decide                                bool
+	CaptureParam, ExitDTEParam            string
+}
+
+type StructureLeg struct {
+	PositionID, Right, Strike, Expiry, Quantity, Multiplier, OpenPrice, Mid, LegPnL, MarkStatus string
+}
+
+// StructureFigures are the figures of a structure; each is a FigureValue.
+type StructureFigures struct {
+	MaxLoss, MaxGain, BreakEven, UnrealizedPnL, EarnedShare, ExpiryDistance FigureValue
+	CloseCost, RollCredit, RollNet, RecentCommission, CashAfter             FigureValue
+}
+
+// FigureValue is a number or the reason it is absent. Gap is empty or one of missing_quote,
+// stale_input, unsupported_currency, no_rule, no_data, missing_input; exactly one of Value
+// and Gap is set.
+type FigureValue struct {
+	Value string
+	Gap   string
+}
+
+type PayoffPoint struct {
+	Price, PnL string
+}
+
+// GreekSet is the net greeks of a structure on Day.
+type GreekSet struct {
+	Delta, Gamma, Theta, Vega FigureValue
+	Day                       contracts.Day
+}
+
+type StructureLevel struct {
+	Name, Price, Distance string
+}
+
+// StructureResult holds Structures in the order of Decision 12; Other the unrecognised kinds.
+type StructureResult struct {
+	Structures []Structure
+	Other      []Structure
+	Diff       CaptureDiff
+}
+
+// CaptureDiff compares the capture with the ledger; Skipped names why no comparison was made.
+type CaptureDiff struct {
+	CaptureOnly, LedgerOnly []string
+	Skipped                 string
+}
+
+// OptionStructures groups the positions of one alias into structures, purely: no I/O, no clock.
+type OptionStructures interface {
+	Evaluate(StructureInput, StructureParams) StructureResult
+}
+
+// NewOptionStructuresFunc builds an OptionStructures.
+type NewOptionStructuresFunc func() OptionStructures
+
+// ResultInput is the input of Summarise.
+type ResultInput struct {
+	Alias              string
+	Positions          []LedgerPosition
+	Unresolved, Review []string
+	AsOf               contracts.Day
+}
+
+type ResultSummary struct {
+	Sections []ResultSection
+}
+
+// ResultSection is one side and currency; money is decimal text, KeptShare a 6-place ratio or empty.
+type ResultSection struct {
+	Side, Currency                                                string
+	Months                                                        []ResultMonth
+	Endings                                                       []ResultEnding
+	Realized, Premium, KeptShare, AssignedPremium, AssignedShares string
+	Reliability                                                   ResultReliability
+}
+
+// ResultMonth is the realized result of a month and its running total.
+type ResultMonth struct {
+	Month, Realized, Running string
+	Over                     bool
+}
+
+// ResultEnding counts the positions that ended with Status and their realized result.
+type ResultEnding struct {
+	Status   string
+	Count    int
+	Realized string
+}
+
+// ResultReliability counts positions by agreement with the broker figure.
+type ResultReliability struct {
+	Equal, Differ, NoBroker int
+	Unresolved, Review      []string
+}
+
+// OptionResults summarises the realized result of one alias, purely.
+type OptionResults interface {
+	Summarise(ResultInput) ResultSummary
+}
+
+// NewOptionResultsFunc builds an OptionResults.
+type NewOptionResultsFunc func() OptionResults

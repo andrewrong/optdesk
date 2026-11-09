@@ -585,3 +585,113 @@ func TestOptionLedgerContractFake(t *testing.T) {
 		t.Fatalf("caller read %+v", res)
 	}
 }
+
+type fakeStructures struct {
+	in *compute.StructureInput
+	p  *compute.StructureParams
+}
+
+func (f fakeStructures) Evaluate(in compute.StructureInput, p compute.StructureParams) compute.StructureResult {
+	*f.in, *f.p = in, p
+	st := compute.Structure{
+		ID: in.Alias + ":s1", Alias: in.Alias, Underlying: "AAA", Currency: "USD", Kind: "short_put",
+		Legs:    []compute.StructureLeg{{PositionID: in.Positions[0].PositionID, Right: "P", Strike: "50", Expiry: "2026-02-20", Quantity: "-1", Multiplier: "100", OpenPrice: "1.20", Mid: "0.90", LegPnL: "30.0000", MarkStatus: "ok"}},
+		Figures: compute.StructureFigures{MaxLoss: compute.FigureValue{Value: "4880.0000"}, MaxGain: compute.FigureValue{Gap: "no_data"}},
+		Payoff:  []compute.PayoffPoint{{Price: "50", PnL: "120.0000"}},
+		Greeks:  compute.GreekSet{Delta: compute.FigureValue{Value: "-0.3"}, Day: in.AsOf},
+		Levels:  []compute.StructureLevel{{Name: "strike", Price: "50", Distance: "5"}},
+		Decide:  true, CaptureParam: p.CaptureTarget, ExitDTEParam: "21",
+	}
+	return compute.StructureResult{
+		Structures: []compute.Structure{st}, Other: []compute.Structure{{Kind: "other"}},
+		Diff: compute.CaptureDiff{CaptureOnly: []string{"x"}, LedgerOnly: []string{"y"}, Skipped: "no_capture"},
+	}
+}
+
+var _ compute.OptionStructures = fakeStructures{}
+
+func TestOptionStructuresContract(t *testing.T) {
+	t.Parallel()
+	var in compute.StructureInput
+	var params compute.StructureParams
+	var newFn compute.NewOptionStructuresFunc = func() compute.OptionStructures { return fakeStructures{in: &in, p: &params} }
+	res := newFn().Evaluate(compute.StructureInput{
+		Alias:     "a",
+		Positions: []compute.LedgerPosition{{PositionID: "p1"}},
+		Cycles:    []compute.LedgerCycle{{CycleID: "c1"}},
+		Quotes: []compute.StructureQuote{{Underlying: "AAA", Right: "P", Strike: "50", Expiry: "2026-02-20", Day: "2026-01-05",
+			Bid: "1", Ask: "1.1", UnderlyingClose: "55", Delta: "-0.3", Gamma: "0.01", Theta: "-0.02", Vega: "0.05"}},
+		Held:        []compute.HeldOption{{Underlying: "AAA", Right: "P", Strike: "50", Expiry: "2026-02-20", Quantity: "-1"}},
+		HeldDay:     "2026-01-05",
+		AsOf:        "2026-01-06",
+		SessionDays: []contracts.Day{"2026-01-05", "2026-01-06"},
+	}, compute.StructureParams{MarkMaxAgeSessions: 5, CaptureTarget: "0.5", ExitDTE: 21, CommissionDays: 30})
+	if in.Alias != "a" || in.Quotes[0].Vega != "0.05" || in.Held[0].Quantity != "-1" || in.HeldDay != "2026-01-05" ||
+		in.SessionDays[1] != "2026-01-06" || in.Cycles[0].CycleID != "c1" || params.CommissionDays != 30 || params.ExitDTE != 21 {
+		t.Fatalf("rule saw %+v %+v", in, params)
+	}
+	st := res.Structures[0]
+	l, f := st.Legs[0], st.Figures
+	if st.ID != "a:s1" || st.Underlying != "AAA" || st.Currency != "USD" || st.Kind != "short_put" || !st.Decide ||
+		st.CaptureParam != "0.5" || st.ExitDTEParam != "21" || l.PositionID != "p1" || l.Mid != "0.90" || l.LegPnL != "30.0000" ||
+		l.MarkStatus != "ok" || l.Multiplier != "100" || l.OpenPrice != "1.20" || l.Right != "P" || l.Strike != "50" || l.Expiry == "" || l.Quantity != "-1" ||
+		f.MaxLoss.Value != "4880.0000" || f.MaxGain.Gap != "no_data" || f.BreakEven != (compute.FigureValue{}) ||
+		st.Payoff[0].PnL != "120.0000" || st.Greeks.Delta.Value != "-0.3" || st.Greeks.Day != "2026-01-06" ||
+		st.Levels[0].Distance != "5" || st.Alias != "a" {
+		t.Fatalf("caller read %+v", st)
+	}
+	if len(res.Other) != 1 || res.Diff.CaptureOnly[0] != "x" || res.Diff.LedgerOnly[0] != "y" || res.Diff.Skipped != "no_capture" {
+		t.Fatalf("caller read %+v", res)
+	}
+}
+
+type fakeResults struct{ in *compute.ResultInput }
+
+func (f fakeResults) Summarise(in compute.ResultInput) compute.ResultSummary {
+	*f.in = in
+	return compute.ResultSummary{Sections: []compute.ResultSection{{
+		Side: "short", Currency: "USD",
+		Months:   []compute.ResultMonth{{Month: "2026-01", Realized: "10.0000", Running: "10.0000", Over: true}},
+		Endings:  []compute.ResultEnding{{Status: "expired", Count: 2, Realized: "10.0000"}},
+		Realized: "10.0000", Premium: "12.0000", KeptShare: "0.833333", AssignedPremium: "1.0000", AssignedShares: "100.0000",
+		Reliability: compute.ResultReliability{Equal: 1, Differ: 2, NoBroker: 3, Unresolved: in.Unresolved, Review: in.Review},
+	}}}
+}
+
+var _ compute.OptionResults = fakeResults{}
+
+func TestOptionResultsContract(t *testing.T) {
+	t.Parallel()
+	var in compute.ResultInput
+	var newFn compute.NewOptionResultsFunc = func() compute.OptionResults { return fakeResults{in: &in} }
+	res := newFn().Summarise(compute.ResultInput{
+		Alias: "a", Positions: []compute.LedgerPosition{{PositionID: "p1"}},
+		Unresolved: []string{"t0"}, Review: []string{"t9"}, AsOf: "2026-01-06",
+	})
+	if in.Alias != "a" || in.Positions[0].PositionID != "p1" || in.AsOf != "2026-01-06" {
+		t.Fatalf("rule saw %+v", in)
+	}
+	s := res.Sections[0]
+	if s.Side != "short" || s.Currency != "USD" || s.Months[0].Running != "10.0000" || !s.Months[0].Over || s.Months[0].Month != "2026-01" ||
+		s.Months[0].Realized != "10.0000" || s.Endings[0].Status != "expired" || s.Endings[0].Count != 2 || s.Endings[0].Realized != "10.0000" ||
+		s.Realized != "10.0000" || s.Premium != "12.0000" || s.KeptShare != "0.833333" || s.AssignedPremium != "1.0000" || s.AssignedShares != "100.0000" ||
+		s.Reliability.Equal != 1 || s.Reliability.Differ != 2 || s.Reliability.NoBroker != 3 ||
+		s.Reliability.Unresolved[0] != "t0" || s.Reliability.Review[0] != "t9" {
+		t.Fatalf("caller read %+v", res)
+	}
+}
+
+func TestLedgerPositionTerms(t *testing.T) {
+	t.Parallel()
+	p := compute.LedgerPosition{
+		PositionID: "p1", Right: "C", Expiry: "2026-02-20", Strike: "55", OpenedOn: "2026-01-02", ClosedOn: "2026-01-20",
+		OpenPrice: "1.20", BrokerRealized: "30.00",
+		Fills: []compute.LedgerFill{{Day: "2026-01-02", Action: "open", Quantity: "-1", Price: "1.20", Commission: "1.00"}},
+	}
+	f := p.Fills[0]
+	if p.Right != "C" || p.Expiry != "2026-02-20" || p.Strike != "55" || p.OpenedOn != "2026-01-02" || p.ClosedOn != "2026-01-20" ||
+		p.OpenPrice != "1.20" || p.BrokerRealized != "30.00" || f.Day != "2026-01-02" || f.Action != "open" || f.Quantity != "-1" ||
+		f.Price != "1.20" || f.Commission != "1.00" {
+		t.Fatalf("terms %+v", p)
+	}
+}
