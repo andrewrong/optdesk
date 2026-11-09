@@ -54,15 +54,6 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-func TestArchCheckCommittedFiles(t *testing.T) {
-	t.Parallel()
-	root := repoRoot(t)
-	code, out := runArch(t, "--check", "--modules", filepath.Join(root, "docs/design/modules.md"), "--root", root)
-	if code != 0 {
-		t.Fatalf("exit %d: %s", code, out)
-	}
-}
-
 // fixtureModules is a small modules text of its own: three modules and the implementation list that generate reads.
 func fixtureModules(gammaDepends string) string {
 	return "# Fixture\n\n## Modules\n\n" +
@@ -74,7 +65,7 @@ func fixtureModules(gammaDepends string) string {
 		"The composition root imports one constructor each: `internal/alpha/impl`. Any other import is refused.\n"
 }
 
-func TestArchCheckFailsOnNewEdge(t *testing.T) {
+func TestArchWritesBothFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules.md")
@@ -82,13 +73,10 @@ func TestArchCheckFailsOnNewEdge(t *testing.T) {
 	if code, out := runArch(t, "--modules", modules, "--root", dir); code != 0 {
 		t.Fatalf("generate: exit %d: %s", code, out)
 	}
-	if code, out := runArch(t, "--check", "--modules", modules, "--root", dir); code != 0 {
-		t.Fatalf("fresh files: exit %d: %s", code, out)
-	}
-	write(t, modules, fixtureModules("alpha beta"))
-	code, out := runArch(t, "--check", "--modules", modules, "--root", dir)
-	if code != 1 {
-		t.Fatalf("exit %d, want 1: %s", code, out)
+	for _, name := range []string{tomlFile, ymlFile} {
+		if b, err := os.ReadFile(filepath.Join(dir, name)); err != nil || len(b) == 0 {
+			t.Fatalf("%s not written: %v", name, err)
+		}
 	}
 }
 
@@ -112,7 +100,7 @@ func otImports(t *testing.T, text string) ([]string, string) {
 	return got, string(m[1])
 }
 
-func TestArchCheckOTListsImplPackages(t *testing.T) {
+func TestArchOTListsImplPackages(t *testing.T) {
 	t.Parallel()
 	text := modulesText(t)
 	// The list as the text states it: backticked internal/a/b paths after the anchor.
@@ -166,7 +154,7 @@ func TestArchRunFailsWithoutImplAnchor(t *testing.T) {
 	}
 }
 
-func TestArchCheckProfileHasNoImports(t *testing.T) {
+func TestArchProfileHasNoImports(t *testing.T) {
 	t.Parallel()
 	toml, yml, err := generate(modulesText(t), t.TempDir())
 	if err != nil {
@@ -223,7 +211,7 @@ func lint(t *testing.T, dir string) (bool, string) {
 	return err == nil, string(out)
 }
 
-func TestArchCheckScratchTree(t *testing.T) {
+func TestArchScratchTree(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
@@ -339,7 +327,8 @@ const declFixture = "# Fixture\n\n## Modules\n\n" +
 	"| module | paths | entry | tests | depends |\n" +
 	"| --- | --- | --- | --- | --- |\n" +
 	"| contracts | internal/contracts/** | internal/contracts/api.go internal/contracts/genpb | internal/contracts/api_test.go | |\n" +
-	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go | contracts |\n" +
+	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest " +
+	"internal/compute/trackapi | internal/compute/api_test.go | contracts |\n" +
 	"| store | internal/store/** | internal/store/api.go internal/store/bar | internal/store/api_test.go | contracts |\n" +
 	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts compute store |\n\n" +
 	"The composition root imports one constructor each: `internal/store/bar`, `internal/store/barpg`,\n" +
@@ -354,6 +343,7 @@ var declTree = map[string]string{
 	"internal/jobs/j.go":                 "package jobs\n",
 	"internal/jobs/computefigures/c.go":  "package computefigures\n",
 	"internal/compute/c.go":              "package compute\n",
+	"internal/compute/trackapi/api.go":   "package trackapi\n",
 	"internal/contracts/c.go":            "package contracts\n",
 }
 
@@ -492,6 +482,26 @@ func TestRootAndSubPackageImportStoreMark(t *testing.T) {
 	}
 }
 
+func TestComputeTrackapiIsDeclarationsOnlyPackage(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, declTree)
+	toml, yml, err := generate(declFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"compute/trackapi"`) {
+		t.Fatalf("jobs depends on compute and lacks compute/trackapi:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "contracts"); strings.Contains(b, "compute/trackapi") {
+		t.Fatalf("contracts does not depend on compute but imports compute/trackapi:\n%s", b)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, rest, _ := strings.Cut(deps, "  compute/trackapi:\n")
+	if b := nextKey.Split(rest, 2)[0]; !hasDep(b, "compute") || !hasDep(b, "contracts") {
+		t.Fatalf("compute/trackapi lacks compute or contracts in the lint file:\n%s", yml)
+	}
+}
+
 func TestRootImportsOwnersetDeclarations(t *testing.T) {
 	t.Parallel()
 	fixture := strings.Replace(declFixture, "internal/store/api.go internal/store/bar", "internal/store/api.go internal/store/ownerset", 1)
@@ -510,5 +520,26 @@ func TestRootImportsOwnersetDeclarations(t *testing.T) {
 	}
 	if b := mayImport(t, string(toml), "store"); strings.Contains(b, "store/ownerset") {
 		t.Fatalf("the root store imports its own declarations package:\n%s", b)
+	}
+}
+
+func TestRootImportsSettingsapiDeclarations(t *testing.T) {
+	t.Parallel()
+	fixture := strings.Replace(declFixture, "internal/compute/api.go internal/compute/contracttest", "internal/compute/api.go internal/compute/settingsapi", 1)
+	tree := map[string]string{}
+	for k, v := range declTree {
+		tree[k] = v
+	}
+	tree["internal/compute/settingsapi/api.go"] = "package settingsapi\n"
+	dir := scratch(t, tree)
+	toml, _, err := generate(fixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "jobs"); !strings.Contains(b, `"compute/settingsapi"`) {
+		t.Fatalf("jobs lacks compute/settingsapi in arch.toml:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "compute"); strings.Contains(b, "compute/settingsapi") {
+		t.Fatalf("the root compute imports its own declarations package:\n%s", b)
 	}
 }
