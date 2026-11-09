@@ -70,9 +70,14 @@ type AccountResponse struct {
 	Values []*AccountValue `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
 	// positions are the open positions; empty when none is open or the gateway
 	// does not collect them.
-	Positions     []*Position `protobuf:"bytes,4,rep,name=positions,proto3" json:"positions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Positions []*Position `protobuf:"bytes,4,rep,name=positions,proto3" json:"positions,omitempty"`
+	// values_collected is true when the gateway collects the summary values, so
+	// an empty values list can be told from a gateway that does not collect them.
+	ValuesCollected bool `protobuf:"varint,5,opt,name=values_collected,json=valuesCollected,proto3" json:"values_collected,omitempty"`
+	// positions_collected is true when the gateway collects the positions.
+	PositionsCollected bool `protobuf:"varint,6,opt,name=positions_collected,json=positionsCollected,proto3" json:"positions_collected,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AccountResponse) Reset() {
@@ -131,6 +136,20 @@ func (x *AccountResponse) GetPositions() []*Position {
 		return x.Positions
 	}
 	return nil
+}
+
+func (x *AccountResponse) GetValuesCollected() bool {
+	if x != nil {
+		return x.ValuesCollected
+	}
+	return false
+}
+
+func (x *AccountResponse) GetPositionsCollected() bool {
+	if x != nil {
+		return x.PositionsCollected
+	}
+	return false
 }
 
 // AccountValue is one summary row.
@@ -261,19 +280,261 @@ func (x *Position) GetAvgCost() string {
 	return ""
 }
 
+// ExecutionsRequest carries nothing: the gateway answers for its own account.
+type ExecutionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecutionsRequest) Reset() {
+	*x = ExecutionsRequest{}
+	mi := &file_ibkr_v1_account_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecutionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecutionsRequest) ProtoMessage() {}
+
+func (x *ExecutionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_account_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecutionsRequest.ProtoReflect.Descriptor instead.
+func (*ExecutionsRequest) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_account_proto_rawDescGZIP(), []int{4}
+}
+
+// ExecutionsResponse holds the complete executions of one account.
+type ExecutionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// account is the alias of the gateway's entry, never the account id.
+	Account string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	// generation is the session generation of PingResponse.
+	Generation int64 `protobuf:"varint,2,opt,name=generation,proto3" json:"generation,omitempty"`
+	// collected is false when the gateway does not collect executions; no
+	// request was sent to the broker then and executions is empty.
+	Collected bool `protobuf:"varint,3,opt,name=collected,proto3" json:"collected,omitempty"`
+	// pending counts the executions left out because their commission report
+	// had not arrived yet; they come in a later answer.
+	Pending int32 `protobuf:"varint,4,opt,name=pending,proto3" json:"pending,omitempty"`
+	// executions holds only rows with their commission; empty when none.
+	Executions    []*Execution `protobuf:"bytes,5,rep,name=executions,proto3" json:"executions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecutionsResponse) Reset() {
+	*x = ExecutionsResponse{}
+	mi := &file_ibkr_v1_account_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecutionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecutionsResponse) ProtoMessage() {}
+
+func (x *ExecutionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_account_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecutionsResponse.ProtoReflect.Descriptor instead.
+func (*ExecutionsResponse) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_account_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ExecutionsResponse) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *ExecutionsResponse) GetGeneration() int64 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *ExecutionsResponse) GetCollected() bool {
+	if x != nil {
+		return x.Collected
+	}
+	return false
+}
+
+func (x *ExecutionsResponse) GetPending() int32 {
+	if x != nil {
+		return x.Pending
+	}
+	return 0
+}
+
+func (x *ExecutionsResponse) GetExecutions() []*Execution {
+	if x != nil {
+		return x.Executions
+	}
+	return nil
+}
+
+// Execution is one fill with its commission.
+type Execution struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// exec_id is the broker's execution id, the key of the row with perm_id.
+	ExecId string `protobuf:"bytes,1,opt,name=exec_id,json=execId,proto3" json:"exec_id,omitempty"`
+	// perm_id is the broker's permanent id of the execution, the dedupe key and
+	// nothing more.
+	PermId int64 `protobuf:"varint,2,opt,name=perm_id,json=permId,proto3" json:"perm_id,omitempty"`
+	// time is the fill instant, RFC 3339 UTC text.
+	Time string `protobuf:"bytes,3,opt,name=time,proto3" json:"time,omitempty"`
+	// contract is the contract traded.
+	Contract *ContractSpec `protobuf:"bytes,4,opt,name=contract,proto3" json:"contract,omitempty"`
+	// side is BOT or SLD.
+	Side string `protobuf:"bytes,5,opt,name=side,proto3" json:"side,omitempty"`
+	// quantity is canonical decimal text.
+	Quantity string `protobuf:"bytes,6,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	// price is canonical decimal text.
+	Price string `protobuf:"bytes,7,opt,name=price,proto3" json:"price,omitempty"`
+	// commission is canonical decimal text, always set.
+	Commission string `protobuf:"bytes,8,opt,name=commission,proto3" json:"commission,omitempty"`
+	// commission_currency is the currency code of the commission.
+	CommissionCurrency string `protobuf:"bytes,9,opt,name=commission_currency,json=commissionCurrency,proto3" json:"commission_currency,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *Execution) Reset() {
+	*x = Execution{}
+	mi := &file_ibkr_v1_account_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Execution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Execution) ProtoMessage() {}
+
+func (x *Execution) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_account_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Execution.ProtoReflect.Descriptor instead.
+func (*Execution) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_account_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Execution) GetExecId() string {
+	if x != nil {
+		return x.ExecId
+	}
+	return ""
+}
+
+func (x *Execution) GetPermId() int64 {
+	if x != nil {
+		return x.PermId
+	}
+	return 0
+}
+
+func (x *Execution) GetTime() string {
+	if x != nil {
+		return x.Time
+	}
+	return ""
+}
+
+func (x *Execution) GetContract() *ContractSpec {
+	if x != nil {
+		return x.Contract
+	}
+	return nil
+}
+
+func (x *Execution) GetSide() string {
+	if x != nil {
+		return x.Side
+	}
+	return ""
+}
+
+func (x *Execution) GetQuantity() string {
+	if x != nil {
+		return x.Quantity
+	}
+	return ""
+}
+
+func (x *Execution) GetPrice() string {
+	if x != nil {
+		return x.Price
+	}
+	return ""
+}
+
+func (x *Execution) GetCommission() string {
+	if x != nil {
+		return x.Commission
+	}
+	return ""
+}
+
+func (x *Execution) GetCommissionCurrency() string {
+	if x != nil {
+		return x.CommissionCurrency
+	}
+	return ""
+}
+
 var File_ibkr_v1_account_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_account_proto_rawDesc = "" +
 	"\n" +
 	"\x15ibkr/v1/account.proto\x12\aibkr.v1\x1a\x16ibkr/v1/contract.proto\"\x10\n" +
-	"\x0eAccountRequest\"\xab\x01\n" +
+	"\x0eAccountRequest\"\x87\x02\n" +
 	"\x0fAccountResponse\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1e\n" +
 	"\n" +
 	"generation\x18\x02 \x01(\x03R\n" +
 	"generation\x12-\n" +
 	"\x06values\x18\x03 \x03(\v2\x15.ibkr.v1.AccountValueR\x06values\x12/\n" +
-	"\tpositions\x18\x04 \x03(\v2\x11.ibkr.v1.PositionR\tpositions\"R\n" +
+	"\tpositions\x18\x04 \x03(\v2\x11.ibkr.v1.PositionR\tpositions\x12)\n" +
+	"\x10values_collected\x18\x05 \x01(\bR\x0fvaluesCollected\x12/\n" +
+	"\x13positions_collected\x18\x06 \x01(\bR\x12positionsCollected\"R\n" +
 	"\fAccountValue\x12\x10\n" +
 	"\x03tag\x18\x01 \x01(\tR\x03tag\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x12\x1a\n" +
@@ -281,9 +542,34 @@ const file_ibkr_v1_account_proto_rawDesc = "" +
 	"\bPosition\x121\n" +
 	"\bcontract\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\x12\x1a\n" +
 	"\bquantity\x18\x02 \x01(\tR\bquantity\x12\x19\n" +
-	"\bavg_cost\x18\x03 \x01(\tR\aavgCost2N\n" +
+	"\bavg_cost\x18\x03 \x01(\tR\aavgCost\"\x13\n" +
+	"\x11ExecutionsRequest\"\xba\x01\n" +
+	"\x12ExecutionsResponse\x12\x18\n" +
+	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\x03R\n" +
+	"generation\x12\x1c\n" +
+	"\tcollected\x18\x03 \x01(\bR\tcollected\x12\x18\n" +
+	"\apending\x18\x04 \x01(\x05R\apending\x122\n" +
+	"\n" +
+	"executions\x18\x05 \x03(\v2\x12.ibkr.v1.ExecutionR\n" +
+	"executions\"\x9b\x02\n" +
+	"\tExecution\x12\x17\n" +
+	"\aexec_id\x18\x01 \x01(\tR\x06execId\x12\x17\n" +
+	"\aperm_id\x18\x02 \x01(\x03R\x06permId\x12\x12\n" +
+	"\x04time\x18\x03 \x01(\tR\x04time\x121\n" +
+	"\bcontract\x18\x04 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\x12\x12\n" +
+	"\x04side\x18\x05 \x01(\tR\x04side\x12\x1a\n" +
+	"\bquantity\x18\x06 \x01(\tR\bquantity\x12\x14\n" +
+	"\x05price\x18\a \x01(\tR\x05price\x12\x1e\n" +
+	"\n" +
+	"commission\x18\b \x01(\tR\n" +
+	"commission\x12/\n" +
+	"\x13commission_currency\x18\t \x01(\tR\x12commissionCurrency2\x95\x01\n" +
 	"\x0eAccountService\x12<\n" +
-	"\aAccount\x12\x17.ibkr.v1.AccountRequest\x1a\x18.ibkr.v1.AccountResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
+	"\aAccount\x12\x17.ibkr.v1.AccountRequest\x1a\x18.ibkr.v1.AccountResponse\x12E\n" +
+	"\n" +
+	"Executions\x12\x1a.ibkr.v1.ExecutionsRequest\x1a\x1b.ibkr.v1.ExecutionsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
 var (
 	file_ibkr_v1_account_proto_rawDescOnce sync.Once
@@ -297,25 +583,32 @@ func file_ibkr_v1_account_proto_rawDescGZIP() []byte {
 	return file_ibkr_v1_account_proto_rawDescData
 }
 
-var file_ibkr_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_ibkr_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_ibkr_v1_account_proto_goTypes = []any{
-	(*AccountRequest)(nil),  // 0: ibkr.v1.AccountRequest
-	(*AccountResponse)(nil), // 1: ibkr.v1.AccountResponse
-	(*AccountValue)(nil),    // 2: ibkr.v1.AccountValue
-	(*Position)(nil),        // 3: ibkr.v1.Position
-	(*ContractSpec)(nil),    // 4: ibkr.v1.ContractSpec
+	(*AccountRequest)(nil),     // 0: ibkr.v1.AccountRequest
+	(*AccountResponse)(nil),    // 1: ibkr.v1.AccountResponse
+	(*AccountValue)(nil),       // 2: ibkr.v1.AccountValue
+	(*Position)(nil),           // 3: ibkr.v1.Position
+	(*ExecutionsRequest)(nil),  // 4: ibkr.v1.ExecutionsRequest
+	(*ExecutionsResponse)(nil), // 5: ibkr.v1.ExecutionsResponse
+	(*Execution)(nil),          // 6: ibkr.v1.Execution
+	(*ContractSpec)(nil),       // 7: ibkr.v1.ContractSpec
 }
 var file_ibkr_v1_account_proto_depIdxs = []int32{
 	2, // 0: ibkr.v1.AccountResponse.values:type_name -> ibkr.v1.AccountValue
 	3, // 1: ibkr.v1.AccountResponse.positions:type_name -> ibkr.v1.Position
-	4, // 2: ibkr.v1.Position.contract:type_name -> ibkr.v1.ContractSpec
-	0, // 3: ibkr.v1.AccountService.Account:input_type -> ibkr.v1.AccountRequest
-	1, // 4: ibkr.v1.AccountService.Account:output_type -> ibkr.v1.AccountResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 2: ibkr.v1.Position.contract:type_name -> ibkr.v1.ContractSpec
+	6, // 3: ibkr.v1.ExecutionsResponse.executions:type_name -> ibkr.v1.Execution
+	7, // 4: ibkr.v1.Execution.contract:type_name -> ibkr.v1.ContractSpec
+	0, // 5: ibkr.v1.AccountService.Account:input_type -> ibkr.v1.AccountRequest
+	4, // 6: ibkr.v1.AccountService.Executions:input_type -> ibkr.v1.ExecutionsRequest
+	1, // 7: ibkr.v1.AccountService.Account:output_type -> ibkr.v1.AccountResponse
+	5, // 8: ibkr.v1.AccountService.Executions:output_type -> ibkr.v1.ExecutionsResponse
+	7, // [7:9] is the sub-list for method output_type
+	5, // [5:7] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_ibkr_v1_account_proto_init() }
@@ -330,7 +623,7 @@ func file_ibkr_v1_account_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ibkr_v1_account_proto_rawDesc), len(file_ibkr_v1_account_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/account.position.r1.json",
+  "title": "AccountPosition",
+  "description": "account.position r1: one open position of one account capture; append only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capture_id", "alias", "captured_at", "session_day", "symbol", "sec_type", "exchange", "currency", "expiry", "strike", "multiplier", "right", "con_id", "quantity", "avg_cost"],
+  "x-dataset": "account.position",
+  "x-revision": "r1",
+  "x-primary-key": ["capture_id", "con_id"],
+  "properties": {
+    "capture_id": {"type": "string", "minLength": 1, "description": "Identifier of the capture, text of the form <alias>:<session_day>:<run key>; a retry of the same run writes the same id."},
+    "alias": {"type": "string", "minLength": 1, "description": "Alias of the gateway entry, never the account id."},
+    "captured_at": {"type": "string", "format": "date-time", "description": "Instant the capture was taken, UTC."},
+    "session_day": {"type": "string", "format": "date", "description": "Session day (XNYS) of the capture."},
+    "symbol": {"type": "string", "minLength": 1, "description": "Symbol of the contract held."},
+    "sec_type": {"type": "string", "enum": ["stock", "index", "option"], "description": "Kind of the contract."},
+    "exchange": {"type": "string", "description": "Exchange of the contract; empty when none."},
+    "currency": {"type": "string", "description": "Currency code of the contract."},
+    "expiry": {"type": "string", "description": "Expiry YYYYMMDD, options only; empty otherwise."},
+    "strike": {"type": "string", "description": "Strike as decimal text, options only; empty otherwise."},
+    "multiplier": {"type": "string", "description": "Multiplier as decimal text; empty when none."},
+    "right": {"type": "string", "enum": ["", "put", "call"], "description": "Option right; empty for a non-option."},
+    "con_id": {"type": "integer", "description": "Broker contract id."},
+    "quantity": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Signed quantity as decimal text."},
+    "avg_cost": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$", "description": "Average cost as decimal text."}
+  }
+}
