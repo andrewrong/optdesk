@@ -156,7 +156,9 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 			opened.Add(1)
 			return fakeReading{n: closed}, nil
 		},
-		newComputeFigures: func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error) {
+		newComputeFigures: func(
+			jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
+		) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
 		newOptionEod: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {

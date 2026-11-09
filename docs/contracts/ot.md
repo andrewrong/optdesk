@@ -125,6 +125,7 @@ Exit codes, each tied to its condition:
 
 ## Version history
 
+- v8: `ot run-once`, `ot backfill` and `ot scheduler` also store the reading `macro.ease|market|WALCL` (the job `compute_figures` gets `ease.New`), and `ot page --name macro_page` shows the ease when the line `OT_PG_DSN_PAGES` is set in `.env`: it reads the winner readings of the reading view with it; with the demo profile, or with the line missing or empty, no view is opened and the page keeps its `no_data` gap. `ot serve` has no `macro_page` route and is unchanged.
 - v7: `ot page --name report_page --market us|jp --slot open|close` and the site route `/report?market=&slot=` build the `report_page` page from stored readings read as `ot_ro_pages` (`OT_PG_DSN_PAGES`) through one reader opened once per process; the demo profile opens no store; `ot serve` still has no `--name`.
 - v6: `ot run-once`, `ot backfill` and `ot scheduler` build five jobs, the fifth `calendar_refresh` (`clock.SessionSource` from `calendarcli.New`, the command `uv run --no-sync --project pyside python -m optdesk.calendar`, each changed day logged as `calendar change`), and need the line `OT_PG_DSN_LOADER` too; the process that runs jobs holds the DSN of `ot_loader`.
 - v5: `ot run-once`, `ot backfill` and `ot scheduler` wire the jobs through `compute_figures`, the fourth, and need the lines `OT_PG_DSN_PAGES` and `OT_PG_DSN_READINGS` too.

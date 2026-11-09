@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock/realclock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/alertrules"
+	"github.com/andrewrong/optdesk/internal/compute/ease"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/own"
@@ -83,17 +84,18 @@ type deps struct {
 	alertRules              compute.DefaultAlertRulesFunc
 	evaluateAlerts          compute.EvaluateAlertsFunc
 	riskBlock               riskBlockFunc
-	newComputeFigures       jobs.NewComputeFiguresFunc
+	newComputeFigures       jobs.NewComputeFiguresEaseFunc
 	computeFigures          compute.Figures
 	computeRules            compute.Rules
 	computeUnits            compute.Units
 	computeSeriesOps        compute.SeriesOps
+	computeEase             compute.Ease
 	pageList                []pages.Page
 	newHandler              pages.NewHandlerFunc
 	migrateUp               func(ctx context.Context, adminDSN string, fsys fs.FS) error
 	ownerDSN                func(adminDSN string) (string, error)
 	readEnv                 store.ReadEnvFunc
-	macroPage               func(zone *time.Location, buildID string) pages.Page
+	macroPage               func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
@@ -154,11 +156,12 @@ func newDeps() deps {
 		alertRules:              alertrules.DefaultRules,
 		evaluateAlerts:          alertrules.Evaluate,
 		riskBlock:               newRiskBlock,
-		newComputeFigures:       computefigures.New,
+		newComputeFigures:       computefigures.NewWithEase,
 		computeFigures:          figures.New(stats, own.NewRolling(stats), sops, rl),
 		computeRules:            rl,
 		computeUnits:            own.NewUnits(),
 		computeSeriesOps:        sops,
+		computeEase:             ease.New(rl),
 		pageList:                []pages.Page{macro_rates.Page()},
 		newHandler:              embed.Handler,
 		migrateUp:               setup.MigrateUp,
@@ -181,12 +184,13 @@ func newDeps() deps {
 }
 
 // newMacroPage builds the page macro_page in zone; the run id is a label inside the page JSON only.
-func newMacroPage(zone *time.Location, buildID string) pages.Page {
+func newMacroPage(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page {
 	cfg := macro_page.Config{
 		RunID:   "ot-page",
 		BuildID: buildID,
 		Scope:   "macro",
 		Zone:    zone,
+		Read:    read,
 		Indicators: []macro_page.Indicator{
 			// single source moves to the job manifest in a later design
 			{SeriesID: "DGS10", Name: "10年期美债收益率", SourceText: "FRED"},

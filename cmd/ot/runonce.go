@@ -182,7 +182,7 @@ func describeDay(d *contracts.SessionDay) string {
 }
 
 func (f jobFactory) computeFigures() (contracts.Job, error) {
-	j, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.clk)
+	j, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.d.computeEase, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build compute_figures job failed")
 	}
