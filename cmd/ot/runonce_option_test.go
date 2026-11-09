@@ -330,6 +330,9 @@ func newRig(t *testing.T, env string) *rig {
 		r.eodRes, r.eodW = res, w
 		return brokerJob{Job: namedJob{id: "option_eod"}, b: b}, r.fail["eodjob"]
 	}
+	d.newOptionEodJP = func(b broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter, _ clock.Clock) (contracts.Job, error) {
+		return brokerJob{Job: namedJob{id: "option_eod_jp"}, b: b}, r.fail["eodjpjob"]
+	}
 	d.newQuoteSnapshot = func(b broker.Broker, res store.InstrumentResolver, w store.QuoteSnapshotWriter, _ clock.Clock) (contracts.Job, error) {
 		r.snapRes, r.snapW = res, w
 		return brokerJob{Job: namedJob{id: "quote_snapshot"}, b: b}, r.fail["snapjob"]

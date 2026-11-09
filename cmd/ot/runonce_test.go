@@ -176,6 +176,9 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newOptionEod: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
+		newOptionEodJP: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+			return fakeJob{}, nil
+		},
 		newQuoteSnapshot: func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
