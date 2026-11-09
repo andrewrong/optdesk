@@ -45,6 +45,8 @@ components:
     in: internal/store
   store/alert:
     in: internal/store/alert
+  store/bar:
+    in: internal/store/bar
   store/candidate:
     in: internal/store/candidate
   store/events:
@@ -229,60 +231,76 @@ deps:
       - contracts
       - gaphistory
       - store
+      - store/bar
+      - contracts/genpb
+  store/bar:
+    mayDependOn:
+      - contracts
+      - gaphistory
+      - store
       - contracts/genpb
   store/candidate:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/events:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/instrument:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/ops:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/reading:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/series:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/sessionday:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/setup:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   store/snapshot:
     mayDependOn:
       - contracts
       - gaphistory
       - store
+      - store/bar
       - contracts/genpb
   compute:
     mayDependOn:
@@ -342,11 +360,13 @@ deps:
       - contracts
       - clock
       - store
+      - store/bar
   runner/reconcile:
     mayDependOn:
       - contracts
       - clock
       - store
+      - store/bar
       - runner
       - contracts/genpb
   runner/sched:
@@ -354,6 +374,7 @@ deps:
       - contracts
       - clock
       - store
+      - store/bar
       - runner
       - contracts/genpb
   jobs:
@@ -364,6 +385,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
   jobs/calendarrefresh:
     mayDependOn:
       - contracts
@@ -372,6 +394,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -383,6 +406,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -394,6 +418,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -405,6 +430,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -416,6 +442,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -427,6 +454,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -438,6 +466,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -449,6 +478,7 @@ deps:
       - broker
       - store
       - compute
+      - store/bar
       - jobs
       - contracts/genpb
       - compute/contracttest
@@ -458,12 +488,14 @@ deps:
       - store
       - compute
       - gaphistory
+      - store/bar
   notify/core:
     mayDependOn:
       - contracts
       - store
       - compute
       - gaphistory
+      - store/bar
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -473,6 +505,7 @@ deps:
       - store
       - compute
       - gaphistory
+      - store/bar
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -482,6 +515,7 @@ deps:
       - store
       - compute
       - gaphistory
+      - store/bar
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -490,11 +524,13 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
   pages/embed:
     mayDependOn:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -503,6 +539,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -511,6 +548,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -519,6 +557,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -527,6 +566,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -535,6 +575,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -543,6 +584,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -551,6 +593,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -559,6 +602,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -567,6 +611,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -635,6 +680,7 @@ deps:
       - sources/jquants
       - jobs/earningsrefresh
       - store/events
+      - store/bar
   compute/contracttest:
     mayDependOn:
       - contracts
@@ -651,6 +697,7 @@ deps:
       - store
       - compute
       - gaphistory
+      - store/bar
       - notify
       - contracts/genpb
       - compute/contracttest
@@ -659,6 +706,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -667,6 +715,7 @@ deps:
       - contracts
       - store
       - compute
+      - store/bar
       - pages
       - contracts/genpb
       - compute/contracttest
@@ -676,9 +725,11 @@ deps:
       - gaphistory
       - store
       - contracts/genpb
+      - store/bar
   store/migrate:
     mayDependOn:
       - contracts
       - gaphistory
       - store
       - contracts/genpb
+      - store/bar

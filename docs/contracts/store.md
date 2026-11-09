@@ -12,6 +12,8 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 
 `internal/store/reading` holds the Reader and the Writer of stored figure values, `readings.reading` r1 (with the children `reading_input`, `reading_input_key` and `reading_parameter`). `reading.Open` returns a `store.ReadingStore` (`InsertReadings`, `LatestReadings`, `Close`) from the line `store.DSNEnvReadings` (`OT_PG_DSN_READINGS`) of the role `ot_w_readings`.
 
+`internal/store/bar` declares, in `api.go` only (no implementation in the package), the store of two append-only datasets: `obs.price_bar r1` (daily bars, `trades` and `adjusted_last`) and `obs.fx_rate r1` (the daily USD.JPY rate). `bar.BarStore` is `PriceBarWriter`, `PriceBarReader`, `FxRateWriter`, `FxRateReader` and `Close`; `bar.OpenBarFunc` opens it from the line `bar.DSNEnvBar` (`OT_PG_DSN_BAR`) of the role `ot_w_bar`. The implementation is `internal/store/barpg`.
+
 ## Inputs
 
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.
@@ -37,10 +39,12 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 - `OptionEodLatest` returns one entry per `underlying_id` with a row of `session_day` on or after `since`, ordered by `UnderlyingID`, with the greatest `session_day` of it; no row gives an empty list; a `since` that is neither empty nor `YYYY-MM-DD` is `Permanent`.
 - `InstrumentNames` (`store.InstrumentNameReader`) returns the `InstrumentID`, `Type` and `Name` of each id from the view `rd.instrument_r1` (columns `instrument_id`, `instrument_type`, `name`, `currency`; owner `ot_owner`; `SELECT` granted to `ot_ro_pages` only, nothing in schema `master`; migration `0010`), ordered by `InstrumentID`; an unknown id is absent; an empty list gives an empty answer and no database call; more than 500 ids and an id of 0 are `Permanent`. `instrument.OpenInstrumentNames` takes the line `store.DSNEnvPages`; it is a stub until its own entry fills it.
 - `LatestReadings` returns the newest rev of each day with `day` between the two days, both ends inclusive, for one `name`, `subject_kind` and `subject`, in any state, ascending by day; no rows gives an empty slice. `InsertReadings` returns the number of readings inserted; a key that exists adds none.
+- `PriceBars` returns the winner rows: for each day the row of the highest epoch (`AdjustEpoch`) of the instrument and basis, ascending by day, both ends inclusive; no rows gives an empty slice. `FxRates` returns the rates in the range ascending by day. `LatestFxRate` returns the rate of the newest day on or before `asOf`; when none exists it answers not found (`found` false, no error): there is no fallback to a default or a later day.
 - Errors are `contracts.TypedError`: `Retryable` when the database fails, `Permanent` for a malformed day.
 
 ## Invariants
 
+- `obs.price_bar` and `obs.fx_rate` are insert-only: `InsertPriceBars` and `InsertFxRates` are one transaction per call, a key that exists is left as it is, and a restated day is a new row under the next epoch.
 - `UpsertSessionDays` is `ON CONFLICT (calendar_id, session_day) DO UPDATE`, runs in one transaction (all rows or none), and does nothing for an empty input.
 - The caller's context is passed to every database call.
 - The SQL names the six columns of the table and never uses `SELECT *`.
