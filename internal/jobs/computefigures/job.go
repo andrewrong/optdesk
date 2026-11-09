@@ -223,19 +223,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			market = append(market, target{rule: rule, subj: subject{kind: kind, name: subj}, spec: spec})
 		case known && kind == kindUnderlying:
 			if under == nil {
-				subs, dropped, err := listSubjects(ctx, j.stores, day)
-				if dropped > 0 {
-					slog.Info("computefigures: underlyings dropped for having only later rows", "day", string(day), "count", dropped)
-				}
-				if err != nil {
-					r.fail(contracts.Retryable, err)
-					under = map[string]subject{}
-				} else {
-					under = map[string]subject{}
-					for _, s := range subs {
-						under[s.name] = s
-					}
-				}
+				under = r.underlyings()
 			}
 			s, found := under[subj]
 			if !found {
@@ -266,6 +254,23 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		res.Err = r.firstErr
 	}
 	return res
+}
+
+// underlyings lists the subjects of the as-of day by name; a failed listing is a retryable failure and an empty map.
+func (r *runState) underlyings() map[string]subject {
+	subs, dropped, err := listSubjects(r.ctx, r.j.stores, r.day)
+	if dropped > 0 {
+		slog.Info("computefigures: underlyings dropped for having only later rows", "day", string(r.day), "count", dropped)
+	}
+	under := map[string]subject{}
+	if err != nil {
+		r.fail(contracts.Retryable, err)
+		return under
+	}
+	for _, s := range subs {
+		under[s.name] = s
+	}
+	return under
 }
 
 func (j *job) marketSpec(id, series string) (marketSpec, bool) {

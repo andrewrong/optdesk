@@ -96,6 +96,22 @@ func hasParam(r contracts.ReadingRecord, name string) bool {
 	return false
 }
 
+func checkPartParams(t *testing.T, r contracts.ReadingRecord, p compute.EasePart) {
+	t.Helper()
+	if tagOf(r, p.Input+".data_day") != string(p.DataDay) {
+		t.Fatalf("%s.data_day %q", p.Input, tagOf(r, p.Input+".data_day"))
+	}
+	if v, ok := numOf(r, p.Input+".figure"); !ok || v != p.Figure {
+		t.Fatalf("%s.figure %v %v", p.Input, v, ok)
+	}
+	if v, ok := numOf(r, p.Input+".score"); !ok || v != p.Score {
+		t.Fatalf("%s.score %v %v", p.Input, v, ok)
+	}
+	if hasParam(r, p.Input+".reason") {
+		t.Fatalf("%s has a reason though present", p.Input)
+	}
+}
+
 func TestEaseStoresOkReading(t *testing.T) {
 	t.Parallel()
 	f := world()
@@ -116,18 +132,7 @@ func TestEaseStoresOkReading(t *testing.T) {
 		t.Fatalf("band %q", tagOf(r, "band"))
 	}
 	for _, p := range okParts() {
-		if tagOf(r, p.Input+".data_day") != string(p.DataDay) {
-			t.Fatalf("%s.data_day %q", p.Input, tagOf(r, p.Input+".data_day"))
-		}
-		if v, ok := numOf(r, p.Input+".figure"); !ok || v != p.Figure {
-			t.Fatalf("%s.figure %v %v", p.Input, v, ok)
-		}
-		if v, ok := numOf(r, p.Input+".score"); !ok || v != p.Score {
-			t.Fatalf("%s.score %v %v", p.Input, v, ok)
-		}
-		if hasParam(r, p.Input+".reason") {
-			t.Fatalf("%s has a reason though present", p.Input)
-		}
+		checkPartParams(t, r, p)
 	}
 	if len(r.Inputs) != 1 || r.Inputs[0].InputTable != "obs.series_point" ||
 		!reflect.DeepEqual(r.Inputs[0].Keys, easeSeriesIDs) {
