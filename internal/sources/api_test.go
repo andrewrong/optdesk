@@ -53,3 +53,15 @@ func TestEarningsSourceContract(t *testing.T) {
 		t.Fatalf("got %+v err %v", got, err)
 	}
 }
+
+func TestNewJQuantsFuncContract(t *testing.T) {
+	t.Parallel()
+	newSource := sources.NewJQuantsFunc(func(sources.EarningsConfig) (sources.EarningsSource, error) { return fakeEarnings{}, nil })
+	src, err := newSource(sources.EarningsConfig{BaseURL: "http://unused.invalid", APIKey: "k", Symbols: []string{"7203"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := src.Fetch(context.Background()); err != nil || len(got) != 1 {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+}

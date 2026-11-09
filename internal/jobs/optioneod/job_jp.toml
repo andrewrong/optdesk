@@ -1,0 +1,41 @@
+# Manifest of the option_eod_jp job: the Nikkei 225 index options of OSE.JPN, monthly class 225 only.
+version = 1
+id = "option_eod_jp"
+zone = "Asia/Tokyo"
+trading_class = "225"
+ledger_dataset = "obs.option_eod_jp"
+# A run at or after 17:00 JST never writes night-session quotes.
+stop_after = "1700"
+max_expiries = 3
+strike_band = 0.10
+max_strikes_per_side = 8
+chunk = 50
+budget_minutes = 8
+freeze_after = "1550"
+# Minimum tick in JPY; the tick table (1 yen under 100, 5 yen from 100) is not recorded.
+option_price_increment = "1"
+
+[window]
+rule = "after_close"
+lateness_hours = 2
+calendar = "XTKS"
+
+[[underlying]]
+symbol = "N225"
+sec_type = "IND"
+exchange = "OSE.JPN"
+currency = "JPY"
+con_id = 14087999
+mic = "XOSE"
+calendar_id = "XTKS"
+price_increment = "1"
+lot_size = "1000"
+
+# Slot: 15:50 JST, five minutes after the closing auction of the day session.
+[schedule]
+calendar = "XTKS"
+anchor = "time"
+zone = "Asia/Tokyo"
+offset = "15h50m"
+run_bound = "16m"
+restart_sensitive = true

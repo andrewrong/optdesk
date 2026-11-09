@@ -3,7 +3,6 @@ package option_candidates_page
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -26,9 +25,4 @@ func NewPage(c Config) pages.Page {
 			return Build(ctx, c, r, day, at)
 		},
 	}
-}
-
-// Build is the pages.Builder shape; r is unused and at is generated_at in UTC. It is not built yet.
-func Build(_ context.Context, _ Config, _ store.SeriesReader, _ contracts.Day, _ time.Time) ([]byte, error) {
-	return nil, errors.New("option_candidates_page: not built")
 }

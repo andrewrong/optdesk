@@ -21,6 +21,7 @@ const (
 	defaultBand        = 0.10
 	defaultPerSide     = 8
 	defaultChunk       = 50
+	defaultMaxStrikes  = 24
 	defaultBudget      = 8
 )
 
@@ -51,13 +52,24 @@ type manifest struct {
 	MaxExpiries          int           `toml:"max_expiries"`
 	StrikeBand           float64       `toml:"strike_band"`
 	MaxStrikesPerSide    int           `toml:"max_strikes_per_side"`
+	MinDTE               int           `toml:"min_dte"`
+	MaxDTE               int           `toml:"max_dte"`
+	MaxStrikes           int           `toml:"max_strikes"`
 	Chunk                int           `toml:"chunk"`
 	BudgetMinutes        int           `toml:"budget_minutes"`
 	FreezeAfter          string        `toml:"freeze_after"`
 	OptionPriceIncrement string        `toml:"option_price_increment"`
-	Underlying           []underlying  `toml:"underlying"`
+	// TradingClass, when set, makes the chain choice take the chain of that trading class on the underlying's exchange.
+	TradingClass string `toml:"trading_class"`
+	// LedgerDataset is the dataset id of the plan keys; default obs.option_eod.
+	LedgerDataset string `toml:"ledger_dataset"`
+	// StopAfter (HHMM in the zone) makes a run at or after that local time return NoValue; unset when empty.
+	StopAfter  string       `toml:"stop_after"`
+	Underlying []underlying `toml:"underlying"`
 
 	sched schedule
+	// buy maps a symbol to the BuyPrice text of its watch entry; empty for a manifest without a watch list.
+	buy map[string]string
 }
 
 // parseManifest decodes data and gives every missing optional key its default.
@@ -108,6 +120,9 @@ func (m *manifest) applyDefaults() {
 	if m.BudgetMinutes == 0 {
 		m.BudgetMinutes = defaultBudget
 	}
+	if m.LedgerDataset == "" {
+		m.LedgerDataset = datasetID
+	}
 	if m.FreezeAfter == "" {
 		m.FreezeAfter = defaultFreezeAfter
 	}
@@ -120,11 +135,19 @@ func (m manifest) validate() error {
 	if m.MaxExpiries < 0 || m.MaxStrikesPerSide < 0 || m.Chunk < 0 || m.BudgetMinutes < 0 || m.StrikeBand < 0 {
 		return fmt.Errorf("optioneod: manifest: counts and the band must not be negative")
 	}
+	if m.MinDTE < 0 || m.MaxDTE < 0 || m.MaxStrikes < 0 || (m.MaxDTE > 0 && m.MinDTE > m.MaxDTE) {
+		return fmt.Errorf("optioneod: manifest: min_dte, max_dte and max_strikes must not be negative and min_dte must not exceed max_dte")
+	}
 	if _, err := time.LoadLocation(m.Zone); err != nil {
 		return fmt.Errorf("optioneod: manifest: zone is unknown")
 	}
 	if _, err := parseHHMM(m.FreezeAfter); err != nil {
 		return fmt.Errorf("optioneod: manifest: freeze_after must be HHMM")
+	}
+	if m.StopAfter != "" {
+		if _, err := parseHHMM(m.StopAfter); err != nil {
+			return fmt.Errorf("optioneod: manifest: stop_after must be HHMM")
+		}
 	}
 	for _, u := range m.Underlying {
 		if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
@@ -151,8 +174,23 @@ func (m manifest) canonical() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d|%s|%s|%s|%d|%s|%d|%g|%d|%d|%d|%s|%s", m.Version, m.ID, m.Zone, m.Window.Rule, *m.Window.LatenessHours,
 		m.Window.Calendar, m.MaxExpiries, m.StrikeBand, m.MaxStrikesPerSide, m.Chunk, m.BudgetMinutes, m.FreezeAfter, m.OptionPriceIncrement)
+	if m.MinDTE != 0 || m.MaxDTE != 0 || m.MaxStrikes != 0 {
+		fmt.Fprintf(&b, "|dte%d-%d|%d", m.MinDTE, m.MaxDTE, m.MaxStrikes)
+	}
+	if m.TradingClass != "" {
+		fmt.Fprintf(&b, "|class%s", m.TradingClass)
+	}
+	if m.LedgerDataset != datasetID {
+		fmt.Fprintf(&b, "|ledger%s", m.LedgerDataset)
+	}
+	if m.StopAfter != "" {
+		fmt.Fprintf(&b, "|stop%s", m.StopAfter)
+	}
 	for _, u := range m.Underlying {
 		fmt.Fprintf(&b, "\n%+v", u)
+		if bp := m.buy[u.Symbol]; bp != "" {
+			fmt.Fprintf(&b, "|buy%s", bp)
+		}
 	}
 	return b.String()
 }

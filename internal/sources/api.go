@@ -151,3 +151,7 @@ type CodedError interface {
 	contracts.TypedError
 	ErrorCode() string
 }
+
+// NewJQuantsFunc is the constructor of the J-Quants earnings source (internal/sources/jquants.New). It
+// reads EarningsConfig.Symbols (4-digit JP codes) and makes one call per symbol per Fetch.
+type NewJQuantsFunc func(EarningsConfig) (EarningsSource, error)
