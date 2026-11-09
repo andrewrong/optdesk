@@ -239,6 +239,8 @@ const (
 	DSNEnvFundamental = "OT_PG_DSN_FUNDAMENTAL"
 	// DSNEnvCandidate names the line that holds the DSN of the role ot_w_candidate.
 	DSNEnvCandidate = "OT_PG_DSN_CANDIDATE"
+	// DSNEnvOptionLedger names the line that holds the DSN of the role ot_w_optionledger.
+	DSNEnvOptionLedger = "OT_PG_DSN_OPTION_LEDGER"
 	// AdminDSNEnv names the process environment variable that carries SetupConfig.AdminDSN;
 	// it is read from the process environment only, never from .env and never from a flag.
 	AdminDSNEnv = "OT_PG_ADMIN_DSN"
@@ -576,3 +578,95 @@ type CandidateReader interface {
 	// empty slice, never nil. A zero day or an unknown kind is an error.
 	Candidates(ctx context.Context, day contracts.Day, kind string) ([]Candidate, error)
 }
+
+// FlexTradeRow is one stored <Trade> row of schema optionledger (design docs/design/option-ledger.md,
+// Decision 5) as plain text: Attributes is the JSON object text of every attribute as sent, without accountId
+// and acctAlias, and AttributesSHA256 the lower-case hex hash of it. The key is (Alias, LevelOfDetail,
+// TransactionID, Revision); Alias is the only identity and no account number is held. Source is flex or
+// ot_import. Revision and RecordedAt are set by the store on RecordFlexFetch and read back by the reader.
+type FlexTradeRow struct {
+	Alias            string
+	LevelOfDetail    string
+	TransactionID    string
+	Revision         int
+	Attributes       string
+	AttributesSHA256 string
+	Source           string
+	RecordedAt       time.Time
+}
+
+// FlexFetchRecord is the record of one request pair of one report (Decision 5): the login name and query id,
+// the first and last day asked, the start and finish times, the status (ok or a failure), the error kind and
+// code (empty when ok), the hash of the raw report, the parser version and the counts. No token, account
+// number or row content is held.
+type FlexFetchRecord struct {
+	Login             string
+	QueryID           string
+	FirstDay          contracts.Day
+	LastDay           contracts.Day
+	StartedAt         time.Time
+	FinishedAt        time.Time
+	Status            string
+	ErrorKind         string
+	ErrorCode         string
+	RawSHA256         string
+	ParserVersion     string
+	Statements        int
+	UnmappedStatement int
+	RowsParsed        int
+	RowsNew           int
+	RowsRevised       int
+	RowsUnchanged     int
+}
+
+// FlexInsert counts what RecordFlexFetch did with the rows of one report.
+type FlexInsert struct {
+	New, Revised, Unchanged int
+}
+
+// FlexImportResult counts what ImportFlexTradeRows did with the rows given.
+type FlexImportResult struct {
+	Inserted, Same, Conflict int
+}
+
+// OptionLedgerWriter appends to schema optionledger (role ot_w_optionledger, line DSNEnvOptionLedger):
+// insert-only, nothing is updated or deleted.
+type OptionLedgerWriter interface {
+	// RecordFlexFetch writes the fetch record and its rows in one transaction, so a failure leaves neither.
+	// The revision rule of Decision 5 is applied per row on the key (Alias, LevelOfDetail, TransactionID):
+	// a new key is written as revision 1 (New), a row whose AttributesSHA256 equals that of the highest stored
+	// revision is not written (Unchanged), a changed hash is written as the next revision (Revised). The
+	// Revision of a row given is ignored. A row whose Attributes hold the key accountId or acctAlias is an error
+	// and nothing is written. No rows still writes the record.
+	RecordFlexFetch(ctx context.Context, rec FlexFetchRecord, rows []FlexTradeRow) (FlexInsert, error)
+	// ImportFlexTradeRows writes imported rows (Source ot_import, Revision as given) in one transaction under
+	// Decision 6: a row is inserted only when its key (Alias, LevelOfDetail, TransactionID, Revision) is absent
+	// and no stored row of that transaction has the same AttributesSHA256; a row whose hash equals a stored one
+	// is Same and not written; a key that exists with another hash is a Conflict, counted and not written.
+	// No rows makes no database call.
+	ImportFlexTradeRows(ctx context.Context, rows []FlexTradeRow) (FlexImportResult, error)
+}
+
+// OptionLedgerReader reads schema optionledger through the views rd.flex_trade_row_r1 and rd.flex_fetch_r1.
+type OptionLedgerReader interface {
+	// FlexTradeRows returns the highest revision of every transaction of the alias, sorted by TransactionID;
+	// an alias with no rows gives an empty slice, never nil.
+	FlexTradeRows(ctx context.Context, alias string) ([]FlexTradeRow, error)
+	// LatestOkFetch returns the record of the newest fetch of the login and query id whose Status is ok, and
+	// true; false when there is none.
+	LatestOkFetch(ctx context.Context, login, queryID string) (FlexFetchRecord, bool, error)
+	// StoredAliases returns every alias that has a stored row, ascending, each once; none gives an empty slice.
+	StoredAliases(ctx context.Context) ([]string, error)
+}
+
+// OptionLedgerStore is one store for both sides: the job opens it with the line DSNEnvOptionLedger (role
+// ot_w_optionledger, INSERT and SELECT), a page with DSNEnvPages for the reader only.
+type OptionLedgerStore interface {
+	OptionLedgerWriter
+	OptionLedgerReader
+	// Close releases the connection.
+	Close() error
+}
+
+// OpenOptionLedgerFunc opens the option ledger store (internal/store/optionledger.Open).
+type OpenOptionLedgerFunc func(ctx context.Context, dsn string) (OptionLedgerStore, error)
