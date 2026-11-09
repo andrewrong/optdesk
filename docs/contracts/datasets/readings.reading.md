@@ -17,7 +17,7 @@ readings.reading r1: one stored figure value of one subject on one day, with the
 | currency | string | no | Currency code when the unit is money, empty otherwise. |
 | state | enum(ok, missing_input) | no | ok: the value was computed; missing_input: an input was missing and the value is null. |
 | reason_code | integer | yes | Why the reading is missing, 1 to 5 (3 is stale_input); null when the state is ok. |
-| origin | enum(compute_figures) | no | Job that wrote the reading. |
+| origin | enum(compute_figures, owner_command) | no | Writer of the reading: the job compute_figures, or the owner command owner_command (the band approval of ot approve-band). |
 | cutoff | string | no | Cutoff of the inputs; the text session_close. |
 | job_run_id | string (uuid) | no | Deterministic identifier of the run that wrote the reading, a uuid. |
 | recorded_at | string (date-time) | no | Instant the reading was recorded, UTC. |
