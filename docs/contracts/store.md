@@ -14,6 +14,8 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 
 `internal/store/bar` declares, in `api.go` only (no implementation in the package), the store of two append-only datasets: `obs.price_bar r1` (daily bars, `trades` and `adjusted_last`) and `obs.fx_rate r1` (the daily USD.JPY rate). `bar.BarStore` is `PriceBarWriter`, `PriceBarReader`, `FxRateWriter`, `FxRateReader` and `Close`; `bar.OpenBarFunc` opens it from the line `bar.DSNEnvBar` (`OT_PG_DSN_BAR`) of the role `ot_w_bar`. The implementation is `internal/store/barpg`.
 
+`internal/store/mark` declares, in `api.go` only, the store of position marks, `account.position_mark r1` (insert-only, one row per position of a capture, key `(capture_id, con_id, attempt)`). `mark.Writer.WriteMarks` writes the rows in one transaction and leaves a row whose key exists as it is (a correction is a row with a higher `Attempt`); `mark.Reader.Marks(alias, day)` returns the rows of the newest capture of that day that has marks, the highest `Attempt` of each `ConID`, sorted by `ConID`, an empty slice when none. `mark.Store` is both with `Close`; `mark.OpenFunc` opens it from the line `mark.DSNEnvPositionMark` (`OT_PG_DSN_POSMARK`) of the role `ot_w_posmark`. The implementation is `internal/store/markpg`.
+
 ## Inputs
 
 - `master.session_day r1` rows (`contracts.SessionDay`: `calendar_id`, `session_day`, `is_session`, `open_at`, `close_at`, `early_close`) to `UpsertSessionDays`.

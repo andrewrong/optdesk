@@ -453,3 +453,41 @@ func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
 		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
 	}
 }
+
+// markFixture is a modules table whose store row lists internal/store/mark, the
+// declarations-only package of the position marks.
+const markFixture = "# Fixture\n\n## Modules\n\n" +
+	"| module | paths | entry | tests | depends |\n" +
+	"| --- | --- | --- | --- | --- |\n" +
+	"| contracts | internal/contracts/** | internal/contracts/api.go | internal/contracts/api_test.go | |\n" +
+	"| store | internal/store/** | internal/store/api.go internal/store/mark | internal/store/api_test.go | contracts |\n" +
+	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts store |\n\n" +
+	"The composition root imports one constructor each: `internal/store/markpg`. Any other import is refused.\n"
+
+func TestRootAndSubPackageImportStoreMark(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, map[string]string{
+		"internal/contracts/c.go":    "package contracts\n",
+		"internal/store/mark/a.go":   "package mark\n",
+		"internal/store/markpg/s.go": "package markpg\n",
+		"internal/store/s.go":        "package store\n",
+		"internal/jobs/j.go":         "package jobs\n",
+	})
+	toml, yml, err := generate(markFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"jobs", "store/markpg"} {
+		if b := mayImport(t, string(toml), name); !strings.Contains(b, `"store/mark"`) {
+			t.Fatalf("%s lacks store/mark in arch.toml:\n%s", name, b)
+		}
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, jobs, _ := strings.Cut(deps, "  jobs:\n")
+	if !hasDep(nextKey.Split(jobs, 2)[0], "store/mark") {
+		t.Fatalf("the root jobs lacks store/mark in the lint file:\n%s", yml)
+	}
+	if b := mayImport(t, string(toml), "store"); strings.Contains(b, "store/mark") {
+		t.Fatalf("the root store imports its own declarations package:\n%s", b)
+	}
+}
