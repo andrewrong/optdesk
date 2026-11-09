@@ -146,55 +146,55 @@ may_import = ["contracts"]
 
 [component."compute/alertrules"]
 in = "internal/compute/alertrules"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/ease"]
 in = "internal/compute/ease"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/figures"]
 in = "internal/compute/figures"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/gonumstats"]
 in = "internal/compute/gonumstats"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/optioncand"]
 in = "internal/compute/optioncand"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/optionledger"]
 in = "internal/compute/optionledger"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/optionnotice"]
 in = "internal/compute/optionnotice"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/optionresult"]
 in = "internal/compute/optionresult"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/optionstruct"]
 in = "internal/compute/optionstruct"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/optiontrack"]
 in = "internal/compute/optiontrack"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/own"]
 in = "internal/compute/own"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/pagefig"]
 in = "internal/compute/pagefig"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/rules"]
 in = "internal/compute/rules"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."compute/settingsapi"]
 in = "internal/compute/settingsapi"
@@ -202,7 +202,7 @@ may_import = ["contracts", "compute"]
 
 [component."compute/talibind"]
 in = "internal/compute/talibind"
-may_import = ["contracts", "compute"]
+may_import = ["contracts", "compute", "compute/settingsapi"]
 
 [component."runner"]
 in = "internal/runner"
@@ -218,143 +218,143 @@ may_import = ["contracts", "clock", "store", "store/bar", "store/ownerset", "run
 
 [component."jobs"]
 in = "internal/jobs"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi"]
 
 [component."jobs/accountcapture"]
 in = "internal/jobs/accountcapture"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/barsrefresh"]
 in = "internal/jobs/barsrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/calendarrefresh"]
 in = "internal/jobs/calendarrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/computefigures"]
 in = "internal/jobs/computefigures"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/cutover"]
 in = "internal/jobs/cutover"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/earningsrefresh"]
 in = "internal/jobs/earningsrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/fredseries"]
 in = "internal/jobs/fredseries"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/fxrefresh"]
 in = "internal/jobs/fxrefresh"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/optioncandidates"]
 in = "internal/jobs/optioncandidates"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/optioneod"]
 in = "internal/jobs/optioneod"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/optionledger"]
 in = "internal/jobs/optionledger"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/positionmarks"]
 in = "internal/jobs/positionmarks"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/quotesnapshot"]
 in = "internal/jobs/quotesnapshot"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."jobs/serieshistory"]
 in = "internal/jobs/serieshistory"
-may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "jobs"]
+may_import = ["contracts", "clock", "sources", "broker", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "jobs"]
 
 [component."notify"]
 in = "internal/notify"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/settingsapi"]
 
 [component."notify/core"]
 in = "internal/notify/core"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/settingsapi", "notify"]
 
 [component."notify/dryrun"]
 in = "internal/notify/dryrun"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/settingsapi", "notify"]
 
 [component."notify/telegram"]
 in = "internal/notify/telegram"
-may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "notify"]
+may_import = ["contracts", "store", "compute", "gaphistory", "store/bar", "store/ownerset", "compute/settingsapi", "notify"]
 
 [component."pages"]
 in = "internal/pages"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi"]
 
 [component."pages/candidate_text"]
 in = "internal/pages/candidate_text"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/embed"]
 in = "internal/pages/embed"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/household_page"]
 in = "internal/pages/household_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/macro_page"]
 in = "internal/pages/macro_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/macro_rates"]
 in = "internal/pages/macro_rates"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/market_page"]
 in = "internal/pages/market_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/option_candidates_page"]
 in = "internal/pages/option_candidates_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/option_data_page"]
 in = "internal/pages/option_data_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/option_notices_page"]
 in = "internal/pages/option_notices_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/option_result_page"]
 in = "internal/pages/option_result_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/option_tracking_page"]
 in = "internal/pages/option_tracking_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/report_blocks"]
 in = "internal/pages/report_blocks"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/report_page"]
 in = "internal/pages/report_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/risks_block"]
 in = "internal/pages/risks_block"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."pages/structures_page"]
 in = "internal/pages/structures_page"
-may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "pages"]
+may_import = ["contracts", "store", "compute", "store/bar", "store/ownerset", "compute/settingsapi", "pages"]
 
 [component."profile"]
 in = "internal/profile"

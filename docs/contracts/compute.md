@@ -84,6 +84,12 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Plain values and decimal text only; no float. Severities are `info`, `warn`, `act`. Pure: no I/O, no clock.
 
+## Rule parameters and settings form
+
+`RuleParamSpec`, `RuleParams`, `NewRuleParamsFunc`, `FormToken`, `FormRequest`, `FormField`, `FormState`, `FormChange`, `SettingsForm` and `NewSettingsFormFunc` are declared in the package `internal/compute/settingsapi` (declarations only, imports `time` only), not in `internal/compute/api.go`. `RuleParams` is the registry of the twelve owner parameters; `SettingsForm` issues the form token, guards a POST and parses a posted form. Design: `docs/design/settings-form.md#Interface`.
+
+- Text only; no float. Pure: the clock is passed in.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -93,8 +99,10 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v5: additions only: the ledger types and `OptionLedger` above.
 - v6: additions only: the option structure and result types, `OptionStructures`, `OptionResults` and the eight `LedgerPosition` terms above.
 - v7: additions only: the option notice types, `OptionNotices` and the two function types above.
+- v8: additions only: the package `internal/compute/settingsapi` above.
 
 ## Contract tests
 
 - `internal/compute/api_test.go` tests the contract from both sides: a fake of each interface and a caller through the interface only; `TestAlertContract` does so for `EvaluateAlertsFunc` and `LoadAlertRulesFunc`.
+- `internal/compute/settingsapi/api_test.go` tests `RuleParams` and `SettingsForm` from both sides: a fake of each and a caller that resolves a stored map and parses a posted form.
 - The golden suites per interface (`internal/compute/contracttest`) come with later issues.
