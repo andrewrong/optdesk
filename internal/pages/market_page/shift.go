@@ -11,16 +11,25 @@ var decimalText = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
 
 var errNotDecimal = errors.New("market_page: not a decimal text")
 
+// parseDecimal reads a plain decimal text exactly.
+func parseDecimal(text string) (*big.Rat, error) {
+	if !decimalText.MatchString(text) {
+		return nil, errNotDecimal
+	}
+	r, ok := new(big.Rat).SetString(text)
+	if !ok {
+		return nil, errNotDecimal
+	}
+	return r, nil
+}
+
 // shiftRound shifts the decimal text by shift places to the right, rounds it half to even
 // to decimals places and writes it as text with exactly decimals places. The arithmetic is
 // exact (math/big); a result of zero has no sign. It is the one place a library could replace.
 func shiftRound(text string, shift, decimals int) (string, error) {
-	if !decimalText.MatchString(text) {
-		return "", errNotDecimal
-	}
-	r, ok := new(big.Rat).SetString(text)
-	if !ok {
-		return "", errNotDecimal
+	r, err := parseDecimal(text)
+	if err != nil {
+		return "", err
 	}
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(shift+decimals)), nil)
 	r.Mul(r, new(big.Rat).SetInt(scale))
@@ -50,9 +59,6 @@ func shiftRound(text string, shift, decimals int) (string, error) {
 
 // inUnitRange reports whether text is a decimal from 0 to 1 inclusive.
 func inUnitRange(text string) bool {
-	if !decimalText.MatchString(text) {
-		return false
-	}
-	r, ok := new(big.Rat).SetString(text)
-	return ok && r.Sign() >= 0 && r.Cmp(big.NewRat(1, 1)) <= 0
+	r, err := parseDecimal(text)
+	return err == nil && r.Sign() >= 0 && r.Cmp(big.NewRat(1, 1)) <= 0
 }
