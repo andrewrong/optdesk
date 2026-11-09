@@ -3,7 +3,6 @@ package market_page
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -19,12 +18,12 @@ type Config struct {
 	Readings              compute.ReadingFunc // the method value WinnerReadings of the page-role reader; nil is an error of Build
 }
 
-// NewPage is the market_page page for c. Its Build is a stub until the builder lands.
+// NewPage is the market_page page for c.
 func NewPage(c Config) pages.Page {
 	return pages.Page{
 		Meta: pages.Meta{Name: "market_page", Schema: "page.market_page.v1"},
-		Build: func(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]byte, error) {
-			return nil, errors.New("market_page: not built")
+		Build: func(ctx context.Context, r store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+			return Build(ctx, c, r, day, at)
 		},
 	}
 }

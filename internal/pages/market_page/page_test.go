@@ -2,6 +2,7 @@ package market_page_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -21,6 +22,12 @@ func TestNewPageMeta(t *testing.T) {
 	}
 }
 
+type noSeries struct{}
+
+func (noSeries) SeriesPoints(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SeriesPoint, error) {
+	return nil, nil
+}
+
 func TestConfigContract(t *testing.T) {
 	t.Parallel()
 	var readings compute.ReadingFunc = func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
@@ -30,11 +37,12 @@ func TestConfigContract(t *testing.T) {
 		RunID: "r", BuildID: "b", Scope: "s",
 		Zone: time.UTC, Readings: readings,
 	})
-	out, err := p.Build(context.Background(), nil, contracts.Day("2026-01-02"), time.Time{})
-	if err == nil || err.Error() != "market_page: not built" {
-		t.Fatalf("err = %v", err)
+	out, err := p.Build(context.Background(), noSeries{}, contracts.Day("2026-01-02"), time.Time{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if out != nil {
-		t.Fatalf("out = %q", out)
+	var m map[string]any
+	if err := json.Unmarshal(out, &m); err != nil || m["schema"] != "market_page" || m["run_id"] != "r" {
+		t.Fatalf("out = %s, %v", out, err)
 	}
 }
