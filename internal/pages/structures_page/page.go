@@ -34,8 +34,10 @@ func notBuilt(context.Context, store.SeriesReader, contracts.Day, time.Time) ([]
 // NewListPage is the structures_list page of alias.
 func NewListPage(c Config, alias string) pages.Page {
 	return pages.Page{
-		Meta:  pages.Meta{Name: "structures_list", Schema: "page.structures_list.v1"},
-		Build: notBuilt,
+		Meta: pages.Meta{Name: "structures_list", Schema: "page.structures_list.v1"},
+		Build: func(ctx context.Context, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+			return buildList(ctx, c, alias, day, at)
+		},
 	}
 }
 

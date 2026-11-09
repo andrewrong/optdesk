@@ -82,3 +82,6 @@ type PriceBar = gen.PriceBar
 
 // FxRate is the record of dataset obs.fx_rate r1, generated from contracts/datasets.
 type FxRate = gen.FxRate
+
+// DividendExpectation is the record of dataset obs.dividend_expectation r1, generated from contracts/datasets.
+type DividendExpectation = gen.DividendExpectation
