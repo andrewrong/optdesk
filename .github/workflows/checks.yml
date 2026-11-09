@@ -67,12 +67,13 @@ jobs:
           if [ -z "$line" ]; then echo "body has no 'Contracts:' line"; exit 1; fi
           # Accepted: 'Contracts: unchanged', or one or more '<id> rN->rN+1',
           # '<id> rN (new)', '<id>.vN (new)', '<id> vN (new)' or
-          # '<id> vN amended before first consumer' entries, comma separated,
+          # '<id> vN amended before first consumer' or '<id> vN additive' entries
+          # (additive: only new rpcs, messages, fields or enum values), comma separated,
           # optionally followed by '; <note>' (docs/design/week1.md, version rule).
-          entry='[A-Za-z0-9_.-]+( r[0-9]+->r[0-9]+| [rv][0-9]+ \(new\)| \(new\)| v[0-9]+ amended before first consumer)'
+          entry='[A-Za-z0-9_.-]+( r[0-9]+->r[0-9]+| [rv][0-9]+ \(new\)| \(new\)| v[0-9]+ amended before first consumer| v[0-9]+ additive)'
           if [ "$line" != "Contracts: unchanged" ] && \
              ! printf '%s\n' "$line" | grep -qE "^Contracts: $entry(, $entry)*(; .+)?$"; then
-            echo "Contracts line must be 'Contracts: unchanged' or name each contract as '<id> rN->rN+1', '<id> rN (new)' or '<id> vN amended before first consumer'"; exit 1
+            echo "Contracts line must be 'Contracts: unchanged' or name each contract as '<id> rN->rN+1', '<id> rN (new)', '<id> vN amended before first consumer' or '<id> vN additive'"; exit 1
           fi
           # Only the files that define a contract revision count; fixtures, gendoc,
           # generate.sh and READMEs under contracts/ change no revision.
