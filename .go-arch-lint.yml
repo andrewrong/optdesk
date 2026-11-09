@@ -43,6 +43,8 @@ components:
     in: internal/gaphistory
   store:
     in: internal/store
+  store/account:
+    in: internal/store/account
   store/alert:
     in: internal/store/alert
   store/bar:
@@ -157,6 +159,8 @@ components:
     in: cmd/ot
   compute/contracttest:
     in: internal/compute/contracttest
+  compute/ruleparam:
+    in: internal/compute/ruleparam
   compute/sharpmove:
     in: internal/compute/sharpmove
   notify/notifytest:
@@ -238,6 +242,14 @@ deps:
     mayDependOn:
       - contracts
       - gaphistory
+  store/account:
+    mayDependOn:
+      - contracts
+      - gaphistory
+      - store
+      - store/bar
+      - store/ownerset
+      - contracts/genpb
   store/alert:
     mayDependOn:
       - contracts
@@ -794,6 +806,7 @@ deps:
       - compute/alertrules
       - pages/risks_block
       - compute/ease
+      - store/account
       - compute/optioncand
       - store/candidate
       - compute/optionledger
@@ -814,6 +827,12 @@ deps:
       - store/ownerset
       - compute/settingsapi
   compute/contracttest:
+    mayDependOn:
+      - contracts
+      - compute
+      - contracts/genpb
+      - compute/settingsapi
+  compute/ruleparam:
     mayDependOn:
       - contracts
       - compute

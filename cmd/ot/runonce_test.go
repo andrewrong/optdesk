@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -58,7 +59,11 @@ func (f fakeLedger) Close() error { f.n.Add(1); return nil }
 func (f fakeLedger) Cursor(context.Context) (store.Cursor, error) {
 	return store.Cursor{Day: f.cursorDay}, f.cursorErr
 }
-func (f fakeSeries) Close() error { f.n.Add(1); return nil }
+func (f fakeLedger) Present(context.Context, contracts.Day) (map[contracts.ExpectedKey]store.PresentStatus, error) {
+	return nil, nil
+}
+func (f fakeLedger) Runs(context.Context, contracts.Day) ([]store.Run, error) { return nil, nil }
+func (f fakeSeries) Close() error                                             { f.n.Add(1); return nil }
 
 type fakeInstr struct {
 	store.InstrumentStore
@@ -103,6 +108,11 @@ func (f fakeInstName) Close() error { f.n.Add(1); return nil }
 func (f fakeReading) Close() error  { f.n.Add(1); return nil }
 
 type fakeJob struct{ contracts.Job }
+
+func (fakeJob) ID() string { return "fake" }
+func (fakeJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return nil, "", nil
+}
 
 type recRunner struct{ day *contracts.Day }
 
@@ -200,15 +210,17 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 
 func TestRunOnceDayReachesReconcile(t *testing.T) {
 	t.Parallel()
-	a, errb := testApp(t, fullEnv)
+	a, _ := testApp(t, fullEnv)
+	var out bytes.Buffer
+	a.stdout = &out
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
 	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if got != "2026-03-04" || !strings.Contains(errb.String(), "2026-03-04") {
-		t.Fatalf("day %q, log %q", got, errb.String())
+	if got != "2026-03-04" || !strings.Contains(out.String(), "run-once 2026-03-04 status=") {
+		t.Fatalf("day %q, out %q", got, out.String())
 	}
 	got = ""
 	if err := runOnce(a, nil); err != nil || got != "2026-11-05" {
@@ -341,7 +353,9 @@ func TestRunOnceDayBehindCursor(t *testing.T) {
 			t.Fatalf("day %s: opened %d closed %d", day, opened.Load(), closed.Load())
 		}
 	}
-	a, errb := testApp(t, fullEnv)
+	a, _ := testApp(t, fullEnv)
+	var out bytes.Buffer
+	a.stdout = &out
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
@@ -349,8 +363,8 @@ func TestRunOnceDayBehindCursor(t *testing.T) {
 	if err := runOnce(a, []string{"--day", "2026-03-05"}); err != nil {
 		t.Fatal(err)
 	}
-	if got != "2026-03-05" || !strings.Contains(errb.String(), "status=ok") {
-		t.Fatalf("reconciled %q, log %q", got, errb.String())
+	if got != "2026-03-05" || !strings.Contains(out.String(), "run-once 2026-03-05 status=") {
+		t.Fatalf("reconciled %q, out %q", got, out.String())
 	}
 }
 
