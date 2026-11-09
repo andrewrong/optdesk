@@ -2,7 +2,7 @@
 
 Author: the optdesk designer
 Owner approved: the owner's decisions below are binding (goal, source, EDINET automation); the advisor's of 2026-11-08 (port ADR 0008 and 0023 in meaning); the rest is for the design review
-Revision: 8 (design verdict on revision 7 applied, plus a strict read: serial order of the lint-file issues, the web type placeholder and the generated page type, named tests; revision 7: design verdict on revision 6 applied; revision 6: design verdict on revision 5 applied; revision 5: design verdict on revision 4 applied; revision 4: design verdict on revision 3 applied; revision 3: owner answers of 2026-11-09; revision 2: adversarial review adopted, watch list shared with event-sources)
+Revision: 9 (crew issue check applied: direct Order names for the 14 pairs that share a file, the sections of issues 22 and 23 in the order of the table, the Contracts line of issue 2 (the form of #411), the web test path and test names under 32 characters; revision 8: design verdict on revision 7 applied, plus a strict read: serial order of the lint-file issues, the web type placeholder and the generated page type, named tests; revision 7: design verdict on revision 6 applied; revision 6: design verdict on revision 5 applied; revision 5: design verdict on revision 4 applied; revision 4: design verdict on revision 3 applied; revision 3: owner answers of 2026-11-09; revision 2: adversarial review adopted, watch list shared with event-sources)
 
 Source: the owner's goal "value investing plus option selling", the loop company value, buy price band, strike, candidates, ledger, tracking; the advisor of 2026-11-08; the adversarial review of revision 1 (dispatcher scratchpad, not in the repository).
 Read in option-trader at 4704569f (read only): `docs/adr/0008-valuation-and-acquisition-policy.md`, `0023-return-at-price.md`, `src/option_trader/valuation/` (`fcf_yield.py`, `reverse_dcf.py`, `price_return.py`, `five_questions.py`, `diagnosis.py`, `filing_rows.py`, `facts.py`), its `params/*.toml`, `sources/fmp/analyst_estimates.py`.
@@ -56,26 +56,26 @@ Migration numbers are "the next free one at cut time" in every issue (account-da
 |---|---|---|---|---|
 | 1 | fact-dataset (interface) | contracts | M | first |
 | 2 | band-approval-origin (interface) | contracts | S | after 1 |
-| 3 | companies-page-v2 (interface) | contracts | M | after 2 |
+| 3 | companies-page-v2 (interface) | contracts | M | after 1 and 2 |
 | 4 | fact-store (interface and implementation) | store, plus repo | M | after 1, 10, events `earnings-store` |
 | 5 | sec-source (interface and implementation) | sources, plus repo | M | after 1, 4, 10 |
-| 6 | valuation-compute-interface (interface) | compute, plus repo | M | after 1, 5, 10 |
+| 6 | valuation-compute-interface (interface) | compute, plus repo | M | after 1, 4, 5, 10 |
 | 7 | fundamentals-job (interface and implementation) | jobs, plus repo | M | after 4, 5, 6, 10, events `earnings-job` |
 | 8 | valuation-job-step (interface and implementation) | jobs | M | after 7, 11, 13, 15 |
-| 9 | companies-page-band (interface and implementation) | pages, plus repo | M | after 3, 6, 7, 10, 13 |
+| 9 | companies-page-band (interface and implementation) | pages, plus repo | M | after 3, 4, 5, 6, 7, 10, 13 |
 | 10 | valuation-docs-arch | docs, plus repo | S | after events `events-docs-modules` |
 | 11 | compute-filings | compute, plus repo (`go.mod`, `go.sum`) | M | after 6 |
 | 12 | compute-golden | compute | M | after 11 |
 | 13 | compute-fcf-band | compute, plus docs | L | after 12 |
 | 14 | compute-return-at-price | compute, plus docs | L | after 13 |
-| 15 | compute-questions-diagnosis | compute, plus docs | L | after 14 |
+| 15 | compute-questions-diagnosis | compute, plus docs | L | after 13 and 14 |
 | 16 | companies-page-sections | pages | L | after 9, 14, 15 |
 | 17 | companies-page-web | web | M | after 3 |
 | 18 | valuation-wire-us | ot | M | after 4, 5, 7, 8, 16, events `watch-loader-earnings-wire` |
-| 19 | edinet-client | sources, plus repo | M | after 18, 10 |
+| 19 | edinet-client | sources, plus repo | M | after 4, 5, 6, 7, 9, 10, 18 |
 | 20 | edinet-mapping | sources | L | after 19 |
-| 21 | valuation-compute-jp | compute, plus docs | M | after 11, 15, 20 |
-| 22 | valuation-wire-jp | ot | M | after 21, 23 |
+| 21 | valuation-compute-jp | compute, plus docs | M | after 11, 13, 14, 15, 20 |
+| 22 | valuation-wire-jp | ot | M | after 18, 21, 23 |
 | 23 | fundamentals-edinet | jobs | S | after 7, 20 |
 
 Issues 1 to 18 are the US path; 19 to 23 start only when 18 is merged and the owner has seen a real US band. `register.toml`, `rules.json` and `docs/GLOSSARY.md` are in 13, 14, 15 and 21 only, in that order (21 adds no entry and no glossary line: a `history` line on `valuation.buy_band` and its rules entry), each adding its own entries. `internal/compute/api.go` is in 6 only; `internal/sources/api.go` in 5 only (the Japan constructor type is declared in 5 so 19 needs no interface edit); `companies_page/builder.go` in 9 then 16 (9 builds every block but the price line as a `Gap`; 16 fills the other blocks in `Build` by calling the functions it adds, so `TestBuildEqualsOkFixture` can pass); `internal/jobs/fundamentals/plan.go` and `run.go` in 7 then 23; `internal/compute/valuation/params.go` in 11 then 21; `cmd/ot/main.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go` and `docs/contracts/ot.md` in 18 then 22. `.go-arch-lint.yml` is edited by 4, 5, 6, 7, 9 and 19, each adding only its own component lines on the main read at cut time. The order is serial and written in the order cells: 5 after 4, 6 after 5, 7 after 6, 9 after 7, 19 after 18 (18 is after 9 through 16), so two of these issues never regenerate the file at once.
@@ -111,7 +111,7 @@ Checked by CI: ci-go; the fixture manifest test; `scripts/hygiene`; the generate
 
 ### band-approval-origin (interface)
 
-- Module: contracts. Size: S. Order: after 1 (the manifest). Contracts: changes `contracts/datasets`.
+- Module: contracts. Size: S. Order: after 1 (the manifest). Contracts: changes `contracts/datasets`; the pull request's Contracts line is `readings.reading r1->r1; origin enum gains owner_command (additive)` (the form of #411, which the checks.yml regex accepts; `readings.reading` r1 has consumers, so the version rule allows no `amended before first consumer`, and an r2 is not wanted for one enum value).
 - Design: docs/design/valuation.md#Decisions (3)
 - Files: contracts/datasets/readings.reading.r1.json, internal/contracts/gen/records.go, contracts/fixtures/readings.reading.r1.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/reading_origin_test.go, docs/contracts/datasets/readings.reading.md
 
@@ -126,7 +126,7 @@ Checked by CI: ci-go; the fixture manifest test; the generated code equals a fre
 
 ### companies-page-v2 (interface)
 
-- Module: contracts. Size: M. Order: after 2 (the manifest). Contracts: adds `contracts/schemas/page.companies_page.v2.json`.
+- Module: contracts. Size: M. Order: after 1 and 2 (the manifest). Contracts: adds `contracts/schemas/page.companies_page.v2.json`.
 - Design: docs/design/valuation.md#Decisions (12, 13)
 - Files: contracts/schemas/page.companies_page.v2.json, contracts/fixtures/page.companies_page.v2.input.json, contracts/fixtures/page.companies_page.v2.ok.json, contracts/fixtures/page.companies_page.v2.gap.json, contracts/fixtures/MANIFEST.synthetic-v1.json, internal/contracts/companies_page_v2_test.go, docs/contracts/page-schemas.md, web/src/generated/companies_page.v2.ts
 
@@ -164,7 +164,7 @@ Checked by CI: `go run ./scripts/arch --check` prints `arch: ok`; ci-go-pg (inse
 - Goal: `Cursor`, `FactPlan`, `FactSource`, both configs and both constructor types (additive); `sec.New` fetches `/api/xbrl/companyfacts/CIK##########.json` and maps each kept concept to a `FundamentalFact` (`subject` the issuer text, `accn` as `doc_id`, `filed`, `form`, `raw_sha256`, `retrieved_at` from the clock), and `/submissions/CIK##########.json` for the SIC code, kept as one fact (taxonomy `sec`, concept `StandardIndustrialClassification`, unit `sic`, `period_end` the retrieval day) so the bank and cyclical rule of Decision 5 has its input; pacing as the FRED package (reused if possible), both requests counted; an error never carries the User-Agent.
 
 Acceptance:
-1. `go test ./internal/sources/... -race -count=1` passes with `TestMapKeepsAccessionFiledAndForm`, `TestCoverPageSharesKept` (the `dei` concept), `TestSicFromSubmissions` (SIC 6021 kept as a fact), `TestUnlistedConceptDropped`, `TestPacingFiveAPerSecond`, `TestErrorHidesUserAgent`.
+1. `go test ./internal/sources/... -race -count=1` passes with `TestMapKeepsAccnFiledForm`, `TestCoverPageSharesKept` (the `dei` concept), `TestSicFromSubmissions` (SIC 6021 kept as a fact), `TestUnlistedConceptDropped`, `TestPacingFiveAPerSecond`, `TestErrorHidesUserAgent`.
 2. `git diff $(git merge-base HEAD origin/main) -- internal/sources/api.go | grep '^-' | grep -vc '^---'` prints 0.
 3. `grep -c "time.Sleep\|http.Get\|data.sec.gov" internal/sources/sec/*_test.go` prints 0 in each.
 4. `grep -c "internal/store" internal/sources/sec/client.go internal/sources/sec/mapping.go internal/sources/sec/pacing.go` prints 0 in each; `grep -c "internal/sources/sec" .go-arch-lint.yml` is at least 1.
@@ -174,7 +174,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`.
 
 ### valuation-compute-interface (interface)
 
-- Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M. Order: after 1, 5 and 10 (5 first: both edit `.go-arch-lint.yml`); `internal/compute/api.go` is in this issue only.
+- Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M. Order: after 1, 4, 5 and 10 (4 and 5 first: all edit `.go-arch-lint.yml`); `internal/compute/api.go` is in this issue only.
 - Design: docs/design/valuation.md#Interface
 - Files: internal/compute/api.go, internal/compute/api_valuation_test.go, docs/contracts/compute.md, internal/compute/valuation/doc.go, .go-arch-lint.yml
 
@@ -219,7 +219,7 @@ Checked by CI: ci-go.
 
 ### companies-page-band (interface and implementation)
 
-- Module: pages, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 3, 6, 7, 10 and 13 (the register id `valuation.buy_band`; 7 first: both edit `.go-arch-lint.yml`).
+- Module: pages, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 3, 4, 5, 6, 7, 10 and 13 (the register id `valuation.buy_band`; 4, 5, 6 and 7 first: all edit `.go-arch-lint.yml`).
 - Design: docs/design/valuation.md#Decisions (3, 5, 9, 12)
 - Note: until section funcs exist (issue 16) the core, diagnosis and questions blocks are `Gap`; issue 16 edits `builder.go` to fill them. The hand price is only displayed, never changed.
 - Files: internal/pages/companies_page/builder.go, internal/pages/companies_page/band.go, internal/pages/companies_page/builder_test.go, internal/pages/companies_page/band_test.go, .go-arch-lint.yml
@@ -227,7 +227,7 @@ Checked by CI: ci-go.
 - Goal: `Subject`, `Config` (with `Series`), `OwnerText`, `PriceOverride` (Interface) and `Build` returning v2; rows from `Subjects` (no import of `internal/jobs`); the price line cell reads `valuation.buy_band` (band, `owner override` when given; `awaiting approval` without a `valuation.band_approval` reading from `Config.Read` (`WinnerReadings`) whose value equals the band's 8% value; `expired` when `Today` is more than 90 days after the approval `day`), `unvalued` with the reason text for a `missing_input`, the moat text from `OwnerText`; `Subject.HandPrice` shown beside the band as `hand_price`; every other block a `Gap`; the builder holds no formula.
 
 Acceptance:
-1. `go test ./internal/pages/companies_page -race -count=1` passes with `TestBandIsThePriceLine`, `TestOverrideIsLabelled`, `TestExpiredAfter90DaysFromApproval` (fake `Today`), `TestAwaitingApprovalWhenValueDiffers`, `TestBankIsUnvalued`, `TestNilReadersGiveGaps`, `TestHandPriceShownBesideBand`.
+1. `go test ./internal/pages/companies_page -race -count=1` passes with `TestBandIsThePriceLine`, `TestOverrideIsLabelled`, `TestExpiredAfter90Days` (fake `Today`), `TestAwaitingWhenValueDiffers`, `TestBankIsUnvalued`, `TestNilReadersGiveGaps`, `TestHandPriceShownBesideBand`.
 2. `grep -c "decimal\|float64\|math\.\|internal/jobs" internal/pages/companies_page/band.go internal/pages/companies_page/builder.go` prints 0 in each; `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go | grep -c .` prints 0; `grep -c "internal/pages/companies_page" .go-arch-lint.yml` is at least 1.
 3. The diff names exactly the Files paths.
 
@@ -257,7 +257,7 @@ Checked by CI: the modules-table check of `crew issue check`; `go run ./scripts/
 - Goal: `div` with explicit 34 significant digits, the real `StandardOf` (in `filings.go`: the `StandardOfFunc` of Interface) and `BuildFilings` (as-of rule, annual forms only, 350 to 380 day years, consecutive, a later 8-K recast replaces the value but not the year's eligibility; the SIC fact read into `FilingsResult`, none giving a refusal reason), refusal reasons of Decision 5. This is the port of the year selection of `filing_rows.py` for the parameters of Decision 1. Concepts and thresholds are read through `ParamsFor(std Standard)` in `params.go`, which holds the US table only (`US_GAAP`) and reports `false` for another standard; `BuildFilings` and issue 13's `BandFunc` call it and name no concept themselves, so issue 21 adds the Japan table without editing them.
 
 Acceptance:
-1. `go test ./internal/compute/valuation -race -count=1` passes with `TestAsOfLatestFiledWins`, `TestRecastKeepsYearEligible`, `TestNonConsecutiveRefused`, `TestQuarterlyFactsNeverMakeAYear`, `TestDivKeeps34Digits`, `TestSicRead`, `TestParamsForUsOnly`, `TestStandardOfFromFacts` (source `sec` gives `US_GAAP`; a `dei` `AccountingStandard` fact with unit `IFRS` gives `IFRS`; no fact gives the empty standard and `BuildFilings` refuses `no_standard`).
+1. `go test ./internal/compute/valuation -race -count=1` passes with `TestAsOfLatestFiledWins`, `TestRecastKeepsYearEligible`, `TestNonConsecutiveRefused`, `TestQuarterlyNeverMakesYear`, `TestDivKeeps34Digits`, `TestSicRead`, `TestParamsForUsOnly`, `TestStandardOfFromFacts` (source `sec` gives `US_GAAP`; a `dei` `AccountingStandard` fact with unit `IFRS` gives `IFRS`; no fact gives the empty standard and `BuildFilings` refuses `no_standard`).
 2. `grep -rc "DivisionPrecision\|float64" internal/compute/valuation/*.go` prints 0 for every file; `grep -c "shopspring/decimal" go.mod` is 1.
 3. The diff names exactly the Files paths.
 
@@ -312,7 +312,7 @@ Checked by CI: ci-go.
 
 ### compute-questions-diagnosis
 
-- Module: compute, plus docs. Size: L. Order: after 14 (same register, rules and glossary files).
+- Module: compute, plus docs. Size: L. Order: after 13 and 14 (same register, rules and glossary files).
 - Design: docs/design/valuation.md#Decisions (1, 11, 12)
 - Files: internal/compute/valuation/questions.go, internal/compute/valuation/capital.go, internal/compute/valuation/diagnosis.go, internal/compute/valuation/questions_test.go, internal/compute/valuation/diagnosis_test.go, internal/compute/rules/rules.json, docs/conventions/register.toml, docs/GLOSSARY.md
 
@@ -334,7 +334,7 @@ Checked by CI: ci-go.
 - Goal: `Build` in `builder.go` calls the functions added here to fill the three blocks; `core` (spot from `Config.Spot` and the strike of each shown offer from `Config.Offers` as the cost, then the compute funcs on `BuildFilings` called with the standard from `Config.StandardOf(facts)`; implied growth from the quote; `DGS10` from `Config.Series` (`SeriesPoints(ctx, "DGS10", day-7, day)`, newest point, none gives a gap), a US name only; a JP name shows a rate gap), `diagnosis` and `questions` from readings and owner text; four lines per cost, no rank, no filter, no colour word.
 
 Acceptance:
-1. `go test ./internal/pages/companies_page -race -count=1` passes with `TestStandardChosenFromFacts` (a fake `StandardOf` returning `IFRS` reaches `BuildFilings`), `TestCostIsTheBareStrike`, `TestNoAnalystInputLeavesTwoLinesOut`, `TestTreasuryStaleGivesGap`, `TestJpHasRateGap`, `TestRowsKeepCallerOrder`, `TestNilOffersGivesGap`.
+1. `go test ./internal/pages/companies_page -race -count=1` passes with `TestStandardChosenFromFacts` (a fake `StandardOf` returning `IFRS` reaches `BuildFilings`), `TestCostIsTheBareStrike`, `TestNoAnalystLeavesTwoOut`, `TestTreasuryStaleGivesGap`, `TestJpHasRateGap`, `TestRowsKeepCallerOrder`, `TestNilOffersGivesGap`.
 2. The page built from `contracts/fixtures/page.companies_page.v2.input.json` with fake compute functions returning its `figures` section (Decision 13; pages may not import `internal/compute/valuation`) equals `page.companies_page.v2.ok.json` byte for byte (test `TestBuildEqualsOkFixture`, in `core_test.go`); `grep -c "internal/compute/valuation" internal/pages/companies_page/*.go` prints 0 in each file.
 3. The diff names exactly the Files paths.
 
@@ -344,12 +344,12 @@ Checked by CI: ci-go.
 
 - Module: web. Size: M. Order: after 3 (the generated type `CompaniesPageV2`).
 - Design: docs/design/valuation.md#Decisions (12)
-- Files: web/src/pages/companies/CompaniesPage.tsx, web/src/types/companies_page.ts, web/test/pages/companies/companiesPageV2.test.tsx
+- Files: web/src/pages/companies/CompaniesPage.tsx, web/src/types/companies_page.ts, web/test/pages/companies/v2.test.tsx
 
 - Goal: `web/src/types/companies_page.ts` (the placeholder that `macro_rates.ts` also follows) takes `SUPPORTED_VERSIONS = [1, 2]` and `Payload` the union of the v1 type and `CompaniesPageV2` from `@/generated/companies_page.v2`; the page renders the three v2 blocks and the price-line label from the fixtures of issue 3, computes nothing, and still renders v1. The existing `companiesPage.test.tsx` is not edited.
 
 Acceptance:
-1. `cd web && pnpm vitest run test/pages/companies` passes, with `companiesPageV2.test.tsx` covering the ok fixture, the gap fixture and a v1 document.
+1. `cd web && pnpm vitest run test/pages/companies` passes, with `v2.test.tsx` covering the ok fixture, the gap fixture and a v1 document.
 2. `cd web && pnpm tsc --noEmit && pnpm eslint src/pages/companies src/types/companies_page.ts` prints no error; `grep -c "SUPPORTED_VERSIONS = \[1, 2\]" web/src/types/companies_page.ts` prints 1.
 3. The diff names exactly the Files paths.
 
@@ -365,8 +365,8 @@ Checked by CI: ci-web.
 - Goal: `newSEC`, the `fundamentals` job in the registry (`NewFundamentalsFunc` with the SEC source and a nil `edinet`; fact store opened with `OpenFactStoreFunc` on `OT_PG_DSN_FUNDAMENTAL`), the valuation step passed to the figures job as `ValuationDeps` (the loader's `WatchEntry` list as `Entries`, and the one real `StandardOf` of compute for both `ValuationDeps` and the page `Config`, so issue 22 needs no edit outside `cmd/ot`), `companies_page` in the page list on the pages DSN with `Read` opened by `OpenReadingViewFunc` and `Facts` by `OpenFactStoreFunc` on that DSN, `Subjects` filled from the loader's `WatchEntry` list, `Held` nil, `Today` from the clock, `Series` from the series reader of `cmd/ot/page.go` on the pages DSN, `Offers` and `Spot` from the `OptionEodReader` and the quote snapshot reader through the symbol-to-instrument helper of Decision 13 (the catalog `OptionEodLatest` lists the underlying ids, `InstrumentNames` names them, the id whose name equals the symbol is kept; no match gives a gap), `newCompaniesPage` taking the compute functions as arguments (the real ones from `cmd/ot`, fakes in the test); an unset value leaves the job out and the page on gaps. Also the owner-run `ot approve-band --symbol S [--day D]` (day default today in the zone), which reads the current `valuation.buy_band` for S and writes one `valuation.band_approval` reading (origin `owner_command`, `day` the approval day, value its 8% value, next `rev` of that day); it refuses a symbol with no band.
 
 Acceptance:
-1. `go test ./cmd/ot -race -count=1` passes with `TestFundamentalsJobLeftOutWhenUnset` and `TestFundamentalsJobBuiltWhenSet` (a fake source).
-2. `go test ./cmd/ot -race -count=1 -run 'TestCompaniesPageOverFixtureInputs|TestSymbolResolvedThroughCatalogAndNames|TestUnknownSymbolGivesGap'` passes: the first loads `contracts/fixtures/page.companies_page.v2.input.json` (readings, facts, `series`, `instruments`, quotes, option rows) into fake stores, builds `companies_page` through `newCompaniesPage` with fake compute functions returning the fixture's `figures` (Decision 13), and the document equals `page.companies_page.v2.ok.json` (offline, no `ot` binary run); the others show the symbol finding its instrument id through the catalog and the name reader, and a symbol no name matches giving a gap for `Spot` and `Offers`.
+1. `go test ./cmd/ot -race -count=1` passes with `TestFundamentalsLeftOutUnset` and `TestFundamentalsJobBuiltWhenSet` (a fake source).
+2. `go test ./cmd/ot -race -count=1 -run 'TestPageOverFixtureInputs|TestSymbolResolvedViaCatalog|TestUnknownSymbolGivesGap'` passes: the first loads `contracts/fixtures/page.companies_page.v2.input.json` (readings, facts, `series`, `instruments`, quotes, option rows) into fake stores, builds `companies_page` through `newCompaniesPage` with fake compute functions returning the fixture's `figures` (Decision 13), and the document equals `page.companies_page.v2.ok.json` (offline, no `ot` binary run); the others show the symbol finding its instrument id through the catalog and the name reader, and a symbol no name matches giving a gap for `Spot` and `Offers`.
 3. `grep -rn "SEC_USER_AGENT" cmd/ot | grep -c "= *\""` prints 0 (names only).
 4. `go test ./cmd/ot -race -count=1` passes with `TestApproveBandWritesApproval` and `TestApproveBandRefusesNoBand` (fake store and clock).
 5. The diff names exactly the Files paths.
@@ -375,7 +375,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`. Not ver
 
 ### edinet-client
 
-- Module: sources, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 18 and 10. Second-opinion case: new outside service (`api.edinet-fsa.go.jp`, API key from the environment variable `EDINET_API_KEY`).
+- Module: sources, plus repo (`.go-arch-lint.yml`). Size: M. Order: after 4, 5, 6, 7, 9, 10 and 18 (all edit `.go-arch-lint.yml`). Second-opinion case: new outside service (`api.edinet-fsa.go.jp`, API key from the environment variable `EDINET_API_KEY`).
 - Design: docs/design/valuation.md#Decisions (8)
 - Files: internal/sources/edinet/client.go, internal/sources/edinet/cursor.go, internal/sources/edinet/client_test.go, internal/sources/edinet/testdata/documents_list.json, .go-arch-lint.yml
 
@@ -397,7 +397,7 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` prints `arch: ok`. Not ver
 - Goal: map J-GAAP and IFRS elements to the concept names of Decision 6 (unit JPY, `subject` the `edinet:<code>` issuer text); a table lists what each standard does not report (J-GAAP: diluted shares, stock compensation). Each filing also gets one fact that names its standard (taxonomy `dei`, concept `AccountingStandard`, unit `J_GAAP` or `IFRS`, value `1`) for `StandardOf`. The Japan parameter file and its loading are issue 21, in compute.
 
 Acceptance:
-1. `go test ./internal/sources/edinet -race -count=1` passes with `TestJGaapMapsToSameConcepts`, `TestIfrsMapsToSameConcepts`, `TestJGaapMissingDilutedSharesIsNoFact`, `TestCompetingElementsRefused`, `TestStandardFactWritten` (a J-GAAP and an IFRS filing each give one `AccountingStandard` fact with the unit of its standard).
+1. `go test ./internal/sources/edinet -race -count=1` passes with `TestJGaapMapsToSameConcepts`, `TestIfrsMapsToSameConcepts`, `TestJGaapNoDilutedSharesNoFact`, `TestCompetingElementsRefused`, `TestStandardFactWritten` (a J-GAAP and an IFRS filing each give one `AccountingStandard` fact with the unit of its standard).
 2. `wc -l internal/sources/edinet/*.go | grep -v total | awk '$1>=600' | wc -l` prints 0.
 3. The diff names exactly the Files paths.
 
@@ -405,16 +405,32 @@ Checked by CI: ci-go.
 
 ### valuation-compute-jp
 
-- Module: compute, plus docs (`docs/conventions/register.toml`). Size: M. Order: after 11 (creates `params.go`), 15 (same register and rules files) and 20 (the concept names).
+- Module: compute, plus docs (`docs/conventions/register.toml`). Size: M. Order: after 11 (creates `params.go`), 13, 14 and 15 (same register and rules files) and 20 (the concept names).
 - Design: docs/design/valuation.md#Decisions (1, 8, 11)
 - Files: internal/compute/valuation/params_jp.json, internal/compute/valuation/params.go, internal/compute/valuation/params_jp_test.go, internal/compute/rules/rules.json, docs/conventions/register.toml
 
 - Goal: the Japan parameter file `params_jp.json` (the concept names of Decision 6, JPY, the thresholds of the US file; new, with no option-trader blob) and `params.go` (created by issue 11) gaining the Japan table so `ParamsFor` answers `J_GAAP` and `IFRS` and `BuildFilings` and `BandFunc` handle them without an edit: a complete IFRS input gives a band, a J-GAAP input missing diluted shares or stock compensation gives `missing_input` with the reason (ADR 0008 rejects an incomplete input); a `history` line on `valuation.buy_band` names `params_jp.json` as new, its `source_hash` and the rules entry follow the file.
 
 Acceptance:
-1. `go test ./internal/compute/valuation ./internal/compute/rules -race -count=1` passes with `TestIfrsGivesBand`, `TestJgaapIncompleteIsMissingInput`, `TestParamsJpLoaded`.
+1. `go test ./internal/compute/valuation ./internal/compute/rules -race -count=1` passes with `TestIfrsGivesBand`, `TestJgaapIncompleteMissing`, `TestParamsJpLoaded`.
 2. `grep -c "params_jp" docs/conventions/register.toml` is at least 1; `grep -c 'id = "valuation\.' docs/conventions/register.toml` is still 6.
 3. The diff names exactly the Files paths.
+
+Checked by CI: ci-go.
+
+### valuation-wire-jp
+
+- Module: ot. Size: M. Order: after 18, 21 and 23 (20 and 19 through them); `cmd/ot/wire.go`, `cmd/ot/main.go`, `cmd/ot/env.go`, `cmd/ot/runonce.go` and `docs/contracts/ot.md` are edited after issue 18. Second-opinion case: new outside service (`EDINET_API_KEY` name only).
+- Design: docs/design/valuation.md#Decisions (8, 9)
+- Files: cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/main.go, cmd/ot/env.go, cmd/ot/runonce.go, cmd/ot/backfill_edinet.go, cmd/ot/backfill_edinet_test.go, docs/contracts/ot.md
+
+- Goal: `newEDINET` passed as the `edinet` argument of `NewFundamentalsFunc` (issue 18 passed nil) and the Japan subjects (`edinet:` entries) into the `fundamentals` job and the valuation step (the accounting standard is chosen by `StandardOf` from the facts, so this issue edits nothing outside `cmd/ot`); a missing key leaves Japan out, the US unchanged. The file cursor `$OT_HOME/edinet.cursor` (the `Cursor` of Decision 8) and `ot backfill-edinet --from D` (registered in `main.go`): it scans days from the cursor to today through the source in chunks, writes through the fact store and saves the cursor after each chunk.
+
+Acceptance:
+1. `go test ./cmd/ot -race -count=1` passes with `TestEdinetLeftOutWhenKeyUnset` and `TestEdinetPassedWhenKeySet`.
+2. `go test ./cmd/ot -race -count=1 -run 'TestBackfillEdinet'` passes with `TestBackfillResumesFromCursor` and `TestBackfillSavesCursorPerChunk` (fake source, fake writer, cursor file in `t.TempDir()`, fake clock).
+3. `grep -rn "EDINET_API_KEY" cmd/ot | grep -c "= *\""` prints 0.
+4. The diff names exactly the Files paths.
 
 Checked by CI: ci-go.
 
@@ -430,22 +446,6 @@ Acceptance:
 1. `go test ./internal/jobs/fundamentals -race -count=1` passes with `TestPlansEdinetEntries`, `TestEdinetSkippedWithoutSource` (a nil `edinet` argument skips and names the entries, the `cik:` entries still run), `TestRunTwiceAddsZero`.
 2. `git diff $(git merge-base HEAD origin/main) -- internal/jobs/api.go | grep -c .` prints 0.
 3. The diff names exactly the Files paths.
-
-Checked by CI: ci-go.
-
-### valuation-wire-jp
-
-- Module: ot. Size: M. Order: after 21 and 23 (20 and 19 through them); `cmd/ot/wire.go`, `cmd/ot/main.go`, `cmd/ot/env.go`, `cmd/ot/runonce.go` and `docs/contracts/ot.md` are edited after issue 18. Second-opinion case: new outside service (`EDINET_API_KEY` name only).
-- Design: docs/design/valuation.md#Decisions (8, 9)
-- Files: cmd/ot/wire.go, cmd/ot/wire_test.go, cmd/ot/main.go, cmd/ot/env.go, cmd/ot/runonce.go, cmd/ot/backfill_edinet.go, cmd/ot/backfill_edinet_test.go, docs/contracts/ot.md
-
-- Goal: `newEDINET` passed as the `edinet` argument of `NewFundamentalsFunc` (issue 18 passed nil) and the Japan subjects (`edinet:` entries) into the `fundamentals` job and the valuation step (the accounting standard is chosen by `StandardOf` from the facts, so this issue edits nothing outside `cmd/ot`); a missing key leaves Japan out, the US unchanged. The file cursor `$OT_HOME/edinet.cursor` (the `Cursor` of Decision 8) and `ot backfill-edinet --from D` (registered in `main.go`): it scans days from the cursor to today through the source in chunks, writes through the fact store and saves the cursor after each chunk.
-
-Acceptance:
-1. `go test ./cmd/ot -race -count=1` passes with `TestEdinetLeftOutWhenKeyUnset` and `TestEdinetPassedWhenKeySet`.
-2. `go test ./cmd/ot -race -count=1 -run 'TestBackfillEdinet'` passes with `TestBackfillEdinetResumesFromCursor` and `TestBackfillEdinetSavesCursorPerChunk` (fake source, fake writer, cursor file in `t.TempDir()`, fake clock).
-3. `grep -rn "EDINET_API_KEY" cmd/ot | grep -c "= *\""` prints 0.
-4. The diff names exactly the Files paths.
 
 Checked by CI: ci-go.
 
