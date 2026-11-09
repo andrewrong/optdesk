@@ -13,6 +13,7 @@ The only module that opens the database. `store.SessionDayWriter` upserts and `s
 `internal/store/reading` holds the Reader and the Writer of stored figure values, `readings.reading` r1 (with the children `reading_input`, `reading_input_key` and `reading_parameter`). `reading.Open` returns a `store.ReadingStore` (`InsertReadings`, `LatestReadings`, `Close`) from the line `store.DSNEnvReadings` (`OT_PG_DSN_READINGS`) of the role `ot_w_readings`.
 
 `internal/store/bar` declares, in `api.go` only (no implementation in the package), the store of two append-only datasets: `obs.price_bar r1` (daily bars, `trades` and `adjusted_last`) and `obs.fx_rate r1` (the daily USD.JPY rate). `bar.BarStore` is `PriceBarWriter`, `PriceBarReader`, `FxRateWriter`, `FxRateReader` and `Close`; `bar.OpenBarFunc` opens it from the line `bar.DSNEnvBar` (`OT_PG_DSN_BAR`) of the role `ot_w_bar`. The implementation is `internal/store/barpg`.
+`internal/store/ownerset` declares, in `api.go` only, the owner's settings store: `ownerset.Reader` (`Params`, `Exclusions`, `History`, `Version`, `Close`, all read as of a time), `ownerset.Writer` (`Apply` of a `Change`, one transaction, unchanged fields insert nothing), `ownerset.Store` (both) and `ownerset.OpenFunc`, from the line `ownerset.DSNEnvSettings` (`OT_PG_DSN_SETTINGS`). Design: `docs/design/settings-form.md#Interface`.
 
 ## Inputs
 
@@ -173,6 +174,7 @@ Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExec
 - `internal/store/snapshot/optioneod_test.go`, `quotesnapshot_test.go` and `screen_test.go`: `TestInsertSQL`, `TestInsertScreensSentinels`, `TestReaderRangeAndOrder`, `TestQuoteInsertSQL`, `TestQuoteInsertScreensSentinels`, `TestQuoteReaderRangeAndOrder` and `TestScreenSentinel` (SQL strings, transaction, empty input, context, sentinels, range and order, against an in-test fake).
 - `internal/store/snapshot/optioneod_pg_test.go` and `quotesnapshot_pg_test.go` (build tag `pg`): `TestOptionEodRoundTripPG`, `TestOptionEodRetryPG`, `TestOptionEodCompressPG`, `TestOptionEodGrantsPG`, `TestOptionEodChecksPG`, `TestQuoteSnapshotRoundTripPG`, `TestQuoteSnapshotRetryPG`, `TestQuoteSnapshotCompressPG` and `TestQuoteSnapshotGrantsPG`.
 - `internal/store/api_test.go`: `TestSentContract` holds `SentStore` and `DSNEnvAlerts` from both sides.
+- `internal/store/ownerset/api_test.go`: `TestStoreContractApplyTwiceAndAsOf`, `TestStoreContractHistoryNewestFirst` and `TestDSNEnvSettingsName` hold the Store from both sides against an in-test fake.
 - `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
 - `internal/store/api_events_test.go`: `TestEarningsDateContractFromBothSides` and `TestEarningsDSNEnvName` hold `EarningsDateStore` and its line name from both sides.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
