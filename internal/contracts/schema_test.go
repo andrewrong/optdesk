@@ -366,3 +366,31 @@ func TestEarningsDateFixtureValues(t *testing.T) {
 		}
 	}
 }
+
+func TestEarningsDateStatusRulesEnforced(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.earnings_date")
+	recs, _ := loadRecords(t, "obs.earnings_date")
+	cp := func(b map[string]any) map[string]any {
+		m := map[string]any{}
+		for k, v := range b {
+			m[k] = v
+		}
+		return m
+	}
+	unsupportedWithVendor := cp(recs[2]) // status unsupported
+	unsupportedWithVendor["source"] = "alphavantage"
+	absentWithDate := cp(recs[1]) // status absent
+	absentWithDate["report_date"] = "2027-01-29"
+	listedWithoutDate := cp(recs[0])
+	listedWithoutDate["report_date"] = nil
+	for label, r := range map[string]map[string]any{
+		"unsupported row with a vendor source": unsupportedWithVendor,
+		"absent row with a report_date":        absentWithDate,
+		"listed row without a report_date":     listedWithoutDate,
+	} {
+		if err := s.Validate(r); err == nil {
+			t.Errorf("%s must be rejected (Decision 7)", label)
+		}
+	}
+}

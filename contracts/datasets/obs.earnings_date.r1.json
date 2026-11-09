@@ -23,5 +23,9 @@
     "error_code": {"type": "string", "description": "Error code when status is error, for example rate_limited; empty otherwise."},
     "source": {"type": "string", "enum": ["alphavantage", "jquants", "owner", "none"], "description": "Where the row came from; owner is a report_date_override (the only row of that issuer that day, attempt 1); none is a status unsupported row, since no source produced it. Never null."},
     "received_at": {"type": "string", "format": "date-time", "description": "Instant the row was produced, UTC."}
-  }
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "unsupported"}}, "required": ["status"]}, "then": {"properties": {"source": {"const": "none"}}}},
+    {"if": {"properties": {"status": {"const": "listed"}}, "required": ["status"]}, "then": {"properties": {"report_date": {"type": "string"}}}, "else": {"properties": {"report_date": {"type": "null"}}}}
+  ]
 }
