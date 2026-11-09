@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
 type fakeJob struct{ id string }
@@ -619,6 +620,27 @@ func TestOptionCandidatesJobFuncContract(t *testing.T) {
 		return nil, nil
 	}
 	if _, err := f(jobs.CandidateStores{}, nil, []jobs.WatchEntry{{Issuer: "cik:0000000001"}}, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type noDividends struct{}
+
+func (noDividends) Dividends(context.Context, int, contracts.Day, contracts.Day) ([]contracts.DividendExpectation, error) {
+	return nil, nil
+}
+
+func TestOptionCandidatesCallsFuncContract(t *testing.T) {
+	t.Parallel()
+	var f jobs.NewOptionCandidatesCallsFunc = func(
+		st jobs.CandidateStores, d dividend.Reader, r compute.OptionCandidates, w []jobs.WatchEntry, c clock.Clock,
+	) (contracts.Job, error) {
+		if st.Earnings != nil || d == nil || r != nil || len(w) != 1 || c != nil {
+			t.Fatal("arguments did not arrive in the order given")
+		}
+		return nil, nil
+	}
+	if _, err := f(jobs.CandidateStores{}, noDividends{}, nil, []jobs.WatchEntry{{Issuer: "cik:0000000001"}}, nil); err != nil {
 		t.Fatal(err)
 	}
 }

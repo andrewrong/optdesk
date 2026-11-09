@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
 )
 
@@ -233,6 +234,13 @@ type CandidateStores struct {
 // compute.KindShortPut and writes the rows under a new run id (one UUID text per Run); a JP entry gives no row
 // and the job names it through its Skipped method. The job holds no dividend reader and sends nothing.
 type NewOptionCandidatesJobFunc func(CandidateStores, compute.OptionCandidates, []WatchEntry, clock.Clock) (contracts.Job, error)
+
+// NewOptionCandidatesCallsFunc is the constructor of the option_candidates job with the dividend reader
+// (internal/jobs/optioncandidates.NewWithCalls). It adds the covered-call and held-call-guard rows to the run: the
+// same job, schedule, plan and Skipped as NewOptionCandidatesJobFunc, which is unchanged, and in one run the
+// short_put rows, then the covered_call and held_call_guard rows of the same run id, with the next ex-date and
+// the amount of the newest dividend row. A nil dividend reader is an error; a read error of it fails the run.
+type NewOptionCandidatesCallsFunc func(CandidateStores, dividend.Reader, compute.OptionCandidates, []WatchEntry, clock.Clock) (contracts.Job, error)
 
 // OptionEodWindow is the window the owner settings give the option_eod job: min_dte, max_dte and max_strikes.
 // A zero field keeps the value of the embedded job.toml; a non-zero field replaces it.
