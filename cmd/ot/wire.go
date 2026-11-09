@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -22,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
+	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
@@ -35,6 +37,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
+	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
@@ -42,9 +45,12 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/alert"
+	"github.com/andrewrong/optdesk/internal/store/candidate"
+	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 	"github.com/andrewrong/optdesk/internal/store/reading"
@@ -100,6 +106,8 @@ type deps struct {
 	macroPage               func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page
 	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
 	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
+	openCandidate           openCandidateFunc
+	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
 	newScheduler            runner.NewSchedulerFunc
@@ -114,6 +122,11 @@ type deps struct {
 	openSent                store.OpenSentFunc
 	newAlertNotifier        notify.NewAlertNotifierFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
+	newEarningsRefresh      jobs.NewEarningsRefreshFunc
+	newAlphaVantage         sources.NewEarningsFunc
+	openEarningsDates       store.OpenEarningsDateStoreFunc
+	// readFile reads watch.toml; nil means os.ReadFile.
+	readFile func(string) ([]byte, error)
 }
 
 // calendarArgs is what follows the uv program in the command of calendar_refresh, that is
@@ -176,6 +189,8 @@ func newDeps() deps {
 		macroPage:               newMacroPage,
 		marketPage:              newMarketPageOf,
 		optionDataPage:          newOptionDataPage,
+		openCandidate:           openCandidateStore,
+		optionCandidatesPage:    newOptionCandidatesPage,
 		openFence:               ops.OpenFence,
 		openSchedulerLedger:     ops.OpenSchedulerLedger,
 		newScheduler:            sched.New,
@@ -190,6 +205,10 @@ func newDeps() deps {
 		openSent:                alert.Open,
 		newAlertNotifier:        core.NewAlerts,
 		loadAlertRules:          alertrules.Load,
+		newEarningsRefresh:      earningsrefresh.New,
+		newAlphaVantage:         alphavantage.New,
+		openEarningsDates:       eventstore.OpenEarningsDate,
+		readFile:                os.ReadFile,
 	}
 }
 
@@ -212,6 +231,23 @@ func newMacroPage(zone *time.Location, buildID string, read compute.ReadingFunc)
 // newMarketPageOf builds the page market_page in zone from the plain arguments; the one place that names market_page.Config.
 func newMarketPageOf(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page {
 	return market_page.NewPage(market_page.Config{RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Readings: readings})
+}
+
+// newOptionCandidatesPage builds the page option_candidates_page in zone from the plain arguments; the one
+// place that names option_candidates_page.Config.
+func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page {
+	return option_candidates_page.NewPage(option_candidates_page.Config{
+		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands,
+	})
+}
+
+// openCandidateStore opens the candidate store; a failed open is a nil interface, not a typed nil.
+func openCandidateStore(ctx context.Context, dsn string) (candidateStore, error) {
+	s, err := candidate.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // newOptionDataPage builds the page option_data_page of one underlying in zone; the symbol and the notes come
