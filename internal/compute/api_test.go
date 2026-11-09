@@ -735,7 +735,10 @@ func TestOptionNoticesContract(t *testing.T) {
 	var par compute.NoticeParams
 	var newFn compute.NewOptionNoticesFunc = func() compute.OptionNotices { return fakeNotices{in: &in, par: &par, out: want} }
 	next := contracts.Day("2026-02-10")
-	pos := compute.NoticePosition{Symbol: "AAPL", SecType: "OPT", Expiry: "2026-02-20", Strike: "150", Right: "P", Multiplier: "100", Quantity: "-1", Currency: "USD"}
+	pos := compute.NoticePosition{
+		Symbol: "AAPL", SecType: "OPT", Expiry: "2026-02-20", Strike: "150", Right: "P",
+		Multiplier: "100", Quantity: "-1", Currency: "USD",
+	}
 	sent := compute.NoticeInput{
 		Day: "2026-02-17", Alias: "main", CaptureDay: "2026-02-17",
 		Positions: []compute.NoticePosition{pos}, PrevDay: "2026-02-13", PrevPositions: []compute.NoticePosition{pos},
