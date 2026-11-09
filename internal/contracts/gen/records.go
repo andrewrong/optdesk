@@ -8,6 +8,293 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// optionledger.flex_fetch r1: one Flex request pair (one window of one query of
+// one login) with its outcome and counts; insert only. No token and no account
+// number is stored.
+type FlexFetch struct {
+	// Flex error code as text when the service gave one; empty otherwise.
+	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Kind of the error when failed, for example network or flex_error; empty when
+	// ok.
+	ErrorKind string `json:"error_kind" yaml:"error_kind" mapstructure:"error_kind"`
+
+	// Identifier of the fetch.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Instant the request pair finished, UTC.
+	FinishedAt time.Time `json:"finished_at" yaml:"finished_at" mapstructure:"finished_at"`
+
+	// First day of the window.
+	FirstDate types.SerializableDate `json:"first_date" yaml:"first_date" mapstructure:"first_date"`
+
+	// Last day of the window.
+	LastDate types.SerializableDate `json:"last_date" yaml:"last_date" mapstructure:"last_date"`
+
+	// Name of the login of flex.toml.
+	Login string `json:"login" yaml:"login" mapstructure:"login"`
+
+	// Version of the report parser.
+	ParserVersion string `json:"parser_version" yaml:"parser_version" mapstructure:"parser_version"`
+
+	// Flex query id, digits, as text.
+	QueryID string `json:"query_id" yaml:"query_id" mapstructure:"query_id"`
+
+	// SHA-256 of the report, 64 lower-case hex digits; empty when no report arrived.
+	// The report itself is not kept.
+	RawSha256 string `json:"raw_sha256" yaml:"raw_sha256" mapstructure:"raw_sha256"`
+
+	// Rows stored as revision 1.
+	RowsNew int `json:"rows_new" yaml:"rows_new" mapstructure:"rows_new"`
+
+	// Trade rows parsed from mapped statements.
+	RowsParsed int `json:"rows_parsed" yaml:"rows_parsed" mapstructure:"rows_parsed"`
+
+	// Rows stored as a later revision.
+	RowsRevised int `json:"rows_revised" yaml:"rows_revised" mapstructure:"rows_revised"`
+
+	// Rows equal to the latest stored revision, not written.
+	RowsUnchanged int `json:"rows_unchanged" yaml:"rows_unchanged" mapstructure:"rows_unchanged"`
+
+	// Instant the request pair started, UTC.
+	StartedAt time.Time `json:"started_at" yaml:"started_at" mapstructure:"started_at"`
+
+	// Number of statements in the report.
+	Statements int `json:"statements" yaml:"statements" mapstructure:"statements"`
+
+	// Statements of an account the allow-list does not map; not stored.
+	StatementsUnmapped int `json:"statements_unmapped" yaml:"statements_unmapped" mapstructure:"statements_unmapped"`
+
+	// ok: the report was parsed and stored; failed: the window failed and nothing but
+	// this record was stored.
+	Status FlexFetchStatus `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+type FlexFetchStatus string
+
+const FlexFetchStatusFailed FlexFetchStatus = "failed"
+const FlexFetchStatusOk FlexFetchStatus = "ok"
+
+var enumValues_FlexFetchStatus = []interface{}{
+	"ok",
+	"failed",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexFetchStatus) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FlexFetchStatus {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FlexFetchStatus, v)
+	}
+	*j = FlexFetchStatus(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexFetch) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in FlexFetch: required")
+	}
+	if _, ok := raw["error_kind"]; raw != nil && !ok {
+		return fmt.Errorf("field error_kind in FlexFetch: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexFetch: required")
+	}
+	if _, ok := raw["finished_at"]; raw != nil && !ok {
+		return fmt.Errorf("field finished_at in FlexFetch: required")
+	}
+	if _, ok := raw["first_date"]; raw != nil && !ok {
+		return fmt.Errorf("field first_date in FlexFetch: required")
+	}
+	if _, ok := raw["last_date"]; raw != nil && !ok {
+		return fmt.Errorf("field last_date in FlexFetch: required")
+	}
+	if _, ok := raw["login"]; raw != nil && !ok {
+		return fmt.Errorf("field login in FlexFetch: required")
+	}
+	if _, ok := raw["parser_version"]; raw != nil && !ok {
+		return fmt.Errorf("field parser_version in FlexFetch: required")
+	}
+	if _, ok := raw["query_id"]; raw != nil && !ok {
+		return fmt.Errorf("field query_id in FlexFetch: required")
+	}
+	if _, ok := raw["raw_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field raw_sha256 in FlexFetch: required")
+	}
+	if _, ok := raw["rows_new"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_new in FlexFetch: required")
+	}
+	if _, ok := raw["rows_parsed"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_parsed in FlexFetch: required")
+	}
+	if _, ok := raw["rows_revised"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_revised in FlexFetch: required")
+	}
+	if _, ok := raw["rows_unchanged"]; raw != nil && !ok {
+		return fmt.Errorf("field rows_unchanged in FlexFetch: required")
+	}
+	if _, ok := raw["started_at"]; raw != nil && !ok {
+		return fmt.Errorf("field started_at in FlexFetch: required")
+	}
+	if _, ok := raw["statements"]; raw != nil && !ok {
+		return fmt.Errorf("field statements in FlexFetch: required")
+	}
+	if _, ok := raw["statements_unmapped"]; raw != nil && !ok {
+		return fmt.Errorf("field statements_unmapped in FlexFetch: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in FlexFetch: required")
+	}
+	type Plain FlexFetch
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	*j = FlexFetch(plain)
+	return nil
+}
+
+// optionledger.flex_trade_row r1: one revision of one Flex trade row of level
+// EXECUTION, attributes as sent, as text; insert only. No account number is
+// stored: the alias is the only identity.
+type FlexTradeRow struct {
+	// Account alias of the row, the label mapped by the allow-list.
+	Alias string `json:"alias" yaml:"alias" mapstructure:"alias"`
+
+	// JSON object as text: every attribute of the Trade row as sent, every value
+	// text.
+	Attributes string `json:"attributes" yaml:"attributes" mapstructure:"attributes"`
+
+	// SHA-256 of the attributes text, 64 lower-case hex digits.
+	AttributesSha256 string `json:"attributes_sha256" yaml:"attributes_sha256" mapstructure:"attributes_sha256"`
+
+	// Identifier of the fetch record that brought the row; for an import, the
+	// identifier of the import.
+	FetchID string `json:"fetch_id" yaml:"fetch_id" mapstructure:"fetch_id"`
+
+	// Level of detail of the Flex row, for example EXECUTION.
+	LevelOfDetail string `json:"level_of_detail" yaml:"level_of_detail" mapstructure:"level_of_detail"`
+
+	// Instant the row was recorded, UTC.
+	RecordedAt time.Time `json:"recorded_at" yaml:"recorded_at" mapstructure:"recorded_at"`
+
+	// Revision of the row for its transaction; 1 for a new key, a changed row is the
+	// next revision.
+	Revision int `json:"revision" yaml:"revision" mapstructure:"revision"`
+
+	// Position of the row in its report.
+	RowIndex int `json:"row_index" yaml:"row_index" mapstructure:"row_index"`
+
+	// Writer of the row: flex for a fetch, ot_import for the import of option-trader
+	// history.
+	Source FlexTradeRowSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// Flex transactionID of the row, as text.
+	TransactionID string `json:"transaction_id" yaml:"transaction_id" mapstructure:"transaction_id"`
+}
+
+type FlexTradeRowSource string
+
+const FlexTradeRowSourceFlex FlexTradeRowSource = "flex"
+const FlexTradeRowSourceOtImport FlexTradeRowSource = "ot_import"
+
+var enumValues_FlexTradeRowSource = []interface{}{
+	"flex",
+	"ot_import",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexTradeRowSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FlexTradeRowSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FlexTradeRowSource, v)
+	}
+	*j = FlexTradeRowSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FlexTradeRow) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["alias"]; raw != nil && !ok {
+		return fmt.Errorf("field alias in FlexTradeRow: required")
+	}
+	if _, ok := raw["attributes"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes in FlexTradeRow: required")
+	}
+	if _, ok := raw["attributes_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field attributes_sha256 in FlexTradeRow: required")
+	}
+	if _, ok := raw["fetch_id"]; raw != nil && !ok {
+		return fmt.Errorf("field fetch_id in FlexTradeRow: required")
+	}
+	if _, ok := raw["level_of_detail"]; raw != nil && !ok {
+		return fmt.Errorf("field level_of_detail in FlexTradeRow: required")
+	}
+	if _, ok := raw["recorded_at"]; raw != nil && !ok {
+		return fmt.Errorf("field recorded_at in FlexTradeRow: required")
+	}
+	if _, ok := raw["revision"]; raw != nil && !ok {
+		return fmt.Errorf("field revision in FlexTradeRow: required")
+	}
+	if _, ok := raw["row_index"]; raw != nil && !ok {
+		return fmt.Errorf("field row_index in FlexTradeRow: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in FlexTradeRow: required")
+	}
+	if _, ok := raw["transaction_id"]; raw != nil && !ok {
+		return fmt.Errorf("field transaction_id in FlexTradeRow: required")
+	}
+	type Plain FlexTradeRow
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.FetchID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetch_id", 1)
+	}
+	if len(plain.LevelOfDetail) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "level_of_detail", 1)
+	}
+	if len(plain.TransactionID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "transaction_id", 1)
+	}
+	*j = FlexTradeRow(plain)
+	return nil
+}
+
 // obs.fundamental_fact r1: one filed value of one concept of one issuer, as a
 // filing reported it; append only.
 type FundamentalFact struct {

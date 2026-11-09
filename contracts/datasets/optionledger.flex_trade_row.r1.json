@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/optionledger.flex_trade_row.r1.json",
+  "title": "FlexTradeRow",
+  "description": "optionledger.flex_trade_row r1: one revision of one Flex trade row of level EXECUTION, attributes as sent, as text; insert only. No account number is stored: the alias is the only identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alias", "level_of_detail", "transaction_id", "revision", "fetch_id", "row_index", "source", "attributes", "attributes_sha256", "recorded_at"],
+  "x-dataset": "optionledger.flex_trade_row",
+  "x-revision": "r1",
+  "x-primary-key": ["alias", "level_of_detail", "transaction_id", "revision"],
+  "properties": {
+    "alias": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$", "description": "Account alias of the row, the label mapped by the allow-list."},
+    "level_of_detail": {"type": "string", "minLength": 1, "description": "Level of detail of the Flex row, for example EXECUTION."},
+    "transaction_id": {"type": "string", "minLength": 1, "description": "Flex transactionID of the row, as text."},
+    "revision": {"type": "integer", "minimum": 1, "description": "Revision of the row for its transaction; 1 for a new key, a changed row is the next revision."},
+    "fetch_id": {"type": "string", "minLength": 1, "description": "Identifier of the fetch record that brought the row; for an import, the identifier of the import."},
+    "row_index": {"type": "integer", "minimum": 0, "description": "Position of the row in its report."},
+    "source": {"type": "string", "enum": ["flex", "ot_import"], "description": "Writer of the row: flex for a fetch, ot_import for the import of option-trader history."},
+    "attributes": {"type": "string", "description": "JSON object as text: every attribute of the Trade row as sent, every value text."},
+    "attributes_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the attributes text, 64 lower-case hex digits."},
+    "recorded_at": {"type": "string", "format": "date-time", "description": "Instant the row was recorded, UTC."}
+  }
+}
