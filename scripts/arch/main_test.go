@@ -332,3 +332,124 @@ func TestArchDeriveEntryListedSubPackages(t *testing.T) {
 		t.Fatalf("the root sources imports genpb:\n%s", b)
 	}
 }
+
+// declFixture is a modules table whose store row lists a declarations-only package
+// (internal/store/bar), a test kit and a generated package in entry cells.
+const declFixture = "# Fixture\n\n## Modules\n\n" +
+	"| module | paths | entry | tests | depends |\n" +
+	"| --- | --- | --- | --- | --- |\n" +
+	"| contracts | internal/contracts/** | internal/contracts/api.go internal/contracts/genpb | internal/contracts/api_test.go | |\n" +
+	"| compute | internal/compute/** | internal/compute/api.go internal/compute/contracttest | internal/compute/api_test.go | contracts |\n" +
+	"| store | internal/store/** | internal/store/api.go internal/store/bar | internal/store/api_test.go | contracts |\n" +
+	"| jobs | internal/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts compute store |\n\n" +
+	"The composition root imports one constructor each: `internal/store/bar`, `internal/store/barpg`,\n" +
+	"`internal/jobs/computefigures`. Any other import is refused.\n"
+
+var declTree = map[string]string{
+	"internal/contracts/genpb/g.go":      "package genpb\n",
+	"internal/compute/contracttest/c.go": "package contracttest\n",
+	"internal/store/bar/api.go":          "package bar\n",
+	"internal/store/barpg/s.go":          "package barpg\n",
+	"internal/store/s.go":                "package store\n",
+	"internal/jobs/j.go":                 "package jobs\n",
+	"internal/jobs/computefigures/c.go":  "package computefigures\n",
+	"internal/compute/c.go":              "package compute\n",
+	"internal/contracts/c.go":            "package contracts\n",
+}
+
+// mayImport reads the import list of a component from arch.toml.
+func mayImport(t *testing.T, toml, name string) string {
+	t.Helper()
+	_, rest, ok := strings.Cut(toml, "[component."+`"`+name+`"`+"]\n")
+	if !ok {
+		t.Fatalf("no component %s in:\n%s", name, toml)
+	}
+	block, _, _ := strings.Cut(rest, "\n[")
+	return block
+}
+
+// hasDep reports whether a mayDependOn block lists the component.
+func hasDep(block, name string) bool {
+	for _, l := range strings.Split(block, "\n") {
+		if strings.TrimSpace(l) == "- "+name {
+			return true
+		}
+	}
+	return false
+}
+
+func TestRootImportsListedInterfacePackage(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, declTree)
+	toml, yml, err := generate(declFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"jobs", "jobs/computefigures"} {
+		if b := mayImport(t, string(toml), name); !strings.Contains(b, `"store/bar"`) {
+			t.Fatalf("%s lacks store/bar in arch.toml:\n%s", name, b)
+		}
+	}
+	if b := mayImport(t, string(toml), "store"); strings.Contains(b, "store/bar") {
+		t.Fatalf("the root store imports its own declarations package:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "compute"); strings.Contains(b, "store/bar") {
+		t.Fatalf("compute does not depend on store but imports store/bar:\n%s", b)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, jobs, _ := strings.Cut(deps, "  jobs:\n")
+	if !hasDep(nextKey.Split(jobs, 2)[0], "store/bar") {
+		t.Fatalf("the root jobs lacks store/bar in the lint file:\n%s", yml)
+	}
+}
+
+func TestGeneratedSubPackageStaysSubOnly(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, declTree)
+	toml, yml, err := generate(declFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"jobs", "compute", "store", "contracts"} {
+		if b := mayImport(t, string(toml), name); strings.Contains(b, "genpb") || strings.Contains(b, "contracttest") {
+			t.Fatalf("root %s imports a kit or generated package in arch.toml:\n%s", name, b)
+		}
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	for _, name := range []string{"jobs", "compute", "store", "contracts"} {
+		_, rest, ok := strings.Cut(deps, "\n  "+name+":\n")
+		if !ok {
+			continue
+		}
+		if b := nextKey.Split(rest, 2)[0]; strings.Contains(b, "genpb") || strings.Contains(b, "contracttest") {
+			t.Fatalf("root %s imports a kit or generated package in the lint file:\n%s", name, b)
+		}
+	}
+	if b := mayImport(t, string(toml), "contracts/genpb"); strings.Contains(b, "store/bar") {
+		t.Fatalf("a generated package imports store/bar:\n%s", b)
+	}
+}
+
+func TestSubPackageImportsOwnRowDeclarations(t *testing.T) {
+	t.Parallel()
+	dir := scratch(t, declTree)
+	toml, yml, err := generate(declFixture, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImport(t, string(toml), "store/barpg"); !strings.Contains(b, `"store/bar"`) {
+		t.Fatalf("store/barpg lacks store/bar in arch.toml:\n%s", b)
+	}
+	if b := mayImport(t, string(toml), "store/bar"); strings.Contains(b, `"store/bar"`) {
+		t.Fatalf("store/bar imports itself:\n%s", b)
+	}
+	_, deps, _ := strings.Cut(string(yml), "\ndeps:\n")
+	_, rest, _ := strings.Cut(deps, "  store/barpg:\n")
+	if !hasDep(nextKey.Split(rest, 2)[0], "store/bar") {
+		t.Fatalf("store/barpg lacks store/bar in the lint file:\n%s", yml)
+	}
+	_, rest, _ = strings.Cut(deps, "  store/bar:\n")
+	if hasDep(nextKey.Split(rest, 2)[0], "store/bar") {
+		t.Fatalf("store/bar imports itself in the lint file:\n%s", yml)
+	}
+}
