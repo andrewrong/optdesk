@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
@@ -60,7 +62,7 @@ func TestFindPage(t *testing.T) {
 
 func TestPageUnknownNameOpensNoStore(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	a, _ := testApp(t, store.DSNEnvPages+"=pages-dsn\n")
 	var out bytes.Buffer
 	a.stdout = &out
 	var call pageCall
@@ -69,7 +71,7 @@ func TestPageUnknownNameOpensNoStore(t *testing.T) {
 		t.Error("a store was opened")
 		return nil, nil
 	}
-	_, want := pageNamed(a, "nosuch")
+	_, _, want := pageNamed(a, "nosuch")
 	err := runPage(a, []string{"--name", "nosuch"})
 	if err == nil || err.Error() != want.Error() || out.Len() != 0 {
 		t.Fatalf("err %v want %v out %q", err, want, out.String())
@@ -95,7 +97,7 @@ func TestPageNameSelectsEntry(t *testing.T) {
 
 func TestPageBytesAreBuilderBytes(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	a, _ := testApp(t, store.DSNEnvPages+"=pages-dsn\n")
 	var out bytes.Buffer
 	a.stdout = &out
 	var call pageCall
@@ -155,7 +157,7 @@ func TestPageMacroPage(t *testing.T) {
 	var gotZone *time.Location
 	var gotBuild string
 	a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
-	a.deps.macroPage = func(z *time.Location, b string) pages.Page {
+	a.deps.macroPage = func(z *time.Location, b string, _ compute.ReadingFunc) pages.Page {
 		gotZone, gotBuild = z, b
 		return fakePage("macro_page", "MACRO")
 	}
@@ -175,7 +177,7 @@ func TestPageMacroRatesIgnoresZone(t *testing.T) {
 	var out bytes.Buffer
 	a.stdout = &out
 	a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
-	a.deps.macroPage = func(*time.Location, string) pages.Page {
+	a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page {
 		t.Error("macroPage was called")
 		return pages.Page{}
 	}
@@ -186,7 +188,7 @@ func TestPageMacroRatesIgnoresZone(t *testing.T) {
 
 func TestPageMacroPageNilZoneOpensNoStore(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	a, _ := testApp(t, store.DSNEnvPages+"=pages-dsn\n")
 	a.profile.Zone = nil
 	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
 		t.Error("a store was opened")
@@ -246,7 +248,7 @@ func TestPageReportFlags(t *testing.T) {
 		a.stdout = &out
 		var got []string
 		a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
-		a.deps.macroPage = func(*time.Location, string) pages.Page { return fakePage("macro_page", "MACRO") }
+		a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page { return fakePage("macro_page", "MACRO") }
 		a.deps.reportPage = func(m, s string, _ *time.Location, _ report_page.RiskBlockFunc) pages.Page {
 			got = append(got, m, s)
 			return fakePage("report_page", "REPORT")
@@ -280,5 +282,105 @@ func TestPageReportFlags(t *testing.T) {
 		if err := runPage(a, []string{"--name", name}); err != nil || out.String() != want {
 			t.Errorf("%s: %q %v", name, out, err)
 		}
+	}
+}
+
+// macroViewApp is an app with the profile of testApp, a macroPage fake that hands its read to got, and an
+// openReadingView fake that records the DSN it got and returns view.
+func macroViewApp(t *testing.T, env string, view *fakeView, gotDSN *[]string, got *compute.ReadingFunc) *app {
+	t.Helper()
+	a, _ := testApp(t, env)
+	a.deps.macroPage = func(_ *time.Location, _ string, read compute.ReadingFunc) pages.Page {
+		*got = read
+		return fakePage("macro_page", "MACRO")
+	}
+	var seriesClosed atomic.Int32
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+		return fakeSeries{n: &seriesClosed}, nil
+	}
+	a.deps.openReadingView = func(_ context.Context, dsn string) (store.ReadingViewReader, error) {
+		*gotDSN = append(*gotDSN, dsn)
+		return view, nil
+	}
+	return a
+}
+
+func TestMacroPageGetsReadingFuncWhenDSNSet(t *testing.T) {
+	t.Parallel()
+	view := &fakeView{}
+	view.set(viewRow("2026-11-05", "55.5", ""))
+	var dsns []string
+	var read compute.ReadingFunc
+	a := macroViewApp(t, store.DSNEnvPages+"=pages-dsn\n", view, &dsns, &read)
+	var out bytes.Buffer
+	a.stdout = &out
+	if err := runPage(a, []string{"--name", "macro_page"}); err != nil {
+		t.Fatal(err)
+	}
+	if read == nil {
+		t.Fatal("macroPage got a nil read")
+	}
+	rows, err := read(t.Context(), "macro.ease", "market", "WALCL", "2026-11-05", "2026-11-05")
+	if err != nil || len(rows) != 1 || view.reads != 1 {
+		t.Fatalf("rows %v err %v reads %d", rows, err, view.reads)
+	}
+	if view.closed.Load() != 1 || len(dsns) != 1 || dsns[0] != "pages-dsn" || out.String() != "MACRO" {
+		t.Fatalf("closed %d dsns %v out %q", view.closed.Load(), dsns, out.String())
+	}
+}
+
+func TestMacroPageNilReadWhenDSNUnset(t *testing.T) {
+	t.Parallel()
+	for name, env := range map[string]string{"absent": "OT_OTHER=x\n", "empty": store.DSNEnvPages + "=\n"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			var dsns []string
+			read := func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+				return nil, nil
+			}
+			var got compute.ReadingFunc = read
+			a := macroViewApp(t, env, &fakeView{}, &dsns, &got)
+			if _, closeFn, err := pageNamed(a, "macro_page"); err != nil {
+				t.Fatal(err)
+			} else {
+				closeFn()
+			}
+			if got != nil || len(dsns) != 0 {
+				t.Fatalf("read non-nil %t, opener calls %v", got != nil, dsns)
+			}
+		})
+	}
+}
+
+func TestMacroPageDemoOpensNoView(t *testing.T) {
+	t.Parallel()
+	var dsns []string
+	var got compute.ReadingFunc = func(context.Context, string, string, string, contracts.Day, contracts.Day) ([]contracts.ReadingRecord, error) {
+		return nil, nil
+	}
+	a := macroViewApp(t, store.DSNEnvPages+"=pages-dsn\n", &fakeView{}, &dsns, &got)
+	a.profile.Name = "demo"
+	if err := runPage(a, []string{"--name", "macro_page"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != nil || len(dsns) != 0 {
+		t.Fatalf("read non-nil %t, opener calls %v", got != nil, dsns)
+	}
+}
+
+func TestMacroPageReaderOpenErrorIsReported(t *testing.T) {
+	t.Parallel()
+	const secret = "secret-pages-dsn"
+	a, _ := testApp(t, store.DSNEnvPages+"="+secret+"\n")
+	a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) {
+		return nil, errors.New("connect " + secret + " refused")
+	}
+	a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page {
+		t.Error("macroPage was called")
+		return pages.Page{}
+	}
+	err := runPage(a, []string{"--name", "macro_page"})
+	if err == nil || !strings.Contains(err.Error(), store.DSNEnvPages) || strings.Contains(err.Error(), secret) {
+		t.Fatalf("err %v", err)
 	}
 }
