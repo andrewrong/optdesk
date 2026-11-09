@@ -259,3 +259,36 @@ func TestDryRunQuoteSnapshotZeroGraceIsNotRefused(t *testing.T) {
 		t.Fatalf("guard refused a dry-run key: %q", out.String())
 	}
 }
+
+// tokyoSlotJob applies the quote_snapshot guard in the manifest zone Asia/Tokyo, grace 5 minutes.
+type tokyoSlotJob struct{ clk clock.Clock }
+
+func (tokyoSlotJob) ID() string { return jobQuoteSnapshot }
+func (tokyoSlotJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return []contracts.ExpectedKey{{DatasetID: "obs.quote_snapshot", SubjectKey: "0945"}}, "h", nil
+}
+
+func (j tokyoSlotJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
+	tk, _ := time.LoadLocation("Asia/Tokyo")
+	now := j.clk.Now().In(tk)
+	at := time.Date(now.Year(), now.Month(), now.Day(), 9, 45, 0, 0, tk)
+	if now.Format("2006-01-02") != "2026-11-10" || now.Before(at) || now.After(at.Add(5*time.Minute)) {
+		return contracts.JobResult{Err: dryKindErr(contracts.NoValue)}
+	}
+	return contracts.JobResult{Returned: 7}
+}
+
+func TestDryRunQuoteSnapshotOtherZoneIsNotRefused(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	a, out := dryApp(t, &ran)
+	a.deps.newQuoteSnapshot = func(_ broker.Broker, _ store.InstrumentResolver, _ store.QuoteSnapshotWriter, clk clock.Clock) (contracts.Job, error) {
+		return tokyoSlotJob{clk: clk}, nil
+	}
+	if err := runOnce(a, []string{"--dry-run", "--job", "quote_snapshot", "--day", "2026-11-10"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "error=no_value") || !strings.Contains(out.String(), "requested=7 ") {
+		t.Fatalf("guard refused a dry-run key: %q", out.String())
+	}
+}

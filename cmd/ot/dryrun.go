@@ -166,15 +166,14 @@ func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day 
 		printKeyLine(a, name, day, "-", "-", 0, [3]int{}, 0, perr)
 		return 1, 1, nil
 	}
+	var slotOffset *int
 	for _, k := range planned {
-		at, err := dryRunNow(name, day, k)
+		before := sink.len()
+		start := wall.Now()
+		res, err := dryRunKey(ctx, job, clk, name, day, k, &slotOffset)
 		if err != nil {
 			return keys, failed, err
 		}
-		clk.set(at)
-		before := sink.len()
-		start := wall.Now()
-		res := job.Run(ctx, day, []contracts.ExpectedKey{k})
 		_, ok, partial, noData := sink.countSince(before)
 		printKeyLine(a, name, day, k.DatasetID, k.SubjectKey, res.Returned, [3]int{ok, partial, noData}, wall.Now().Sub(start), res.Err)
 		keys++
@@ -213,22 +212,71 @@ func dryRunBuild(d deps, name string, b broker.Broker, res store.InstrumentResol
 	return nil, fmt.Errorf("--job %q is not one of %v", name, dryRunJobs)
 }
 
+// dryRunKey runs one key with the clock set so that no guard refuses it. The manifest of quote_snapshot (zone,
+// grace) is not readable from here, so its zone is found by trying the slot as local time at every UTC offset
+// of a quarter hour, from -12:00 up: while the offset is behind the manifest zone the guard answers NoValue
+// (a later local time, or another day), and the first answer that is not NoValue is the run at the slot of the
+// manifest zone, inside its window for any grace, zero too. The offset found is kept in found for the other
+// slots. When every offset is refused the answer of the first one is returned.
+func dryRunKey(ctx context.Context, job contracts.Job, clk *setClock, name string, day contracts.Day,
+	k contracts.ExpectedKey, found **int,
+) (contracts.JobResult, error) {
+	keys := []contracts.ExpectedKey{k}
+	if name != jobQuoteSnapshot {
+		at, err := dryRunNow(name, day, k, 0)
+		if err != nil {
+			return contracts.JobResult{}, err
+		}
+		clk.set(at)
+		return job.Run(ctx, day, keys), nil
+	}
+	try := func(m int) (contracts.JobResult, error) {
+		at, err := dryRunNow(name, day, k, m)
+		if err != nil {
+			return contracts.JobResult{}, err
+		}
+		clk.set(at)
+		return job.Run(ctx, day, keys), nil
+	}
+	if *found != nil {
+		return try(**found)
+	}
+	var first contracts.JobResult
+	for m := -12 * 60; m <= 14*60; m += 15 {
+		r, err := try(m)
+		if err != nil {
+			return r, err
+		}
+		if m == -12*60 {
+			first = r
+		}
+		if r.Err == nil || r.Err.Kind() != contracts.NoValue {
+			*found = &m
+			return r, nil
+		}
+	}
+	return first, nil
+}
+
 // dryRunNow is the instant of the fixed clock for key on day: the local time of dryRunTimes, or the slot of a
-// quote_snapshot key itself (inside its window for any grace, zero too).
-func dryRunNow(job string, day contracts.Day, k contracts.ExpectedKey) (time.Time, error) {
+// quote_snapshot key read as local time at the UTC offset offsetMin minutes.
+func dryRunNow(job string, day contracts.Day, k contracts.ExpectedKey, offsetMin int) (time.Time, error) {
 	d, err := time.Parse(time.DateOnly, string(day))
 	if err != nil {
 		return time.Time{}, fmt.Errorf("day %q is not YYYY-MM-DD", day)
 	}
-	zone, hhmm := "America/New_York", 0
-	if t, ok := dryRunTimes[job]; ok {
-		zone, hhmm = t.zone, t.hhmm
-	} else if _, err := fmt.Sscanf(k.SubjectKey, "%04d", &hhmm); err != nil {
-		return time.Time{}, fmt.Errorf("slot %q is not HHMM", k.SubjectKey)
+	t, ok := dryRunTimes[job]
+	if !ok {
+		var hhmm int
+		if _, err := fmt.Sscanf(k.SubjectKey, "%04d", &hhmm); err != nil {
+			return time.Time{}, fmt.Errorf("slot %q is not HHMM", k.SubjectKey)
+		}
+		loc := time.FixedZone("", offsetMin*60)
+		return time.Date(d.Year(), d.Month(), d.Day(), hhmm/100, hhmm%100, 0, 0, loc), nil
 	}
-	loc, err := time.LoadLocation(zone)
+	loc, err := time.LoadLocation(t.zone)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return time.Date(d.Year(), d.Month(), d.Day(), hhmm/100, hhmm%100, 0, 0, loc), nil
+	return time.Date(d.Year(), d.Month(), d.Day(), t.hhmm/100, t.hhmm%100, 0, 0, loc), nil
 }
