@@ -10,8 +10,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-import pytest
-from ib_async import IB
+from ib_async import IB, Contract, ContractDetails
 from kit.fakeclock import FakeClock
 from real_ib import RealIb, real_ib, sent_messages
 
@@ -78,14 +77,43 @@ def test_real_ib_quotes_send() -> None:
     assert "756733" in sent[0]
 
 
-@pytest.mark.xfail(strict=True, reason="dividends con_id 0 fix not landed")
 def test_real_ib_dividends_send() -> None:
     async def noop(reading: DividendReading) -> None:
         return None
 
-    key = DividendKey("SPY", "STK", "SMART", "USD", 0)
-    sent = _run(lambda g: g.dividends([key], noop))
-    assert sent and sent[0][0] == _ID["quotes"]
+    async def run() -> tuple[list[list[str]], list[list[str]]]:
+        stub = real_ib()
+        gateway = await _connected(stub)
+        key = DividendKey("SPY", "STK", "SMART", "USD", 0)
+        task = asyncio.ensure_future(gateway.dividends([key], noop))
+        try:
+            for _ in range(200):
+                if stub.sent or task.done():
+                    break
+                await asyncio.sleep(0)
+            if task.done() and not stub.sent:
+                task.result()
+            lookup = sent_messages(stub)
+            # answer the conId lookup as the broker would, then wait for the subscription
+            req_id = int(lookup[0][2])
+            found = ContractDetails(contract=Contract(conId=756733, symbol="SPY"))
+            stub.ib.wrapper.contractDetails(req_id, found)
+            stub.ib.wrapper.contractDetailsEnd(req_id)
+            for _ in range(200):
+                if len(stub.sent) > 1 or task.done():
+                    break
+                await asyncio.sleep(0)
+            if task.done() and len(stub.sent) < 2:
+                task.result()
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        return lookup, sent_messages(stub)
+
+    lookup, sent = asyncio.run(run())
+    assert lookup and lookup[0][0] == _ID["details"]
+    assert len(sent) > 1 and sent[1][0] == _ID["quotes"]
+    assert "756733" in sent[1]
 
 
 def test_real_ib_resolve_send() -> None:
