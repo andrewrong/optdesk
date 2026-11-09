@@ -407,6 +407,7 @@ func TestCompareFixedPerID(t *testing.T) {
 	t.Parallel()
 	rules := New()
 	want := map[string]compute.Compare{
+		"market.hv30_own":        compute.Compare(""),
 		"market.ivp_own":         compute.AtOrBelow,
 		"market.vix_pctile_3y":   compute.Below,
 		"market.vxn_pctile_3y":   compute.Below,

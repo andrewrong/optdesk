@@ -1673,6 +1673,29 @@ history = [
 ]
 
 [[figure]]
+id = "market.hv30_own"
+version = 1
+title_zh = "自有 HV30"
+pages = []
+formula = """
+Convention hv30_v1: close-to-close log returns of consecutive stored closes, their sample standard deviation (ddof 1) over the last 30 returns (n 30), times the square root of 252 (trading days per year). An annual fraction: 0.31 is 31 percent. Needs 31 closes above zero."""
+inputs = """
+The stored daily closes of the underlying, oldest first, the last 31 of them; the newest close no older than 4 calendar days."""
+period_date = "The as-of day of the newest close used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's HV30 (Quote.HistoricalVol; never read here, never a fallback); dividend adjustment of the closes; any fill or extrapolation of a missing close."""
+gap_text = """
+Fewer than 31 closes: missing, short_history. No close: missing, no_input. A newest close older than 4 calendar days: missing, stale_input. A close not above zero: missing, bad_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input, zero_range or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).HistoricalVol",
+]
+source_hash = "afe994b62432c69e13f21a7ce33ec312b2b45f003f2cb44d785fcf9422f0b0d6"
+agreed_on = "2026-11-09"
+agreed_in = "owner approval in the optdesk dispatcher window, 2026-11-09 (market-bars entry 11: n 30, 252 trading days, max age 4 days)"
+history = ["2026-11-09 v1: registered by docs/design/market-bars.md Decision 10; no page reads it yet."]
+
+[[figure]]
 id = "market.ivp_own"
 version = 1
 title_zh = "自有 IV 百分位"
