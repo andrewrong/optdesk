@@ -9,10 +9,11 @@ CREATE SCHEMA IF NOT EXISTS optionledger;
 CREATE SCHEMA IF NOT EXISTS rd;
 
 CREATE TABLE optionledger.flex_fetch (
+    fetch_id           text        NOT NULL,
     login              text        NOT NULL,
     query_id           text        NOT NULL,
-    first_day          date,
-    last_day           date,
+    first_date         date,
+    last_date          date,
     started_at         timestamptz NOT NULL,
     finished_at        timestamptz NOT NULL,
     status             text        NOT NULL,
@@ -21,12 +22,12 @@ CREATE TABLE optionledger.flex_fetch (
     raw_sha256         text        NOT NULL DEFAULT '',
     parser_version     text        NOT NULL DEFAULT '',
     statements         integer     NOT NULL DEFAULT 0,
-    unmapped_statements integer NOT NULL DEFAULT 0,
+    statements_unmapped integer NOT NULL DEFAULT 0,
     rows_parsed        integer     NOT NULL DEFAULT 0,
     rows_new           integer     NOT NULL DEFAULT 0,
     rows_revised       integer     NOT NULL DEFAULT 0,
     rows_unchanged     integer     NOT NULL DEFAULT 0,
-    PRIMARY KEY (login, query_id, started_at)
+    PRIMARY KEY (fetch_id)
 );
 
 CREATE TABLE optionledger.flex_trade_row (
@@ -38,8 +39,11 @@ CREATE TABLE optionledger.flex_trade_row (
     attributes_sha256 text        NOT NULL,
     source            text        NOT NULL,
     recorded_at       timestamptz NOT NULL,
+    fetch_id          text        NOT NULL,
+    row_index         integer     NOT NULL,
     PRIMARY KEY (alias, level_of_detail, transaction_id, revision),
     CONSTRAINT flex_trade_row_revision_ck CHECK (revision >= 1),
+    CONSTRAINT flex_trade_row_index_ck CHECK (row_index >= 0),
     CONSTRAINT flex_trade_row_source_ck CHECK (source IN ('flex', 'ot_import'))
 );
 
@@ -48,12 +52,12 @@ ALTER TABLE optionledger.flex_fetch OWNER TO ot_owner;
 ALTER TABLE optionledger.flex_trade_row OWNER TO ot_owner;
 
 CREATE VIEW rd.flex_fetch_r1 AS
-SELECT login, query_id, first_day, last_day, started_at, finished_at, status, error_kind, error_code, raw_sha256,
-       parser_version, statements, unmapped_statements, rows_parsed, rows_new, rows_revised, rows_unchanged
+SELECT fetch_id, login, query_id, first_date, last_date, started_at, finished_at, status, error_kind, error_code, raw_sha256,
+       parser_version, statements, statements_unmapped, rows_parsed, rows_new, rows_revised, rows_unchanged
 FROM optionledger.flex_fetch;
 
 CREATE VIEW rd.flex_trade_row_r1 AS
-SELECT alias, level_of_detail, transaction_id, revision, attributes, attributes_sha256, source, recorded_at
+SELECT alias, level_of_detail, transaction_id, revision, attributes, attributes_sha256, source, recorded_at, fetch_id, row_index
 FROM optionledger.flex_trade_row;
 
 ALTER VIEW rd.flex_fetch_r1 OWNER TO ot_owner;

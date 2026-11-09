@@ -7,6 +7,8 @@ package optionledger
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -82,10 +84,11 @@ func (s *Store) RecordFlexFetch(ctx context.Context, rec store.FlexFetchRecord, 
 	if err != nil {
 		return store.FlexInsert{}, err
 	}
+	id := fetchID(rec)
 	var out store.FlexInsert
 	err = s.db.InTx(ctx, func(t tx) error {
 		out = store.FlexInsert{}
-		for _, r := range rows {
+		for i, r := range rows {
 			var have []revision
 			if err := t.Select(ctx, latestRevisionSQL, key(r), scanRevision(&have)); err != nil {
 				return err
@@ -101,7 +104,7 @@ func (s *Store) RecordFlexFetch(ctx context.Context, rec store.FlexFetchRecord, 
 				next = have[0].n + 1
 				out.Revised++
 			}
-			n, err := t.Exec(ctx, insertRowSQL, rowArgs(r, next, sourceFlex, nil)...)
+			n, err := t.Exec(ctx, insertRowSQL, rowArgs(r, next, sourceFlex, nil, id, i)...)
 			if err != nil {
 				return err
 			}
@@ -137,10 +140,11 @@ func (s *Store) ImportFlexTradeRows(ctx context.Context, rows []store.FlexTradeR
 			return store.FlexImportResult{}, permanent(fmt.Errorf("optionledger: row %d: revision %d", i, r.Revision))
 		}
 	}
+	id := importID(rows)
 	var out store.FlexImportResult
 	err := s.db.InTx(ctx, func(t tx) error {
 		out = store.FlexImportResult{}
-		for _, r := range rows {
+		for i, r := range rows {
 			var have []revision
 			if err := t.Select(ctx, allRevisionsSQL, key(r), scanRevision(&have)); err != nil {
 				return err
@@ -162,7 +166,7 @@ func (s *Store) ImportFlexTradeRows(ctx context.Context, rows []store.FlexTradeR
 			if !r.RecordedAt.IsZero() {
 				at = &r.RecordedAt
 			}
-			n, err := t.Exec(ctx, insertRowSQL, rowArgs(r, r.Revision, sourceImport, at)...)
+			n, err := t.Exec(ctx, insertRowSQL, rowArgs(r, r.Revision, sourceImport, at, id, i)...)
 			if err != nil {
 				return err
 			}
@@ -185,8 +189,10 @@ func (s *Store) FlexTradeRows(ctx context.Context, alias string) ([]store.FlexTr
 	out := []store.FlexTradeRow{}
 	err := s.db.Select(ctx, selectRowsSQL, []any{alias}, func(sc scanner) error {
 		var r store.FlexTradeRow
+		var fid string // the views carry them for the pages; the row type has no field for either
+		var rowIndex int
 		if err := sc.Scan(&r.Alias, &r.LevelOfDetail, &r.TransactionID, &r.Revision, &r.Attributes,
-			&r.AttributesSHA256, &r.Source, &r.RecordedAt); err != nil {
+			&r.AttributesSHA256, &r.Source, &r.RecordedAt, &fid, &rowIndex); err != nil {
 			return err
 		}
 		out = append(out, r)
@@ -204,9 +210,10 @@ func (s *Store) LatestOkFetch(ctx context.Context, login, queryID string) (store
 	found := false
 	err := s.db.Select(ctx, selectLatestOkSQL, []any{login, queryID}, func(sc scanner) error {
 		var first, last *time.Time
+		var id string
 		if err := sc.Scan(&rec.Login, &rec.QueryID, &first, &last, &rec.StartedAt, &rec.FinishedAt, &rec.Status,
 			&rec.ErrorKind, &rec.ErrorCode, &rec.RawSHA256, &rec.ParserVersion, &rec.Statements,
-			&rec.UnmappedStatement, &rec.RowsParsed, &rec.RowsNew, &rec.RowsRevised, &rec.RowsUnchanged); err != nil {
+			&rec.UnmappedStatement, &rec.RowsParsed, &rec.RowsNew, &rec.RowsRevised, &rec.RowsUnchanged, &id); err != nil {
 			return err
 		}
 		rec.FirstDay, rec.LastDay = dayText(first), dayText(last)
@@ -252,16 +259,30 @@ func scanRevision(into *[]revision) func(scanner) error {
 	}
 }
 
+// fetchID names a fetch by its key: login, query id and start instant.
+func fetchID(rec store.FlexFetchRecord) string {
+	return rec.Login + "/" + rec.QueryID + "/" + rec.StartedAt.UTC().Format(time.RFC3339Nano)
+}
+
+// importID names one import by the keys and hashes of its rows, so the same rows give the same id.
+func importID(rows []store.FlexTradeRow) string {
+	h := sha256.New()
+	for _, r := range rows {
+		fmt.Fprintf(h, "%s\x00%s\x00%s\x00%d\x00%s\n", r.Alias, r.LevelOfDetail, r.TransactionID, r.Revision, r.AttributesSHA256)
+	}
+	return "import-" + hex.EncodeToString(h.Sum(nil))[:16]
+}
+
 func key(r store.FlexTradeRow) []any { return []any{r.Alias, r.LevelOfDetail, r.TransactionID} }
 
-func rowArgs(r store.FlexTradeRow, rev int, source string, at *time.Time) []any {
-	return []any{r.Alias, r.LevelOfDetail, r.TransactionID, rev, r.Attributes, r.AttributesSHA256, source, at}
+func rowArgs(r store.FlexTradeRow, rev int, source string, at *time.Time, fid string, index int) []any {
+	return []any{r.Alias, r.LevelOfDetail, r.TransactionID, rev, r.Attributes, r.AttributesSHA256, source, at, fid, index}
 }
 
 func fetchArgs(rec store.FlexFetchRecord, first, last *time.Time, c store.FlexInsert) []any {
 	return []any{rec.Login, rec.QueryID, first, last, rec.StartedAt, rec.FinishedAt, rec.Status, rec.ErrorKind,
 		rec.ErrorCode, rec.RawSHA256, rec.ParserVersion, rec.Statements, rec.UnmappedStatement, rec.RowsParsed,
-		c.New, c.Revised, c.Unchanged}
+		c.New, c.Revised, c.Unchanged, fetchID(rec)}
 }
 
 // checkRow refuses a row with an empty key part or hash, attributes that are not a JSON object, or attributes

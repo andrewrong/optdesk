@@ -120,7 +120,7 @@ func (f *fakeDB) highest(alias string) [][]any {
 	sort.Slice(picked, func(i, j int) bool { return picked[i][2].(string) < picked[j][2].(string) })
 	var got [][]any
 	for _, r := range picked {
-		got = append(got, []any{r[0], r[1], r[2], r[3], r[4], r[5], r[6], *r[7].(*time.Time)})
+		got = append(got, []any{r[0], r[1], r[2], r[3], r[4], r[5], r[6], *r[7].(*time.Time), r[8], r[9]})
 	}
 	return got
 }
@@ -460,5 +460,37 @@ func TestDuplicateFetchRecordFailsAndKeepsNoRows(t *testing.T) {
 	}
 	if len(db.rows) != 0 || len(db.fetches) != 1 {
 		t.Errorf("%d rows and %d records kept, want 0 and 1", len(db.rows), len(db.fetches))
+	}
+}
+
+func TestFetchColumnsMatchDatasetR1(t *testing.T) {
+	t.Parallel()
+	for _, want := range []string{"fetch_id", "first_date", "last_date", "statements_unmapped"} {
+		if !strings.Contains(fetchColumns, want) {
+			t.Errorf("fetch columns lack %q of optionledger.flex_fetch r1", want)
+		}
+	}
+	for _, want := range []string{"fetch_id", "row_index"} {
+		if !strings.Contains(tradeColumns, want) {
+			t.Errorf("trade columns lack %q of optionledger.flex_trade_row r1", want)
+		}
+	}
+}
+
+func TestRecordLinksRowsToFetchAndPosition(t *testing.T) {
+	t.Parallel()
+	s, db := newStore()
+	rec := fetchRec()
+	if _, err := s.RecordFlexFetch(context.Background(), rec, []store.FlexTradeRow{row("1", "h1"), row("2", "h2")}); err != nil {
+		t.Fatal(err)
+	}
+	want := rec.Login + "/" + rec.QueryID + "/" + rec.StartedAt.UTC().Format(time.RFC3339Nano)
+	for i, r := range db.rows {
+		if r[8] != want || r[9] != i {
+			t.Errorf("row %d: fetch id %v index %v, want %q and %d", i, r[8], r[9], want, i)
+		}
+	}
+	if got := db.fetches[0][17]; got != want {
+		t.Errorf("fetch record id %v, want %q", got, want)
 	}
 }
