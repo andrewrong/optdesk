@@ -755,3 +755,81 @@ type OptionResults interface {
 
 // NewOptionResultsFunc builds an OptionResults.
 type NewOptionResultsFunc func() OptionResults
+
+// NoticePosition is one held position as plain text, for the option notices.
+type NoticePosition struct {
+	Symbol, SecType, Expiry, Strike, Right, Multiplier, Quantity, Currency string
+}
+
+// NoticeGuard is a stored held-call guard verdict; Reasons are the codes of its blocked gates.
+type NoticeGuard struct {
+	Symbol, Expiry, Strike, Status string
+	Reasons                        []string
+}
+
+// NoticeEarnings is the next earnings day of an issuer; Next is nil when none is known.
+type NoticeEarnings struct {
+	Symbol string
+	Next   *contracts.Day
+}
+
+// NoticeValue is one stored account value as decimal text, such as the cushion tag.
+type NoticeValue struct {
+	Tag, Value, Currency string
+}
+
+// NoticeInput is the stored rows of one alias, converted to plain values.
+type NoticeInput struct {
+	Day           contracts.Day
+	Alias         string
+	CaptureDay    contracts.Day
+	Positions     []NoticePosition
+	PrevDay       contracts.Day
+	PrevPositions []NoticePosition
+	Guards        []NoticeGuard
+	Earnings      []NoticeEarnings
+	Values        []NoticeValue
+}
+
+// NoticeParams holds the thresholds; the cushion limits are decimal text.
+type NoticeParams struct {
+	ExpiryDays              int
+	CushionWarn, CushionAct string
+}
+
+// Notice is one open notice, with its severity (info, warn, act).
+type Notice struct {
+	Code, Severity, Symbol, Contract string
+	Expiry                           contracts.Day
+	Facts                            []NoticeFact
+}
+
+// NoticeFact is one labelled figure of a notice.
+type NoticeFact struct {
+	Label, Value string
+}
+
+// CashDay is the assignment cash due on a day, in one currency, as decimal text.
+type CashDay struct {
+	Day              contracts.Day
+	Currency, Amount string
+}
+
+// NoticeResult is the notices of one alias in the rule's order.
+type NoticeResult struct {
+	RuleVersion int
+	Notices     []Notice
+	CashByDate  []CashDay
+	Cushion     string
+}
+
+// OptionNotices evaluates the option notices of one alias, purely: no I/O, no clock.
+type OptionNotices interface {
+	Evaluate(NoticeInput, NoticeParams) NoticeResult
+}
+
+// NewOptionNoticesFunc builds an OptionNotices.
+type NewOptionNoticesFunc func() OptionNotices
+
+// DefaultNoticeParamsFunc gives the confirmed thresholds.
+type DefaultNoticeParamsFunc func() NoticeParams

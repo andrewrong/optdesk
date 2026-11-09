@@ -78,6 +78,12 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - `FigureValue` is a `Value` or a `Gap` (`missing_quote`, `stale_input`, `unsupported_currency`, `no_rule`, `no_data`, `missing_input`); exactly one is set.
 - Money and shares are decimal text rounded half-even to 4 places; `KeptShare` is a ratio of 6 places or empty. Pure: no I/O, no clock.
 
+## Option notices
+
+`NoticePosition`, `NoticeGuard`, `NoticeEarnings`, `NoticeValue`, `NoticeInput`, `NoticeParams`, `Notice`, `NoticeFact`, `CashDay`, `NoticeResult`, `OptionNotices`, `NewOptionNoticesFunc` and `DefaultNoticeParamsFunc` are in `internal/compute/api.go`. Design: `docs/design/option-notices.md#Interface`.
+
+- Plain values and decimal text only; no float. Severities are `info`, `warn`, `act`. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -86,6 +92,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v4: additions only: the option candidate types and `OptionCandidates` above.
 - v5: additions only: the ledger types and `OptionLedger` above.
 - v6: additions only: the option structure and result types, `OptionStructures`, `OptionResults` and the eight `LedgerPosition` terms above.
+- v7: additions only: the option notice types, `OptionNotices` and the two function types above.
 
 ## Contract tests
 
