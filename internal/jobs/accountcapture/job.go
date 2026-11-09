@@ -26,7 +26,7 @@ const (
 	statusPending = "pending"
 )
 
-// Config is what New needs. Main is the alias of Decision 8 and must be a key of Readers.
+// Config is what New needs. Main string is the alias of Decision 8 and must be a key of Readers.
 type Config struct {
 	Main    string
 	Readers map[string]broker.AccountReader
