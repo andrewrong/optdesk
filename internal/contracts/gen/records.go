@@ -8,6 +8,153 @@ import "github.com/atombender/go-jsonschema/pkg/types"
 import "reflect"
 import "time"
 
+// obs.fundamental_fact r1: one filed value of one concept of one issuer, as a
+// filing reported it; append only.
+type FundamentalFact struct {
+	// Concept name in the taxonomy.
+	Concept string `json:"concept" yaml:"concept" mapstructure:"concept"`
+
+	// Currency code of a money value; empty when the unit is not money.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Identifier of the filing document: the accession number or the EDINET document
+	// id.
+	DocID string `json:"doc_id" yaml:"doc_id" mapstructure:"doc_id"`
+
+	// Day the filing was filed.
+	Filed types.SerializableDate `json:"filed" yaml:"filed" mapstructure:"filed"`
+
+	// Form of the filing, for example 10-K.
+	Form string `json:"form" yaml:"form" mapstructure:"form"`
+
+	// Last day of the period, or the day of an instant fact.
+	PeriodEnd types.SerializableDate `json:"period_end" yaml:"period_end" mapstructure:"period_end"`
+
+	// First day of the period of a duration fact; null for an instant fact. The key
+	// is always present.
+	PeriodStart *types.SerializableDate `json:"period_start" yaml:"period_start" mapstructure:"period_start"`
+
+	// SHA-256 of the raw source document, lower-case hex.
+	RawSha256 string `json:"raw_sha256" yaml:"raw_sha256" mapstructure:"raw_sha256"`
+
+	// Instant the fact was retrieved, UTC.
+	RetrievedAt time.Time `json:"retrieved_at" yaml:"retrieved_at" mapstructure:"retrieved_at"`
+
+	// Where the fact came from; a later source extends the enum additively.
+	Source FundamentalFactSource `json:"source" yaml:"source" mapstructure:"source"`
+
+	// The issuer text of the watch list: cik:<10 digits>, or edinet:<code>.
+	Subject string `json:"subject" yaml:"subject" mapstructure:"subject"`
+
+	// Taxonomy of the concept, for example us-gaap, dei or sec.
+	Taxonomy string `json:"taxonomy" yaml:"taxonomy" mapstructure:"taxonomy"`
+
+	// Unit of the value, for example USD, shares, JPY or sic.
+	Unit string `json:"unit" yaml:"unit" mapstructure:"unit"`
+
+	// The value as decimal text.
+	Value string `json:"value" yaml:"value" mapstructure:"value"`
+}
+
+type FundamentalFactSource string
+
+const FundamentalFactSourceEdinet FundamentalFactSource = "edinet"
+const FundamentalFactSourceSec FundamentalFactSource = "sec"
+
+var enumValues_FundamentalFactSource = []interface{}{
+	"sec",
+	"edinet",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FundamentalFactSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_FundamentalFactSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_FundamentalFactSource, v)
+	}
+	*j = FundamentalFactSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FundamentalFact) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["concept"]; raw != nil && !ok {
+		return fmt.Errorf("field concept in FundamentalFact: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in FundamentalFact: required")
+	}
+	if _, ok := raw["doc_id"]; raw != nil && !ok {
+		return fmt.Errorf("field doc_id in FundamentalFact: required")
+	}
+	if _, ok := raw["filed"]; raw != nil && !ok {
+		return fmt.Errorf("field filed in FundamentalFact: required")
+	}
+	if _, ok := raw["form"]; raw != nil && !ok {
+		return fmt.Errorf("field form in FundamentalFact: required")
+	}
+	if _, ok := raw["period_end"]; raw != nil && !ok {
+		return fmt.Errorf("field period_end in FundamentalFact: required")
+	}
+	if _, ok := raw["period_start"]; raw != nil && !ok {
+		return fmt.Errorf("field period_start in FundamentalFact: required")
+	}
+	if _, ok := raw["raw_sha256"]; raw != nil && !ok {
+		return fmt.Errorf("field raw_sha256 in FundamentalFact: required")
+	}
+	if _, ok := raw["retrieved_at"]; raw != nil && !ok {
+		return fmt.Errorf("field retrieved_at in FundamentalFact: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in FundamentalFact: required")
+	}
+	if _, ok := raw["subject"]; raw != nil && !ok {
+		return fmt.Errorf("field subject in FundamentalFact: required")
+	}
+	if _, ok := raw["taxonomy"]; raw != nil && !ok {
+		return fmt.Errorf("field taxonomy in FundamentalFact: required")
+	}
+	if _, ok := raw["unit"]; raw != nil && !ok {
+		return fmt.Errorf("field unit in FundamentalFact: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in FundamentalFact: required")
+	}
+	type Plain FundamentalFact
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.Concept) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "concept", 1)
+	}
+	if len(plain.DocID) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "doc_id", 1)
+	}
+	if len(plain.Taxonomy) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "taxonomy", 1)
+	}
+	if len(plain.Unit) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "unit", 1)
+	}
+	*j = FundamentalFact(plain)
+	return nil
+}
+
 // obs.option_eod r1: one option contract on one session day, frozen after the
 // close.
 type OptionEod struct {
