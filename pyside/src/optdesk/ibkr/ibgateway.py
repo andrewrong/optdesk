@@ -44,6 +44,8 @@ from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
 
 _log = logging.getLogger(__name__)
 
+_DIVIDEND_LOG_MAX = 120  # characters of an exception text kept in dividend_failed
+
 _PRICE_FIELDS = (
     ("bid", "bid"),
     ("ask", "ask"),
@@ -466,14 +468,38 @@ class IbGateway:
             try:
                 async with self._lines.lease():
                     await self._pacer.start()
-                    ib, _ = self._session()
+                    ib, generation = self._session()
+                    con_id = key.con_id
+                    if con_id <= 0:
+                        matches = await self._send_details(
+                            generation,
+                            lambda: ib.reqContractDetailsAsync(
+                                Contract(
+                                    symbol=key.symbol,
+                                    secType=key.sec_type,
+                                    exchange=key.exchange or "SMART",
+                                    currency=key.currency,
+                                )
+                            ),
+                        )
+                        if len(matches) != 1:
+                            await on_reading(
+                                self._unanswered(
+                                    key,
+                                    spec.STATUS_NO_VALUE
+                                    if not matches
+                                    else spec.STATUS_ERROR,
+                                )
+                            )
+                            return
+                        con_id = matches[0].contract.conId
                     reading = await self._until_lost(
                         read_dividend(
                             self._clock,
                             key,
                             lambda k, ticks, on_text, on_error: (
                                 self._subscribe_dividend(
-                                    ib, k, ticks, on_text, on_error
+                                    ib, k, con_id, ticks, on_text, on_error
                                 )
                             ),
                         )
@@ -482,18 +508,11 @@ class IbGateway:
                 raise
             except Exception as exc:  # noqa: BLE001
                 _log.error(
-                    "dividend_failed type=%s message=%s", type(exc).__name__, exc
+                    "dividend_failed type=%s message=%s",
+                    type(exc).__name__,
+                    str(exc)[:_DIVIDEND_LOG_MAX],
                 )
-                reading = DividendReading(
-                    key,
-                    spec.STATUS_ERROR,
-                    None,
-                    None,
-                    None,
-                    None,
-                    0,
-                    self._clock.now().timestamp(),
-                )
+                reading = self._unanswered(key, spec.STATUS_ERROR)
             await on_reading(reading)
 
         tasks = [asyncio.ensure_future(one(key)) for key in keys]
@@ -504,19 +523,25 @@ class IbGateway:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
+    def _unanswered(self, key: DividendKey, status: str) -> DividendReading:
+        return DividendReading(
+            key, status, None, None, None, None, 0, self._clock.now().timestamp()
+        )
+
     def _subscribe_dividend(
         self,
         ib: Any,
         key: DividendKey,
+        con_id: int,
         ticks: str,
         on_text: TickText,
         on_error: TickError,
     ) -> Release:
-        job = _Job(key.con_id)
+        job = _Job(con_id)
         job.on_error = on_error
         self._jobs.add(job)
         contract = Contract(
-            conId=key.con_id,
+            conId=con_id,
             symbol=key.symbol,
             secType=key.sec_type,
             exchange=key.exchange or "SMART",

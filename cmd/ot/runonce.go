@@ -122,7 +122,6 @@ func runOnce(a *app, args []string) error {
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
 		return fmt.Errorf("run-once %s: %w", day, err)
 	}
-	a.log.Info("run-once "+string(day)+" done", "component", "ot", "status", "ok")
 	return nil
 }
 
@@ -139,8 +138,12 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		return nil
 	}
 	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
-		rec := a.deps.newRunner(w.ledger, w.cal, clk, w.runnable(a.log), runner.WindowRule{})
-		return rec.Reconcile(ctx, day)
+		js := w.runnable(a.log)
+		rec := a.deps.newRunner(w.ledger, w.cal, clk, js, runner.WindowRule{})
+		if err := rec.Reconcile(ctx, day); err != nil {
+			return err
+		}
+		return printOutcomes(ctx, a.stdout, w.ledger, js, day, w.earningsOff)
 	})
 }
 
