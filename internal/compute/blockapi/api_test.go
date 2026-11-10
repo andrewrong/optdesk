@@ -152,3 +152,74 @@ func TestCompanyContract(t *testing.T) {
 		t.Fatalf("Changes = %+v", c)
 	}
 }
+
+// fakeHoldings keeps the promises of HoldingFigures: pure, every input reaches the output, Risk never reads Mark.
+type fakeHoldings struct{}
+
+var noQuote = compute.FigureValue{Gap: "missing_quote"}
+
+func (fakeHoldings) Holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
+	out := blockapi.HoldingsResult{TotalValue: fv(in.NetLiquidation), TotalUnrealised: fv(in.Currency)}
+	for _, r := range in.Rows {
+		l := blockapi.HoldingLine{Underlying: r.Underlying, SecType: r.SecType}
+		if r.Mark == "" {
+			l.Value, l.Unrealised, l.Share = noQuote, noQuote, noQuote
+		} else {
+			l.Value, l.Unrealised, l.Share = fv(r.Quantity+r.Multiplier+r.Mark), fv(r.Cost+r.Currency), fv("1")
+		}
+		out.Rows = append(out.Rows, l)
+	}
+	return out
+}
+
+func (fakeHoldings) Risk(in blockapi.RiskIn) blockapi.RiskResult {
+	out := blockapi.RiskResult{DeltaTotal: fv(in.Currency), VegaTotal: fv("0")}
+	for _, s := range in.Stocks {
+		out.Delta = append(out.Delta, blockapi.RiskLine{Key: s.Underlying + s.SecType, Value: fv(s.Quantity + s.Currency)})
+	}
+	for _, g := range in.Greeks {
+		out.Delta = append(out.Delta, blockapi.RiskLine{Key: g.Underlying, Value: fv(g.Delta)})
+		out.Vega = append(out.Vega, blockapi.RiskLine{Key: string(g.Expiry), Value: fv(g.Vega)})
+	}
+	return out
+}
+
+var newHoldings blockapi.NewHoldingFiguresFunc = func() blockapi.HoldingFigures { return fakeHoldings{} }
+
+func TestHoldingsContract(t *testing.T) {
+	t.Parallel()
+	h := newHoldings().Holdings(blockapi.HoldingsIn{Currency: "USD", NetLiquidation: "1000", Rows: []blockapi.HoldingIn{
+		{Underlying: "AAA", SecType: "STK", Currency: "USD", Quantity: "2", Multiplier: "1", Cost: "5", Mark: "6"},
+		{Underlying: "BBB", SecType: "OPT", Currency: "USD", Quantity: "1", Multiplier: "100", Cost: "1"},
+	}})
+	want := []blockapi.HoldingLine{
+		{Underlying: "AAA", SecType: "STK", Value: fv("216"), Unrealised: fv("5USD"), Share: fv("1")},
+		{Underlying: "BBB", SecType: "OPT", Value: noQuote, Unrealised: noQuote, Share: noQuote},
+	}
+	if len(h.Rows) != 2 || h.Rows[0] != want[0] || h.Rows[1] != want[1] {
+		t.Fatalf("Rows = %+v", h.Rows)
+	}
+	if h.TotalValue != fv("1000") || h.TotalUnrealised != fv("USD") {
+		t.Fatalf("totals = %+v %+v", h.TotalValue, h.TotalUnrealised)
+	}
+}
+
+func TestRiskContract(t *testing.T) {
+	t.Parallel()
+	r := newHoldings().Risk(blockapi.RiskIn{
+		Currency: "USD",
+		Stocks:   []blockapi.HoldingIn{{Underlying: "AAA", SecType: "STK", Currency: "USD", Quantity: "3"}},
+		Greeks:   []blockapi.GreekIn{{Underlying: "AAA", Expiry: testDay, Delta: "-10", Vega: "4"}},
+	})
+	stock := blockapi.RiskLine{Key: "AAASTK", Value: fv("3USD")}
+	opt := blockapi.RiskLine{Key: "AAA", Value: fv("-10")}
+	if len(r.Delta) != 2 || r.Delta[0] != stock || r.Delta[1] != opt {
+		t.Fatalf("Delta = %+v", r.Delta)
+	}
+	if len(r.Vega) != 1 || r.Vega[0] != (blockapi.RiskLine{Key: string(testDay), Value: fv("4")}) {
+		t.Fatalf("Vega = %+v", r.Vega)
+	}
+	if r.DeltaTotal != fv("USD") || r.VegaTotal != fv("0") {
+		t.Fatalf("totals = %+v %+v", r.DeltaTotal, r.VegaTotal)
+	}
+}
