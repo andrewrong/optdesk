@@ -3,14 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/household_page"
-	"time"
-
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
