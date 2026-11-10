@@ -168,16 +168,24 @@ func (m manifest) validate() error {
 		}
 	}
 	for _, u := range m.Underlying {
-		if m.isStock(u) {
-			// A JP stock entry needs only a symbol; runKey ends one without con_id or currency as NoValue.
-			if u.Symbol == "" {
-				return fmt.Errorf("optioneod: manifest: a stock underlying needs a symbol")
-			}
-			continue
+		if err := m.validateUnderlying(u); err != nil {
+			return err
 		}
-		if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
-			return fmt.Errorf("optioneod: manifest: an underlying needs symbol, con_id and currency")
+	}
+	return nil
+}
+
+// validateUnderlying asks a stock underlying for a symbol only (runKey ends one without con_id or currency as
+// NoValue) and every other underlying for symbol, con_id and currency.
+func (m manifest) validateUnderlying(u underlying) error {
+	if m.isStock(u) {
+		if u.Symbol == "" {
+			return fmt.Errorf("optioneod: manifest: a stock underlying needs a symbol")
 		}
+		return nil
+	}
+	if u.Symbol == "" || u.ConID == 0 || u.Currency == "" {
+		return fmt.Errorf("optioneod: manifest: an underlying needs symbol, con_id and currency")
 	}
 	return nil
 }
