@@ -12,6 +12,10 @@ The page is built per request (`ot serve`) for the day of `--day` or else today.
 
 The page opens nothing itself; it reads the candidate, option_eod and instrument-name readers of the site.
 
+## What is shown
+
+The company name is the ticker, read from the instrument-name reader; the key of the page is the ticker (`/options/stock/AAPL`), and a stored issuer text still matches as a fallback. The page shows the chain day: the newest day on or before the data day that holds option_eod rows, up to 14 days back, and its note names it.
+
 ## Left out
 
 With no candidate reader the page shows its own gap (`no_reader`); a nil zone is an error. There is no `ot page` form.

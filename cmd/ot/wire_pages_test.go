@@ -32,7 +32,7 @@ func TestNewOptionDataPageCarriesNotesAndSymbol(t *testing.T) {
 
 func TestOptionCandidatesPageWiresReader(t *testing.T) {
 	t.Parallel()
-	p := newDeps().optionCandidatesPage(time.UTC, "ot-page", "dev", "candidates", demoCandidates{})
+	p := newDeps().optionCandidatesPage(time.UTC, "ot-page", "dev", "candidates", demoCandidates{}, demoOption{})
 	if p.Meta.Name != "option_candidates_page" || p.Meta.Schema != "page.option_candidates_page.v1" {
 		t.Fatalf("meta %+v", p.Meta)
 	}

@@ -10,7 +10,11 @@ The page is built per request (`ot serve`) or once per command (`ot page`) for t
 
 ## Lines it reads
 
-The candidate store and the option_eod store, both opened once with `OT_PG_DSN_PAGES`; the page opens nothing itself.
+The candidate store, the option_eod store and the instrument-name store, all opened once with `OT_PG_DSN_PAGES`; the page opens nothing itself.
+
+## What is shown
+
+The company name of a card or row is the ticker, read from the instrument-name reader by the underlying id (the stored issuer text when no name is found). The page shows the chain day: the newest day on or before the data day that holds option_eod rows, looked back up to 14 days; the note of the page names it. `ot serve` passes `rd.names`; `ot page` opens the instrument-name store with `OT_PG_DSN_PAGES` (closed with the page; a missing line gives a nil reader; the demo profile uses the demo names).
 
 ## Left out
 
