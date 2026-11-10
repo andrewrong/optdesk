@@ -2,7 +2,9 @@
 id = "compute_figures"
 rate_series = "DGS3MO"
 iv30 = "market.iv30_own"
+iv_ibkr = "market.iv_ibkr"
 ivp = "market.ivp_own"
+ivp_ibkr = "market.ivp_ibkr"
 ivr = "market.ivr_own"
 hv30 = "market.hv30_own"
 

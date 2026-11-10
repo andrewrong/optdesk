@@ -128,8 +128,8 @@ func TestPlanKeys(t *testing.T) {
 	t.Parallel()
 	j := newJob(t, world(), newFigs())
 	keys := plan(t, j)
-	if len(keys) != 3+len(marketIDs) {
-		t.Fatalf("keys %d, want 9 (3 per underlying, 6 market)", len(keys))
+	if len(keys) != 4+len(marketIDs) {
+		t.Fatalf("keys %d, want 10 (4 per underlying, 6 market)", len(keys))
 	}
 	if !sort.SliceIsSorted(keys, func(a, b int) bool { return keys[a].SubjectKey < keys[b].SubjectKey }) {
 		t.Fatalf("keys not sorted: %+v", keys)
@@ -156,8 +156,8 @@ func TestRunStoresOkAndMissing(t *testing.T) {
 	f.addPoint("VXVCLS", dayD, 22)
 	j := newJob(t, f, newFigs())
 	res := runAll(t, j)
-	if res.Err != nil || res.Returned != 9 || res.Usable != 9 {
-		t.Fatalf("result %+v, want 9 of 9 and no error", res)
+	if res.Err != nil || res.Returned != 10 || res.Usable != 10 {
+		t.Fatalf("result %+v, want 10 of 10 and no error", res)
 	}
 	iv := reading(t, f, "market.iv30_own", "underlying", "SPY")
 	if iv.State != "ok" || iv.Value == nil || *iv.Value != "0.200000" || iv.Rev != 1 {
