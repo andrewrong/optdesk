@@ -88,15 +88,15 @@ func annualisedOf(yield *string) (cell any, text string) {
 	return mkGap("no_data", gapText), gapText
 }
 
-func buildOptionCards(rows []store.Candidate, eod map[int]contracts.OptionEod) []opportunity {
+func buildOptionCards(rows []store.Candidate, eod map[int]contracts.OptionEod, names displayNames) []opportunity {
 	out := make([]opportunity, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, buildCard(r, eod))
+		out = append(out, buildCard(r, eod, names))
 	}
 	return out
 }
 
-func buildCard(r store.Candidate, eod map[int]contracts.OptionEod) opportunity {
+func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames) opportunity {
 	md, _ := monthDay(r.Expiry)
 	wd, _ := weekdayText(r.Expiry)
 	ann, annText := annualisedOf(r.AnnualizedYield)
@@ -113,7 +113,7 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod) opportunity {
 	}
 	return opportunity{
 		ID:             fmt.Sprintf("c%d", r.InstrumentID),
-		Symbol:         r.Issuer,
+		Symbol:         names.of(r),
 		Verdict:        verdictOf(r.Status),
 		Reason:         reason,
 		Annualised:     ann,

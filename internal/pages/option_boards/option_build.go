@@ -65,15 +65,23 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 		return nil, err
 	}
 
+	names, err := loadNames(ctx, c.Names, shown)
+	if err != nil {
+		return nil, err
+	}
+	if note := chainDayNote(eod, l.Day); note != "" {
+		notes = append(notes, note)
+	}
+
 	pane := marketPane{
 		Market: "US", Label: "美股", Currency: "USD",
 		Headline:        fmt.Sprintf("%d 个值得看。", len(cards)),
 		CardsTitle:      "今日机会",
-		Cards:           buildOptionCards(cards, eod),
+		Cards:           buildOptionCards(cards, eod, names),
 		CandidatesTitle: "候选表",
-		Candidates:      buildTable(tableRows, eod),
+		Candidates:      buildTable(tableRows, eod, names),
 		AllLink:         link{Text: fmt.Sprintf("全部 %d 个机会", len(l.Rows)), Target: candidatesAnchor},
-		Chain:           buildChain(l.Rows, cards),
+		Chain:           buildChain(l.Rows, cards, names),
 	}
 	p := optionPayload{
 		Schema: "option_page", SchemaVersion: 1,
