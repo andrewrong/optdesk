@@ -27,9 +27,12 @@ var t0 = time.Date(2026, 11, 5, 21, 40, 0, 0, time.UTC)
 type fakeAcct struct {
 	pos map[string][]store.Position
 	err map[string]error
+
+	positionCalls int
 }
 
 func (f *fakeAcct) Positions(_ context.Context, alias, _ string) ([]store.Position, error) {
+	f.positionCalls++
 	return f.pos[alias], f.err[alias]
 }
 func (f *fakeAcct) Values(context.Context, string, string) ([]store.AccountValue, error) {
@@ -477,5 +480,43 @@ func TestRetryReadsStoredNoneRowAndWritesNextAttempt(t *testing.T) {
 	res := j.Run(context.Background(), testDay, nil)
 	if res.Err != nil || len(rw.rows) != 1 || rw.rows[0].Attempt != 2 {
 		t.Fatalf("res = %+v rows = %+v", res, rw.rows)
+	}
+}
+
+func TestWrongDay(t *testing.T) {
+	t.Parallel()
+	ps := map[string][]store.Position{"a": {pos("a", "c1", 1, "USD")}}
+	// 2026-11-06 03:00 UTC is still 2026-11-05 in New York; 2026-11-06 05:00 UTC is 2026-11-06 00:00 EST.
+	for _, tc := range []struct {
+		name string
+		now  time.Time
+		wrng bool
+	}{
+		{"same New York date", time.Date(2026, 11, 6, 3, 0, 0, 0, time.UTC), false},
+		{"past day", time.Date(2026, 11, 6, 5, 0, 0, 0, time.UTC), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			e := setup(t, []string{"a"}, ps)
+			clk := clockwork.NewFakeClockAt(tc.now)
+			e.m.clk = clk
+			j, err := newJob(e.m, []string{"a"}, e.a, e.w, clk, slog.Default())
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := j.Run(context.Background(), testDay, nil)
+			if !tc.wrng {
+				if res.Err != nil || res.Returned != 1 || len(e.w.rows) != 1 || len(e.m.calls) != 1 {
+					t.Fatalf("same day: res = %+v rows %d calls %d", res, len(e.w.rows), len(e.m.calls))
+				}
+				return
+			}
+			if kindOf(res) != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") {
+				t.Fatalf("err = %v", res.Err)
+			}
+			if res.Returned != 0 || len(e.w.rows) != 0 || len(e.m.calls) != 0 || e.a.positionCalls != 0 {
+				t.Fatalf("read or wrote: res %+v rows %d snapshots %d positions %d", res, len(e.w.rows), len(e.m.calls), e.a.positionCalls)
+			}
+		})
 	}
 }
