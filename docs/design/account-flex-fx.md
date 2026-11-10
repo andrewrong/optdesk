@@ -104,15 +104,15 @@ Checked by CI: ci-go; the design verdict.
 Module: store, plus repo (licensed pair: `scripts/arch/main.go`, `scripts/arch/main_test.go`, `arch.toml`, `.go-arch-lint.yml`). Size: S.
 Files: `internal/store/flexsection/api.go`, `internal/store/flexsection/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/account-flex-fx.md#interface
-Order: after 1; before 4 and 7 (the three edit `.go-arch-lint.yml` in that order); cut only after the issue `bar-store-api` of `docs/design/market-bars.md` has landed, which edits `scripts/arch/main.go` first.
+Order: after 1; before 4 and 7; cut only after the issue `bar-store-api` of `docs/design/market-bars.md` has landed, which edits `scripts/arch/main.go` first.
 Goal: the package of the Interface table, declarations only, with a contract test from both sides (a fake `Store` and a caller that records sections and reads rows and statuses back), the package added to `declarationsOnly` of `scripts/arch/main.go` and its test, the component in `.go-arch-lint.yml`, and `docs/contracts/store.md` recording the revision rule and the views.
 Acceptance:
 1. `grep -c 'type Writer interface\|type Reader interface\|type Store interface\|type OpenFunc ' internal/store/flexsection/api.go` prints 4; `grep -c 'RecordSections\|Statuses(\|Rows(' internal/store/flexsection/api.go` is at least 3.
 2. `ls internal/store/flexsection` lists exactly `api.go` and `api_test.go`; `grep -c '^func ' internal/store/flexsection/api.go` prints 0.
 3. `grep -c 'database/sql\|pgx\|internal/store"\|internal/jobs\|internal/broker\|contracts/gen' internal/store/flexsection/api.go` prints 0; `grep -c 'float32\|float64' internal/store/flexsection/api.go` prints 0.
-4. `grep -c 'internal/store/flexsection' scripts/arch/main.go` is at least 1; `grep -c 'internal/store/flexsection' .go-arch-lint.yml` is at least 1; `grep -c 'var _ flexsection.Writer\|var _ flexsection.Reader' internal/store/flexsection/api_test.go` prints 2.
-5. `arch.toml` gives `jobs` the package: `grep -c 'store/flexsection' arch.toml` is at least 1. `grep -c 'flex_section_row_r1' docs/contracts/store.md` is at least 1 and `grep -c 'accountId' docs/contracts/store.md` is at least 1.
-6. `git diff --name-only $BASE | grep -vxF -e internal/store/flexsection/api.go -e internal/store/flexsection/api_test.go -e docs/contracts/store.md -e scripts/arch/main.go -e scripts/arch/main_test.go -e arch.toml -e .go-arch-lint.yml | grep -c .` prints 0.
+4. `grep -c 'internal/store/flexsection' scripts/arch/main.go` is at least 1; `grep -c 'var _ flexsection.Writer\|var _ flexsection.Reader' internal/store/flexsection/api_test.go` prints 2.
+5. `grep -c 'flex_section_row_r1' docs/contracts/store.md` is at least 1 and `grep -c 'accountId' docs/contracts/store.md` is at least 1.
+6. `git diff --name-only $BASE | grep -vxF -e internal/store/flexsection/api.go -e internal/store/flexsection/api_test.go -e docs/contracts/store.md -e scripts/arch/main.go -e scripts/arch/main_test.go | grep -c .` prints 0.
 Checked by CI: ci-go; `go run ./scripts/arch --check` printing `arch: ok`; the design verdict.
 
 ### 4 flexsection-jobs-api (interface)
@@ -120,14 +120,14 @@ Checked by CI: ci-go; `go run ./scripts/arch --check` printing `arch: ok`; the d
 Module: jobs, plus repo (licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/jobs/api.go`, `internal/jobs/flex_section_api_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/account-flex-fx.md#interface
-Order: after 3; before 7 (`.go-arch-lint.yml` chain 3, 4, 7); cut only after `bar-store-api` of `docs/design/market-bars.md` has landed, because `jobs`, a root component, may import `store/flexsection` only under the root-component rule that issue adds to `scripts/arch`.
+Order: after 3; before 7; cut only after `bar-store-api` of `docs/design/market-bars.md` has landed, because `jobs`, a root component, may import `store/flexsection` only under the root-component rule that issue adds to `scripts/arch`.
 Goal: the field `Sections flexsection.Writer` in `OptionLedgerStores`, additions only, with a contract test from both sides (a caller that builds the job with the field set and with it nil, a fake writer) in a new file; `docs/contracts/jobs.md` records that nil switches the step off and the delivery rule of Decision 10.
 Acceptance:
 1. `grep -c 'Sections *flexsection.Writer' internal/jobs/api.go` prints 1; `grep -c 'type OptionLedgerStores struct' internal/jobs/api.go` prints 1; `grep -c 'type NewOptionLedgerJobFunc ' internal/jobs/api.go` prints 1.
 2. `grep -c 'float32\|float64\|os.Getenv' internal/jobs/api.go` prints 0.
 3. `grep -c 'Sections' internal/jobs/flex_section_api_test.go` is at least 2; `grep -c 'flexsection.Writer' internal/jobs/flex_section_api_test.go` is at least 1.
 4. `grep -c 'Sections' docs/contracts/jobs.md` is at least 1.
-5. `git diff --name-only $BASE | grep -vxF -e internal/jobs/api.go -e internal/jobs/flex_section_api_test.go -e docs/contracts/jobs.md -e .go-arch-lint.yml | grep -c .` prints 0.
+5. `git diff --name-only $BASE | grep -vxF -e internal/jobs/api.go -e internal/jobs/flex_section_api_test.go -e docs/contracts/jobs.md | grep -c .` prints 0.
 Checked by CI: ci-go; `go run ./scripts/arch --check` printing `arch: ok`; the design verdict.
 
 ### 5 flexsection-source-parse
@@ -148,7 +148,7 @@ Checked by CI: ci-go (`go test ./internal/sources/... -race -count=1`).
 ### 6 flexsection-store-migration
 
 Module: store. Size: S.
-Files: `migrations/NNNN_flex_section.sql`
+Files: `migrations/0024_flex_section.sql`
 Design: docs/design/account-flex-fx.md#decisions (Decision 8)
 Order: after 1 and 3; cut only after the migration of `docs/design/option-ledger.md` issue 8 (which creates schema `optionledger` and the role `ot_w_optionledger`) has landed. `NNNN` is the next free number at cut time, greater than every file in `migrations` on origin/main and than the option-ledger one; on a rebase where another migration took it, the file is renamed to the next free number and nothing else changes. The acceptance below reads the file by the glob.
 Goal: the two tables, their views and their grants, and nothing else.
@@ -165,15 +165,15 @@ Checked by CI: ci-go; `go test -tags pg ./internal/store/...` (GitHub CI only). 
 Module: store, plus repo (licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `internal/store/flexsectionpg/store.go`, `internal/store/flexsectionpg/queries.go`, `internal/store/flexsectionpg/store_test.go`, `internal/store/flexsectionpg/pg_test.go`
 Design: docs/design/account-flex-fx.md#decisions (Decisions 6, 8, 9)
-Order: after 3, 4 and 6 (`.go-arch-lint.yml` chain 3, 4, 7).
+Order: after 3, 4 and 6.
 Goal: `flexsectionpg.Open` returns a `flexsection.Store` over the DSN of `store.DSNEnvOptionLedger`: one transaction per `RecordSections` with the revision rule (the highest revision of the key is read and the next written there, `ON CONFLICT DO NOTHING` as a second guard), a refusal of attributes that hold `accountId` or `acctAlias`, and a reader over the two views only.
 Acceptance:
 1. `grep -c 'flexsection.Store' internal/store/flexsectionpg/store.go` is at least 1 and `grep -c 'func Open' internal/store/flexsectionpg/store.go` prints 1.
 2. `grep -c 'rd.flex_section_row_r1\|rd.flex_section_status_r1' internal/store/flexsectionpg/queries.go` is at least 2; `grep -c 'FROM optionledger\.' internal/store/flexsectionpg/queries.go` prints 0; `grep -ci 'UPDATE \|DELETE \|TRUNCATE' internal/store/flexsectionpg/queries.go` prints 0.
 3. `grep -c 'ON CONFLICT DO NOTHING' internal/store/flexsectionpg/queries.go` is at least 1; `grep -c 'accountId\|acctAlias' internal/store/flexsectionpg/store.go` is at least 2.
 4. Each of these functions is in `internal/store/flexsectionpg/store_test.go` once: `TestNewKeyIsRevisionOne`, `TestEqualHashNotWritten`, `TestChangedHashNextRevision`, `TestRowsAndStatusesOneTransaction`, `TestRowWithAccountKeyRefused`, `TestReaderHighestRevision`, `TestStatusNewestPerSection`, `TestNoAccountColumn`; `grep -c '^//go:build pg' internal/store/flexsectionpg/pg_test.go` prints 1.
-5. `grep -rn 'internal/jobs\|internal/compute\|contracts/gen' internal/store/flexsectionpg | grep -c .` prints 0; `grep -c 'store/flexsectionpg' .go-arch-lint.yml` is at least 1; each new file is under 600 lines.
-6. `git diff --name-only $BASE | grep -vxE 'internal/store/flexsectionpg/[a-z_]+\.go|\.go-arch-lint\.yml' | grep -c .` prints 0.
+5. `grep -rn 'internal/jobs\|internal/compute\|contracts/gen' internal/store/flexsectionpg | grep -c .` prints 0; each new file is under 600 lines.
+6. `git diff --name-only $BASE | grep -vxE 'internal/store/flexsectionpg/[a-z_]+\.go' | grep -c .` prints 0.
 Checked by CI: ci-go; `go test -tags pg ./internal/store/...`; `go run ./scripts/arch --check`; the design verdict and the advisor's verdict (Decision 11).
 
 ### 8 flexsection-ledger-step

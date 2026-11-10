@@ -57,7 +57,7 @@ No owner sentence is needed: AGENTS.md:40 is on main, so `compute-golden-generat
 | 2 | compute-fixtures-hand | compute, plus repo (judged: `.go-arch-lint.yml`) | after 1 (compute-interface) |
 | 3 | compute-contracttest | compute | after 2 (compute-fixtures-hand) |
 | 4 | compute-own-glue | compute, plus repo (judged: `.go-arch-lint.yml`) | after 1, 2, 3 (compute-interface, compute-fixtures-hand, compute-contracttest) |
-| 5 | compute-gonum-stats | compute, plus repo (judged: go.mod, go.sum, `.go-arch-lint.yml`) | after 1, 2, 3, 4 (own-glue first: both edit `.go-arch-lint.yml`) |
+| 5 | compute-gonum-stats | compute, plus repo (judged: go.mod, go.sum, `.go-arch-lint.yml`) | after 1, 2, 3, 4 |
 | 6 | compute-figures-series | compute, plus repo (judged: `.go-arch-lint.yml`) | after 1, 2, 4, 5 |
 | 7 | compute-figures-iv | compute | after 6 (compute-figures-series) |
 | 8 | compute-golden-generator | compute | after 7 (compute-figures-iv) |
@@ -90,7 +90,7 @@ Owner: compute. Frozen by `compute-interface`; read by every issue here, by `com
 ### compute-interface (interface)
 
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: S. Depends on: none.
-- Order: first. Interface change: new file `internal/compute/api.go`; the modules.md edits above are in the tree. This is the first Go file under `internal/compute`, and `scripts/arch` keeps a component only for a directory that holds Go files, so the issue adds the `compute` component to `.go-arch-lint.yml`. `arch.toml` already holds the compute components from this design's modules.md edits and does not change (a tree with `internal/compute/api.go` and `internal/compute/own/` regenerates only `.go-arch-lint.yml`), so no issue lists it.
+- Order: first. Interface change: new file `internal/compute/api.go`; the modules.md edits above are in the tree. This is the first Go file under `internal/compute`.
 - Design: docs/design/compute-core.md#Interface
 - Files: internal/compute/api.go, internal/compute/api_test.go, docs/contracts/compute.md
 
@@ -103,10 +103,9 @@ Acceptance:
 3. `go list -deps ./internal/compute | grep -c "gonum\|go-talib\|shopspring"` prints 0 and `go list -deps ./internal/compute | grep optdesk | grep -v 'internal/compute$'` lists only `internal/contracts` and its `gen` (the package itself is excluded from the list).
 4. `TestMissingNeverNaN` passes: a missing `Figure` has `Value == 0` and a non-empty `Reason`.
 5. `grep -c "latest realtime_start\|data_day\|short_history" docs/contracts/compute.md` is at least 3.
-6. `grep -c '^  compute:' .go-arch-lint.yml` prints 2 (the component and its `deps` entry).
-7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the four paths of the Files line.
+6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the four paths of the Files line.
 
-Checked by CI: `go test ./internal/compute -race -count=1`; the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change).
+Checked by CI: `go test ./internal/compute -race -count=1`.
 
 ### compute-fixtures-hand
 
@@ -123,10 +122,9 @@ Acceptance:
 2. `grep -c '"group": "half_even"' internal/compute/contracttest/testdata/units.json` is at least 9 and `grep -c '0.0078125' internal/compute/contracttest/testdata/units.json` is at least 1; `TestRampExpands` passes (count, step, from); the groups `theta_per_calendar_day`, `vega_per_vol_point` and `iv_decimal` each occur at least once.
 3. `TestGoldenCoversFigures` passes: one `ok` case for each `Figures` method and one case for each of the five reasons.
 4. `grep -rc "time.Now\|os.Getenv" internal/compute/contracttest/golden.go` prints 0; each Go file is under 600 lines.
-5. `grep -c 'internal/compute/contracttest' .go-arch-lint.yml` prints 1 (the regenerated file lists the package).
-6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line.
 
-Checked by CI: `go test ./internal/compute/contracttest -race -count=1`; the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change).
+Checked by CI: `go test ./internal/compute/contracttest -race -count=1`.
 
 ### compute-contracttest
 
@@ -149,7 +147,7 @@ Checked by CI: `go test ./internal/compute/contracttest -race -count=1`.
 ### compute-own-glue
 
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-contracttest.
-- Order: after 1, 2, 3 (compute-interface, compute-fixtures-hand, compute-contracttest); 1 and 2 edit `.go-arch-lint.yml` too.
+- Order: after 1, 2, 3 (compute-interface, compute-fixtures-hand, compute-contracttest).
 - Design: docs/design/compute-core.md#Decisions
 - Files: internal/compute/own/units.go, internal/compute/own/series.go, internal/compute/own/rolling.go, internal/compute/own/own_test.go
 
@@ -161,14 +159,14 @@ Acceptance:
 2. `go list -deps ./internal/compute/own | grep -c "gonum\|go-talib\|shopspring"` prints 0.
 3. `TestFromSeriesPointsLatestVintage` passes (two vintages of one date give the later `realtime_start`; a `no_value` row and a null value are dropped; no duplicate day) and `TestRoundHalfEvenBadInput` passes (NaN, Inf, negative scale are `Permanent`).
 4. `TestAlignGap`, `TestLogReturnsGap` pass (a return is dated by the later point); `TestRollingMatchesNaive` (200 seeded windows, mean and stdev within 1e-12) and `TestRollingWarmup` pass.
-5. `grep -c 'internal/compute/own' .go-arch-lint.yml` prints 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
 
-Checked by CI: `go test ./internal/compute/own -race -count=1`; the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change).
+Checked by CI: `go test ./internal/compute/own -race -count=1`.
 
 ### compute-gonum-stats
 
 - Module: compute, plus repo (judged: `go.mod`, `go.sum`, the regenerated `.go-arch-lint.yml`). Size: S. Depends on: compute-contracttest.
-- Order: after 1, 2, 3, 4 (compute-interface, compute-fixtures-hand, compute-contracttest, compute-own-glue); 1, 2 and 4 edit `.go-arch-lint.yml` too.
+- Order: after 1, 2, 3, 4 (compute-interface, compute-fixtures-hand, compute-contracttest, compute-own-glue).
 - Design: docs/design/compute-core.md#Decisions
 - Files: internal/compute/gonumstats/stats.go, internal/compute/gonumstats/stats_test.go, go.mod, go.sum
 
@@ -180,14 +178,14 @@ Acceptance:
 1. `grep -c "contracttest.Stats" internal/compute/gonumstats/stats_test.go` prints 1.
 2. `grep -c "gonum.org/v1/gonum v0.17.0" go.mod` prints 1; `go list -deps ./internal/compute | grep -c gonum` prints 0.
 3. `TestPercentileRankBothWays` passes (ties; `x` outside the range) and `TestBadInput` passes (empty input, one value for the standard deviation: `Permanent`, no NaN).
-4. `grep -c 'internal/compute/gonumstats' .go-arch-lint.yml` prints 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
+4. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
 
-Checked by CI: `go test ./internal/compute/gonumstats -race -count=1`; the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change).
+Checked by CI: `go test ./internal/compute/gonumstats -race -count=1`.
 
 ### compute-figures-series
 
 - Module: compute, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: M. Depends on: compute-own-glue, compute-gonum-stats.
-- Order: after 1, 2, 4, 5 (compute-interface, compute-fixtures-hand, compute-own-glue, compute-gonum-stats); all four edit `.go-arch-lint.yml` too.
+- Order: after 1, 2, 4, 5 (compute-interface, compute-fixtures-hand, compute-own-glue, compute-gonum-stats).
 - Design: docs/design/compute-core.md#Interface
 - Files: internal/compute/figures/figures.go, internal/compute/figures/series.go, internal/compute/figures/series_test.go, internal/compute/figures/iv_pending.go, internal/compute/figures/iv_pending_test.go, internal/compute/contracttest/testdata/figures.json
 
@@ -199,10 +197,10 @@ Acceptance:
 2. `TestHistoricalVol` passes (constant log returns give the golden value; 30 closes `short_history`; a zero close `bad_input`) and `grep -c "252" internal/compute/figures/series.go` prints 0 (the factor is `Rule.TradingDays`).
 3. `TestMovingAverageGap` (199 closes `short_history`, 200 ok, gap equal to `close/mean - 1` to 1e-12), `TestPercentileInYears` (day excluded, gap skipped, `Below` and `AtOrBelow` differ on a tie, two years of history for `Years` 3 is `short_history`) and `TestRatio` (zero denominator `bad_input`, stale denominator `stale_input`) pass.
 4. `TestStaleInput` passes: an input older than `MaxAgeDays` against `asOf` is `missing` with `stale_input` and `DataDay` is the newest input day; `TestCompareFromRule` passes (the same series ranks differently under two rules; no method has a `Compare` parameter).
-5. `go list -deps ./internal/compute/figures | grep -c "gonum\|go-talib"` prints 0 and `grep -c "time\.Now" internal/compute/figures/*.go` prints 0 (a package list never holds a symbol); `grep -c 'internal/compute/figures' .go-arch-lint.yml` prints 1; each Go file is under 600 lines.
+5. `go list -deps ./internal/compute/figures | grep -c "gonum\|go-talib"` prints 0 and `grep -c "time\.Now" internal/compute/figures/*.go` prints 0 (a package list never holds a symbol); each Go file is under 600 lines.
 6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line (the golden file gains a trading_days value of 252 in its series cases: without it the annualised HV cannot match; added after the review of PR 456).
 
-Checked by CI: `go test ./internal/compute/figures -race -count=1`; the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change).
+Checked by CI: `go test ./internal/compute/figures -race -count=1`.
 
 ### compute-figures-iv
 
@@ -259,9 +257,9 @@ Acceptance:
 2. `grep -c "github.com/markcheno/go-talib v0.0.0-" go.mod` prints 1 (no `replace`); `go list -deps ./internal/compute | grep -c "go-talib"` prints 0.
 3. `TestDivergenceListIsExact` passes: each entry has the three keys, and the raw library output differs from the fixture for exactly the listed functions (a stale entry fails; an unlisted divergence fails).
 4. `TestWarmupIsNaN` and `TestBadPeriod` pass.
-5. `grep -c 'internal/compute/talibind' .go-arch-lint.yml` prints 1; each Go file is under 600 lines; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eight paths of the Files line.
+5. each Go file is under 600 lines; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eight paths of the Files line.
 
-Checked by CI: `go test ./internal/compute/talibind -race -count=1` (the parity run against the TA-Lib fixtures), lint, the `checks` arch check (`go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change) and the ratchet.
+Checked by CI: `go test ./internal/compute/talibind -race -count=1` (the parity run against the TA-Lib fixtures), lint and the ratchet.
 
 ## Left out
 

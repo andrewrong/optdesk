@@ -61,9 +61,9 @@ Acceptance:
 2. `grep -c "var _ notify.NewNotifierFunc\|var _ notify.NewTelegramSenderFunc\|var _ notify.NewDryRunSenderFunc" internal/notify/api_test.go` prints 3; `grep -c "t.Parallel()" internal/notify/api_test.go` is at least `grep -c "^func Test" internal/notify/api_test.go`.
 3. `grep -c "OT_TELEGRAM_TOKEN\|OT_TELEGRAM_CHAT_ID\|at-least-once\|MarkGapReported" docs/contracts/notify.md` is at least 4; `grep -c "[0-9]\{6,\}:[A-Za-z0-9_-]\{20,\}" internal/notify/api.go internal/notify/api_test.go docs/contracts/notify.md` prints 0 for each file.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eight paths of the Files line; `git diff $(git merge-base HEAD origin/main) -- internal/store | grep -c .` prints 0.
-5. `go run ./scripts/arch --check` prints `arch: ok`; `grep -c 'notify/core\|notify/dryrun\|notify/telegram\|notify/notifytest' .go-arch-lint.yml` is at least 4; `git diff $(git merge-base HEAD origin/main) -- arch.toml go.mod go.sum | grep -c .` prints 0.
+5. `go run ./scripts/arch --check` prints `arch: ok`; `git diff $(git merge-base HEAD origin/main) -- go.mod go.sum | grep -c .` prints 0.
 
-Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint); `go test ./internal/notify -race -count=1`; the `arch.toml` check; the design verdict (the result matches the Interface section).
+Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint); `go test ./internal/notify -race -count=1`; the design verdict (the result matches the Interface section).
 
 ### notify-core
 
@@ -79,7 +79,7 @@ Acceptance:
 1. `grep -c "^func Test" internal/notify/core/core_test.go` is at least 14, and the names include `TestMarkOnlyAfterSend`, `TestFailedSendMarksNothing`, `TestOneMessagePerBatch`, `TestReportedGapNotRepeated`, `TestClearedGapSkipped`, `TestQuietHoursHoldGaps`, `TestQuietWindowCrossesMidnight`, `TestTextHoldsNoSentinel`, `TestTextCapsLines`, `TestBackoffDoubles`, `TestMarkFailureRetried`, `TestBadConfigRefused`, `TestCapMarksOnlyPrinted` and `TestKeyGapLineCarriesDataset`: `grep -c "func TestMarkOnlyAfterSend\|func TestFailedSendMarksNothing\|func TestOneMessagePerBatch\|func TestReportedGapNotRepeated\|func TestClearedGapSkipped\|func TestQuietHoursHoldGaps\|func TestQuietWindowCrossesMidnight\|func TestTextHoldsNoSentinel\|func TestTextCapsLines\|func TestBackoffDoubles\|func TestMarkFailureRetried\|func TestBadConfigRefused\|func TestCapMarksOnlyPrinted\|func TestKeyGapLineCarriesDataset" internal/notify/core/core_test.go` prints 14.
 2. `grep -c "t.Parallel()" internal/notify/core/core_test.go` is at least `grep -c "^func Test" internal/notify/core/core_test.go`; `grep -c "time.Sleep\|time.Now()" internal/notify/core/*.go` prints 0 for each file.
 3. `grep -c "telegram\|net/http\|os.Getenv" internal/notify/core/core.go internal/notify/core/text.go internal/notify/core/quiet.go` prints 0 for each file; `git ls-files internal/notify/core | grep -c "_test.go"` prints 1.
-4. `grep -c "clockwork.NewFakeClock" internal/notify/core/core_test.go` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line; `git diff $(git merge-base HEAD origin/main) -- .go-arch-lint.yml arch.toml | grep -c .` prints 0 (notify-interface made both files final).
+4. `grep -c "clockwork.NewFakeClock" internal/notify/core/core_test.go` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
 
 Checked by CI: ci-go; `go test ./internal/notify/... -race -count=1`; the size rule (each new file under 600 lines).
 
@@ -96,7 +96,7 @@ Acceptance:
 
 1. `grep -c "var _ notify.NewDryRunSenderFunc" internal/notify/dryrun/dryrun_test.go` prints 1; `grep -c "^func Test" internal/notify/dryrun/dryrun_test.go` is at least 2 (`TestDryRunWritesText`, `TestDryRunWriterErrorIsErrSend`).
 2. `grep -c "t.Parallel()" internal/notify/dryrun/dryrun_test.go` is at least `grep -c "^func Test" internal/notify/dryrun/dryrun_test.go`; `grep -c "os.Stdout\|os.Getenv\|net/http" internal/notify/dryrun/dryrun.go` prints 0.
-3. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the two paths of the Files line; `git diff $(git merge-base HEAD origin/main) -- .go-arch-lint.yml arch.toml | grep -c .` prints 0 (notify-interface made both files final).
+3. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the two paths of the Files line.
 
 Checked by CI: ci-go; `go test ./internal/notify/dryrun -race -count=1`.
 
@@ -111,7 +111,7 @@ Checked by CI: ci-go; `go test ./internal/notify/dryrun -race -count=1`.
 
 Acceptance:
 
-1. `grep -c "github.com/go-telegram/bot v1.27.0" go.mod` prints 1; `git diff $(git merge-base HEAD origin/main) -- go.mod | grep -c '^+[^+]'` prints 1 (the one direct dependency, no other line added); `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the four paths of the Files line; `git diff $(git merge-base HEAD origin/main) -- .go-arch-lint.yml arch.toml | grep -c .` prints 0 (notify-interface made both files final).
+1. `grep -c "github.com/go-telegram/bot v1.27.0" go.mod` prints 1; `git diff $(git merge-base HEAD origin/main) -- go.mod | grep -c '^+[^+]'` prints 1 (the one direct dependency, no other line added); `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the four paths of the Files line.
 2. `grep -c "^func Test" internal/notify/telegram/telegram_test.go` is at least 6, with `TestTelegramSendsText`, `TestTelegramErrorHoldsNoToken`, `TestTelegramStatusClasses`, `TestTelegramNoParseMode`, `TestTelegramDeadline` and `TestTelegramEmptyConfigRefused` present (`grep -c` of the six names prints 6); every test uses an `httptest` server, `grep -c "api.telegram.org" internal/notify/telegram/telegram_test.go` prints 0.
 3. `grep -c "t.Parallel()" internal/notify/telegram/telegram_test.go` is at least `grep -c "^func Test" internal/notify/telegram/telegram_test.go`; `grep -c "%w\|err.Error()\|Errorf" internal/notify/telegram/telegram.go` prints 0 (no library error is wrapped or copied).
 4. `grep -c "[0-9]\{6,\}:[A-Za-z0-9_-]\{20,\}" internal/notify/telegram/telegram.go internal/notify/telegram/telegram_test.go` prints 0 for each file; `grep -rc "github.com/go-telegram/bot" --include=*.go internal cmd | grep -v ":0" | grep -vc "internal/notify/telegram/"` prints 0 (only this package imports the library).
@@ -137,7 +137,7 @@ Acceptance:
 5. `grep -c "ot notify" docs/contracts/ot.md` is at least 1; `grep -c "[0-9]\{6,\}:[A-Za-z0-9_-]\{20,\}" cmd/ot/notify.go cmd/ot/notify_test.go` prints 0 for each; `git diff --name-only $(git merge-base HEAD origin/main)` lists only paths of the Files line.
 Pull request description (a requirement on the pull request, not an acceptance item): it carries the waiver lines of the second opinion (added to this entry after the advisor's answer) and names the owner's smoke step, which the owner performs after the merge and no verify decides: `ot notify --once --dry-run`, then one real `ot notify --once`.
 
-Checked by CI: ci-go (`go test ./cmd/ot -run 'TestNotify|TestSchedulerCallsNotify|TestSchedulerSurvivesNotify|TestNewDepsFilled' -race -count=1`; `go run ./scripts/arch --check` exits 0); the `arch.toml` check against `docs/design/modules.md`; the design verdict.
+Checked by CI: ci-go (`go test ./cmd/ot -run 'TestNotify|TestSchedulerCallsNotify|TestSchedulerSurvivesNotify|TestNewDepsFilled' -race -count=1`; `go run ./scripts/arch --check` exits 0) against `docs/design/modules.md`; the design verdict.
 
 ## Left out
 

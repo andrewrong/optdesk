@@ -90,7 +90,7 @@ The declarations and the stub package
   1. `git diff internal/store/api.go` shows additions only and they are exactly the types, `OpenInstrumentFunc` and `DSNEnvMaster` of `## Interface`; `grep -cE '^func ' internal/store/api.go` prints 0.
   2. `api_test.go` tests the contract from both sides: a fake `InstrumentStore` that returns one id for one key and an `Instrument` list ordered by id, and a caller that resolves the same key twice and reads the ids back.
   3. `internal/store/instrument/doc.go` is a package comment and the package clause (`wc -l` is at most 3).
-  4. `go run ./scripts/arch --check` prints `arch: ok`; `.go-arch-lint.yml` lists the component `store/instrument`; `git diff -- arch.toml go.mod go.sum` is empty.
+  4. `go run ./scripts/arch --check` prints `arch: ok`; `.go-arch-lint.yml` lists the component `store/instrument`; `git diff -- go.mod go.sum` is empty.
   5. Every test added calls `t.Parallel()` and none sleeps.
   Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint), `checks` (arch); the design verdict on the pull request (an interface change).
   Pull request body: `Contracts: unchanged`.

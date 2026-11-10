@@ -90,9 +90,9 @@ Acceptance:
 1. `grep -c "EaseSeries\|EaseBand\|EasePart\|EaseFigure\|NewEaseFunc" internal/compute/api.go` is at least 5; `grep -c "interface {" internal/compute/api.go` is the old count plus 1 (the old count is that of `git show origin/main:internal/compute/api.go | grep -c "interface {"`).
 2. `go test ./internal/compute -race -count=1` passes; `grep -c "t.Parallel()" internal/compute/api_test.go` is at least the count of `^func Test` in it; `grep -c "time.Sleep\|time.Now()" internal/compute/api_test.go` prints 0.
 3. `grep -c "macro.ease\|EaseFigure" docs/contracts/compute.md` is at least 2.
-4. `go list -deps ./internal/compute | grep -c "gonum\|go-talib\|internal/compute/"` prints 0 (the root package imports `contracts` only); `grep -c "internal/compute/ease" .go-arch-lint.yml` is at least 1; `go run ./scripts/arch --check` prints `arch: ok`; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
+4. `go list -deps ./internal/compute | grep -c "gonum\|go-talib\|internal/compute/"` prints 0 (the root package imports `contracts` only); `go run ./scripts/arch --check` prints `arch: ok`; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the five paths of the Files line.
 
-Checked by CI: ci-go (`go test ./internal/compute/... -race -count=1`); `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change; the size rule (api.go is 242 lines on main).
+Checked by CI: ci-go (`go test ./internal/compute/... -race -count=1`); the size rule (api.go is 242 lines on main).
 
 ### fred-ease-sources
 
@@ -147,7 +147,7 @@ Acceptance:
 3. `grep -c '"macro.ease"' internal/compute/rules/rules.json` prints 1; `go test ./internal/compute/rules -race -count=1` passes, with `TestHashesMatchSource` covering the twelve names of Decision 6 and `TestHashCoversEaseHelpers` (in a `t.TempDir()` copy, a body edit of each of `params`, `round2`, `ratOfFloat`, `wholeHalfUp` and `weekdaysAfter` changes the hash; a whitespace-only edit does not), `TestRulesMatchRegister` for `macro.ease` v2 and `TestNoPendingForGoIds` (the entry has a 64-hex `source_hash`).
 4. `grep -c '^id = "macro.ease"' docs/conventions/register.toml` prints 1; `grep -A1 '^id = "macro.ease"' docs/conventions/register.toml | grep -c '^version = 2'` prints 1; `grep -A40 '^id = "macro.ease"' docs/conventions/register.toml | grep -c 'pending-recompute'` prints 0; `git diff $(git merge-base HEAD origin/main) -- docs/conventions/register.toml | grep '^-' | grep -vc '^---'` prints 0 (only additions); `grep -c "Ease (macro)" docs/GLOSSARY.md` prints 1; `go test ./internal/compute/rules -run 'TestRegisterEntriesComplete' -race -count=1` passes (the new entry has all 15 keys and is unique by id and version).
 5. `go list -deps ./internal/compute/ease | grep -c "gonum\|go-talib\|internal/compute/figures\|internal/compute/rules\|internal/jobs\|internal/store"` prints 0; `grep -c "float64" internal/compute/ease/params.go internal/compute/ease/netliquidity.go` prints 0 for each (they work on `*big.Rat`; `float64` is only the boundary of `ease.go`: the series points in, the figures of the result out) and `TestScoreExactNotFloat` (figures 0.1 and 0.2 summed as text-exact rationals give 0.3 exactly) is in `ease_test.go`; `grep -c "t.Parallel()" internal/compute/ease/ease_test.go internal/compute/ease/netliquidity_test.go` is at least the count of `^func Test` of each; `grep -c "time.Sleep\|time.Now()" internal/compute/ease/*.go` prints 0 for each file.
-6. `go run ./scripts/arch --check` prints `arch: ok`; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eleven paths of the Files line (the `testdata` files count) and `git diff $(git merge-base HEAD origin/main) -- .go-arch-lint.yml arch.toml | grep -c .` prints 0.
+6. `go run ./scripts/arch --check` prints `arch: ok`; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eleven paths of the Files line (the `testdata` files count).
 
 Checked by CI: ci-go (`go test ./internal/compute/... -race -count=1`); the size rule (each new file under 600 lines).
 

@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: owner answers 2026-11-09 (the four questions); the pull request approval is pending
 Date: 2026-11-09
-Revision: 8 (answers the 2590ebc verdict: entry 6 names `migrations/NNNN_candidates.sql` (next free at cut time) and greps the glob `migrations/*_candidates.sql`, claims no number of another design; its role grants and Second opinion agree and include USAGE on schema `rd`; revision 7: its reader reads the view only, with a grep; revision 6: the migration of entry 6 named 0018, since crew issue check matches Files literally; revision 5: the Order of the five entries that share `.go-arch-lint.yml` is one serial chain, issue 6 names its migration number and its new role, counts refreshed at b0913fe, acceptance by grep and wc only; revision 4 was merged as 612, revision 2 was 186019a)
+Revision: 8 (answers the 2590ebc verdict: entry 6 names `migrations/0018_candidates.sql` (next free at cut time) and greps the glob `migrations/*_candidates.sql`, claims no number of another design; its role grants and Second opinion agree and include USAGE on schema `rd`; revision 7: its reader reads the view only, with a grep; revision 6: the migration of entry 6 named 0018, since crew issue check matches Files literally; revision 5: the Order of the five entries that share `.go-arch-lint.yml` is one serial chain, issue 6 names its migration number and its new role, counts refreshed at b0913fe, acceptance by grep and wc only; revision 4 was merged as 612, revision 2 was 186019a)
 
 Source: owner 2026-11-09: options trading comes first and is done completely before valuation; the owner types a buy price per company by hand for now (the automated valuation, pull request 607, is parked). Binding owner decisions: a put qualifies when strike minus premium is at most the buy price; gates plus annualized-yield order, no composite score; earnings dates and ex-dividend dates gate; an early-assignment and ex-dividend guard for short calls; the margin cushion and the assignment cash never go to Telegram; two IBKR accounts, alias A and B. Dispatcher direction: puts first, they do not wait for the dividend chain; the option side must be usable soon.
 Read on main at 4a73feb: `AGENTS.md`, `docs/design/modules.md`, `docs/design/ease-v2.md`, `docs/design/report-page-producer.md`, `docs/design/option-jobs.md`, `docs/design/option-pages-v22.md`, `contracts/datasets/obs.option_eod.r1.json`, `internal/jobs/api.go`, `internal/jobs/optioneod/{job.toml,select.go}`, `internal/store/api.go`, `internal/compute/api.go`, `arch.toml`, `contracts/proto/ibkr/v1`. On branches in review: `docs/design/event-sources.md` (606), `docs/design/account-data.md` (561), `docs/design/valuation.md` (607, only its `watch.toml` lines).
@@ -113,14 +113,14 @@ Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` with the six n
 Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/compute/api.go`, `internal/compute/api_test.go`, `docs/contracts/compute.md`, `internal/compute/optioncand/doc.go`
 Design: docs/design/option-candidates.md#Interface
-Order: first; it opens the `.go-arch-lint.yml` chain.
+Order: first.
 Goal: the compute types of `## Interface` with doc comments for each gate word and reason code, and a paragraph of `docs/contracts/compute.md` that fixes the promises: exact arithmetic, the float-to-decimal step, `DGS3MO` is percent, unknown is not a pass, only `ok` rows ranked, yield and break-even formulas. `CandidateInput` carries the run day, the chain day and the session-day list, so the session ages and `chain_fresh` of issue 3 need no interface change. The contract test uses a fake `OptionCandidates` and a caller that builds the session-day list and checks the order of the gate results and that a blocked row has no rank.
 Acceptance:
 1. `grep -c "OptionCandidates\|CandidateInput\|CandidateParams\|GateResult" internal/compute/api.go` is at least 4; `git diff $(git merge-base HEAD origin/main) -- internal/compute/api.go | grep '^-' | grep -vc '^---'` prints 0.
 2. `grep -c "^func TestOptionCandidatesContract" internal/compute/api_test.go` prints 1 (new); `grep -c "time.Sleep\|time.Now()" internal/compute/api_test.go` prints 0; `wc -l < internal/compute/api_test.go` prints less than 800 (464 on main).
 3. `grep -c "annualized\|break-even\|percent" docs/contracts/compute.md` is at least 3; `go list -deps ./internal/compute | grep -c "internal/compute/optioncand"` prints 0.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the Files line.
-Checked by CI: `go test ./internal/compute -race -count=1` with the new `TestOptionCandidatesContract`, ci-go, `go run ./scripts/arch --check` (prints `arch: ok`), `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`.
+Checked by CI: `go test ./internal/compute -race -count=1` with the new `TestOptionCandidatesContract`, ci-go, `go run ./scripts/arch --check` (prints `arch: ok`).
 
 ### 3 compute-put-candidates
 
@@ -168,9 +168,9 @@ Checked by CI: `go test ./internal/store -run TestCandidateContract -race -count
 
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Second opinion: a new database role, `ot_w_candidate`; `ot_w_candidate` has INSERT and SELECT on the table, USAGE on schema `rd` and SELECT on `rd.option_candidate_r1`; `ot_ro_pages` has SELECT on the view; nothing else, no UPDATE, DELETE or TRUNCATE.
-Files: `migrations/NNNN_candidates.sql` (NNNN the next free number at cut time; migrations apply out of order, #693; the other designs write their numbers the same way, so no number is claimed here), `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`)
+Files: `migrations/0018_candidates.sql`, `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`)
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 9, 13)
-Order: after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store`; they share `setup.go`, `.go-arch-lint.yml` and the next free migration number (this entry rebases on whichever lands first and takes the next free number at cut time). It does not wait for the dividend chain.
+Order: after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store`; they share `setup.go` and the next free migration number (this entry rebases on whichever lands first and takes the next free number at cut time). It does not wait for the dividend chain.
 Goal: a table `candidates.option_candidate` with the dataset key, insert-only, a view `rd.option_candidate_r1` over it, the role `ot_w_candidate` (INSERT and SELECT on the table, created in `internal/store/setup/setup.go` with the line `OT_PG_DSN_CANDIDATE`, as `ot_w_alerts` is) and `SELECT` on the view `rd.option_candidate_r1` for the pages role `ot_ro_pages` (the pages read the view and nothing else, as `0006_option_eod.sql` does); `candidate.Open(ctx, dsn)` implements both interfaces; the reader returns the newest run of the day. The reader of `candidate.Open` reads the view `rd.option_candidate_r1` only and names no base table; the job reads through the reader with the role `ot_w_candidate`, so the migration grants `USAGE ON SCHEMA rd` and `SELECT` on that view to `ot_w_candidate`.
 Acceptance:
 1. `grep -c "CREATE TABLE candidates.option_candidate\|ot_w_candidate" migrations/*_candidates.sql` is at least 2 and `grep -ci "GRANT.*\(UPDATE\|DELETE\)" migrations/*_candidates.sql` prints 0.
@@ -185,7 +185,7 @@ Checked by CI: `go test ./internal/store/candidate ./internal/store/setup -race 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 4, 5, 9, 13, 15)
-Order: after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job`; they create job packages and regenerate `.go-arch-lint.yml`, and this entry rebases on the last of them.
+Order: after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job`; they create job packages, and this entry rebases on the last of them.
 Goal: `optioncandidates.New` (the type `NewOptionCandidatesJobFunc`) runs at `session_close` plus 30 minutes; for each watched US underlying it reads the newest chain day, the terms (in chunks of 500 ids), the earnings rows, the newest account captures per alias and `DGS3MO`, converts floats to decimal text (Decision 4), calls `Evaluate` for `short_put` and writes the rows under a new run id. A nil reader gives `unknown` gates, not an error; a store error is a failed run with a named code. The job holds no dividend reader.
 Acceptance:
 1. `grep -rhE "^func (TestNilEarningsIsUnknown|TestRerunIsNewRun|TestOnlyUSEntries|TestAliasesAandBAreSeparate|TestStoreErrorFailsRun|TestScheduleIsCloseAfterEod|TestSessionDaysSupplied|TestTermsChunkedAt500|TestStaleChainDay|TestJPEntryNamedNotSilent|TestFloatToDecimal|TestRateRatio)\(" internal/jobs/optioncandidates | wc -l` prints 12 (the twelve tests are new).
@@ -200,7 +200,7 @@ Checked by CI: `go test ./internal/jobs/optioncandidates -race -count=1`, ci-go,
 Module: pages, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`
 Design: docs/design/option-candidates.md#Interface
-Order: after 5, 2, 6, 7; this is the `.go-arch-lint.yml` chain.
+Order: after 5, 2, 6, 7.
 Goal: `Format(rows, all)` returns the plain text of the stored rows in the stored order: for `ok` rows company, kind, alias, expiry, strike, bid, annualized yield, break-even and marks; with `all` the blocked and unknown rows with their gate reasons; a line per JP entry is not its job (the command adds it). No sort, no arithmetic.
 Acceptance:
 1. `grep -rhE "^func (TestFormatOrderKept|TestFormatAllShowsReasons|TestFormatEmpty)\(" internal/pages/candidate_text | wc -l` prints 3 (new).
@@ -238,7 +238,7 @@ Checked by CI: `go test ./internal/compute/optioncand -race -count=1` (it includ
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/calls_test.go`, `internal/jobs/optioncandidates/job.toml`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Interface
-Order: after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job`; it shares `api.go`, `api_test.go`, `jobs.md` with 1, `job.toml` with 7 and `.go-arch-lint.yml` with 2, 6, 7, 8.
+Order: after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job`; it shares `api.go`, `api_test.go`, `jobs.md` with 1 and `job.toml` with 7.
 Goal: `NewOptionCandidatesCallsFunc` adds the dividend reader and the call and guard kinds to the same run; `NewOptionCandidatesJobFunc` and puts behave as before; `div_guard_factor` joins `job.toml`.
 Acceptance:
 1. `grep -rhE "^func (TestCallsNeedDividendReader|TestPutsUnchangedByCalls|TestHeldCallGuardRows)\(" internal/jobs/optioncandidates | wc -l` prints 3 (new); `grep -c "div_guard_factor" internal/jobs/optioncandidates/job.toml` prints 1.

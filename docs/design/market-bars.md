@@ -119,15 +119,15 @@ Checked by CI: the generated-code check (buf lint and generate), `uv sync --lock
 Module: store, plus repo (the licensed pair: `scripts/arch`, `arch.toml` and `.go-arch-lint.yml`). Size: M.
 Files: `internal/store/bar/api.go`, `internal/store/bar/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/market-bars.md#Modules and #Interface (store). `internal/store/api.go` is not edited (799 lines on main); the interface file of this package is `internal/store/bar/api.go`, a package of declarations only, listed in the entry cell of the store row by this design's pull request, which also adds the `modules.md` sentences that make the import legal. The implementation is entry 4 in `internal/store/barpg`.
-Order: after 1 (`contracts.PriceBar`, `contracts.FxRate`); the `.go-arch-lint.yml` chain is 3, 4, 7, 10 in that order.
+Order: after 1 (`contracts.PriceBar`, `contracts.FxRate`).
 Goal: the writer, reader, store and open types of `## Interface` and `DSNEnvBar` in package `bar`, declarations only, with doc comments that fix the promises: insert-only, one call one transaction, readers return the winner rows (highest epoch of the pair), ascending by day; `LatestFxRate` has no fallback. The contract test has a fake store and a caller that checks the winner rule on a two-epoch fake and the not-found answer. `scripts/arch` keeps its promise that `arch.toml` depends on the table only: it holds a list `declarationsOnly` (`internal/store/bar`) and gives a package of that list that is listed in an entry cell to the root component of a row that depends on the listed row, as the `modules.md` sentence says; a sub-package also gets the `declarationsOnly` packages listed in its own row's entry cell (never a generated one); the test kit and the generated sub-packages stay for sub-packages only (no root component imports `compute/contracttest` or `contracts/genpb`), `arch.toml` gains only the `declarationsOnly` packages for sub-packages (the other entry-listed imports, `genpb` and `contracttest`, stay in `.go-arch-lint.yml` as today), and the regenerated `arch.toml` and `.go-arch-lint.yml` give `store/bar` to `jobs` and its sub-packages.
 Acceptance:
 1. `grep -c "^type PriceBarWriter interface\|^type PriceBarReader interface\|^type FxRateWriter interface\|^type FxRateReader interface\|^type BarStore interface\|^type OpenBarFunc " internal/store/bar/api.go` prints 6; `grep -c 'DSNEnvBar = "OT_PG_DSN_BAR"' internal/store/bar/api.go` prints 1.
 2. `grep -c "^func " internal/store/bar/api.go` prints 0 (declarations only); `ls internal/store/bar | awk 'END{print NR}'` prints 2 (`api.go`, `api_test.go`); `git diff BASE -- internal/store/api.go | grep -c .` prints 0.
 3. `grep -c "^func TestBarStoreContract\|^func TestBarWinnerIsHighestEpoch\|^func TestLatestFxRateNotFound" internal/store/bar/api_test.go` prints 3; `grep -c "time.Sleep\|time.Now()" internal/store/bar/api_test.go` prints 0.
-4. `grep -c "winner\|epoch\|no fallback" docs/contracts/store.md` is at least 3 (0 on main); `grep -c "internal/store/bar" .go-arch-lint.yml` is at least 1; `grep -c "^func TestRootImportsListedInterfacePackage\|^func TestGeneratedSubPackageStaysSubOnly\|^func TestSubPackageImportsOwnRowDeclarations" scripts/arch/main_test.go` prints 3 (new); `grep -c "declarationsOnly" scripts/arch/main.go` is at least 2 (0 on main).
-5. `grep -A2 '^\[component."jobs"\]' arch.toml | grep -c '"store/bar"'` prints 1 and `grep -A2 '^\[component."jobs/computefigures"\]' arch.toml | grep -c '"store/bar"'` prints 1; `grep -A2 '^\[component."jobs"\]' arch.toml | grep -c 'contracttest'` prints 0 and the same for `notify`, `pages` and `ot`; `grep -c "genpb" arch.toml` is the count on main (BASE: `git show BASE:arch.toml | grep -c genpb`); `git diff --name-only BASE` lists exactly the Files line.
-Checked by CI: `go test ./internal/store/bar ./scripts/arch -race -count=1`, `go run ./scripts/arch --check`, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`, ci-go.
+4. `grep -c "winner\|epoch\|no fallback" docs/contracts/store.md` is at least 3 (0 on main); `grep -c "^func TestRootImportsListedInterfacePackage\|^func TestGeneratedSubPackageStaysSubOnly\|^func TestSubPackageImportsOwnRowDeclarations" scripts/arch/main_test.go` prints 3 (new); `grep -c "declarationsOnly" scripts/arch/main.go` is at least 2 (0 on main).
+5. `git diff --name-only BASE` lists exactly the Files line.
+Checked by CI: `go test ./internal/store/bar ./scripts/arch -race -count=1`, `go run ./scripts/arch --check`, ci-go.
 
 
 ### 4 bar-store-impl
@@ -135,14 +135,14 @@ Checked by CI: `go test ./internal/store/bar ./scripts/arch -race -count=1`, `go
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`, for the new package). Size: M. Second opinion: a new database role `ot_w_bar`.
 Files: `migrations/0021_bars.sql` (the number taken when #938 landed), `internal/store/barpg/store.go`, `internal/store/barpg/read.go`, `internal/store/barpg/store_test.go`, `internal/store/barpg/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`
 Design: docs/design/market-bars.md#Decisions (4, 8, 9) and #Modules. The implementation is its own package `internal/store/barpg`, not in `internal/store/bar` (declarations only).
-Order: after 1, 3 (the `.go-arch-lint.yml` chain is 3, 4, 7, 10). Landed in #938 (issue #863), which took migration number 0021.
+Order: after 1, 3. Landed in #938 (issue #863), which took migration number 0021.
 Goal: tables `obs.price_bar` and `obs.fx_rate` with the dataset keys and CHECKs (`basis` in the two words, `adjust_epoch >= 1`, `pair` six capitals, rate and prices parse as positive decimals), views `rd.price_bar_r1` (rows of the highest epoch of each instrument and basis) and `rd.fx_rate_r1`, role `ot_w_bar` (INSERT on the tables, SELECT on the views, USAGE on `obs` and `rd`; line `OT_PG_DSN_BAR`) and SELECT on both views for `ot_ro_pages`; `barpg.Open(ctx, dsn)` returns a `*barpg.Store` with the methods of `bar.BarStore` (the package imports `contracts` and no `store/bar`; its test asserts `var _ bar.BarStore = (*Store)(nil)`); readers read the views only; inserts are `ON CONFLICT DO NOTHING`, one call one transaction.
 Acceptance:
 1. `grep -c "CREATE TABLE obs.price_bar\|CREATE TABLE obs.fx_rate\|CREATE VIEW rd.price_bar_r1\|CREATE VIEW rd.fx_rate_r1" migrations/*_bars.sql` prints 4; `grep -ci "GRANT.*\(UPDATE\|DELETE\|TRUNCATE\)" migrations/*_bars.sql` prints 0.
 2. `grep -c "GRANT SELECT ON rd.price_bar_r1 TO ot_ro_pages\|GRANT SELECT ON rd.fx_rate_r1 TO ot_ro_pages\|GRANT SELECT ON rd.price_bar_r1 TO ot_w_bar\|GRANT SELECT ON rd.fx_rate_r1 TO ot_w_bar" migrations/*_bars.sql` prints 4; `grep -c "GRANT INSERT ON obs.price_bar TO ot_w_bar\|GRANT INSERT ON obs.fx_rate TO ot_w_bar" migrations/*_bars.sql` prints 2.
 3. `grep -c "obs.price_bar\|obs.fx_rate" internal/store/barpg/read.go` prints 0 and `grep -c "rd.price_bar_r1\|rd.fx_rate_r1" internal/store/barpg/read.go` is at least 2; `grep -c "ON CONFLICT DO NOTHING" internal/store/barpg/store.go` is at least 2; `grep -rl "os.Getenv" internal/store/barpg` prints nothing; `grep -c 'internal/store/bar"' internal/store/barpg/store.go internal/store/barpg/read.go` prints 0 on both lines.
 4. `grep -c "ot_w_bar\|OT_PG_DSN_BAR" internal/store/setup/setup.go` is at least 2; `grep -c "^func TestInsertQueryText\|^func TestWinnerQueryReadsView\|^func TestOneCallOneTransaction\|^func TestStoreImplementsBarStore" internal/store/barpg/store_test.go` prints 4 and `grep -c "^func TestBarRoleSpec" internal/store/setup/setup_test.go` prints 1 (new, no database needed).
-5. `head -1 internal/store/barpg/store_pg_test.go` prints `//go:build pg`; `grep -c "^func TestBarRoundTrip\|^func TestNewEpochWins\|^func TestBarRoleGrants" internal/store/barpg/store_pg_test.go` prints 3; `grep -c "internal/store/barpg" .go-arch-lint.yml` is at least 1; `git diff --name-only BASE` lists no path outside the Files line.
+5. `head -1 internal/store/barpg/store_pg_test.go` prints `//go:build pg`; `grep -c "^func TestBarRoundTrip\|^func TestNewEpochWins\|^func TestBarRoleGrants" internal/store/barpg/store_pg_test.go` prints 3; `git diff --name-only BASE` lists no path outside the Files line.
 Checked by CI: `go test ./internal/store/barpg ./internal/store/setup -race -count=1`; `go test -tags pg ./internal/store/...` (GitHub CI only); `go run ./scripts/arch --check`.
 
 
@@ -181,14 +181,14 @@ Checked by CI: the pyside workflow (`uv sync --locked`, `ruff check`, `mypy --st
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`, `internal/jobs/barsrefresh/doc.go`, `internal/jobs/barsrefresh/job.toml`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/manifest_test.go`
 Design: docs/design/market-bars.md#Decisions (4, 6, 7)
-Order: after 3, 4; the `.go-arch-lint.yml` chain is 3, 4, 7, 10; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 10 and 12.
+Order: after 3, 4; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 10 and 12.
 Goal: `NewBarsRefreshFunc` (declaration only; entry 8 implements it) and the manifest loader `barsrefresh.LoadManifest` with `job.toml`: `id`, `backfill_days = 400`, `daily_days = 5`, `restate_tolerance = "0.00001"`, `adjusted_cadence_days = 7`, `backfill_names_per_run = 10`, `deepen_days = 1825`, `deepen_piece_days = 730`, `deepen_names_per_run = 0` (0 is no cap), `[[index]]` tables (SPX, NDX, RUT, N225), `[schedule]` (XNYS, `session_close`, `10m`, `run_bound` `10m`). A malformed value (non-positive days, a tolerance that is not a decimal, an index without symbol, exchange and currency) is a named refusal. The contract test uses a fake constructor and a caller.
 Acceptance:
 1. `grep -c "^type NewBarsRefreshFunc " internal/jobs/api.go` prints 1; `git diff BASE -- internal/jobs/api.go | grep -c '^-[^-]'` prints 0.
 2. `grep -c 'id = "bars_refresh"' internal/jobs/barsrefresh/job.toml` prints 1; `grep -c "^backfill_days\|^restate_tolerance\|^adjusted_cadence_days\|^backfill_names_per_run\|^daily_days\|^deepen_days\|^deepen_piece_days\|^deepen_names_per_run" internal/jobs/barsrefresh/job.toml` prints 8; `grep -c "^\[\[index\]\]" internal/jobs/barsrefresh/job.toml` prints 4.
 3. `grep -rhE "^func (TestManifestLoads|TestManifestRefusesBadDays|TestManifestRefusesBadTolerance|TestManifestRefusesIncompleteIndex|TestManifestDeepenZeroIsNoCap|TestBarsRefreshContract)\(" internal/jobs | awk 'END{print NR}'` prints 6 (new); `grep -c "time.Sleep\|time.Now()" internal/jobs/barsrefresh/manifest.go` prints 0.
-4. `grep -c "bars_refresh\|backfill_names_per_run" docs/contracts/jobs.md` is at least 2 (0 on main); `grep -c "internal/jobs/barsrefresh" .go-arch-lint.yml` is at least 1; `git diff --name-only BASE` lists no path outside the Files line.
-Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`, ci-go.
+4. `grep -c "bars_refresh\|backfill_names_per_run" docs/contracts/jobs.md` is at least 2 (0 on main); `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, ci-go.
 
 ### 8 bars-job-run
 
@@ -223,14 +223,14 @@ Checked by CI: `go test ./internal/jobs/... -race -count=1`, ci-go.
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/fxrefresh/doc.go`, `internal/jobs/fxrefresh/job.toml`, `internal/jobs/fxrefresh/run.go`, `internal/jobs/fxrefresh/run_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/market-bars.md#Decisions (9)
-Order: after 3, 4, 5, 7 (`.go-arch-lint.yml` chain 3, 4, 7, 10; `internal/jobs/api.go`, `api_test.go`, `jobs.md` shared with 7 and 12, before 12).
+Order: after 3, 4, 5, 7 (`internal/jobs/api.go`, `api_test.go`, `jobs.md` shared with 7 and 12, before 12).
 Goal: `fxrefresh.New` (`NewFxRefreshFunc`), one key `{obs.fx_rate, USDJPY}`; `Run` resolves the USD.JPY cash contract once through `Broker.ResolveContract` (exchange IDEALPRO, currency JPY; not listed is Permanent), asks `MIDPOINT` for 5 days, inserts one row per bar day not stored (`rate` = the close text, `source` `ibkr_midpoint`), leaves a stored day as it is, and fabricates nothing when the answer is empty; no default rate exists in the package.
 Acceptance:
 1. `grep -rhE "^func (TestOneKeyUSDJPY|TestInsertsOnlyNewDays|TestStoredDayLeftAsIs|TestEmptyAnswerWritesNothing|TestNotListedIsPermanent|TestPacedIsRetryable|TestNoDefaultRate)\(" internal/jobs/fxrefresh | awk 'END{print NR}'` prints 7 (new).
 2. `grep -c 'id = "fx_refresh"' internal/jobs/fxrefresh/job.toml` prints 1; `grep -c "NewFxRefreshFunc" internal/jobs/api.go` prints 1; `grep -c "fx_refresh" docs/contracts/jobs.md` is at least 1.
 3. `grep -c "float32\|float64\|time.Sleep\|time.Now()" internal/jobs/fxrefresh/run.go` prints 0; `grep -ci "fallback" internal/jobs/fxrefresh/run.go` prints 0 (`TestNoDefaultRate` reads the package source with `go/parser` and fails on a numeric literal assigned to a rate).
-4. `grep -c "internal/jobs/fxrefresh" .go-arch-lint.yml` is at least 1; `git diff BASE -- internal/jobs/api.go | grep -c '^-[^-]'` prints 0; `git diff --name-only BASE` lists no path outside the Files line.
-Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml`, ci-go.
+4. `git diff BASE -- internal/jobs/api.go | grep -c '^-[^-]'` prints 0; `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, ci-go.
 
 ### 11 hv30-rule
 

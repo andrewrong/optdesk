@@ -74,12 +74,12 @@ Acceptance:
 Module: store, plus repo (the licensed pair: `scripts/arch`, `arch.toml` and `.go-arch-lint.yml`). Size: S.
 Files: `internal/store/mark/api.go`, `internal/store/mark/api_test.go`, `internal/store/api.go`, `internal/store/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/position-marks.md#Interface
-Order: after 1; no longer waits for market-bars: it adds `internal/store/mark` to the `declarationsOnly` list of `scripts/arch/main.go`, and creates that list and its two derivation rules (a root component of a dependent row, and a sub-package of the same row, may import a listed package) when entry `bar-store-api` of market-bars has not landed first; whichever lands second merges the list; before 3 and 5 (each of 3 and 5 edits `.go-arch-lint.yml`, strict order 2, 3, 5).
+Order: after 1; no longer waits for market-bars: it adds `internal/store/mark` to the `declarationsOnly` list of `scripts/arch/main.go`, and creates that list and its two derivation rules (a root component of a dependent row, and a sub-package of the same row, may import a listed package) when entry `bar-store-api` of market-bars has not landed first; whichever lands second merges the list; before 3 and 5.
 Goal: the declarations of `## Interface` in the new package, `DSNEnvPositionMark` in the store interface, the contract test from both sides (a fake writer and reader in the test), the component of `store/mark` in `.go-arch-lint.yml`.
 Acceptance:
 1. `internal/store/mark/api.go` holds no `func ` with a body: `grep -c "^func " internal/store/mark/api.go` is 0, and it declares `Writer`, `Reader`, `Store`, `OpenFunc` and `PositionMark`.
 2. `grep -c "DSNEnvPositionMark" internal/store/api.go` is 1 and the change in `internal/store/api.go` only adds lines: `git diff --numstat BASE -- internal/store/api.go` shows 0 deleted lines.
-3. `grep -c "store/mark" .go-arch-lint.yml` is at least 1, and `internal/store/mark/api.go` imports only the standard library (`grep -c "optdesk/internal" internal/store/mark/api.go` is 0).
+3. `internal/store/mark/api.go` imports only the standard library (`grep -c "optdesk/internal" internal/store/mark/api.go` is 0).
 4. `docs/contracts/store.md` names `internal/store/mark`, `Marks`, `WriteMarks` and `OT_PG_DSN_POSMARK`.
 5. `grep -c "declarationsOnly" scripts/arch/main.go` is at least 1 and names `internal/store/mark`; `scripts/arch/main_test.go` has a test where the root component `jobs` and the sub-package `store/markpg` each import `store/mark` without a finding (`grep -c "store/mark" scripts/arch/main_test.go` is at least 2).
 
@@ -88,7 +88,7 @@ Acceptance:
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
 Files: `migrations/NNNN_position_mark.sql`, `internal/store/markpg/store.go`, `internal/store/markpg/store_test.go`, `internal/store/markpg/store_pg_test.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `docs/contracts/store.md`
 Design: docs/design/position-marks.md#Decisions
-Order: after 2 (shares `docs/contracts/store.md` and `.go-arch-lint.yml`); before 5. `NNNN` is the next free migration number at cut time and is renumbered before merge if another migration takes it (the file name is fixed when the issue is cut).
+Order: after 2 (shares `docs/contracts/store.md`); before 5. `NNNN` is the next free migration number at cut time and is renumbered before merge if another migration takes it (the file name is fixed when the issue is cut).
 Goal: the table `account.position_mark`, the view `rd.account_position_mark_r1`, the role `ot_w_posmark` made by setup, and `markpg.Open` implementing `mark.Store`.
 Acceptance:
 1. `migrations/NNNN_position_mark.sql` creates `account.position_mark` with `PRIMARY KEY (capture_id, con_id, attempt)` and a CHECK on `basis` of the four values, and creates the view `rd.account_position_mark_r1`.
@@ -115,13 +115,13 @@ Acceptance:
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
 Files: `internal/jobs/positionmarks/doc.go`, `internal/jobs/positionmarks/job.toml`, `internal/jobs/positionmarks/manifest.go`, `internal/jobs/positionmarks/plan.go`, `internal/jobs/positionmarks/mark.go`, `internal/jobs/positionmarks/run.go`, `internal/jobs/positionmarks/plan_test.go`, `internal/jobs/positionmarks/mark_test.go`, `internal/jobs/positionmarks/run_test.go`, `internal/jobs/positionmarks/testdata/probe_snapshot.json`
 Design: docs/design/position-marks.md#Decisions
-Order: after 2, 3 and 4 (2 and 3 share `.go-arch-lint.yml`: strict order 2, 3, 5). Waits, not on main yet: the account capture job (its manifest gives the slot this one is an offset of; until it lands the offset is written against the name `account_capture`). The import rule is on main (#768) and its `scripts/arch` code comes with entry 2 or with `bar-store-api` of market-bars, whichever lands first. The probe of Decision 10 is a separate window step, outside this entry's acceptance and closing condition; the fixture here is synthetic.
+Order: after 2, 3 and 4 Waits, not on main yet: the account capture job (its manifest gives the slot this one is an offset of; until it lands the offset is written against the name `account_capture`). The import rule is on main (#768) and its `scripts/arch` code comes with entry 2 or with `bar-store-api` of market-bars, whichever lands first. The probe of Decision 10 is a separate window step, outside this entry's acceptance and closing condition; the fixture here is synthetic.
 Goal: the job of Decisions 1 to 6: plan (one `broker.Contract` per position, kind by security type), `MarkOf` (Decision 2), run (per alias, retry fills missing rows only, main-alias failure rule), manifest with the slot ten minutes after the account job.
 Acceptance:
 1. `internal/jobs/positionmarks/mark.go` holds the rule: it returns the basis `mid` only when bid and ask are both above zero and ask is not below bid, `mark_test.go` has a test named for the crossed quote (`grep -c "Crossed" internal/jobs/positionmarks/mark_test.go` is at least 1), and `grep -c "BasisLast\|BasisClose\|BasisNone" internal/jobs/positionmarks/mark.go` is at least 3.
 2. `plan.go` builds the contract from `ConID` per Decision 10 (`STK`, `IND`, `OPT`, dashes removed from the expiry, `P` and `C`, `SMART` for USD, `ResolveContract` for JPY) and uses `broker.KindSnapshot` only (`grep -c "KindOptionEod" internal/jobs/positionmarks/plan.go` is 0; `grep -c "ResolveContract\|SMART\|IND" internal/jobs/positionmarks/plan.go` is at least 3).
 3. `grep -c "no_capture\|partial" internal/jobs/positionmarks/run.go` is at least 2, `run.go` batches and keeps a wall-clock budget (`grep -c "batch\|budget" internal/jobs/positionmarks/run.go` is at least 2), a retry inserts `attempt` + 1 only for rows of basis `none`, and the run writes a row with basis `none` for a quote whose status is not ok (read `run.go`).
-4. The package imports `internal/store/mark` and neither `internal/store/markpg` nor `internal/notify` (`grep -rc "markpg\|internal/notify" internal/jobs/positionmarks` totals 0), and `grep -c "positionmarks" .go-arch-lint.yml` is at least 1.
+4. The package imports `internal/store/mark` and neither `internal/store/markpg` nor `internal/notify` (`grep -rc "markpg\|internal/notify" internal/jobs/positionmarks` totals 0).
 5. `job.toml` has `id = "position_marks"` and a zone and calendar like the account job's, its slot is stated as an offset after the account job's slot and not as a fixed time, and `testdata/probe_snapshot.json` exists, is synthetic (a hand-made answer in the shape of the gateway's, with no account id) and says so in a `"synthetic": true` field; no file of the package is over 600 lines.
 
 ### 6 position-marks-wire

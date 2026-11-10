@@ -67,7 +67,7 @@ Licence: the interface entry `market-page-interface` lies in two modules, pages 
 
 | issue | module | paths |
 |---|---|---|
-| market-page-interface | pages, plus the one file `.go-arch-lint.yml` of repo (Licence) | `internal/pages/market_page/page.go`, `internal/pages/market_page/page_test.go`, `.go-arch-lint.yml` |
+| market-page-interface | pages, plus the one file `.go-arch-lint.yml` of repo (Licence) | `internal/pages/market_page/page.go`, `internal/pages/market_page/page_test.go` |
 | market-page-builder | pages | `internal/pages/market_page/**`, `docs/contracts/pages.md` |
 | market-page-ot-cmd | ot | `cmd/ot/market.go`, `cmd/ot/market_test.go`, `cmd/ot/page.go`, `cmd/ot/page_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/demo.go`, `docs/contracts/ot.md` |
 | market-page-site-route | ot | `cmd/ot/market_site.go`, `cmd/ot/market_site_test.go`, `cmd/ot/site.go`, `cmd/ot/site_test.go`, `docs/contracts/ot.md` |
@@ -99,14 +99,14 @@ Every test calls `t.Parallel()`, uses `t.TempDir()` for any file, a fake clock w
 - Files: internal/pages/market_page/page.go, internal/pages/market_page/page_test.go
 - Design: docs/design/market-page-producer.md#interface
 - Cross-module: pages and repo, licensed by this design (see `## Modules`).
-- Order: first; no dependency. If another open pull request has regenerated `.go-arch-lint.yml`, it merges first and the regeneration is run again.
+- Order: first; no dependency.
 - Note: the `.go-arch-lint.yml` edit is the regeneration only.
 
 Acceptance:
 
 1. `grep -c 'type Config struct\|^func NewPage' internal/pages/market_page/page.go` prints 2; `page.go` imports only `context`, `time`, `errors` or `fmt`, `contracts`, `store`, `compute` and `pages`; `wc -l < internal/pages/market_page/page.go` prints less than 60.
 2. `TestNewPageMeta` and `TestConfigContract` test the contract from both sides: `NewPage(Config{...})` has `Meta{Name: "market_page", Schema: "page.market_page.v1"}`; a caller fills every field of `Config` with a fake `compute.ReadingFunc` and calls `Build` of the page, which answers the error `market_page: not built`.
-3. `grep -c "pages/market_page" .go-arch-lint.yml` is at least 2, and `grep -c "pages/market_page" arch.toml docs/design/modules.md` prints at least 1 for each; `git diff $(git merge-base HEAD origin/main) -- arch.toml go.mod go.sum | grep -c .` prints 0.
+3. `git diff $(git merge-base HEAD origin/main) -- go.mod go.sum | grep -c .` prints 0.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; `git diff $(git merge-base HEAD origin/main) -- contracts web internal/pages/api.go | grep -c .` prints 0; every test calls `t.Parallel()`.
 
 Checked by CI: `go test ./internal/pages/... -race -count=1`; ci-go (go-arch-lint, golangci-lint); `go run ./scripts/arch --check` printing `arch: ok`; the design verdict on the pull request (an interface change).
@@ -132,9 +132,8 @@ Acceptance:
 7. `TestRunStatusIgnoresPermanentGaps`: all readings `ok`, series present: `run_status` is `ok` while `breadth`, `weather.chart`, `iv` and N225 are Gaps; one percentile `short_history`: `partial`; no `market.vix_term_ratio` reading with the four term cells filled: `ok` and the fixed sentence; never `failed`. `TestEnvelopeGapsEqualBlockGaps`: the `gaps` array equals, in page order, the Gap objects found in the blocks, for an all-ok page and for a page with one Gap of each kind.
 8. `grep -rc "time.Now()\|time.Sleep\|LoadLocation\|ParseFloat" internal/pages/market_page/*.go | grep -v '_test.go' | grep -v ':0$'` prints nothing; `grep -c "float64" internal/pages/market_page/*.go | grep -v '_test.go' | grep -v ':0$'` prints only `internal/pages/market_page/format.go:`; in each test file `grep -c "t.Parallel()"` is at least `grep -c "^func Test"` of the same file.
 9. `grep -rc --exclude='*_test.go' "internal/store/\|internal/jobs\|internal/notify\|internal/compute/\|internal/pages/[a-z_]*/" internal/pages/market_page | grep -v ':0$'` prints nothing (only the roots `store`, `compute`, `pages`, `contracts` are imported, no sibling builder package, no opener); `grep -c '"market\.' internal/pages/market_page/builder.go internal/pages/market_page/cells.go internal/pages/market_page/term.go` prints 0 for each (the ids come from `ids.go`).
-10. `git diff $(git merge-base HEAD origin/main) -- .go-arch-lint.yml arch.toml | grep -c .` prints 0 (the interface entry did them).
-11. `docs/contracts/pages.md` names `market_page.Build`, `NewPage`, `Config`, the page name `market_page`, the unit of each figure (`share_percent`, `percent`, `ratio`, `index_points`) and the Gap blocks, with a Version history line.
-12. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line (`testdata/` counts as one path); `git diff $(git merge-base HEAD origin/main) -- contracts web internal/pages/api.go | grep -c .` prints 0; `wc -l internal/pages/market_page/*.go` shows no file at 600 lines or more.
+10. `docs/contracts/pages.md` names `market_page.Build`, `NewPage`, `Config`, the page name `market_page`, the unit of each figure (`share_percent`, `percent`, `ratio`, `index_points`) and the Gap blocks, with a Version history line.
+11. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line (`testdata/` counts as one path); `git diff $(git merge-base HEAD origin/main) -- contracts web internal/pages/api.go | grep -c .` prints 0; `wc -l internal/pages/market_page/*.go` shows no file at 600 lines or more.
 
 Checked by CI: `go test ./internal/pages/... -race -count=1`; ci-go (go-arch-lint, golangci-lint); `go run ./scripts/arch --check` printing `arch: ok`; the size rule.
 

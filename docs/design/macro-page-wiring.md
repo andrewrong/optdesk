@@ -175,7 +175,7 @@ The profile carries the owner's zone
   10. No zone literal is added: `git diff origin/main -- '*.go' | grep -E '^\+.*"[A-Z][a-z]+/[A-Za-z_]+"'` prints nothing (the whole-tree grep of the advisor would print `marketZone` of `day.go`, which is the exchange's zone, is old, and is unchanged; so the check reads the diff). The only zone-like names in added lines are `UTC`, the key `OT_ZONE` and `no/such/zone`.
   11. Every test added or changed calls `t.Parallel()`, uses `t.TempDir()` for any file, takes time only from the fake clock of `testApp`, and none sleeps (offline: `grep -c 'time.Sleep' ` on the four test files prints 0 for each); each changed Go file stays under 600 lines.
   12. No file outside the ten listed is in the diff (`git diff --stat` shows `internal/`, `go.mod`, `arch.toml`, `.go-arch-lint.yml` and `docs/design/` absent); `go run ./scripts/arch --check` exits 0.
-  Checked by CI: `go build ./...`, `go vet ./cmd/ot/` and `go test ./cmd/ot/` pass; ci-go including go-arch-lint, which reads `arch.toml` and passes only on a base that holds this design; the PR body carries the `Contracts:` line (set when the pull request is opened).
+  Checked by CI: `go build ./...`, `go vet ./cmd/ot/` and `go test ./cmd/ot/` pass; ci-go including go-arch-lint; the PR body carries the `Contracts:` line (set when the pull request is opened).
   Depends on: this design merged and `profile-zone` merged (issue numbers written when they exist).
   Size: M
 

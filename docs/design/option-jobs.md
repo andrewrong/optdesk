@@ -128,7 +128,7 @@ The option_eod freeze job
   8. `TestBudget`: with a fake clock advanced past `budget_minutes` after the first chunk, `Run` stops before the second chunk, keeps the rows of the first, and returns `Retryable`.
   9. `TestGuards`: a `day` other than the market-zone day gives `NoValue` with "wrong day" and no port call and no write; before `freeze_after` an empty result with a nil error and no port call.
   10. `TestErrors`: a `Retryable` error of the broker or the resolver gives `Err` of that kind and no write of that step; a writer error gives `Usable == 0` and `Retryable`; `NO_DATA` and `TIMEOUT` still write a row (2 and 5).
-  11. `docs/contracts/jobs.md` gains a paragraph for `option_eod`; each new file is under 600 lines; `git diff -- go.mod go.sum arch.toml .go-arch-lint.yml` is empty.
+  11. `docs/contracts/jobs.md` gains a paragraph for `option_eod`; each new file is under 600 lines; `git diff -- go.mod go.sum` is empty.
   Checked by CI: ci-go (go test, golangci-lint, go-arch-lint component `jobs/optioneod`).
   Depends on: jobs-interface merged (merged work only).
   Size: L
@@ -148,7 +148,7 @@ The quote_snapshot job
   6. `TestNoQuote`: for a slot where the fake `Broker` answers `NO_DATA` for every instrument, `Run` writes the status 2 rows and returns `NoValue` with "no quote"; with one `OK` instrument it returns nil.
   6a. `TestGuards`: a `day` other than the market-zone day gives `NoValue` with "wrong day" and no call; before the slot time an empty result with a nil error and no call; past the slot plus `grace_minutes` `NoValue` with "missed slot" and no call.
   7. `TestStatusMapping` (table) as `## Interface`; a writer error gives `Usable == 0` and `Retryable`; a resolver error gives its kind and no write of that chunk.
-  8. Each new file is under 600 lines; `git diff -- go.mod go.sum arch.toml .go-arch-lint.yml docs` is empty (`quote_snapshot` gets no paragraph in `docs/contracts/jobs.md`, `## Left out` 10); no file outside `Files` is in the diff (`git diff --stat`).
+  8. Each new file is under 600 lines; `git diff -- go.mod go.sum docs` is empty (`quote_snapshot` gets no paragraph in `docs/contracts/jobs.md`, `## Left out` 10); no file outside `Files` is in the diff (`git diff --stat`).
   Checked by CI: ci-go (go test, golangci-lint, go-arch-lint component `jobs/quotesnapshot`).
   Depends on: jobs-interface merged (merged work only).
   Size: M

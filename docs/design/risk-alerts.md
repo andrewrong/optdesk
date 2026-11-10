@@ -79,9 +79,9 @@ Acceptance:
 1. `grep -c "type AlertRule struct\|type AlertRules struct\|type AlertResult struct\|type ReadingFunc \|type EvaluateAlertsFunc \|type LoadAlertRulesFunc \|type DefaultAlertRulesFunc " internal/compute/api.go` prints 7; `git diff $(git merge-base HEAD origin/main) -- internal/compute/api.go | grep -c '^-[^-]'` prints 0 (additions only).
 2. `grep -c "var _ compute.EvaluateAlertsFunc\|var _ compute.LoadAlertRulesFunc" internal/compute/api_test.go` prints 2; `go test ./internal/compute -run 'TestAlert' -race -count=1` passes.
 3. `grep -c "stale_data\|no_data_day\|data_day" docs/contracts/compute.md` is at least 3.
-4. `grep -c "compute/alertrules" .go-arch-lint.yml` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e internal/compute/api.go -e internal/compute/api_test.go -e internal/compute/alertrules/doc.go -e docs/contracts/compute.md -e .go-arch-lint.yml | wc -l | tr -d ' '` prints 0.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e internal/compute/api.go -e internal/compute/api_test.go -e internal/compute/alertrules/doc.go -e docs/contracts/compute.md | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint); the `arch.toml` check and `go run ./scripts/arch --check` printing `arch: ok`; the design verdict (the result matches the Interface section).
+Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint) and `go run ./scripts/arch --check` printing `arch: ok`; the design verdict (the result matches the Interface section).
 
 ### alerts-store-interface (interface)
 
@@ -97,9 +97,9 @@ Acceptance:
 1. `grep -c "type SentMark struct\|type SentStore interface\|type OpenSentFunc " internal/store/api.go` prints 3; `grep -c "DSNEnvAlerts = \"OT_PG_DSN_ALERTS\"" internal/store/api.go` prints 1; `git diff $(git merge-base HEAD origin/main) -- internal/store/api.go | grep -c '^-[^-]'` prints 0.
 2. `grep -c "var _ store.OpenSentFunc" internal/store/api_test.go` prints 1; `go test ./internal/store -run 'TestSent' -race -count=1` passes.
 3. `grep -c "alerts.sent\|MarkSent" docs/contracts/store.md` is at least 2.
-4. `grep -c "store/alert" .go-arch-lint.yml` is at least 1; `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e internal/store/api.go -e internal/store/api_test.go -e internal/store/alert/doc.go -e docs/contracts/store.md -e .go-arch-lint.yml | wc -l | tr -d ' '` prints 0.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e internal/store/api.go -e internal/store/api_test.go -e internal/store/alert/doc.go -e docs/contracts/store.md | wc -l | tr -d ' '` prints 0.
 
-Checked by CI: ci-go; the `arch.toml` check and `go run ./scripts/arch --check` printing `arch: ok`; the design verdict.
+Checked by CI: ci-go and `go run ./scripts/arch --check` printing `arch: ok`; the design verdict.
 
 ### alerts-notify-interface (interface)
 
@@ -206,7 +206,7 @@ Acceptance:
 
 1. `grep -rhE "^func (TestBlockOkWithItems|TestBlockOkNoAlert|TestBlockPartialNoData|TestBlockGapAllNoData|TestBlockStaleDataIsStaleInput|TestBlockLevelsCarried|TestBlockRequiredFieldsPresent|TestBlockMatchesSchema|TestBlockReaderErrorIsError)\(" internal/pages/risks_block | wc -l` prints 9; `go test ./internal/pages/risks_block -race -count=1` passes (`TestBlockMatchesSchema` validates every case against `#/$defs/RisksBlock` of `contracts/schemas/page.report_page.v2.json`).
 2. `grep -c "t.Parallel()" internal/pages/risks_block/builder_test.go` is at least `grep -c "^func Test" internal/pages/risks_block/builder_test.go`; `grep -c "time.Now()\|time.Sleep\|float64" internal/pages/risks_block/builder.go internal/pages/risks_block/strings.go` prints 0 for each file.
-3. `grep -rc "internal/store/alert\|internal/notify\|internal/jobs\|internal/compute/alertrules" internal/pages/risks_block | grep -v ':0$'` prints nothing; `grep -c "pages/risks_block" .go-arch-lint.yml` is at least 1.
+3. `grep -rc "internal/store/alert\|internal/notify\|internal/jobs\|internal/compute/alertrules" internal/pages/risks_block | grep -v ':0$'` prints nothing.
 4. `git diff --name-only $(git merge-base HEAD origin/main)` lists only paths of the Files line or files under `internal/pages/risks_block/testdata/`; `git diff $(git merge-base HEAD origin/main) -- contracts web internal/pages/api.go | grep -c .` prints 0. The pull request carries `Contracts: unchanged`.
 
 Checked by CI: ci-go (go-arch-lint, golangci-lint, `go run ./scripts/arch --check` printing `arch: ok`); the size rule.

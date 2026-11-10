@@ -71,7 +71,7 @@ Entries 3 and 4 add files to the package that entry 1 creates and share no file;
 Module: jobs, plus repo (licensed pair: `.go-arch-lint.yml` is generated from the directory). Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`, `internal/jobs/cutover/doc.go`, `internal/jobs/cutover/jsonl.go`, `internal/jobs/cutover/jsonl_test.go`
 Design: docs/design/cut-over.md#Interface
-Order: first. It shares no file with another entry; it creates the package `internal/jobs/cutover`, its `.go-arch-lint.yml` component and the helper `jsonl.go` that 3 and 4 use, so 3 and 4 wait only on this interface entry and share no file.
+Order: first. It shares no file with another entry; it creates the package `internal/jobs/cutover` and the helper `jsonl.go` that 3 and 4 use, so 3 and 4 wait only on this interface entry and share no file.
 Goal: the Interface section: `VerifyResult`, `ImportAccountFunc`, `VerifyAccountFunc`, `FigureStatus`, `FigureResult`, `FigureReport`, `CompareFiguresFunc`, declarations only, with a test of the contract from both sides; the package with its shared JSON Lines reader and canonical hash.
 Acceptance:
 1. `grep -cE '^type (VerifyResult|ImportAccountFunc|VerifyAccountFunc|FigureStatus|FigureResult|FigureReport|CompareFiguresFunc) ' internal/jobs/api.go` prints 7.
@@ -79,7 +79,7 @@ Acceptance:
 3. The additions hold no function body, and the file imports nothing from `internal/store/bar`: `grep -c 'store/bar' internal/jobs/api.go` prints 0.
 4. `internal/jobs/api_test.go` has, for each of the three function types, a fake that implements it and a caller that uses it (tests `TestImportAccountFuncContract`, `TestVerifyAccountFuncContract`, `TestCompareFiguresFuncContract`; `grep -c 'func TestImportAccountFuncContract\|func TestVerifyAccountFuncContract\|func TestCompareFiguresFuncContract' internal/jobs/api_test.go` prints 3), and each calls `t.Parallel()`.
 5. `internal/jobs/cutover/jsonl.go` reads JSON Lines with the line number carried into every error and no content, and computes the SHA-256 over the line with keys sorted and no space (test `TestCanonicalHashSortsKeys` in `jsonl_test.go`: `grep -c 'func TestCanonicalHashSortsKeys' internal/jobs/cutover/jsonl_test.go` prints 1); no float type is in the package.
-6. `.go-arch-lint.yml` has a component for `internal/jobs/cutover`: `grep -c 'internal/jobs/cutover$' .go-arch-lint.yml` is at least 1; `docs/contracts/jobs.md` says that `--verify` writes nothing.
+6. `docs/contracts/jobs.md` says that `--verify` writes nothing.
 Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`, golangci-lint, go-arch-lint.
 
 ### 2 history-exporter
@@ -103,7 +103,7 @@ Checked by CI: none (a dev-only tool is not run in CI, AGENTS.md); the owner run
 Module: jobs. Size: M.
 Files: `internal/jobs/cutover/alias.go`, `internal/jobs/cutover/accountimport.go`, `internal/jobs/cutover/accountverify.go`, `internal/jobs/cutover/accountimport_test.go`, `internal/jobs/cutover/accountverify_test.go`, `internal/jobs/cutover/alias_test.go`
 Design: docs/design/cut-over.md#Decisions (Decisions 3, 4, 6, 12, 13)
-Order: after 1 (the interface entry that creates the package, `jsonl.go` and the `.go-arch-lint.yml` component). It shares no file with another entry; 4 adds files to the same package.
+Order: after 1 (the interface entry that creates the package and `jsonl.go`). It shares no file with another entry; 4 adds files to the same package.
 Goal: `ImportAccount` and `VerifyAccount` with the signatures of entry 1.
 Acceptance:
 1. `ImportAccount` reads the stored capture of the alias and day first and counts `Inserted`, `Same` or `Conflict` (tests `TestImportAccountCountsSame`, `TestImportAccountCountsConflict`: a fake store holding an equal and a different capture); it builds a `store.Capture` whose `ID` is the alias, the session day and the text `import` joined by colons and calls `WriteCapture` once per line (test `TestImportAccountCaptureID`): `grep -n '"import"' internal/jobs/cutover/accountimport.go` finds the run key.

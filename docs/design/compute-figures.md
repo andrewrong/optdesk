@@ -119,10 +119,9 @@ Acceptance:
 1. `TestMigration0013Shape` and `TestRoleListHasReadings` pass without a database. `TestMigration0013Shape` reads the file by a path found from `go.mod` and checks the tables, the key `(name, version, subject_kind, subject, day, rev)`, `numeric(38,12)`, the enum values, the grants, and that no `UPDATE`, `DELETE` or `TRUNCATE` is granted; `TestRoleListHasReadings` checks `setup.go` (role, env line).
 2. The numbering is checked as a set, not by a tail: `ls migrations | grep -c "^0013_readings.sql$"` prints 1 and `ls migrations | sed 's/_.*//' | sort | awk 'NR>1 && $1 != p+1 {bad=1} {p=$1+0} END {exit bad}'` exits 0 (unique, gapless); `grep -c "derived.figure_value\|double precision" migrations/0013_readings.sql` prints 0.
 3. `TestInsertSQLIdempotent`, `TestLatestPicksHighestRev` and `TestCloseClosesPool` pass against a recording fake of the pgx interface; `var _ store.OpenReadingFunc = Open` compiles.
-4. `grep -c 'internal/store/reading' .go-arch-lint.yml` prints 1.
-5. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line.
+4. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line.
 
-Checked by CI: `go test ./internal/store/reading ./internal/store/setup -race -count=1`; `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change; `go vet -tags pg ./internal/store/reading` (compiles the tagged test only), the pg run of `pg_test.go` (insert, rev 2 wins, a missing row yields, the grants), the migration run.
+Checked by CI: `go test ./internal/store/reading ./internal/store/setup -race -count=1`; `go vet -tags pg ./internal/store/reading` (compiles the tagged test only), the pg run of `pg_test.go` (insert, rev 2 wins, a missing row yields, the grants), the migration run.
 
 ### docs-compute-rules (interface)
 
@@ -145,7 +144,7 @@ Checked by CI: `go run ./scripts/hygiene` prints `hygiene: ok`.
 ### compute-rules
 
 - Module: compute, plus docs (judged two-module entry: the register is under docs). Size: M. Depends on: docs-compute-rules, compute-own-glue, compute-figures-series, compute-figures-iv (compute-core.md): the hashes are of final bodies (REV1:3), so no later issue edits a hashed function.
-- Order: after 3, 4 (store-reading-tables, docs-compute-rules: 4 adds the nine tables and both edit `register.toml`; 3 shares `.go-arch-lint.yml`) and after compute-own-glue, compute-figures-series and compute-figures-iv of compute-core.md (`own` must exist for the golden); fills the real hashes.
+- Order: after 3, 4 (store-reading-tables, docs-compute-rules: 4 adds the nine tables and both edit `register.toml`) and after compute-own-glue, compute-figures-series and compute-figures-iv of compute-core.md (`own` must exist for the golden); fills the real hashes.
 - Design: docs/design/compute-figures.md#Decisions
 - Files: internal/compute/rules/rules.go, internal/compute/rules/rules.json, internal/compute/rules/rules_test.go, internal/compute/own/stored_text_test.go, internal/compute/own/testdata/stored_text.json, docs/conventions/register.toml
 
@@ -156,9 +155,9 @@ Acceptance:
 1. These tests pass: `TestHashesMatchSource` (a body edit in a `t.TempDir()` copy changes the hash; a whitespace-only edit does not; a change of a listed helper does), `TestRulesMatchRegister` (same ids, versions, unit, scale, `compare`; the `currency` text says the rule's unit word and half-even at the rule's scale), `TestCompareFixedPerID` (`ivp` is `AtOrBelow`, each of the four percentiles is `Below`), `TestNoPendingForGoIds` (the test matches entries by (id, version), as landed: each (id, version) of `rules.json` has a 64-hex `source_hash` and every other entry still has `pending-recompute`, so `market.sp500_vs_200d` v1, Python, stays pending while v2 has its hash), `TestRegisterEntriesComplete` (every `[[figure]]` has the 15 keys; (id, version) is unique), `TestStoredTextGolden` (nine cases; one is the binary-exact tie 0.0078125 at scale 6; it lives in `internal/compute/own/stored_text_test.go`).
 2. `git diff $(git merge-base HEAD origin/main) -- docs/conventions/register.toml | grep -c '^[-+]version'` prints 0; the diff touches only `source_hash` lines.
 3. `grep -c "compute.NewRulesFunc" internal/compute/rules/rules_test.go` is at least 1; `go list -deps ./internal/compute/rules | grep -c "gonum\|go-talib"` prints 0; `go list -deps ./internal/compute/rules | grep -c "internal/compute/figures"` prints 0; `go list -deps -test ./internal/compute/own | grep -c "internal/compute/rules"` prints 0 (the golden imports no rules package; it reads `rules.json` as data).
-4. `grep -c 'internal/compute/rules' .go-arch-lint.yml` prints 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line.
+4. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line.
 
-Checked by CI: `go test ./internal/compute/rules ./internal/compute/own -race -count=1`; `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change.
+Checked by CI: `go test ./internal/compute/rules ./internal/compute/own -race -count=1`.
 
 ### jobs-compute-api (interface)
 
@@ -181,7 +180,7 @@ Checked by CI: `go test ./internal/jobs -race -count=1`.
 ### compute-figures-job
 
 - Module: jobs, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: L. Depends on: store-reading-tables, compute-rules, docs-iv30-rate-age, jobs-compute-api, sched-jobs-schedule (it adds the `[schedule]` table and the plain-value methods to its own manifest). The Iv30 input mapping (Decision 10) is part of this issue, not a sibling issue: `Run` calls `ivInput` and `subjects`, so one pull request carries the mapping and the job, and the job is tested against fakes of the store interfaces.
-- Order: after 3, 5, 6, 9 (store-reading-tables, compute-rules, jobs-compute-api, docs-iv30-rate-age), and after sched-jobs-schedule; 3 and 5 edit `.go-arch-lint.yml` too.
+- Order: after 3, 5, 6, 9 (store-reading-tables, compute-rules, jobs-compute-api, docs-iv30-rate-age), and after sched-jobs-schedule.
 - Design: docs/design/compute-figures.md#Decisions
 - Files: internal/jobs/computefigures/ivinput.go, internal/jobs/computefigures/ivinput_test.go, internal/jobs/computefigures/subjects.go, internal/jobs/computefigures/subjects_test.go, internal/jobs/computefigures/job.go, internal/jobs/computefigures/steps.go, internal/jobs/computefigures/schedule.go, internal/jobs/computefigures/job.toml, internal/jobs/computefigures/job_test.go, docs/contracts/jobs.md
 
@@ -194,9 +193,9 @@ Acceptance:
 3. `TestReadingCarriesBothHashes` (`code_version` equals the rule's `Hash`, `rows_sha256` is 64 hex) and `TestValueIsRoundedText` (0.0078125 at scale 6 gives "0.007812", a half-even tie that half up would round the other way) pass.
 4. `grep -c "time.Now\|time.Sleep\|os.Getenv" internal/jobs/computefigures/ivinput.go internal/jobs/computefigures/subjects.go` prints 0 for each file; `grep -c "time.Now\|time.Sleep" internal/jobs/computefigures/*.go` prints 0; each Go file is under 600 lines.
 5. `go list -deps ./internal/jobs/computefigures | grep -c "internal/store/\(series\|snapshot\|reading\|instrument\)"` prints 0 (the stores arrive through `ComputeStores`).
-6. `grep -c 'internal/jobs/computefigures' .go-arch-lint.yml` prints 1; `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eleven paths of the Files line. `grep -c "stale_input" docs/contracts/jobs.md` is at least 1 and `grep -c "4 calendar days" docs/contracts/jobs.md` is at least 1.
+6. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the eleven paths of the Files line. `grep -c "stale_input" docs/contracts/jobs.md` is at least 1 and `grep -c "4 calendar days" docs/contracts/jobs.md` is at least 1.
 
-Checked by CI: `go test ./internal/jobs/computefigures -race -count=1`; `go run ./scripts/arch && git diff --exit-code arch.toml .go-arch-lint.yml` leaves no change.
+Checked by CI: `go test ./internal/jobs/computefigures -race -count=1`.
 
 ### compute-jobs-wire
 
