@@ -727,8 +727,8 @@ func TestSymbolCtorTypes(t *testing.T) {
 	}
 }
 
-// TestSymbolWatchCtorType: the watch constructor carries the translator after the clock, and a nil translator
-// is accepted (no translation).
+// TestSymbolWatchCtorType: NewOptionEodWatchSymbolsFunc carries the translator after the clock, and a nil
+// translator is accepted (no translation).
 func TestSymbolWatchCtorType(t *testing.T) {
 	t.Parallel()
 	var got []symbol.Translator
