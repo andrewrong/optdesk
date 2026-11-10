@@ -47,7 +47,7 @@ def test_negative_greek_is_kept() -> None:
 def test_zero_size_is_kept() -> None:
     found = ticker_fields(make(bidSize=0.0, callOpenInterest=0.0))
     assert found["bid_size"] == 0.0
-    assert found["open_interest"] == 0.0
+    assert "open_interest" not in found  # a lone 0.0 is a placeholder (#1183)
 
 
 def test_unset_double_is_absent() -> None:
