@@ -124,6 +124,7 @@ type deps struct {
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
 	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
+	reportPageBlocks        func(cfg report_page.Config) pages.Page // the report with its three block sources; nil falls back to reportPage (risks only)
 	alertRules              compute.DefaultAlertRulesFunc
 	evaluateAlerts          compute.EvaluateAlertsFunc
 	riskBlock               riskBlockFunc
@@ -217,7 +218,7 @@ func newDeps() deps {
 	d.newRuleParams = ruleparam.New
 	d.openOwnerSet = ownersetpg.Open
 	d.openOptionLedgerRO = openOptionLedgerStore
-	d.settingsPage = settings_page.NewPage
+	d.settingsPage, d.reportPageBlocks = settings_page.NewPage, report_page.NewPage
 	return d
 }
 
