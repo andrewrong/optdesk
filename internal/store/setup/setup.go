@@ -53,6 +53,10 @@ const (
 	// roleSettings: INSERT and SELECT on the two settings tables, SELECT on rd.rule_param_r1 and rd.option_exclusion_r1
 	// (migrations/0025_settings.sql).
 	roleSettings = "ot_w_settings"
+
+	// roleMark: INSERT and SELECT on account.position_mark, SELECT on rd.account_position_mark_r1
+	// (migrations/0026_position_mark.sql).
+	roleMark = "ot_w_posmark"
 )
 
 // dsnEnvSettings is the line of roleSettings. It equals ownerset.DSNEnvSettings; setup is a sibling sub-package and
@@ -80,12 +84,13 @@ var roles = []roleSpec{
 	{roleBar, bar.DSNEnvBar},                     // ot_w_bar, line OT_PG_DSN_BAR
 	{roleOptionLedger, store.DSNEnvOptionLedger}, // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
 	{roleSettings, dsnEnvSettings},               // ot_w_settings, line OT_PG_DSN_SETTINGS
+	{roleMark, "OT_PG_DSN_POSMARK"},              // the line is mark.DSNEnvPositionMark; store/setup may not import store/mark
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the seventeen roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the eighteen roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -163,7 +168,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 		" TO " + ident(roleRunner) + ", " + ident(roleSeriesFred) + ", " + ident(roleRoPages) + ", " + ident(roleLoader) +
 		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings) + ", " + ident(roleAlerts) +
 		", " + ident(roleFundamental) + ", " + ident(roleEvents) + ", " + ident(roleCandidate) + ", " + ident(roleAccount) +
-		", " + ident(roleBar) + ", " + ident(roleOptionLedger) + ", " + ident(roleSettings)
+		", " + ident(roleBar) + ", " + ident(roleOptionLedger) + ", " + ident(roleSettings) + ", " + ident(roleMark)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}
