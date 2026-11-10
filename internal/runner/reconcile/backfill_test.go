@@ -63,7 +63,7 @@ func (s *spyLedger) PutWindow(ctx context.Context, w store.Window) error {
 }
 
 func (s *spyLedger) writes() int32 {
-	return s.records.Load() + s.marks.Load() + s.cursors.Load() + s.expecteds.Load() + s.windowsPut.Load()
+	return s.records.Load() + s.marks.Load() + s.cursors.Load() + s.expecteds.Load()
 }
 
 // bfSetup is a ledger with the stored plan of bfDay and the cursor at cursor.
