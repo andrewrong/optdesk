@@ -29,6 +29,9 @@ const (
 	BarKind_BAR_KIND_TRADES        BarKind = 1
 	BarKind_BAR_KIND_ADJUSTED_LAST BarKind = 2
 	BarKind_BAR_KIND_MIDPOINT      BarKind = 3
+	// The bar's close is IBKR's option implied volatility of the underlying as a decimal
+	// (0.28 is 28 percent); open, high and low are as IBKR gives them; volume is absent.
+	BarKind_BAR_KIND_OPTION_IMPLIED_VOL BarKind = 4
 )
 
 // Enum value maps for BarKind.
@@ -38,12 +41,14 @@ var (
 		1: "BAR_KIND_TRADES",
 		2: "BAR_KIND_ADJUSTED_LAST",
 		3: "BAR_KIND_MIDPOINT",
+		4: "BAR_KIND_OPTION_IMPLIED_VOL",
 	}
 	BarKind_value = map[string]int32{
-		"BAR_KIND_UNSPECIFIED":   0,
-		"BAR_KIND_TRADES":        1,
-		"BAR_KIND_ADJUSTED_LAST": 2,
-		"BAR_KIND_MIDPOINT":      3,
+		"BAR_KIND_UNSPECIFIED":        0,
+		"BAR_KIND_TRADES":             1,
+		"BAR_KIND_ADJUSTED_LAST":      2,
+		"BAR_KIND_MIDPOINT":           3,
+		"BAR_KIND_OPTION_IMPLIED_VOL": 4,
 	}
 )
 
@@ -401,12 +406,13 @@ const file_ibkr_v1_marketdata_proto_rawDesc = "" +
 	"\x06volume\x18\x06 \x01(\tH\x00R\x06volume\x88\x01\x01B\t\n" +
 	"\a_volume\"0\n" +
 	"\fBarsResponse\x12 \n" +
-	"\x04bars\x18\x01 \x03(\v2\f.ibkr.v1.BarR\x04bars*k\n" +
+	"\x04bars\x18\x01 \x03(\v2\f.ibkr.v1.BarR\x04bars*\x8c\x01\n" +
 	"\aBarKind\x12\x18\n" +
 	"\x14BAR_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fBAR_KIND_TRADES\x10\x01\x12\x1a\n" +
 	"\x16BAR_KIND_ADJUSTED_LAST\x10\x02\x12\x15\n" +
-	"\x11BAR_KIND_MIDPOINT\x10\x032\x8b\x01\n" +
+	"\x11BAR_KIND_MIDPOINT\x10\x03\x12\x1f\n" +
+	"\x1bBAR_KIND_OPTION_IMPLIED_VOL\x10\x042\x8b\x01\n" +
 	"\x11MarketDataService\x12A\n" +
 	"\bSnapshot\x12\x18.ibkr.v1.SnapshotRequest\x1a\x19.ibkr.v1.SnapshotResponse0\x01\x123\n" +
 	"\x04Bars\x12\x14.ibkr.v1.BarsRequest\x1a\x15.ibkr.v1.BarsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
