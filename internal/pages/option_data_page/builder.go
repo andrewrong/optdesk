@@ -57,6 +57,8 @@ type Config struct {
 	Issuer   string
 	// Fx reads the USD<currency> rate for approx_usd_text; nil: no figure gets it.
 	Fx bar.FxRateReader
+	// VolLine fills underlying.vol_line (IV of the at-the-money contract, HV30 and IVP missing); false: absent.
+	VolLine bool
 }
 
 type sourceTime struct {
@@ -97,6 +99,7 @@ type underlying struct {
 
 	EarningsText string `json:"earnings_text,omitempty"`
 	EarningsTone string `json:"earnings_tone,omitempty"`
+	VolLine      string `json:"vol_line,omitempty"`
 }
 
 type chain struct {
@@ -217,7 +220,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 			eodTime = r.ReceivedAt
 		}
 	}
-	if err := decorate(ctx, c, d, day, sessionDay, rows, &vm); err != nil {
+	if err := decorate(ctx, c, d, day, sessionDay, latest, rows, &vm); err != nil {
 		return nil, err
 	}
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
@@ -249,12 +252,16 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 }
 
 // decorate fills the optional fields of the chain rows and the underlying: terms, earnings, approximate US dollars.
-func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string, rows []contracts.OptionEod, vm *viewModel) error {
+func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string,
+	latest contracts.OptionEod, rows []contracts.OptionEod, vm *viewModel) error {
 	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
 		return err
 	}
 	if err := applyEarnings(ctx, c, d, day, sessionDay, vm.Chain.Rows, &vm.Underlying); err != nil {
 		return err
+	}
+	if c.VolLine {
+		applyVolLine(sessionDay, latest.UnderlyingPrice, rows, vm.Chain.Rows, &vm.Underlying)
 	}
 	return applyUSD(ctx, c.Fx, sessionDay, vm)
 }
