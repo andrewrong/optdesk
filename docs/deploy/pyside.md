@@ -61,7 +61,9 @@ One `[[gateway]]` table per gateway. Keys:
 - `name` (required): a slug, a lowercase letter then up to 15 lowercase letters, digits or
   hyphens, unique. It names the socket and the key in `/health`.
 - `port` (required): a whole number above zero. `host` defaults to `localhost`, `client_id` to
-  33 (a client id is per gateway), `market_data_type` to 1.
+  33 (a client id is per gateway), `market_data_type` to 2 (frozen: live data while the market is
+  open, the last value when it is closed; live type 1 gives no bid or ask after the close, and the
+  US option capture of 2026-11-09 stored 2272 rows without any). A value in the file wins.
 - `account` (required): an alias, a label for you, never a real account id. A value shaped like an
   account id is refused. pyside does not send it to the gateway.
 - `collect` (required): a non-empty list of `market_data`, `account_summary`, `positions`. Each of
@@ -81,8 +83,8 @@ restart: `crew cap --apply optdesk-pyside restart`.
 When `OT_IBKR_GATEWAYS` is unset, pyside runs the one gateway it ran before: one entry named
 `default`, `collect = ["market_data"]`, required, served on `ibkr.sock` only. It reads
 `OT_IBKR_GATEWAY_PORT` (required), `OT_IBKR_GATEWAY_HOST` (default `localhost`),
-`OT_IBKR_CLIENT_ID` (default 33) and `OT_IBKR_MARKET_DATA_TYPE` (default 1). When
-`OT_IBKR_GATEWAYS` is set, these four keys are ignored.
+`OT_IBKR_CLIENT_ID` (default 33) and `OT_IBKR_MARKET_DATA_TYPE` (default 2, frozen; a
+value in the variable wins). When `OT_IBKR_GATEWAYS` is set, these four keys are ignored.
 
 ## Keys pyside reads
 
