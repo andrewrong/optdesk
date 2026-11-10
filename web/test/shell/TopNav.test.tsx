@@ -40,7 +40,7 @@ describe('TopNav', () => {
       ['建议', '/advice'],
       ['设置', '/settings'],
     ])
-    const items = [...host.querySelectorAll('nav > a, nav > button')].map((e) => e.textContent)
+    const items = [...host.querySelectorAll('nav > div > a, nav > div > button')].map((e) => e.textContent)
     expect(items).toHaveLength(11)
     expect(items[10]).toBe('期权持仓')
   })
@@ -80,5 +80,55 @@ describe('TopNav', () => {
   it('marks none on a page that is not in the bar', async () => {
     await showAt('/structure')
     expect(links().some((a) => a.hasAttribute('aria-current'))).toBe(false)
+  })
+
+  const openSheet = async () => {
+    const button = host.querySelector('button[aria-label="菜单"]')
+    expect(button).not.toBeNull()
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    return document.querySelector('[role="dialog"]')
+  }
+
+  it('the sheet is closed at first and the phone button is 44 px, hidden from md', async () => {
+    await showAt('/home')
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    const button = host.querySelector('button[aria-label="菜单"]')
+    expect(button?.className).toContain('size-11')
+    expect(button?.className).toContain('md:hidden')
+    expect(host.querySelector('nav > div')?.className).toContain('hidden md:flex')
+  })
+
+  it('the sheet opens and lists the eleven items, the position links under 期权持仓', async () => {
+    await showAt('/home')
+    const sheet = await openSheet()
+    expect(sheet).not.toBeNull()
+    expect(sheet?.getAttribute('data-side')).toBe('left')
+    const hrefs = [...(sheet?.querySelectorAll('a') ?? [])].map((a) => [a.textContent, a.getAttribute('href')])
+    expect(hrefs).toEqual([
+      ['首页', '/home'],
+      ['宏观', '/macro'],
+      ['家庭资产', '/household'],
+      ['持仓', '/positions'],
+      ['风险', '/risk'],
+      ['期权', '/options'],
+      ['期权数据', '/options/data'],
+      ['期权候选', '/options/candidates'],
+      ['建议', '/advice'],
+      ['设置', '/settings'],
+      ['结构', '/options/structures'],
+      ['盈亏', '/options/result'],
+      ['提示', '/options/notices'],
+      ['追踪', '/options/tracking'],
+    ])
+    expect(sheet?.textContent).toContain('期权持仓')
+  })
+
+  it('the sheet marks the current page with aria-current', async () => {
+    await showAt('/options/data/9001')
+    const sheet = await openSheet()
+    const marked = [...(sheet?.querySelectorAll('a[aria-current="page"]') ?? [])]
+    expect(marked.map((a) => a.textContent)).toEqual(['期权数据'])
   })
 })
