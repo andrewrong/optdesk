@@ -118,12 +118,15 @@ func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day,
 	status := statusOK
 	acc, err := r.Account(ctx)
 	if err != nil {
+		j.logFailure(alias, "account", err)
 		status = statusFailed
 	} else if err := j.writeAccount(ctx, alias, day, key, acc); err != nil {
+		j.logFailure(alias, "write", err)
 		status = statusFailed
 	}
 	ex, err := r.Executions(ctx)
 	if err != nil {
+		j.logFailure(alias, "executions", err)
 		return statusFailed
 	}
 	if ex.Collected && len(ex.Executions) > 0 {
@@ -135,6 +138,17 @@ func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day,
 		return statusPending
 	}
 	return status
+}
+
+// logFailure logs the alias, the step and the error kind of a failed capture step. It never logs the
+// error text, which can carry an account id.
+func (j *job) logFailure(alias, step string, err error) {
+	kind := "unknown"
+	var k interface{ Kind() contracts.ErrorKind }
+	if errors.As(err, &k) {
+		kind = string(k.Kind())
+	}
+	j.log.Warn("capture failed", "alias", alias, "step", step, "kind", kind)
 }
 
 func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day, key string, acc broker.Account) error {
