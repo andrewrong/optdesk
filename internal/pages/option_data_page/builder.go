@@ -51,6 +51,9 @@ type Config struct {
 	Terms store.OptionTermsReader
 	// Choices are the underlyings the page links to; empty: no underlyings field.
 	Choices []Choice
+	// Earnings reads the earnings dates of Issuer; nil or an empty Issuer: no earnings fields.
+	Earnings store.EarningsDateReader
+	Issuer   string
 }
 
 type sourceTime struct {
@@ -88,6 +91,9 @@ type underlying struct {
 	SessionDay *string `json:"session_day"`
 	Price      any     `json:"price"`
 	Currency   string  `json:"currency"`
+
+	EarningsText string `json:"earnings_text,omitempty"`
+	EarningsTone string `json:"earnings_tone,omitempty"`
 }
 
 type chain struct {
@@ -213,6 +219,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		}
 	}
 	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
+		return nil, err
+	}
+	if err := applyEarnings(ctx, c, d, day, sessionDay, vm.Chain.Rows, &vm.Underlying); err != nil {
 		return nil, err
 	}
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
