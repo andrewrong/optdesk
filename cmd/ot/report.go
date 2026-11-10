@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,8 +14,11 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/pagefig"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/report_blocks"
+	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -92,11 +96,82 @@ func reportPage(ctx context.Context, a *app, market, slot string) (pages.Page, f
 	if err != nil {
 		return pages.Page{}, nil, err
 	}
-	return reportPageOver(a, m, s, v), closeFn, nil
+	rd, closeRd, err := reportBlockReaders(ctx, a, m, v)
+	if err != nil {
+		closeFn()
+		return pages.Page{}, nil, err
+	}
+	return reportPageOver(a, m, s, v, rd), func() { closeRd(); closeFn() }, nil
 }
 
-// reportPageOver is the report page for envelope values m and s whose risks block is read from v.
-func reportPageOver(a *app, m, s string, v store.ReadingViewReader) pages.Page {
+// reportBlockReaders returns the readers the actions, account_moves and market_watch blocks read, as
+// siteReaders (view is v), and a function that closes them: the demo readers with the demo profile, else the
+// series and account stores opened with the pages line when deps has an opener (a missing opener is a nil
+// reader, which the block shows as the gap no_reader). No reader of master.session_day is opened today, as in
+// openSiteReaders.
+func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingViewReader) (siteReaders, func(), error) {
+	if m == "JP" {
+		return siteReaders{view: v}, func() {}, nil // the builder never calls the blocks of JP
+	}
+	if a.profile.Name == "demo" {
+		return siteReaders{view: v, series: demoReader{}, noticeAccount: demoNoticeAccount{}}, func() {}, nil
+	}
+	rd := siteReaders{view: v}
+	if a.deps.openSeries == nil && a.deps.openAccount == nil {
+		return rd, func() {}, nil
+	}
+	env, err := a.envFile()
+	if err != nil {
+		return siteReaders{}, nil, err
+	}
+	dsn := env[pagesDSNName]
+	var closers []func() error
+	closeAll := func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			_ = closers[i]()
+		}
+	}
+	fail := func() (siteReaders, func(), error) {
+		closeAll()
+		return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
+	}
+	if a.deps.openSeries != nil {
+		ser, err := a.deps.openSeries(ctx, dsn)
+		if err != nil {
+			return fail()
+		}
+		closers = append(closers, ser.Close)
+		rd.series = ser
+	}
+	if a.deps.openAccount != nil {
+		acc, err := a.deps.openAccount(ctx, dsn)
+		if err != nil {
+			return fail()
+		}
+		closers = append(closers, acc.Close)
+		rd.noticeAccount = acc // the account reader of the notices page, which the report blocks read too
+	}
+	return rd, closeAll, nil
+}
+
+// reportBlocksConfig is the one report_blocks.Config of the report: the zone, the aliases (main first) of
+// noticeAliases and the readers of rd. The option ledger fields stay nil, so the blocks that need them show
+// no_reader. An error of noticeAliases leaves the aliases empty, which is the same gap.
+func reportBlocksConfig(a *app, rd siteReaders) report_blocks.Config {
+	c := report_blocks.Config{
+		Zone: a.profile.Zone, Account: rd.noticeAccount, Series: rd.series, Sessions: rd.sessions,
+		Figures: pagefig.New,
+	}
+	if main, labels, err := noticeAliases(a); err == nil {
+		c.Aliases = append([]string{main}, slices.DeleteFunc(slices.Clone(labels), func(l string) bool { return l == main })...)
+	}
+	return c
+}
+
+// reportPageOver is the report page for envelope values m and s whose risks block is read from v and whose
+// actions, account_moves and market_watch blocks are built by report_blocks from the readers rd. A nil
+// reader of rd keeps the gap of its block; market JP never calls them.
+func reportPageOver(a *app, m, s string, v store.ReadingViewReader, rd siteReaders) pages.Page {
 	risks := func(ctx context.Context, day contracts.Day, at time.Time) ([]byte, error) {
 		rules, err := a.deps.alertRules()
 		if err != nil {
@@ -104,11 +179,21 @@ func reportPageOver(a *app, m, s string, v store.ReadingViewReader) pages.Page {
 		}
 		return a.deps.riskBlock(ctx, rules, a.deps.evaluateAlerts, v.WinnerReadings, day, at.In(a.profile.Zone))
 	}
-	return a.deps.reportPage(m, s, a.profile.Zone, risks)
+	bc := reportBlocksConfig(a, rd)
+	if a.deps.reportPageBlocks == nil {
+		return a.deps.reportPage(m, s, a.profile.Zone, risks)
+	}
+	return a.deps.reportPageBlocks(report_page.Config{
+		Market: m, Slot: s, Zone: a.profile.Zone, Risks: risks,
+		Actions:      report_page.BlockFunc(report_blocks.Actions(bc)),
+		AccountMoves: report_page.BlockFunc(report_blocks.AccountMoves(bc)),
+		MarketWatch:  report_page.BlockFunc(report_blocks.MarketWatch(bc)),
+	})
 }
 
 // buildReport builds the report page of the query (market, slot) for the day of dayFlag or
-// today, per request, from the reader of the site. A bad query is errReportQuery.
+// today, per request, from the reading reader of the site and the block readers of reportBlockReaders, opened
+// and closed for the request. A bad query is errReportQuery.
 func buildReport(ctx context.Context, a *app, clk clock.Clock, dayFlag string, v store.ReadingViewReader, q url.Values) ([]byte, error) {
 	m, s, err := reportParams(q.Get("market"), q.Get("slot"))
 	if err != nil {
@@ -121,7 +206,12 @@ func buildReport(ctx context.Context, a *app, clk clock.Clock, dayFlag string, v
 	if err != nil {
 		return nil, err
 	}
-	return reportPageOver(a, m, s, v).Build(ctx, nil, day, clk.Now().UTC())
+	rd, closeRd, err := reportBlockReaders(ctx, a, m, v)
+	if err != nil {
+		return nil, err
+	}
+	defer closeRd()
+	return reportPageOver(a, m, s, v, rd).Build(ctx, nil, day, clk.Now().UTC())
 }
 
 // demoView is the reading-view reader of the demo profile: one synthetic ok reading of the
