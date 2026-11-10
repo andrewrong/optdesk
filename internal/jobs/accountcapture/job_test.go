@@ -302,7 +302,7 @@ func TestDegradedLogCarriesAliasAndStatusOnly(t *testing.T) {
 	var recs []slog.Record
 	h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
 	rs := map[string]broker.AccountReader{"a": goodReader("a"), "b": bad}
-	j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClock()}, slog.New(h))
+	j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))}, slog.New(h))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +392,7 @@ func TestCaptureFailureLogsAliasStepKind(t *testing.T) {
 			var recs []slog.Record
 			h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
 			rs := map[string]broker.AccountReader{"a": bad}
-			j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClock()}, slog.New(h))
+			j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))}, slog.New(h))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -455,7 +455,7 @@ func TestStoreWordsOfBrokerContract(t *testing.T) {
 	w := newWriter()
 	var recs []slog.Record
 	h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
-	j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClock()}, slog.New(h))
+	j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))}, slog.New(h))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,5 +497,43 @@ func TestStoreSecTypeRejectsEmptyWord(t *testing.T) {
 	t.Parallel()
 	if s, ok := storeSecType(""); ok || s != "" {
 		t.Fatalf("storeSecType(\"\") = %q, %v; want \"\", false", s, ok)
+	}
+}
+
+func TestWrongDay(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		now     time.Time
+		wantErr bool
+	}{
+		"past day":                 {time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC), true},
+		"same New York day":        {time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC), false},
+		"UTC is next day, NY same": {time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			rd := goodReader("a")
+			w := newWriter()
+			j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClockAt(tc.now)},
+				slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			keys, _, _ := j.Plan(context.Background(), testDay)
+			res := j.Run(context.Background(), testDay, keys)
+			if tc.wantErr {
+				var k interface{ Kind() contracts.ErrorKind }
+				if res.Err == nil || !errors.As(res.Err, &k) || k.Kind() != contracts.NoValue || res.Err.Error() != "wrong day" {
+					t.Fatalf("err = %v, want NoValue wrong day", res.Err)
+				}
+				if rd.calls != 0 || rd.exCalls != 0 || res.Returned != 0 || w.writes != 0 {
+					t.Fatalf("read or wrote after wrong day: %d %d %d %d", rd.calls, rd.exCalls, res.Returned, w.writes)
+				}
+				return
+			}
+			if res.Err != nil || rd.calls != 1 || w.writes == 0 {
+				t.Fatalf("same day: err %v calls %d writes %d", res.Err, rd.calls, w.writes)
+			}
+		})
 	}
 }
