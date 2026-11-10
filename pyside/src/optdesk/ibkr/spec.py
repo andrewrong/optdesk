@@ -16,6 +16,9 @@ UNDERLYING_IV = "underlying_iv"
 SNAPSHOT = "snapshot"
 DIVIDENDS = "dividends"
 
+# Seconds an OPTION_EOD quote waits for open_interest after its release fields.
+OI_GRACE_S = 5.0
+
 STATUS_OK = "ok"
 STATUS_PARTIAL = "partial"
 STATUS_NO_DATA = "no_data"
@@ -38,6 +41,10 @@ class KindSpec:
     release_fields: frozenset[str]
     wanted_fields: tuple[str, ...]
     timeout_s: float
+    # Fields that arrive after the release fields: the line is kept at most
+    # grace_s seconds for them, and a quote without them ends PARTIAL.
+    grace_fields: frozenset[str] = frozenset()
+    grace_s: float = 0.0
 
 
 _MODEL = ("implied_vol", "delta", "gamma", "vega", "theta", "und_price")
@@ -48,6 +55,8 @@ TABLE: Mapping[str, KindSpec] = {
         release_fields=frozenset({"bid", "ask", "close", *_MODEL}),
         wanted_fields=("bid", "ask", "close", "volume", "open_interest", *_MODEL),
         timeout_s=20,
+        grace_fields=frozenset({"open_interest"}),
+        grace_s=OI_GRACE_S,
     ),
     UNDERLYING_IV: KindSpec(
         generic_ticks="104,106",
@@ -115,7 +124,9 @@ def is_complete(spec: KindSpec, got: Mapping[str, float]) -> bool:
 def quote_status(spec: KindSpec, got: Mapping[str, float]) -> str:
     """Status of a quote that ended without an error: OK, PARTIAL or NO_DATA."""
     if is_complete(spec, got):
-        return STATUS_OK
+        if spec.grace_fields <= got.keys():
+            return STATUS_OK
+        return STATUS_PARTIAL
     if any(name in got for name in spec.wanted_fields):
         return STATUS_PARTIAL
     return STATUS_NO_DATA
