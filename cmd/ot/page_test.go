@@ -249,8 +249,8 @@ func TestPageReportFlags(t *testing.T) {
 		var got []string
 		a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
 		a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page { return fakePage("macro_page", "MACRO") }
-		a.deps.reportPage = func(c report_page.Config) pages.Page {
-			got = append(got, c.Market, c.Slot)
+		a.deps.reportPage = func(m, s string, _ *time.Location, _ report_page.RiskBlockFunc) pages.Page {
+			got = append(got, m, s)
 			return fakePage("report_page", "REPORT")
 		}
 		return a, &out, &got
@@ -395,7 +395,7 @@ func TestPageMarketFlags(t *testing.T) {
 		a.stdout = &out
 		a.deps.pageList = []pages.Page{fakePage("macro_rates", "RATES")}
 		a.deps.macroPage = func(*time.Location, string, compute.ReadingFunc) pages.Page { return fakePage("macro_page", "MACRO") }
-		a.deps.reportPage = func(report_page.Config) pages.Page {
+		a.deps.reportPage = func(string, string, *time.Location, report_page.RiskBlockFunc) pages.Page {
 			return fakePage("report_page", "REPORT")
 		}
 		a.deps.marketPage = func(*time.Location, string, string, string, compute.ReadingFunc) pages.Page {

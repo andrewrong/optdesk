@@ -131,11 +131,14 @@ func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingVi
 			_ = closers[i]()
 		}
 	}
+	fail := func() (siteReaders, func(), error) {
+		closeAll()
+		return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
+	}
 	if a.deps.openSeries != nil {
 		ser, err := a.deps.openSeries(ctx, dsn)
 		if err != nil {
-			closeAll()
-			return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
+			return fail()
 		}
 		closers = append(closers, ser.Close)
 		rd.series = ser
@@ -143,11 +146,10 @@ func reportBlockReaders(ctx context.Context, a *app, m string, v store.ReadingVi
 	if a.deps.openAccount != nil {
 		acc, err := a.deps.openAccount(ctx, dsn)
 		if err != nil {
-			closeAll()
-			return siteReaders{}, nil, fmt.Errorf("open stores with %s failed", pagesDSNName)
+			return fail()
 		}
 		closers = append(closers, acc.Close)
-		rd.noticeAccount = acc
+		rd.noticeAccount = acc // the account reader of the notices page, which the report blocks read too
 	}
 	return rd, closeAll, nil
 }
@@ -178,7 +180,10 @@ func reportPageOver(a *app, m, s string, v store.ReadingViewReader, rd siteReade
 		return a.deps.riskBlock(ctx, rules, a.deps.evaluateAlerts, v.WinnerReadings, day, at.In(a.profile.Zone))
 	}
 	bc := reportBlocksConfig(a, rd)
-	return a.deps.reportPage(report_page.Config{
+	if a.deps.reportPageBlocks == nil {
+		return a.deps.reportPage(m, s, a.profile.Zone, risks)
+	}
+	return a.deps.reportPageBlocks(report_page.Config{
 		Market: m, Slot: s, Zone: a.profile.Zone, Risks: risks,
 		Actions:      report_page.BlockFunc(report_blocks.Actions(bc)),
 		AccountMoves: report_page.BlockFunc(report_blocks.AccountMoves(bc)),

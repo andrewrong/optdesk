@@ -123,7 +123,8 @@ type deps struct {
 	newAccountCapture       newAccountCaptureFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
-	reportPage              func(cfg report_page.Config) pages.Page
+	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
+	reportPageBlocks        func(cfg report_page.Config) pages.Page // the report with its three block sources; nil falls back to reportPage (risks only)
 	alertRules              compute.DefaultAlertRulesFunc
 	evaluateAlerts          compute.EvaluateAlertsFunc
 	riskBlock               riskBlockFunc
@@ -217,7 +218,7 @@ func newDeps() deps {
 	d.newRuleParams = ruleparam.New
 	d.openOwnerSet = ownersetpg.Open
 	d.openOptionLedgerRO = openOptionLedgerStore
-	d.settingsPage = settings_page.NewPage
+	d.settingsPage, d.reportPageBlocks = settings_page.NewPage, report_page.NewPage
 	return d
 }
 
@@ -414,9 +415,9 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 // newAssets returns the handler of /assets/* of the web bundle; the one place wire.go calls embed.Assets.
 func newAssets() http.Handler { return embed.Assets() }
 
-// newReportPage builds the page report_page of the market, slot, zone and block sources of cfg.
-func newReportPage(cfg report_page.Config) pages.Page {
-	return report_page.NewPage(cfg)
+// newReportPage builds the page report_page of one market and slot in zone; risks gives its risks block.
+func newReportPage(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page {
+	return report_page.NewPage(report_page.Config{Market: market, Slot: slot, Zone: zone, Risks: risks})
 }
 
 // newRiskBlock is risks_block.Build over the rules, the evaluation and the winner reader.

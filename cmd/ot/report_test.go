@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/alertrules"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -73,6 +74,7 @@ func reportApp(t *testing.T, env string) *app {
 	a, _ := testApp(t, env)
 	a.profile.Zone = time.FixedZone("CST", 8*3600)
 	a.deps.reportPage = newReportPage
+	a.deps.reportPageBlocks = report_page.NewPage
 	a.deps.riskBlock = newRiskBlock
 	a.deps.alertRules = oneRule
 	a.deps.evaluateAlerts = alertrules.Evaluate
