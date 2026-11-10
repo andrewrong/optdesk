@@ -98,3 +98,13 @@ func TestOptionOpenStatusAndClassEnums(t *testing.T) {
 		}
 	}
 }
+
+func TestOptionOpenAcceptsRefreshSlot(t *testing.T) {
+	t.Parallel()
+	s := compileDataset(t, "obs.option_open")
+	m := openRow()
+	m["slot"] = "refresh"
+	if err := s.Validate(m); err != nil {
+		t.Fatalf("refresh slot rejected: %v", err)
+	}
+}

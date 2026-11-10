@@ -12,7 +12,7 @@
   "properties": {
     "session_day": {"type": "string", "format": "date", "description": "Market-zone session date."},
     "capture_id": {"type": "string", "format": "uuid", "description": "Identifier of the capture, a uuid. Deterministic per (session_day, slot, instrument_id), not random (option_eod's is random): a retry of a key after a partial write meets the primary key and ON CONFLICT DO NOTHING and cannot duplicate a row."},
-    "slot": {"type": "string", "pattern": "^[0-9]{4}$", "description": "Slot of the pull as four digits, for example 0945; the value refresh marks a row of the refresh button."},
+    "slot": {"type": "string", "pattern": "^([0-9]{4}|refresh)$", "description": "Slot of the pull as four digits, for example 0945; the value refresh marks a row of the refresh button."},
     "instrument_id": {"type": "integer", "description": "Identifier of the option contract."},
     "underlying_id": {"type": "integer", "description": "Identifier of the underlying instrument."},
     "plan_id": {"type": "string", "format": "uuid", "description": "Identifier of the plan (plan.option_open_item) the row was pulled from."},
