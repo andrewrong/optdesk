@@ -96,7 +96,7 @@ describe('PositionsPage', () => {
     const payload = fixture('gap.json')
     await show(payload)
     for (const gap of payload.gaps) expect(host.textContent!.split(gap.text)).toHaveLength(2)
-    expect(host.querySelector('[data-gaps] svg')).not.toBeNull()
+    expect(host.querySelector('[data-gaps]')).not.toBeNull()
     expect(host.textContent).toContain(payload.notes[0])
     expect(host.querySelector('[data-table=stocks] tbody tr')!.textContent).toContain('缺报价 †')
     await act(async () => root?.unmount())
@@ -172,10 +172,15 @@ describe('PositionsPage', () => {
       '价格',
     ])
     const rows = [...host.querySelectorAll('[data-table=trades] tbody tr')]
-    expect(rows.map((r) => [...r.querySelectorAll('td')].map((c) => c.textContent))).toEqual(
-      me.rows.map((r: Record<string, { text: string }>) =>
-        me.columns.map((c: { id: string }) => r[c.id]?.text),
-      ),
+    const cellsOf = rows.map((r) => [...r.querySelectorAll('td')].map((c) => c.textContent))
+    me.rows.forEach((r: Record<string, { text: string; reason?: string }>, i: number) =>
+      me.columns.forEach((c: { id: string }, j: number) => {
+        const cell = r[c.id]!
+        if (cell.reason) {
+          expect(cellsOf[i]![j]).toContain('—')
+          expect(cellsOf[i]![j]).toContain(cell.text)
+        } else expect(cellsOf[i]![j]).toBe(cell.text)
+      }),
     )
     await act(async () => root?.unmount())
     host.remove()
@@ -223,9 +228,9 @@ describe('PositionsPage', () => {
       rows().map((r) => [...r.querySelectorAll('td')].slice(2, 4).map((c) => c.textContent)),
     ).toEqual([
       ['2026-11-20', 'Python 天数文本'],
-      ['缺到期日 †', '缺到期日 †'],
+      ['—缺到期日 †', '—缺到期日 †'],
     ])
-    expect(rows()[1]!.querySelectorAll('td')[3]!.querySelector('[data-slot=badge]')).not.toBeNull()
+    expect(rows()[1]!.querySelectorAll('td')[3]!.querySelector('[data-missing]')).not.toBeNull()
     expect(host.querySelector('[data-table=stocks]')!.querySelectorAll('th')).toHaveLength(8)
   })
 

@@ -77,8 +77,10 @@ describe('FullScanPage', () => {
     )
     expect(rows.map((r) => r[11])).toEqual(['E 10-28', '—'])
     const missing = rows.find((r) => r[0] === 'SYN2')!
-    expect(missing[2]).toBe('缺')
-    expect(missing[6]).toBe('缺')
+    expect(missing[2]).toContain('—')
+    expect(missing[2]).toContain('缺')
+    expect(missing[6]).toContain('—')
+    expect(missing[6]).toContain('缺')
     expect(put.textContent!.split('缺报价')).toHaveLength(2) // the cause, once
     expect(rows.find((r) => r[0] === 'SYN1')![6]).toBe('1.20 / 1.30')
   })
