@@ -8,9 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -108,13 +110,23 @@ func (s *Store) InsertFxRates(ctx context.Context, rows []contracts.FxRate) (int
 	}, "insert fx rates")
 }
 
-// wrap makes a database error Retryable and keeps a typed error as it is.
+// wrap keeps a typed error as it is, makes a constraint violation (SQLSTATE class 23) Permanent, because the
+// database repeats it on every attempt, and makes every other database error Retryable.
 func wrap(err error, what string) error {
 	var te contracts.TypedError
 	if errors.As(err, &te) {
 		return err
 	}
+	if isConstraintViolation(err) {
+		return permanent(fmt.Errorf("barpg: %s: %w", what, err))
+	}
 	return retryable(fmt.Errorf("barpg: %s: %w", what, err))
+}
+
+// isConstraintViolation reports whether err is a PostgreSQL integrity constraint violation (SQLSTATE class 23).
+func isConstraintViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && strings.HasPrefix(pe.Code, "23")
 }
 
 // typedErr is a contracts.TypedError wrapping a cause.
