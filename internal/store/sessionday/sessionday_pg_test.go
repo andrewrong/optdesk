@@ -60,7 +60,7 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 		t.Fatal(err)
 	}
 	defer func() { _, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`) }()
-	for _, r := range []string{"ot_owner", "ot_runner", "ot_w_series_fred", "ot_ro_pages"} {
+	for _, r := range []string{"ot_owner", "ot_runner", "ot_loader", "ot_w_series_fred", "ot_ro_pages"} {
 		var have bool
 		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)`, r).Scan(&have); err != nil {
 			t.Fatal(err)
@@ -105,6 +105,19 @@ func newDatabase(t *testing.T) string {
 	for _, f := range []string{"0001_master_session_day.sql", "0002_series.sql", "0003_ops_ledger.sql", "0004_session_day_grant.sql"} {
 		applyMigration(t, connURL(t, name, ""), f)
 	}
+	// The view runs with the rights of its owner ot_owner, so ot_owner owns the table before 0028 (as setup.MigrateUp
+	// makes it in production) and may enter schema master.
+	inDB, err := pgx.Connect(ctx, connURL(t, name, ""))
+	if err != nil {
+		t.Fatalf("connect new database: %v", err)
+	}
+	for _, q := range []string{`ALTER TABLE master.session_day OWNER TO ot_owner`, `GRANT USAGE ON SCHEMA master TO ot_owner`} {
+		if _, err := inDB.Exec(ctx, q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	_ = inDB.Close(ctx)
+	applyMigration(t, connURL(t, name, ""), "0028_session_day_view.sql")
 	for _, r := range []string{"ot_runner", "ot_w_series_fred", "ot_ro_pages"} {
 		if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO `+r); err != nil {
 			t.Fatal(err)
