@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"slices"
-	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -93,12 +92,14 @@ func TestPositionMarksWiredInRunOnce(t *testing.T) {
 	}
 }
 
-func TestPositionMarksRefusedWithoutItsLine(t *testing.T) {
+func TestMissingPosmarkLineLeavesOtherJobs(t *testing.T) {
 	t.Parallel()
 	r := newMarkRig(t, false)
-	err := runOnce(r.a, []string{"--day", "2026-03-04"})
-	if err == nil || !strings.Contains(err.Error(), mark.DSNEnvPositionMark) {
-		t.Fatalf("err %v, want one naming %s", err, mark.DSNEnvPositionMark)
+	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatalf("run-once failed for all jobs: %v", err)
+	}
+	if slices.Contains(r.ids, "position_marks") || !slices.Contains(r.ids, "account_capture") {
+		t.Fatalf("jobs %v", r.ids)
 	}
 	if r.built.Load() != 0 || r.markDSN != "" {
 		t.Fatal("job built or store opened without its line")

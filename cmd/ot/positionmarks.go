@@ -29,7 +29,7 @@ func markAliases(sockets map[string]string, main string) []string {
 // positionMarks builds position_marks (Decision 6 of docs/design/position-marks.md): the market-data gateway
 // brk, the aliases of the account job, the account store as reader and the mark store opened with
 // store/mark's DSNEnvPositionMark as writer. It is nil for a deps without openMark (a test deps literal; newDeps
-// always sets it). Every check comes before a store is opened; errors name the key only. What it opens goes to extra.
+// always sets it). An unset OT_PG_DSN_POSMARK leaves only this job out, with a warning. Every check comes before a store is opened; errors name the key only. What it opens goes to extra.
 func (a *app) positionMarks(ctx context.Context, f jobFactory, brk broker.Broker, extra *closerSet) (contracts.Job, error) {
 	if f.d.openMark == nil || f.d.newPositionMarks == nil {
 		return nil, nil
@@ -37,6 +37,11 @@ func (a *app) positionMarks(ctx context.Context, f jobFactory, brk broker.Broker
 	aliases, acctDSN, markDSN, err := a.markSettings()
 	if err != nil {
 		return nil, err
+	}
+	if markDSN == "" {
+		// A deploy that has not yet set the new line keeps every other job: only position_marks is left out.
+		a.log.Warn("job left out", "component", "ot", "job", "position_marks", "status", mark.DSNEnvPositionMark+" is not set")
+		return nil, nil
 	}
 	acct, err := f.d.openAccount(ctx, acctDSN)
 	if err != nil {
@@ -77,7 +82,7 @@ func (a *app) withAccountJobs(ctx context.Context, f jobFactory, brk broker.Brok
 }
 
 // markSettings reads the lines position_marks needs: the aliases of the account job (main first) and the two DSNs.
-// It opens nothing; an error names the key only.
+// markDSN is empty when its line is unset (the caller leaves the job out). It opens nothing; an error names the key only.
 func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err error) {
 	env, err := a.envFile()
 	if err != nil {
@@ -97,9 +102,6 @@ func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err err
 	acctDSN, markDSN = env[store.DSNEnvAccount], env[mark.DSNEnvPositionMark]
 	if acctDSN == "" {
 		return nil, "", "", fmt.Errorf("%s is not set", store.DSNEnvAccount)
-	}
-	if markDSN == "" {
-		return nil, "", "", fmt.Errorf("%s is not set", mark.DSNEnvPositionMark)
 	}
 	return markAliases(sockets, main), acctDSN, markDSN, nil
 }
