@@ -320,7 +320,8 @@ func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store
 	build := d.newOptionEodWatch
 	if build == nil {
 		// A deps literal of a test that fakes only newOptionEod; newDeps always sets newOptionEodWatch.
-		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, _ []jobs.WatchEntry, c clock.Clock, t symbol.Translator) (contracts.Job, error) {
+		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
+			_ []jobs.WatchEntry, c clock.Clock, t symbol.Translator) (contracts.Job, error) {
 			return d.newOptionEod(b, r, w, c, t)
 		}
 	}

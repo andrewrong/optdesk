@@ -57,7 +57,9 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"option_eod", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newOptionEodWatch = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock, symbol.Translator) (contracts.Job, error) {
+			d.newOptionEodWatch = func(
+				broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock, symbol.Translator,
+			) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d}.optionEod(nil)
