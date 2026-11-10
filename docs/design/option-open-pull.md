@@ -64,7 +64,7 @@ Goal: at 09:45 ET on a US session day the store holds a quote (bid, ask, size, m
 14. Scope of one call: the contracts of the plan of today for those symbols, at most 8 symbols and at most 40 contracts in all (held first, then by the rank of the page: the card contract of each symbol, then the chain rows near the spot). `/options` refreshes the symbols of its cards; `/options/stock/<key>` refreshes that stock. No plan for the day (the plan job has not run or failed): the answer is the notice "no plan today", and nothing is asked. Type 1 over the `live` gateway; item timeout 10 s, no retry, whole call deadline 15 s; rows that did not complete keep their stored values and the notice names how many ("27 of 31 quotes fresh, 4 from 09:45").
 15. Freshness rule (option-trader: reuse under 60 s): a symbol whose newest in-memory refresh is younger than 60 s is not asked again; the answer says "reused, 41 s old". A call while another call of the same symbol runs waits for it (3 s), then reuses its rows. Outside the regular session of the clock (not between open and close of the calendar, early close included) the endpoint asks nothing and answers "market closed; stored quotes of <time>". No lock and no refusal between the button and the scheduled pull: they share the one line budget and the one in-flight cap of the gateway in pyside, and the clients partition it by request size. The pull sends its contracts in chunks of 30 (one chunk in flight), a refresh call in chunks of 20 (one in flight); 30 + 20 = 50 is the in-flight cap and is under the 70 lines, so neither starves the other (`LineBudget` wakes all waiters with no order, so the design does not rely on a queue). Two refresh calls never overlap (Decision 17).
 16. Failure and fallback: pyside not reachable, the gateway not connected, or the deadline: the answer is HTTP 200 with the notice and the stored rows (never an error page, and never a cached "not listed"). A refresh row of status other than `ok` or `partial` is dropped, not shown.
-17. The permission this adds, said exactly. Today `ot serve` has the pages role of the database and no network to the broker; the only thing it does besides reading is `POST /owner-settings` under `--owner-edit` on a loopback address. This design adds: `ot serve` (under a new flag `--live-quotes`, off by default, loopback address only, like `--owner-edit`) holds a `broker.Broker` client to the pyside socket and may call `Snapshot(QUOTE_KIND_OPTION_OPEN)` for contracts of today's plan. It cannot place an order (the broker port has no such method), cannot write the database (no new DSN), cannot read accounts, and the contracts it may ask are only those of the plan table. What changes is who may act on the gateway: a browser tab on the owner's machine, through a POST, can make the gateway spend lines and a 15 s of its pacing; an open page left on a refresh loop could starve the 09:45 job of lines. Limits: one call at a time per process, 60 s reuse, 40 contracts, and a count of at most 30 calls an hour. **Second opinion: required** (a change of who may act). Alternative that avoids it, not chosen: a control socket of the scheduler process; it does not exist in code, would give the web a way to start jobs, and so adds more power (`## Left out`).
+17. The permission this adds, said exactly. Today `ot serve` has the pages role of the database and no network to the broker; the only thing it does besides reading is `POST /owner-settings` under `--owner-edit` on a loopback address. This design adds: `ot serve` (under a new flag `--live-quotes`, off by default, loopback address only, like `--owner-edit`) holds a `broker.Broker` client to the pyside socket and may call `Snapshot(QUOTE_KIND_OPTION_OPEN)` for contracts of today's plan. It cannot place an order (the broker port has no such method), cannot write the database (no new DSN), cannot read accounts, and the contracts it may ask are only those of the plan table. What changes is who may act on the gateway: a browser tab on the owner's machine, through a POST, can make the gateway spend lines and a 15 s of its pacing; an open page left on a refresh loop could starve the 09:45 job of lines. Priority of the 09:45 job: a call of the button that starts inside the pull job's window (09:44 to 10:10 ET) asks at most 10 contracts and in one chunk of 10, so the job's chunk of 30 always finds its lines; outside the window the chunk is 20. Limits: one call at a time per process, 60 s reuse, 40 contracts, and a count of at most 30 calls an hour. **Second opinion: required** (a change of who may act). Alternative that avoids it, not chosen: a control socket of the scheduler process; it does not exist in code, would give the web a way to start jobs, and so adds more power (`## Left out`).
 18. Pages show: next to every bid, ask, IV and Greek of a contract the quote time (exchange-local `HH:MM:SS`, "09:45:12"), the data type as a word (live, frozen, delayed) and its source ("open pull", "refresh", "close archive"); older than 15 minutes grey, a type other than live in red words; a contract with no open or refresh row shows its `option_eod` value with the label "close archive, 11 Nov"; the open interest shows its own date. The builder only copies these fields; the web renders them. No yield or score is recomputed by the web; when the builder shows a yield at the new bid it calls the compute function of the candidates (no new formula; if that function is not exported, issue 9 names it). The schema change is Decision 19.
 19. Page schema: `option_page` and `stock_option_page` gain, additively, per row a `quote` object (`as_of`, `data_type`, `source`, `skew`, `outside_band`) and per page a `refresh` object (`enabled`, `symbols`, `notice`, `fresh_count`, `total_count`); a new schema version (v2) for each; the web types are generated. This is a change of `contracts/schemas`, so `Contracts:` says so, and it comes first (issue 3).
 20. The web button: shadcn `Button` with the lucide `RefreshCw` icon in the page header, disabled while a call runs and when `refresh.enabled` is false (the page says why in words); the response notice sits under the header. The web computes nothing and keeps no timer.
@@ -90,7 +90,7 @@ Can pyside carry this? From the code (`pyside/src/optdesk/ibkr/`), not from a gu
 
 ## Issues
 
-Order: 0 (measures, may run before anything else), 1, 2 (interfaces), then 3, 4, 5, 6 in parallel, then 7, 8, 9, 10, 11.
+Order: 0 (measures, may run before anything else), 1, 0b, 2 (interfaces), then 3, 4, 5, 6 in parallel, then 7, 8, 9, 10, 11.
 
 ### 0 option-open-probe
 
@@ -105,6 +105,19 @@ Acceptance:
 3. `grep -ci "order\|execution\|place" pyside/tests/live/test_option_open_probe.py` prints 0.
 4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^pyside/tests/live/"` prints 0.
 Checked by CI: ci-python (the file is collected and skipped; `ruff check`, `mypy --strict`).
+
+### 0b broker-kind-option-open
+
+Module: broker. Size: S. Interface issue.
+Files: `internal/broker/**`, `docs/contracts/broker.md`
+Design: docs/design/option-open-pull.md#Interface
+Order: after 1 (the generated proto), before 6 and 7. Found by the adversarial review: without it the jobs cannot send the new kind or read the error of a resolve.
+Goal: `KindOptionOpen` with its mapping to `QUOTE_KIND_OPTION_OPEN`; `Resolved` carries `ErrorCode` and `ErrorText` (the proto has them); the resolve in-flight limit of a client can be set to 1, and the plan job sets it (Decision 6 counts a clean 200 only for one request in flight; the default is 5). The client dials a socket path given by the caller, so the `live` gateway socket `ibkr-live.sock` is a value of the wiring (Decision 9).
+Acceptance:
+1. `grep -c "KindOptionOpen" internal/broker/api.go` prints at least 1.
+2. `grep -c "ErrorCode" internal/broker/api.go` prints at least 1.
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^internal/broker/\|^docs/contracts/broker.md"` prints 0.
+Checked by CI: ci-go; `go test ./internal/broker/... -race -count=1` (contract test from both sides).
 
 ### 1 quote-kind-option-open
 
@@ -150,7 +163,7 @@ Checked by CI: ci-go, ci-web (generated types, tsc); `Contracts: changed (schema
 ### 4 option-open-store
 
 Module: store. Size: L.
-Files: `migrations/0029_option_open.sql`, `migrations/0030_option_open_plan.sql`, `migrations/0031_option_not_listed.sql`, `internal/store/api.go`, `internal/store/optionopen/**`, `internal/store/optionopenpg/**`
+Files: `migrations/0029_option_open.sql`, `migrations/0030_option_open_plan.sql`, `migrations/0031_option_not_listed.sql`, `internal/store/api.go`, `internal/store/optionopen/**`, `internal/store/optionopenpg/**`, `internal/store/setup/**`
 Design: docs/design/option-open-pull.md#Interface
 Order: after 2. An interface edit of `internal/store/api.go` is the interface part of this issue.
 Goal: the writer, readers and plan and mark stores of `## Interface`, the migrations with the grant to `ot_ro_pages`, a role `ot_w_option_open` for the writes of the two jobs.
@@ -211,9 +224,9 @@ Order: after 1 and after the numbers of issue 0 (if the frozen-type gateway alre
 Goal: the `OPTION_OPEN` kind of Decision 9 and 10 bound to the gateway named `live`; the row's `market_data_type` taken from the ticker; the kind's timeout 15 s and no open-interest grace.
 Acceptance:
 1. `grep -c "OPTION_OPEN" pyside/src/optdesk/ibkr/spec.py` prints at least 2.
-2. `grep -c "OPTION_OPEN" pyside/tests/ibkr/test_option_open.py` prints at least 1 (the per-row type is already read from the ticker; the test pins that the row carries it).
+2. `grep -c "gateway" pyside/src/optdesk/ibkr/spec.py` prints at least 2 (the new `KindSpec` field and the OPTION_OPEN row; the per-row type is already read from the ticker, `ibgateway.py` `_quote`, so a grep of it would check nothing new), or, if issue 0 drops the second gateway, `grep -c "OPTION_OPEN" pyside/tests/ibkr/test_option_open.py` prints at least 1.
 3. `git diff --name-only $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/api.py | wc -l` prints 0.
-4. `grep -c "DEFAULT_MARKET_DATA_TYPE = 2" pyside/src/optdesk/ibkr/gateways.py` prints 1.
+4. `git diff $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/gateways.py | grep -c "^[-+]DEFAULT_MARKET_DATA_TYPE"` prints 0 (the default of the archive stays frozen).
 Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`); the live tests under `pyside/tests/live/` stay skipped. The deployed configuration (the second `[[gateway]]` entry) is the owner's, `## Owner questions`.
 
 ### 9 option-boards-quote-fields
@@ -263,6 +276,9 @@ Every test run named above runs in CI, not in acceptance. In addition: the test 
 
 ## Left out
 
+- A stock that is neither on the watch list nor held gets no open quote (the refresh button asks only the plan's contracts).
+- The simpler way the review named (pull at 09:45 the contracts the 16:15 `option_eod` run resolved, no plan job): not chosen because it never quotes a new expiry or a new strike band before the first close that saw it, and the owner sells at the open; it stays the fallback when issue 6 slips: issue 7 reads `plan.option_open_item`, and a stand-in plan of the last `option_eod` instruments needs only a different writer.
+
 - Japan: no open pull. The owner trades at the US open; the JP archive (`option_eod_jp`) stays. One word to add it later: Owner questions, C.
 - Streaming or an automatic refresh; the page has a button only, no timer.
 - A replan after the open (a gap of the stock), and a refresh of a symbol with no plan (the resolves cost about 5 s each and cannot be done inside 15 s).
@@ -283,3 +299,12 @@ F. Validity of a not-listed mark: 7 days plus or minus 2 as option-trader after 
 G. Watch list: how many stocks are on the list the plan reads, and is it under 20? `under` or `over`. (The ceiling of 600 contracts per run assumes about 20.)
 
 ## Adversarial
+
+A fresh read-only agent read this file and both repos; its answer is `adversarial-option-open-pull.md`. Point by point:
+
+1. Gap (no broker issue, socket routing): adopted. Issue 0b is added (`KindOptionOpen`, `ErrorCode` and `ErrorText` on `Resolved`, a resolve in-flight limit of 1); the Go side dials a socket path from the wiring, `ibkr-live.sock` if issue 0 shows a second gateway is needed, `ibkr.sock` if not (Decision 9). Stocks off the list: kept in `## Left out`.
+2. Unnamed risk, the plan job: adopted in part. Its key is one stock (as `option_eod`'s key is one underlying), the 300-resolve cap, the two-timeout stop and the hand-run the evening before (`## Capacity`) stay; the thin plan is a reported gap, not silent. Priority of the 09:45 job over the button: adopted (Decision 17, a 10-contract call inside the window).
+3. Simpler way (reuse the 16:15 instruments, no plan job): not adopted as the main path, for the reason in `## Left out`; kept as the fallback.
+4. Lock-in (Decision 17 ends "serve is read-only"): not removable, it is the owner's wish; named, flagged for the second opinion, behind a flag that is off by default, with no database line, no order method and a contract list limited to the plan. The second client id stays a deploy value (question D, issue 0).
+5. False claim (issue 8 acceptance passes today): adopted; the acceptance now greps the `gateway` field and the unchanged default, and the text says the ticker type is already read. The "exactly one request in flight" claim: adopted into issue 0b (limit 1 set by the plan job).
+6. Slip (broker issue missing, role file, deploy unowned): adopted for the broker issue; issue 4's Files gets `internal/store/setup/**`; the deploy side and question A stay the owner's and are named in `## Left out` and `## Owner questions`.
