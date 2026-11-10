@@ -322,6 +322,7 @@ func wireJobs(
 	ctx context.Context, a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *closerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
+	wireHeldCalls(cfg, &f, extra, a.log)
 	jc := &jobCtx{cfg: cfg, f: &f, brk: brk, brokerUp: brokerUp, cal: cal, extra: extra}
 	w := wiring{ledger: ledger, cal: cal, brokerUp: brokerUp, off: startDisabled(cfg, brokerUp), held: map[string]contracts.Job{}}
 	steps := slices.Clone(jobSteps)
