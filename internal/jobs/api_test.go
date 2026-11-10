@@ -676,3 +676,16 @@ func TestBarsRefreshContract(t *testing.T) {
 		t.Fatalf("got %v, %v", j, err)
 	}
 }
+
+func TestFxRefreshContract(t *testing.T) {
+	t.Parallel()
+	var f jobs.NewFxRefreshFunc = func(
+		broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock,
+	) (contracts.Job, error) {
+		return fakeJob{id: "fx_refresh"}, nil
+	}
+	j, err := f(nil, nil, nil, nil, nil)
+	if err != nil || j.ID() != "fx_refresh" {
+		t.Fatalf("got %v, %v", j, err)
+	}
+}
