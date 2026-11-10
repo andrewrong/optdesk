@@ -39,13 +39,15 @@ Rules that hold for every step:
    ```
 
    The verify must exit 0 (`Missing` and `Different` both 0). Keep `<verify-1.json>`.
-5. Rehearsal 2, on another fresh scratch database and on a later export (repeat steps 2 and 3 into
-   `<export-2-dir>`), with the same two commands. Keep `<verify-2.json>`.
-6. Export `account.jsonl` again, with `--through` the last complete session day before the day the
-   new scheduler will start; the old collectors and the old serve are still running:
+5. Rehearsal 2, on another fresh scratch database and on a later export (a new copy `<copy-2>.duckdb` of
+   the old DuckDB file, then step 3 on it into `<export-2-dir>`), with the same two commands. Keep `<verify-2.json>`.
+6. Copy the old DuckDB file again, to `<copy-3>.duckdb`, so that it holds every day collected since
+   the earlier copies. Then export `account.jsonl` again from it, with `--through` the last complete
+   session day before the day the new scheduler will start; the old collectors and the old serve are
+   still running:
 
    ```
-   python -m ot_history_export account <copy-1>.duckdb <export-final-dir> --through <last-complete-day>
+   python -m ot_history_export account <copy-3>.duckdb <export-final-dir> --through <last-complete-day>
    ```
 
 7. The final import, the same command on the live database:
@@ -69,13 +71,13 @@ Rules that hold for every step:
     session day the owner saves the page JSON of the old serve into the pages directory
     `<pages-dir>`. Live-only figures are checked by this run only.
 11. Stop the old collectors (owner). The old serve is not restarted after this step.
-12. Copy the old DuckDB file again, to `<copy-2>.duckdb`. Keep both copies until the record is
+12. Copy the old DuckDB file again, to `<copy-4>.duckdb`. Keep all copies until the record is
     merged.
 13. Export `figure.jsonl` from that copy and the saved pages, bounded by the first and the last
     session day of the parallel run (this is the second export of figures, after the parallel run):
 
     ```
-    python -m ot_history_export figures <copy-2>.duckdb <pages-dir> <figure-dir> --figures-from <first-day> --figures-to <last-day>
+    python -m ot_history_export figures <copy-4>.duckdb <pages-dir> <figure-dir> --figures-from <first-day> --figures-to <last-day>
     ```
 
 14. Compare every figure of the register with optdesk's readings:
