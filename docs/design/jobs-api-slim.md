@@ -122,3 +122,14 @@ Acceptance:
 - The tests of the three shared types stay in `api_test.go`; their further split is not needed (the file shrinks well below 800 lines).
 - A mark that outlives its purpose (`shared-pending` on a type whose users have all landed): no test fails on it, because any failure keyed on a count or on the design's `Landed in:` line makes a parallel user issue depend on its siblings. The design that adds a marked type orders a mark-removal interface entry after all its user issues, and the design that drops users below two orders a mark-adding entry before them (Decision 3); the design session checks marks against the users list on every interface entry.
 - `docs/conventions/register.toml` is left alone (owner's plan, 2026-11-10) unless overlap data later shows it.
+
+## Adversarial
+
+A read-only attack on an earlier text answered six questions; the full answer is the author's working note, not part of this design. Each point and its answer:
+
+1. Gap versus the goal: adopted in part. The serialisation points this design does not remove (`docs/contracts/jobs.md`, `cmd/ot` job wiring) are named under Left out.
+2. Biggest risk, a two-user rule against "the interface lands first": adopted. The shared-pending mark lets an interface entry land before its users, and no job issue edits `api.go` to remove it.
+3. Simpler way, Decision 1 alone: not adopted. It stops new churn but leaves the single-user types already in `api.go`.
+4. Lock-in, aliases and constructors no longer visible in `api.go`: adopted, named under Left out.
+5. Claim most likely false, that moving declarations compiles in one step: adopted. Job-package files that write `jobs.X` switch to their own names in entry 1, before the move.
+6. Likeliest slip, an edit outside an entry's file list to make it compile: removed by the same ordering; entry 2's acceptance counts the `jobs.` names left in `cmd/ot`.
