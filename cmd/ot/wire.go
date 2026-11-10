@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/ease"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
+	"github.com/andrewrong/optdesk/internal/compute/optioncand"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
@@ -31,6 +32,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
@@ -98,6 +100,10 @@ type deps struct {
 	openInstrumentName      store.OpenInstrumentNameFunc
 	newOptionEod            jobs.NewOptionEodFunc
 	newOptionEodJP          jobs.NewOptionEodFunc
+	newOptionEodWatch       jobs.NewOptionEodWatchFunc
+	openCandidateRW         openCandidateRWFunc
+	newOptionCandidates     jobs.NewOptionCandidatesJobFunc
+	newCandidateRule        compute.NewOptionCandidatesFunc
 	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
 	dialAccount             dialAccountFunc
 	openAccount             store.OpenAccountFunc
@@ -175,6 +181,8 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 func newDeps() deps {
 	d := newBaseDeps()
 	d.ext = newExt()
+	d.newOptionEodWatch, d.openCandidateRW = optioneod.NewWithWatch, openCandidateWriter
+	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	return d
@@ -309,6 +317,15 @@ func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main strin
 
 // openCandidateStore opens the candidate store; a failed open is a nil interface, not a typed nil.
 func openCandidateStore(ctx context.Context, dsn string) (candidateStore, error) {
+	s, err := candidate.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// openCandidateWriter opens the candidate store for the job; a failed open is a nil interface, not a typed nil.
+func openCandidateWriter(ctx context.Context, dsn string) (candidateRW, error) {
 	s, err := candidate.Open(ctx, dsn)
 	if err != nil {
 		return nil, err
