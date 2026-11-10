@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
 // Config is what the builder needs. Zone is the owner's zone (nil is an error of Build); Aliases are
@@ -27,6 +28,10 @@ type Config struct {
 	Sessions       store.SessionDayReader
 	Ledgers        compute.NewOptionLedgerFunc
 	Figures        blockapi.NewPageFiguresFunc
+	// Marks and Holdings together build composition, allocation and concentration from the
+	// positions of the capture day; either nil leaves them the gap missing_quote.
+	Marks    mark.Reader
+	Holdings blockapi.NewHoldingFiguresFunc
 }
 
 // NewPage is the household_page page of one account; alias "" means the main account.

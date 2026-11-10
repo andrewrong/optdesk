@@ -85,7 +85,11 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		Values: valuesIn(snap.values), MonthStart: valuesIn(snap.monthStart),
 		History: snap.history, Obligations: obligations,
 	})
-	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, at))
+	hb, err := c.holdings(ctx, alias, snap)
+	if err != nil {
+		return nil, err
+	}
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, hb, at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
@@ -188,9 +192,10 @@ func (c Config) obligations(ctx context.Context, alias string, sessions []contra
 	return out, newest, nil
 }
 
-// assemble writes the page from the figures; the mark blocks are the gap missing_quote.
+// assemble writes the page from the figures; without hb the mark blocks are the gap missing_quote,
+// movers is the gap no_data and long term the gap not_built. The run is ok when no block has a gap.
 func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp capture, ledgerAt time.Time,
-	res blockapi.HouseholdResult, at time.Time) pageJSON {
+	res blockapi.HouseholdResult, hb *holdingBlocks, at time.Time) pageJSON {
 	p := base(c, scopes, alias, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = pageTitle, pageSentence
@@ -202,11 +207,15 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	p.MonthChange = waterfallOf(res.MonthChange)
 	p.Trend = trendOf(alias, tag.Label, res.Trend)
 	p.Accounts = accountsOf(alias, tag.Label, tag.Whose, cp.day, res.Accounts)
-	p.Composition = gapBlock(titleComposition, meaningComposition, missingQuote())
-	p.Concentration = gapBlock(titleConcentration, meaningConcentration, missingQuote())
-	p.LongTerm = gapBlock(titleLongTerm, meaningLongTerm, missingQuote())
-	p.Allocation = allocationGap(missingQuote())
-	p.Movers = moversGap(missingQuote())
+	if hb != nil {
+		p.Composition, p.Concentration, p.Allocation = hb.composition, hb.concentration, hb.allocation
+	} else {
+		p.Composition = gapBlock(titleComposition, meaningComposition, missingQuote())
+		p.Concentration = gapBlock(titleConcentration, meaningConcentration, missingQuote())
+		p.Allocation = allocationGap(missingQuote())
+	}
+	p.LongTerm = gapBlock(titleLongTerm, meaningLongTerm, gapJSON{Reason: "not_built", Text: textNotBuilt})
+	p.Movers = moversGap(gapJSON{Reason: "no_data", Text: textNoMovers})
 
 	captured := at
 	if len(cp.values) > 0 && !cp.values[0].CapturedAt.IsZero() {
@@ -235,13 +244,16 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 			p.Gaps = append(p.Gaps, gapJSON{Reason: b.gap.Reason, Text: b.title + "：" + b.gap.Text})
 		}
 	}
+	if len(p.Gaps) == 0 {
+		p.RunStatus = "ok"
+	}
 	return p
 }
 
 func gapOf(g gapJSON) *gapJSON { return &g }
 
 func allocationGap(g gapJSON) allocationBlock {
-	return allocationBlock{Title: titleAllocation, Meaning: meaningAllocation, Rows: []emptyRow{}, Totals: []moneyCell{}, Gap: gapOf(g)}
+	return allocationBlock{Title: titleAllocation, Meaning: meaningAllocation, Rows: []allocationRow{}, Totals: []moneyCell{}, Gap: gapOf(g)}
 }
 
 func moversGap(g gapJSON) moversBlock {
