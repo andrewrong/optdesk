@@ -49,7 +49,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
-	"github.com/andrewrong/optdesk/internal/jobs/positionmarks"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
 	"github.com/andrewrong/optdesk/internal/notify"
@@ -138,7 +137,7 @@ type deps struct {
 	openAccount             store.OpenAccountFunc
 	newAccountCapture       newAccountCaptureFunc
 	openMark                mark.OpenFunc
-	newPositionMarks        positionmarks.NewPositionMarksFunc
+	newPositionMarks        newPositionMarksFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
 	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
