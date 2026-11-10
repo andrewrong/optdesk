@@ -106,7 +106,7 @@ func TestSQLStrings(t *testing.T) {
 		"is_session = EXCLUDED.is_session, open_at = EXCLUDED.open_at, " +
 		"close_at = EXCLUDED.close_at, early_close = EXCLUDED.early_close"
 	const wantSelect = "SELECT calendar_id, session_day, is_session, open_at, close_at, early_close " +
-		"FROM master.session_day " +
+		"FROM rd.session_day_r1 " +
 		"WHERE calendar_id = $1 AND session_day >= $2 AND session_day <= $3 " +
 		"ORDER BY session_day"
 	if upsertSQL != wantUpsert {
