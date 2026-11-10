@@ -460,6 +460,18 @@ def test_bars_answer_maps_rows_and_unset_volume() -> None:
     assert gateway.asked[0].key.con_id == 7 and gateway.asked[0].key.sec_type == "STK"
 
 
+def test_bars_option_implied_vol_kind() -> None:
+    gateway = FakeHistory(answer=[HistoryBar("2026-01-02", "0.28", "0.3", "0.27", "0.2813", None)])
+
+    async def run() -> pb.BarsResponse:
+        async with serving(gateway) as channel:
+            return await bars(channel, kind=pb.BAR_KIND_OPTION_IMPLIED_VOL)
+
+    got = asyncio.run(run())
+    assert gateway.asked[0].kind == "option_implied_vol"
+    assert [b.close for b in got.bars] == ["0.2813"]
+
+
 def test_missing_con_id_is_invalid() -> None:
     async def run() -> grpc.StatusCode:
         async with serving(FakeHistory()) as channel:

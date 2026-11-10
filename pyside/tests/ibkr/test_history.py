@@ -112,6 +112,7 @@ def test_wait_over_300_seconds_is_paced() -> None:
         ("trades", "TRADES"),
         ("adjusted_last", "ADJUSTED_LAST"),
         ("midpoint", "MIDPOINT"),
+        ("option_implied_vol", "OPTION_IMPLIED_VOLATILITY"),
     ],
 )
 def test_kind_maps_to_tws_word(kind: str, word: str) -> None:
