@@ -232,3 +232,15 @@ func checkThreeOK(t *testing.T, f *fx) {
 		t.Fatalf("diagnosis reading %+v", d)
 	}
 }
+
+func TestEdinetIssuerReadsEdinetFacts(t *testing.T) {
+	t.Parallel()
+	facts := &vFacts{}
+	fk := &vFakes{std: valuationapi.JGAAP, res: okResult()}
+	f := world()
+	j := valuationJobOf(t, f, fk.deps(facts, []jobs.WatchEntry{entry("edinet:E02144", "7203")}))
+	runAll(t, j)
+	if facts.source != "edinet" || facts.subject != "edinet:E02144" {
+		t.Fatalf("facts read with source %q for %q, want edinet", facts.source, facts.subject)
+	}
+}

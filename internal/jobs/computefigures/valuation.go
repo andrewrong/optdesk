@@ -22,10 +22,21 @@ const (
 	valuationQuestion  = "valuation.question"
 	valuationDiagnosis = "valuation.diagnosis"
 
-	valuationFactSource = "sec"
-	valuationFactsTable = "rd.fundamental_fact_r1"
-	valuationNoStandard = "no_standard"
+	valuationSecSource    = "sec"
+	valuationEdinetSource = "edinet"
+	valuationEdinetPrefix = "edinet:"
+	valuationFactsTable   = "rd.fundamental_fact_r1"
+	valuationNoStandard   = "no_standard"
 )
+
+// valuationSourceOf is the fact source of an issuer: edinet: issuers are stored under edinet, the others (cik:)
+// under sec.
+func valuationSourceOf(issuer string) string {
+	if strings.HasPrefix(issuer, valuationEdinetPrefix) {
+		return valuationEdinetSource
+	}
+	return valuationSecSource
+}
 
 var valuationNames = []string{valuationBand, valuationQuestion, valuationDiagnosis}
 
@@ -158,6 +169,7 @@ func (s *valuationState) fail(kind contracts.ErrorKind, err error) {
 // valuationCompany is what the facts of one company give, built once per run and shared by its three keys.
 type valuationCompany struct {
 	rowsHash string
+	source   string
 	std      valuationapi.Standard
 	res      valuationapi.FilingsResult
 	refused  []string // set when no filings were built (no standard)
@@ -191,7 +203,8 @@ func (s *valuationState) run(keys []contracts.ExpectedKey) {
 
 // company reads the facts of the issuer and builds its filings.
 func (s *valuationState) company(issuer string) (*valuationCompany, error) {
-	facts, err := s.v.deps.Facts.FactsFiledBy(s.ctx, valuationFactSource, issuer, s.day)
+	source := valuationSourceOf(issuer)
+	facts, err := s.v.deps.Facts.FactsFiledBy(s.ctx, source, issuer, s.day)
 	if err != nil {
 		return nil, fmt.Errorf("computefigures: facts of %s: %w", issuer, err)
 	}
@@ -200,7 +213,7 @@ func (s *valuationState) company(issuer string) (*valuationCompany, error) {
 		lines = append(lines, strings.Join([]string{f.DocID, f.Taxonomy, f.Concept, f.Unit, f.Value,
 			f.Filed.Format(dayLayout), f.PeriodEnd.Format(dayLayout), periodStart(f)}, "|"))
 	}
-	co := &valuationCompany{rowsHash: hashLines(lines)}
+	co := &valuationCompany{rowsHash: hashLines(lines), source: source}
 	co.std = s.v.deps.StandardOf(facts)
 	if co.std == "" {
 		co.refused = []string{valuationNoStandard}
@@ -327,16 +340,12 @@ func (s *valuationState) store(name, sym string, co *valuationCompany, o valuati
 		rec.State, rec.Value = "ok", o.value
 	}
 	e := grow(&rec.Inputs)
-	e.InputTable, e.Keys, e.CodeVersion, e.ConventionVersion = valuationFactsTable, []string{valuationFactSource}, rule.Hash, rule.Convention
+	e.InputTable, e.Keys, e.CodeVersion, e.ConventionVersion = valuationFactsTable, []string{co.source}, rule.Hash, rule.Convention
 	for _, p := range o.params {
 		e := grow(&rec.Parameters)
 		e.Param, e.ValueNum, e.ValueTag = p.name, p.num, p.tag
 	}
-	var wb strings.Builder
-	for _, q := range o.params {
-		wb.WriteString(q.name + "=" + *q.tag + ";")
-	}
-	wantText := wb.String()
+	wantText := valuationParamsText(o.params)
 	prev, err := s.v.stores.Readings.LatestReadings(s.ctx, rec.Name, rec.SubjectKind, rec.Subject, s.day, s.day)
 	if err != nil {
 		s.fail(contracts.Retryable, fmt.Errorf("computefigures: readings: %w", err))
@@ -344,15 +353,11 @@ func (s *valuationState) store(name, sym string, co *valuationCompany, o valuati
 	}
 	if n := len(prev); n > 0 {
 		p := prev[n-1]
-		var pb strings.Builder
+		old := make([]param, 0, len(p.Parameters))
 		for _, q := range p.Parameters {
-			tag := ""
-			if q.ValueTag != nil {
-				tag = *q.ValueTag
-			}
-			pb.WriteString(q.Param + "=" + tag + ";")
+			old = append(old, param{name: q.Param, tag: q.ValueTag})
 		}
-		prevText := pb.String()
+		prevText := valuationParamsText(old)
 		if p.State == rec.State && p.RowsSha256 == rec.RowsSha256 && sameReason(p.ReasonCode, rec.ReasonCode) &&
 			prevText == wantText {
 			s.usable++
@@ -365,4 +370,17 @@ func (s *valuationState) store(name, sym string, co *valuationCompany, o valuati
 		return
 	}
 	s.usable++
+}
+
+// valuationParamsText is the tag parameters in one text, to compare two readings.
+func valuationParamsText(ps []param) string {
+	var b strings.Builder
+	for _, q := range ps {
+		tag := ""
+		if q.tag != nil {
+			tag = *q.tag
+		}
+		b.WriteString(q.name + "=" + tag + ";")
+	}
+	return b.String()
 }
