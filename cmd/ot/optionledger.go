@@ -19,6 +19,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/flexsection"
+	"github.com/andrewrong/optdesk/internal/store/flexsectionpg"
 )
 
 // Design: docs/design/option-ledger.md#12 optionledger-wire.
@@ -48,6 +50,38 @@ const (
 	// ledgerBatch is the largest list of ids one reader call takes.
 	ledgerBatch = 500
 )
+
+// flexSectionStore is the Flex section store the job writes to: the writer and its Close.
+type flexSectionStore interface {
+	flexsection.Writer
+	Close() error
+}
+
+// openFlexSectionsFunc opens the Flex section store with a DSN.
+type openFlexSectionsFunc func(ctx context.Context, dsn string) (flexSectionStore, error)
+
+// openFlexSections is flexsectionpg.Open; a failed open is a nil interface, not a typed nil.
+func openFlexSections(ctx context.Context, dsn string) (flexSectionStore, error) {
+	s, err := flexsectionpg.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// sectionsStore opens the section store with the same line as the trade store. If it cannot be opened the
+// section step is off (nil) and one `degraded` record names the line, never its value or the open error.
+func (a *app) sectionsStore(ctx context.Context, dsn string, f jobFactory, extra *closerSet) flexsection.Writer {
+	if f.d.openFlexSections != nil {
+		if s, err := f.d.openFlexSections(ctx, dsn); err == nil {
+			extra.addCloser(s)
+			return s
+		}
+	}
+	a.log.Warn("flex sections off", "component", "ot", "job", jobOptionLedger, "status",
+		"degraded: open the section store with "+store.DSNEnvOptionLedger+" failed")
+	return nil
+}
 
 // waitCtx pauses for d and returns early with the context error; it is the Wait of the Flex source.
 func waitCtx(ctx context.Context, d time.Duration) error {
@@ -99,7 +133,8 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 		return nil, fmt.Errorf("open option_ledger store with %s failed", store.DSNEnvOptionLedger)
 	}
 	extra.addCloser(st)
-	j, err := f.d.newOptionLedgerJob(jobs.OptionLedgerStores{Ledger: st, Read: st}, lc, f.clk)
+	stores := jobs.OptionLedgerStores{Ledger: st, Read: st, Sections: a.sectionsStore(ctx, cfg.ledgerDSN, f, extra)}
+	j, err := f.d.newOptionLedgerJob(stores, lc, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build option_ledger job failed: %w", err)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/flexsection"
 )
 
 const (
@@ -71,6 +73,7 @@ type ledgerRig struct {
 	*rig
 	st      *ledgerFakeStore
 	opened  []string
+	stores  jobs.OptionLedgerStores
 	cfg     jobs.OptionLedgerConfig
 	built   bool
 	tokens  []string
@@ -109,8 +112,8 @@ func newLedgerRig(t *testing.T, env string, real bool) *ledgerRig {
 	if real {
 		d.newOptionLedgerJob = optionledgerjob.New
 	} else {
-		d.newOptionLedgerJob = func(_ jobs.OptionLedgerStores, c jobs.OptionLedgerConfig, _ clock.Clock) (contracts.Job, error) {
-			l.cfg, l.built = c, true
+		d.newOptionLedgerJob = func(s jobs.OptionLedgerStores, c jobs.OptionLedgerConfig, _ clock.Clock) (contracts.Job, error) {
+			l.stores, l.cfg, l.built = s, c, true
 			return namedJob{id: "option_ledger"}, nil
 		}
 	}
@@ -285,5 +288,83 @@ func TestOptionLedgerResultShape(t *testing.T) {
 	}
 	if len(l.st.records) == 0 || l.st.records[0].Statements != 1 {
 		t.Errorf("fetch records %+v: the statement of the allow-listed account is not recorded", l.st.records)
+	}
+}
+
+// sectionFakeStore is the Flex section store with no rows.
+type sectionFakeStore struct {
+	mu     sync.Mutex
+	closed int
+}
+
+func (s *sectionFakeStore) RecordSections(context.Context, string, []flexsection.Row, []flexsection.Status) (flexsection.Insert, error) {
+	return flexsection.Insert{}, nil
+}
+
+func (s *sectionFakeStore) Close() error { s.mu.Lock(); s.closed++; s.mu.Unlock(); return nil }
+
+const sectionEnv = "TOK_MAIN=" + tokenA + "\nTOK_SECOND=token-b-secret\nACCT_A=" + acctA + "\n"
+
+func TestSectionsStoreWiredToLedger(t *testing.T) {
+	t.Parallel()
+	l := newLedgerRig(t, fullEnv+ledgerDSNLine+sectionEnv, false)
+	sec := &sectionFakeStore{}
+	var dsns []string
+	l.a.deps.openFlexSections = func(_ context.Context, dsn string) (flexSectionStore, error) {
+		dsns = append(dsns, dsn)
+		return sec, nil
+	}
+	l.run(t)
+	if !slices.Equal(dsns, []string{"led-dsn-secret"}) {
+		t.Errorf("section store opened with %v, want the option ledger line only", dsns)
+	}
+	if l.stores.Sections != sec {
+		t.Error("the job did not get the section store")
+	}
+	if l.stores.Ledger == nil || l.stores.Read == nil {
+		t.Error("the trade stores are missing")
+	}
+	if sec.closed != 1 {
+		t.Errorf("section store closed %d times, want 1", sec.closed)
+	}
+}
+
+func TestSectionsStoreFailureKeepsTradePath(t *testing.T) {
+	t.Parallel()
+	l := newLedgerRig(t, fullEnv+ledgerDSNLine+sectionEnv, false)
+	l.a.deps.openFlexSections = func(_ context.Context, dsn string) (flexSectionStore, error) {
+		return nil, errors.New("connect to " + dsn + " failed")
+	}
+	l.run(t)
+	if !l.built || !slices.Contains(l.jobIDs(), "option_ledger") {
+		t.Fatalf("a section store failure took the job out: %v", l.jobIDs())
+	}
+	if l.stores.Sections != nil {
+		t.Error("Sections is set though the store did not open")
+	}
+	if l.stores.Ledger == nil || l.stores.Read == nil {
+		t.Error("the trade path lost its stores")
+	}
+	if !strings.Contains(l.log.String(), "degraded") {
+		t.Errorf("no degraded record:\n%s", l.log.String())
+	}
+}
+
+func TestSectionsValuesNeverPrinted(t *testing.T) {
+	t.Parallel()
+	l := newLedgerRig(t, fullEnv+ledgerDSNLine+sectionEnv, true)
+	l.a.deps.openFlexSections = func(_ context.Context, dsn string) (flexSectionStore, error) {
+		return nil, errors.New("connect to " + dsn + " failed")
+	}
+	l.run(t)
+	log := l.log.String()
+	if !strings.Contains(log, "OT_PG_DSN_OPTION_LEDGER") || !strings.Contains(log, "degraded") {
+		t.Errorf("the degraded record does not name the line:\n%s", log)
+	}
+	out := log + l.a.stdout.(interface{ String() string }).String()
+	for _, secret := range []string{tokenA, acctA, "led-dsn-secret"} {
+		if strings.Contains(out, secret) {
+			t.Errorf("a value is printed or logged: %q", secret)
+		}
 	}
 }
