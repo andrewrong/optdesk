@@ -1,6 +1,7 @@
 package optioneod
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -13,14 +14,15 @@ import (
 
 func TestStatusMapping(t *testing.T) {
 	t.Parallel()
+	v := 1.0
 	cases := []struct {
 		name   string
 		q      broker.Quote
 		status int
 		code   string
 	}{
-		{"ok", broker.Quote{Status: broker.StatusOK}, 1, ""},
-		{"partial", broker.Quote{Status: broker.StatusPartial}, 1, ""},
+		{"ok", broker.Quote{Status: broker.StatusOK, Last: &v}, 1, ""},
+		{"partial", broker.Quote{Status: broker.StatusPartial, Last: &v}, 1, ""},
 		{"no data", broker.Quote{Status: broker.StatusNoData}, 2, ""},
 		{"no subscription", broker.Quote{Status: broker.StatusNoSubscription}, 5, "NO_SUBSCRIPTION"},
 		{"timeout", broker.Quote{Status: broker.StatusTimeout}, 5, "TIMEOUT"},
@@ -34,6 +36,31 @@ func TestStatusMapping(t *testing.T) {
 			s, code := statusOf(tc.q)
 			if s != tc.status || (tc.code == "") != (code == nil) || (code != nil && *code != tc.code) {
 				t.Fatalf("got %d %v", s, code)
+			}
+		})
+	}
+}
+
+func TestEmptyQuoteStatus(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	day := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+	for _, st := range []broker.Status{broker.StatusOK, broker.StatusPartial} {
+		t.Run(fmt.Sprintf("%d empty", st), func(t *testing.T) {
+			t.Parallel()
+			q := broker.Quote{Status: st, Volume: f(4), OpenInterest: f(5), BidSize: f(6)}
+			r := mapRow(q, 1, 2, day, uuid.New(), "USD")
+			if r.Status != 2 || r.ErrorCode != nil {
+				t.Fatalf("status %d code %v, want 2 nil", r.Status, r.ErrorCode)
+			}
+			if r.Volume == nil || *r.Volume != 4 || r.OpenInterest == nil || *r.OpenInterest != 5 || r.BidSize == nil || *r.BidSize != 6 {
+				t.Fatalf("volume, open interest and size must still be written: %v %v %v", r.Volume, r.OpenInterest, r.BidSize)
+			}
+		})
+		t.Run(fmt.Sprintf("%d last only", st), func(t *testing.T) {
+			t.Parallel()
+			if s, code := statusOf(broker.Quote{Status: st, Last: f(3)}); s != 1 || code != nil {
+				t.Fatalf("got %d %v, want 1 nil", s, code)
 			}
 		})
 	}
