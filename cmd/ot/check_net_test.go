@@ -110,3 +110,16 @@ func TestCheckNetWindowOpen(t *testing.T) {
 		t.Errorf("window open: %s", out)
 	}
 }
+
+func TestCheckNetOldStaleNotExplainedByLaterWindow(t *testing.T) {
+	t.Parallel()
+	src := &netSource{days: []string{"2026-11-03"}}
+	exps := []store.Expectation{
+		{DatasetID: "obs.series_point", ExpectedDay: "2026-11-03", PresentDay: "2026-10-30", DueBy: netNow.Add(-72 * time.Hour)},
+		{DatasetID: "obs.series_point", ExpectedDay: "2026-11-09", PresentDay: "2026-10-30", DueBy: netNow.Add(time.Hour)},
+	}
+	out := runNet(t, true, "k", src, []string{"2026-10-30"}, exps)
+	if !strings.Contains(out, "FAIL fred.DGS10 2026-11-03") {
+		t.Errorf("a stale day whose window closed must FAIL: %s", out)
+	}
+}

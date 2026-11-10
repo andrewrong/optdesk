@@ -66,11 +66,11 @@ func checkFredNet(ctx context.Context, e *checkEnv, now time.Time, exps []store.
 		fail("fred.public", "fetch failed: "+err.Error())
 		return
 	}
-	netCompare(ctx, e, ser, latestDays(pts), netWindowOpen(now, exps), from, to)
+	netCompare(ctx, e, ser, latestDays(pts), openFrom(now, exps), from, to)
 }
 
 // netCompare is one line per series: the stored latest day against the public one.
-func netCompare(ctx context.Context, e *checkEnv, ser store.SeriesReader, public map[string]string, open bool, from, to contracts.Day) {
+func netCompare(ctx context.Context, e *checkEnv, ser store.SeriesReader, public map[string]string, openFrom string, from, to contracts.Day) {
 	for _, id := range netSeriesIDs {
 		check := "fred." + id
 		pub, ok := public[id]
@@ -87,7 +87,7 @@ func netCompare(ctx context.Context, e *checkEnv, ser store.SeriesReader, public
 		switch {
 		case have >= pub:
 			e.c.emit(Result{Status: statusPass, Check: check, Day: pub, Reason: "stored " + have + " matches public"})
-		case open:
+		case openFrom != "" && pub >= openFrom:
 			e.c.emit(Result{Status: statusExplained, Check: check, Day: pub, Reason: "window_open"})
 		default:
 			e.c.emit(Result{Status: statusFail, Check: check, Day: pub, Reason: "stored " + dayOrNone(contracts.Day(have)) + " is older than public " + pub})
@@ -109,12 +109,18 @@ func latestDays(pts []contracts.SeriesPoint) map[string]string {
 	return out
 }
 
-// netWindowOpen holds when a window of the series dataset is not complete and has not closed (DueBy after now).
-func netWindowOpen(now time.Time, exps []store.Expectation) bool {
+// openFrom is the earliest ExpectedDay of a series window that is not complete and has not closed (DueBy after
+// now), or "" when none is open. A stale series is explained only when its public day is on or after that day:
+// the window of an older day has closed, so a stale value there is FAIL.
+func openFrom(now time.Time, exps []store.Expectation) string {
+	out := ""
 	for _, x := range exps {
-		if x.DatasetID == netSeriesData && !x.Closed && x.PresentDay != x.ExpectedDay && x.DueBy.After(now) {
-			return true
+		if x.DatasetID != netSeriesData || x.Closed || x.PresentDay == x.ExpectedDay || !x.DueBy.After(now) {
+			continue
+		}
+		if d := string(x.ExpectedDay); out == "" || d < out {
+			out = d
 		}
 	}
-	return false
+	return out
 }
