@@ -39,7 +39,9 @@ GRANT USAGE ON SCHEMA rd TO ot_w_posmark;
 GRANT SELECT ON rd.account_position_mark_r1 TO ot_w_posmark;
 
 -- The pages read the view and no table.
-GRANT SELECT ON rd.account_position_mark_r1 TO ot_ro_pages;
+GRANT SELECT ON
+    rd.account_position_mark_r1
+    TO ot_ro_pages;
 
 -- +goose Down
 REVOKE SELECT ON rd.account_position_mark_r1 FROM ot_ro_pages;

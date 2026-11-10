@@ -63,6 +63,9 @@ const (
 // does not import ownerset, so the test TestSetupLineEqualsOwnersetConst of cmd/ot holds the two together.
 const dsnEnvSettings = "OT_PG_DSN_SETTINGS"
 
+// dsnEnvPosMark is the line of roleMark. It equals mark.DSNEnvPositionMark; store/setup may not import store/mark.
+const dsnEnvPosMark = "OT_PG_DSN_POSMARK"
+
 // roleSpec is one role and the .env line that holds its DSN; the owner has no line (goose only).
 type roleSpec struct{ name, envKey string }
 
@@ -84,7 +87,7 @@ var roles = []roleSpec{
 	{roleBar, bar.DSNEnvBar},                     // ot_w_bar, line OT_PG_DSN_BAR
 	{roleOptionLedger, store.DSNEnvOptionLedger}, // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
 	{roleSettings, dsnEnvSettings},               // ot_w_settings, line OT_PG_DSN_SETTINGS
-	{roleMark, "OT_PG_DSN_POSMARK"},              // the line is mark.DSNEnvPositionMark; store/setup may not import store/mark
+	{roleMark, dsnEnvPosMark},                    // ot_w_posmark, line OT_PG_DSN_POSMARK
 }
 
 // extensions are created in the database by Setup.
