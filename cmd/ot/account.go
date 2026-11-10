@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -147,7 +146,7 @@ func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet
 	extra.addCloser(w)
 	j, err := f.d.newAccountCapture(accountcapture.Config{Main: main, Readers: readers, Writer: w, Clock: f.clk})
 	if err != nil {
-		return nil, errors.New("build account_capture job failed")
+		return nil, fmt.Errorf("build account_capture job failed: %w", err)
 	}
 	return j, nil
 }
