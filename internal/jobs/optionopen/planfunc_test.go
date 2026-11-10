@@ -295,3 +295,27 @@ func TestExpiryWindowUSAndJP(t *testing.T) {
 		t.Errorf("JP %v", jp)
 	}
 }
+
+func TestCeilingDefersProtectedMinimumPutsLast(t *testing.T) {
+	t.Parallel()
+	p := wide()
+	p.CeilPuts = 12
+	cands := append(chain(30, "PC", rng(70, 130, 5)...), chain(31, "PC", rng(80, 110, 1)...)...)
+	got := BuildPlan(testDay, p, []NameInput{{UnderlyingID: 1, Symbol: "ABC", Spot: 100, Candidates: cands}})
+	protectedDeferred, unprotectedKept := false, false
+	for _, it := range got.Items {
+		if it.Class != ClassPuts {
+			continue
+		}
+		d := testDay.AddDate(0, 0, 30)
+		if it.Contract.Expiry.Equal(d) && it.Contract.Strike <= 85 && it.Deferred {
+			protectedDeferred = true // one of E1's six minimum puts
+		}
+		if !it.Contract.Expiry.Equal(d) && it.Contract.Strike <= 93 && !it.Deferred {
+			unprotectedKept = true // E2 put beyond its six nearest
+		}
+	}
+	if protectedDeferred && unprotectedKept {
+		t.Error("a protected minimum put was deferred before an unprotected put of the run")
+	}
+}

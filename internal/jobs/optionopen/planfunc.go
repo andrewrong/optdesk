@@ -229,7 +229,7 @@ func BuildPlan(day time.Time, p PlanParams, names []NameInput) Plan {
 			}
 			sort.SliceStable(queues[i], func(a, b int) bool { return lessEntry(queues[i][a], queues[i][b]) })
 		}
-		count := 0
+		var seq []*entry
 		for left := true; left; {
 			left = false
 			for k := range ns {
@@ -238,14 +238,16 @@ func BuildPlan(day time.Time, p PlanParams, names []NameInput) Plan {
 					continue
 				}
 				left = true
-				e := queues[i][0]
+				seq = append(seq, queues[i][0])
 				queues[i] = queues[i][1:]
-				count++
-				if count > c.ceil {
-					e.item.Deferred = true
-					deferred = append(deferred, e.item)
-					continue
-				}
+			}
+		}
+		over := deferTail(seq, c.ceil)
+		for _, e := range seq {
+			if over[e] {
+				e.item.Deferred = true
+				deferred = append(deferred, e.item)
+			} else {
 				out.Items = append(out.Items, e.item)
 			}
 		}
@@ -255,6 +257,22 @@ func BuildPlan(day time.Time, p PlanParams, names []NameInput) Plan {
 		out.Items[i].Rank = i + 1
 	}
 	return out
+}
+
+// deferTail picks the entries over the ceiling: from the end of the order,
+// the unprotected first; the protected minimum puts only when nothing else is
+// left to defer, so they go last.
+func deferTail(seq []*entry, ceil int) map[*entry]bool {
+	over := map[*entry]bool{}
+	need := len(seq) - ceil
+	for _, protected := range []bool{false, true} {
+		for i := len(seq) - 1; i >= 0 && len(over) < need; i-- {
+			if seq[i].protect == protected {
+				over[seq[i]] = true
+			}
+		}
+	}
+	return over
 }
 
 func dayNumber(day time.Time) int64 {
@@ -313,7 +331,7 @@ type expiryCtx struct {
 	five  bool
 }
 
-func (x expiryCtx) mk(c Contract, class Class) *entry {
+func (x expiryCtx) newEntry(c Contract, class Class) *entry {
 	return &entry{item: Item{UnderlyingID: x.n.UnderlyingID, Symbol: x.n.Symbol, Contract: c, Class: class},
 		dte: x.dte, dist: math.Abs(c.Strike - x.n.Spot)}
 }
@@ -329,11 +347,11 @@ func groupByExpiry(day time.Time, p PlanParams, cands []Contract) map[time.Time]
 	for _, c := range cands {
 		y, m, d := c.Expiry.Date()
 		exp := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
-		k := key{exp, c.Strike, c.Right}
-		if dte := dteOf(day, exp); seen[k] || dte < p.MinDTE || dte > p.MaxDTE {
+		sk := key{exp, c.Strike, c.Right}
+		if dte := dteOf(day, exp); seen[sk] || dte < p.MinDTE || dte > p.MaxDTE {
 			continue
 		}
-		seen[k] = true
+		seen[sk] = true
 		byExp[exp] = append(byExp[exp], c)
 	}
 	return byExp
@@ -393,14 +411,14 @@ func (x expiryCtx) plan(cs []Contract, sigma float64, heldIDs map[int64]bool) []
 		switch {
 		case heldIDs[c.InstrumentID]:
 		case math.Abs(c.Strike-below) < eps || math.Abs(c.Strike-above) < eps:
-			out = append(out, x.mk(c, ClassAroundSpot))
+			out = append(out, x.newEntry(c, ClassAroundSpot))
 		case c.Right == Put && c.Strike < below:
 			putsBelow = append(putsBelow, c)
 			if c.Strike >= lo-eps {
-				puts = append(puts, x.mk(c, ClassPuts))
+				puts = append(puts, x.newEntry(c, ClassPuts))
 			}
 		case c.Right == Call && x.calls && c.Strike > above && c.Strike <= hi+eps:
-			calls = append(calls, x.mk(c, ClassCalls))
+			calls = append(calls, x.newEntry(c, ClassCalls))
 		}
 	}
 	if x.five && oneDollar {
@@ -415,14 +433,14 @@ func (x expiryCtx) plan(cs []Contract, sigma float64, heldIDs map[int64]bool) []
 
 // dropOffFive keeps, beyond FarOTM out of the money, the 5 dollar strikes only.
 func (x expiryCtx) dropOffFive(es []*entry) []*entry {
-	var k []*entry
+	var kept []*entry
 	for _, e := range es {
 		if e.dist/x.n.Spot > x.p.FarOTM && math.Mod(e.item.Contract.Strike, 5) != 0 {
 			continue
 		}
-		k = append(k, e)
+		kept = append(kept, e)
 	}
-	return k
+	return kept
 }
 
 // addMinPuts adds the nearest listed puts below the spot up to MinPuts and
@@ -438,7 +456,7 @@ func (x expiryCtx) addMinPuts(puts []*entry, below []Contract) []*entry {
 			break
 		}
 		if !have[c.Strike] {
-			puts = append(puts, x.mk(c, ClassPuts))
+			puts = append(puts, x.newEntry(c, ClassPuts))
 		}
 	}
 	sort.Slice(puts, func(i, j int) bool { return puts[i].dist < puts[j].dist })
