@@ -232,6 +232,8 @@ var leakExcluded = map[string]string{
 	"help":            "takes no DSN",
 	"compare-figures": "needs four input files, which a static row cannot give; TestCompareFiguresWithholdsDSN covers its open error",
 	"account-import":  "needs an input file in DIR, which a static row cannot give; its open error is withheld and TestAccountImportOpenErrorWithheld covers it",
+	"ledger":          "reads the alias list from the store; its open error is withheld and TestLedgerOpenErrorWithheld covers it",
+	"ledger-import":   "needs an input file, which a static row cannot give; its open error is withheld and TestLedgerOpenErrorWithheld covers it",
 }
 
 func TestNoCommandLeaksDSN(t *testing.T) {

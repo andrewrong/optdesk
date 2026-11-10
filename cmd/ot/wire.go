@@ -34,6 +34,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
+	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
 	"github.com/andrewrong/optdesk/internal/notify"
@@ -57,6 +58,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
+	"github.com/andrewrong/optdesk/internal/sources/flex"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/sources/jquants"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -66,6 +68,7 @@ import (
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
+	ledgerstore "github.com/andrewrong/optdesk/internal/store/optionledger"
 	"github.com/andrewrong/optdesk/internal/store/reading"
 	"github.com/andrewrong/optdesk/internal/store/series"
 	"github.com/andrewrong/optdesk/internal/store/sessionday"
@@ -160,6 +163,11 @@ type deps struct {
 	newAlphaVantage         sources.NewEarningsFunc
 	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
+	openOptionLedgerStore   store.OpenOptionLedgerFunc
+	newOptionLedgerJob      jobs.NewOptionLedgerJobFunc
+	loadFlexFile            sources.LoadFlexFileFunc
+	newFlexSource           sources.NewFlexFunc
+	importOptionTrader      jobs.ImportOptionTraderFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
 	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
@@ -187,6 +195,8 @@ func newDeps() deps {
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
+	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
+	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
 	return d
 }
 
@@ -314,6 +324,15 @@ func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main strin
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Main: main, Aliases: aliases,
 		Account: acct, Candidates: cands, Earnings: earn, Rule: rule, Params: params,
 	})
+}
+
+// openLedgerStore opens the option ledger store; a failed open is a nil interface, not a typed nil.
+func openLedgerStore(ctx context.Context, dsn string) (store.OptionLedgerStore, error) {
+	s, err := ledgerstore.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // openCandidateStore opens the candidate store; a failed open is a nil interface, not a typed nil.
