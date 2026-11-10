@@ -178,3 +178,31 @@ func rangeStrikes(all []string, buy string, price float64, limit int) []strikeVa
 	sort.Slice(out, func(i, j int) bool { return out[i].value < out[j].value })
 	return out
 }
+
+// jpWatchUnderlyings keeps the JP stock entries (market JP, sec_type STK) as stock underlyings with the values of
+// the [stock] table, sorted by code, and the BuyPrice text of those that have one. No entry is not an error.
+func jpWatchUnderlyings(watch []jobs.WatchEntry, st stockTable) ([]underlying, map[string]string, error) {
+	var out []underlying
+	buy := map[string]string{}
+	seen := map[string]bool{}
+	for _, e := range watch {
+		if e.Market != "JP" || e.Contract.SecType != "STK" {
+			continue
+		}
+		c := e.Contract
+		if seen[c.Symbol] {
+			return nil, nil, fmt.Errorf("optioneod: watch list holds %s twice", c.Symbol)
+		}
+		seen[c.Symbol] = true
+		out = append(out, underlying{Symbol: c.Symbol, SecType: c.SecType, Exchange: c.Exchange, Currency: c.Currency,
+			ConID: c.ConID, MIC: st.MIC, CalendarID: st.CalendarID, PriceIncrement: st.PriceIncrement, LotSize: st.LotSize})
+		if e.BuyPrice != "" {
+			if _, ok := new(big.Rat).SetString(e.BuyPrice); !ok {
+				return nil, nil, fmt.Errorf("optioneod: buy price of %s is not a number", c.Symbol)
+			}
+			buy[c.Symbol] = e.BuyPrice
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Symbol < out[j].Symbol })
+	return out, buy, nil
+}

@@ -43,6 +43,22 @@ type underlying struct {
 	LotSize        string `toml:"lot_size"`
 }
 
+// stockTable is the [stock] table of job_jp.toml: what a JP stock underlying gets besides its watch entry (symbol,
+// sec_type, exchange, currency, con_id): the instrument values, the option side and its own selection values.
+type stockTable struct {
+	MIC               string `toml:"mic"`
+	CalendarID        string `toml:"calendar_id"`
+	LotSize           string `toml:"lot_size"`
+	PriceIncrement    string `toml:"price_increment"`
+	ChainExchange     string `toml:"chain_exchange"`
+	Multiplier        string `toml:"multiplier"`
+	OptionMIC         string `toml:"option_mic"`
+	MinDTE            int    `toml:"min_dte"`
+	MaxDTE            int    `toml:"max_dte"`
+	MaxStrikes        int    `toml:"max_strikes"`
+	MaxStrikesPerSide int    `toml:"max_strikes_per_side"`
+}
+
 type manifest struct {
 	Version              int           `toml:"version"`
 	ID                   string        `toml:"id"`
@@ -66,6 +82,8 @@ type manifest struct {
 	// StopAfter (HHMM in the zone) makes a run at or after that local time return NoValue; unset when empty.
 	StopAfter  string       `toml:"stop_after"`
 	Underlying []underlying `toml:"underlying"`
+	// Stock is the [stock] table; it applies to the stock underlyings a watch constructor adds (see isStock).
+	Stock stockTable `toml:"stock"`
 
 	sched schedule
 	// buy maps a symbol to the BuyPrice text of its watch entry; empty for a manifest without a watch list.
@@ -186,11 +204,30 @@ func (m manifest) canonical() string {
 	if m.StopAfter != "" {
 		fmt.Fprintf(&b, "|stop%s", m.StopAfter)
 	}
+	hasStock := false
 	for _, u := range m.Underlying {
 		fmt.Fprintf(&b, "\n%+v", u)
 		if bp := m.buy[u.Symbol]; bp != "" {
 			fmt.Fprintf(&b, "|buy%s", bp)
 		}
+		hasStock = hasStock || m.isStock(u)
+	}
+	if hasStock {
+		fmt.Fprintf(&b, "\nstock%+v", m.Stock)
 	}
 	return b.String()
+}
+
+// isStock tells a JP stock underlying from the index: the manifest holds a [stock] table and u is a stock.
+func (m manifest) isStock(u underlying) bool {
+	return m.Stock.ChainExchange != "" && u.SecType == "STK"
+}
+
+// forStock is m with the selection values of the [stock] table in place of the manifest-wide ones.
+func (m manifest) forStock() manifest {
+	m.MinDTE, m.MaxDTE, m.MaxStrikes = m.Stock.MinDTE, m.Stock.MaxDTE, m.Stock.MaxStrikes
+	if m.Stock.MaxStrikesPerSide > 0 {
+		m.MaxStrikesPerSide = m.Stock.MaxStrikesPerSide
+	}
+	return m
 }
