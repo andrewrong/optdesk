@@ -2,11 +2,15 @@ package candidate
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -20,14 +24,18 @@ var (
 // fakeDB keeps the argument lists of the inserted rows and replays them to the scan of a query, filtered by the
 // day and the kind the query is given and ordered as the query orders (rank first, nulls last, then the key).
 type fakeDB struct {
-	rows    [][]any
-	inserts int
-	lastSQL string
+	rows      [][]any
+	inserts   int
+	lastSQL   string
+	insertErr error
 }
 
 func (f *fakeDB) InsertAll(_ context.Context, sql string, rows [][]any) error {
 	f.inserts++
 	f.lastSQL = sql
+	if f.insertErr != nil {
+		return f.insertErr
+	}
 	f.rows = append(f.rows, rows...)
 	return nil
 }
@@ -202,6 +210,49 @@ func TestSettingsVersionRowMapping(t *testing.T) {
 	}
 	if !strings.HasSuffix(columns, "computed_at, settings_version") {
 		t.Errorf("columns = %q; settings_version is the last column", columns)
+	}
+}
+
+func TestInsertCandidatesConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want contracts.ErrorKind
+	}{
+		{"plain", errors.New("boom"), contracts.Retryable},
+		{"class 40", &pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		{"class 08", &pgconn.PgError{Code: "08006"}, contracts.Retryable},
+	}
+	for _, code := range []string{"23502", "23503", "23505", "23514"} {
+		cases = append(cases,
+			struct {
+				name string
+				err  error
+				want contracts.ErrorKind
+			}{code, &pgconn.PgError{Code: code}, contracts.Permanent},
+			struct {
+				name string
+				err  error
+				want contracts.ErrorKind
+			}{code + " wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: code}), contracts.Permanent})
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s := &Store{db: &fakeDB{insertErr: tc.err}}
+			_, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))})
+			if err == nil {
+				t.Fatal("no error")
+			}
+			var te contracts.TypedError
+			if !errors.As(err, &te) {
+				t.Fatalf("not a TypedError: %v", err)
+			}
+			if te.Kind() != tc.want {
+				t.Errorf("kind = %v, want %v", te.Kind(), tc.want)
+			}
+		})
 	}
 }
 
