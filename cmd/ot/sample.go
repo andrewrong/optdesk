@@ -10,7 +10,6 @@ var sampleSchemas = map[string]string{
 	"household": "household_page",
 	"positions": "positions_page",
 	"risk":      "household_risk",
-	"options":   "option_page",
 	"advice":    "advice_page",
 }
 

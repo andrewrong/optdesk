@@ -21,7 +21,7 @@ const siteCompaniesRoute = "companies"
 const companiesName = "companies_page"
 
 func init() {
-	registerPage(pageFamily{name: companiesName, route: siteCompaniesRoute, order: 40, build: buildCompanies, named: companiesPageNamed})
+	registerPage(pageFamily{name: companiesName, route: siteCompaniesRoute, order: 50, build: buildCompanies, named: companiesPageNamed})
 }
 
 // companiesDemoSubjects are the two fixed rows of the demo profile, each with a hand price.

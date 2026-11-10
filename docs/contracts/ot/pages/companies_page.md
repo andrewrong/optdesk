@@ -1,6 +1,6 @@
 # ot page `companies_page`
 
-Order: 40
+Order: 50
 
 Route: `companies`. Name for `ot page`: `ot page --name companies_page`. Family file: `cmd/ot/companies_site.go`; registered with `registerPage` in an `init()` (`cmd/ot/pagereg.go`). The common rules of every page are in `docs/contracts/ot.md`.
 
@@ -24,4 +24,4 @@ The page is built per request (`ot serve`) or once per command (`ot page`) for t
 
 ## Version
 
-v1: introduced with this document (order 40).
+v1: introduced with this document (order 50).
