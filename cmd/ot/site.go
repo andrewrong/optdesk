@@ -223,7 +223,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		var id int64
 		var build func(context.Context) ([]byte, error)
 		isAsset := false
-		build = ownerPageBuilder(path, a, clk, dayFlag, rd)
+		build = extraPageBuilder(path, a, clk, dayFlag, rd)
 		switch {
 		case path == "":
 		case path == "macro":
@@ -286,9 +286,9 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 	})
 }
 
-// ownerPageBuilder is the builder of the routes options/candidates, options/notices and settings, nil for any
+// extraPageBuilder is the builder of the routes options/candidates, options/notices and settings, nil for any
 // other path.
-func ownerPageBuilder(path string, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
+func extraPageBuilder(path string, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
 	if path == siteCandidatesRoute {
 		return func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
 	}

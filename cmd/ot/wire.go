@@ -195,7 +195,9 @@ func newDeps() deps {
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
-	d.newRuleParams, d.openOwnerSet, d.settingsPage = ruleparam.New, ownersetpg.Open, settings_page.NewPage
+	d.newRuleParams = ruleparam.New
+	d.openOwnerSet = ownersetpg.Open
+	d.settingsPage = settings_page.NewPage
 	return d
 }
 
