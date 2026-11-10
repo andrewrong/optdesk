@@ -29,7 +29,8 @@ const (
 		`VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8::numeric, $9, $10::numeric, $11::numeric, $12::numeric, ` +
 		`$13::numeric, $14, $15) ON CONFLICT DO NOTHING`
 
-	// marksSQL arguments: alias, day. The newest capture of the day with marks (by marked_at, ties by capture_id),
+	// marksSQL arguments: alias, day. The newest capture of the day with marks (by marked_at, ties by capture_id; a
+	// late mark of an older capture makes that capture the newest, as the mark.Reader contract says "newest" by mark),
 	// then the highest attempt of each con_id. It reads the view and no table.
 	marksSQL = `SELECT DISTINCT ON (con_id) capture_id, alias, marked_at, session_day::text, con_id, attempt, currency, ` +
 		`coalesce(price::text, ''), basis, coalesce(bid::text, ''), coalesce(ask::text, ''), coalesce(last::text, ''), ` +
