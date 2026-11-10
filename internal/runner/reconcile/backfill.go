@@ -138,7 +138,8 @@ func (r *reconciler) backfillPlan(
 	if len(datasets) == 0 {
 		datasets = nil
 	}
-	keys, err := selectKeys(day, append(append([]contracts.ExpectedKey{}, stored...), added...), datasets)
+	all := append(append([]contracts.ExpectedKey{}, stored...), added...)
+	keys, err := selectKeys(day, all, datasets)
 	if err != nil {
 		return nil, plan{}, err
 	}
@@ -148,26 +149,25 @@ func (r *reconciler) backfillPlan(
 		}
 	}
 	if len(added) > 0 {
-		if err := r.storeAdded(ctx, day, p, stored, added); err != nil {
+		if err := r.storeAdded(ctx, day, p, all, added); err != nil {
 			return nil, plan{}, err
 		}
 	}
 	return keys, p, nil
 }
 
-// storeAdded writes the stored plan of day with the added keys and the window of each added dataset.
+// storeAdded writes all (the stored keys and the added) as the stored plan of day and the window of each added dataset.
 func (r *reconciler) storeAdded(
-	ctx context.Context, day contracts.Day, p plan, stored, added []contracts.ExpectedKey,
+	ctx context.Context, day contracts.Day, p plan, all, added []contracts.ExpectedKey,
 ) error {
-	all := append(append([]contracts.ExpectedKey{}, stored...), added...)
 	if err := r.ledger.PutExpected(ctx, day, p.hash, all); err != nil {
 		return err
 	}
-	prev, err := time.Parse("2006-01-02", string(day))
+	parsed, err := time.Parse("2006-01-02", string(day))
 	if err != nil {
 		return fmt.Errorf("backfill %s: %w", day, err)
 	}
-	_, sessions, err := r.walk(ctx, contracts.Day(prev.AddDate(0, 0, -1).Format("2006-01-02")), day)
+	_, sessions, err := r.walk(ctx, contracts.Day(parsed.AddDate(0, 0, -1).Format("2006-01-02")), day)
 	if err != nil {
 		return err
 	}
