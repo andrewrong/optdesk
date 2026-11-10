@@ -23,10 +23,14 @@ const (
 )
 
 // statusOf maps the status of a quote to the row status and the error code (nil when none): OK and PARTIAL give 1,
-// NO_DATA 2, the others 5 with the IBKR code, else the status name.
+// or 2 when the quote has no bid, ask, last and implied vol at all; NO_DATA 2, the others 5 with the IBKR code, else
+// the status name.
 func statusOf(q broker.Quote) (int, *string) {
 	switch q.Status {
 	case broker.StatusOK, broker.StatusPartial:
+		if q.Bid == nil && q.Ask == nil && q.Last == nil && q.ImpliedVol == nil {
+			return statusNoQuote, nil
+		}
 		return statusOK, nil
 	case broker.StatusNoData:
 		return statusNoQuote, nil
