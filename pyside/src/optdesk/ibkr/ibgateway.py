@@ -96,6 +96,19 @@ def _first(ticker: Any, *names: str, signed: bool = False) -> float | None:
     return None
 
 
+def _open_interest(ticker: Any) -> float | None:
+    """The first of call and put open interest that is above zero, else None.
+
+    The target carries no right, so either field may be the one IB fills; a
+    0.0 can be a placeholder, so it counts as absent.
+    """
+    for name in ("callOpenInterest", "putOpenInterest"):
+        number = _number(getattr(ticker, name, None))
+        if number is not None and number > 0:
+            return number
+    return None
+
+
 def ticker_fields(ticker: Any) -> dict[str, float]:
     """Read the fields of a ticker that have a value, under the names of Quote."""
     found: dict[str, float] = {}
@@ -115,7 +128,7 @@ def ticker_fields(ticker: Any) -> dict[str, float]:
     volume = _first(ticker, "volume", "callVolume", "putVolume")
     if volume is not None:
         found["volume"] = volume
-    interest = _first(ticker, "callOpenInterest", "putOpenInterest")
+    interest = _open_interest(ticker)
     if interest is not None:
         found["open_interest"] = interest
     moment = getattr(ticker, "time", None)
@@ -134,8 +147,13 @@ class _Job:
     def __init__(self, con_id: int) -> None:
         self.con_id = con_id
         self.event = asyncio.Event()
+        self.grace = asyncio.Event()
         self.error: tuple[int, str] | None = None
         self.on_error: Callable[[int, str], None] | None = None
+
+    def wake(self) -> None:
+        self.event.set()
+        self.grace.set()
 
 
 class IbGateway:
@@ -209,7 +227,7 @@ class IbGateway:
         self._connected = False
         self._lost.set()
         for job in self._jobs:
-            job.event.set()
+            job.wake()
 
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:
         if spec.is_informational(code):
@@ -220,7 +238,7 @@ class IbGateway:
         for job in self._jobs:
             if con_id and job.con_id == con_id and job.error is None:
                 job.error = (code, text)
-                job.event.set()
+                job.wake()
                 if job.on_error is not None:
                     job.on_error(code, text)
 
@@ -427,15 +445,26 @@ class IbGateway:
                 ticker = ib.reqMktData(contract, row_spec.generic_ticks, False, False)
 
                 def watch(*_: object) -> None:
-                    if spec.is_complete(row_spec, ticker_fields(ticker)):
+                    fields = ticker_fields(ticker)
+                    if spec.is_complete(row_spec, fields):
                         job.event.set()
+                    if row_spec.grace_fields <= fields.keys():
+                        job.grace.set()
 
                 ticker.updateEvent += watch
                 watch()
+                began = self._clock.monotonic()
                 try:
                     await with_timeout(
                         self._clock, job.event.wait(), row_spec.timeout_s
                     )
+                    left = row_spec.timeout_s - (self._clock.monotonic() - began)
+                    grace = min(row_spec.grace_s, left)
+                    if grace > 0 and not job.grace.is_set():
+                        try:
+                            await with_timeout(self._clock, job.grace.wait(), grace)
+                        except TimeoutError:
+                            pass  # release with what the line has
                 except TimeoutError:
                     timed_out = True
             finally:
@@ -447,7 +476,12 @@ class IbGateway:
             data_type = int(getattr(ticker, "marketDataType", self._data_type))
         fields = tuple(sorted(got.items()))
         if spec.is_complete(row_spec, got):
-            return row(spec.STATUS_OK, sent=sent, data_type=data_type, fields=fields)
+            return row(
+                spec.quote_status(row_spec, got),
+                sent=sent,
+                data_type=data_type,
+                fields=fields,
+            )
         if not self._current(generation):
             return row(spec.STATUS_DISCONNECTED, sent=sent)
         if job.error is not None:
