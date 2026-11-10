@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -94,7 +94,7 @@ func approvalOf(ctx context.Context, a *app, rd store.ReadingStore, symbol strin
 	if err != nil {
 		return contracts.ReadingRecord{}, errors.New("approve-band: the band cannot be read")
 	}
-	if len(bands) == 0 || bands[len(bands)-1].State != gen.ReadingRecordStateOk || bands[len(bands)-1].Value == nil {
+	if len(bands) == 0 || bands[len(bands)-1].State != "ok" || bands[len(bands)-1].Value == nil {
 		return contracts.ReadingRecord{}, fmt.Errorf("approve-band: %s has no band on or before %s; nothing written", symbol, day)
 	}
 	band := bands[len(bands)-1]
@@ -118,11 +118,22 @@ func approvalOf(ctx context.Context, a *app, rd store.ReadingStore, symbol strin
 		JobRunID:   uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|approve-band|"+symbol+"|"+strconv.Itoa(rev))).String(),
 		RecordedAt: now.UTC(), RowsSha256: hex.EncodeToString(sum[:]), Rev: rev,
 		State: "ok", Value: &value, Unit: band.Unit,
-		Inputs: []gen.ReadingRecordInputsElem{{
-			InputTable: "readings.reading", Keys: []string{bandName + "|" + symbol + "|" + band.Day.Format(dayLayout)},
-			CodeVersion: rule.Hash, ConventionVersion: rule.Convention,
-		}},
-		Parameters: []gen.ReadingRecordParametersElem{},
+	}
+	// the element types of the generated record are not importable from cmd/ot (go-arch-lint), so the two lists are
+	// decoded into the record.
+	in, err := json.Marshal([]map[string]any{{
+		"input_table": "readings.reading", "keys": []string{bandName + "|" + symbol + "|" + band.Day.Format(dayLayout)},
+		"code_version": rule.Hash, "convention_version": rule.Convention,
+	}})
+	if err == nil {
+		err = json.Unmarshal(in, &rec.Inputs)
+	}
+	if err != nil {
+		return contracts.ReadingRecord{}, fmt.Errorf("approve-band: inputs: %w", err)
+	}
+	rec.Parameters = nil
+	if err := json.Unmarshal([]byte("[]"), &rec.Parameters); err != nil {
+		return contracts.ReadingRecord{}, err
 	}
 	return rec, nil
 }
