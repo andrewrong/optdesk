@@ -125,7 +125,7 @@ Checked by CI: `go test ./internal/compute -race -count=1` with the new `TestOpt
 ### 3 compute-put-candidates
 
 Module: compute. Size: L.
-Files: `internal/compute/optioncand/optioncand.go`, `internal/compute/optioncand/put.go`, `internal/compute/optioncand/events.go`, `internal/compute/optioncand/rank.go`, `internal/compute/optioncand/exact.go`, `internal/compute/optioncand/put_test.go`, `internal/compute/optioncand/events_test.go`, `internal/compute/optioncand/rank_test.go`, `internal/compute/optioncand/exact_test.go`, `internal/compute/optioncand/purity_test.go`, `internal/compute/optioncand/testdata/`
+Files: `internal/compute/optioncand/optioncand.go`, `internal/compute/optioncand/put.go`, `internal/compute/optioncand/events.go`, `internal/compute/optioncand/rank.go`, `internal/compute/optioncand/exact.go`, `internal/compute/optioncand/put_test.go`, `internal/compute/optioncand/events_test.go`, `internal/compute/optioncand/rank_test.go`, `internal/compute/optioncand/exact_test.go`, `internal/compute/optioncand/purity_test.go`
 Design: docs/design/option-candidates.md#Decisions (Decisions 4 to 8)
 Order: after 2.
 Goal: `New()` returns an `OptionCandidates` that applies, for `short_put`, the gates of Decision 7 in order, the status rule of Decision 5 and the ranking of Decision 8 on `big.Rat`.
@@ -223,7 +223,7 @@ Checked by CI: `go test ./internal/jobs/optioneod -race -count=1`, ci-go.
 ### 10 compute-call-candidates
 
 Module: compute. Size: M.
-Files: `internal/compute/optioncand/call.go`, `internal/compute/optioncand/guard.go`, `internal/compute/optioncand/call_test.go`, `internal/compute/optioncand/guard_test.go`, `internal/compute/optioncand/testdata/`
+Files: `internal/compute/optioncand/call.go`, `internal/compute/optioncand/guard.go`, `internal/compute/optioncand/call_test.go`, `internal/compute/optioncand/guard_test.go`
 Design: docs/design/option-candidates.md#Decisions (Decisions 11 and 12)
 Order: after 3.
 Goal: `Evaluate` handles `covered_call` (gates of Decision 11) and `held_call_guard` (Decision 12), same status rule and ranking.

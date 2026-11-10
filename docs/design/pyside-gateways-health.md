@@ -36,7 +36,7 @@ serves (by alias) and which information is collected through each come from a co
 2. The gateways come from a TOML file, read with `tomllib` (standard library). The path is the one env key `OT_IBKR_GATEWAYS`; the file lives in the service's own config directory of the owner's machine and is
    not committed (the repository holds only an example with placeholders, decision 10). Shape, one table per gateway under `[[gateway]]`, and an optional top-level `default`:
    - `name` (required): a slug, `[a-z][a-z0-9-]{0,15}`, unique; it names the socket (`ibkr-<name>.sock`) and the key in `/health`.
-   - `port` (required, a whole number above zero); `host` (default `localhost`); `client_id` (default 33; a client id is per gateway); `market_data_type` (default 1).
+   - `port` (required, a whole number above zero); `host` (default `localhost`); `client_id` (default 33; a client id is per gateway); `market_data_type` (default 2, frozen: live data when the market is open, the last frozen value when closed; owner decision 2026-11-10).
    - `account` (required): an alias, `[a-z][a-z0-9_-]{0,31}`, never a real account id. A value shaped like an account id (letters then 5 to 9 digits, the shape `scrub` of `transport.py` removes) is refused, and the
      key is named, not the value. The alias is only a label for who reads the file and for the later account design; pyside does not send it to the gateway.
    - `collect` (required): a non-empty list from the fixed vocabulary `market_data`, `account_summary`, `positions`. Only `market_data` is served today (the three services of `ibkr.v1`). The other two are declared now and
@@ -122,7 +122,7 @@ built in the one entry; the contracts a caller, crew or the owner can see are:
 
 ## Issues
 
-Which entries run when: 1, then 2 (`Order: after 1`; the runbook documents what entry 1 delivers and shares no file with it). Items are offline: a named test run from `pyside/` after `uv sync --locked`, or a grep, without network,
+Which entries run when: 1, then 2 (`Order: after 1`; the runbook documents what entry 1 delivers and shares no file with it), then 3 (`pyside-frozen-default`, `Order: after 1`, shares no file with 2). Entries 1 and 2 landed before the default of decision 2 became 2, so entry 3 carries that default into the code and entry 2 is reopened for item 7. Items are offline: a named test run from `pyside/` after `uv sync --locked`, or a grep, without network,
 a live gateway or a fixed port. Tests use `pytest -n auto`, a fake clock and, for a socket, `kit.sockdir.short_socket_dir` (a `tmp_path` is too long for a Unix socket on macOS); a file the test writes goes in `tmp_path`; none
 sleeps; none connects to a live broker; a test that starts the health server binds port 0.
 
@@ -135,7 +135,7 @@ The gateways file, one supervisor and socket per gateway, and the health endpoin
   Design: docs/design/pyside-gateways-health.md#decisions
   Acceptance:
   1. From `pyside/`, `uv run pytest tests/ibkr -n auto` passes, and `uv run ruff check` and `uv run mypy --strict src tests` print no error.
-  2. `test_gateways.py` has `test_two_entries_with_defaults` (host `localhost`, client id 33, market data type 1, `required` false), `test_first_entry_is_default_without_key`, `test_default_key_names_an_entry`,
+  2. `test_gateways.py` has `test_two_entries_with_defaults` (host `localhost`, client id 33, market data type 2, `required` false), `test_first_entry_is_default_without_key`, `test_default_key_names_an_entry`,
      `test_default_without_market_data_is_error`, `test_first_entry_without_market_data_and_no_default_is_error` and `test_from_env_is_one_default_entry` (the existing keys give one entry named `default`, `market_data`,
      required; a missing port names `OT_IBKR_GATEWAY_PORT`).
   3. `test_gateways.py` has one test per failure, each asserting a `ConfigError` whose message holds the key and not the value: `test_unknown_key`, `test_no_gateway`, `test_none_required`, `test_duplicate_name`,
@@ -183,9 +183,26 @@ The runbook rewritten to this design
      deploy, because the settle needs 2xx), and `grep -c -i -E 'non-2xx|until the required|Fault' docs/deploy/pyside.md` prints at least 2.
   5. `grep -c -E '/Users/|/Volumes/' docs/deploy/pyside.md` prints 0, `grep -c -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' docs/deploy/pyside.md` prints 0, and `git diff --name-only origin/main` equals the Files line.
   6. The result matches the `## Proposed services.toml entry` and decisions 2 to 4, 6, 7 and 12 of docs/design/pyside-gateways-health.md, judged from the code and docs/design/pyside-gateways-health.md.
+  7. `grep -c -F 'market_data_type` to 2' docs/deploy/pyside.md` prints at least 1 (a gateway entry and the no-file fallback both say 2, frozen) and `grep -c -F 'market_data_type` to 1' docs/deploy/pyside.md` prints 0; the text of `OT_IBKR_MARKET_DATA_TYPE` says default 2 and that the variable is an override.
   Checked by CI: hygiene and the `test` check.
   Pull request body: `Contracts: unchanged`.
   Depends on: pyside-gateways (it documents what that entry delivers). Order: after 1 (no shared file; the order is prose).
+  Size: S
+
+### pyside-frozen-default
+
+The market-data type defaults to 2 (frozen) in the code
+  Goal: the default `market_data_type` of a gateway entry, of the no-file fallback (`OT_IBKR_MARKET_DATA_TYPE`) and of the `IbGateway` constructor is 2, as decision 2 says; a value in the file or in the variable still wins. Nothing else changes.
+  Files: pyside/src/optdesk/ibkr/gateways.py, pyside/src/optdesk/ibkr/ibgateway.py, pyside/tests/ibkr/test_gateways.py, pyside/tests/ibkr/test_server.py, pyside/tests/ibkr/test_ibgateway.py
+  Design: docs/design/pyside-gateways-health.md#decisions
+  Acceptance:
+  1. `grep -c -E '^DEFAULT_MARKET_DATA_TYPE = 2$' pyside/src/optdesk/ibkr/gateways.py` prints 1 and `grep -c -E 'market_data_type: int = 2' pyside/src/optdesk/ibkr/ibgateway.py` prints 1; `grep -c -E 'market_data_type: int = 1' pyside/src/optdesk/ibkr/ibgateway.py` prints 0.
+  2. `test_gateways.py::test_two_entries_with_defaults` asserts market data type 2 for an entry without the key, and a test `test_explicit_market_data_type_wins` asserts that an entry with `market_data_type = 3` reads 3; `test_server.py::test_config_defaults` asserts 2 for the no-file fallback and a test `test_env_market_data_type_overrides` asserts that `OT_IBKR_MARKET_DATA_TYPE=1` gives 1; `test_ibgateway.py` has `test_default_market_data_type_is_frozen` (a gateway built without the argument sets 2 on the fake once, after the guard and the connect).
+  3. `git diff --name-only origin/main` equals the Files line; no new file; `pyside/src/optdesk/ibkr/transport.py`, `api.py` and `contracts` are unchanged.
+  4. The result matches decision 2 and the Configuration paragraph of docs/design/pyside-ibkr-transport.md, judged from the code and those documents.
+  Checked by CI: ci-pyside (ruff, mypy --strict, pytest -n auto), hygiene, and the `test` check.
+  Pull request body: `Contracts: unchanged`; no new dependency.
+  Depends on: pyside-gateways (landed). Order: after 1.
   Size: S
 
 ## Proposed services.toml entry
@@ -265,7 +282,7 @@ Read: `adversarial-gwh.md`, kept in the dispatcher's scratchpad (not in the repo
 Owner decision optdesk-617 (2026-11-07), after this review: nothing about gateways is hard-coded. It replaced the fixed gateway A and gateway B of the first version: the `OT_IBKR_GATEWAY_B_*` keys, the single
 `ibkr-b.sock`, the `{"a": ..., "b": ...}` body and the "A decides health" rule are gone; the gateways, their accounts (by alias), what each collects and whether each decides health come from the file of decision 2
 (decisions 2, 4 and 6), and no file keeps today's single gateway (decision 3). Answers 1 to 3 and 5 stand with that change: the seams, the probes through the event loop, the `deploy = "owner"` entry and the
-corrected crew facts apply to every gateway; the entries are now two (the pyside entry, then the runbook with `Order: after 1`). Account summary and position serving remains the next design.
+corrected crew facts apply to every gateway; the entries are now three (the pyside entry, then the runbook with `Order: after 1`, then `pyside-frozen-default`, added 2026-11-10 for the default market-data type 2). Account summary and position serving remains the next design.
 
 Review of PR 275 at a31ba94 (verdict of the design session, kept in the dispatcher's scratchpad): adopted. The three non-interface pyside siblings are one entry (`## Modules` says why this cut and not an interface entry);
 the probe deadline lives in `health.py`, runs all probes concurrently under one deadline and has a named test with a blocked probe and one with a barrier (decision 8); the socket-serving default must hold `market_data`,
