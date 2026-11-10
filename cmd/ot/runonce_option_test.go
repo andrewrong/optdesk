@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -343,9 +345,12 @@ func newRig(t *testing.T, env string) *rig {
 		r.jobs, r.rule = js, rule
 		return recReconciler{r}
 	}
-	d.newBackfiller = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, rule runner.WindowRule) runner.Backfiller {
+	fakeBackfillDeps(r.a, &fakeBackfiller{}, &fakeKeySyncer{})
+	d.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, rule runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		r.jobs, r.backRule = js, rule
-		return &fakeBackfiller{}
+		return nil, &fakeBackfiller{}
 	}
 	return r
 }
