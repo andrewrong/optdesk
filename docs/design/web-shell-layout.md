@@ -1,0 +1,192 @@
+# Web shell layout: the pages use the desktop width, show a missing value as a dash, collapse the bar on a phone and draw charts the way board 1 does
+
+Author: the optdesk designer (draft)
+Owner approved: (pending)
+Date: 2026-11-10
+Revision: 1
+
+Source: owner 2026-11-10: "the front end looks nothing like the design images, much uglier", then "especially the charts". The comparison is the page `compare2/index.html` of the owner window (screenshots `compare2/shots/*.png`, 1440 and 390 px) against the boards of design set v2.2 (owner-approved 2026-10-23; the board images are the PNGs of that set, `board1.png` is 720 px wide, `1. 首页 Home`; the text of board 1 is `docs/design/home-board-1.md`). The rules of the shell are `docs/adr/0034-frontend-stack.md` ("Accessibility and phone rules", "Staleness", "Missing is never zero"). Read on origin/main at 65780f9f.
+
+Goal: the owner opens `/home`, `/market`, `/options` on a desktop and on a phone and sees pages that use the width, a table with dashes where a value is missing (the reason one tap away), a phone bar that does not scroll sideways, a grey data-date line unless the data is stale, and charts with an axis, straight lines, a shaded band and the last value labelled. No Go page-model string (`internal/pages/**`) changes: the front end renders the reason it is given.
+
+## What main holds today (read at 65780f9f)
+
+- `web/src/shell/App.tsx:14` and `:55`: both `<main className="p-4">`, no max width, no grid. `web/src/pages/home/HomePage.tsx:80` stacks the five cards in one `flex flex-col gap-4`. The shadcn table wraps itself in `overflow-x-auto` (`web/src/components/ui/table.tsx:8`).
+- `web/src/shell/TopNav.tsx:41`: one `<nav className="flex gap-1 overflow-x-auto p-2">` of ten links and the `期权持仓` menu; at 390 px it scrolls sideways.
+- `web/src/components/data-table/data-table.tsx:102-106`: a gap cell (`GapCell {reason, text}`, `:46`) shows its whole `text` in a `Badge` that wraps (`h-auto whitespace-normal`); every header gets a sort `Button` with `ArrowUpDown` (`:187-197`) whether or not the column has values. `MarketPage.tsx:35` shows a block gap the same way (a block, not a cell).
+- `web/src/pages/home/StaleAlert.tsx:37` and `StaleNotice.tsx:8`: an `Alert` on every card and page, destructive only when stale (`StaleAlert`: the device clock is past `stale_after`, `:33`; `StaleNotice`: the producer's `is_stale`, `:8`), default variant otherwise (a bordered card box, not grey text). Fourteen files import them (`grep -rn "StaleAlert\|StaleNotice" web/src`).
+- `web/src/charts/Chart.tsx` (recharts 3.10.1 through the shadcn chart, allowed by `frontend-whitelist.json:21`): default size `aspect-[2/1] w-full min-h-56` (`:50`), so 1100 px wide is about 550 px high; `<YAxis hide>` (`:69`); `type="monotone"` (`:100`); the band of the market card is two dashed series (`MarketSummaryCard.tsx:36-37`, `ChartSpec` has `dashed` and `legendHidden`, `spec.ts:22-27`); the legend is `ChartLegend` at the bottom; the tooltip shows `<key>_text` or the value (`web/src/components/ui/chart.tsx:94-95`). Callers with their own size: `HouseholdPage.tsx:148` and `:212`; `QuoteChart.tsx:28` draws its own `LineChart` and does not use `Chart`.
+- Chart callers of `Chart`: `home/MarketSummaryCard.tsx`, `home/OptionsSummaryCard.tsx`, `household/HouseholdPage.tsx` (three), `indicator/view.tsx`, `ledger/SectionTables.tsx`, `macro_rates/view.tsx`, `market/MarketPage.tsx` (two), `report/global-assets.tsx`, `structuredetail/Payoff.tsx`; the only other file that draws with recharts is `optiondata/QuoteChart.tsx` (`grep -rln "recharts\|ChartContainer\|<Chart\b" web/src`).
+- Popover and Sheet are not in `web/src/components/ui/`; `radix-ui` 1.8.1 is the one Radix dependency (`web/package.json:19`, no `@radix-ui/*`).
+
+## Decisions
+
+1. Width (owner decision 2026-11-10, in the window; it replaces the 720 px column of ADR 0034 "Accessibility and phone rules" for the desktop). The owner reads mostly on a desktop and wants to see everything: there is no max width. The shell keeps `<main className="p-4">` (16 px gutter, so a 390 px phone is one full-width column) and `App.tsx` is not edited. On wide screens the cards of a page may sit in a responsive grid: two columns from `lg` (1024 px), one below. Board 1 draws macro and market side by side (two cards in the first row, about 320 px each on its 720 px sheet) and household, held companies and options as full rows; the home page copies that: macro and market one cell each, the other three `lg:col-span-2`. A grid cell is `min-w-0`, so a wide table scrolls inside its card (`table.tsx:8`) and never widens the page. Tables are full width. The top bar sits outside the content (full width, as today): it is navigation of the site, not content of a page. Other pages stay one full-width stack until the owner has seen the home grid (Left out). Board source: `board1.png`; ADR source: the 390 px / no horizontal scroll half of "Accessibility and phone rules" stays, the 720 px half is replaced by this decision, and the entry of this file that lands it also amends that sentence of the ADR (the ADR file is in the web row).
+2. Missing value in a table cell: the cell shows "—" only. The reason (the `text` Python sent) is in a shadcn Tooltip on hover and in a shadcn Popover on tap, on one trigger button, and stays in the DOM as `sr-only` text of the button, so a screen reader and the existing `toContain` tests of pages still read it. Colour is not the signal (the dash and the aria text are). Popover is added by `shadcn add popover` (previewed with `--dry-run`: the registry item `radix-nova/popover` imports `radix-ui` only, so no package is added). A block gap (a missing chart, a missing table) keeps its named sentence once (`MarketPage.tsx:35`, ADR "a data gap is named once"). Source: board 1 draws "没有缺口。" as one grey line and short cells; ADR 0034 "Missing is never zero".
+3. Phone navigation: below 768 px (`md`) the bar becomes a 44 px menu button (Lucide `Menu`) that opens a shadcn Sheet from the left with the eleven items as a vertical list (the four position links under the heading `期权持仓`); from 768 px the bar is today's bar, without `overflow-x-auto`. Added by `shadcn add sheet` (registry item `radix-nova/sheet`, imports `radix-ui` and the existing `button`). Source: board 1's header has no 11-item bar; ADR "touch targets at least 44 px, no horizontal page scroll".
+4. Data date and stale: grey small text (`text-sm text-muted-foreground`, no box, no icon) with the text Python sent, when the data is not stale; the destructive `Alert` only when the page's own rule says stale: `StaleAlert.tsx:33` (`Date.now()` past `stale_after`; the clock-skew alert stays as is) and `StaleNotice.tsx` (`is_stale` from the producer). Both files share one rendering (`StaleAlert` renders `StaleNotice` for its flag) and keep `data-stale` and `data-clock-skew`. Source: board 1 draws "数据时间" as grey text under each card and no red bar; the comparison names the red "数据日 11-05" bar as the loudest difference. When the data really is stale the bar stays red; a missing explanation there is the text of the page builder (Left out).
+5. Charts, one component, every page (`web/src/charts/Chart.tsx` through the shadcn `ChartContainer`; `web/src/components/ui/chart.tsx` is not edited): (a) size by the box, not by the aspect: `h-[180px] md:h-[220px] w-full` (180 px phone, 220 px from 768 px); board 1's SPX line occupies about 160 px of height including the axis on a card of about 320 px, and 220 px is chosen for the wider desktop cards (an owner number, not measured). The three callers that set their own size lose it (`HouseholdPage.tsx:148,212`, `QuoteChart.tsx`). (b) A visible y axis, `tickCount` 5, no axis line and no tick line, the tick label is the tick number with the unit suffix of the spec (`ChartSpec.unit`, text from Python, empty when none), as board 1 labels "5,400 … 5,000" and "$4,000 … $0"; bars start at zero (recharts' default domain), lines use `['auto', 'auto']`. This is the one place the browser formats a number: the tick of a scale; every figure of a point stays Python's text. (c) Lines are `type="linear"`: no smoothing, no shape between two points. (d) A band is a shaded `Area` of the series `ChartSpec.band` (`{ name, low: ChartPoint[], high: ChartPoint[] }`, numbers from Python) with `fillOpacity` 0.12 in `var(--chart-2)`, no line, in the tooltip not listed; the two dashed series of the market card are replaced by it. The chart of a line kind is a recharts `ComposedChart`. (e) The last point of every line series is labelled at the right edge with its `text` (right margin 56 px). (f) `ChartTooltip` shows the category (the date) as the header and one row per series with Python's `text` (falls back to the value, as `chart.tsx:95` does today). (g) Legend: compact, at the top (`verticalAlign="top"`, 12 px text), one entry per series name, a band one entry. (h) Gridlines horizontal only, 1 px, `var(--border)`; every colour is a token (`var(--chart-N)`, `var(--border)`, `var(--muted-foreground)`), no hex, so light and dark (`theme.css:103-107`, `:156-`) follow. (i) Axis and legend text are 12 px, as board 1 draws them; ADR 0034 says "text at least 16 px": this is a conflict and the dispatcher chose the board (see "Decided by the dispatcher"). Source: `board1.png` (market and options charts), the owner's list of 2026-11-10.
+6. Tables: sort arrows only on sortable columns. A column is sortable when at least one of its cells has a `value` (`FigureCell.value`, `data-table.tsx:25`); its header is a `Button` with `ArrowUp` or `ArrowDown` when sorted and a faint `ArrowUpDown` when not; any other header is plain text with no button. Numbers stay right-aligned with `tabular-nums` (`:243` today, kept). Compact rows: `py-1.5` on every `TableCell` (shadcn default `p-2`), same text size. Source: board 1's tables (header row, 29 px rows at 12 px text on the board) and ADR "colour never the only signal".
+7. The dispatcher's mapping, not code: no payload field, no schema and no Go string is touched; `Contracts: unchanged` on every entry.
+
+## Modules
+
+None changed. Every file is under `web/**` (the row web, whose tests are `web/test/**`; the row includes `docs/adr/0034-frontend-stack.md`). `docs/design/modules.md` is not edited.
+
+## Interface
+
+None. `ChartSpec` (`web/src/charts/spec.ts`) gains the optional fields `unit` and `band`; both are read only by `Chart.tsx` and written by the page mappers listed in entry 6 (`MarketSummaryCard.tsx` is the only mapper that fills `band`); no file under `contracts/` and no generated type changes, and an old spec still draws.
+
+## Issues
+
+Every test calls no clock and no sleep, writes no file, opens no port. Acceptance items are decided by reading, grep or git; each prints one number. The commands CI runs are under `Checked by CI`. `BASE` is `git merge-base HEAD origin/main`. Every part below carries the line `按 frontend-stack：用 X 做 Y`.
+
+### 1 ui-popover-sheet
+
+Module: web. Size: S.
+Files: `web/src/components/ui/popover.tsx`, `web/src/components/ui/sheet.tsx`, `web/src/components/ui/SOURCES.md`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: first.
+Goal: shadcn Popover and Sheet are in `web/src/components/ui/` like the other copied components; nothing uses them yet. The worker runs `pnpm dlx shadcn@4.22.1 add popover sheet --dry-run` first and reads the file list; it adds the two files, fixes the `cn` import to `@/lib/utils` as `SOURCES.md` says, and adds a row for each with the registry revision and licence MIT.
+按 frontend-stack：用 shadcn `popover` (radix-ui Popover) 做 the tap-open reason of a missing value。
+按 frontend-stack：用 shadcn `sheet` (radix-ui Dialog) 做 the phone menu panel。
+Acceptance:
+1. `grep -c 'from "radix-ui"' web/src/components/ui/popover.tsx web/src/components/ui/sheet.tsx | awk -F: '{s+=$2} END {print s}'` prints 2.
+2. `grep -c '@radix-ui' web/src/components/ui/popover.tsx web/src/components/ui/sheet.tsx web/package.json | awk -F: '{s+=$2} END {print s}'` prints 0.
+3. `grep -c '^| popover \|^| sheet ' web/src/components/ui/SOURCES.md` prints 2.
+4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/components/ui/popover.tsx$' -e '^web/src/components/ui/sheet.tsx$' -e '^web/src/components/ui/SOURCES.md$' | wc -l` prints 0 (no `package.json`, no lockfile).
+5. The result matches docs/design/web-shell-layout.md#1 ui-popover-sheet.
+
+### 2 data-table-cells
+
+Module: web. Size: M.
+Files: `web/src/components/data-table/data-table.tsx`, `web/src/components/data-table/missing-value.tsx`, `web/test/components/data-table.test.tsx`, `web/test/components/missing-value.test.tsx`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: after 1.
+Goal: Decisions 2 and 6. `missing-value.tsx` exports `MissingValue({ text })`: a `button` showing "—" with the `text` as `sr-only` content, wrapped in a `Tooltip` (hover) and a `Popover` (tap), each with the text. `data-table.tsx` shows it for a `GapCell` instead of the `Badge`; a column with no cell that has a `value` has no sort button and no arrow; a sorted column shows `ArrowUp` or `ArrowDown`, an unsorted sortable one a faint `ArrowUpDown`; every `TableCell` has `py-1.5`. A page test elsewhere that asserts a gap text with `toBe` in a cell is reported in the pull request description (its file is not in this entry), not edited.
+按 frontend-stack：用 shadcn `tooltip` and `popover` composed in `missing-value.tsx` 做 the reason of a missing value (hover and tap)。
+按 frontend-stack：用 TanStack Table `enableSorting` per column in the shared Data Table 做 the sort arrows of sortable columns only。
+按 frontend-stack：用 Tailwind `py-1.5` and `tabular-nums` on the shadcn `TableCell` 做 compact right-aligned figures。
+Acceptance:
+1. `grep -c 'Popover' web/src/components/data-table/missing-value.tsx` prints at least 2 and `grep -c 'Tooltip' web/src/components/data-table/missing-value.tsx` prints at least 2.
+2. `grep -c 'sr-only' web/src/components/data-table/missing-value.tsx` prints at least 1 and `grep -c '—' web/src/components/data-table/missing-value.tsx` prints at least 1.
+3. `grep -c 'MissingValue' web/src/components/data-table/data-table.tsx` prints at least 2 and `grep -c 'whitespace-normal text-left' web/src/components/data-table/data-table.tsx` prints 0.
+4. `grep -c 'enableSorting' web/src/components/data-table/data-table.tsx` prints at least 1 and `grep -c 'ArrowUp\b\|ArrowDown\b' web/src/components/data-table/data-table.tsx` prints at least 2.
+5. `grep -c 'py-1.5' web/src/components/data-table/data-table.tsx` prints at least 1 and `grep -c 'tabular-nums' web/src/components/data-table/data-table.tsx` prints at least 1.
+6. `grep -c '@radix-ui' web/src/components/data-table/missing-value.tsx web/src/components/data-table/data-table.tsx | awk -F: '{s+=$2} END {print s}'` prints 0.
+7. `wc -l < web/src/components/data-table/data-table.tsx` prints a number below 300 and `wc -l < web/src/components/data-table/missing-value.tsx` prints a number below 100.
+8. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/components/data-table/' -e '^web/test/components/data-table.test.tsx$' -e '^web/test/components/missing-value.test.tsx$' | wc -l` prints 0.
+9. `grep -c "missing-value\|MissingValue" web/test/components/missing-value.test.tsx` prints at least 1 and `grep -c "toBe('无数据')" web/test/components/data-table.test.tsx` prints 0.
+10. The result matches docs/design/web-shell-layout.md#2 data-table-cells.
+
+### 3 phone-nav
+
+Module: web. Size: S.
+Files: `web/src/shell/TopNav.tsx`, `web/test/shell/TopNav.test.tsx`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: after 1.
+Goal: Decision 3. One list of items (`ITEMS`, `POSITION_LINKS`) renders twice: the desktop bar (`hidden md:flex`, no `overflow-x-auto`) and, below `md`, a 44 px `Menu` button that opens a `Sheet` with the same links, the current one `aria-current="page"`. The `nav` keeps `aria-label="主导航"`. Existing tests count `a` elements with the sheet closed, so they keep passing; new tests open the sheet.
+按 frontend-stack：用 shadcn `sheet` with the shadcn `button` and Lucide `Menu` 做 the phone menu。
+Acceptance:
+1. `grep -c "from '@/components/ui/sheet'" web/src/shell/TopNav.tsx` prints 1 and `grep -c "Menu" web/src/shell/TopNav.tsx` prints at least 2.
+2. `grep -c 'overflow-x-auto' web/src/shell/TopNav.tsx` prints 0.
+3. `grep -c 'md:hidden' web/src/shell/TopNav.tsx` prints at least 1 and `grep -c 'hidden md:flex' web/src/shell/TopNav.tsx` prints at least 1.
+4. `grep -c 'ITEMS.map' web/src/shell/TopNav.tsx` prints at most 2 (one list, two renderings) and `grep -c "path: '/" web/src/shell/TopNav.tsx` prints 14 (the same fourteen paths as at BASE).
+5. `grep -c 'size-11\|min-h-11\|h-11' web/src/shell/TopNav.tsx` prints at least 1.
+6. `grep -c "Sheet\|sheet" web/test/shell/TopNav.test.tsx` prints at least 1.
+7. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/shell/TopNav.tsx$' -e '^web/test/shell/TopNav.test.tsx$' | wc -l` prints 0.
+8. The result matches docs/design/web-shell-layout.md#3 phone-nav.
+
+### 4 stale-text
+
+Module: web. Size: S.
+Files: `web/src/pages/home/StaleNotice.tsx`, `web/src/pages/home/StaleAlert.tsx`, `web/test/pages/home/StaleNotice.test.tsx`, `web/test/pages/home/StaleAlert.test.tsx`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: none (no file in common with the other entries).
+Goal: Decision 4. `StaleNotice` renders `<p data-stale="false" className="text-sm text-muted-foreground">{text}</p>` when not stale and today's destructive `Alert` (`data-stale="true"`, icon and text) when stale. `StaleAlert` keeps `useClock` and its two rules (past `stale_after`, 5-minute skew), renders `StaleNotice` with its flag, and keeps the `data-clock-skew` alert. The fourteen importers are not edited.
+按 frontend-stack：用 shadcn `Alert` (destructive variant) 做 the stale notice and Tailwind `text-muted-foreground` 做 the grey data date。
+Acceptance:
+1. `grep -c "text-muted-foreground" web/src/pages/home/StaleNotice.tsx` prints at least 1 and `grep -c "variant=\"destructive\"\|'destructive'" web/src/pages/home/StaleNotice.tsx` prints at least 1.
+2. `grep -c "StaleNotice" web/src/pages/home/StaleAlert.tsx` prints at least 2 and `grep -c "<Alert variant={isStale" web/src/pages/home/StaleAlert.tsx` prints 0.
+3. `grep -c "stale_after\|SKEW_MS\|data-clock-skew" web/src/pages/home/StaleAlert.tsx` prints at least 3 (the rules stay where they are).
+4. `grep -c "data-stale" web/src/pages/home/StaleNotice.tsx` prints at least 1.
+5. `grep -c "data-stale\|data-clock-skew" web/test/pages/home/StaleAlert.test.tsx` prints at least 2.
+6. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/pages/home/StaleNotice.tsx$' -e '^web/src/pages/home/StaleAlert.tsx$' -e '^web/test/pages/home/StaleNotice.test.tsx$' -e '^web/test/pages/home/StaleAlert.test.tsx$' | wc -l` prints 0.
+7. The result matches docs/design/web-shell-layout.md#4 stale-text.
+
+### 5 home-grid
+
+Module: web. Size: S.
+Files: `web/src/pages/home/HomePage.tsx`, `web/test/pages/home/HomePage.test.tsx`, `docs/adr/0034-frontend-stack.md`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: none.
+Goal: Decision 1. The card list of `HomePage` (`:80`) becomes `grid grid-cols-1 gap-4 lg:grid-cols-2`; each card sits in a `min-w-0` cell, macro and market one cell each, household, held companies and options `lg:col-span-2`. `App.tsx` is not edited and has no max width. The sentence "desktop content column 720 px" of ADR 0034 "Accessibility and phone rules" (`:181`) is replaced by "desktop uses the full width; cards may form a responsive grid from `lg` (owner 2026-11-10, docs/design/web-shell-layout.md#Decisions)"; nothing else of the ADR changes.
+按 frontend-stack：用 Tailwind `grid lg:grid-cols-2` and `min-w-0` on the shadcn `Card` cells 做 the responsive card grid。
+Acceptance:
+1. `grep -c 'lg:grid-cols-2' web/src/pages/home/HomePage.tsx` prints 1 and `grep -c 'flex flex-col gap-4' web/src/pages/home/HomePage.tsx` prints 0.
+2. `grep -c 'lg:col-span-2' web/src/pages/home/HomePage.tsx` prints 3 and `grep -c 'min-w-0' web/src/pages/home/HomePage.tsx` prints at least 5.
+3. `git diff $(git merge-base HEAD origin/main) -- web/src/shell/App.tsx | wc -l` prints 0 and `grep -c 'max-w-' web/src/shell/App.tsx` prints 0.
+4. `grep -c 'desktop content column 720 px' docs/adr/0034-frontend-stack.md` prints 0 and `grep -c 'web-shell-layout' docs/adr/0034-frontend-stack.md` prints at least 1.
+5. `grep -c 'lg:grid-cols-2' web/test/pages/home/HomePage.test.tsx` prints at least 1.
+6. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/pages/home/HomePage.tsx$' -e '^web/test/pages/home/HomePage.test.tsx$' -e '^docs/adr/0034-frontend-stack.md$' | wc -l` prints 0.
+7. Judged from the code and this file: at 390 px the page is one column with the 16 px gutter of `App.tsx`; from 1024 px macro and market are side by side and the other three cards run the full width.
+8. The result matches docs/design/web-shell-layout.md#5 home-grid.
+
+### 6 chart-component
+
+Module: web. Size: M.
+Files: `web/src/charts/Chart.tsx`, `web/src/charts/spec.ts`, `web/src/pages/home/MarketSummaryCard.tsx`, `web/src/pages/household/HouseholdPage.tsx`, `web/test/charts/Chart.test.tsx`, `web/test/pages/home/MarketSummaryCard.test.tsx`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: none.
+Goal: Decision 5 (a) to (i) in the one `Chart`. `spec.ts` gains `unit?: string` and `band?: { name: string; low: ChartPoint[]; high: ChartPoint[] }`. `MarketSummaryCard.tsx` fills `band` and drops its two dashed series. `HouseholdPage.tsx` drops its two `className` overrides. The nine callers that use the default (`OptionsSummaryCard`, `indicator/view`, `ledger/SectionTables`, `macro_rates/view`, `market/MarketPage`, `report/global-assets`, `structuredetail/Payoff`, and the rest of `HouseholdPage`) are not edited and take the new size and look from `Chart.tsx`. `Chart.tsx` stays under 250 lines.
+按 frontend-stack：用 shadcn `ChartContainer`, `ChartTooltip`, `ChartLegend` (recharts) 做 every chart, with `ComposedChart`, `Area` for the band, `Line type="linear"`, `YAxis tickCount={5}`, `LabelList` for the last value。
+Acceptance:
+1. `grep -c 'type="linear"' web/src/charts/Chart.tsx` prints at least 1 and `grep -c 'monotone' web/src/charts/Chart.tsx` prints 0.
+2. `grep -c '<YAxis' web/src/charts/Chart.tsx` prints at least 1 and `grep -c ' hide' web/src/charts/Chart.tsx` prints 0 and `grep -c 'tickCount={5}' web/src/charts/Chart.tsx` prints at least 1.
+3. `grep -c '<Area' web/src/charts/Chart.tsx` prints at least 1 and `grep -c 'fillOpacity' web/src/charts/Chart.tsx` prints at least 1 and `grep -c 'ComposedChart' web/src/charts/Chart.tsx` prints at least 2.
+4. `grep -c 'h-\[180px\] md:h-\[220px\]' web/src/charts/Chart.tsx` prints 1 and `grep -c 'aspect-\|min-h-56' web/src/charts/Chart.tsx web/src/pages/household/HouseholdPage.tsx | awk -F: '{s+=$2} END {print s}'` prints 0.
+5. `grep -c 'verticalAlign="top"' web/src/charts/Chart.tsx` prints at least 1 and `grep -c '#[0-9a-fA-F]\{3,6\}' web/src/charts/Chart.tsx` prints 0.
+6. `grep -c 'unit?:\|band?:' web/src/charts/spec.ts` prints 2.
+7. `grep -c 'dashed: true' web/src/pages/home/MarketSummaryCard.tsx` prints 0 and `grep -c 'band' web/src/pages/home/MarketSummaryCard.tsx` prints at least 2.
+8. `grep -c 'LabelList\|label=' web/src/charts/Chart.tsx` prints at least 2 (bar labels stay, the last-value label is added) and `grep -c 'ChartTooltip' web/src/charts/Chart.tsx` prints at least 2.
+9. `grep -c "linear\|band\|tick" web/test/charts/Chart.test.tsx` prints at least 3 and `grep -c "band" web/test/pages/home/MarketSummaryCard.test.tsx` prints at least 1.
+10. `wc -l < web/src/charts/Chart.tsx` prints a number below 250.
+11. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/charts/Chart.tsx$' -e '^web/src/charts/spec.ts$' -e '^web/src/pages/home/MarketSummaryCard.tsx$' -e '^web/src/pages/household/HouseholdPage.tsx$' -e '^web/test/charts/Chart.test.tsx$' -e '^web/test/pages/home/MarketSummaryCard.test.tsx$' | wc -l` prints 0.
+12. The result matches docs/design/web-shell-layout.md#6 chart-component.
+
+### 7 quote-chart-on-chart
+
+Module: web. Size: S.
+Files: `web/src/pages/optiondata/QuoteChart.tsx`, `web/test/pages/optiondata/OptionDataPage.test.tsx`
+Design: docs/design/web-shell-layout.md#Decisions
+Order: after 6.
+Goal: the one chart outside `Chart` (the quote series bid, ask, last by slot, `QuoteChart.tsx:17-40`) is a `Chart` of kind line (three series, `null` for a missing cell, `text` from the cell) and keeps the `data-slots` attribute of its wrapper; it no longer imports `recharts`.
+按 frontend-stack：用 `web/src/charts/Chart.tsx` (shadcn chart over recharts) 做 the quote series chart。
+Acceptance:
+1. `grep -c "from 'recharts'" web/src/pages/optiondata/QuoteChart.tsx` prints 0 and `grep -c "<Chart$\|<Chart " web/src/pages/optiondata/QuoteChart.tsx` prints at least 1.
+2. `grep -c 'data-slots' web/src/pages/optiondata/QuoteChart.tsx` prints at least 1 and `grep -c 'aspect-' web/src/pages/optiondata/QuoteChart.tsx` prints 0.
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^web/src/pages/optiondata/QuoteChart.tsx$' -e '^web/test/pages/optiondata/OptionDataPage.test.tsx$' | wc -l` prints 0.
+4. The result matches docs/design/web-shell-layout.md#7 quote-chart-on-chart.
+
+## Checked by CI
+
+ci-web for every entry: `pnpm install --frozen-lockfile`, `tsc`, `eslint`, `vitest` (the test files named in the entry's Files, plus the whole `web/test` run), `pnpm build`, and the dependency check (`scripts/check-frontend-deps.mjs`: no package added, no `@radix-ui/*`). Entry 1 adds no test (copied source). Entries 2 to 7: the new and changed vitest cases of their Files, for example `data-table.test.tsx` (a gap cell shows "—" and keeps its text as `sr-only`; a text column has no sort button; a value column sorts), `missing-value.test.tsx` (the tooltip and the popover carry the text), `TopNav.test.tsx` (the sheet opens and lists eleven items), `StaleAlert.test.tsx` (grey text when not stale, destructive when past `stale_after`, clock skew), `HomePage.test.tsx` (five cards in a grid), `Chart.test.tsx` (linear, band `Area`, y-axis ticks, last-value label). Playwright layout at 390 px and 1440 px (ADR "Layout tests") is run by ci-web where the runner has Chromium. `Contracts: unchanged` on all seven pull requests.
+
+## Decided by the dispatcher (2026-11-10)
+
+These were decided by the dispatcher, not by the owner; the owner may overturn them.
+
+1. 12 px axis and legend text in the charts (Decision 5 i), against "text at least 16 px" of ADR 0034. Reason: board 1 draws them at about 12 px and the owner's complaint is the look of the charts; the body text and table text stay at the ADR size.
+2. Two grid columns from `lg`, not three (the owner said 2 to 3). Reason: board 1 shows two; a third column makes the held-companies table scroll inside its card at 1280 px.
+3. The top bar stays outside the content width. Reason: it is the site's navigation, and with no max width there is no column to be inside of.
+4. The dispatcher's 220 px / 180 px chart heights are the owner's message; the 160 px of the board is the measured value (Decision 5 a).
+
+## Left out
+
+- Pages other than home keep one full-width stack (`space-y-6`, tables full width): a grid for market, household, positions, options waits until the owner has seen the home grid; then one entry per page.
+- Go page-model strings (`internal/pages/**`, for example `internal/pages/market_page/strings.go`): not changed. The sentence in the tooltip is whatever Python sends; making it shorter is a Go design. The same holds for the red stale bar of `/market` ("数据日 11-05"): when the data is stale it stays red and its text is the builder's.
+- The options page shows the issuer as `cik:0000320193` and "缺 spot" in cells (comparison finding): data of the builder (`docs/design/option-page-builders.md`), not of this layout.
+- The sample shells (`cmd/ot/sample.go`, `SampleBanner.tsx`) and the slider scale (0 to 100 against board 8's -2 to +2): another design.
+- What was not measured from the boards: the heights of the household, payoff, ledger and quote charts (only board 1's market and options charts were measured, by eye from the 720 px PNG: about 160 px and 180 px); the board's real card widths on a desktop (boards are 720 px sheets); the 390 px overflow cause (the screenshot at 390 px is cut on the right; the bar's `overflow-x-auto` and wide badges are suspects, not proven; entries 2 and 3 remove both, a layout test at 390 px confirms).
+- ADR 0034 text names ECharts and excludes shadcn `chart`; the code and `frontend-whitelist.json:21` use recharts through the shadcn chart. This design follows the code and does not amend that part of the ADR; an ADR amendment for charts is the owner's.
+- Motion, a Storybook, a tooltip on touch for charts: not added.
