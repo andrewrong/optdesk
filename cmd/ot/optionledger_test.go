@@ -12,7 +12,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -73,8 +72,8 @@ type ledgerRig struct {
 	*rig
 	st      *ledgerFakeStore
 	opened  []string
-	stores  jobs.OptionLedgerStores
-	cfg     jobs.OptionLedgerConfig
+	stores  optionledgerjob.OptionLedgerStores
+	cfg     optionledgerjob.OptionLedgerConfig
 	built   bool
 	tokens  []string
 	flexErr error
@@ -112,7 +111,7 @@ func newLedgerRig(t *testing.T, env string, real bool) *ledgerRig {
 	if real {
 		d.newOptionLedgerJob = optionledgerjob.New
 	} else {
-		d.newOptionLedgerJob = func(s jobs.OptionLedgerStores, c jobs.OptionLedgerConfig, _ clock.Clock) (contracts.Job, error) {
+		d.newOptionLedgerJob = func(s optionledgerjob.OptionLedgerStores, c optionledgerjob.OptionLedgerConfig, _ clock.Clock) (contracts.Job, error) {
 			l.stores, l.cfg, l.built = s, c, true
 			return namedJob{id: "option_ledger"}, nil
 		}

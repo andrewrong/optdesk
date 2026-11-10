@@ -95,7 +95,7 @@ describe('MacroCard (macro_summary v2)', () => {
       ok.card.events.map((e) => [
         e.when_text,
         e.name_text,
-        typeof e.previous === 'string' ? e.previous : e.previous.text,
+        typeof e.previous === 'string' ? e.previous : expect.stringContaining(e.previous.text),
       ]),
     )
   })
@@ -124,7 +124,8 @@ describe('MacroCard (macro_summary v2)', () => {
         expect(cells[index]).toBe(event.previous)
       } else {
         expect(typeof event.previous).toBe('object')
-        expect(cells[index]).toBe((event.previous as { text: string }).text)
+        expect(cells[index]).toContain('—')
+        expect(cells[index]).toContain((event.previous as { text: string }).text)
       }
     })
   })

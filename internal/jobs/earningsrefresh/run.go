@@ -56,6 +56,7 @@ type job struct {
 	r        store.EarningsDateReader
 	entries  []jobs.WatchEntry
 	clk      clock.Clock
+	loc      *time.Location
 	tr       symbol.Translator
 	log      *slog.Logger
 }
@@ -126,6 +127,10 @@ func NewWithSymbols(
 	if err1 != nil || err2 != nil || m.Schedule.Calendar == "" {
 		return nil, errors.New("earningsrefresh: manifest: schedule is invalid")
 	}
+	loc, err := time.LoadLocation(m.Schedule.Zone)
+	if err != nil {
+		return nil, errors.New("earningsrefresh: manifest: zone is invalid")
+	}
 	seen := map[string]bool{}
 	for _, e := range entries {
 		if e.Issuer == "" || seen[e.Issuer] {
@@ -136,7 +141,7 @@ func NewWithSymbols(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, tr: tr, log: slog.Default()}, nil
+	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, loc: loc, tr: tr, log: slog.Default()}, nil
 }
 
 // ID is the job id of the manifest.
@@ -225,6 +230,10 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 		te := &typedError{contracts.Permanent, "earningsrefresh: bad day"}
 		j.logFailure("bad_day", te)
 		return contracts.JobResult{Err: te}
+	}
+	// The vendors answer for today only: a day other than the clock's date in the manifest zone is an explained gap.
+	if string(day) != j.clk.Now().In(j.loc).Format(dayLayout) {
+		return contracts.JobResult{Err: &typedError{contracts.NoValue, "earningsrefresh: wrong day"}}
 	}
 	have, vendorRow, failedBefore, err := j.readDay(ctx, day)
 	if err != nil {

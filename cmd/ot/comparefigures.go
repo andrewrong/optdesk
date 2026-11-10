@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/cutover"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -90,14 +89,14 @@ func compareFigures(a *app, args []string) error {
 
 // runCompareFigures passes only the reader of st to cmp, prints each figure that is not checked and returns an
 // exitError of code 1 when the report is not OK.
-func runCompareFigures(ctx context.Context, out io.Writer, reportPath string, cmp jobs.CompareFiguresFunc, in figureInputs, st store.ReadingReader) error {
+func runCompareFigures(ctx context.Context, out io.Writer, reportPath string, cmp cutover.CompareFiguresFunc, in figureInputs, st store.ReadingReader) error {
 	rep, err := cmp(ctx, in.old, in.register, in.classes, in.explained, readerOnly{st})
 	if err != nil {
 		return &exitError{code: 1, err: fmt.Errorf("compare-figures: %w", err)}
 	}
 	file := figureReportFile{OK: rep.OK, Results: []figureReportLine{}}
 	for _, r := range rep.Results {
-		if r.Status == jobs.FigureChecked {
+		if r.Status == cutover.FigureChecked {
 			continue
 		}
 		_, _ = fmt.Fprintf(out, "%s %d %s %s\n", r.ID, r.Version, r.Status, r.Reason)

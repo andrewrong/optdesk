@@ -16,7 +16,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
+	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
@@ -149,7 +149,7 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 		return nil, fmt.Errorf("open option_ledger store with %s failed", store.DSNEnvOptionLedger)
 	}
 	extra.addCloser(st)
-	stores := jobs.OptionLedgerStores{Ledger: st, Read: st, Sections: a.sectionsStore(ctx, cfg.ledgerDSN, f, extra)}
+	stores := optionledgerjob.OptionLedgerStores{Ledger: st, Read: st, Sections: a.sectionsStore(ctx, cfg.ledgerDSN, f, extra)}
 	j, err := f.d.newOptionLedgerJob(stores, lc, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build option_ledger job failed: %w", err)
@@ -159,10 +159,10 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 
 // flexConfig maps the file to the config of the job. A login whose variable is empty gets a nil Source and a
 // logged reason; an account whose variable is empty is left out of the allow-list with one.
-func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactory) (jobs.OptionLedgerConfig, error) {
-	lc := jobs.OptionLedgerConfig{Accounts: map[string]string{}}
+func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactory) (optionledgerjob.OptionLedgerConfig, error) {
+	lc := optionledgerjob.OptionLedgerConfig{Accounts: map[string]string{}}
 	for _, l := range ff.Logins {
-		run := jobs.FlexRun{Name: l.Name, QueryIDs: l.TradeQueries, Required: l.Required}
+		run := optionledgerjob.FlexRun{Name: l.Name, QueryIDs: l.TradeQueries, Required: l.Required}
 		token := env[l.TokenEnv]
 		if token == "" {
 			a.log.Warn("flex login left out", "component", "ot", "job", jobOptionLedger,

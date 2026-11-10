@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/cutover"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -27,8 +27,8 @@ func cfFiles() figureInputs {
 	return figureInputs{strings.NewReader(""), strings.NewReader(""), strings.NewReader(""), strings.NewReader("")}
 }
 
-func cfReturning(rep jobs.FigureReport, err error) jobs.CompareFiguresFunc {
-	return func(context.Context, io.Reader, io.Reader, io.Reader, io.Reader, store.ReadingReader) (jobs.FigureReport, error) {
+func cfReturning(rep cutover.FigureReport, err error) cutover.CompareFiguresFunc {
+	return func(context.Context, io.Reader, io.Reader, io.Reader, io.Reader, store.ReadingReader) (cutover.FigureReport, error) {
 		return rep, err
 	}
 }
@@ -37,13 +37,13 @@ func TestCompareFiguresGetsReaderOnly(t *testing.T) {
 	t.Parallel()
 	fake := &readOnlyFake{}
 	called := false
-	cmp := func(ctx context.Context, _, _, _, _ io.Reader, rd store.ReadingReader) (jobs.FigureReport, error) {
+	cmp := func(ctx context.Context, _, _, _, _ io.Reader, rd store.ReadingReader) (cutover.FigureReport, error) {
 		called = true
 		if _, ok := rd.(store.ReadingWriter); ok {
 			t.Error("CompareFigures got a reader that can write")
 		}
 		_, _ = rd.LatestReadings(ctx, "n", "k", "s", "2026-11-01", "2026-11-02")
-		return jobs.FigureReport{OK: true}, nil
+		return cutover.FigureReport{OK: true}, nil
 	}
 	var out bytes.Buffer
 	if err := runCompareFigures(context.Background(), &out, "", cmp, cfFiles(), fake); err != nil {
@@ -58,13 +58,13 @@ func TestCompareFiguresExit(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
-		rep  jobs.FigureReport
+		rep  cutover.FigureReport
 		err  error
 		code int
 	}{
-		{"ok", jobs.FigureReport{OK: true}, nil, 0},
-		{"not ok", jobs.FigureReport{OK: false, Results: []jobs.FigureResult{{ID: "a", Version: 1, Status: jobs.FigureUnexplained}}}, nil, 1},
-		{"error", jobs.FigureReport{}, errors.New("unclassified ids: x"), 1},
+		{"ok", cutover.FigureReport{OK: true}, nil, 0},
+		{"not ok", cutover.FigureReport{OK: false, Results: []cutover.FigureResult{{ID: "a", Version: 1, Status: cutover.FigureUnexplained}}}, nil, 1},
+		{"error", cutover.FigureReport{}, errors.New("unclassified ids: x"), 1},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -83,10 +83,10 @@ func TestCompareFiguresExit(t *testing.T) {
 
 func TestCompareFiguresPrintsNoValue(t *testing.T) {
 	t.Parallel()
-	rep := jobs.FigureReport{OK: true, Results: []jobs.FigureResult{
-		{ID: "home.a", Version: 1, Status: jobs.FigureChecked},
-		{ID: "home.b", Version: 2, Status: jobs.FigureUnchecked, Reason: "path_not_found"},
-		{ID: "home.c", Version: 1, Status: jobs.FigureExplained, Reason: "rounding"},
+	rep := cutover.FigureReport{OK: true, Results: []cutover.FigureResult{
+		{ID: "home.a", Version: 1, Status: cutover.FigureChecked},
+		{ID: "home.b", Version: 2, Status: cutover.FigureUnchecked, Reason: "path_not_found"},
+		{ID: "home.c", Version: 1, Status: cutover.FigureExplained, Reason: "rounding"},
 	}}
 	report := filepath.Join(t.TempDir(), "r.json")
 	var out bytes.Buffer

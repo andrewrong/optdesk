@@ -13,6 +13,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/markpg"
 )
 
+// newPositionMarksFunc is the constructor of the position_marks job (positionmarks.NewPositionMarksFunc), named here
+// so that wire.go need not import the job package.
+type newPositionMarksFunc = positionmarks.NewPositionMarksFunc
+
 // markAliases returns the aliases position_marks marks: the labels of OT_ACCOUNT_SOCKETS, the main one first and
 // the others sorted, the same aliases account_capture captures.
 func markAliases(sockets map[string]string, main string) []string {

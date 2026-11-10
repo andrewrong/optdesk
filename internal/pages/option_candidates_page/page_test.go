@@ -53,3 +53,34 @@ func TestConfigContract(t *testing.T) {
 		}
 	}
 }
+
+type fakeNames struct{}
+
+func (fakeNames) InstrumentNames(context.Context, []int64) ([]store.InstrumentName, error) {
+	return nil, nil
+}
+
+func TestConfigNamesField(t *testing.T) {
+	t.Parallel()
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	day := contracts.Day("2026-01-02")
+	for _, names := range []store.InstrumentNameReader{fakeNames{}, nil} {
+		c := option_candidates_page.Config{
+			RunID: "r", BuildID: "b", Scope: "s",
+			Zone: time.UTC, Candidates: fakeCandidates{}, Names: names,
+		}
+		for name, build := range map[string]func() ([]byte, error){
+			"Build": func() ([]byte, error) {
+				return option_candidates_page.Build(context.Background(), c, noSeries{}, day, at)
+			},
+			"NewPage": func() ([]byte, error) {
+				return option_candidates_page.NewPage(c).Build(context.Background(), noSeries{}, day, at)
+			},
+		} {
+			out, err := build()
+			if err != nil || !json.Valid(out) {
+				t.Fatalf("%s (names %T) = %q, %v", name, names, out, err)
+			}
+		}
+	}
+}

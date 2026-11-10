@@ -76,7 +76,7 @@ func dryApp(t *testing.T, ran *[]string) (*app, *strings.Builder) {
 	t.Helper()
 	a, _ := testApp(t, "")
 	mu := &sync.Mutex{}
-	build := func(id string, keys []contracts.ExpectedKey, rows map[string][]int, errs map[string]contracts.ErrorKind) jobs.NewOptionEodFunc {
+	build := func(id string, keys []contracts.ExpectedKey, rows map[string][]int, errs map[string]contracts.ErrorKind) optioneod.NewOptionEodFunc {
 		return func(_ broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, clk clock.Clock) (contracts.Job, error) {
 			a, err := res.ResolveInstrument(context.Background(), store.Identifier{Scheme: "x", Value: "1"}, store.InstrumentSpec{}, nil)
 			b, _ := res.ResolveInstrument(context.Background(), store.Identifier{Scheme: "x", Value: "2"}, store.InstrumentSpec{}, nil)
