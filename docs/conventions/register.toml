@@ -2031,7 +2031,8 @@ A ratio that cannot be formed (a missing figure, a denominator at or below zero,
 implemented_by = [
   "internal/compute/valuation.Diagnosis",
 ]
-source_hash = "5472f2e1834ee93bf0f97c9b7ba49aec629b7cfa390a424341f56a3ace0c2370"
+source_hash = "d4e8c169990a8de709a792f5c863dc08f43bacf17c4e8f542aabcae78a8f1bab"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
-history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 1, 11 and 12 (issue 1163); parameters of option-trader diagnosis_v1.toml (blob 643178784313), ported in meaning."]
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 1, 11 and 12 (issue 1163); parameters of option-trader diagnosis_v1.toml (blob 643178784313), ported in meaning.",
+  "2026-11-10 v1: source_hash changed by issue 1207: the diagnosis adds the figures <primary>_usual_low and <primary>_usual_high (the lowest and the highest primary figure; missing_input too_short with fewer than 5 years), Decisions 11 and 14."]

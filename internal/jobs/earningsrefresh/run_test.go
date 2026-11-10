@@ -3,6 +3,7 @@ package earningsrefresh
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -21,13 +22,18 @@ func (fixedClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 30, 0, 0, 
 
 // memStore is a writer and a reader over one slice; a key that exists is left as it is.
 type memStore struct {
-	mu   sync.Mutex
-	rows []contracts.EarningsDate
+	mu       sync.Mutex
+	rows     []contracts.EarningsDate
+	readErr  error
+	writeErr error
 }
 
 func (m *memStore) InsertEarningsDate(_ context.Context, r contracts.EarningsDate) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.writeErr != nil {
+		return m.writeErr
+	}
 	for _, x := range m.rows {
 		if x.Issuer == r.Issuer && x.Attempt == r.Attempt && x.ObservedOn.Equal(r.ObservedOn.Time) {
 			return nil
@@ -40,6 +46,9 @@ func (m *memStore) InsertEarningsDate(_ context.Context, r contracts.EarningsDat
 func (m *memStore) EarningsDates(_ context.Context, issuer string, from, to contracts.Day) ([]contracts.EarningsDate, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.readErr != nil {
+		return nil, m.readErr
+	}
 	var out []contracts.EarningsDate
 	for _, x := range m.rows {
 		d := x.ObservedOn.Format(dayLayout)
@@ -405,5 +414,78 @@ func TestListedListingError(t *testing.T) {
 	r := byIssuer(st, "cik:9")
 	if len(r) != 1 || r[0].Status != "listed" || r[0].Symbol != "BRK.B" {
 		t.Fatalf("row %+v", r)
+	}
+}
+
+// recHandler is a slog.Handler that keeps the attributes of every record it receives.
+type recHandler struct {
+	mu   *sync.Mutex
+	recs *[]map[string]string
+}
+
+func (h recHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (h recHandler) Handle(_ context.Context, r slog.Record) error {
+	m := map[string]string{"msg": r.Message, "level": r.Level.String()}
+	r.Attrs(func(a slog.Attr) bool { m[a.Key] = a.Value.String(); return true })
+	h.mu.Lock()
+	*h.recs = append(*h.recs, m)
+	h.mu.Unlock()
+	return nil
+}
+func (h recHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h recHandler) WithGroup(string) slog.Handler      { return h }
+
+type leakyErr struct{}
+
+func (leakyErr) Error() string             { return "store said 99999" }
+func (leakyErr) Kind() contracts.ErrorKind { return contracts.Retryable }
+
+func TestRunFailureLogsStepKind(t *testing.T) {
+	t.Parallel()
+	good := func() map[string]sources.EarningsSource {
+		return map[string]sources.EarningsSource{"US": &fakeSource{}}
+	}
+	cases := []struct {
+		name, step, kind string
+		day              contracts.Day
+		srcs             map[string]sources.EarningsSource
+		entry            jobs.WatchEntry
+		setup            func(st *memStore)
+	}{
+		{"bad_day", "bad_day", "permanent", "not-a-day", good(), us("cik:1", "AAPL"), func(*memStore) {}},
+		{"read_day", "read_day", "retryable", day, good(), us("cik:1", "AAPL"), func(st *memStore) { st.readErr = leakyErr{} }},
+		{"override_date", "override_date", "permanent", day, good(), func() jobs.WatchEntry {
+			e := us("cik:1", "AAPL")
+			e.ReportDateOverride = "nope"
+			return e
+		}(), func(*memStore) {}},
+		{"write", "write", "retryable", day, good(), us("cik:1", "AAPL"), func(st *memStore) { st.writeErr = leakyErr{} }},
+		{"source_failed", "source_failed", "permanent", day,
+			map[string]sources.EarningsSource{"US": &fakeSource{err: errors.New("key 99999")}}, us("cik:1", "AAPL"), func(*memStore) {}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			st := &memStore{}
+			c.setup(st)
+			j := build(t, c.srcs, st, c.entry)
+			var recs []map[string]string
+			j.(*job).log = slog.New(recHandler{&sync.Mutex{}, &recs})
+			if res := j.Run(context.Background(), c.day, nil); res.Err == nil {
+				t.Fatal("want an error")
+			}
+			if len(recs) != 1 {
+				t.Fatalf("records = %v", recs)
+			}
+			m := recs[0]
+			if m["msg"] != "run failed" || m["level"] != "WARN" || m["step"] != c.step || m["kind"] != c.kind || len(m) != 4 {
+				t.Fatalf("record = %v", m)
+			}
+			for _, v := range m {
+				if strings.Contains(v, "99999") {
+					t.Fatalf("record leaks error text: %v", m)
+				}
+			}
+		})
 	}
 }
