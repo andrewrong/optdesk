@@ -121,11 +121,12 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 		},
 		readEnv: func(string) (map[string]string, error) {
 			return map[string]string{store.DSNEnvLoader: sentDSN, store.DSNEnvPages: sentDSN, store.DSNEnvRunner: sentDSN,
-				store.DSNEnvSeriesFred: sentDSN, "FRED_API_KEY": "k", "VERIFIER": sentVerifier}, nil
+				store.DSNEnvSeriesFred: sentDSN, store.DSNEnvAccount: sentDSN, "FRED_API_KEY": "k", "VERIFIER": sentVerifier}, nil
 		},
 		openSessionDay: func(context.Context, string) (store.SessionDayStore, error) { return nil, leakErr() },
 		openLedger:     func(context.Context, string) (store.OpsLedger, error) { return nil, leakErr() },
 		openSeries:     func(context.Context, string) (store.SeriesStore, error) { return nil, leakErr() },
+		openAccount:    func(context.Context, string) (store.AccountStore, error) { return nil, leakErr() },
 		setup:          func(context.Context, store.SetupConfig) error { return leakErr() },
 		migrateUp:      func(context.Context, string, fs.FS) error { return leakErr() },
 	}
@@ -144,14 +145,15 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 
 // leakRows is the table of commands that take a DSN, with the arguments that reach the failing step.
 var leakRows = map[string][]string{
-	"calendar":    {"load", "testdata/calendar_synthetic.json"},
-	"migrate":     {"--dir", "testdata/migrate"},
-	"setup":       {"pg"},
-	"page":        {"--day", "2026-03-04"},
-	"run-once":    {"--day", "2026-03-04"},
-	"scheduler":   nil,
-	"backfill":    {"--day", "2026-03-04"},
-	"series-load": {"--series", "SP500", "--from", "2021-01-01", "--to", "2026-01-01"},
+	"calendar":       {"load", "testdata/calendar_synthetic.json"},
+	"migrate":        {"--dir", "testdata/migrate"},
+	"setup":          {"pg"},
+	"page":           {"--day", "2026-03-04"},
+	"run-once":       {"--day", "2026-03-04"},
+	"scheduler":      nil,
+	"backfill":       {"--day", "2026-03-04"},
+	"account-import": {"testdata/accountimport", "--through", "2026-11-06"},
+	"series-load":    {"--series", "SP500", "--from", "2021-01-01", "--to", "2026-01-01"},
 }
 
 // leakExcluded names the commands that have no row, each with its reason.
