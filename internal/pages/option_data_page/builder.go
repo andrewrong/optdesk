@@ -252,7 +252,8 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 }
 
 // decorate fills the optional fields of the chain rows and the underlying: terms, earnings, approximate US dollars.
-func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string, latest contracts.OptionEod, rows []contracts.OptionEod, vm *viewModel) error {
+func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string,
+	latest contracts.OptionEod, rows []contracts.OptionEod, vm *viewModel) error {
 	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
 		return err
 	}
