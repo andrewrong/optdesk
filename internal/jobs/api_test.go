@@ -727,8 +727,7 @@ func TestSymbolCtorTypes(t *testing.T) {
 	}
 }
 
-// TestSymbolWatchCtorType: NewOptionEodWatchSymbolsFunc carries the translator after the clock, and a nil
-// translator is accepted (no translation).
+// TestSymbolWatchCtorType: NewOptionEodWatchSymbolsFunc takes the translator last; nil means none.
 func TestSymbolWatchCtorType(t *testing.T) {
 	t.Parallel()
 	var got []symbol.Translator
@@ -744,7 +743,7 @@ func TestSymbolWatchCtorType(t *testing.T) {
 		}
 	}
 	if len(got) != 2 || got[0] != (fakeTranslator{}) || got[1] != nil {
-		t.Fatalf("translators passed through: %v", got)
+		t.Fatalf("translators: %v", got)
 	}
 }
 

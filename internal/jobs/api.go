@@ -140,7 +140,9 @@ type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.O
 // NewOptionEodWatchSymbolsFunc is NewOptionEodWatchFunc with a symbol.Translator as the last argument
 // (internal/jobs/optioneod.NewWithWatchSymbols). A nil translator means no translation: the job behaves as it
 // does without one, including its own matching of share-class separators.
-type NewOptionEodWatchSymbolsFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock, symbol.Translator) (contracts.Job, error)
+type NewOptionEodWatchSymbolsFunc func(
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock, symbol.Translator,
+) (contracts.Job, error)
 
 // NewOptionEodHeldFunc is the constructor of the option_eod job that also captures the contracts of the short
 // calls the account holds, whatever their DTE (declaration only; its implementation is a later issue). The
