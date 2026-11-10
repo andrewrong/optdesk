@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 const runToml = `
@@ -536,5 +537,19 @@ func TestChainNoSymbolClassFailsKey(t *testing.T) {
 	}
 	if len(r.w.calls) != 0 {
 		t.Fatal("rows written")
+	}
+}
+
+type noSpace struct{ symbol.Translator }
+
+func (noSpace) OSIRoot(s string) string { return strings.ReplaceAll(s, " ", "") }
+
+func TestRootNilTranslator(t *testing.T) {
+	t.Parallel()
+	if got := (&job{}).root("BRK B"); got != "BRK B" {
+		t.Fatalf("nil translator: got %q", got)
+	}
+	if got := (&job{sym: noSpace{}}).root("BRK B"); got != "BRKB" {
+		t.Fatalf("translator: got %q", got)
 	}
 }

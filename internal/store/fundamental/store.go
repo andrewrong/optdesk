@@ -5,11 +5,14 @@ package fundamental
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -78,6 +81,8 @@ func Open(ctx context.Context, dsn string) (store.FactStore, error) {
 func (s *factStore) Close() error { return s.db.Close() }
 
 // InsertFacts appends the rows in one transaction; a row whose eight-column key exists is left as it is.
+// A database error of SQLSTATE class 23 (a constraint violation) is Permanent, since it repeats on every
+// attempt; every other error is Retryable.
 func (s *factStore) InsertFacts(ctx context.Context, rows []contracts.FundamentalFact) error {
 	stmts := make([]stmt, 0, len(rows))
 	for _, r := range rows {
@@ -97,7 +102,11 @@ func (s *factStore) InsertFacts(ctx context.Context, rows []contracts.Fundamenta
 		return nil
 	}
 	if err := s.db.ExecAll(ctx, stmts); err != nil {
-		return retryable(fmt.Errorf("fundamental: insert: %w", err))
+		wrapped := fmt.Errorf("fundamental: insert: %w", err)
+		if isConstraintViolation(err) {
+			return permanent(wrapped)
+		}
+		return retryable(wrapped)
 	}
 	return nil
 }
@@ -149,6 +158,12 @@ func (e *typedErr) Kind() contracts.ErrorKind { return e.kind }
 
 func retryable(err error) error { return &typedErr{kind: contracts.Retryable, cause: err} }
 func permanent(err error) error { return &typedErr{kind: contracts.Permanent, cause: err} }
+
+// isConstraintViolation reports whether err holds a PostgreSQL error of SQLSTATE class 23.
+func isConstraintViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && strings.HasPrefix(pe.Code, "23")
+}
 
 // pgDB is the pgx adapter of database.
 type pgDB struct{ pool *pgxpool.Pool }

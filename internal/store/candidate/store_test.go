@@ -2,11 +2,15 @@ package candidate
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -20,14 +24,18 @@ var (
 // fakeDB keeps the argument lists of the inserted rows and replays them to the scan of a query, filtered by the
 // day and the kind the query is given and ordered as the query orders (rank first, nulls last, then the key).
 type fakeDB struct {
-	rows    [][]any
-	inserts int
-	lastSQL string
+	rows      [][]any
+	inserts   int
+	lastSQL   string
+	insertErr error
 }
 
 func (f *fakeDB) InsertAll(_ context.Context, sql string, rows [][]any) error {
 	f.inserts++
 	f.lastSQL = sql
+	if f.insertErr != nil {
+		return f.insertErr
+	}
 	f.rows = append(f.rows, rows...)
 	return nil
 }
@@ -101,8 +109,8 @@ func TestInsertQueryText(t *testing.T) {
 			t.Errorf("insert text holds %s: insert-only", bad)
 		}
 	}
-	if got := strings.Count(q, "$"); got != len(db.rows[0]) || got != 34 {
-		t.Errorf("placeholders = %d, args = %d, want 34 each", got, len(db.rows[0]))
+	if got := strings.Count(q, "$"); got != len(db.rows[0]) || got != 35 {
+		t.Errorf("placeholders = %d, args = %d, want 35 each", got, len(db.rows[0]))
 	}
 
 	none, err := s.InsertCandidates(context.Background(), nil)
@@ -182,5 +190,86 @@ func TestTwoRunsNewerWins(t *testing.T) {
 	}
 	if got[0].Rank == nil || *got[0].Rank != 1 || got[1].Rank != nil {
 		t.Errorf("ranked rows must come first: %v, %v", got[0].Rank, got[1].Rank)
+	}
+}
+
+func TestSettingsVersionRowMapping(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: &fakeDB{}}
+	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	in.SettingsVersion = ptr(int64(57))
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 {
+		t.Fatalf("read = %v, %v", got, err)
+	}
+	if got[0].SettingsVersion == nil || *got[0].SettingsVersion != 57 {
+		t.Errorf("settings version = %v, want 57", got[0].SettingsVersion)
+	}
+	if !strings.HasSuffix(columns, "computed_at, settings_version") {
+		t.Errorf("columns = %q; settings_version is the last column", columns)
+	}
+}
+
+func TestInsertCandidatesConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want contracts.ErrorKind
+	}{
+		{"plain", errors.New("boom"), contracts.Retryable},
+		{"class 40", &pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		{"class 08", &pgconn.PgError{Code: "08006"}, contracts.Retryable},
+	}
+	for _, code := range []string{"23502", "23503", "23505", "23514"} {
+		cases = append(cases,
+			struct {
+				name string
+				err  error
+				want contracts.ErrorKind
+			}{code, &pgconn.PgError{Code: code}, contracts.Permanent},
+			struct {
+				name string
+				err  error
+				want contracts.ErrorKind
+			}{code + " wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: code}), contracts.Permanent})
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s := &Store{db: &fakeDB{insertErr: tc.err}}
+			_, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))})
+			if err == nil {
+				t.Fatal("no error")
+			}
+			var te contracts.TypedError
+			if !errors.As(err, &te) {
+				t.Fatalf("not a TypedError: %v", err)
+			}
+			if te.Kind() != tc.want {
+				t.Errorf("kind = %v, want %v", te.Kind(), tc.want)
+			}
+		})
+	}
+}
+
+func TestNilSettingsVersionIsNull(t *testing.T) {
+	t.Parallel()
+	db := &fakeDB{}
+	s := &Store{db: db}
+	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
+		t.Fatal(err)
+	}
+	arg, ok := db.rows[0][34].(*int64)
+	if !ok || arg != nil {
+		t.Errorf("argument 35 = %#v, want a nil *int64 (null)", db.rows[0][34])
+	}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 || got[0].SettingsVersion != nil {
+		t.Errorf("read = %+v, %v; want a nil settings version", got, err)
 	}
 }

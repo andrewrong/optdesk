@@ -3,10 +3,13 @@ package account
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -81,7 +84,7 @@ func capture() store.Capture {
 	return store.Capture{
 		ID: "a:2026-11-06:run1", Alias: "a", At: time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC),
 		SessionDay: "2026-11-06", Status: "ok",
-		Values:    []store.AccountValue{{Tag: "NetLiquidation", Value: "100000.50", Currency: "USD"}, {Tag: "Cushion", Value: "0.8", Currency: "USD"}},
+		Values: []store.AccountValue{{Tag: "NetLiquidation", Value: "100000.50", Currency: "USD"}, {Tag: "Cushion", Value: "0.8", Currency: "USD"}},
 		Positions: []store.Position{{
 			Symbol: "XYZ", SecType: "option", Currency: "USD", Expiry: "2026-12-18", Strike: "50", Multiplier: "100",
 			Right: "put", ConID: 7, Quantity: "-2", AvgCost: "123.45",
@@ -251,5 +254,37 @@ func TestCloseClosesDatabase(t *testing.T) {
 	f := &fakeDB{}
 	if err := (&accountStore{db: f}).Close(); err != nil || !f.closed {
 		t.Fatal("not closed")
+	}
+}
+
+func TestWriteConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		err  error
+		want contracts.ErrorKind
+	}{
+		"not null":      {&pgconn.PgError{Code: "23502"}, contracts.Permanent},
+		"foreign key":   {&pgconn.PgError{Code: "23503"}, contracts.Permanent},
+		"unique":        {&pgconn.PgError{Code: "23505"}, contracts.Permanent},
+		"check":         {&pgconn.PgError{Code: "23514"}, contracts.Permanent},
+		"check wrapped": {fmt.Errorf("x: %w", &pgconn.PgError{Code: "23514"}), contracts.Permanent},
+		"serialization": {&pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		"deadlock":      {&pgconn.PgError{Code: "40P01"}, contracts.Retryable},
+		"connection":    {&pgconn.PgError{Code: "08006"}, contracts.Retryable},
+		"plain":         {errors.New("boom"), contracts.Retryable},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := &accountStore{db: &fakeDB{captureRows: 1, execErr: tc.err}}
+			err := s.WriteCapture(context.Background(), capture())
+			if err == nil || kind(t, err) != tc.want {
+				t.Fatalf("WriteCapture: %v", err)
+			}
+			err = s.WriteExecutions(context.Background(), "a", []store.Execution{{ExecID: "e1", SessionDay: "2026-11-06"}})
+			if err == nil || kind(t, err) != tc.want {
+				t.Fatalf("WriteExecutions: %v", err)
+			}
+		})
 	}
 }

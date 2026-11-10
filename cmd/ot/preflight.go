@@ -63,6 +63,7 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 // key it fails again until the process restarts. The two broker jobs share the one fresh dial of a pass.
 type prober struct {
 	w      wiring
+	log    *slog.Logger
 	hasKey bool
 
 	mu  sync.Mutex
@@ -75,22 +76,26 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		if !p.hasKey {
 			return nil, reasonNoFredKey
 		}
-		return p.built(p.w.factory.fred())
+		j, err := p.w.factory.fred()
+		return p.built(id, j, err)
 	case jobEarningsRefresh:
 		// the lines are read once at start, so a missing one keeps the job out until the process restarts
 		if p.w.earningsOff != "" {
 			return nil, p.w.earningsOff
 		}
-		return p.built(p.w.factory.earningsRefresh())
+		j, err := p.w.factory.earningsRefresh()
+		return p.built(id, j, err)
 	case jobOptionEod, jobQuoteSnapshot:
 		b, err := p.broker(ctx)
 		if err != nil {
 			return nil, reasonBrokerDown
 		}
 		if id == jobOptionEod {
-			return p.built(p.w.factory.optionEod(b))
+			j, err := p.w.factory.optionEod(b)
+			return p.built(id, j, err)
 		}
-		return p.built(p.w.factory.quoteSnapshot(b))
+		j, err := p.w.factory.quoteSnapshot(b)
+		return p.built(id, j, err)
 	case jobOptionEodJP:
 		// option_eod_jp checks the XTKS session for today before the broker
 		if r := xtksReason(ctx, p.w.cal, p.w.factory.clk); r != "" {
@@ -100,7 +105,8 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		if err != nil {
 			return nil, reasonBrokerDown
 		}
-		return p.built(p.w.factory.optionEodJP(b))
+		j, err := p.w.factory.optionEodJP(b)
+		return p.built(id, j, err)
 	}
 	return nil, "unknown job"
 }
@@ -117,8 +123,9 @@ func xtksReason(ctx context.Context, cal clock.Calendar, clk clock.Clock) string
 	return ""
 }
 
-func (p *prober) built(j contracts.Job, err error) (contracts.Job, string) {
+func (p *prober) built(id string, j contracts.Job, err error) (contracts.Job, string) {
 	if err != nil {
+		logBuildFailed(p.log, id, err)
 		return nil, reasonBuildJob
 	}
 	return j, ""
@@ -207,4 +214,9 @@ func withoutJob(js []contracts.Job, id string) []contracts.Job {
 		}
 	}
 	return out
+}
+
+// logBuildFailed leaves the cause of a failed job build in the log; the reason handed to the scheduler holds none.
+func logBuildFailed(log *slog.Logger, id string, err error) {
+	log.Warn("job build failed", "component", "ot", "job", id, "err", err)
 }
