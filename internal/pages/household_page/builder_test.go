@@ -238,8 +238,9 @@ func TestMarkBlocksAreMissingQuoteGaps(t *testing.T) {
 	t.Parallel()
 	var got blockapi.HouseholdInput
 	m, _ := build(t, config(account(), &got), "main")
-	for _, blk := range []string{"composition", "allocation", "concentration", "long_term", "movers"} {
-		if g := gapOf(t, m, blk); g["reason"] != "missing_quote" {
+	for blk, reason := range map[string]string{"composition": "missing_quote", "allocation": "missing_quote",
+		"concentration": "missing_quote", "long_term": "not_built", "movers": "no_data"} {
+		if g := gapOf(t, m, blk); g["reason"] != reason {
 			t.Fatalf("%s gap = %v", blk, g)
 		}
 	}

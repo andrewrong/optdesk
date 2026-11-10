@@ -25,14 +25,22 @@ type moneyCell struct {
 }
 
 type moneyRow struct {
-	Name   string    `json:"name"`
-	Amount moneyCell `json:"amount"`
-	Note   string    `json:"note,omitempty"`
+	Name   string       `json:"name"`
+	Amount moneyCell    `json:"amount"`
+	Note   string       `json:"note,omitempty"`
+	Share  *shareFigure `json:"share,omitempty"`
+}
+
+type shareFigure struct {
+	Value json.Number `json:"value"`
+	Text  string      `json:"text"`
+	Unit  string      `json:"unit"`
 }
 
 type moneyBlock struct {
 	Title   string      `json:"title"`
 	Meaning string      `json:"meaning"`
+	Heads   []string    `json:"heads,omitempty"`
 	Rows    []moneyRow  `json:"rows"`
 	Totals  []moneyCell `json:"totals"`
 	Gap     *gapJSON    `json:"gap,omitempty"`
@@ -40,12 +48,17 @@ type moneyBlock struct {
 
 type emptyRow struct{}
 
+type allocationRow struct {
+	Name   string    `json:"name"`
+	Amount moneyCell `json:"amount"`
+}
+
 type allocationBlock struct {
-	Title   string      `json:"title"`
-	Meaning string      `json:"meaning"`
-	Rows    []emptyRow  `json:"rows"`
-	Totals  []moneyCell `json:"totals"`
-	Gap     *gapJSON    `json:"gap,omitempty"`
+	Title   string          `json:"title"`
+	Meaning string          `json:"meaning"`
+	Rows    []allocationRow `json:"rows"`
+	Totals  []moneyCell     `json:"totals"`
+	Gap     *gapJSON        `json:"gap,omitempty"`
 }
 
 type moversBlock struct {

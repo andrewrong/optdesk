@@ -24,6 +24,8 @@ export interface ChartSeries {
   dashed?: boolean
   /** Keeps the series out of the legend, so several lines can share one entry. */
   legendHidden?: boolean
+  /** Breaks the line at a missing point; every other series bridges it (a line chart only). */
+  hole?: boolean
 }
 
 export interface ChartSpec {
@@ -32,4 +34,8 @@ export interface ChartSpec {
   series: ChartSeries[]
   /** Draws a legend of the series names. */
   legend?: boolean
+  /** Python's unit text, appended to every tick of the y axis (empty when none). */
+  unit?: string
+  /** A shaded range between two numbers per category (a line chart only); one legend entry. */
+  band?: { name: string; low: ChartPoint[]; high: ChartPoint[] }
 }
