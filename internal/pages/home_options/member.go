@@ -38,6 +38,8 @@ const (
 	textNoRows    = "账本暂无记录"
 	textNoReader  = "期权账本暂未接入"
 	textHole      = "该月无账本记录"
+	textBadRow    = "账本行缺少数量、价格或乘数"
+	sayNoPremium  = "本月卖出 %d 组，权利金暂无数据。"
 	textNoClosed  = "该月没有已平仓记录"
 	textMaxLoss   = "最大亏损需要组合结构，账本不给出"
 	textOtherCcy  = "账本含非美元持仓，未计入本页"
@@ -136,12 +138,24 @@ type summary struct {
 }
 
 // month is the sums of one calendar month; seen is true when a ledger row falls in it.
+// sums is what aggregate reads from the positions: the six months, the cash of the open sold rows
+// (openBad when one of them has no usable value), the newest ledger day and whether a position of
+// another currency was left out.
+type sums struct {
+	months   map[string]*month
+	open     *big.Rat
+	openBad  bool
+	newest   contracts.Day
+	otherCcy bool
+}
+
 type month struct {
 	seen      bool
 	premium   *big.Rat // cash of the opening rows, sold positive
 	sold      int      // opening rows that sold
 	closed    *big.Rat // realized result of the positions that closed in it
 	hasClosed bool
+	bad       bool // an opening row has no usable quantity, price or multiplier: its sum is a gap
 }
 
 // Build returns the page.options_summary.v4 JSON for day; at is generated_at, written in
@@ -167,8 +181,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			return nil, err
 		}
 	}
-	agg, open, newest, otherCcy := aggregate(positions, d)
-	s := assemble(c, d, at, agg, open, newest, hasReader, otherCcy)
+	s := assemble(c, d, at, aggregate(positions, d), hasReader)
 	return json.Marshal(s)
 }
 
@@ -213,9 +226,9 @@ func rat(s string) (*big.Rat, bool) {
 
 // aggregate sums the USD positions by calendar month of day d back six months; newest is the
 // newest ledger day not after d; otherCcy is true when a position of another currency was left out.
-func aggregate(positions []compute.LedgerPosition, d time.Time) (agg map[string]*month, open *big.Rat, newest contracts.Day, other bool) {
-	agg = map[string]*month{}
-	open = new(big.Rat)
+func aggregate(positions []compute.LedgerPosition, d time.Time) *sums {
+	out := &sums{months: map[string]*month{}, open: new(big.Rat)}
+	agg := out.months
 	for i := 0; i < months; i++ {
 		agg[monthKey(d, -i)] = &month{premium: new(big.Rat), closed: new(big.Rat)}
 	}
@@ -224,21 +237,17 @@ func aggregate(positions []compute.LedgerPosition, d time.Time) (agg map[string]
 		if day == "" || day > last {
 			return nil
 		}
-		if day > newest {
-			newest = day
+		if day > out.newest {
+			out.newest = day
 		}
 		return agg[string(day)[:7]]
 	}
 	for _, p := range positions {
 		if p.Currency != usd {
-			other = true
+			out.otherCcy = true
 			continue
 		}
-		mult, ok := rat(p.Multiplier)
-		if !ok {
-			mult = big.NewRat(100, 1)
-		}
-		addFills(p, mult, last, touch, open)
+		addFills(p, last, touch, out)
 		if p.Status != statusOpen {
 			if m := touch(p.ClosedOn); m != nil {
 				m.seen = true
@@ -249,12 +258,13 @@ func aggregate(positions []compute.LedgerPosition, d time.Time) (agg map[string]
 			}
 		}
 	}
-	return agg, open, newest, other
+	return out
 }
 
 // addFills adds the opening rows of p that are not after last to the month of each row and, for a
 // sold row of a still open position, to open.
-func addFills(p compute.LedgerPosition, mult *big.Rat, last contracts.Day, touch func(contracts.Day) *month, open *big.Rat) {
+func addFills(p compute.LedgerPosition, last contracts.Day, touch func(contracts.Day) *month, out *sums) {
+	mult, multOK := rat(p.Multiplier)
 	for _, f := range p.Fills {
 		if f.Day == "" || f.Day > last {
 			continue
@@ -268,13 +278,20 @@ func addFills(p compute.LedgerPosition, mult *big.Rat, last contracts.Day, touch
 		}
 		q, ok1 := rat(f.Quantity)
 		px, ok2 := rat(f.Price)
-		if !ok1 || !ok2 {
+		if !ok1 || !ok2 || !multOK {
+			// a missing value is a gap, never a zero (Decision 3)
+			if m != nil {
+				m.bad = true
+			}
+			if p.Status == statusOpen {
+				out.openBad = true
+			}
 			continue
 		}
 		cash := new(big.Rat).Mul(q, px)
 		cash.Mul(cash, mult).Neg(cash) // sold (negative quantity) is cash in
 		if q.Sign() < 0 && p.Status == statusOpen {
-			open.Add(open, cash)
+			out.open.Add(out.open, cash)
 		}
 		if m == nil {
 			continue
@@ -291,7 +308,8 @@ func monthKey(d time.Time, back int) string {
 	return first.AddDate(0, back, 0).Format(monthLayout)
 }
 
-func assemble(c Config, d time.Time, at time.Time, agg map[string]*month, open *big.Rat, newest contracts.Day, hasReader bool, otherCcy bool) summary {
+func assemble(c Config, d time.Time, at time.Time, sm *sums, hasReader bool) summary {
+	agg, open, newest, otherCcy := sm.months, sm.open, sm.newest, sm.otherCcy
 	cur := agg[monthKey(d, 0)]
 	noRows := newest == ""
 	noText := textNoRows
@@ -340,12 +358,20 @@ func assemble(c Config, d time.Time, at time.Time, agg map[string]*month, open *
 	k.Say = sayNone
 	if !noRows {
 		k.Tiles.OpenPremium.Figure = plain(open)
+		if sm.openBad {
+			k.Tiles.OpenPremium.Figure = noData(textBadRow)
+		}
 	}
 	if cur.seen {
 		k.Tiles.Sold = tile{Label: "本月卖出", Caption: "按开仓行计", Figure: map[string]any{
 			"kind": "value", "value": cur.sold, "text": fmt.Sprintf("%d 组", cur.sold), "unit": "structures"}}
-		k.Tiles.PremiumMon.Figure = signed(cur.premium)
-		k.Say = fmt.Sprintf(sayMonth, cur.sold, signedText(cur.premium))
+		if cur.bad {
+			k.Tiles.PremiumMon.Figure = noData(textBadRow)
+			k.Say = fmt.Sprintf(sayNoPremium, cur.sold)
+		} else {
+			k.Tiles.PremiumMon.Figure = signed(cur.premium)
+			k.Say = fmt.Sprintf(sayMonth, cur.sold, signedText(cur.premium))
+		}
 	}
 	return s
 }
@@ -364,8 +390,12 @@ func fillSeries(k *card, agg map[string]*month, d time.Time) {
 			holes++
 			pt.Premium, pt.Closed = noData(textHole), noData(textHole)
 		} else {
-			pt.Premium = signed(m.premium)
-			premiumParts = append(premiumParts, label+" "+signedText(m.premium))
+			if m.bad {
+				pt.Premium = noData(textBadRow)
+			} else {
+				pt.Premium = signed(m.premium)
+				premiumParts = append(premiumParts, label+" "+signedText(m.premium))
+			}
 			if m.hasClosed {
 				pt.Closed = signed(m.closed)
 				closedParts = append(closedParts, label+" "+signedText(m.closed))

@@ -285,3 +285,21 @@ func TestBadConfigIsError(t *testing.T) {
 		t.Error("bad day: no error")
 	}
 }
+
+func TestOpeningFillWithoutPriceIsGapNotZero(t *testing.T) {
+	t.Parallel()
+	pos := compute.LedgerPosition{Currency: "USD", Status: "open", Multiplier: "100",
+		Fills: []compute.LedgerFill{{Day: "2026-11-03", Action: "open", Quantity: "-1", Price: ""}}}
+	out := build(t, cfg(ledger{aliases: map[string]int{"main": 1}}, replayer{[]compute.LedgerPosition{pos}}))
+	card := decode(t, out)["card"].(map[string]any)
+	tiles := card["tiles"].(map[string]any)
+	for _, k := range []string{"premium_month_usd", "open_premium_usd"} {
+		if f := tiles[k].(map[string]any)["figure"].(map[string]any); f["kind"] != "gap" {
+			t.Errorf("%s of a row with no price = %v, want a gap", k, f)
+		}
+	}
+	last := card["premium_series_6m"].([]any)[5].(map[string]any)["premium"].(map[string]any)
+	if last["kind"] != "gap" {
+		t.Errorf("series premium = %v, want a gap", last)
+	}
+}
