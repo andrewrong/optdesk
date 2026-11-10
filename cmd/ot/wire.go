@@ -34,6 +34,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
+	"github.com/andrewrong/optdesk/internal/jobs/dividendcapture"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
@@ -71,6 +72,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/account"
 	"github.com/andrewrong/optdesk/internal/store/alert"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
@@ -180,6 +182,8 @@ type deps struct {
 	newAlphaVantage         sources.NewEarningsFunc
 	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
+	openDividend            dividend.OpenFunc
+	newDividendCapture      jobs.NewDividendCaptureFunc
 	openOptionLedgerStore   store.OpenOptionLedgerFunc
 	newOptionLedgerJob      jobs.NewOptionLedgerJobFunc
 	loadFlexFile            sources.LoadFlexFileFunc
@@ -216,6 +220,7 @@ func newDeps() deps {
 	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openOptionLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
 	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
 	d.newRuleParams = ruleparam.New
+	d.openDividend, d.newDividendCapture = eventstore.OpenDividend, dividendcapture.New
 	d.openOwnerSet = ownersetpg.Open
 	d.openOptionLedgerRO = openOptionLedgerStore
 	d.settingsPage, d.reportPageBlocks = settings_page.NewPage, report_page.NewPage
