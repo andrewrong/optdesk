@@ -46,15 +46,15 @@ Size of `docs/conventions/register.toml`: 1509 lines on main, about 1780 after t
 |---|---|---|---|
 | 1 | reading-dataset (interface) | contracts | first of the generated-file editors (before `series-unit-index-points`) |
 | 2 | store-reading-interface (interface) | store | after 1 (reading-dataset) |
-| 3 | store-reading-tables | store, plus repo (judged: setup roles, `.go-arch-lint.yml`); second-opinion case | after 2 (store-reading-interface), and sched-store-ops |
+| 3 | store-reading-tables | store, plus repo (judged: setup roles); second-opinion case | after 2 (store-reading-interface), and sched-store-ops |
 | 4 | docs-compute-rules (interface) | docs | after the `compute-core.md` interface; carries v2 of Decision 6 (the advisor agreed) |
 | 5 | compute-rules | compute, plus docs (judged) | after 3, 4 (store-reading-tables, docs-compute-rules), and compute-figures-series and compute-figures-iv (core) |
 | 6 | jobs-compute-api (interface) | jobs | after 2 (store-reading-interface), and compute-interface (core), sched-runner-interface, sched-jobs-schedule |
-| 7 | compute-figures-job | jobs, plus repo (judged: `.go-arch-lint.yml`) | after 3, 5, 6 (store-reading-tables, compute-rules, jobs-compute-api) |
+| 7 | compute-figures-job | jobs | after 3, 5, 6 (store-reading-tables, compute-rules, jobs-compute-api) |
 | 8 | compute-jobs-wire | ot; second-opinion case | after 7 (compute-figures-job), and sched-cmd-run, `series-load-wire` (compute-fred-series.md) and the core issues |
 | 9 | docs-iv30-rate-age | docs | after 4, 5 (docs-compute-rules, compute-rules), before 7 (compute-figures-job) |
 
-The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design. Two entries that share a file name each other's number: `register.toml` (4, 5, 9), `.go-arch-lint.yml` (3, 5, 7).
+The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design. Two entries that share a file name each other's number: `register.toml` (4, 5, 9).
 
 ## Interface
 
@@ -104,7 +104,7 @@ Checked by CI: `go test ./internal/store -race -count=1`.
 
 ### store-reading-tables
 
-- Module: store, plus repo (judged: `internal/store/setup` roles and the regenerated `.go-arch-lint.yml`). Size: L. Depends on: store-reading-interface, sched-store-ops (scheduler design). Second-opinion case for the window: it creates a role and its grants, which changes who may act with what permission.
+- Module: store, plus repo (judged: `internal/store/setup` roles). Size: L. Depends on: store-reading-interface, sched-store-ops (scheduler design). Second-opinion case for the window: it creates a role and its grants, which changes who may act with what permission.
 - Order: after 2 (store-reading-interface) and after sched-store-ops, so that 0012 is on main; owns `migrations/0013_readings.sql`.
 - Brief: docs/design/compute-figures.md#Second opinion (the new role `ot_w_readings` and its grants).
 - Second opinion: required; the advisor answers before the merge and the owner merges the pull request (the pull request waits for the owner's word).
@@ -179,7 +179,7 @@ Checked by CI: `go test ./internal/jobs -race -count=1`.
 
 ### compute-figures-job
 
-- Module: jobs, plus repo (judged: the regenerated `.go-arch-lint.yml`). Size: L. Depends on: store-reading-tables, compute-rules, docs-iv30-rate-age, jobs-compute-api, sched-jobs-schedule (it adds the `[schedule]` table and the plain-value methods to its own manifest). The Iv30 input mapping (Decision 10) is part of this issue, not a sibling issue: `Run` calls `ivInput` and `subjects`, so one pull request carries the mapping and the job, and the job is tested against fakes of the store interfaces.
+- Module: jobs. Size: L. Depends on: store-reading-tables, compute-rules, docs-iv30-rate-age, jobs-compute-api, sched-jobs-schedule (it adds the `[schedule]` table and the plain-value methods to its own manifest). The Iv30 input mapping (Decision 10) is part of this issue, not a sibling issue: `Run` calls `ivInput` and `subjects`, so one pull request carries the mapping and the job, and the job is tested against fakes of the store interfaces.
 - Order: after 3, 5, 6, 9 (store-reading-tables, compute-rules, jobs-compute-api, docs-iv30-rate-age), and after sched-jobs-schedule.
 - Design: docs/design/compute-figures.md#Decisions
 - Files: internal/jobs/computefigures/ivinput.go, internal/jobs/computefigures/ivinput_test.go, internal/jobs/computefigures/subjects.go, internal/jobs/computefigures/subjects_test.go, internal/jobs/computefigures/job.go, internal/jobs/computefigures/steps.go, internal/jobs/computefigures/schedule.go, internal/jobs/computefigures/job.toml, internal/jobs/computefigures/job_test.go, docs/contracts/jobs.md

@@ -35,7 +35,7 @@ Facts the design rests on:
 | broker-interface | broker and repo (licensed, below) |
 | broker-grpc | broker |
 
-Licence: the interface entry lies in two modules because the arch derivation of entry-listed sub-packages is repo code (`scripts/arch/main.go`, its test and `.go-arch-lint.yml`) and the stub package `internal/broker/grpcbroker/doc.go`
+Licence: the interface entry lies in two modules because the arch derivation of entry-listed sub-packages is repo code (`scripts/arch/main.go` and its test) and the stub package `internal/broker/grpcbroker/doc.go`
 must be listed there at the moment the directory gets its first Go file (the precedent is `store-week2.md:225-230`). The client entry lies in broker only.
 
 ## Interface
@@ -73,7 +73,7 @@ The broker declarations, the arch derivation of entry-listed sub-packages and th
   1. `api.go` holds exactly the types, `Broker`, `Options` and `DialFunc` of `## Interface`, declarations only (`grep -cE '^func ' internal/broker/api.go` prints 0); `grep -vE '^[[:space:]]*//' internal/broker/api.go | grep -ciwE 'orders?|accounts?|positions?'` prints 0 (comments sit on lines of their own, so the filter drops them).
   2. `api_test.go` tests the contract from both sides: a fake `Broker` that returns a `Quote` per contract and a `Retryable` `TypedError`, and a caller that branches on `errors.As` to `contracts.TypedError`.
   3. `grpcbroker/doc.go` is a package comment and the package clause (`wc -l` is at most 3).
-  4. `go run ./scripts/arch --check` prints `arch: ok`; `.go-arch-lint.yml` has the component `broker/grpcbroker` with `contracts`, `clock`, `broker` and `contracts/genpb` as the imports it may use; `git diff -- go.mod go.sum` is empty.
+  4. `go run ./scripts/arch --check` prints `arch: ok`; `git diff -- go.mod go.sum` is empty.
   5. A test in `scripts/arch/main_test.go` derives the components of a scratch table whose contracts entry cell lists `internal/contracts/genpb` and shows that a sub-package of a row that depends on contracts (`broker/grpcbroker`) has the `contracts/genpb` import, and that a sub-package of a row that does not depend on contracts, and a root package, do not; the existing test that `contracts/genpb` has an empty import list still passes.
   6. Every test added calls `t.Parallel()` and none sleeps.
   Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint), `checks` (arch); the design verdict on the pull request (an interface change).
@@ -115,7 +115,7 @@ Width: one entry after the interface. The client is one package whose files shar
 6. Which strikes and expiries to ask and what the numbers mean: the jobs (`docs/design/option-jobs.md`). Time-of-day line budgets (`pyside-ibkr-transport.md:352`) and the index IV job (`store-week2.md:356-358`).
 7. Scheduling (launchd), any live run against the gateway or a database, and any real call to the socket: the owner's; no entry runs one. Orders, positions, accounts and funds are never part of this: no type, rpc or method exists for them (`broker-interface` 1, `broker-grpc` 9).
 8. Owner-only and second-opinion cases: `contracts/proto/` and `go.mod` are not touched here; the grpc library and its words from the owner belong to #166. The client reaches pyside by a local socket only and adds no outside path, since the gateway is reached by pyside alone, already a second-opinion case (`pyside-ibkr-transport.md:89-90`).
-9. Textual risk: `.go-arch-lint.yml` is edited by the interface entries of all three designs and PR 185 edits `arch.toml` and `modules.md`; the entries are attached one after another so each rebases onto the last.
+9. Textual risk: PR 185 edits `modules.md` (`arch.toml` and `.go-arch-lint.yml` are generated at check time and in no Files line); the entries are attached one after another so each rebases onto the last.
 
 ## Adversarial
 
@@ -124,6 +124,6 @@ Width: one entry after the interface. The client is one package whose files shar
 3. Simpler way, fold the proto and gRPC plugin into #166: adopted (settled by the advisor, PR 184); dropping the Go gRPC layer is impossible because pyside serves gRPC on a Unix socket.
 4. Lock-in (`Broker` shape, no partial result): adopted in part; `Snapshot` no longer chunks, the caller chunks and writes per chunk, so a transport error costs one chunk; the interface stays small and plain-typed; stubs of other designs are no longer created here.
 5. False claims (`arch.toml` lists directory components, one-module siblings): adopted; the contracts entry cell lists `internal/contracts/genpb` and `scripts/arch` derives the edge from it (no package named in code), `arch.toml` is unchanged, and the stub package is in the interface entry.
-6. Slip causes (stale Files and acceptance, `go.mod` conflicts, wide interface entry): adopted; `broker-grpc` is broker-only, the interface entry is two modules, and the three interface entries edit `.go-arch-lint.yml` and are attached one after another (Left out 9).
+6. Slip causes (stale Files and acceptance, `go.mod` conflicts, wide interface entry): adopted; `broker-grpc` is broker-only, the interface entry is two modules, and the three interface entries are attached one after another (Left out 9).
 
 Full answer: scratchpad adversarial-broker-jobs.md and adversarial-option-collection.md of the dispatcher window (2026-11-07)

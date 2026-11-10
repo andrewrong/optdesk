@@ -146,7 +146,7 @@ Checked by CI: `pnpm --dir web run generate:types` with `git diff --exit-code we
   `Say`, `GapLine`, `BlockLinks`, `ReportLinks` (a slice of `Link{Href, Text string}`) and the five members as `[]byte` fields `Household`, `Companies`, `Macro`, `Market`, `Options`.
   `generated_at` is `generatedAt` written in `Zone`, as `macro_page` does; a nil `Zone` is an error. The package reads no clock, no store and no file outside tests, and imports only the standard library
   (`go.mod` is not edited). The five testdata files are hand-written, smallest valid instances of the five member schemas with the run identity `run-test`, `build-test`, `scope-test`.
-- Generated output: the new package `internal/pages/home_page` makes `scripts/arch` add a component to `arch.toml` and `.go-arch-lint.yml` (the same as `internal/pages/macro_page` in `docs/design/pages-builders.md`); the entry carries the regenerated files and no hand edit. Those two files are in the Files line (as in `docs/design/pages-builders.md`).
+- Generated output: the new package `internal/pages/home_page` makes `scripts/arch` add a component to `arch.toml` and `.go-arch-lint.yml` at check time (the same as `internal/pages/macro_page` in `docs/design/pages-builders.md`). Those two files are generated and not committed, so they are in no Files line and the acceptance counts the seven paths of the Files line.
 
 Acceptance:
 
@@ -156,7 +156,7 @@ Acceptance:
 4. `TestComposeRunStatus` checks the worst-of rule on three cases (all `ok`; one `partial`; one `partial` and one `failed`); `TestComposeDataTimes` checks the order, the dropped repeat and the error past 20 entries; `TestComposeStaleAfter` checks the earliest of two, and the omission when no member has one.
 5. `TestComposeKeepsMembers` checks that each member in the output is byte-equal, after JSON compaction, to its input.
 6. `grep -c "internal/store\|time.Now\|os.ReadFile" internal/pages/home_page/compose.go` prints 0; `wc -l internal/pages/home_page/compose.go` shows under 600; `git diff $(git merge-base HEAD origin/main) -- internal/pages/api.go internal/pages/api_test.go cmd go.mod go.sum` is empty.
-7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the nine paths of the Files line and no other path.
+7. `git diff --name-only $(git merge-base HEAD origin/main)` lists exactly the seven paths of the Files line and no other path.
 
 Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint); the privacy scan; the design verdict (the result matches Decisions 5 and 6 of `docs/design/home-page.md`, a judgement of the code).
 
@@ -207,7 +207,7 @@ Read in full in `home-page.adversarial.md`, in the dispatcher's scratchpad. The 
 2. Size of the generated file: adopted as a check. Generated files are exempt from the 600-line rule (evidence in the Interface section), so the schema keeps its `$ref`s.
 3. Simpler way: adopted in part. `BlockLink` carries `href` (Decision 4, 8), `ROUTE_PATHS` and the owner question are dropped; `home-page-compose` stays (backend work in parallel, a pure function with no caller yet).
 4. Lock-in: adopted. Decision 9 names it.
-5. Contracts line: adopted. The interface entry carries `Contracts: page.home_page v2 (new)`, counts are relative to main at cut time, and the compose entry lists `arch.toml` and `.go-arch-lint.yml`.
+5. Contracts line: adopted. The interface entry carries `Contracts: page.home_page v2 (new)`, counts are relative to main at cut time, and the compose entry lists neither `arch.toml` nor `.go-arch-lint.yml` (generated at check time).
 - (a) adopted: the five points above (1 to 5) are the first round of the review and were adopted as they stand; the later rounds follow as (b) and (c). (No separate line (a) ever existed in the history of this file; it was folded into items 1 to 5.)
 - (b) adopted: `home-page-v2-schema` is a judged two-module entry (contracts and web) and carries the `generate:types` line with the generated file, so its drift check covers `home_page.v2.ts`; `home-page-view` has no `web/package.json`.
 - (c) adopted: `home-page-v2-schema` is ordered after `report-types` (`docs/design/report-page.md`) and depends on it by name.

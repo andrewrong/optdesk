@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: owner answers 2026-11-09 (the four questions); the pull request approval is pending
 Date: 2026-11-09
-Revision: 8 (answers the 2590ebc verdict: entry 6 names `migrations/0018_candidates.sql` (next free at cut time) and greps the glob `migrations/*_candidates.sql`, claims no number of another design; its role grants and Second opinion agree and include USAGE on schema `rd`; revision 7: its reader reads the view only, with a grep; revision 6: the migration of entry 6 named 0018, since crew issue check matches Files literally; revision 5: the Order of the five entries that share `.go-arch-lint.yml` is one serial chain, issue 6 names its migration number and its new role, counts refreshed at b0913fe, acceptance by grep and wc only; revision 4 was merged as 612, revision 2 was 186019a)
+Revision: 8 (answers the 2590ebc verdict: entry 6 names `migrations/0018_candidates.sql` (next free at cut time) and greps the glob `migrations/*_candidates.sql`, claims no number of another design; its role grants and Second opinion agree and include USAGE on schema `rd`; revision 7: its reader reads the view only, with a grep; revision 6: the migration of entry 6 named 0018, since crew issue check matches Files literally; revision 5: the Order of the five entries that shared `.go-arch-lint.yml` was one serial chain (that file is now generated at check time and in no Files line), issue 6 names its migration number and its new role, counts refreshed at b0913fe, acceptance by grep and wc only; revision 4 was merged as 612, revision 2 was 186019a)
 
 Source: owner 2026-11-09: options trading comes first and is done completely before valuation; the owner types a buy price per company by hand for now (the automated valuation, pull request 607, is parked). Binding owner decisions: a put qualifies when strike minus premium is at most the buy price; gates plus annualized-yield order, no composite score; earnings dates and ex-dividend dates gate; an early-assignment and ex-dividend guard for short calls; the margin cushion and the assignment cash never go to Telegram; two IBKR accounts, alias A and B. Dispatcher direction: puts first, they do not wait for the dividend chain; the option side must be usable soon.
 Read on main at 4a73feb: `AGENTS.md`, `docs/design/modules.md`, `docs/design/ease-v2.md`, `docs/design/report-page-producer.md`, `docs/design/option-jobs.md`, `docs/design/option-pages-v22.md`, `contracts/datasets/obs.option_eod.r1.json`, `internal/jobs/api.go`, `internal/jobs/optioneod/{job.toml,select.go}`, `internal/store/api.go`, `internal/compute/api.go`, `arch.toml`, `contracts/proto/ibkr/v1`. On branches in review: `docs/design/event-sources.md` (606), `docs/design/account-data.md` (561), `docs/design/valuation.md` (607, only its `watch.toml` lines).
@@ -63,25 +63,25 @@ What the owner needs to run options completely, with its design and state. This 
 
 ## Modules
 
-New directories: `internal/compute/optioncand`, `internal/jobs/optioncandidates`, `internal/store/candidate`, `internal/pages/candidate_text`. This pull request edits `docs/design/modules.md` by four names in the sentence that lists the implementation packages `cmd/ot` may import and regenerates `arch.toml` with `go run ./scripts/arch` (the precedent is `internal/compute/ease`; `.go-arch-lint.yml` is tree-derived and appears with the first issue of each package). Interface files: `internal/compute/api.go`, `internal/store/api.go`, `internal/jobs/api.go` (each additive), the dataset in `contracts/`.
+New directories: `internal/compute/optioncand`, `internal/jobs/optioncandidates`, `internal/store/candidate`, `internal/pages/candidate_text`. This pull request edits `docs/design/modules.md` by four names in the sentence that lists the implementation packages `cmd/ot` may import and `arch.toml` follows from it (the precedent is `internal/compute/ease`). `arch.toml` and `.go-arch-lint.yml` are generated at check time and are in no Files line. Interface files: `internal/compute/api.go`, `internal/store/api.go`, `internal/jobs/api.go` (each additive), the dataset in `contracts/`.
 
 | # | issue | module | order |
 |---|---|---|---|
 | 1 | option-eod-watch (interface and implementation) | jobs | after 606 `earnings-job`, 561 `account-store-api` |
-| 2 | candidate-compute-interface (interface) | compute, plus repo (licensed pair) | first |
+| 2 | candidate-compute-interface (interface) | compute | first |
 | 3 | compute-put-candidates | compute | after 2 |
 | 4 | candidate-dataset (interface) | contracts | after 561 `account-proto`, 606 `earnings-datasets` |
 | 5 | candidate-store-api (interface) | store | after 4, 561 `account-store-api`, 606 `earnings-store` |
-| 6 | candidate-store-impl | store, plus repo (licensed pair) | after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store` |
-| 7 | candidates-job-puts (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job` |
-| 8 | candidate-text | pages, plus repo (licensed pair) | after 5, 2, 6, 7 |
+| 6 | candidate-store-impl | store | after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store` |
+| 7 | candidates-job-puts (interface and implementation) | jobs | after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job` |
+| 8 | candidate-text | pages | after 5, 2, 6, 7 |
 | 9 | option-eod-held-calls | jobs | after 1, 561 `account-store-impl` |
 | 10 | compute-call-candidates | compute | after 3 |
-| 11 | candidates-job-calls (interface and implementation) | jobs, plus repo (licensed pair) | after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job` |
+| 11 | candidates-job-calls (interface and implementation) | jobs | after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job` |
 | 12 | candidates-wire | ot | after 7, 8, 606 `watch-loader-earnings-wire`, 561 `account-wire` |
 | 13 | candidates-wire-calls | ot | after 9, 11, 12, 606 `dividend-wire`, 561 `account-wire` |
 
-The five entries that edit `.go-arch-lint.yml` (2, 6, 7, 8, 11) are one serial chain in that order, each naming every earlier one of the five; every pair of entries that share any file names each other. Puts are complete at issue 12 without 9 to 11 and 13; the owner sees puts in `ot candidates` as soon as 1 to 8 and 12 have merged.
+Entries 2, 6, 7, 8 and 11 keep their order by the files they share (`.go-arch-lint.yml` is generated at check time and is no shared file); every pair of entries that share any file names each other. Puts are complete at issue 12 without 9 to 11 and 13; the owner sees puts in `ot candidates` as soon as 1 to 8 and 12 have merged.
 
 ## Interface
 
@@ -110,7 +110,7 @@ Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` with the six n
 
 ### 2 candidate-compute-interface (interface)
 
-Module: compute, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
+Module: compute. Size: S.
 Files: `internal/compute/api.go`, `internal/compute/api_test.go`, `docs/contracts/compute.md`, `internal/compute/optioncand/doc.go`
 Design: docs/design/option-candidates.md#Interface
 Order: first.
@@ -166,11 +166,11 @@ Checked by CI: `go test ./internal/store -run TestCandidateContract -race -count
 
 ### 6 candidate-store-impl
 
-Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
+Module: store. Size: M.
 Second opinion: a new database role, `ot_w_candidate`; `ot_w_candidate` has INSERT and SELECT on the table, USAGE on schema `rd` and SELECT on `rd.option_candidate_r1`; `ot_ro_pages` has SELECT on the view; nothing else, no UPDATE, DELETE or TRUNCATE.
 Files: `migrations/0018_candidates.sql`, `internal/store/candidate/doc.go`, `internal/store/candidate/store.go`, `internal/store/candidate/read.go`, `internal/store/candidate/store_test.go`, `internal/store/candidate/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `internal/store/setup/candidate_pg_test.go` (tag `pg`)
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 9, 13)
-Order: after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store`; they share `setup.go` and the next free migration number (this entry rebases on whichever lands first and takes the next free number at cut time). It does not wait for the dividend chain.
+Order: after 5, 2, 561 `account-store-migration`, 561 `account-store-impl`, 606 `earnings-store`; they share `setup.go`; its migration is `migrations/0018_candidates.sql`, a number taken on main (this entry rebases on whichever lands first). It does not wait for the dividend chain.
 Goal: a table `candidates.option_candidate` with the dataset key, insert-only, a view `rd.option_candidate_r1` over it, the role `ot_w_candidate` (INSERT and SELECT on the table, created in `internal/store/setup/setup.go` with the line `OT_PG_DSN_CANDIDATE`, as `ot_w_alerts` is) and `SELECT` on the view `rd.option_candidate_r1` for the pages role `ot_ro_pages` (the pages read the view and nothing else, as `0006_option_eod.sql` does); `candidate.Open(ctx, dsn)` implements both interfaces; the reader returns the newest run of the day. The reader of `candidate.Open` reads the view `rd.option_candidate_r1` only and names no base table; the job reads through the reader with the role `ot_w_candidate`, so the migration grants `USAGE ON SCHEMA rd` and `SELECT` on that view to `ot_w_candidate`.
 Acceptance:
 1. `grep -c "CREATE TABLE candidates.option_candidate\|ot_w_candidate" migrations/*_candidates.sql` is at least 2 and `grep -ci "GRANT.*\(UPDATE\|DELETE\)" migrations/*_candidates.sql` prints 0.
@@ -182,7 +182,7 @@ Checked by CI: `go test ./internal/store/candidate ./internal/store/setup -race 
 
 ### 7 candidates-job-puts (interface and implementation)
 
-Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
+Module: jobs. Size: L.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 4, 5, 9, 13, 15)
 Order: after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job`; they create job packages, and this entry rebases on the last of them.
@@ -197,7 +197,7 @@ Checked by CI: `go test ./internal/jobs/optioncandidates -race -count=1`, ci-go,
 
 ### 8 candidate-text
 
-Module: pages, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
+Module: pages. Size: S.
 Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`
 Design: docs/design/option-candidates.md#Interface
 Order: after 5, 2, 6, 7.
@@ -235,7 +235,7 @@ Checked by CI: `go test ./internal/compute/optioncand -race -count=1` (it includ
 
 ### 11 candidates-job-calls (interface and implementation)
 
-Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
+Module: jobs. Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/calls.go`, `internal/jobs/optioncandidates/calls_test.go`, `internal/jobs/optioncandidates/job.toml`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Interface
 Order: after 1, 2, 6, 7, 8, 9, 10, 606 `dividend-store`, 606 `dividend-job`; it shares `api.go`, `api_test.go`, `jobs.md` with 1 and `job.toml` with 7.
@@ -310,6 +310,6 @@ The adversarial review of revision 1 is in the dispatcher scratchpad, not in the
 - 2 and 3 put first and simpler way: adopted for puts first (Decision 2, issues 9 to 11 and 13 after the dividend chain, `CandidateStores` without a dividend reader). Not adopted: one JSON payload column (typed columns kept so the page and text read without parsing); the key gets the run id as the review asked.
 - 4 lock-in: adopted for the key. The precedence of the owner's price is stated as permanent (Decision 3). `CandidateInput` is declared once with the call fields, so issues 10 and 11 add no interface change.
 - 5 claims: `DGS3MO` percent conversion and the float-to-decimal step adopted (Decision 4, tests in issues 3 and 7); `absent` rule and `present` versus `no_value` wording adopted; 500-id chunking tested in issue 7; issue 6 follows 606 `earnings-store` and 561, not `dividend-store`, so puts never wait for the dividend chain.
-- 6 order gaps: adopted (issues 6, 7, 11 name 561 and 606 entries that regenerate `.go-arch-lint.yml`); the issue 3 grep is replaced by an AST test; `ot` is wiring only, the text formatter is issue 8 in pages.
+- 6 order gaps: adopted (issues 6, 7, 11 name the 561 and 606 entries whose files they share); the issue 3 grep is replaced by an AST test; `ot` is wiring only, the text formatter is issue 8 in pages.
 - Owner questions: answered 2026-11-09 (section Owner answers).
 - WatchEntry: 606 (head b86870f) declares `BuyPrice` and `SalePrice` (its `earnings-job`, test `TestWatchEntryPrices`) and loads them (its `watch-loader-earnings-wire`, test `TestWatchPricesLoaded`); the two interface and loader issues of earlier drafts are deleted and the entries here depend on 606's.

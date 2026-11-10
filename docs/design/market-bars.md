@@ -46,26 +46,26 @@ After each XNYS close, `bars_refresh` stores the daily bars of every name on `wa
 
 ## Modules
 
-No new row; one changed cell: the entry cell of the store row gains `internal/store/bar`, a package of declarations only (`api.go` and its test). The other designs' entry cells that list a package (`internal/contracts/genpb`, `internal/compute/contracttest`) hold generated code or a test kit; this one holds an interface, so `docs/design/modules.md` gets two sentences in this pull request: one says that `internal/store/bar` holds declarations only, and one says that the root component and the sub-packages of any row that depends on the row of a listed declarations-only package may import it, derived from the table plus a list of declarations-only packages that `scripts/arch` holds (`internal/store/bar`), so the test kit `internal/compute/contracttest` and the generated `internal/contracts/genpb` never go to a root component (jobs imports `store/bar`). `scripts/arch` does that today for sub-packages only; the change to give a declarations-only package to the root component too is part of entry 3 (Files `scripts/arch/main.go`, `scripts/arch/main_test.go`, `arch.toml`). The implementation, `internal/store/barpg`, is not in any entry cell and is imported by `cmd/ot` only; it imports `contracts` and no `store/bar` (its test asserts the interfaces). `docs/design/settings-form.md` Decision 6 edits the same cell for `internal/store/ownerset`; whichever pull request lands second merges the two names. The new directories belong to rows that exist: `internal/store/bar`, `internal/store/barpg` and `migrations/**` to store, `internal/jobs/barsrefresh` and `internal/jobs/fxrefresh` to jobs, the new proto outputs to contracts, `pyside/src/optdesk/ibkr/history.py` to pyside (first matching row of each path). This pull request edits `docs/design/modules.md` in the entry cell, the two sentences and the list of implementation packages `cmd/ot` may import (adding `internal/store/bar`, `internal/store/barpg`, `internal/jobs/barsrefresh` and `internal/jobs/fxrefresh`), and regenerates `arch.toml` with `go run ./scripts/arch`. `.go-arch-lint.yml` is tree-derived and appears with the first issue of each package. Interface files touched, each additive: `internal/contracts/api.go`, `internal/store/bar/api.go` (new), `internal/broker/api.go`, `internal/jobs/api.go`, `pyside/src/optdesk/ibkr/api.py`, and the generated types of `marketdata.proto`.
+No new row; one changed cell: the entry cell of the store row gains `internal/store/bar`, a package of declarations only (`api.go` and its test). The other designs' entry cells that list a package (`internal/contracts/genpb`, `internal/compute/contracttest`) hold generated code or a test kit; this one holds an interface, so `docs/design/modules.md` gets two sentences in this pull request: one says that `internal/store/bar` holds declarations only, and one says that the root component and the sub-packages of any row that depends on the row of a listed declarations-only package may import it, derived from the table plus a list of declarations-only packages that `scripts/arch` holds (`internal/store/bar`), so the test kit `internal/compute/contracttest` and the generated `internal/contracts/genpb` never go to a root component (jobs imports `store/bar`). `scripts/arch` does that today for sub-packages only; the change to give a declarations-only package to the root component too is part of entry 3 (Files `scripts/arch/main.go`, `scripts/arch/main_test.go`). The implementation, `internal/store/barpg`, is not in any entry cell and is imported by `cmd/ot` only; it imports `contracts` and no `store/bar` (its test asserts the interfaces). `docs/design/settings-form.md` Decision 6 edits the same cell for `internal/store/ownerset`; whichever pull request lands second merges the two names. The new directories belong to rows that exist: `internal/store/bar`, `internal/store/barpg` and `migrations/**` to store, `internal/jobs/barsrefresh` and `internal/jobs/fxrefresh` to jobs, the new proto outputs to contracts, `pyside/src/optdesk/ibkr/history.py` to pyside (first matching row of each path). This pull request edits `docs/design/modules.md` in the entry cell, the two sentences and the list of implementation packages `cmd/ot` may import (adding `internal/store/bar`, `internal/store/barpg`, `internal/jobs/barsrefresh` and `internal/jobs/fxrefresh`), and `arch.toml` follows from them. `arch.toml` and `.go-arch-lint.yml` are generated at check time (`docs/design/arch-generated.md`) and are in no Files line. Interface files touched, each additive: `internal/contracts/api.go`, `internal/store/bar/api.go` (new), `internal/broker/api.go`, `internal/jobs/api.go`, `pyside/src/optdesk/ibkr/api.py`, and the generated types of `marketdata.proto`.
 
 | # | issue | module | order |
 |---|---|---|---|
 | 1 | bar-datasets (interface) | contracts | first |
 | 2 | bars-proto (interface) | contracts, plus pyside (judged two-module entry: the owner-only transport.py stub) | first |
-| 3 | bar-store-api (interface) | store, plus repo (licensed pair: scripts/arch, .go-arch-lint.yml) | after 1 |
-| 4 | bar-store-impl | store, plus repo (licensed pair) | after 1, 3 |
+| 3 | bar-store-api (interface) | store, plus repo (licensed pair: scripts/arch) | after 1 |
+| 4 | bar-store-impl | store | after 1, 3 |
 | 5 | broker-history (interface and implementation) | broker | after 2 |
 | 6 | pyside-history (interface and implementation) | pyside (owner-only transport.py) | after 2 |
-| 7 | bars-job-manifest (interface) | jobs, plus repo (licensed pair) | after 3, 4 |
+| 7 | bars-job-manifest (interface) | jobs | after 3, 4 |
 | 8 | bars-job-run | jobs | after 4, 5, 7 |
 | 9 | bars-job-adjusted | jobs | after 5, 8 |
-| 10 | fx-job | jobs, plus repo (licensed pair) | after 3, 4, 5, 7 |
+| 10 | fx-job | jobs | after 3, 4, 5, 7 |
 | 11 | hv30-rule | compute, plus docs (judged: the register is under docs) | first |
 | 12 | hv30-step | jobs | after 3, 7, 10, 11 |
 | 13 | bars-wire | ot | after 4, 8, 9, 10, 12 |
 | 14 | bars-job-deepen | jobs | after 5, 8, 9 |
 
-The four entries that edit `.go-arch-lint.yml` (3, 4, 7, 10) are one serial chain in that order; 7, 10 and 12 share `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md`, and 8, 9 and 14 share `internal/jobs/barsrefresh/run.go`; each names the others. Entry 13 also shares `cmd/ot` files with `docs/design/event-sources.md` `watch-loader-earnings-wire` and with the account wire; it rebases on whichever lands first. No entry has more than 8 files except 1, 2 and 4, which are generated or mechanical.
+Entries 7, 10 and 12 share `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md`, and 8, 9 and 14 share `internal/jobs/barsrefresh/run.go`; each names the others. Entry 13 also shares `cmd/ot` files with `docs/design/event-sources.md` `watch-loader-earnings-wire` and with the account wire; it rebases on whichever lands first. No entry has more than 8 files except 1, 2 and 4, which are generated or mechanical.
 
 ## Interface
 
@@ -116,11 +116,11 @@ Checked by CI: the generated-code check (buf lint and generate), `uv sync --lock
 
 ### 3 bar-store-api (interface)
 
-Module: store, plus repo (the licensed pair: `scripts/arch`, `arch.toml` and `.go-arch-lint.yml`). Size: M.
+Module: store, plus repo (the licensed pair: `scripts/arch`). Size: M.
 Files: `internal/store/bar/api.go`, `internal/store/bar/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/market-bars.md#Modules and #Interface (store). `internal/store/api.go` is not edited (799 lines on main); the interface file of this package is `internal/store/bar/api.go`, a package of declarations only, listed in the entry cell of the store row by this design's pull request, which also adds the `modules.md` sentences that make the import legal. The implementation is entry 4 in `internal/store/barpg`.
 Order: after 1 (`contracts.PriceBar`, `contracts.FxRate`).
-Goal: the writer, reader, store and open types of `## Interface` and `DSNEnvBar` in package `bar`, declarations only, with doc comments that fix the promises: insert-only, one call one transaction, readers return the winner rows (highest epoch of the pair), ascending by day; `LatestFxRate` has no fallback. The contract test has a fake store and a caller that checks the winner rule on a two-epoch fake and the not-found answer. `scripts/arch` keeps its promise that `arch.toml` depends on the table only: it holds a list `declarationsOnly` (`internal/store/bar`) and gives a package of that list that is listed in an entry cell to the root component of a row that depends on the listed row, as the `modules.md` sentence says; a sub-package also gets the `declarationsOnly` packages listed in its own row's entry cell (never a generated one); the test kit and the generated sub-packages stay for sub-packages only (no root component imports `compute/contracttest` or `contracts/genpb`), `arch.toml` gains only the `declarationsOnly` packages for sub-packages (the other entry-listed imports, `genpb` and `contracttest`, stay in `.go-arch-lint.yml` as today), and the regenerated `arch.toml` and `.go-arch-lint.yml` give `store/bar` to `jobs` and its sub-packages.
+Goal: the writer, reader, store and open types of `## Interface` and `DSNEnvBar` in package `bar`, declarations only, with doc comments that fix the promises: insert-only, one call one transaction, readers return the winner rows (highest epoch of the pair), ascending by day; `LatestFxRate` has no fallback. The contract test has a fake store and a caller that checks the winner rule on a two-epoch fake and the not-found answer. `scripts/arch` keeps its promise that `arch.toml` depends on the table only: it holds a list `declarationsOnly` (`internal/store/bar`) and gives a package of that list that is listed in an entry cell to the root component of a row that depends on the listed row, as the `modules.md` sentence says; a sub-package also gets the `declarationsOnly` packages listed in its own row's entry cell (never a generated one); the test kit and the generated sub-packages stay for sub-packages only (no root component imports `compute/contracttest` or `contracts/genpb`), `arch.toml` gains only the `declarationsOnly` packages for sub-packages (the other entry-listed imports, `genpb` and `contracttest`, stay in `.go-arch-lint.yml` as today), and the generated `arch.toml` and `.go-arch-lint.yml` give `store/bar` to `jobs` and its sub-packages.
 Acceptance:
 1. `grep -c "^type PriceBarWriter interface\|^type PriceBarReader interface\|^type FxRateWriter interface\|^type FxRateReader interface\|^type BarStore interface\|^type OpenBarFunc " internal/store/bar/api.go` prints 6; `grep -c 'DSNEnvBar = "OT_PG_DSN_BAR"' internal/store/bar/api.go` prints 1.
 2. `grep -c "^func " internal/store/bar/api.go` prints 0 (declarations only); `ls internal/store/bar | awk 'END{print NR}'` prints 2 (`api.go`, `api_test.go`); `git diff BASE -- internal/store/api.go | grep -c .` prints 0.
@@ -132,7 +132,7 @@ Checked by CI: `go test ./internal/store/bar ./scripts/arch -race -count=1`, `go
 
 ### 4 bar-store-impl
 
-Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`, for the new package). Size: M. Second opinion: a new database role `ot_w_bar`.
+Module: store. Size: M. Second opinion: a new database role `ot_w_bar`.
 Files: `migrations/0021_bars.sql` (the number taken when #938 landed), `internal/store/barpg/store.go`, `internal/store/barpg/read.go`, `internal/store/barpg/store_test.go`, `internal/store/barpg/store_pg_test.go` (tag `pg`), `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`
 Design: docs/design/market-bars.md#Decisions (4, 8, 9) and #Modules. The implementation is its own package `internal/store/barpg`, not in `internal/store/bar` (declarations only).
 Order: after 1, 3. Landed in #938 (issue #863), which took migration number 0021.
@@ -178,7 +178,7 @@ Checked by CI: the pyside workflow (`uv sync --locked`, `ruff check`, `mypy --st
 
 ### 7 bars-job-manifest (interface)
 
-Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
+Module: jobs. Size: S.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `docs/contracts/jobs.md`, `internal/jobs/barsrefresh/doc.go`, `internal/jobs/barsrefresh/job.toml`, `internal/jobs/barsrefresh/manifest.go`, `internal/jobs/barsrefresh/manifest_test.go`
 Design: docs/design/market-bars.md#Decisions (4, 6, 7)
 Order: after 3, 4; it shares `internal/jobs/api.go`, `internal/jobs/api_test.go` and `docs/contracts/jobs.md` with 10 and 12.
@@ -220,7 +220,7 @@ Checked by CI: `go test ./internal/jobs/... -race -count=1`, ci-go.
 
 ### 10 fx-job
 
-Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
+Module: jobs. Size: M.
 Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/fxrefresh/doc.go`, `internal/jobs/fxrefresh/job.toml`, `internal/jobs/fxrefresh/run.go`, `internal/jobs/fxrefresh/run_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/market-bars.md#Decisions (9)
 Order: after 3, 4, 5, 7 (`internal/jobs/api.go`, `api_test.go`, `jobs.md` shared with 7 and 12, before 12).

@@ -39,22 +39,22 @@ A new database role (`ot_w_alerts`) and a text that goes to a phone: a second-op
 
 ## Modules
 
-New directories: `internal/compute/alertrules` (rules and evaluation), `internal/store/alert` (the sent table), `internal/pages/risks_block` (block builder). This pull request edits `docs/design/modules.md` by one list, two depends cells and one rewritten sentence of the bullet 'Modules not touched in week 1' (it names notify and pages as added by this design and says compute's packages are on main), and nothing else: the sentence that lists the implementation packages `cmd/ot` may import gains `internal/compute/alertrules`, `internal/store/alert` and `internal/pages/risks_block`; the cells of `notify` and `pages` gain `compute` (they use the declarations of `internal/compute/api.go`, as `jobs` does; `compute` itself depends on `contracts` only, so no cycle). It carries the regeneration of `arch.toml` and, because the two depends cells change the edges of existing components, of `.go-arch-lint.yml` by `go run ./scripts/arch` (`go run ./scripts/arch --check` prints `arch: ok`, which is what the CI arch check compares); the new components are not in it yet because their directories are absent. No path row changes: `compute`, `store`, `notify`, `pages`, `docs` and `ot` already cover every path below. The `.go-arch-lint.yml` (module repo) is regenerated again, only to add the new components, by the entries that add a directory (1, 2 and 8: judged two-module entries, as in `compute-figures.md`), serialized by their Order lines because they share the file; `internal/store/setup/setup.go` and `migrations/**` belong to store, `cmd/**` and `docs/contracts/ot.md` to ot, `docs/adr/0010-reports-and-delivery.md` to docs. No `go.mod` or `go.sum` change.
+New directories: `internal/compute/alertrules` (rules and evaluation), `internal/store/alert` (the sent table), `internal/pages/risks_block` (block builder). This pull request edits `docs/design/modules.md` by one list, two depends cells and one rewritten sentence of the bullet 'Modules not touched in week 1' (it names notify and pages as added by this design and says compute's packages are on main), and nothing else: the sentence that lists the implementation packages `cmd/ot` may import gains `internal/compute/alertrules`, `internal/store/alert` and `internal/pages/risks_block`; the cells of `notify` and `pages` gain `compute` (they use the declarations of `internal/compute/api.go`, as `jobs` does; `compute` itself depends on `contracts` only, so no cycle). `arch.toml` and `.go-arch-lint.yml` follow from it and are generated at check time (`go run ./scripts/arch --check` prints `arch: ok`); the new components appear when their directories exist. No path row changes: `compute`, `store`, `notify`, `pages`, `docs` and `ot` already cover every path below. `.go-arch-lint.yml` (module repo) is generated at check time and is in no Files line, so the entries that add a directory (1, 2 and 8) are one-module entries and share no generated file; `internal/store/setup/setup.go` and `migrations/**` belong to store, `cmd/**` and `docs/contracts/ot.md` to ot, `docs/adr/0010-reports-and-delivery.md` to docs. No `go.mod` or `go.sum` change.
 
 | # | issue | module | size | order |
 |---|---|---|---|---|
-| 1 | alerts-compute-interface (interface) | compute, plus repo (judged two-module entry: `.go-arch-lint.yml`) | S | first |
-| 2 | alerts-store-interface (interface) | store, plus repo (judged two-module entry: `.go-arch-lint.yml`) | S | after 1 |
+| 1 | alerts-compute-interface (interface) | compute | S | first |
+| 2 | alerts-store-interface (interface) | store | S | after 1 |
 | 3 | alerts-notify-interface (interface) | notify | S | after 1, 2 |
 | 4 | alerts-rules | compute | M | after 1 |
 | 5 | alerts-store-migration | store; second-opinion case | M | after 2 |
 | 6 | alerts-store-impl | store; second-opinion case | M | after 2, 5 |
 | 7 | alerts-notify-core | notify; second-opinion case | M | after 1, 2, 3, 9 |
-| 8 | alerts-risks-block | pages, plus repo (judged two-module entry: `.go-arch-lint.yml`) | M | after 1, 2 |
+| 8 | alerts-risks-block | pages | M | after 1, 2 |
 | 9 | alerts-adr-0010 | docs | S | first |
 | 10 | alerts-wire (not cut by this design) | ot | M | not cut: only after the winner reader of `docs/design/report-page-producer.md` has landed, together with `notify-wiring` and `sched-cmd-run` |
 
-The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design. The file `.go-arch-lint.yml` is in 1, 2 and 8 (2 follows 1, 8 follows 2). Entries 3, 4, 5, 8 and 9 can run in parallel once their Order lines are met. `internal/compute/api.go` is in 1 only, `internal/store/api.go` in 2 only, `internal/notify/api.go` in 3 only.
+The numbers are the entries of `## Issues` in this file; a name without a number is an issue of another design. No entry has `.go-arch-lint.yml` in its Files (it is generated at check time); the Order lines of the table stay as they are. Entries 3, 4, 5, 8 and 9 can run in parallel once their Order lines are met. `internal/compute/api.go` is in 1 only, `internal/store/api.go` in 2 only, `internal/notify/api.go` in 3 only.
 
 ## Interface
 
@@ -67,12 +67,12 @@ The numbers are the entries of `## Issues` in this file; a name without a number
 
 ### alerts-compute-interface (interface)
 
-- Module: compute and repo (judged two-module entry: `.go-arch-lint.yml` regenerated by `go run ./scripts/arch`). Size: S. Depends on: none.
+- Module: compute. Size: S. Depends on: none.
 - Order: first.
 - Design: docs/design/risk-alerts.md#Interface
 - Files: internal/compute/api.go, internal/compute/api_test.go, internal/compute/alertrules/doc.go, docs/contracts/compute.md
 
-- Goal: the compute declarations of the Interface section, declarations only, the stub `internal/compute/alertrules/doc.go` (a package clause and a comment), `.go-arch-lint.yml` regenerated for the component `compute/alertrules`, a contract test from both sides (a fake `EvaluateAlertsFunc` and a caller) and `docs/contracts/compute.md` recording the states, the reasons, the data-day rule and the 5-day window.
+- Goal: the compute declarations of the Interface section, declarations only, the stub `internal/compute/alertrules/doc.go` (a package clause and a comment), a contract test from both sides (a fake `EvaluateAlertsFunc` and a caller) and `docs/contracts/compute.md` recording the states, the reasons, the data-day rule and the 5-day window.
 
 Acceptance:
 
@@ -85,12 +85,12 @@ Checked by CI: ci-go (`go test ./...`, go-arch-lint, golangci-lint) and `go run 
 
 ### alerts-store-interface (interface)
 
-- Module: store and repo (judged two-module entry: `.go-arch-lint.yml` regenerated by `go run ./scripts/arch`). Size: S. Depends on: alerts-compute-interface (the shared `.go-arch-lint.yml` only).
+- Module: store. Size: S. Depends on: alerts-compute-interface (kept as the table's order only; `.go-arch-lint.yml` is generated at check time and is no longer a reason).
 - Order: after 1 (alerts-compute-interface).
 - Design: docs/design/risk-alerts.md#Interface
 - Files: internal/store/api.go, internal/store/api_test.go, internal/store/alert/doc.go, docs/contracts/store.md
 
-- Goal: `SentMark`, `SentStore`, `DSNEnvAlerts` and `OpenSentFunc`, declarations only, the stub `internal/store/alert/doc.go`, `.go-arch-lint.yml` regenerated for the component `store/alert`, a contract test from both sides (a fake `SentStore` and a caller) and `docs/contracts/store.md` recording the table `alerts.sent`, its key `(rule_id, day)` and the mark-after-send rule.
+- Goal: `SentMark`, `SentStore`, `DSNEnvAlerts` and `OpenSentFunc`, declarations only, the stub `internal/store/alert/doc.go`, a contract test from both sides (a fake `SentStore` and a caller) and `docs/contracts/store.md` recording the table `alerts.sent`, its key `(rule_id, day)` and the mark-after-send rule.
 
 Acceptance:
 
@@ -195,12 +195,12 @@ Checked by CI: ci-go; the size rule.
 
 ### alerts-risks-block
 
-- Module: pages and repo (judged two-module entry: `.go-arch-lint.yml` regenerated by `go run ./scripts/arch`). Size: M. Depends on: alerts-compute-interface, alerts-store-interface (for the shared `.go-arch-lint.yml` only).
+- Module: pages. Size: M. Depends on: alerts-compute-interface, alerts-store-interface (kept as the table's order only; `.go-arch-lint.yml` is generated at check time and is no longer a reason).
 - Order: after 1, 2 (alerts-compute-interface, alerts-store-interface).
 - Design: docs/design/risk-alerts.md#Decisions (Decision 13; the shape and constants of `docs/design/pages-builders.md`)
 - Files: internal/pages/risks_block/builder.go, internal/pages/risks_block/strings.go, internal/pages/risks_block/builder_test.go, internal/pages/risks_block/testdata/ (the expected JSON of each case, new)
 
-- Goal: `risks_block.Build(ctx, Input) ([]byte, error)` returns the JSON of `RisksBlock`, the fields, states and items of Decision 13, with the fixed Chinese constants in `strings.go`, and every time passed in (the builder reads no clock). The block is not visible until a `report_page` producer exists (Left out). `.go-arch-lint.yml` is regenerated for the new directory.
+- Goal: `risks_block.Build(ctx, Input) ([]byte, error)` returns the JSON of `RisksBlock`, the fields, states and items of Decision 13, with the fixed Chinese constants in `strings.go`, and every time passed in (the builder reads no clock). The block is not visible until a `report_page` producer exists (Left out). The generated `.go-arch-lint.yml` is in no Files line.
 
 Acceptance:
 
@@ -260,7 +260,7 @@ Checked by CI: ci-go (`go run ./scripts/arch --check` exits 0); the design verdi
 - A backfill of the owner's own IV30 history: the four SPY rules stay `no_data` for about a year (Decision 6).
 - Intraday alerts, price-level alerts on a quote, raw VIX levels, per-instrument option alerts, a `d` alert that ignores the quiet window, a second chat or channel, alert acknowledgement or snooze, inbound Telegram commands.
 - Order placement of any kind: nothing here calls a broker.
-- What is not verified. `compute_figures`, `notify-wiring` and `sched-cmd-run` are not on main; the subject strings of the default rules (`VIXCLS`, `VXNCLS`, `RVXCLS`, `SP500`, `SPY`) follow `compute-figures.md` Decision 9 and are not compiled against landed code; the stored form of the parameter `data_day` (a day text in `value_tag` is assumed; `compute-figures.md` Decision 3 names the parameter, not its form, and a form that differs is a one-line change in `alertrules`, caught by `TestEvalMissingDataDayNoData` against the first real rows); `TestDefaultRulesMatchRegister` checks ids, versions and units, not subjects. The owner's zone is read from ADR 0010 ("the owner's local time (ADR 0010)"), not from a value in the repository. `scripts/arch` accepts the three new packages (`--check` passes on this branch); `.go-arch-lint.yml` is regenerated in this pull request for the changed notify and pages edges, and by issues 1, 2 and 8 only to add the new components.
+- What is not verified. `compute_figures`, `notify-wiring` and `sched-cmd-run` are not on main; the subject strings of the default rules (`VIXCLS`, `VXNCLS`, `RVXCLS`, `SP500`, `SPY`) follow `compute-figures.md` Decision 9 and are not compiled against landed code; the stored form of the parameter `data_day` (a day text in `value_tag` is assumed; `compute-figures.md` Decision 3 names the parameter, not its form, and a form that differs is a one-line change in `alertrules`, caught by `TestEvalMissingDataDayNoData` against the first real rows); `TestDefaultRulesMatchRegister` checks ids, versions and units, not subjects. The owner's zone is read from ADR 0010 ("the owner's local time (ADR 0010)"), not from a value in the repository. `scripts/arch` accepts the three new packages (`--check` passes on this branch); `.go-arch-lint.yml` is generated at check time and is in no Files line.
 - Telegram text of choice (b) of Decision 10, rejected: the text is only the rule id, the level and the owner's local time (ADR 0010), `<D|W|N> <rule id> <YYYY-MM-DD HH:MM>`, with the details on the report page. It needs no ADR amendment, but the owner chose (a) on 2026-11-08 (optdesk-1074), so a market alert carries the rule title and the public figure.
 
 ## Open questions for the owner

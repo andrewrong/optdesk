@@ -34,7 +34,7 @@ For the main account (and any other alias whose gateway is up), every position o
 
 ## Modules
 
-No new row. Changed cells of `docs/design/modules.md`, edited in this pull request: the entry cell of the store row gains `internal/store/mark` (declarations only: `api.go` and its test; the paragraph on declarations-only packages is main's (from #768) and gains `internal/store/mark` (and `internal/store/markpg` as its implementation) in its two "today" lists and in the `store/bar` sentence of the depends bullet; `internal/store/bar` is already in the cell on main); the list of implementation packages `cmd/ot` may import gains `internal/store/markpg` and `internal/jobs/positionmarks`. `arch.toml` is regenerated with `go run ./scripts/arch` in this pull request. The new paths belong to rows that exist, first matching glob: `internal/store/mark`, `internal/store/markpg`, `migrations/**` and `docs/contracts/store.md` to store; `internal/jobs/positionmarks` and `docs/contracts/jobs.md` to jobs; `contracts/datasets/account.position_mark.r1.json`, `docs/contracts/datasets/account.position_mark.md` and `internal/contracts/gen/records.go` to contracts; `cmd/ot/**` to ot. `.go-arch-lint.yml` is tree-derived and belongs to repo; entries 2, 3 and 5 each add one component to it (the licensed pair) and are ordered 2, then 3, then 5.
+No new row. Changed cells of `docs/design/modules.md`, edited in this pull request: the entry cell of the store row gains `internal/store/mark` (declarations only: `api.go` and its test; the paragraph on declarations-only packages is main's (from #768) and gains `internal/store/mark` (and `internal/store/markpg` as its implementation) in its two "today" lists and in the `store/bar` sentence of the depends bullet; `internal/store/bar` is already in the cell on main); the list of implementation packages `cmd/ot` may import gains `internal/store/markpg` and `internal/jobs/positionmarks`. `arch.toml` follows from it and is generated at check time. The new paths belong to rows that exist, first matching glob: `internal/store/mark`, `internal/store/markpg`, `migrations/**` and `docs/contracts/store.md` to store; `internal/jobs/positionmarks` and `docs/contracts/jobs.md` to jobs; `contracts/datasets/account.position_mark.r1.json`, `docs/contracts/datasets/account.position_mark.md` and `internal/contracts/gen/records.go` to contracts; `cmd/ot/**` to ot. `.go-arch-lint.yml` is tree-derived, generated at check time and in no Files line; entries 2, 3 and 5 are ordered 2, then 3, then 5 by their Order lines (3 shares `docs/contracts/store.md` with 2 and 5 imports `internal/store/mark`), not for a shared generated file.
 
 ## Interface
 
@@ -71,11 +71,11 @@ Acceptance:
 
 ### 2 position-marks-store-api (interface)
 
-Module: store, plus repo (the licensed pair: `scripts/arch`, `arch.toml` and `.go-arch-lint.yml`). Size: S.
+Module: store, plus repo (the licensed pair: `scripts/arch`). Size: S.
 Files: `internal/store/mark/api.go`, `internal/store/mark/api_test.go`, `internal/store/api.go`, `internal/store/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/position-marks.md#Interface
 Order: after 1; no longer waits for market-bars: it adds `internal/store/mark` to the `declarationsOnly` list of `scripts/arch/main.go`, and creates that list and its two derivation rules (a root component of a dependent row, and a sub-package of the same row, may import a listed package) when entry `bar-store-api` of market-bars has not landed first; whichever lands second merges the list; before 3 and 5.
-Goal: the declarations of `## Interface` in the new package, `DSNEnvPositionMark` in the store interface, the contract test from both sides (a fake writer and reader in the test), the component of `store/mark` in `.go-arch-lint.yml`.
+Goal: the declarations of `## Interface` in the new package, `DSNEnvPositionMark` in the store interface, the contract test from both sides (a fake writer and reader in the test).
 Acceptance:
 1. `internal/store/mark/api.go` holds no `func ` with a body: `grep -c "^func " internal/store/mark/api.go` is 0, and it declares `Writer`, `Reader`, `Store`, `OpenFunc` and `PositionMark`.
 2. `grep -c "DSNEnvPositionMark" internal/store/api.go` is 1 and the change in `internal/store/api.go` only adds lines: `git diff --numstat BASE -- internal/store/api.go` shows 0 deleted lines.
@@ -85,7 +85,7 @@ Acceptance:
 
 ### 3 position-marks-store-pg
 
-Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
+Module: store. Size: M.
 Files: `migrations/NNNN_position_mark.sql`, `internal/store/markpg/store.go`, `internal/store/markpg/store_test.go`, `internal/store/markpg/store_pg_test.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `docs/contracts/store.md`
 Design: docs/design/position-marks.md#Decisions
 Order: after 2 (shares `docs/contracts/store.md`); before 5. `NNNN` is the next free migration number at cut time and is renumbered before merge if another migration takes it (the file name is fixed when the issue is cut).
@@ -112,7 +112,7 @@ Acceptance:
 
 ### 5 position-marks-job
 
-Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
+Module: jobs. Size: L.
 Files: `internal/jobs/positionmarks/doc.go`, `internal/jobs/positionmarks/job.toml`, `internal/jobs/positionmarks/manifest.go`, `internal/jobs/positionmarks/plan.go`, `internal/jobs/positionmarks/mark.go`, `internal/jobs/positionmarks/run.go`, `internal/jobs/positionmarks/plan_test.go`, `internal/jobs/positionmarks/mark_test.go`, `internal/jobs/positionmarks/run_test.go`, `internal/jobs/positionmarks/testdata/probe_snapshot.json`
 Design: docs/design/position-marks.md#Decisions
 Order: after 2, 3 and 4 Waits, not on main yet: the account capture job (its manifest gives the slot this one is an offset of; until it lands the offset is written against the name `account_capture`). The import rule is on main (#768) and its `scripts/arch` code comes with entry 2 or with `bar-store-api` of market-bars, whichever lands first. The probe of Decision 10 is a separate window step, outside this entry's acceptance and closing condition; the fixture here is synthetic.

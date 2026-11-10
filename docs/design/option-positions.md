@@ -4,7 +4,7 @@ Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
 Revision: 4
-Revision note: revision 4 answers the design verdict at 8312998: the three issues that edit `.go-arch-lint.yml` now follow one strict order, 6 then 3 then 5, and the Modules table, the paragraph under it and the Order lines of entries 3, 5 and 6 say the same; the menu of Decision 15 is `期权持仓` everywhere (the label of the existing item `期权` is unchanged). Revision 3 records the owner's six answers of 2026-11-09 ("a a a a a a"): A, the ledger page builder is its own design later (Left out); B, the exit parameters are the constants 50 percent and 21 days (Decision 13); C, the top bar gets one new item `期权持仓`, a shadcn dropdown menu (the existing item `期权` at `/options` stays unchanged, so the bar never shows two items with one label) that holds the links `结构` and `盈亏` (Decision 15, issue 12), and the tracking and notices designs add their links to it after this issue. Questions A to C leave Left out. Revision 2 answers the design verdict at 52b49b5. Entries 3 and 5 now carry `.go-arch-lint.yml` (module compute plus repo) and an order against 6 and each other; `Config.Terms` is `store.OptionTermsReader` (exists, `internal/store/api.go`) and Decision 12 names it; `StructureFigures` gains `CashAfter` and `Structure` gains `Decide` and the two compare parameter texts, so no builder adds, compares or does date arithmetic; entry 1 names the eight fields; entry 10 wires nil ledger and account readers and the real store constructors are a follow-up. Revision 1: first draft; the adversarial answers are in `## Adversarial`.
+Revision note: revision 4 answers the design verdict at 8312998: the issues 6, 3 and 5 follow one strict order, 6 then 3 then 5 (it was first set for the shared `.go-arch-lint.yml`; that file is now generated at check time and in no Files line, so the order is kept only as the Order lines of entries 3, 5 and 6 state it), and the Modules table, the paragraph under it and those Order lines say the same; the menu of Decision 15 is `期权持仓` everywhere (the label of the existing item `期权` is unchanged). Revision 3 records the owner's six answers of 2026-11-09 ("a a a a a a"): A, the ledger page builder is its own design later (Left out); B, the exit parameters are the constants 50 percent and 21 days (Decision 13); C, the top bar gets one new item `期权持仓`, a shadcn dropdown menu (the existing item `期权` at `/options` stays unchanged, so the bar never shows two items with one label) that holds the links `结构` and `盈亏` (Decision 15, issue 12), and the tracking and notices designs add their links to it after this issue. Questions A to C leave Left out. Revision 2 answers the design verdict at 52b49b5. Entries 3 and 5 got an order against 6 and each other (they carried `.go-arch-lint.yml` then; they no longer do); `Config.Terms` is `store.OptionTermsReader` (exists, `internal/store/api.go`) and Decision 12 names it; `StructureFigures` gains `CashAfter` and `Structure` gains `Decide` and the two compare parameter texts, so no builder adds, compares or does date arithmetic; entry 1 names the eight fields; entry 10 wires nil ledger and account readers and the real store constructors are a follow-up. Revision 1: first draft; the adversarial answers are in `## Adversarial`.
 
 Source: owner 2026-11-08/09: options trading first and done completely; assignment, exercise and expiry come from IBKR Flex; the cost basis of assigned shares is the strike and premiums are reported apart; every position is marked at the mid of bid and ask; everything is per account, accounts are never pooled; only the main account must work; the margin cushion and the assignment cash never go to Telegram; the front end renders data and computes nothing; Greeks and IV come from IBKR model values and optdesk prices nothing (plan rev 2.1). Plan v2.5 section 11, weeks 8-9 (compute: structures) and 11 (pages: structures, P&L); the v2.2 boards 6, 19, 20 and 24 of option-trader `docs/design/v2/design-set-shadcn.html`.
 Read on origin/main at 35f3c88: `AGENTS.md`, `docs/design/modules.md`, `option-ledger.md`, `account-data.md`, `option-pages-v22.md`, `tracking-household-reports.md`, `option-candidates-page.md`, `page-schemas-v2.md`, `pages-registry.md`, `alignment-v25.md` (rows "structures", "structure.*", "structures page builder"), `internal/compute/api.go` (`LedgerPosition`, `LedgerCycle`, `LedgerResult`, `OptionLedger`), `internal/store/api.go` (`OptionLedgerReader`, `AccountReader`, `OptionEodReader`, `SessionDayReader`), `contracts/schemas/page.structures_list.v1.json`, `page.structure_detail.v3.json`, `page.option_result_page.v1.json`, `docs/conventions/register.toml` (the `structure.*` entries), `web/src/pages/structure`, `structuredetail`, `optionresult`. In option-trader, read only: `src/option_trader/flex/structures.py`, `structure_compare.py`, `option_result.py`, `accounts/structure_loss.py`.
@@ -40,16 +40,16 @@ Goal: the owner opens `/options/structures` of `ot serve` and sees, for one acco
 
 ## Modules
 
-No row of `docs/design/modules.md` is added or changed. All new paths belong to existing rows (`compute`: `internal/compute/**`; `pages`: `internal/pages/**`; `ot`: `cmd/**`; `docs`). This pull request edits line 47 of that file (four names in the sentence that lists the implementation packages `cmd/ot` may import: `internal/compute/optionstruct`, `internal/compute/optionresult`, `internal/pages/structures_page`, `internal/pages/option_result_page`) and regenerates `arch.toml` with `go run ./scripts/arch` (the check `arch.toml agrees with modules.md` of `checks.yml` fails otherwise; precedent `option-candidates-page.md`, PR 730). The edges added are pages to compute, store and contracts and ot to the four packages, all inside the `depends` cells of the rows.
+No row of `docs/design/modules.md` is added or changed. All new paths belong to existing rows (`compute`: `internal/compute/**`; `pages`: `internal/pages/**`; `ot`: `cmd/**`; `docs`). This pull request edits line 47 of that file (four names in the sentence that lists the implementation packages `cmd/ot` may import: `internal/compute/optionstruct`, `internal/compute/optionresult`, `internal/pages/structures_page`, `internal/pages/option_result_page`) and `arch.toml` follows from it (generated at check time, not committed;  precedent `option-candidates-page.md`, PR 730). The edges added are pages to compute, store and contracts and ot to the four packages, all inside the `depends` cells of the rows.
 
 | # | issue | module | order |
 |---|---|---|---|
 | 1 | option-positions-compute-interface (interface) | compute | first |
 | 2 | option-positions-ledger-terms | compute | after 1 |
-| 3 | option-positions-structures-recognise | compute, plus repo (licensed pair) | after 1, 6; before 5 |
+| 3 | option-positions-structures-recognise | compute | after 1, 6; before 5 |
 | 4 | option-positions-structures-marked | compute | after 3 |
-| 5 | option-positions-result-rule | compute, plus repo (licensed pair) | after 1, 2, 3 (and so after 6) |
-| 6 | option-positions-pages-interface (interface) | pages, plus repo (licensed pair) | after 1; before 3 and 5 |
+| 5 | option-positions-result-rule | compute | after 1, 2, 3 (and so after 6) |
+| 6 | option-positions-pages-interface (interface) | pages | after 1; before 3 and 5 |
 | 7 | option-positions-list-builder | pages | after 4, 6 |
 | 8 | option-positions-detail-builder | pages | after 4, 6, 7 |
 | 9 | option-positions-result-builder | pages | after 5, 6 |
@@ -57,7 +57,7 @@ No row of `docs/design/modules.md` is added or changed. All new paths belong to 
 | 11 | option-positions-register | docs | after 4, 5 |
 | 12 | option-positions-nav | web | after 10, and after option-candidates-page-view |
 
-Entries 6, 3 and 5 edit `.go-arch-lint.yml` (each regenerates it with `go run ./scripts/arch`) and name each other in one strict order: 6 first, then 3, then 5; each one starts from the merged file of the one before it. Entries 3 and 4 share `internal/compute/optionstruct/optionstruct.go` and name each other; 7 and 8 share `internal/pages/structures_page/page.go` and `page_test.go` (written by 6) and name each other; 6 and 7, 6 and 8, 6 and 9 share the stubs of 6. Entry 10 wires nil ledger and account readers; the follow-up that connects `option-ledger.md` issue 8 (`store.OptionLedgerReader`) and the store issue of `account-data.md` (`store.AccountReader`) is filed when those land, and entries 1 to 9 do not wait for them (every test uses fake readers). Marks of held legs are `no_mark` until the held-contract capture of the `option-eod` follow-up lands: the pages then show `missing_quote` gaps and nothing else changes.
+Entries 6, 3 and 5 name each other in one strict order: 6 first, then 3, then 5, as their Order lines state (3 uses the package of 6 and 5 uses 3); `.go-arch-lint.yml` is generated at check time and is in no Files line, so it is not a reason for the order. Entries 3 and 4 share `internal/compute/optionstruct/optionstruct.go` and name each other; 7 and 8 share `internal/pages/structures_page/page.go` and `page_test.go` (written by 6) and name each other; 6 and 7, 6 and 8, 6 and 9 share the stubs of 6. Entry 10 wires nil ledger and account readers; the follow-up that connects `option-ledger.md` issue 8 (`store.OptionLedgerReader`) and the store issue of `account-data.md` (`store.AccountReader`) is filed when those land, and entries 1 to 9 do not wait for them (every test uses fake readers). Marks of held legs are `no_mark` until the held-contract capture of the `option-eod` follow-up lands: the pages then show `missing_quote` gaps and nothing else changes.
 
 ## Interface
 
@@ -109,7 +109,7 @@ Frontend stack lines: none (no UI code in this entry).
 
 ### 3 option-positions-structures-recognise
 
-Module: compute, plus repo (judged: `.go-arch-lint.yml`). Size: L.
+Module: compute. Size: L.
 Files: `internal/compute/optionstruct/doc.go`, `internal/compute/optionstruct/optionstruct.go`, `internal/compute/optionstruct/rat.go`, `internal/compute/optionstruct/recognise.go`, `internal/compute/optionstruct/risk.go`, `internal/compute/optionstruct/payoff.go`, `internal/compute/optionstruct/recognise_test.go`, `internal/compute/optionstruct/risk_test.go`, `internal/compute/optionstruct/payoff_test.go`, `internal/compute/optionstruct/testdata/spread_and_put.json`, `internal/compute/optionstruct/testdata/covered_and_naked.json`, `internal/compute/optionstruct/testdata/other_kinds.json`
 Design: docs/design/option-positions.md#Decisions (Decisions 4, 5, 6 max loss, max gain and break-even, 8)
 Order: after 1, 6 and before 5; `optionstruct.go` is edited by 4 (the figures that need marks); it does not wait for 2 (fixtures hold the terms).
@@ -140,7 +140,7 @@ Frontend stack lines: none (no UI code in this entry).
 
 ### 5 option-positions-result-rule
 
-Module: compute, plus repo (judged: `.go-arch-lint.yml`). Size: M.
+Module: compute. Size: M.
 Files: `internal/compute/optionresult/doc.go`, `internal/compute/optionresult/optionresult.go`, `internal/compute/optionresult/months.go`, `internal/compute/optionresult/reliability.go`, `internal/compute/optionresult/optionresult_test.go`, `internal/compute/optionresult/months_test.go`, `internal/compute/optionresult/reliability_test.go`, `internal/compute/optionresult/testdata/mixed_endings.json`
 Design: docs/design/option-positions.md#Decisions (Decision 9)
 Order: after 1, 2, 3, 6.
@@ -155,11 +155,11 @@ Frontend stack lines: none (no UI code in this entry).
 
 ### 6 option-positions-pages-interface (interface)
 
-Module: pages, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
+Module: pages. Size: S.
 Files: `internal/pages/structures_page/page.go`, `internal/pages/structures_page/page_test.go`, `internal/pages/option_result_page/page.go`, `internal/pages/option_result_page/page_test.go`
 Design: docs/design/option-positions.md#Interface
 Order: after 1; before 3 and 5.
-Goal: the two `Config` types, `NewListPage`, `NewDetailPage` and `NewPage` of `## Interface`, with `Build` bodies that answer the error `<package>: not built`; `.go-arch-lint.yml` regenerated by `go run ./scripts/arch` (the edit is the regeneration only). The contract test has two sides: the constructor gives the stated `Meta`; a caller fills every field of `Config` with fakes and calls `Build`.
+Goal: the two `Config` types, `NewListPage`, `NewDetailPage` and `NewPage` of `## Interface`, with `Build` bodies that answer the error `<package>: not built`; the generated `.go-arch-lint.yml` is in no Files line. The contract test has two sides: the constructor gives the stated `Meta`; a caller fills every field of `Config` with fakes and calls `Build`.
 Acceptance:
 1. `grep -c "^type Config struct\|^func NewListPage\|^func NewDetailPage" internal/pages/structures_page/page.go` prints 3; `grep -c "^type Config struct\|^func NewPage" internal/pages/option_result_page/page.go` prints 2; each `page.go` is under 80 lines and imports no `internal/notify` and no `internal/jobs` (`grep -c 'internal/notify\|internal/jobs'` of both prints 0).
 2. `grep -c "^func TestNewListPageMeta\|^func TestNewDetailPageMeta\|^func TestConfigContract" internal/pages/structures_page/page_test.go` prints 3; `grep -c "^func TestNewPageMeta\|^func TestConfigContract" internal/pages/option_result_page/page_test.go` prints 2; `grep -c "time.Sleep\|time.Now()"` of both test files prints 0.

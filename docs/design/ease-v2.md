@@ -40,11 +40,11 @@ Goal: a stored `macro.ease` reading per session day, from the same four inputs, 
 
 ## Modules
 
-New directory: `internal/compute/ease` (the score). This pull request edits `docs/design/modules.md` by one name in the sentence that lists the implementation packages `cmd/ot` may import (`internal/compute/ease`, after `internal/pages/risks_block`) and regenerates `arch.toml` with `go run ./scripts/arch` (block `compute/ease`, may import `contracts` and `compute`); `.go-arch-lint.yml` does not change while the directory is absent; with a package file in it the generator adds the block (checked in a scratch tree: 8 lines), so issue 1 creates `internal/compute/ease/doc.go` and carries `.go-arch-lint.yml`, as `alerts-compute-interface` of `risk-alerts.md` did (compute plus repo, the licensed pair). No row, path, entry, tests or depends cell changes: `compute` already has `internal/compute/**` and depends on `contracts`; `jobs` and `pages` already depend on `compute`; `web` has `web/**`.
+New directory: `internal/compute/ease` (the score). This pull request edits `docs/design/modules.md` by one name in the sentence that lists the implementation packages `cmd/ot` may import (`internal/compute/ease`, after `internal/pages/risks_block`) and `arch.toml` follows from it (block `compute/ease`, may import `contracts` and `compute`; generated at check time, not committed); `.go-arch-lint.yml` is generated at check time and in no Files line; with a package file in it the generator adds the block (checked in a scratch tree: 8 lines), so issue 1 creates `internal/compute/ease/doc.go`, which makes the generator add the block at check time. No row, path, entry, tests or depends cell changes: `compute` already has `internal/compute/**` and depends on `contracts`; `jobs` and `pages` already depend on `compute`; `web` has `web/**`.
 
 | # | issue | module | size | order |
 |---|---|---|---|---|
-| 1 | ease-compute-interface (interface) | compute, plus repo (the licensed pair: `.go-arch-lint.yml`) | S | first |
+| 1 | ease-compute-interface (interface) | compute | S | first |
 | 2 | fred-ease-sources | sources | S | first |
 | 3 | fred-ease-manifest | jobs | S | not merged before 2 |
 | 4 | compute-ease | compute, plus docs (the licensed pair: the whole `macro.ease` entry of `register.toml` with its hash, and the glossary term) | M | after 1 |
@@ -78,7 +78,7 @@ Owner: compute (`compute.Ease` and its types, `internal/compute/api.go`), ot (th
 
 ### ease-compute-interface (interface)
 
-- Module: compute, plus repo (the licensed pair, `.go-arch-lint.yml`). Size: S. Depends on: none.
+- Module: compute. Size: S. Depends on: none.
 - Order: first (1). Interface change: `internal/compute/api.go` gains the types of the Interface section; additive. It also creates the package `internal/compute/ease` as a package clause only, so that the generated lint file names the component before the implementation lands.
 - Design: docs/design/ease-v2.md#Interface
 - Files: internal/compute/api.go, internal/compute/api_test.go, docs/contracts/compute.md, internal/compute/ease/doc.go
@@ -264,7 +264,7 @@ Review of revision 1: the full text is `scratchpad/ease-adversarial.md` of the d
 - Hash coverage (rounding, rational conversion, whole-number step, `weekdaysAfter`): adopted. Decision 6 lists twelve names; `TestHashCoversEaseHelpers` proves each helper edit changes the hash.
 - `TestHalfEvenTie` arithmetic: adopted; the example is now three present inputs scoring 0, 0 and 0.015.
 - Issue 6 Files omitted `steps.go`, and the key routing in `job.go`: adopted; both are in Files and tested (`TestEaseKeyRoutedNotToMarketSpec`, `TestMarketFiguresUnchanged`).
-- Three-module entry: adopted. The `.go-arch-lint.yml` regeneration moved to issue 1 (compute plus repo, verified in a scratch tree that a package file makes the generator add the block); issue 4 is compute plus docs. No entry spans more than two modules.
+- Three-module entry: adopted. The block of `compute/ease` is generated from the directory that issue 1 creates (verified in a scratch tree that a package file makes the generator add the block); issue 4 is compute plus docs. No entry spans more than two modules.
 - `ease-register` labelled interface, empty `agreed_on`: adopted, and in revision 3 the issue is folded into `compute-ease`. It is not an interface entry; `agreed_on = "2026-11-08"` with the delegation note; the header says the owner delegated the producer to the advisor instead of "approved: (pending)".
 - Simplifications: one global `lookback_days` adopted. Merging issues was not adopted where it would cross modules (2 with 3, 1 with 4, 6 with 7); the count is 9: the ot wiring was added, the register issue was folded into `compute-ease` (revision 3, the licensed compute plus docs pair) and a small pages interface issue was cut. The `EaseSeries` struct is kept, not a map: named fields make a swapped or misspelled id a compile error (see Interface); the review's point is a style preference, not a fault.
 - Refusal risks: the conditional `rules_test.go` edit is now exact (it gains a named test); the `TestNoFloatArithmetic` reference is replaced by two greps and `TestScoreExactNotFloat`; the eight-versus-nine count is stated (eight table entries, nine recorded texts); no live FRED call is asked of an implementer, in acceptance or in the pull request text; one set of band words in the register and on the page, and the neutral band drawn at 33.5 to 66.5 so a marker at 33.7 is inside it; issue 3 no longer depends on issue 2 (an Order line says it is not merged before it, because the deployed job would be refused); `macro-page-ease` no longer depends on `ease-compute-interface`. Decision 5 now says 270 days is the load window and 266 the job lookback.

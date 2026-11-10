@@ -35,8 +35,7 @@ No change to `docs/design/modules.md` or `arch.toml`: `internal/store/**`, `migr
 | store-master-interface | store and repo (licensed, below) |
 | store-master | store |
 
-Licence: the interface entry lies in two modules because the stub package `internal/store/instrument/doc.go` must be listed in `.go-arch-lint.yml`
-(a repo file) at the moment the directory gets its first Go file; the precedent is the store-week2 option_eod entry (`store-week2.md:225-230`). The entry after it lies in store only.
+Licence: none. The interface entry lies in store: its stub package `internal/store/instrument/doc.go` gets its component in `.go-arch-lint.yml`, a repo file that is generated at check time and in no Files line. The entry after it lies in store only.
 
 ## Interface
 
@@ -85,12 +84,12 @@ The declarations and the stub package
   Goal: `internal/store/api.go` declares the types of `## Interface` and `internal/store/instrument` exists as a stub that the lint knows.
   Files: internal/store/api.go, internal/store/api_test.go, internal/store/instrument/doc.go
   Design: docs/design/store-master.md#interface
-  Cross-module: store and repo, licensed by this design (see `## Modules`).
+  Cross-module: none (`.go-arch-lint.yml` is generated at check time and in no Files line).
   Acceptance:
   1. `git diff internal/store/api.go` shows additions only and they are exactly the types, `OpenInstrumentFunc` and `DSNEnvMaster` of `## Interface`; `grep -cE '^func ' internal/store/api.go` prints 0.
   2. `api_test.go` tests the contract from both sides: a fake `InstrumentStore` that returns one id for one key and an `Instrument` list ordered by id, and a caller that resolves the same key twice and reads the ids back.
   3. `internal/store/instrument/doc.go` is a package comment and the package clause (`wc -l` is at most 3).
-  4. `go run ./scripts/arch --check` prints `arch: ok`; `.go-arch-lint.yml` lists the component `store/instrument`; `git diff -- go.mod go.sum` is empty.
+  4. `go run ./scripts/arch --check` prints `arch: ok`; `git diff -- go.mod go.sum` is empty.
   5. Every test added calls `t.Parallel()` and none sleeps.
   Checked by CI: ci-go (build, vet, test, golangci-lint, go-arch-lint), `checks` (arch); the design verdict on the pull request (an interface change).
   Pull request body: `Contracts: unchanged`.
@@ -125,7 +124,7 @@ Width: one entry after the interface. Splitting the resolver from the reader wou
 3. Which values the jobs give for `mic`, `calendar_id`, `price_increment` and `lot_size` (the broker proto carries none of the first three): the jobs design takes them from its manifests. The values of `Type` (`stock`, `index`, `option`) are this design's choice; the owner's text does not list them.
 4. The capture ledger and the foreign key of `capture_id` to `ops.capture_run` (`store-week2.md:351-354`).
 5. Wiring: `OpenInstrumentFunc`, the line `OT_PG_DSN_MASTER` and the role on the owner's database are used by `ot-collect` (the follow-up that wires the three designs into `ot` and the runner) and by `ot setup pg` and `ot migrate`, which are the owner's; no entry runs them. Scheduling, live runs and any database of the owner: the owner's.
-6. Textual risk: `.go-arch-lint.yml` is edited by the interface entries of all three designs, and PR 185 edits `arch.toml` and `modules.md`; the entries are attached one after another so each rebases onto the last.
+6. Textual risk: PR 185 edits `modules.md` (`arch.toml` and `.go-arch-lint.yml` are generated at check time and in no Files line); the entries are attached one after another so each rebases onto the last.
 7. What the option page design needs from this one: `store.InstrumentReader.Instruments` turns the ids of `OptionEodReader` and `QuoteSnapshotReader` rows (`internal/store/api.go:36-51`) into a name and identifiers; `ot_ro_pages` reads the tables directly (migration grants above).
 8. Owner-only and second-opinion cases: none of the paths is owner-only; the new role and the migration take effect only when the owner runs `ot setup pg` and `ot migrate`. No network call and no new dependency.
 
@@ -135,7 +134,7 @@ Width: one entry after the interface. Splitting the resolver from the reader wou
 2. Unnamed risk (runner shape, lease, capture id, cache): not this design's; answered in `docs/design/option-jobs.md` and `docs/design/broker.md`.
 3. Simpler way (conId as key, one table, no resolver): not adopted, the advisor settled that ids come from the owner's master tables; the cost is kept small by two tables, one resolver and no `option_terms` (Left out 1).
 4. Lock-in (master shape, FKs on a compressed hypertable): adopted in part; the shape is the owner's text copied, the FK step is named as a risk with a `pg` test and a fallback inside the migration (`## Interface`, acceptance 7); the identity-then-insert race is closed by an advisory lock.
-5. False claims: adopted; the arch statement now says `arch.toml` comes from the table and `.go-arch-lint.yml` from the tree, and the stub package is listed in the interface entry.
+5. False claims: adopted; the arch statement now says `arch.toml` comes from the table and `.go-arch-lint.yml` from the tree, and the stub package is in the interface entry.
 6. Slip causes (arch files, wide interface entry, go.mod conflicts, PR 185 clash): adopted; the interface entry is two modules, it carries the one lint line, this design touches no `go.mod`, 0008 is free in PR 185, and the shared lint file is a stated textual risk (Left out 6).
 
 Full answer: scratchpad adversarial-broker-jobs.md and adversarial-option-collection.md of the dispatcher window (2026-11-07)
