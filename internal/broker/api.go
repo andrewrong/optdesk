@@ -81,9 +81,12 @@ type Quote struct {
 }
 
 // Resolved is the answer of ResolveContract; Listed false is the proto's NOT_LISTED.
+// ErrorCode and ErrorText are the error_code and error_text of the response (0 and "" when none).
 type Resolved struct {
-	Listed   bool
-	Contract Contract
+	Listed    bool
+	Contract  Contract
+	ErrorCode int
+	ErrorText string
 }
 
 // Broker is the client of the IBKR service. Every error is a contracts.TypedError:
