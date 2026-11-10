@@ -1,7 +1,6 @@
 package option_data_page
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -118,18 +117,34 @@ func TestVolLineAbsentWithoutRows(t *testing.T) {
 		t.Fatal("vol_line present on an empty page")
 	}
 
-	// VolLine false: the bytes are those of a build with the same Config before the change,
-	// which never wrote the field, so they hold no vol_line and equal a second build.
+	// VolLine false: the bytes are those the build of this Config gave before the change (recorded from main).
 	c = vlCfg(t, f64(100), vlSpec{1, "C", "100", "2026-11-20", f64(0.241)})
 	c.VolLine = false
 	a, err := Build(t.Context(), c, "2026-11-06", fixedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Contains(a, []byte("vol_line")) {
-		t.Fatalf("vol_line present with VolLine false: %s", a)
+	if string(a) != preChangeBytes {
+		t.Fatalf("VolLine false changed the page:\n got %s\nwant %s", a, preChangeBytes)
 	}
 	if err := validateBytes(t, a); err != nil {
 		t.Fatal(err)
 	}
 }
+
+// preChangeBytes is the page of the Config of TestVolLineAbsentWithoutRows built by main before VolLine existed.
+const preChangeBytes = `{"schema":"option_data_page","schema_version":1,"run_id":"run_1","build_id":"build_1","scope":"scope_1",` +
+	`"generated_at":"2026-11-07T00:00:00Z","data_times":[{"source":"option_eod","data_time":"2026-11-06T21:00:00Z"}],` +
+	`"run_status":"ok","stale":null,"title":"Option data","sentence":"1 contracts on 2026-11-06.",` +
+	`"chain_title":"Option chain, last stored day","series_title":"Quotes by slot","notes_title":"Notes","notes":[],` +
+	`"gaps":[],"underlying":{"id":9000,"symbol":null,"label":"Synthetic underlying","session_day":"2026-11-06",` +
+	`"price":{"kind":"value","value":100,"text":"100.00","unit":"price"},"currency":"USD"},` +
+	`"chain":{"session_day":"2026-11-06","rows":[{"instrument_id":1,"expiry":"2026-11-20","right":"call",` +
+	`"strike":{"kind":"value","value":100,"text":"100.00","unit":"price"},"status":{"code":1,"text":"ok"},` +
+	`"bid":{"kind":"value","value":1,"text":"1.00","unit":"price"},"ask":{"kind":"value","value":2,"text":"2.00",` +
+	`"unit":"price"},"last":{"kind":"value","value":1.5,"text":"1.50","unit":"price"},"volume":{"kind":"gap",` +
+	`"reason":"no_data","text":"no data"},"open_interest":{"kind":"value","value":10,"text":"10","unit":"count"},` +
+	`"iv":{"kind":"value","value":0.241,"text":"24.1%","unit":"iv_decimal"},"delta":{"kind":"gap","reason":"no_data",` +
+	`"text":"no data"},"gamma":{"kind":"gap","reason":"no_data","text":"no data"},"theta":{"kind":"gap","reason":"no_data",` +
+	`"text":"no data"},"vega":{"kind":"gap","reason":"no_data","text":"no data"}}]},"quote_series":[{"instrument_id":1,` +
+	`"caption":"Contract 1","points":[]}]}`
