@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // TestJobBuildErrorKeepsCause: each job factory method returns an error that starts with "build " and
@@ -29,7 +30,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		{"earnings_refresh", func(_ *testing.T, cause error) error {
 			d := newDeps()
 			d.newEarningsRefresh = func(
-				_ map[string]sources.EarningsSource, _ store.EarningsDateWriter, _ store.EarningsDateReader, _ []jobs.WatchEntry, _ clock.Clock,
+				_ map[string]sources.EarningsSource, _ store.EarningsDateWriter, _ store.EarningsDateReader, _ []jobs.WatchEntry, _ clock.Clock, _ symbol.Translator,
 			) (contracts.Job, error) {
 				return nil, cause
 			}
@@ -56,7 +57,9 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"option_eod", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newOptionEodWatch = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+			d.newOptionEodWatch = func(
+				broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock, symbol.Translator,
+			) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d}.optionEod(nil)

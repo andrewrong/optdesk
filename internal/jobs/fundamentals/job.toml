@@ -1,0 +1,17 @@
+# Manifest of the fundamentals job.
+version = 1
+id = "fundamentals"
+lookback_days = 14
+
+[window]
+rule = "after_close"
+calendar = "XNYS"
+lateness_hours = 96
+
+[schedule]
+calendar = "XNYS"
+anchor = "time"
+zone = "America/New_York"
+offset = "8h"
+run_bound = "10m"
+restart_sensitive = false

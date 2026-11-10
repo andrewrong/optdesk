@@ -21,6 +21,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 func init() { register("run-once", runOnce) }
@@ -241,7 +242,7 @@ type jobFactory struct {
 
 // earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the watch list.
 func (f jobFactory) earningsRefresh() (contracts.Job, error) {
-	j, err := f.d.newEarningsRefresh(f.earn, f.events, f.events, f.watch, f.clk)
+	j, err := f.d.newEarningsRefresh(f.earn, f.events, f.events, f.watch, f.clk, f.d.symbols)
 	if err != nil {
 		return nil, fmt.Errorf("build earnings_refresh job failed: %w", err)
 	}
@@ -309,14 +310,22 @@ func (f jobFactory) fred() (contracts.Job, error) {
 }
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	build := f.d.newOptionEodWatch
+	return buildOptionEod(f.d, b, f.inst, f.eod, f.watch, f.clk)
+}
+
+// buildOptionEod builds option_eod over the watch list: the one constructor path of run-once, the scheduler and
+// the dry run.
+func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
+	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+	build := d.newOptionEodWatch
 	if build == nil {
 		// A deps literal of a test that fakes only newOptionEod; newDeps always sets newOptionEodWatch.
-		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, _ []jobs.WatchEntry, c clock.Clock) (contracts.Job, error) {
-			return f.d.newOptionEod(b, r, w, c)
+		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
+			_ []jobs.WatchEntry, c clock.Clock, t symbol.Translator) (contracts.Job, error) {
+			return d.newOptionEod(b, r, w, c, t)
 		}
 	}
-	j, err := build(b, f.inst, f.eod, f.watch, f.clk)
+	j, err := build(b, r, w, watch, clk, d.symbols)
 	if err != nil {
 		return nil, fmt.Errorf("build option_eod job failed: %w", err)
 	}

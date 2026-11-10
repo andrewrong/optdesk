@@ -3,6 +3,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -26,13 +27,14 @@ const (
 type keyRunner struct {
 	ops store.OpsLedger
 	clk clockwork.Clock
+	log *slog.Logger
 }
 
 // NewKeyRunner builds the one path that runs a job for one key. It takes no lease of its
 // own in stage 1 (the caller holds ops.run_lease), so the SchedulerLedger of the
 // constructor type is not used.
 func NewKeyRunner(ops store.OpsLedger, _ store.SchedulerLedger, clk clockwork.Clock) runner.KeyRunner {
-	return &keyRunner{ops: ops, clk: clk}
+	return &keyRunner{ops: ops, clk: clk, log: slog.Default()}
 }
 
 // RunKey runs key through job under a context that ends at deadline, and records the run
@@ -92,10 +94,41 @@ func (k *keyRunner) RunKey(
 	if err := k.ops.RecordRun(wctx, rec); err != nil {
 		return rec, err
 	}
+	k.logFinished(wctx, job, key, attempt, now, rec)
 	if status == "" {
 		return rec, nil
 	}
 	return rec, k.ops.MarkPresent(wctx, day, key, status)
+}
+
+// logFinished writes the one Info line of a run whose final row is recorded. It carries
+// counts, codes and the duration, never the message of a job error or any row content.
+func (k *keyRunner) logFinished(ctx context.Context, job contracts.Job, key contracts.ExpectedKey, attempt int, start time.Time, rec store.Run) {
+	outcome := "degraded"
+	if rec.Status == store.RunDone {
+		outcome = "ok"
+		if rec.ErrorCode != "" {
+			outcome = "failed"
+		}
+	}
+	attrs := []slog.Attr{
+		slog.String("job", job.ID()),
+		slog.String("day", string(rec.Day)),
+		slog.String("dataset", key.DatasetID),
+		slog.String("subject", key.SubjectKey),
+		slog.Int("attempt", attempt),
+		slog.String("outcome", outcome),
+		slog.Int("returned", rec.ReturnedN),
+		slog.Int("usable", rec.UsableN),
+		slog.Duration("duration", rec.FinishedAt.Sub(start)),
+	}
+	if rec.ErrorCode != "" {
+		attrs = append(attrs, slog.String("error_code", rec.ErrorCode))
+	}
+	if rec.ReasonCode != "" {
+		attrs = append(attrs, slog.String("reason", rec.ReasonCode))
+	}
+	k.log.LogAttrs(ctx, slog.LevelInfo, "job run finished", attrs...)
 }
 
 // verdict decides the mark of a run that was not cut and sets ErrorCode or ReasonCode on rec.

@@ -22,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -270,7 +271,7 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	d.newFredSeries = func(_ sources.Source, _ store.SeriesWriter, _ clock.Clock) (contracts.Job, error) {
 		return us(jobFredSeries), nil
 	}
-	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		return us(jobOptionEod), nil
 	}
 	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {

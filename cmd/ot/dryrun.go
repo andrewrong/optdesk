@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -129,6 +130,10 @@ func runDryRun(ctx context.Context, a *app, names []string, dayFlag string) erro
 	if err != nil {
 		return err
 	}
+	watch, err := loadWatch(a)
+	if err != nil {
+		return err
+	}
 	brk, err := a.deps.dialBroker(ctx, socket, broker.Options{})
 	if err != nil {
 		return fmt.Errorf("dry-run: dial broker failed: %w", err)
@@ -136,7 +141,7 @@ func runDryRun(ctx context.Context, a *app, names []string, dayFlag string) erro
 	defer func() { _ = brk.Close() }()
 	var keys, failed int
 	for _, name := range names {
-		k, f, err := dryRunJob(ctx, a, brk, name, day)
+		k, f, err := dryRunJob(ctx, a, brk, name, day, watch)
 		if err != nil {
 			return err
 		}
@@ -153,11 +158,11 @@ func runDryRun(ctx context.Context, a *app, names []string, dayFlag string) erro
 
 // dryRunJob builds one job over the in-memory sink and runs each planned key alone; it returns the keys run and
 // the keys that ended with an error.
-func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day contracts.Day) (keys, failed int, err error) {
+func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day contracts.Day, watch []jobs.WatchEntry) (keys, failed int, err error) {
 	wall := a.deps.newClock()
 	clk := &setClock{}
 	sink := &memSink{}
-	job, err := dryRunBuild(a.deps, name, brk, &memResolver{}, sink, clk)
+	job, err := dryRunBuild(a.deps, name, brk, &memResolver{}, sink, watch, clk)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -199,10 +204,12 @@ func printKeyLine(a *app, job string, day contracts.Day, dataset, subject string
 		job, day, dataset, subject, requested, c[0], c[1], c[2], elapsed.Round(time.Millisecond), code)
 }
 
-func dryRunBuild(d deps, name string, b broker.Broker, res store.InstrumentResolver, sink *memSink, clk clock.Clock) (contracts.Job, error) {
+func dryRunBuild(d deps, name string, b broker.Broker, res store.InstrumentResolver, sink *memSink,
+	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
 	switch name {
 	case jobOptionEod:
-		return d.newOptionEod(b, res, sink, clk)
+		// buildOptionEod passes d.symbols, the translator of the deps, as the real run does.
+		return buildOptionEod(d, b, res, sink, watch, clk)
 	case jobOptionEodJP:
 		return d.newOptionEodJP(b, res, sink, clk)
 	case jobQuoteSnapshot:
