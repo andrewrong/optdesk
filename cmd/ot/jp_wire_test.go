@@ -270,7 +270,7 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	d.newFredSeries = func(_ sources.Source, _ store.SeriesWriter, _ clock.Clock) (contracts.Job, error) {
 		return us(jobFredSeries), nil
 	}
-	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+	d.newOptionEodWatch = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 		return us(jobOptionEod), nil
 	}
 	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {

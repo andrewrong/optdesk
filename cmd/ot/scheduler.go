@@ -143,7 +143,7 @@ func runScheduler(
 	if err := sl.SetState(ctx, buildIDOf(version)); err != nil {
 		return errors.New("record the build in ops.scheduler_state failed")
 	}
-	disabled := startDisabled(cfg, w.brokerUp)
+	disabled := schedulerDisabled(cfg, w)
 	var enabled []contracts.Job
 	for _, j := range w.jobs {
 		if reason, off := disabled[j.ID()]; off {
@@ -158,7 +158,7 @@ func runScheduler(
 		return rec
 	}
 	p := &prober{w: w, hasKey: cfg.fredKey != ""}
-	rec := newSwapReconciler(enabled, build, p.probe, a.log)
+	rec := newSwapReconciler(enabled, build, candidateProbe(w, p.probe), a.log)
 	nf, err := newNotifier(a, ledgerGaps{sl}, sender, fw, true)
 	if err != nil {
 		return err
@@ -253,4 +253,31 @@ func healthHandler(s runner.Scheduler, clk clockwork.Clock) http.Handler {
 			http.Error(w, "unhealthy", http.StatusServiceUnavailable)
 		}
 	})
+}
+
+// candidateProbe is the probe of the prober with option_candidates added: the line of .env is read once at
+// start, so a missing one keeps the job out until the process restarts, as for earnings_refresh.
+func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job, string)) func(context.Context, string) (contracts.Job, string) {
+	return func(ctx context.Context, id string) (contracts.Job, string) {
+		if id != jobOptionCandidates {
+			return next(ctx, id)
+		}
+		if w.candidatesOff != "" {
+			return nil, w.candidatesOff
+		}
+		j, err := w.factory.optionCandidates()
+		if err != nil {
+			return nil, reasonBuildJob
+		}
+		return j, ""
+	}
+}
+
+// schedulerDisabled is startDisabled with option_candidates added when its line is missing and the job is wired.
+func schedulerDisabled(cfg runOnceConfig, w wiring) map[string]string {
+	out := startDisabled(cfg, w.brokerUp)
+	if r := cfg.candidatesOff(); r != "" && w.cand != nil {
+		out[jobOptionCandidates] = r
+	}
+	return out
 }

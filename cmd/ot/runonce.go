@@ -34,6 +34,8 @@ type runOnceConfig struct {
 	pagesDSN, readingsDSN, loaderDSN, calendarUV                             string
 	// eventsDSN and alphaKey belong to earnings_refresh alone: an empty one leaves that job out, never the run.
 	eventsDSN, alphaKey string
+	// candidateDSN belongs to option_candidates alone: an empty one leaves that job out, never the run.
+	candidateDSN, accountDSN string
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
 	jquantsKey string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
@@ -64,6 +66,8 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		eventsDSN:        env[store.DSNEnvEvents],
 		alphaKey:         env[envAlphaKey],
 		jquantsKey:       env[envJQuantsKey],
+		candidateDSN:     env[store.DSNEnvCandidate],
+		accountDSN:       env[store.DSNEnvAccount],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -178,6 +182,9 @@ type wiring struct {
 	// earningsOff is the reason earn is left out of run-once and backfill; the
 	// scheduler keeps the job in jobs so that its ticker knows the schedule (preflight.go).
 	earningsOff string
+	// cand is the option_candidates job held in jobs (nil for a deps without it); candidatesOff is the reason it is left out.
+	cand          contracts.Job
+	candidatesOff string
 	// dial dials the broker anew; the broker it returns is closed when withWiring returns.
 	dial func(ctx context.Context) (broker.Broker, error)
 }
@@ -185,13 +192,21 @@ type wiring struct {
 // runnable is jobs without earnings_refresh when its line is missing; the left-out job is logged by id and
 // reason.
 func (w wiring) runnable(log *slog.Logger) []contracts.Job {
-	if w.earningsOff == "" {
+	drop := map[contracts.Job]bool{}
+	if w.earningsOff != "" {
+		log.Warn("job left out", "component", "ot", "job", jobEarningsRefresh, "status", w.earningsOff)
+		drop[w.earn] = true
+	}
+	if w.cand != nil && w.candidatesOff != "" {
+		log.Warn("job left out", "component", "ot", "job", jobOptionCandidates, "status", w.candidatesOff)
+		drop[w.cand] = true
+	}
+	if len(drop) == 0 {
 		return w.jobs
 	}
-	log.Warn("job left out", "component", "ot", "job", jobEarningsRefresh, "status", w.earningsOff)
 	out := make([]contracts.Job, 0, len(w.jobs))
 	for _, j := range w.jobs {
-		if j != w.earn {
+		if !drop[j] {
 			out = append(out, j)
 		}
 	}
@@ -217,6 +232,11 @@ type jobFactory struct {
 	events store.EarningsDateStore
 	earn   map[string]sources.EarningsSource
 	watch  []jobs.WatchEntry
+	// candidates, accounts and earnRd are what option_candidates gets besides the compute stores; the last two may be nil.
+	candidates store.CandidateWriter
+	accounts   store.AccountReader
+	earnRd     store.EarningsDateReader
+	accountDSN string
 }
 
 // earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the watch list.
@@ -289,7 +309,7 @@ func (f jobFactory) fred() (contracts.Job, error) {
 }
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	j, err := f.d.newOptionEod(b, f.inst, f.eod, f.clk)
+	j, err := f.d.newOptionEodWatch(b, f.inst, f.eod, f.watch, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build option_eod job failed")
 	}
@@ -377,7 +397,7 @@ func withWiring(
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
 		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
-			events: events, earn: earn, watch: cfg.watch}, ledger)
+			events: events, earn: earn, watch: cfg.watch, accountDSN: cfg.accountDSN}, ledger)
 }
 
 // wireJobs builds the jobs over the open stores and calls use. option_eod_jp comes after option_eod and
@@ -428,9 +448,16 @@ func wireJobs(
 	if acctJob != nil {
 		jobList = append(jobList, acctJob)
 	}
+	candJob, err := a.candidateJob(ctx, cfg, &f, extra)
+	if err != nil {
+		return err
+	}
+	if candJob != nil {
+		jobList = append(jobList, candJob)
+	}
 	return use(wiring{
 		ledger: ledger, cal: cal, jobs: jobList, brokerUp: brokerUp, factory: f,
-		earn: earnJob, earningsOff: cfg.earningsOff(),
+		earn: earnJob, earningsOff: cfg.earningsOff(), cand: candJob, candidatesOff: cfg.candidatesOff(),
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
 			if err != nil {
