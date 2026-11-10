@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -157,8 +158,8 @@ func runScheduler(
 		rec, _ := d.newReconciler(w.ledger, sl, w.cal, fw, jobs, runner.WindowRule{}, kr)
 		return rec
 	}
-	p := &prober{w: w, hasKey: cfg.fredKey != ""}
-	rec := newSwapReconciler(enabled, build, candidateProbe(w, p.probe), a.log)
+	p := &prober{w: w, log: a.log, hasKey: cfg.fredKey != ""}
+	rec := newSwapReconciler(enabled, build, candidateProbe(w, a.log, p.probe), a.log)
 	nf, err := newNotifier(a, ledgerGaps{sl}, sender, fw, true)
 	if err != nil {
 		return err
@@ -257,7 +258,7 @@ func healthHandler(s runner.Scheduler, clk clockwork.Clock) http.Handler {
 
 // candidateProbe is the probe of the prober with option_candidates added: the line of .env is read once at
 // start, so a missing one keeps the job out until the process restarts, as for earnings_refresh.
-func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job, string)) func(context.Context, string) (contracts.Job, string) {
+func candidateProbe(w wiring, log *slog.Logger, next func(context.Context, string) (contracts.Job, string)) func(context.Context, string) (contracts.Job, string) {
 	return func(ctx context.Context, id string) (contracts.Job, string) {
 		if id != jobOptionCandidates {
 			return next(ctx, id)
@@ -267,6 +268,7 @@ func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job,
 		}
 		j, err := w.factory.optionCandidates()
 		if err != nil {
+			log.Warn("job build failed", "component", "ot", "job", id, "err", err)
 			return nil, reasonBuildJob
 		}
 		return j, ""

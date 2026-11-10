@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -148,7 +149,7 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 	if cfg.candidatesOff() != reasonNoCandidateDSN {
 		t.Fatalf("candidatesOff %q", cfg.candidatesOff())
 	}
-	probe := candidateProbe(wiring{candidatesOff: reasonNoCandidateDSN}, func(context.Context, string) (contracts.Job, string) {
+	probe := candidateProbe(wiring{candidatesOff: reasonNoCandidateDSN}, slog.New(slog.DiscardHandler), func(context.Context, string) (contracts.Job, string) {
 		t.Error("the next probe was called for option_candidates")
 		return nil, ""
 	})

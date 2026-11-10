@@ -242,7 +242,7 @@ type jobFactory struct {
 func (f jobFactory) earningsRefresh() (contracts.Job, error) {
 	j, err := f.d.newEarningsRefresh(f.earn, f.events, f.events, f.watch, f.clk)
 	if err != nil {
-		return nil, fmt.Errorf("build earnings_refresh job failed")
+		return nil, fmt.Errorf("build earnings_refresh job failed: %w", err)
 	}
 	return j, nil
 }
@@ -277,7 +277,7 @@ func (f jobFactory) calendarRefresh() (contracts.Job, error) {
 	}
 	j, err := f.d.newCalendarRefresh(src, f.loader, f.d.newDiffer(), f.clk, obs)
 	if err != nil {
-		return nil, fmt.Errorf("build calendar_refresh job failed")
+		return nil, fmt.Errorf("build calendar_refresh job failed: %w", err)
 	}
 	return j, nil
 }
@@ -294,7 +294,7 @@ func describeDay(d *contracts.SessionDay) string {
 func (f jobFactory) computeFigures() (contracts.Job, error) {
 	j, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.d.computeEase, f.clk)
 	if err != nil {
-		return nil, fmt.Errorf("build compute_figures job failed")
+		return nil, fmt.Errorf("build compute_figures job failed: %w", err)
 	}
 	return j, nil
 }
@@ -317,7 +317,7 @@ func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
 	}
 	j, err := build(b, f.inst, f.eod, f.watch, f.clk)
 	if err != nil {
-		return nil, fmt.Errorf("build option_eod job failed")
+		return nil, fmt.Errorf("build option_eod job failed: %w", err)
 	}
 	return j, nil
 }
@@ -326,7 +326,7 @@ func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
 func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
 	j, err := f.d.newOptionEodJP(b, f.inst, f.eod, f.clk)
 	if err != nil {
-		return nil, fmt.Errorf("build option_eod_jp job failed")
+		return nil, fmt.Errorf("build option_eod_jp job failed: %w", err)
 	}
 	return j, nil
 }
@@ -334,7 +334,7 @@ func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
 func (f jobFactory) quoteSnapshot(b broker.Broker) (contracts.Job, error) {
 	j, err := f.d.newQuoteSnapshot(b, f.inst, f.snap, f.clk)
 	if err != nil {
-		return nil, fmt.Errorf("build quote_snapshot job failed")
+		return nil, fmt.Errorf("build quote_snapshot job failed: %w", err)
 	}
 	return j, nil
 }
@@ -611,7 +611,7 @@ func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (store
 		av, err := d.newAlphaVantage(sources.EarningsConfig{BaseURL: alphaVantageBaseURL, APIKey: cfg.alphaKey})
 		if err != nil {
 			_ = events.Close()
-			return nil, nil, nil, fmt.Errorf("build Alpha Vantage source failed")
+			return nil, nil, nil, fmt.Errorf("build Alpha Vantage source failed: %w", err)
 		}
 		earn["US"] = av
 	}
@@ -621,7 +621,7 @@ func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (store
 		jq, err := d.newJQuants(sources.EarningsConfig{BaseURL: jquantsBaseURL, APIKey: cfg.jquantsKey, Symbols: jpSymbols(cfg.watch)})
 		if err != nil {
 			_ = events.Close()
-			return nil, nil, nil, fmt.Errorf("build J-Quants source failed")
+			return nil, nil, nil, fmt.Errorf("build J-Quants source failed: %w", err)
 		}
 		earn["JP"] = jq
 	}
@@ -635,7 +635,7 @@ func fredSource(d deps, cfg runOnceConfig, clk clock.Clock) (sources.Source, err
 	}
 	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
 	if err != nil {
-		return nil, fmt.Errorf("build FRED source failed")
+		return nil, fmt.Errorf("build FRED source failed: %w", err)
 	}
 	return src, nil
 }
