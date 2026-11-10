@@ -177,7 +177,7 @@ func noViewResults(exps []store.Expectation) []Result {
 		}
 	}
 	return []Result{
-		{Status: statusExplained, Check: "scheduler.cursor", Day: cursor, Reason: "no_view: the cursor is in ops.scheduler_state; the oldest open expected day is shown"},
+		{Status: statusExplained, Check: "scheduler.cursor", Day: cursor, Reason: "no_view: cursor is in ops.scheduler_state; shows the oldest open expected day"},
 		{Status: statusExplained, Check: "scheduler.keys", Reason: "no_view: the expected key list is in ops.capture_expected_key; the check is dataset-level"},
 		{Status: statusExplained, Check: "scheduler.runs", Reason: "no_view: run rows and reasons are in ops.run; only the gap reason is shown"},
 	}
