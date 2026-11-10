@@ -59,6 +59,7 @@ type job struct {
 	r        dividend.Reader
 	entries  []jobs.WatchEntry
 	clk      clock.Clock
+	loc      *time.Location
 }
 
 type typedError struct {
@@ -102,6 +103,10 @@ func newWith(
 	if err := toml.Unmarshal(manifestBytes, &m); err != nil || m.ID == "" {
 		return nil, errors.New("dividendcapture: manifest is invalid")
 	}
+	loc, lerr := time.LoadLocation(m.Schedule.Zone)
+	if lerr != nil {
+		return nil, errors.New("dividendcapture: manifest: zone is invalid")
+	}
 	off, err1 := time.ParseDuration(m.Schedule.Offset)
 	bound, err2 := time.ParseDuration(m.Schedule.RunBound)
 	if err1 != nil || err2 != nil || m.Schedule.Calendar == "" {
@@ -124,7 +129,7 @@ func newWith(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, passed: p, offset: off, runBound: bound, ref: ref, res: res, w: w, r: r, entries: entries, clk: clk}, nil
+	return &job{m: m, passed: p, offset: off, runBound: bound, ref: ref, res: res, w: w, r: r, entries: entries, clk: clk, loc: loc}, nil
 }
 
 // ID is the job id of the manifest.
@@ -202,6 +207,10 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	sd, err := time.Parse(dayLayout, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: &typedError{contracts.Permanent, "dividendcapture: bad day"}}
+	}
+	// The tick has no history: only the clock's own date in the manifest zone may be written.
+	if string(day) != j.clk.Now().In(j.loc).Format(dayLayout) {
+		return contracts.JobResult{Err: &typedError{contracts.NoValue, "dividendcapture: wrong day"}}
 	}
 	now := j.clk.Now().UTC()
 	base := func(t target) contracts.DividendExpectation {
