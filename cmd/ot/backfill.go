@@ -82,6 +82,9 @@ func backfill(a *app, args []string) error {
 		return fmt.Errorf("backfill %s: sync of the key gaps failed", day)
 	}
 	if len(res.Missing) > 0 {
+		for _, k := range res.Missing {
+			_, _ = fmt.Fprintf(a.stdout, "missing day=%s dataset=%s subject=%s\n", day, k.DatasetID, k.SubjectKey)
+		}
 		return fmt.Errorf("backfill %s: %d key(s) are still missing", day, len(res.Missing))
 	}
 	a.log.Info("backfill "+string(day)+" done", "component", "ot", "status", "ok",
