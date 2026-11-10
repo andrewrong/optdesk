@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 )
 
@@ -110,3 +112,72 @@ func TestDiagnosisGroupAndGaps(t *testing.T) {
 }
 
 var _ valuationapi.DiagnosisFunc = Diagnosis
+
+// The usual range is the lowest and the highest primary figure of the years that have one.
+func TestDiagnosisUsualRange(t *testing.T) {
+	t.Parallel()
+	for _, c := range loadQuestionGolden(t, "diagnosis") {
+		if c.Expected.Status == "TOO_SHORT" {
+			continue
+		}
+		t.Run(c.Name, func(t *testing.T) {
+			t.Parallel()
+			res := Diagnosis(filingsOfFigures(c.Input.Figures, c.Input.SIC), "2025-03-01")
+			primary := "operating_margin"
+			if res.Group == "financial" {
+				primary = "roe"
+			}
+			got := figuresByKey(t, res)
+			var lo, hi decimal.Decimal
+			n := 0
+			for k, f := range got {
+				if !strings.HasPrefix(k, primary+"@") || f.State != valuationapi.StateOK {
+					continue
+				}
+				v := decimal.RequireFromString(f.Value)
+				if n == 0 || v.LessThan(lo) {
+					lo = v
+				}
+				if n == 0 || v.GreaterThan(hi) {
+					hi = v
+				}
+				n++
+			}
+			if n < 5 {
+				t.Fatalf("fixture has %d primary years", n)
+			}
+			for key, want := range map[string]decimal.Decimal{primary + "_usual_low": lo, primary + "_usual_high": hi} {
+				f := got[key]
+				if f.State != valuationapi.StateOK || !decimal.RequireFromString(f.Value).Equal(want) {
+					t.Errorf("%s: %+v, want %s", key, f, want)
+				}
+			}
+		})
+	}
+}
+
+// With fewer than five years that have a primary figure the usual range is missing_input too_short.
+func TestDiagnosisUsualTooShort(t *testing.T) {
+	t.Parallel()
+	n := 0
+	for _, c := range loadQuestionGolden(t, "diagnosis") {
+		if c.Expected.Status != "TOO_SHORT" {
+			continue
+		}
+		n++
+		res := Diagnosis(filingsOfFigures(c.Input.Figures, c.Input.SIC), "2025-03-01")
+		primary := "operating_margin"
+		if res.Group == "financial" {
+			primary = "roe"
+		}
+		got := figuresByKey(t, res)
+		for _, k := range []string{primary + "_usual_low", primary + "_usual_high"} {
+			if f := got[k]; f.State != valuationapi.StateMissingInput || f.Reason != "too_short" || f.Value != "" {
+				t.Errorf("%s: %+v, want missing_input too_short", k, f)
+			}
+		}
+	}
+	if n == 0 {
+		t.Skip("no too-short case in the golden")
+	}
+}
