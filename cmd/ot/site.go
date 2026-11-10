@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
@@ -61,6 +62,10 @@ type siteReaders struct {
 	names   store.InstrumentNameReader
 	view    store.ReadingViewReader
 	cands   store.CandidateReader
+
+	// marks is the position mark reader of household_page, opened with the pages line (nil: no opener or a
+	// failed open, the blocks that need a mark stay gaps).
+	marks mark.Reader
 
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
@@ -180,7 +185,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
-	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
+	rd := siteReaders{marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
 		optionLedger: ledger, sessions: sessions}
 	if len(siteOpeners) > 0 {
@@ -506,4 +511,17 @@ func readSiteNames(ctx context.Context, r store.InstrumentNameReader, id int64, 
 		}
 	}
 	return r.InstrumentNames(ctx, ids)
+}
+
+// openMarkReader opens the mark store with the pages line when deps has an opener. A nil opener or a failed
+// open gives nil (the blocks that need a mark stay gaps); the site does not fail for it.
+func openMarkReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) mark.Reader {
+	if a.deps.openMark == nil {
+		return nil
+	}
+	ms, err := a.deps.openMark(ctx, dsn)
+	if !track(ms, err) {
+		return nil
+	}
+	return ms
 }

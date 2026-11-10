@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -11,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/atombender/go-jsonschema/pkg/types"
 )
 
@@ -106,5 +109,60 @@ func TestHouseholdPageNamedDemoIsGap(t *testing.T) {
 	got, err := page.Build(t.Context(), nil, contracts.Day("2026-11-05"), householdClock.Now().UTC())
 	if err != nil || !strings.Contains(string(got), `"no_reader"`) {
 		t.Fatalf("%v %s", err, got)
+	}
+}
+
+// householdMarkStore is a mark store that notes its close.
+type householdMarkStore struct {
+	mark.Store
+	closed *bool
+}
+
+func (f householdMarkStore) Close() error { *f.closed = true; return nil }
+
+func TestOpenMarkReaderUsesPagesLineAndTracksClose(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	var gotDSN string
+	closed := false
+	a.deps.openMark = func(_ context.Context, dsn string) (mark.Store, error) {
+		gotDSN = dsn
+		return householdMarkStore{closed: &closed}, nil
+	}
+	var tracked []io.Closer
+	track := func(c io.Closer, err error) bool {
+		if err == nil {
+			tracked = append(tracked, c)
+		}
+		return err == nil
+	}
+	got := openMarkReader(t.Context(), a, "pages-dsn", track)
+	if got == nil || gotDSN != "pages-dsn" || len(tracked) != 1 {
+		t.Fatalf("reader %v dsn %q tracked %d", got, gotDSN, len(tracked))
+	}
+	_ = tracked[0].Close()
+	if !closed {
+		t.Fatal("store not closed through track")
+	}
+	cfg := householdConfig(a, siteReaders{marks: got})
+	if cfg.Marks != got || cfg.Holdings == nil {
+		t.Fatalf("config marks %v holdings %v", cfg.Marks, cfg.Holdings != nil)
+	}
+}
+
+func TestOpenMarkReaderFailedOrMissingOpenerIsNil(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	track := func(_ io.Closer, err error) bool { return err == nil }
+	a.deps.openMark = nil
+	if got := openMarkReader(t.Context(), a, "d", track); got != nil {
+		t.Fatalf("nil opener gave %v", got)
+	}
+	a.deps.openMark = func(context.Context, string) (mark.Store, error) { return nil, errors.New("down") }
+	if got := openMarkReader(t.Context(), a, "d", track); got != nil {
+		t.Fatalf("failed open gave %v", got)
+	}
+	if cfg := householdConfig(a, siteReaders{}); cfg.Marks != nil {
+		t.Fatal("Marks must stay nil")
 	}
 }
