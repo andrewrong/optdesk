@@ -51,6 +51,9 @@ type Config struct {
 	Terms store.OptionTermsReader
 	// Choices are the underlyings the page links to; empty: no underlyings field.
 	Choices []Choice
+	// Earnings reads the earnings dates of Issuer; nil or an empty Issuer: no earnings fields.
+	Earnings store.EarningsDateReader
+	Issuer   string
 }
 
 type sourceTime struct {
@@ -88,6 +91,9 @@ type underlying struct {
 	SessionDay *string `json:"session_day"`
 	Price      any     `json:"price"`
 	Currency   string  `json:"currency"`
+
+	EarningsText string `json:"earnings_text,omitempty"`
+	EarningsTone string `json:"earnings_tone,omitempty"`
 }
 
 type chain struct {
@@ -199,11 +205,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	}
 
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
-	vm.Underlying.SessionDay = &sessionDay
-	vm.Underlying.Price = priceCell(latest.UnderlyingPrice)
-	if latest.UnderlyingCcy != "" {
-		vm.Underlying.Currency = latest.UnderlyingCcy
-	}
+	setPrice(&vm.Underlying, sessionDay, latest)
 	vm.Chain.SessionDay = &sessionDay
 	var eodTime time.Time
 	for _, r := range rows {
@@ -213,6 +215,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		}
 	}
 	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
+		return nil, err
+	}
+	if err := applyEarnings(ctx, c, d, day, sessionDay, vm.Chain.Rows, &vm.Underlying); err != nil {
 		return nil, err
 	}
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
@@ -290,6 +295,15 @@ func selectRows(eod []contracts.OptionEod) ([]contracts.OptionEod, contracts.Opt
 		return cmp.Compare(a.InstrumentID, b.InstrumentID)
 	})
 	return limit(rows, maxRows), latest, nil
+}
+
+// setPrice writes the session day, the price and the currency (when the row has one) of latest.
+func setPrice(u *underlying, sessionDay string, latest contracts.OptionEod) {
+	u.SessionDay = &sessionDay
+	u.Price = priceCell(latest.UnderlyingPrice)
+	if latest.UnderlyingCcy != "" {
+		u.Currency = latest.UnderlyingCcy
+	}
 }
 
 func toRow(r contracts.OptionEod) chainRow {
