@@ -18,7 +18,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/ease"
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
+	"github.com/andrewrong/optdesk/internal/compute/optioncand"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
+	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
 	"github.com/andrewrong/optdesk/internal/compute/own"
@@ -30,6 +32,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
@@ -44,6 +47,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
+	"github.com/andrewrong/optdesk/internal/pages/option_notices_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
@@ -96,6 +100,10 @@ type deps struct {
 	openInstrumentName      store.OpenInstrumentNameFunc
 	newOptionEod            jobs.NewOptionEodFunc
 	newOptionEodJP          jobs.NewOptionEodFunc
+	newOptionEodWatch       jobs.NewOptionEodWatchFunc
+	openCandidateRW         openCandidateRWFunc
+	newOptionCandidates     jobs.NewOptionCandidatesJobFunc
+	newCandidateRule        compute.NewOptionCandidatesFunc
 	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
 	dialAccount             dialAccountFunc
 	openAccount             store.OpenAccountFunc
@@ -128,6 +136,9 @@ type deps struct {
 	newOptionStructures     compute.NewOptionStructuresFunc
 	newOptionResults        compute.NewOptionResultsFunc
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
+	optionNoticesPage       optionNoticesPageFunc
+	newOptionNotices        compute.NewOptionNoticesFunc
+	noticeParams            compute.DefaultNoticeParamsFunc
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
 	newScheduler            runner.NewSchedulerFunc
@@ -170,7 +181,10 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 func newDeps() deps {
 	d := newBaseDeps()
 	d.ext = newExt()
+	d.newOptionEodWatch, d.openCandidateRW = optioneod.NewWithWatch, openCandidateWriter
+	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
+	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	return d
 }
 
@@ -287,8 +301,31 @@ func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, 
 	})
 }
 
+// optionNoticesPageFunc builds option_notices_page from plain arguments.
+type optionNoticesPageFunc func(zone *time.Location, runID, buildID, scope, main string, aliases []string, acct store.AccountReader,
+	cands store.CandidateReader, earn store.EarningsDateReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page
+
+// newOptionNoticesPage builds the page option_notices_page in zone from the plain arguments; the one place
+// that names option_notices_page.Config.
+func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main string, aliases []string, acct store.AccountReader,
+	cands store.CandidateReader, earn store.EarningsDateReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page {
+	return option_notices_page.NewPage(option_notices_page.Config{
+		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Main: main, Aliases: aliases,
+		Account: acct, Candidates: cands, Earnings: earn, Rule: rule, Params: params,
+	})
+}
+
 // openCandidateStore opens the candidate store; a failed open is a nil interface, not a typed nil.
 func openCandidateStore(ctx context.Context, dsn string) (candidateStore, error) {
+	s, err := candidate.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// openCandidateWriter opens the candidate store for the job; a failed open is a nil interface, not a typed nil.
+func openCandidateWriter(ctx context.Context, dsn string) (candidateRW, error) {
 	s, err := candidate.Open(ctx, dsn)
 	if err != nil {
 		return nil, err

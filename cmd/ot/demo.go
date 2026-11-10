@@ -6,7 +6,9 @@ import (
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 // demoReader is the series reader of the demo profile: three typed points of each of the seven
@@ -79,4 +81,46 @@ func demoMarketReadings(ctx context.Context, name, subjectKind, subject string, 
 	}
 	rows[0].Value = &v
 	return rows, nil
+}
+
+// The demo profile of the notices page: two aliases, the first with a capture and the fixed result below, the
+// second with no capture (the block no_capture).
+const (
+	demoNoticesMain   = "main"
+	demoNoticesSecond = "second"
+)
+
+// demoNoticeAccount is the account reader of the demo profile: one position for the main alias on every day,
+// nothing for any other alias.
+type demoNoticeAccount struct{}
+
+// Positions returns the one demo position of the main alias; any other alias has none.
+func (demoNoticeAccount) Positions(_ context.Context, alias, day string) ([]store.Position, error) {
+	if alias != demoNoticesMain {
+		return []store.Position{}, nil
+	}
+	return []store.Position{{Alias: alias, SessionDay: day, Symbol: "DEMO", SecType: "OPT", Currency: "USD",
+		Expiry: "2026-11-20", Strike: "95", Multiplier: "100", Right: "put", Quantity: "-1"}}, nil
+}
+
+// Values returns no value rows.
+func (demoNoticeAccount) Values(context.Context, string, string) ([]store.AccountValue, error) {
+	return []store.AccountValue{}, nil
+}
+
+// Executions returns no execution rows.
+func (demoNoticeAccount) Executions(context.Context, string, string, string) ([]store.Execution, error) {
+	return []store.Execution{}, nil
+}
+
+// demoNoticeRule is the rule of the demo profile: whatever the input, one notice of each severity.
+type demoNoticeRule struct{}
+
+// Evaluate returns the fixed demo result.
+func (demoNoticeRule) Evaluate(compute.NoticeInput, compute.NoticeParams) compute.NoticeResult {
+	return compute.NoticeResult{RuleVersion: 1, Notices: []compute.Notice{
+		{Code: "cushion_low", Severity: "act", Symbol: "DEMO", Contract: "DEMO 2026-11-20 95 put", Expiry: "2026-11-20"},
+		{Code: "expiry_near", Severity: "warn", Symbol: "DEMO", Contract: "DEMO 2026-11-20 95 put", Expiry: "2026-11-20"},
+		{Code: "capture_stale", Severity: "info"},
+	}, CashByDate: []compute.CashDay{}, Cushion: "0.12"}
 }

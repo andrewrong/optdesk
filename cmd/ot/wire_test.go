@@ -451,3 +451,19 @@ func TestJQuantsErrorDayNotRetried(t *testing.T) {
 		t.Fatalf("calls %d then %d: no call after an error", before, src.calls.Load())
 	}
 }
+
+func TestOptionNoticesPageWiresRule(t *testing.T) {
+	t.Parallel()
+	d := newDeps()
+	p := d.optionNoticesPage(time.UTC, "ot-page", "dev", "notices", "main", []string{"main"}, nil, nil, nil, d.newOptionNotices(), d.noticeParams())
+	if p.Meta.Name != "option_notices_page" || p.Meta.Schema != "page.option_notices_page.v1" {
+		t.Fatalf("meta %+v", p.Meta)
+	}
+	b, err := p.Build(t.Context(), nil, "2026-11-05", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"scope":"notices"`) || !strings.Contains(string(b), `"no_reader"`) {
+		t.Fatalf("page %s", b)
+	}
+}

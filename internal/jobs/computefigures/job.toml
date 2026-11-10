@@ -4,6 +4,7 @@ rate_series = "DGS3MO"
 iv30 = "market.iv30_own"
 ivp = "market.ivp_own"
 ivr = "market.ivr_own"
+hv30 = "market.hv30_own"
 
 [[market]]
 id = "market.vix_term_ratio"

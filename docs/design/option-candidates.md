@@ -183,7 +183,7 @@ Checked by CI: `go test ./internal/store/candidate ./internal/store/setup -race 
 ### 7 candidates-job-puts (interface and implementation)
 
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
-Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `internal/jobs/optioncandidates/testdata/`, `docs/contracts/jobs.md`
+Files: `internal/jobs/api.go`, `internal/jobs/api_test.go`, `internal/jobs/optioncandidates/job.go`, `internal/jobs/optioncandidates/job.toml`, `internal/jobs/optioncandidates/input.go`, `internal/jobs/optioncandidates/convert.go`, `internal/jobs/optioncandidates/schedule.go`, `internal/jobs/optioncandidates/job_test.go`, `internal/jobs/optioncandidates/input_test.go`, `internal/jobs/optioncandidates/convert_test.go`, `internal/jobs/optioncandidates/schedule_test.go`, `docs/contracts/jobs.md`
 Design: docs/design/option-candidates.md#Decisions (Decisions 1, 4, 5, 9, 13, 15)
 Order: after 1, 2, 3, 6, 561 `account-job`, 606 `earnings-job`; they create job packages and regenerate `.go-arch-lint.yml`, and this entry rebases on the last of them.
 Goal: `optioncandidates.New` (the type `NewOptionCandidatesJobFunc`) runs at `session_close` plus 30 minutes; for each watched US underlying it reads the newest chain day, the terms (in chunks of 500 ids), the earnings rows, the newest account captures per alias and `DGS3MO`, converts floats to decimal text (Decision 4), calls `Evaluate` for `short_put` and writes the rows under a new run id. A nil reader gives `unknown` gates, not an error; a store error is a failed run with a named code. The job holds no dividend reader.
@@ -198,7 +198,7 @@ Checked by CI: `go test ./internal/jobs/optioncandidates -race -count=1`, ci-go,
 ### 8 candidate-text
 
 Module: pages, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: S.
-Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `internal/pages/candidate_text/testdata/`, `docs/contracts/pages.md`
+Files: `internal/pages/candidate_text/format.go`, `internal/pages/candidate_text/format_test.go`, `docs/contracts/pages.md`
 Design: docs/design/option-candidates.md#Interface
 Order: after 5, 2, 6, 7; this is the `.go-arch-lint.yml` chain.
 Goal: `Format(rows, all)` returns the plain text of the stored rows in the stored order: for `ok` rows company, kind, alias, expiry, strike, bid, annualized yield, break-even and marks; with `all` the blocked and unknown rows with their gate reasons; a line per JP entry is not its job (the command adds it). No sort, no arithmetic.
