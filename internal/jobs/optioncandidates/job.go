@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -221,4 +222,97 @@ func entryOf(us []jobs.WatchEntry, issuer string) jobs.WatchEntry {
 		}
 	}
 	return jobs.WatchEntry{}
+}
+
+// WithSettingsVersion sets f on a job built by New or NewWithCalls and returns the same job; any other job is an
+// error. Call it once per job. A run calls f once at its start, before any row is built and also when it writes no
+// row, with the run's instant (the same instant the run then stamps on its rows), and writes the value as
+// SettingsVersion on every row of the run, whatever its kind. A nil f, or an error from f, writes nil rows, the run
+// goes on and one slog line with component jobs and status degraded is logged. The job resolves no parameter.
+func WithSettingsVersion(jb contracts.Job, f jobs.SettingsVersionFunc) (contracts.Job, error) {
+	var base *job
+	switch j := jb.(type) {
+	case *job:
+		base = j
+	case *callsJob:
+		base = j.job
+	default:
+		return nil, errors.New("optioncandidates: WithSettingsVersion takes a job built by New or NewWithCalls")
+	}
+	if f != nil {
+		r := &settingsRun{f: f, clk: base.clk}
+		base.st.SessionDays = settingsDays{inner: base.st.SessionDays, r: r}
+		base.st.Candidates = settingsRows{inner: base.st.Candidates, r: r}
+		base.clk = settingsClock{r: r}
+	}
+	return jb, nil
+}
+
+// settingsRun is the state of the current run of a job with a settings function. Both Run methods read the
+// session days first, once, before anything else (a seam of job.go, so the run bodies stay as they are): that
+// read starts the run here, asks f once and pins the run's instant, which the run takes next from its clock.
+// Runs of one job do not overlap.
+type settingsRun struct {
+	f   jobs.SettingsVersionFunc
+	clk clock.Clock
+
+	mu     sync.Mutex
+	pinned time.Time
+	v      *int64
+}
+
+func (r *settingsRun) start(ctx context.Context) {
+	at := r.clk.Now().UTC()
+	v, err := r.f(ctx, at)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.pinned, r.v = at, nil
+	if err != nil {
+		slog.Warn("settings version unavailable, rows carry none", "component", "jobs", "status", "degraded",
+			"job", "option_candidates", "err", err)
+		return
+	}
+	r.v = &v
+}
+
+type settingsDays struct {
+	inner store.SessionDayReader
+	r     *settingsRun
+}
+
+func (d settingsDays) SessionDays(ctx context.Context, cal string, from, to contracts.Day) ([]contracts.SessionDay, error) {
+	d.r.start(ctx)
+	return d.inner.SessionDays(ctx, cal, from, to)
+}
+
+// settingsClock answers the pinned instant once, then the clock.
+type settingsClock struct{ r *settingsRun }
+
+func (c settingsClock) Now() time.Time {
+	c.r.mu.Lock()
+	defer c.r.mu.Unlock()
+	if !c.r.pinned.IsZero() {
+		at := c.r.pinned
+		c.r.pinned = time.Time{}
+		return at
+	}
+	return c.r.clk.Now()
+}
+
+// settingsRows stamps the version of the run on every row it writes.
+type settingsRows struct {
+	inner store.CandidateWriter
+	r     *settingsRun
+}
+
+func (w settingsRows) InsertCandidates(ctx context.Context, rows []store.Candidate) (int, error) {
+	w.r.mu.Lock()
+	v := w.r.v
+	w.r.mu.Unlock()
+	stamped := make([]store.Candidate, len(rows))
+	copy(stamped, rows)
+	for i := range stamped {
+		stamped[i].SettingsVersion = v
+	}
+	return w.inner.InsertCandidates(ctx, stamped)
 }
