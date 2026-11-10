@@ -19,9 +19,6 @@ const candidatesAnchor = "candidates-US"
 
 const staleNoRowsText = gapNoRows
 
-// errNotBuilt is the answer of the stub BuildStock until entry 4 replaces it.
-var errNotBuilt = errors.New("option_boards: not built")
-
 var errNoZone = errors.New("option_boards: nil zone")
 
 // BuildOption builds page.option_page.v1 (Decisions 3 to 7 and 9). r is unused; at is given in UTC and written
@@ -72,7 +69,7 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 		Market: "US", Label: "美股", Currency: "USD",
 		Headline:        fmt.Sprintf("%d 个值得看。", len(cards)),
 		CardsTitle:      "今日机会",
-		Cards:           buildCards(cards, eod),
+		Cards:           buildOptionCards(cards, eod),
 		CandidatesTitle: "候选表",
 		Candidates:      buildTable(tableRows, eod),
 		AllLink:         link{Text: fmt.Sprintf("全部 %d 个机会", len(l.Rows)), Target: candidatesAnchor},

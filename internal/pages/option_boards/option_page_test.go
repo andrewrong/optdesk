@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -15,8 +14,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
-
-var updateGolden = flag.Bool("update", false, "rewrite the golden files")
 
 var testZone = time.FixedZone("+08", 8*3600)
 
@@ -304,12 +301,12 @@ func TestNoReaderGap(t *testing.T) {
 	}
 }
 
-func staleOf(m map[string]any) map[string]any { return m["stale"].(map[string]any) }
+func optStaleOf(m map[string]any) map[string]any { return m["stale"].(map[string]any) }
 
 func TestStaleLabelFreshDay(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: fixtureRows()}}, nil, buildDay))
-	s := staleOf(m)
+	s := optStaleOf(m)
 	if s["data_time"] != "2026-11-10T08:40:00+08:00" || s["stale_after"] != "2026-11-10T23:59:59+08:00" || s["text"] != "数据日 2026-11-10" {
 		t.Errorf("stale = %v", s)
 	}
@@ -323,7 +320,7 @@ func TestStaleLabelStaleDay(t *testing.T) {
 	row := okRow(1, "AAA", 1, 1, 1)
 	row.SessionDay = "2026-11-08"
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{"2026-11-08": {row}}}, nil, buildDay))
-	s := staleOf(m)
+	s := optStaleOf(m)
 	if s["data_time"] != "2026-11-10T08:40:00+08:00" || s["stale_after"] != "2026-11-08T23:59:59+08:00" || s["text"] != "数据日 2026-11-08,早于今日" {
 		t.Errorf("stale = %v", s)
 	}
@@ -336,7 +333,7 @@ func TestStaleLabelStaleDay(t *testing.T) {
 func TestStaleLabelNoRows(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{}, nil, buildDay))
-	s := staleOf(m)
+	s := optStaleOf(m)
 	if s["data_time"] != "2026-11-10T00:00:00+08:00" || s["stale_after"] != s["data_time"] || s["text"] != "没有候选行,候选任务尚未存入" {
 		t.Errorf("stale = %v", s)
 	}

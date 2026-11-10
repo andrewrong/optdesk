@@ -56,8 +56,8 @@ func earningsTag(r store.Candidate) string {
 	return earnMissing
 }
 
-// deltaText is "−0.15" for a stored delta, "缺" when it is null or not a decimal.
-func deltaText(delta *string) string {
+// optionDeltaText is "−0.15" for a stored delta, "缺" when it is null or not a decimal.
+func optionDeltaText(delta *string) string {
 	if delta == nil || !decimalPattern.MatchString(*delta) {
 		return gapText
 	}
@@ -88,7 +88,7 @@ func annualisedOf(yield *string) (cell any, text string) {
 	return mkGap("no_data", gapText), gapText
 }
 
-func buildCards(rows []store.Candidate, eod map[int]contracts.OptionEod) []opportunity {
+func buildOptionCards(rows []store.Candidate, eod map[int]contracts.OptionEod) []opportunity {
 	out := make([]opportunity, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, buildCard(r, eod))
@@ -118,7 +118,7 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod) opportunity {
 		Reason:         reason,
 		Annualised:     ann,
 		AnnualisedText: annText,
-		ContractLine:   fmt.Sprintf("sell put %s · %s %s · %d 天 · Δ %s", r.Strike, md, wd, r.DTE, deltaText(r.Delta)),
+		ContractLine:   fmt.Sprintf("sell put %s · %s %s · %d 天 · Δ %s", r.Strike, md, wd, r.DTE, optionDeltaText(r.Delta)),
 		LiquidityLine:  fmt.Sprintf("成交 %s · 持仓 %s", e.Volume, e.OpenInterest),
 		Tags:           tags,
 		SizeLine:       fmt.Sprintf("1 张 · 行权价 %s · 乘数 %d", r.Strike, r.Multiplier),

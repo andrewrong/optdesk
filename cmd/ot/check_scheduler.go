@@ -58,6 +58,7 @@ func checkScheduler(ctx context.Context, e *checkEnv) {
 	for _, r := range noViewResults(exps) {
 		e.c.emit(r)
 	}
+	checkFredNet(ctx, e, now, exps)
 }
 
 func checkName(kind, dataset string) string {
