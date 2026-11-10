@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -146,11 +148,21 @@ func checkDay(day string) error {
 	return nil
 }
 
-// wrap makes a database error Retryable and keeps a typed error as it is.
+// isConstraintViolation reports whether err is a PostgreSQL integrity constraint violation (SQLSTATE class 23).
+func isConstraintViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && strings.HasPrefix(pe.Code, "23")
+}
+
+// wrap makes a database error Retryable, except a constraint violation (SQLSTATE class 23), which the database
+// repeats on every attempt and is Permanent; it keeps a typed error as it is.
 func wrap(err error, what string) error {
 	var te contracts.TypedError
 	if errors.As(err, &te) {
 		return err
+	}
+	if isConstraintViolation(err) {
+		return permanent(fmt.Errorf("account: %s: %w", what, err))
 	}
 	return retryable(fmt.Errorf("account: %s: %w", what, err))
 }
