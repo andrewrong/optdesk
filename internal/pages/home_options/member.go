@@ -1,6 +1,8 @@
 // Package home_options builds the options member of the home page: a page.options_summary.v4
 // document read from the replayed option ledger (store.OptionLedgerReader replayed by a
-// compute.OptionLedger, as option_tracking_page does). It reads no clock and makes no request.
+// compute.OptionLedger, as option_tracking_page does). The builder computes no figure: the sums
+// come from a Figures, as decimal text or a gap, and the builder copies that text, adding only
+// the sign, the dollar sign and the thousands separators. It reads no clock and makes no request.
 // A month with no ledger row is a hole (a no_data gap), never zero, and the closed series text
 // is built only from ledger rows.
 package home_options
@@ -10,8 +12,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,8 +30,6 @@ const (
 	staleDays   = 4 // the freshness rule of the home members: data day + 4 days at 09:30
 	minus       = "−"
 	usd         = "USD"
-	actionOpen  = "open"
-	statusOpen  = "open"
 
 	title         = "期权概览"
 	subtitle      = "来自成交账本"
@@ -52,9 +52,47 @@ const (
 
 var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
-// Config carries the identity of the run, the owner's zone, the ledger reader and the replay.
-// A nil Ledger gives every figure as a no_data gap. A nil Replay with stored rows, like a nil
-// Zone, is an error of Build.
+// Figures computes the figures of the member from the replayed positions. Every number is exact
+// decimal text and a gap carries its reason; the implementation lives in compute, the builder only
+// places what it returns (Decisions 1, 3 and 4 of pages-real-data.md).
+//
+// The implementation sums the USD positions only (OtherCurrency says one was left out), counts a
+// month as Seen when a ledger row of it (an opening or a closing fill) is dated in the month and
+// not after AsOf, and gives a figure that needs a missing quantity, price or multiplier as a gap,
+// never as zero. Premium is the cash of the opening rows of the month, sold positive, rounded
+// half-even to two places; Closed is the realized result of the positions closed in the month,
+// two places, a gap when none closed; Sold is the count of selling opening rows as integer text;
+// OpenPremium is the cash of the still open sold rows of every month, two places.
+type Figures interface {
+	Options(FigureIn) FigureOut
+}
+
+// FigureIn is the input of Figures.Options; Months are YYYY-MM keys, oldest first.
+type FigureIn struct {
+	Positions []compute.LedgerPosition
+	AsOf      contracts.Day
+	Months    []string
+}
+
+// FigureOut is the result of Figures.Options: one MonthFigure per month asked, in order.
+// Newest is the newest ledger day not after AsOf, empty with no ledger row.
+type FigureOut struct {
+	Months        []MonthFigure
+	OpenPremium   compute.FigureValue
+	Newest        contracts.Day
+	OtherCurrency bool
+}
+
+// MonthFigure is the figures of one calendar month.
+type MonthFigure struct {
+	Month                 string
+	Seen                  bool
+	Sold, Premium, Closed compute.FigureValue
+}
+
+// Config carries the identity of the run, the owner's zone, the ledger reader, the replay and the
+// figures. A nil Ledger gives every figure as a no_data gap. A nil Replay with stored rows, a nil
+// Figures with replayed positions and a nil Zone are errors of Build.
 type Config struct {
 	RunID   string
 	BuildID string
@@ -62,6 +100,7 @@ type Config struct {
 	Zone    *time.Location
 	Ledger  store.OptionLedgerReader
 	Replay  compute.OptionLedger
+	Figures Figures
 }
 
 type gap struct {
@@ -137,30 +176,9 @@ type summary struct {
 	Card          card         `json:"card"`
 }
 
-// month is the sums of one calendar month; seen is true when a ledger row falls in it.
-// sums is what aggregate reads from the positions: the six months, the cash of the open sold rows
-// (openBad when one of them has no usable value), the newest ledger day and whether a position of
-// another currency was left out.
-type sums struct {
-	months   map[string]*month
-	open     *big.Rat
-	openBad  bool
-	newest   contracts.Day
-	otherCcy bool
-}
-
-type month struct {
-	seen      bool
-	premium   *big.Rat // cash of the opening rows, sold positive
-	sold      int      // opening rows that sold
-	closed    *big.Rat // realized result of the positions that closed in it
-	hasClosed bool
-	bad       bool // an opening row has no usable quantity, price or multiplier: its sum is a gap
-}
-
 // Build returns the page.options_summary.v4 JSON for day; at is generated_at, written in
-// c.Zone. The series are the six calendar months ending with the month of day. Rows dated
-// after day are ignored. An error of c.Ledger is an error of Build.
+// c.Zone. The series are the six calendar months ending with the month of day. An error of
+// c.Ledger is an error of Build.
 func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]byte, error) {
 	if c.Zone == nil {
 		return nil, errors.New("home_options: nil zone")
@@ -181,8 +199,25 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 			return nil, err
 		}
 	}
-	s := assemble(c, d, at, aggregate(positions, d), hasReader)
-	return json.Marshal(s)
+	keys := monthKeys(d)
+	var out FigureOut
+	if len(positions) > 0 {
+		if c.Figures == nil {
+			return nil, errors.New("home_options: nil figures")
+		}
+		out = c.Figures.Options(FigureIn{Positions: positions, AsOf: day, Months: keys})
+	}
+	return json.Marshal(assemble(c, at, out, keys, hasReader))
+}
+
+// monthKeys are the six calendar months ending with the month of d, oldest first.
+func monthKeys(d time.Time) []string {
+	first := time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC)
+	keys := make([]string, 0, months)
+	for i := months - 1; i >= 0; i-- {
+		keys = append(keys, first.AddDate(0, -i, 0).Format(monthLayout))
+	}
+	return keys
 }
 
 // replay replays every stored alias as of day and returns the positions of all of them.
@@ -216,111 +251,18 @@ func replay(ctx context.Context, c Config, day contracts.Day) ([]compute.LedgerP
 	return out, nil
 }
 
-func rat(s string) (*big.Rat, bool) {
-	s = strings.TrimSpace(s)
-	if s == "" || strings.Contains(s, "/") {
-		return nil, false
-	}
-	return new(big.Rat).SetString(s)
-}
-
-// aggregate sums the USD positions by calendar month of day d back six months; newest is the
-// newest ledger day not after d; otherCcy is true when a position of another currency was left out.
-func aggregate(positions []compute.LedgerPosition, d time.Time) *sums {
-	out := &sums{months: map[string]*month{}, open: new(big.Rat)}
-	agg := out.months
-	for i := 0; i < months; i++ {
-		agg[monthKey(d, -i)] = &month{premium: new(big.Rat), closed: new(big.Rat)}
-	}
-	last := contracts.Day(d.Format(dayLayout))
-	touch := func(day contracts.Day) *month {
-		if day == "" || day > last {
-			return nil
-		}
-		if day > out.newest {
-			out.newest = day
-		}
-		return agg[string(day)[:7]]
-	}
-	for _, p := range positions {
-		if p.Currency != usd {
-			out.otherCcy = true
-			continue
-		}
-		addFills(p, last, touch, out)
-		if p.Status != statusOpen {
-			if m := touch(p.ClosedOn); m != nil {
-				m.seen = true
-				if r, ok := rat(p.RealizedPnL); ok {
-					m.closed.Add(m.closed, r)
-					m.hasClosed = true
-				}
-			}
-		}
-	}
-	return out
-}
-
-// addFills adds the opening rows of p that are not after last to the month of each row and, for a
-// sold row of a still open position, to open.
-func addFills(p compute.LedgerPosition, last contracts.Day, touch func(contracts.Day) *month, out *sums) {
-	mult, multOK := rat(p.Multiplier)
-	for _, f := range p.Fills {
-		if f.Day == "" || f.Day > last {
-			continue
-		}
-		m := touch(f.Day)
-		if m != nil {
-			m.seen = true
-		}
-		if f.Action != actionOpen {
-			continue
-		}
-		q, ok1 := rat(f.Quantity)
-		px, ok2 := rat(f.Price)
-		if !ok1 || !ok2 || !multOK {
-			// a missing value is a gap, never a zero (Decision 3)
-			if m != nil {
-				m.bad = true
-			}
-			if p.Status == statusOpen {
-				out.openBad = true
-			}
-			continue
-		}
-		cash := new(big.Rat).Mul(q, px)
-		cash.Mul(cash, mult).Neg(cash) // sold (negative quantity) is cash in
-		if q.Sign() < 0 && p.Status == statusOpen {
-			out.open.Add(out.open, cash)
-		}
-		if m == nil {
-			continue
-		}
-		m.premium.Add(m.premium, cash)
-		if q.Sign() < 0 {
-			m.sold++
-		}
-	}
-}
-
-func monthKey(d time.Time, back int) string {
-	first := time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC)
-	return first.AddDate(0, back, 0).Format(monthLayout)
-}
-
-func assemble(c Config, d time.Time, at time.Time, sm *sums, hasReader bool) summary {
-	agg, open, newest, otherCcy := sm.months, sm.open, sm.newest, sm.otherCcy
-	cur := agg[monthKey(d, 0)]
-	noRows := newest == ""
+// assemble builds the document from the figures out, asked for the months keys.
+func assemble(c Config, at time.Time, out FigureOut, keys []string, hasReader bool) summary {
+	noRows := out.Newest == ""
 	noText := textNoRows
 	if !hasReader {
 		noText = textNoReader
 	}
-	base := d
-	baseText := textNoDay
-	if newest != "" {
-		base, _ = time.Parse(dayLayout, string(newest))
-		baseText = "账本截至 " + base.Format("01-02")
+	base, baseText := at, textNoDay
+	if !noRows {
+		if t, err := time.Parse(dayLayout, string(out.Newest)); err == nil {
+			base, baseText = t, "账本截至 "+t.Format("01-02")
+		}
 	}
 	staleAfter := time.Date(base.Year(), base.Month(), base.Day()+staleDays, 9, 30, 0, 0, c.Zone)
 	s := summary{
@@ -331,77 +273,50 @@ func assemble(c Config, d time.Time, at time.Time, sm *sums, hasReader bool) sum
 		DataTimes:   []sourceTime{},
 		RunStatus:   "partial",
 	}
-	if newest != "" {
+	if !noRows {
 		s.DataTimes = append(s.DataTimes, sourceTime{Source: "option_ledger", DataTime: midnight(base, c.Zone)})
 	}
 	k := &s.Card
 	k.Title, k.Subtitle, k.SeriesText, k.SeriesCaption = title, subtitle, seriesText, seriesCaption
 	k.Stale = stale{DataTime: midnight(base, c.Zone), Text: baseText, IsStale: at.After(staleAfter)}
 	k.Notes = []string{noteCash, noteCount}
-	k.Gaps = []gap{{Kind: "gap", Reason: "no_data", Text: textMaxLoss}}
+	k.Gaps = []gap{noData(textMaxLoss)}
 	if noRows {
 		k.Gaps = append([]gap{noData(noText)}, k.Gaps...)
 	}
-	if otherCcy {
+	if out.OtherCurrency {
 		k.Gaps = append(k.Gaps, gap{Kind: "gap", Reason: "unsupported_currency", Text: textOtherCcy})
 	}
-
-	fillSeries(k, agg, d)
-
-	// the tiles of the month of day
-	k.Tiles = tiles{
-		Sold:        tile{Label: "本月卖出", Figure: noData(noText)},
-		PremiumMon:  tile{Label: "本月权利金", Figure: noData(noText)},
-		OpenPremium: tile{Label: "未平权利金", Figure: noData(noText)},
-		MaxLoss:     tile{Label: "最大亏损", Figure: noData(textMaxLoss)},
+	byMonth := map[string]MonthFigure{}
+	for _, m := range out.Months {
+		byMonth[m.Month] = m
 	}
-	k.Say = sayNone
-	if !noRows {
-		k.Tiles.OpenPremium.Figure = plain(open)
-		if sm.openBad {
-			k.Tiles.OpenPremium.Figure = noData(textBadRow)
-		}
-	}
-	if cur.seen {
-		k.Tiles.Sold = tile{Label: "本月卖出", Caption: "按开仓行计", Figure: map[string]any{
-			"kind": "value", "value": cur.sold, "text": fmt.Sprintf("%d 组", cur.sold), "unit": "structures"}}
-		if cur.bad {
-			k.Tiles.PremiumMon.Figure = noData(textBadRow)
-			k.Say = fmt.Sprintf(sayNoPremium, cur.sold)
-		} else {
-			k.Tiles.PremiumMon.Figure = signed(cur.premium)
-			k.Say = fmt.Sprintf(sayMonth, cur.sold, signedText(cur.premium))
-		}
-	}
+	fillSeries(k, keys, byMonth)
+	fillTiles(k, byMonth[keys[len(keys)-1]], out.OpenPremium, noRows, noText)
 	return s
 }
 
-// fillSeries sets the six points and the two series texts of k, oldest month first.
-func fillSeries(k *card, agg map[string]*month, d time.Time) {
+// fillSeries sets the six points and the two series texts of k, oldest month first. A month that
+// is not Seen is a hole; the texts list only the months that have a figure.
+func fillSeries(k *card, keys []string, byMonth map[string]MonthFigure) {
 	var premiumParts, closedParts []string
 	holes := 0
-	for i := months - 1; i >= 0; i-- {
-		key := monthKey(d, -i)
-		m := agg[key]
-		label := key[5:]
-		label = strings.TrimPrefix(label, "0") + "月"
-		pt := point{Month: key, Label: label}
-		if !m.seen {
+	for _, key := range keys {
+		m := byMonth[key]
+		label := strings.TrimPrefix(key[5:], "0") + "月"
+		pt := point{Month: key, Label: label, Premium: noData(textHole), Closed: noData(textHole)}
+		if !m.Seen {
 			holes++
-			pt.Premium, pt.Closed = noData(textHole), noData(textHole)
-		} else {
-			if m.bad {
-				pt.Premium = noData(textBadRow)
-			} else {
-				pt.Premium = signed(m.premium)
-				premiumParts = append(premiumParts, label+" "+signedText(m.premium))
-			}
-			if m.hasClosed {
-				pt.Closed = signed(m.closed)
-				closedParts = append(closedParts, label+" "+signedText(m.closed))
-			} else {
-				pt.Closed = noData(textNoClosed)
-			}
+			k.Series = append(k.Series, pt)
+			continue
+		}
+		pt.Premium = money(m.Premium, true, textBadRow)
+		pt.Closed = money(m.Closed, true, textNoClosed)
+		if f, ok := pt.Premium.(figure); ok {
+			premiumParts = append(premiumParts, label+" "+f.Text)
+		}
+		if f, ok := pt.Closed.(figure); ok {
+			closedParts = append(closedParts, label+" "+f.Text)
 		}
 		k.Series = append(k.Series, pt)
 	}
@@ -416,7 +331,37 @@ func fillSeries(k *card, agg map[string]*month, d time.Time) {
 	} else {
 		k.ClosedText = "近六个月账本没有已平仓记录"
 	}
+}
 
+// fillTiles sets the four tiles and the say of k from the figures of the current month cur.
+func fillTiles(k *card, cur MonthFigure, open compute.FigureValue, noRows bool, noText string) {
+	k.Tiles = tiles{
+		Sold:        tile{Label: "本月卖出", Figure: noData(noText)},
+		PremiumMon:  tile{Label: "本月权利金", Figure: noData(noText)},
+		OpenPremium: tile{Label: "未平权利金", Figure: noData(noText)},
+		MaxLoss:     tile{Label: "最大亏损", Figure: noData(textMaxLoss)},
+	}
+	k.Say = sayNone
+	if !noRows {
+		k.Tiles.OpenPremium.Figure = money(open, false, textBadRow)
+	}
+	if !cur.Seen {
+		return
+	}
+	k.Tiles.Sold.Figure = noData(textBadRow)
+	sold, soldOK := count(cur.Sold)
+	if soldOK {
+		k.Tiles.Sold = tile{Label: "本月卖出", Caption: "按开仓行计", Figure: map[string]any{
+			"kind": "value", "value": sold, "text": strconv.Itoa(sold) + " 组", "unit": "structures"}}
+	}
+	k.Tiles.PremiumMon.Figure = money(cur.Premium, true, textBadRow)
+	f, premiumOK := k.Tiles.PremiumMon.Figure.(figure)
+	switch {
+	case soldOK && premiumOK:
+		k.Say = fmt.Sprintf(sayMonth, sold, f.Text)
+	case soldOK:
+		k.Say = fmt.Sprintf(sayNoPremium, sold)
+	}
 }
 
 func noData(text string) gap { return gap{Kind: "gap", Reason: "no_data", Text: text} }
@@ -425,61 +370,68 @@ func midnight(t time.Time, zone *time.Location) string {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, zone).Format(timeLayout)
 }
 
-// roundHalfEven rounds r to places decimals as an integer count of 10^-places.
-func roundHalfEven(r *big.Rat, places int) *big.Int {
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(places)), nil)
-	x := new(big.Rat).Mul(r, new(big.Rat).SetInt(scale))
-	neg := x.Sign() < 0
-	x.Abs(x)
-	q, rem := new(big.Int).QuoRem(x.Num(), x.Denom(), new(big.Int))
-	switch new(big.Int).Lsh(rem, 1).Cmp(x.Denom()) {
-	case 1:
-		q.Add(q, big.NewInt(1))
-	case 0:
-		if q.Bit(0) == 1 {
-			q.Add(q, big.NewInt(1))
+var (
+	cents    = regexp.MustCompile(`^(-?)([0-9]+)\.([0-9]{2})$`)
+	whole    = regexp.MustCompile(`^[0-9]{1,6}$`)
+	gapNames = map[string]bool{"missing_quote": true, "no_data": true, "unsupported_currency": true}
+)
+
+// count reads an integer count from its decimal text.
+func count(f compute.FigureValue) (int, bool) {
+	if f.Gap != "" || !whole.MatchString(f.Value) {
+		return 0, false
+	}
+	n, err := strconv.Atoi(f.Value)
+	return n, err == nil
+}
+
+// money places the dollar amount f, which has two decimals, as a figure: only text is rearranged
+// (sign, dollar sign, thousands separators), no number is computed. signed gives a usd_signed
+// figure with its tone; an unsigned figure must not be negative. A gap keeps its reason when the
+// schema has it and is no_data otherwise; text that is no two-decimal amount is a no_data gap
+// with the text bad.
+func money(f compute.FigureValue, signed bool, bad string) any {
+	if f.Gap != "" {
+		reason := f.Gap
+		if !gapNames[reason] {
+			reason = "no_data"
 		}
+		return gap{Kind: "gap", Reason: reason, Text: bad}
 	}
+	m := cents.FindStringSubmatch(f.Value)
+	if m == nil {
+		return noData(bad)
+	}
+	neg, digits, frac := m[1] == "-", strings.TrimLeft(m[2], "0"), m[3]
+	if digits == "" {
+		digits = "0"
+	}
+	zero := digits == "0" && frac == "00"
+	if zero {
+		neg = false
+	}
+	if neg && !signed {
+		return noData(bad)
+	}
+	num := digits + "." + frac
+	var groups []string
+	for len(digits) > 3 {
+		groups = append([]string{digits[len(digits)-3:]}, groups...)
+		digits = digits[:len(digits)-3]
+	}
+	amount := "$" + strings.Join(append([]string{digits}, groups...), ",") + "." + frac
 	if neg {
-		q.Neg(q)
+		num = "-" + num
 	}
-	return q
-}
-
-// twoPlaces prints r rounded to cents as decimal text.
-func twoPlaces(r *big.Rat) json.Number {
-	return json.Number(new(big.Rat).SetFrac(roundHalfEven(r, 2), big.NewInt(100)).FloatString(2))
-}
-
-// dollars prints the whole-dollar amount of |r| with thousands separators.
-func dollars(r *big.Rat) string {
-	n := new(big.Int).Abs(roundHalfEven(r, 0)).String()
-	var parts []string
-	for len(n) > 3 {
-		parts = append([]string{n[len(n)-3:]}, parts...)
-		n = n[:len(n)-3]
+	if !signed {
+		return figure{Kind: "value", Value: json.Number(num), Text: amount, Unit: "usd"}
 	}
-	return strings.Join(append([]string{n}, parts...), ",")
-}
-
-func signedText(r *big.Rat) string {
-	if roundHalfEven(r, 0).Sign() < 0 {
-		return minus + "$" + dollars(r)
-	}
-	return "+$" + dollars(r)
-}
-
-func signed(r *big.Rat) figure {
-	tone := "flat"
-	switch roundHalfEven(r, 0).Sign() {
-	case 1:
+	tone, sign := "flat", "+"
+	switch {
+	case neg:
+		tone, sign = "down", minus
+	case !zero:
 		tone = "up"
-	case -1:
-		tone = "down"
 	}
-	return figure{Kind: "value", Value: twoPlaces(r), Text: signedText(r), Unit: "usd_signed", Tone: tone}
-}
-
-func plain(r *big.Rat) figure {
-	return figure{Kind: "value", Value: twoPlaces(r), Text: "$" + dollars(r), Unit: "usd"}
+	return figure{Kind: "value", Value: json.Number(num), Text: sign + amount, Unit: "usd_signed", Tone: tone}
 }
