@@ -20,7 +20,7 @@ import (
 const (
 	ledgerDSNLine = "OT_PG_DSN_OPTION_LEDGER=led-dsn-secret\n"
 	tokenA        = "token-a-secret"
-	acctA         = "U1234567"
+	acctA         = "ACCT-FIXTURE-A"
 )
 
 // flexTestFile is a file of two logins and one account: login main is required.
