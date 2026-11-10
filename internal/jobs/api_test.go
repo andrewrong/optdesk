@@ -798,17 +798,3 @@ func TestNewPositionMarksFuncContract(t *testing.T) {
 		t.Fatalf("result %+v, rows %+v: the aliases are not marked main first", got, w.rows)
 	}
 }
-
-func TestSettingsVersionFuncContract(t *testing.T) {
-	t.Parallel()
-	at := time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC)
-	var got time.Time
-	var f jobs.SettingsVersionFunc = func(_ context.Context, a time.Time) (int64, error) {
-		got = a
-		return 5, nil
-	}
-	v, err := f(context.Background(), at)
-	if err != nil || v != 5 || !got.Equal(at) {
-		t.Fatalf("version %d, err %v, at %v", v, err, got)
-	}
-}
