@@ -42,7 +42,13 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"calendar_refresh", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver) (contracts.Job, error) {
+			d.newCalendarRefresh = func(
+				clock.SessionSource,
+				store.SessionDayStore,
+				clock.SessionDayDiffer,
+				clock.Clock,
+				calendarrefresh.CalendarObserver,
+			) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d, log: slog.New(slog.DiscardHandler)}.calendarRefresh()

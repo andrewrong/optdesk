@@ -87,7 +87,12 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 		}
 		return &fakeCandidateRW{closed: &cl}, nil
 	}
-	a.deps.newOptionCandidates = func(st optioncandidates.CandidateStores, rule compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
+	a.deps.newOptionCandidates = func(
+		st optioncandidates.CandidateStores,
+		rule compute.OptionCandidates,
+		_ []jobs.WatchEntry,
+		_ clock.Clock,
+	) (contracts.Job, error) {
 		if st.Candidates == nil || st.Earnings == nil || rule == nil {
 			t.Errorf("stores %+v rule %v", st, rule)
 		}

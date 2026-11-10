@@ -135,7 +135,13 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
 		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
 		newDiffer:               func() clock.SessionDayDiffer { return nil },
-		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver) (contracts.Job, error) {
+		newCalendarRefresh: func(
+			clock.SessionSource,
+			store.SessionDayStore,
+			clock.SessionDayDiffer,
+			clock.Clock,
+			calendarrefresh.CalendarObserver,
+		) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
 		openSessionDay: func(context.Context, string) (store.SessionDayStore, error) {

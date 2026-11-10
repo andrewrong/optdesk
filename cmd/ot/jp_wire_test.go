@@ -288,7 +288,13 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	) (contracts.Job, error) {
 		return us(jobComputeFigures), nil
 	}
-	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver) (contracts.Job, error) {
+	d.newCalendarRefresh = func(
+		clock.SessionSource,
+		store.SessionDayStore,
+		clock.SessionDayDiffer,
+		clock.Clock,
+		calendarrefresh.CalendarObserver,
+	) (contracts.Job, error) {
 		return us(jobCalendarRefresh), nil
 	}
 	done := r.start()

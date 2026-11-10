@@ -207,7 +207,13 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	) (contracts.Job, error) {
 		return idJob{id: jobComputeFigures}, nil
 	}
-	d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver) (contracts.Job, error) {
+	d.newCalendarRefresh = func(
+		clock.SessionSource,
+		store.SessionDayStore,
+		clock.SessionDayDiffer,
+		clock.Clock,
+		calendarrefresh.CalendarObserver,
+	) (contracts.Job, error) {
 		return idJob{id: jobCalendarRefresh}, nil
 	}
 	d.newEarningsRefresh = func(

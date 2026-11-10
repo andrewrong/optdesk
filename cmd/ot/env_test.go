@@ -190,7 +190,13 @@ func leakApp(t *testing.T, name string) (*app, *bytes.Buffer) {
 		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
 		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
 		newDiffer:               func() clock.SessionDayDiffer { return nil },
-		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver) (contracts.Job, error) {
+		newCalendarRefresh: func(
+			clock.SessionSource,
+			store.SessionDayStore,
+			clock.SessionDayDiffer,
+			clock.Clock,
+			calendarrefresh.CalendarObserver,
+		) (contracts.Job, error) {
 			return nil, leakErr()
 		},
 		readEnv: func(string) (map[string]string, error) {
