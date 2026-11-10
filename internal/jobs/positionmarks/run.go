@@ -161,7 +161,12 @@ func (j *job) runAlias(ctx context.Context, alias, day string, start time.Time) 
 		return o
 	}
 	o.positions = len(ps)
-	prior := j.prior(ctx, alias, day, ps[0].CaptureID)
+	prior, err := j.prior(ctx, alias, day, ps[0].CaptureID)
+	if err != nil {
+		// Without the stored rows the attempt number is unknown: a guess would collide with a stored key.
+		o.err = fail(contracts.Retryable, "error", alias)
+		return o
+	}
 	var todo []store.Position
 	attempt := map[string]int{}
 	for _, p := range ps {
@@ -263,19 +268,21 @@ func text(v *float64) string {
 	return dec(*v)
 }
 
-// prior returns the newest row of each position of the capture: from the store when the writer also reads,
-// else what this job wrote.
-func (j *job) prior(ctx context.Context, alias, day, captureID string) map[string]mark.PositionMark {
+// prior returns the newest row of each position of the capture: from the store when the writer also reads
+// (a read error is returned, never replaced by the memory of this instance), else what this job wrote.
+func (j *job) prior(ctx context.Context, alias, day, captureID string) (map[string]mark.PositionMark, error) {
 	out := map[string]mark.PositionMark{}
 	if rd, ok := j.w.(mark.Reader); ok {
-		if rows, err := rd.Marks(ctx, alias, day); err == nil {
-			for _, r := range rows {
-				if r.CaptureID == captureID {
-					out[key(r.CaptureID, r.ConID)] = r
-				}
-			}
-			return out
+		rows, err := rd.Marks(ctx, alias, day)
+		if err != nil {
+			return nil, err
 		}
+		for _, r := range rows {
+			if r.CaptureID == captureID {
+				out[key(r.CaptureID, r.ConID)] = r
+			}
+		}
+		return out, nil
 	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -284,7 +291,7 @@ func (j *job) prior(ctx context.Context, alias, day, captureID string) map[strin
 			out[k] = r
 		}
 	}
-	return out
+	return out, nil
 }
 
 func (j *job) remember(rows []mark.PositionMark) {

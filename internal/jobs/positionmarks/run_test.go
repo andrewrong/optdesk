@@ -440,3 +440,42 @@ func TestParseManifestRejectsBadSchedule(t *testing.T) {
 		}
 	}
 }
+
+// readWriter is a store whose newest rows come from an earlier process.
+type readWriter struct {
+	fakeWriter
+	stored  []mark.PositionMark
+	readErr error
+}
+
+func (r *readWriter) Marks(context.Context, string, string) ([]mark.PositionMark, error) {
+	return r.stored, r.readErr
+}
+
+func TestRetryWithFailingReadDoesNotReuseAttemptOne(t *testing.T) {
+	t.Parallel()
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "USD")}})
+	rw := &readWriter{readErr: errors.New("read failed")}
+	j, err := newJob(e.m, []string{"a"}, e.a, rw, e.clk, slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), testDay, nil)
+	if kindOf(res) != contracts.Retryable || len(rw.rows) != 0 || len(e.m.calls) != 0 {
+		t.Fatalf("res = %+v rows = %+v calls = %d", res, rw.rows, len(e.m.calls))
+	}
+}
+
+func TestRetryReadsStoredNoneRowAndWritesNextAttempt(t *testing.T) {
+	t.Parallel()
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "USD")}})
+	rw := &readWriter{stored: []mark.PositionMark{{CaptureID: "c1", ConID: 1, Attempt: 1, Basis: mark.BasisNone}}}
+	j, err := newJob(e.m, []string{"a"}, e.a, rw, e.clk, slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), testDay, nil)
+	if res.Err != nil || len(rw.rows) != 1 || rw.rows[0].Attempt != 2 {
+		t.Fatalf("res = %+v rows = %+v", res, rw.rows)
+	}
+}
