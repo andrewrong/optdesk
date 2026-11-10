@@ -59,6 +59,11 @@ type siteReaders struct {
 	view    store.ReadingViewReader
 	cands   store.CandidateReader
 
+	// the notices page: the account and earnings readers (nil with no opener in deps, which the page shows as
+	// the gap no_reader). The positions pages keep their own account field below.
+	noticeAccount store.AccountReader
+	earnings      store.EarningsDateReader
+
 	// the option positions pages: the ledger and account readers (nil until their stores land, which the
 	// builders turn into the gap no_reader), the session days and the compute constructors; eod and terms
 	// above are read by these pages too.
@@ -70,13 +75,14 @@ type siteReaders struct {
 	results    compute.NewOptionResultsFunc
 }
 
-// openSiteReaders returns the demo readers with the demo profile, else the eight stores (series, the
-// five option stores, the reading view and the candidate store) opened once with the one .env line of the
+// openSiteReaders returns the demo readers with the demo profile, else the stores (series, the
+// five option stores, the reading view, the candidate store, and the account and earnings stores) opened once with the one .env line of the
 // pages role, and a function that closes them. A failed open closes the stores already opened.
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
-		rd := siteReaders{series: demoReader{}, eod: d, quotes: d, catalog: d, terms: d, names: d, view: demoView{}, cands: demoCandidates{}}
+		rd := siteReaders{series: demoReader{}, eod: d, quotes: d, catalog: d, terms: d, names: d, view: demoView{}, cands: demoCandidates{},
+			noticeAccount: demoNoticeAccount{}}
 		return withPositionsRules(a, rd), func() {}, nil
 	}
 	env, err := a.envFile()
@@ -131,16 +137,40 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !track(view, err) {
 		return fail()
 	}
-	var cands store.CandidateReader // no opener in deps: no reader, the page shows its gap no_reader
+	opt, ok := openOptionalStores(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
+	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
+		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn}
+	return withPositionsRules(a, rd), closeAll, nil
+}
+
+// openOptionalStores opens the candidate, account and earnings stores that deps has an opener for; a missing
+// opener is a nil reader, which the pages show as the gap no_reader. ok is false when an open failed.
+func openOptionalStores(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (r noticesReaders, ok bool) {
 	if a.deps.openCandidate != nil {
 		cs, err := a.deps.openCandidate(ctx, dsn)
 		if !track(cs, err) {
-			return fail()
+			return r, false
 		}
-		cands = cs
+		r.cands = cs
 	}
-	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view, cands: cands}
-	return withPositionsRules(a, rd), closeAll, nil
+	if a.deps.openAccount != nil {
+		as, err := a.deps.openAccount(ctx, dsn)
+		if !track(as, err) {
+			return r, false
+		}
+		r.account = as
+	}
+	if a.deps.openEarningsDates != nil {
+		es, err := a.deps.openEarningsDates(ctx, dsn)
+		if !track(es, err) {
+			return r, false
+		}
+		r.earn = es
+	}
+	return r, true
 }
 
 // withPositionsRules sets the compute constructors of the positions pages; the ledger, account and session
@@ -151,7 +181,7 @@ func withPositionsRules(a *app, rd siteReaders) siteReaders {
 }
 
 // siteHandler serves the routes of the site: health (before any page route), "" (302 to home), the live routes macro, options/data and
-// options/data/<id>, the routes report, market and options/candidates, the six sample routes (sample.go) and
+// options/data/<id>, the routes report, market and options/candidates and options/notices, the six sample routes (sample.go) and
 // assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
@@ -186,6 +216,8 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 			}
 		case path == siteCandidatesRoute:
 			build = func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
+		case path == siteNoticesRoute:
+			build = func(ctx context.Context) ([]byte, error) { return buildNotices(ctx, a, clk, dayFlag, rd) }
 		case path == "report":
 			q := r.URL.Query()
 			build = func(ctx context.Context) ([]byte, error) { return buildReport(ctx, a, clk, dayFlag, rd.view, q) }

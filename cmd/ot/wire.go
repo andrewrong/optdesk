@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
+	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
 	"github.com/andrewrong/optdesk/internal/compute/own"
@@ -44,6 +45,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/market_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_candidates_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
+	"github.com/andrewrong/optdesk/internal/pages/option_notices_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
@@ -128,6 +130,9 @@ type deps struct {
 	newOptionStructures     compute.NewOptionStructuresFunc
 	newOptionResults        compute.NewOptionResultsFunc
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
+	optionNoticesPage       optionNoticesPageFunc
+	newOptionNotices        compute.NewOptionNoticesFunc
+	noticeParams            compute.DefaultNoticeParamsFunc
 	openFence               store.OpenFenceFunc
 	openSchedulerLedger     store.OpenSchedulerLedgerFunc
 	newScheduler            runner.NewSchedulerFunc
@@ -171,6 +176,7 @@ func newDeps() deps {
 	d := newBaseDeps()
 	d.ext = newExt()
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
+	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	return d
 }
 
@@ -284,6 +290,20 @@ func newMarketPageOf(zone *time.Location, runID, buildID, scope string, readings
 func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page {
 	return option_candidates_page.NewPage(option_candidates_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands,
+	})
+}
+
+// optionNoticesPageFunc builds option_notices_page from plain arguments.
+type optionNoticesPageFunc func(zone *time.Location, runID, buildID, scope, main string, aliases []string, acct store.AccountReader,
+	cands store.CandidateReader, earn store.EarningsDateReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page
+
+// newOptionNoticesPage builds the page option_notices_page in zone from the plain arguments; the one place
+// that names option_notices_page.Config.
+func newOptionNoticesPage(zone *time.Location, runID, buildID, scope, main string, aliases []string, acct store.AccountReader,
+	cands store.CandidateReader, earn store.EarningsDateReader, rule compute.OptionNotices, params compute.NoticeParams) pages.Page {
+	return option_notices_page.NewPage(option_notices_page.Config{
+		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Main: main, Aliases: aliases,
+		Account: acct, Candidates: cands, Earnings: earn, Rule: rule, Params: params,
 	})
 }
 
