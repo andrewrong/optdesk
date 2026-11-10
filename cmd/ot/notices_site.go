@@ -59,6 +59,10 @@ func noticeAliases(a *app) (string, []string, error) {
 	return main, labels, nil
 }
 
+func init() {
+	registerPage(pageFamily{name: noticesName, route: siteNoticesRoute, order: 20, build: buildNotices, named: noticesPageNamed})
+}
+
 // buildNotices builds option_notices_page per request for the day of dayFlag or today, from the readers of
 // the site (opened once per process); the demo profile serves a fixed result and opens nothing. A nil zone is
 // an error.

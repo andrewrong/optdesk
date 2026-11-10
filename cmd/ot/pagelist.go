@@ -27,7 +27,7 @@ type builtPage struct {
 }
 
 // builtPages is the one table of the built pages. The dispatch of runPage and pageNamed and the
-// message of an unknown name all read it; a new page is one entry here.
+// message of an unknown name all read it; a page of its own file is registered in pagereg.go instead.
 func builtPages() map[string]builtPage {
 	return map[string]builtPage{
 		macroPageName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
@@ -45,15 +45,6 @@ func builtPages() map[string]builtPage {
 		}},
 		marketName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
 			return marketPage(ctx, a)
-		}},
-		candidatesName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
-			return candidatesPageNamed(ctx, a)
-		}},
-		noticesName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
-			return noticesPageNamed(ctx, a)
-		}},
-		trackingName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
-			return trackingPageNamed(ctx, a)
 		}},
 	}
 }
@@ -80,13 +71,18 @@ func pageNamedWith(a *app, name, market, slot string) (pages.Page, func(), error
 	if b, ok := table[name]; ok {
 		return b.build(context.Background(), a, market, slot)
 	}
-	known := make([]string, 0, len(a.deps.pageList)+len(table))
+	if f, ok := pageFamilyOfName(name); ok {
+		return f.named(context.Background(), a)
+	}
+	registered := registeredPageNames()
+	known := make([]string, 0, len(a.deps.pageList)+len(table)+len(registered))
 	for _, p := range a.deps.pageList {
 		known = append(known, p.Meta.Name)
 	}
 	for n := range table {
 		known = append(known, n)
 	}
+	known = append(known, registered...)
 	sort.Strings(known)
 	return pages.Page{}, nil, fmt.Errorf("unknown page %q; known pages: %s", name, strings.Join(known, ", "))
 }

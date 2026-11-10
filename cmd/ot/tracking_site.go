@@ -40,6 +40,10 @@ func trackingReadersOf(rd siteReaders) trackingReaders {
 	}
 }
 
+func init() {
+	registerPage(pageFamily{name: trackingName, route: siteTrackingRoute, order: 30, build: buildTracking, named: trackingPageNamed})
+}
+
 // buildTracking builds option_tracking_page per request for the day of dayFlag or today in the zone of the
 // profile, from the readers of the site. A nil zone is an error.
 func buildTracking(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
