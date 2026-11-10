@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -47,8 +48,8 @@ func positionsValid(t *testing.T, m map[string]any) bool {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inst, err := jsonUnmarshalInstance(b)
-	if err != nil {
+	var inst any
+	if err := json.Unmarshal(b, &inst); err != nil {
 		t.Fatal(err)
 	}
 	return s.Validate(inst) == nil
@@ -69,7 +70,7 @@ func TestPositionsPageV3Views(t *testing.T) {
 		{"zero views", withViews(t, 0, alias), false},
 		{"nine views", withViews(t, 9, func(i int) string { return "k" + string(rune('a'+i)) }), false},
 		{"empty key", withViews(t, 1, func(int) string { return "" }), false},
-		{"key over 64", withViews(t, 1, func(int) string { return repeat("x", 65) }), false},
+		{"key over 64", withViews(t, 1, func(int) string { return strings.Repeat("x", 65) }), false},
 	}
 	for _, c := range cases {
 		if got := positionsValid(t, c.m); got != c.ok {
@@ -97,18 +98,4 @@ func TestPositionsPageV3RoleCell(t *testing.T) {
 	if positionsValid(t, setRole("")) {
 		t.Error("empty role text accepted")
 	}
-}
-
-func repeat(s string, n int) string {
-	out := ""
-	for i := 0; i < n; i++ {
-		out += s
-	}
-	return out
-}
-
-func jsonUnmarshalInstance(b []byte) (any, error) {
-	var v any
-	err := json.Unmarshal(b, &v)
-	return v, err
 }
