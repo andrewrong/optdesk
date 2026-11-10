@@ -112,8 +112,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 17 {
-		t.Fatalf("%d roles, want 17", len(roles))
+	if len(roles) != 18 {
+		t.Fatalf("%d roles, want 18", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -309,4 +309,17 @@ func TestSettingsRoleSpec(t *testing.T) {
 		}
 	}
 	t.Error("ot_w_settings is not in the role list")
+}
+
+func TestMarkRoleSpec(t *testing.T) {
+	t.Parallel()
+	for _, r := range roles {
+		if r.name == roleMark {
+			if r.name != "ot_w_posmark" || r.envKey != "OT_PG_DSN_POSMARK" {
+				t.Errorf("role %q line %q", r.name, r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_posmark is not in the role list")
 }
