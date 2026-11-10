@@ -1,0 +1,14 @@
+# Manifest of the dividend_capture job: once per XNYS session day after the close, one Dividends call for the passed markets.
+version = 1
+id = "dividend_capture"
+# The markets whose probe passed in docs/design/event-sources-probe.txt (`probe: <market> pass`); the owner
+# copies them here. An entry of any other market gets an unsupported row.
+passed_markets = ["US", "JP"]
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+zone = "America/New_York"
+offset = "30m"
+run_bound = "10m"
+restart_sensitive = false
