@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -252,6 +253,10 @@ type input struct {
 		UnderlyingID int    `json:"underlying_id"`
 		Strike       string `json:"strike"`
 	} `json:"option_rows"`
+	Quotes []struct {
+		InstrumentID int     `json:"instrument_id"`
+		Last         float64 `json:"last"`
+	} `json:"quotes"`
 	OwnerText map[string]map[string]string `json:"owner_text"`
 }
 
@@ -414,7 +419,14 @@ func fixtureConfig(in input) Config {
 	for _, i := range in.Instruments {
 		idOf[i.Symbol] = i.ID
 	}
-	cfg.Spot = func(context.Context, string, contracts.Day) (string, bool, error) { return "128.4", true, nil }
+	cfg.Spot = func(_ context.Context, symbol string, _ contracts.Day) (string, bool, error) {
+		for _, q := range in.Quotes {
+			if q.InstrumentID == idOf[symbol] {
+				return strconv.FormatFloat(q.Last, 'f', -1, 64), true, nil
+			}
+		}
+		return "", false, nil
+	}
 	cfg.Offers = func(_ context.Context, symbol string, _ contracts.Day) ([]string, error) {
 		var out []string
 		for _, o := range in.OptionRows {
@@ -442,7 +454,12 @@ func TestBuildEqualsOkFixture(t *testing.T) {
 	}
 	// Only these three blocks belong to this builder; the rest of the document is another
 	// entry's.
-	for _, key := range []string{"core", "diagnosis", "questions"} {
+	keys := []string{
+		"core",
+		"diagnosis",
+		"questions",
+	}
+	for _, key := range keys {
 		var w bytes.Buffer
 		if err := json.Compact(&w, want[key]); err != nil {
 			t.Fatal(err)
