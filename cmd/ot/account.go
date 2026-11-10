@@ -151,11 +151,14 @@ func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet
 		extra.addCloser(r)
 		readers[l] = r
 	}
-	w, err := f.d.openAccount(ctx, dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
+	w := f.acctStore
+	if w == nil {
+		var err error
+		if w, err = f.d.openAccount(ctx, dsn); err != nil {
+			return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
+		}
+		extra.addCloser(w)
 	}
-	extra.addCloser(w)
 	j, err := f.d.newAccountCapture(accountcapture.Config{Main: main, Readers: readers, Writer: w, Clock: f.clk})
 	if err != nil {
 		return nil, fmt.Errorf("build account_capture job failed: %w", err)

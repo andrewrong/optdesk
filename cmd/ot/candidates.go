@@ -72,7 +72,14 @@ func (f jobFactory) optionCandidates() (contracts.Job, error) {
 		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Candidates: f.candidates,
 		SessionDays: f.compute.SessionDays,
 	}
-	j, err := f.d.newOptionCandidates(st, f.d.newCandidateRule(), f.watch, f.clk)
+	var j contracts.Job
+	var err error
+	if f.div != nil && f.d.newOptionCandidatesCalls != nil {
+		// The dividend reader is open: the run also holds the covered_call and held_call_guard rows.
+		j, err = f.d.newOptionCandidatesCalls(st, f.div, f.d.newCandidateRule(), f.watch, f.clk)
+	} else {
+		j, err = f.d.newOptionCandidates(st, f.d.newCandidateRule(), f.watch, f.clk)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("build option_candidates job failed: %w", err)
 	}
@@ -97,13 +104,11 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 		}
 		extra.addCloser(w)
 		f.candidates = w
-		if cfg.accountDSN != "" && f.d.openAccount != nil {
-			acct, err := f.d.openAccount(ctx, cfg.accountDSN)
-			if err != nil {
-				return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
-			}
-			extra.addCloser(acct)
-			f.accounts = acct
+		if err := openAccountReader(ctx, cfg, f, extra); err != nil {
+			return nil, err
+		}
+		if err := a.openDividendReader(ctx, cfg, f, extra); err != nil {
+			return nil, err
 		}
 	}
 	return f.optionCandidates()
@@ -155,5 +160,28 @@ func candidatesCmd(a *app, args []string) error {
 			_, _ = fmt.Fprintf(a.stdout, "%s: %s\n", e.Contract.Symbol, jpNoRoute)
 		}
 	}
+	return nil
+}
+
+// openDividendReader sets the dividend reader on f for the covered-call rows: the store dividend_capture opened, or
+// else one opened here with OT_PG_DSN_EVENTS (the broker may be down). Without that line, or without the deps
+// constructor, f.div stays nil, the puts job is built as before and one line names the reason.
+func (a *app) openDividendReader(ctx context.Context, cfg runOnceConfig, f *jobFactory, extra *closerSet) error {
+	if f.d.newOptionCandidatesCalls == nil || f.div != nil {
+		return nil
+	}
+	if cfg.eventsDSN == "" {
+		a.log.Warn("covered calls left out", "component", "ot", "job", jobOptionCandidates, "status", reasonNoEventsDSN)
+		return nil
+	}
+	if f.d.openDividend == nil {
+		return nil
+	}
+	s, err := f.d.openDividend(ctx, cfg.eventsDSN)
+	if err != nil {
+		return fmt.Errorf("open dividend store with %s failed", store.DSNEnvEvents)
+	}
+	extra.addCloser(s)
+	f.div = s
 	return nil
 }

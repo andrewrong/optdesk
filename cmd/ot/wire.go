@@ -100,109 +100,111 @@ import (
 
 // deps holds the constructors the subcommands call; a test fills it with fakes.
 type deps struct {
-	newClock                clock.NewClockFunc
-	newCalendar             clock.NewCalendarFunc
-	newCommandSessionSource clock.NewCommandSessionSourceFunc
-	newDiffer               clock.NewSessionDayDifferFunc
-	newCalendarRefresh      jobs.NewCalendarRefreshFunc
-	openSessionDay          store.OpenSessionDayFunc
-	openSeries              store.OpenSeriesFunc
-	openLedger              store.OpenLedgerFunc
-	setup                   store.SetupFunc
-	newFRED                 sources.NewFREDFunc
-	newFredSeries           jobs.NewFredSeriesFunc
-	newSeriesHistory        jobs.NewSeriesHistoryFunc
-	newRunner               runner.NewWithRuleFunc
-	newBackfiller           runner.NewBackfillerWithRuleFunc
-	dialBroker              broker.DialFunc
-	newReference            broker.NewReferenceFunc
-	openInstrument          store.OpenInstrumentFunc
-	openOptionEod           store.OpenOptionEodFunc
-	openQuoteSnapshot       store.OpenQuoteSnapshotFunc
-	openOptionCatalog       store.OpenOptionEodCatalogFunc
-	openOptionTerms         store.OpenOptionTermsFunc
-	openInstrumentName      store.OpenInstrumentNameFunc
-	newOptionEod            jobs.NewOptionEodSymbolsFunc
-	newOptionEodJP          jobs.NewOptionEodFunc
-	newOptionEodJPWatch     jobs.NewOptionEodWatchFunc
-	newOptionEodWatch       jobs.NewOptionEodWatchSymbolsFunc
-	openCandidateRW         openCandidateRWFunc
-	newOptionCandidates     jobs.NewOptionCandidatesJobFunc
-	newCandidateRule        compute.NewOptionCandidatesFunc
-	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
-	dialAccount             dialAccountFunc
-	openAccount             store.OpenAccountFunc
-	newAccountCapture       newAccountCaptureFunc
-	openMark                mark.OpenFunc
-	newPositionMarks        jobs.NewPositionMarksFunc
-	openReading             store.OpenReadingFunc
-	openReadingView         store.OpenReadingViewFunc
-	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
-	reportPageBlocks        func(cfg report_page.Config) pages.Page // the report with its three block sources; nil falls back to reportPage (risks only)
-	alertRules              compute.DefaultAlertRulesFunc
-	evaluateAlerts          compute.EvaluateAlertsFunc
-	riskBlock               riskBlockFunc
-	newComputeFigures       jobs.NewComputeFiguresEaseFunc
-	computeFigures          compute.Figures
-	computeRules            compute.Rules
-	computeUnits            compute.Units
-	computeSeriesOps        compute.SeriesOps
-	computeEase             compute.Ease
-	pageList                []pages.Page
-	newHandler              pages.NewHandlerFunc
-	migrateUp               func(ctx context.Context, adminDSN string, fsys fs.FS) error
-	ownerDSN                func(adminDSN string) (string, error)
-	readEnv                 store.ReadEnvFunc
-	macroPage               func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page
-	marketPage              func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
-	optionDataPage          func(zone *time.Location, buildID string, in sitePageInput) pages.Page
-	openCandidate           openCandidateFunc
-	structuresListPage      func(c structures_page.Config, alias string) pages.Page
-	structureDetailPage     func(c structures_page.Config, alias, structureID string) pages.Page
-	optionResultPage        func(c option_result_page.Config, alias string) pages.Page
-	newOptionLedger         compute.NewOptionLedgerFunc
-	newOptionStructures     compute.NewOptionStructuresFunc
-	newOptionResults        compute.NewOptionResultsFunc
-	newRuleParams           settingsapi.NewRuleParamsFunc
-	newSettingsForm         settingsapi.NewSettingsFormFunc
-	openOwnerSet            ownerset.OpenFunc
-	settingsPage            func(c settings_page.Config) pages.Page
-	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
-	optionNoticesPage       optionNoticesPageFunc
-	optionTrackingPage      func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page
-	openOptionLedgerRO      store.OpenOptionLedgerFunc
-	newOptionNotices        compute.NewOptionNoticesFunc
-	noticeParams            compute.DefaultNoticeParamsFunc
-	openFence               store.OpenFenceFunc
-	openSchedulerLedger     store.OpenSchedulerLedgerFunc
-	newScheduler            runner.NewSchedulerFunc
-	newKeyRunner            runner.NewKeyRunnerFunc
-	newReconciler           runner.NewReconcilerFunc
-	newGapSyncer            func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
-	newKeyGapSyncer         runner.NewKeyGapSyncerFunc
-	newFwClock              func() clockwork.Clock
-	notifyContext           func(context.Context) (context.Context, context.CancelFunc)
-	newNotifier             notify.NewNotifierFunc
-	newTelegramSender       notify.NewTelegramSenderFunc
-	newDryRunSender         notify.NewDryRunSenderFunc
-	openSent                store.OpenSentFunc
-	newAlertNotifier        notify.NewAlertNotifierFunc
-	newMorningNotifier      notify.NewMorningNotifierFunc
-	openGapHistory          gaphistory.OpenFunc
-	openGapReader           store.OpenGapReaderFunc
-	loadAlertRules          compute.LoadAlertRulesFunc
-	newEarningsRefresh      jobs.NewEarningsRefreshSymbolsFunc
-	symbols                 symbol.Translator
-	newAlphaVantage         sources.NewEarningsFunc
-	newJQuants              sources.NewJQuantsFunc
-	openEarningsDates       store.OpenEarningsDateStoreFunc
-	openDividend            dividend.OpenFunc
-	newDividendCapture      jobs.NewDividendCaptureFunc
-	openOptionLedgerStore   store.OpenOptionLedgerFunc
-	newOptionLedgerJob      jobs.NewOptionLedgerJobFunc
-	loadFlexFile            sources.LoadFlexFileFunc
-	newFlexSource           sources.NewFlexFunc
-	importOptionTrader      jobs.ImportOptionTraderFunc
+	newClock                 clock.NewClockFunc
+	newCalendar              clock.NewCalendarFunc
+	newCommandSessionSource  clock.NewCommandSessionSourceFunc
+	newDiffer                clock.NewSessionDayDifferFunc
+	newCalendarRefresh       jobs.NewCalendarRefreshFunc
+	openSessionDay           store.OpenSessionDayFunc
+	openSeries               store.OpenSeriesFunc
+	openLedger               store.OpenLedgerFunc
+	setup                    store.SetupFunc
+	newFRED                  sources.NewFREDFunc
+	newFredSeries            jobs.NewFredSeriesFunc
+	newSeriesHistory         jobs.NewSeriesHistoryFunc
+	newRunner                runner.NewWithRuleFunc
+	newBackfiller            runner.NewBackfillerWithRuleFunc
+	dialBroker               broker.DialFunc
+	newReference             broker.NewReferenceFunc
+	openInstrument           store.OpenInstrumentFunc
+	openOptionEod            store.OpenOptionEodFunc
+	openQuoteSnapshot        store.OpenQuoteSnapshotFunc
+	openOptionCatalog        store.OpenOptionEodCatalogFunc
+	openOptionTerms          store.OpenOptionTermsFunc
+	openInstrumentName       store.OpenInstrumentNameFunc
+	newOptionEod             jobs.NewOptionEodSymbolsFunc
+	newOptionEodJP           jobs.NewOptionEodFunc
+	newOptionEodJPWatch      jobs.NewOptionEodWatchFunc
+	newOptionEodWatch        jobs.NewOptionEodWatchSymbolsFunc
+	newOptionEodHeld         jobs.NewOptionEodHeldFunc
+	newOptionCandidatesCalls jobs.NewOptionCandidatesCallsFunc
+	openCandidateRW          openCandidateRWFunc
+	newOptionCandidates      jobs.NewOptionCandidatesJobFunc
+	newCandidateRule         compute.NewOptionCandidatesFunc
+	newQuoteSnapshot         jobs.NewQuoteSnapshotFunc
+	dialAccount              dialAccountFunc
+	openAccount              store.OpenAccountFunc
+	newAccountCapture        newAccountCaptureFunc
+	openMark                 mark.OpenFunc
+	newPositionMarks         jobs.NewPositionMarksFunc
+	openReading              store.OpenReadingFunc
+	openReadingView          store.OpenReadingViewFunc
+	reportPage               func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
+	reportPageBlocks         func(cfg report_page.Config) pages.Page // the report with its three block sources; nil falls back to reportPage (risks only)
+	alertRules               compute.DefaultAlertRulesFunc
+	evaluateAlerts           compute.EvaluateAlertsFunc
+	riskBlock                riskBlockFunc
+	newComputeFigures        jobs.NewComputeFiguresEaseFunc
+	computeFigures           compute.Figures
+	computeRules             compute.Rules
+	computeUnits             compute.Units
+	computeSeriesOps         compute.SeriesOps
+	computeEase              compute.Ease
+	pageList                 []pages.Page
+	newHandler               pages.NewHandlerFunc
+	migrateUp                func(ctx context.Context, adminDSN string, fsys fs.FS) error
+	ownerDSN                 func(adminDSN string) (string, error)
+	readEnv                  store.ReadEnvFunc
+	macroPage                func(zone *time.Location, buildID string, read compute.ReadingFunc) pages.Page
+	marketPage               func(zone *time.Location, runID, buildID, scope string, readings compute.ReadingFunc) pages.Page
+	optionDataPage           func(zone *time.Location, buildID string, in sitePageInput) pages.Page
+	openCandidate            openCandidateFunc
+	structuresListPage       func(c structures_page.Config, alias string) pages.Page
+	structureDetailPage      func(c structures_page.Config, alias, structureID string) pages.Page
+	optionResultPage         func(c option_result_page.Config, alias string) pages.Page
+	newOptionLedger          compute.NewOptionLedgerFunc
+	newOptionStructures      compute.NewOptionStructuresFunc
+	newOptionResults         compute.NewOptionResultsFunc
+	newRuleParams            settingsapi.NewRuleParamsFunc
+	newSettingsForm          settingsapi.NewSettingsFormFunc
+	openOwnerSet             ownerset.OpenFunc
+	settingsPage             func(c settings_page.Config) pages.Page
+	optionCandidatesPage     func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
+	optionNoticesPage        optionNoticesPageFunc
+	optionTrackingPage       func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page
+	openOptionLedgerRO       store.OpenOptionLedgerFunc
+	newOptionNotices         compute.NewOptionNoticesFunc
+	noticeParams             compute.DefaultNoticeParamsFunc
+	openFence                store.OpenFenceFunc
+	openSchedulerLedger      store.OpenSchedulerLedgerFunc
+	newScheduler             runner.NewSchedulerFunc
+	newKeyRunner             runner.NewKeyRunnerFunc
+	newReconciler            runner.NewReconcilerFunc
+	newGapSyncer             func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
+	newKeyGapSyncer          runner.NewKeyGapSyncerFunc
+	newFwClock               func() clockwork.Clock
+	notifyContext            func(context.Context) (context.Context, context.CancelFunc)
+	newNotifier              notify.NewNotifierFunc
+	newTelegramSender        notify.NewTelegramSenderFunc
+	newDryRunSender          notify.NewDryRunSenderFunc
+	openSent                 store.OpenSentFunc
+	newAlertNotifier         notify.NewAlertNotifierFunc
+	newMorningNotifier       notify.NewMorningNotifierFunc
+	openGapHistory           gaphistory.OpenFunc
+	openGapReader            store.OpenGapReaderFunc
+	loadAlertRules           compute.LoadAlertRulesFunc
+	newEarningsRefresh       jobs.NewEarningsRefreshSymbolsFunc
+	symbols                  symbol.Translator
+	newAlphaVantage          sources.NewEarningsFunc
+	newJQuants               sources.NewJQuantsFunc
+	openEarningsDates        store.OpenEarningsDateStoreFunc
+	openDividend             dividend.OpenFunc
+	newDividendCapture       jobs.NewDividendCaptureFunc
+	openOptionLedgerStore    store.OpenOptionLedgerFunc
+	newOptionLedgerJob       jobs.NewOptionLedgerJobFunc
+	loadFlexFile             sources.LoadFlexFileFunc
+	newFlexSource            sources.NewFlexFunc
+	importOptionTrader       jobs.ImportOptionTraderFunc
 	// bars_refresh and fx_refresh: the bar store, the two constructors and the history client.
 	openBar        bar.OpenBarFunc
 	newBarsRefresh jobs.NewBarsRefreshFunc
@@ -236,6 +238,9 @@ func newDeps() deps {
 	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
+	// option_eod also captures the held short calls (NewWithHeld, the account reader); option_candidates adds the
+	// covered-call and held-call-guard rows when the dividend reader is open (NewWithCalls).
+	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeld, optioncandidates.NewWithCalls
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	realMarkDeps(&d) // position_marks
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
@@ -622,4 +627,20 @@ var jobSteps = []jobStep{
 		}
 		return []contracts.Job{j}, nil
 	}},
+}
+
+// openAccountReader opens the account store with OT_PG_DSN_ACCOUNT once and sets it on f as the account reader
+// of option_eod (the held short calls) and option_candidates, and as the writer of account_capture. With the line empty, or a deps without openAccount,
+// f.accounts stays nil and both jobs run without it. What it opens goes to extra. No error holds a DSN.
+func openAccountReader(ctx context.Context, cfg runOnceConfig, f *jobFactory, extra *closerSet) error {
+	if f.acctStore != nil || cfg.accountDSN == "" || f.d.openAccount == nil {
+		return nil
+	}
+	acct, err := f.d.openAccount(ctx, cfg.accountDSN)
+	if err != nil {
+		return fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
+	}
+	extra.addCloser(acct)
+	f.acctStore, f.accounts = acct, acct
+	return nil
 }
