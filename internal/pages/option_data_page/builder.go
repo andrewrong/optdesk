@@ -205,11 +205,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	}
 
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
-	vm.Underlying.SessionDay = &sessionDay
-	vm.Underlying.Price = priceCell(latest.UnderlyingPrice)
-	if latest.UnderlyingCcy != "" {
-		vm.Underlying.Currency = latest.UnderlyingCcy
-	}
+	setPrice(&vm.Underlying, sessionDay, latest)
 	vm.Chain.SessionDay = &sessionDay
 	var eodTime time.Time
 	for _, r := range rows {
@@ -299,6 +295,15 @@ func selectRows(eod []contracts.OptionEod) ([]contracts.OptionEod, contracts.Opt
 		return cmp.Compare(a.InstrumentID, b.InstrumentID)
 	})
 	return limit(rows, maxRows), latest, nil
+}
+
+// setPrice writes the session day, the price and the currency (when the row has one) of latest.
+func setPrice(u *underlying, sessionDay string, latest contracts.OptionEod) {
+	u.SessionDay = &sessionDay
+	u.Price = priceCell(latest.UnderlyingPrice)
+	if latest.UnderlyingCcy != "" {
+		u.Currency = latest.UnderlyingCcy
+	}
 }
 
 func toRow(r contracts.OptionEod) chainRow {
