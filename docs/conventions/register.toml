@@ -1918,7 +1918,7 @@ Fewer than 5 fiscal years, a missing figure of a year, no diluted shares, shares
 implemented_by = [
   "internal/compute/valuation.Band",
 ]
-source_hash = "f0e6827f9da43f6829f02f7ced92e83715ebbf0b05c00d13bfe6ea89217df561"
+source_hash = "66219577838b6bcccf17fc5b46e0abd7e084dffa53048f330ac6e2868ee2b194"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
 history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 3 and 11 (issue 1067); parameters of option-trader fcf_yield_v2.toml (blob 4952b59720ce), ported in meaning."]
@@ -1962,7 +1962,7 @@ Fewer than 5 fiscal years, a missing figure, no usable shares, a latest free cas
 implemented_by = [
   "internal/compute/valuation.ImpliedGrowth",
 ]
-source_hash = "c0ac99f4d422d88b995a73832453282108d90978169689e0f4f3d9d28d130779"
+source_hash = "1af7ef5836c0ade9b81453ddc6780729b48e61b9b9b25ed159d7d18df9907907"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
 history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 4 and 11 (issue 1067); parameters of option-trader reverse_dcf_v1.toml (blob e1e1f731c7b8), ported in meaning."]

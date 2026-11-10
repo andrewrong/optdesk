@@ -1,6 +1,7 @@
 package valuation
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/shopspring/decimal"
@@ -12,12 +13,7 @@ import (
 // The band of Decision 3: the value per share at three required yields of the free cash
 // flow. The primary yield (8%) gives the maximum assignment price, the high yield (10%)
 // the lower edge and the low yield (6%) the reference high.
-const (
-	yieldLow     = "0.06"
-	yieldPrimary = "0.08"
-	yieldHigh    = "0.10"
-	bandYears    = 5 // fiscal years whose median free cash flow is taken
-)
+const bandYears = 5 // fiscal years whose median free cash flow is taken
 
 // Reasons the inputs of the band and of the reverse DCF are refused.
 const (
@@ -31,12 +27,7 @@ const (
 	reasonMissingInputFmt   = "missing_input:%s:%s"
 )
 
-var (
-	minShares        = decimal.NewFromInt(1_000_000)
-	maxSharesRatio   = decimal.NewFromInt(100)
-	maxCoverToShares = decimal.RequireFromString("1.25")
-	decOne           = decimal.NewFromInt(1)
-)
+var decOne = decimal.NewFromInt(1)
 
 // fcfRow is one fiscal year of free cash flow: operating cash flow minus capital spending
 // minus stock compensation, as filed.
@@ -55,7 +46,7 @@ type fcfInput struct {
 // readFcfInputs reads the free cash flow rows, the shares and the debt of f. It returns the
 // reasons the inputs are refused: too few years or a missing figure, then the share-count
 // checks, in the order of the system this ports.
-func readFcfInputs(f valuationapi.Filings) (fcfInput, []string) {
+func readFcfInputs(f valuationapi.Filings, p BandParams) (fcfInput, []string) {
 	var in fcfInput
 	if len(f.Years) < bandYears {
 		return in, []string{reasonInsufficientYears}
@@ -69,7 +60,7 @@ func readFcfInputs(f valuationapi.Filings) (fcfInput, []string) {
 			d, found := parseValue(y.Values[role])
 			if !found {
 				ok = false
-				reasons = append(reasons, sprintf(reasonMissingInputFmt, role, string(y.FYEnd)))
+				reasons = append(reasons, fmt.Sprintf(reasonMissingInputFmt, role, string(y.FYEnd)))
 				continue
 			}
 			v[i] = d
@@ -89,7 +80,7 @@ func readFcfInputs(f valuationapi.Filings) (fcfInput, []string) {
 		reasons = append(reasons, reasonMissingShares)
 	case shares.Sign() <= 0:
 		reasons = append(reasons, reasonNonPositiveShares)
-	case shares.LessThan(minShares):
+	case shares.LessThan(p.MinShares):
 		reasons = append(reasons, reasonSharesScale)
 	}
 	in.shares = shares
@@ -99,10 +90,10 @@ func readFcfInputs(f valuationapi.Filings) (fcfInput, []string) {
 		if haveShares && shares.Sign() > 0 {
 			big, small := decimal.Max(shares, c), decimal.Min(shares, c)
 			switch {
-			case c.Sign() <= 0 || big.GreaterThanOrEqual(small.Mul(maxSharesRatio)):
+			case c.Sign() <= 0 || big.GreaterThanOrEqual(small.Mul(p.MaxSharesRatio)):
 				reasons = append(reasons, reasonSharesMismatch)
 			default:
-				changed = c.GreaterThanOrEqual(shares.Mul(maxCoverToShares))
+				changed = c.GreaterThanOrEqual(shares.Mul(p.MaxCoverToShares))
 			}
 		}
 	}
@@ -113,6 +104,13 @@ func readFcfInputs(f valuationapi.Filings) (fcfInput, []string) {
 		reasons = append(reasons, reasonSharesChanged)
 	}
 	return in, reasons
+}
+
+// complete reports whether the free cash flow rows were all read, so that a figure of
+// theirs (the median, the base) may be judged; with a missing figure the reasons already
+// say why.
+func complete(in fcfInput, reasons []string) bool {
+	return len(reasons) == 0 || len(in.rows) == bandYears
 }
 
 func parseValue(text string) (decimal.Decimal, bool) {
@@ -151,13 +149,13 @@ func Band(id string, f valuationapi.Filings, _ contracts.Day) valuationapi.BandF
 		fig.State, fig.Reasons = valuationapi.StateUnvalued, []string{reason}
 		return fig
 	}
-	in, reasons := readFcfInputs(f)
+	in, reasons := readFcfInputs(f, p.Band)
 	fcfs := make([]decimal.Decimal, len(in.rows))
 	ocfs := make([]decimal.Decimal, len(in.rows))
 	for i, r := range in.rows {
 		fcfs[i], ocfs[i] = r.fcf, r.ocf
 	}
-	if len(reasons) == 0 || len(in.rows) == bandYears {
+	if complete(in, reasons) {
 		if median(fcfs).Sign() <= 0 {
 			reasons = append(reasons, reasonNonPositiveFCF)
 		}
@@ -173,9 +171,9 @@ func Band(id string, f valuationapi.Filings, _ contracts.Day) valuationapi.BandF
 		return q.RoundBank(4).StringFixed(4)
 	}
 	fig.State = valuationapi.StateOK
-	fig.Value, fig.Low, fig.RefHigh = at(yieldPrimary), at(yieldHigh), at(yieldLow)
+	fig.Value, fig.Low, fig.RefHigh = at(p.Band.YieldPrimary), at(p.Band.YieldHigh), at(p.Band.YieldLow)
 	fig.BaseFYEnd = f.Years[0].FYEnd
-	fig.Flags = bandFlags(in.rows, medFCF, median(ocfs), in.debt, in.cover != nil)
+	fig.Flags = bandFlags(p.Band, in.rows, medFCF, median(ocfs), in.debt, in.cover != nil)
 	return fig
 }
 
