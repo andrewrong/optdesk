@@ -44,7 +44,7 @@ describe('TopNav', () => {
     expect(items[9]).toBe('期权持仓')
   })
 
-  it('the 期权持仓 menu holds the links 结构 and 盈亏', async () => {
+  it('the 期权持仓 menu holds the links 结构, 盈亏 and 提示', async () => {
     await showAt('/home')
     const trigger = [...host.querySelectorAll('button')].find((b) => b.textContent === '期权持仓')
     expect(trigger).toBeDefined()
@@ -56,6 +56,7 @@ describe('TopNav', () => {
     expect(menu.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['结构', '/options/structures'],
       ['盈亏', '/options/result'],
+      ['提示', '/options/notices'],
     ])
   })
 

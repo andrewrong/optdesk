@@ -11,6 +11,7 @@ import {
 const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
   { label: '结构', path: '/options/structures' },
   { label: '盈亏', path: '/options/result' },
+  { label: '提示', path: '/options/notices' },
 ]
 
 // Nine of the ten items (Decision 3 of docs/design/unified-site.md), in order; the tenth is the menu after them. Fixed shell text: no payload field is read.
