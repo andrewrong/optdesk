@@ -26,6 +26,7 @@ from `@/lib/utils` instead (ADR 0034: `clsx` and `tailwind-merge` are the design
 | scroll-area | `scroll-area.tsx` | `19a663a8a054c16b` | MIT |
 | progress | `progress.tsx` | not retrieved (see below) | MIT |
 | slider | `slider.tsx` | not retrieved (see below) | MIT |
+| dropdown-menu | `dropdown-menu.tsx` | not retrieved (see below) | MIT |
 
 Not copied (owner-only, they add packages or pull a second library): chart, calendar, sonner, drawer, command, carousel, form, input-otp.
 
@@ -34,3 +35,5 @@ Added by #1109: `progress` is the registry's `radix-nova` Progress written by ha
 Added by #15: `chart.tsx` is hand-written in the shape of the `radix-nova` Chart over `recharts` 3.10.1 (the shadcn registry was unreachable, so no registry revision was recorded); a later issue retrieves the item and diffs it. It replaces echarts (ADR 0034, owner's choice 2026-11-03).
 
 Added by #540: `slider.tsx` is the registry's `radix-nova` Slider written by hand over `radix-ui`'s `Slider` (the shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the item and diffs it). Local edits: single thumb with a `thumbLabel` prop for its `aria-label`, the range is always `hidden`, and `children` render inside the track (the gauge's neutral band).
+
+Added by #1010: `dropdown-menu.tsx` is the registry's `radix-nova` Dropdown Menu written by hand over `radix-ui`'s `DropdownMenu` (the shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the item and diffs it). Local edit: only the parts the top bar uses (root, trigger, content, item) are copied; the checkbox, radio, sub-menu, label, separator and shortcut parts are left out.
