@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages"
@@ -20,6 +22,9 @@ type pageFamily struct {
 	route string
 	// build builds the page bytes of one request.
 	build func(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error)
+	// buildKey, when set, makes route a prefix: options/stock (key "") and options/stock/<key> both call it, with
+	// build nil. A key outside pageKeyPattern or with a further slash is a 404.
+	buildKey func(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders, key string) ([]byte, error)
 	// named builds the page for ot page --name; nil with an empty name.
 	named func(ctx context.Context, a *app) (pages.Page, func(), error)
 	// order places the name in the known-pages text (explicit, since init order follows file names); 0 when unnamed.
@@ -33,8 +38,8 @@ func registerPage(f pageFamily) { addPage(pageFamilies, f) }
 
 // addPage is registerPage over the table m, so that a test can run it on a copy.
 func addPage(m map[string]pageFamily, f pageFamily) {
-	if f.route == "" || f.build == nil {
-		panic("registerPage: a page needs a route and a build")
+	if f.route == "" || (f.build == nil) == (f.buildKey == nil) {
+		panic("registerPage: a page needs a route and exactly one of build and buildKey")
 	}
 	for _, g := range m {
 		if g.route == f.route {
@@ -53,6 +58,26 @@ func addPage(m map[string]pageFamily, f pageFamily) {
 func pageFamilyOfRoute(route string) (pageFamily, bool) {
 	f, ok := pageFamilies[route]
 	return f, ok
+}
+
+// pageKeyPattern is a key of a keyed family.
+var pageKeyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+// pageFamilyOfKeyRoute finds the keyed family whose route is path or its prefix before one slash; key is "" for
+// the bare route. ok is false for a path with a bad key or a further slash.
+func pageFamilyOfKeyRoute(path string) (f pageFamily, key string, ok bool) {
+	for _, g := range pageFamilies {
+		if g.buildKey == nil {
+			continue
+		}
+		if path == g.route {
+			return g, "", true
+		}
+		if rest, found := strings.CutPrefix(path, g.route+"/"); found && pageKeyPattern.MatchString(rest) {
+			return g, rest, true
+		}
+	}
+	return pageFamily{}, "", false
 }
 
 // pageFamilyOfName finds the family with a non-empty name.
