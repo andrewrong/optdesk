@@ -85,7 +85,7 @@ class HistoryKey:
 class HistoryRequest:
     """One request for daily bars.
 
-    kind is "trades", "adjusted_last" or "midpoint". duration_days is 1 to 730.
+    kind is "trades", "adjusted_last", "midpoint" or "option_implied_vol". duration_days is 1 to 730.
     end_day is YYYY-MM-DD or empty for now; it is empty with "adjusted_last".
     """
 

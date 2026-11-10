@@ -522,6 +522,7 @@ _BAR_KINDS = {
     pb.BAR_KIND_TRADES: "trades",
     pb.BAR_KIND_ADJUSTED_LAST: "adjusted_last",
     pb.BAR_KIND_MIDPOINT: "midpoint",
+    pb.BAR_KIND_OPTION_IMPLIED_VOL: "option_implied_vol",
 }
 _MAX_BAR_DAYS = 730
 
