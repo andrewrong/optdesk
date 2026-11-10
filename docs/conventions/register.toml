@@ -1707,7 +1707,7 @@ The stored readings of market.iv30_own, the newest 252 before the as-of day and 
 period_date = "The as-of day of the stored IV30 reading."
 currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places. A share of sessions, 0 to 1."
 excludes = """
-Today's value in the window; any IBKR IV history (no bootstrap); the legacy strictly-below rule of the N225_IV percentile."""
+Today's value in the window; a window that mixes in IBKR's IV series (an IBKR-sourced IVP is the separate figure market.ivp_ibkr); the legacy strictly-below rule of the N225_IV percentile."""
 gap_text = """
 Fewer than 252 valid sessions: missing, short_history. No IV30 of the day: missing, no_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input, zero_range or bad_input), never as a zero."""
 implemented_by = [
@@ -1717,6 +1717,52 @@ source_hash = "899cb7e0ea366a887d74cb9e20b696bda2e904ace061512d8b5983971dc0cb8b"
 agreed_on = "2026-11-08"
 agreed_in = "docs/design/compute-figures.md"
 history = ["2026-11-08 v1: registered by docs/design/compute-figures.md Decision 5; no page reads it yet."]
+
+[[figure]]
+id = "market.iv_ibkr"
+version = 1
+title_zh = "IBKR 隐含波动率序列"
+pages = []
+formula = """
+Convention ibkr_iv_bar_v1: the close of IBKR's daily OPTION_IMPLIED_VOLATILITY bar of the underlying, taken as received when it is above 0 and not above 10, as decimal text rounded half-even to 6 places. Synthetic: a close of 0.2345675 gives 0.234568. This design does not know whether IBKR's series is a 30-day measure."""
+inputs = """
+One bar close of the underlying from IBKR (table ibkr.bars, keyed name|day), as decimal text."""
+period_date = "The day of the bar."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places. IBKR's implied volatility as a decimal, above 0 and not above 10."
+excludes = """
+Any series mixed with the own IV30 window (market.iv30_own); a close of 0 or below, or above 10 (bad_input)."""
+gap_text = """
+No bar of the day: missing, no_input. A close not above 0 or above 10: missing, bad_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input, zero_range or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/ivbar.FromClose",
+]
+source_hash = "f6c28b2329a53d6fb846f65a8ac2c4621000f98eacfe09f71ee39b5eaee41489"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/compute-stage2.md"
+history = ["2026-11-10 v1: registered by docs/design/compute-stage2.md Decisions 11 and 12; no page reads it yet."]
+
+[[figure]]
+id = "market.ivp_ibkr"
+version = 1
+title_zh = "IBKR 序列 IV 百分位"
+pages = []
+formula = """
+Convention ivp_v1: on the stored IBKR IV series (market.iv_ibkr), the share of the past 252 valid sessions whose value is at or below today's, today excluded (compare AtOrBelow). 0 to 1. Synthetic: window 0.10, 0.20, 0.30, 0.40 (shorter than 252, for the arithmetic) and today 0.30 give 0.75."""
+inputs = """
+The stored readings of market.iv_ibkr, the newest 252 before the as-of day and the value of the day; the newest point no older than 4 calendar days."""
+period_date = "The as-of day of the stored IBKR IV reading."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places. A share of sessions, 0 to 1."
+excludes = """
+Today's value in the window; a window mixed with the own IV30 window (market.ivp_own): the two figures are separate and labeled by source."""
+gap_text = """
+Fewer than 252 valid sessions: missing, short_history. No IBKR IV reading of the day: missing, no_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input, zero_range or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).IvPercentile",
+]
+source_hash = "8e0632b7d20339448b1da6ea78babdac305cf507b1a64b38039a8110765899c3"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/compute-stage2.md"
+history = ["2026-11-10 v1: registered by docs/design/compute-stage2.md Decisions 3 and 12; no page reads it yet."]
 
 [[figure]]
 id = "market.ivr_own"
