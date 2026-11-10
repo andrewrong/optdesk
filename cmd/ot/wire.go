@@ -179,6 +179,7 @@ type deps struct {
 	newKeyRunner            runner.NewKeyRunnerFunc
 	newReconciler           runner.NewReconcilerFunc
 	newGapSyncer            func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
+	newKeyGapSyncer         runner.NewKeyGapSyncerFunc
 	newFwClock              func() clockwork.Clock
 	notifyContext           func(context.Context) (context.Context, context.CancelFunc)
 	newNotifier             notify.NewNotifierFunc
@@ -252,8 +253,7 @@ func newDeps() deps {
 
 // newBaseDeps returns the real constructors of the fields of deps other than ext.
 func newBaseDeps() deps {
-	stats := gonumstats.New()
-	sops := own.NewSeriesOps()
+	stats, sops := gonumstats.New(), own.NewSeriesOps()
 	rl := rules.New()
 	return deps{
 		newClock:                realclock.NewReal,
@@ -315,6 +315,7 @@ func newBaseDeps() deps {
 		newKeyRunner:            reconcile.NewKeyRunner,
 		newReconciler:           reconcile.NewReconciler,
 		newGapSyncer:            sched.NewGapSyncer,
+		newKeyGapSyncer:         sched.NewKeyGapSyncer,
 		newFwClock:              clockwork.NewRealClock,
 		notifyContext:           stopOnSignal,
 		newNotifier:             core.New,
@@ -597,4 +598,28 @@ func redialers(a *app, cfg runOnceConfig, extra *closerSet) (
 		return h, nil
 	}
 	return dial, dialHistory
+}
+
+// jobStep is a job that is wired beside the families without a registry entry: bars_refresh and fx_refresh,
+// and position_marks. They landed before the registry, have no document of their own yet and keep their place:
+// each runs before the first family whose order is above after. A new job registers a family instead.
+type jobStep struct {
+	after int
+	run   func(ctx context.Context, a *app, jc *jobCtx, w *wiring) ([]contracts.Job, error)
+}
+
+// jobSteps: bars_refresh and fx_refresh follow option_ledger (50), position_marks follows account_capture (100).
+var jobSteps = []jobStep{
+	{after: 50, run: func(ctx context.Context, a *app, jc *jobCtx, w *wiring) ([]contracts.Job, error) {
+		js, reason, err := a.barJobs(ctx, jc.cfg, jc.f, jc.brk, jc.brokerUp, jc.extra)
+		w.bars, w.barsOff = js, reason
+		return js, err
+	}},
+	{after: 100, run: func(ctx context.Context, a *app, jc *jobCtx, _ *wiring) ([]contracts.Job, error) {
+		j, err := a.positionMarks(ctx, *jc.f, jc.brk, jc.extra)
+		if j == nil || err != nil {
+			return nil, err
+		}
+		return []contracts.Job{j}, nil
+	}},
 }

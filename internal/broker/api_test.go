@@ -176,3 +176,30 @@ func TestHistoryClientFake(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// ivHistory answers a bar whose Close is the IV text for the IV kind, and no bar for any other kind.
+type ivHistory struct{}
+
+func (ivHistory) Bars(_ context.Context, q broker.BarQuery) ([]broker.Bar, error) {
+	if q.Kind != broker.BarOptionImpliedVol {
+		return nil, nil
+	}
+	return []broker.Bar{{Day: q.End, Close: "0.2813"}}, nil
+}
+
+func (ivHistory) Close() error { return nil }
+
+func TestBarOptionImpliedVolFake(t *testing.T) {
+	t.Parallel()
+	if broker.BarTrades != 1 || broker.BarAdjustedLast != 2 || broker.BarMidpoint != 3 || broker.BarOptionImpliedVol != 4 {
+		t.Fatalf("kinds are %d %d %d %d, want 1 2 3 4", broker.BarTrades, broker.BarAdjustedLast, broker.BarMidpoint, broker.BarOptionImpliedVol)
+	}
+	var h broker.HistoryClient = ivHistory{}
+	bars, err := h.Bars(context.Background(), broker.BarQuery{Kind: broker.BarOptionImpliedVol, DurationDays: 5, End: "2026-11-06"})
+	if err != nil || len(bars) != 1 || bars[0].Close != "0.2813" || bars[0].Volume != nil {
+		t.Fatalf("got %+v, %v", bars, err)
+	}
+	if bars, _ := h.Bars(context.Background(), broker.BarQuery{Kind: broker.BarMidpoint}); len(bars) != 0 {
+		t.Fatalf("midpoint got %+v", bars)
+	}
+}

@@ -41,6 +41,7 @@ from optdesk.contracts.genpb.ibkr.v1.contract_pb2 import (
 from optdesk.contracts.genpb.ibkr.v1.marketdata_pb2 import (
     BAR_KIND_ADJUSTED_LAST,
     BAR_KIND_MIDPOINT,
+    BAR_KIND_OPTION_IMPLIED_VOL,
     BAR_KIND_TRADES,
     BAR_KIND_UNSPECIFIED,
     Bar,
@@ -121,6 +122,7 @@ from optdesk.contracts.genpb.ibkr.v1.session_pb2_grpc import (
 __all__ = [
     "BAR_KIND_ADJUSTED_LAST",
     "BAR_KIND_MIDPOINT",
+    "BAR_KIND_OPTION_IMPLIED_VOL",
     "BAR_KIND_TRADES",
     "BAR_KIND_UNSPECIFIED",
     "DIVIDEND_STATUS_ERROR",

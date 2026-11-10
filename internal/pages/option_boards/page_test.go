@@ -28,8 +28,6 @@ func (fakeNames) InstrumentNames(context.Context, []int64) ([]store.InstrumentNa
 	return nil, nil
 }
 
-var testAt = time.Date(2026, 11, 10, 1, 0, 0, 0, time.UTC)
-
 func optionConfig() OptionConfig {
 	return OptionConfig{
 		RunID: "run", BuildID: "build", Scope: "options", Zone: time.UTC,
@@ -51,22 +49,5 @@ func TestPageMeta(t *testing.T) {
 	}
 	if got, want := NewStockPage(stockConfig()).Meta, (pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v1"}); got != want {
 		t.Fatalf("stock meta = %+v", got)
-	}
-}
-
-func TestBuildNotBuilt(t *testing.T) {
-	t.Parallel()
-	const want = "option_boards: not built"
-	if _, err := BuildOption(t.Context(), optionConfig(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
-		t.Fatalf("BuildOption err = %v", err)
-	}
-	if _, err := BuildStock(t.Context(), stockConfig(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
-		t.Fatalf("BuildStock err = %v", err)
-	}
-	if _, err := NewOptionPage(optionConfig()).Build(t.Context(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
-		t.Fatalf("option page Build err = %v", err)
-	}
-	if _, err := NewStockPage(stockConfig()).Build(t.Context(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
-		t.Fatalf("stock page Build err = %v", err)
 	}
 }

@@ -26,6 +26,9 @@ const (
 	// budget is the wall-clock time after which no further batch is started; it is below the 60 s
 	// SnapshotTimeout of the broker client so that the last batch still ends inside it.
 	budget = 45 * time.Second
+
+	// marketZone is the zone of the XNYS session day; a live snapshot marks only the session day of the clock there.
+	marketZone = "America/New_York"
 )
 
 var _ NewPositionMarksFunc = New
@@ -38,6 +41,7 @@ type job struct {
 	w       mark.Writer
 	clk     clock.Clock
 	log     *slog.Logger
+	loc     *time.Location
 
 	mu   sync.Mutex
 	last map[string]mark.PositionMark // newest row written by this job per (capture, con id)
@@ -78,8 +82,12 @@ func newJob(market broker.Broker, aliases []string, acct store.AccountReader, w 
 	if err != nil {
 		return nil, err
 	}
+	loc, err := time.LoadLocation(marketZone)
+	if err != nil {
+		return nil, err
+	}
 	return &job{
-		m: m, market: market, aliases: append([]string(nil), aliases...), acct: acct, w: w, clk: clk, log: log,
+		loc: loc, m: m, market: market, aliases: append([]string(nil), aliases...), acct: acct, w: w, clk: clk, log: log,
 		last: map[string]mark.PositionMark{},
 	}, nil
 }
@@ -110,6 +118,10 @@ type outcome struct {
 // error; another alias that has no capture or whose positions are not marked is logged and skipped.
 func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	start := j.clk.Now()
+	// A live snapshot cannot observe a past day: any day but today's market date is an explained gap.
+	if string(day) != start.In(j.loc).Format(time.DateOnly) {
+		return contracts.JobResult{Err: &typedError{kind: contracts.NoValue, text: "position_marks: wrong day"}}
+	}
 	var res contracts.JobResult
 	var quotes, down, unreached int
 	setErr := func(e contracts.TypedError) {

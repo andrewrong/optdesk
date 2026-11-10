@@ -28,6 +28,7 @@ _WHAT_TO_SHOW = {
     "trades": "TRADES",
     "adjusted_last": "ADJUSTED_LAST",
     "midpoint": "MIDPOINT",
+    "option_implied_vol": "OPTION_IMPLIED_VOLATILITY",
 }
 
 
@@ -67,7 +68,7 @@ def wire_request(request: HistoryRequest) -> WireRequest:
     try:
         what = _WHAT_TO_SHOW[request.kind]
     except KeyError:
-        raise ValueError("kind is not one of trades, adjusted_last, midpoint") from None
+        raise ValueError("kind is not one of trades, adjusted_last, midpoint or option_implied_vol") from None
     return WireRequest(
         end_date=end_date_text(request.end_day),
         duration=duration_text(request.duration_days),

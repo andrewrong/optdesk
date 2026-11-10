@@ -32,6 +32,10 @@ class _BarKindEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_BarKind.Value
     BAR_KIND_TRADES: _BarKind.ValueType  # 1
     BAR_KIND_ADJUSTED_LAST: _BarKind.ValueType  # 2
     BAR_KIND_MIDPOINT: _BarKind.ValueType  # 3
+    BAR_KIND_OPTION_IMPLIED_VOL: _BarKind.ValueType  # 4
+    """The bar's close is IBKR's option implied volatility of the underlying as a decimal
+    (0.28 is 28 percent); open, high and low are as IBKR gives them; volume is absent.
+    """
 
 class BarKind(_BarKind, metaclass=_BarKindEnumTypeWrapper):
     """BarKind is the series of daily bars that is asked for."""
@@ -40,6 +44,10 @@ BAR_KIND_UNSPECIFIED: BarKind.ValueType  # 0
 BAR_KIND_TRADES: BarKind.ValueType  # 1
 BAR_KIND_ADJUSTED_LAST: BarKind.ValueType  # 2
 BAR_KIND_MIDPOINT: BarKind.ValueType  # 3
+BAR_KIND_OPTION_IMPLIED_VOL: BarKind.ValueType  # 4
+"""The bar's close is IBKR's option implied volatility of the underlying as a decimal
+(0.28 is 28 percent); open, high and low are as IBKR gives them; volume is absent.
+"""
 Global___BarKind: _TypeAlias = BarKind  # noqa: Y015
 
 @_typing.final
