@@ -20,6 +20,8 @@ optdesk is written in three languages: Go (services and the command line), Pytho
   `tests/contracts/test_<module>_api.py`. TypeScript: the generated types and the JSON schema of a page.
 - Other modules use a module through its interface and nothing else. Editing an interface file is an
   interface change: the issue carries a Design line, and the interface issue lands before the issues that use it.
+- A job's constructor and stores types live in its package; `internal/jobs/api.go` holds only types that two or
+  more packages other than `cmd/ot` and the root `internal/jobs` use (enforced by `internal/jobs/api_users_test.go`).
 - Code generated from `contracts/` is never edited by hand; a change carries the source and the generated
   output together.
 
