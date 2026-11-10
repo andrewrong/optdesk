@@ -552,20 +552,14 @@
       "additionalProperties": false,
       "properties": {
         "key": {
-          "enum": [
-            "me",
-            "spouse",
-            "household"
-          ],
+          "maxLength": 64,
+          "minLength": 1,
           "title": "Key",
           "type": "string"
         },
         "label": {
-          "enum": [
-            "我",
-            "配偶",
-            "家庭"
-          ],
+          "maxLength": 64,
+          "minLength": 1,
           "title": "Label",
           "type": "string"
         },
@@ -724,21 +718,17 @@
     },
     "RoleCell": {
       "additionalProperties": false,
-      "description": "Closed role vocabulary: neither aliases nor account identifiers are accepted.",
+      "description": "The account label of the row.",
       "properties": {
         "text": {
-          "enum": [
-            "我",
-            "配偶"
-          ],
+          "maxLength": 64,
+          "minLength": 1,
           "title": "Text",
           "type": "string"
         },
         "value": {
-          "enum": [
-            "我",
-            "配偶"
-          ],
+          "maxLength": 64,
+          "minLength": 1,
           "title": "Value",
           "type": "string"
         }
@@ -1111,8 +1101,8 @@
       "items": {
         "$ref": "#/$defs/PositionsView"
       },
-      "maxItems": 3,
-      "minItems": 3,
+      "maxItems": 8,
+      "minItems": 1,
       "title": "Views",
       "type": "array"
     }

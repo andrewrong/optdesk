@@ -1,0 +1,169 @@
+{
+  "schema": "options_summary",
+  "schema_version": 4,
+  "run_id": "run-test",
+  "build_id": "build-test",
+  "scope": "scope-test",
+  "currency": "USD",
+  "generated_at": "2026-11-06T09:30:00+08:00",
+  "stale_after": "2026-11-08T09:30:00+08:00",
+  "data_times": [
+    {
+      "source": "option_ledger",
+      "data_time": "2026-11-04T00:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "card": {
+    "title": "期权概览",
+    "say": "已平仓卖出的权利金合计 +$1,234.50。",
+    "subtitle": "来自成交账本",
+    "stale": {
+      "data_time": "2026-11-04T00:00:00+08:00",
+      "text": "账本截至 11-04",
+      "is_stale": false
+    },
+    "tiles": {
+      "sold_count_month": {
+        "label": "本月卖出",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "本月卖出组数尚未计算"
+        }
+      },
+      "premium_month_usd": {
+        "label": "已平仓权利金",
+        "figure": {
+          "kind": "value",
+          "value": 1234.50,
+          "text": "+$1,234.50",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "caption": "已平仓卖出的开仓现金合计；已实现 −$15.25；留存比例 -0.012355"
+      },
+      "open_premium_usd": {
+        "label": "未平权利金",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "未平权利金尚未计算"
+        }
+      },
+      "max_loss_usd": {
+        "label": "最大亏损",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "最大亏损需要组合结构，账本不给出"
+        }
+      }
+    },
+    "premium_series_6m": [
+      {
+        "month": "2026-06",
+        "label": "6月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        }
+      },
+      {
+        "month": "2026-07",
+        "label": "7月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        }
+      },
+      {
+        "month": "2026-08",
+        "label": "8月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        }
+      },
+      {
+        "month": "2026-09",
+        "label": "9月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        }
+      },
+      {
+        "month": "2026-10",
+        "label": "10月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        }
+      },
+      {
+        "month": "2026-11",
+        "label": "11月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "月度权利金尚未计算"
+        }
+      }
+    ],
+    "premium_series_text": "近六个月权利金暂无数据：月度权利金尚未计算",
+    "closed_series_text": "近六个月已平仓盈亏暂无数据：月度金额尚未计算",
+    "premium_series_caption": "单位美元；月度权利金尚未计算，各月留空",
+    "notes": [
+      "权利金按开仓成交现金计，不含手续费；卖出为正，买入为负。",
+      "权利金与已实现盈亏只计已平仓的卖出仓位，各账户合并。"
+    ],
+    "gaps": [
+      {
+        "kind": "gap",
+        "reason": "no_data",
+        "text": "月度权利金尚未计算"
+      },
+      {
+        "kind": "gap",
+        "reason": "no_data",
+        "text": "最大亏损需要组合结构，账本不给出"
+      }
+    ]
+  }
+}
