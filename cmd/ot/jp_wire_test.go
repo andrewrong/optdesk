@@ -153,6 +153,7 @@ func TestJPJobSlotAtTokyoAfterClose(t *testing.T) {
 	cal := &jpCal{last: jpLastDay}
 	withCal(r, cal)
 	r.a.deps.newOptionEodJP = optioneod.NewJP
+	r.a.deps.newOptionEodJPWatch = nil
 	r.a.deps.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 9, 1, 0, 0, 0, time.UTC)} }
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
@@ -277,6 +278,7 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 		return slotJob{id: jobOptionEodJP, cal: "XTKS", anchor: "time", zone: "Asia/Tokyo", off: 15*time.Hour + 50*time.Minute}, nil
 	}
+	d.newOptionEodJPWatch = nil
 	d.newQuoteSnapshot = func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 		return us(jobQuoteSnapshot), nil
 	}

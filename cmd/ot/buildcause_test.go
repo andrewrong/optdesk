@@ -70,6 +70,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 			d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 				return nil, cause
 			}
+			d.newOptionEodJPWatch = nil
 			_, err := jobFactory{d: d}.optionEodJP(nil)
 			return err
 		}},

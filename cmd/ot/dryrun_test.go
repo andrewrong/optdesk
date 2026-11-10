@@ -113,6 +113,7 @@ func dryApp(t *testing.T, ran *[]string) (*app, *strings.Builder) {
 	}
 	d.newOptionEodJP = build(jobOptionEodJP, []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "N225"}},
 		nil, map[string]contracts.ErrorKind{"N225": contracts.Retryable})
+	d.newOptionEodJPWatch = nil
 	d.newQuoteSnapshot = func(b broker.Broker, res store.InstrumentResolver, _ store.QuoteSnapshotWriter, clk clock.Clock) (contracts.Job, error) {
 		return build(jobQuoteSnapshot, []contracts.ExpectedKey{{DatasetID: "obs.quote_snapshot", SubjectKey: "0945"}}, nil, nil)(b, res, &memSink{}, clk)
 	}
@@ -141,6 +142,7 @@ func TestDryRunBypassesGuardsAndLedger(t *testing.T) {
 	var ran []string
 	a, out := dryApp(t, &ran)
 	a.deps.newOptionEod, a.deps.newOptionEodJP, a.deps.newQuoteSnapshot = optioneod.NewWithSymbols, optioneod.NewJP, quotesnapshot.New
+	a.deps.newOptionEodJPWatch = nil
 	if err := runOnce(a, []string{"--dry-run", "--day", "2026-11-10"}); err != nil {
 		t.Fatal(err)
 	}

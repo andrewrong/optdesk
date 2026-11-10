@@ -124,6 +124,7 @@ type deps struct {
 	openInstrumentName      store.OpenInstrumentNameFunc
 	newOptionEod            jobs.NewOptionEodSymbolsFunc
 	newOptionEodJP          jobs.NewOptionEodFunc
+	newOptionEodJPWatch     jobs.NewOptionEodWatchFunc
 	newOptionEodWatch       jobs.NewOptionEodWatchSymbolsFunc
 	openCandidateRW         openCandidateRWFunc
 	newOptionCandidates     jobs.NewOptionCandidatesJobFunc
@@ -230,6 +231,8 @@ func newDeps() deps {
 	d.openCandidateRW = openCandidateWriter
 	// run-once and the scheduler build option_eod over the watch list; newOptionEod (job.toml, SPY) is what the dry run builds.
 	d.newOptionEodWatch, d.newOptionEod = optioneod.NewWithWatchSymbols, optioneod.NewWithSymbols
+	// option_eod_jp is built over the watch list too: each JP stock entry adds a key (the dry run included).
+	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
