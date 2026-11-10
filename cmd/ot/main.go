@@ -22,6 +22,8 @@ type app struct {
 	stdout  io.Writer
 	getenv  func(string) string
 	deps    deps
+	// runPytest runs pytest in dir with env and writes its junit file to junit (`ot check pyside`); nil means exec.
+	runPytest func(dir string, env []string, junit string) error
 }
 
 // command runs one subcommand with the arguments after its name.
