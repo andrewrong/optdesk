@@ -66,7 +66,8 @@ func scanRow(sc scanner) (store.Candidate, error) {
 	err := sc.Scan(&day, &c.RunID, &c.Kind, &c.InstrumentID, &c.Alias, &c.RuleVersion, &c.Issuer, &c.UnderlyingID,
 		&expiry, &c.DTE, &c.Right, &c.Strike, &c.Multiplier, &c.BidEod, &c.Ask, &c.Spot, &c.BuyPrice, &c.SalePrice,
 		&c.BreakEven, &c.AnnualizedYield, &c.Delta, &c.Iv, &c.Status, &c.Gates, &c.Marks, &c.Fits, &next,
-		&c.EarningsState, &ex, &c.ExAmount, &c.Extrinsic, &c.Rank, &c.RankInUnderlying, &c.ComputedAt)
+		&c.EarningsState, &ex, &c.ExAmount, &c.Extrinsic, &c.Rank, &c.RankInUnderlying, &c.ComputedAt,
+		&c.SettingsVersion)
 	if err != nil {
 		return c, err
 	}
