@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // dryJob is a job that refuses before 16:15 New York like option_eod, writes the rows of rows[subject] and
@@ -105,8 +106,11 @@ func dryApp(t *testing.T, ran *[]string) (*app, *strings.Builder) {
 		t.Fatal("openFence called")
 		return nil, nil
 	}
-	d.newOptionEod = build(jobOptionEod, []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "SPY"}},
+	eod := build(jobOptionEod, []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "SPY"}},
 		map[string][]int{"SPY": {1, 1, 2, 5}}, nil)
+	d.newOptionEod = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, c clock.Clock, _ symbol.Translator) (contracts.Job, error) {
+		return eod(b, r, w, c)
+	}
 	d.newOptionEodJP = build(jobOptionEodJP, []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "N225"}},
 		nil, map[string]contracts.ErrorKind{"N225": contracts.Retryable})
 	d.newQuoteSnapshot = func(b broker.Broker, res store.InstrumentResolver, _ store.QuoteSnapshotWriter, clk clock.Clock) (contracts.Job, error) {
@@ -136,7 +140,7 @@ func TestDryRunBypassesGuardsAndLedger(t *testing.T) {
 	// that answers retryable, a guard would show as no_value or an empty key.
 	var ran []string
 	a, out := dryApp(t, &ran)
-	a.deps.newOptionEod, a.deps.newOptionEodJP, a.deps.newQuoteSnapshot = optioneod.New, optioneod.NewJP, quotesnapshot.New
+	a.deps.newOptionEod, a.deps.newOptionEodJP, a.deps.newQuoteSnapshot = optioneod.NewWithSymbols, optioneod.NewJP, quotesnapshot.New
 	if err := runOnce(a, []string{"--dry-run", "--day", "2026-11-10"}); err != nil {
 		t.Fatal(err)
 	}
@@ -370,12 +374,12 @@ func TestDryRunBuildsOptionEodOverWatchList(t *testing.T) {
 	a, _ := dryApp(t, &ran)
 	a.deps.readFile = dryWatchFile(t, dryWatchTwoUS)
 	var got []jobs.WatchEntry
-	a.deps.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+	a.deps.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		t.Error("newOptionEod called")
 		return nil, errors.New("unexpected")
 	}
 	a.deps.newOptionEodWatch = func(_ broker.Broker, _ store.InstrumentResolver, w store.OptionEodWriter,
-		watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+		watch []jobs.WatchEntry, clk clock.Clock, _ symbol.Translator) (contracts.Job, error) {
 		got = watch
 		return dryJob{id: jobOptionEod, keys: []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "AAPL"}},
 			clk: clk, w: w, rows: map[string][]int{"AAPL": {1}}, ran: &ran, mu: &sync.Mutex{}}, nil

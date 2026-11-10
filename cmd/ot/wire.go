@@ -80,6 +80,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/sessionday"
 	"github.com/andrewrong/optdesk/internal/store/setup"
 	"github.com/andrewrong/optdesk/internal/store/snapshot"
+	"github.com/andrewrong/optdesk/internal/symbol"
+	"github.com/andrewrong/optdesk/internal/symbol/table"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -107,9 +109,9 @@ type deps struct {
 	openOptionCatalog       store.OpenOptionEodCatalogFunc
 	openOptionTerms         store.OpenOptionTermsFunc
 	openInstrumentName      store.OpenInstrumentNameFunc
-	newOptionEod            jobs.NewOptionEodFunc
+	newOptionEod            jobs.NewOptionEodSymbolsFunc
 	newOptionEodJP          jobs.NewOptionEodFunc
-	newOptionEodWatch       jobs.NewOptionEodWatchFunc
+	newOptionEodWatch       jobs.NewOptionEodWatchSymbolsFunc
 	openCandidateRW         openCandidateRWFunc
 	newOptionCandidates     jobs.NewOptionCandidatesJobFunc
 	newCandidateRule        compute.NewOptionCandidatesFunc
@@ -170,7 +172,8 @@ type deps struct {
 	openGapHistory          gaphistory.OpenFunc
 	openGapReader           store.OpenGapReaderFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
-	newEarningsRefresh      jobs.NewEarningsRefreshFunc
+	newEarningsRefresh      jobs.NewEarningsRefreshSymbolsFunc
+	symbols                 symbol.Translator
 	newAlphaVantage         sources.NewEarningsFunc
 	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
@@ -197,7 +200,8 @@ func newDeps() deps {
 	d.ext = newExt()
 	d.openCandidateRW = openCandidateWriter
 	// run-once and the scheduler build option_eod over the watch list; newOptionEod (job.toml, SPY) is what the dry run builds.
-	d.newOptionEodWatch, d.newOptionEod = optioneod.NewWithWatch, optioneod.New
+	d.newOptionEodWatch, d.newOptionEod = optioneod.NewWithWatchSymbols, optioneod.NewWithSymbols
+	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
@@ -284,7 +288,7 @@ func newBaseDeps() deps {
 		openGapHistory:          ops.OpenGapHistory,
 		openGapReader:           ops.OpenGapReader,
 		loadAlertRules:          alertrules.Load,
-		newEarningsRefresh:      earningsrefresh.New,
+		newEarningsRefresh:      earningsrefresh.NewWithSymbols,
 		newAlphaVantage:         alphavantage.New,
 		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,

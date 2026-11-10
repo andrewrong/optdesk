@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -137,7 +138,7 @@ func TestEarningsRefreshOncePerDayScheduled(t *testing.T) {
 	d.openEarningsDates = func(context.Context, string) (store.EarningsDateStore, error) { return mem, nil }
 	d.newAlphaVantage = func(sources.EarningsConfig) (sources.EarningsSource, error) { return src, nil }
 	d.newEarningsRefresh = func(
-		s map[string]sources.EarningsSource, w store.EarningsDateWriter, rd store.EarningsDateReader, e []jobs.WatchEntry, _ clock.Clock,
+		s map[string]sources.EarningsSource, w store.EarningsDateWriter, rd store.EarningsDateReader, e []jobs.WatchEntry, _ clock.Clock, _ symbol.Translator,
 	) (contracts.Job, error) {
 		return earningsrefresh.New(s, w, rd, e, fakeClock{time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC)})
 	}

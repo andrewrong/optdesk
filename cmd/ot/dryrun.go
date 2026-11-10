@@ -208,6 +208,7 @@ func dryRunBuild(d deps, name string, b broker.Broker, res store.InstrumentResol
 	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
 	switch name {
 	case jobOptionEod:
+		// buildOptionEod passes d.symbols, the translator of the deps, as the real run does.
 		return buildOptionEod(d, b, res, sink, watch, clk)
 	case jobOptionEodJP:
 		return d.newOptionEodJP(b, res, sink, clk)
