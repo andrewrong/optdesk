@@ -340,7 +340,7 @@ func TestRunJPYPositionAndUnsupportedSecType(t *testing.T) {
 
 func TestRunErrorsCarryNoAccountText(t *testing.T) {
 	t.Parallel()
-	e := setup(t, []string{"U1234567"}, map[string][]store.Position{})
+	e := setup(t, []string{"main-alias"}, map[string][]store.Position{})
 	res := e.run()
 	if res.Err == nil || strings.Count(res.Err.Error(), " ") > 6 {
 		t.Fatalf("err = %v", res.Err)
