@@ -408,9 +408,23 @@ func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store
 	return j, nil
 }
 
-// optionEodJP builds option_eod_jp over the same stores as option_eod.
+// optionEodJP builds option_eod_jp over the same stores and the same watch list as option_eod.
 func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
-	j, err := f.d.newOptionEodJP(b, f.inst, f.eod, f.clk)
+	return buildOptionEodJP(f.d, b, f.inst, f.eod, f.watch, f.clk)
+}
+
+// buildOptionEodJP builds option_eod_jp over the watch list (the JP stock entries add keys): the one constructor
+// path of run-once, the scheduler and the dry run.
+func buildOptionEodJP(d deps, b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
+	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+	var j contracts.Job
+	var err error
+	if d.newOptionEodJPWatch != nil {
+		j, err = d.newOptionEodJPWatch(b, r, w, watch, clk)
+	} else {
+		// A deps literal of a test that fakes only newOptionEodJP; newDeps always sets newOptionEodJPWatch.
+		j, err = d.newOptionEodJP(b, r, w, clk)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("build option_eod_jp job failed: %w", err)
 	}
