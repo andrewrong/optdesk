@@ -46,7 +46,7 @@ store, `internal/store/mark/api.go` (declarations only, package `mark`):
 - `type Writer interface { WriteMarks(ctx context.Context, rows []PositionMark) error }`: one transaction, a row whose key exists is left as it is (a correction is a row with a higher `Attempt`).
 - `type Reader interface { Marks(ctx context.Context, alias, day string) ([]PositionMark, error) }`: the newest capture of the day with marks, the highest `Attempt` of each `ConID`, sorted by `ConID`, an empty slice when none.
 - `type Store interface { Writer; Reader; Close() error }` and `type OpenFunc func(ctx context.Context, dsn string) (Store, error)` (implemented by `internal/store/markpg.Open`).
-- `internal/store/api.go` gains `DSNEnvPositionMark = "OT_PG_DSN_POSMARK"` (role `ot_w_posmark`, INSERT and SELECT on `account.position_mark`; pages read the view `rd.account_position_mark_r1` with `ot_ro_pages`).
+- `internal/store/mark/api.go` declares `const DSNEnvPositionMark = "OT_PG_DSN_POSMARK"` (a store's line lives in its own interface package; `internal/store/api.go` is not edited) (role `ot_w_posmark`, INSERT and SELECT on `account.position_mark`; pages read the view `rd.account_position_mark_r1` with `ot_ro_pages`).
 
 jobs, `internal/jobs/api.go`: `type NewPositionMarksFunc func(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock) (contracts.Job, error)`: `market` is the one market-data gateway (Decision 6), `aliases` the accounts whose positions are marked, the main one first. The job reads the newest capture of the day per alias from `acct`, maps each position by Decision 10, calls `Snapshot` in batches with `KindSnapshot`, applies Decision 2 and writes the rows.
 
@@ -72,13 +72,13 @@ Acceptance:
 ### 2 position-marks-store-api (interface)
 
 Module: store, plus repo (the licensed pair: `scripts/arch`, `arch.toml` and `.go-arch-lint.yml`). Size: S.
-Files: `internal/store/mark/api.go`, `internal/store/mark/api_test.go`, `internal/store/api.go`, `internal/store/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
+Files: `internal/store/mark/api.go`, `internal/store/mark/api_test.go`, `docs/contracts/store.md`, `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/position-marks.md#Interface
 Order: after 1; no longer waits for market-bars: it adds `internal/store/mark` to the `declarationsOnly` list of `scripts/arch/main.go`, and creates that list and its two derivation rules (a root component of a dependent row, and a sub-package of the same row, may import a listed package) when entry `bar-store-api` of market-bars has not landed first; whichever lands second merges the list; before 3 and 5 (each of 3 and 5 edits `.go-arch-lint.yml`, strict order 2, 3, 5).
-Goal: the declarations of `## Interface` in the new package, `DSNEnvPositionMark` in the store interface, the contract test from both sides (a fake writer and reader in the test), the component of `store/mark` in `.go-arch-lint.yml`.
+Goal: the declarations of `## Interface` in the new package, `mark.DSNEnvPositionMark` in the new package, the contract test from both sides (a fake writer and reader in the test), the component of `store/mark` in `.go-arch-lint.yml`.
 Acceptance:
 1. `internal/store/mark/api.go` holds no `func ` with a body: `grep -c "^func " internal/store/mark/api.go` is 0, and it declares `Writer`, `Reader`, `Store`, `OpenFunc` and `PositionMark`.
-2. `grep -c "DSNEnvPositionMark" internal/store/api.go` is 1 and the change in `internal/store/api.go` only adds lines: `git diff --numstat BASE -- internal/store/api.go` shows 0 deleted lines.
+2. `grep -c "DSNEnvPositionMark" internal/store/mark/api.go` is at least 1 and `git diff --name-only BASE -- internal/store/api.go` is empty.
 3. `grep -c "store/mark" .go-arch-lint.yml` is at least 1, and `internal/store/mark/api.go` imports only the standard library (`grep -c "optdesk/internal" internal/store/mark/api.go` is 0).
 4. `docs/contracts/store.md` names `internal/store/mark`, `Marks`, `WriteMarks` and `OT_PG_DSN_POSMARK`.
 5. `grep -c "declarationsOnly" scripts/arch/main.go` is at least 1 and names `internal/store/mark`; `scripts/arch/main_test.go` has a test where the root component `jobs` and the sub-package `store/markpg` each import `store/mark` without a finding (`grep -c "store/mark" scripts/arch/main_test.go` is at least 2).
@@ -86,15 +86,15 @@ Acceptance:
 ### 3 position-marks-store-pg
 
 Module: store, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: M.
-Files: `migrations/NNNN_position_mark.sql`, `internal/store/markpg/store.go`, `internal/store/markpg/store_test.go`, `internal/store/markpg/store_pg_test.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `docs/contracts/store.md`
+Files: `migrations/0026_position_mark.sql`, `internal/store/markpg/store.go`, `internal/store/markpg/store_test.go`, `internal/store/markpg/store_pg_test.go`, `internal/store/setup/setup.go`, `internal/store/setup/setup_test.go`, `docs/contracts/store.md`
 Design: docs/design/position-marks.md#Decisions
-Order: after 2 (shares `docs/contracts/store.md` and `.go-arch-lint.yml`); before 5. `NNNN` is the next free migration number at cut time and is renumbered before merge if another migration takes it (the file name is fixed when the issue is cut).
+Order: after 2 (shares `docs/contracts/store.md` and `.go-arch-lint.yml`); before 5. `0026` is the next free migration number at cut time (main has 0025) and is renumbered, here and in the issue, before merge if another migration takes it.
 Goal: the table `account.position_mark`, the view `rd.account_position_mark_r1`, the role `ot_w_posmark` made by setup, and `markpg.Open` implementing `mark.Store`.
 Acceptance:
-1. `migrations/NNNN_position_mark.sql` creates `account.position_mark` with `PRIMARY KEY (capture_id, con_id, attempt)` and a CHECK on `basis` of the four values, and creates the view `rd.account_position_mark_r1`.
-2. The migration grants `INSERT, SELECT` on the table to `ot_w_posmark` and `SELECT` on the view to `ot_ro_pages`, and `grep -i "^GRANT" migrations/NNNN_position_mark.sql | grep -c "UPDATE\|DELETE\|TRUNCATE"` is 0.
+1. `migrations/0026_position_mark.sql` creates `account.position_mark` with `PRIMARY KEY (capture_id, con_id, attempt)` and a CHECK on `basis` of the four values, and creates the view `rd.account_position_mark_r1`.
+2. The migration grants `INSERT, SELECT` on the table to `ot_w_posmark` and `SELECT` on the view to `ot_ro_pages`, and `grep -i "^GRANT" migrations/0026_position_mark.sql | grep -c "UPDATE\|DELETE\|TRUNCATE"` is 0.
 3. `internal/store/markpg/store.go` uses `ON CONFLICT DO NOTHING` and `grep -c "optdesk/internal/store/mark\"" internal/store/markpg/store.go` is at least 1: `markpg` names `mark.PositionMark` and returns `mark.Store`, which the declarations-only rule of modules.md allows for a sub-package of the same row (`markpg` is imported by `cmd/ot` only).
-4. `grep -c "roleMark\|ot_w_posmark" internal/store/setup/setup.go` is at least 2 and `DSNEnvPositionMark` appears in the role table of `internal/store/setup/setup.go`.
+4. `grep -c "roleMark\|ot_w_posmark" internal/store/setup/setup.go` is at least 2 and the literal `OT_PG_DSN_POSMARK` appears in the role table of `internal/store/setup/setup.go` (it cannot import `store/mark`).
 5. `internal/store/markpg/store_pg_test.go` carries the build tag `pg` on its first line.
 
 ### 4 position-marks-job-api (interface)
@@ -115,7 +115,7 @@ Acceptance:
 Module: jobs, plus repo (the licensed pair: `.go-arch-lint.yml`). Size: L.
 Files: `internal/jobs/positionmarks/doc.go`, `internal/jobs/positionmarks/job.toml`, `internal/jobs/positionmarks/manifest.go`, `internal/jobs/positionmarks/plan.go`, `internal/jobs/positionmarks/mark.go`, `internal/jobs/positionmarks/run.go`, `internal/jobs/positionmarks/plan_test.go`, `internal/jobs/positionmarks/mark_test.go`, `internal/jobs/positionmarks/run_test.go`, `internal/jobs/positionmarks/testdata/probe_snapshot.json`
 Design: docs/design/position-marks.md#Decisions
-Order: after 2, 3 and 4 (2 and 3 share `.go-arch-lint.yml`: strict order 2, 3, 5). Waits, not on main yet: the account capture job (its manifest gives the slot this one is an offset of; until it lands the offset is written against the name `account_capture`). The import rule is on main (#768) and its `scripts/arch` code comes with entry 2 or with `bar-store-api` of market-bars, whichever lands first. The probe of Decision 10 is a separate window step, outside this entry's acceptance and closing condition; the fixture here is synthetic.
+Order: after 2, 3 and 4 (2 and 3 share `.go-arch-lint.yml`: strict order 2, 3, 5). The account capture job has landed (`internal/jobs/accountcapture/job.toml`: anchor `session_close`, offset `30m`); this job's offset is written after it. The import rule is on main (#768) and its `scripts/arch` code comes with entry 2 or with `bar-store-api` of market-bars, whichever lands first. The probe of Decision 10 is a separate window step, outside this entry's acceptance and closing condition; the fixture here is synthetic.
 Goal: the job of Decisions 1 to 6: plan (one `broker.Contract` per position, kind by security type), `MarkOf` (Decision 2), run (per alias, retry fills missing rows only, main-alias failure rule), manifest with the slot ten minutes after the account job.
 Acceptance:
 1. `internal/jobs/positionmarks/mark.go` holds the rule: it returns the basis `mid` only when bid and ask are both above zero and ask is not below bid, `mark_test.go` has a test named for the crossed quote (`grep -c "Crossed" internal/jobs/positionmarks/mark_test.go` is at least 1), and `grep -c "BasisLast\|BasisClose\|BasisNone" internal/jobs/positionmarks/mark.go` is at least 3.
@@ -130,7 +130,7 @@ Module: ot. Size: S.
 Files: `cmd/ot/positionmarks.go`, `cmd/ot/positionmarks_test.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `docs/contracts/ot.md`
 Design: docs/design/position-marks.md#Modules
 Order: after 3 and 5.
-Goal: `ot run-once position_marks` and the scheduler build the job with `markpg.Open` on `store.DSNEnvPositionMark`, the one market-data gateway socket and the aliases of the account job, and the same `markpg` store is opened read-only for pages by the site wiring that later designs add.
+Goal: `ot run-once position_marks` and the scheduler build the job with `markpg.Open` on `mark.DSNEnvPositionMark`, the one market-data gateway socket and the aliases of the account job, and the same `markpg` store is opened read-only for pages by the site wiring that later designs add.
 Acceptance:
 1. `grep -c "positionmarks\|markpg" cmd/ot/positionmarks.go` is at least 2 and `cmd/ot/wire.go` registers `position_marks`.
 2. `cmd/ot/positionmarks.go` imports the packages `internal/store/markpg` and `internal/jobs/positionmarks`, both in the list of `docs/design/modules.md` for `ot`.
