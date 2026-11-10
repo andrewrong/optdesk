@@ -131,7 +131,7 @@ Declared in `internal/store/dividend` (declarations only, so `internal/store/api
 
 ## Option candidates
 
-Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`.
+Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, []Candidate) (int, error)`, insert-only, a rerun is a new `RunID`), `CandidateReader` (`Candidates(ctx, day, kind) ([]Candidate, error)`: the rows of the newest run of the day by `ComputedAt`, ranked rows first, an empty slice when none), the plain row type `Candidate` and `DSNEnvCandidate` (`OT_PG_DSN_CANDIDATE`, role `ot_w_candidate`). `Candidate.SettingsVersion` (`*int64`, the last field; nil is null) is the version of the settings the run used, column `settings_version` (nullable `bigint`, migration `0027`, which replaces the view `rd.option_candidate_r1` with the same columns plus it); the insert stays insert-only and a row written before the column holds null. The implementation is `internal/store/candidate` (a later issue). Design: `docs/design/option-candidates.md#Interface`, `docs/design/settings-form.md#13 candidate-settings-version-store`.
 
 ## Option ledger
 
@@ -190,7 +190,7 @@ Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExec
 - `internal/store/reading/view_test.go`: `TestViewQueryShape`, `TestViewRowMapping`, `TestViewKeepsDataDay`, `TestViewOneRowPerDayAfterVersionBump`, `TestViewEmptyIsEmptySlice` and `TestViewRejectsReversedRange` against an in-test fake; `pg_view_test.go` (build tag `pg`): `TestViewAgainstRoPages` and `TestViewParameterDataDay`.
 - `internal/store/api_events_test.go`: `TestEarningsDateContractFromBothSides` and `TestEarningsDSNEnvName` hold `EarningsDateStore` and its line name from both sides.
 - `internal/store/migrate/migrate_test.go`: the runner's calls against a fake driver.
-- `internal/store/api_candidate_test.go`: `TestCandidateContract` holds `CandidateWriter`, `CandidateReader` and `DSNEnvCandidate` from both sides (two runs of a day read as the newer one, ranked rows first).
+- `internal/store/api_candidate_test.go`: `TestCandidateContract` holds `CandidateWriter`, `CandidateReader` and `DSNEnvCandidate` from both sides (two runs of a day read as the newer one, ranked rows first); `TestCandidateContractSettingsVersion` holds `SettingsVersion` (nil on an old row, the written value on a new one).
 
 - `internal/store/optionledger_api_test.go`: `TestOptionLedgerWriterContract` (revision rule and import rule from both sides) and `TestOptionLedgerReaderContract`.
 

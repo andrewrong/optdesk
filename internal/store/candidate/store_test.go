@@ -101,8 +101,8 @@ func TestInsertQueryText(t *testing.T) {
 			t.Errorf("insert text holds %s: insert-only", bad)
 		}
 	}
-	if got := strings.Count(q, "$"); got != len(db.rows[0]) || got != 34 {
-		t.Errorf("placeholders = %d, args = %d, want 34 each", got, len(db.rows[0]))
+	if got := strings.Count(q, "$"); got != len(db.rows[0]) || got != 35 {
+		t.Errorf("placeholders = %d, args = %d, want 35 each", got, len(db.rows[0]))
 	}
 
 	none, err := s.InsertCandidates(context.Background(), nil)
@@ -182,5 +182,43 @@ func TestTwoRunsNewerWins(t *testing.T) {
 	}
 	if got[0].Rank == nil || *got[0].Rank != 1 || got[1].Rank != nil {
 		t.Errorf("ranked rows must come first: %v, %v", got[0].Rank, got[1].Rank)
+	}
+}
+
+func TestSettingsVersionRowMapping(t *testing.T) {
+	t.Parallel()
+	s := &Store{db: &fakeDB{}}
+	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	in.SettingsVersion = ptr(int64(57))
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 {
+		t.Fatalf("read = %v, %v", got, err)
+	}
+	if got[0].SettingsVersion == nil || *got[0].SettingsVersion != 57 {
+		t.Errorf("settings version = %v, want 57", got[0].SettingsVersion)
+	}
+	if !strings.HasSuffix(columns, "computed_at, settings_version") {
+		t.Errorf("columns = %q; settings_version is the last column", columns)
+	}
+}
+
+func TestNilSettingsVersionIsNull(t *testing.T) {
+	t.Parallel()
+	db := &fakeDB{}
+	s := &Store{db: db}
+	in := sample("r1", time.Unix(100, 0).UTC(), ptr(1))
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{in}); err != nil {
+		t.Fatal(err)
+	}
+	arg, ok := db.rows[0][34].(*int64)
+	if !ok || arg != nil {
+		t.Errorf("argument 35 = %#v, want a nil *int64 (null)", db.rows[0][34])
+	}
+	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 || got[0].SettingsVersion != nil {
+		t.Errorf("read = %+v, %v; want a nil settings version", got, err)
 	}
 }

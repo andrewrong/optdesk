@@ -108,3 +108,30 @@ func TestCandidateContract(t *testing.T) {
 		}
 	}
 }
+
+// TestCandidateContractSettingsVersion holds the settings version from both sides: a writer sets it on the rows of
+// a run, a row of an older run keeps nil, and the reader returns each as written.
+func TestCandidateContractSettingsVersion(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	day := contracts.Day("2026-11-09")
+	m := &memCandidates{}
+	var w store.CandidateWriter = m
+	var r store.CandidateReader = m
+	v := int64(12)
+	t0 := time.Date(2026, 11, 9, 21, 0, 0, 0, time.UTC)
+	if _, err := w.InsertCandidates(ctx, []store.Candidate{{SessionDay: day, RunID: "old", Kind: "short_put", InstrumentID: 1, ComputedAt: t0}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.Candidates(ctx, day, "short_put")
+	if err != nil || len(got) != 1 || got[0].SettingsVersion != nil {
+		t.Fatalf("old row = %+v, %v; want a nil settings version", got, err)
+	}
+	if _, err := w.InsertCandidates(ctx, []store.Candidate{{SessionDay: day, RunID: "new", Kind: "short_put", InstrumentID: 1, SettingsVersion: &v, ComputedAt: t0.Add(time.Hour)}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err = r.Candidates(ctx, day, "short_put")
+	if err != nil || len(got) != 1 || got[0].SettingsVersion == nil || *got[0].SettingsVersion != 12 {
+		t.Fatalf("new row = %+v, %v; want settings version 12", got, err)
+	}
+}
