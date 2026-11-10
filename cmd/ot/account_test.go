@@ -114,14 +114,6 @@ func TestAccountCaptureDryRun(t *testing.T) {
 	}
 }
 
-func TestAccountLeftOutWithoutSockets(t *testing.T) {
-	t.Parallel()
-	r := newAcctRig(t, "", "")
-	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil || r.built.Load() != 0 {
-		t.Fatalf("err %v built %d", err, r.built.Load())
-	}
-}
-
 func assertRefused(t *testing.T, r *acctRig, key string) {
 	t.Helper()
 	err := runOnce(r.a, []string{"--day", "2026-03-04"})
@@ -163,9 +155,18 @@ func TestAccountGatewaysKeyReadThroughDeps(t *testing.T) {
 			"OT_ACCOUNT_SOCKETS": "a=/s/a.sock,b=/s/b.sock", "OT_IBKR_GATEWAYS": p, "OT_PG_DSN_ACCOUNT": "x",
 		}, nil
 	}
-	var extra brokerSet
-	j, ok, err := r.a.accountCapture(context.Background(), jobFactory{d: r.a.deps}, &extra)
-	if err != nil || !ok || j == nil || reads.Load() == 0 || r.cfg.Main != "b" {
-		t.Fatalf("ok %v err %v reads %d main %q", ok, err, reads.Load(), r.cfg.Main)
+	var extra closerSet
+	j, err := r.a.accountCapture(context.Background(), jobFactory{d: r.a.deps}, &extra)
+	if err != nil || j == nil || reads.Load() == 0 || r.cfg.Main != "b" {
+		t.Fatalf("err %v reads %d main %q", err, reads.Load(), r.cfg.Main)
+	}
+}
+
+func TestAccountRefusesUnsetSockets(t *testing.T) {
+	t.Parallel()
+	r := newAcctRig(t, gwMainB, "") // gateways file present, OT_ACCOUNT_SOCKETS unset
+	err := runOnce(r.a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.Contains(err.Error(), "OT_ACCOUNT_SOCKETS") {
+		t.Fatalf("err %v, want a refusal naming OT_ACCOUNT_SOCKETS", err)
 	}
 }

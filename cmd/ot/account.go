@@ -95,32 +95,35 @@ func accountMain(path string) (string, error) {
 	return main, nil
 }
 
-// accountCapture builds account_capture from the lines of .env. With no OT_ACCOUNT_SOCKETS the job is left
-// out (false, one log line), like earnings_refresh without its line. Every check comes before a socket is
-// dialed or the store is opened; what it opens goes to extra, which withWiring closes.
-func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *brokerSet) (contracts.Job, bool, error) {
+// accountCapture builds account_capture from the lines of .env. An unset OT_ACCOUNT_SOCKETS refuses the job
+// like a file with no required entry (Decision 8). Every check comes before a socket is
+// dialed or the store is opened; the job is nil only for a deps without newAccountCapture; what it opens goes to extra, which withWiring closes.
+func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet) (contracts.Job, error) {
+	if f.d.newAccountCapture == nil {
+		// A deps literal of a test that does not exercise account_capture; newDeps always sets it.
+		return nil, nil
+	}
 	env, err := a.envFile()
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if env[envAccountSockets] == "" {
-		a.log.Warn("account_capture left out", "component", "ot", "job", "account_capture", "status", envAccountSockets+" is not set")
-		return nil, false, nil
+		return nil, fmt.Errorf("%s is not set", envAccountSockets)
 	}
 	sockets, err := parseAccountSockets(env[envAccountSockets])
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	main, err := accountMain(env[envIbkrGateways])
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if _, ok := sockets[main]; !ok {
-		return nil, false, fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
+		return nil, fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
 	}
 	dsn := env[store.DSNEnvAccount]
 	if dsn == "" {
-		return nil, false, fmt.Errorf("%s is not set", store.DSNEnvAccount)
+		return nil, fmt.Errorf("%s is not set", store.DSNEnvAccount)
 	}
 	labels := make([]string, 0, len(sockets))
 	for l := range sockets {
@@ -139,12 +142,12 @@ func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *brokerSet
 	}
 	w, err := f.d.openAccount(ctx, dsn)
 	if err != nil {
-		return nil, false, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
+		return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
 	}
 	extra.addCloser(w)
 	j, err := f.d.newAccountCapture(accountcapture.Config{Main: main, Readers: readers, Writer: w, Clock: f.clk})
 	if err != nil {
-		return nil, false, errors.New("build account_capture job failed")
+		return nil, errors.New("build account_capture job failed")
 	}
-	return j, true, nil
+	return j, nil
 }
