@@ -1966,3 +1966,26 @@ source_hash = "1af7ef5836c0ade9b81453ddc6780729b48e61b9b9b25ed159d7d18df9907907"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
 history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 4 and 11 (issue 1067); parameters of option-trader reverse_dcf_v1.toml (blob e1e1f731c7b8), ported in meaning."]
+
+[[figure]]
+id = "valuation.return_at_price"
+version = 1
+title_zh = "给定价格的年化回报"
+pages = ["companies_page.band"]
+formula = """
+Convention price_return_v1: the yearly rate that a cost per share (the bare strike: the premium is already in the put's own return) earns, solved from discounted cash flows per share: ten year-end amounts, then a Gordon perpetuity growing at the last year's rate, bisected for the rate that makes the present value equal the cost (from the last growth plus 0.0001 up to 1, until the interval is under 1e-9); every operation rounded to 34 significant digits half-even, the rate rounded half-even to 6 places. Growth is paid for: with a reinvestment return R a year that grows by g pays out 1 minus g over R of its earnings, between 0 and 1, and a growth above R counts as R (flag GROWTH_LIMITED_BY_R). Four lines per cost: SPENDING_STAYS (the strict base, operating cash flow minus capital spending minus stock compensation, median ratio to revenue over 5 years times the latest revenue per share now; low path; all paid out), SPENDING_EARNS (the earnings base, operating cash flow minus depreciation minus stock compensation; low path; growth paid for with R), ANALYST_PATH and SPENDING_EARNS_ANALYST (the same two on the analyst path). Low path: starts at the lowest of half the earnings record, the revenue record and 10%, then falls straight to 2% at year 10 (records are the compound rate between the averages of the first and the last 3 of ten years of per-share figures; the earnings record uses the latest 5 years with 2 at each end when an end-point figure is unknown). R is the median of 5 years of earnings over the previous year's equity, at most 25%. Spending gate: the earnings lines are left out when the capital spending of the latest 5 years is not above 1.5 times their depreciation (GATE_SPENDING), when R is below 8% (R_BELOW_MIN), or when a figure of the gate is unknown (GATE_UNKNOWN). A latest year whose revenue over gross plant is 20% below its usual marks the earnings lines PLANT_REVENUE_FELL; a latest strict figure at or below zero marks the strict lines LATEST_LEVEL_NOT_POSITIVE, and one above zero and below the base is solved beside it. The analyst input is optional: when it is absent lines 3 and 4 are left out with the state left_out and the reason no analyst input; a forecast whose first year is under half or over twice the reported revenue is left out as ANALYST_SCALE. The result has no value per share and no verdict word. Synthetic: ten years of revenue growing 6 percent with 1000000000 shares at a cost of 20 give 0.129065 on SPENDING_STAYS and 0.134513 on SPENDING_EARNS."""
+inputs = """
+The Filings of the company (ten consecutive fiscal years of revenue, operating cash flow, capital spending, depreciation, stock compensation, diluted shares, gross plant and equity; the latest diluted shares now), the costs as decimal text, the price day and the optional analyst input. Subject: the underlying symbol."""
+period_date = "The end of the latest fiscal year used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places. An annual rate fraction: 0.05 is 5 percent."
+excludes = """
+A value per share; a verdict word; the premium (the net cost belongs to the candidates filter); analyst estimates as a source (the page passes the input as absent); a stored reading (the figure is computed at page build); a company that is not valued (financial or cyclical)."""
+gap_text = """
+Fewer than 10 fiscal years (TOO_FEW_YEARS), years that are not consecutive (NOT_CONSECUTIVE), a latest year older than 457 days at the price day (STALE_FILING), a missing revenue, share count or strict figure of the latest 5 years (MISSING_FIGURE), a share count that moves by more than 30 percent in a year (SHARE_JUMP), a strict base at or below zero (BASE_NOT_POSITIVE): missing_input with the reason. A line left out: its reason, never a zero. A cost that has no rate in range: missing_input with NO_SOLUTION."""
+implemented_by = [
+  "internal/compute/valuation.ReturnAtPrice",
+]
+source_hash = "e13b4d90a6c78dc66bc9103542f20b5760b50d8813c63e18002416283de4d272"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/valuation.md"
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 4, 10 and 11 (issue 1130); parameters of option-trader price_return_v1.toml (blob 8d7be25e35c3), ported in meaning."]
