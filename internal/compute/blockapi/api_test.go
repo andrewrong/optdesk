@@ -156,12 +156,14 @@ func TestCompanyContract(t *testing.T) {
 // fakeHoldings keeps the promises of HoldingFigures: pure, every input reaches the output, Risk never reads Mark.
 type fakeHoldings struct{}
 
+var noQuote = compute.FigureValue{Gap: "missing_quote"}
+
 func (fakeHoldings) Holdings(in blockapi.HoldingsIn) blockapi.HoldingsResult {
 	out := blockapi.HoldingsResult{TotalValue: fv(in.NetLiquidation), TotalUnrealised: fv(in.Currency)}
 	for _, r := range in.Rows {
 		l := blockapi.HoldingLine{Underlying: r.Underlying, SecType: r.SecType}
 		if r.Mark == "" {
-			l.Value, l.Unrealised, l.Share = compute.FigureValue{Gap: "missing_quote"}, compute.FigureValue{Gap: "missing_quote"}, compute.FigureValue{Gap: "missing_quote"}
+			l.Value, l.Unrealised, l.Share = noQuote, noQuote, noQuote
 		} else {
 			l.Value, l.Unrealised, l.Share = fv(r.Quantity+r.Multiplier+r.Mark), fv(r.Cost+r.Currency), fv("1")
 		}
@@ -192,7 +194,7 @@ func TestHoldingsContract(t *testing.T) {
 	}})
 	want := []blockapi.HoldingLine{
 		{Underlying: "AAA", SecType: "STK", Value: fv("216"), Unrealised: fv("5USD"), Share: fv("1")},
-		{Underlying: "BBB", SecType: "OPT", Value: compute.FigureValue{Gap: "missing_quote"}, Unrealised: compute.FigureValue{Gap: "missing_quote"}, Share: compute.FigureValue{Gap: "missing_quote"}},
+		{Underlying: "BBB", SecType: "OPT", Value: noQuote, Unrealised: noQuote, Share: noQuote},
 	}
 	if len(h.Rows) != 2 || h.Rows[0] != want[0] || h.Rows[1] != want[1] {
 		t.Fatalf("Rows = %+v", h.Rows)
@@ -209,7 +211,9 @@ func TestRiskContract(t *testing.T) {
 		Stocks:   []blockapi.HoldingIn{{Underlying: "AAA", SecType: "STK", Currency: "USD", Quantity: "3"}},
 		Greeks:   []blockapi.GreekIn{{Underlying: "AAA", Expiry: testDay, Delta: "-10", Vega: "4"}},
 	})
-	if len(r.Delta) != 2 || r.Delta[0] != (blockapi.RiskLine{Key: "AAASTK", Value: fv("3USD")}) || r.Delta[1] != (blockapi.RiskLine{Key: "AAA", Value: fv("-10")}) {
+	stock := blockapi.RiskLine{Key: "AAASTK", Value: fv("3USD")}
+	opt := blockapi.RiskLine{Key: "AAA", Value: fv("-10")}
+	if len(r.Delta) != 2 || r.Delta[0] != stock || r.Delta[1] != opt {
 		t.Fatalf("Delta = %+v", r.Delta)
 	}
 	if len(r.Vega) != 1 || r.Vega[0] != (blockapi.RiskLine{Key: string(testDay), Value: fv("4")}) {
