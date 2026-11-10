@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -15,40 +16,78 @@ import (
 // zoneEnvName is the environment name the error of a nil zone names.
 const zoneEnvName = "OT_ZONE"
 
-// macroPageName is the second name of the list of pages: it is built in the zone of the profile.
+// macroPageName is the name of macro_page: it is built in the zone of the profile.
 const macroPageName = "macro_page"
 
-// pageNamed returns the page --name selects: an entry of a.deps.pageList, or macro_page built
-// in the zone of the profile, and a close function the caller defers. An unknown name is an
-// error that lists the known names.
+// builtPage is one accepted name of the table besides the names of deps.pageList: how its page
+// is built from the app and the --market and --slot flags, and whether it reads the series store.
+type builtPage struct {
+	build      func(ctx context.Context, a *app, market, slot string) (pages.Page, func(), error)
+	noSeriesDB bool
+}
+
+// builtPages is the one table of the built pages. The dispatch of runPage and pageNamed and the
+// message of an unknown name all read it; a new page is one entry here.
+func builtPages() map[string]builtPage {
+	return map[string]builtPage{
+		macroPageName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
+			if a.profile.Zone == nil {
+				return pages.Page{}, nil, errors.New("macro_page needs the owner's zone: " + zoneEnvName + " is not set")
+			}
+			read, closeRead, err := macroRead(ctx, a)
+			if err != nil {
+				return pages.Page{}, nil, err
+			}
+			return a.deps.macroPage(a.profile.Zone, buildIDOf(version), read), closeRead, nil
+		}},
+		reportName: {noSeriesDB: true, build: func(ctx context.Context, a *app, market, slot string) (pages.Page, func(), error) {
+			return reportPage(ctx, a, market, slot)
+		}},
+		marketName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
+			return marketPage(ctx, a)
+		}},
+		candidatesName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
+			return candidatesPageNamed(ctx, a)
+		}},
+		noticesName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
+			return noticesPageNamed(ctx, a)
+		}},
+		trackingName: {build: func(ctx context.Context, a *app, _, _ string) (pages.Page, func(), error) {
+			return trackingPageNamed(ctx, a)
+		}},
+	}
+}
+
+// pageReadsSeries reports whether the page name reads the series store: every built page does
+// except report_page.
+func pageReadsSeries(name string) bool {
+	return !builtPages()[name].noSeriesDB
+}
+
+// pageNamed returns the page --name selects with empty --market and --slot.
 func pageNamed(a *app, name string) (pages.Page, func(), error) {
+	return pageNamedWith(a, name, "", "")
+}
+
+// pageNamedWith returns the page --name selects: an entry of a.deps.pageList or of the table of
+// built pages, and a close function the caller defers. An unknown name is an error that lists
+// every accepted name, sorted.
+func pageNamedWith(a *app, name, market, slot string) (pages.Page, func(), error) {
 	if p, err := findPage(a.deps.pageList, name); err == nil {
 		return p, func() {}, nil
 	}
-	if name == macroPageName {
-		if a.profile.Zone == nil {
-			return pages.Page{}, nil, errors.New("macro_page needs the owner's zone: " + zoneEnvName + " is not set")
-		}
-		read, closeRead, err := macroRead(context.Background(), a)
-		if err != nil {
-			return pages.Page{}, nil, err
-		}
-		return a.deps.macroPage(a.profile.Zone, buildIDOf(version), read), closeRead, nil
+	table := builtPages()
+	if b, ok := table[name]; ok {
+		return b.build(context.Background(), a, market, slot)
 	}
-	if name == candidatesName {
-		return candidatesPageNamed(context.Background(), a)
-	}
-	if name == trackingName {
-		return trackingPageNamed(context.Background(), a)
-	}
-	if name == noticesName {
-		return noticesPageNamed(context.Background(), a)
-	}
-	known := make([]string, 0, len(a.deps.pageList)+1)
+	known := make([]string, 0, len(a.deps.pageList)+len(table))
 	for _, p := range a.deps.pageList {
 		known = append(known, p.Meta.Name)
 	}
-	known = append(known, macroPageName, reportName, candidatesName, noticesName, trackingName)
+	for n := range table {
+		known = append(known, n)
+	}
+	sort.Strings(known)
 	return pages.Page{}, nil, fmt.Errorf("unknown page %q; known pages: %s", name, strings.Join(known, ", "))
 }
 
