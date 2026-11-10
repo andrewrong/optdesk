@@ -171,7 +171,7 @@ describe('OptionPage', () => {
     ].find((r) => r.querySelector('td')!.textContent === 'TGT')!
     const cells = [...row.querySelectorAll('td')].map((c) => c.textContent)
     expect(cells[1]).toBe('跳过')
-    expect(cells.filter((c) => c === '缺')).toHaveLength(5) // annualised, Bid/Ask, spread %, volume, open interest
+    expect(cells.filter((c) => c === '—缺')).toHaveLength(5) // annualised, Bid/Ask, spread %, volume, open interest
   })
 
   it('marks the chosen contract in the chain, which is shown without a click', async () => {
