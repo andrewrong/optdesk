@@ -9,7 +9,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/pages/candidate_text"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -67,7 +67,7 @@ func (c runOnceConfig) candidatesOff() string {
 
 // optionCandidates builds option_candidates over the stores of the factory.
 func (f jobFactory) optionCandidates() (contracts.Job, error) {
-	st := jobs.CandidateStores{
+	st := optioncandidates.CandidateStores{
 		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
 		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Candidates: f.candidates,
 		SessionDays: f.compute.SessionDays,

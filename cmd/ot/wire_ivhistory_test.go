@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -49,7 +50,7 @@ func ivHistoryFactory(t *testing.T, rd *ivHistoryReadings) jobFactory {
 	t.Helper()
 	return jobFactory{
 		clk:     fakeClock{time.Date(2026, 11, 9, 23, 0, 0, 0, time.UTC)},
-		compute: jobs.ComputeStores{Readings: store.ReadingStore(rd)},
+		compute: computefigures.ComputeStores{Readings: store.ReadingStore(rd)},
 		watch:   []jobs.WatchEntry{{Market: "US", Contract: broker.Contract{SecType: "STK", Symbol: "AAPL", ConID: 265598}}},
 	}
 }

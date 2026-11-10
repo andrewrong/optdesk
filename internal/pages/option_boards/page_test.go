@@ -2,6 +2,7 @@ package option_boards
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -49,5 +50,26 @@ func TestPageMeta(t *testing.T) {
 	}
 	if got, want := NewStockPage(stockConfig()).Meta, (pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v1"}); got != want {
 		t.Fatalf("stock meta = %+v", got)
+	}
+}
+
+func TestConfigNamesField(t *testing.T) {
+	t.Parallel()
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	day := contracts.Day("2026-01-02")
+	for _, names := range []store.InstrumentNameReader{fakeNames{}, nil} {
+		oc, sc := optionConfig(), stockConfig()
+		oc.Names, sc.Names = names, names
+		for name, build := range map[string]func() ([]byte, error){
+			"BuildOption":   func() ([]byte, error) { return BuildOption(context.Background(), oc, nil, day, at) },
+			"NewOptionPage": func() ([]byte, error) { return NewOptionPage(oc).Build(context.Background(), nil, day, at) },
+			"BuildStock":    func() ([]byte, error) { return BuildStock(context.Background(), sc, nil, day, at) },
+			"NewStockPage":  func() ([]byte, error) { return NewStockPage(sc).Build(context.Background(), nil, day, at) },
+		} {
+			out, err := build()
+			if err != nil || !json.Valid(out) {
+				t.Fatalf("%s (names %T) = %q, %v", name, names, out, err)
+			}
+		}
 	}
 }

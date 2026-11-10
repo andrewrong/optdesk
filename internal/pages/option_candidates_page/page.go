@@ -13,8 +13,9 @@ import (
 // Config is what the option_candidates_page builder needs besides the series reader.
 type Config struct {
 	RunID, BuildID, Scope string
-	Zone                  *time.Location        // generated_at is written in it; nil is an error of Build
-	Candidates            store.CandidateReader // nil gives the gap no_reader
+	Zone                  *time.Location             // generated_at is written in it; nil is an error of Build
+	Candidates            store.CandidateReader      // nil gives the gap no_reader
+	Names                 store.InstrumentNameReader // the ticker source of the display name; nil gives the stored issuer text
 }
 
 // NewPage is the option_candidates_page page for c.

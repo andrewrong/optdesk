@@ -69,18 +69,28 @@ describe('DataTable', () => {
   it('sorts a column by value and not by text', async () => {
     await show()
     expect(names()).toEqual(['ten', 'nine', 'none', 'five', 'yen']) // as sent
-    const button = host.querySelectorAll('[data-slot="table-header"] button')[1] as HTMLElement
+    const button = host.querySelectorAll('[data-slot="table-header"] button')[0] as HTMLElement
     await act(async () => button.click())
     expect(names()).toEqual(['five', 'nine', 'ten', 'yen', 'none']) // 5, 9, 10, 12300: text order would put "10" first
     await act(async () => button.click())
     expect(names().filter((n) => n !== 'none')).toEqual(['yen', 'ten', 'nine', 'five']) // descending
   })
 
-  it('shows a gap cell text in a badge and shows no zero for it', async () => {
+  it('shows a gap cell as a dash with its text as sr-only and shows no zero for it', async () => {
     await show()
-    const badge = host.querySelector('[data-slot="badge"]')
-    expect(badge?.textContent).toBe('无数据')
-    expect(badge?.closest('td')?.textContent).toBe('无数据')
+    const gap = host.querySelector('[data-missing]')
+    expect(gap?.textContent).toContain('—')
+    expect(gap?.querySelector('.sr-only')?.textContent).toBe('无数据')
+    expect(gap?.closest('td')?.textContent).toContain('无数据')
+    expect(gap?.closest('td')?.textContent).not.toContain('0')
+  })
+
+  it('gives a column with no value no sort button and a sortable one a faint two-way arrow', async () => {
+    await show()
+    const headers = [...host.querySelectorAll('[data-slot="table-head"]')]
+    expect(headers[0]!.querySelector('button')).toBeNull()
+    expect(headers[0]!.querySelector('svg')).toBeNull()
+    expect(headers[1]!.querySelector('button svg')).not.toBeNull()
   })
 
   it('applies the tone class that names its token for up, down and flat, and none has no tag', async () => {

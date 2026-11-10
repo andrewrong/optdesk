@@ -1,8 +1,7 @@
 // The top card of the home page: the page title and say, one line per card (its label links to the card's page,
 // the text is the card's own words) and the real gaps. Every string is a field of the payload; nothing is computed.
 import type { ReactNode } from 'react'
-import { ChevronRight, TriangleAlert } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Payload } from '@/types/home_page'
@@ -29,21 +28,18 @@ export function OverviewCard({ payload }: { payload: Payload }) {
             </li>
           ))}
         </ul>
-        <Alert data-gap-line>
-          {overview.gaps.length > 0 ? <TriangleAlert aria-hidden /> : null}
-          <AlertTitle>{payload.gap_line}</AlertTitle>
+        <div data-gap-line className="text-sm text-muted-foreground">
+          <p>{payload.gap_line}</p>
           {overview.gaps.length > 0 ? (
-            <AlertDescription>
-              <ul className="space-y-1" data-overview-gaps>
-                {overview.gaps.map((gap, index) => (
-                  <li key={`${index}-${gap.card}`}>
-                    <span className="font-medium">{gap.card}</span> {gap.text}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
+            <ul className="space-y-1" data-overview-gaps>
+              {overview.gaps.map((gap, index) => (
+                <li key={`${index}-${gap.card}`}>
+                  <span className="font-medium">{gap.card}</span> {gap.text}
+                </li>
+              ))}
+            </ul>
           ) : null}
-        </Alert>
+        </div>
       </CardContent>
     </Card>
   )

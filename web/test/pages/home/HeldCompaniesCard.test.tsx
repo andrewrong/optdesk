@@ -70,7 +70,14 @@ describe('HeldCompaniesCard', () => {
     const rows = bodyRows()
     expect(rows).toHaveLength(ok.card.rows.length)
     expect(rows[0]).toEqual(['AMD', '$214.30', '10-28 盘后', '+3.4% 大幅', '+5.0%'])
-    expect(rows[1]).toEqual(['MSFT', '无报价', '11-12', '−0.4% · 10-22', '−1.0%'])
+    expect(rows[1]).toEqual([
+      'MSFT',
+      expect.stringContaining('无报价'),
+      '11-12',
+      '−0.4% · 10-22',
+      '−1.0%',
+    ])
+    expect(rows[1]![1]).toContain('—')
     expect(rows[2]).toEqual(['NVDA', '$131.55', '11-19 盘前', '+0.8%', '−8.4% 大幅'])
   })
 
@@ -149,7 +156,8 @@ describe('HeldCompaniesCard', () => {
     const gapRow = ok.card.rows.findIndex((row) => row.price.kind === 'gap')
     expect(gapRow).toBeGreaterThanOrEqual(0)
     const price = ok.card.rows[gapRow]!.price
-    expect(bodyRows()[gapRow]![1]).toBe(price.text)
+    expect(bodyRows()[gapRow]![1]).toContain('—')
+    expect(bodyRows()[gapRow]![1]).toContain(price.text)
   })
 
   it('shows a Badge with its text for a sharp mark and none for a NoMark', async () => {

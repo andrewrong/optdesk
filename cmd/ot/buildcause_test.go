@@ -14,6 +14,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
+	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/symbol"
@@ -39,7 +42,13 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"calendar_refresh", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newCalendarRefresh = func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+			d.newCalendarRefresh = func(
+				clock.SessionSource,
+				store.SessionDayStore,
+				clock.SessionDayDiffer,
+				clock.Clock,
+				calendarrefresh.CalendarObserver,
+			) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d, log: slog.New(slog.DiscardHandler)}.calendarRefresh()
@@ -48,7 +57,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		{"compute_figures", func(_ *testing.T, cause error) error {
 			d := newDeps()
 			d.newComputeFigures = func(
-				_ jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ compute.Ease, _ clock.Clock,
+				_ computefigures.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ compute.Ease, _ clock.Clock,
 			) (contracts.Job, error) {
 				return nil, cause
 			}
@@ -84,7 +93,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"option_candidates", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+			d.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d}.optionCandidates()
@@ -138,7 +147,7 @@ func TestCandidateProbeLogsCause(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	d := newDeps()
-	d.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+	d.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 		return nil, errors.New("cause-probe")
 	}
 	probe := candidateProbe(wiring{factory: jobFactory{d: d, log: slog.New(slog.NewTextHandler(&buf, nil))}},

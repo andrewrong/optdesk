@@ -6,7 +6,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { ArrowUpDown, TriangleAlert } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,6 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { MissingValue } from './missing-value'
 
 // A figure cell is Python's `{text, value?, tone?}`; a gap cell is `{reason, text}` and has no value.
 export interface FigureCell {
@@ -73,8 +74,8 @@ export const SOURCE_STATUS_CLASS = {
 const isGap = (cell: Cell): cell is GapCell => 'reason' in cell
 const SORT_LABEL = { asc: 'ascending', desc: 'descending' } as const
 
-// shadcn Data Table: the user sorts on `value`, the text is shown as sent. A gap cell shows its text in a
-// Badge and has no value; the tone of a figure cell is written by Python. No grouping, no totals.
+// shadcn Data Table: the user sorts on `value`, the text is shown as sent. A gap cell is a MissingValue dash
+// and has no value; a column with no value in any cell cannot be sorted; the tone of a figure cell is written by Python. No grouping, no totals.
 export function DataTable({
   columns,
   rows,
@@ -91,6 +92,10 @@ export function DataTable({
   const hintOf = (id: string) => columns.find((c) => c.id === id)?.hint
   const defs: ColumnDef<Row>[] = columns.map(({ id, label }) => ({
     id,
+    enableSorting: rows.some((row) => {
+      const cell = row[id]
+      return cell !== undefined && !isGap(cell) && cell.value != null
+    }),
     accessorFn: (row) => {
       const cell = row[id]
       return cell === undefined || isGap(cell) ? undefined : cell.value
@@ -100,11 +105,7 @@ export function DataTable({
       const cell = row.original[id]
       if (cell === undefined) return null
       if (isGap(cell)) {
-        return (
-          <Badge variant="secondary" className="h-auto whitespace-normal text-left">
-            {cell.text}
-          </Badge>
-        )
+        return <MissingValue text={cell.text} />
       }
       if (cell.select) {
         const { onSelect, selected } = cell.select
@@ -201,15 +202,20 @@ export function DataTable({
                 >
                   {(() => {
                     const hint = hintOf(header.column.id)
-                    const sortButton = (
+                    const label = flexRender(header.column.columnDef.header, header.getContext())
+                    const SortIcon =
+                      sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ArrowUpDown
+                    const sortButton = header.column.getCanSort() ? (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        <ArrowUpDown aria-hidden />
+                        {label}
+                        <SortIcon aria-hidden className={cn(!sorted && 'opacity-40')} />
                       </Button>
+                    ) : (
+                      <span className="px-2.5 text-sm font-medium">{label}</span>
                     )
                     return hint ? (
                       <TooltipProvider>
@@ -235,6 +241,7 @@ export function DataTable({
               <TableCell
                 key={cell.id}
                 className={cn(
+                  'py-1.5',
                   alignRight(cell.column.id) && 'text-right tabular-nums',
                   wraps(cell.column.id) && 'whitespace-normal break-words',
                 )}
