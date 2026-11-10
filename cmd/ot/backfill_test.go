@@ -271,3 +271,52 @@ func TestBackfillNoFence(t *testing.T) {
 		t.Fatalf("calls %v", f.days)
 	}
 }
+
+func missingKeys() []contracts.ExpectedKey {
+	return []contracts.ExpectedKey{{DatasetID: "option_eod", SubjectKey: "SPY"}, {DatasetID: "fred", SubjectKey: "DGS10"}}
+}
+
+func TestBackfillPrintsMissingKeys(t *testing.T) {
+	t.Parallel()
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Missing: missingKeys()}})
+	var stdout bytes.Buffer
+	a.stdout = &stdout
+	err := backfill(a, []string{"--day", "2026-11-04"})
+	if err == nil || err.Error() != "backfill 2026-11-04: 2 key(s) are still missing" {
+		t.Fatalf("err %v", err)
+	}
+	want := "missing day=2026-11-04 dataset=option_eod subject=SPY\nmissing day=2026-11-04 dataset=fred subject=DGS10\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout %q, want %q", stdout.String(), want)
+	}
+	if strings.Contains(stdout.String(), "postgres") {
+		t.Fatalf("stdout holds a DSN: %q", stdout.String())
+	}
+}
+
+func TestBackfillMissingLinesBeforeError(t *testing.T) {
+	t.Parallel()
+	// The lines are written before the error is returned: a refused or failed run prints none.
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Refused: runner.RefusedNoPlan, Missing: missingKeys()}})
+	var stdout bytes.Buffer
+	a.stdout = &stdout
+	if err := backfill(a, []string{"--day", "2026-11-04"}); err == nil {
+		t.Fatal("want an error")
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout %q", stdout.String())
+	}
+}
+
+func TestBackfillNoMissingPrintsNothing(t *testing.T) {
+	t.Parallel()
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Filled: missingKeys()}})
+	var stdout bytes.Buffer
+	a.stdout = &stdout
+	if err := backfill(a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatalf("err %v", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout %q", stdout.String())
+	}
+}
