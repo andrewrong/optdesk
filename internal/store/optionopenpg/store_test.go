@@ -11,7 +11,6 @@ import (
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
@@ -179,7 +178,7 @@ func TestMarksAndContracts(t *testing.T) {
 	}
 	exp := types.SerializableDate{Time: time.Date(2026, 12, 18, 0, 0, 0, 0, time.UTC)}
 	if err := s.AddNotListed(ctx, []contracts.OptionNotListed{{
-		UnderlyingID: 9, Expiry: exp, Strike: "100", Right: gen.OptionNotListedRightP, TradingClass: "AAPL",
+		UnderlyingID: 9, Expiry: exp, Strike: "100", Right: "P", TradingClass: "AAPL",
 	}}); err != nil {
 		t.Fatal(err)
 	}

@@ -19,7 +19,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
@@ -220,7 +219,7 @@ func TestPlanLatestPerUnderlying(t *testing.T) {
 	t0 := time.Date(2026, 11, 11, 13, 45, 0, 0, time.UTC)
 	it := func(plan string, und, inst, rank int, at time.Time) contracts.OptionOpenItem {
 		return contracts.OptionOpenItem{SessionDay: day("2026-11-11"), Slot: "0945", PlanID: plan, UnderlyingID: und, InstrumentID: inst,
-			PlannedAt: at, Class: gen.OptionOpenItemClassPuts, Rank: rank, PlannedSpot: 100.5, Sigma: 0.3, SigmaSource: gen.OptionOpenItemSigmaSourceDefault}
+			PlannedAt: at, Class: "puts", Rank: rank, PlannedSpot: 100.5, Sigma: 0.3, SigmaSource: "default"}
 	}
 	const old, cur, other = "00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"
 	if err := s.PutPlan(ctx, []contracts.OptionOpenItem{
@@ -232,7 +231,7 @@ func TestPlanLatestPerUnderlying(t *testing.T) {
 	if err != nil || len(all) != 3 || all[0].InstrumentID != 4 || all[1].InstrumentID != 3 || all[2].UnderlyingID != 2 {
 		t.Fatalf("all = %+v, %v", all, err)
 	}
-	if all[0].PlannedSpot != 100.5 || all[0].Class != gen.OptionOpenItemClassPuts {
+	if all[0].PlannedSpot != 100.5 || all[0].Class != "puts" {
 		t.Errorf("item = %+v", all[0])
 	}
 	one, err := s.Plan(ctx, "2026-11-11", "0945", 2)
@@ -252,7 +251,7 @@ func TestNotListedLifecycle(t *testing.T) {
 	defer func() { _ = s.Close() }()
 	now := time.Date(2026, 11, 11, 1, 0, 0, 0, time.UTC)
 	m := func(und int, exp, strike string, retry time.Time) contracts.OptionNotListed {
-		return contracts.OptionNotListed{UnderlyingID: und, Expiry: day(exp), Strike: strike, Right: gen.OptionNotListedRightP,
+		return contracts.OptionNotListed{UnderlyingID: und, Expiry: day(exp), Strike: strike, Right: "P",
 			TradingClass: "AAPL", CheckedAt: now.Add(-24 * time.Hour), RetryAt: retry}
 	}
 	if err := s.AddNotListed(ctx, []contracts.OptionNotListed{

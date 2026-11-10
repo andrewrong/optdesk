@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
@@ -141,15 +140,12 @@ func (s *store) Plan(ctx context.Context, day contracts.Day, slot string, underl
 	err = s.selectRows(ctx, "select plan", selectPlanSQL, []any{d, slot, ids}, func(sc scanner) error {
 		var it contracts.OptionOpenItem
 		var sd time.Time
-		var class, source string
-		if err := sc.Scan(&sd, &it.Slot, &it.PlanID, &it.InstrumentID, &it.UnderlyingID, &it.PlannedAt, &class,
-			&it.Deferred, &it.Rank, &it.PlannedSpot, &it.Sigma, &source); err != nil {
+		if err := sc.Scan(&sd, &it.Slot, &it.PlanID, &it.InstrumentID, &it.UnderlyingID, &it.PlannedAt, &it.Class,
+			&it.Deferred, &it.Rank, &it.PlannedSpot, &it.Sigma, &it.SigmaSource); err != nil {
 			return err
 		}
 		it.SessionDay = serial(sd)
 		it.PlannedAt = it.PlannedAt.UTC()
-		it.Class = gen.OptionOpenItemClass(class)
-		it.SigmaSource = gen.OptionOpenItemSigmaSource(source)
 		out = append(out, it)
 		return nil
 	})
@@ -199,12 +195,11 @@ func (s *store) NotListed(ctx context.Context, now time.Time) ([]contracts.Optio
 	err := s.selectRows(ctx, "select not_listed", notListedSQL, []any{now}, func(sc scanner) error {
 		var m contracts.OptionNotListed
 		var exp time.Time
-		var right string
-		if err := sc.Scan(&m.UnderlyingID, &exp, &m.Strike, &right, &m.TradingClass, &m.CheckedAt, &m.RetryAt,
+		if err := sc.Scan(&m.UnderlyingID, &exp, &m.Strike, &m.Right, &m.TradingClass, &m.CheckedAt, &m.RetryAt,
 			&m.ErrorCode, &m.ErrorText); err != nil {
 			return err
 		}
-		m.Expiry, m.Right = serial(exp), gen.OptionNotListedRight(right)
+		m.Expiry = serial(exp)
 		m.CheckedAt, m.RetryAt = m.CheckedAt.UTC(), m.RetryAt.UTC()
 		out = append(out, m)
 		return nil
