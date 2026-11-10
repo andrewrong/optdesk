@@ -5,8 +5,10 @@ reqOpenOrders and passes only when the gateway answers with the rejection
 "Read-Only mode" (error 321) within 5 s. An open-orders end, or no answer,
 means the gateway is not read-only: GatewayNotReadOnly is raised, and being a
 SystemExit it is not caught by the supervisor's retry, so the process stops and
-the starter does not restart it. A probe connection that cannot be made raises
-the ordinary connection error. The probe has its own send guard that allows
+the starter does not restart it. A probe whose handshake fails or runs out of its
+budget raises ProbeUnknown, an ordinary exception: not proof and not a refusal,
+the connection stays closed and the supervisor retries. The whole probe,
+handshake included, runs under one 5 s budget. The probe has its own send guard that allows
 message id 5 and nothing else, the order ids refused first.
 This file imports no ib_async.
 """
@@ -31,6 +33,10 @@ class GatewayNotReadOnly(SystemExit):
 
     def __init__(self, reason: str) -> None:
         super().__init__(f"gateway is not proven read-only: {reason}")
+
+
+class ProbeUnknown(Exception):
+    """The probe could not be made (handshake failed or timed out); retry, not stop."""
 
 
 # The probe has its own guard and does not reuse transport.install_guard: that
@@ -77,8 +83,9 @@ async def prove_read_only(
 ) -> None:
     """Pass when the gateway answers reqOpenOrders with error 321 within 5 s.
 
-    Raises GatewayNotReadOnly on an open-orders end or on no answer, and the
-    connection's own error when the probe cannot connect.
+    The handshake and the answer share the one 5 s budget. Raises
+    GatewayNotReadOnly on an open-orders end or on no answer, and ProbeUnknown
+    (the connection's error as __cause__) when the handshake fails or times out.
     """
     ib = make_ib()
     rejected = asyncio.Event()
@@ -91,15 +98,26 @@ async def prove_read_only(
     ib.errorEvent += on_error
     request: asyncio.Future[Any] | None = None
     waiter = asyncio.ensure_future(rejected.wait())
+    began = clock.monotonic()
     try:
-        await ib.client.connectAsync(host, port, PROBE_CLIENT_ID)
+        try:
+            await with_timeout(
+                clock,
+                ib.client.connectAsync(
+                    host, port, PROBE_CLIENT_ID, timeout=PROBE_TIMEOUT_S
+                ),
+                PROBE_TIMEOUT_S,
+            )
+        except Exception as error:
+            raise ProbeUnknown(f"probe handshake failed: {error!r}") from error
         request = asyncio.ensure_future(ib.reqOpenOrdersAsync())
 
         async def answer() -> None:
             await asyncio.wait({waiter, request}, return_when=asyncio.FIRST_COMPLETED)
 
         try:
-            await with_timeout(clock, answer(), PROBE_TIMEOUT_S)
+            left = max(0.0, PROBE_TIMEOUT_S - (clock.monotonic() - began))
+            await with_timeout(clock, answer(), left)
         except TimeoutError:
             raise GatewayNotReadOnly("no answer within 5 s") from None
         if not rejected.is_set():
