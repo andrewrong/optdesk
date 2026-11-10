@@ -150,7 +150,7 @@ Acceptance:
 2. `grep -c '"open_interest"' contracts/datasets/obs.option_open.r1.json` prints 0.
 3. `grep -c '"requested_at"\|"sent_at"\|"received_at"\|"connection_generation"' contracts/datasets/obs.option_open.r1.json` prints at least 4.
 4. `grep -c '"retry_at"' contracts/datasets/master.option_not_listed.r1.json` prints at least 1.
-5. `grep -c '"class"\|"deferred"\|"sigma_source"\|"round"' contracts/datasets/plan.option_open_item.r1.json` prints at least 4 and `grep -c '"near_spot"\|"band"' contracts/datasets/plan.option_open_item.r1.json` prints 0 (the class values are `around_spot`, `puts`, `calls`, `held`, as Decision 3).
+5. `grep -c '"class"\|"deferred"\|"sigma_source"\|"est_delta"' contracts/datasets/plan.option_open_item.r1.json` prints at least 4 and `grep -c '"near_spot"\|"round"' contracts/datasets/plan.option_open_item.r1.json` prints 0 (the class values are `around_spot`, `puts`, `calls`, `held`, as Decision 3).
 6. `git diff --name-only $(git merge-base HEAD origin/main) -- contracts/datasets/obs.option_eod.r1.json contracts/datasets/obs.quote_snapshot.r1.json | wc -l` prints 0.
 Checked by CI: ci-go (generated drift, dataset schema checks); `Contracts: changed (datasets)`.
 
