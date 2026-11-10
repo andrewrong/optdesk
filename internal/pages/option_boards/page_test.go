@@ -60,13 +60,7 @@ func TestBuildNotBuilt(t *testing.T) {
 	if _, err := BuildOption(t.Context(), optionConfig(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
 		t.Fatalf("BuildOption err = %v", err)
 	}
-	if _, err := BuildStock(t.Context(), stockConfig(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
-		t.Fatalf("BuildStock err = %v", err)
-	}
 	if _, err := NewOptionPage(optionConfig()).Build(t.Context(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
 		t.Fatalf("option page Build err = %v", err)
-	}
-	if _, err := NewStockPage(stockConfig()).Build(t.Context(), nil, "2026-11-10", testAt); err == nil || err.Error() != want {
-		t.Fatalf("stock page Build err = %v", err)
 	}
 }

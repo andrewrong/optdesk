@@ -2,14 +2,211 @@ package option_boards
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
+const (
+	noticeText   = "持仓见 /options/tracking"
+	noMatrixText = "没有该标的的候选行"
+	noRowsText   = "没有该标的的合约"
+)
+
+// stockRow is one stored row of the company with its parsed gates and end-of-day text.
+type stockRow struct {
+	C     store.Candidate
+	Gates []gateResult
+	Eod   eodText
+}
+
+func (r stockRow) ok() bool { return r.C.Status == "ok" }
+
 // BuildStock builds page.stock_option_page.v1. r is unused; at is given in UTC and written in c.Zone as generated_at.
-// Stub: it answers an error until the stock page builder replaces it.
-func BuildStock(_ context.Context, _ StockConfig, _ store.SeriesReader, _ contracts.Day, _ time.Time) ([]byte, error) {
-	return nil, errNotBuilt
+// The company is c.Key, or for a bare key the issuer of the first ok row of the data day, else of the first row.
+func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
+	if c.Zone == nil {
+		return nil, errors.New("option_boards: nil zone")
+	}
+	p := stockPayload{
+		Schema: "stock_option_page", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
+		GeneratedAt: zoneTime(at, c.Zone), DataTimes: []sourceTime{}, Title: stockTitle,
+		Maps: []priceMap{}, Cards: []chosenCard{}, Held: []heldItem{}, Footer: footerText,
+		Matrix:    matrixBlock{Expiries: []matrixExpiry{}, Strikes: []string{}, Cells: []matrixCell{}, Legend: matrixLegend},
+		Contracts: contractsBlock{Columns: contractColumns(), Rows: []contractLine{}, Basis: contractsBasis, Notes: []string{}},
+	}
+	var gaps []gap
+	notice := noticeText
+	var ld loaded
+	if c.Candidates == nil {
+		gaps = append(gaps, mkGap("no_reader", gapNoReader))
+		p.SharedGap = strPtr(gapNoReader)
+	} else {
+		var err error
+		if ld, err = loadShortPuts(ctx, c.Candidates, day); err != nil {
+			return nil, err
+		}
+		if !ld.Found {
+			gaps = append(gaps, mkGap("no_data", gapNoRows))
+			p.SharedGap = strPtr(gapNoRows)
+		}
+	}
+	key := ""
+	var mine []store.Candidate
+	if ld.Found {
+		key = c.Key
+		if key == "" {
+			key = bareKey(ld.Rows)
+		}
+		for _, r := range ld.Rows {
+			if r.Issuer == key {
+				mine = append(mine, r)
+			}
+		}
+		p.DataTimes = []sourceTime{{Source: candidatesSource, DataTime: zoneTime(ld.ComputedAt, c.Zone)}}
+		if len(mine) == 0 {
+			gaps = append(gaps, mkGap("no_data", noMatrixText))
+			p.SharedGap = strPtr(noMatrixText)
+		}
+	}
+	p.Top = topBar{Symbol: topSymbol(key), Trend: trendText, Policy: policyText}
+	if len(mine) == 0 {
+		p.NoCard = strPtr(noMatrixText)
+		p.Matrix.Empty = strPtr(noMatrixText)
+		p.Contracts.Empty = strPtr(noRowsText)
+		p.Notice = &notice
+		p.RunStatus = runStatus(gaps)
+		return json.Marshal(p)
+	}
+	more, notes, err := fillCompany(ctx, c, &p, mine, ld)
+	if err != nil {
+		return nil, err
+	}
+	gaps = append(gaps, more...)
+	notice += notes
+	p.Notice = &notice
+	p.RunStatus = runStatus(gaps)
+	return json.Marshal(p)
+}
+
+// fillCompany fills the top bar, matrix, cards, maps and contracts from the rows of the company; it returns the
+// gaps it found and the notes to append to the notice.
+func fillCompany(ctx context.Context, c StockConfig, p *stockPayload, mine []store.Candidate, ld loaded) ([]gap, string, error) {
+	var gaps []gap
+	rows, err := prepareRows(ctx, c, mine, ld.Day)
+	if err != nil {
+		return nil, "", err
+	}
+	if p.Top.Name, err = companyName(ctx, c.Names, mine[0].UnderlyingID); err != nil {
+		return nil, "", err
+	}
+	if err := fillTop(&p.Top, rows); err != nil {
+		return nil, "", err
+	}
+	if ld.Stale {
+		stale, err := staleOf(ld, c.Zone)
+		if err != nil {
+			return nil, "", err
+		}
+		p.Stale = &stale
+		gaps = append(gaps, mkGap("stale", gapStale))
+		p.SharedGap = strPtr(gapStale)
+	}
+	chosen := chosenIndex(rows)
+	matrix, cutNote, err := buildMatrix(rows, chosen)
+	if err != nil {
+		return nil, "", err
+	}
+	p.Matrix = matrix
+	if p.Cards, err = buildCards(rows, chosen, matrix.Cells); err != nil {
+		return nil, "", err
+	}
+	if p.Maps, err = buildMaps(rows, matrix.Expiries); err != nil {
+		return nil, "", err
+	}
+	var contractsCut string
+	if p.Contracts.Rows, contractsCut, err = buildContractRows(rows); err != nil {
+		return nil, "", err
+	}
+	return gaps, cutNote + contractsCut, nil
+}
+
+func strPtr(s string) *string { return &s }
+
+// topSymbol is the symbol of the top bar; the schema wants a text, so an empty key is shown as a dash.
+func topSymbol(key string) string {
+	if key == "" {
+		return "—"
+	}
+	return key
+}
+
+// bareKey is the issuer of the first ok row, else of the first row.
+func bareKey(rows []store.Candidate) string {
+	for _, r := range rows {
+		if r.Status == "ok" {
+			return r.Issuer
+		}
+	}
+	return rows[0].Issuer
+}
+
+func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day contracts.Day) ([]stockRow, error) {
+	eod, err := loadEod(ctx, c.Eod, mine, day)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]stockRow, len(mine))
+	for i, r := range mine {
+		gates, err := parseGates(r.Gates)
+		if err != nil {
+			return nil, fmt.Errorf("option_boards: gates of instrument %d: %w", r.InstrumentID, err)
+		}
+		rows[i] = stockRow{C: r, Gates: gates, Eod: eodTextFor(eod, r.InstrumentID)}
+	}
+	return rows, nil
+}
+
+// companyName is the stored name or nil when there is no reader, no name or an empty name.
+func companyName(ctx context.Context, r store.InstrumentNameReader, id int) (*string, error) {
+	if r == nil {
+		return nil, nil
+	}
+	names, err := r.InstrumentNames(ctx, []int64{int64(id)})
+	if err != nil {
+		return nil, fmt.Errorf("option_boards: name of %d: %w", id, err)
+	}
+	for _, n := range names {
+		if n.InstrumentID == int64(id) && n.Name != "" {
+			return strPtr(n.Name), nil
+		}
+	}
+	return nil, nil
+}
+
+// staleOf is the label of a data day before the build day.
+func staleOf(ld loaded, zone *time.Location) (staleLabel, error) {
+	end, err := dayEnd(ld.Day, zone)
+	if err != nil {
+		return staleLabel{}, err
+	}
+	return staleLabel{DataTime: zoneTime(ld.ComputedAt, zone), StaleAfter: end, Text: staleDayPrefix + string(ld.Day) + staleDaySuffix}, nil
+}
+
+// chosenIndex is the index of the ok row with the lowest stored Rank, or -1.
+func chosenIndex(rows []stockRow) int {
+	best := -1
+	for i, r := range rows {
+		if !r.ok() || r.C.Rank == nil {
+			continue
+		}
+		if best < 0 || *r.C.Rank < *rows[best].C.Rank {
+			best = i
+		}
+	}
+	return best
 }
