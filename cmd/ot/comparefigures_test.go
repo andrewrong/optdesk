@@ -23,8 +23,8 @@ func (r *readOnlyFake) LatestReadings(context.Context, string, string, string, c
 	return nil, nil
 }
 
-func cfFiles() []io.Reader {
-	return []io.Reader{strings.NewReader(""), strings.NewReader(""), strings.NewReader(""), strings.NewReader("")}
+func cfFiles() figureInputs {
+	return figureInputs{strings.NewReader(""), strings.NewReader(""), strings.NewReader(""), strings.NewReader("")}
 }
 
 func cfReturning(rep jobs.FigureReport, err error) jobs.CompareFiguresFunc {
@@ -126,7 +126,7 @@ func TestCompareFiguresFlagsAndDSN(t *testing.T) {
 	}
 }
 
-func TestCompareFiguresClosesStoreAndWithholdsDSN(t *testing.T) {
+func TestCompareFiguresWithholdsDSN(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "OT_PG_DSN_READINGS=postgres://u:secretpw@h/db\n")
 	a.deps.openReading = func(context.Context, string) (store.ReadingStore, error) {

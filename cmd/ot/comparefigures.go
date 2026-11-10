@@ -30,6 +30,9 @@ type figureReportLine struct {
 	Reason  string `json:"reason"`
 }
 
+// figureInputs are the four input files of the comparison.
+type figureInputs struct{ old, register, classes, explained io.Reader }
+
 // readerOnly hides every method of a ReadingStore but the read: what CompareFigures gets cannot write.
 type readerOnly struct{ rd store.ReadingReader }
 
@@ -82,13 +85,13 @@ func compareFigures(a *app, args []string) error {
 		return fmt.Errorf("open readings store with %s failed", store.DSNEnvReadings)
 	}
 	defer func() { _ = st.Close() }()
-	return runCompareFigures(ctx, a.stdout, *report, cutover.CompareFigures, files, st)
+	return runCompareFigures(ctx, a.stdout, *report, cutover.CompareFigures, figureInputs{files[0], files[1], files[2], files[3]}, st)
 }
 
 // runCompareFigures passes only the reader of st to cmp, prints each figure that is not checked and returns an
-// exitError of code 1 when the report is not OK. files are old, register, classes and explained.
-func runCompareFigures(ctx context.Context, out io.Writer, reportPath string, cmp jobs.CompareFiguresFunc, files []io.Reader, st store.ReadingReader) error {
-	rep, err := cmp(ctx, files[0], files[1], files[2], files[3], readerOnly{st})
+// exitError of code 1 when the report is not OK.
+func runCompareFigures(ctx context.Context, out io.Writer, reportPath string, cmp jobs.CompareFiguresFunc, in figureInputs, st store.ReadingReader) error {
+	rep, err := cmp(ctx, in.old, in.register, in.classes, in.explained, readerOnly{st})
 	if err != nil {
 		return &exitError{code: 1, err: fmt.Errorf("compare-figures: %w", err)}
 	}
