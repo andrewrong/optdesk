@@ -51,7 +51,8 @@ func (householdLedger) FlexTradeRows(context.Context, string) ([]store.FlexTrade
 type householdSessions struct{}
 
 func (householdSessions) SessionDays(context.Context, string, contracts.Day, contracts.Day) ([]contracts.SessionDay, error) {
-	return []contracts.SessionDay{{CalendarID: "XNYS", SessionDay: types.SerializableDate{Time: time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)}, IsSession: true}}, nil
+	day := types.SerializableDate{Time: time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)}
+	return []contracts.SessionDay{{CalendarID: "XNYS", SessionDay: day, IsSession: true}}, nil
 }
 
 func householdReaders(asked *[]string) siteReaders {
