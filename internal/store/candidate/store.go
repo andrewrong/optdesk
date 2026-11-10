@@ -17,9 +17,9 @@ import (
 const columns = `session_day, run_id, kind, instrument_id, alias, rule_version, issuer, underlying_id, expiry, dte, ` +
 	`option_right, strike, multiplier, bid_eod, ask, spot, buy_price, sale_price, break_even, annualized_yield, ` +
 	`delta, iv, status, gates, marks, fits, next_earnings, earnings_state, next_ex_date, ex_amount, extrinsic, ` +
-	`rank, rank_in_underlying, computed_at`
+	`rank, rank_in_underlying, computed_at, settings_version`
 
-const columnCount = 34
+const columnCount = 35
 
 // insertSQL is a plain INSERT: the table is insert-only and a duplicate key is an error.
 var insertSQL = "INSERT INTO candidates.option_candidate (" + columns + ") VALUES (" + placeholders(columnCount) + ")"
@@ -116,7 +116,7 @@ func rowArgs(c store.Candidate) ([]any, error) {
 	return []any{day, c.RunID, c.Kind, c.InstrumentID, c.Alias, c.RuleVersion, c.Issuer, c.UnderlyingID, expiry, c.DTE,
 		c.Right, c.Strike, c.Multiplier, c.BidEod, c.Ask, c.Spot, c.BuyPrice, c.SalePrice, c.BreakEven,
 		c.AnnualizedYield, c.Delta, c.Iv, c.Status, c.Gates, c.Marks, c.Fits, next, c.EarningsState, ex,
-		c.ExAmount, c.Extrinsic, c.Rank, c.RankInUnderlying, c.ComputedAt}, nil
+		c.ExAmount, c.Extrinsic, c.Rank, c.RankInUnderlying, c.ComputedAt, c.SettingsVersion}, nil
 }
 
 func validKind(k string) bool {
