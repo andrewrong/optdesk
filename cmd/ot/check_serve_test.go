@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -99,7 +100,7 @@ func TestCheckServeRoutes(t *testing.T) {
 	e, out := serveEnv(t)
 	var calls []string
 	bodies := goodBodies(t, "2026-11-06")
-	checkServeRoutes(context.Background(), e, serveRepo(t), "2026-11-06", nil, fakeSite(bodies, nil, &calls))
+	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bodies, nil, &calls), nil)
 	if e.c.failed {
 		t.Fatalf("a good site failed:\n%s", out)
 	}
@@ -122,8 +123,15 @@ func TestCheckServeRoutes(t *testing.T) {
 	// a status that is not 200 names the page; the other routes are still called.
 	e2, out2 := serveEnv(t)
 	var calls2 []string
-	checkServeRoutes(context.Background(), e2, serveRepo(t), "2026-11-06", nil, fakeSite(bodies, map[string]int{"/market": 500}, &calls2))
-	if !e2.c.failed || !strings.Contains(out2.String(), "FAIL serve.market_page.status - market_page answered 500: internal error") {
+	checkServeRoutes(context.Background(), e2, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bodies, map[string]int{"/market": 500}, &calls2),
+		func(_ context.Context, rt serveRoute) error {
+			if rt.page != "market_page" {
+				t.Errorf("diagnosed %s", rt.page)
+			}
+			return errors.New("relation rd.x does not exist")
+		})
+	want500 := "FAIL serve.market_page.status - market_page answered 500: internal error: build error: relation rd.x does not exist"
+	if !e2.c.failed || !strings.Contains(out2.String(), want500) {
 		t.Fatalf("500 not reported:\n%s", out2)
 	}
 	if len(calls2) != len(serveRoutes) {
@@ -135,7 +143,7 @@ func TestCheckServeRoutes(t *testing.T) {
 	bad["/macro"] = []byte(`{"schema":"macro_rates","schema_version":7,"session_day":"2026-11-06","series":[]}`)
 	e3, out3 := serveEnv(t)
 	var calls3 []string
-	checkServeRoutes(context.Background(), e3, serveRepo(t), "2026-11-06", nil, fakeSite(bad, nil, &calls3))
+	checkServeRoutes(context.Background(), e3, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bad, nil, &calls3), nil)
 	if !e3.c.failed || !strings.Contains(out3.String(), "FAIL serve.macro_rates.schema - ") {
 		t.Fatalf("schema failure not reported:\n%s", out3)
 	}
@@ -147,7 +155,7 @@ func TestCheckBlockMissing(t *testing.T) {
 	var calls []string
 	bodies := goodBodies(t, "2026-11-06")
 	bodies["/market"] = serveBody(t, "market_page", "2026-11-06", "weather", "indices", "breadth")
-	checkServeRoutes(context.Background(), e, serveRepo(t), "2026-11-06", nil, fakeSite(bodies, nil, &calls))
+	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bodies, nil, &calls), nil)
 	if !e.c.failed || !strings.Contains(out.String(), "FAIL serve.market_page.blocks 2026-11-06 missing block term\n") {
 		t.Fatalf("missing block not reported:\n%s", out)
 	}
@@ -165,7 +173,7 @@ func TestCheckBlockUnknown(t *testing.T) {
 	bodies := goodBodies(t, "2026-11-06")
 	blocks := append([]string{"candidates"}, checkBlockTable["report_page"]...)
 	bodies["/report?market=us&slot=open"] = serveBody(t, "report_page", "2026-11-06", blocks...)
-	checkServeRoutes(context.Background(), e, serveRepo(t), "2026-11-06", nil, fakeSite(bodies, nil, &calls))
+	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bodies, nil, &calls), nil)
 	if !strings.Contains(out.String(), "FAIL serve.report_page.us.open.blocks 2026-11-06 unknown block candidates\n") {
 		t.Fatalf("unknown block not reported:\n%s", out)
 	}
@@ -177,7 +185,7 @@ func TestCheckReportVariants(t *testing.T) {
 	var calls []string
 	bodies := goodBodies(t, "2026-11-06")
 	bodies["/report?market=jp&slot=close"] = serveBody(t, "report_page", "2026-11-06", "actions", "account_moves", "risks", "market_watch")
-	checkServeRoutes(context.Background(), e, serveRepo(t), "2026-11-06", nil, fakeSite(bodies, nil, &calls))
+	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bodies, nil, &calls), nil)
 	got := map[string]bool{}
 	for _, c := range calls {
 		if strings.HasPrefix(c, "/report") {
@@ -234,7 +242,7 @@ func TestCheckServeStaleDay(t *testing.T) {
 	}
 	var calls []string
 	bodies := goodBodies(t, "2026-11-06")
-	checkServeRoutes(context.Background(), e, serveRepo(t), latest, nil, fakeSite(bodies, nil, &calls))
+	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: latest}, fakeSite(bodies, nil, &calls), nil)
 	if !strings.Contains(out.String(), "FAIL serve.macro_rates.fresh 2026-11-06 older than the latest closed window 2026-11-09\n") {
 		t.Fatalf("stale page not FAIL:\n%s", out)
 	}
@@ -242,5 +250,31 @@ func TestCheckServeStaleDay(t *testing.T) {
 	e.a.deps.openGapReader = func(context.Context, string) (store.GapReader, error) { return serveGaps{}, nil }
 	if _, err := latestClosedExpected(context.Background(), e, now); err == nil {
 		t.Fatal("no window: want an error")
+	}
+}
+
+func TestCheckBlockUnknownFlatPage(t *testing.T) {
+	t.Parallel()
+	body := map[string]json.RawMessage{
+		"schema": json.RawMessage(`"market_page"`), "schema_version": json.RawMessage(`2`),
+		"weather": json.RawMessage(`{}`), "indices": json.RawMessage(`{}`),
+		"breadth": json.RawMessage(`{}`), "term": json.RawMessage(`{}`),
+		"rogue_block": json.RawMessage(`{}`),
+	}
+	got := compareBlocks("market_page", body)
+	if len(got) != 1 || got[0] != "unknown block rogue_block" {
+		t.Fatalf("want [unknown block rogue_block], got %v", got)
+	}
+}
+
+func TestCheckBlockUnknownFlatRoute(t *testing.T) {
+	t.Parallel()
+	e, out := serveEnv(t)
+	var calls []string
+	bodies := goodBodies(t, "2026-11-06")
+	bodies["/settings"] = serveBody(t, "settings_page", "2026-11-06", "params", "rows", "history", "extra")
+	checkServeRoutes(context.Background(), e, serveRepo(t), freshness{latest: "2026-11-06"}, fakeSite(bodies, nil, &calls), nil)
+	if !strings.Contains(out.String(), "FAIL serve.settings_page.blocks 2026-11-06 unknown block extra\n") {
+		t.Fatalf("flat unknown block not reported:\n%s", out)
 	}
 }
