@@ -341,10 +341,15 @@ func jqRig(t *testing.T, env string) (*rig, *jqSource, *memEvents) {
 		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, rd store.EarningsDateReader, es []jobs.WatchEntry, c clock.Clock, _ symbol.Translator,
 	) (contracts.Job, error) {
 		r.earnSrcs = srcs
-		return earningsrefresh.New(srcs, w, rd, es, c)
+		return earningsrefresh.New(srcs, w, rd, es, earningsTestClock{})
 	}
 	return r, src, mem
 }
+
+// earningsTestClock is 2026-11-09 in New York, the day these tests run the earnings job: it answers for today only.
+type earningsTestClock struct{}
+
+func (earningsTestClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC) }
 
 func earningsJob(t *testing.T, r *rig) contracts.Job {
 	t.Helper()
