@@ -107,14 +107,14 @@ type deps struct {
 	newCalendar             clock.NewCalendarFunc
 	newCommandSessionSource clock.NewCommandSessionSourceFunc
 	newDiffer               clock.NewSessionDayDifferFunc
-	newCalendarRefresh      jobs.NewCalendarRefreshFunc
+	newCalendarRefresh      calendarrefresh.NewCalendarRefreshFunc
 	openSessionDay          store.OpenSessionDayFunc
 	openSeries              store.OpenSeriesFunc
 	openLedger              store.OpenLedgerFunc
 	setup                   store.SetupFunc
 	newFRED                 sources.NewFREDFunc
-	newFredSeries           jobs.NewFredSeriesFunc
-	newSeriesHistory        jobs.NewSeriesHistoryFunc
+	newFredSeries           fredseries.NewFredSeriesFunc
+	newSeriesHistory        serieshistory.NewSeriesHistoryFunc
 	newRunner               runner.NewWithRuleFunc
 	newBackfiller           runner.NewBackfillerWithRuleFunc
 	dialBroker              broker.DialFunc
@@ -125,19 +125,19 @@ type deps struct {
 	openOptionCatalog       store.OpenOptionEodCatalogFunc
 	openOptionTerms         store.OpenOptionTermsFunc
 	openInstrumentName      store.OpenInstrumentNameFunc
-	newOptionEod            jobs.NewOptionEodSymbolsFunc
-	newOptionEodJP          jobs.NewOptionEodFunc
-	newOptionEodJPWatch     jobs.NewOptionEodWatchFunc
-	newOptionEodWatch       jobs.NewOptionEodWatchSymbolsFunc
+	newOptionEod            optioneod.NewOptionEodSymbolsFunc
+	newOptionEodJP          optioneod.NewOptionEodFunc
+	newOptionEodJPWatch     optioneod.NewOptionEodWatchFunc
+	newOptionEodWatch       optioneod.NewOptionEodWatchSymbolsFunc
 	openCandidateRW         openCandidateRWFunc
-	newOptionCandidates     jobs.NewOptionCandidatesJobFunc
+	newOptionCandidates     optioncandidates.NewOptionCandidatesJobFunc
 	newCandidateRule        compute.NewOptionCandidatesFunc
-	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
+	newQuoteSnapshot        quotesnapshot.NewQuoteSnapshotFunc
 	dialAccount             dialAccountFunc
 	openAccount             store.OpenAccountFunc
 	newAccountCapture       newAccountCaptureFunc
 	openMark                mark.OpenFunc
-	newPositionMarks        jobs.NewPositionMarksFunc
+	newPositionMarks        newPositionMarksFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
 	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
@@ -145,7 +145,7 @@ type deps struct {
 	alertRules              compute.DefaultAlertRulesFunc
 	evaluateAlerts          compute.EvaluateAlertsFunc
 	riskBlock               riskBlockFunc
-	newComputeFigures       jobs.NewComputeFiguresEaseFunc
+	newComputeFigures       computefigures.NewComputeFiguresEaseFunc
 	computeFigures          compute.Figures
 	computeRules            compute.Rules
 	computeUnits            compute.Units
@@ -194,25 +194,25 @@ type deps struct {
 	openGapHistory          gaphistory.OpenFunc
 	openGapReader           store.OpenGapReaderFunc
 	loadAlertRules          compute.LoadAlertRulesFunc
-	newEarningsRefresh      jobs.NewEarningsRefreshSymbolsFunc
+	newEarningsRefresh      earningsrefresh.NewEarningsRefreshSymbolsFunc
 	symbols                 symbol.Translator
 	newAlphaVantage         sources.NewEarningsFunc
 	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
 	openDividend            dividend.OpenFunc
-	newDividendCapture      jobs.NewDividendCaptureFunc
+	newDividendCapture      dividendcapture.NewDividendCaptureFunc
 	openOptionLedgerStore   store.OpenOptionLedgerFunc
-	newOptionLedgerJob      jobs.NewOptionLedgerJobFunc
+	newOptionLedgerJob      optionledgerjob.NewOptionLedgerJobFunc
 	loadFlexFile            sources.LoadFlexFileFunc
 	newFlexSource           sources.NewFlexFunc
-	importOptionTrader      jobs.ImportOptionTraderFunc
+	importOptionTrader      optionledgerjob.ImportOptionTraderFunc
 	// option_eod with the held short calls and option_candidates with the dividend reader (Decisions 11 and 12).
 	newOptionEodHeld         optioneod.NewOptionEodHeldSymbolsFunc
-	newOptionCandidatesCalls jobs.NewOptionCandidatesCallsFunc
+	newOptionCandidatesCalls optioncandidates.NewOptionCandidatesCallsFunc
 	// bars_refresh and fx_refresh: the bar store, the two constructors and the history client.
 	openBar        bar.OpenBarFunc
-	newBarsRefresh jobs.NewBarsRefreshFunc
-	newFxRefresh   jobs.NewFxRefreshFunc
+	newBarsRefresh barsrefresh.NewBarsRefreshFunc
+	newFxRefresh   fxrefresh.NewFxRefreshFunc
 	newHistory     broker.NewHistoryFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
@@ -741,7 +741,7 @@ func wireHeldCalls(cfg runOnceConfig, f *jobFactory, extra *closerSet, log *slog
 	}}}
 	extra.addCloser(rd)
 	calls := f.d.newOptionCandidatesCalls
-	f.d.newOptionCandidates = func(st jobs.CandidateStores, rule compute.OptionCandidates, watch []jobs.WatchEntry,
+	f.d.newOptionCandidates = func(st optioncandidates.CandidateStores, rule compute.OptionCandidates, watch []jobs.WatchEntry,
 		clk clock.Clock) (contracts.Job, error) {
 		return calls(st, rd, rule, watch, clk)
 	}

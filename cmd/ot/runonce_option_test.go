@@ -18,6 +18,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -157,11 +159,11 @@ type rig struct {
 	snapW      store.QuoteSnapshotWriter
 	cursor     contracts.Day
 	reconciled int
-	compute    jobs.ComputeStores
+	compute    computefigures.ComputeStores
 	loader     store.SessionDayStore // the store opened with the loader line
 	calStore   store.SessionDayStore // the store handed to calendar_refresh
 	argv       []string
-	observer   jobs.CalendarObserver
+	observer   calendarrefresh.CalendarObserver
 	// what earnings_refresh was built with
 	earnSrcs  map[string]sources.EarningsSource
 	earnStore store.EarningsDateWriter
@@ -222,7 +224,7 @@ func newRig(t *testing.T, env string) *rig {
 	}
 	d.newDiffer = func() clock.SessionDayDiffer { return nil }
 	d.newCalendarRefresh = func(
-		_ clock.SessionSource, sd store.SessionDayStore, _ clock.SessionDayDiffer, _ clock.Clock, obs jobs.CalendarObserver,
+		_ clock.SessionSource, sd store.SessionDayStore, _ clock.SessionDayDiffer, _ clock.Clock, obs calendarrefresh.CalendarObserver,
 	) (contracts.Job, error) {
 		r.calStore, r.observer = sd, obs
 		return namedJob{id: "calendar_refresh"}, r.fail["caljob"]
@@ -296,7 +298,7 @@ func newRig(t *testing.T, env string) *rig {
 		return evReading{c: evc{"readings", r.ev}}, nil
 	}
 	d.newComputeFigures = func(
-		cs jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ compute.Ease, _ clock.Clock,
+		cs computefigures.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ compute.Ease, _ clock.Clock,
 	) (contracts.Job, error) {
 		r.compute = cs
 		return namedJob{id: "compute_figures"}, r.fail["figjob"]

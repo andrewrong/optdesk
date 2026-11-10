@@ -9,18 +9,18 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
 type fakeLoader struct {
 	plans []sources.FetchPlan
-	res   []jobs.SeriesLoaded
+	res   []serieshistory.SeriesLoaded
 	err   error
 }
 
-func (f *fakeLoader) Load(_ context.Context, p sources.FetchPlan) ([]jobs.SeriesLoaded, error) {
+func (f *fakeLoader) Load(_ context.Context, p sources.FetchPlan) ([]serieshistory.SeriesLoaded, error) {
 	f.plans = append(f.plans, p)
 	return f.res, f.err
 }
@@ -43,13 +43,13 @@ func seriesLoadApp(t *testing.T, env string, f *fakeLoader) (*app, *bytes.Buffer
 		return fakeSeries{n: closed}, nil
 	}
 	a.deps.newFRED = func(sources.FREDConfig) (sources.Source, error) { return nil, nil }
-	a.deps.newSeriesHistory = func(sources.Source, store.SeriesWriter) (jobs.SeriesHistoryLoader, error) { return f, nil }
+	a.deps.newSeriesHistory = func(sources.Source, store.SeriesWriter) (serieshistory.SeriesHistoryLoader, error) { return f, nil }
 	return a, &stdout, opened, closed
 }
 
 func TestSeriesLoadPlanAndOutput(t *testing.T) {
 	t.Parallel()
-	f := &fakeLoader{res: []jobs.SeriesLoaded{{SeriesID: "SP500", Fetched: 3}, {SeriesID: "VIXCLS", Fetched: 0}}}
+	f := &fakeLoader{res: []serieshistory.SeriesLoaded{{SeriesID: "SP500", Fetched: 3}, {SeriesID: "VIXCLS", Fetched: 0}}}
 	a, stdout, opened, closed := seriesLoadApp(t, loadEnv, f)
 	args := []string{"--series", "SP500", "--series", "VIXCLS", "--from", "2021-01-01", "--to", "2026-01-01"}
 	if err := seriesLoad(a, args); err != nil {

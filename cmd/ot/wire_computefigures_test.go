@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
@@ -24,7 +25,7 @@ func TestComputeFiguresJobGetsEase(t *testing.T) {
 	}
 	var got compute.Ease
 	d.newComputeFigures = func(
-		_ jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, e compute.Ease, _ clock.Clock,
+		_ computefigures.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, e compute.Ease, _ clock.Clock,
 	) (contracts.Job, error) {
 		got = e
 		return namedJob{id: "compute_figures"}, nil
