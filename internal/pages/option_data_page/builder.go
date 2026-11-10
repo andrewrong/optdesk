@@ -15,6 +15,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const (
@@ -54,6 +55,8 @@ type Config struct {
 	// Earnings reads the earnings dates of Issuer; nil or an empty Issuer: no earnings fields.
 	Earnings store.EarningsDateReader
 	Issuer   string
+	// Fx reads the USD<currency> rate for approx_usd_text; nil: no figure gets it.
+	Fx bar.FxRateReader
 }
 
 type sourceTime struct {
@@ -214,10 +217,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 			eodTime = r.ReceivedAt
 		}
 	}
-	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
-		return nil, err
-	}
-	if err := applyEarnings(ctx, c, d, day, sessionDay, vm.Chain.Rows, &vm.Underlying); err != nil {
+	if err := decorate(ctx, c, d, day, sessionDay, rows, &vm); err != nil {
 		return nil, err
 	}
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
@@ -246,6 +246,17 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "quote_snapshot", DataTime: fmtTime(quoteTime, c.Zone)})
 	}
 	return json.Marshal(vm)
+}
+
+// decorate fills the optional fields of the chain rows and the underlying: terms, earnings, approximate US dollars.
+func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string, rows []contracts.OptionEod, vm *viewModel) error {
+	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
+		return err
+	}
+	if err := applyEarnings(ctx, c, d, day, sessionDay, vm.Chain.Rows, &vm.Underlying); err != nil {
+		return err
+	}
+	return applyUSD(ctx, c.Fx, sessionDay, vm)
 }
 
 // selectRows keeps the rows of the latest session day, one per instrument (the greatest
