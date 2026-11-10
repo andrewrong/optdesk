@@ -566,6 +566,7 @@ func (c callsDiv) Close() error { c.closed.Add(1); return nil }
 type callsRig struct {
 	*rig
 	heldAcct   store.AccountReader
+	heldTr     symbol.Translator
 	callsDiv   dividend.Reader
 	calls      atomic.Int32
 	puts       atomic.Int32
@@ -587,9 +588,9 @@ func newCallsRig(t *testing.T, env string) *callsRig {
 	d.openCandidateRW = func(context.Context, string) (candidateRW, error) { return &fakeCandidateRW{closed: &c.closed}, nil }
 	d.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
 	d.newOptionEodHeld = func(
-		_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter, _ []jobs.WatchEntry, acct store.AccountReader, _ clock.Clock,
+		_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter, _ []jobs.WatchEntry, acct store.AccountReader, _ clock.Clock, tr symbol.Translator,
 	) (contracts.Job, error) {
-		c.heldAcct = acct
+		c.heldAcct, c.heldTr = acct, tr
 		return namedJob{id: jobOptionEod}, nil
 	}
 	d.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
@@ -675,5 +676,18 @@ func TestMissingEventsDSNKeepsPutsJob(t *testing.T) {
 	}
 	if !strings.Contains(c.log.String(), reasonNoEventsDSN) || !strings.Contains(c.log.String(), jobOptionCandidates) {
 		t.Fatalf("no named line: %s", c.log)
+	}
+}
+
+func TestRunOnceOptionEodTranslatorWithAccountLine(t *testing.T) {
+	t.Parallel()
+	c := newCallsRig(t, fullEnv)
+	want := table.New()
+	c.a.deps.symbols = want
+	if err := runOnce(c.a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if c.heldAcct == nil || c.heldTr == nil || c.heldTr != want {
+		t.Fatalf("held reader %v translator %v, want the symbols of the deps", c.heldAcct, c.heldTr)
 	}
 }

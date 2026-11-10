@@ -207,7 +207,7 @@ type deps struct {
 	newFlexSource           sources.NewFlexFunc
 	importOptionTrader      jobs.ImportOptionTraderFunc
 	// option_eod with the held short calls and option_candidates with the dividend reader (Decisions 11 and 12).
-	newOptionEodHeld         jobs.NewOptionEodHeldFunc
+	newOptionEodHeld         optioneod.NewOptionEodHeldSymbolsFunc
 	newOptionCandidatesCalls jobs.NewOptionCandidatesCallsFunc
 	// bars_refresh and fx_refresh: the bar store, the two constructors and the history client.
 	openBar        bar.OpenBarFunc
@@ -242,7 +242,7 @@ func newDeps() deps {
 	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
-	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeld, optioncandidates.NewWithCalls
+	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeldSymbols, optioncandidates.NewWithCalls
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	realMarkDeps(&d) // position_marks
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
@@ -704,7 +704,7 @@ func (r *lazyDividendReader) Dividends(ctx context.Context, id int, from, to con
 
 // wireHeldCalls gives the held short calls to option_eod and the dividend reader to option_candidates, by wrapping
 // the constructors of the deps copy of f (option-candidates Decisions 11 and 12):
-//   - with OT_PG_DSN_ACCOUNT set, option_eod is built by NewWithHeld over a reader of the account store;
+//   - with OT_PG_DSN_ACCOUNT set, option_eod is built by NewWithHeldSymbols over a reader of the account store;
 //   - with OT_PG_DSN_EVENTS set, option_candidates is built by NewWithCalls over a reader of the dividend store;
 //     without it the puts job stays as it was and one line names OT_PG_DSN_EVENTS.
 //
@@ -721,8 +721,8 @@ func wireHeldCalls(cfg runOnceConfig, f *jobFactory, extra *closerSet, log *slog
 		extra.addCloser(rd)
 		held := f.d.newOptionEodHeld
 		f.d.newOptionEodWatch = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
-			clk clock.Clock, _ symbol.Translator) (contracts.Job, error) {
-			return held(b, r, w, watch, rd, clk)
+			clk clock.Clock, tr symbol.Translator) (contracts.Job, error) {
+			return held(b, r, w, watch, rd, clk, tr)
 		}
 	}
 	if f.d.newOptionCandidatesCalls == nil || f.d.openDividend == nil || cfg.candidatesOff() != "" {
