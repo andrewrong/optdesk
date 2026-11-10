@@ -71,7 +71,7 @@ func TestHouseholdRouteServesStoredAccount(t *testing.T) {
 	h := siteHandler(a, householdClock, "2026-11-05", householdReaders(&asked), echoHandler, http.NotFoundHandler())
 	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute)
 	body := rec.Body.String()
-	if rec.Code != 200 || strings.Contains(body, `"no_reader"`) || strings.Contains(body, `"run_status":"failed"`) || !strings.Contains(body, "household_page") {
+	if rec.Code != 200 || strings.Contains(body, `"no_reader"`) || strings.Contains(body, `"no_data"`) || !strings.Contains(body, "household_page") {
 		t.Fatalf("%d %q", rec.Code, body)
 	}
 	if len(asked) == 0 || asked[0] != "main" {
