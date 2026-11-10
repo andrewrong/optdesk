@@ -210,6 +210,7 @@ class IbGateway:
         self._jobs: set[_Job] = set()
         self._lost = asyncio.Event()
         self._account_lock = asyncio.Lock()
+        self._probe_lock = asyncio.Lock()  # one probe of this gateway at a time
 
     # --- session ----------------------------------------------------------
 
@@ -240,7 +241,8 @@ class IbGateway:
         if self._id_in_use:
             raise ClientIdInUse(self._client_id)
         try:
-            await self._probe()
+            async with self._probe_lock:
+                await self._probe()
         except BaseException:
             stale = self._ib
             stale.disconnect()
