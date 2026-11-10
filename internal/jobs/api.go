@@ -309,3 +309,9 @@ type NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter
 type NewDividendCaptureFunc func(
 	broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []WatchEntry, clock.Clock,
 ) (contracts.Job, error)
+
+// SettingsVersionFunc answers the version of the owner settings in force at an instant (the shape of
+// ownerset.Reader.Version, so this package imports nothing of the store; docs/design/settings-form.md Decision 13).
+// The option_candidates job (internal/jobs/optioncandidates.WithSettingsVersion) calls it once per run with the
+// run's instant and writes the value on every row of the run; with no function or on an error the rows carry nil.
+type SettingsVersionFunc func(ctx context.Context, at time.Time) (int64, error)
