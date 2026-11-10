@@ -290,3 +290,109 @@ type badRule struct{ c compute.Candidate }
 func (b badRule) Evaluate(compute.CandidateInput, compute.CandidateParams) []compute.Candidate {
 	return []compute.Candidate{b.c}
 }
+
+// threeKinds is the fakes rule with a covered call and a held-call guard added to each put.
+type threeKinds struct{ f *fakes }
+
+func (r threeKinds) Evaluate(in compute.CandidateInput, p compute.CandidateParams) []compute.Candidate {
+	var out []compute.Candidate
+	for _, c := range r.f.Evaluate(in, p) {
+		out = append(out, c)
+		call := c
+		call.Kind, call.Right = compute.KindCoveredCall, "C"
+		guard := call
+		guard.Kind, guard.AnnualizedYield = compute.KindHeldCallGuard, ""
+		out = append(out, call, guard)
+	}
+	return out
+}
+
+func versionOf(v int64, err error, calls *[]time.Time) jobs.SettingsVersionFunc {
+	return func(_ context.Context, at time.Time) (int64, error) {
+		*calls = append(*calls, at)
+		return v, err
+	}
+}
+
+func TestRunWritesOneSettingsVersionOnEveryRow(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	var calls []time.Time
+	j, err := WithSettingsVersion(build(t, f.stores(), f, usEntry()), versionOf(42, nil, &calls))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 1 {
+		t.Fatalf("result %+v", res)
+	}
+	if len(calls) != 1 || !calls[0].Equal(fixedClock{}.Now()) {
+		t.Fatalf("calls %v, want one at the run instant", calls)
+	}
+	if v := f.written[0][0].SettingsVersion; v == nil || *v != 42 {
+		t.Fatalf("version %v", v)
+	}
+
+	g := newFakes()
+	calls = nil
+	cj, err := NewWithCalls(g.stores(), &fakeDividends{}, threeKinds{g}, []jobs.WatchEntry{usEntry()}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cj, err = WithSettingsVersion(cj, versionOf(7, nil, &calls)); err != nil {
+		t.Fatal(err)
+	}
+	if res := cj.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 3 {
+		t.Fatalf("result %+v", res)
+	}
+	kinds := map[string]bool{}
+	for _, r := range g.written[0] {
+		kinds[r.Kind] = true
+		if r.SettingsVersion == nil || *r.SettingsVersion != 7 {
+			t.Fatalf("row %s version %v", r.Kind, r.SettingsVersion)
+		}
+	}
+	if len(calls) != 1 || len(kinds) != 3 {
+		t.Fatalf("%d calls, kinds %v", len(calls), kinds)
+	}
+}
+
+func TestNoSettingsFuncWritesNil(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	if res := build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if f.written[0][0].SettingsVersion != nil {
+		t.Fatalf("version %v", f.written[0][0].SettingsVersion)
+	}
+	j, err := WithSettingsVersion(build(t, f.stores(), f, usEntry()), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || f.written[1][0].SettingsVersion != nil {
+		t.Fatalf("result %+v", res)
+	}
+}
+
+func TestSettingsFuncErrorWritesNilAndRuns(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	var calls []time.Time
+	j, err := WithSettingsVersion(build(t, f.stores(), f, usEntry()), versionOf(0, errors.New("boom"), &calls))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 1 {
+		t.Fatalf("result %+v", res)
+	}
+	if len(calls) != 1 || f.written[0][0].SettingsVersion != nil {
+		t.Fatalf("%d calls, version %v", len(calls), f.written[0][0].SettingsVersion)
+	}
+}
+
+func TestWithSettingsVersionRefusesOtherJob(t *testing.T) {
+	t.Parallel()
+	if _, err := WithSettingsVersion(nil, nil); err == nil {
+		t.Fatal("a nil job was accepted")
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -221,4 +222,56 @@ func entryOf(us []jobs.WatchEntry, issuer string) jobs.WatchEntry {
 		}
 	}
 	return jobs.WatchEntry{}
+}
+
+// WithSettingsVersion sets f on a job built by New or NewWithCalls and returns the same job; any other job is an
+// error. A run calls f once with the run's instant and writes the value as SettingsVersion on every row of the
+// run, whatever its kind. A nil f, or an error from f, writes nil rows, the run goes on and one slog line with
+// component jobs and status degraded is logged. The job resolves no parameter.
+func WithSettingsVersion(jb contracts.Job, f jobs.SettingsVersionFunc) (contracts.Job, error) {
+	var base *job
+	switch j := jb.(type) {
+	case *job:
+		base = j
+	case *callsJob:
+		base = j.job
+	default:
+		return nil, errors.New("optioncandidates: WithSettingsVersion takes a job built by New or NewWithCalls")
+	}
+	inner := base.st.Candidates
+	if s, ok := inner.(*versionWriter); ok {
+		inner = s.inner
+	}
+	if f != nil {
+		base.st.Candidates = &versionWriter{inner: inner, f: f}
+	} else {
+		base.st.Candidates = inner
+	}
+	return jb, nil
+}
+
+// versionWriter stamps the rows of a run on their way to the store. Both Run methods write the rows of a run in
+// one InsertCandidates call stamped with the run's instant (ComputedAt), so the version is asked once per run and
+// reaches every kind without a change to the run bodies.
+type versionWriter struct {
+	inner store.CandidateWriter
+	f     jobs.SettingsVersionFunc
+}
+
+func (w *versionWriter) InsertCandidates(ctx context.Context, rows []store.Candidate) (int, error) {
+	if len(rows) == 0 {
+		return w.inner.InsertCandidates(ctx, rows)
+	}
+	v, err := w.f(ctx, rows[0].ComputedAt)
+	if err != nil {
+		slog.Warn("settings version unavailable, rows carry none", "component", "jobs", "status", "degraded",
+			"job", "option_candidates", "err", err)
+		return w.inner.InsertCandidates(ctx, rows)
+	}
+	stamped := make([]store.Candidate, len(rows))
+	copy(stamped, rows)
+	for i := range stamped {
+		stamped[i].SettingsVersion = &v
+	}
+	return w.inner.InsertCandidates(ctx, stamped)
 }
