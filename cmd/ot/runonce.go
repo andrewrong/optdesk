@@ -420,8 +420,16 @@ func wireJobs(
 	if err != nil {
 		return err
 	}
+	jobList = append(jobList, snapJob, figJob, calJob, earnJob)
+	acctJob, ok, err := a.accountCapture(ctx, f, extra)
+	if err != nil {
+		return err
+	}
+	if ok {
+		jobList = append(jobList, acctJob)
+	}
 	return use(wiring{
-		ledger: ledger, cal: cal, jobs: append(jobList, snapJob, figJob, calJob, earnJob), brokerUp: brokerUp, factory: f,
+		ledger: ledger, cal: cal, jobs: jobList, brokerUp: brokerUp, factory: f,
 		earn: earnJob, earningsOff: cfg.earningsOff(),
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
@@ -437,13 +445,20 @@ func wireJobs(
 // brokerSet holds the brokers dialed after start, so that withWiring closes them.
 type brokerSet struct {
 	mu sync.Mutex
-	bs []broker.Broker
+	bs []io.Closer
 }
 
 func (s *brokerSet) add(b broker.Broker) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.bs = append(s.bs, b)
+}
+
+// addCloser holds anything else withWiring opens after start (the account readers and store).
+func (s *brokerSet) addCloser(c io.Closer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bs = append(s.bs, c)
 }
 
 func (s *brokerSet) closeAll() {
