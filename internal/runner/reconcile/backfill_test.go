@@ -91,8 +91,6 @@ func TestBackfillRefusals(t *testing.T) {
 		keys   []contracts.ExpectedKey
 		want   runner.BackfillRefusal
 	}{
-		{"empty cursor", "", bfDay, []contracts.ExpectedKey{keyA}, runner.RefusedAheadOfCursor},
-		{"after cursor", "2026-11-03", bfDay, []contracts.ExpectedKey{keyA}, runner.RefusedAheadOfCursor},
 		{"no plan at cursor", bfDay, bfDay, nil, runner.RefusedNoPlan},
 		{"no plan behind cursor", "2026-11-05", bfDay, nil, runner.RefusedNoPlan},
 	} {
@@ -252,7 +250,7 @@ func TestBackfillLease(t *testing.T) {
 	}
 	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
 	check("success", bfSetup(bfDay, keyA), job, bfDay)
-	check("refusal", bfSetup("", keyA), job, bfDay)
+	check("no plan", bfSetup(bfDay), job, bfDay)
 	check("job error", bfSetup(bfDay, keyA), &fakeJob{
 		keys:    []contracts.ExpectedKey{keyA},
 		results: map[contracts.ExpectedKey]contracts.JobResult{keyA: {Err: kindErr{kind: contracts.Retryable}}},

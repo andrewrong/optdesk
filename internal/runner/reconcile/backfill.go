@@ -2,6 +2,8 @@ package reconcile
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -22,24 +24,19 @@ func NewBackfillerWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Cloc
 	return newReconciler(l, nil, cal, clk, jobs, rule, nil)
 }
 
-// Backfill runs the keys of a day at or behind the cursor that are missing or no_value.
-// It never calls SetCursor, PutExpected or PutWindow.
+// Backfill runs the stored keys of a day that are missing or no_value and whose own window
+// has closed at the clock; a key still inside its window is not run and is listed in InWindow.
+// A key whose dataset has no stored window counts as closed. The cursor is not read and not
+// moved. The run lease is taken under an owner of its own, so Reconcile and another backfill
+// are excluded while it runs.
 func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets []string) (res runner.BackfillResult, err error) {
 	res = runner.BackfillResult{Day: day}
-	ctx, release, err := r.holdLease(ctx)
+	ctx, release, err := r.holdLease(ctx, backfillOwner())
 	if err != nil {
 		return res, err
 	}
 	defer release(&err)
 
-	cur, err := r.ledger.Cursor(ctx)
-	if err != nil {
-		return res, err
-	}
-	if cur.Day == "" || day > cur.Day {
-		res.Refused = runner.RefusedAheadOfCursor
-		return res, nil
-	}
 	stored, _, err := r.ledger.Expected(ctx, day)
 	if err != nil {
 		return res, err
@@ -63,6 +60,14 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 			res.AlreadyPresent = append(res.AlreadyPresent, k)
 			continue
 		}
+		closeAt, err := r.closeOf(ctx, k.DatasetID, day)
+		if err != nil {
+			return res, err
+		}
+		if !closeAt.IsZero() && now.Before(closeAt) {
+			res.InWindow = append(res.InWindow, k)
+			continue
+		}
 		live, err := r.closeExpired(ctx, byKey[k], now)
 		if err != nil {
 			return res, err
@@ -70,10 +75,6 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 		if live {
 			res.Missing = append(res.Missing, k)
 			continue
-		}
-		closeAt, err := r.closeOf(ctx, k.DatasetID, day)
-		if err != nil {
-			return res, err
 		}
 		out, err := r.backfillKey(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt)
 		if err != nil {
@@ -89,6 +90,16 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 		}
 	}
 	return res, nil
+}
+
+// backfillOwner is the lease owner of one Backfill call: "backfill:" and eight random hex
+// digits, never equal to the owner of Reconcile nor to that of another backfill.
+func backfillOwner() string {
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err) // crypto/rand does not fail on supported platforms
+	}
+	return backfillOwnerPrefix + hex.EncodeToString(b[:])
 }
 
 // dayState reads the present marks and the runs of the day, the runs grouped by key.
