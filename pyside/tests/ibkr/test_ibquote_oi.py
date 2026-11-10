@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from ib_async import Ticker
+from ib_async import OptionComputation, Ticker
 from kit.fakeclock import FakeClock
 from test_ibgateway import FakeIb, fill, opened, spin
 
@@ -16,15 +16,15 @@ BASE = {"bid": 1.0, "ask": 1.1, "close": 1.05}
 
 
 def model(ticker: Ticker) -> None:
-    class Greeks:
-        impliedVol = 0.2
-        delta = 0.5
-        gamma = 0.1
-        vega = 0.2
-        theta = -0.1
-        undPrice = 100.0
-
-    ticker.modelGreeks = Greeks()  # type: ignore[assignment]
+    ticker.modelGreeks = OptionComputation(
+        0,
+        impliedVol=0.2,
+        delta=0.5,
+        gamma=0.1,
+        vega=0.2,
+        theta=-0.1,
+        undPrice=100.0,
+    )
 
 
 def start(
