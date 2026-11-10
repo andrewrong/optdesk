@@ -110,7 +110,7 @@ func setup(t *testing.T, main string, readers map[string]*fakeReader) env {
 	}
 	w := newWriter()
 	buf := &bytes.Buffer{}
-	j, err := newJob(Config{Main: main, Readers: rs, Writer: w, Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))},
+	j, err := newJob(Config{Main: main, Readers: rs, Writer: w, Clock: testClock()},
 		slog.New(slog.NewTextHandler(buf, nil)))
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +302,7 @@ func TestDegradedLogCarriesAliasAndStatusOnly(t *testing.T) {
 	var recs []slog.Record
 	h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
 	rs := map[string]broker.AccountReader{"a": goodReader("a"), "b": bad}
-	j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))}, slog.New(h))
+	j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: testClock()}, slog.New(h))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +392,7 @@ func TestCaptureFailureLogsAliasStepKind(t *testing.T) {
 			var recs []slog.Record
 			h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
 			rs := map[string]broker.AccountReader{"a": bad}
-			j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))}, slog.New(h))
+			j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: testClock()}, slog.New(h))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -455,7 +455,7 @@ func TestStoreWordsOfBrokerContract(t *testing.T) {
 	w := newWriter()
 	var recs []slog.Record
 	h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
-	j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))}, slog.New(h))
+	j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: testClock()}, slog.New(h))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -536,4 +536,9 @@ func TestWrongDay(t *testing.T) {
 			}
 		})
 	}
+}
+
+// testClock is a fake clock at 21:00 UTC on testDay, the same New York date.
+func testClock() clockwork.Clock {
+	return clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))
 }
