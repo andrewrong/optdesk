@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/jonboulle/clockwork"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -343,9 +344,17 @@ func newRig(t *testing.T, env string) *rig {
 		r.jobs, r.rule = js, rule
 		return recReconciler{r}
 	}
-	d.newBackfiller = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, rule runner.WindowRule) runner.Backfiller {
+	d.newFwClock = func() clockwork.Clock { return clockwork.NewFakeClock() }
+	d.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	d.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	d.newKeyGapSyncer = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyGapSyncer {
+		return &fakeKeySyncer{}
+	}
+	d.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, rule runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		r.jobs, r.backRule = js, rule
-		return &fakeBackfiller{}
+		return nil, &fakeBackfiller{}
 	}
 	return r
 }
