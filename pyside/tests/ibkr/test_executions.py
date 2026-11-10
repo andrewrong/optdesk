@@ -36,6 +36,10 @@ from optdesk.ibkr.transport import (
 )
 
 
+async def probe_passes() -> None:
+    """A read-only probe that passes, in place of the second connection."""
+
+
 def acct() -> str:
     # built from two pieces so no file of the repository carries the literal
     return "DU" + "7654321"
@@ -329,6 +333,7 @@ def test_gateway_executions_over_ib() -> None:
             client_id=1,
             clock=FakeClock(),
             ib_factory=lambda: ib,
+            readonly_probe=probe_passes,
         )
         await gateway.open_session()
         rows: ExecutionRows = await gateway.executions()

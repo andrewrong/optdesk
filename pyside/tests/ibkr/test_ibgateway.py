@@ -26,6 +26,10 @@ from optdesk.ibkr.spec import AmbiguousResolve, BrokerError
 from optdesk.ibkr.transport import OrderRefused
 
 
+async def probe_passes() -> None:
+    """A read-only probe that passes, in place of the second connection."""
+
+
 class FakeEvent:
     def __init__(self) -> None:
         self.handlers: list[Callable[..., None]] = []
@@ -162,6 +166,7 @@ def make(
         client_id=33,
         clock=clock,
         ib_factory=lambda: fake,
+        readonly_probe=probe_passes,
         **options,
     )
     return gateway, fake
@@ -211,6 +216,7 @@ def test_market_data_type_set_once_per_session() -> None:
             market_data_type=3,
             clock=clock,
             ib_factory=lambda: ibs.pop(0),
+            readonly_probe=probe_passes,
         )
         await gateway.open_session()
         await gateway.open_session()
@@ -233,6 +239,7 @@ def test_market_data_type_defaults_to_frozen() -> None:
             client_id=33,
             clock=clock,
             ib_factory=lambda: ibs.pop(0),
+            readonly_probe=probe_passes,
         )
         await gateway.open_session()
         await gateway.open_session()
@@ -253,6 +260,7 @@ def test_generation_increments_on_reconnect() -> None:
             client_id=33,
             clock=clock,
             ib_factory=lambda: ibs.pop(0),
+            readonly_probe=probe_passes,
         )
         seen: list[tuple[bool, int]] = []
         for step in range(3):

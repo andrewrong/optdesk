@@ -38,6 +38,10 @@ from optdesk.ibkr.transport import (
 )
 
 
+async def probe_passes() -> None:
+    """A read-only probe that passes, in place of the second connection."""
+
+
 def shape() -> str:
     # built from two pieces so no file of the repository carries the literal
     return "DU" + "7654321"
@@ -284,6 +288,7 @@ class Rig:
             client_id=1,
             clock=FakeClock(),
             ib_factory=lambda: self.ib,
+            readonly_probe=probe_passes,
         )
 
 
