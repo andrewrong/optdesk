@@ -3,6 +3,7 @@ package computefigures
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -127,10 +128,13 @@ func TestIvpIbkrKeyPlanned(t *testing.T) {
 
 func TestIvrNotPlannedForIbkr(t *testing.T) {
 	t.Parallel()
-	j := newJob(t, world(), realFigs())
-	for _, k := range plan(t, j) {
-		if k.SubjectKey == "market.ivr_ibkr|underlying|SPY" {
-			t.Fatalf("planned %s", k.SubjectKey)
+	var ivr []string
+	for _, k := range plan(t, newJob(t, world(), realFigs())) {
+		if strings.Contains(k.SubjectKey, "ivr") {
+			ivr = append(ivr, k.SubjectKey)
 		}
+	}
+	if len(ivr) != 1 || ivr[0] != "market.ivr_own|underlying|SPY" {
+		t.Fatalf("IVR keys %v, want only market.ivr_own|underlying|SPY", ivr)
 	}
 }
