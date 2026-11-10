@@ -29,7 +29,8 @@ func markAliases(sockets map[string]string, main string) []string {
 // positionMarks builds position_marks (Decision 6 of docs/design/position-marks.md): the market-data gateway
 // brk, the aliases of the account job, the account store as reader and the mark store opened with
 // store/mark's DSNEnvPositionMark as writer. It is nil for a deps without openMark (a test deps literal; newDeps
-// always sets it). An unset OT_PG_DSN_POSMARK leaves only this job out, with a warning. Every check comes before a store is opened; errors name the key only. What it opens goes to extra.
+// always sets it). An unset OT_PG_DSN_POSMARK leaves only this job out, with a warning.
+// Every check comes before a store is opened; errors name the key only. What it opens goes to extra.
 func (a *app) positionMarks(ctx context.Context, f jobFactory, brk broker.Broker, extra *closerSet) (contracts.Job, error) {
 	if f.d.openMark == nil || f.d.newPositionMarks == nil {
 		return nil, nil
