@@ -197,7 +197,7 @@ func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day,
 	return skipped, j.w.WriteCapture(ctx, c)
 }
 
-// storeSecType maps the broker sec type word (STK, IND, OPT) to the store word; false for any other word.
+// storeSecType maps the broker sec type word (STK, IND, OPT) to the store word; false for any other word, the empty one included.
 func storeSecType(s string) (string, bool) {
 	switch s {
 	case "STK":
@@ -206,8 +206,6 @@ func storeSecType(s string) (string, bool) {
 		return "index", true
 	case "OPT":
 		return "option", true
-	case "":
-		return "", true
 	}
 	return "", false
 }

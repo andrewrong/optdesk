@@ -85,7 +85,7 @@ func okAccount(alias string) broker.Account {
 }
 
 func okExec(alias string) broker.Executions {
-	return broker.Executions{Alias: alias, Collected: true, Executions: []broker.Execution{{ExecID: "e1-" + alias, Side: "SLD", Quantity: "1"}}}
+	return broker.Executions{Alias: alias, Collected: true, Executions: []broker.Execution{{ExecID: "e1-" + alias, Side: "SLD", Quantity: "1", Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Right: "C"}}}}
 }
 
 func goodReader(alias string) *fakeReader {
@@ -486,5 +486,12 @@ func TestStoreWordsOfBrokerContract(t *testing.T) {
 	}
 	if len(skipped) != 1 || len(skipped[0]) != 2 || skipped[0]["alias"] != "a" || skipped[0]["count"] != "1" {
 		t.Fatalf("skipped records = %v", skipped)
+	}
+}
+
+func TestStoreSecTypeRejectsEmptyWord(t *testing.T) {
+	t.Parallel()
+	if s, ok := storeSecType(""); ok || s != "" {
+		t.Fatalf("storeSecType(\"\") = %q, %v; want \"\", false", s, ok)
 	}
 }
