@@ -33,6 +33,9 @@ class GatewayNotReadOnly(SystemExit):
         super().__init__(f"gateway is not proven read-only: {reason}")
 
 
+# The probe has its own guard and does not reuse transport.install_guard: that
+# function takes no list of allowed ids, and transport.py is owner-only and
+# outside the files of this issue.
 def check_probe(message_id: object) -> None:
     """Raise OrderRefused for an order id and NotAllowed for any id but 5."""
     if message_id in ORDER_IDS:
