@@ -20,6 +20,10 @@ type fixedClock struct{}
 
 func (fixedClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC) }
 
+type nextDayClock struct{}
+
+func (nextDayClock) Now() time.Time { return time.Date(2026, 11, 10, 21, 30, 0, 0, time.UTC) }
+
 // memStore is a writer and a reader over one slice; a key that exists is left as it is.
 type memStore struct {
 	mu       sync.Mutex
@@ -224,7 +228,11 @@ func TestErrorDayNotRetried(t *testing.T) {
 		t.Fatalf("calls %d rows %d", src.calls, len(st.rows))
 	}
 	// the next day starts again
-	j.Run(context.Background(), "2026-11-10", nil)
+	j2, err := New(map[string]sources.EarningsSource{"US": src}, st, st, []jobs.WatchEntry{us("cik:1", "A")}, nextDayClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j2.Run(context.Background(), "2026-11-10", nil)
 	if src.calls != 2 {
 		t.Fatalf("next day calls %d", src.calls)
 	}
@@ -487,5 +495,29 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestWrongDay(t *testing.T) {
+	t.Parallel()
+	for _, other := range []contracts.Day{"2026-11-08", "2026-11-10"} {
+		usSrc, jpSrc := &fakeSource{}, &fakeSource{}
+		st := &memStore{}
+		j := build(t, map[string]sources.EarningsSource{"US": usSrc, "JP": jpSrc}, st, us("cik:1", "A"), jp("edinet:E1", "1111"))
+		res := j.Run(context.Background(), other, nil)
+		var te contracts.TypedError
+		if !errors.As(res.Err, &te) || te.Kind() != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") {
+			t.Fatalf("day %s: err %v", other, res.Err)
+		}
+		if usSrc.calls != 0 || jpSrc.calls != 0 || len(st.rows) != 0 {
+			t.Fatalf("day %s: calls %d %d rows %d", other, usSrc.calls, jpSrc.calls, len(st.rows))
+		}
+	}
+	// the clock's New York date is the day: the job runs
+	usSrc := &fakeSource{}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": usSrc}, st, us("cik:1", "A"))
+	if res := j.Run(context.Background(), day, nil); res.Err != nil || usSrc.calls != 1 || len(st.rows) != 1 {
+		t.Fatalf("same day: err %v calls %d rows %d", res.Err, usSrc.calls, len(st.rows))
 	}
 }

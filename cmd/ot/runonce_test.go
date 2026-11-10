@@ -511,7 +511,11 @@ func TestRunOnceEarningsShareClass(t *testing.T) {
 	mem := &memEvents{}
 	d := &r.a.deps
 	d.symbols = table.New()
-	d.newEarningsRefresh = earningsrefresh.NewWithSymbols
+	d.newEarningsRefresh = func(
+		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, rd store.EarningsDateReader, es []jobs.WatchEntry, _ clock.Clock, tr symbol.Translator,
+	) (contracts.Job, error) {
+		return earningsrefresh.NewWithSymbols(srcs, w, rd, es, earningsTestClock{}, tr)
+	}
 	d.openEarningsDates = func(context.Context, string) (store.EarningsDateStore, error) { return mem, nil }
 	d.newAlphaVantage = func(sources.EarningsConfig) (sources.EarningsSource, error) {
 		return listingSource{sources.EarningsListing{Symbol: "BRK.B", ReportDate: "2026-11-20"}}, nil
