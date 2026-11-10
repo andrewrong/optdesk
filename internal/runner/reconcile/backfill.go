@@ -49,14 +49,9 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 		res.Refused = runner.RefusedNoPlan
 		return res, nil
 	}
-	keys, p, added, err := r.backfillPlan(ctx, day, stored, datasets)
+	keys, p, err := r.backfillPlan(ctx, day, stored, datasets)
 	if err != nil {
 		return res, err
-	}
-	if len(added) > 0 {
-		if err := r.storeAdded(ctx, day, p, stored, added); err != nil {
-			return res, err
-		}
 	}
 
 	present, byKey, err := r.dayState(ctx, day)
@@ -117,14 +112,13 @@ func (r *reconciler) dayState(
 }
 
 // backfillPlan selects the keys to run from the stored keys and the added keys, reads the
-// key-to-job map and returns the added keys that were selected; every key is validated before
-// any key runs or anything is written.
+// key-to-job map; every key is validated before the added keys are written and before any key runs.
 func (r *reconciler) backfillPlan(
 	ctx context.Context, day contracts.Day, stored []contracts.ExpectedKey, datasets []string,
-) ([]contracts.ExpectedKey, plan, []contracts.ExpectedKey, error) {
+) ([]contracts.ExpectedKey, plan, error) {
 	p, err := r.plan(ctx, day, nil)
 	if err != nil {
-		return nil, plan{}, nil, err
+		return nil, plan{}, err
 	}
 	have := map[contracts.ExpectedKey]bool{}
 	for _, k := range stored {
@@ -146,14 +140,19 @@ func (r *reconciler) backfillPlan(
 	}
 	keys, err := selectKeys(day, append(append([]contracts.ExpectedKey{}, stored...), added...), datasets)
 	if err != nil {
-		return nil, plan{}, nil, err
+		return nil, plan{}, err
 	}
 	for _, k := range keys {
 		if _, ok := p.job[k]; !ok {
-			return nil, plan{}, nil, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
+			return nil, plan{}, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
 		}
 	}
-	return keys, p, added, nil
+	if len(added) > 0 {
+		if err := r.storeAdded(ctx, day, p, stored, added); err != nil {
+			return nil, plan{}, err
+		}
+	}
+	return keys, p, nil
 }
 
 // storeAdded writes the stored plan of day with the added keys and the window of each added dataset.
