@@ -46,7 +46,7 @@ Every test calls `t.Parallel()`, writes files only under a temporary directory, 
 ### 1 ot-job-registry
 
 Module: ot. Size: M.
-Files: `cmd/ot/jobreg.go`, `cmd/ot/jobreg_test.go`, `cmd/ot/wire_fred.go`, `cmd/ot/wire_optioneod.go`, `cmd/ot/wire_dividend.go`, `cmd/ot/wire_quotesnapshot.go`, `cmd/ot/wire_computefigures.go`, `cmd/ot/wire_calendar.go`, `cmd/ot/wire_earnings.go`, `cmd/ot/optionledger.go`, `cmd/ot/account.go`, `cmd/ot/candidates.go`, `cmd/ot/runonce.go`, `cmd/ot/preflight.go`, `cmd/ot/scheduler.go`, `cmd/ot/jp_wire_test.go`, `cmd/ot/buildcause_test.go`, `cmd/ot/candidates_test.go`, `cmd/ot/wire.go`, `docs/contracts/ot.md`, `docs/contracts/ot/jobs/<id>.md` for the eleven ids of Decision 3
+Files: `cmd/ot/jobreg.go`, `cmd/ot/jobreg_test.go`, `cmd/ot/wire_fred.go`, `cmd/ot/wire_optioneod.go`, `cmd/ot/wire_dividend.go`, `cmd/ot/wire_quotesnapshot.go`, `cmd/ot/wire_computefigures.go`, `cmd/ot/wire_calendar.go`, `cmd/ot/wire_earnings.go`, `cmd/ot/optionledger.go`, `cmd/ot/account.go`, `cmd/ot/candidates.go`, `cmd/ot/runonce.go`, `cmd/ot/preflight.go`, `cmd/ot/scheduler.go`, `cmd/ot/jp_wire_test.go`, `cmd/ot/buildcause_test.go`, `cmd/ot/candidates_test.go`, `cmd/ot/wire.go`, `docs/contracts/ot.md`, `docs/contracts/ot/jobs/fred_series.md`, `docs/contracts/ot/jobs/option_eod.md`, `docs/contracts/ot/jobs/option_eod_jp.md`, `docs/contracts/ot/jobs/dividend_capture.md`, `docs/contracts/ot/jobs/option_ledger.md`, `docs/contracts/ot/jobs/quote_snapshot.md`, `docs/contracts/ot/jobs/compute_figures.md`, `docs/contracts/ot/jobs/calendar_refresh.md`, `docs/contracts/ot/jobs/earnings_refresh.md`, `docs/contracts/ot/jobs/account_capture.md`, `docs/contracts/ot/jobs/option_candidates.md`
 Design: docs/design/ot-wire-split.md#Decisions
 Order: first.
 Goal: Decisions 2 to 7, 11 and 13 for jobs: the registry, the eleven families in their files, `wiring.off` and `wiring.held`, the eleven job documents, no behaviour change. `runOnceConfig` gains no field (Decision 5). `prober.probe` keeps its `switch` (Decision 4).
@@ -60,9 +60,10 @@ Acceptance:
 ### 2 ot-page-registry
 
 Module: ot. Size: S.
-Files: `cmd/ot/pagereg.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/site.go`, `cmd/ot/pagelist.go`, `cmd/ot/candidates_site.go`, `cmd/ot/tracking_site.go`, `cmd/ot/notices_site.go`, `cmd/ot/settings.go`, `docs/contracts/ot.md`, `docs/contracts/ot/pages/<name>.md` for the four registered pages
+Files: `cmd/ot/pagereg.go`, `cmd/ot/pagereg_test.go`, `cmd/ot/site.go`, `cmd/ot/pagelist.go`, `cmd/ot/candidates_site.go`, `cmd/ot/tracking_site.go`, `cmd/ot/notices_site.go`, `cmd/ot/settings.go`, `docs/contracts/ot.md`, `docs/contracts/ot/pages/option_candidates_page.md`, `docs/contracts/ot/pages/option_tracking_page.md`, `docs/contracts/ot/pages/option_notices_page.md`, `docs/contracts/ot/pages/settings_page.md`
 Design: docs/design/ot-wire-split.md#Decisions
-Order: after 1. Its `Files:` lists `docs/contracts/ot.md` too, which issue 1 also edits; that is safe only because of this "Order: after 1.".
+Order: after 1.
+Issue 2 lists `docs/contracts/ot.md` too, which issue 1 also edits; that is safe only because of the Order line above.
 Goal: Decisions 8, 9 and 11 for pages: the registry, the four routes and names registered in the files of their pages, `siteReaders.ext` with `siteOpeners`, one document per registered page, same text for the unknown-page error.
 Acceptance:
 1. `cmd/ot/pagereg.go` declares `registerPage`, `grep -c "siteCandidatesRoute\|siteTrackingRoute\|siteNoticesRoute\|siteSettingsRoute" cmd/ot/site.go` is 0 and `grep -c "candidatesName\|trackingName\|noticesName" cmd/ot/pagelist.go` is 0.
@@ -76,11 +77,12 @@ Acceptance:
 Module: ot. Size: S.
 Files: `cmd/ot/wire_test.go`, `cmd/ot/wire_calendar_test.go`, `cmd/ot/wire_earnings_test.go`, `cmd/ot/wire_dividend_test.go`, `cmd/ot/wire_computefigures_test.go`, `cmd/ot/wire_pages_test.go` (`TestNewOptionDataPageCarriesNotesAndSymbol`, `TestOptionCandidatesPageWiresReader`, `TestMarketPageWiresReadings`, `TestOptionNoticesPageWiresRule`)
 Design: docs/design/ot-wire-split.md#Decisions
-Order: after 1. It does not share a file with issue 2, so issues 2 and 3 may run in parallel.
+Order: after 1.
+It shares no file with issue 2, so issues 2 and 3 may run in parallel.
 Goal: Decision 10: the tests of `wire_test.go` move, bodies unchanged, to the file of their family; `wire_test.go` keeps `TestNewDepsFilled`, `TestRunOnceWiresSixJobs`, `TestRunOnceNeedsLoaderDSN`, `TestRunOnceRefusesBadWatchList`, `TestDemoProfileOpensNoStore`, `TestSetupLineEqualsOwnersetConst`, `TestEarningsRefreshRegistered` (named by the `## Contract tests` of `docs/contracts/ot.md`, which issue 3 does not edit) and the shared helpers `jobIDs` and `errorString`; `TestDividendCaptureOffWhenBrokerDown` goes with the dividend tests.
 Acceptance:
 1. `wc -l cmd/ot/wire_test.go` is below 250 and every new file is below 600 lines.
-2. `git grep -h "^func Test" BASE -- cmd/ot | sort | wc -l` and `grep -h "^func Test" cmd/ot/*_test.go | sort | wc -l` are equal (`BASE` is `git merge-base HEAD origin/main`), and `git diff --name-only BASE -- cmd/ot` lists only the six files of `Files:`, and `grep -c "func TestEarningsRefreshRegistered" cmd/ot/wire_test.go` is 1.
+2. `git grep -h "^func Test" BASE -- cmd/ot | sort | wc -l` and `grep -h "^func Test" cmd/ot/*_test.go | sort | wc -l` are equal (`BASE` is `git merge-base HEAD origin/main`), and `git diff --name-only BASE -- cmd/ot` lists only the six files named in the Files line above, and `grep -c "func TestEarningsRefreshRegistered" cmd/ot/wire_test.go` is 1.
 3. `grep -c "TestJPSourceWired\|TestJQuantsOneCallPerDay" cmd/ot/wire_earnings_test.go` is 2, `grep -c "TestDividendCaptureRegistered" cmd/ot/wire_dividend_test.go` is 1.
 
 ## After the split: Files of the queued issues
