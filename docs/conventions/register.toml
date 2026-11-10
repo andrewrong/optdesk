@@ -1989,3 +1989,49 @@ source_hash = "e13b4d90a6c78dc66bc9103542f20b5760b50d8813c63e18002416283de4d272"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/valuation.md"
 history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 4, 10 and 11 (issue 1130); parameters of option-trader price_return_v1.toml (blob 8d7be25e35c3), ported in meaning."]
+
+[[figure]]
+id = "valuation.question"
+version = 1
+title_zh = "五问：资本回报、增长成本、定价权、利润的现金含量"
+pages = ["companies_page.questions"]
+formula = """
+Convention five_questions_v1: four figures from the filed annual figures of the latest ten fiscal years that have an operating income (fewer than 6: every figure missing_input, not_enough_years). Per year NOPAT is operating income times one minus the tax rate, the rate being income tax over pretax income held between 0.15 and 0.28 (0.28 when either figure is missing or pretax income is not positive); capital is property and equipment plus receivables plus inventory minus payables (a missing receivable or inventory counts as nothing, a missing plant or payable gives no capital); strict free cash flow is operating cash flow minus capital spending minus stock compensation (a missing stock compensation counts as nothing). Q1, the return on tangible capital: the mean of the yearly NOPAT over capital, each at most 1 (a year of capital at or below zero counts 1 when its NOPAT is positive, else it is left out), with the worst year (Q1.worst) and the number of years at the cap (Q1.capped_years). Q2, the capital that growth costs: the new capital (last minus first year that has a capital) over the new NOPAT; missing_input when the new NOPAT is not positive or the growth came with no new capital, the new capital and new NOPAT still given (Q2.new_capital, Q2.new_nopat). Q3, pricing power: the mean margin of the last three years of the window (Q3) against the first three (Q3.first), rounded half-even to 2 places, the margin being gross profit over revenue when all six years have gross profit, else operating income over revenue (named by Q3.basis.gross or Q3.basis.operating). Q4, the cash behind the profit: the sum of the strict free cash flow over the sum of net income, over the years that have both; missing_input when the net income is not positive. Every operation is rounded to 34 significant digits half-even; a stored reading is rounded half-even to 12 places. The fifth question is the owner's and has no figure. No price and no verdict word."""
+inputs = """
+The Filings of the company (ten fiscal years of operating income, pretax income, income tax, net income, revenue, gross profit, property and equipment, receivables, inventory, payables, operating cash flow, capital spending and stock compensation) and the as-of day. Subject: the underlying symbol."""
+period_date = "The end of the latest fiscal year of the window."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 12 places. A ratio: Q1 0.20 is 20 percent; Q3 is a margin fraction; Q2 is a ratio of capital to NOPAT; Q4 is a ratio of cash to profit."
+excludes = """
+A verdict word (the old pass, edge and fail grades are not ported); the fifth question and the moat (the owner's own text); a price; a forecast; a company that is not valued is not hidden here, the page decides."""
+gap_text = """
+Fewer than 6 fiscal years with an operating income (not_enough_years); a figure that cannot be formed is missing_input with its reason (no_capital_figure, fewer_than_2_capital_years, new_nopat_not_positive, no_new_capital, margin_input_missing, no_cash_year, net_income_not_positive). Never a zero."""
+implemented_by = [
+  "internal/compute/valuation.Questions",
+]
+source_hash = "a71536ca2ff223e15d4aa3b6874c9070f9220fd7dbe11c3586525b10180f7694"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/valuation.md"
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 1, 11 and 12 (issue 1163); parameters of option-trader five_questions_v1.toml (blob 6755537f67d5), ported in meaning."]
+
+[[figure]]
+id = "valuation.diagnosis"
+version = 1
+title_zh = "周期与金融公司的十年诊断"
+pages = ["companies_page.diagnosis"]
+formula = """
+Convention diagnosis_v1: context for a cyclical or financial company, from the latest ten fiscal years of its filed figures; the group comes from the SIC (financial 6000-6797 and 6799, REITs 6798 left out; cyclical 1000-1799, 2800-2832, 2837-2899, 2900-2999, 3300-3399, 3520-3569, 3674, 3700-3799, 4400-4499, 4512), a company in neither has no group and no figure. Cyclical, window the years that have revenue: operating margin is operating income over revenue, inventory_to_revenue is inventory over revenue, and revenue_vs_peak the latest revenue over the highest of the window. Financial, window the years that have net income: roe is net income over the mean of the opening and closing equity, roa likewise over assets, the opening balance being the latest one dated 350 to 381 days before the year end, and both balances must be positive. A ratio with a missing figure or a denominator at or below zero is missing_input. ranked is the number of years with a primary figure (operating margin, roe), latest_rank the rank of the latest year's primary figure (1 the highest), the medians of the primary and secondary figures (the mean of the two middle ones for an even count), the latest secondary figure, loss_years the years of net income below zero and record_years the years with a net income. With fewer than 5 years that have a primary figure the statistics are missing_input with the reason too_short. Every operation is rounded to 34 significant digits half-even; a stored reading is rounded half-even to 12 places. Not a value, not a forecast, not a gate; no price and no verdict word."""
+inputs = """
+The Filings of the company (ten fiscal years of revenue, operating income, inventory and net income for a cyclical company; net income, equity and assets, with the balances of the year before the first, for a financial one), its SIC and the as-of day. Subject: the underlying symbol."""
+period_date = "The end of the latest fiscal year of the window."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 12 places. A ratio: 0.14 is 14 percent; the scale figures (revenue, equity) are in the currency of the filings."
+excludes = """
+A value, a band or a forecast; a price; a gate or a grade (nothing reads the diagnosis as a rule); a verdict word; a company in neither SIC list."""
+gap_text = """
+A ratio that cannot be formed (a missing figure, a denominator at or below zero, no opening balance): missing_input with not_formed. Fewer than 5 years with a primary figure: the statistics are missing_input with too_short. Never a zero."""
+implemented_by = [
+  "internal/compute/valuation.Diagnosis",
+]
+source_hash = "5472f2e1834ee93bf0f97c9b7ba49aec629b7cfa390a424341f56a3ace0c2370"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/valuation.md"
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 1, 11 and 12 (issue 1163); parameters of option-trader diagnosis_v1.toml (blob 643178784313), ported in meaning."]
