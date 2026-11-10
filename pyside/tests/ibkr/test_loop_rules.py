@@ -43,6 +43,14 @@ ACCOUNT_ONLY = {
 }
 ACCOUNT_FILE = "accounts.py"
 
+# The one call of the read-only probe: accepted in readonly_probe.py only.
+PROBE_ONLY = {"reqOpenOrdersAsync"}
+PROBE_FILE = "readonly_probe.py"
+
+
+async def probe_passes() -> None:
+    """A read-only probe that passes, in place of the second connection."""
+
 
 def _receiver(call: ast.Call) -> str | None:
     func = call.func
@@ -71,6 +79,8 @@ def test_only_async_calls_on_ib_and_client() -> None:
     by_file = _calls_by_file()
     for name, calls in by_file.items():
         allowed = ALLOWED | ACCOUNT_ONLY if name == ACCOUNT_FILE else ALLOWED
+        if name == PROBE_FILE:
+            allowed = ALLOWED | PROBE_ONLY
         assert calls <= allowed, (name, calls - allowed)
     assert "connectAsync" in set().union(*by_file.values())
 
@@ -184,6 +194,7 @@ def test_gateway_runs_under_plain_asyncio_run() -> None:
             client_id=33,
             clock=FakeClock(),
             ib_factory=QuietIb,
+            readonly_probe=probe_passes,
         )
         await gateway.open_session()
         state = await gateway.status()

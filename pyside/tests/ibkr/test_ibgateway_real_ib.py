@@ -23,6 +23,10 @@ GATEWAY_PORT = 4002
 _ID = {"quotes": "1", "details": "9", "chains": "78", "summary": "62", "pos": "61"}
 
 
+async def probe_passes() -> None:
+    """The probe would wait on this stub for an answer that never comes."""
+
+
 async def _connected(stub: RealIb) -> IbGateway:
     async def connect_async(host: str, port: int, client_id: int) -> None:
         return None
@@ -35,6 +39,7 @@ async def _connected(stub: RealIb) -> IbGateway:
         client_id=33,
         clock=FakeClock(),
         ib_factory=lambda: stub.ib,
+        readonly_probe=probe_passes,
     )
     await gateway.open_session()
     stub.sent.clear()

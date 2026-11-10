@@ -47,6 +47,7 @@ from optdesk.ibkr.pacing import (
     LineBudget,
     MessagePacer,
 )
+from optdesk.ibkr.readonly_probe import prove_read_only
 from optdesk.ibkr.timing import Clock, SystemClock, with_timeout
 
 _log = logging.getLogger(__name__)
@@ -141,6 +142,17 @@ def _decimal_text(strike: float) -> str:
     return format(Decimal(repr(strike)).normalize(), "f")
 
 
+_CLIENT_ID_IN_USE = 326
+_SESSION_LOSS_CODES = frozenset({10197, 1100})  # competing session, connectivity lost
+
+
+class ClientIdInUse(SystemExit):
+    """Error 326 on connect: the client id is taken; a stop, never a retry."""
+
+    def __init__(self, client_id: int) -> None:
+        super().__init__(f"client id {client_id} is already in use (error 326)")
+
+
 class _Job:
     """One quote in flight: woken by an update, an error or a disconnect."""
 
@@ -171,6 +183,7 @@ class IbGateway:
         snapshots: int = DEFAULT_SNAPSHOTS,
         clock: Clock | None = None,
         ib_factory: Callable[[], Any] = IB,
+        readonly_probe: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._install = guard
         self._host = host
@@ -179,6 +192,12 @@ class IbGateway:
         self._wanted_type = market_data_type
         self._clock: Clock = clock or SystemClock()
         self._make_ib = ib_factory
+        self._probe: Callable[[], Awaitable[None]] = readonly_probe or (
+            lambda: prove_read_only(
+                host=host, port=port, make_ib=ib_factory, clock=self._clock
+            )
+        )
+        self._id_in_use = False
         self._pacer = MessagePacer(self._clock)
         self._lines = LineBudget(lines)
         self._snapshots = LineBudget(snapshots)
@@ -207,11 +226,25 @@ class IbGateway:
         ib.errorEvent += self._on_error
         ib.RaiseRequestErrors = True
         self._ib = ib
-        await ib.client.connectAsync(
-            self._host,
-            self._port,
-            self._client_id,
-        )
+        self._id_in_use = False
+        try:
+            await ib.client.connectAsync(
+                self._host,
+                self._port,
+                self._client_id,
+            )
+        except Exception:
+            if self._id_in_use:
+                raise ClientIdInUse(self._client_id) from None
+            raise
+        if self._id_in_use:
+            raise ClientIdInUse(self._client_id)
+        try:
+            await self._probe()
+        except BaseException:
+            stale = self._ib
+            stale.disconnect()
+            raise
         await self._pacer.start()
         ib.reqMarketDataType(self._wanted_type)
         self._data_type = self._wanted_type
@@ -230,11 +263,16 @@ class IbGateway:
             job.wake()
 
     def _on_error(self, req_id: int, code: int, text: str, contract: Any) -> None:
+        if code == _CLIENT_ID_IN_USE and not self._connected:
+            self._id_in_use = True
+        con_id = getattr(contract, "conId", 0)
+        if code in _SESSION_LOSS_CODES and not con_id:
+            self._on_end(self._ib)
+            return
         if spec.is_informational(code):
             return
         if spec.classify_error(code).shrink_budget:
             self._lines.shrink(code)
-        con_id = getattr(contract, "conId", 0)
         for job in self._jobs:
             if con_id and job.con_id == con_id and job.error is None:
                 job.error = (code, text)
