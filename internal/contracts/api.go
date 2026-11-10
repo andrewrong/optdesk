@@ -85,3 +85,12 @@ type FxRate = gen.FxRate
 
 // DividendExpectation is the record of dataset obs.dividend_expectation r1, generated from contracts/datasets.
 type DividendExpectation = gen.DividendExpectation
+
+// OptionOpen is the record of dataset obs.option_open r1, generated from contracts/datasets.
+type OptionOpen = gen.OptionOpen
+
+// OptionOpenItem is the record of dataset plan.option_open_item r1, generated from contracts/datasets.
+type OptionOpenItem = gen.OptionOpenItem
+
+// OptionNotListed is the record of dataset master.option_not_listed r1, generated from contracts/datasets.
+type OptionNotListed = gen.OptionNotListed

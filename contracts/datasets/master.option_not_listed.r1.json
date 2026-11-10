@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/master.option_not_listed.r1.json",
+  "title": "OptionNotListed",
+  "description": "master.option_not_listed r1: a contract IBKR answered none for, remembered until retry_at.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["underlying_id", "expiry", "strike", "right", "trading_class", "checked_at", "retry_at", "error_code", "error_text"],
+  "x-dataset": "master.option_not_listed",
+  "x-revision": "r1",
+  "x-primary-key": ["underlying_id", "expiry", "strike", "right", "trading_class"],
+  "properties": {
+    "underlying_id": {"type": "integer", "description": "Identifier of the underlying instrument."},
+    "expiry": {"type": "string", "format": "date", "description": "Expiry date of the contract."},
+    "strike": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "Strike as text, as in the key of the contract."},
+    "right": {"type": "string", "enum": ["P", "C"], "description": "P for a put, C for a call."},
+    "trading_class": {"type": "string", "minLength": 1, "description": "Trading class of the contract."},
+    "checked_at": {"type": "string", "format": "date-time", "description": "Instant IBKR answered none, UTC."},
+    "retry_at": {"type": "string", "format": "date-time", "description": "Instant from which the contract may be asked again: checked_at plus 7 days plus a jitter of minus 2 to plus 2 days."},
+    "error_code": {"type": ["string", "null"], "description": "Error code of the answer; null for an empty list."},
+    "error_text": {"type": ["string", "null"], "description": "Error text of the answer; null for an empty list."}
+  }
+}

@@ -2289,6 +2289,514 @@ func (j *OptionEod) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// master.option_not_listed r1: a contract IBKR answered none for, remembered until
+// retry_at.
+type OptionNotListed struct {
+	// Instant IBKR answered none, UTC.
+	CheckedAt time.Time `json:"checked_at" yaml:"checked_at" mapstructure:"checked_at"`
+
+	// Error code of the answer; null for an empty list.
+	ErrorCode *string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Error text of the answer; null for an empty list.
+	ErrorText *string `json:"error_text" yaml:"error_text" mapstructure:"error_text"`
+
+	// Expiry date of the contract.
+	Expiry types.SerializableDate `json:"expiry" yaml:"expiry" mapstructure:"expiry"`
+
+	// Instant from which the contract may be asked again: checked_at plus 7 days plus
+	// a jitter of minus 2 to plus 2 days.
+	RetryAt time.Time `json:"retry_at" yaml:"retry_at" mapstructure:"retry_at"`
+
+	// P for a put, C for a call.
+	Right OptionNotListedRight `json:"right" yaml:"right" mapstructure:"right"`
+
+	// Strike as text, as in the key of the contract.
+	Strike string `json:"strike" yaml:"strike" mapstructure:"strike"`
+
+	// Trading class of the contract.
+	TradingClass string `json:"trading_class" yaml:"trading_class" mapstructure:"trading_class"`
+
+	// Identifier of the underlying instrument.
+	UnderlyingID int `json:"underlying_id" yaml:"underlying_id" mapstructure:"underlying_id"`
+}
+
+type OptionNotListedRight string
+
+const OptionNotListedRightC OptionNotListedRight = "C"
+const OptionNotListedRightP OptionNotListedRight = "P"
+
+var enumValues_OptionNotListedRight = []interface{}{
+	"P",
+	"C",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionNotListedRight) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_OptionNotListedRight {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_OptionNotListedRight, v)
+	}
+	*j = OptionNotListedRight(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionNotListed) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["checked_at"]; raw != nil && !ok {
+		return fmt.Errorf("field checked_at in OptionNotListed: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in OptionNotListed: required")
+	}
+	if _, ok := raw["error_text"]; raw != nil && !ok {
+		return fmt.Errorf("field error_text in OptionNotListed: required")
+	}
+	if _, ok := raw["expiry"]; raw != nil && !ok {
+		return fmt.Errorf("field expiry in OptionNotListed: required")
+	}
+	if _, ok := raw["retry_at"]; raw != nil && !ok {
+		return fmt.Errorf("field retry_at in OptionNotListed: required")
+	}
+	if _, ok := raw["right"]; raw != nil && !ok {
+		return fmt.Errorf("field right in OptionNotListed: required")
+	}
+	if _, ok := raw["strike"]; raw != nil && !ok {
+		return fmt.Errorf("field strike in OptionNotListed: required")
+	}
+	if _, ok := raw["trading_class"]; raw != nil && !ok {
+		return fmt.Errorf("field trading_class in OptionNotListed: required")
+	}
+	if _, ok := raw["underlying_id"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_id in OptionNotListed: required")
+	}
+	type Plain OptionNotListed
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	if len(plain.TradingClass) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "trading_class", 1)
+	}
+	*j = OptionNotListed(plain)
+	return nil
+}
+
+// obs.option_open r1: one planned option contract pulled at the open of a session
+// day and slot; one row per planned item. Open interest is not stored (stale
+// intraday; the page joins the last obs.option_eod value). A crossed quote (bid
+// above ask) is kept as written: the dataset has no quality column.
+type OptionOpen struct {
+	// Ask price. Null when absent.
+	Ask *float64 `json:"ask" yaml:"ask" mapstructure:"ask"`
+
+	// Ask size. Null when absent.
+	AskSize *float64 `json:"ask_size" yaml:"ask_size" mapstructure:"ask_size"`
+
+	// Bid price. Null when absent.
+	Bid *float64 `json:"bid" yaml:"bid" mapstructure:"bid"`
+
+	// Bid size. Null when absent.
+	BidSize *float64 `json:"bid_size" yaml:"bid_size" mapstructure:"bid_size"`
+
+	// Identifier of the capture, a uuid. Deterministic per (session_day, slot,
+	// instrument_id), not random (option_eod's is random): a retry of a key after a
+	// partial write meets the primary key and ON CONFLICT DO NOTHING and cannot
+	// duplicate a row.
+	CaptureID string `json:"capture_id" yaml:"capture_id" mapstructure:"capture_id"`
+
+	// Generation of the broker connection the row was pulled on.
+	ConnectionGeneration int `json:"connection_generation" yaml:"connection_generation" mapstructure:"connection_generation"`
+
+	// Currency of the prices, three upper-case letters.
+	Currency string `json:"currency" yaml:"currency" mapstructure:"currency"`
+
+	// Delta. Null when absent; the writer turns -1 into null.
+	Delta *float64 `json:"delta" yaml:"delta" mapstructure:"delta"`
+
+	// Error code of the broker or the pull; null when none.
+	ErrorCode *string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Instant of the quote at the venue, UTC; null when unknown.
+	EventTs *time.Time `json:"event_ts" yaml:"event_ts" mapstructure:"event_ts"`
+
+	// Gamma. Null when absent; -1 is not a value.
+	Gamma *float64 `json:"gamma" yaml:"gamma" mapstructure:"gamma"`
+
+	// Generation of the instrument terms the capture used.
+	Generation int `json:"generation" yaml:"generation" mapstructure:"generation"`
+
+	// Identifier of the option contract.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvAskDecimal *float64 `json:"iv_ask_decimal" yaml:"iv_ask_decimal" mapstructure:"iv_ask_decimal"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvBidDecimal *float64 `json:"iv_bid_decimal" yaml:"iv_bid_decimal" mapstructure:"iv_bid_decimal"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvDecimal *float64 `json:"iv_decimal" yaml:"iv_decimal" mapstructure:"iv_decimal"`
+
+	// Implied volatility as a decimal (0.25 is 25 percent). Null when absent; -1 is
+	// not a value.
+	IvMidDecimal *float64 `json:"iv_mid_decimal" yaml:"iv_mid_decimal" mapstructure:"iv_mid_decimal"`
+
+	// Last trade price. Null when absent.
+	Last *float64 `json:"last" yaml:"last" mapstructure:"last"`
+
+	// Broker market data type of the tick: 1 live, 2 frozen, 3 delayed, 4 delayed
+	// frozen.
+	MarketDataType int `json:"market_data_type" yaml:"market_data_type" mapstructure:"market_data_type"`
+
+	// True when the band at the open spot leaves the contract out; the row is not
+	// asked and has status 7.
+	OutsideBand bool `json:"outside_band" yaml:"outside_band" mapstructure:"outside_band"`
+
+	// Identifier of the plan (plan.option_open_item) the row was pulled from.
+	PlanID string `json:"plan_id" yaml:"plan_id" mapstructure:"plan_id"`
+
+	// Instant the answer was received, UTC.
+	ReceivedAt time.Time `json:"received_at" yaml:"received_at" mapstructure:"received_at"`
+
+	// Instant the quote was requested from the pull core, UTC.
+	RequestedAt time.Time `json:"requested_at" yaml:"requested_at" mapstructure:"requested_at"`
+
+	// Instant the request was sent to the broker, UTC; null when never sent.
+	SentAt *time.Time `json:"sent_at" yaml:"sent_at" mapstructure:"sent_at"`
+
+	// Market-zone session date.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// True when the spot of the stock moved 1 percent or more within the group of the
+	// row.
+	Skew bool `json:"skew" yaml:"skew" mapstructure:"skew"`
+
+	// Slot of the pull as four digits, for example 0945; the value refresh marks a
+	// row of the refresh button.
+	Slot string `json:"slot" yaml:"slot" mapstructure:"slot"`
+
+	// Final status: 1 ok, 2 partial, 3 no_data, 4 not_listed, 5 no_subscription, 6
+	// deadline, 7 deferred, 8 error, 9 disconnected.
+	Status int `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Theta per calendar day. Null when absent; the writer turns -1 into null.
+	ThetaPerCalendarDay *float64 `json:"theta_per_calendar_day" yaml:"theta_per_calendar_day" mapstructure:"theta_per_calendar_day"`
+
+	// Currency of the underlying, three upper-case letters.
+	UnderlyingCcy string `json:"underlying_ccy" yaml:"underlying_ccy" mapstructure:"underlying_ccy"`
+
+	// Instant of the underlying quote, UTC; null when unknown.
+	UnderlyingEventTs *time.Time `json:"underlying_event_ts" yaml:"underlying_event_ts" mapstructure:"underlying_event_ts"`
+
+	// Identifier of the underlying instrument.
+	UnderlyingID int `json:"underlying_id" yaml:"underlying_id" mapstructure:"underlying_id"`
+
+	// Price of the underlying at the end of the group. Null when absent.
+	UnderlyingPrice *float64 `json:"underlying_price" yaml:"underlying_price" mapstructure:"underlying_price"`
+
+	// Vega per volatility point. Null when absent; -1 is not a value.
+	VegaPerVolPoint *float64 `json:"vega_per_vol_point" yaml:"vega_per_vol_point" mapstructure:"vega_per_vol_point"`
+
+	// Volume of the day. Null when absent.
+	Volume *float64 `json:"volume" yaml:"volume" mapstructure:"volume"`
+}
+
+// plan.option_open_item r1: one planned contract of the option open pull, written
+// by the plan job before the pull.
+type OptionOpenItem struct {
+	// Class of the contract, in the order of the ceilings.
+	Class OptionOpenItemClass `json:"class" yaml:"class" mapstructure:"class"`
+
+	// True when the contract is over a ceiling; it keeps its class and is not asked.
+	Deferred bool `json:"deferred" yaml:"deferred" mapstructure:"deferred"`
+
+	// Identifier of the option contract.
+	InstrumentID int `json:"instrument_id" yaml:"instrument_id" mapstructure:"instrument_id"`
+
+	// Identifier of the plan run. The pull reads the latest plan of the session day
+	// and slot, the one with the greatest planned_at.
+	PlanID string `json:"plan_id" yaml:"plan_id" mapstructure:"plan_id"`
+
+	// Instant the plan was made, UTC.
+	PlannedAt time.Time `json:"planned_at" yaml:"planned_at" mapstructure:"planned_at"`
+
+	// Spot of the underlying the plan used.
+	PlannedSpot float64 `json:"planned_spot" yaml:"planned_spot" mapstructure:"planned_spot"`
+
+	// Position of the contract in the order of the pull.
+	Rank int `json:"rank" yaml:"rank" mapstructure:"rank"`
+
+	// Market-zone session date the plan is for.
+	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
+
+	// Implied volatility as a decimal that sized the strike band.
+	Sigma float64 `json:"sigma" yaml:"sigma" mapstructure:"sigma"`
+
+	// Where sigma came from.
+	SigmaSource OptionOpenItemSigmaSource `json:"sigma_source" yaml:"sigma_source" mapstructure:"sigma_source"`
+
+	// Slot of the pull as four digits, for example 0945.
+	Slot string `json:"slot" yaml:"slot" mapstructure:"slot"`
+
+	// Identifier of the underlying instrument.
+	UnderlyingID int `json:"underlying_id" yaml:"underlying_id" mapstructure:"underlying_id"`
+}
+
+type OptionOpenItemClass string
+
+const OptionOpenItemClassAroundSpot OptionOpenItemClass = "around_spot"
+const OptionOpenItemClassCalls OptionOpenItemClass = "calls"
+const OptionOpenItemClassHeld OptionOpenItemClass = "held"
+const OptionOpenItemClassPuts OptionOpenItemClass = "puts"
+
+var enumValues_OptionOpenItemClass = []interface{}{
+	"around_spot",
+	"puts",
+	"calls",
+	"held",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionOpenItemClass) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_OptionOpenItemClass {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_OptionOpenItemClass, v)
+	}
+	*j = OptionOpenItemClass(v)
+	return nil
+}
+
+type OptionOpenItemSigmaSource string
+
+const OptionOpenItemSigmaSourceDefault OptionOpenItemSigmaSource = "default"
+const OptionOpenItemSigmaSourceLastKnown OptionOpenItemSigmaSource = "last_known"
+const OptionOpenItemSigmaSourcePriorClose OptionOpenItemSigmaSource = "prior_close"
+
+var enumValues_OptionOpenItemSigmaSource = []interface{}{
+	"prior_close",
+	"last_known",
+	"default",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionOpenItemSigmaSource) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_OptionOpenItemSigmaSource {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_OptionOpenItemSigmaSource, v)
+	}
+	*j = OptionOpenItemSigmaSource(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionOpenItem) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["class"]; raw != nil && !ok {
+		return fmt.Errorf("field class in OptionOpenItem: required")
+	}
+	if _, ok := raw["deferred"]; raw != nil && !ok {
+		return fmt.Errorf("field deferred in OptionOpenItem: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in OptionOpenItem: required")
+	}
+	if _, ok := raw["plan_id"]; raw != nil && !ok {
+		return fmt.Errorf("field plan_id in OptionOpenItem: required")
+	}
+	if _, ok := raw["planned_at"]; raw != nil && !ok {
+		return fmt.Errorf("field planned_at in OptionOpenItem: required")
+	}
+	if _, ok := raw["planned_spot"]; raw != nil && !ok {
+		return fmt.Errorf("field planned_spot in OptionOpenItem: required")
+	}
+	if _, ok := raw["rank"]; raw != nil && !ok {
+		return fmt.Errorf("field rank in OptionOpenItem: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in OptionOpenItem: required")
+	}
+	if _, ok := raw["sigma"]; raw != nil && !ok {
+		return fmt.Errorf("field sigma in OptionOpenItem: required")
+	}
+	if _, ok := raw["sigma_source"]; raw != nil && !ok {
+		return fmt.Errorf("field sigma_source in OptionOpenItem: required")
+	}
+	if _, ok := raw["slot"]; raw != nil && !ok {
+		return fmt.Errorf("field slot in OptionOpenItem: required")
+	}
+	if _, ok := raw["underlying_id"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_id in OptionOpenItem: required")
+	}
+	type Plain OptionOpenItem
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = OptionOpenItem(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionOpen) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["ask"]; raw != nil && !ok {
+		return fmt.Errorf("field ask in OptionOpen: required")
+	}
+	if _, ok := raw["ask_size"]; raw != nil && !ok {
+		return fmt.Errorf("field ask_size in OptionOpen: required")
+	}
+	if _, ok := raw["bid"]; raw != nil && !ok {
+		return fmt.Errorf("field bid in OptionOpen: required")
+	}
+	if _, ok := raw["bid_size"]; raw != nil && !ok {
+		return fmt.Errorf("field bid_size in OptionOpen: required")
+	}
+	if _, ok := raw["capture_id"]; raw != nil && !ok {
+		return fmt.Errorf("field capture_id in OptionOpen: required")
+	}
+	if _, ok := raw["connection_generation"]; raw != nil && !ok {
+		return fmt.Errorf("field connection_generation in OptionOpen: required")
+	}
+	if _, ok := raw["currency"]; raw != nil && !ok {
+		return fmt.Errorf("field currency in OptionOpen: required")
+	}
+	if _, ok := raw["delta"]; raw != nil && !ok {
+		return fmt.Errorf("field delta in OptionOpen: required")
+	}
+	if _, ok := raw["error_code"]; raw != nil && !ok {
+		return fmt.Errorf("field error_code in OptionOpen: required")
+	}
+	if _, ok := raw["event_ts"]; raw != nil && !ok {
+		return fmt.Errorf("field event_ts in OptionOpen: required")
+	}
+	if _, ok := raw["gamma"]; raw != nil && !ok {
+		return fmt.Errorf("field gamma in OptionOpen: required")
+	}
+	if _, ok := raw["generation"]; raw != nil && !ok {
+		return fmt.Errorf("field generation in OptionOpen: required")
+	}
+	if _, ok := raw["instrument_id"]; raw != nil && !ok {
+		return fmt.Errorf("field instrument_id in OptionOpen: required")
+	}
+	if _, ok := raw["iv_ask_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_ask_decimal in OptionOpen: required")
+	}
+	if _, ok := raw["iv_bid_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_bid_decimal in OptionOpen: required")
+	}
+	if _, ok := raw["iv_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_decimal in OptionOpen: required")
+	}
+	if _, ok := raw["iv_mid_decimal"]; raw != nil && !ok {
+		return fmt.Errorf("field iv_mid_decimal in OptionOpen: required")
+	}
+	if _, ok := raw["last"]; raw != nil && !ok {
+		return fmt.Errorf("field last in OptionOpen: required")
+	}
+	if _, ok := raw["market_data_type"]; raw != nil && !ok {
+		return fmt.Errorf("field market_data_type in OptionOpen: required")
+	}
+	if _, ok := raw["outside_band"]; raw != nil && !ok {
+		return fmt.Errorf("field outside_band in OptionOpen: required")
+	}
+	if _, ok := raw["plan_id"]; raw != nil && !ok {
+		return fmt.Errorf("field plan_id in OptionOpen: required")
+	}
+	if _, ok := raw["received_at"]; raw != nil && !ok {
+		return fmt.Errorf("field received_at in OptionOpen: required")
+	}
+	if _, ok := raw["requested_at"]; raw != nil && !ok {
+		return fmt.Errorf("field requested_at in OptionOpen: required")
+	}
+	if _, ok := raw["sent_at"]; raw != nil && !ok {
+		return fmt.Errorf("field sent_at in OptionOpen: required")
+	}
+	if _, ok := raw["session_day"]; raw != nil && !ok {
+		return fmt.Errorf("field session_day in OptionOpen: required")
+	}
+	if _, ok := raw["skew"]; raw != nil && !ok {
+		return fmt.Errorf("field skew in OptionOpen: required")
+	}
+	if _, ok := raw["slot"]; raw != nil && !ok {
+		return fmt.Errorf("field slot in OptionOpen: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in OptionOpen: required")
+	}
+	if _, ok := raw["theta_per_calendar_day"]; raw != nil && !ok {
+		return fmt.Errorf("field theta_per_calendar_day in OptionOpen: required")
+	}
+	if _, ok := raw["underlying_ccy"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_ccy in OptionOpen: required")
+	}
+	if _, ok := raw["underlying_event_ts"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_event_ts in OptionOpen: required")
+	}
+	if _, ok := raw["underlying_id"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_id in OptionOpen: required")
+	}
+	if _, ok := raw["underlying_price"]; raw != nil && !ok {
+		return fmt.Errorf("field underlying_price in OptionOpen: required")
+	}
+	if _, ok := raw["vega_per_vol_point"]; raw != nil && !ok {
+		return fmt.Errorf("field vega_per_vol_point in OptionOpen: required")
+	}
+	if _, ok := raw["volume"]; raw != nil && !ok {
+		return fmt.Errorf("field volume in OptionOpen: required")
+	}
+	type Plain OptionOpen
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = OptionOpen(plain)
+	return nil
+}
+
 // obs.price_bar r1: one daily bar of one instrument under one basis; a restated
 // day is a new adjust_epoch row, an existing row is never changed.
 type PriceBar struct {
