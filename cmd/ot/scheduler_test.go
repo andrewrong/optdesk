@@ -189,7 +189,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobFredSeries}, nil
 	}
-	d.newOptionEodWatch = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobOptionEod}, nil
 	}
 	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {

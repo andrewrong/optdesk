@@ -236,7 +236,6 @@ type jobFactory struct {
 	candidates store.CandidateWriter
 	accounts   store.AccountReader
 	earnRd     store.EarningsDateReader
-	accountDSN string
 }
 
 // earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the watch list.
@@ -309,7 +308,14 @@ func (f jobFactory) fred() (contracts.Job, error) {
 }
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	j, err := f.d.newOptionEodWatch(b, f.inst, f.eod, f.watch, f.clk)
+	build := f.d.newOptionEodWatch
+	if build == nil {
+		// A deps literal of a test that fakes only newOptionEod; newDeps always sets newOptionEodWatch.
+		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, _ []jobs.WatchEntry, c clock.Clock) (contracts.Job, error) {
+			return f.d.newOptionEod(b, r, w, c)
+		}
+	}
+	j, err := build(b, f.inst, f.eod, f.watch, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build option_eod job failed")
 	}
@@ -397,7 +403,7 @@ func withWiring(
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
 		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
-			events: events, earn: earn, watch: cfg.watch, accountDSN: cfg.accountDSN}, ledger)
+			events: events, earn: earn, watch: cfg.watch}, ledger)
 }
 
 // wireJobs builds the jobs over the open stores and calls use. option_eod_jp comes after option_eod and

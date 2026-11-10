@@ -83,8 +83,8 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 		}
 		extra.addCloser(w)
 		f.candidates = w
-		if f.accountDSN != "" && f.d.openAccount != nil {
-			acct, err := f.d.openAccount(ctx, f.accountDSN)
+		if cfg.accountDSN != "" && f.d.openAccount != nil {
+			acct, err := f.d.openAccount(ctx, cfg.accountDSN)
 			if err != nil {
 				return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
 			}
@@ -95,7 +95,7 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 	return f.optionCandidates()
 }
 
-// candidatesCmd is `ot candidates [--day DAY] [--all]`: it opens the candidate store with OT_PG_DSN_CANDIDATE,
+// candidatesCmd is `ot candidates [--day DAY] [--all]`: it opens the candidate store with OT_PG_DSN_PAGES (role ot_ro_pages, the view rd.option_candidate_r1),
 // prints candidate_text.Format of the short_put rows of the day, then one line per JP entry of the watch list.
 // The text goes to standard output only.
 func candidatesCmd(a *app, args []string) error {
@@ -113,9 +113,9 @@ func candidatesCmd(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	dsn := env[store.DSNEnvCandidate]
+	dsn := env[pagesDSNName]
 	if dsn == "" {
-		return errors.New(reasonNoCandidateDSN)
+		return errors.New(pagesDSNName + " is not set")
 	}
 	watch, err := loadWatch(a)
 	if err != nil {
@@ -128,7 +128,7 @@ func candidatesCmd(a *app, args []string) error {
 	}
 	s, err := a.deps.openCandidate(ctx, dsn)
 	if err != nil {
-		return fmt.Errorf("open candidate store with %s failed", store.DSNEnvCandidate)
+		return fmt.Errorf("open candidate store with %s failed", pagesDSNName)
 	}
 	defer func() { _ = s.Close() }()
 	rows, err := s.Candidates(ctx, day, string(compute.KindShortPut))

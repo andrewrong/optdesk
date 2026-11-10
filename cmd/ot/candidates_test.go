@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -153,7 +154,7 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 
 func TestCandidatesCommandPrints(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, candidateEnv)
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
 	var out bytes.Buffer
 	a.stdout = &out
 	var cl atomic.Int32
@@ -163,7 +164,7 @@ func TestCandidatesCommandPrints(t *testing.T) {
 			AnnualizedYield: &yield, Status: "ok", Marks: "[]", Gates: "[]"},
 	}}
 	a.deps.openCandidate = func(_ context.Context, dsn string) (candidateStore, error) {
-		if dsn != "cand-dsn" {
+		if dsn != "pages-dsn" {
 			t.Errorf("dsn %q", dsn)
 		}
 		return rw, nil
@@ -183,7 +184,7 @@ func TestCandidatesCommandPrints(t *testing.T) {
 		t.Fatal("unknown flag accepted")
 	}
 	a2, _ := testApp(t, "OT_PG_DSN_RUNNER=r\n")
-	if err := candidatesCmd(a2, nil); err == nil || !strings.Contains(err.Error(), "OT_PG_DSN_CANDIDATE") {
+	if err := candidatesCmd(a2, nil); err == nil || !strings.Contains(err.Error(), "OT_PG_DSN_PAGES") {
 		t.Fatalf("missing line: %v", err)
 	}
 }
@@ -191,17 +192,17 @@ func TestCandidatesCommandPrints(t *testing.T) {
 func TestCandidatesOpenErrorWithheld(t *testing.T) {
 	t.Parallel()
 	const dsn = "postgres://sentinel-user:sentinel-pw@h/db"
-	a, _ := testApp(t, "OT_PG_DSN_CANDIDATE="+dsn+"\n")
+	a, _ := testApp(t, "OT_PG_DSN_PAGES="+dsn+"\n")
 	a.deps.openCandidate = func(_ context.Context, d string) (candidateStore, error) { return nil, errors.New("dial " + d) }
 	err := candidatesCmd(a, nil)
-	if err == nil || strings.Contains(err.Error(), "sentinel") || !strings.Contains(err.Error(), "OT_PG_DSN_CANDIDATE") {
+	if err == nil || strings.Contains(err.Error(), "sentinel") || !strings.Contains(err.Error(), "OT_PG_DSN_PAGES") {
 		t.Fatalf("err %v", err)
 	}
 }
 
 func TestCandidatesNamesJPEntry(t *testing.T) {
 	t.Parallel()
-	a, _ := testApp(t, candidateEnv)
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
 	var out bytes.Buffer
 	a.stdout = &out
 	var cl atomic.Int32
@@ -213,5 +214,19 @@ func TestCandidatesNamesJPEntry(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	if len(lines) != 2 || lines[0] != "no candidates" || lines[1] != "7203: no option route: see option-candidates-jp" {
 		t.Fatalf("lines %q", lines)
+	}
+}
+
+func TestCandidatesReadsThroughPagesDSN(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	a.stdout = io.Discard
+	var got string
+	a.deps.openCandidate = func(_ context.Context, dsn string) (candidateStore, error) {
+		got = dsn
+		return &fakeCandidateRW{closed: new(atomic.Int32)}, nil
+	}
+	if err := candidatesCmd(a, []string{"--day", "2026-11-05"}); err != nil || got != "pages-dsn" {
+		t.Fatalf("err %v dsn %q", err, got)
 	}
 }
