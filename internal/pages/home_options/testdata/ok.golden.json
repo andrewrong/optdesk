@@ -1,0 +1,176 @@
+{
+  "schema": "options_summary",
+  "schema_version": 4,
+  "run_id": "run-test",
+  "build_id": "build-test",
+  "scope": "scope-test",
+  "currency": "USD",
+  "generated_at": "2026-11-06T09:30:00+08:00",
+  "stale_after": "2026-11-08T09:30:00+08:00",
+  "data_times": [
+    {
+      "source": "option_ledger",
+      "data_time": "2026-11-04T00:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "card": {
+    "title": "期权概览",
+    "say": "本月卖出 1 组，收取权利金 +$230。",
+    "subtitle": "来自成交账本",
+    "stale": {
+      "data_time": "2026-11-04T00:00:00+08:00",
+      "text": "账本截至 11-04",
+      "is_stale": false
+    },
+    "tiles": {
+      "sold_count_month": {
+        "label": "本月卖出",
+        "figure": {
+          "kind": "value",
+          "text": "1 组",
+          "unit": "structures",
+          "value": 1
+        },
+        "caption": "按开仓行计"
+      },
+      "premium_month_usd": {
+        "label": "本月权利金",
+        "figure": {
+          "kind": "value",
+          "value": 230.00,
+          "text": "+$230",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      "open_premium_usd": {
+        "label": "未平权利金",
+        "figure": {
+          "kind": "value",
+          "value": 465.00,
+          "text": "$465",
+          "unit": "usd"
+        }
+      },
+      "max_loss_usd": {
+        "label": "最大亏损",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "最大亏损需要组合结构，账本不给出"
+        }
+      }
+    },
+    "premium_series_6m": [
+      {
+        "month": "2026-06",
+        "label": "6月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月无账本记录"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月无账本记录"
+        }
+      },
+      {
+        "month": "2026-07",
+        "label": "7月",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月无账本记录"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月无账本记录"
+        }
+      },
+      {
+        "month": "2026-08",
+        "label": "8月",
+        "premium": {
+          "kind": "value",
+          "value": 300.00,
+          "text": "+$300",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月没有已平仓记录"
+        }
+      },
+      {
+        "month": "2026-09",
+        "label": "9月",
+        "premium": {
+          "kind": "value",
+          "value": 0.00,
+          "text": "+$0",
+          "unit": "usd_signed",
+          "tone": "flat"
+        },
+        "closed": {
+          "kind": "value",
+          "value": 120.50,
+          "text": "+$120",
+          "unit": "usd_signed",
+          "tone": "up"
+        }
+      },
+      {
+        "month": "2026-10",
+        "label": "10月",
+        "premium": {
+          "kind": "value",
+          "value": 225.00,
+          "text": "+$225",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月没有已平仓记录"
+        }
+      },
+      {
+        "month": "2026-11",
+        "label": "11月",
+        "premium": {
+          "kind": "value",
+          "value": 230.00,
+          "text": "+$230",
+          "unit": "usd_signed",
+          "tone": "up"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "该月没有已平仓记录"
+        }
+      }
+    ],
+    "premium_series_text": "近六个月权利金：8月 +$300，9月 +$0，10月 +$225，11月 +$230；2 个月无账本记录",
+    "closed_series_text": "近六个月已平仓盈亏：9月 +$120",
+    "premium_series_caption": "单位美元，按开仓日计入月份；无账本记录的月份留空",
+    "notes": [
+      "权利金按开仓成交现金计，不含手续费；卖出为正，买入为负。",
+      "组数按开仓行计，每行一组。"
+    ],
+    "gaps": [
+      {
+        "kind": "gap",
+        "reason": "no_data",
+        "text": "最大亏损需要组合结构，账本不给出"
+      }
+    ]
+  }
+}
