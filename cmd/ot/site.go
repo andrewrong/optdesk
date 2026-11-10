@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -84,6 +85,23 @@ type siteReaders struct {
 
 	// the tracking page: the option ledger reader of the pages line (nil with no opener in deps).
 	optionLedger store.OptionLedgerReader
+
+	// ext holds the readers a page family opens itself through siteOpeners, by key; nil in the demo profile.
+	ext map[string]any
+}
+
+// siteOpener opens the reader of one page family on the shared closers (track registers a closer when its error is
+// nil and answers whether to go on). It answers the reader and false when the open failed.
+type siteOpener func(ctx context.Context, a *app, track func(io.Closer, error) bool) (any, bool)
+
+// siteOpeners is the registry of those openers by key; a page family adds its own in an init().
+var siteOpeners = map[string]siteOpener{}
+
+// siteReaderOf is the reader of type T that the opener of key put in rd.ext: the zero value and false when ext is
+// nil or holds no such reader.
+func siteReaderOf[T any](rd siteReaders, key string) (T, bool) {
+	v, ok := rd.ext[key].(T)
+	return v, ok
 }
 
 // openSiteReaders returns the demo readers with the demo profile, else the stores (series, the
@@ -165,6 +183,21 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
 		optionLedger: ledger, sessions: sessions}
+	if len(siteOpeners) > 0 {
+		keys := make([]string, 0, len(siteOpeners))
+		for k := range siteOpeners {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		rd.ext = make(map[string]any, len(keys))
+		for _, k := range keys {
+			v, ok := siteOpeners[k](ctx, a, track)
+			if !ok {
+				return fail()
+			}
+			rd.ext[k] = v
+		}
+	}
 	return withPositionsRules(a, rd), closeAll, nil
 }
 
@@ -325,24 +358,14 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 	})
 }
 
-// extraPageBuilder is the builder of the routes options/candidates, options/tracking, options/notices and settings, nil for any
-// other path.
+// extraPageBuilder is the builder of a registered page route (pagereg.go), nil for any other path. The query string
+// reaches the build through its context.
 func extraPageBuilder(path string, q url.Values, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
-	if path == siteCandidatesRoute {
-		return func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
+	f, ok := pageFamilyOfRoute(path)
+	if !ok {
+		return nil
 	}
-	if path == siteTrackingRoute {
-		return func(ctx context.Context) ([]byte, error) { return buildTracking(ctx, a, clk, dayFlag, rd) }
-	}
-	if path == siteNoticesRoute {
-		return func(ctx context.Context) ([]byte, error) { return buildNotices(ctx, a, clk, dayFlag, rd) }
-	}
-	if path == siteSettingsRoute {
-		return func(ctx context.Context) ([]byte, error) {
-			return buildSettings(ctx, a, clk, dayFlag, rd, savedNotice(q))
-		}
-	}
-	return nil
+	return func(ctx context.Context) ([]byte, error) { return f.build(withQuery(ctx, q), a, clk, dayFlag, rd) }
 }
 
 // siteIDOf is the underlying id of the last element of an options/data path: a positive number written
