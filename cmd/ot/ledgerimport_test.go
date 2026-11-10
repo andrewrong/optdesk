@@ -86,3 +86,11 @@ func TestLedgerOpenErrorWithheld(t *testing.T) {
 		})
 	}
 }
+
+// The two commands take a DSN but need an input of their own, which a static row of the leak table cannot give;
+// their open error is covered by TestLedgerOpenErrorWithheld. Runs before any test, so no test races on the map.
+func init() {
+	const why = "its open error is withheld and TestLedgerOpenErrorWithheld covers it"
+	leakExcluded["ledger"] = "reads the alias list from the store; " + why
+	leakExcluded["ledger-import"] = "needs an input file, which a static row cannot give; " + why
+}
