@@ -128,6 +128,7 @@ func build(t *testing.T, h *fakeHistory, st *memBars, entries ...jobs.WatchEntry
 	if err != nil {
 		t.Fatal(err)
 	}
+	j.(*job).m.AdjustedCadenceDays = 0 // the weekly adjusted_last step has its own tests
 	return j, b
 }
 
@@ -178,6 +179,7 @@ func TestBackfillCapDefersWithoutRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	jb.(*job).m.BackfillNamesPerRun = 2
+	jb.(*job).m.AdjustedCadenceDays = 0
 	var empty int
 	for _, e := range entries {
 		res := jb.Run(context.Background(), runDay, keysOf(e.Issuer))
@@ -372,6 +374,7 @@ func TestReaddedNameWritesAtOrAbovePairEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	j.(*job).m.AdjustedCadenceDays = 0
 	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
 		t.Fatal(res.Err)
 	}

@@ -1,0 +1,3398 @@
+{
+  "source_commit": "4704569f",
+  "cases": [
+    {
+      "name": "steady_no_analyst",
+      "input": {
+        "name": "steady_no_analyst",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.061849",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.030925",
+          "0.029711",
+          "0.028497",
+          "0.027283",
+          "0.026069",
+          "0.024855",
+          "0.023642",
+          "0.022428",
+          "0.021214",
+          "0.020000"
+        ],
+        "r": "0.162105",
+        "flags": [],
+        "analyst": null,
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.0510",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.129065",
+                "beyond": "0.366299",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.092942",
+                "beyond": "0.505445",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.068747",
+                "beyond": "0.630708",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "1.9801",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.125324",
+                "beyond": "0.378544",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.090435",
+                "beyond": "0.517059",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.067069",
+                "beyond": "0.640580",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.134513",
+                "beyond": "0.359885",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.097172",
+                "beyond": "0.497522",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.071898",
+                "beyond": "0.622648",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.0510",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "steady_with_analyst",
+      "input": {
+        "name": "steady_with_analyst",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": [
+          "17739529070",
+          "18981296104",
+          "20309986832",
+          "21731685910",
+          "23252903924"
+        ]
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.061849",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.030925",
+          "0.029711",
+          "0.028497",
+          "0.027283",
+          "0.026069",
+          "0.024855",
+          "0.023642",
+          "0.022428",
+          "0.021214",
+          "0.020000"
+        ],
+        "r": "0.162105",
+        "flags": [],
+        "analyst": {
+          "growth": "0.065970",
+          "years": 5
+        },
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.0510",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.129065",
+                "beyond": "0.366299",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.092942",
+                "beyond": "0.505445",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.068747",
+                "beyond": "0.630708",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "1.9801",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.125324",
+                "beyond": "0.378544",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.090435",
+                "beyond": "0.517059",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.067069",
+                "beyond": "0.640580",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.134513",
+                "beyond": "0.359885",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.097172",
+                "beyond": "0.497522",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.071898",
+                "beyond": "0.622648",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.0510",
+            "growth": [
+              "0.065970",
+              "0.065970",
+              "0.065970",
+              "0.065970",
+              "0.065970",
+              "0.056776",
+              "0.047582",
+              "0.038388",
+              "0.029194",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.150845",
+                "beyond": "0.325811",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.109168",
+                "beyond": "0.460916",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.080503",
+                "beyond": "0.588402",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "1.9801",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.146581",
+                "beyond": "0.337435",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.106230",
+                "beyond": "0.472498",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.078488",
+                "beyond": "0.598695",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [
+              "0.065970",
+              "0.065970",
+              "0.065970",
+              "0.065970",
+              "0.065970",
+              "0.056776",
+              "0.047582",
+              "0.038388",
+              "0.029194",
+              "0.020000"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.139535",
+                "beyond": "0.426107",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.104595",
+                "beyond": "0.548053",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.079298",
+                "beyond": "0.657130",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "growth_limited_by_r",
+      "input": {
+        "name": "growth_limited_by_r",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "16160000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "11800000000",
+            "operating_cash_flow": "2312800000",
+            "capital_spending": "715080000",
+            "depreciation": "350460000",
+            "stock_compensation": "240720000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14160000000",
+            "equity": "18502400000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "13924000000",
+            "operating_cash_flow": "2784800000",
+            "capital_spending": "818731200",
+            "depreciation": "421897200",
+            "stock_compensation": "275695200",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17042976000",
+            "equity": "22278400000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "16430320000",
+            "operating_cash_flow": "3351785280",
+            "capital_spending": "985819200",
+            "depreciation": "483051408",
+            "stock_compensation": "331892464",
+            "diluted_shares": "1000000000",
+            "gross_plant": "19519220160",
+            "equity": "26814282240"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "19387777600",
+            "operating_cash_flow": "3838779965",
+            "capital_spending": "1186531989",
+            "depreciation": "581633328",
+            "stock_compensation": "380000441",
+            "diluted_shares": "1000000000",
+            "gross_plant": "23497986451",
+            "equity": "30710239718"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "22877577568",
+            "operating_cash_flow": "4621270669",
+            "capital_spending": "1358928108",
+            "depreciation": "700053874",
+            "stock_compensation": "457551551",
+            "diluted_shares": "1000000000",
+            "gross_plant": "26904031220",
+            "equity": "36970165350"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "26995541530",
+            "operating_cash_flow": "5291126140",
+            "capital_spending": "1635929817",
+            "depreciation": "801767583",
+            "stock_compensation": "550709047",
+            "diluted_shares": "1000000000",
+            "gross_plant": "32394649836",
+            "equity": "42329009119"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "31854739006",
+            "operating_cash_flow": "6370947801",
+            "capital_spending": "1873058654",
+            "depreciation": "965198592",
+            "stock_compensation": "630723832",
+            "diluted_shares": "1000000000",
+            "gross_plant": "38990200543",
+            "equity": "50967582410"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "37588592027",
+            "operating_cash_flow": "7668072774",
+            "capital_spending": "2255315522",
+            "depreciation": "1105104606",
+            "stock_compensation": "759289559",
+            "diluted_shares": "1000000000",
+            "gross_plant": "44655247328",
+            "equity": "61344582188"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "44354538592",
+            "operating_cash_flow": "8782198641",
+            "capital_spending": "2714497762",
+            "depreciation": "1330636158",
+            "stock_compensation": "869348956",
+            "diluted_shares": "1000000000",
+            "gross_plant": "53757700774",
+            "equity": "70257589130"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": [
+          "53225446310",
+          "63870535572",
+          "76644642687",
+          "91973571224",
+          "110368285469"
+        ]
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.180000",
+        "earnings_record": "0.182029",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.091015",
+          "0.083124",
+          "0.075234",
+          "0.067343",
+          "0.059453",
+          "0.051562",
+          "0.043672",
+          "0.035781",
+          "0.027891",
+          "0.020000"
+        ],
+        "r": "0.112785",
+        "flags": [],
+        "analyst": {
+          "growth": "0.200000",
+          "years": 5
+        },
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "5.3846",
+            "growth": [
+              "0.091015",
+              "0.083124",
+              "0.075234",
+              "0.067343",
+              "0.059453",
+              "0.051562",
+              "0.043672",
+              "0.035781",
+              "0.027891",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.353238",
+                "beyond": "0.068524",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.248459",
+                "beyond": "0.149175",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.176363",
+                "beyond": "0.263395",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "5.1984",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.342495",
+                "beyond": "0.074028",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.241080",
+                "beyond": "0.157909",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.171277",
+                "beyond": "0.274470",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "6.6487",
+            "growth": [
+              "0.091015",
+              "0.083124",
+              "0.075234",
+              "0.067343",
+              "0.059453",
+              "0.051562",
+              "0.043672",
+              "0.035781",
+              "0.027891",
+              "0.020000"
+            ],
+            "r": "0.112785",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.229501",
+                "beyond": "0.288852",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.177439",
+                "beyond": "0.394969",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.136887",
+                "beyond": "0.503528",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "5.3846",
+            "growth": [
+              "0.200000",
+              "0.200000",
+              "0.200000",
+              "0.200000",
+              "0.200000",
+              "0.164000",
+              "0.128000",
+              "0.092000",
+              "0.056000",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.486385",
+                "beyond": "0.042986",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.360306",
+                "beyond": "0.095291",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.268408",
+                "beyond": "0.175163",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "5.1984",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.473725",
+                "beyond": "0.046466",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.351151",
+                "beyond": "0.101143",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.261674",
+                "beyond": "0.183319",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "6.6487",
+            "growth": [
+              "0.112785",
+              "0.112785",
+              "0.112785",
+              "0.112785",
+              "0.112785",
+              "0.112785",
+              "0.112785",
+              "0.092000",
+              "0.056000",
+              "0.020000"
+            ],
+            "r": "0.112785",
+            "omitted": null,
+            "flags": [
+              "GROWTH_LIMITED_BY_R"
+            ],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.186457",
+                "beyond": "0.753497",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.156490",
+                "beyond": "0.791208",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.129885",
+                "beyond": "0.826878",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "analyst_scale_omitted",
+      "input": {
+        "name": "analyst_scale_omitted",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": [
+          "50684368770",
+          "53218587208",
+          "55879516569",
+          "58673492397"
+        ]
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.061849",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.030925",
+          "0.029711",
+          "0.028497",
+          "0.027283",
+          "0.026069",
+          "0.024855",
+          "0.023642",
+          "0.022428",
+          "0.021214",
+          "0.020000"
+        ],
+        "r": "0.162105",
+        "flags": [],
+        "analyst": null,
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.0510",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.129065",
+                "beyond": "0.366299",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.092942",
+                "beyond": "0.505445",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.068747",
+                "beyond": "0.630708",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "1.9801",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.125324",
+                "beyond": "0.378544",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.090435",
+                "beyond": "0.517059",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.067069",
+                "beyond": "0.640580",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.134513",
+                "beyond": "0.359885",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.097172",
+                "beyond": "0.497522",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.071898",
+                "beyond": "0.622648",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.0510",
+            "growth": [],
+            "r": null,
+            "omitted": "ANALYST_SCALE",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "ANALYST_SCALE",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "plant_not_reported",
+      "input": {
+        "name": "plant_not_reported",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": null,
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.061849",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.030925",
+          "0.029711",
+          "0.028497",
+          "0.027283",
+          "0.026069",
+          "0.024855",
+          "0.023642",
+          "0.022428",
+          "0.021214",
+          "0.020000"
+        ],
+        "r": "0.162105",
+        "flags": [
+          "PLANT_NOT_REPORTED"
+        ],
+        "analyst": null,
+        "plant": null,
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.0510",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.129065",
+                "beyond": "0.366299",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.092942",
+                "beyond": "0.505445",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.068747",
+                "beyond": "0.630708",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "1.9801",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.125324",
+                "beyond": "0.378544",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.090435",
+                "beyond": "0.517059",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.067069",
+                "beyond": "0.640580",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.134513",
+                "beyond": "0.359885",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.097172",
+                "beyond": "0.497522",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.071898",
+                "beyond": "0.622648",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.0510",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "gate_spending_omits_earnings",
+      "input": {
+        "name": "gate_spending_omits_earnings",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "297000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "321180000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "330338400",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "357304800",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "386317950",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "397452997",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "429811291",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "442067296",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "478154422",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "516980561",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.061849",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.030925",
+          "0.029711",
+          "0.028497",
+          "0.027283",
+          "0.026069",
+          "0.024855",
+          "0.023642",
+          "0.022428",
+          "0.021214",
+          "0.020000"
+        ],
+        "r": "0.162105",
+        "flags": [],
+        "analyst": null,
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.5477",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.155207",
+                "beyond": "0.291942",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.110461",
+                "beyond": "0.431828",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.080479",
+                "beyond": "0.566173",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "2.4970",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.152543",
+                "beyond": "0.298703",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.108675",
+                "beyond": "0.438764",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.079283",
+                "beyond": "0.572408",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "GATE_SPENDING",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.5477",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "GATE_SPENDING",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "r_below_min_omits_earnings",
+      "input": {
+        "name": "r_below_min_omits_earnings",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "30300000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "31164000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "33708000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "36445089600"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "37495565712"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "40548235001"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "41704461902"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "45108907770"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "48771751080"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "50177525082"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.061849",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.030925",
+          "0.029711",
+          "0.028497",
+          "0.027283",
+          "0.026069",
+          "0.024855",
+          "0.023642",
+          "0.022428",
+          "0.021214",
+          "0.020000"
+        ],
+        "r": "0.054035",
+        "flags": [],
+        "analyst": null,
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.0510",
+            "growth": [
+              "0.030925",
+              "0.029711",
+              "0.028497",
+              "0.027283",
+              "0.026069",
+              "0.024855",
+              "0.023642",
+              "0.022428",
+              "0.021214",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.129065",
+                "beyond": "0.366299",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.092942",
+                "beyond": "0.505445",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.068747",
+                "beyond": "0.630708",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "1.9801",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.125324",
+                "beyond": "0.378544",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.090435",
+                "beyond": "0.517059",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.067069",
+                "beyond": "0.640580",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "R_BELOW_MIN",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.0510",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "R_BELOW_MIN",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "latest_level_below_base",
+      "input": {
+        "name": "latest_level_below_base",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "1689478959",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "1000000000",
+        "revenue_record": "0.060000",
+        "earnings_record": "0.023074",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537",
+          "0.011537"
+        ],
+        "r": "0.162105",
+        "flags": [],
+        "analyst": null,
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.0510",
+            "growth": [
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.115272",
+                "beyond": "0.376714",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.080694",
+                "beyond": "0.516170",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.057641",
+                "beyond": "0.640374",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "0.3244",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.027943",
+                "beyond": "0.851387",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.022475",
+                "beyond": "0.898035",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.018829",
+                "beyond": "0.930693",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "2.5325",
+            "growth": [
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537",
+              "0.011537"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.130508",
+                "beyond": "0.328913",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.090851",
+                "beyond": "0.470070",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.064413",
+                "beyond": "0.600780",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.0510",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "2.5325",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "share_count_falls",
+      "input": {
+        "name": "share_count_falls",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "980000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "960400000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "941192000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "922368160",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "903920797",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "885842381",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "868125533",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "850763023",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "833747762",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "833747762",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "ok",
+        "period_end": "2024-12-31",
+        "shares_now": "833747762",
+        "revenue_record": "0.081633",
+        "earnings_record": "0.083517",
+        "earnings_record_years": 10,
+        "low_path": [
+          "0.041758",
+          "0.039341",
+          "0.036923",
+          "0.034506",
+          "0.032088",
+          "0.029670",
+          "0.027253",
+          "0.024835",
+          "0.022418",
+          "0.020000"
+        ],
+        "r": "0.162105",
+        "flags": [],
+        "analyst": null,
+        "plant": {
+          "usual": "0.83",
+          "latest": "0.83"
+        },
+        "scenarios": [
+          {
+            "key": "SPENDING_STAYS",
+            "base": "2.4600",
+            "growth": [
+              "0.041758",
+              "0.039341",
+              "0.036923",
+              "0.034506",
+              "0.032088",
+              "0.029670",
+              "0.027253",
+              "0.024835",
+              "0.022418",
+              "0.020000"
+            ],
+            "r": null,
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.155782",
+                "beyond": "0.294365",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.111159",
+                "beyond": "0.433341",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.081114",
+                "beyond": "0.566829",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": "2.3749",
+            "latest_level": [
+              {
+                "cost": "20",
+                "rate": "0.151171",
+                "beyond": "0.306166",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.108053",
+                "beyond": "0.445401",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.079024",
+                "beyond": "0.577661",
+                "status": "SOLVED"
+              }
+            ]
+          },
+          {
+            "key": "SPENDING_EARNS",
+            "base": "3.0375",
+            "growth": [
+              "0.041758",
+              "0.039341",
+              "0.036923",
+              "0.034506",
+              "0.032088",
+              "0.029670",
+              "0.027253",
+              "0.024835",
+              "0.022418",
+              "0.020000"
+            ],
+            "r": "0.162105",
+            "omitted": null,
+            "flags": [],
+            "solved": [
+              {
+                "cost": "20",
+                "rate": "0.157301",
+                "beyond": "0.310990",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "30",
+                "rate": "0.113665",
+                "beyond": "0.446340",
+                "status": "SOLVED"
+              },
+              {
+                "cost": "45",
+                "rate": "0.083651",
+                "beyond": "0.575445",
+                "status": "SOLVED"
+              }
+            ],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "ANALYST_PATH",
+            "base": "2.4600",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          },
+          {
+            "key": "SPENDING_EARNS_ANALYST",
+            "base": "3.0375",
+            "growth": [],
+            "r": null,
+            "omitted": "NO_ANALYST",
+            "flags": [],
+            "solved": [],
+            "latest_base": null,
+            "latest_level": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "refusal_too_few_years",
+      "input": {
+        "name": "refusal_too_few_years",
+        "years": [
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "refused",
+        "reason": "TOO_FEW_YEARS"
+      }
+    },
+    {
+      "name": "refusal_not_consecutive",
+      "input": {
+        "name": "refusal_not_consecutive",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2020-06-30",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "refused",
+        "reason": "NOT_CONSECUTIVE"
+      }
+    },
+    {
+      "name": "refusal_stale_filing",
+      "input": {
+        "name": "refusal_stale_filing",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2026-06-01",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "refused",
+        "reason": "STALE_FILING"
+      }
+    },
+    {
+      "name": "refusal_missing_figure",
+      "input": {
+        "name": "refusal_missing_figure",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": null,
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "refused",
+        "reason": "MISSING_FIGURE"
+      }
+    },
+    {
+      "name": "refusal_share_jump",
+      "input": {
+        "name": "refusal_share_jump",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "2020000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "2077600000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "2247200000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "2429672640",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "2499704381",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "2703215667",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "2780297460",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "3007260518",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "3251450072",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "3345168339",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1500000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "refused",
+        "reason": "SHARE_JUMP"
+      }
+    },
+    {
+      "name": "refusal_base_not_positive",
+      "input": {
+        "name": "refusal_base_not_positive",
+        "years": [
+          {
+            "period_end": "2015-12-31",
+            "revenue": "10000000000",
+            "operating_cash_flow": "505000000",
+            "capital_spending": "594000000",
+            "depreciation": "306000000",
+            "stock_compensation": "200000000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "11760000000",
+            "equity": "10100000000"
+          },
+          {
+            "period_end": "2016-12-31",
+            "revenue": "10600000000",
+            "operating_cash_flow": "519400000",
+            "capital_spending": "642360000",
+            "depreciation": "314820000",
+            "stock_compensation": "216240000",
+            "diluted_shares": "1000000000",
+            "gross_plant": "12720000000",
+            "equity": "10388000000"
+          },
+          {
+            "period_end": "2017-12-31",
+            "revenue": "11236000000",
+            "operating_cash_flow": "561800000",
+            "capital_spending": "660676800",
+            "depreciation": "340450800",
+            "stock_compensation": "222472800",
+            "diluted_shares": "1000000000",
+            "gross_plant": "13752864000",
+            "equity": "11236000000"
+          },
+          {
+            "period_end": "2018-12-31",
+            "revenue": "11910160000",
+            "operating_cash_flow": "607418160",
+            "capital_spending": "714609600",
+            "depreciation": "350158704",
+            "stock_compensation": "240585232",
+            "diluted_shares": "1000000000",
+            "gross_plant": "14149270080",
+            "equity": "12148363200"
+          },
+          {
+            "period_end": "2019-12-31",
+            "revenue": "12624769600",
+            "operating_cash_flow": "624926095",
+            "capital_spending": "772635900",
+            "depreciation": "378743088",
+            "stock_compensation": "247445484",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15301220755",
+            "equity": "12498521904"
+          },
+          {
+            "period_end": "2020-12-31",
+            "revenue": "13382255776",
+            "operating_cash_flow": "675803917",
+            "capital_spending": "794905993",
+            "depreciation": "409497027",
+            "stock_compensation": "267645116",
+            "diluted_shares": "1000000000",
+            "gross_plant": "15737532793",
+            "equity": "13516078334"
+          },
+          {
+            "period_end": "2021-12-31",
+            "revenue": "14185191123",
+            "operating_cash_flow": "695074365",
+            "capital_spending": "859622582",
+            "depreciation": "421300176",
+            "stock_compensation": "289377899",
+            "diluted_shares": "1000000000",
+            "gross_plant": "17022229348",
+            "equity": "13901487301"
+          },
+          {
+            "period_end": "2022-12-31",
+            "revenue": "15036302590",
+            "operating_cash_flow": "751815130",
+            "capital_spending": "884134592",
+            "depreciation": "455599968",
+            "stock_compensation": "297718791",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18404434370",
+            "equity": "15036302590"
+          },
+          {
+            "period_end": "2023-12-31",
+            "revenue": "15938480745",
+            "operating_cash_flow": "812862518",
+            "capital_spending": "956308845",
+            "depreciation": "468591334",
+            "stock_compensation": "321957311",
+            "diluted_shares": "1000000000",
+            "gross_plant": "18934915125",
+            "equity": "16257250360"
+          },
+          {
+            "period_end": "2024-12-31",
+            "revenue": "16894789590",
+            "operating_cash_flow": "836292085",
+            "capital_spending": "1033961123",
+            "depreciation": "506843688",
+            "stock_compensation": "331137876",
+            "diluted_shares": "1000000000",
+            "gross_plant": "20476484983",
+            "equity": "16725841694"
+          }
+        ],
+        "shares_now": "1000000000",
+        "costs": [
+          "20",
+          "30",
+          "45"
+        ],
+        "price_date": "2025-03-15",
+        "analyst_revenue": null
+      },
+      "expected": {
+        "state": "refused",
+        "reason": "BASE_NOT_POSITIVE"
+      }
+    }
+  ]
+}

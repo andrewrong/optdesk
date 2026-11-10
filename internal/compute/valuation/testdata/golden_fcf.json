@@ -1,0 +1,1672 @@
+{
+  "source_commit": "4704569f",
+  "cases": [
+    {
+      "name": "stable",
+      "input": {
+        "name": "stable",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "999900000",
+            "sbc": "257550000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5096000000",
+            "capex": "1029392000",
+            "sbc": "252252000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5408000000",
+            "capex": "1059968000",
+            "sbc": "273104000"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5736806400",
+            "capex": "1147361280",
+            "sbc": "281103514"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "5790799872",
+            "capex": "1181323174",
+            "sbc": "289539994"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "402000000",
+        "cover_date": "2025-02-01",
+        "debt": "900000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "ok",
+          "fcf": [
+            "3792550000",
+            "3814356000",
+            "4074928000",
+            "4308341606",
+            "4319936704"
+          ],
+          "shares": "400000000",
+          "median_fcf": "4074928000",
+          "values": {
+            "0.06": "169.7887",
+            "0.08": "127.3415",
+            "0.10": "101.8732"
+          },
+          "primary_value": "127.3415",
+          "flags": []
+        },
+        "reverse": {
+          "state": "ok",
+          "base_fcf": "4319936704",
+          "base_period_end": "2024-12-31",
+          "shares": "400000000",
+          "median_fcf": "4074928000",
+          "flags": [],
+          "grid": [
+            {
+              "rate": "0.08",
+              "growth": "-0.10",
+              "value": "74.9300",
+              "terminal_share": "0.3957",
+              "final_cash_flow": "1506268791.2815"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0",
+              "value": "157.5089",
+              "terminal_share": "0.5399",
+              "final_cash_flow": "4319936704.0000"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.05",
+              "value": "231.3231",
+              "terminal_share": "0.5988",
+              "final_cash_flow": "7036721685.1643"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.10",
+              "value": "340.2072",
+              "terminal_share": "0.6484",
+              "final_cash_flow": "11204803254.1092"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.15",
+              "value": "499.0869",
+              "terminal_share": "0.6893",
+              "final_cash_flow": "17476553350.6357"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.20",
+              "value": "728.2900",
+              "terminal_share": "0.7230",
+              "final_cash_flow": "26747909432.6194"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.25",
+              "value": "1055.1596",
+              "terminal_share": "0.7506",
+              "final_cash_flow": "40232545733.4518"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.30",
+              "value": "1516.0523",
+              "terminal_share": "0.7733",
+              "final_cash_flow": "59553995889.6580"
+            },
+            {
+              "rate": "0.10",
+              "growth": "-0.10",
+              "value": "60.5769",
+              "terminal_share": "0.3056",
+              "final_cash_flow": "1506268791.2815"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0",
+              "value": "119.4489",
+              "terminal_share": "0.4444",
+              "final_cash_flow": "4319936704.0000"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.05",
+              "value": "170.8419",
+              "terminal_share": "0.5062",
+              "final_cash_flow": "7036721685.1643"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.10",
+              "value": "245.6964",
+              "terminal_share": "0.5604",
+              "final_cash_flow": "11204803254.1092"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.15",
+              "value": "353.8095",
+              "terminal_share": "0.6070",
+              "final_cash_flow": "17476553350.6357"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.20",
+              "value": "508.4864",
+              "terminal_share": "0.6464",
+              "final_cash_flow": "26747909432.6194"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.25",
+              "value": "727.5807",
+              "terminal_share": "0.6795",
+              "final_cash_flow": "40232545733.4518"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.30",
+              "value": "1034.7820",
+              "terminal_share": "0.7073",
+              "final_cash_flow": "59553995889.6580"
+            },
+            {
+              "rate": "0.12",
+              "growth": "-0.10",
+              "value": "51.5881",
+              "terminal_share": "0.2397",
+              "final_cash_flow": "1506268791.2815"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0",
+              "value": "96.4896",
+              "terminal_share": "0.3676",
+              "final_cash_flow": "4319936704.0000"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.05",
+              "value": "134.8100",
+              "terminal_share": "0.4286",
+              "final_cash_flow": "7036721685.1643"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.10",
+              "value": "189.9349",
+              "terminal_share": "0.4844",
+              "final_cash_flow": "11204803254.1092"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.15",
+              "value": "268.7466",
+              "terminal_share": "0.5339",
+              "final_cash_flow": "17476553350.6357"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.20",
+              "value": "380.5654",
+              "terminal_share": "0.5771",
+              "final_cash_flow": "26747909432.6194"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.25",
+              "value": "537.8668",
+              "terminal_share": "0.6141",
+              "final_cash_flow": "40232545733.4518"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.30",
+              "value": "757.1699",
+              "terminal_share": "0.6458",
+              "final_cash_flow": "59553995889.6580"
+            }
+          ],
+          "implied": [
+            {
+              "spot": "0.01",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "below_solver_range",
+                  "growth": null
+                }
+              ]
+            },
+            {
+              "spot": "63.67",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.123135"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "-0.092305"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "-0.065128"
+                }
+              ]
+            },
+            {
+              "spot": "127.34",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.027983"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.009025"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.041583"
+                }
+              ]
+            },
+            {
+              "spot": "254.68",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "0.062463"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.104924"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.142274"
+                }
+              ]
+            },
+            {
+              "spot": "127341.50",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "above_solver_range",
+                  "growth": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "growing_high_sbc_high_leverage",
+      "input": {
+        "name": "growing_high_sbc_high_leverage",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "749925000",
+            "sbc": "1545300000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5635000000",
+            "capex": "853702500",
+            "sbc": "1673595000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "6612500000",
+            "capex": "972037500",
+            "sbc": "2003587500"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "7756462500",
+            "capex": "1163469375",
+            "sbc": "2280399975"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "8657580938",
+            "capex": "1324609884",
+            "sbc": "2597274281"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "402000000",
+        "cover_date": "2025-02-01",
+        "debt": "60000000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "ok",
+          "fcf": [
+            "2754775000",
+            "3107702500",
+            "3636875000",
+            "4312593150",
+            "4735696773"
+          ],
+          "shares": "400000000",
+          "median_fcf": "3636875000",
+          "values": {
+            "0.06": "151.5365",
+            "0.08": "113.6523",
+            "0.10": "90.9219"
+          },
+          "primary_value": "113.6523",
+          "flags": [
+            "high_leverage"
+          ]
+        },
+        "reverse": {
+          "state": "ok",
+          "base_fcf": "4735696773",
+          "base_period_end": "2024-12-31",
+          "shares": "400000000",
+          "median_fcf": "3636875000",
+          "flags": [
+            "high_sbc"
+          ],
+          "grid": [
+            {
+              "rate": "0.08",
+              "growth": "-0.10",
+              "value": "82.1415",
+              "terminal_share": "0.3957",
+              "final_cash_flow": "1651235363.5962"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0",
+              "value": "172.6679",
+              "terminal_share": "0.5399",
+              "final_cash_flow": "4735696773.0000"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.05",
+              "value": "253.5861",
+              "terminal_share": "0.5988",
+              "final_cash_flow": "7713951027.5870"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.10",
+              "value": "372.9495",
+              "terminal_share": "0.6484",
+              "final_cash_flow": "12283177798.2887"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.15",
+              "value": "547.1201",
+              "terminal_share": "0.6893",
+              "final_cash_flow": "19158534713.9771"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.20",
+              "value": "798.3822",
+              "terminal_share": "0.7230",
+              "final_cash_flow": "29322186194.8262"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.25",
+              "value": "1156.7105",
+              "terminal_share": "0.7506",
+              "final_cash_flow": "44104613112.2857"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.30",
+              "value": "1661.9604",
+              "terminal_share": "0.7733",
+              "final_cash_flow": "65285601497.9956"
+            },
+            {
+              "rate": "0.10",
+              "growth": "-0.10",
+              "value": "66.4069",
+              "terminal_share": "0.3056",
+              "final_cash_flow": "1651235363.5962"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0",
+              "value": "130.9449",
+              "terminal_share": "0.4444",
+              "final_cash_flow": "4735696773.0000"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.05",
+              "value": "187.2841",
+              "terminal_share": "0.5062",
+              "final_cash_flow": "7713951027.5870"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.10",
+              "value": "269.3428",
+              "terminal_share": "0.5604",
+              "final_cash_flow": "12283177798.2887"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.15",
+              "value": "387.8609",
+              "terminal_share": "0.6070",
+              "final_cash_flow": "19158534713.9771"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.20",
+              "value": "557.4242",
+              "terminal_share": "0.6464",
+              "final_cash_flow": "29322186194.8262"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.25",
+              "value": "797.6047",
+              "terminal_share": "0.6795",
+              "final_cash_flow": "44104613112.2857"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.30",
+              "value": "1134.3717",
+              "terminal_share": "0.7073",
+              "final_cash_flow": "65285601497.9956"
+            },
+            {
+              "rate": "0.12",
+              "growth": "-0.10",
+              "value": "56.5531",
+              "terminal_share": "0.2397",
+              "final_cash_flow": "1651235363.5962"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0",
+              "value": "105.7759",
+              "terminal_share": "0.3676",
+              "final_cash_flow": "4735696773.0000"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.05",
+              "value": "147.7844",
+              "terminal_share": "0.4286",
+              "final_cash_flow": "7713951027.5870"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.10",
+              "value": "208.2146",
+              "terminal_share": "0.4844",
+              "final_cash_flow": "12283177798.2887"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.15",
+              "value": "294.6114",
+              "terminal_share": "0.5339",
+              "final_cash_flow": "19158534713.9771"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.20",
+              "value": "417.1918",
+              "terminal_share": "0.5771",
+              "final_cash_flow": "29322186194.8262"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.25",
+              "value": "589.6323",
+              "terminal_share": "0.6141",
+              "final_cash_flow": "44104613112.2857"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.30",
+              "value": "830.0416",
+              "terminal_share": "0.6458",
+              "final_cash_flow": "65285601497.9956"
+            }
+          ],
+          "implied": [
+            {
+              "spot": "0.01",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "below_solver_range",
+                  "growth": null
+                }
+              ]
+            },
+            {
+              "spot": "56.83",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.153358"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "-0.124581"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "-0.099172"
+                }
+              ]
+            },
+            {
+              "spot": "113.65",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.055439"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "-0.020165"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.010875"
+                }
+              ]
+            },
+            {
+              "spot": "227.30",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "0.035808"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.076701"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.112671"
+                }
+              ]
+            },
+            {
+              "spot": "113652.30",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "above_solver_range",
+                  "growth": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "negative_base_year",
+      "input": {
+        "name": "negative_base_year",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "999900000",
+            "sbc": "257550000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5047000000",
+            "capex": "1019494000",
+            "sbc": "249826500"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5304500000",
+            "capex": "1039682000",
+            "sbc": "267877250"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5572907700",
+            "capex": "1114581540",
+            "sbc": "273072477"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "5571268610",
+            "capex": "7000000000",
+            "sbc": "278563430"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "402000000",
+        "cover_date": "2025-02-01",
+        "debt": "900000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "ok",
+          "fcf": [
+            "3792550000",
+            "3777679500",
+            "3996940750",
+            "4185253683",
+            "-1707294820"
+          ],
+          "shares": "400000000",
+          "median_fcf": "3792550000",
+          "values": {
+            "0.06": "158.0229",
+            "0.08": "118.5172",
+            "0.10": "94.8138"
+          },
+          "primary_value": "118.5172",
+          "flags": [
+            "unstable_fcf"
+          ]
+        },
+        "reverse": {
+          "state": "rejected",
+          "reasons": [
+            "non_positive_base_fcf"
+          ]
+        }
+      }
+    },
+    {
+      "name": "unknown_leverage_unverified_shares",
+      "input": {
+        "name": "unknown_leverage_unverified_shares",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "899910000",
+            "sbc": "206040000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5145000000",
+            "capex": "935361000",
+            "sbc": "203742000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5512500000",
+            "capex": "972405000",
+            "sbc": "222705000"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5903887500",
+            "capex": "1062699750",
+            "sbc": "231432390"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "6016755938",
+            "capex": "1104676390",
+            "sbc": "240670238"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": null,
+        "cover_date": "2025-02-01",
+        "debt": null,
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "ok",
+          "fcf": [
+            "3944050000",
+            "4005897000",
+            "4317390000",
+            "4609755360",
+            "4671409310"
+          ],
+          "shares": "400000000",
+          "median_fcf": "4317390000",
+          "values": {
+            "0.06": "179.8912",
+            "0.08": "134.9184",
+            "0.10": "107.9348"
+          },
+          "primary_value": "134.9184",
+          "flags": [
+            "leverage_unknown",
+            "shares_unverified"
+          ]
+        },
+        "reverse": {
+          "state": "ok",
+          "base_fcf": "4671409310",
+          "base_period_end": "2024-12-31",
+          "shares": "400000000",
+          "median_fcf": "4317390000",
+          "flags": [
+            "shares_unverified"
+          ],
+          "grid": [
+            {
+              "rate": "0.08",
+              "growth": "-0.10",
+              "value": "81.0264",
+              "terminal_share": "0.3957",
+              "final_cash_flow": "1628819711.2794"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0",
+              "value": "170.3239",
+              "terminal_share": "0.5399",
+              "final_cash_flow": "4671409310.0000"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.05",
+              "value": "250.1437",
+              "terminal_share": "0.5988",
+              "final_cash_flow": "7609233524.5371"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.10",
+              "value": "367.8867",
+              "terminal_share": "0.6484",
+              "final_cash_flow": "12116432675.8534"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.15",
+              "value": "539.6929",
+              "terminal_share": "0.6893",
+              "final_cash_flow": "18898456070.7285"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.20",
+              "value": "787.5441",
+              "terminal_share": "0.7230",
+              "final_cash_flow": "28924135168.6655"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.25",
+              "value": "1141.0080",
+              "terminal_share": "0.7506",
+              "final_cash_flow": "43505889456.7192"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.30",
+              "value": "1639.3992",
+              "terminal_share": "0.7733",
+              "final_cash_flow": "64399344228.5978"
+            },
+            {
+              "rate": "0.10",
+              "growth": "-0.10",
+              "value": "65.5055",
+              "terminal_share": "0.3056",
+              "final_cash_flow": "1628819711.2794"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0",
+              "value": "129.1673",
+              "terminal_share": "0.4444",
+              "final_cash_flow": "4671409310.0000"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.05",
+              "value": "184.7417",
+              "terminal_share": "0.5062",
+              "final_cash_flow": "7609233524.5371"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.10",
+              "value": "265.6864",
+              "terminal_share": "0.5604",
+              "final_cash_flow": "12116432675.8534"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.15",
+              "value": "382.5957",
+              "terminal_share": "0.6070",
+              "final_cash_flow": "18898456070.7285"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.20",
+              "value": "549.8572",
+              "terminal_share": "0.6464",
+              "final_cash_flow": "28924135168.6655"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.25",
+              "value": "786.7771",
+              "terminal_share": "0.6795",
+              "final_cash_flow": "43505889456.7192"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.30",
+              "value": "1118.9725",
+              "terminal_share": "0.7073",
+              "final_cash_flow": "64399344228.5978"
+            },
+            {
+              "rate": "0.12",
+              "growth": "-0.10",
+              "value": "55.7854",
+              "terminal_share": "0.2397",
+              "final_cash_flow": "1628819711.2794"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0",
+              "value": "104.3400",
+              "terminal_share": "0.3676",
+              "final_cash_flow": "4671409310.0000"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.05",
+              "value": "145.7782",
+              "terminal_share": "0.4286",
+              "final_cash_flow": "7609233524.5371"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.10",
+              "value": "205.3881",
+              "terminal_share": "0.4844",
+              "final_cash_flow": "12116432675.8534"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.15",
+              "value": "290.6120",
+              "terminal_share": "0.5339",
+              "final_cash_flow": "18898456070.7285"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.20",
+              "value": "411.5284",
+              "terminal_share": "0.5771",
+              "final_cash_flow": "28924135168.6655"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.25",
+              "value": "581.6280",
+              "terminal_share": "0.6141",
+              "final_cash_flow": "43505889456.7192"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.30",
+              "value": "818.7737",
+              "terminal_share": "0.6458",
+              "final_cash_flow": "64399344228.5978"
+            }
+          ],
+          "implied": [
+            {
+              "spot": "0.01",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "below_solver_range",
+                  "growth": null
+                }
+              ]
+            },
+            {
+              "spot": "67.46",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.126079"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "-0.095448"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "-0.068442"
+                }
+              ]
+            },
+            {
+              "spot": "134.92",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.030687"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.006152"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.038562"
+                }
+              ]
+            },
+            {
+              "spot": "269.84",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "0.059821"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.102127"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.139342"
+                }
+              ]
+            },
+            {
+              "spot": "134918.40",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "above_solver_range",
+                  "growth": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "negative_capex_reported",
+      "input": {
+        "name": "negative_capex_reported",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "899910000",
+            "sbc": "206040000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5145000000",
+            "capex": "935361000",
+            "sbc": "203742000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5512500000",
+            "capex": "-120000000",
+            "sbc": "222705000"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5903887500",
+            "capex": "1062699750",
+            "sbc": "231432390"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "6016755938",
+            "capex": "1104676390",
+            "sbc": "240670238"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "402000000",
+        "cover_date": "2025-02-01",
+        "debt": "900000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "ok",
+          "fcf": [
+            "3944050000",
+            "4005897000",
+            "5409795000",
+            "4609755360",
+            "4671409310"
+          ],
+          "shares": "400000000",
+          "median_fcf": "4609755360",
+          "values": {
+            "0.06": "192.0731",
+            "0.08": "144.0549",
+            "0.10": "115.2439"
+          },
+          "primary_value": "144.0549",
+          "flags": [
+            "negative_capex_reported"
+          ]
+        },
+        "reverse": {
+          "state": "ok",
+          "base_fcf": "4671409310",
+          "base_period_end": "2024-12-31",
+          "shares": "400000000",
+          "median_fcf": "4609755360",
+          "flags": [
+            "negative_capex_reported"
+          ],
+          "grid": [
+            {
+              "rate": "0.08",
+              "growth": "-0.10",
+              "value": "81.0264",
+              "terminal_share": "0.3957",
+              "final_cash_flow": "1628819711.2794"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0",
+              "value": "170.3239",
+              "terminal_share": "0.5399",
+              "final_cash_flow": "4671409310.0000"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.05",
+              "value": "250.1437",
+              "terminal_share": "0.5988",
+              "final_cash_flow": "7609233524.5371"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.10",
+              "value": "367.8867",
+              "terminal_share": "0.6484",
+              "final_cash_flow": "12116432675.8534"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.15",
+              "value": "539.6929",
+              "terminal_share": "0.6893",
+              "final_cash_flow": "18898456070.7285"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.20",
+              "value": "787.5441",
+              "terminal_share": "0.7230",
+              "final_cash_flow": "28924135168.6655"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.25",
+              "value": "1141.0080",
+              "terminal_share": "0.7506",
+              "final_cash_flow": "43505889456.7192"
+            },
+            {
+              "rate": "0.08",
+              "growth": "0.30",
+              "value": "1639.3992",
+              "terminal_share": "0.7733",
+              "final_cash_flow": "64399344228.5978"
+            },
+            {
+              "rate": "0.10",
+              "growth": "-0.10",
+              "value": "65.5055",
+              "terminal_share": "0.3056",
+              "final_cash_flow": "1628819711.2794"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0",
+              "value": "129.1673",
+              "terminal_share": "0.4444",
+              "final_cash_flow": "4671409310.0000"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.05",
+              "value": "184.7417",
+              "terminal_share": "0.5062",
+              "final_cash_flow": "7609233524.5371"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.10",
+              "value": "265.6864",
+              "terminal_share": "0.5604",
+              "final_cash_flow": "12116432675.8534"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.15",
+              "value": "382.5957",
+              "terminal_share": "0.6070",
+              "final_cash_flow": "18898456070.7285"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.20",
+              "value": "549.8572",
+              "terminal_share": "0.6464",
+              "final_cash_flow": "28924135168.6655"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.25",
+              "value": "786.7771",
+              "terminal_share": "0.6795",
+              "final_cash_flow": "43505889456.7192"
+            },
+            {
+              "rate": "0.10",
+              "growth": "0.30",
+              "value": "1118.9725",
+              "terminal_share": "0.7073",
+              "final_cash_flow": "64399344228.5978"
+            },
+            {
+              "rate": "0.12",
+              "growth": "-0.10",
+              "value": "55.7854",
+              "terminal_share": "0.2397",
+              "final_cash_flow": "1628819711.2794"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0",
+              "value": "104.3400",
+              "terminal_share": "0.3676",
+              "final_cash_flow": "4671409310.0000"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.05",
+              "value": "145.7782",
+              "terminal_share": "0.4286",
+              "final_cash_flow": "7609233524.5371"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.10",
+              "value": "205.3881",
+              "terminal_share": "0.4844",
+              "final_cash_flow": "12116432675.8534"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.15",
+              "value": "290.6120",
+              "terminal_share": "0.5339",
+              "final_cash_flow": "18898456070.7285"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.20",
+              "value": "411.5284",
+              "terminal_share": "0.5771",
+              "final_cash_flow": "28924135168.6655"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.25",
+              "value": "581.6280",
+              "terminal_share": "0.6141",
+              "final_cash_flow": "43505889456.7192"
+            },
+            {
+              "rate": "0.12",
+              "growth": "0.30",
+              "value": "818.7737",
+              "terminal_share": "0.6458",
+              "final_cash_flow": "64399344228.5978"
+            }
+          ],
+          "implied": [
+            {
+              "spot": "0.01",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "below_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "below_solver_range",
+                  "growth": null
+                }
+              ]
+            },
+            {
+              "spot": "72.03",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.116656"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "-0.085392"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "-0.057838"
+                }
+              ]
+            },
+            {
+              "spot": "144.05",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "-0.022021"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.015359"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.048242"
+                }
+              ]
+            },
+            {
+              "spot": "288.11",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "ok",
+                  "growth": "0.068307"
+                },
+                {
+                  "rate": "0.10",
+                  "status": "ok",
+                  "growth": "0.111107"
+                },
+                {
+                  "rate": "0.12",
+                  "status": "ok",
+                  "growth": "0.148758"
+                }
+              ]
+            },
+            {
+              "spot": "144054.90",
+              "rates": [
+                {
+                  "rate": "0.08",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.10",
+                  "status": "above_solver_range",
+                  "growth": null
+                },
+                {
+                  "rate": "0.12",
+                  "status": "above_solver_range",
+                  "growth": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "shares_changed_since_base",
+      "input": {
+        "name": "shares_changed_since_base",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "899910000",
+            "sbc": "206040000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5145000000",
+            "capex": "935361000",
+            "sbc": "203742000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5512500000",
+            "capex": "972405000",
+            "sbc": "222705000"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5903887500",
+            "capex": "1062699750",
+            "sbc": "231432390"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "6016755938",
+            "capex": "1104676390",
+            "sbc": "240670238"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "560000000",
+        "cover_date": "2025-02-01",
+        "debt": "900000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "rejected",
+          "reasons": [
+            "shares_changed_since_base"
+          ]
+        },
+        "reverse": {
+          "state": "rejected",
+          "reasons": [
+            "shares_changed_since_base"
+          ]
+        }
+      }
+    },
+    {
+      "name": "insufficient_years",
+      "input": {
+        "name": "insufficient_years",
+        "years": [
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "5050000000",
+            "capex": "899910000",
+            "sbc": "206040000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5145000000",
+            "capex": "935361000",
+            "sbc": "203742000"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5512500000",
+            "capex": "972405000",
+            "sbc": "222705000"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "5903887500",
+            "capex": "1062699750",
+            "sbc": "231432390"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "402000000",
+        "cover_date": "2025-02-01",
+        "debt": "900000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "rejected",
+          "reasons": [
+            "insufficient_years:ocf=4",
+            "insufficient_years"
+          ]
+        },
+        "reverse": {
+          "state": "rejected",
+          "reasons": [
+            "insufficient_years:ocf=4",
+            "insufficient_years"
+          ]
+        }
+      }
+    },
+    {
+      "name": "non_positive_median_fcf",
+      "input": {
+        "name": "non_positive_median_fcf",
+        "years": [
+          {
+            "start": "2020-01-01",
+            "end": "2020-12-31",
+            "ocf": "5050000000",
+            "capex": "5499450000",
+            "sbc": "257550000"
+          },
+          {
+            "start": "2021-01-01",
+            "end": "2021-12-31",
+            "ocf": "4998000000",
+            "capex": "5552778000",
+            "sbc": "247401000"
+          },
+          {
+            "start": "2022-01-01",
+            "end": "2022-12-31",
+            "ocf": "5202000000",
+            "capex": "5607756000",
+            "sbc": "262701000"
+          },
+          {
+            "start": "2023-01-01",
+            "end": "2023-12-31",
+            "ocf": "5412160800",
+            "capex": "5953376880",
+            "sbc": "265195879"
+          },
+          {
+            "start": "2024-01-01",
+            "end": "2024-12-31",
+            "ocf": "5358039192",
+            "capex": "6011719973",
+            "sbc": "267901960"
+          }
+        ],
+        "shares": "400000000",
+        "cover_shares": "402000000",
+        "cover_date": "2025-02-01",
+        "debt": "900000000",
+        "as_of": "2025-03-10"
+      },
+      "expected": {
+        "band": {
+          "state": "rejected",
+          "reasons": [
+            "non_positive_fcf"
+          ]
+        },
+        "reverse": {
+          "state": "rejected",
+          "reasons": [
+            "non_positive_base_fcf"
+          ]
+        }
+      }
+    }
+  ]
+}
