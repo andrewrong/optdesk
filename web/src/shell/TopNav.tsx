@@ -11,9 +11,10 @@ import {
 const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
   { label: '结构', path: '/options/structures' },
   { label: '盈亏', path: '/options/result' },
+  { label: '提示', path: '/options/notices' },
 ]
 
-// Nine of the ten items (Decision 3 of docs/design/unified-site.md), in order; the tenth is the menu after them. Fixed shell text: no payload field is read.
+// Ten of the eleven items (Decision 3 of docs/design/unified-site.md), in order; the eleventh is the menu after them. Fixed shell text: no payload field is read.
 const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; icon?: LucideIcon })[] = [
   { label: '首页', path: '/home' },
   { label: '宏观', path: '/macro' },
@@ -24,6 +25,7 @@ const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; ic
   { label: '期权数据', path: '/options/data', prefix: true },
   { label: '期权候选', path: '/options/candidates' },
   { label: '建议', path: '/advice', icon: Lightbulb },
+  { label: '设置', path: '/settings' },
 ]
 
 // The page being viewed: a trailing slash is ignored and `/` counts as `/home`.
