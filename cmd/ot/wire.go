@@ -56,6 +56,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/notify/dryrun"
 	"github.com/andrewrong/optdesk/internal/notify/telegram"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/pages/companies_page"
 	"github.com/andrewrong/optdesk/internal/pages/embed"
 	"github.com/andrewrong/optdesk/internal/pages/macro_page"
 	"github.com/andrewrong/optdesk/internal/pages/macro_rates"
@@ -745,4 +746,45 @@ func wireHeldCalls(cfg runOnceConfig, f *jobFactory, extra *closerSet, log *slog
 		clk clock.Clock) (contracts.Job, error) {
 		return calls(st, rd, rule, watch, clk)
 	}
+}
+
+// secBaseURL is the SEC host of the company facts; the source appends the path itself.
+const secBaseURL = "https://data.sec.gov"
+
+// newSEC builds the SEC source with mk, or answers nil, nil when userAgent is empty (the fundamentals job is then
+// left out). The user agent comes from the environment through the caller; no error carries it.
+func newSEC(mk sources.NewSECFunc, userAgent string, clk clock.Clock) (sources.FactSource, error) {
+	if userAgent == "" || mk == nil {
+		return nil, nil
+	}
+	src, err := mk(sources.SECConfig{BaseURL: secBaseURL, UserAgent: userAgent, Clock: clk})
+	if err != nil {
+		return nil, fmt.Errorf("build SEC source failed: %w", err)
+	}
+	return src, nil
+}
+
+// newCompaniesPage returns base with the fields entry 24 leaves nil set: the facts, the series, the seven compute
+// functions, and Spot and Offers through the instrument id of the symbol (Decision 13). A nil reader leaves its
+// field unset, which the page shows as a gap. Held, Text and Override stay as base has them.
+func newCompaniesPage(base companies_page.Config, in companiesInputs, fn valuationFuncs) companies_page.Config {
+	cfg := base
+	if in.Facts != nil {
+		cfg.Facts = in.Facts
+	}
+	if in.Series != nil {
+		cfg.Series = in.Series
+	}
+	cfg.StandardOf, cfg.BuildFilings, cfg.Band, cfg.ImpliedGrowth = fn.StandardOf, fn.BuildFilings, fn.Band, fn.ImpliedGrowth
+	cfg.ReturnAtPrice, cfg.Questions, cfg.Diagnosis = fn.ReturnAtPrice, fn.Questions, fn.Diagnosis
+	if in.Catalog != nil && in.Names != nil {
+		res := &symbolIDs{catalog: in.Catalog, names: in.Names}
+		if in.Quotes != nil {
+			cfg.Spot = spotOf(res, in.Quotes)
+		}
+		if in.Eod != nil && in.Terms != nil {
+			cfg.Offers = offersOf(res, in.Eod, in.Terms)
+		}
+	}
+	return cfg
 }

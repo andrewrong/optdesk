@@ -45,6 +45,9 @@ type runOnceConfig struct {
 	barsWired bool
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
 	jquantsKey string
+	// factDSN and secAgent belong to the fundamentals job and the valuation step of compute_figures: an empty one
+	// leaves only them out, never the run.
+	factDSN, secAgent string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
 	watch      []jobs.WatchEntry
 	socketPath string
@@ -73,6 +76,8 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		eventsDSN:        env[store.DSNEnvEvents],
 		alphaKey:         env[envAlphaKey],
 		jquantsKey:       env[envJQuantsKey],
+		factDSN:          env[store.DSNEnvFundamental],
+		secAgent:         env[envSECUserAgent],
 		candidateDSN:     env[store.DSNEnvCandidate],
 		accountDSN:       env[store.DSNEnvAccount],
 		ledgerDSN:        env[store.DSNEnvOptionLedger],
@@ -248,6 +253,11 @@ type jobFactory struct {
 	// bars and hist are what bars_refresh and fx_refresh get: the bar store opened with the bar line and the history client.
 	bars bar.BarStore
 	hist broker.HistoryClient
+	// facts is the fact store opened with the fundamental line (nil when the family left it out): the fundamentals
+	// job writes it and the valuation step of compute_figures reads it.
+	facts store.FactStore
+	// fd holds the constructors of the valuation step (zero when deps hold none).
+	fd fundamentalsDeps
 }
 
 // withWiring opens the stores and the broker, wires fred_series, option_eod, quote_snapshot, compute_figures and calendar_refresh, then
