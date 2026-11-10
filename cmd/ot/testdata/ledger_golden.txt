@@ -1,0 +1,26 @@
+ledger alias=a as_of=2026-03-31 rule_version=1
+open (3)
+  ABC C 2026-09-18 strike=55 qty=-2 premium=160.0000 USD commissions=1.3000 USD mark=no_mark
+  BBB P 2026-09-18 strike=3100 qty=-1 premium=4000.0000 JPY commissions=50.0000 JPY mark=no_mark
+  MNO P 2026-09-18 strike=20 qty=-1 premium=70.0000 USD commissions=0.6500 USD mark=no_mark
+closed (1)
+  GHI P 2026-03-20 strike=30 qty=-1 premium=70.0000 USD commissions=1.3000 USD realized=68.7000 USD closed_on=2026-01-10
+assigned (1)
+  ABC P 2026-02-20 strike=50 qty=-2 premium=300.0000 USD commissions=1.3000 USD realized=298.7000 USD closed_on=2026-02-20
+expired (2)
+  DEF P 2026-02-20 strike=40 qty=-1 premium=100.0000 USD commissions=0.6500 USD realized=99.3500 USD closed_on=2026-02-20
+  BBB P 2026-02-20 strike=3000 qty=-1 premium=5000.0000 JPY commissions=50.0000 JPY realized=4950.0000 JPY closed_on=2026-02-20
+exercised (0)
+unresolved (1)
+  transaction 4001
+review (1)
+  transaction 7001
+cycles (1)
+  cycle a:ABC:1003 ABC (USD)
+    shares: 200
+    cost per share (purchase price): 50.0000 USD
+    premium income: 460.0000 USD
+    stock realized: 0.0000 USD
+    stock unrealized: no_mark
+    stock commissions: 1.0000 USD
+    premium outside cycles: 0.0000 USD

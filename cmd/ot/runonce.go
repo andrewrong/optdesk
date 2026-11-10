@@ -37,6 +37,8 @@ type runOnceConfig struct {
 	eventsDSN, alphaKey string
 	// candidateDSN belongs to option_candidates alone: an empty one leaves that job out, never the run.
 	candidateDSN, accountDSN string
+	// ledgerDSN belongs to option_ledger alone: an empty one leaves that job out, never the run.
+	ledgerDSN string
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
 	jquantsKey string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
@@ -69,6 +71,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		jquantsKey:       env[envJQuantsKey],
 		candidateDSN:     env[store.DSNEnvCandidate],
 		accountDSN:       env[store.DSNEnvAccount],
+		ledgerDSN:        env[store.DSNEnvOptionLedger],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -439,6 +442,14 @@ func wireJobs(
 			return err
 		}
 		jobList = append(jobList, jpJob)
+	}
+	// option_ledger follows option_eod (Decision 15); it is left out, never failed, without its line or file.
+	ledgerJob, err := a.optionLedgerJob(ctx, cfg, f, extra)
+	if err != nil {
+		return err
+	}
+	if ledgerJob != nil {
+		jobList = append(jobList, ledgerJob)
 	}
 	snapJob, err := f.quoteSnapshot(brk)
 	if err != nil {

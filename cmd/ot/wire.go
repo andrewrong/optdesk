@@ -38,6 +38,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
+	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
 	"github.com/andrewrong/optdesk/internal/jobs/quotesnapshot"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
 	"github.com/andrewrong/optdesk/internal/notify"
@@ -63,6 +64,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/alphavantage"
+	"github.com/andrewrong/optdesk/internal/sources/flex"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/sources/jquants"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -177,6 +179,11 @@ type deps struct {
 	newAlphaVantage         sources.NewEarningsFunc
 	newJQuants              sources.NewJQuantsFunc
 	openEarningsDates       store.OpenEarningsDateStoreFunc
+	openOptionLedgerStore   store.OpenOptionLedgerFunc
+	newOptionLedgerJob      jobs.NewOptionLedgerJobFunc
+	loadFlexFile            sources.LoadFlexFileFunc
+	newFlexSource           sources.NewFlexFunc
+	importOptionTrader      jobs.ImportOptionTraderFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
 	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
@@ -205,6 +212,8 @@ func newDeps() deps {
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
+	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openOptionLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
+	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
 	d.newRuleParams = ruleparam.New
 	d.openOwnerSet = ownersetpg.Open
 	d.openOptionLedgerRO = openOptionLedgerStore
