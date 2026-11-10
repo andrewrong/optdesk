@@ -21,6 +21,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -37,6 +38,8 @@ type runOnceConfig struct {
 	eventsDSN, alphaKey string
 	// candidateDSN belongs to option_candidates alone: an empty one leaves that job out, never the run.
 	candidateDSN, accountDSN string
+	// ledgerDSN belongs to option_ledger alone: an empty one leaves that job out, never the run.
+	ledgerDSN string
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
 	jquantsKey string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
@@ -69,6 +72,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		jquantsKey:       env[envJQuantsKey],
 		candidateDSN:     env[store.DSNEnvCandidate],
 		accountDSN:       env[store.DSNEnvAccount],
+		ledgerDSN:        env[store.DSNEnvOptionLedger],
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -238,6 +242,56 @@ type jobFactory struct {
 	candidates store.CandidateWriter
 	accounts   store.AccountReader
 	earnRd     store.EarningsDateReader
+	// div is the dividend store of dividend_capture, opened with the events line.
+	div dividend.Store
+}
+
+// jobDividendCapture is the id of the dividend_capture job.
+const jobDividendCapture = "dividend_capture"
+
+// dividendCapture builds dividend_capture over the reference client, the instrument store opened for option_eod,
+// the dividend store and the watch list.
+func (f jobFactory) dividendCapture(ref broker.ReferenceClient) (contracts.Job, error) {
+	j, err := f.d.newDividendCapture(ref, f.inst, f.div, f.div, f.watch, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build dividend_capture job failed: %w", err)
+	}
+	return j, nil
+}
+
+// dividendJob builds dividend_capture beside option_eod with the same broker state: with the broker down at start
+// (the option jobs hold the stand-in) or without the events line the job is left out, with one named line, and the
+// other jobs run as before. It is nil for a deps without the constructors. The dividend store and the reference
+// client are closed by extra when withWiring returns. No error holds a DSN or a path.
+func (a *app) dividendJob(ctx context.Context, cfg runOnceConfig, f *jobFactory, brokerUp bool, extra *closerSet) (contracts.Job, error) {
+	d := f.d
+	if d.newDividendCapture == nil || d.openDividend == nil || d.newReference == nil {
+		return nil, nil
+	}
+	reason := ""
+	switch {
+	case !brokerUp:
+		reason = reasonBrokerDown
+	case cfg.eventsDSN == "":
+		reason = reasonNoEventsDSN
+	}
+	if reason != "" {
+		a.log.Warn("job left out", "component", "ot", "job", jobDividendCapture, "status", reason)
+		return nil, nil
+	}
+	s, err := d.openDividend(ctx, cfg.eventsDSN)
+	if err != nil {
+		return nil, fmt.Errorf("open dividend store with %s failed", store.DSNEnvEvents)
+	}
+	extra.addCloser(s)
+	f.div = s
+	ref, err := d.newReference(ctx, cfg.socketPath, broker.Options{})
+	if err != nil {
+		a.log.Warn("job left out", "component", "ot", "job", jobDividendCapture, "status", reasonBrokerDown)
+		return nil, nil
+	}
+	extra.addCloser(ref)
+	return f.dividendCapture(ref)
 }
 
 // earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the watch list.
@@ -439,6 +493,21 @@ func wireJobs(
 			return err
 		}
 		jobList = append(jobList, jpJob)
+	}
+	divJob, err := a.dividendJob(ctx, cfg, &f, brokerUp, extra)
+	if err != nil {
+		return err
+	}
+	if divJob != nil {
+		jobList = append(jobList, divJob)
+	}
+	// option_ledger follows option_eod (Decision 15); it is left out, never failed, without its line or file.
+	ledgerJob, err := a.optionLedgerJob(ctx, cfg, f, extra)
+	if err != nil {
+		return err
+	}
+	if ledgerJob != nil {
+		jobList = append(jobList, ledgerJob)
 	}
 	snapJob, err := f.quoteSnapshot(brk)
 	if err != nil {
