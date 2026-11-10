@@ -1,0 +1,10 @@
+{
+  "marker": "synthetic-v1",
+  "files": [
+    "blocked.ts",
+    "bad-version.json",
+    "gap.ts",
+    "ok.ts",
+    "stale.ts"
+  ]
+}

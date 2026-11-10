@@ -25,7 +25,7 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 describe('TopNav', () => {
-  it('has eight links with the fixed labels and paths', async () => {
+  it('has nine links with the fixed labels and paths', async () => {
     await showAt('/home')
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('主导航')
     expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
@@ -36,6 +36,7 @@ describe('TopNav', () => {
       ['风险', '/risk'],
       ['期权', '/options'],
       ['期权数据', '/options/data'],
+      ['期权候选', '/options/candidates'],
       ['建议', '/advice'],
     ])
   })
