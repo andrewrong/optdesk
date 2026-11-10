@@ -309,14 +309,21 @@ func (f jobFactory) fred() (contracts.Job, error) {
 }
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	build := f.d.newOptionEodWatch
+	return buildOptionEod(f.d, b, f.inst, f.eod, f.watch, f.clk)
+}
+
+// buildOptionEod builds option_eod over the watch list: the one constructor path of run-once, the scheduler and
+// the dry run.
+func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
+	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+	build := d.newOptionEodWatch
 	if build == nil {
 		// A deps literal of a test that fakes only newOptionEod; newDeps always sets newOptionEodWatch.
 		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, _ []jobs.WatchEntry, c clock.Clock) (contracts.Job, error) {
-			return f.d.newOptionEod(b, r, w, c)
+			return d.newOptionEod(b, r, w, c)
 		}
 	}
-	j, err := build(b, f.inst, f.eod, f.watch, f.clk)
+	j, err := build(b, r, w, watch, clk)
 	if err != nil {
 		return nil, fmt.Errorf("build option_eod job failed: %w", err)
 	}

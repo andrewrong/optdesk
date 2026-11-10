@@ -331,3 +331,66 @@ func TestDryRunQuoteSnapshotNoQuoteIsReported(t *testing.T) {
 		t.Fatalf("in-window no quote not reported: %q", out.String())
 	}
 }
+
+const dryWatchTwoUS = `
+[[underlying]]
+issuer = "cik:0000320193"
+market = "US"
+symbol = "AAPL"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 1001
+
+[[underlying]]
+issuer = "cik:0000789019"
+market = "US"
+symbol = "MSFT"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 1002
+`
+
+func TestDryRunBuildsOptionEodOverWatchList(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	a, _ := dryApp(t, &ran)
+	a.deps.readFile = func(string) ([]byte, error) { return []byte(dryWatchTwoUS), nil }
+	var got []jobs.WatchEntry
+	a.deps.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+		t.Error("newOptionEod called")
+		return nil, errors.New("unexpected")
+	}
+	a.deps.newOptionEodWatch = func(_ broker.Broker, _ store.InstrumentResolver, w store.OptionEodWriter,
+		watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+		got = watch
+		return dryJob{id: jobOptionEod, keys: []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "AAPL"}},
+			clk: clk, w: w, rows: map[string][]int{"AAPL": {1}}, ran: &ran, mu: &sync.Mutex{}}, nil
+	}
+	if err := runOnce(a, []string{"--dry-run", "--job", "option_eod", "--day", "2026-11-10"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Contract.Symbol != "AAPL" || got[1].Contract.Symbol != "MSFT" {
+		t.Fatalf("watch given to option_eod: %+v", got)
+	}
+}
+
+func TestDryRunRefusesBrokenWatch(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	a, _ := dryApp(t, &ran)
+	a.deps.readFile = func(string) ([]byte, error) { return []byte("[[underlying]\nbroken"), nil }
+	a.deps.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
+		t.Error("dialBroker called")
+		return unreachableBroker{}, nil
+	}
+	_, want := loadWatch(a)
+	if want == nil {
+		t.Fatal("fixture must be refused by loadWatch")
+	}
+	err := runOnce(a, []string{"--dry-run", "--day", "2026-11-10"})
+	if err == nil || err.Error() != want.Error() {
+		t.Fatalf("err %v, want %v", err, want)
+	}
+}
