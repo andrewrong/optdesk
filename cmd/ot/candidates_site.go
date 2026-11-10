@@ -19,6 +19,11 @@ const siteCandidatesRoute = "options/candidates"
 // candidatesName is the name of the page option_candidates_page, which pageNamed selects for ot page.
 const candidatesName = "option_candidates_page"
 
+func init() {
+	registerPage(pageFamily{name: candidatesName, route: siteCandidatesRoute, order: 10,
+		build: buildCandidates, named: candidatesPageNamed})
+}
+
 // candidateStore is the candidate store as the page reads it: the reader and the close of the connections.
 type candidateStore interface {
 	store.CandidateReader

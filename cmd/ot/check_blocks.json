@@ -1,0 +1,12 @@
+{
+  "pages": {
+    "report_page": ["actions", "account_moves", "risks", "market_watch", "global_assets"],
+    "market_page": ["weather", "indices", "breadth", "term"],
+    "macro_rates": ["series"],
+    "option_candidates_page": ["groups"],
+    "option_notices_page": ["accounts"],
+    "option_tracking_page": ["accounts"],
+    "option_data_page": ["chain", "quote_series"],
+    "settings_page": ["params", "rows", "history"]
+  }
+}

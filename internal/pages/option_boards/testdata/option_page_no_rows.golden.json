@@ -1,0 +1,118 @@
+{
+  "schema": "option_page",
+  "schema_version": 1,
+  "run_id": "run-1",
+  "build_id": "build-1",
+  "scope": "options",
+  "generated_at": "2026-11-10T09:30:00+08:00",
+  "data_times": [],
+  "run_status": "partial",
+  "title": "期权",
+  "stale": {
+    "data_time": "2026-11-10T00:00:00+08:00",
+    "stale_after": "2026-11-10T00:00:00+08:00",
+    "text": "没有候选行,候选任务尚未存入"
+  },
+  "markets": [
+    {
+      "market": "US",
+      "label": "美股",
+      "currency": "USD",
+      "headline": "0 个值得看。",
+      "cards_title": "今日机会",
+      "cards": [],
+      "candidates_title": "候选表",
+      "candidates": {
+        "columns": [
+          {
+            "id": "symbol",
+            "label": "标的",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "verdict",
+            "label": "判定",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "annualised",
+            "label": "年化",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "strike_pct",
+            "label": "strike %",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "dte",
+            "label": "DTE",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "delta",
+            "label": "Δ",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "bid_ask",
+            "label": "Bid/Ask",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "spread_pct",
+            "label": "spread %",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "volume",
+            "label": "Vol",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "open_interest",
+            "label": "OI",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "ivp",
+            "label": "IVP",
+            "align": "right",
+            "hint": "IV 在过去一年中的百分位,尚无来源"
+          },
+          {
+            "id": "earnings",
+            "label": "E",
+            "align": "left",
+            "hint": null
+          }
+        ],
+        "rows": []
+      },
+      "all_link": {
+        "text": "全部 0 个机会",
+        "target": "candidates-US"
+      },
+      "chain": null
+    }
+  ],
+  "notes": [
+    "日本期权:后续设计 (option-candidates-jp)"
+  ],
+  "gaps": [
+    {
+      "reason": "no_data",
+      "text": "没有候选行,候选任务尚未存入"
+    }
+  ]
+}

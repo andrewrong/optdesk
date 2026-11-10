@@ -79,6 +79,13 @@ type settingsExtras struct {
 	confirm *settings_page.Confirm
 }
 
+func init() {
+	registerPage(pageFamily{route: siteSettingsRoute,
+		build: func(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
+			return buildSettings(ctx, a, clk, dayFlag, rd, savedNotice(queryOf(ctx)))
+		}})
+}
+
 // buildSettings builds settings_page per request for the day of dayFlag or today, over the readers of the site
 // (rd.catalog, rd.names, and rd.owner, opened once per process; a nil owner gives the gap no_reader) and the
 // registry of deps.newRuleParams. With rd.edit the page carries the token of the form and the notice of a save.

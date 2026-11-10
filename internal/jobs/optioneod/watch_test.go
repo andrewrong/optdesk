@@ -117,16 +117,17 @@ func seq(from, to, step int) []string {
 func TestStrikeRangeFromBuyPrice(t *testing.T) {
 	t.Parallel()
 	got := strikesFor(t, "5", "100")
-	if want := seq(80, 130, 5); !reflect.DeepEqual(got, want) {
-		t.Fatalf("strikes %v, want the 11 strikes %v", got, want)
+	if want := seq(80, 135, 5); !reflect.DeepEqual(got, want) {
+		t.Fatalf("strikes %v, want the 12 strikes %v", got, want)
 	}
 }
 
 func TestMaxStrikesCap(t *testing.T) {
 	t.Parallel()
 	got := strikesFor(t, "1", "100")
-	if want := seq(88, 111, 1); len(got) != 24 || !reflect.DeepEqual(got, want) {
-		t.Fatalf("strikes %v, want the 24 strikes 88 to 111", got)
+	want := append(seq(88, 111, 1), seq(128, 131, 1)...)
+	if len(got) != 28 || !reflect.DeepEqual(got, want) {
+		t.Fatalf("strikes %v, want the 28 strikes 88 to 111 and 128 to 131", got)
 	}
 }
 

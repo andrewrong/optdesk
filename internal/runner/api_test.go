@@ -67,8 +67,6 @@ func (f *fakeBackfiller) Backfill(_ context.Context, day contracts.Day, datasets
 // describe is a caller: it branches on Refused, never on an error.
 func describe(res runner.BackfillResult) string {
 	switch res.Refused {
-	case runner.RefusedAheadOfCursor:
-		return "run-once first"
 	case runner.RefusedNoPlan:
 		return "no plan"
 	default:
@@ -84,7 +82,6 @@ func TestBackfillerRefusalIsDataWithNilError(t *testing.T) {
 		wantStr string
 		wantTxt string
 	}{
-		{"ahead of cursor", runner.RefusedAheadOfCursor, "ahead_of_cursor", "run-once first"},
 		{"no plan", runner.RefusedNoPlan, "no_plan", "no plan"},
 		{"not refused", "", "", "done"},
 	}

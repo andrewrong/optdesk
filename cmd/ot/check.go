@@ -19,7 +19,7 @@ func init() {
 	register("check", func(a *app, args []string) error { return runCheck(a, args, checkServices) })
 }
 
-const checkUsage = "usage: ot check scheduler|serve|pyside [--net]"
+const checkUsage = "usage: ot check scheduler|serve|pyside [--net] [--repo-dir dir]"
 
 // Statuses of a Result line.
 const (
@@ -79,6 +79,9 @@ func explainedReasonAllowed(reason string) bool {
 // checkOpts is what every service function receives.
 type checkOpts struct {
 	Net bool // --net: the checks that call the public network run
+
+	// RepoDir is --repo-dir (default "."): the checkout whose contracts/schemas the serve check loads.
+	RepoDir string
 }
 
 // checker collects the lines of a run and remembers whether one was FAIL.
@@ -140,6 +143,7 @@ func runCheck(a *app, args []string, services map[string]checkService) error {
 	fs.SetOutput(io.Discard)
 	var opts checkOpts
 	fs.BoolVar(&opts.Net, "net", false, "run the checks that call the public network")
+	fs.StringVar(&opts.RepoDir, "repo-dir", ".", "repository checkout whose contracts/schemas are loaded")
 	if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 {
 		return errors.New(checkUsage)
 	}
