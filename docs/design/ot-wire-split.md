@@ -37,7 +37,7 @@ One module, `ot` (`cmd/**`, `docs/contracts/ot.md`, `docs/contracts/ot/**`), no 
 
 ## Interface
 
-None. `ot` is the composition root and one package; `jobFamily`, `pageFamily`, `jobCtx` and the registries are unexported and are tested in `cmd/ot`. A change of these types is an edit of `jobreg.go` or `pagereg.go`, owned by the issues of this design only.
+None. `ot` is the composition root and one package; `jobFamily`, `pageFamily`, `jobCtx` and the registries are unexported and are tested in `cmd/ot`. A change of these types is an edit of `jobreg.go` or `pagereg.go`, owned by the issues of this design only, with one amendment agreed with `docs/design/option-page-builders.md` (Decision 10): its entry 6 adds the optional field `buildKey` to `pageFamily` and the lookup of it in `pagereg.go` and in `extraPageBuilder` (`site.go`), after this design's entry 2 has merged; no other edit of these types is open to another design.
 
 ## Issues
 
@@ -93,7 +93,7 @@ Each issue below lists its new `Files:` line, valid once the issue that provides
 - #1188 position_marks: `cmd/ot/positionmarks.go`, `cmd/ot/positionmarks_test.go`, `docs/contracts/ot/jobs/position_marks.md` (order 140; its acceptance 1 "`cmd/ot/wire.go` registers `position_marks`" becomes "`cmd/ot/positionmarks.go` calls `registerJob` with id `position_marks`", acceptance 4 names `docs/contracts/ot/jobs/position_marks.md`).
 - #1175 POST /owner-settings: `cmd/ot/settings.go`, `cmd/ot/settings_test.go`, `cmd/ot/serve.go`, `cmd/ot/serve_test.go`, `docs/contracts/ot/pages/settings_page.md` (it keeps `serve.go` because the flag `--owner-edit` and the method guard are the serve command's; the route's handler is registered by the page family file `settings.go`; `site.go`, `site_test.go`, `env.go`, `wire.go` leave the list; if the POST needs a hook the registry lacks, that is reported, not edited).
 - #1203 session-day reader for the tracking page: `cmd/ot/tracking_site.go`, `cmd/ot/tracking_site_test.go`, `cmd/ot/site_sessions_test.go`, `docs/contracts/ot/pages/option_tracking_page.md` (a `siteOpeners` entry in `tracking_site.go`; `site.go` leaves the list).
-- Any later issue that registers a job or a page: its own `wire_<family>.go` or page file, its own test file and its own document under `docs/contracts/ot/`; an issue whose `Files:` names `wire.go`, `runonce.go`, `site.go`, `wire_test.go` or `ot.md` for that purpose is wrong and is reported.
+- Any later issue that registers a job or a page: its own `wire_<family>.go` or page file, its own test file and its own document under `docs/contracts/ot/`; an issue whose `Files:` names `wire.go`, `runonce.go`, `site.go`, `wire_test.go` or `ot.md` for that purpose is wrong and is reported (the one exception is entry 6 of `docs/design/option-page-builders.md`, which names `site.go` and `pagereg.go` for the `buildKey` hook, not to register a page).
 
 ### Wave boundary
 
