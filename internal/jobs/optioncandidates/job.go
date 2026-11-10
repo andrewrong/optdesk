@@ -238,14 +238,8 @@ func WithSettingsVersion(jb contracts.Job, f jobs.SettingsVersionFunc) (contract
 	default:
 		return nil, errors.New("optioncandidates: WithSettingsVersion takes a job built by New or NewWithCalls")
 	}
-	inner := base.st.Candidates
-	if s, ok := inner.(*versionWriter); ok {
-		inner = s.inner
-	}
 	if f != nil {
-		base.st.Candidates = &versionWriter{inner: inner, f: f}
-	} else {
-		base.st.Candidates = inner
+		base.st.Candidates = &versionWriter{inner: base.st.Candidates, f: f}
 	}
 	return jb, nil
 }
