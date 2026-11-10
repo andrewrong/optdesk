@@ -373,7 +373,7 @@ func withWiring(
 	defer closeEvents()
 	brk, brokerUp := dialOrStandIn(ctx, a, cfg.socketPath)
 	defer func() { _ = brk.Close() }()
-	var extra brokerSet
+	var extra closerSet
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
 		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
@@ -384,7 +384,7 @@ func withWiring(
 // is left out, with one named line, when the XTKS calendar answers an error for today (Decision 13).
 func wireJobs(
 	ctx context.Context, a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
-	extra *brokerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
+	extra *closerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
 	fredJob, err := f.fred()
 	if err != nil {
@@ -420,8 +420,16 @@ func wireJobs(
 	if err != nil {
 		return err
 	}
+	jobList = append(jobList, snapJob, figJob, calJob, earnJob)
+	acctJob, err := a.accountCapture(ctx, f, extra)
+	if err != nil {
+		return err
+	}
+	if acctJob != nil {
+		jobList = append(jobList, acctJob)
+	}
 	return use(wiring{
-		ledger: ledger, cal: cal, jobs: append(jobList, snapJob, figJob, calJob, earnJob), brokerUp: brokerUp, factory: f,
+		ledger: ledger, cal: cal, jobs: jobList, brokerUp: brokerUp, factory: f,
 		earn: earnJob, earningsOff: cfg.earningsOff(),
 		dial: func(ctx context.Context) (broker.Broker, error) {
 			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
@@ -434,22 +442,25 @@ func wireJobs(
 	})
 }
 
-// brokerSet holds the brokers dialed after start, so that withWiring closes them.
-type brokerSet struct {
+// closerSet holds the brokers, readers and stores opened after start, so that withWiring closes them.
+type closerSet struct {
 	mu sync.Mutex
-	bs []broker.Broker
+	cs []io.Closer
 }
 
-func (s *brokerSet) add(b broker.Broker) {
+func (s *closerSet) add(b broker.Broker) { s.addCloser(b) }
+
+// addCloser holds anything else withWiring opens after start (the account readers and store).
+func (s *closerSet) addCloser(c io.Closer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.bs = append(s.bs, b)
+	s.cs = append(s.cs, c)
 }
 
-func (s *brokerSet) closeAll() {
+func (s *closerSet) closeAll() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, b := range s.bs {
+	for _, b := range s.cs {
 		_ = b.Close()
 	}
 }
