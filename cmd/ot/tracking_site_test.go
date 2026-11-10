@@ -259,3 +259,17 @@ func TestPageCommandBuildsTracking(t *testing.T) {
 		t.Fatalf("site %s\ncommand %s", site, out.String())
 	}
 }
+
+type fakeSessions struct{ store.SessionDayReader }
+
+func TestTrackingReadersSessions(t *testing.T) {
+	t.Parallel()
+	s := &fakeSessions{}
+	got := trackingReadersOf(siteReaders{sessions: s})
+	if got.Sessions != store.SessionDayReader(s) {
+		t.Fatalf("Sessions %v", got.Sessions)
+	}
+	if trackingReadersOf(siteReaders{}).Sessions != nil {
+		t.Fatal("nil sessions not nil")
+	}
+}
