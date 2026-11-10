@@ -20,6 +20,11 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
+// init adds ot candidates to the exclusions of the leak table (env_test.go) from this file.
+func init() {
+	leakExcluded["candidates"] = "the leak deps hold no candidate opener; its open error is withheld and TestCandidatesOpenErrorWithheld covers it"
+}
+
 const candidateEnv = "OT_PG_DSN_CANDIDATE=cand-dsn\n"
 
 // fakeCandidateRW is the candidate store of the job and of the command; it records its close.
