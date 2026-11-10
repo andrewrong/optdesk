@@ -234,6 +234,7 @@ var leakExcluded = map[string]string{
 	"version":         "takes no DSN",
 	"help":            "takes no DSN",
 	"compare-figures": "needs four input files, which a static row cannot give; TestCompareFiguresWithholdsDSN covers its open error",
+	"check":           "prints host/database of the pages DSN and no other part; TestCheckHeaderNoSecret covers it",
 	"account-import":  "needs an input file in DIR, which a static row cannot give; its open error is withheld and TestAccountImportOpenErrorWithheld covers it",
 }
 

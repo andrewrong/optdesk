@@ -10,7 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-const checkSecretDSN = "postgres://ot_ro_pages:s3cretpw@db.example:5432/optdesk?sslmode=require&password=s3cretpw"
+const checkSecretDSN = "postgres://ot_ro_pages:s3cretpw@dbhost:5432/optdesk?sslmode=require&password=s3cretpw"
 
 // checkApp is an app with a fixed environment and a recording gap-reader opener.
 func checkApp(t *testing.T, env map[string]string, out *bytes.Buffer, read *[]string, opened *[]string) *app {
@@ -45,7 +45,7 @@ func TestCheckHeaderNoSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(out.String(), "\n")
-	if lines[0] != "OT_HOME=/srv/ot" || lines[1] != "pg=db.example/optdesk" {
+	if lines[0] != "OT_HOME=/srv/ot" || lines[1] != "pg=dbhost/optdesk" {
 		t.Fatalf("header %q", lines[:2])
 	}
 	for _, bad := range []string{"ot_ro_pages", "s3cretpw", "sslmode", "5432", "postgres://"} {
