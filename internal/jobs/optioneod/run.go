@@ -237,14 +237,31 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	if err != nil {
 		return nil, asTyped(err, contracts.Permanent)
 	}
+	stock := r.j.m.isStock(u)
 	if len(chains) == 0 {
+		if stock {
+			return nil, r.j.noValue("no listed options", u)
+		}
 		return nil, newErr(contracts.Permanent, "empty selection for %s", u.Symbol)
 	}
-	chain, class, ok := r.j.m.chainOfRoot(chains, u, r.j.root(u.Symbol))
-	if !ok {
-		return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
+	var chain broker.Chain
+	if stock {
+		var terr contracts.TypedError
+		if chain, terr = r.j.stockChain(chains, u); terr != nil {
+			return nil, terr
+		}
+	} else {
+		c, class, ok := r.j.m.chainOfRoot(chains, u, r.j.root(u.Symbol))
+		if !ok {
+			return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
+		}
+		chain = c
 	}
-	out := selectContracts(chain, u, string(r.day), price, r.j.m)
+	sel := r.j.m
+	if stock {
+		sel = sel.forStock()
+	}
+	out := selectContracts(chain, u, string(r.day), price, sel)
 	if r.j.acct != nil {
 		held, err := r.j.heldCalls(ctx, u.Symbol, r.dayTime)
 		if err != nil {
@@ -253,9 +270,38 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 		out = addHeld(out, chain, u, held)
 	}
 	if len(out) == 0 {
+		if stock {
+			return nil, r.j.noValue("no contract in window", u)
+		}
 		return nil, newErr(contracts.Permanent, "empty selection for %s", u.Symbol)
 	}
 	return out, nil
+}
+
+// noValue is the final NoValue of a stock key; the text names the job and the symbol only.
+func (j *job) noValue(text string, u underlying) contracts.TypedError {
+	return newErr(contracts.NoValue, "%s %s: %s", j.m.ID, u.Symbol, text)
+}
+
+// stockChain picks the chain of a stock: the first on the [stock] chain_exchange whose trading class is the root of
+// the code and whose multiplier is the [stock] multiplier. No chain of the class is "no listed options"; chains of the
+// class with another multiplier only are "no chain of multiplier 100". Both are final.
+func (j *job) stockChain(chains []broker.Chain, u underlying) (broker.Chain, contracts.TypedError) {
+	class := j.root(u.Symbol)
+	other := false
+	for _, c := range chains {
+		if c.Exchange != j.m.Stock.ChainExchange || c.TradingClass != class {
+			continue
+		}
+		if c.Multiplier == j.m.Stock.Multiplier {
+			return c, nil
+		}
+		other = true
+	}
+	if other {
+		return broker.Chain{}, j.noValue("no chain of multiplier "+j.m.Stock.Multiplier, u)
+	}
+	return broker.Chain{}, j.noValue("no listed options", u)
 }
 
 // listed resolves every pair; a pair that is not listed is dropped.
@@ -290,7 +336,11 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture
 		if err != nil {
 			return asTyped(err, contracts.Permanent)
 		}
-		spec := store.InstrumentSpec{Type: "option", Name: optionName(c), Currency: u.Currency, MIC: u.MIC, CalendarID: u.CalendarID,
+		mic := u.MIC
+		if r.j.m.isStock(u) {
+			mic = r.j.m.Stock.OptionMIC
+		}
+		spec := store.InstrumentSpec{Type: "option", Name: optionName(c), Currency: u.Currency, MIC: mic, CalendarID: u.CalendarID,
 			Status: "active", PriceIncrement: r.j.m.OptionPriceIncrement, LotSize: c.Multiplier}
 		key := store.Identifier{Scheme: "ibkr_conid", Value: strconv.FormatInt(c.ConID, 10)}
 		ids[i], err = r.j.res.ResolveInstrument(ctx, key, spec, []store.Identifier{{Scheme: "osi", Value: osi}})

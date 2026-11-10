@@ -113,6 +113,38 @@ func TestBackfillerRefusalIsDataWithNilError(t *testing.T) {
 	}
 }
 
+type fakeKeyGapSyncer struct {
+	gotDay contracts.Day
+	err    error
+}
+
+func (f *fakeKeyGapSyncer) SyncKeys(_ context.Context, day contracts.Day) error {
+	f.gotDay = day
+	return f.err
+}
+
+func TestBackfillInWindowAndKeyGapSyncerContract(t *testing.T) {
+	t.Parallel()
+	inWindow := []contracts.ExpectedKey{{DatasetID: "DGS10", SubjectKey: "x"}}
+	f := &fakeBackfiller{result: runner.BackfillResult{InWindow: inWindow}}
+	res, err := f.Backfill(context.Background(), "2026-11-09", nil)
+	if err != nil || res.Refused != "" || len(res.InWindow) != 1 || res.InWindow[0] != inWindow[0] {
+		t.Fatalf("InWindow = %v, refused %q, err %v", res.InWindow, res.Refused, err)
+	}
+
+	g := &fakeKeyGapSyncer{}
+	var newFn runner.NewKeyGapSyncerFunc = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyGapSyncer {
+		return g
+	}
+	s := newFn(nil, nil, clockwork.NewFakeClock())
+	if err := s.SyncKeys(context.Background(), "2026-11-09"); err != nil {
+		t.Fatalf("SyncKeys: %v", err)
+	}
+	if g.gotDay != "2026-11-09" {
+		t.Fatalf("day = %q", g.gotDay)
+	}
+}
+
 // fakeWindowed is a job-side type: it declares its window with plain values.
 type fakeWindowed struct {
 	calendarID  string

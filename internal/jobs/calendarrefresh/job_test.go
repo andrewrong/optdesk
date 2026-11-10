@@ -3,9 +3,11 @@ package calendarrefresh
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,6 +37,7 @@ type fakeStore struct {
 	rows    map[string]contracts.SessionDay
 	upserts [][]contracts.SessionDay
 	err     error
+	readErr error
 }
 
 func dayKey(r contracts.SessionDay) string { return r.SessionDay.Format("2006-01-02") }
@@ -48,6 +51,9 @@ func newStore(rows ...contracts.SessionDay) *fakeStore {
 }
 
 func (s *fakeStore) SessionDays(_ context.Context, cal string, from, to contracts.Day) ([]contracts.SessionDay, error) {
+	if s.readErr != nil {
+		return nil, s.readErr
+	}
 	var out []contracts.SessionDay
 	for k, r := range s.rows {
 		if r.CalendarID == cal && k >= string(from) && k <= string(to) {
@@ -325,4 +331,87 @@ func TestScheduleValues(t *testing.T) {
 	if !strings.Contains(r.j.ID(), "calendar_refresh") {
 		t.Fatal(r.j.ID())
 	}
+}
+
+// recHandler is a slog.Handler that keeps the attributes of every record it receives.
+type recHandler struct {
+	mu   *sync.Mutex
+	recs *[]map[string]string
+}
+
+func (h recHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (h recHandler) Handle(_ context.Context, r slog.Record) error {
+	m := map[string]string{"msg": r.Message, "level": r.Level.String()}
+	r.Attrs(func(a slog.Attr) bool { m[a.Key] = a.Value.String(); return true })
+	h.mu.Lock()
+	*h.recs = append(*h.recs, m)
+	h.mu.Unlock()
+	return nil
+}
+func (h recHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h recHandler) WithGroup(string) slog.Handler      { return h }
+
+type leakyErr struct {
+	kind contracts.ErrorKind
+}
+
+func (e leakyErr) Error() string             { return "store said 99999" }
+func (e leakyErr) Kind() contracts.ErrorKind { return e.kind }
+
+func TestRunFailureLogsStepKind(t *testing.T) {
+	t.Parallel()
+	fresh := []contracts.SessionDay{sd(t, "2026-11-09", false)}
+	cases := []struct {
+		name, step, kind string
+		setup            func(st *fakeStore, r *rig)
+	}{
+		{"read_store typed", "read_store", "retryable", func(st *fakeStore, _ *rig) { st.readErr = leakyErr{contracts.Retryable} }},
+		{"read_store untyped", "read_store", "unknown", func(st *fakeStore, _ *rig) { st.readErr = errors.New("store said 99999") }},
+		{"read_source", "read_source", "permanent", func(_ *fakeStore, r *rig) { r.src.err = leakyErr{contracts.Permanent} }},
+		{"empty_source", "empty_source", "permanent", func(_ *fakeStore, r *rig) { r.src.rows = nil }},
+		{"write", "write", "retryable", func(st *fakeStore, _ *rig) { st.err = leakyErr{contracts.Retryable} }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			st := newStore()
+			r := newRig(t, st, fresh)
+			c.setup(st, r)
+			var recs []map[string]string
+			r.j.log = slog.New(recHandler{&sync.Mutex{}, &recs})
+			if res := r.run(); res.Err == nil {
+				t.Fatal("want an error")
+			}
+			if len(recs) != 1 {
+				t.Fatalf("records = %v", recs)
+			}
+			m := recs[0]
+			if m["msg"] != "run failed" || m["level"] != "WARN" || m["step"] != c.step || m["kind"] != c.kind || len(m) != 4 {
+				t.Fatalf("record = %v", m)
+			}
+			for _, v := range m {
+				if strings.Contains(v, "99999") {
+					t.Fatalf("record leaks error text: %v", m)
+				}
+			}
+		})
+	}
+	t.Run("postcondition", func(t *testing.T) {
+		t.Parallel()
+		st := newStore()
+		r := newRig(t, st, fresh)
+		var recs []map[string]string
+		r.j.log = slog.New(recHandler{&sync.Mutex{}, &recs})
+		if _, err := r.j.Postcondition(context.Background(), "not-a-day", datasetID, "XNYS"); err == nil {
+			t.Fatal("want an error")
+		}
+		st.readErr = leakyErr{contracts.Retryable}
+		if _, err := r.j.Postcondition(context.Background(), "2026-11-09", datasetID, "XNYS"); err == nil {
+			t.Fatal("want an error")
+		}
+		if len(recs) != 2 || recs[0]["step"] != "postcondition_day" || recs[0]["kind"] != "unknown" ||
+			recs[1]["step"] != "postcondition_read" || recs[1]["kind"] != "retryable" {
+			t.Fatalf("records = %v", recs)
+		}
+	})
 }

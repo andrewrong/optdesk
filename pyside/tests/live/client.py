@@ -64,3 +64,10 @@ class LiveClient:
 
     def bars(self, request: api.BarsRequest) -> api.BarsResponse:
         return self._market.Bars(request, timeout=CHAINS_TIMEOUT_S)
+
+    def recent_bars(self, contract: api.ContractSpec, days: int) -> list[api.Bar]:
+        """The last `days` daily trade bars of a resolved contract, oldest first."""
+        request = api.BarsRequest(
+            contract=contract, kind=api.BAR_KIND_TRADES, duration_days=days, end_day=""
+        )
+        return list(self.bars(request).bars)

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -44,6 +45,7 @@ type job struct {
 	diff  clock.SessionDayDiffer
 	clk   clock.Clock
 	obs   jobs.CalendarObserver
+	log   *slog.Logger
 }
 
 type typedError struct {
@@ -64,6 +66,17 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 	return &typedError{kind: kind, err: err}
 }
 
+// logFailure logs the step and the error kind of a failed run; the kind is unknown when err has none. It
+// never logs the error text, which can carry a store address or a key.
+func (j *job) logFailure(step string, err error) {
+	kind := "unknown"
+	var k interface{ Kind() contracts.ErrorKind }
+	if errors.As(err, &k) {
+		kind = string(k.Kind())
+	}
+	j.log.Warn("run failed", "step", step, "kind", kind)
+}
+
 // New builds the calendar_refresh job from the embedded job.toml. A nil observer is allowed.
 func New(src clock.SessionSource, st store.SessionDayStore, diff clock.SessionDayDiffer, clk clock.Clock, obs jobs.CalendarObserver) (contracts.Job, error) {
 	if src == nil || st == nil || diff == nil || clk == nil {
@@ -80,7 +93,7 @@ func New(src clock.SessionSource, st store.SessionDayStore, diff clock.SessionDa
 	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, sched: s, src: src, st: st, diff: diff, clk: clk, obs: obs}, nil
+	return &job{m: m, sched: s, src: src, st: st, diff: diff, clk: clk, obs: obs, log: slog.Default()}, nil
 }
 
 // ID is the job id of the manifest.
@@ -107,14 +120,18 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 
 	stored, err := j.st.SessionDays(ctx, cal, from, to)
 	if err != nil {
+		j.logFailure("read_store", err)
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
 	}
 	fresh, err := j.src.SessionDays(ctx, cal, from, to)
 	if err != nil {
+		j.logFailure("read_source", err)
 		return contracts.JobResult{Err: asTyped(err, contracts.Permanent)}
 	}
 	if len(fresh) == 0 {
-		return contracts.JobResult{Err: &typedError{kind: contracts.Permanent, err: errors.New("calendarrefresh: the source returned no session days")}}
+		err := &typedError{kind: contracts.Permanent, err: errors.New("calendarrefresh: the source returned no session days")}
+		j.logFailure("empty_source", err)
+		return contracts.JobResult{Err: err}
 	}
 	res := contracts.JobResult{Returned: len(fresh), Usable: len(fresh)}
 	var rows []contracts.SessionDay
@@ -130,6 +147,7 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 		return res
 	}
 	if err := j.st.UpsertSessionDays(ctx, rows); err != nil {
+		j.logFailure("write", err)
 		res.Usable = 0
 		res.Err = asTyped(err, contracts.Retryable)
 	}
@@ -141,10 +159,12 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 func (j *job) Postcondition(ctx context.Context, day, _, subjectKey string) (bool, error) {
 	d, err := time.Parse(dayLayout, day)
 	if err != nil {
+		j.logFailure("postcondition_day", err)
 		return false, asTyped(err, contracts.Permanent)
 	}
 	rows, err := j.st.SessionDays(ctx, subjectKey, contracts.Day(day), shift(d, daysAfter))
 	if err != nil {
+		j.logFailure("postcondition_read", err)
 		return false, asTyped(err, contracts.Retryable)
 	}
 	have := make(map[string]bool, len(rows))
