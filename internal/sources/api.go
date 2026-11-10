@@ -158,3 +158,47 @@ type CodedError interface {
 // NewJQuantsFunc is the constructor of the J-Quants earnings source (internal/sources/jquants.New). It
 // reads EarningsConfig.Symbols (4-digit JP codes) and makes one call per symbol per Fetch.
 type NewJQuantsFunc func(EarningsConfig) (EarningsSource, error)
+
+// Cursor is the position of a fact fetch: the last day already fetched. The file that holds it is the
+// caller's; this package only names the contract.
+type Cursor interface {
+	// Last returns the last day saved; the zero value with a nil error means none was saved.
+	Last() (contracts.Day, error)
+	Save(contracts.Day) error
+}
+
+// FactPlan names the issuers to fetch (issuer text such as cik:<10 digits>) and the inclusive range of
+// filing days to keep.
+type FactPlan struct {
+	Subjects []string
+	From     contracts.Day
+	To       contracts.Day
+}
+
+// FactSource returns the fundamental facts of a plan with provenance; it returns contracts.TypedError
+// values only.
+type FactSource interface {
+	Fetch(ctx context.Context, plan FactPlan) ([]contracts.FundamentalFact, error)
+}
+
+// SECConfig holds the arguments of NewSECFunc. UserAgent is passed in by the caller (cmd/ot reads it
+// from the environment); this package reads no environment, and no error carries it.
+type SECConfig struct {
+	BaseURL   string
+	UserAgent string
+	Clock     clock.Clock
+}
+
+// EDINETConfig holds the arguments of NewEDINETFunc. APIKey is passed in by the caller.
+type EDINETConfig struct {
+	BaseURL string
+	APIKey  string
+	Clock   clock.Clock
+}
+
+// NewSECFunc is the constructor of the SEC source (internal/sources/sec.New).
+type NewSECFunc func(SECConfig) (FactSource, error)
+
+// NewEDINETFunc is the constructor of the EDINET source (declared here; implemented by entry 18 of
+// docs/design/valuation.md).
+type NewEDINETFunc func(EDINETConfig) (FactSource, error)

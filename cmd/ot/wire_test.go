@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -17,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
 func TestNewDepsFilled(t *testing.T) {
@@ -465,5 +468,17 @@ func TestOptionNoticesPageWiresRule(t *testing.T) {
 	}
 	if !strings.Contains(string(b), `"scope":"notices"`) || !strings.Contains(string(b), `"no_reader"`) {
 		t.Fatalf("page %s", b)
+	}
+}
+
+func TestSetupLineEqualsOwnersetConst(t *testing.T) {
+	t.Parallel()
+	src, err := os.ReadFile("../../internal/store/setup/setup.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`dsnEnvSettings\s*=\s*"([^"]+)"`).FindSubmatch(src)
+	if m == nil || string(m[1]) != ownerset.DSNEnvSettings {
+		t.Fatalf("setup literal %q, ownerset %q", m, ownerset.DSNEnvSettings)
 	}
 }
