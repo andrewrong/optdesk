@@ -11,12 +11,12 @@ run lease under its own owner (Decision 3) so `ot backfill` runs while the sched
 and adds the keys that today's plan has and the stored plan lacks (Decision 8). Behaviours 1, 2, 4 and 6, the texts after
 them and the last out-of-scope lines below say what is true now; the `## Issues` entries are the history of the first build.
 
-Goal: an explicit, narrow path that collects one day at or behind the reconcile cursor. `ot run-once` collects the day
+Goal (superseded by backfill-any-day on the cursor limit: the day may be ahead of the cursor too): an explicit, narrow path that collects one day at or behind the reconcile cursor. `ot run-once` collects the day
 after the cursor and, since #148, refuses a day at or before it; `Reconcile` never looks behind the cursor either. The FRED
 DGS10 value of 2026-11-06 was lost because an empty fetch was marked final (`capture_present` status `no_value`); #147 stops
 that going forward (an empty fetch before the window close stays missing) but cannot repair a key already marked, and the
 cursor is at 2026-11-06. The new path is `ot backfill --day YYYY-MM-DD [--dataset ID]`. It re-runs the keys of that day
-that are missing or marked `no_value`, does not move the cursor and does not change any plan or window. No new dependency,
+that are missing or marked `no_value`, does not move the cursor and (as first built) did not change any plan or window; backfill-any-day supersedes the cursor limit and the no-change rule on two points: any day with a stored plan is accepted, and the windows a day lacks and the added keys are put (Behaviours 1, 2 and 6). No new dependency,
 no new service, no new table, no migration.
 
 ## Modules
@@ -45,7 +45,7 @@ tests keep compiling.
 | name | owner | file | declaration |
 |---|---|---|---|
 | `runner.Backfiller` | runner | internal/runner/api.go | `interface{ Backfill(ctx context.Context, day contracts.Day, datasets []string) (BackfillResult, error) }` |
-| `runner.BackfillResult` | runner | internal/runner/api.go | `struct{ Day contracts.Day; Refused BackfillRefusal; AlreadyPresent, Filled, Absent, Missing []contracts.ExpectedKey }` |
+| `runner.BackfillResult` | runner | internal/runner/api.go | `struct{ Day contracts.Day; Refused BackfillRefusal; AlreadyPresent, Filled, Absent, Missing []contracts.ExpectedKey; InWindow []contracts.ExpectedKey }` (`InWindow` added by backfill-any-day) |
 | `runner.BackfillRefusal` | runner | internal/runner/api.go | `type BackfillRefusal string` with the constants `RefusedAheadOfCursor` ("ahead_of_cursor", superseded by backfill-any-day: the constant is removed) and `RefusedNoPlan` ("no_plan"); empty means the day was not refused |
 | `runner.NewBackfillerWithRuleFunc` | runner | internal/runner/api.go | `func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, WindowRule) Backfiller`; implemented by `reconcile.NewBackfillerWithRule` |
 
@@ -55,7 +55,7 @@ error return is kept for failures (lease, ledger, unknown dataset, key without a
 
 `BackfillResult` fields: `Filled` keys now `present` (they were missing or `no_value`); `Absent` keys the job answered with
 no value or an empty answer after the window close (stored `no_value`, as `Reconcile` stores it); `Missing` keys with no
-usable answer, left unmarked (a job error); `AlreadyPresent` keys that were `present` and were not run.
+usable answer, left unmarked (a job error); `AlreadyPresent` keys that were `present` and were not run; `InWindow` (added by backfill-any-day) keys that were missing or `no_value`, were not run because their window had not closed at the clock, and are left as they were.
 
 `ot` composes `deps.newBackfiller` (type `runner.NewBackfillerWithRuleFunc`, real value `reconcile.NewBackfillerWithRule`)
 beside `deps.newRunner`.
@@ -86,8 +86,8 @@ beside `deps.newRunner`.
    their windows are put; no stored key is removed or changed, and a stored key that today's plan no longer returns stays in
    the plan and is an error as below. The `datasets` filter applies to the stored and added keys together.
    **Key to job:** the existing lookup of `reconcile.go`, the method `plan(ctx, day)`, which calls `Plan(ctx, day)` of every
-   registered job and returns `p.job`, the map from `contracts.ExpectedKey` to job. Backfill calls it only to read that map;
-   it never stores the plan or its hash. A job's id is not a dataset id: the map is the only relation, and `contracts.Job`
+   registered job and returns `p.job`, the map from `contracts.ExpectedKey` to job. Backfill uses the map of `plan(ctx, day, nil)` only to find the job of a key; the hash it writes for the added keys is
+   that of the plan `Reconcile` makes for the day (backfill-any-day Decision 8, step 4). A job's id is not a dataset id: the map is the only relation, and `contracts.Job`
    is not extended. All keys are validated before any key runs: a `datasets` id with no stored key on the day, or a stored key
    that is absent from the map (no registered job returns it today, for example a series dropped from the manifest), is an
    error that names the dataset id; then nothing has run and nothing is written.
@@ -106,8 +106,7 @@ beside `deps.newRunner`.
    is `Absent`, a key with neither mark (or still `no_value` after a job error, told apart by the new run row's `ErrorCode`)
    is `Missing`. Status `present` when the job returns usable rows (the runner never reads content: the job's `Usable` is
    believed, see Left out for the series writer's conflict key); `no_value` for a typed `NoValue` error or an empty answer
-   after the stored window close; an empty answer before the close (cannot happen for a day behind the cursor under a
-   96h window, but the rule is the same) and any other job error leave the status as it was, the run row carries the error.
+   after the stored window close; an empty answer before the close (the rule rests on the key's own window close, not on the cursor: such a key is not run and is listed in `InWindow`, Behaviour 1) and any other job error leave the status as it was, the run row carries the error.
    A key never moves from `present` to anything else.
 6. **Cursor, plan, window.** `SetCursor` is never called. `PutWindow` is called only for a dataset of the day that has no stored
    window and whose job has a window rule for the day, and `PutExpected` only when there are added keys (Behaviour 2);
@@ -117,7 +116,7 @@ beside `deps.newRunner`.
    result lists them in `AlreadyPresent`. A key that stays `Absent` is run again by each call (one new run row per call),
    because the explicit command is the owner asking again.
 
-Texts, owned by `cmd/ot`: the text for `RefusedAheadOfCursor` is gone with the constant; for `RefusedNoPlan` `no plan was recorded for day <day>: nothing to backfill`. The demo profile gets its own text:
+Texts, owned by `cmd/ot`: the text for `RefusedAheadOfCursor` is gone with the constant; for `RefusedNoPlan` `no plan was recorded for day <day>: nothing to backfill` (superseded by backfill-any-day issue 4: `cmd/ot/backfill.go` and `docs/contracts/ot.md` say "not planned yet or was never reconciled"). The demo profile gets its own text:
 `backfill needs a real profile; the demo profile opens no store`. `run-once` keeps its #148 error and adds the hint
 `use ot backfill --day <day>`. The owner finds the day to backfill by reading `ops.capture_present` by hand; there is no
 list mode.
