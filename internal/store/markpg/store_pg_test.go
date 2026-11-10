@@ -108,6 +108,10 @@ func newDatabase(t *testing.T) string {
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
 		t.Fatalf("apply 0026: %v", err)
 	}
+	// Earlier migrations (0006, 0007) grant USAGE on rd to ot_ro_pages; this database holds only 0026.
+	if _, err := c.Exec(ctx, `GRANT USAGE ON SCHEMA rd TO ot_ro_pages`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_posmark, ot_ro_pages, ot_runner`); err != nil {
 		t.Fatal(err)
 	}
