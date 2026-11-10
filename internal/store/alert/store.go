@@ -2,9 +2,12 @@ package alert
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -75,6 +78,7 @@ func (s *sentStore) SentSince(ctx context.Context, from contracts.Day) ([]store.
 }
 
 // MarkSent records that ruleID was said on day. A mark already there stays as it is and is no error.
+// A class 23 (integrity constraint) error is Permanent, since it repeats on every attempt; any other error is Retryable.
 func (s *sentStore) MarkSent(ctx context.Context, ruleID string, day contracts.Day) error {
 	if ruleID == "" {
 		return permanent(fmt.Errorf("alert: empty rule id"))
@@ -84,9 +88,19 @@ func (s *sentStore) MarkSent(ctx context.Context, ruleID string, day contracts.D
 		return err
 	}
 	if err := s.db.Exec(ctx, markSentSQL, ruleID, d); err != nil {
-		return retryable(fmt.Errorf("alert: mark: %w", err))
+		wrapped := fmt.Errorf("alert: mark: %w", err)
+		if isConstraintViolation(err) {
+			return permanent(wrapped)
+		}
+		return retryable(wrapped)
 	}
 	return nil
+}
+
+// isConstraintViolation reports whether err is a PostgreSQL integrity constraint violation (SQLSTATE class 23).
+func isConstraintViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && strings.HasPrefix(pe.Code, "23")
 }
 
 // parseDay turns a contracts.Day into the date it names.

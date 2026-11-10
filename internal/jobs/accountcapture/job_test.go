@@ -77,7 +77,7 @@ func okAccount(alias string) broker.Account {
 		Alias:  alias,
 		Values: []broker.AccountValue{{Tag: "NetLiquidation", Value: "100.5", Currency: "USD"}},
 		Positions: []broker.Position{{
-			Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Expiry: "20261120", Strike: "450", Right: "put", Multiplier: "100", ConID: 7},
+			Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Expiry: "20261120", Strike: "450", Right: "P", Multiplier: "100", ConID: 7},
 			Quantity: "-1", AvgCost: "2.5",
 		}},
 		ValuesCollected: true, PositionsCollected: true,
@@ -85,7 +85,11 @@ func okAccount(alias string) broker.Account {
 }
 
 func okExec(alias string) broker.Executions {
-	return broker.Executions{Alias: alias, Collected: true, Executions: []broker.Execution{{ExecID: "e1-" + alias, Side: "SLD", Quantity: "1"}}}
+	e := broker.Execution{
+		ExecID: "e1-" + alias, Side: "SLD", Quantity: "1",
+		Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Right: "C"},
+	}
+	return broker.Executions{Alias: alias, Collected: true, Executions: []broker.Execution{e}}
 }
 
 func goodReader(alias string) *fakeReader {
@@ -430,5 +434,68 @@ func TestCaptureFailureWriteStepLogged(t *testing.T) {
 	l := e.log.String()
 	if strings.Count(l, "capture failed") != 1 || !strings.Contains(l, "step=write") || !strings.Contains(l, "kind=unknown") || strings.Contains(l, "99999") {
 		t.Fatalf("log = %q", l)
+	}
+}
+
+func TestStoreWordsOfBrokerContract(t *testing.T) {
+	t.Parallel()
+	acc := broker.Account{
+		Alias: "a", PositionsCollected: true,
+		Positions: []broker.Position{
+			{Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Right: "P", ConID: 1}},
+			{Contract: broker.Contract{SecType: "STK", Symbol: "AAPL", ConID: 2}},
+			{Contract: broker.Contract{SecType: "IND", Symbol: "SPX", ConID: 3}},
+			{Contract: broker.Contract{SecType: "FUT", Symbol: "ESZ6", ConID: 4}},
+		},
+	}
+	ex := broker.Executions{Alias: "a", Collected: true, Executions: []broker.Execution{
+		{ExecID: "e1", Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Right: "C"}},
+	}}
+	rd := &fakeReader{acc: acc, ex: ex}
+	w := newWriter()
+	var recs []slog.Record
+	h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
+	j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClock()}, slog.New(h))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, _ := j.Plan(context.Background(), testDay)
+	res := j.Run(context.Background(), testDay, keys)
+	if res.Err != nil || res.Returned != 1 || res.Usable != 1 {
+		t.Fatalf("res = %+v", res)
+	}
+	type word struct{ sec, right string }
+	var got []word
+	for _, c := range w.captures {
+		for _, p := range c.Positions {
+			got = append(got, word{p.SecType, p.Right})
+		}
+	}
+	want := []word{{"option", "put"}, {"stock", ""}, {"index", ""}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("positions = %v, want %v", got, want)
+	}
+	exs := w.execs["a"]
+	if len(exs) != 1 || exs[0].SecType != "option" || exs[0].Right != "call" {
+		t.Fatalf("executions = %+v", exs)
+	}
+	var skipped []map[string]string
+	for _, r := range recs {
+		if r.Message != "skipped rows of an unsupported sec type" {
+			continue
+		}
+		m := map[string]string{}
+		r.Attrs(func(a slog.Attr) bool { m[a.Key] = a.Value.String(); return true })
+		skipped = append(skipped, m)
+	}
+	if len(skipped) != 1 || len(skipped[0]) != 2 || skipped[0]["alias"] != "a" || skipped[0]["count"] != "1" {
+		t.Fatalf("skipped records = %v", skipped)
+	}
+}
+
+func TestStoreSecTypeRejectsEmptyWord(t *testing.T) {
+	t.Parallel()
+	if s, ok := storeSecType(""); ok || s != "" {
+		t.Fatalf("storeSecType(\"\") = %q, %v; want \"\", false", s, ok)
 	}
 }

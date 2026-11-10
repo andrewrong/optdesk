@@ -55,24 +55,24 @@ Environment names (names only; no value is written in this document, in a log or
 | `OT_ZONE` | process environment | the profile (real profile only; unset or invalid stops the start) |
 | `OT_SCHED_HEALTH_PORT` | process environment | `ot scheduler` (the port of `GET /health` on `127.0.0.1`; unset gives 8765; `0` lets the system pick) |
 | `OT_PG_ADMIN_DSN` | process environment | `ot setup pg`, `ot migrate` |
-| `OT_PG_DSN_RUNNER` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (session-day store and ledger) |
-| `OT_PG_DSN_SERIES_FRED` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot series-load` (series store) |
-| `OT_PG_DSN_OPTION_EOD` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (option_eod writer) |
-| `OT_PG_DSN_QUOTE_SNAPSHOT` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (quote_snapshot writer) |
-| `OT_PG_DSN_MASTER` | `$OT_HOME/.env` | `ot run-once`, `ot backfill` (instrument store) |
-| `OT_PG_DSN_READINGS` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (readings store of `compute_figures`; `ot setup pg` creates it after migration 0013) |
-| `OT_PG_DSN_LOADER` | `$OT_HOME/.env` | `ot calendar load` (session-day store), and `ot run-once`, `ot backfill` and `ot scheduler` (the second session-day store, handed to `calendar_refresh` alone; role `ot_loader`, `master.session_day`, column UPDATE on the four session columns) |
-| `OT_PG_DSN_PAGES` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the catalog, option_eod, terms, names and series stores of `compute_figures`), `ot page` (series reader, and for `report_page` the reading-view reader) and `ot serve` (the six stores: series and the five option stores), real profile only |
-| `OT_PG_DSN_ALERTS` | `$OT_HOME/.env` | `ot scheduler` and `ot notify --once` (the sent store `alerts.sent` of the market alert pass and the morning report, opened with `alert.Open`; role `ot_w_alerts`; `ot setup pg` writes the line); not read by `ot run-once`, `ot backfill` or `ot alerts check`; `ot notify --once` opens it for the morning pass |
-| `FRED_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot series-load` (FRED source) |
-| `OT_PG_DSN_EVENTS` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the earnings store of `earnings_refresh`, role `ot_w_events`; optional: an empty line leaves that job out; `store.DSNEnvEvents`) |
-| `OT_PG_DSN_CANDIDATE` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the store of `option_candidates`, role `ot_w_candidate`; optional: an empty line leaves that job out, with the line `OT_PG_DSN_CANDIDATE is not set`) (`store.DSNEnvCandidate`); `ot candidates` does not read it |
-| `JQUANTS_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the J-Quants source, the `JP` source of `earnings_refresh`, built over the JP symbols of `watch.toml` in `EarningsConfig.Symbols`; optional: an empty line leaves only the JP source out, with the log line `JQUANTS_API_KEY is not set`, and JP entries get `unsupported` rows with source `none`; never printed) |
-| `ALPHA_VANTAGE_API_KEY` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the Alpha Vantage source of `earnings_refresh`; optional: an empty line leaves that job out; never printed) |
-| `OT_CALENDAR_UV` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (optional: the path of `uv`, default `uv` on `PATH`; `calendar_refresh` runs it with `run --no-sync --project pyside python -m optdesk.calendar`) |
-| `OT_ACCOUNT_SOCKETS` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the sockets of `account_capture`: a comma list of `label=socket path`, one `grpcbroker.DialAccount` per entry, passed as `Readers` keyed by label; each label is the `account` field of a gateway entry; no flag of its own; an unset line or a malformed list refuses the job, naming the key only) |
-| `OT_IBKR_GATEWAYS` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the path of the gateways file; `account_capture` takes as main the `account` field of its one `[[gateway]]` entry with `required = true`; an unset key, a file with no required entry or with several, or a main label that is not in `OT_ACCOUNT_SOCKETS` refuses the job, naming the key only; required by `account_capture`) |
-| `OT_PG_DSN_ACCOUNT` | `$OT_HOME/.env` | `ot run-once`, `ot backfill`, `ot scheduler` (the account store of `account_capture` opened with `account.Open`, role `ot_w_account`; `store.DSNEnvAccount`; an unset line refuses the job) |
+| `OT_PG_DSN_RUNNER` | the env file | `ot run-once`, `ot backfill` (session-day store and ledger) |
+| `OT_PG_DSN_SERIES_FRED` | the env file | `ot run-once`, `ot backfill`, `ot series-load` (series store) |
+| `OT_PG_DSN_OPTION_EOD` | the env file | `ot run-once`, `ot backfill` (option_eod writer) |
+| `OT_PG_DSN_QUOTE_SNAPSHOT` | the env file | `ot run-once`, `ot backfill` (quote_snapshot writer) |
+| `OT_PG_DSN_MASTER` | the env file | `ot run-once`, `ot backfill` (instrument store) |
+| `OT_PG_DSN_READINGS` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (readings store of `compute_figures`; `ot setup pg` creates it after migration 0013) |
+| `OT_PG_DSN_LOADER` | the env file | `ot calendar load` (session-day store), and `ot run-once`, `ot backfill` and `ot scheduler` (the second session-day store, handed to `calendar_refresh` alone; role `ot_loader`, `master.session_day`, column UPDATE on the four session columns) |
+| `OT_PG_DSN_PAGES` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the catalog, option_eod, terms, names and series stores of `compute_figures`), `ot page` (series reader, and for `report_page` the reading-view reader) and `ot serve` (the six stores: series and the five option stores), real profile only |
+| `OT_PG_DSN_ALERTS` | the env file | `ot scheduler` and `ot notify --once` (the sent store `alerts.sent` of the market alert pass and the morning report, opened with `alert.Open`; role `ot_w_alerts`; `ot setup pg` writes the line); not read by `ot run-once`, `ot backfill` or `ot alerts check`; `ot notify --once` opens it for the morning pass |
+| `FRED_API_KEY` | the env file | `ot run-once`, `ot backfill`, `ot series-load` (FRED source) |
+| `OT_PG_DSN_EVENTS` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the earnings store of `earnings_refresh`, role `ot_w_events`; optional: an empty line leaves that job out; `store.DSNEnvEvents`) |
+| `OT_PG_DSN_CANDIDATE` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the store of `option_candidates`, role `ot_w_candidate`; optional: an empty line leaves that job out, with the line `OT_PG_DSN_CANDIDATE is not set`) (`store.DSNEnvCandidate`); `ot candidates` does not read it |
+| `JQUANTS_API_KEY` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the J-Quants source, the `JP` source of `earnings_refresh`, built over the JP symbols of `watch.toml` in `EarningsConfig.Symbols`; optional: an empty line leaves only the JP source out, with the log line `JQUANTS_API_KEY is not set`, and JP entries get `unsupported` rows with source `none`; never printed) |
+| `ALPHA_VANTAGE_API_KEY` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the Alpha Vantage source of `earnings_refresh`; optional: an empty line leaves that job out; never printed) |
+| `OT_CALENDAR_UV` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (optional: the path of `uv`, default `uv` on `PATH`; `calendar_refresh` runs it with `run --no-sync --project pyside python -m optdesk.calendar`) |
+| `OT_ACCOUNT_SOCKETS` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the sockets of `account_capture`: a comma list of `label=socket path`, one `grpcbroker.DialAccount` per entry, passed as `Readers` keyed by label; each label is the `account` field of a gateway entry; no flag of its own; an unset line or a malformed list refuses the job, naming the key only) |
+| `OT_IBKR_GATEWAYS` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the path of the gateways file; `account_capture` takes as main the `account` field of its one `[[gateway]]` entry with `required = true`; an unset key, a file with no required entry or with several, or a main label that is not in `OT_ACCOUNT_SOCKETS` refuses the job, naming the key only; required by `account_capture`) |
+| `OT_PG_DSN_ACCOUNT` | the env file | `ot run-once`, `ot backfill`, `ot scheduler` (the account store of `account_capture` opened with `account.Open`, role `ot_w_account`; `store.DSNEnvAccount`; an unset line refuses the job) |
 
 The two lines of `earnings_refresh` are not required. All nine lines read by `ot run-once` and `ot backfill` (the three above, `OT_PG_DSN_RUNNER`, `OT_PG_DSN_SERIES_FRED`, `OT_PG_DSN_PAGES`, `OT_PG_DSN_READINGS`, `OT_PG_DSN_LOADER` and `FRED_API_KEY`; `OT_CALENDAR_UV` is optional) are required; a missing one is an error that names the line.
 
@@ -89,7 +89,7 @@ The prices of an entry:
 
 `.env` rules (`setup.ReadEnv`, called through `deps.readEnv`):
 
-- The file is `$OT_HOME/.env`; with `OT_HOME` unset the error is `OT_HOME is not set`.
+- The file is `$CREW_SECRETS/$CREW_SERVICE.env` when both variables are set (the runner's secrets file); otherwise `$OT_HOME/.env`, and with `OT_HOME` unset the error is `OT_HOME is not set` (`OT_HOME` is required only in that case). A file missing under `CREW_SECRETS` is an error that names the path, never holds file contents, and does not fall back to `$OT_HOME/.env`. There is no process-environment overlay of the keys.
 - Lines are `KEY=VALUE`; a line without `=` is skipped. Blank lines and lines starting with `#` are skipped. Key and value are trimmed of white space.
 - One pair of surrounding quotes (both `"` or both `'`) is removed from the value; nothing else is unquoted.
 - The process environment is untouched: the file is read into a map and no variable is set.

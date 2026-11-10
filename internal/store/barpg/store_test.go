@@ -3,10 +3,13 @@ package barpg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store/bar"
@@ -22,7 +25,8 @@ type call struct {
 type fakeDB struct {
 	events  []string
 	calls   []call
-	failAt  int // 1-based statement that fails, 0 for none
+	failAt  int   // 1-based statement that fails, 0 for none
+	failErr error // returned by the failing statement instead of a plain error, when set
 	selSQL  string
 	selArgs []any
 	rows    [][]any
@@ -34,6 +38,9 @@ type fakeTx struct{ f *fakeDB }
 func (t fakeTx) Exec(_ context.Context, sql string, args ...any) (int64, error) {
 	t.f.calls = append(t.f.calls, call{sql, args})
 	if t.f.failAt == len(t.f.calls) {
+		if t.f.failErr != nil {
+			return 0, t.f.failErr
+		}
 		return 0, errors.New("boom")
 	}
 	return 1, nil
@@ -176,5 +183,58 @@ func TestOneCallOneTransaction(t *testing.T) {
 	if n, err := (&Store{db: f}).InsertFxRates(context.Background(), []contracts.FxRate{fx, fx}); err != nil || n != 2 ||
 		!reflect.DeepEqual(f.events, []string{"begin", "commit"}) {
 		t.Errorf("fx: n=%d err=%v events=%v", n, err, f.events)
+	}
+}
+
+func TestInsertConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	fx := contracts.FxRate{Pair: "USDJPY", Rate: "151.2", Source: "ibkr_midpoint"}
+	fx.RateDay.Time = time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+	writes := map[string]func(s *Store) error{
+		"price_bars": func(s *Store) error { _, err := s.InsertPriceBars(context.Background(), bars(2)); return err },
+		"fx_rates": func(s *Store) error {
+			_, err := s.InsertFxRates(context.Background(), []contracts.FxRate{fx, fx})
+			return err
+		},
+	}
+	cases := []struct {
+		name string
+		err  error
+		want contracts.ErrorKind
+	}{
+		{"not null", &pgconn.PgError{Code: "23502"}, contracts.Permanent},
+		{"foreign key", &pgconn.PgError{Code: "23503"}, contracts.Permanent},
+		{"unique", &pgconn.PgError{Code: "23505"}, contracts.Permanent},
+		{"check", &pgconn.PgError{Code: "23514"}, contracts.Permanent},
+		{"not null wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: "23502"}), contracts.Permanent},
+		{"foreign key wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: "23503"}), contracts.Permanent},
+		{"unique wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: "23505"}), contracts.Permanent},
+		{"check wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: "23514"}), contracts.Permanent},
+		{"serialization", &pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		{"deadlock", &pgconn.PgError{Code: "40P01"}, contracts.Retryable},
+		{"connection", &pgconn.PgError{Code: "08006"}, contracts.Retryable},
+		{"plain", errors.New("boom"), contracts.Retryable},
+	}
+	for wname, write := range writes {
+		for _, c := range cases {
+			t.Run(wname+"/"+c.name, func(t *testing.T) {
+				t.Parallel()
+				f := &fakeDB{failAt: 1, failErr: c.err}
+				err := write(&Store{db: f})
+				var te contracts.TypedError
+				if err == nil || !errors.As(err, &te) || te.Kind() != c.want {
+					t.Fatalf("err = %v, want kind %v", err, c.want)
+				}
+				if !errors.Is(err, c.err) {
+					t.Errorf("err %v does not wrap the cause", err)
+				}
+				if !reflect.DeepEqual(f.events, []string{"begin", "rollback"}) {
+					t.Errorf("events = %v", f.events)
+				}
+			})
+		}
+	}
+	if isConstraintViolation(nil) {
+		t.Error("nil is not a constraint violation")
 	}
 }

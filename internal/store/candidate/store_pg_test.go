@@ -94,18 +94,20 @@ func newDatabase(t *testing.T) string {
 			t.Errorf("drop database %s: %v", name, err)
 		}
 	})
-	raw, err := os.ReadFile("../../../migrations/0018_candidates.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
 	c, err := pgx.Connect(ctx, connURL(t, name, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = c.Close(ctx) }()
-	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
-		t.Fatalf("apply 0018: %v", err)
+	for _, file := range []string{"0018_candidates.sql", "0027_candidate_settings_version.sql"} {
+		raw, err := os.ReadFile("../../../migrations/" + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+		if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
+			t.Fatalf("apply %s: %v", file, err)
+		}
 	}
 	if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO ot_w_candidate`); err != nil {
 		t.Fatal(err)
@@ -182,5 +184,60 @@ func TestCandidateNewestRunWins(t *testing.T) {
 	}
 	if got[0].RunID != "new" || got[1].RunID != "new" || got[0].Rank == nil || got[1].Rank != nil {
 		t.Errorf("rows = %+v", got)
+	}
+}
+
+func TestSettingsVersionRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, err := Open(ctx, connURL(t, name, "ot_w_candidate"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+
+	t0 := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
+	old := pgSample("old", t0, 42, ptr(1))
+	cur := pgSample("new", t0.Add(time.Hour), 42, ptr(1))
+	cur.SettingsVersion = ptr(int64(57))
+	if _, err := st.InsertCandidates(ctx, []store.Candidate{old}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.Candidates(ctx, "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 || got[0].SettingsVersion != nil {
+		t.Fatalf("old run = %+v, %v; want a nil settings version", got, err)
+	}
+	if _, err := st.InsertCandidates(ctx, []store.Candidate{cur}); err != nil {
+		t.Fatal(err)
+	}
+	got, err = st.Candidates(ctx, "2026-11-06", "short_put")
+	if err != nil || len(got) != 1 || got[0].SettingsVersion == nil || *got[0].SettingsVersion != 57 {
+		t.Fatalf("new run = %+v, %v; want settings version 57", got, err)
+	}
+}
+
+func TestSettingsVersionMigrationDown(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	c, err := pgx.Connect(ctx, connURL(t, name, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close(ctx) }()
+	raw, err := os.ReadFile("../../../migrations/0027_candidate_settings_version.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, down, _ := strings.Cut(string(raw), "-- +goose Down")
+	if _, err := c.Exec(ctx, down); err != nil {
+		t.Fatalf("down of 0027: %v", err)
+	}
+	var have bool
+	err = c.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+		WHERE table_schema = 'candidates' AND table_name = 'option_candidate' AND column_name = 'settings_version')`).Scan(&have)
+	if err != nil || have {
+		t.Errorf("settings_version still there after down: %v, %v", have, err)
 	}
 }
