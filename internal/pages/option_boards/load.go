@@ -45,9 +45,14 @@ func loadShortPuts(ctx context.Context, r store.CandidateReader, day contracts.D
 	return loaded{Rows: []store.Candidate{}}, nil
 }
 
-// loadEod makes one OptionEod call per distinct UnderlyingID of the rows, from = to = the data day, and keeps
-// for each instrument id the row with the greatest capture_id. A nil reader gives an empty map, which the text
-// helpers show as gaps.
+// chainLookbackDays is how many days before the data day the option_eod rows are searched for the chain day.
+// It copies lookbackDays of internal/jobs/optioncandidates/input.go (a page may not import a job).
+const chainLookbackDays = 14
+
+// loadEod makes one OptionEod call per distinct UnderlyingID of the rows over the window dataDay-14..dataDay,
+// takes the greatest SessionDay returned as the chain day of that underlying, keeps its rows, and for each
+// instrument id keeps the row with the greatest capture_id. An underlying with no row in the window keeps gap
+// cells. A nil reader gives an empty map, which the text helpers show as gaps.
 func loadEod(ctx context.Context, r store.OptionEodReader, rows []store.Candidate, day contracts.Day) (map[int]contracts.OptionEod, error) {
 	out := map[int]contracts.OptionEod{}
 	if r == nil {
@@ -59,15 +64,51 @@ func loadEod(ctx context.Context, r store.OptionEodReader, rows []store.Candidat
 			continue
 		}
 		seen[c.UnderlyingID] = true
-		eod, err := r.OptionEod(ctx, int64(c.UnderlyingID), day, day)
+		from, err := daysBack(day, chainLookbackDays)
+		if err != nil {
+			return nil, err
+		}
+		eod, err := r.OptionEod(ctx, int64(c.UnderlyingID), from, day)
 		if err != nil {
 			return nil, fmt.Errorf("option_boards: option eod of %d: %w", c.UnderlyingID, err)
 		}
+		chain := ""
 		for _, e := range eod {
+			if d := eodDay(e, day); d > chain {
+				chain = d
+			}
+		}
+		for _, e := range eod {
+			if eodDay(e, day) != chain {
+				continue
+			}
 			if old, ok := out[e.InstrumentID]; !ok || old.CaptureID <= e.CaptureID {
 				out[e.InstrumentID] = e
 			}
 		}
 	}
 	return out, nil
+}
+
+// eodDay is the session day text of a row; a zero SessionDay counts as the data day.
+func eodDay(e contracts.OptionEod, dataDay contracts.Day) string {
+	if e.SessionDay.IsZero() {
+		return string(dataDay)
+	}
+	return e.SessionDay.Format(time.DateOnly)
+}
+
+// chainDayNote names the earliest chain day before the data day among the rows of loadEod, or is empty when
+// every row is of the data day.
+func chainDayNote(eod map[int]contracts.OptionEod, dataDay contracts.Day) string {
+	earliest := ""
+	for _, e := range eod {
+		if d := eodDay(e, dataDay); d < string(dataDay) && (earliest == "" || d < earliest) {
+			earliest = d
+		}
+	}
+	if earliest == "" {
+		return ""
+	}
+	return "量与持仓取自 " + earliest + "(链日)"
 }
