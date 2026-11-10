@@ -1,0 +1,13 @@
+[project]
+name = "compute-golden-valuation"
+version = "0.1.0"
+description = "Dev-only generator of the valuation golden files of internal/compute/valuation (not in CI, not at run time)"
+requires-python = ">=3.13"
+# The option-trader modules it calls (read-only checkout at 4704569f, put on sys.path by gen.py)
+# import duckdb at module level; nothing else of option-trader's dependencies is needed.
+dependencies = [
+    "duckdb>=1.5,<2",
+]
+
+[tool.uv]
+package = false
