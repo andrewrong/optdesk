@@ -14,7 +14,7 @@ const maxChainExpiries = 19
 
 // buildChain is the strike by expiry card of the first card's company (Decision 7); nil when there is no card
 // or the company has no row.
-func buildChain(rows, cards []store.Candidate) *chain {
+func buildChain(rows, cards []store.Candidate, names displayNames) *chain {
 	if len(cards) == 0 {
 		return nil
 	}
@@ -67,9 +67,10 @@ func buildChain(rows, cards []store.Candidate) *chain {
 	}
 
 	md, _ := monthDay(first.Expiry)
+	name := names.of(first)
 	return &chain{
-		Title:   "期权链 · " + first.Issuer,
-		Summary: fmt.Sprintf("已选:%s %s 行权价 $%s Put", first.Issuer, strings.ReplaceAll(md, "-", "/"), first.Strike),
+		Title:   "期权链 · " + name,
+		Summary: fmt.Sprintf("已选:%s %s 行权价 $%s Put", name, strings.ReplaceAll(md, "-", "/"), first.Strike),
 		Table:   table{Columns: cols, Rows: out},
 	}
 }

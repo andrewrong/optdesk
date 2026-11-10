@@ -28,7 +28,7 @@
       "cards": [
         {
           "id": "c11",
-          "symbol": "AAA",
+          "symbol": "AAPL",
           "verdict": {
             "key": "worth",
             "label": "值得看",
@@ -53,7 +53,7 @@
         },
         {
           "id": "c21",
-          "symbol": "BBB",
+          "symbol": "MSFT",
           "verdict": {
             "key": "worth",
             "label": "值得看",
@@ -162,8 +162,8 @@
                 "column": "symbol",
                 "cell": {
                   "kind": "text",
-                  "text": "AAA",
-                  "value": "AAA"
+                  "text": "AAPL",
+                  "value": "AAPL"
                 }
               },
               {
@@ -262,8 +262,8 @@
                 "column": "symbol",
                 "cell": {
                   "kind": "text",
-                  "text": "AAA",
-                  "value": "AAA"
+                  "text": "AAPL",
+                  "value": "AAPL"
                 }
               },
               {
@@ -360,8 +360,8 @@
                 "column": "symbol",
                 "cell": {
                   "kind": "text",
-                  "text": "BBB",
-                  "value": "BBB"
+                  "text": "MSFT",
+                  "value": "MSFT"
                 }
               },
               {
@@ -459,8 +459,8 @@
                 "column": "symbol",
                 "cell": {
                   "kind": "text",
-                  "text": "BBB",
-                  "value": "BBB"
+                  "text": "MSFT",
+                  "value": "MSFT"
                 }
               },
               {
@@ -557,8 +557,8 @@
                 "column": "symbol",
                 "cell": {
                   "kind": "text",
-                  "text": "BBB",
-                  "value": "BBB"
+                  "text": "MSFT",
+                  "value": "MSFT"
                 }
               },
               {
@@ -653,8 +653,8 @@
         "target": "candidates-US"
       },
       "chain": {
-        "title": "期权链 · AAA",
-        "summary": "已选:AAA 11/13 行权价 $62 Put",
+        "title": "期权链 · AAPL",
+        "summary": "已选:AAPL 11/13 行权价 $62 Put",
         "table": {
           "columns": [
             {
@@ -741,7 +741,8 @@
     }
   ],
   "notes": [
-    "日本期权:后续设计 (option-candidates-jp)"
+    "日本期权:后续设计 (option-candidates-jp)",
+    "量与持仓取自 2026-11-09(链日)"
   ],
   "gaps": []
 }

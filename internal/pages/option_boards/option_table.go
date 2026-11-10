@@ -26,10 +26,10 @@ func tableColumns() []column {
 	}
 }
 
-func buildTable(rows []store.Candidate, eod map[int]contracts.OptionEod) table {
+func buildTable(rows []store.Candidate, eod map[int]contracts.OptionEod, names displayNames) table {
 	out := table{Columns: tableColumns(), Rows: make([]row, 0, len(rows))}
 	for _, r := range rows {
-		out.Rows = append(out.Rows, buildRow(r, eod))
+		out.Rows = append(out.Rows, buildRow(r, eod, names))
 	}
 	return out
 }
@@ -84,7 +84,8 @@ func earningsCell(r store.Candidate) textCell {
 	return textCell{Kind: "text", Text: text}
 }
 
-func buildRow(r store.Candidate, eod map[int]contracts.OptionEod) row {
+func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames) row {
+	symbol := names.of(r)
 	v := verdictOf(r.Status)
 	e := eodTextFor(eod, r.InstrumentID)
 	ann, _ := annualisedOf(r.AnnualizedYield)
@@ -97,7 +98,7 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod) row {
 		delta = textCell{Kind: "text", Text: signedText(*r.Delta), Value: keyValue(*r.Delta, 2)}
 	}
 	cells := []cellAt{
-		{Column: "symbol", Cell: textCell{Kind: "text", Text: r.Issuer, Value: r.Issuer}},
+		{Column: "symbol", Cell: textCell{Kind: "text", Text: symbol, Value: symbol}},
 		{Column: "verdict", Cell: textCell{Kind: "text", Text: v.Label, Value: verdictRank(v.Key)}},
 		{Column: "annualised", Cell: ann},
 		{Column: "strike_pct", Cell: ratioCell(strikePct(r.Strike, r.Spot))},
