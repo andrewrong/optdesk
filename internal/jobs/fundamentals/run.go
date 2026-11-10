@@ -54,8 +54,8 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 }
 
 // New builds the fundamentals job from the embedded job.toml and the watch list. An entry of Market US with a
-// cik: issuer is planned; one with an empty or other issuer is skipped as no_cik, an edinet: one as
-// edinet_not_fetched. No CIK is guessed.
+// cik: issuer is planned; one with an empty or other issuer is skipped as no_cik (an empty issuer of any
+// market too), an edinet: one of any market as edinet_not_fetched. No CIK is guessed.
 func New(src sources.FactSource, w store.FactWriter, entries []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
 	if src == nil || w == nil || clk == nil {
 		return nil, errors.New("fundamentals: source, writer and clock are required")
@@ -67,17 +67,17 @@ func New(src sources.FactSource, w store.FactWriter, entries []jobs.WatchEntry, 
 	j := &job{m: m, src: src, w: w, clk: clk}
 	seen := map[string]bool{}
 	for _, e := range entries {
-		if e.Market != marketUS {
-			continue
-		}
 		switch {
+		case strings.HasPrefix(e.Issuer, edinetPrefix):
+			// A real edinet: entry is Japanese; it is named whatever its market.
+			j.skipped = append(j.skipped, jobs.FundamentalsSkip{Subject: e.Issuer, Reason: reasonEdinet})
+		case e.Market != marketUS && e.Issuer != "":
+			// Not a US company and not EDINET: not this job's, not named.
 		case strings.HasPrefix(e.Issuer, cikPrefix):
 			if !seen[e.Issuer] {
 				seen[e.Issuer] = true
 				j.issuers = append(j.issuers, e.Issuer)
 			}
-		case strings.HasPrefix(e.Issuer, edinetPrefix):
-			j.skipped = append(j.skipped, jobs.FundamentalsSkip{Subject: e.Issuer, Reason: reasonEdinet})
 		default:
 			subject := e.Issuer
 			if subject == "" {

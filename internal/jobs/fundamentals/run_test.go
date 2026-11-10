@@ -222,3 +222,23 @@ func TestEmbeddedManifest(t *testing.T) {
 		t.Fatal("time anchor without zone accepted")
 	}
 }
+
+func TestEdinetJPEntrySkippedAndNamed(t *testing.T) {
+	t.Parallel()
+	j := build(t, &fakeSource{}, &fakeWriter{},
+		entry("edinet:E01777", "JP", "SONY"),
+		entry("cik:0000320193", "US", "AAPL"))
+	want := []jobs.FundamentalsSkip{{Subject: "edinet:E01777", Reason: "edinet_not_fetched"}}
+	if got := j.(jobs.FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("skipped = %v, want %v", got, want)
+	}
+}
+
+func TestJPEntryWithoutIssuerNamed(t *testing.T) {
+	t.Parallel()
+	j := build(t, &fakeSource{}, &fakeWriter{}, entry("", "JP", "7203"))
+	want := []jobs.FundamentalsSkip{{Subject: "7203", Reason: "no_cik"}}
+	if got := j.(jobs.FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("skipped = %v, want %v", got, want)
+	}
+}
