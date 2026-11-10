@@ -144,7 +144,11 @@ func runCheck(a *app, args []string, services map[string]checkService) error {
 		return errors.New(checkUsage)
 	}
 	c := &checker{w: a.stdout}
-	fmt.Fprintf(c.w, "OT_HOME=%s\n", a.getenv("OT_HOME"))
+	home := a.getenv("OT_HOME")
+	fmt.Fprintf(c.w, "OT_HOME=%s\n", home)
+	if home == "" {
+		c.emit(Result{Status: statusFail, Check: "OT_HOME", Reason: "OT_HOME is not set"})
+	}
 	pg := "unknown"
 	if dsn := a.getenv(store.DSNEnvPages); dsn == "" {
 		c.emit(Result{Status: statusFail, Check: "pg", Reason: store.DSNEnvPages + " is not set"})

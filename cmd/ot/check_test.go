@@ -191,3 +191,13 @@ func TestCheckPytestHook(t *testing.T) {
 		t.Errorf("got %q %q %q", gotDir, gotEnv, gotJunit)
 	}
 }
+
+func TestCheckNoOtHomeIsFail(t *testing.T) {
+	t.Parallel()
+	var out bytes.Buffer
+	a := checkApp(t, map[string]string{store.DSNEnvPages: checkSecretDSN}, &out, nil, nil)
+	_ = runCheck(a, []string{"scheduler"}, map[string]checkService{"scheduler": func(context.Context, *checkEnv) {}})
+	if !strings.Contains(out.String(), "FAIL ") {
+		t.Fatalf("no OT_HOME must give a FAIL line (Decision 1), got %q", out.String())
+	}
+}
