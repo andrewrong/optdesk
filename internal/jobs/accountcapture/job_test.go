@@ -304,11 +304,17 @@ func TestDegradedLogCarriesAliasAndStatusOnly(t *testing.T) {
 	}
 	keys, _, _ := j.Plan(context.Background(), testDay)
 	j.Run(context.Background(), testDay, keys)
-	if len(recs) != 1 {
-		t.Fatalf("got %d log records, want 1", len(recs))
+	var degraded []slog.Record
+	for _, r := range recs {
+		if r.Message == "degraded" {
+			degraded = append(degraded, r)
+		}
+	}
+	if len(degraded) != 1 {
+		t.Fatalf("got %d degraded records, want 1", len(degraded))
 	}
 	var names []string
-	recs[0].Attrs(func(a slog.Attr) bool {
+	degraded[0].Attrs(func(a slog.Attr) bool {
 		names = append(names, a.Key)
 		if a.Value.Kind() != slog.KindString {
 			t.Errorf("attribute %s is %s, not a string", a.Key, a.Value.Kind())
@@ -357,5 +363,72 @@ func TestPlanIsOneKeyPerDay(t *testing.T) {
 	_, h2, _ := e.j.Plan(context.Background(), "2026-11-06")
 	if err != nil || len(keys) != 1 || h1 == h2 || e.j.ID() != "account_capture" {
 		t.Fatalf("keys %v err %v", keys, err)
+	}
+}
+
+func TestCaptureFailureLogsAliasStepKind(t *testing.T) {
+	t.Parallel()
+	typed := &typedError{kind: contracts.Retryable, text: "error 322 account 99999"}
+	cases := []struct {
+		name string
+		mod  func(r *fakeReader)
+		step string
+		kind string
+	}{
+		{"account typed", func(r *fakeReader) { r.accErr = typed }, "account", "retryable"},
+		{"executions typed", func(r *fakeReader) { r.exErr = typed }, "executions", "retryable"},
+		{"account untyped", func(r *fakeReader) { r.accErr = errors.New("boom 99999") }, "account", "unknown"},
+		{"executions untyped", func(r *fakeReader) { r.exErr = errors.New("boom 99999") }, "executions", "unknown"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			bad := goodReader("a")
+			tc.mod(bad)
+			var recs []slog.Record
+			h := recordHandler{mu: &sync.Mutex{}, recs: &recs}
+			rs := map[string]broker.AccountReader{"a": bad}
+			j, err := newJob(Config{Main: "a", Readers: rs, Writer: newWriter(), Clock: clockwork.NewFakeClock()}, slog.New(h))
+			if err != nil {
+				t.Fatal(err)
+			}
+			keys, _, _ := j.Plan(context.Background(), testDay)
+			j.Run(context.Background(), testDay, keys)
+			var got []map[string]string
+			for _, r := range recs {
+				if r.Message != "capture failed" {
+					continue
+				}
+				m := map[string]string{}
+				r.Attrs(func(a slog.Attr) bool { m[a.Key] = a.Value.String(); return true })
+				got = append(got, m)
+				if strings.Contains(r.Message, "99999") {
+					t.Fatal("message holds account id")
+				}
+			}
+			if len(got) != 1 {
+				t.Fatalf("capture failed records = %d", len(got))
+			}
+			m := got[0]
+			if len(m) != 3 || m["alias"] != "a" || m["step"] != tc.step || m["kind"] != tc.kind {
+				t.Fatalf("attrs = %v", m)
+			}
+			for _, v := range m {
+				if strings.Contains(v, "99999") {
+					t.Fatalf("attrs hold account id: %v", m)
+				}
+			}
+		})
+	}
+}
+
+func TestCaptureFailureWriteStepLogged(t *testing.T) {
+	t.Parallel()
+	e := setup(t, "a", map[string]*fakeReader{"a": goodReader("a")})
+	e.w.err = errors.New("db 99999")
+	run(e)
+	l := e.log.String()
+	if strings.Count(l, "capture failed") != 1 || !strings.Contains(l, "step=write") || !strings.Contains(l, "kind=unknown") || strings.Contains(l, "99999") {
+		t.Fatalf("log = %q", l)
 	}
 }
