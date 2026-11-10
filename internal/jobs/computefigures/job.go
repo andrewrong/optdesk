@@ -49,6 +49,7 @@ type manifest struct {
 	Iv30       string        `toml:"iv30"`
 	Ivp        string        `toml:"ivp"`
 	Ivr        string        `toml:"ivr"`
+	Hv30       string        `toml:"hv30"`
 	Market     []marketSpec  `toml:"market"`
 	Ease       easeSpec      `toml:"ease"`
 	Schedule   scheduleTable `toml:"schedule"`
@@ -131,6 +132,12 @@ func (j *job) findRules() error {
 		}
 		ids = append(ids, j.m.Ease.ID)
 	}
+	if j.hvOn() {
+		if j.m.Hv30 == "" {
+			return errors.New("computefigures: manifest: no hv30 id")
+		}
+		ids = append(ids, j.m.Hv30)
+	}
 	for _, id := range ids {
 		r, ok := j.rules.Rule(id)
 		if !ok {
@@ -174,6 +181,11 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 			keys = append(keys, keyOf(id, kindUnderlying, s.name))
 		}
 	}
+	if j.hvOn() {
+		for _, s := range subs {
+			keys = append(keys, keyOf(j.m.Hv30, kindUnderlying, s.name))
+		}
+	}
 	for _, ms := range j.m.Market {
 		keys = append(keys, keyOf(ms.ID, kindMarket, ms.Series[0]))
 	}
@@ -197,11 +209,11 @@ type target struct {
 	spec marketSpec
 }
 
-// Run runs the steps in order: IV30, the market figures, IVP and IVR on the stored IV30, then the ease.
+// Run runs the steps in order: IV30, the HV30 (only with PriceBars), the market figures, IVP and IVR on the stored IV30, then the ease.
 // A key that fails does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	r := &runState{j: j, ctx: ctx, day: day}
-	var iv30, market, ivs []target
+	var iv30, market, ivs, hvs []target
 	var ease *target
 	var under map[string]subject
 	for _, k := range keys {
@@ -230,9 +242,12 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 				r.fail(contracts.Retryable, fmt.Errorf("computefigures: %s has no option rows on %s", subj, day))
 				continue
 			}
-			if name == j.m.Iv30 {
+			switch {
+			case name == j.m.Iv30:
 				iv30 = append(iv30, target{rule: rule, subj: s})
-			} else {
+			case j.hvOn() && name == j.m.Hv30:
+				hvs = append(hvs, target{rule: rule, subj: s})
+			default:
 				ivs = append(ivs, target{rule: rule, subj: s})
 			}
 		default:
@@ -241,6 +256,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	}
 	r.returned = len(keys)
 	r.runIv30(iv30)
+	r.runHv30(hvs)
 	r.runMarket(market)
 	r.runIvStats(ivs)
 	if ease != nil {
