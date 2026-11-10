@@ -139,7 +139,8 @@ type diagRow struct {
 // fiscal year of the window, "operating_margin@<end>", "inventory_to_revenue@<end>" and
 // "revenue@<end>" (cyclical) or "roe@<end>", "roa@<end>" and "equity@<end>" (financial),
 // then "ranked", "loss_years", "record_years", and the statistics "latest_rank",
-// "<primary>_median", "<secondary>_median", "<secondary>_latest" and, cyclical only,
+// "<primary>_median", "<secondary>_median", "<primary>_usual_low", "<primary>_usual_high"
+// (the lowest and the highest primary figure), "<secondary>_latest" and, cyclical only,
 // "revenue_vs_peak". With fewer than five years that have a primary figure the statistics
 // are missing_input with the reason too_short. It implements valuationapi.DiagnosisFunc.
 func Diagnosis(f valuationapi.Filings, _ contracts.Day) valuationapi.DiagnosisResult {
@@ -204,6 +205,7 @@ func Diagnosis(f valuationapi.Filings, _ contracts.Day) valuationapi.DiagnosisRe
 
 	stats := []valuationapi.DiagnosisFigure{
 		dRank(rows), dMedian(names[0]+"_median", primaries), dMedian(names[1]+"_median", secondaries),
+		dUsual(names[0]+"_usual_low", primaries, true), dUsual(names[0]+"_usual_high", primaries, false),
 	}
 	if len(rows) > 0 {
 		stats = append(stats, dOpt(names[1]+"_latest", rows[len(rows)-1].secondary))
@@ -243,6 +245,20 @@ func dMedian(key string, vs []decimal.Decimal) valuationapi.DiagnosisFigure {
 		return dMissing(key, reasonNotFormed)
 	}
 	return dOK(key, medianOf(vs))
+}
+
+// dUsual is the lowest (or the highest) of the values, not_formed when there are none.
+func dUsual(key string, vs []decimal.Decimal, low bool) valuationapi.DiagnosisFigure {
+	if len(vs) == 0 {
+		return dMissing(key, reasonNotFormed)
+	}
+	best := vs[0]
+	for _, v := range vs[1:] {
+		if (low && v.LessThan(best)) || (!low && v.GreaterThan(best)) {
+			best = v
+		}
+	}
+	return dOK(key, best)
 }
 
 // peakRatio is the latest revenue over the highest revenue of the window, nil when the
