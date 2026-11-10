@@ -28,6 +28,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/ruleparam"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
+	"github.com/andrewrong/optdesk/internal/compute/settingsform"
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
@@ -152,6 +153,7 @@ type deps struct {
 	newOptionStructures     compute.NewOptionStructuresFunc
 	newOptionResults        compute.NewOptionResultsFunc
 	newRuleParams           settingsapi.NewRuleParamsFunc
+	newSettingsForm         settingsapi.NewSettingsFormFunc
 	openOwnerSet            ownerset.OpenFunc
 	settingsPage            func(c settings_page.Config) pages.Page
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
@@ -220,6 +222,7 @@ func newDeps() deps {
 	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openOptionLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
 	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
 	d.newRuleParams = ruleparam.New
+	d.newSettingsForm = settingsform.New
 	d.openDividend, d.newDividendCapture = eventstore.OpenDividend, dividendcapture.New
 	d.openOwnerSet = ownersetpg.Open
 	d.openOptionLedgerRO = openOptionLedgerStore

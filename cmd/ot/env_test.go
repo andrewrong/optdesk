@@ -14,9 +14,12 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/compute/ruleparam"
+	"github.com/andrewrong/optdesk/internal/compute/settingsform"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/jonboulle/clockwork"
 	"github.com/pressly/goose/v3"
 )
@@ -262,5 +265,48 @@ func TestLeakTableCoversCommands(t *testing.T) {
 		if !row && !excl {
 			t.Errorf("command %q is neither a row of the leak table nor excluded with a reason", name)
 		}
+	}
+}
+
+func TestUnsetOrShortKeyLeavesRouteOut(t *testing.T) {
+	t.Parallel()
+	key := strings.Repeat("ab", 16)
+	cases := []struct {
+		name, env, reason string
+	}{
+		{"no key", "OT_PG_DSN_SETTINGS=settings-dsn-sentinel\n", "OT_FORM_KEY"},
+		{"short key", "OT_FORM_KEY=short-key-sentinel\nOT_PG_DSN_SETTINGS=settings-dsn-sentinel\n", "OT_FORM_KEY"},
+		{"no dsn", "OT_FORM_KEY=" + key + "\n", "OT_PG_DSN_SETTINGS"},
+	}
+	for _, c := range cases {
+		a, errb := testApp(t, c.env)
+		a.deps.openOwnerSet = func(context.Context, string) (ownerset.Store, error) {
+			t.Errorf("%s: the store was opened", c.name)
+			return nil, errors.New("unreachable")
+		}
+		a.deps.newSettingsForm = settingsform.New
+		a.deps.newRuleParams = ruleparam.New
+		oe, closeFn, err := newOwnerEdit(t.Context(), a, "127.0.0.1:8080")
+		closeFn()
+		if err != nil || oe != nil {
+			t.Fatalf("%s: %v %v", c.name, oe, err)
+		}
+		out := errb.String()
+		if !strings.Contains(out, c.reason) || strings.Contains(out, "sentinel") || strings.Contains(out, key) {
+			t.Fatalf("%s: log %q", c.name, out)
+		}
+	}
+	a, _ := testApp(t, "OT_FORM_KEY="+key+"\nOT_PG_DSN_SETTINGS=settings-dsn\n")
+	var dsn string
+	a.deps.openOwnerSet = func(_ context.Context, d string) (ownerset.Store, error) {
+		dsn = d
+		return &fakeOwnerStore{}, nil
+	}
+	a.deps.newSettingsForm = settingsform.New
+	a.deps.newRuleParams = ruleparam.New
+	oe, closeFn, err := newOwnerEdit(t.Context(), a, "127.0.0.1:8080")
+	closeFn()
+	if err != nil || oe == nil || dsn != "settings-dsn" {
+		t.Fatalf("%v %v %q", oe, err, dsn)
 	}
 }

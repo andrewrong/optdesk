@@ -39,3 +39,19 @@ zone = "Asia/Tokyo"
 offset = "15h50m"
 run_bound = "16m"
 restart_sensitive = true
+
+# What a JP stock of the watch list gets besides its watch entry (symbol, exchange, currency, con_id); no code and no
+# con_id here. The chain of a stock is the one of chain_exchange whose trading class is the code and whose multiplier
+# is multiplier; its expiries are those 14..75 days out, at most 12 strikes (so at most 48 contracts per name).
+[stock]
+mic = "XTKS"
+calendar_id = "XTKS"
+lot_size = "100"
+price_increment = "1"
+chain_exchange = "OSE.JPN"
+multiplier = "100"
+option_mic = "XOSE"
+min_dte = 14
+max_dte = 75
+max_strikes = 12
+max_strikes_per_side = 6
