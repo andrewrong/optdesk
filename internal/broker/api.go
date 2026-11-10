@@ -216,6 +216,8 @@ const (
 	BarTrades BarKind = iota + 1
 	BarAdjustedLast
 	BarMidpoint
+	// BarOptionImpliedVol is IBKR's option implied volatility of the underlying; the bar's Close is the IV as decimal text (0.28 is 28 percent).
+	BarOptionImpliedVol
 )
 
 // Bar is one daily bar. Day is YYYY-MM-DD; prices and Volume are decimal text, never floats;
