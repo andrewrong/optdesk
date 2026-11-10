@@ -1,0 +1,240 @@
+package option_tracking_page
+
+import (
+	"encoding/json"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
+)
+
+var numberPattern = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
+
+// gap is a common.v2 Gap: a figure that cannot be shown. Never a zero.
+type gap struct {
+	Kind   string `json:"kind"`
+	Reason string `json:"reason"`
+	Text   string `json:"text"`
+}
+
+// codeGap is the gap of a tracking code: the reason is a common.v2 reason and the text starts
+// with the code.
+func codeGap(code string) gap {
+	reason, ok := reasonOf[code]
+	if !ok {
+		reason = reasonInput
+	}
+	text := code
+	if t := codeTexts[code]; t != "" {
+		text += termSep + t
+	}
+	return gap{Kind: "gap", Reason: reason, Text: text}
+}
+
+// readerGap is the gap of a missing reader.
+func readerGap() gap {
+	g := codeGap(reasonNoReader)
+	g.Reason = reasonNoReader
+	return g
+}
+
+type valueCell struct {
+	Text   string       `json:"text"`
+	Value  *json.Number `json:"value"`
+	Badges []string     `json:"badges"`
+	Tone   string       `json:"tone"`
+}
+
+func textCell(text string) valueCell {
+	return valueCell{Text: text, Badges: []string{}, Tone: "none"}
+}
+
+// numberLiteral is the stored decimal text as a JSON number literal; a leading plus is dropped.
+func numberLiteral(text string) (json.Number, bool) {
+	t := strings.TrimPrefix(text, "+")
+	if !numberPattern.MatchString(t) {
+		return "", false
+	}
+	return json.Number(t), true
+}
+
+// numValue shows the stored decimal text as it is, with the text as its value.
+func numValue(text string) (valueCell, bool) {
+	v, ok := numberLiteral(text)
+	if !ok {
+		return valueCell{}, false
+	}
+	c := textCell(text)
+	c.Value = &v
+	return c, true
+}
+
+// numCell is a numeric cell; the empty text is a gap with code, never a zero.
+func numCell(text, code string) any {
+	if text == "" {
+		return codeGap(code)
+	}
+	c, ok := numValue(text)
+	if !ok {
+		return codeGap(codeUnreadable)
+	}
+	return c
+}
+
+func plainCell(s string) any {
+	if s == "" {
+		return textCell(dash)
+	}
+	return textCell(s)
+}
+
+func dayCell(d contracts.Day) any { return plainCell(string(d)) }
+
+// markCode is the cause of an empty figure that comes from the mark.
+func markCode(o trackapi.TrackedOption) string {
+	if o.MarkStatus == codeNoMark {
+		return codeNoMark
+	}
+	return codeNoValue
+}
+
+func isPut(right string) bool {
+	return strings.EqualFold(right, "P") || strings.EqualFold(right, "put")
+}
+
+func termsText(right, strike string, expiry contracts.Day) string {
+	return right + termSep + strike + termSep + string(expiry)
+}
+
+func openContract(o trackapi.TrackedOption) any {
+	return textCell(termsText(o.Right, o.Strike, contracts.Day(o.Expiry)))
+}
+
+func company(o trackapi.TrackedOption) any { return plainCell(o.Underlying) }
+
+func qty(o trackapi.TrackedOption) any { return numCell(o.Quantity, codeNoValue) }
+
+func dteCell(o trackapi.TrackedOption) any { return numCell(strconv.Itoa(o.DTE), codeNoValue) }
+
+func moneynessCell(o trackapi.TrackedOption) any {
+	badge, known := badgeMoneyness[o.Moneyness]
+	if !known || o.OtmPercent == "" {
+		return codeGap(markCode(o))
+	}
+	c, ok := numValue(o.OtmPercent)
+	if !ok {
+		return codeGap(codeUnreadable)
+	}
+	c.Text = o.OtmPercent + "%"
+	c.Badges = []string{badge}
+	return c
+}
+
+// eventGap is the gap of the event cells when the tracker found no event row.
+func eventGap(o trackapi.TrackedOption) (gap, bool) {
+	if o.EventStatus == "" || o.EventStatus == "ok" {
+		return gap{}, false
+	}
+	return codeGap(o.EventStatus), true
+}
+
+func resultsCell(o trackapi.TrackedOption) any {
+	if g, bad := eventGap(o); bad {
+		return g
+	}
+	c := textCell(dash)
+	if o.NextEarnings != "" {
+		c.Text = string(o.NextEarnings)
+	}
+	if o.EarningsInLife {
+		c.Badges = append(c.Badges, inLife)
+	}
+	return c
+}
+
+func exCell(o trackapi.TrackedOption) any {
+	if isPut(o.Right) {
+		return textCell(notApply)
+	}
+	if g, bad := eventGap(o); bad {
+		return g
+	}
+	c := textCell(dash)
+	if o.NextExDate != "" {
+		c.Text = string(o.NextExDate)
+		if o.ExAmount != "" {
+			c.Text += termSep + o.ExAmount
+		}
+	}
+	if o.ExInLife {
+		c.Badges = append(c.Badges, inLife)
+	}
+	return c
+}
+
+// guardCell is the stored verdict as a badge and its reason once, with its basis.
+func guardCell(o trackapi.TrackedOption) any {
+	if o.Guard == "n/a" || (o.Guard == "" && isPut(o.Right)) {
+		c := textCell(notApply)
+		c.Badges = []string{notApply}
+		return c
+	}
+	if o.Guard == "" || (o.Guard == "unknown" && o.GuardReason == codeNoGuardRow) {
+		return codeGap(codeNoGuardRow)
+	}
+	badge, ok := badgeGuard[o.Guard]
+	if !ok {
+		badge = o.Guard
+	}
+	text := ""
+	if o.GuardReason != "" {
+		text = o.GuardReason
+		if t, known := reasonTexts[o.GuardReason]; known {
+			text = t
+		}
+	}
+	if o.GuardBasis != "" {
+		if text != "" {
+			text += reasonSep
+		}
+		text += basisHead + o.GuardBasis
+	}
+	if text == "" {
+		text = dash
+	}
+	c := textCell(text)
+	c.Badges = []string{badge}
+	if tone, ok := guardTone[o.Guard]; ok {
+		c.Tone = tone
+	}
+	return c
+}
+
+func statusCell(o trackapi.TrackedOption) any {
+	c := textCell(o.Status)
+	c.Badges = []string{o.Status}
+	if o.Early {
+		c.Badges = append(c.Badges, earlyBadge)
+	}
+	return c
+}
+
+func closedDayCell(o trackapi.TrackedOption) any { return dayCell(o.ClosedOn) }
+
+func reconContract(r trackapi.TrackRecon) any {
+	return textCell(termsText(r.Right, r.Strike, r.Expiry))
+}
+
+func reconCompany(r trackapi.TrackRecon) any { return plainCell(r.Underlying) }
+
+func reconQty(r trackapi.TrackRecon) any { return numCell(r.Quantity, codeNoValue) }
+
+func reconCode(r trackapi.TrackRecon) any {
+	c := textCell(r.Code)
+	c.Badges = []string{r.Code}
+	return c
+}
+
+func reconNote(r trackapi.TrackRecon) any { return plainCell(checkNotes[r.Code]) }
