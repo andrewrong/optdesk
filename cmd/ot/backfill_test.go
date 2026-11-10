@@ -289,8 +289,8 @@ func TestBackfillPrintsMissingKeys(t *testing.T) {
 	if stdout.String() != want {
 		t.Fatalf("stdout %q, want %q", stdout.String(), want)
 	}
-	if strings.Contains(stdout.String(), "postgres") {
-		t.Fatalf("stdout holds a DSN: %q", stdout.String())
+	if strings.Contains(stdout.String(), "-dsn") || strings.Contains(stdout.String(), alphaTestKey) {
+		t.Fatalf("stdout holds a DSN or a key: %q", stdout.String())
 	}
 }
 
