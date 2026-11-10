@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/datasets/plan.option_open_item.r1.json",
+  "title": "OptionOpenItem",
+  "description": "plan.option_open_item r1: one planned contract of the option open pull, written by the plan job before the pull.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_day", "slot", "plan_id", "instrument_id", "underlying_id", "planned_at", "class", "deferred", "rank", "planned_spot", "sigma", "sigma_source"],
+  "x-dataset": "plan.option_open_item",
+  "x-revision": "r1",
+  "x-primary-key": ["session_day", "slot", "plan_id", "instrument_id"],
+  "properties": {
+    "session_day": {"type": "string", "format": "date", "description": "Market-zone session date the plan is for."},
+    "slot": {"type": "string", "pattern": "^[0-9]{4}$", "description": "Slot of the pull as four digits, for example 0945."},
+    "plan_id": {"type": "string", "format": "uuid", "description": "Identifier of the plan run. The pull reads the latest plan of the session day and slot, the one with the greatest planned_at."},
+    "instrument_id": {"type": "integer", "description": "Identifier of the option contract."},
+    "underlying_id": {"type": "integer", "description": "Identifier of the underlying instrument."},
+    "planned_at": {"type": "string", "format": "date-time", "description": "Instant the plan was made, UTC."},
+    "class": {"type": "string", "enum": ["around_spot", "puts", "calls", "held"], "description": "Class of the contract, in the order of the ceilings."},
+    "deferred": {"type": "boolean", "description": "True when the contract is over a ceiling; it keeps its class and is not asked."},
+    "rank": {"type": "integer", "minimum": 0, "description": "Position of the contract in the order of the pull."},
+    "planned_spot": {"type": "number", "minimum": 0, "description": "Spot of the underlying the plan used."},
+    "sigma": {"type": "number", "minimum": 0, "description": "Implied volatility as a decimal that sized the strike band."},
+    "sigma_source": {"type": "string", "enum": ["prior_close", "last_known", "default"], "description": "Where sigma came from."}
+  }
+}
