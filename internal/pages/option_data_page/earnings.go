@@ -8,7 +8,13 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-const earningsLookbackDays = 120
+const (
+	earningsLookbackDays = 120
+
+	toneNone    = "none"
+	toneOutside = "outside"
+	toneInTerm  = "in_term"
+)
 
 // applyEarnings fills earnings_text and earnings_tone of u from the last earnings row of the issuer.
 // With no reader or no issuer the fields stay absent. sessionDay is the day of the chain and rows
@@ -22,7 +28,7 @@ func applyEarnings(ctx context.Context, c Config, d time.Time, day contracts.Day
 	if err != nil {
 		return fmt.Errorf("option_data_page: read earnings dates: %w", err)
 	}
-	u.EarningsTone = "none"
+	u.EarningsTone = toneNone
 	if len(list) == 0 {
 		return nil
 	}
@@ -39,9 +45,9 @@ func applyEarnings(ctx context.Context, c Config, d time.Time, day contracts.Day
 		word = "owner"
 	}
 	u.EarningsText = "E " + last.ReportDate.Format("01-02") + " · 来源 " + word
-	u.EarningsTone = "outside"
-	if report <= latestExpiry(rows) && latestExpiry(rows) != "" {
-		u.EarningsTone = "in_term"
+	u.EarningsTone = toneOutside
+	if expiry := latestExpiry(rows); expiry != "" && report <= expiry {
+		u.EarningsTone = toneInTerm
 	}
 	return nil
 }

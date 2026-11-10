@@ -132,6 +132,11 @@ func TestEarningsOmittedWithoutReader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, page := range [][]byte{a, b} {
+		if err := validateBytes(t, page); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if !bytes.Equal(a, b) || bytes.Contains(a, []byte("earnings_")) {
 		t.Fatalf("outputs differ or carry earnings:\n%s\n%s", a, b)
 	}
@@ -139,14 +144,22 @@ func TestEarningsOmittedWithoutReader(t *testing.T) {
 	fe := &fakeEarnings{}
 	c := earningsCfg(t, fe)
 	c.Issuer = ""
-	if out, err := Build(t.Context(), c, "2026-11-06", fixedAt); err != nil || !bytes.Equal(out, a) || len(fe.got) != 0 {
+	out, err := Build(t.Context(), c, "2026-11-06", fixedAt)
+	if err != nil || !bytes.Equal(out, a) || len(fe.got) != 0 {
 		t.Fatalf("empty issuer: err %v, reads %v", err, fe.got)
+	}
+	if err := validateBytes(t, out); err != nil {
+		t.Fatal(err)
 	}
 	// Nothing is read when the eod read holds no rows.
 	c = earningsCfg(t, fe)
 	c.Eod = &fakeEod{}
-	if _, err := Build(t.Context(), c, "2026-11-06", fixedAt); err != nil || len(fe.got) != 0 {
+	empty, err := Build(t.Context(), c, "2026-11-06", fixedAt)
+	if err != nil || len(fe.got) != 0 {
 		t.Fatalf("empty eod: err %v, reads %v", err, fe.got)
+	}
+	if err := validateBytes(t, empty); err != nil {
+		t.Fatal(err)
 	}
 }
 
