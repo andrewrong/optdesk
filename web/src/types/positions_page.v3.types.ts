@@ -27,12 +27,12 @@ export type StaleAfter = string
 export type Text1 = string
 export type Title = string
 /**
- * @minItems 3
- * @maxItems 3
+ * @minItems 1
+ * @maxItems 8
  */
-export type Views = [PositionsView, PositionsView, PositionsView]
-export type Key = ("me" | "spouse" | "household")
-export type Label = ("我" | "配偶" | "家庭")
+export type Views = PositionsView[]
+export type Key = string
+export type Label = string
 /**
  * @minItems 11
  * @maxItems 11
@@ -68,8 +68,8 @@ export type Price = (MoneyCell | Gap)
 export type Text7 = string
 export type Unit4 = ("shares" | "contracts")
 export type Value5 = number
-export type Text8 = ("我" | "配偶")
-export type Value6 = ("我" | "配偶")
+export type Text8 = string
+export type Value6 = string
 export type Unrealised = (MoneyCell | Gap)
 /**
  * @minItems 0

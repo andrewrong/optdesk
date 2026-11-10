@@ -101,6 +101,7 @@ Invariants of the carried files:
 - The keywords `x-decimals`, `x-timezone` and `x-rounding` are unknown to the compiler and ignored.
 - Every fixture of `web/fixtures` validates against the schema that `internal/contracts/fixtures_test.go` maps its directory to (`positions-page` to `page.positions_page.v3.json`), except the `bad-version.json` files, which fail at `/schema_version` with the keyword `const`.
 - No schema and no fixture is edited to make a fixture pass.
+- `page.positions_page.v3.json` (edited in place, `schema_version` stays 3; `docs/design/pages-real-data.md#Interface`): `views` has 1 to 8 `PositionsView`; `key` is the account alias and `label` the account label, each a non-empty string of at most 64 characters; `RoleCell.text` and `value` are the account label of the row (non-empty, at most 64 characters). The enums of the three tables' column ids and `Gap.reason` are unchanged. Checked by `internal/contracts/positions_page_v3_test.go`.
 - The `const` of `schema_version` is an integer in the copies and a string in `page.macro_rates.v1`; unifying it is for week 2.
 
 ## Version history
