@@ -11,9 +11,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ jobs.NewOptionEodFunc = NewJP
+var _ NewOptionEodFunc = NewJP
 
-var _ jobs.NewOptionEodWatchFunc = NewJPWithWatch
+var _ NewOptionEodWatchFunc = NewJPWithWatch
 
 //go:embed job_jp.toml
 var manifestJPBytes []byte

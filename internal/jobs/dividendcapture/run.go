@@ -32,7 +32,7 @@ const (
 	dayLayout = "2006-01-02"
 )
 
-var _ jobs.NewDividendCaptureFunc = New
+var _ NewDividendCaptureFunc = New
 
 type manifest struct {
 	Version       int      `toml:"version"`

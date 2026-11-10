@@ -14,7 +14,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -65,7 +64,7 @@ func okFigure() compute.EaseFigure {
 		Status: compute.StatusOK, Value: 56.42, Observations: 4}, Band: compute.EaseSteady, Parts: okParts()}
 }
 
-func easeJob2(t *testing.T, s jobs.ComputeStores, figs compute.Figures, e compute.Ease) contracts.Job {
+func easeJob2(t *testing.T, s ComputeStores, figs compute.Figures, e compute.Ease) contracts.Job {
 	t.Helper()
 	j, err := NewWithEase(s, figs, rules.New(), own.NewUnits(), own.NewSeriesOps(), e,
 		clockwork.NewFakeClockAt(closeD.Add(20*time.Minute)))

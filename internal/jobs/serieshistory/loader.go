@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -41,8 +40,8 @@ type loader struct {
 	w   store.SeriesWriter
 }
 
-// New builds the loader (jobs.NewSeriesHistoryFunc).
-func New(src sources.Source, w store.SeriesWriter) (jobs.SeriesHistoryLoader, error) {
+// New builds the loader (NewSeriesHistoryFunc).
+func New(src sources.Source, w store.SeriesWriter) (SeriesHistoryLoader, error) {
 	if src == nil || w == nil {
 		return nil, errors.New("serieshistory: source and writer are required")
 	}
@@ -51,7 +50,7 @@ func New(src sources.Source, w store.SeriesWriter) (jobs.SeriesHistoryLoader, er
 
 // Load fetches From..To once per series, then writes each series with one InsertSeriesPoints call.
 // Nothing is written when a fetch fails. Only the class of a source or writer error is passed on.
-func (l *loader) Load(ctx context.Context, plan sources.FetchPlan) ([]jobs.SeriesLoaded, error) {
+func (l *loader) Load(ctx context.Context, plan sources.FetchPlan) ([]SeriesLoaded, error) {
 	if len(plan.SeriesIDs) == 0 {
 		return nil, permanent("no series given")
 	}
@@ -88,12 +87,12 @@ func (l *loader) Load(ctx context.Context, plan sources.FetchPlan) ([]jobs.Serie
 		}
 		points[i] = pts
 	}
-	out := make([]jobs.SeriesLoaded, len(ids))
+	out := make([]SeriesLoaded, len(ids))
 	for i, id := range ids {
 		if err := l.w.InsertSeriesPoints(ctx, points[i]); err != nil {
 			return nil, &typedError{kind: classOf(err, contracts.Retryable), msg: "serieshistory: write failed"}
 		}
-		out[i] = jobs.SeriesLoaded{SeriesID: id, Fetched: len(points[i])}
+		out[i] = SeriesLoaded{SeriesID: id, Fetched: len(points[i])}
 	}
 	return out, nil
 }

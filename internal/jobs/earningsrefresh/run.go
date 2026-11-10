@@ -32,7 +32,7 @@ const (
 	dayLayout = "2006-01-02"
 )
 
-var _ jobs.NewEarningsRefreshFunc = New
+var _ NewEarningsRefreshFunc = New
 
 type manifest struct {
 	Version  int `toml:"version"`
@@ -97,7 +97,7 @@ var vendor = map[string]contracts.EarningsDate{
 	"JP": {Market: "JP", Source: "jquants"},
 }
 
-var _ jobs.NewEarningsRefreshSymbolsFunc = NewWithSymbols
+var _ NewEarningsRefreshSymbolsFunc = NewWithSymbols
 
 // New builds the earnings_refresh job from the embedded job.toml. srcs holds one source per market (US, JP).
 // It matches symbols by sameSymbol, as NewWithSymbols does with a nil translator.

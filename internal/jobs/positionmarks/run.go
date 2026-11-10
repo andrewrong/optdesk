@@ -13,7 +13,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
@@ -29,7 +28,7 @@ const (
 	budget = 45 * time.Second
 )
 
-var _ jobs.NewPositionMarksFunc = New
+var _ NewPositionMarksFunc = New
 
 type job struct {
 	m       manifest

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
 )
@@ -42,12 +41,12 @@ func fixtureReport(t *testing.T) sources.FlexReport {
 	return rep
 }
 
-func buildS(t *testing.T, logins []jobs.FlexRun, sec flexsection.Writer) (*job, *fakeWriter, *bytes.Buffer) {
+func buildS(t *testing.T, logins []FlexRun, sec flexsection.Writer) (*job, *fakeWriter, *bytes.Buffer) {
 	t.Helper()
 	w := &fakeWriter{}
 	logs := &bytes.Buffer{}
-	cfg := jobs.OptionLedgerConfig{Logins: logins, Accounts: map[string]string{"ACCT1": "a"}, HistoryFrom: "2025-12-01"}
-	stores := jobs.OptionLedgerStores{Ledger: w, Read: &fakeReader{aliases: []string{"a"}}, Sections: sec}
+	cfg := OptionLedgerConfig{Logins: logins, Accounts: map[string]string{"ACCT1": "a"}, HistoryFrom: "2025-12-01"}
+	stores := OptionLedgerStores{Ledger: w, Read: &fakeReader{aliases: []string{"a"}}, Sections: sec}
 	j, err := newJob(stores, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(logs, nil)))
 	if err != nil {
 		t.Fatal(err)
@@ -55,8 +54,8 @@ func buildS(t *testing.T, logins []jobs.FlexRun, sec flexsection.Writer) (*job, 
 	return j, w, logs
 }
 
-func mainLogin(rep sources.FlexReport) []jobs.FlexRun {
-	return []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: &fakeSource{rep: rep}}}
+func mainLogin(rep sources.FlexReport) []FlexRun {
+	return []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: &fakeSource{rep: rep}}}
 }
 
 func stateOf(sts []flexsection.Status) map[string]string {
@@ -177,7 +176,7 @@ func TestSectionWriteFailureFailsRequiredLogin(t *testing.T) {
 		t.Fatal("required login must fail")
 	}
 	sec2 := &fakeSections{err: errors.New("db down")}
-	login := []jobs.FlexRun{{Name: "second", QueryIDs: []string{"q1"}, Source: &fakeSource{rep: fixtureReport(t)}}}
+	login := []FlexRun{{Name: "second", QueryIDs: []string{"q1"}, Source: &fakeSource{rep: fixtureReport(t)}}}
 	j2, _, logs := buildS(t, login, sec2)
 	if res := j2.Run(context.Background(), "2026-11-10", nil); res.Err != nil {
 		t.Fatalf("non-required login must stay ok: %v", res.Err)
@@ -191,7 +190,7 @@ func TestSectionWriteFailureFailsRequiredLogin(t *testing.T) {
 func TestResultCarriesNoFigures(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{fail: true}
-	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	res := j.Run(context.Background(), "2026-11-10", nil)
 	if res.Err == nil {
 		t.Fatal("want error")

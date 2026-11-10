@@ -18,7 +18,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -34,7 +33,7 @@ const (
 	nyZone        = "America/New_York"
 )
 
-var _ jobs.NewOptionLedgerJobFunc = New
+var _ NewOptionLedgerJobFunc = New
 
 type manifest struct {
 	Version     int    `toml:"version"`
@@ -53,8 +52,8 @@ type job struct {
 	m        manifest
 	offset   time.Duration
 	runBound time.Duration
-	stores   jobs.OptionLedgerStores
-	cfg      jobs.OptionLedgerConfig
+	stores   OptionLedgerStores
+	cfg      OptionLedgerConfig
 	clk      clock.Clock
 	loc      *time.Location
 	log      *slog.Logger
@@ -75,11 +74,11 @@ func (e *typedError) Unwrap() error             { return e.err }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
 // New builds the option_ledger job from the embedded job.toml. A login with a nil Source is accepted.
-func New(s jobs.OptionLedgerStores, cfg jobs.OptionLedgerConfig, clk clock.Clock) (contracts.Job, error) {
+func New(s OptionLedgerStores, cfg OptionLedgerConfig, clk clock.Clock) (contracts.Job, error) {
 	return newJob(s, cfg, clk, slog.Default())
 }
 
-func newJob(s jobs.OptionLedgerStores, cfg jobs.OptionLedgerConfig, clk clock.Clock, log *slog.Logger) (*job, error) {
+func newJob(s OptionLedgerStores, cfg OptionLedgerConfig, clk clock.Clock, log *slog.Logger) (*job, error) {
 	if s.Ledger == nil || s.Read == nil || clk == nil {
 		return nil, errors.New("optionledger: ledger, reader and clock are required")
 	}
@@ -213,7 +212,7 @@ func (j *job) fetchAll(ctx context.Context) contracts.JobResult {
 
 // fail records the failure of a login: the degraded log record (login and status only) for a login
 // without Required, the failed result for a Required one.
-func (r *run) fail(l jobs.FlexRun, status string) {
+func (r *run) fail(l FlexRun, status string) {
 	if l.Required {
 		r.failedRequired = append(r.failedRequired, l.Name)
 		return
@@ -236,7 +235,7 @@ func (r *run) rowsForAll() bool {
 	return true
 }
 
-func (r *run) query(ctx context.Context, l jobs.FlexRun, queryID string) {
+func (r *run) query(ctx context.Context, l FlexRun, queryID string) {
 	rd := r.j.stores.Read
 	rec, has, err := rd.LatestOkFetch(ctx, l.Name, queryID)
 	if err != nil {
@@ -261,7 +260,7 @@ func (r *run) query(ctx context.Context, l jobs.FlexRun, queryID string) {
 }
 
 // fetch makes the one Fetch of a window and records it; it returns ok or the status of the failure.
-func (r *run) fetch(ctx context.Context, l jobs.FlexRun, queryID string, w window) string {
+func (r *run) fetch(ctx context.Context, l FlexRun, queryID string, w window) string {
 	started := r.j.clk.Now()
 	rec := store.FlexFetchRecord{Login: l.Name, QueryID: queryID, FirstDay: w.first, LastDay: w.last, StartedAt: started, ParserVersion: parserVersion}
 	rep, err := l.Source.Fetch(ctx, sources.FlexRequest{QueryID: queryID, First: w.first, Last: w.last})

@@ -19,7 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 )
 
-var _ jobs.NewOptionCandidatesCallsFunc = NewWithCalls
+var _ NewOptionCandidatesCallsFunc = NewWithCalls
 
 // callsJob is the job of New plus a dividend reader: one run writes the short_put, covered_call and
 // held_call_guard rows of the same run id. ID, Schedule, RunBound, RestartSensitive, Plan and Skipped are the
@@ -32,7 +32,7 @@ type callsJob struct {
 // NewWithCalls builds the same job as New and adds the covered-call and held-call-guard rows to its run. A nil
 // dividend reader is an error; the other requirements are those of New.
 func NewWithCalls(
-	st jobs.CandidateStores, div dividend.Reader, rule compute.OptionCandidates, entries []jobs.WatchEntry, clk clock.Clock,
+	st CandidateStores, div dividend.Reader, rule compute.OptionCandidates, entries []jobs.WatchEntry, clk clock.Clock,
 ) (contracts.Job, error) {
 	if div == nil {
 		return nil, errors.New("optioncandidates: the dividend reader is required")

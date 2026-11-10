@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -37,23 +36,23 @@ type oldRow struct {
 
 type subjectKey struct{ name, kind, subject string }
 
-// CompareFigures implements jobs.CompareFiguresFunc (Decisions 8, 9 and 13 of docs/design/cut-over.md). It
+// CompareFigures implements CompareFiguresFunc (Decisions 8, 9 and 13 of docs/design/cut-over.md). It
 // sets, for every [[figure]] of the register in file order, the old rows beside optdesk's readings and gives
 // one status. It reads the readings once for each distinct (name, subject kind, subject) of the old file over
 // the range of its days. An id that matches no entry of classes is an error naming the ids, with no report.
 // It writes nothing.
-func CompareFigures(ctx context.Context, old, register, classes, explained io.Reader, rd store.ReadingReader) (jobs.FigureReport, error) {
+func CompareFigures(ctx context.Context, old, register, classes, explained io.Reader, rd store.ReadingReader) (FigureReport, error) {
 	figs, err := readRegister(register)
 	if err != nil {
-		return jobs.FigureReport{}, err
+		return FigureReport{}, err
 	}
 	table, err := readClasses(classes)
 	if err != nil {
-		return jobs.FigureReport{}, err
+		return FigureReport{}, err
 	}
 	expl, err := readExplained(explained)
 	if err != nil {
-		return jobs.FigureReport{}, err
+		return FigureReport{}, err
 	}
 	classOf := make([]string, len(figs))
 	var missing []string
@@ -66,19 +65,19 @@ func CompareFigures(ctx context.Context, old, register, classes, explained io.Re
 	}
 	if len(missing) > 0 {
 		sort.Strings(missing)
-		return jobs.FigureReport{}, fmt.Errorf("figures with no class: %s", strings.Join(missing, ", "))
+		return FigureReport{}, fmt.Errorf("figures with no class: %s", strings.Join(missing, ", "))
 	}
 	rows, err := readOld(old)
 	if err != nil {
-		return jobs.FigureReport{}, err
+		return FigureReport{}, err
 	}
 	have, err := readReadings(ctx, rd, rows)
 	if err != nil {
-		return jobs.FigureReport{}, err
+		return FigureReport{}, err
 	}
-	var results []jobs.FigureResult
+	var results []FigureResult
 	for i, f := range figs {
-		res := jobs.FigureResult{ID: f.ID, Version: f.Version}
+		res := FigureResult{ID: f.ID, Version: f.Version}
 		res.Status, res.Reason = judge(f, classOf[i], rows, have, expl)
 		results = append(results, res)
 	}
@@ -86,14 +85,14 @@ func CompareFigures(ctx context.Context, old, register, classes, explained io.Re
 }
 
 // report is the one place OK is set.
-func report(results []jobs.FigureResult) jobs.FigureReport {
+func report(results []FigureResult) FigureReport {
 	ok := true
 	for _, r := range results {
-		if r.Status == jobs.FigureUnexplained {
+		if r.Status == FigureUnexplained {
 			ok = false
 		}
 	}
-	return jobs.FigureReport{Results: results, OK: ok}
+	return FigureReport{Results: results, OK: ok}
 }
 
 func readOld(r io.Reader) ([]oldRow, error) {
@@ -156,9 +155,9 @@ type readKey struct {
 }
 
 // judge gives the status of one figure.
-func judge(f figureEntry, class string, rows []oldRow, have map[readKey]contracts.ReadingRecord, expl map[string]bool) (jobs.FigureStatus, string) {
+func judge(f figureEntry, class string, rows []oldRow, have map[readKey]contracts.ReadingRecord, expl map[string]bool) (FigureStatus, string) {
 	if class == classNew {
-		return jobs.FigureNew, ""
+		return FigureNew, ""
 	}
 	var mine []oldRow
 	for _, r := range rows {
@@ -176,7 +175,7 @@ func judge(f figureEntry, class string, rows []oldRow, have map[readKey]contract
 		}
 	}
 	if len(valued) == 0 {
-		return jobs.FigureUnchecked, reason
+		return FigureUnchecked, reason
 	}
 	computed, differs := false, false
 	for _, r := range valued {
@@ -194,13 +193,13 @@ func judge(f figureEntry, class string, rows []oldRow, have map[readKey]contract
 	}
 	switch {
 	case !computed && !anyReading(have, f):
-		return jobs.FigureUnchecked, reasonNotComputedYet
+		return FigureUnchecked, reasonNotComputedYet
 	case !differs:
-		return jobs.FigureChecked, ""
+		return FigureChecked, ""
 	case expl[f.ID]:
-		return jobs.FigureExplained, ""
+		return FigureExplained, ""
 	}
-	return jobs.FigureUnexplained, ""
+	return FigureUnexplained, ""
 }
 
 // anyReading is true when optdesk holds a reading of the figure at all.

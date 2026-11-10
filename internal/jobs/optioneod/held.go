@@ -14,7 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ jobs.NewOptionEodHeldFunc = NewWithHeld
+var _ NewOptionEodHeldFunc = NewWithHeld
 
 // heldAliases are the two IBKR accounts of the owner (docs/design/option-candidates.md, alias A and B).
 var heldAliases = []string{"A", "B"}

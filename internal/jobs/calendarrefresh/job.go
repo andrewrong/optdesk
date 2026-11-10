@@ -15,7 +15,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -29,7 +28,7 @@ const (
 	dayLayout  = "2006-01-02"
 )
 
-var _ jobs.NewCalendarRefreshFunc = New
+var _ NewCalendarRefreshFunc = New
 
 type manifest struct {
 	Version  int           `toml:"version"`
@@ -44,7 +43,7 @@ type job struct {
 	st    store.SessionDayStore
 	diff  clock.SessionDayDiffer
 	clk   clock.Clock
-	obs   jobs.CalendarObserver
+	obs   CalendarObserver
 	log   *slog.Logger
 }
 
@@ -78,7 +77,7 @@ func (j *job) logFailure(step string, err error) {
 }
 
 // New builds the calendar_refresh job from the embedded job.toml. A nil observer is allowed.
-func New(src clock.SessionSource, st store.SessionDayStore, diff clock.SessionDayDiffer, clk clock.Clock, obs jobs.CalendarObserver) (contracts.Job, error) {
+func New(src clock.SessionSource, st store.SessionDayStore, diff clock.SessionDayDiffer, clk clock.Clock, obs CalendarObserver) (contracts.Job, error) {
 	if src == nil || st == nil || diff == nil || clk == nil {
 		return nil, errors.New("calendarrefresh: source, store, differ and clock are required")
 	}

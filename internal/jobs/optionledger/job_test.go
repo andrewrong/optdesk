@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -88,14 +87,14 @@ type env struct {
 	log *bytes.Buffer
 }
 
-func build(t *testing.T, logins []jobs.FlexRun, r *fakeReader) (*job, env) {
+func build(t *testing.T, logins []FlexRun, r *fakeReader) (*job, env) {
 	t.Helper()
 	if r == nil {
 		r = &fakeReader{aliases: []string{"a"}}
 	}
 	e := env{w: &fakeWriter{}, r: r, log: &bytes.Buffer{}}
-	cfg := jobs.OptionLedgerConfig{Logins: logins, Accounts: map[string]string{"ACCT1": "a"}, HistoryFrom: "2025-12-01"}
-	j, err := newJob(jobs.OptionLedgerStores{Ledger: e.w, Read: r}, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(e.log, nil)))
+	cfg := OptionLedgerConfig{Logins: logins, Accounts: map[string]string{"ACCT1": "a"}, HistoryFrom: "2025-12-01"}
+	j, err := newJob(OptionLedgerStores{Ledger: e.w, Read: r}, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(e.log, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +104,7 @@ func build(t *testing.T, logins []jobs.FlexRun, r *fakeReader) (*job, env) {
 func TestOneFetchRecordPerRequest(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{rep: report(oneTrade("ACCT1", "7"))}
-	j, e := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1", "q2"}, Required: true, Source: src}}, nil)
+	j, e := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1", "q2"}, Required: true, Source: src}}, nil)
 	res := j.Run(context.Background(), "2026-11-10", nil)
 	if res.Err != nil {
 		t.Fatal(res.Err)
@@ -126,7 +125,7 @@ func TestOneFetchRecordPerRequest(t *testing.T) {
 func TestUnmappedStatementCountedNotStored(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{rep: report(oneTrade("ACCT1", "7"), oneTrade("STRANGER99", "8"))}
-	j, e := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j, e := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	res := j.Run(context.Background(), "2026-11-10", nil)
 	if res.Err != nil {
 		t.Fatal(res.Err)
@@ -145,7 +144,7 @@ func TestFailedWindowStopsThatQueryOnly(t *testing.T) {
 	bad := &fakeSource{fail: true}
 	good := &fakeSource{rep: report(oneTrade("ACCT1", "7"))}
 	// 2024-01-01 gives three windows for the failing login.
-	j, e := build(t, []jobs.FlexRun{
+	j, e := build(t, []FlexRun{
 		{Name: "second", QueryIDs: []string{"q1", "q2"}, Source: bad},
 		{Name: "main", QueryIDs: []string{"q3"}, Required: true, Source: good},
 	}, nil)
@@ -168,7 +167,7 @@ func TestFailedWindowStopsThatQueryOnly(t *testing.T) {
 func TestNoRetryAfterFailure(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{fail: true}
-	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	j.Run(context.Background(), "2026-11-10", nil)
 	if len(src.calls) != 1 {
 		t.Fatalf("calls %d, want 1", len(src.calls))
@@ -177,7 +176,7 @@ func TestNoRetryAfterFailure(t *testing.T) {
 
 func TestRequiredLoginFailsResult(t *testing.T) {
 	t.Parallel()
-	j, e := build(t, []jobs.FlexRun{
+	j, e := build(t, []FlexRun{
 		{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: &fakeSource{fail: true}},
 		{Name: "second", QueryIDs: []string{"q2"}, Source: &fakeSource{rep: report(oneTrade("ACCT1", "7"))}},
 	}, nil)
@@ -193,7 +192,7 @@ func TestRequiredLoginFailsResult(t *testing.T) {
 		t.Fatalf("returned %d", res.Returned)
 	}
 	// a required login with no source fails too
-	j2, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true}}, nil)
+	j2, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true}}, nil)
 	if res := j2.Run(context.Background(), "2026-11-10", nil); res.Err == nil {
 		t.Fatal("missing required login must fail")
 	}
@@ -201,7 +200,7 @@ func TestRequiredLoginFailsResult(t *testing.T) {
 
 func TestNonRequiredLoginDegradedOk(t *testing.T) {
 	t.Parallel()
-	j, e := build(t, []jobs.FlexRun{
+	j, e := build(t, []FlexRun{
 		{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: &fakeSource{rep: report(oneTrade("ACCT1", "7"))}},
 		{Name: "second", QueryIDs: []string{"q2", "q3"}, Source: &fakeSource{fail: true}},
 		{Name: "third", QueryIDs: []string{"q4"}}, // no token
@@ -225,7 +224,7 @@ func TestNonRequiredLoginDegradedOk(t *testing.T) {
 
 func TestNonRequiredFailureNoGap(t *testing.T) {
 	t.Parallel()
-	j, e := build(t, []jobs.FlexRun{{Name: "second", QueryIDs: []string{"q2"}, Source: &fakeSource{fail: true}}}, nil)
+	j, e := build(t, []FlexRun{{Name: "second", QueryIDs: []string{"q2"}, Source: &fakeSource{fail: true}}}, nil)
 	res := j.Run(context.Background(), "2026-11-10", nil)
 	if res.Err != nil || res.Returned != 0 || res.Usable != 0 {
 		t.Fatalf("result %+v", res)
@@ -239,7 +238,7 @@ func TestNonRequiredFailureNoGap(t *testing.T) {
 func TestOneFetchPerDayAcrossPlanKeys(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{rep: report(oneTrade("ACCT1", "7"))}
-	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	j.cfg.Accounts = map[string]string{"ACCT1": "a", "ACCT2": "b"}
 	keys, _, err := j.Plan(context.Background(), "2026-11-10")
 	if err != nil || len(keys) != 2 {
@@ -257,7 +256,7 @@ func TestRetriedKeyDoesNotFetchAgainAndIsPresent(t *testing.T) {
 	t.Parallel()
 	// a non-required login fails; every row of the other is unchanged (Usable 0)
 	bad := &fakeSource{fail: true}
-	j, _ := build(t, []jobs.FlexRun{{Name: "second", QueryIDs: []string{"q2"}, Source: bad}}, nil)
+	j, _ := build(t, []FlexRun{{Name: "second", QueryIDs: []string{"q2"}, Source: bad}}, nil)
 	ctx := context.Background()
 	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
 		t.Fatal("present before any run")
@@ -278,7 +277,7 @@ func TestRetriedKeyDoesNotFetchAgainAndIsPresent(t *testing.T) {
 func TestRequiredFailureKeyStaysMissingWithoutRefetch(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{fail: true}
-	j, _ := build(t, []jobs.FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
 	ctx := context.Background()
 	for i := 0; i < 2; i++ {
 		if res := j.Run(ctx, "2026-11-10", nil); res.Err == nil {
