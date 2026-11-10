@@ -96,7 +96,8 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
 	epoch := max(maxEpoch(stored), 1)
 	days := r.j.m.DailyDays
-	if !hasDayFrom(stored, from) {
+	backfilled := hasDayFrom(stored, from)
+	if !backfilled {
 		if !r.j.claimFirstPull(r.day, key) {
 			return 0, 0, nil // past the cap: no request, no error
 		}
@@ -130,6 +131,9 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 		if _, err := r.j.w.InsertPriceBars(ctx, rows); err != nil {
 			return 0, 0, asTyped(err, contracts.Retryable)
 		}
+	}
+	if deferred, terr := r.deepen(ctx, key, id, c, backfilled); terr != nil || deferred {
+		return len(bars), len(bars), terr
 	}
 	return len(bars), len(bars), r.adjusted(ctx, id, c)
 }
