@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	owner    = "runner"
-	leaseTTL = 10 * time.Minute
+	owner = "runner"
+	// backfillOwnerPrefix starts the lease owner of a Backfill call.
+	backfillOwnerPrefix = "backfill:"
+	leaseTTL            = 10 * time.Minute
 
 	reasonCrashed = "crashed"
 	reasonLate    = "late"

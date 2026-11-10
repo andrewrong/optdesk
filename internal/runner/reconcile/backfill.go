@@ -19,9 +19,6 @@ var _ runner.NewBackfillerWithRuleFunc = NewBackfillerWithRule
 // reasonBackfill is the ReasonCode of a run started by Backfill.
 const reasonBackfill = "backfill"
 
-// backfillOwnerPrefix starts the lease owner of a Backfill call.
-const backfillOwnerPrefix = "backfill:"
-
 // NewBackfillerWithRule builds the backfiller with an explicit window rule.
 func NewBackfillerWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Clock, jobs []contracts.Job, rule runner.WindowRule) runner.Backfiller {
 	return newReconciler(l, nil, cal, clk, jobs, rule, nil)
