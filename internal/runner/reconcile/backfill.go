@@ -24,9 +24,10 @@ func NewBackfillerWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Cloc
 	return newReconciler(l, nil, cal, clk, jobs, rule, nil)
 }
 
-// Backfill runs the stored keys of a day that are missing or no_value and whose own window
+// Backfill first puts the windows the day lacks and adds the keys of the plan of the day that the
+// stored plan lacks (Decision 8), then runs the keys of a day that are missing or no_value and whose own window
 // has closed at the clock; a key still inside its window is not run and is listed in InWindow.
-// A key whose dataset has no stored window counts as closed. The cursor is not read and not
+// A key whose dataset has no window on the day counts as closed. The cursor is not read and not
 // moved. The run lease is taken under an owner of its own, so Reconcile and another backfill
 // are excluded while it runs.
 func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets []string) (res runner.BackfillResult, err error) {
@@ -121,25 +122,111 @@ func (r *reconciler) dayState(
 	return present, byKey, nil
 }
 
-// backfillPlan selects the stored keys and reads the key-to-job map; every key is
-// validated before any key runs.
+// backfillPlan validates the day, then writes what it lacks: the windows of the datasets that
+// have none and the keys of the plan of the day that the stored plan lacks (Decision 8). It
+// returns the selected keys and the key-to-job map. Every error is returned before any write.
 func (r *reconciler) backfillPlan(
 	ctx context.Context, day contracts.Day, stored []contracts.ExpectedKey, datasets []string,
 ) ([]contracts.ExpectedKey, plan, error) {
-	keys, err := selectKeys(day, stored, datasets)
+	sess, err := r.sessionsOf(ctx, day)
 	if err != nil {
 		return nil, plan{}, err
 	}
-	p, err := r.plan(ctx, day, nil)
+	pAll, err := r.plan(ctx, day, nil)
 	if err != nil {
 		return nil, plan{}, err
+	}
+	pDay, err := r.plan(ctx, day, sess)
+	if err != nil {
+		return nil, plan{}, err
+	}
+	added := r.addedKeys(stored, pDay, sess)
+	all := append(append([]contracts.ExpectedKey(nil), stored...), added...)
+	keys, err := selectKeys(day, all, datasets)
+	if err != nil {
+		return nil, plan{}, err
+	}
+	jobs := map[contracts.ExpectedKey]contracts.Job{}
+	for k, j := range pAll.job {
+		jobs[k] = j
+	}
+	for _, k := range added {
+		jobs[k] = pDay.job[k]
 	}
 	for _, k := range keys {
-		if _, ok := p.job[k]; !ok {
+		if _, ok := jobs[k]; !ok {
 			return nil, plan{}, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
 		}
 	}
+	p := plan{keys: all, job: jobs, hash: pDay.hash}
+	if err := r.putMissingWindows(ctx, day, p, sess); err != nil {
+		return nil, plan{}, err
+	}
+	if len(added) > 0 {
+		if err := r.ledger.PutExpected(ctx, day, pDay.hash, all); err != nil {
+			return nil, plan{}, err
+		}
+	}
 	return keys, p, nil
+}
+
+// sessionsOf is the sessions of day: an empty map when it is a session of no calendar.
+func (r *reconciler) sessionsOf(ctx context.Context, day contracts.Day) (daySessions, error) {
+	t, err := time.Parse("2006-01-02", string(day))
+	if err != nil {
+		return nil, fmt.Errorf("backfill %s: %w", day, err)
+	}
+	from := contracts.Day(t.AddDate(0, 0, -1).Format("2006-01-02"))
+	_, byDay, err := r.walk(ctx, from, day)
+	if err != nil {
+		return nil, err
+	}
+	if s := byDay[day]; s != nil {
+		return s, nil
+	}
+	return daySessions{}, nil
+}
+
+// addedKeys are the keys of the plan of the day that the stored plan lacks and whose dataset has a
+// window on the day.
+func (r *reconciler) addedKeys(stored []contracts.ExpectedKey, pDay plan, sess daySessions) []contracts.ExpectedKey {
+	have := map[contracts.ExpectedKey]bool{}
+	for _, k := range stored {
+		have[k] = true
+	}
+	var added []contracts.ExpectedKey
+	for _, k := range pDay.keys {
+		if have[k] {
+			continue
+		}
+		j := pDay.job[k]
+		if _, ok := windowFor(ruleOf(j, r.rule), k.DatasetID, sess[r.jobCalendar(j)]); ok {
+			added = append(added, k)
+		}
+	}
+	return added
+}
+
+// putMissingWindows puts the window of every dataset of p that has none stored and has a window
+// rule on the day.
+func (r *reconciler) putMissingWindows(ctx context.Context, day contracts.Day, p plan, sess daySessions) error {
+	seen := map[string]bool{}
+	var need []contracts.ExpectedKey
+	for _, k := range p.keys {
+		if seen[k.DatasetID] {
+			continue
+		}
+		seen[k.DatasetID] = true
+		closeAt, err := r.closeOf(ctx, k.DatasetID, day)
+		if err != nil {
+			return err
+		}
+		if closeAt.IsZero() {
+			need = append(need, k)
+		}
+	}
+	_, err := r.putWindows(ctx, plan{keys: need, job: p.job}, sess)
+	return err
 }
 
 // selectKeys filters the stored keys by dataset ids; an id with no stored key is an error.
