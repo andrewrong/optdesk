@@ -23,7 +23,7 @@ rows above name every other top-level path of the planned tree.
   that uses it); Python, `api.py` of the package with `tests/contracts/test_<module>_api.py`; TypeScript, the
   generated types and the JSON schema of a page (they are owned by contracts, so web has no entry of its own).
   Editing an entry file is an interface change (AGENTS.md): the issue carries a Design line.
-  One exception, a test kit: the entry cell of compute names `internal/compute/contracttest`, a package of golden suites that imports `testing` and so holds behaviour, not declarations. It is listed so that a replacement implementation of a compute interface can run the suite; it is not imported by `cmd/ot`, and a package outside compute imports it from `_test.go` files only (go-arch-lint skips those; `docs/design/compute-core.md`, Decision 11).
+  Two exceptions, test kits: the entry cell of compute names `internal/compute/contracttest` and the entry cell of symbol names `internal/symbol/contracttest`, each a package of golden suites that imports `testing` and so holds behaviour, not declarations. It is listed so that a replacement implementation of that module's interface can run the suite; it is not imported by `cmd/ot`, and a package outside its module imports it from `_test.go` files only (go-arch-lint skips those; `docs/design/compute-core.md`, Decision 11).
   `scripts/arch` reads the kind of a package from the tree, not from an entry cell: for each `internal/<row>/<package>` directory it looks at the non-test `.go` files. A package is generated (`internal/contracts/gen` and `internal/contracts/genpb`, never an implementation package), declarations-only (`api.go` and no other non-test `.go` file except `doc.go`: no logic), a test kit (a non-test file imports `"testing"`, so it holds behaviour, not declarations) or an implementation package (any other package with a non-test `.go` file). The owning row of a package is the first row whose path glob matches it. A declarations-only package is listed so that other modules import an interface without importing its implementation (the implementation, `internal/store/barpg` for `internal/store/bar`, is a separate package). It is imported like the root package of its row: the root component and the sub-packages of any row that has its row in the depends cell may import it, and so may the sub-packages of its own row (jobs and `jobs/*` import `store/bar`). This is the general import rule for declarations-only packages, and this paragraph is its one statement; the `depends` paragraph below refers to it. A test kit is imported by the sub-packages of the rows that depend on its row, never by a root component, its own row's sub-packages or `cmd/ot` (`_test.go` files, as above). A package is a test kit only when a non-test file imports `"testing"`: a fake package that does not (such as `internal/notify/notifytest`) is an implementation package and `cmd/ot` may import it. The depends cell of `ot` is therefore the only control on what `ot` imports, besides the package kinds. A new `api.go` package or test kit belongs to the first matching row, and adding one is an interface change with a Design line. The entry cells are not read by `scripts/arch`.
   A generated sub-package named in an entry cell (`internal/contracts/genpb`) is exempt from the declarations-only rule, because it is generated from `contracts/proto` and never edited by hand (AGENTS.md).
 - **depends** is the only source of module dependencies. `arch.toml` and `.go-arch-lint.yml` (go-arch-lint) are derived from this column
@@ -47,7 +47,7 @@ rows above name every other top-level path of the planned tree.
   `ci-go` lints against: the root packages of the rows in its depends cell (`internal/profile` for repo, a root directory and not a discovered sub-package) and every discovered implementation package of those rows, each found from the tree, with the declarations-only packages of those rows; a test kit and a generated package are never imported by `cmd/ot`.
   Any other import of a package of a module by `cmd/ot`, such as an implementation package of a row outside its depends cell, is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
-- **Layers** (plan 2): data = contracts, clock, broker, sources, gaphistory, store, compute (in that order);
+- **Layers** (plan 2): data = contracts, clock, broker, sources, gaphistory, symbol, store, compute (in that order);
   scheduling = runner, jobs, notify; front = pages, web. Within a layer a module may depend only on a module
   listed before it in its layer; across layers only scheduling to data and front to data are allowed. No layer
   module depends on the front, on ci or docs (only `ot`, outside the layers, depends on the front), and only `ot` depends on repo (its `internal/profile`).
@@ -84,10 +84,11 @@ rows above name every other top-level path of the planned tree.
 | broker | internal/broker/** docs/contracts/broker.md | internal/broker/api.go | internal/broker/api_test.go | contracts clock |
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
 | gaphistory | internal/gaphistory/** docs/contracts/gaphistory.md | internal/gaphistory/api.go | internal/gaphistory/api_test.go | contracts |
+| symbol | internal/symbol/** docs/contracts/symbol.md | internal/symbol/api.go internal/symbol/contracttest | internal/symbol/api_test.go internal/symbol/contracttest |  |
 | store | internal/store/** migrations/** docs/contracts/store.md docs/contracts/store/** | internal/store/api.go internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend | internal/store/api_test.go | contracts gaphistory |
 | compute | internal/compute/** docs/contracts/compute.md docs/contracts/compute/** tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest internal/compute/trackapi internal/compute/settingsapi internal/compute/blockapi internal/compute/valuationapi | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
-| jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute |
+| jobs | internal/jobs/** docs/contracts/jobs.md | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute symbol |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store compute gaphistory |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store compute |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/test/** | contracts |
@@ -95,7 +96,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory |
+| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory symbol |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
@@ -110,6 +111,7 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | broker | data | the pyside gRPC service | typed records, account ids aliased | opening the database, arithmetic, retry amplification | docs/contracts/broker.md and contracts/proto/ibkr/v1 (first issue: week 3-4) |
 | sources | data | FRED, SEC, HTTP, Stooq responses | typed records with source revision and published_at | opening the database; knowing the runner or pages | docs/contracts/sources.md |
 | gaphistory | data | the rows of the view rd.job_gap_r1 as read by store | one read interface, `GapsSince`, with its own `Gap` row type | opening the database, arithmetic, writing | docs/contracts/gaphistory.md |
+| symbol | data | a stock symbol of the IBKR contract | the spelling of a vendor, the option root | opening anything, any network, any state | docs/contracts/symbol.md |
 | store | data | records | one Writer and one Reader per dataset, migrations, roles rw and ro | being bypassed: only store imports pgx (depguard) | docs/contracts/store.md and docs/contracts/datasets/ |
 | compute | data | typed records | figure values with register id and version | any I/O | docs/contracts/compute.md (first issue: week 8-9) |
 | runner | scheduling | job manifests (window rules), the key set each job Plan returns, the run table | run, attempt, job_event; ops.capture_expected_key and ops.dataset_window; control socket | knowing dataset content (keys are opaque) | docs/contracts/runner.md |
