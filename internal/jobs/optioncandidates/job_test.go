@@ -396,3 +396,19 @@ func TestWithSettingsVersionRefusesOtherJob(t *testing.T) {
 		t.Fatal("a nil job was accepted")
 	}
 }
+
+func TestSettingsFuncCalledOnceEvenWithNoRows(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	var calls []time.Time
+	j, err := WithSettingsVersion(build(t, f.stores(), f), versionOf(3, nil, &calls))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 0 {
+		t.Fatalf("result %+v", res)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("%d calls for a run with no rows", len(calls))
+	}
+}
