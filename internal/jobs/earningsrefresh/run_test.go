@@ -500,17 +500,17 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 
 func TestWrongDay(t *testing.T) {
 	t.Parallel()
-	for _, past := range []contracts.Day{"2026-11-08", "2026-11-10"} {
+	for _, other := range []contracts.Day{"2026-11-08", "2026-11-10"} {
 		usSrc, jpSrc := &fakeSource{}, &fakeSource{}
 		st := &memStore{}
 		j := build(t, map[string]sources.EarningsSource{"US": usSrc, "JP": jpSrc}, st, us("cik:1", "A"), jp("edinet:E1", "1111"))
-		res := j.Run(context.Background(), past, nil)
+		res := j.Run(context.Background(), other, nil)
 		var te contracts.TypedError
 		if !errors.As(res.Err, &te) || te.Kind() != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") {
-			t.Fatalf("day %s: err %v", past, res.Err)
+			t.Fatalf("day %s: err %v", other, res.Err)
 		}
 		if usSrc.calls != 0 || jpSrc.calls != 0 || len(st.rows) != 0 {
-			t.Fatalf("day %s: calls %d %d rows %d", past, usSrc.calls, jpSrc.calls, len(st.rows))
+			t.Fatalf("day %s: calls %d %d rows %d", other, usSrc.calls, jpSrc.calls, len(st.rows))
 		}
 	}
 	// the clock's New York date is the day: the job runs
