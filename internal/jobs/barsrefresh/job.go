@@ -24,7 +24,7 @@ const (
 	typeIndex   = "index"
 )
 
-var _ jobs.NewBarsRefreshFunc = New
+var _ NewBarsRefreshFunc = New
 
 type typedError struct {
 	kind contracts.ErrorKind

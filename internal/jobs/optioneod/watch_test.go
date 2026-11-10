@@ -146,7 +146,7 @@ func TestNoBuyPriceKeepsBand(t *testing.T) {
 	}
 }
 
-func windowJob(t *testing.T, win jobs.OptionEodWindow) (*job, error) {
+func windowJob(t *testing.T, win OptionEodWindow) (*job, error) {
 	t.Helper()
 	c, err := NewWithWatchWindow(newBroker(), &fakeResolver{}, &fakeWriter{},
 		[]jobs.WatchEntry{watchEntry("US", "AAA", "STK", "50", 1)}, win, clockwork.NewFakeClock())
@@ -158,14 +158,14 @@ func windowJob(t *testing.T, win jobs.OptionEodWindow) (*job, error) {
 
 func TestWindowOverridesManifest(t *testing.T) {
 	t.Parallel()
-	j, err := windowJob(t, jobs.OptionEodWindow{MinDTE: 7, MaxDTE: 30, MaxStrikes: 10})
+	j, err := windowJob(t, OptionEodWindow{MinDTE: 7, MaxDTE: 30, MaxStrikes: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if j.m.MinDTE != 7 || j.m.MaxDTE != 30 || j.m.MaxStrikes != 10 {
 		t.Fatalf("window %d %d %d, want 7 30 10", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
 	}
-	j, err = windowJob(t, jobs.OptionEodWindow{MaxDTE: 60})
+	j, err = windowJob(t, OptionEodWindow{MaxDTE: 60})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestWindowOverridesManifest(t *testing.T) {
 
 func TestZeroWindowKeepsManifest(t *testing.T) {
 	t.Parallel()
-	j, err := windowJob(t, jobs.OptionEodWindow{})
+	j, err := windowJob(t, OptionEodWindow{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestZeroWindowKeepsManifest(t *testing.T) {
 
 func TestWindowMinAboveMaxFails(t *testing.T) {
 	t.Parallel()
-	_, err := windowJob(t, jobs.OptionEodWindow{MinDTE: 50, MaxDTE: 40})
+	_, err := windowJob(t, OptionEodWindow{MinDTE: 50, MaxDTE: 40})
 	if err == nil {
 		t.Fatal("min_dte above max_dte must be refused")
 	}
@@ -223,7 +223,7 @@ func TestWatchSymbolsShareClass(t *testing.T) {
 		Expirations: []string{"20261106"}, Strikes: []string{"95", "100", "105"}}}
 	tr := &askedTranslator{}
 	watch := []jobs.WatchEntry{watchEntry("US", "BRK B", "STK", "", 1)}
-	var ctor jobs.NewOptionEodWatchSymbolsFunc = NewWithWatchSymbols
+	var ctor NewOptionEodWatchSymbolsFunc = NewWithWatchSymbols
 	j, err := ctor(b, &fakeResolver{}, &fakeWriter{}, watch, clockwork.NewFakeClockAt(now), tr)
 	if err != nil {
 		t.Fatal(err)

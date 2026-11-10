@@ -8,12 +8,11 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ jobs.NewFredSeriesFunc = New
+var _ NewFredSeriesFunc = New
 
 type job struct {
 	m   manifest

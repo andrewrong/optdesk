@@ -13,7 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ jobs.NewFundamentalsFunc = New
+var _ NewFundamentalsFunc = New
 
 const (
 	reasonNoCik   = "no_cik"
@@ -30,10 +30,10 @@ type job struct {
 	w       store.FactWriter
 	clk     clock.Clock
 	issuers []string
-	skipped []jobs.FundamentalsSkip
+	skipped []FundamentalsSkip
 }
 
-var _ jobs.FundamentalsSkips = (*job)(nil)
+var _ FundamentalsSkips = (*job)(nil)
 
 type typedError struct {
 	kind contracts.ErrorKind
@@ -70,7 +70,7 @@ func New(src sources.FactSource, w store.FactWriter, entries []jobs.WatchEntry, 
 		switch {
 		case strings.HasPrefix(e.Issuer, edinetPrefix):
 			// A real edinet: entry is Japanese; it is named whatever its market.
-			j.skipped = append(j.skipped, jobs.FundamentalsSkip{Subject: e.Issuer, Reason: reasonEdinet})
+			j.skipped = append(j.skipped, FundamentalsSkip{Subject: e.Issuer, Reason: reasonEdinet})
 		case e.Market != marketUS && e.Issuer != "":
 			// Not a US company and not EDINET: not this job's, not named.
 		case strings.HasPrefix(e.Issuer, cikPrefix):
@@ -83,7 +83,7 @@ func New(src sources.FactSource, w store.FactWriter, entries []jobs.WatchEntry, 
 			if subject == "" {
 				subject = e.Contract.Symbol
 			}
-			j.skipped = append(j.skipped, jobs.FundamentalsSkip{Subject: subject, Reason: reasonNoCik})
+			j.skipped = append(j.skipped, FundamentalsSkip{Subject: subject, Reason: reasonNoCik})
 		}
 	}
 	return j, nil
@@ -93,8 +93,8 @@ func New(src sources.FactSource, w store.FactWriter, entries []jobs.WatchEntry, 
 func (j *job) ID() string { return j.m.ID }
 
 // Skipped names the entries the job does not fetch, in watch-list order.
-func (j *job) Skipped() []jobs.FundamentalsSkip {
-	return append([]jobs.FundamentalsSkip(nil), j.skipped...)
+func (j *job) Skipped() []FundamentalsSkip {
+	return append([]FundamentalsSkip(nil), j.skipped...)
 }
 
 // Run fetches the facts of the issuers of keys with filing days in [day - lookback_days, day] and writes

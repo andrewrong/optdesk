@@ -16,7 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-var _ jobs.NewQuoteSnapshotFunc = New
+var _ NewQuoteSnapshotFunc = New
 
 type job struct {
 	m   manifest

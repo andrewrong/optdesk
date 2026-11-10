@@ -17,7 +17,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
 //go:embed job.toml
@@ -58,7 +57,7 @@ type manifest struct {
 type job struct {
 	m      manifest
 	sched  schedule
-	stores jobs.ComputeStores
+	stores ComputeStores
 	figs   compute.Figures
 	rules  compute.Rules
 	units  compute.Units
@@ -77,16 +76,16 @@ func (e *typedError) Error() string             { return e.err.Error() }
 func (e *typedError) Unwrap() error             { return e.err }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
-// New is a jobs.NewComputeFiguresFunc. It reads the embedded job.toml and finds every rule it names. The job
+// New is a NewComputeFiguresFunc. It reads the embedded job.toml and finds every rule it names. The job
 // it builds stores no ease.
-func New(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
+func New(stores ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
 	ops compute.SeriesOps, clk clock.Clock) (contracts.Job, error) {
 	return NewWithEase(stores, figs, rules, units, ops, nil, clk)
 }
 
-// NewWithEase is a jobs.NewComputeFiguresEaseFunc. With a nil ease it is New; with one the job also plans and
+// NewWithEase is a NewComputeFiguresEaseFunc. With a nil ease it is New; with one the job also plans and
 // stores the key macro.ease|market|WALCL.
-func NewWithEase(stores jobs.ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
+func NewWithEase(stores ComputeStores, figs compute.Figures, rules compute.Rules, units compute.Units,
 	ops compute.SeriesOps, ease compute.Ease, clk clock.Clock) (contracts.Job, error) {
 	if stores.Catalog == nil || stores.OptionEod == nil || stores.Terms == nil || stores.Names == nil ||
 		stores.SessionDays == nil || stores.Series == nil || stores.Readings == nil {

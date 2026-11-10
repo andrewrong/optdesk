@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	_ jobs.NewOptionEodFunc      = New
-	_ jobs.NewOptionEodWatchFunc = NewWithWatch
+	_ NewOptionEodFunc      = New
+	_ NewOptionEodWatchFunc = NewWithWatch
 )
 
 type job struct {
@@ -63,7 +63,7 @@ func New(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter,
 	return NewWithSymbols(b, res, w, clk, nil)
 }
 
-var _ jobs.NewOptionEodSymbolsFunc = NewWithSymbols
+var _ NewOptionEodSymbolsFunc = NewWithSymbols
 
 // NewWithSymbols is New with a translator that gives the option root of a symbol; nil means no translation.
 func NewWithSymbols(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, clk clock.Clock, t symbol.Translator) (contracts.Job, error) {

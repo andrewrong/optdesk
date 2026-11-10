@@ -120,8 +120,8 @@ func TestNoCikSkippedAndNamed(t *testing.T) {
 		entry("", "US", "NOCIK"),
 		entry("sec:123", "US", "ODD"),
 	)
-	want := []jobs.FundamentalsSkip{{Subject: "NOCIK", Reason: "no_cik"}, {Subject: "sec:123", Reason: "no_cik"}}
-	got := j.(jobs.FundamentalsSkips).Skipped()
+	want := []FundamentalsSkip{{Subject: "NOCIK", Reason: "no_cik"}, {Subject: "sec:123", Reason: "no_cik"}}
+	got := j.(FundamentalsSkips).Skipped()
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("skipped = %v", got)
 	}
@@ -130,8 +130,8 @@ func TestNoCikSkippedAndNamed(t *testing.T) {
 func TestEdinetSkippedWhileNil(t *testing.T) {
 	t.Parallel()
 	j := build(t, &fakeSource{}, &fakeWriter{}, entry("edinet:E01234", "US", "SONY"), entry("cik:0000320193", "US", "AAPL"))
-	want := []jobs.FundamentalsSkip{{Subject: "edinet:E01234", Reason: "edinet_not_fetched"}}
-	if got := j.(jobs.FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
+	want := []FundamentalsSkip{{Subject: "edinet:E01234", Reason: "edinet_not_fetched"}}
+	if got := j.(FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("skipped = %v", got)
 	}
 	keys, _, _ := j.Plan(context.Background(), "2026-11-05")
@@ -228,8 +228,8 @@ func TestEdinetJPEntrySkippedAndNamed(t *testing.T) {
 	j := build(t, &fakeSource{}, &fakeWriter{},
 		entry("edinet:E01777", "JP", "SONY"),
 		entry("cik:0000320193", "US", "AAPL"))
-	want := []jobs.FundamentalsSkip{{Subject: "edinet:E01777", Reason: "edinet_not_fetched"}}
-	if got := j.(jobs.FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
+	want := []FundamentalsSkip{{Subject: "edinet:E01777", Reason: "edinet_not_fetched"}}
+	if got := j.(FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("skipped = %v, want %v", got, want)
 	}
 }
@@ -237,8 +237,8 @@ func TestEdinetJPEntrySkippedAndNamed(t *testing.T) {
 func TestJPEntryWithoutIssuerNamed(t *testing.T) {
 	t.Parallel()
 	j := build(t, &fakeSource{}, &fakeWriter{}, entry("", "JP", "7203"))
-	want := []jobs.FundamentalsSkip{{Subject: "7203", Reason: "no_cik"}}
-	if got := j.(jobs.FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
+	want := []FundamentalsSkip{{Subject: "7203", Reason: "no_cik"}}
+	if got := j.(FundamentalsSkips).Skipped(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("skipped = %v, want %v", got, want)
 	}
 }

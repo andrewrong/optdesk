@@ -5,11 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/optionledger"
 )
 
-var _ jobs.FlexAttributesSHA256Func = optionledger.AttributesSHA256
+var _ optionledger.FlexAttributesSHA256Func = optionledger.AttributesSHA256
 
 func TestAttributesSHA256Fixture(t *testing.T) {
 	t.Parallel()

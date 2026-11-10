@@ -16,7 +16,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
@@ -31,7 +30,7 @@ const (
 //go:embed job.toml
 var manifestBytes []byte
 
-var _ jobs.NewFxRefreshFunc = New
+var _ NewFxRefreshFunc = New
 
 type manifest struct {
 	Version      int    `toml:"version"`

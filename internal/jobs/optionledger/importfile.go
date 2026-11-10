@@ -18,7 +18,7 @@ import (
 // sourceOTImport is the source tag of an imported row (docs/design/option-ledger.md Decision 5).
 const sourceOTImport = "ot_import"
 
-var _ jobs.ImportOptionTraderFunc = ImportOptionTrader
+var _ ImportOptionTraderFunc = ImportOptionTrader
 
 type importError struct{ msg string }
 
@@ -39,7 +39,7 @@ type exportLine struct {
 	Attributes    *string `json:"attributes"`
 }
 
-// ImportOptionTrader implements jobs.ImportOptionTraderFunc. It reads every line of r, maps the alias of each
+// ImportOptionTrader implements ImportOptionTraderFunc. It reads every line of r, maps the alias of each
 // row with aliasMap (an alias with no entry refuses the file), recomputes attributes_sha256 with
 // AttributesSHA256, and writes all rows with one ImportFlexTradeRows call, source ot_import. Blank lines are
 // skipped. Nothing is written when any line is refused. A refused line is named by its number only, never its

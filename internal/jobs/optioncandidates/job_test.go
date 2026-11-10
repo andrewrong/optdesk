@@ -149,8 +149,8 @@ func newFakes() *fakes {
 	return f
 }
 
-func (f *fakes) stores() jobs.CandidateStores {
-	return jobs.CandidateStores{OptionEod: f, Catalog: f, Terms: f, Names: f, Series: f, Earnings: f, Accounts: f, Candidates: f, SessionDays: f}
+func (f *fakes) stores() CandidateStores {
+	return CandidateStores{OptionEod: f, Catalog: f, Terms: f, Names: f, Series: f, Earnings: f, Accounts: f, Candidates: f, SessionDays: f}
 }
 
 func usEntry() jobs.WatchEntry {
@@ -158,7 +158,7 @@ func usEntry() jobs.WatchEntry {
 		Contract: broker.Contract{Symbol: "ABC", SecType: "STK"}}
 }
 
-func build(t *testing.T, st jobs.CandidateStores, f *fakes, entries ...jobs.WatchEntry) contracts.Job {
+func build(t *testing.T, st CandidateStores, f *fakes, entries ...jobs.WatchEntry) contracts.Job {
 	t.Helper()
 	j, err := New(st, f, entries, fixedClock{})
 	if err != nil {
@@ -307,7 +307,7 @@ func (r threeKinds) Evaluate(in compute.CandidateInput, p compute.CandidateParam
 	return out
 }
 
-func versionOf(v int64, err error, calls *[]time.Time) jobs.SettingsVersionFunc {
+func versionOf(v int64, err error, calls *[]time.Time) SettingsVersionFunc {
 	return func(_ context.Context, at time.Time) (int64, error) {
 		*calls = append(*calls, at)
 		return v, err

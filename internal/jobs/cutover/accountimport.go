@@ -19,8 +19,8 @@ const importRunKey = "import"
 const dayLayout = "2006-01-02"
 
 var (
-	_ jobs.ImportAccountFunc = ImportAccount
-	_ jobs.VerifyAccountFunc = VerifyAccount
+	_ ImportAccountFunc = ImportAccount
+	_ VerifyAccountFunc = VerifyAccount
 )
 
 // accountLine is one line of account.jsonl: the last snapshot of one alias and session day. Decimals are text.
@@ -197,7 +197,7 @@ func storedHash(ctx context.Context, rd store.AccountReader, alias, day string) 
 // ImportAccount imports account.jsonl: one store.Capture per line with the id <alias>:<session_day>:import.
 // The whole file is checked before any write. For each line the stored capture of the alias and day is read
 // back first (WriteCapture returns no error for an id that exists): none stored is Inserted and written, an
-// equal hash is Same and an other hash is Conflict, neither written. It implements jobs.ImportAccountFunc.
+// equal hash is Same and an other hash is Conflict, neither written. It implements ImportAccountFunc.
 func ImportAccount(ctx context.Context, r io.Reader, st store.AccountStore, aliasMap map[string]string, through contracts.Day) (jobs.ImportResult, error) {
 	entries, err := loadAccount(r, aliasMap, through)
 	if err != nil {
