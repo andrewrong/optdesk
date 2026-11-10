@@ -125,7 +125,7 @@ func xtksReason(ctx context.Context, cal clock.Calendar, clk clock.Clock) string
 
 func (p *prober) built(id string, j contracts.Job, err error) (contracts.Job, string) {
 	if err != nil {
-		p.log.Warn("job build failed", "component", "ot", "job", id, "err", err)
+		logBuildFailed(p.log, id, err)
 		return nil, reasonBuildJob
 	}
 	return j, ""
@@ -214,4 +214,9 @@ func withoutJob(js []contracts.Job, id string) []contracts.Job {
 		}
 	}
 	return out
+}
+
+// logBuildFailed leaves the cause of a failed job build in the log; the reason handed to the scheduler holds none.
+func logBuildFailed(log *slog.Logger, id string, err error) {
+	log.Warn("job build failed", "component", "ot", "job", id, "err", err)
 }

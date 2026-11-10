@@ -137,7 +137,7 @@ func TestCandidateProbeLogsCause(t *testing.T) {
 	d.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 		return nil, errors.New("cause-probe")
 	}
-	probe := candidateProbe(wiring{factory: jobFactory{d: d}}, slog.New(slog.NewTextHandler(&buf, nil)),
+	probe := candidateProbe(wiring{factory: jobFactory{d: d, log: slog.New(slog.NewTextHandler(&buf, nil))}},
 		func(context.Context, string) (contracts.Job, string) { return nil, "" })
 	j, reason := probe(context.Background(), jobOptionCandidates)
 	if j != nil || reason != reasonBuildJob || !strings.Contains(buf.String(), "cause-probe") {
