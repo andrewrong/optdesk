@@ -18,16 +18,17 @@ import (
 var updateGolden = flag.Bool("update", false, "rewrite the golden files")
 
 const (
-	stockDay   = contracts.Day("2026-11-10")
-	gatesPass  = `[{"gate":"quote","status":"pass","reason":""},{"gate":"events","status":"pass","reason":""}]`
-	gatesThin  = `[{"gate":"quote","status":"unknown","reason":"no_ask"},{"gate":"events","status":"block","reason":"earnings_before_expiry"}]`
-	stockNames = "Apple Inc."
+	stockDay  = contracts.Day("2026-11-10")
+	gatesPass = `[{"gate":"quote","status":"pass","reason":""},{"gate":"events","status":"pass","reason":""}]`
+	gatesThin = `[{"gate":"quote","status":"unknown","reason":"no_ask"},{"gate":"events","status":"block","reason":"earnings_before_expiry"}]`
 )
 
-type stockNameFake struct{}
-
-func (stockNameFake) InstrumentNames(_ context.Context, ids []int64) ([]store.InstrumentName, error) {
-	return []store.InstrumentName{{InstrumentID: ids[0], Type: "stock", Name: stockNames}}, nil
+// underOf is the underlying id of an issuer text of the fixtures: 7 for Apple, 8 for Microsoft.
+func underOf(issuer string) int {
+	if issuer == issuerMsft {
+		return 8
+	}
+	return 7
 }
 
 func sPtr(s string) *string { return &s }
@@ -35,7 +36,7 @@ func iPtr(i int) *int       { return &i }
 
 func stockRowOf(id int, issuer, expiry string, dte int, strike, status string, rank, inU *int, gates string) store.Candidate {
 	return store.Candidate{
-		SessionDay: stockDay, Kind: "short_put", InstrumentID: id, Issuer: issuer, UnderlyingID: 7, Expiry: contracts.Day(expiry), DTE: dte,
+		SessionDay: stockDay, Kind: "short_put", InstrumentID: id, Issuer: issuer, UnderlyingID: underOf(issuer), Expiry: contracts.Day(expiry), DTE: dte,
 		Right: "put", Strike: strike, Multiplier: 100, BidEod: "1.20", Ask: sPtr("1.30"), Spot: sPtr("68"), BreakEven: "60.8",
 		AnnualizedYield: sPtr("0.123456"), Delta: sPtr("-0.15"), Iv: sPtr("0.38"), Status: status, Gates: gates, Marks: "[]",
 		NextEarnings: nil, EarningsState: "absent", Rank: rank, RankInUnderlying: inU,
@@ -45,17 +46,20 @@ func stockRowOf(id int, issuer, expiry string, dte int, strike, status string, r
 
 func stockFixture() []store.Candidate {
 	return []store.Candidate{
-		stockRowOf(102, "AAPL", "2026-11-20", 10, "62", "ok", iPtr(2), iPtr(2), gatesPass),
-		stockRowOf(101, "AAPL", "2026-11-13", 3, "65", "ok", iPtr(1), iPtr(1), gatesPass),
-		stockRowOf(103, "AAPL", "2026-11-13", 3, "60", "blocked", nil, nil, gatesThin),
-		stockRowOf(201, "MSFT", "2026-11-13", 3, "300", "ok", iPtr(3), iPtr(1), gatesPass),
+		stockRowOf(102, issuerApple, "2026-11-20", 10, "62", "ok", iPtr(2), iPtr(2), gatesPass),
+		stockRowOf(101, issuerApple, "2026-11-13", 3, "65", "ok", iPtr(1), iPtr(1), gatesPass),
+		stockRowOf(103, issuerApple, "2026-11-13", 3, "60", "blocked", nil, nil, gatesThin),
+		stockRowOf(201, issuerMsft, "2026-11-13", 3, "300", "ok", iPtr(3), iPtr(1), gatesPass),
 	}
 }
 
 func stockEod() *countingEod {
 	return &countingEod{rows: map[int64][]contracts.OptionEod{7: {
-		{InstrumentID: 101, CaptureID: "a", Volume: fp(250), OpenInterest: fp(1200), ThetaPerCalendarDay: fp(-0.02), Gamma: fp(0.031), VegaPerVolPoint: fp(0.05)},
-		{InstrumentID: 102, CaptureID: "a", Volume: fp(10)},
+		{
+			InstrumentID: 101, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(250), OpenInterest: fp(1200),
+			ThetaPerCalendarDay: fp(-0.02), Gamma: fp(0.031), VegaPerVolPoint: fp(0.05),
+		},
+		{InstrumentID: 102, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(10)},
 	}}}
 }
 
@@ -63,7 +67,7 @@ func stockCfg(day contracts.Day, rows []store.Candidate, key string) StockConfig
 	return StockConfig{
 		RunID: "run1", BuildID: "b1", Scope: "stock-options", Zone: time.FixedZone("CST", 8*3600),
 		Candidates: &fakeCands{byDay: map[contracts.Day][]store.Candidate{day: rows}},
-		Eod:        stockEod(), Names: stockNameFake{}, Key: key,
+		Eod:        stockEod(), Names: tickerNames(), Key: key,
 	}
 }
 
@@ -121,7 +125,6 @@ func TestBareKeyIsFirstOkRow(t *testing.T) {
 	t.Parallel()
 	rows := stockFixture()
 	rows[0].Status, rows[1].Status, rows[2].Status = "blocked", "blocked", "blocked"
-	rows[3].Issuer = "MSFT"
 	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, ""), stockDay)
 	if p.Top.Symbol != "MSFT" {
 		t.Errorf("bare key with one ok row: symbol = %q, want MSFT", p.Top.Symbol)
@@ -214,11 +217,11 @@ func TestMatrixCutAtLimits(t *testing.T) {
 	t.Parallel()
 	var rows []store.Candidate
 	for i := 0; i < 105; i++ {
-		rows = append(rows, stockRowOf(1000+i, "AAPL", "2026-11-13", 3, fmt.Sprint(10+i), "ok", nil, nil, gatesPass))
+		rows = append(rows, stockRowOf(1000+i, issuerApple, "2026-11-13", 3, fmt.Sprint(10+i), "ok", nil, nil, gatesPass))
 	}
 	for i := 0; i < 32; i++ {
 		d := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, i).Format("2006-01-02")
-		rows = append(rows, stockRowOf(2000+i, "AAPL", d, 21+i, "10", "ok", nil, nil, gatesPass))
+		rows = append(rows, stockRowOf(2000+i, issuerApple, d, 21+i, "10", "ok", nil, nil, gatesPass))
 	}
 	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, "AAPL"), stockDay)
 	if len(p.Matrix.Strikes) != 100 || p.Matrix.Strikes[99] != "109" {

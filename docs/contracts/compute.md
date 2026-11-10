@@ -110,6 +110,13 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Every figure is a `compute.FigureValue`; `blockapi` declares no figure type of its own. Pure: no I/O, no clock.
 
+## Holding figures
+
+`HoldingFigures` (methods `Holdings(HoldingsIn) HoldingsResult` and `Risk(RiskIn) RiskResult`), `NewHoldingFiguresFunc` and their types are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which is unchanged. Design: `docs/design/pages-real-data.md#Interface`.
+
+- `Holdings` gives value, unrealised profit and share of each position; an empty `Mark` is the gap `missing_quote`, never zero. `Risk` never reads `Mark`.
+- Delta is in dollars per one dollar move of the underlying; vega is in dollars per volatility point.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.
@@ -123,10 +130,11 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v9: additions only: the package `internal/compute/trackapi` above (option tracking types, `OptionTracker` and `NewOptionTrackerFunc`).
 - v10: additions only: `PageFigures` and its types in `internal/compute/blockapi` above.
 - v11: additions only: the package `internal/compute/valuationapi` above (valuation function types and result types).
+- v12: additions only: `HoldingFigures`, `NewHoldingFiguresFunc` and their types in `internal/compute/blockapi` above.
 
 ## Contract tests
 
-- `internal/compute/blockapi/api_test.go` tests `PageFigures` from both sides: a fake and a caller that fills every input field and reads every output field.
+- `internal/compute/blockapi/api_test.go` tests `PageFigures` and `HoldingFigures` (`Holdings`, `Risk`) from both sides: a fake and a caller that fills every input field and reads every output field.
 - `internal/compute/api_test.go` tests the contract from both sides: a fake of each interface and a caller through the interface only; `TestAlertContract` does so for `EvaluateAlertsFunc` and `LoadAlertRulesFunc`.
 - `internal/compute/settingsapi/api_test.go` tests `RuleParams` and `SettingsForm` from both sides: a fake of each and a caller that resolves a stored map and parses a posted form.
 - The golden suites per interface (`internal/compute/contracttest`) come with later issues.

@@ -17,6 +17,12 @@ import (
 
 var testZone = time.FixedZone("+08", 8*3600)
 
+// The stored issuer texts of the watch list; the display names are the tickers of nameFake.
+const (
+	issuerApple = "cik:0000320193"
+	issuerMsft  = "cik:0000789019"
+)
+
 const buildDay = contracts.Day("2026-11-10")
 
 // buildAt is 09:30 on the build day in the owner zone, given in UTC.
@@ -46,15 +52,15 @@ func okRow(id int, issuer string, under, rank, inU int) store.Candidate {
 
 // fixtureRows are ok, blocked and unknown rows of two companies and one row without ask.
 func fixtureRows() []store.Candidate {
-	a1 := okRow(11, "AAA", 1, 1, 1)
-	a2 := okRow(12, "AAA", 1, 2, 2)
+	a1 := okRow(11, issuerApple, 1, 1, 1)
+	a2 := okRow(12, issuerApple, 1, 2, 2)
 	a2.Expiry, a2.DTE, a2.Strike, a2.BidEod, a2.Ask, a2.Delta = "2026-11-20", 10, "60", "0.95", sp("1.05"), sp("-0.1")
-	b1 := okRow(21, "BBB", 2, 3, 1)
+	b1 := okRow(21, issuerMsft, 2, 3, 1)
 	b1.Strike, b1.Spot, b1.BidEod, b1.Ask = "30.5", sp("33"), "0.40", sp("0.44")
 	b1.Marks, b1.EarningsState, b1.NextEarnings = `["earnings_unconfirmed"]`, "absent", nil
-	b2 := candRow(22, "BBB", 2, "blocked")
+	b2 := candRow(22, issuerMsft, 2, "blocked")
 	b2.Gates, b2.Strike, b2.BidEod, b2.Ask = `[{"gate":"events","status":"block","reason":"earnings_in_term"}]`, "31", "0.50", sp("0.60")
-	b3 := candRow(23, "BBB", 2, "unknown")
+	b3 := candRow(23, issuerMsft, 2, "unknown")
 	b3.Gates = `[{"gate":"quote","status":"unknown","reason":"no_ask"}]`
 	b3.Ask, b3.EarningsState, b3.NextEarnings, b3.Delta, b3.Strike = nil, "unknown", nil, nil, "29"
 	return []store.Candidate{a1, a2, b1, b2, b3}
@@ -62,14 +68,14 @@ func fixtureRows() []store.Candidate {
 
 func fixtureEod() *countingEod {
 	return &countingEod{rows: map[int64][]contracts.OptionEod{
-		1: {{InstrumentID: 11, CaptureID: "a", Volume: fp(1240), OpenInterest: fp(5310)}},
-		2: {{InstrumentID: 21, CaptureID: "a", Volume: fp(10)}},
+		1: {{InstrumentID: 11, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(1240), OpenInterest: fp(5310)}},
+		2: {{InstrumentID: 21, SessionDay: sdate("2026-11-09"), CaptureID: "a", Volume: fp(10)}},
 	}}
 }
 
 func buildOpt(t *testing.T, cands store.CandidateReader, eod store.OptionEodReader, day contracts.Day) []byte {
 	t.Helper()
-	c := OptionConfig{RunID: "run-1", BuildID: "build-1", Scope: "options", Zone: testZone, Candidates: cands, Eod: eod}
+	c := OptionConfig{RunID: "run-1", BuildID: "build-1", Scope: "options", Zone: testZone, Candidates: cands, Eod: eod, Names: tickerNames()}
 	b, err := BuildOption(context.Background(), c, nil, day, buildAt)
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +149,7 @@ func TestCardsBestPerCompany(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: fixtureRows()}}, fixtureEod(), buildDay))
 	cards := cardsOf(m)
-	if len(cards) != 2 || cards[0].(map[string]any)["symbol"] != "AAA" || cards[1].(map[string]any)["symbol"] != "BBB" {
+	if len(cards) != 2 || cards[0].(map[string]any)["symbol"] != "AAPL" || cards[1].(map[string]any)["symbol"] != "MSFT" {
 		t.Fatalf("cards = %v", cards)
 	}
 	if got := cards[0].(map[string]any)["contract_line"]; got != "sell put 62 · 11-13 周五 · 3 天 · Δ −0.15" {
@@ -241,7 +247,7 @@ func TestChainGapCell(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: fixtureRows()}}, nil, buildDay))
 	ch := pane(m)["chain"].(map[string]any)
-	if got := ch["summary"]; got != "已选:AAA 11/13 行权价 $62 Put" {
+	if got := ch["summary"]; got != "已选:AAPL 11/13 行权价 $62 Put" {
 		t.Errorf("summary = %v", got)
 	}
 	rows := ch["table"].(map[string]any)["rows"].([]any)

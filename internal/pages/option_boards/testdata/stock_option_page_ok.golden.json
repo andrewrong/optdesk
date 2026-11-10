@@ -16,7 +16,7 @@
   "stale": null,
   "top": {
     "symbol": "AAPL",
-    "name": "Apple Inc.",
+    "name": "AAPL",
     "spot": "现价 68",
     "day_change": null,
     "day_tone": null,
@@ -28,7 +28,7 @@
     "refresh_expiry": null,
     "refresh_strike": null
   },
-  "notice": "持仓见 /options/tracking",
+  "notice": "持仓见 /options/tracking。量与持仓取自 2026-11-09(链日)",
   "shared_gap": null,
   "maps": [
     {

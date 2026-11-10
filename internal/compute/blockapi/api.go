@@ -95,3 +95,65 @@ type PageFigures interface {
 
 // NewPageFiguresFunc constructs the implementation (internal/compute/pagefig.New).
 type NewPageFiguresFunc func() PageFigures
+
+// HoldingIn is one held position, all numbers decimal text. Cost is the average cost per unit and Mark the price
+// of the capture; Mark is empty when the position has no price. Multiplier is 1 for a stock.
+type HoldingIn struct{ Underlying, SecType, Currency, Quantity, Multiplier, Cost, Mark string }
+
+// HoldingsIn is the held positions of one account in one currency. NetLiquidation is the NetLiquidation tag of the
+// capture values in Currency, the denominator of every share; empty gives the gap no_data for shares.
+type HoldingsIn struct {
+	Currency, NetLiquidation string
+	Rows                     []HoldingIn
+}
+
+// HoldingLine is the value, unrealised profit and share of one position. A row with an empty Mark has the gap
+// missing_quote in all three, never a zero.
+type HoldingLine struct {
+	Underlying, SecType      string
+	Value, Unrealised, Share compute.FigureValue
+}
+
+// HoldingsResult holds one line per input row, in input order. A total that left a position out carries a gap.
+type HoldingsResult struct {
+	Rows                        []HoldingLine
+	TotalValue, TotalUnrealised compute.FigureValue
+}
+
+// GreekIn is the net greeks of the option structures of one underlying and expiry (compute.GreekSet).
+// Delta is in dollars per one dollar move of the underlying; Vega is in dollars per volatility point.
+type GreekIn struct {
+	Underlying  string
+	Expiry      contracts.Day
+	Delta, Vega string
+}
+
+// RiskIn is the input of Risk. Stocks are read for Underlying, SecType, Currency and Quantity only; Mark is never read.
+type RiskIn struct {
+	Currency string
+	Stocks   []HoldingIn
+	Greeks   []GreekIn
+}
+
+// RiskLine is one line of delta (Key is the underlying) or of vega (Key is the expiry day).
+type RiskLine struct {
+	Key   string
+	Value compute.FigureValue
+}
+
+// RiskResult holds delta by underlying and vega by expiry.
+// Delta is in dollars per one dollar move of the underlying (a stock counts its share quantity);
+// vega is in dollars per volatility point.
+type RiskResult struct {
+	Delta, Vega           []RiskLine
+	DeltaTotal, VegaTotal compute.FigureValue
+}
+
+// HoldingFigures evaluates the figures of held positions, no I/O, no clock.
+type HoldingFigures interface {
+	Holdings(HoldingsIn) HoldingsResult
+	Risk(RiskIn) RiskResult
+}
+
+// NewHoldingFiguresFunc constructs the implementation (internal/compute/pagefig.NewHoldings).
+type NewHoldingFiguresFunc func() HoldingFigures

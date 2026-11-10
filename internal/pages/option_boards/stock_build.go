@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -27,7 +28,7 @@ type stockRow struct {
 func (r stockRow) ok() bool { return r.C.Status == "ok" }
 
 // BuildStock builds page.stock_option_page.v1. r is unused; at is given in UTC and written in c.Zone as generated_at.
-// The company is c.Key, or for a bare key the issuer of the first ok row of the data day, else of the first row.
+// The company is c.Key, or for a bare key the display name of the first ok row of the data day, else of the first row.
 func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 	if c.Zone == nil {
 		return nil, errors.New("option_boards: nil zone")
@@ -56,14 +57,20 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 		}
 	}
 	key := ""
+	names := displayNames{}
 	var mine []store.Candidate
 	if ld.Found {
+		var err error
+		if names, err = loadNames(ctx, c.Names, ld.Rows); err != nil {
+			return nil, err
+		}
 		key = c.Key
 		if key == "" {
-			key = bareKey(ld.Rows)
+			key = bareKey(ld.Rows, names)
 		}
+		upper := strings.ToUpper(key)
 		for _, r := range ld.Rows {
-			if r.Issuer == key {
+			if strings.ToUpper(names.of(r)) == upper || r.Issuer == key {
 				mine = append(mine, r)
 			}
 		}
@@ -72,6 +79,9 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 			gaps = append(gaps, mkGap("no_data", noMatrixText))
 			p.SharedGap = strPtr(noMatrixText)
 		}
+	}
+	if len(mine) > 0 {
+		key = names.of(mine[0])
 	}
 	p.Top = topBar{Symbol: topSymbol(key), Trend: trendText, Policy: policyText}
 	if len(mine) == 0 {
@@ -82,7 +92,7 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 		p.RunStatus = runStatus(gaps)
 		return json.Marshal(p)
 	}
-	more, notes, err := fillCompany(ctx, c, &p, mine, ld)
+	more, notes, err := fillCompany(ctx, c, &p, mine, ld, names)
 	if err != nil {
 		return nil, err
 	}
@@ -95,15 +105,13 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 
 // fillCompany fills the top bar, matrix, cards, maps and contracts from the rows of the company; it returns the
 // gaps it found and the notes to append to the notice.
-func fillCompany(ctx context.Context, c StockConfig, p *stockPayload, mine []store.Candidate, ld loaded) ([]gap, string, error) {
+func fillCompany(ctx context.Context, c StockConfig, p *stockPayload, mine []store.Candidate, ld loaded, names displayNames) ([]gap, string, error) {
 	var gaps []gap
-	rows, err := prepareRows(ctx, c, mine, ld.Day)
+	rows, dayNote, err := prepareRows(ctx, c, mine, ld.Day)
 	if err != nil {
 		return nil, "", err
 	}
-	if p.Top.Name, err = companyName(ctx, c.Names, mine[0].UnderlyingID); err != nil {
-		return nil, "", err
-	}
+	p.Top.Name = names.ticker(mine[0].UnderlyingID)
 	if err := fillTop(&p.Top, rows); err != nil {
 		return nil, "", err
 	}
@@ -132,7 +140,7 @@ func fillCompany(ctx context.Context, c StockConfig, p *stockPayload, mine []sto
 	if p.Contracts.Rows, contractsCut, err = buildContractRows(rows); err != nil {
 		return nil, "", err
 	}
-	return gaps, cutNote + contractsCut, nil
+	return gaps, cutNote + contractsCut + dayNote, nil
 }
 
 func strPtr(s string) *string { return &s }
@@ -145,47 +153,34 @@ func topSymbol(key string) string {
 	return key
 }
 
-// bareKey is the issuer of the first ok row, else of the first row.
-func bareKey(rows []store.Candidate) string {
+// bareKey is the display name of the first ok row, else of the first row.
+func bareKey(rows []store.Candidate, names displayNames) string {
 	for _, r := range rows {
 		if r.Status == "ok" {
-			return r.Issuer
+			return names.of(r)
 		}
 	}
-	return rows[0].Issuer
+	return names.of(rows[0])
 }
 
-func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day contracts.Day) ([]stockRow, error) {
+func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day contracts.Day) ([]stockRow, string, error) {
 	eod, err := loadEod(ctx, c.Eod, mine, day)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	rows := make([]stockRow, len(mine))
 	for i, r := range mine {
 		gates, err := parseGates(r.Gates)
 		if err != nil {
-			return nil, fmt.Errorf("option_boards: gates of instrument %d: %w", r.InstrumentID, err)
+			return nil, "", fmt.Errorf("option_boards: gates of instrument %d: %w", r.InstrumentID, err)
 		}
 		rows[i] = stockRow{C: r, Gates: gates, Eod: eodTextFor(eod, r.InstrumentID)}
 	}
-	return rows, nil
-}
-
-// companyName is the stored name or nil when there is no reader, no name or an empty name.
-func companyName(ctx context.Context, r store.InstrumentNameReader, id int) (*string, error) {
-	if r == nil {
-		return nil, nil
+	dayNote := ""
+	if n := chainDayNote(eod, day); n != "" {
+		dayNote = "。" + n
 	}
-	names, err := r.InstrumentNames(ctx, []int64{int64(id)})
-	if err != nil {
-		return nil, fmt.Errorf("option_boards: name of %d: %w", id, err)
-	}
-	for _, n := range names {
-		if n.InstrumentID == int64(id) && n.Name != "" {
-			return strPtr(n.Name), nil
-		}
-	}
-	return nil, nil
+	return rows, dayNote, nil
 }
 
 // staleOf is the label of a data day before the build day.
