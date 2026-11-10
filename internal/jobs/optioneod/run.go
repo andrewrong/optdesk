@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 var (
@@ -23,6 +24,7 @@ type job struct {
 	m      manifest
 	b      broker.Broker
 	res    store.InstrumentResolver
+	sym    symbol.Translator   // nil: no translation, the symbol is its own option root
 	acct   store.AccountReader // nil: no held short calls are captured
 	w      store.OptionEodWriter
 	clk    clock.Clock
@@ -58,6 +60,13 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 
 // New builds the option_eod job from the embedded job.toml.
 func New(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, clk clock.Clock) (contracts.Job, error) {
+	return NewWithSymbols(b, res, w, clk, nil)
+}
+
+var _ jobs.NewOptionEodSymbolsFunc = NewWithSymbols
+
+// NewWithSymbols is New with a translator that gives the option root of a symbol; nil means no translation.
+func NewWithSymbols(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, clk clock.Clock, t symbol.Translator) (contracts.Job, error) {
 	if b == nil || res == nil || w == nil || clk == nil {
 		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")
 	}
@@ -65,6 +74,7 @@ func New(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter,
 	if err != nil {
 		return nil, err
 	}
+	j.sym = t
 	// Without a watch list the job keeps the nearest max_expiries and the strike band, as before.
 	j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes = 0, 0, 0
 	return j, nil
@@ -89,6 +99,14 @@ func build(data []byte, b broker.Broker, res store.InstrumentResolver, w store.O
 		stop, _ = parseHHMM(m.StopAfter)
 	}
 	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, freeze: freeze, stop: stop, cal: cal, open: open, close: closeOff}, nil
+}
+
+// root is the option root of symbol: the translator's OSIRoot, or symbol itself without a translator.
+func (j *job) root(symbol string) string {
+	if j.sym == nil {
+		return symbol
+	}
+	return j.sym.OSIRoot(symbol)
 }
 
 // ID is the job id of the manifest.
@@ -222,7 +240,7 @@ func (r *runState) pairs(ctx context.Context, u underlying, price float64) ([]br
 	if len(chains) == 0 {
 		return nil, newErr(contracts.Permanent, "empty selection for %s", u.Symbol)
 	}
-	chain, class, ok := r.j.m.chainOf(chains, u)
+	chain, class, ok := r.j.m.chainOfRoot(chains, u, r.j.root(u.Symbol))
 	if !ok {
 		return nil, newErr(contracts.Permanent, "no chain of trading class %s on %s for %s", class, u.Exchange, u.Symbol)
 	}
@@ -268,7 +286,7 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture
 	res *contracts.JobResult) contracts.TypedError {
 	ids := make([]int64, len(cs))
 	for i, c := range cs {
-		osi, err := osiSymbol(c)
+		osi, err := osiSymbolWith(c, r.j.root(c.Symbol))
 		if err != nil {
 			return asTyped(err, contracts.Permanent)
 		}
@@ -307,19 +325,21 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture
 	return nil
 }
 
-// chainOf picks the chain to select from, whatever order the gateway lists the chains in: the first chain on the
-// underlying's exchange whose trading class is the manifest's trading_class, or the underlying's symbol when none is
-// set. There is no fallback to another chain: it reports ok false, and the class it looked for.
+// chainOf is chainOfRoot with the underlying's symbol as its root.
 func (m manifest) chainOf(chains []broker.Chain, u underlying) (chain broker.Chain, class string, ok bool) {
+	return m.chainOfRoot(chains, u, u.Symbol)
+}
+
+// chainOfRoot picks the chain to select from, whatever order the gateway lists the chains in: the first chain on the
+// underlying's exchange whose trading class is the manifest's trading_class, or root when none is set. There is no
+// fallback to another chain: it reports ok false, and the class it looked for.
+func (m manifest) chainOfRoot(chains []broker.Chain, u underlying, root string) (chain broker.Chain, class string, ok bool) {
 	class = m.TradingClass
 	if class == "" {
-		class = u.Symbol
+		class = root
 	}
 	for _, c := range chains {
-		if c.Exchange != u.Exchange {
-			continue
-		}
-		if m.TradingClass != "" && c.TradingClass == m.TradingClass || m.TradingClass == "" && c.TradingClass == u.Symbol {
+		if c.Exchange == u.Exchange && c.TradingClass == class {
 			return c, class, true
 		}
 	}

@@ -60,7 +60,7 @@ func (f jobFactory) optionCandidates() (contracts.Job, error) {
 	}
 	j, err := f.d.newOptionCandidates(st, f.d.newCandidateRule(), f.watch, f.clk)
 	if err != nil {
-		return nil, errors.New("build option_candidates job failed")
+		return nil, fmt.Errorf("build option_candidates job failed: %w", err)
 	}
 	return j, nil
 }

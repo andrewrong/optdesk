@@ -1899,3 +1899,70 @@ source_hash = "pending-recompute"
 agreed_on = "2026-11-10"
 agreed_in = "docs/design/builders-wave.md"
 history = ["2026-11-10 v1: registered by docs/design/builders-wave.md Decision 8 (issue 1011); computed in internal/compute/pagefig."]
+
+[[figure]]
+id = "valuation.buy_band"
+version = 1
+title_zh = "买入价带"
+pages = ["companies_page.band"]
+formula = """
+Convention fcf_yield_v2: free cash flow of a fiscal year is operating cash flow minus capital spending minus stock compensation, as filed. The median of the latest 5 fiscal years, over the latest diluted share count, over a required yield, gives a value per share, rounded half-even to 4 places. Value is the value at 8% (the maximum assignment price), low the value at 10% (the lower edge), ref_high the value at 6%. Flags: unstable_fcf (a year at or below zero, or a range wider than the median), high_leverage (long-term debt over 4 times the median operating cash flow) or leverage_unknown (no debt fact), negative_capex_reported, shares_unverified (no cover-page share count). The band takes no price and holds no expiry: it is shown as valid for 90 days from the approval day (valuation.band_approval). Synthetic: median 4074928000, shares 400000000 give 127.3415 at 8%, 101.8732 at 10% and 169.7887 at 6%."""
+inputs = """
+The Filings of the company (five fiscal years or more of operating cash flow, capital spending and stock compensation, the latest diluted shares, the cover-page share count, the latest long-term debt), by the parameters of its accounting standard (US_GAAP). Subject: the underlying symbol."""
+period_date = "The end of the latest fiscal year used (base_fy_end)."
+currency = "Unit money, stored as decimal text, rounded half-even to 4 places. The currency of the filings (USD)."
+excludes = """
+Any price (spot, strike or premium); an expiry or a clock; floor_dcf; the analyst line; a financial company (SIC 6000-6799) or a cyclical one (the cyclical SIC ranges), which are unvalued and get the diagnosis."""
+gap_text = """
+Fewer than 5 fiscal years, a missing figure of a year, no diluted shares, shares of scale below 1 million, a cover count a hundred times apart from or 1.25 times above the diluted shares (shares_changed_since_base), a median free cash flow of zero or less: missing_input with the reason. A financial or cyclical company: unvalued with the reason. Never a zero."""
+implemented_by = [
+  "internal/compute/valuation.Band",
+]
+source_hash = "66219577838b6bcccf17fc5b46e0abd7e084dffa53048f330ac6e2868ee2b194"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/valuation.md"
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 3 and 11 (issue 1067); parameters of option-trader fcf_yield_v2.toml (blob 4952b59720ce), ported in meaning."]
+
+[[figure]]
+id = "valuation.band_approval"
+version = 1
+title_zh = "买入价带的批准"
+pages = ["companies_page.band"]
+formula = """
+An owner fact with no formula: the owner's approval of the 8% value of the band (valuation.buy_band) on a day, written by the owner command ot approve-band. Its day is the approval day, its value the 8% value text it approves, its origin owner_command. The band is valid while today is within 90 days of the approval day and the approval value equals the band's current 8% value; a different value (a new filing) or no approval is awaiting approval, and a day past the 90 is expired. A second approval of the same day is the next revision; the newest wins."""
+inputs = """
+The owner's command: the symbol, the approval day and the 8% value of the band on that day."""
+period_date = "The approval day."
+currency = "Unit money, stored as decimal text, rounded half-even to 4 places. The currency of the band."
+excludes = """
+Any computation; a Policy, a notice or an approval flow for candidates; a price limit (ADR 0008: the owner's explicit maximum assignment price is the only one)."""
+gap_text = """
+No approval reading: awaiting approval. An approval older than 90 days: expired. An approval value different from the band's 8% value: awaiting approval."""
+implemented_by = []
+source_hash = "eecac6ac0c9d9ed58091a01a7ff81231b1704e836ffbb982e9afe0043c041401"
+agreed_on = "2026-11-09"
+agreed_in = "owner decision 2026-11-09, docs/design/valuation.md Decision 3"
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 3 and 11 (issue 1067); an owner fact, its hash is that of its rule text (the numbers)."]
+
+[[figure]]
+id = "valuation.implied_growth"
+version = 1
+title_zh = "反推隐含增长"
+pages = ["companies_page.band"]
+formula = """
+Convention reverse_dcf_v1: the growth g of the latest free cash flow for 10 years (year-end flows, fixed shares, no cash or debt adjustment, no fade), then a Gordon terminal at 2% growth, that makes the value per share equal the spot price, at the discount rates 8%, 10% (primary) and 12%. Solved by bisection, 64 iterations over -0.5 to 1, every operation rounded to 34 significant digits half-even; the growth is rounded half-even to 6 places. A price below the value at -0.5 or above the value at 1 has no growth: below_solver_range or above_solver_range. Computed at page build from the quote, never stored. Synthetic: a free cash flow of 4319936704 and 400000000 shares at a spot of 157.5089 give 0 growth at 8%."""
+inputs = """
+The Filings of the company (the latest free cash flow, the latest diluted shares) and the spot price as decimal text."""
+period_date = "The end of the latest fiscal year used; the spot is the quote of the page build."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places. An annual growth fraction: 0.05 is 5 percent."
+excludes = """
+A stored reading (the figure is computed at page build); a fade of the growth; the band (valuation.buy_band); any verdict word."""
+gap_text = """
+Fewer than 5 fiscal years, a missing figure, no usable shares, a latest free cash flow of zero or less (non_positive_base_fcf), a spot that is not a positive number (bad_spot): missing_input with the reason. A rate outside the solver range: no growth at that rate, with below_solver_range or above_solver_range. Never a zero."""
+implemented_by = [
+  "internal/compute/valuation.ImpliedGrowth",
+]
+source_hash = "1af7ef5836c0ade9b81453ddc6780729b48e61b9b9b25ed159d7d18df9907907"
+agreed_on = "2026-11-10"
+agreed_in = "docs/design/valuation.md"
+history = ["2026-11-10 v1: registered by docs/design/valuation.md Decisions 4 and 11 (issue 1067); parameters of option-trader reverse_dcf_v1.toml (blob e1e1f731c7b8), ported in meaning."]

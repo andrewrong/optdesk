@@ -94,12 +94,15 @@ func mapRow(q broker.Quote, instrumentID, underlyingID int64, day time.Time, cap
 }
 
 // osiSymbol is the 21-character option symbol: symbol padded to 6, yymmdd, C or P, strike times 1000 in 8 digits.
-func osiSymbol(c broker.Contract) (string, error) {
+func osiSymbol(c broker.Contract) (string, error) { return osiSymbolWith(c, c.Symbol) }
+
+// osiSymbolWith is osiSymbol with root, the option root of the symbol, in place of the symbol; a root over 6 is refused.
+func osiSymbolWith(c broker.Contract, root string) (string, error) {
 	strike, err := strconv.ParseFloat(c.Strike, 64)
-	if err != nil || len(c.Expiry) != 8 || len(c.Symbol) > 6 || strike < 0 || strike >= 100000 {
+	if err != nil || len(c.Expiry) != 8 || len(root) > 6 || strike < 0 || strike >= 100000 {
 		return "", fmt.Errorf("optioneod: no option symbol for %s %s %s", c.Symbol, c.Expiry, c.Strike)
 	}
-	return fmt.Sprintf("%-6s%s%s%08d", c.Symbol, c.Expiry[2:], c.Right, int64(math.Round(strike*1000))), nil
+	return fmt.Sprintf("%-6s%s%s%08d", root, c.Expiry[2:], c.Right, int64(math.Round(strike*1000))), nil
 }
 
 func optionName(c broker.Contract) string {

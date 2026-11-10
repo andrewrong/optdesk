@@ -9,5 +9,8 @@
   {"id": "market.rvx_pctile_3y", "input": 0, "want": "0.000000"},
   {"id": "market.sp500_pctile_3y", "input": 1, "want": "1.000000"},
   {"id": "market.sp500_vs_200d", "input": 0.0312, "want": "0.031200"},
-  {"id": "macro.ease", "input": 56.425, "want": "56.42"}
+  {"id": "macro.ease", "input": 56.425, "want": "56.42"},
+  {"id": "valuation.buy_band", "input": 127.34155, "want": "127.3415"},
+  {"id": "valuation.band_approval", "input": 101.5, "want": "101.5000"},
+  {"id": "valuation.implied_growth", "input": 0.0523104, "want": "0.052310"}
 ]

@@ -54,6 +54,22 @@ type Params struct {
 	SIC           Source
 	FinancialSIC  [][2]int // inclusive ranges: a company in one is unvalued
 	CyclicalSIC   [][2]int
+	Band          BandParams
+}
+
+// BandParams holds the thresholds of the buy band and of the reverse DCF (Decisions 1 and
+// 3). Yields and rates are decimal text, as the figures carry them.
+type BandParams struct {
+	YieldLow, YieldPrimary, YieldHigh string // required yields of the free cash flow
+	MinShares                         decimal.Decimal
+	MaxSharesRatio                    decimal.Decimal // cover count and diluted count differ by this factor or more: mismatch
+	MaxCoverToShares                  decimal.Decimal // cover count at or over this multiple of the diluted count: changed
+	MaxDebtToMedianOCF                decimal.Decimal
+	MaxFCFRangeToMedian               decimal.Decimal // (max - min) of the free cash flow over its median
+	DiscountRates                     []string        // reverse DCF rates, ascending
+	PrimaryRate                       string          // one of DiscountRates
+	TerminalGrowth                    decimal.Decimal
+	SolverLow, SolverHigh             decimal.Decimal // range of the growth solver
 }
 
 // ParamsFor returns the parameters of a standard. Only US_GAAP has a table; any other
@@ -115,6 +131,21 @@ func usGAAP() Params {
 		SIC:          Source{Taxonomy: "sec", Concept: "StandardIndustrialClassification", Unit: "sic"},
 		FinancialSIC: [][2]int{{6000, 6799}},
 		CyclicalSIC:  [][2]int{{1000, 1499}, {2900, 2999}, {3300, 3399}, {3674, 3674}, {3700, 3799}},
+		Band: BandParams{
+			YieldLow:            "0.06",
+			YieldPrimary:        "0.08",
+			YieldHigh:           "0.10",
+			MinShares:           decimal.NewFromInt(1_000_000),
+			MaxSharesRatio:      decimal.NewFromInt(100),
+			MaxCoverToShares:    decimal.RequireFromString("1.25"),
+			MaxDebtToMedianOCF:  decimal.NewFromInt(4),
+			MaxFCFRangeToMedian: decimal.NewFromInt(1),
+			DiscountRates:       []string{"0.08", "0.10", "0.12"},
+			PrimaryRate:         "0.10",
+			TerminalGrowth:      decimal.RequireFromString("0.02"),
+			SolverLow:           decimal.RequireFromString("-0.5"),
+			SolverHigh:          decimal.NewFromInt(1),
+		},
 	}
 }
 
