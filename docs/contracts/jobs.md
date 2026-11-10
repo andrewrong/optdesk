@@ -111,8 +111,19 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `jobs.OptionEodWindow`, `jobs.NewOptionEodWatchWindowFunc`, `optioneod.NewWithWatchWindow` (additive).
 - v1: `option_eod_jp`, `trading_class`, `ledger_dataset`, `stop_after` (additive; `optioneod.NewJP`).
 - v1: `earnings_refresh`, `jobs.WatchEntry`, `jobs.NewEarningsRefreshFunc`.
+- v1: `dividend_capture`, `jobs.NewDividendCaptureFunc`, `dividendcapture.New` (`passed_markets` in `job.toml`).
 - v1: `option_ledger`, interface only (`jobs.OptionLedgerStores`, `jobs.OptionLedgerConfig`, `jobs.FlexRun`, `jobs.NewOptionLedgerJobFunc`, `jobs.ImportOptionTraderFunc`, `jobs.ImportResult`, `jobs.FlexAttributesSHA256Func`), with `optionledger.AttributesSHA256`.
 - v1: `jobs.OptionLedgerStores.Sections` (`flexsection.Writer`, additive; `docs/design/account-flex-fx.md`): nil switches the Flex section step off, and the other fields and `jobs.NewOptionLedgerJobFunc` are unchanged. Delivery rule (Decision 10): nothing the section step handles reaches notify; a job result or `job_event` carries a job id, a status and an alias only, never a cash amount, balance, net value or position. Test: `internal/jobs/flex_section_api_test.go` `TestOptionLedgerStoresSectionsSet`, `TestOptionLedgerStoresSectionsNil`.
+
+## dividend_capture
+
+`jobs.NewDividendCaptureFunc(broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []jobs.WatchEntry, clock.Clock)` builds the job `dividend_capture` (implementation: `internal/jobs/dividendcapture.New`); the design is `docs/design/event-sources.md#Decisions` (2, 5, 6, 7).
+
+- Id `dividend_capture`; schedule `XNYS`, `session_close`, offset 30 minutes, `run_bound` 10 minutes; key `{obs.dividend_expectation, <issuer>}` per entry. `New` refuses a nil argument, an entry with an empty or duplicate issuer and a market other than `US` or `JP`.
+- `job.toml` holds `passed_markets`, the markets whose probe passed in `docs/design/event-sources-probe.txt`; the owner copies them there. It is the run-time input: an entry of a market not in it gets an `unsupported` row with source `none` and is not asked.
+- `Run` resolves each entry to its `instrument_id` with the identifier scheme `ibkr_conid`, makes one `ReferenceClient.Dividends` call for the entries of the passed markets that have no row of the day, and writes one row per stock through `dividend.Writer`, attempt 1: `present` (parsable next ex-date and amount; decimal text from the tick), `no_value`, or `error` with `error_code` `timeout` (tick timeout), `ibkr_<code>` or `error_status` (error status), `request_failed` (the call failed) or `bad_answer` (wrong number of answers). Source is `ibkr_tick_456`, except `unsupported` and `resolve_failed` rows, which have `none`.
+- A failed resolve is an `error` row `resolve_failed` for that stock only; the row is keyed by the `con_id` of the entry, since the writer refuses instrument id 0, and the stock is not asked. One stock failing does not stop the others. A stock with a row of the day gets no second row and no call. A writer error is Retryable, after the other rows are tried.
+- Contract tests: `internal/jobs/api_test.go` `TestDividendCaptureFuncContract`; `internal/jobs/dividendcapture/run_test.go` `TestPresentRow`, `TestNoValueRow`, `TestTimeoutIsErrorRow`, `TestUnpassedMarketIsUnsupported`, `TestOneStockFailsOthersWritten`, `TestRowKeyedByResolvedInstrument`, `TestSecondRunWritesNoRow`, `TestWholeCallFailureIsErrorRows`.
 
 ## Contract tests
 

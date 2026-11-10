@@ -798,3 +798,16 @@ func TestNewPositionMarksFuncContract(t *testing.T) {
 		t.Fatalf("result %+v, rows %+v: the aliases are not marked main first", got, w.rows)
 	}
 }
+
+func TestDividendCaptureFuncContract(t *testing.T) {
+	t.Parallel()
+	var f jobs.NewDividendCaptureFunc = func(
+		broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []jobs.WatchEntry, clock.Clock,
+	) (contracts.Job, error) {
+		return fakeJob{id: "dividend_capture"}, nil
+	}
+	j, err := f(nil, nil, nil, nil, nil, nil)
+	if err != nil || j.ID() != "dividend_capture" {
+		t.Fatalf("got %v, %v", j, err)
+	}
+}

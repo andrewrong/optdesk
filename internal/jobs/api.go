@@ -297,3 +297,15 @@ type NewBarsRefreshFunc func(
 // NewFxRefreshFunc is the constructor of the fx_refresh job (internal/jobs/fxrefresh.New). The arguments
 // are the broker, the history client, the FX rate writer and reader and the clock.
 type NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)
+
+// NewDividendCaptureFunc is the constructor of the dividend_capture job (internal/jobs/dividendcapture.New;
+// docs/design/event-sources.md Decisions 2, 5, 6 and 7). Once per XNYS session day after the close it resolves
+// each entry to its instrument_id through the resolver (scheme ibkr_conid; a failed resolve is an error row
+// resolve_failed for that stock only), asks ReferenceClient.Dividends for the entries of the markets named in the
+// passed_markets key of job.toml and writes one obs.dividend_expectation row per stock through the writer:
+// present, no_value, or error with an error_code. An entry of any other market gets an unsupported row with
+// source none. One stock failing does not stop the others. The reader is how the job sees the rows of the day: a
+// stock that has a row of the day gets no second one.
+type NewDividendCaptureFunc func(
+	broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []WatchEntry, clock.Clock,
+) (contracts.Job, error)
