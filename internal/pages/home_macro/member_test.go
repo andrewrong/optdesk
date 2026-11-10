@@ -24,6 +24,7 @@ const (
 )
 
 var zone = time.FixedZone("CST", 8*3600)
+var generated = time.Date(2026, 11, 6, 9, 30, 0, 0, zone)
 
 func row(t *testing.T, d, value, band string) contracts.ReadingRecord {
 	t.Helper()
@@ -59,7 +60,7 @@ func build(t *testing.T, read compute.ReadingFunc) []byte {
 	t.Helper()
 	b, err := home_macro.Build(context.Background(), home_macro.Config{
 		RunID: "run-test", BuildID: "build-test", Scope: "scope-test", Zone: zone, Read: read,
-	}, day, time.Date(2026, 11, 6, 9, 30, 0, 0, zone))
+	}, day, generated)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +172,7 @@ func TestReaderErrorIsError(t *testing.T) {
 	}
 	_, err := home_macro.Build(context.Background(), home_macro.Config{
 		RunID: "r", BuildID: "b", Scope: "s", Zone: zone, Read: read,
-	}, day, time.Now())
+	}, day, generated)
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v", err)
 	}
@@ -183,11 +184,11 @@ func TestBadConfigIsError(t *testing.T) {
 		"nil zone": {RunID: "r", BuildID: "b", Scope: "s"},
 		"bad id":   {RunID: "r r", BuildID: "b", Scope: "s", Zone: zone},
 	} {
-		if _, err := home_macro.Build(context.Background(), c, day, time.Now()); err == nil {
+		if _, err := home_macro.Build(context.Background(), c, day, generated); err == nil {
 			t.Errorf("%s: no error", name)
 		}
 	}
-	if _, err := home_macro.Build(context.Background(), home_macro.Config{RunID: "r", BuildID: "b", Scope: "s", Zone: zone}, "nope", time.Now()); err == nil {
+	if _, err := home_macro.Build(context.Background(), home_macro.Config{RunID: "r", BuildID: "b", Scope: "s", Zone: zone}, "nope", generated); err == nil {
 		t.Error("bad day: no error")
 	}
 }
