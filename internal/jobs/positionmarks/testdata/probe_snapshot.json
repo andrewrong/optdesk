@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "note": "hand-made answer in the shape of the gateway's Snapshot; ids are invented, no account id",
+  "quotes": [
+    {"con_id": 1001, "status": "ok", "market_data_type": 1, "bid": 1.10, "ask": 1.20, "last": 1.15, "close": 1.05},
+    {"con_id": 1002, "status": "ok", "market_data_type": 3, "bid": 0, "ask": 0, "last": 410.5, "close": 409.0},
+    {"con_id": 1003, "status": "no_subscription", "market_data_type": 0},
+    {"con_id": 1004, "status": "ok", "market_data_type": 2, "close": 2800.5}
+  ]
+}

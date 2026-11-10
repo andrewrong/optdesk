@@ -14,12 +14,23 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // NewWithWatch builds the option_eod job from the embedded job.toml with the underlyings of the US stock
 // entries of watch (market US, sec_type STK); the [[underlying]] tables of job.toml are not used. The DTE
 // window and max_strikes of job.toml apply, and an entry with a BuyPrice gets the strike range of that price.
 func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+	return NewWithWatchSymbols(b, res, w, watch, clk, nil)
+}
+
+var _ jobs.NewOptionEodWatchSymbolsFunc = NewWithWatchSymbols
+
+// NewWithWatchSymbols is NewWithWatch with a translator that gives the option root of each watched
+// underlying; nil means no translation.
+func NewWithWatchSymbols(
+	b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry, clk clock.Clock, t symbol.Translator,
+) (contracts.Job, error) {
 	if b == nil || res == nil || w == nil || clk == nil {
 		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")
 	}
@@ -27,6 +38,7 @@ func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionE
 	if err != nil {
 		return nil, err
 	}
+	j.sym = t
 	us, buy, err := watchUnderlyings(watch)
 	if err != nil {
 		return nil, err

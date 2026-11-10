@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // init adds ot candidates to the exclusions of the leak table (env_test.go) from this file.
@@ -58,8 +59,8 @@ func (fakeRule) Evaluate(compute.CandidateInput, compute.CandidateParams) []comp
 }
 
 // namedEodWatch is a newOptionEodWatch that builds a job with the given id.
-func namedEodWatch(id string) jobs.NewOptionEodWatchFunc {
-	return func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+func namedEodWatch(id string) jobs.NewOptionEodWatchSymbolsFunc {
+	return func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		return candJobStub{id: id}, nil
 	}
 }
@@ -73,7 +74,7 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 	var ids []string
 	a.deps.newOptionEodWatch = namedEodWatch(jobOptionEod)
 	a.deps.newEarningsRefresh = func(
-		map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock,
+		map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock, symbol.Translator,
 	) (contracts.Job, error) {
 		return candJobStub{id: jobEarningsRefresh}, nil
 	}

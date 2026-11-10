@@ -19,6 +19,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // events is a goroutine-safe list of the steps a rig saw.
@@ -309,7 +310,7 @@ func newRig(t *testing.T, env string) *rig {
 		return nil, r.fail["avsrc"]
 	}
 	d.newEarningsRefresh = func(
-		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, _ store.EarningsDateReader, entries []jobs.WatchEntry, _ clock.Clock,
+		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, _ store.EarningsDateReader, entries []jobs.WatchEntry, _ clock.Clock, _ symbol.Translator,
 	) (contracts.Job, error) {
 		r.earnSrcs, r.earnStore, r.earnWatch = srcs, w, entries
 		return namedJob{id: "earnings_refresh"}, r.fail["earnjob"]
@@ -326,7 +327,7 @@ func newRig(t *testing.T, env string) *rig {
 	d.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 		return namedJob{id: "fred_series"}, r.fail["fredjob"]
 	}
-	d.newOptionEod = func(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, _ clock.Clock) (contracts.Job, error) {
+	d.newOptionEod = func(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, _ clock.Clock, _ symbol.Translator) (contracts.Job, error) {
 		r.eodRes, r.eodW = res, w
 		return brokerJob{Job: namedJob{id: "option_eod"}, b: b}, r.fail["eodjob"]
 	}

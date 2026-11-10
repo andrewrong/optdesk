@@ -36,7 +36,7 @@ def test_two_entries_with_defaults(tmp_path: Path) -> None:
     assert [s.name for s in specs] == ["a", "b"] and default == "a"
     second = specs[1]
     assert second.host == "localhost" and second.client_id == 33
-    assert second.market_data_type == 1 and second.required is False
+    assert second.market_data_type == 2 and second.required is False
     assert specs[0].required is True
 
 

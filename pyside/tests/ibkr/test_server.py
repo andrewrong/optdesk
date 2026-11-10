@@ -98,8 +98,18 @@ def test_load_config_without_file_is_unchanged() -> None:
     assert spec.name == "default" == config.default
     assert spec.host == "127.0.0.1" and spec.port == 4002
     assert spec.client_id == 33 and config.lines == 70 and config.snapshots == 50
-    assert spec.market_data_type == 1 and spec.required
+    assert spec.market_data_type == 2 and spec.required
     assert config.health_port is None and not config.named_sockets
+
+
+def test_market_data_type_env_override() -> None:
+    env = {
+        "OT_HOME": "/h",
+        "OT_IBKR_GATEWAY_PORT": "4002",
+        "OT_IBKR_MARKET_DATA_TYPE": "1",
+    }
+    (spec,) = load_config(env).gateways
+    assert (spec.market_data_type, spec.required) == (1, True)
 
 
 def gateways_file(tmp_path: Path) -> Path:

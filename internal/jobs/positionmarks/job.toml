@@ -1,0 +1,11 @@
+# Manifest of the position_marks job. It holds no identity or value: the aliases come from the wiring.
+version = 1
+id = "position_marks"
+
+# Daily anchor on the close of the session, ten minutes after the account job's 30m (Decision 5 of docs/design/position-marks.md).
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "40m"
+run_bound = "10m"
+restart_sensitive = true

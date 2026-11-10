@@ -17,7 +17,7 @@ from typing import Any
 
 COLLECT_WORDS = ("market_data", "account_summary", "positions", "executions")
 DEFAULT_CLIENT_ID = 33
-DEFAULT_MARKET_DATA_TYPE = 1
+DEFAULT_MARKET_DATA_TYPE = 2
 FALLBACK_NAME = "default"
 
 _NAME = re.compile(r"[a-z][a-z0-9-]{0,15}")

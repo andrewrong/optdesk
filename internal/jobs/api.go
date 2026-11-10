@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -40,6 +41,11 @@ type NewOptionEodSymbolsFunc func(broker.Broker, store.InstrumentResolver, store
 
 // NewQuoteSnapshotFunc is the constructor of the quote_snapshot job (internal/jobs/quotesnapshot.New).
 type NewQuoteSnapshotFunc func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error)
+
+// NewPositionMarksFunc is the constructor of the position_marks job (internal/jobs/positionmarks.New). market is
+// the one market-data gateway, whatever account holds the position; aliases are the accounts whose positions
+// are marked, the main one first; acct is where the job reads the newest capture of the day per alias.
+type NewPositionMarksFunc func(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock) (contracts.Job, error)
 
 // ComputeStores is the seven store interfaces the compute_figures job reads and writes, and the optional PriceBars.
 type ComputeStores struct {
@@ -130,6 +136,13 @@ type NewEarningsRefreshSymbolsFunc func(
 // 0.80 x BuyPrice to max(1.05 x BuyPrice, spot), at most max_strikes, the nearest BuyPrice kept; an entry
 // without a BuyPrice keeps the strike_band. The list comes before the clock.
 type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock) (contracts.Job, error)
+
+// NewOptionEodWatchSymbolsFunc is NewOptionEodWatchFunc with a symbol.Translator as the last argument
+// (internal/jobs/optioneod.NewWithWatchSymbols). A nil translator means no translation: the job behaves as it
+// does without one, including its own matching of share-class separators.
+type NewOptionEodWatchSymbolsFunc func(
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock, symbol.Translator,
+) (contracts.Job, error)
 
 // NewOptionEodHeldFunc is the constructor of the option_eod job that also captures the contracts of the short
 // calls the account holds, whatever their DTE (declaration only; its implementation is a later issue). The
@@ -284,3 +297,38 @@ type NewBarsRefreshFunc func(
 // NewFxRefreshFunc is the constructor of the fx_refresh job (internal/jobs/fxrefresh.New). The arguments
 // are the broker, the history client, the FX rate writer and reader and the clock.
 type NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)
+
+// NewDividendCaptureFunc is the constructor of the dividend_capture job (internal/jobs/dividendcapture.New;
+// docs/design/event-sources.md Decisions 2, 5, 6 and 7). Once per XNYS session day after the close it resolves
+// each entry to its instrument_id through the resolver (scheme ibkr_conid; a failed resolve is an error row
+// resolve_failed for that stock only), asks ReferenceClient.Dividends for the entries of the markets named in the
+// passed_markets key of job.toml and writes one obs.dividend_expectation row per stock through the writer:
+// present, no_value, or error with an error_code. An entry of any other market gets an unsupported row with
+// source none. One stock failing does not stop the others. The reader is how the job sees the rows of the day: a
+// stock that has a row of the day gets no second one.
+type NewDividendCaptureFunc func(
+	broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []WatchEntry, clock.Clock,
+) (contracts.Job, error)
+
+// SettingsVersionFunc answers the version of the owner settings in force at an instant (the shape of
+// ownerset.Reader.Version, so this package imports nothing of the store; docs/design/settings-form.md Decision 13).
+// The option_candidates job (internal/jobs/optioncandidates.WithSettingsVersion) calls it once per run with the
+// run's instant and writes the value on every row of the run; with no function or on an error the rows carry nil.
+type SettingsVersionFunc func(ctx context.Context, at time.Time) (int64, error)
+
+// NewFundamentalsFunc is the constructor of the fundamentals job (internal/jobs/fundamentals.New): the SEC facts
+// of the cik: entries of Market US of the watch list, fetched through one FactSource.Fetch per run and written
+// through one FactWriter.InsertFacts call. The job id is fundamentals; docs/design/valuation.md#fundamentals-job.
+type NewFundamentalsFunc func(sources.FactSource, store.FactWriter, []WatchEntry, clock.Clock) (contracts.Job, error)
+
+// FundamentalsSkip names one entry of Market US the fundamentals job does not fetch. Subject is the Issuer text
+// or, when it is empty, Contract.Symbol; Reason is no_cik (an empty or non-cik: issuer) or edinet_not_fetched.
+type FundamentalsSkip struct {
+	Subject, Reason string
+}
+
+// FundamentalsSkips is implemented by the job that fundamentals.New returns: the skipped entries in
+// watch-list order.
+type FundamentalsSkips interface {
+	Skipped() []FundamentalsSkip
+}

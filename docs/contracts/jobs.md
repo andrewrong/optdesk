@@ -106,12 +106,24 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `compute_figures` stores `macro.ease` when built with an `Ease` (`jobs.NewComputeFiguresEaseFunc`, additive).
 - v1: `SeriesHistoryLoader`, with `internal/jobs/serieshistory`.
 - v1: `calendar_refresh`, interface only (`jobs.CalendarObserver`, `jobs.NewCalendarRefreshFunc`).
+- v1: `position_marks`: `jobs.NewPositionMarksFunc(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock)` is the constructor of the `position_marks` job (`internal/jobs/positionmarks.New`, declared only until its entry lands); `market` is the one market-data gateway whatever account holds the position, `aliases` are the accounts whose positions are marked, the main one first (docs/design/position-marks.md#Interface).
 - v1: `option_eod` with a watch list, `min_dte`, `max_dte`, `max_strikes` (additive; `jobs.NewOptionEodWatchFunc`, `jobs.NewOptionEodHeldFunc`).
 - v1: `jobs.OptionEodWindow`, `jobs.NewOptionEodWatchWindowFunc`, `optioneod.NewWithWatchWindow` (additive).
 - v1: `option_eod_jp`, `trading_class`, `ledger_dataset`, `stop_after` (additive; `optioneod.NewJP`).
 - v1: `earnings_refresh`, `jobs.WatchEntry`, `jobs.NewEarningsRefreshFunc`.
+- v1: `dividend_capture`, `jobs.NewDividendCaptureFunc`, `dividendcapture.New` (`passed_markets` in `job.toml`).
 - v1: `option_ledger`, interface only (`jobs.OptionLedgerStores`, `jobs.OptionLedgerConfig`, `jobs.FlexRun`, `jobs.NewOptionLedgerJobFunc`, `jobs.ImportOptionTraderFunc`, `jobs.ImportResult`, `jobs.FlexAttributesSHA256Func`), with `optionledger.AttributesSHA256`.
 - v1: `jobs.OptionLedgerStores.Sections` (`flexsection.Writer`, additive; `docs/design/account-flex-fx.md`): nil switches the Flex section step off, and the other fields and `jobs.NewOptionLedgerJobFunc` are unchanged. Delivery rule (Decision 10): nothing the section step handles reaches notify; a job result or `job_event` carries a job id, a status and an alias only, never a cash amount, balance, net value or position. Test: `internal/jobs/flex_section_api_test.go` `TestOptionLedgerStoresSectionsSet`, `TestOptionLedgerStoresSectionsNil`.
+
+## dividend_capture
+
+`jobs.NewDividendCaptureFunc(broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []jobs.WatchEntry, clock.Clock)` builds the job `dividend_capture` (implementation: `internal/jobs/dividendcapture.New`); the design is `docs/design/event-sources.md#Decisions` (2, 5, 6, 7).
+
+- Id `dividend_capture`; schedule `XNYS`, `session_close`, offset 30 minutes, `run_bound` 10 minutes; key `{obs.dividend_expectation, <issuer>}` per entry. `New` refuses a nil argument, an entry with an empty or duplicate issuer and a market other than `US` or `JP`.
+- `job.toml` holds `passed_markets`, the markets whose probe passed in `docs/design/event-sources-probe.txt`; the owner copies them there. It is the run-time input: an entry of a market not in it gets an `unsupported` row with source `none` and is not asked.
+- `Run` resolves each entry to its `instrument_id` with the identifier scheme `ibkr_conid`, makes one `ReferenceClient.Dividends` call for the entries of the passed markets that have no row of the day, and writes one row per stock through `dividend.Writer`, attempt 1: `present` (parsable next ex-date and amount; decimal text from the tick), `no_value`, or `error` with `error_code` `timeout` (tick timeout), `ibkr_<code>` or `error_status` (error status), `request_failed` (the call failed) or `bad_answer` (wrong number of answers). Source is `ibkr_tick_456`, except `unsupported` and `resolve_failed` rows, which have `none`.
+- A failed resolve is an `error` row `resolve_failed` for that stock only; the row is keyed by the `con_id` of the entry, since the writer refuses instrument id 0, and the stock is not asked. One stock failing does not stop the others. A stock with a row of the day gets no second row and no call. A writer error is Retryable, after the other rows are tried.
+- Contract tests: `internal/jobs/dividendcapture/run_test.go` `TestEmbeddedManifest` (the constructor type), `TestPresentRow`, `TestNoValueRow`, `TestTimeoutIsErrorRow`, `TestUnpassedMarketIsUnsupported`, `TestOneStockFailsOthersWritten`, `TestRowKeyedByResolvedInstrument`, `TestSecondRunWritesNoRow`, `TestWholeCallFailureIsErrorRows`.
 
 ## Contract tests
 
@@ -175,3 +187,19 @@ There is no test yet: the wrapping of an untyped fetch error as `Permanent` and 
 - Id `fx_refresh`; one key `{obs.fx_rate, USDJPY}`; schedule `XNYS`, `session_close`, offset 15 minutes, `run_bound` 10 minutes; `job.toml` also holds `duration_days` (5).
 - `Run` resolves the USD.JPY cash contract once through `Broker.ResolveContract` (sec type `CASH`, symbol `USD`, exchange `IDEALPRO`, currency `JPY`; not listed is Permanent), asks `MIDPOINT` for 5 days, and inserts one `obs.fx_rate` row per bar day not stored (`rate` is the close text, `source` `ibkr_midpoint`). A stored day is left as it is. An empty answer writes nothing and fabricates nothing; no default rate exists in the package. A history or store error is Retryable unless it is already typed; a close that is not a positive decimal is Permanent.
 - Contract tests: `internal/jobs/api_test.go` `TestFxRefreshContract`; `internal/jobs/fxrefresh` `TestOneKeyUSDJPY`, `TestInsertsOnlyNewDays`, `TestStoredDayLeftAsIs`, `TestEmptyAnswerWritesNothing`, `TestNotListedIsPermanent`, `TestPacedIsRetryable`, `TestNoDefaultRate`.
+
+## option_candidates settings version
+
+- `jobs.SettingsVersionFunc` (`func(ctx context.Context, at time.Time) (int64, error)`; the shape of `ownerset.Reader.Version`; design `docs/design/settings-form.md` Decision 13): the version of the owner settings in force at an instant.
+- `optioncandidates.WithSettingsVersion(job contracts.Job, f jobs.SettingsVersionFunc) (contracts.Job, error)` sets it on a job built by `New` or `NewWithCalls`; any other job is an error. A run calls `f` once with the run's instant (the clock's `now`) and writes the value as `SettingsVersion` on every row of the run, for every kind (`short_put`, `covered_call`, `held_call_guard`). With no function, or an error from it, the rows carry nil, the run goes on and one `slog` line with `component jobs status degraded` is logged. The job resolves no parameter and imports no `store/ownerset`.
+- Contract tests: `internal/jobs/api_test.go` `TestSettingsVersionFuncContract`; `internal/jobs/optioncandidates/job_test.go` `TestRunWritesOneSettingsVersionOnEveryRow`, `TestNoSettingsFuncWritesNil`, `TestSettingsFuncErrorWritesNilAndRuns`.
+
+## fundamentals
+
+- `jobs.NewFundamentalsFunc(sources.FactSource, store.FactWriter, []jobs.WatchEntry, clock.Clock)` (implemented by `internal/jobs/fundamentals.New`; design `docs/design/valuation.md#fundamentals-job`) builds the job `fundamentals`. A nil source, writer or clock is a constructor error.
+- `job.toml`, embedded: `version`, `id`, `lookback_days` (14), a `[window]` table (`rule = "after_close"`, `calendar = "XNYS"`, `lateness_hours = 96`) and a `[schedule]` table (anchor `time`, zone `America/New_York`, calendar `XNYS`, with `run_bound`); the table shapes and error texts are those of `fredseries` with the package name `fundamentals`.
+- `Plan(day)` gives one key `{obs.fundamental_fact, <issuer>}` per entry of Market `US` whose Issuer starts with `cik:`, sorted, and a hash of the job id, version, day, lookback and the sorted issuers.
+- `Run(day, keys)` makes one `FactSource.Fetch` with `FactPlan{Subjects, From: day - lookback_days, To: day}` and writes the facts in one `InsertFacts` call. `Returned` and `Usable` are the facts fetched. An untyped fetch error is `Permanent`, a typed one keeps its kind, a writer error is `Retryable` with `Usable` 0; no facts means no write. A second run of the day adds no row (the store key is the eight-column key). The job keeps no cursor file.
+- Skips: an entry of Market `US` with an empty or non-`cik:` Issuer, or of any market with an empty Issuer, is skipped with reason `no_cik`; one with an `edinet:` Issuer of any market (a real one is `JP`) with reason `edinet_not_fetched`. The job implements `jobs.FundamentalsSkips`: `Skipped() []jobs.FundamentalsSkip{Subject, Reason}` in watch-list order, Subject the Issuer or, when empty, `Contract.Symbol`. No CIK is guessed.
+- Contract tests: `internal/jobs/api_fundamentals_test.go` `TestNewFundamentalsFuncContract`; `internal/jobs/fundamentals/run_test.go` `TestRunTwiceAddsZero`, `TestNoCikSkippedAndNamed`, `TestEdinetSkippedWhileNil`, `TestPlanOneKeyPerCik`, `TestFetchErrorKinds`, `TestWriterErrorRetryable`, `TestEmbeddedManifest`.
+- v1: `fundamentals`, manifest version 1.

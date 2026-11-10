@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -17,6 +19,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 func TestNewDepsFilled(t *testing.T) {
@@ -329,7 +333,7 @@ func jqRig(t *testing.T, env string) (*rig, *jqSource, *memEvents) {
 	d.newAlphaVantage = func(sources.EarningsConfig) (sources.EarningsSource, error) { return &jqSource{}, nil }
 	d.openEarningsDates = func(context.Context, string) (store.EarningsDateStore, error) { return mem, nil }
 	d.newEarningsRefresh = func(
-		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, rd store.EarningsDateReader, es []jobs.WatchEntry, c clock.Clock,
+		srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, rd store.EarningsDateReader, es []jobs.WatchEntry, c clock.Clock, _ symbol.Translator,
 	) (contracts.Job, error) {
 		r.earnSrcs = srcs
 		return earningsrefresh.New(srcs, w, rd, es, c)
@@ -465,5 +469,17 @@ func TestOptionNoticesPageWiresRule(t *testing.T) {
 	}
 	if !strings.Contains(string(b), `"scope":"notices"`) || !strings.Contains(string(b), `"no_reader"`) {
 		t.Fatalf("page %s", b)
+	}
+}
+
+func TestSetupLineEqualsOwnersetConst(t *testing.T) {
+	t.Parallel()
+	src, err := os.ReadFile("../../internal/store/setup/setup.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`dsnEnvSettings\s*=\s*"([^"]+)"`).FindSubmatch(src)
+	if m == nil || string(m[1]) != ownerset.DSNEnvSettings {
+		t.Fatalf("setup literal %q, ownerset %q", m, ownerset.DSNEnvSettings)
 	}
 }

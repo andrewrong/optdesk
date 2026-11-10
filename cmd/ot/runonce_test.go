@@ -17,10 +17,13 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
+	"github.com/andrewrong/optdesk/internal/symbol/table"
 )
 
 const fullEnv = "OT_PG_DSN_RUNNER=run-dsn\nOT_PG_DSN_SERIES_FRED=ser-dsn\nFRED_API_KEY=k\n" +
@@ -183,7 +186,7 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
-		newOptionEod: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+		newOptionEod: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
 		newOptionEodJP: func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
@@ -201,7 +204,7 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		},
 		newAlphaVantage: func(sources.EarningsConfig) (sources.EarningsSource, error) { return nil, nil },
 		newEarningsRefresh: func(
-			map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock,
+			map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock, symbol.Translator,
 		) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
@@ -477,5 +480,59 @@ func TestRunOnceNeedsReadingsDSN(t *testing.T) {
 	err := runOnce(a, nil)
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvReadings) || strings.Contains(err.Error(), "readings-dsn") {
 		t.Fatalf("err %v", err)
+	}
+}
+
+// listingSource is an earnings source that returns one fixed listing.
+type listingSource struct{ l sources.EarningsListing }
+
+func (s listingSource) Fetch(context.Context) ([]sources.EarningsListing, error) {
+	return []sources.EarningsListing{s.l}, nil
+}
+
+func TestRunOnceEarningsShareClass(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	body := "[[underlying]]\nissuer = \"cik:0001067983\"\nmarket = \"US\"\nsymbol = \"BRK B\"\n"
+	if err := writeFile(r.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
+		t.Fatal(err)
+	}
+	mem := &memEvents{}
+	d := &r.a.deps
+	d.symbols = table.New()
+	d.newEarningsRefresh = earningsrefresh.NewWithSymbols
+	d.openEarningsDates = func(context.Context, string) (store.EarningsDateStore, error) { return mem, nil }
+	d.newAlphaVantage = func(sources.EarningsConfig) (sources.EarningsSource, error) {
+		return listingSource{sources.EarningsListing{Symbol: "BRK.B", ReportDate: "2026-11-20"}}, nil
+	}
+	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	earningsJob(t, r).Run(t.Context(), "2026-11-09", nil)
+	us := rowsOf(mem, "US")
+	if len(us) != 1 || us[0].Status != "listed" || us[0].Symbol != "BRK.B" {
+		t.Fatalf("US rows %+v, want one listed row for BRK.B", us)
+	}
+}
+
+func TestRunOnceOptionEodWatchTranslator(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var day contracts.Day
+	runOnceFakes(a, &opened, &closed, &day)
+	want := table.New()
+	a.deps.symbols = want
+	var got symbol.Translator
+	a.deps.newOptionEodWatch = func(_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter,
+		_ []jobs.WatchEntry, _ clock.Clock, tr symbol.Translator) (contracts.Job, error) {
+		got = tr
+		return fakeJob{}, nil
+	}
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got != want {
+		t.Fatalf("translator %v, want the symbols of the deps", got)
 	}
 }
