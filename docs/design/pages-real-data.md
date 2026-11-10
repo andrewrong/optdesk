@@ -247,7 +247,7 @@ Module: pages. Size: M.
 Files: `internal/pages/home_options/member.go` (new), `internal/pages/home_options/member_test.go` (new), `internal/pages/home_options/purity_test.go` (new), `internal/pages/home_options/testdata/ok.golden.json` (new)
 Design: docs/design/pages-real-data.md#Decisions
 Order: first.
-Goal: `home_options.Build` returns `page.options_summary.v4`: tiles and the six month premium series from the replayed option ledger (`store.OptionLedgerReader` and `compute.NewOptionLedgerFunc`, as `option_tracking_page`); a month with no ledger row is a hole, not zero; the closed series text is built only from ledger rows.
+Goal: `home_options.Build` returns `page.options_summary.v4`: tiles copied from the replayed option ledger and its summary (`store.OptionLedgerReader`, `compute.NewOptionLedgerFunc` and `compute.OptionResults.Summarise`: `ResultSection.Premium`, `Realized`, `KeptShare`, as `option_tracking_page`), with no arithmetic in pages (Decisions 1 and 4); the six month premium series is a gap `not_built`, because compute has no premium-by-month figure yet (`ResultMonth` is realized by month). A later compute issue adds that figure and a one-file pages issue replaces the gap (see `## Left out`).
 Acceptance:
 1. `grep -c 'options_summary' internal/pages/home_options/member.go` prints at least 1.
 2. `grep -c 'OptionLedgerReader' internal/pages/home_options/member.go` prints at least 1.
@@ -271,6 +271,8 @@ Acceptance:
 ci-go for every entry: `go build ./...`, `go vet`, `golangci-lint`, `scripts/arch`, `go test ./... -race` (parallel tests, `t.TempDir()`, no sleep). Entries 3 and 4 also run the contract tests of `blockapi` from both sides and the golden suites of `internal/compute`. Entries 5, 7, 9, 11 to 16: the golden test of the package and its purity test; `scripts/arch` for the new packages (flat `internal/pages/<package>`, the one level the tool reads). Entry 17: `TestSampleRoutes` is gone and `cmd/ot` tests serve `/home`, `/household`, `/positions`, `/risk`, `/advice` through `httptest` with the demo profile and with no reader (the page is a gap page, status 200). `ci-web` is not triggered by any entry (no path under `web/`). Contracts: unchanged on every entry.
 
 ## Left out
+
+- The six month premium series of home_options (issue 16): compute has no premium-by-month figure; a compute issue adds one on `OptionResults`, then a pages issue replaces the `not_built` gap.
 
 - Day profit of positions (needs two marks of consecutive sessions; the mark job has run for days only; the column is a gap, no job added).
 - Movers of `household_page` (a day change needs two marks of consecutive sessions, as the day profit of positions; the block is the gap `no_data`).
