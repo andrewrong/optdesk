@@ -27,7 +27,7 @@ from optdesk.contracts.genpb.ibkr.v1 import quote_pb2 as ibkr_dot_v1_dot_quote__
 from optdesk.contracts.genpb.ibkr.v1 import quote_types_pb2 as ibkr_dot_v1_dot_quote__types__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18ibkr/v1/marketdata.proto\x12\x07ibkr.v1\x1a\x16ibkr/v1/contract.proto\x1a\x13ibkr/v1/quote.proto\x1a\x19ibkr/v1/quote_types.proto\"]\n\x0fSnapshotRequest\x12 \n\x04kind\x18\x01 \x01(\x0e\x32\x12.ibkr.v1.QuoteKind\x12(\n\tcontracts\x18\x02 \x03(\x0b\x32\x15.ibkr.v1.ContractSpec\"1\n\x10SnapshotResponse\x12\x1d\n\x05quote\x18\x01 \x01(\x0b\x32\x0e.ibkr.v1.Quote\"~\n\x0b\x42\x61rsRequest\x12\'\n\x08\x63ontract\x18\x01 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\x12\x1e\n\x04kind\x18\x02 \x01(\x0e\x32\x10.ibkr.v1.BarKind\x12\x15\n\rduration_days\x18\x03 \x01(\x05\x12\x0f\n\x07\x65nd_day\x18\x04 \x01(\t\"j\n\x03\x42\x61r\x12\x0b\n\x03\x64\x61y\x18\x01 \x01(\t\x12\x0c\n\x04open\x18\x02 \x01(\t\x12\x0c\n\x04high\x18\x03 \x01(\t\x12\x0b\n\x03low\x18\x04 \x01(\t\x12\r\n\x05\x63lose\x18\x05 \x01(\t\x12\x13\n\x06volume\x18\x06 \x01(\tH\x00\x88\x01\x01\x42\t\n\x07_volume\"*\n\x0c\x42\x61rsResponse\x12\x1a\n\x04\x62\x61rs\x18\x01 \x03(\x0b\x32\x0c.ibkr.v1.Bar*k\n\x07\x42\x61rKind\x12\x18\n\x14\x42\x41R_KIND_UNSPECIFIED\x10\x00\x12\x13\n\x0f\x42\x41R_KIND_TRADES\x10\x01\x12\x1a\n\x16\x42\x41R_KIND_ADJUSTED_LAST\x10\x02\x12\x15\n\x11\x42\x41R_KIND_MIDPOINT\x10\x03\x32\x8b\x01\n\x11MarketDataService\x12\x41\n\x08Snapshot\x12\x18.ibkr.v1.SnapshotRequest\x1a\x19.ibkr.v1.SnapshotResponse0\x01\x12\x33\n\x04\x42\x61rs\x12\x14.ibkr.v1.BarsRequest\x1a\x15.ibkr.v1.BarsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18ibkr/v1/marketdata.proto\x12\x07ibkr.v1\x1a\x16ibkr/v1/contract.proto\x1a\x13ibkr/v1/quote.proto\x1a\x19ibkr/v1/quote_types.proto\"]\n\x0fSnapshotRequest\x12 \n\x04kind\x18\x01 \x01(\x0e\x32\x12.ibkr.v1.QuoteKind\x12(\n\tcontracts\x18\x02 \x03(\x0b\x32\x15.ibkr.v1.ContractSpec\"1\n\x10SnapshotResponse\x12\x1d\n\x05quote\x18\x01 \x01(\x0b\x32\x0e.ibkr.v1.Quote\"~\n\x0b\x42\x61rsRequest\x12\'\n\x08\x63ontract\x18\x01 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\x12\x1e\n\x04kind\x18\x02 \x01(\x0e\x32\x10.ibkr.v1.BarKind\x12\x15\n\rduration_days\x18\x03 \x01(\x05\x12\x0f\n\x07\x65nd_day\x18\x04 \x01(\t\"j\n\x03\x42\x61r\x12\x0b\n\x03\x64\x61y\x18\x01 \x01(\t\x12\x0c\n\x04open\x18\x02 \x01(\t\x12\x0c\n\x04high\x18\x03 \x01(\t\x12\x0b\n\x03low\x18\x04 \x01(\t\x12\r\n\x05\x63lose\x18\x05 \x01(\t\x12\x13\n\x06volume\x18\x06 \x01(\tH\x00\x88\x01\x01\x42\t\n\x07_volume\"*\n\x0c\x42\x61rsResponse\x12\x1a\n\x04\x62\x61rs\x18\x01 \x03(\x0b\x32\x0c.ibkr.v1.Bar*\x8c\x01\n\x07\x42\x61rKind\x12\x18\n\x14\x42\x41R_KIND_UNSPECIFIED\x10\x00\x12\x13\n\x0f\x42\x41R_KIND_TRADES\x10\x01\x12\x1a\n\x16\x42\x41R_KIND_ADJUSTED_LAST\x10\x02\x12\x15\n\x11\x42\x41R_KIND_MIDPOINT\x10\x03\x12\x1f\n\x1b\x42\x41R_KIND_OPTION_IMPLIED_VOL\x10\x04\x32\x8b\x01\n\x11MarketDataService\x12\x41\n\x08Snapshot\x12\x18.ibkr.v1.SnapshotRequest\x1a\x19.ibkr.v1.SnapshotResponse0\x01\x12\x33\n\x04\x42\x61rs\x12\x14.ibkr.v1.BarsRequest\x1a\x15.ibkr.v1.BarsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,8 +35,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ibkr.v1.marketdata_pb2', _g
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z6github.com/andrewrong/optdesk/internal/contracts/genpb'
-  _globals['_BARKIND']._serialized_start=535
-  _globals['_BARKIND']._serialized_end=642
+  _globals['_BARKIND']._serialized_start=536
+  _globals['_BARKIND']._serialized_end=676
   _globals['_SNAPSHOTREQUEST']._serialized_start=109
   _globals['_SNAPSHOTREQUEST']._serialized_end=202
   _globals['_SNAPSHOTRESPONSE']._serialized_start=204
@@ -47,6 +47,6 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_BAR']._serialized_end=489
   _globals['_BARSRESPONSE']._serialized_start=491
   _globals['_BARSRESPONSE']._serialized_end=533
-  _globals['_MARKETDATASERVICE']._serialized_start=645
-  _globals['_MARKETDATASERVICE']._serialized_end=784
+  _globals['_MARKETDATASERVICE']._serialized_start=679
+  _globals['_MARKETDATASERVICE']._serialized_end=818
 # @@protoc_insertion_point(module_scope)
