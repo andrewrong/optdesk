@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -228,7 +229,7 @@ type jobFactory struct {
 	snap store.QuoteSnapshotStore
 	inst store.InstrumentStore
 	// compute holds the stores of compute_figures.
-	compute jobs.ComputeStores
+	compute computefigures.ComputeStores
 	uv      string
 	log     *slog.Logger
 	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
@@ -428,7 +429,7 @@ func openSessionDays(ctx context.Context, d deps, cfg runOnceConfig) (sd, loader
 // openComputeStores opens the stores compute_figures reads and writes: catalog, eod, terms, names and series
 // with the pages line, the readings store with the readings line; the session days are the runner store
 // already open. The returned func closes what was opened, last opened first.
-func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.SessionDayStore) (jobs.ComputeStores, func(), error) {
+func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.SessionDayStore) (computefigures.ComputeStores, func(), error) {
 	var closers []func() error
 	closeAll := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -436,45 +437,45 @@ func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.
 		}
 	}
 	pagesFail := fmt.Errorf("open compute stores with %s failed", store.DSNEnvPages)
-	cs := jobs.ComputeStores{SessionDays: sd}
+	cs := computefigures.ComputeStores{SessionDays: sd}
 	cat, err := d.openOptionCatalog(ctx, cfg.pagesDSN)
 	if err != nil {
-		return jobs.ComputeStores{}, nil, pagesFail
+		return computefigures.ComputeStores{}, nil, pagesFail
 	}
 	closers = append(closers, cat.Close)
 	cs.Catalog = cat
 	eod, err := d.openOptionEod(ctx, cfg.pagesDSN)
 	if err != nil {
 		closeAll()
-		return jobs.ComputeStores{}, nil, pagesFail
+		return computefigures.ComputeStores{}, nil, pagesFail
 	}
 	closers = append(closers, eod.Close)
 	cs.OptionEod = eod
 	terms, err := d.openOptionTerms(ctx, cfg.pagesDSN)
 	if err != nil {
 		closeAll()
-		return jobs.ComputeStores{}, nil, pagesFail
+		return computefigures.ComputeStores{}, nil, pagesFail
 	}
 	closers = append(closers, terms.Close)
 	cs.Terms = terms
 	names, err := d.openInstrumentName(ctx, cfg.pagesDSN)
 	if err != nil {
 		closeAll()
-		return jobs.ComputeStores{}, nil, pagesFail
+		return computefigures.ComputeStores{}, nil, pagesFail
 	}
 	closers = append(closers, names.Close)
 	cs.Names = names
 	ser, err := d.openSeries(ctx, cfg.pagesDSN)
 	if err != nil {
 		closeAll()
-		return jobs.ComputeStores{}, nil, pagesFail
+		return computefigures.ComputeStores{}, nil, pagesFail
 	}
 	closers = append(closers, ser.Close)
 	cs.Series = ser
 	rd, err := d.openReading(ctx, cfg.readingsDSN)
 	if err != nil {
 		closeAll()
-		return jobs.ComputeStores{}, nil, fmt.Errorf("open readings store with %s failed", store.DSNEnvReadings)
+		return computefigures.ComputeStores{}, nil, fmt.Errorf("open readings store with %s failed", store.DSNEnvReadings)
 	}
 	closers = append(closers, rd.Close)
 	cs.Readings = rd

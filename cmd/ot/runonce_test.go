@@ -18,7 +18,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
+	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
@@ -132,7 +135,7 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
 		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
 		newDiffer:               func() clock.SessionDayDiffer { return nil },
-		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, jobs.CalendarObserver) (contracts.Job, error) {
+		newCalendarRefresh: func(clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
 		openSessionDay: func(context.Context, string) (store.SessionDayStore, error) {
@@ -184,7 +187,7 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 			return fakeReading{n: closed}, nil
 		},
 		newComputeFigures: func(
-			jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
+			computefigures.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
 		) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
@@ -593,12 +596,12 @@ func newCallsRig(t *testing.T, env string) *callsRig {
 		c.heldAcct, c.heldTr = acct, tr
 		return namedJob{id: jobOptionEod}, nil
 	}
-	d.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+	d.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 		c.puts.Add(1)
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	d.newOptionCandidatesCalls = func(
-		_ jobs.CandidateStores, div dividend.Reader, _ compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock,
+		_ optioncandidates.CandidateStores, div dividend.Reader, _ compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock,
 	) (contracts.Job, error) {
 		c.calls.Add(1)
 		c.callsDiv = div

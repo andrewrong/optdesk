@@ -15,6 +15,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
+	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -59,7 +61,7 @@ func (fakeRule) Evaluate(compute.CandidateInput, compute.CandidateParams) []comp
 }
 
 // namedEodWatch is a newOptionEodWatch that builds a job with the given id.
-func namedEodWatch(id string) jobs.NewOptionEodWatchSymbolsFunc {
+func namedEodWatch(id string) optioneod.NewOptionEodWatchSymbolsFunc {
 	return func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		return candJobStub{id: id}, nil
 	}
@@ -85,7 +87,7 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 		}
 		return &fakeCandidateRW{closed: &cl}, nil
 	}
-	a.deps.newOptionCandidates = func(st jobs.CandidateStores, rule compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
+	a.deps.newOptionCandidates = func(st optioncandidates.CandidateStores, rule compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
 		if st.Candidates == nil || st.Earnings == nil || rule == nil {
 			t.Errorf("stores %+v rule %v", st, rule)
 		}
@@ -122,7 +124,7 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 		rwOpened.Add(1)
 		return &fakeCandidateRW{closed: &cl}, nil
 	}
-	a.deps.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+	a.deps.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
