@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner/sched"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -189,7 +190,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 	d.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 		return idJob{id: jobFredSeries}, nil
 	}
-	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		return idJob{id: jobOptionEod}, nil
 	}
 	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
@@ -207,7 +208,7 @@ func newSchedRig(t *testing.T, env string) *schedRig {
 		return idJob{id: jobCalendarRefresh}, nil
 	}
 	d.newEarningsRefresh = func(
-		map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock,
+		map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock, symbol.Translator,
 	) (contracts.Job, error) {
 		return idJob{id: jobEarningsRefresh}, nil
 	}
