@@ -66,7 +66,7 @@ No new row. Entries 2 (contracts, owner-only proto), 3 (pyside, owner-only `tran
 
 ## Issues
 
-Every test calls `t.Parallel()`, writes files only under a temporary directory, uses a fake clock, never sleeps, opens no port and touches no live broker or database. Acceptance is checked offline by reading, grep and git; test runs are under "Checked by CI". `BASE` is `git merge-base HEAD origin/main`. Each new source file is under 600 lines.
+Every test calls `t.Parallel()`, writes files only under a temporary directory, uses a fake clock, never sleeps, opens no port and touches no live broker or database. Acceptance is checked offline by reading, grep and git; test runs are under "Checked by CI". Each new source file is under 600 lines.
 
 ### 1 iv-bar-kind-go (interface)
 
@@ -78,7 +78,7 @@ Goal: `broker.BarOptionImpliedVol` is declared after `BarMidpoint` in `internal/
 Acceptance:
 1. `grep -c "BarOptionImpliedVol" internal/broker/api.go` prints 1 and `grep -A4 "BarTrades BarKind = iota + 1" internal/broker/api.go | grep -c "BarOptionImpliedVol"` prints 1 (the three older kinds keep their numbers).
 2. `grep -hE "^func TestBarOptionImpliedVolFake\(" internal/broker/api_test.go | wc -l` prints 1 (new).
-3. `git diff --name-only BASE` lists no path outside the Files line.
+3. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./internal/broker -race -count=1` (`TestBarOptionImpliedVolFake`, new), `go run ./scripts/arch --check`, ci-go.
 
 
@@ -93,7 +93,7 @@ Acceptance:
 1. `grep -c "BAR_KIND_OPTION_IMPLIED_VOL = 4;" contracts/proto/ibkr/v1/marketdata.proto` prints 1 and `grep -c "BAR_KIND_TRADES = 1;\|BAR_KIND_ADJUSTED_LAST = 2;\|BAR_KIND_MIDPOINT = 3;" contracts/proto/ibkr/v1/marketdata.proto` prints 3.
 2. `grep -c "BarKind_BAR_KIND_OPTION_IMPLIED_VOL" internal/contracts/genpb/marketdata.pb.go` is at least 1 and `grep -c "BAR_KIND_OPTION_IMPLIED_VOL" pyside/src/optdesk/contracts/genpb/ibkr/v1/marketdata_pb2.pyi` is at least 1.
 3. `grep -hE "^func TestBarKindOptionImpliedVol\(" internal/contracts/genpb/marketdata_proto_test.go | wc -l` prints 1 (new): it requires the numbers 1, 2, 3 and 4 of the four named kinds.
-4. `git diff --name-only BASE` lists no path outside the Files line; `git diff --name-only BASE -- go.mod go.sum | wc -l` prints 0.
+4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line; `git diff --name-only $(git merge-base HEAD origin/main) -- go.mod go.sum | wc -l` prints 0.
 Checked by CI: `go test ./internal/contracts/... -race -count=1` (`TestBarKindOptionImpliedVol`, new), the proto generation check of ci, ci-go.
 
 ### 3 iv-bar-pyside
@@ -107,7 +107,7 @@ Acceptance:
 1. `grep -c '"option_implied_vol": "OPTION_IMPLIED_VOLATILITY"' pyside/src/optdesk/ibkr/history.py` prints 1 and `grep -c "BAR_KIND_OPTION_IMPLIED_VOL" pyside/src/optdesk/ibkr/transport.py` prints 1.
 2. `grep -c "trades, adjusted_last, midpoint or option_implied_vol" pyside/src/optdesk/ibkr/history.py` prints 1 and `grep -c "option_implied_vol" pyside/src/optdesk/ibkr/api.py` is at least 1.
 3. `grep -c "OPTION_IMPLIED_VOLATILITY" pyside/tests/ibkr/test_history.py` is at least 1 (a case of the existing `test_kind_maps_to_tws_word`, which is edited, not renamed) and `grep -hE "^(async )?def test_bars_option_implied_vol_kind\(" pyside/tests/ibkr/test_transport.py | wc -l` prints 1 (new): a fake gateway receives the kind `option_implied_vol`.
-4. `git diff --name-only BASE` lists no path outside the Files line.
+4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto` in `pyside/` (`test_kind_maps_to_tws_word`, `test_bars_option_implied_vol_kind` new), the contract test `pyside/tests/contracts/test_ibkr_api.py` unchanged.
 
 ### 4 iv-bar-grpc
@@ -120,7 +120,7 @@ Goal: `barKindOf` of `grpcbroker/history.go` maps `broker.BarOptionImpliedVol` (
 Acceptance:
 1. `grep -c "BarOptionImpliedVol" internal/broker/grpcbroker/history.go` prints 1.
 2. `grep -hE "^func TestBarsOptionImpliedVolKind\(" internal/broker/grpcbroker/history_test.go | wc -l` prints 1 (new): the request carries `BAR_KIND_OPTION_IMPLIED_VOL` on the wire, and a bar of close `0.2813` comes back as the text `0.2813`.
-3. `git diff --name-only BASE` lists no path outside the Files line.
+3. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./internal/broker/... -race -count=1` (`TestBarsOptionImpliedVolKind`, new), ci-go.
 
 
@@ -133,9 +133,9 @@ Order: first.
 Goal: for an underlying with a buy price, `selectContracts` (`select.go:21`) keeps the strikes of `rangeStrikes` and also, for every selected expiry, the two strikes below and the two at or above the spot (`nearestStrikes` with the manifest's `strike_band` and a per-side count of 2, a constant in `select.go`), both rights, no strike twice, ordered as before. No manifest key is added, so `job.toml` and the plan hash do not change (`us_hash_test.go` is untouched). Both US and JP watch entries go through `selectContracts` (`run.go:264`), so both get it. `TestJPStockBuyPriceStrikes` (`jp_stock_test.go:199`, spot 3000 equal to the buy price, a 10-yen step, 12 strikes kept) stays valid unchanged, because the four spot strikes 2980 to 3010 are among the 12 nearest the buy price. `docs/contracts/jobs.md` says it in two paragraphs and adds a `- v1:` line that names the spot strikes (it contains the words `spot strikes`): the `NewWithWatch` paragraph, and the `NewJPWithWatch` paragraph, whose sentence "`BuyPrice` range of at most `max_strikes` ... so a name holds at most 48 contracts" is no longer true (the JP stock entries also keep the four spot strikes, up to eight more contracts per expiry): it now says the range, the four spot strikes of each expiry and that the 48 counts the range only.
 Acceptance:
 1. `TestMaxStrikesCap` of `watch_test.go` now expects, for a one-dollar step, a buy price of 100 and a spot of 130, the 28 call strikes 88 to 111 and 128 to 131 (two below the spot, the spot and the next one): `grep -c "seq(128, 131, 1)" internal/jobs/optioneod/watch_test.go` prints 1; the test keeps its name (`grep -c "func TestMaxStrikesCap" internal/jobs/optioneod/watch_test.go` prints 1).
-2. `TestStrikeRangeFromBuyPrice` (step 5, spot 130) now expects the 12 strikes 80 to 135, the 11 of the range plus 135 (125 and 130 are already in it): `grep -c "seq(80, 135, 5)" internal/jobs/optioneod/watch_test.go` prints 1 and `grep -c "seq(80, 130, 5)" internal/jobs/optioneod/watch_test.go` prints 0; and `TestNoBuyPriceKeepsBand` is unchanged: `diff <(git show BASE:internal/jobs/optioneod/watch_test.go | awk '/^func TestNoBuyPriceKeepsBand\(/,/^}/') <(awk '/^func TestNoBuyPriceKeepsBand\(/,/^}/' internal/jobs/optioneod/watch_test.go) | wc -l` prints 0 (the body equals the one at BASE).
-3. `grep -c "nearestStrikes" internal/jobs/optioneod/select.go` is at least 3 (the definition, the old call and the new one); `git diff --name-only BASE -- internal/jobs/optioneod/job.toml internal/jobs/optioneod/manifest.go internal/jobs/optioneod/us_hash_test.go internal/jobs/optioneod/jp_stock_test.go | wc -l` prints 0.
-4. `grep -c "two strikes below and the two at or above" docs/contracts/jobs.md` prints 1; `grep -c "counts the range only" docs/contracts/jobs.md` prints 1; `grep -c "so a name holds at most 48 contracts" docs/contracts/jobs.md` prints 0 (the old JP sentence is gone) and `grep -c "^- v1: .*spot strikes" docs/contracts/jobs.md` prints 1 (the new version line); `git diff --name-only BASE` lists no path outside the Files line.
+2. `TestStrikeRangeFromBuyPrice` (step 5, spot 130) now expects the 12 strikes 80 to 135, the 11 of the range plus 135 (125 and 130 are already in it): `grep -c "seq(80, 135, 5)" internal/jobs/optioneod/watch_test.go` prints 1 and `grep -c "seq(80, 130, 5)" internal/jobs/optioneod/watch_test.go` prints 0; and `TestNoBuyPriceKeepsBand` is unchanged: `diff <(git show $(git merge-base HEAD origin/main):internal/jobs/optioneod/watch_test.go | awk '/^func TestNoBuyPriceKeepsBand\(/,/^}/') <(awk '/^func TestNoBuyPriceKeepsBand\(/,/^}/' internal/jobs/optioneod/watch_test.go) | wc -l` prints 0 (the body equals the one at BASE).
+3. `grep -c "nearestStrikes" internal/jobs/optioneod/select.go` is at least 3 (the definition, the old call and the new one); `git diff --name-only $(git merge-base HEAD origin/main) -- internal/jobs/optioneod/job.toml internal/jobs/optioneod/manifest.go internal/jobs/optioneod/us_hash_test.go internal/jobs/optioneod/jp_stock_test.go | wc -l` prints 0.
+4. `grep -c "two strikes below and the two at or above" docs/contracts/jobs.md` prints 1; `grep -c "counts the range only" docs/contracts/jobs.md` prints 1; `grep -c "so a name holds at most 48 contracts" docs/contracts/jobs.md` prints 0 (the old JP sentence is gone) and `grep -c "^- v1: .*spot strikes" docs/contracts/jobs.md` prints 1 (the new version line); `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` (`TestUSPlanHashPinned` unchanged), ci-go.
 
 ### 6 ibkr-iv-rules
@@ -150,7 +150,7 @@ Acceptance:
 2. `grep -c 'id = "market.iv_ibkr"' docs/conventions/register.toml` prints 1, `grep -c 'id = "market.ivp_ibkr"' docs/conventions/register.toml` prints 1 and `grep -c "any IBKR IV history (no bootstrap)" docs/conventions/register.toml` prints 0.
 3. `grep -c "There is no bootstrap from IBKR's history" docs/GLOSSARY.md` prints 0 and `grep -c "market.ivp_ibkr" docs/GLOSSARY.md` is at least 1.
 4. `grep -c "market.iv_ibkr" internal/compute/own/testdata/stored_text.json` prints 1 and `grep -c "market.ivp_ibkr" internal/compute/own/testdata/stored_text.json` prints 1.
-5. `grep -hE "^func (TestFromCloseRounds|TestFromCloseRejectsZeroAndAboveTen|TestFromCloseRejectsText)\(" internal/compute/ivbar/ivbar_test.go | wc -l` prints 3 (new); `git diff --name-only BASE -- go.mod go.sum | wc -l` prints 0; `git diff --name-only BASE` lists no path outside the Files line.
+5. `grep -hE "^func (TestFromCloseRounds|TestFromCloseRejectsZeroAndAboveTen|TestFromCloseRejectsText)\(" internal/compute/ivbar/ivbar_test.go | wc -l` prints 3 (new); `git diff --name-only $(git merge-base HEAD origin/main) -- go.mod go.sum | wc -l` prints 0; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./internal/compute/... -race -count=1` (`TestHashesMatchSource`, `TestRulesMatchRegister`, `TestStoredTextGolden`, `TestNoPendingForGoIds`, `TestRegisterEntriesComplete`, the three new tests), ci-go.
 
 ### 7 iv-history-job
@@ -164,7 +164,7 @@ Acceptance:
 1. `grep -hE "^func (TestBootstrapAsks400Days|TestLaterRunAsks5Days|TestStoresOneReadingPerBar|TestMissingBarOfDayIsNoInput|TestBadCloseIsBadInput|TestRerunInsertsNothingNew|TestPostconditionFollowsDayReading|TestPacedAnswerIsRetryable)\(" internal/jobs/ivhistory/job_test.go internal/jobs/ivhistory/run_test.go | wc -l` prints 8 (new); every test uses a fake `HistoryClient`, a fake reading store and a fake clock.
 2. `grep -c 'id = "iv_history"' internal/jobs/ivhistory/job.toml` prints 1; `grep -c "broker.BarOptionImpliedVol" internal/jobs/ivhistory/run.go` prints 1; `grep -l "internal/compute" internal/jobs/ivhistory/*.go | grep -vc _test.go` prints 0.
 3. `grep -c "market.iv_ibkr" docs/contracts/jobs.md` is at least 2 (the paragraph and one `- v1:` line); `wc -l internal/jobs/ivhistory/*.go | awk '$2 != "total" && $1 >= 600' | wc -l` prints 0.
-4. `git diff --name-only BASE -- internal/jobs/api.go internal/broker/api.go | wc -l` prints 0; `git diff --name-only BASE` lists no path outside the Files line.
+4. `git diff --name-only $(git merge-base HEAD origin/main) -- internal/jobs/api.go internal/broker/api.go | wc -l` prints 0; `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./internal/jobs/... -race -count=1` (the eight new tests), `go run ./scripts/arch --check`, ci-go.
 
 ### 8 iv-history-wire
@@ -178,7 +178,7 @@ Acceptance:
 1. `grep -c "ivbar.FromClose" cmd/ot/wire_ivhistory.go` prints 1 and `grep -c "iv_history" cmd/ot/wire_ivhistory.go` is at least 1.
 2. `grep -c "market.iv_ibkr" docs/contracts/ot/jobs/iv_history.md` is at least 1; `grep -c "^Order\|^## Version" docs/contracts/ot/jobs/iv_history.md` prints 2.
 3. `grep -hE "^func (TestIvHistoryFamilyPlans|TestIvHistoryFamilyStores)\(" cmd/ot/wire_ivhistory_test.go | wc -l` prints 2 (new): the first finds a key `market.iv_ibkr|underlying|<name>` in `Plan` against fakes, the second runs the job on one fake bar and finds one `market.iv_ibkr` reading.
-4. `git diff --name-only BASE` lists no path outside the Files line.
+4. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./cmd/ot -race -count=1`, `go run ./scripts/arch --check`, ci-go.
 
 ### 9 ivp-ibkr-step
@@ -191,9 +191,9 @@ Goal: the manifest gets `iv_ibkr = "market.iv_ibkr"` and `ivp_ibkr = "market.ivp
 Acceptance:
 1. `grep -hE "^func (TestIvpIbkrOkFrom253Bars|TestIvpIbkrShortHistoryUnder252|TestIvpIbkrNoBarOfDay|TestIvpIbkrReadsOnlyIbkrSeries|TestIvpOwnIgnoresIbkrSeries|TestIvpIbkrKeyPlanned|TestIvrNotPlannedForIbkr)\(" internal/jobs/computefigures/ivp_ibkr_test.go | wc -l` prints 7 (new). `TestIvpIbkrOkFrom253Bars` stores 253 `market.iv_ibkr` readings with a known today value and requires a stored `market.ivp_ibkr` of the share written as a literal in the test; `TestIvpOwnIgnoresIbkrSeries` stores both series and requires the `market.ivp_own` reading to equal the one a run without the IBKR series gives.
 2. `grep -c 'ivp_ibkr = "market.ivp_ibkr"' internal/jobs/computefigures/job.toml` prints 1 and `grep -c 'iv_ibkr = "market.iv_ibkr"' internal/jobs/computefigures/job.toml` prints 1.
-3. `git diff --name-only BASE -- internal/jobs/api.go internal/compute/api.go internal/jobs/computefigures/schedule.go | wc -l` prints 0.
+3. `git diff --name-only $(git merge-base HEAD origin/main) -- internal/jobs/api.go internal/compute/api.go internal/jobs/computefigures/schedule.go | wc -l` prints 0.
 4. `grep -c "market.ivp_ibkr" docs/contracts/jobs.md` is at least 2; `wc -l internal/jobs/computefigures/ivp_ibkr_test.go | awk '$1 >= 600' | wc -l` prints 0.
-5. `git diff --name-only BASE` lists no path outside the Files line.
+5. `git diff --name-only $(git merge-base HEAD origin/main)` lists no path outside the Files line.
 Checked by CI: `go test ./internal/jobs/... -race -count=1` (the seven new tests, the edited key-count tests), `go run ./scripts/arch --check`, ci-go.
 
 ## Left out
