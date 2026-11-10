@@ -127,7 +127,10 @@ func TestCandidateContractSettingsVersion(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].SettingsVersion != nil {
 		t.Fatalf("old row = %+v, %v; want a nil settings version", got, err)
 	}
-	if _, err := w.InsertCandidates(ctx, []store.Candidate{{SessionDay: day, RunID: "new", Kind: "short_put", InstrumentID: 1, SettingsVersion: &v, ComputedAt: t0.Add(time.Hour)}}); err != nil {
+	fresh := store.Candidate{
+		SessionDay: day, RunID: "new", Kind: "short_put", InstrumentID: 1, SettingsVersion: &v, ComputedAt: t0.Add(time.Hour),
+	}
+	if _, err := w.InsertCandidates(ctx, []store.Candidate{fresh}); err != nil {
 		t.Fatal(err)
 	}
 	got, err = r.Candidates(ctx, day, "short_put")
