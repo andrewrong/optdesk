@@ -392,8 +392,7 @@ def test_two_open_sessions_of_one_gateway_probe_one_after_the_other() -> None:
         gateway = _gateway(clock, FakeIb(clock), probe)
         first = asyncio.ensure_future(gateway.open_session())
         second = asyncio.ensure_future(gateway.open_session())
-        for _ in range(10):
-            await asyncio.sleep(0)
+        await clock.advance(0.0)
         release.set()
         await asyncio.gather(first, second, return_exceptions=True)
         return log
