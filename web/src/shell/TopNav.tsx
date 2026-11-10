@@ -1,4 +1,4 @@
-import { ChevronDown, Lightbulb, type LucideIcon } from 'lucide-react'
+import { ChevronDown, Lightbulb, Menu, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
 // The links of the position menu (Decision 15 of docs/design/option-positions.md).
 const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
@@ -37,34 +38,73 @@ function currentPath(pathname: string): string {
 
 export function TopNav() {
   const current = currentPath(window.location.pathname)
+  const isActive = (path: string, prefix?: boolean) =>
+    path === current || (prefix === true && current.startsWith(`${path}/`))
   return (
-    <nav aria-label="主导航" className="flex gap-1 overflow-x-auto p-2">
-      {ITEMS.map(({ label, path, prefix, icon: Icon }) => {
-        const active = path === current || (prefix === true && current.startsWith(`${path}/`))
-        return (
-          <Button key={path} asChild variant={active ? 'secondary' : 'ghost'} className="shrink-0">
-            <a href={path} aria-current={active ? 'page' : undefined}>
-              {Icon ? <Icon aria-hidden /> : null}
-              {label}
-            </a>
+    <nav aria-label="主导航" className="p-2">
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="菜单" className="size-11 md:hidden">
+            <Menu aria-hidden />
           </Button>
-        )
-      })}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="shrink-0">
-            期权持仓
-            <ChevronDown aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {POSITION_LINKS.map(({ label, path }) => (
-            <DropdownMenuItem key={path} asChild>
-              <a href={path}>{label}</a>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </SheetTrigger>
+        <SheetContent side="left" className="overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>菜单</SheetTitle>
+          </SheetHeader>
+          <ul className="flex flex-col gap-1 px-2 pb-4">
+            {ITEMS.map(({ label, path, prefix, icon: Icon }) => {
+              const active = isActive(path, prefix)
+              return (
+                <li key={path}>
+                  <Button asChild variant={active ? 'secondary' : 'ghost'} className="min-h-11 w-full justify-start">
+                    <a href={path} aria-current={active ? 'page' : undefined}>
+                      {Icon ? <Icon aria-hidden /> : null}
+                      {label}
+                    </a>
+                  </Button>
+                </li>
+              )
+            })}
+            <li className="px-2 pt-2 text-sm font-medium text-muted-foreground">期权持仓</li>
+            {POSITION_LINKS.map(({ label, path }) => (
+              <li key={path}>
+                <Button asChild variant="ghost" className="min-h-11 w-full justify-start pl-6">
+                  <a href={path}>{label}</a>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </SheetContent>
+      </Sheet>
+      <div className="hidden md:flex gap-1">
+        {ITEMS.map(({ label, path, prefix, icon: Icon }) => {
+          const active = isActive(path, prefix)
+          return (
+            <Button key={path} asChild variant={active ? 'secondary' : 'ghost'} className="shrink-0">
+              <a href={path} aria-current={active ? 'page' : undefined}>
+                {Icon ? <Icon aria-hidden /> : null}
+                {label}
+              </a>
+            </Button>
+          )
+        })}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="shrink-0">
+              期权持仓
+              <ChevronDown aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {POSITION_LINKS.map(({ label, path }) => (
+              <DropdownMenuItem key={path} asChild>
+                <a href={path}>{label}</a>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </nav>
   )
 }
