@@ -170,3 +170,27 @@ func TestHistoryTimeoutDefault(t *testing.T) {
 		t.Fatalf("set %v", got)
 	}
 }
+
+func TestBarsOptionImpliedVolKind(t *testing.T) {
+	t.Parallel()
+	var got *pb.BarsRequest
+	f := &fakeBars{answer: func(r *pb.BarsRequest) (*pb.BarsResponse, error) {
+		got = r
+		return &pb.BarsResponse{Bars: []*pb.Bar{
+			{Day: "2026-11-05", Open: "0.28", High: "0.29", Low: "0.27", Close: "0.2813"},
+		}}, nil
+	}}
+	c, _ := serveBars(t, f)
+	q := query()
+	q.Kind = broker.BarOptionImpliedVol
+	bars, err := c.Bars(context.Background(), q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetKind() != pb.BarKind_BAR_KIND_OPTION_IMPLIED_VOL {
+		t.Fatalf("request kind %v", got.GetKind())
+	}
+	if len(bars) != 1 || bars[0].Close != "0.2813" {
+		t.Fatalf("got %+v", bars)
+	}
+}

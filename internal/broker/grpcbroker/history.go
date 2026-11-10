@@ -18,9 +18,10 @@ import (
 var _ broker.NewHistoryFunc = DialHistory
 
 var barKindOf = map[broker.BarKind]pb.BarKind{
-	broker.BarTrades:       pb.BarKind_BAR_KIND_TRADES,
-	broker.BarAdjustedLast: pb.BarKind_BAR_KIND_ADJUSTED_LAST,
-	broker.BarMidpoint:     pb.BarKind_BAR_KIND_MIDPOINT,
+	broker.BarTrades:           pb.BarKind_BAR_KIND_TRADES,
+	broker.BarAdjustedLast:     pb.BarKind_BAR_KIND_ADJUSTED_LAST,
+	broker.BarMidpoint:         pb.BarKind_BAR_KIND_MIDPOINT,
+	broker.BarOptionImpliedVol: pb.BarKind_BAR_KIND_OPTION_IMPLIED_VOL,
 }
 
 // decimalText is a plain decimal number as text: digits with an optional sign and fraction.
