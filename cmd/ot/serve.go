@@ -44,8 +44,12 @@ func runServe(a *app, args []string) error {
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
 	addr := fs.String("addr", "127.0.0.1:8080", "listen address")
+	edit := fs.Bool("owner-edit", false, "serve POST /owner-settings (loopback address only)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *edit && !loopbackListen(*addr) {
+		return errors.New("serve: --owner-edit needs a loopback --addr")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -63,6 +67,25 @@ func runServe(a *app, args []string) error {
 	if err != nil {
 		return fmt.Errorf("serve: cannot listen on %s", *addr)
 	}
+	if *edit {
+		oe, closeEdit, err := newOwnerEdit(ctx, a, ln.Addr().String())
+		if err != nil {
+			_ = ln.Close()
+			return err
+		}
+		defer closeEdit()
+		rd.edit = oe
+	}
 	a.log.Info("serve listening", "component", "ot", "status", "ok")
 	return serveHandler(ctx, ln, siteHandler(a, clk, *dayFlag, rd, a.deps.newHandler, newAssets()))
+}
+
+// loopbackListen reports whether addr is "host:port" with a loopback IP literal as its host.
+func loopbackListen(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
