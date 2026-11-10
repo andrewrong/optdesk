@@ -21,7 +21,7 @@ Needs the owner: nothing. The one trade-off (a backfill pauses the scheduler's t
 
 2. **What the cursor protects, and why each holds without it.** The cursor is written only by `Reconcile` (`SetCursor` at `reconcile.go`), and the design text gives it three jobs: (a) every day at or before it is complete (`reconcile.go` doc comment; `docs/design/scheduler.md` Decision 4: "the cursor holds on a gap; the walk does not"); (b) the day after it is the only day `run-once` collects (`docs/design/backfill.md` Goal), so plans and windows are created in order by one writer; (c) `Backfill` of a day at or behind it never meets a key whose empty answer is still "explainable" (`docs/design/backfill.md`: an empty answer before the close cannot happen behind the cursor). Without the cursor test:
    - (a) A backfill never marks a key `no_value` before that key's window closes: the test of Decision 1 skips it, and the key runner marks an empty answer `no_value` only at or after `closeAt` (`runkey.go` `verdict`: `empty_before_close` before it). So a backfill completes a day no earlier than `Reconcile` would (`expireIfClosed` also acts only at the close). The cursor still moves only in `Reconcile`, from the marks.
-   - (b) `Backfill` calls no `PutExpected`, `PutWindow` or `SetCursor` (its doc comment), and a day with no stored plan is refused. A day ahead of the cursor with a plan was planned by `Reconcile` itself, in order.
+   - (b) `Backfill` calls no `SetCursor` and, for a stored key, no `PutExpected` or `PutWindow` (they are written only for added keys, Decision 8), and a day with no stored plan is refused. A day ahead of the cursor with a plan was planned by `Reconcile` itself, in order.
    - (c) This is the case Decision 1 handles directly: the "empty before close" ambiguity is why a key inside its window is not run.
    - The run row id is `day|dataset|subject|attempt` with attempt `len(runs)+1`; two writers could collide on it. The writers are made exclusive in Decision 3.
    - A key the backfill leaves missing (a retryable error) is, on the next tick, closed again by `expireIfClosed` (Close table row 3) with reason `expired`: the gap stays honest and nothing is lost.
@@ -42,6 +42,8 @@ Needs the owner: nothing. The one trade-off (a backfill pauses the scheduler's t
 
 7. **Exit codes and report.** `ot backfill` exits 0 when every key it was asked to run is `present`, `no_value` by a verdict, or in its window (reported), and 1 when a key is still missing or the lease is held (`Retryable`, message "the runner lease is held, retry in a minute"). The `done` log line gains `in_window`.
 
+8. **Backfill adds the keys that today's plan has for day D and the stored plan lacks.** The stored plan of a day is frozen at its first `Reconcile`, so a key added to a job later (six `fred_series` series were added to `job.toml` on 2026-11-08 and 2026-11-09) is not in the stored plan of 2026-11-06 or earlier, and a backfill that runs only stored keys reports `done` and stores nothing for them, although the source publishes that day. This reverses `docs/design/backfill.md` Behaviour 2 ("`PutExpected` is not called") and its out-of-scope line about a changed plan, for added keys only; the docs issue (6) amends both. After the refusals, `Backfill` takes the keys of `r.plan(ctx, day, nil)` that are not in the stored keys (`ExpectedKey` equality) and, when `datasets` is empty or names their dataset, whose dataset has a window for D under the window rule of its job (`windowFor` returns a window from the session of D; a key with no window rule for D is not added and is not an error). Before the first run it writes `PutExpected(day, hash, stored + added)` and `PutWindow` for the dataset of each added key (the helper `putWindows` of `reconcile.go`), then the runs go through the existing `backfillKey` path and Decision 1's window test. Invariants: no stored key is removed or changed (the new plan is the stored keys plus the added ones, in that order); a stored key that today's plan no longer returns stays in the plan and is an error as before; `SetCursor` is never called (an added key of a day at or before the cursor has its window put before it runs, so the cursor stays where `Reconcile` left it and a day behind it is not re-walked); a day with no stored plan is still refused, nothing is invented for a day the runner never planned; a second backfill of the same day finds no added key and writes nothing. The lease of Decision 3 is held for the writes, so `Reconcile` cannot write the same plan at the same time.
+
 ## Modules
 
 No change to `docs/design/modules.md`: runner (`internal/runner/**`) and ot (`cmd/**`) are existing rows and no depends cell changes (`ot` already imports `runner`, `internal/runner/reconcile` and `internal/runner/sched`). No `go.mod` edit, no migration, no new table.
@@ -54,6 +56,7 @@ No change to `docs/design/modules.md`: runner (`internal/runner/**`) and ot (`cm
 | backfill-cmd | ot |
 | backfill-drop-refusal | runner |
 | backfill-docs | docs |
+| backfill-add-plan-keys | runner |
 
 ## Interface
 
@@ -94,7 +97,7 @@ Depends on: 1.
 Goal: Decisions 1, 2 and 3 in the runner: no cursor test, the per-key window test with `InWindow`, the lease under the owner `backfill:` plus random hex.
 Acceptance:
 1. `grep -c "RefusedAheadOfCursor" internal/runner/reconcile/backfill.go` is 0 and `grep -c "ledger.Cursor" internal/runner/reconcile/backfill.go` is 0.
-2. `grep -c "SetCursor\|PutExpected\|PutWindow" internal/runner/reconcile/backfill.go` is 0.
+2. `grep -c "SetCursor\|PutExpected\|PutWindow" internal/runner/reconcile/backfill.go` is 0 (issue 7 adds the writes of Decision 8).
 3. `grep -c "InWindow" internal/runner/reconcile/backfill.go` is at least 1, and `grep -c "backfill:" internal/runner/reconcile/reconcile.go` is at least 1 (the owner prefix), while `grep -c 'owner    = "runner"' internal/runner/reconcile/reconcile.go` is still 1.
 4. `grep -c "TestBackfillRefusals" internal/runner/reconcile/backfill_test.go` is 1 and the table holds no case of the cursor: `grep -rc "RefusedAheadOfCursor\|ahead of cursor" internal/runner/reconcile | grep -v ":0" | wc -l` prints 0. `holdLease` takes the owner: `grep -c "func (r \*reconciler) holdLease(ctx context.Context, owner string" internal/runner/reconcile/reconcile.go` is 1. The Retryable error of the lease test is checked through the fake ledger of `fakes_test.go`, so `Backfill` renews with a scheduler ledger fake in `TestBackfillOwnLease` (a renewal is counted after a 31 s advance of the fake clock).
 5. `grep -rhE "^func (TestBackfillAheadOfCursor|TestBackfillInWindowKept|TestBackfillExpiredKey|TestBackfillOwnLease|TestBackfillCursorUnmoved)\(" internal/runner/reconcile | wc -l` prints 5 (new; each name is under 32 characters). The expired-key test: a key stored `no_value` with a run of reason `expired`, window closed, cursor before the day, is run and becomes `present`; the in-window test: a key with an open window is not run (the job fake counts 0 calls) and is in `InWindow`; the lease test: a fake ledger whose lease is held by owner `runner` makes `Backfill` return a Retryable error, and a held lease of owner `backfill:` makes `Reconcile` return a Retryable error; the cursor test: the cursor of the fake ledger is equal after the call.
@@ -154,7 +157,22 @@ Goal: the two older designs say what is now true: backfill has no cursor test, n
 Acceptance:
 1. `grep -c "stop the scheduler, run" docs/design/scheduler.md` prints 0 and `grep -c "backfill-any-day" docs/design/scheduler.md` is at least 1.
 2. `grep -c "ahead_of_cursor" docs/design/backfill.md` is 0 or the line holding it also holds "superseded by backfill-any-day".
+2b. `grep -c "PutExpected. is not called" docs/design/backfill.md` prints 0, `grep -c "added keys" docs/design/backfill.md` is at least 1 and `grep -c "only the stored keys are run" docs/design/backfill.md` prints 0 (Behaviour 2 and the out-of-scope line about a changed plan say that backfill adds the keys today's plan has and the stored plan lacks, Decision 8 of backfill-any-day).
 3. `git diff --name-only BASE` lists exactly the two Files.
+
+### 7 backfill-add-plan-keys
+
+Module: runner. Size: S.
+Files: `internal/runner/reconcile/backfill.go`, `internal/runner/reconcile/backfill_addkeys_test.go`
+Design: docs/design/backfill-any-day.md#Decisions
+Depends on: 2 and 6 merged.
+Goal: Decision 8 in the runner: `Backfill` adds the keys of today's plan for D that the stored plan lacks, writes `PutExpected` and `PutWindow` for them, and never moves the cursor.
+Acceptance:
+1. `grep -c "PutExpected(" internal/runner/reconcile/backfill.go` is 1 and `grep -c "SetCursor(" internal/runner/reconcile/backfill.go` is 0.
+2. `grep -rhE "^func (TestBackfillAddsMissingKeys|TestBackfillAddKeysNoWindow|TestBackfillNoPlanStillRefused|TestBackfillAddKeysIdempotent)\(" internal/runner/reconcile | wc -l` prints 4 (new; fake ledger and fake clock): a stored plan with key A and a job whose plan returns A and B gives one `PutExpected` with A then B and one `PutWindow` for the dataset of B, B in `Filled`, no `SetCursor`; an added key whose dataset has no window rule for the day is not added and no error; a day with an empty stored plan is `RefusedNoPlan` with no `PutExpected`; a second call writes nothing.
+3. `git diff BASE -- internal/runner/reconcile/backfill_test.go | wc -l` prints 0 (the existing tests are not edited) and `git diff BASE | grep -c '^-.*\(assert\|require\|t\.Errorf\|t\.Fatalf\)'` prints 0.
+4. `wc -l internal/runner/reconcile/backfill.go internal/runner/reconcile/backfill_addkeys_test.go | grep -v total | awk '$1>=600' | wc -l` prints 0.
+5. `git diff --name-only BASE` lists exactly the two Files.
 
 ## Checked by CI
 
@@ -168,8 +186,10 @@ ci-go runs `go test ./internal/runner/... ./cmd/ot -race -count=1` (the tests na
 - Interruption of a long backfill by a scheduler tick (a preemptible lease): not needed while ticks are 15 minutes and a backfill takes `--dataset`; stated in Decision 3.
 - Why the four keys of 2026-11-09 failed (run rows `ops.capture_run` error codes): not in the code; the backfill run rows will show it.
 - The cause of `no_value` for a key a source marks before its close (Goal): it waits for the close.
+- `ot series-load` (the owner's command), and days ahead of the cursor for Decision 8: an added key is put for a day that has a stored plan only.
+- A stored key that today's plan no longer returns: still an error, never removed (Decision 8).
 - A job-level view of in-window keys in `ot scheduler status`: status stays a read of gaps and runs.
 
 ## Adversarial
 
-One fresh reader answered six questions against the code; its text is in the dispatcher scratchpad (backfill-any-day.adversarial.md, not in the repository). Adopted: the no-window case is stated as equal to `Reconcile`'s own run (Decision 1); the lease renewal is made explicit, with `ot backfill` built on `newReconciler` and the scheduler ledger and `holdLease` taking the owner (Decision 3, issues 2 and 4); `SyncKeys` gets its own `applyKeys` and the missing alert is stated (Decision 4, issue 3); the stale refusal text of `docs/contracts/runner.md` and the message for a day with no plan are in the acceptance (issues 1 and 4); the constant `RefusedAheadOfCursor` is checked in the tests of issues 2 and 4 so that issue 5 compiles; the uptime claim is reworded and an early `no_value` is stated as waiting for its close (Goal). Not adopted: the simpler way (keep the fence), because the owner refused stopping the scheduler; the reasoning is in Decision 3.
+One fresh reader answered six questions against the code; its text is in the dispatcher scratchpad (backfill-any-day.adversarial.md, not in the repository). Adopted: the no-window case is stated as equal to `Reconcile`'s own run (Decision 1); the lease renewal is made explicit, with `ot backfill` built on `newReconciler` and the scheduler ledger and `holdLease` taking the owner (Decision 3, issues 2 and 4); `SyncKeys` gets its own `applyKeys` and the missing alert is stated (Decision 4, issue 3); the stale refusal text of `docs/contracts/runner.md` and the message for a day with no plan are in the acceptance (issues 1 and 4); the constant `RefusedAheadOfCursor` is checked in the tests of issues 2 and 4 so that issue 5 compiles; the uptime claim is reworded and an early `no_value` is stated as waiting for its close (Goal). Added after the reading: Decision 8 and issue 7 (backfill adds the plan keys the stored plan lacks), from the data-repair of 2026-11-10, where the stored plan of 2026-11-06 lacked six `fred_series` keys. Not adopted: the simpler way (keep the fence), because the owner refused stopping the scheduler; the reasoning is in Decision 3.
