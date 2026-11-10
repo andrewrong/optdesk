@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -40,6 +41,11 @@ type NewOptionEodSymbolsFunc func(broker.Broker, store.InstrumentResolver, store
 
 // NewQuoteSnapshotFunc is the constructor of the quote_snapshot job (internal/jobs/quotesnapshot.New).
 type NewQuoteSnapshotFunc func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error)
+
+// NewPositionMarksFunc is the constructor of the position_marks job (internal/jobs/positionmarks.New). market is
+// the one market-data gateway, whatever account holds the position; aliases are the accounts whose positions
+// are marked, the main one first; acct is where the job reads the newest capture of the day per alias.
+type NewPositionMarksFunc func(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock) (contracts.Job, error)
 
 // ComputeStores is the seven store interfaces the compute_figures job reads and writes, and the optional PriceBars.
 type ComputeStores struct {
