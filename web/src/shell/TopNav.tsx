@@ -1,8 +1,8 @@
 import { Lightbulb, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-// The eight items of Decision 3 (docs/design/unified-site.md), in order. Fixed shell text: no payload field is read.
-const ITEMS: readonly { label: string; path: string; prefix?: boolean; icon?: LucideIcon }[] = [
+// The nine items of Decision 3 (docs/design/unified-site.md), in order. Fixed shell text: no payload field is read.
+const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; icon?: LucideIcon })[] = [
   { label: '首页', path: '/home' },
   { label: '宏观', path: '/macro' },
   { label: '家庭资产', path: '/household' },
@@ -10,6 +10,7 @@ const ITEMS: readonly { label: string; path: string; prefix?: boolean; icon?: Lu
   { label: '风险', path: '/risk' },
   { label: '期权', path: '/options' },
   { label: '期权数据', path: '/options/data', prefix: true },
+  { label: '期权候选', path: '/options/candidates' },
   { label: '建议', path: '/advice', icon: Lightbulb },
 ]
 
