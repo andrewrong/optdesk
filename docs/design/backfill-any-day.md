@@ -103,7 +103,7 @@ Acceptance:
 Module: runner. Size: M.
 Files: `internal/runner/reconcile/backfill.go`, `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/backfill_test.go`, `internal/runner/reconcile/backfill_window_test.go`
 Design: docs/design/backfill-any-day.md#Decisions
-Depends on: 1.
+Order: after 1.
 Goal: Decisions 1, 2 and 3 in the runner: no cursor test, the per-key window test with `InWindow`, the lease under the owner `backfill:` plus random hex.
 Acceptance:
 1. `grep -c "RefusedAheadOfCursor" internal/runner/reconcile/backfill.go` is 0 and `grep -c "ledger.Cursor" internal/runner/reconcile/backfill.go` is 0.
@@ -119,7 +119,7 @@ Acceptance:
 Module: runner. Size: S.
 Files: `internal/runner/sched/gaps.go`, `internal/runner/sched/gaps_test.go`
 Design: docs/design/backfill-any-day.md#Decisions
-Depends on: 1.
+Order: after 1.
 Goal: Decisions 4 and 5: `SyncKeys` writes and clears the key gaps of one day only, and a later verdict run resets `expired` in `keyKind`.
 Acceptance:
 1. `grep -c "func NewKeyGapSyncer" internal/runner/sched/gaps.go` is 1 and `grep -c "var _ runner.NewKeyGapSyncerFunc" internal/runner/sched/gaps.go` is 1.
@@ -134,7 +134,7 @@ Module: ot. Size: M.
 Files: `cmd/ot/backfill.go`, `cmd/ot/backfill_test.go`, `cmd/ot/wire.go`, `docs/contracts/ot.md`
 The field `deps.newBackfiller` stays in `wire.go` (the fakes of other tests set it); nothing reads it after this issue, and its removal is left out.
 Design: docs/design/backfill-any-day.md#Decisions
-Depends on: 1, 2 and 3 merged.
+Order: after 1, 2 and 3.
 Goal: Decisions 3, 4, 6 and 7 on the command line: `ot backfill` builds its backfiller with `deps.newReconciler` and the scheduler ledger, takes no advisory fence, calls `SyncKeys` after the run, and reports `in window` keys.
 Acceptance:
 1. `grep -c "holdOffScheduler" cmd/ot/backfill.go` is 0 and `grep -c "holdOffScheduler" cmd/ot/runonce.go` is still at least 1.
@@ -150,7 +150,7 @@ Acceptance:
 Module: runner. Size: S.
 Files: `internal/runner/api.go`, `internal/runner/api_test.go`
 Design: docs/design/backfill-any-day.md#Interface
-Depends on: 4 merged.
+Order: after 1 and 4.
 Goal: remove the constant `RefusedAheadOfCursor`, which nothing returns or reads.
 Acceptance:
 1. `grep -rc "RefusedAheadOfCursor" internal cmd | grep -v ":0" | wc -l` prints 0.
@@ -162,7 +162,7 @@ Acceptance:
 Module: docs. Size: S.
 Files: `docs/design/scheduler.md`, `docs/design/backfill.md`
 Design: docs/design/backfill-any-day.md#Decisions
-Depends on: 4 merged.
+Order: after 4.
 Goal: the two older designs say what is now true: backfill has no cursor test, no fence, and the hand path for an expired key is `ot backfill` with the scheduler running.
 Acceptance:
 1. `grep -c "stop the scheduler, run" docs/design/scheduler.md` prints 0 and `grep -c "backfill-any-day" docs/design/scheduler.md` is at least 1.
@@ -175,7 +175,7 @@ Acceptance:
 Module: runner. Size: S.
 Files: `internal/runner/reconcile/backfill.go`, `internal/runner/reconcile/backfill_test.go`, `internal/runner/reconcile/backfill_addkeys_test.go`
 Design: docs/design/backfill-any-day.md#Decisions
-Depends on: 2 and 6 merged.
+Order: after 2 and 6.
 Goal: Decision 8 in the runner: `Backfill` validates, puts the missing windows, then adds the keys of the plan of D that the stored plan lacks (`PutExpected` with that plan's hash), and never moves the cursor.
 Acceptance:
 1. `grep -c "PutExpected(" internal/runner/reconcile/backfill.go` is 1, `grep -c "putWindows(" internal/runner/reconcile/backfill.go` is at least 1 and `grep -c "SetCursor(" internal/runner/reconcile/backfill.go` is 0.
