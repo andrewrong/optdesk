@@ -76,7 +76,7 @@ Acceptance:
 Module: ot. Size: S.
 Files: `cmd/ot/wire_test.go`, `cmd/ot/wire_calendar_test.go`, `cmd/ot/wire_earnings_test.go`, `cmd/ot/wire_dividend_test.go`, `cmd/ot/wire_computefigures_test.go`, `cmd/ot/wire_pages_test.go` (`TestNewOptionDataPageCarriesNotesAndSymbol`, `TestOptionCandidatesPageWiresReader`, `TestMarketPageWiresReadings`, `TestOptionNoticesPageWiresRule`)
 Design: docs/design/ot-wire-split.md#Decisions
-Order: after 1.
+Order: after 1. It does not share a file with issue 2, so issues 2 and 3 may run in parallel.
 Goal: Decision 10: the tests of `wire_test.go` move, bodies unchanged, to the file of their family; `wire_test.go` keeps `TestNewDepsFilled`, `TestRunOnceWiresSixJobs`, `TestRunOnceNeedsLoaderDSN`, `TestRunOnceRefusesBadWatchList`, `TestDemoProfileOpensNoStore`, `TestSetupLineEqualsOwnersetConst`, `TestEarningsRefreshRegistered` (named by the `## Contract tests` of `docs/contracts/ot.md`, which issue 3 does not edit) and the shared helpers `jobIDs` and `errorString`; `TestDividendCaptureOffWhenBrokerDown` goes with the dividend tests.
 Acceptance:
 1. `wc -l cmd/ot/wire_test.go` is below 250 and every new file is below 600 lines.
@@ -95,9 +95,9 @@ Each issue below lists its new `Files:` line, valid once issues 1 and 2 (and 3 f
 
 ### Wave boundary
 
-The three issues start only when no running issue touches `cmd/ot/wire.go`, `cmd/ot/wire_test.go` or `docs/contracts/ot.md`; the queue drains those issues first. After issue 1 lands, and again after issue 2 lands, the dispatcher rewrites the `Files:` lines of the queued issues that named those files (#1084, #1188, #1175, #1203 and any later one) to the lines below. An issue whose pull request is already open is not edited: its pull request is closed and its run retried, or it waits for its merge.
+The split lands between waves of feature issues, not under running work: the three issues start only when no running issue touches `cmd/ot/wire.go`, `cmd/ot/wire_test.go` or `docs/contracts/ot.md`; the queue drains those issues first. After issue 1 lands, and again after issue 2 lands, the dispatcher rewrites the `Files:` lines of the queued issues that named those files (#1084, #1188, #1175, #1203 and any later one) to the lines below. An issue whose pull request is already open is not edited: its pull request is closed and its run retried, or it waits for its merge.
 
-No tool or test reads `docs/contracts/ot.md` by path. On origin/main a grep of `docs/design`, `.github`, `cmd`, `internal` and `scripts` finds it in two places in `cmd/ot` (the text of an error in `probe.go` and a comment in `watch.go`) and in the acceptance greps and prose of landed designs in `docs/design` (for example `account-data.md` and `account-flex-fx.md`), which are history. Moving paragraphs out of it breaks nothing that runs.
+No tool or test reads `docs/contracts/ot.md` by path; its readers are people and sessions: reviewers and verify sessions reach it through an issue's `Files:` line, workers through the issue text, so moving its paragraphs is safe once the queued issues' `Files:` lines are rewritten as above. On origin/main a grep of `docs/design`, `.github`, `cmd`, `internal` and `scripts` (and of `rules` and `.claude`, which find nothing) finds it in two places in `cmd/ot` (the text of an error in `probe.go` and a comment in `watch.go`) and in the acceptance greps and prose of landed designs in `docs/design` (for example `account-data.md` and `account-flex-fx.md`), which are history. Moving paragraphs out of it breaks nothing that runs.
 
 ## Checked by CI
 
