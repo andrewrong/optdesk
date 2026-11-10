@@ -1,4 +1,4 @@
-package jobs_test
+package fundamentals_test
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func (zeroClock) Now() time.Time { return time.Unix(0, 0) }
 
 func TestNewFundamentalsFuncContract(t *testing.T) {
 	t.Parallel()
-	var newJob jobs.NewFundamentalsFunc = fundamentals.New
+	var newJob fundamentals.NewFundamentalsFunc = fundamentals.New
 	job, err := newJob(factSourceFake{}, factWriterFake{}, []jobs.WatchEntry{{Market: "US"}}, zeroClock{})
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestNewFundamentalsFuncContract(t *testing.T) {
 	if job.ID() != "fundamentals" {
 		t.Fatalf("id %q", job.ID())
 	}
-	sk, ok := job.(jobs.FundamentalsSkips)
+	sk, ok := job.(fundamentals.FundamentalsSkips)
 	if !ok {
 		t.Fatal("job does not implement FundamentalsSkips")
 	}
