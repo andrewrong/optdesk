@@ -22,7 +22,8 @@ type OptionConfig struct {
 	Names                 store.InstrumentNameReader
 }
 
-// StockConfig is what BuildStock reads. Key is the ticker or a stored issuer text of the company shown; Names is the ticker source. A nil Zone is an error of BuildStock.
+// StockConfig is what BuildStock reads. Key is the ticker or a stored issuer text of the company shown; Names is the ticker source.
+// A nil Zone is an error of BuildStock.
 type StockConfig struct {
 	RunID, BuildID, Scope string
 	Zone                  *time.Location
