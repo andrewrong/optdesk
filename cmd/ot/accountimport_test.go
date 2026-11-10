@@ -293,3 +293,15 @@ func TestAccountImportMissingDSN(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestAccountImportOpenErrorWithheld(t *testing.T) {
+	t.Parallel()
+	a, dir := impRig(t, impLine("main", "2026-11-05", "1", "1"), &impStore{})
+	a.deps.openAccount = func(context.Context, string) (store.AccountStore, error) {
+		return nil, errors.New("dial postgres://u:secretpw@h/db failed")
+	}
+	err := accountImport(a, []string{dir, "--through", "2026-11-06"})
+	if err == nil || strings.Contains(err.Error(), "secretpw") || strings.Contains(err.Error(), "postgres://") {
+		t.Fatalf("err = %v", err)
+	}
+}

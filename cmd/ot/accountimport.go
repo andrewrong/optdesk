@@ -41,11 +41,10 @@ func accountImport(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	dir, day, aliasMap, verify, report := o.dir, o.day, o.aliasMap, o.verify, o.report
 	if a.profile.Name == "demo" {
 		return errors.New("account-import needs a real profile; the demo profile opens no store")
 	}
-	data, err := os.ReadFile(filepath.Join(dir, accountFile))
+	data, err := os.ReadFile(filepath.Join(o.dir, accountFile))
 	if err != nil {
 		return fmt.Errorf("cannot read %s in DIR", accountFile)
 	}
@@ -68,8 +67,8 @@ func accountImport(a *app, args []string) error {
 
 	counts := map[string]int{}
 	bad := false
-	if verify {
-		res, err := cutover.VerifyAccount(ctx, bytes.NewReader(data), st, aliasMap, day)
+	if o.verify {
+		res, err := cutover.VerifyAccount(ctx, bytes.NewReader(data), st, o.aliasMap, o.day)
 		if err != nil {
 			return fmt.Errorf("account-import verify: %w", err)
 		}
@@ -77,7 +76,7 @@ func accountImport(a *app, args []string) error {
 		bad = res.Missing > 0 || res.Different > 0
 		_, _ = fmt.Fprintf(a.stdout, "account-import verify lines=%d missing=%d different=%d\n", res.Lines, res.Missing, res.Different)
 	} else {
-		res, err := cutover.ImportAccount(ctx, bytes.NewReader(data), st, aliasMap, day)
+		res, err := cutover.ImportAccount(ctx, bytes.NewReader(data), st, o.aliasMap, o.day)
 		if err != nil {
 			return fmt.Errorf("account-import: %w", err)
 		}
@@ -85,13 +84,13 @@ func accountImport(a *app, args []string) error {
 		bad = res.Conflict > 0
 		_, _ = fmt.Fprintf(a.stdout, "account-import lines=%d inserted=%d same=%d conflict=%d\n", res.Lines, res.Inserted, res.Same, res.Conflict)
 	}
-	if report != "" {
+	if o.report != "" {
 		rep := accountImportReport{Dataset: "account", FileSHA256: hex.EncodeToString(sum[:]), Counts: counts, OK: !bad}
 		raw, err := json.Marshal(rep)
 		if err != nil {
 			return errors.New("cannot encode the report")
 		}
-		if err := os.WriteFile(report, append(raw, '\n'), 0o644); err != nil { //nolint:gosec // a report holds counts only
+		if err := os.WriteFile(o.report, append(raw, '\n'), 0o644); err != nil { //nolint:gosec // a report holds counts only
 			return errors.New("cannot write the report file")
 		}
 	}
