@@ -172,6 +172,20 @@ def make(
     return gateway, fake
 
 
+def over(ibs: list[FakeIb], clock: FakeClock, **options: Any) -> IbGateway:
+    """A gateway whose each session takes the next fake of ibs."""
+    return IbGateway(
+        lambda client: None,
+        host="h",
+        port=1,
+        client_id=33,
+        clock=clock,
+        ib_factory=lambda: ibs.pop(0),
+        readonly_probe=probe_passes,
+        **options,
+    )
+
+
 async def opened(clock: FakeClock, **options: Any) -> tuple[IbGateway, FakeIb]:
     gateway, fake = make(clock, **options)
     await gateway.open_session()
@@ -208,16 +222,7 @@ def test_market_data_type_set_once_per_session() -> None:
         first = FakeIb(clock)
         second = FakeIb(clock)
         ibs = [first, second]
-        gateway = IbGateway(
-            lambda client: None,
-            host="h",
-            port=1,
-            client_id=33,
-            market_data_type=3,
-            clock=clock,
-            ib_factory=lambda: ibs.pop(0),
-            readonly_probe=probe_passes,
-        )
+        gateway = over(ibs, clock, market_data_type=3)
         await gateway.open_session()
         await gateway.open_session()
         state = await gateway.status()
@@ -232,15 +237,7 @@ def test_market_data_type_defaults_to_frozen() -> None:
         first = FakeIb(clock)
         second = FakeIb(clock)
         ibs = [first, second]
-        gateway = IbGateway(
-            lambda client: None,
-            host="h",
-            port=1,
-            client_id=33,
-            clock=clock,
-            ib_factory=lambda: ibs.pop(0),
-            readonly_probe=probe_passes,
-        )
+        gateway = over(ibs, clock)
         await gateway.open_session()
         await gateway.open_session()
         state = await gateway.status()
@@ -253,15 +250,7 @@ def test_generation_increments_on_reconnect() -> None:
     async def run() -> list[tuple[bool, int]]:
         clock = FakeClock()
         ibs = [FakeIb(clock), FakeIb(clock)]
-        gateway = IbGateway(
-            lambda client: None,
-            host="h",
-            port=1,
-            client_id=33,
-            clock=clock,
-            ib_factory=lambda: ibs.pop(0),
-            readonly_probe=probe_passes,
-        )
+        gateway = over(ibs, clock)
         seen: list[tuple[bool, int]] = []
         for step in range(3):
             if step:
