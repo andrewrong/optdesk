@@ -258,7 +258,9 @@ func healthHandler(s runner.Scheduler, clk clockwork.Clock) http.Handler {
 
 // candidateProbe is the probe of the prober with option_candidates added: the line of .env is read once at
 // start, so a missing one keeps the job out until the process restarts, as for earnings_refresh.
-func candidateProbe(w wiring, log *slog.Logger, next func(context.Context, string) (contracts.Job, string)) func(context.Context, string) (contracts.Job, string) {
+func candidateProbe(
+	w wiring, log *slog.Logger, next func(context.Context, string) (contracts.Job, string),
+) func(context.Context, string) (contracts.Job, string) {
 	return func(ctx context.Context, id string) (contracts.Job, string) {
 		if id != jobOptionCandidates {
 			return next(ctx, id)

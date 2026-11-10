@@ -28,7 +28,9 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 	}{
 		{"earnings_refresh", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newEarningsRefresh = func(map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+			d.newEarningsRefresh = func(
+				_ map[string]sources.EarningsSource, _ store.EarningsDateWriter, _ store.EarningsDateReader, _ []jobs.WatchEntry, _ clock.Clock,
+			) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d}.earningsRefresh()
@@ -44,7 +46,9 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"compute_figures", func(_ *testing.T, cause error) error {
 			d := newDeps()
-			d.newComputeFigures = func(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock) (contracts.Job, error) {
+			d.newComputeFigures = func(
+				_ jobs.ComputeStores, _ compute.Figures, _ compute.Rules, _ compute.Units, _ compute.SeriesOps, _ compute.Ease, _ clock.Clock,
+			) (contracts.Job, error) {
 				return nil, cause
 			}
 			_, err := jobFactory{d: d}.computeFigures()
