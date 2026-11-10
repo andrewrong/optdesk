@@ -262,7 +262,26 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			pending[e.Market] = append(pending[e.Market], e)
 		}
 	}
-	failed := failedBefore
+	fetched, fetchFailed := j.fetchPending(ctx, day, pending, base)
+	rows = append(rows, fetched...)
+	failed := failedBefore || fetchFailed
+	res := j.write(ctx, rows)
+	if res.Err != nil {
+		return res
+	}
+	if failed {
+		j.logFailure("source_failed", errSourceFailed)
+		res.Err = errSourceFailed
+	}
+	return res
+}
+
+// fetchPending makes the one Fetch of each market that has pending entries and returns their rows and whether a
+// Fetch failed.
+func (j *job) fetchPending(
+	ctx context.Context, day contracts.Day, pending map[string][]jobs.WatchEntry,
+	base func(jobs.WatchEntry) contracts.EarningsDate,
+) (rows []contracts.EarningsDate, failed bool) {
 	for _, market := range []string{"US", "JP"} {
 		entries := pending[market]
 		if len(entries) == 0 {
@@ -285,15 +304,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			rows = append(rows, row)
 		}
 	}
-	res := j.write(ctx, rows)
-	if res.Err != nil {
-		return res
-	}
-	if failed {
-		j.logFailure("source_failed", errSourceFailed)
-		res.Err = errSourceFailed
-	}
-	return res
+	return rows, failed
 }
 
 // write inserts the rows; a writer error is Retryable unless already typed.
