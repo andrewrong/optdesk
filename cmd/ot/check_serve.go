@@ -46,10 +46,6 @@ var serveRoutes = []serveRoute{
 	{"settings_page", "/" + siteSettingsRoute, "settings_page"},
 }
 
-// checkRepoDirEnv names the checkout whose contracts/schemas the check loads (default "."). The flag of the
-// design (--repo-dir) is parsed in check.go, which this change does not edit.
-const checkRepoDirEnv = "OT_REPO_DIR"
-
 // serveWindowDays is how many calendar days back the closed windows are read for the freshness lines.
 const serveWindowDays = 7
 
@@ -89,7 +85,7 @@ func checkServe(ctx context.Context, e *checkEnv) {
 		return err
 	}
 	latest, ferr := latestClosedExpected(ctx, e, a.deps.newFwClock().Now())
-	repo := a.getenv(checkRepoDirEnv)
+	repo := e.opts.RepoDir
 	if repo == "" {
 		repo = "."
 	}

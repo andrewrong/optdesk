@@ -278,3 +278,25 @@ func TestCheckBlockUnknownFlatRoute(t *testing.T) {
 		t.Fatalf("flat unknown block not reported:\n%s", out)
 	}
 }
+
+func TestCheckRepoDirFlag(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"serve"}, "."},
+		{[]string{"serve", "--repo-dir", "/some/checkout"}, "/some/checkout"},
+	} {
+		var out bytes.Buffer
+		a := checkApp(t, map[string]string{"OT_HOME": "/h", store.DSNEnvPages: checkSecretDSN}, &out, nil, nil)
+		var got string
+		svcs := map[string]checkService{"serve": func(_ context.Context, e *checkEnv) { got = e.opts.RepoDir }}
+		if err := runCheck(a, tc.args, svcs); err != nil {
+			t.Fatal(err)
+		}
+		if got != tc.want {
+			t.Errorf("%v: repo dir %q, want %q", tc.args, got, tc.want)
+		}
+	}
+}
