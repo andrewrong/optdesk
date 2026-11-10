@@ -1,10 +1,11 @@
 // The option data page: every figure and sentence is the text the builder wrote; this file computes nothing.
-import { Info, TriangleAlert } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload, type Result } from '@/types/option_data_page'
+import { StaleNotice } from '../home/StaleNotice'
 import { ChainTable } from './ChainTable'
 import { QuoteChart } from './QuoteChart'
 import { UnderlyingLinks } from './UnderlyingLinks'
@@ -49,12 +50,7 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
         <h1 className="text-2xl font-semibold">{payload.title}</h1>
         <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
       </header>
-      {stale ? (
-        <Alert variant={stale.is_stale ? 'destructive' : 'default'} data-stale={stale.is_stale}>
-          <TriangleAlert aria-hidden />
-          <AlertDescription>{stale.text}</AlertDescription>
-        </Alert>
-      ) : null}
+      {stale ? <StaleNotice text={stale.text} isStale={stale.is_stale} /> : null}
       {payload.gaps.map((gap, index) => (
         <Alert key={`${index}-${gap.text}`} data-gap={gap.reason}>
           <Info aria-hidden />
