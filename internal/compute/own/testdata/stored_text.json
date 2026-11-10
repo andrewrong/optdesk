@@ -13,5 +13,7 @@
   {"id": "valuation.buy_band", "input": 127.34155, "want": "127.3415"},
   {"id": "valuation.band_approval", "input": 101.5, "want": "101.5000"},
   {"id": "valuation.implied_growth", "input": 0.0523104, "want": "0.052310"},
-  {"id": "valuation.return_at_price", "input": 0.1290654, "want": "0.129065"}
+  {"id": "valuation.return_at_price", "input": 0.1290654, "want": "0.129065"},
+  {"id": "valuation.question", "input": 0.3137509825338848, "want": "0.313750982534"},
+  {"id": "valuation.diagnosis", "input": 0.0816062780041782, "want": "0.081606278004"}
 ]
