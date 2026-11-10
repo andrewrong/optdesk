@@ -120,8 +120,8 @@ func assertRefused(t *testing.T, r *acctRig, key string) {
 	if err == nil || !strings.Contains(err.Error(), key) {
 		t.Fatalf("err %v, want one naming %s", err, key)
 	}
-	if strings.Contains(err.Error(), "/") || r.built.Load() != 0 || len(r.dialed) != 0 {
-		t.Fatalf("err %q built %d dialed %v", err, r.built.Load(), r.dialed)
+	if strings.Contains(err.Error(), "/") || r.built.Load() != 0 || len(r.dialed) != 0 || r.opened.Load() != 0 {
+		t.Fatalf("err %q built %d dialed %v opened %d", err, r.built.Load(), r.dialed, r.opened.Load())
 	}
 }
 

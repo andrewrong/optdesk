@@ -241,9 +241,7 @@ type jobFactory struct {
 	// the last two may be nil.
 	candidates store.CandidateWriter
 	accounts   store.AccountReader
-	// acctStore is the account store opened once for option_eod, account_capture and option_candidates.
-	acctStore store.AccountStore
-	earnRd    store.EarningsDateReader
+	earnRd     store.EarningsDateReader
 	// div is the dividend store of dividend_capture, opened with the events line.
 	div dividend.Store
 	// bars and hist are what bars_refresh and fx_refresh get: the bar store opened with the bar line and the history client.
@@ -324,6 +322,7 @@ func wireJobs(
 	ctx context.Context, a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *closerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
+	wireHeldCalls(cfg, &f, extra, a.log)
 	jc := &jobCtx{cfg: cfg, f: &f, brk: brk, brokerUp: brokerUp, cal: cal, extra: extra}
 	w := wiring{ledger: ledger, cal: cal, brokerUp: brokerUp, off: startDisabled(cfg, brokerUp), held: map[string]contracts.Job{}}
 	steps := slices.Clone(jobSteps)

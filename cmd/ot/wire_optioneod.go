@@ -24,10 +24,7 @@ func brokerDownOff(_ runOnceConfig, brokerUp bool) string {
 func init() {
 	registerJob(jobFamily{
 		id: jobOptionEod, order: 20, startOff: brokerDownOff,
-		build: func(ctx context.Context, _ *app, jc *jobCtx) (contracts.Job, string, error) {
-			if err := openAccountReader(ctx, jc.cfg, jc.f, jc.extra); err != nil {
-				return nil, "", err
-			}
+		build: func(_ context.Context, _ *app, jc *jobCtx) (contracts.Job, string, error) {
 			j, err := jc.f.optionEod(jc.brk)
 			return j, "", err
 		},
@@ -46,16 +43,7 @@ func init() {
 	})
 }
 
-// With the account reader open and the held constructor set, the job is NewWithHeld: it also captures the
-// contracts of the open short calls whatever their DTE (option-candidates Decision 12). Otherwise it is as before.
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	if f.accounts != nil && f.d.newOptionEodHeld != nil {
-		j, err := f.d.newOptionEodHeld(b, f.inst, f.eod, f.watch, f.accounts, f.clk)
-		if err != nil {
-			return nil, fmt.Errorf("build option_eod job failed: %w", err)
-		}
-		return j, nil
-	}
 	return buildOptionEod(f.d, b, f.inst, f.eod, f.watch, f.clk)
 }
 
