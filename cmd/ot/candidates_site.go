@@ -44,12 +44,12 @@ func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	if err != nil {
 		return nil, err
 	}
-	return newCandidatesPage(a, "ot-serve", rd.cands).Build(ctx, nil, day, clk.Now().UTC())
+	return newCandidatesPage(a, "ot-serve", rd.cands, rd.names).Build(ctx, nil, day, clk.Now().UTC())
 }
 
 // newCandidatesPage calls deps.optionCandidatesPage with the plain arguments (scope "candidates").
-func newCandidatesPage(a *app, runID string, cands store.CandidateReader) pages.Page {
-	return a.deps.optionCandidatesPage(a.profile.Zone, runID, buildIDOf(version), "candidates", cands)
+func newCandidatesPage(a *app, runID string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page {
+	return a.deps.optionCandidatesPage(a.profile.Zone, runID, buildIDOf(version), "candidates", cands, names)
 }
 
 // candidatesPageNamed returns option_candidates_page for ot page and a close function: the candidate store
@@ -60,7 +60,7 @@ func candidatesPageNamed(ctx context.Context, a *app) (pages.Page, func(), error
 		return pages.Page{}, nil, errors.New(candidatesName + " needs the owner's zone: " + zoneEnvName + " is not set")
 	}
 	if a.profile.Name == "demo" {
-		return newCandidatesPage(a, "ot-page", demoCandidates{}), func() {}, nil
+		return newCandidatesPage(a, "ot-page", demoCandidates{}, demoOption{}), func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -68,13 +68,18 @@ func candidatesPageNamed(ctx context.Context, a *app) (pages.Page, func(), error
 	}
 	dsn := env[pagesDSNName]
 	if dsn == "" {
-		return newCandidatesPage(a, "ot-page", nil), func() {}, nil
+		return newCandidatesPage(a, "ot-page", nil, nil), func() {}, nil
 	}
 	s, err := a.deps.openCandidate(ctx, dsn)
 	if err != nil {
 		return pages.Page{}, nil, fmt.Errorf("open candidate store with %s failed", pagesDSNName)
 	}
-	return newCandidatesPage(a, "ot-page", s), func() { _ = s.Close() }, nil
+	names, err := a.deps.openInstrumentName(ctx, dsn)
+	if err != nil {
+		_ = s.Close()
+		return pages.Page{}, nil, fmt.Errorf("open instrument name store with %s failed", pagesDSNName)
+	}
+	return newCandidatesPage(a, "ot-page", s, names), func() { _ = names.Close(); _ = s.Close() }, nil
 }
 
 // demoCandidates is the candidate reader of the demo profile: for every day it holds two ok rows and one

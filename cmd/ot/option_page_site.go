@@ -40,14 +40,14 @@ func buildOptionPage(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	if err != nil {
 		return nil, err
 	}
-	return optionPageOf(a, "ot-serve", rd.cands, rd.eod).Build(ctx, nil, day, clk.Now().UTC())
+	return optionPageOf(a, "ot-serve", rd.cands, rd.eod, rd.names).Build(ctx, nil, day, clk.Now().UTC())
 }
 
 // optionPageOf calls newOptionPage with the plain arguments (scope "options").
-func optionPageOf(a *app, runID string, cands store.CandidateReader, eod store.OptionEodReader) pages.Page {
+func optionPageOf(a *app, runID string, cands store.CandidateReader, eod store.OptionEodReader, names store.InstrumentNameReader) pages.Page {
 	return newOptionPage(option_boards.OptionConfig{
 		RunID: runID, BuildID: buildIDOf(version), Scope: optionPageScope, Zone: a.profile.Zone,
-		Candidates: cands, Eod: eod,
+		Candidates: cands, Eod: eod, Names: names,
 	})
 }
 
@@ -59,7 +59,7 @@ func optionPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 		return pages.Page{}, nil, errors.New(optionPageName + " needs the owner's zone: " + zoneEnvName + " is not set")
 	}
 	if a.profile.Name == "demo" {
-		return optionPageOf(a, "ot-page", demoCandidates{}, demoOption{}), func() {}, nil
+		return optionPageOf(a, "ot-page", demoCandidates{}, demoOption{}, demoOption{}), func() {}, nil
 	}
 	env, err := a.envFile()
 	if err != nil {
@@ -67,7 +67,7 @@ func optionPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 	}
 	dsn := env[pagesDSNName]
 	if dsn == "" {
-		return optionPageOf(a, "ot-page", nil, nil), func() {}, nil
+		return optionPageOf(a, "ot-page", nil, nil, nil), func() {}, nil
 	}
 	cands, err := a.deps.openCandidate(ctx, dsn)
 	if err != nil {
@@ -78,5 +78,11 @@ func optionPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 		_ = cands.Close()
 		return pages.Page{}, nil, fmt.Errorf("open option_eod store with %s failed", pagesDSNName)
 	}
-	return optionPageOf(a, "ot-page", cands, eod), func() { _ = eod.Close(); _ = cands.Close() }, nil
+	names, err := a.deps.openInstrumentName(ctx, dsn)
+	if err != nil {
+		_ = eod.Close()
+		_ = cands.Close()
+		return pages.Page{}, nil, fmt.Errorf("open instrument name store with %s failed", pagesDSNName)
+	}
+	return optionPageOf(a, "ot-page", cands, eod, names), func() { _ = names.Close(); _ = eod.Close(); _ = cands.Close() }, nil
 }
