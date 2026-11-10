@@ -1,0 +1,413 @@
+{
+  "schema": "positions_page",
+  "schema_version": 3,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "main",
+  "generated_at": "2026-11-10T10:00:00+08:00",
+  "data_times": [
+    {
+      "source": "account",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    },
+    {
+      "source": "option_ledger",
+      "data_time": "2026-11-10T10:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "title": "持仓",
+  "stale": {
+    "data_time": "2026-11-10T09:00:00+08:00",
+    "stale_after": "2026-11-14T09:00:00+08:00",
+    "text": "账户数据日 2026-11-10"
+  },
+  "views": [
+    {
+      "key": "main",
+      "label": "账户（main）",
+      "sentence": "股票 2 行，期权 2 腿。",
+      "stocks": {
+        "title": "股票",
+        "columns": [
+          {
+            "id": "code",
+            "label": "代码",
+            "align": "left"
+          },
+          {
+            "id": "name",
+            "label": "名称",
+            "align": "left"
+          },
+          {
+            "id": "role",
+            "label": "归属",
+            "align": "left"
+          },
+          {
+            "id": "quantity",
+            "label": "数量",
+            "align": "right"
+          },
+          {
+            "id": "cost",
+            "label": "成本（每股）",
+            "align": "right"
+          },
+          {
+            "id": "price",
+            "label": "现价（每股）",
+            "align": "right"
+          },
+          {
+            "id": "day",
+            "label": "当日盈亏",
+            "align": "right"
+          },
+          {
+            "id": "unrealised",
+            "label": "未实现盈亏",
+            "align": "right"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "name": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "role": {
+              "text": "账户（main）",
+              "value": "账户（main）"
+            },
+            "quantity": {
+              "value": 200,
+              "text": "200",
+              "unit": "shares"
+            },
+            "cost": {
+              "value": 138.20,
+              "text": "$138.20",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "price": {
+              "value": 151.40,
+              "text": "$151.40",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "当日盈亏需要前一交易日的价格，暂缺"
+            },
+            "unrealised": {
+              "value": 2640.00,
+              "text": "+$2,640.00",
+              "unit": "usd_signed",
+              "currency": "USD",
+              "tone": "up"
+            }
+          },
+          {
+            "code": {
+              "text": "BBB",
+              "value": "BBB"
+            },
+            "name": {
+              "text": "BBB",
+              "value": "BBB"
+            },
+            "role": {
+              "text": "账户（main）",
+              "value": "账户（main）"
+            },
+            "quantity": {
+              "value": 10,
+              "text": "10",
+              "unit": "shares"
+            },
+            "cost": {
+              "value": 12.50,
+              "text": "$12.50",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "price": {
+              "reason": "missing_quote",
+              "text": "没有价格，暂缺"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "当日盈亏需要前一交易日的价格，暂缺"
+            },
+            "unrealised": {
+              "reason": "missing_quote",
+              "text": "没有价格，暂缺"
+            }
+          }
+        ],
+        "gap": null
+      },
+      "options": {
+        "title": "期权",
+        "columns": [
+          {
+            "id": "code",
+            "label": "代码",
+            "align": "left"
+          },
+          {
+            "id": "name",
+            "label": "名称",
+            "align": "left"
+          },
+          {
+            "id": "expiry",
+            "label": "到期日",
+            "align": "left"
+          },
+          {
+            "id": "days_left",
+            "label": "剩余天数",
+            "align": "right"
+          },
+          {
+            "id": "role",
+            "label": "归属",
+            "align": "left"
+          },
+          {
+            "id": "quantity",
+            "label": "数量",
+            "align": "right"
+          },
+          {
+            "id": "cost",
+            "label": "成本（每股）",
+            "align": "right"
+          },
+          {
+            "id": "price",
+            "label": "现价（每股）",
+            "align": "right"
+          },
+          {
+            "id": "day",
+            "label": "当日盈亏",
+            "align": "right"
+          },
+          {
+            "id": "unrealised",
+            "label": "未实现盈亏",
+            "align": "right"
+          },
+          {
+            "id": "open_premium",
+            "label": "剩余权利金",
+            "align": "right"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "XYZ 11-20 P100",
+              "value": "XYZ 11-20 P100"
+            },
+            "name": {
+              "text": "XYZ 卖出认沽",
+              "value": "XYZ 卖出认沽"
+            },
+            "expiry": {
+              "text": "2026-11-20",
+              "value": "2026-11-20"
+            },
+            "days_left": {
+              "value": 10,
+              "text": "10",
+              "unit": "days"
+            },
+            "role": {
+              "text": "账户（main）",
+              "value": "账户（main）"
+            },
+            "quantity": {
+              "value": -1,
+              "text": "−1",
+              "unit": "contracts"
+            },
+            "cost": {
+              "value": 2.60,
+              "text": "$2.60",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "price": {
+              "value": 3.15,
+              "text": "$3.15",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "当日盈亏需要前一交易日的价格，暂缺"
+            },
+            "unrealised": {
+              "value": -55.00,
+              "text": "−$55.00",
+              "unit": "usd_signed",
+              "currency": "USD",
+              "tone": "down"
+            },
+            "open_premium": {
+              "value": 258.00,
+              "text": "$258.00",
+              "unit": "usd",
+              "currency": "USD",
+              "tone": "none"
+            }
+          },
+          {
+            "code": {
+              "text": "ZZZ 12-18 C50",
+              "value": "ZZZ 12-18 C50"
+            },
+            "name": {
+              "text": "ZZZ 买入认购",
+              "value": "ZZZ 买入认购"
+            },
+            "expiry": {
+              "text": "2026-12-18",
+              "value": "2026-12-18"
+            },
+            "days_left": {
+              "value": 38,
+              "text": "38",
+              "unit": "days"
+            },
+            "role": {
+              "text": "账户（main）",
+              "value": "账户（main）"
+            },
+            "quantity": {
+              "value": 1,
+              "text": "1",
+              "unit": "contracts"
+            },
+            "cost": {
+              "value": 1.10,
+              "text": "$1.10",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "price": {
+              "value": 1.00,
+              "text": "$1.00",
+              "unit": "usd_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "当日盈亏需要前一交易日的价格，暂缺"
+            },
+            "unrealised": {
+              "value": -10.00,
+              "text": "−$10.00",
+              "unit": "usd_signed",
+              "currency": "USD",
+              "tone": "down"
+            },
+            "open_premium": {
+              "reason": "no_data",
+              "text": "期权账本里没有这一笔，暂缺"
+            }
+          }
+        ],
+        "gap": null
+      },
+      "trades": {
+        "title": "最近操作",
+        "columns": [
+          {
+            "id": "time",
+            "label": "时间",
+            "align": "left"
+          },
+          {
+            "id": "account",
+            "label": "账户",
+            "align": "left"
+          },
+          {
+            "id": "action",
+            "label": "动作",
+            "align": "left"
+          },
+          {
+            "id": "instrument",
+            "label": "标的·结构",
+            "align": "left"
+          },
+          {
+            "id": "quantity",
+            "label": "数量",
+            "align": "right"
+          },
+          {
+            "id": "price",
+            "label": "价格",
+            "align": "right"
+          }
+        ],
+        "rows": [
+          {
+            "time": {
+              "text": "11-10 22:30",
+              "tone": "none"
+            },
+            "account": {
+              "text": "账户（main）",
+              "tone": "none"
+            },
+            "action": {
+              "text": "卖出开仓",
+              "tone": "none"
+            },
+            "instrument": {
+              "text": "XYZ 2026-11-20 100 put",
+              "tone": "none"
+            },
+            "quantity": {
+              "text": "1 张",
+              "tone": "none"
+            },
+            "price": {
+              "text": "$2.6/股",
+              "tone": "none"
+            }
+          }
+        ],
+        "gap": null
+      }
+    }
+  ],
+  "notes": [],
+  "gaps": [
+    {
+      "reason": "no_data",
+      "text": "股票、期权：当日盈亏需要前一交易日的价格，暂缺"
+    }
+  ]
+}
