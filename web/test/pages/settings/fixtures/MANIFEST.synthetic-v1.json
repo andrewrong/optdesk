@@ -1,0 +1,8 @@
+{
+  "marker": "synthetic-v1",
+  "files": [
+    "confirm.ts",
+    "editable.ts",
+    "read-only.ts"
+  ]
+}
