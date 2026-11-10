@@ -31,8 +31,8 @@ type trackingReaders struct {
 	Sessions   store.SessionDayReader
 }
 
-// trackingReadersOf picks the readers of the page from the readers of the site. Sessions is rd.sessions, nil
-// today (no role of the pages line reads master.session_day), which the page shows as the gap no_sessions.
+// trackingReadersOf picks the readers of the page from the readers of the site. Sessions is rd.sessions, opened
+// with the pages line (view rd.session_day_r1); nil with the demo profile, which the page shows as the gap no_sessions.
 func trackingReadersOf(rd siteReaders) trackingReaders {
 	return trackingReaders{
 		Ledger: rd.optionLedger, Account: rd.noticeAccount, Candidates: rd.cands, Eod: rd.eod,

@@ -48,6 +48,7 @@ rows above name every other top-level path of the planned tree.
   `ci-go` lints against: the root packages of the rows in its depends cell (`internal/profile` for repo, a root directory and not a discovered sub-package) and every discovered implementation package of those rows, each found from the tree, with the declarations-only packages of those rows; a test kit and a generated package are never imported by `cmd/ot`.
   Any other import of a package of a module by `cmd/ot`, such as an implementation package of a row outside its depends cell, is a finding. A row whose paths hold no `internal/` directory (web, pyside, ci, deploy, docs) gives no go-arch-lint component; `ot` gives
   the component `ot` for `cmd/ot`.
+  The bar jobs add four such imports to `cmd/ot` (docs/design/market-bars.md, entry 13): `internal/store/bar` (declarations only), `internal/store/barpg`, `internal/jobs/barsrefresh` and `internal/jobs/fxrefresh`; all four follow from the rule above and need no new row.
 - **Layers** (plan 2): data = contracts, clock, broker, sources, gaphistory, symbol, store, compute (in that order);
   scheduling = runner, jobs, notify; front = pages, web. Within a layer a module may depend only on a module
   listed before it in its layer; across layers only scheduling to data and front to data are allowed. No layer

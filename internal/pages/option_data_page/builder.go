@@ -15,6 +15,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const (
@@ -51,6 +52,11 @@ type Config struct {
 	Terms store.OptionTermsReader
 	// Choices are the underlyings the page links to; empty: no underlyings field.
 	Choices []Choice
+	// Earnings reads the earnings dates of Issuer; nil or an empty Issuer: no earnings fields.
+	Earnings store.EarningsDateReader
+	Issuer   string
+	// Fx reads the USD<currency> rate for approx_usd_text; nil: no figure gets it.
+	Fx bar.FxRateReader
 }
 
 type sourceTime struct {
@@ -88,6 +94,9 @@ type underlying struct {
 	SessionDay *string `json:"session_day"`
 	Price      any     `json:"price"`
 	Currency   string  `json:"currency"`
+
+	EarningsText string `json:"earnings_text,omitempty"`
+	EarningsTone string `json:"earnings_tone,omitempty"`
 }
 
 type chain struct {
@@ -199,11 +208,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	}
 
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
-	vm.Underlying.SessionDay = &sessionDay
-	vm.Underlying.Price = priceCell(latest.UnderlyingPrice)
-	if latest.UnderlyingCcy != "" {
-		vm.Underlying.Currency = latest.UnderlyingCcy
-	}
+	setPrice(&vm.Underlying, sessionDay, latest)
 	vm.Chain.SessionDay = &sessionDay
 	var eodTime time.Time
 	for _, r := range rows {
@@ -212,7 +217,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 			eodTime = r.ReceivedAt
 		}
 	}
-	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
+	if err := decorate(ctx, c, d, day, sessionDay, rows, &vm); err != nil {
 		return nil, err
 	}
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
@@ -241,6 +246,17 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 		vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "quote_snapshot", DataTime: fmtTime(quoteTime, c.Zone)})
 	}
 	return json.Marshal(vm)
+}
+
+// decorate fills the optional fields of the chain rows and the underlying: terms, earnings, approximate US dollars.
+func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string, rows []contracts.OptionEod, vm *viewModel) error {
+	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
+		return err
+	}
+	if err := applyEarnings(ctx, c, d, day, sessionDay, vm.Chain.Rows, &vm.Underlying); err != nil {
+		return err
+	}
+	return applyUSD(ctx, c.Fx, sessionDay, vm)
 }
 
 // selectRows keeps the rows of the latest session day, one per instrument (the greatest
@@ -290,6 +306,15 @@ func selectRows(eod []contracts.OptionEod) ([]contracts.OptionEod, contracts.Opt
 		return cmp.Compare(a.InstrumentID, b.InstrumentID)
 	})
 	return limit(rows, maxRows), latest, nil
+}
+
+// setPrice writes the session day, the price and the currency (when the row has one) of latest.
+func setPrice(u *underlying, sessionDay string, latest contracts.OptionEod) {
+	u.SessionDay = &sessionDay
+	u.Price = priceCell(latest.UnderlyingPrice)
+	if latest.UnderlyingCcy != "" {
+		u.Currency = latest.UnderlyingCcy
+	}
 }
 
 func toRow(r contracts.OptionEod) chainRow {

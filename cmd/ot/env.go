@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
@@ -78,3 +79,6 @@ func (a *app) ownerEditSecrets() (key []byte, dsn, reason string, err error) {
 	}
 	return []byte(env[envFormKey]), env[ownerset.DSNEnvSettings], "", nil
 }
+
+// reasonNoBarDSN is the line logged when bars_refresh and fx_refresh (and the HV step of compute_figures) are left out.
+const reasonNoBarDSN = bar.DSNEnvBar + " is not set"

@@ -21,6 +21,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
@@ -40,6 +41,10 @@ type runOnceConfig struct {
 	candidateDSN, accountDSN string
 	// ledgerDSN belongs to option_ledger alone: an empty one leaves that job out, never the run.
 	ledgerDSN string
+	// barDSN belongs to bars_refresh, fx_refresh and the HV step: an empty one leaves only them out, never the run.
+	barDSN string
+	// barsWired is true when the deps hold the constructors of bars_refresh and fx_refresh (newDeps always does).
+	barsWired bool
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
 	jquantsKey string
 	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
@@ -73,6 +78,8 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		candidateDSN:     env[store.DSNEnvCandidate],
 		accountDSN:       env[store.DSNEnvAccount],
 		ledgerDSN:        env[store.DSNEnvOptionLedger],
+		barDSN:           env[bar.DSNEnvBar],
+		barsWired:        a.deps.openBar != nil && a.deps.newBarsRefresh != nil && a.deps.newFxRefresh != nil && a.deps.newHistory != nil,
 	}
 	for _, l := range []struct{ name, v string }{
 		{store.DSNEnvRunner, c.runnerDSN}, {store.DSNEnvSeriesFred, c.seriesDSN},
@@ -192,6 +199,12 @@ type wiring struct {
 	candidatesOff string
 	// dial dials the broker anew; the broker it returns is closed when withWiring returns.
 	dial func(ctx context.Context) (broker.Broker, error)
+	// bars holds bars_refresh and fx_refresh (empty for a deps without them); barsOff is the reason they are left out
+	// of run-once and backfill, barsDSNOff the part of it that only a restart cures; dialHistory dials the history client anew.
+	bars        []contracts.Job
+	barsOff     string
+	barsDSNOff  string
+	dialHistory func(ctx context.Context) (broker.HistoryClient, error)
 }
 
 // runnable is jobs without earnings_refresh when its line is missing; the left-out job is logged by id and
@@ -205,6 +218,12 @@ func (w wiring) runnable(log *slog.Logger) []contracts.Job {
 	if w.cand != nil && w.candidatesOff != "" {
 		log.Warn("job left out", "component", "ot", "job", jobOptionCandidates, "status", w.candidatesOff)
 		drop[w.cand] = true
+	}
+	if w.barsOff != "" {
+		for _, j := range w.bars {
+			log.Warn("job left out", "component", "ot", "job", j.ID(), "status", w.barsOff)
+			drop[j] = true
+		}
 	}
 	if len(drop) == 0 {
 		return w.jobs
@@ -244,6 +263,9 @@ type jobFactory struct {
 	earnRd     store.EarningsDateReader
 	// div is the dividend store of dividend_capture, opened with the events line.
 	div dividend.Store
+	// bars and hist are what bars_refresh and fx_refresh get: the bar store opened with the bar line and the history client.
+	bars bar.BarStore
+	hist broker.HistoryClient
 }
 
 // jobDividendCapture is the id of the dividend_capture job.
@@ -509,6 +531,11 @@ func wireJobs(
 	if ledgerJob != nil {
 		jobList = append(jobList, ledgerJob)
 	}
+	bars, barsOff, err := a.barJobs(ctx, cfg, &f, brk, brokerUp, extra)
+	if err != nil {
+		return err
+	}
+	jobList = append(jobList, bars...)
 	snapJob, err := f.quoteSnapshot(brk)
 	if err != nil {
 		return err
@@ -526,12 +553,8 @@ func wireJobs(
 		return err
 	}
 	jobList = append(jobList, snapJob, figJob, calJob, earnJob)
-	acctJob, err := a.accountCapture(ctx, f, extra)
-	if err != nil {
+	if jobList, err = a.withAccountJobs(ctx, f, brk, extra, jobList); err != nil {
 		return err
-	}
-	if acctJob != nil {
-		jobList = append(jobList, acctJob)
 	}
 	candJob, err := a.candidateJob(ctx, cfg, &f, extra)
 	if err != nil {
@@ -540,17 +563,12 @@ func wireJobs(
 	if candJob != nil {
 		jobList = append(jobList, candJob)
 	}
+	dial, dialHistory := redialers(a, cfg, extra)
 	return use(wiring{
 		ledger: ledger, cal: cal, jobs: jobList, brokerUp: brokerUp, factory: f,
 		earn: earnJob, earningsOff: cfg.earningsOff(), cand: candJob, candidatesOff: cfg.candidatesOff(),
-		dial: func(ctx context.Context) (broker.Broker, error) {
-			b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
-			if err != nil {
-				return nil, err
-			}
-			extra.add(b)
-			return b, nil
-		},
+		bars: bars, barsOff: barsOff, barsDSNOff: cfg.barsOff(),
+		dial: dial, dialHistory: dialHistory,
 	})
 }
 

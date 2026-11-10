@@ -21,6 +21,8 @@ const (
 	jobOptionEodJP     = "option_eod_jp"
 	jobQuoteSnapshot   = "quote_snapshot"
 	jobEarningsRefresh = "earnings_refresh"
+	jobBarsRefresh     = "bars_refresh"
+	jobFxRefresh       = "fx_refresh"
 
 	calendarXTKS = "XTKS"
 
@@ -49,6 +51,13 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 	}
 	if r := cfg.earningsOff(); r != "" {
 		out[jobEarningsRefresh] = r
+	}
+	switch {
+	case !cfg.barsWired:
+	case cfg.barDSN == "":
+		out[jobBarsRefresh], out[jobFxRefresh] = reasonNoBarDSN, reasonNoBarDSN
+	case !brokerUp:
+		out[jobBarsRefresh], out[jobFxRefresh] = reasonBrokerDown, reasonBrokerDown
 	}
 	if !brokerUp {
 		out[jobOptionEod] = reasonBrokerDown
@@ -84,6 +93,26 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 			return nil, p.w.earningsOff
 		}
 		j, err := p.w.factory.earningsRefresh()
+		return p.built(id, j, err)
+	case jobBarsRefresh, jobFxRefresh:
+		// the line is read once at start, so a missing one keeps both jobs out until the process restarts
+		if p.w.barsDSNOff != "" {
+			return nil, p.w.barsDSNOff
+		}
+		b, err := p.broker(ctx)
+		if err != nil {
+			return nil, reasonBrokerDown
+		}
+		h, err := p.w.dialHistory(ctx)
+		if err != nil {
+			return nil, reasonBrokerDown
+		}
+		var j contracts.Job
+		if id == jobBarsRefresh {
+			j, err = p.w.factory.barsRefresh(b, h)
+		} else {
+			j, err = p.w.factory.fxRefresh(b, h)
+		}
 		return p.built(id, j, err)
 	case jobOptionEod, jobQuoteSnapshot:
 		b, err := p.broker(ctx)

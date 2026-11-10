@@ -57,8 +57,14 @@ func TestStoredTextGolden(t *testing.T) {
 	for _, r := range rules {
 		scale[r.ID] = r.Scale
 	}
-	if len(cases) != len(rules) {
-		t.Fatalf("%d cases for %d ids", len(cases), len(rules))
+	have := map[string]bool{}
+	for _, c := range cases {
+		have[c.ID] = true
+	}
+	for _, r := range rules {
+		if !have[r.ID] {
+			t.Errorf("rule %s has no case: add a case for %s to internal/compute/own/testdata/stored_text.json", r.ID, r.ID)
+		}
 	}
 	u := NewUnits()
 	for _, c := range cases {

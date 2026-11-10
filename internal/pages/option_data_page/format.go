@@ -14,6 +14,8 @@ type figure struct {
 	Value float64 `json:"value"`
 	Text  string  `json:"text"`
 	Unit  string  `json:"unit"`
+	// ApproxUSDText is "≈ US$ N" beside the price of a non-USD underlying; absent is omitted.
+	ApproxUSDText string `json:"approx_usd_text,omitempty"`
 }
 
 type gap struct {

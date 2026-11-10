@@ -88,7 +88,9 @@ type siteReaders struct {
 
 // openSiteReaders returns the demo readers with the demo profile, else the stores (series, the
 // five option stores, the reading view, the candidate store, and the account and earnings stores) opened once with the one .env line of the
-// pages role, and a function that closes them. A failed open closes the stores already opened.
+// pages role (the session-day store included), and a function that closes them. A failed open closes the stores already opened.
+//
+//nolint:funlen // one flat sequence of opens, each with its fail line; splitting it would hide the close order
 func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
@@ -156,9 +158,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
+	sessions, ok := openSessionReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
 	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
-		optionLedger: ledger}
+		optionLedger: ledger, sessions: sessions}
 	return withPositionsRules(a, rd), closeAll, nil
 }
 
@@ -210,8 +216,21 @@ func openOwnerReader(ctx context.Context, a *app, dsn string, track func(io.Clos
 	return oset, true
 }
 
-// withPositionsRules sets the compute constructors of the positions pages; the ledger, account and session
-// readers stay nil (ot has no store for them yet).
+// openSessionReader opens the session-day store with the pages line when deps has an opener, else the reader is
+// nil (the pages show the gap no_sessions). ok is false when the open failed.
+func openSessionReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (store.SessionDayReader, bool) {
+	if a.deps.openSessionDay != nil {
+		sd, err := a.deps.openSessionDay(ctx, dsn)
+		if !track(sd, err) {
+			return nil, false
+		}
+		return sd, true
+	}
+	return nil, true
+}
+
+// withPositionsRules sets the compute constructors of the positions pages; the ledger and account readers
+// stay nil (ot has no store for them yet); the session readers are set by openSiteReaders.
 func withPositionsRules(a *app, rd siteReaders) siteReaders {
 	rd.ledgers, rd.structures, rd.results = a.deps.newOptionLedger, a.deps.newOptionStructures, a.deps.newOptionResults
 	return rd
