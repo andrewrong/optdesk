@@ -1,0 +1,90 @@
+{
+  "schema": "household_summary",
+  "schema_version": 2,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "scope1",
+  "currency": "USD",
+  "generated_at": "2026-11-10T10:00:00+08:00",
+  "stale_after": "2026-11-14T09:00:00+08:00",
+  "data_times": [
+    {
+      "source": "account",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    }
+  ],
+  "run_status": "ok",
+  "card": {
+    "title": "家庭资产",
+    "subtitle": "主账户 · 数据日 2026-11-10",
+    "stale": {
+      "data_time": "2026-11-10T09:00:00+08:00",
+      "stale_after": "2026-11-14T09:00:00+08:00",
+      "text": "账户数据日 2026-11-10"
+    },
+    "tiles": {
+      "net_worth": {
+        "label": "净值",
+        "figure": {
+          "value": 100000.00,
+          "text": "$100,000.00",
+          "unit": "USD"
+        },
+        "caption": {
+          "text": "USD · 数据日 2026-11-10"
+        },
+        "explain": "主账户的净清算值（券商 NetLiquidation，美元），取最近一次采集。"
+      },
+      "day_change": {
+        "label": "上一交易日",
+        "figure": {
+          "value": 999.50,
+          "text": "+$999.50",
+          "tone": "up",
+          "unit": "usd_signed"
+        },
+        "caption": {
+          "value": 1.01,
+          "text": "+1.01%",
+          "tone": "up",
+          "unit": "percent"
+        },
+        "explain": "最近一次采集的净清算值减前一个有采集的交易日，美元；包含出入金，不是纯收益。百分比是这个变化除以前一日的值。"
+      },
+      "month_to_date": {
+        "label": "本月至今",
+        "figure": {
+          "value": 2000.00,
+          "text": "+$2,000.00",
+          "tone": "up",
+          "unit": "usd_signed"
+        },
+        "caption": {
+          "value": 2.04,
+          "text": "+2.04%",
+          "tone": "up",
+          "unit": "percent"
+        },
+        "explain": "最近一次采集的净清算值减上月最后一个交易日，美元；包含出入金，不是时间加权收益。"
+      },
+      "cash": {
+        "label": "现金",
+        "figure": {
+          "value": 42.00,
+          "text": "42.00%",
+          "unit": "share_percent"
+        },
+        "caption": {
+          "value": 42000.00,
+          "text": "+$42,000.00",
+          "tone": "up",
+          "unit": "usd_signed"
+        },
+        "explain": "主账户的现金（TotalCashValue，美元）。大字是占净值的比例，小字是金额；现金为负是融资借款。"
+      }
+    },
+    "notes": [],
+    "gaps": [],
+    "data_times_text": "数据日 2026-11-10"
+  }
+}
