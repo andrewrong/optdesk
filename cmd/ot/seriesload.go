@@ -68,11 +68,11 @@ func seriesLoad(a *app, args []string) error {
 	defer func() { _ = ser.Close() }()
 	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: key, Clock: d.newClock()})
 	if err != nil {
-		return fmt.Errorf("build FRED source failed")
+		return fmt.Errorf("build FRED source failed: %w", err)
 	}
 	loader, err := d.newSeriesHistory(src, ser)
 	if err != nil {
-		return fmt.Errorf("build series history loader failed")
+		return fmt.Errorf("build series history loader failed: %w", err)
 	}
 	res, err := loader.Load(ctx, sources.FetchPlan{SeriesIDs: ids, From: fromDay, To: toDay})
 	if err != nil {

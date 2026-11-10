@@ -181,7 +181,9 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 func newDeps() deps {
 	d := newBaseDeps()
 	d.ext = newExt()
-	d.newOptionEodWatch, d.openCandidateRW = optioneod.NewWithWatch, openCandidateWriter
+	d.openCandidateRW = openCandidateWriter
+	// run-once and the scheduler build option_eod over the watch list; newOptionEod (job.toml, SPY) is what the dry run builds.
+	d.newOptionEodWatch, d.newOptionEod = optioneod.NewWithWatch, optioneod.New
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
@@ -216,7 +218,6 @@ func newBaseDeps() deps {
 		openOptionCatalog:       snapshot.OpenOptionEodCatalog,
 		openOptionTerms:         instrument.OpenOptionTerms,
 		openInstrumentName:      instrument.OpenInstrumentNames,
-		newOptionEod:            optioneod.New,
 		newOptionEodJP:          optioneod.NewJP,
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,

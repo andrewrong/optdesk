@@ -3,10 +3,13 @@ package fundamental
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -203,6 +206,47 @@ func TestBadInputIsPermanentAndErrorsAreRetryable(t *testing.T) {
 	}
 	if _, err := s.FactsFiledBy(ctx, "sec", "cik:1", "2025-01-01"); kind(err) != contracts.Retryable {
 		t.Errorf("select error: %v", err)
+	}
+}
+
+func TestInsertFactsConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want contracts.ErrorKind
+	}{
+		{"plain", errors.New("boom"), contracts.Retryable},
+		{"class 40", &pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		{"class 08", &pgconn.PgError{Code: "08006"}, contracts.Retryable},
+	}
+	for _, code := range []string{"23502", "23503", "23505", "23514"} {
+		cases = append(cases,
+			struct {
+				name string
+				err  error
+				want contracts.ErrorKind
+			}{code, &pgconn.PgError{Code: code}, contracts.Permanent},
+			struct {
+				name string
+				err  error
+				want contracts.ErrorKind
+			}{code + " wrapped", fmt.Errorf("x: %w", &pgconn.PgError{Code: code}), contracts.Permanent})
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			db := newFake()
+			db.failed = c.err
+			err := (&factStore{db: db}).InsertFacts(context.Background(), []contracts.FundamentalFact{fact("a", "Assets", "", "2024-12-31", "2025-02-01")})
+			var te contracts.TypedError
+			if !errors.As(err, &te) || te.Kind() != c.want {
+				t.Fatalf("err = %v, want kind %v", err, c.want)
+			}
+			if !strings.HasPrefix(err.Error(), "fundamental: insert") {
+				t.Errorf("text = %q, want prefix fundamental: insert", err.Error())
+			}
+		})
 	}
 }
 

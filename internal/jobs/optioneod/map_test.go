@@ -86,6 +86,35 @@ func TestOsiSymbol(t *testing.T) {
 	}
 }
 
+func TestOSISymbolShareClass(t *testing.T) {
+	t.Parallel()
+	c := broker.Contract{Symbol: "BRK B", Expiry: "20261120", Right: "C", Strike: "500"}
+	got, err := osiSymbolWith(c, "BRKB")
+	if err != nil || got != "BRKB  261120C00500000" || len(got) != 21 {
+		t.Fatalf("got %q %v", got, err)
+	}
+	if _, err := osiSymbolWith(c, "TOOLONG"); err == nil {
+		t.Fatal("a root over 6 is refused")
+	}
+}
+
+func TestChainOfShareClass(t *testing.T) {
+	t.Parallel()
+	chains := []broker.Chain{
+		{Exchange: "SMART", TradingClass: "BRK B"},
+		{Exchange: "SMART", TradingClass: "BRKB"},
+	}
+	u := underlying{Symbol: "BRK B", Exchange: "SMART"}
+	got, class, ok := manifest{}.chainOfRoot(chains, u, "BRKB")
+	if !ok || class != "BRKB" || got.TradingClass != "BRKB" {
+		t.Fatalf("got %+v %q %v", got, class, ok)
+	}
+	got, class, ok = manifest{TradingClass: "BRK B"}.chainOfRoot(chains, u, "BRKB")
+	if !ok || class != "BRK B" || got.TradingClass != "BRK B" {
+		t.Fatalf("manifest class wins: got %+v %q %v", got, class, ok)
+	}
+}
+
 func TestCaptureIDValue(t *testing.T) {
 	t.Parallel()
 	k := contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "TEST"}

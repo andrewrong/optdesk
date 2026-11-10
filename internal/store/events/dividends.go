@@ -50,7 +50,9 @@ func OpenDividend(ctx context.Context, dsn string) (dividend.Store, error) {
 // Close releases the connections.
 func (s *dividendStore) Close() error { return s.db.Close() }
 
-// InsertDividend inserts the row; a row whose key exists stays as it is and is no error.
+// InsertDividend inserts the row; a row whose key exists stays as it is and is no error. A constraint
+// violation (SQLSTATE class 23: not null, foreign key, check) is a Permanent error, since the database repeats
+// it on every attempt; every other error of the insert is Retryable.
 func (s *dividendStore) InsertDividend(ctx context.Context, r contracts.DividendExpectation) error {
 	if r.InstrumentID == 0 || r.Attempt < 1 {
 		return permanent(fmt.Errorf("events: a dividend row needs an instrument id and an attempt from 1"))
@@ -60,7 +62,11 @@ func (s *dividendStore) InsertDividend(ctx context.Context, r contracts.Dividend
 		r.Past12M, r.Next12M, r.NextAmount, dayText(r.NextExDate), r.Currency, r.ErrorCode, string(r.Source),
 		r.ReceivedAt.UTC())
 	if err != nil {
-		return retryable(fmt.Errorf("events: insert dividend: %w", err))
+		wrapped := fmt.Errorf("events: insert dividend: %w", err)
+		if isConstraintViolation(err) {
+			return permanent(wrapped)
+		}
+		return retryable(wrapped)
 	}
 	return nil
 }
