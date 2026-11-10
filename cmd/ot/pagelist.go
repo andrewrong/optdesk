@@ -38,6 +38,9 @@ func pageNamed(a *app, name string) (pages.Page, func(), error) {
 	if name == candidatesName {
 		return candidatesPageNamed(context.Background(), a)
 	}
+	if name == trackingName {
+		return trackingPageNamed(context.Background(), a)
+	}
 	if name == noticesName {
 		return noticesPageNamed(context.Background(), a)
 	}
@@ -45,7 +48,7 @@ func pageNamed(a *app, name string) (pages.Page, func(), error) {
 	for _, p := range a.deps.pageList {
 		known = append(known, p.Meta.Name)
 	}
-	known = append(known, macroPageName, reportName, candidatesName, noticesName)
+	known = append(known, macroPageName, reportName, candidatesName, noticesName, trackingName)
 	return pages.Page{}, nil, fmt.Errorf("unknown page %q; known pages: %s", name, strings.Join(known, ", "))
 }
 

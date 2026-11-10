@@ -23,10 +23,12 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/compute/optionstruct"
+	"github.com/andrewrong/optdesk/internal/compute/optiontrack"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/ruleparam"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
@@ -51,6 +53,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/option_data_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_notices_page"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
+	"github.com/andrewrong/optdesk/internal/pages/option_tracking_page"
 	"github.com/andrewrong/optdesk/internal/pages/report_page"
 	"github.com/andrewrong/optdesk/internal/pages/risks_block"
 	"github.com/andrewrong/optdesk/internal/pages/settings_page"
@@ -69,6 +72,7 @@ import (
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
 	"github.com/andrewrong/optdesk/internal/store/ops"
+	optionledgerstore "github.com/andrewrong/optdesk/internal/store/optionledger"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 	"github.com/andrewrong/optdesk/internal/store/ownersetpg"
 	"github.com/andrewrong/optdesk/internal/store/reading"
@@ -145,6 +149,8 @@ type deps struct {
 	settingsPage            func(c settings_page.Config) pages.Page
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
 	optionNoticesPage       optionNoticesPageFunc
+	optionTrackingPage      func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page
+	openOptionLedgerRO      store.OpenOptionLedgerFunc
 	newOptionNotices        compute.NewOptionNoticesFunc
 	noticeParams            compute.DefaultNoticeParamsFunc
 	openFence               store.OpenFenceFunc
@@ -197,6 +203,7 @@ func newDeps() deps {
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	d.newRuleParams = ruleparam.New
 	d.openOwnerSet = ownersetpg.Open
+	d.openOptionLedgerRO = openOptionLedgerStore
 	d.settingsPage = settings_page.NewPage
 	return d
 }
@@ -259,6 +266,7 @@ func newBaseDeps() deps {
 		newOptionStructures:     optionstruct.New,
 		newOptionResults:        optionresult.New,
 		optionCandidatesPage:    newOptionCandidatesPage,
+		optionTrackingPage:      newOptionTrackingPage,
 		openFence:               ops.OpenFence,
 		openSchedulerLedger:     ops.OpenSchedulerLedger,
 		newScheduler:            sched.New,
@@ -311,6 +319,28 @@ func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, 
 	return option_candidates_page.NewPage(option_candidates_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands,
 	})
+}
+
+// newOptionTrackingPage builds the page option_tracking_page in zone from the plain arguments; the one place
+// that names option_tracking_page.Config.
+func newOptionTrackingPage(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page {
+	return option_tracking_page.NewPage(option_tracking_page.Config{
+		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone,
+		Ledger: r.Ledger, Account: r.Account, Candidates: r.Candidates, Eod: r.Eod, Catalog: r.Catalog,
+		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions,
+		Tracker: optiontrack.New(), Replay: optionledger.New(),
+		Params:     trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30},
+		CalendarID: "XNYS",
+	})
+}
+
+// openOptionLedgerStore opens the option ledger store; a failed open is a nil interface, not a typed nil.
+func openOptionLedgerStore(ctx context.Context, dsn string) (store.OptionLedgerStore, error) {
+	s, err := optionledgerstore.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // optionNoticesPageFunc builds option_notices_page from plain arguments.
