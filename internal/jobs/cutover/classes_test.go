@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/cutover"
 )
 
 func figs(entries ...string) string {
@@ -44,8 +44,8 @@ class = "replayable"
 		t.Fatal(err)
 	}
 	// new shows as status new; replayable with no old row shows as unchecked.
-	want := []jobs.FigureStatus{jobs.FigureNew, jobs.FigureUnchecked, jobs.FigureNew, jobs.FigureUnchecked,
-		jobs.FigureNew, jobs.FigureUnchecked, jobs.FigureNew}
+	want := []cutover.FigureStatus{cutover.FigureNew, cutover.FigureUnchecked, cutover.FigureNew, cutover.FigureUnchecked,
+		cutover.FigureNew, cutover.FigureUnchecked, cutover.FigureNew}
 	for i, w := range want {
 		if got := rep.Results[i].Status; got != w {
 			t.Errorf("%s v%d = %s, want %s", rep.Results[i].ID, rep.Results[i].Version, got, w)

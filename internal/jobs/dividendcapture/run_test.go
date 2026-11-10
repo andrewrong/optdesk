@@ -261,7 +261,7 @@ func TestBadConstruction(t *testing.T) {
 func TestEmbeddedManifest(t *testing.T) {
 	t.Parallel()
 	st := &memStore{}
-	var newJob jobs.NewDividendCaptureFunc = New
+	var newJob NewDividendCaptureFunc = New
 	j, err := newJob(&fakeRef{}, &fakeRes{}, st, st, nil, fixedClock{})
 	if err != nil || j.ID() != "dividend_capture" {
 		t.Fatalf("%v %v", j, err)

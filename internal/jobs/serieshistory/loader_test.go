@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/serieshistory"
 	"github.com/andrewrong/optdesk/internal/sources"
 )
 
-var _ jobs.NewSeriesHistoryFunc = serieshistory.New
+var _ serieshistory.NewSeriesHistoryFunc = serieshistory.New
 
 type fakeSource struct {
 	plans []sources.FetchPlan
@@ -42,7 +41,7 @@ type kindErr struct{ kind contracts.ErrorKind }
 func (e kindErr) Error() string             { return "secret-detail" }
 func (e kindErr) Kind() contracts.ErrorKind { return e.kind }
 
-func newLoader(t *testing.T, s *fakeSource, w *fakeWriter) jobs.SeriesHistoryLoader {
+func newLoader(t *testing.T, s *fakeSource, w *fakeWriter) serieshistory.SeriesHistoryLoader {
 	t.Helper()
 	l, err := serieshistory.New(s, w)
 	if err != nil {
@@ -68,8 +67,8 @@ func TestLoadTwoSeries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got[0] != (jobs.SeriesLoaded{SeriesID: "DGS10", Fetched: 2}) ||
-		got[1] != (jobs.SeriesLoaded{SeriesID: "VIXCLS", Fetched: 3}) {
+	if len(got) != 2 || got[0] != (serieshistory.SeriesLoaded{SeriesID: "DGS10", Fetched: 2}) ||
+		got[1] != (serieshistory.SeriesLoaded{SeriesID: "VIXCLS", Fetched: 3}) {
 		t.Fatalf("got %+v", got)
 	}
 	if len(s.plans) != 2 || len(w.calls) != 2 || len(w.calls[0]) != 2 || len(w.calls[1]) != 3 {

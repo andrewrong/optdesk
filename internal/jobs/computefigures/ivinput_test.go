@@ -13,7 +13,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -42,8 +41,8 @@ func newFx() *fx {
 		series: map[string][]contracts.SeriesPoint{}}
 }
 
-func (f *fx) stores() jobs.ComputeStores {
-	return jobs.ComputeStores{Catalog: f, OptionEod: f, Terms: f, Names: f, SessionDays: f, Series: f, Readings: f}
+func (f *fx) stores() ComputeStores {
+	return ComputeStores{Catalog: f, OptionEod: f, Terms: f, Names: f, SessionDays: f, Series: f, Readings: f}
 }
 
 func (f *fx) OptionEodLatest(context.Context, contracts.Day) ([]store.OptionEodLatest, error) {

@@ -30,13 +30,13 @@ var manifestBytes []byte
 
 const datasetID = "candidates.option_candidate"
 
-var _ jobs.NewOptionCandidatesJobFunc = New
+var _ NewOptionCandidatesJobFunc = New
 
 type job struct {
 	m       manifest
 	slot    slot
 	params  compute.CandidateParams
-	st      jobs.CandidateStores
+	st      CandidateStores
 	rule    compute.OptionCandidates
 	entries []jobs.WatchEntry
 	clk     clock.Clock
@@ -72,7 +72,7 @@ func fail(code string, err error) contracts.JobResult {
 
 // New builds the option_candidates job from the embedded job.toml. A nil Earnings, Accounts or Series reader
 // gives unknown gates, never an error; the other readers, the writer, the rule and the clock are required.
-func New(st jobs.CandidateStores, rule compute.OptionCandidates, entries []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
+func New(st CandidateStores, rule compute.OptionCandidates, entries []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
 	if st.OptionEod == nil || st.Terms == nil || st.Names == nil || st.Catalog == nil || st.Candidates == nil ||
 		st.SessionDays == nil || rule == nil || clk == nil {
 		return nil, errors.New("optioncandidates: chain, terms, names, catalog, session day and candidate stores, the rule and the clock are required")
@@ -229,7 +229,7 @@ func entryOf(us []jobs.WatchEntry, issuer string) jobs.WatchEntry {
 // row, with the run's instant (the same instant the run then stamps on its rows), and writes the value as
 // SettingsVersion on every row of the run, whatever its kind. A nil f, or an error from f, writes nil rows, the run
 // goes on and one slog line with component jobs and status degraded is logged. The job resolves no parameter.
-func WithSettingsVersion(jb contracts.Job, f jobs.SettingsVersionFunc) (contracts.Job, error) {
+func WithSettingsVersion(jb contracts.Job, f SettingsVersionFunc) (contracts.Job, error) {
 	var base *job
 	switch j := jb.(type) {
 	case *job:
@@ -253,7 +253,7 @@ func WithSettingsVersion(jb contracts.Job, f jobs.SettingsVersionFunc) (contract
 // read starts the run here, asks f once and pins the run's instant, which the run takes next from its clock.
 // Runs of one job do not overlap.
 type settingsRun struct {
-	f   jobs.SettingsVersionFunc
+	f   SettingsVersionFunc
 	clk clock.Clock
 
 	mu     sync.Mutex

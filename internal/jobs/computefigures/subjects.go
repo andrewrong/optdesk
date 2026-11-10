@@ -12,7 +12,6 @@ import (
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
 const (
@@ -31,14 +30,14 @@ type subject struct {
 
 // subjects lists the underlyings that have a row of option_eod on day itself, ordered by id, named by
 // their symbol, or underlying:<id> when no name is stored.
-func subjects(ctx context.Context, s jobs.ComputeStores, day contracts.Day) ([]subject, error) {
+func subjects(ctx context.Context, s ComputeStores, day contracts.Day) ([]subject, error) {
 	out, _, err := listSubjects(ctx, s, day)
 	return out, err
 }
 
 // listSubjects is subjects with the count of underlyings dropped because they have only later rows.
 // Two ids with the same stored name are both keyed underlying:<id>, so a key names one underlying.
-func listSubjects(ctx context.Context, s jobs.ComputeStores, day contracts.Day) (out []subject, dropped int, err error) {
+func listSubjects(ctx context.Context, s ComputeStores, day contracts.Day) (out []subject, dropped int, err error) {
 	latest, err := s.Catalog.OptionEodLatest(ctx, day)
 	if err != nil {
 		return nil, 0, fmt.Errorf("computefigures: catalog: %w", err)

@@ -24,7 +24,7 @@ func NewWithWatch(b broker.Broker, res store.InstrumentResolver, w store.OptionE
 	return NewWithWatchSymbols(b, res, w, watch, clk, nil)
 }
 
-var _ jobs.NewOptionEodWatchSymbolsFunc = NewWithWatchSymbols
+var _ NewOptionEodWatchSymbolsFunc = NewWithWatchSymbols
 
 // NewWithWatchSymbols is NewWithWatch with a translator that gives the option root of each watched
 // underlying; nil means no translation.
@@ -55,7 +55,7 @@ func NewWithWatchSymbols(
 // manifest rule (min_dte above max_dte) gives the error the manifest validation gives.
 func NewWithWatchWindow(
 	b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
-	win jobs.OptionEodWindow, clk clock.Clock,
+	win OptionEodWindow, clk clock.Clock,
 ) (contracts.Job, error) {
 	if b == nil || res == nil || w == nil || clk == nil {
 		return nil, errors.New("optioneod: broker, resolver, writer and clock are required")

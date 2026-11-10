@@ -12,7 +12,6 @@ import (
 	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/cutover"
 )
 
@@ -53,7 +52,7 @@ func fixture(t *testing.T, name string) string {
 	return string(b)
 }
 
-func run(t *testing.T, old, reg, classes, expl string, rd *fakeReader) (jobs.FigureReport, error) {
+func run(t *testing.T, old, reg, classes, expl string, rd *fakeReader) (cutover.FigureReport, error) {
 	t.Helper()
 	return cutover.CompareFigures(context.Background(), strings.NewReader(old), strings.NewReader(reg),
 		strings.NewReader(classes), strings.NewReader(expl), rd)
@@ -64,7 +63,7 @@ func oldLine(name, day, value string, places string) string {
 		`","value":` + value + `,"places":` + places + `,"from":"page"}` + "\n"
 }
 
-func statusOf(t *testing.T, rep jobs.FigureReport, id string) jobs.FigureResult {
+func statusOf(t *testing.T, rep cutover.FigureReport, id string) cutover.FigureResult {
 	t.Helper()
 	for _, r := range rep.Results {
 		if r.ID == id {
@@ -72,7 +71,7 @@ func statusOf(t *testing.T, rep jobs.FigureReport, id string) jobs.FigureResult 
 		}
 	}
 	t.Fatalf("no result for %s", id)
-	return jobs.FigureResult{}
+	return cutover.FigureResult{}
 }
 
 func TestCompareReadsEachSubjectOnce(t *testing.T) {
@@ -95,16 +94,16 @@ func TestCompareRoundsToPlaces(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		old, places, new string
-		want             jobs.FigureStatus
+		want             cutover.FigureStatus
 	}{
-		{`"1.25"`, "1", "1.2", jobs.FigureChecked},       // tie to even, down
-		{`"1.35"`, "1", "1.4", jobs.FigureChecked},       // tie to even, up
-		{`"-0.04"`, "1", "0.0", jobs.FigureChecked},      // negative zero is zero
-		{`"2.00"`, "1", "2.04999", jobs.FigureChecked},   // the new side is rounded too
-		{`"2.0"`, "1", "2.05", jobs.FigureChecked},       // 2.05 ties to 2.0
-		{`"2.0"`, "1", "2.0501", jobs.FigureUnexplained}, // 2.0501 rounds to 2.1
-		{`"100"`, "0", "100.5", jobs.FigureChecked},      // 100.5 ties to 100
-		{`"101"`, "0", "100.5", jobs.FigureUnexplained},
+		{`"1.25"`, "1", "1.2", cutover.FigureChecked},       // tie to even, down
+		{`"1.35"`, "1", "1.4", cutover.FigureChecked},       // tie to even, up
+		{`"-0.04"`, "1", "0.0", cutover.FigureChecked},      // negative zero is zero
+		{`"2.00"`, "1", "2.04999", cutover.FigureChecked},   // the new side is rounded too
+		{`"2.0"`, "1", "2.05", cutover.FigureChecked},       // 2.05 ties to 2.0
+		{`"2.0"`, "1", "2.0501", cutover.FigureUnexplained}, // 2.0501 rounds to 2.1
+		{`"100"`, "0", "100.5", cutover.FigureChecked},      // 100.5 ties to 100
+		{`"101"`, "0", "100.5", cutover.FigureUnexplained},
 	}
 	for _, c := range cases {
 		rd := &fakeReader{rows: map[string][]contracts.ReadingRecord{
@@ -155,7 +154,7 @@ func TestUncheckedReasons(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := statusOf(t, rep, "demo.alpha")
-		if got.Status != jobs.FigureUnchecked || got.Reason != c.reason {
+		if got.Status != cutover.FigureUnchecked || got.Reason != c.reason {
 			t.Errorf("%s: %+v, want unchecked %s", c.name, got, c.reason)
 		}
 	}
@@ -172,9 +171,9 @@ func TestFiveStatuses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]jobs.FigureStatus{
-		"demo.alpha": jobs.FigureChecked, "demo.beta": jobs.FigureExplained, "demo.gamma": jobs.FigureUnexplained,
-		"demo.fresh": jobs.FigureNew, "demo.delta": jobs.FigureUnchecked,
+	want := map[string]cutover.FigureStatus{
+		"demo.alpha": cutover.FigureChecked, "demo.beta": cutover.FigureExplained, "demo.gamma": cutover.FigureUnexplained,
+		"demo.fresh": cutover.FigureNew, "demo.delta": cutover.FigureUnchecked,
 	}
 	if len(rep.Results) != 5 {
 		t.Fatalf("results = %+v", rep.Results)

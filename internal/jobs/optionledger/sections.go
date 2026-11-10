@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
 )
@@ -28,7 +27,7 @@ func fetchRef(login string, req sources.FlexRequest, fetchedAt time.Time) string
 // without its required key attributes is refused and counted, and so are both rows of a duplicate key: a
 // key is never guessed, merged or overwritten.
 func buildSectionRows(
-	spec sectionSpec, alias string, rows []map[string]string, hash jobs.FlexAttributesSHA256Func, at time.Time,
+	spec sectionSpec, alias string, rows []map[string]string, hash FlexAttributesSHA256Func, at time.Time,
 ) (out []flexsection.Row, refused int, err error) {
 	keys := make([]string, len(rows)) // "" marks a refused row
 	count := map[string]int{}
@@ -78,7 +77,7 @@ func buildSectionRows(
 // recordSections writes the section rows and one status row per expected section for every mapped statement
 // of the report, with one call of RecordSections. A statement of an unmapped account writes nothing. An
 // absent section also gives one degraded log record naming the login and the section.
-func (r *run) recordSections(ctx context.Context, l jobs.FlexRun, req sources.FlexRequest, rep sources.FlexReport) error {
+func (r *run) recordSections(ctx context.Context, l FlexRun, req sources.FlexRequest, rep sources.FlexReport) error {
 	ref := fetchRef(l.Name, req, rep.FetchedAt)
 	at := r.j.clk.Now()
 	var rows []flexsection.Row

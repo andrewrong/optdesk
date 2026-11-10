@@ -47,7 +47,7 @@ func dividendRow(status, exDate, amount string) contracts.DividendExpectation {
 	return r
 }
 
-func buildCalls(t *testing.T, st jobs.CandidateStores, div *fakeDividends, rule compute.OptionCandidates) contracts.Job {
+func buildCalls(t *testing.T, st CandidateStores, div *fakeDividends, rule compute.OptionCandidates) contracts.Job {
 	t.Helper()
 	j, err := NewWithCalls(st, div, rule, []jobs.WatchEntry{usEntry()}, fixedClock{})
 	if err != nil {
@@ -129,7 +129,7 @@ func (c callTerms) OptionTerms(_ context.Context, ids []int64) ([]store.OptionTe
 	return out, nil
 }
 
-func heldFakes(bid float64) (*fakes, jobs.CandidateStores) {
+func heldFakes(bid float64) (*fakes, CandidateStores) {
 	f := newFakes()
 	f.eodRows = append(f.eodRows, contracts.OptionEod{InstrumentID: 21, UnderlyingID: 7, Bid: f64(bid), Ask: f64(bid + 0.05),
 		BidSize: f64(5), OpenInterest: f64(40), UnderlyingPrice: f64(110), Status: 1, MarketDataType: 1, CaptureID: "c1"})

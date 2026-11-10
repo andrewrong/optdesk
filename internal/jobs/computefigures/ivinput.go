@@ -11,7 +11,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
 const (
@@ -30,7 +29,7 @@ var (
 
 // inputs is what the mapping reads: the stores, the series and unit helpers, and the rate series with its age bound.
 type inputs struct {
-	jobs.ComputeStores
+	ComputeStores
 	ops        compute.SeriesOps
 	units      compute.Units
 	rateSeries string

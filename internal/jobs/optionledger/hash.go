@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// AttributesSHA256 implements jobs.FlexAttributesSHA256Func: it removes the keys accountId and acctAlias,
+// AttributesSHA256 implements FlexAttributesSHA256Func: it removes the keys accountId and acctAlias,
 // encodes the rest as one JSON object (keys ascending by byte order, no whitespace, strings in UTF-8 with
 // only ", \ and control characters below 0x20 escaped, no HTML escaping) and returns the lower-case hex
 // SHA-256 of that text. Control characters are written \b \t \n \f \r or \u00xx (lower-case hex). The map
