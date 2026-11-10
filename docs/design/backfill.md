@@ -46,7 +46,7 @@ tests keep compiling.
 |---|---|---|---|
 | `runner.Backfiller` | runner | internal/runner/api.go | `interface{ Backfill(ctx context.Context, day contracts.Day, datasets []string) (BackfillResult, error) }` |
 | `runner.BackfillResult` | runner | internal/runner/api.go | `struct{ Day contracts.Day; Refused BackfillRefusal; AlreadyPresent, Filled, Absent, Missing []contracts.ExpectedKey; InWindow []contracts.ExpectedKey }` (`InWindow` added by backfill-any-day) |
-| `runner.BackfillRefusal` | runner | internal/runner/api.go | `type BackfillRefusal string` with the constants `RefusedAheadOfCursor` ("ahead_of_cursor", superseded by backfill-any-day: the constant is removed) and `RefusedNoPlan` ("no_plan"); empty means the day was not refused |
+| `runner.BackfillRefusal` | runner | internal/runner/api.go | `type BackfillRefusal string` with the constants `RefusedAheadOfCursor` ("ahead_of_cursor", superseded by backfill-any-day: never returned; removed by backfill-drop-refusal) and `RefusedNoPlan` ("no_plan"); empty means the day was not refused |
 | `runner.NewBackfillerWithRuleFunc` | runner | internal/runner/api.go | `func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, WindowRule) Backfiller`; implemented by `reconcile.NewBackfillerWithRule` |
 
 No error value is declared in `api.go`: no `api.go` of the repository holds an initialiser, so a refusal is data in the
@@ -88,9 +88,9 @@ beside `deps.newRunner`.
    **Key to job:** the existing lookup of `reconcile.go`, the method `plan(ctx, day)`, which calls `Plan(ctx, day)` of every
    registered job and returns `p.job`, the map from `contracts.ExpectedKey` to job. Backfill uses the map of `plan(ctx, day, nil)` only to find the job of a key; the hash it writes for the added keys is
    that of the plan `Reconcile` makes for the day (backfill-any-day Decision 8, step 4). A job's id is not a dataset id: the map is the only relation, and `contracts.Job`
-   is not extended. All keys are validated before any key runs: a `datasets` id with no stored key on the day, or a stored key
+   is not extended. All keys are validated before any key runs: a `datasets` id with no key on the day after the added keys are joined to the stored keys (the error `dataset X has no key on the day`; a dataset whose keys are all added is found and run), or a stored key
    that is absent from the map (no registered job returns it today, for example a series dropped from the manifest), is an
-   error that names the dataset id; then nothing has run and nothing is written.
+   error that names the dataset id; this validation comes before any `PutWindow` or `PutExpected` (backfill-any-day Decision 8, step 2), so then nothing has run and nothing is written.
 3. **Which keys run.** Status `present`: not run, listed in `AlreadyPresent`. Status `no_value` or no status: run once in
    this call, whatever the earlier runs and the two-run cap say. Finality of an earlier attempt is overridden for these
    keys only and only by this explicit command: `Reconcile` is unchanged and still treats `no_value` as final.
