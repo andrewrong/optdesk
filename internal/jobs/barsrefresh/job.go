@@ -20,6 +20,8 @@ const (
 	dayLayout   = "2006-01-02"
 	indexPrefix = "index:"
 	sourceIbkr  = "ibkr"
+	typeStock   = "stock"
+	typeIndex   = "index"
 )
 
 var _ jobs.NewBarsRefreshFunc = New
@@ -94,13 +96,13 @@ func New(
 		return nil
 	}
 	for _, e := range entries {
-		if err := add(e.Issuer, target{contract: e.Contract, spec: specOf("stock", e.Contract)}); err != nil {
+		if err := add(e.Issuer, target{contract: e.Contract, spec: specOf(typeStock, e.Contract)}); err != nil {
 			return nil, err
 		}
 	}
 	for _, ix := range m.Indexes {
 		c := broker.Contract{SecType: ix.SecType, Symbol: ix.Symbol, Exchange: ix.Exchange, Currency: ix.Currency, ConID: ix.ConID}
-		if err := add(indexPrefix+ix.Symbol, target{contract: c, spec: specOf("index", c)}); err != nil {
+		if err := add(indexPrefix+ix.Symbol, target{contract: c, spec: specOf(typeIndex, c)}); err != nil {
 			return nil, err
 		}
 	}

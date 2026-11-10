@@ -340,3 +340,43 @@ func TestBadPulledCloseIsPermanentAndWritesNothing(t *testing.T) {
 		t.Fatalf("result %+v rows %+v", res, st.rows)
 	}
 }
+
+// pairWinner reads like rd.price_bar_r1: winner = highest epoch of the pair, then the window.
+type pairWinner struct{ memBars }
+
+func (p *pairWinner) PriceBars(_ context.Context, id int64, basis string, from, to contracts.Day) ([]contracts.PriceBar, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	top := 0
+	for _, r := range p.rows {
+		if int64(r.InstrumentID) == id {
+			top = max(top, r.AdjustEpoch)
+		}
+	}
+	var out []contracts.PriceBar
+	for _, r := range p.rows {
+		d := r.SessionDay.Format(dayLayout)
+		if int64(r.InstrumentID) == id && r.AdjustEpoch == top && d >= string(from) && d <= string(to) {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func TestReaddedNameWritesAtOrAbovePairEpoch(t *testing.T) {
+	t.Parallel()
+	st := &pairWinner{memBars{rows: []contracts.PriceBar{stored(101, "2024-01-02", "10.0000", 2)}}}
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "50.0000"))}
+	b := &fakeBroker{listed: true}
+	j, err := New(b, h, fakeResolver{}, st, st, []jobs.WatchEntry{entry("cik:1", "A", 101)}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	got, _ := st.PriceBars(context.Background(), 101, "trades", "2026-11-09", "2026-11-09")
+	if len(got) != 1 {
+		t.Fatalf("the bar written today is not a winner row: %d rows", len(got))
+	}
+}

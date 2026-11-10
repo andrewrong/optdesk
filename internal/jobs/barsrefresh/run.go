@@ -39,6 +39,19 @@ type runState struct {
 	conIDs  map[string]int64 // con id of a key resolved through the broker in this run
 }
 
+// firstDay is before any stored bar: the read that starts there gives every winner row of the pair.
+const firstDay = contracts.Day("1900-01-01")
+
+// hasDayFrom reports whether a row has a session day on or after from (YYYY-MM-DD).
+func hasDayFrom(rows []contracts.PriceBar, from string) bool {
+	for _, r := range rows {
+		if r.SessionDay.Format(dayLayout) >= from {
+			return true
+		}
+	}
+	return false
+}
+
 // claimFirstPull reports whether key may start (or keep) a first pull today: at most
 // backfill_names_per_run keys do.
 func (j *job) claimFirstPull(day contracts.Day, key string) bool {
@@ -74,20 +87,25 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 	if err != nil {
 		return 0, 0, asTyped(err, contracts.Permanent)
 	}
-	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
-	stored, err := r.j.r.PriceBars(ctx, id, basisTrades, contracts.Day(from), r.day)
+	// The whole pair is read: the epoch is that of the pair, not of the backfill window, so a name
+	// whose rows are all older than the window still writes at or above its winner epoch.
+	stored, err := r.j.r.PriceBars(ctx, id, basisTrades, firstDay, r.day)
 	if err != nil {
 		return 0, 0, asTyped(err, contracts.Retryable)
 	}
-	epoch := maxEpoch(stored)
+	from := r.dayTime.AddDate(0, 0, -r.j.m.BackfillDays).Format(dayLayout)
+	epoch := max(maxEpoch(stored), 1)
 	days := r.j.m.DailyDays
-	if epoch == 0 {
+	if !hasDayFrom(stored, from) {
 		if !r.j.claimFirstPull(r.day, key) {
 			return 0, 0, nil // past the cap: no request, no error
 		}
-		days, epoch = r.j.m.BackfillDays, 1
+		days = r.j.m.BackfillDays
 	}
-	bars, err := r.j.h.Bars(ctx, broker.BarQuery{Contract: c, Kind: broker.BarTrades, DurationDays: days})
+	pull := func(days int) ([]broker.Bar, error) {
+		return r.j.h.Bars(ctx, broker.BarQuery{Contract: c, Kind: broker.BarTrades, DurationDays: days})
+	}
+	bars, err := pull(days)
 	if err != nil {
 		return 0, 0, asTyped(err, contracts.Retryable)
 	}
@@ -98,7 +116,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 		}
 		if again {
 			epoch++
-			if bars, err = r.j.h.Bars(ctx, broker.BarQuery{Contract: c, Kind: broker.BarTrades, DurationDays: r.j.m.BackfillDays}); err != nil {
+			if bars, err = pull(r.j.m.BackfillDays); err != nil {
 				return 0, 0, asTyped(err, contracts.Retryable)
 			}
 			stored = nil // every row of the pull goes in under the new epoch
