@@ -96,6 +96,14 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Text only; no float. Pure: the clock is passed in.
 
+## Valuation
+
+`StandardOfFunc`, `BuildFilingsFunc`, `BandFunc`, `ImpliedGrowthFunc`, `ReturnAtPriceFunc`, `QuestionsFunc` and `DiagnosisFunc`, with `Standard` (`US_GAAP`, `J_GAAP`, `IFRS`), `Filings`, `FilingYear`, `FilingsResult`, `BandFigure`, `ImpliedRate`, `ImpliedResult`, `Analyst`, `ReturnLine`, `ReturnResult`, `Question`, `QuestionsResult`, `DiagnosisFigure` and `DiagnosisResult`, are declared in the package `internal/compute/valuationapi` (declarations only, imports `contracts` only), not in `internal/compute/api.go`. `ParamsFor` and `Params` belong to the implementation package `internal/compute/valuation`. Design: `docs/design/valuation.md#valuation-compute-interface`.
+
+- `StandardOfFunc` gives the empty `Standard` when no standard is found, and `BuildFilings` then refuses with `no_standard`. `FilingsResult` carries the SIC text, its state and the refusal reasons of Decision 5.
+- `ReturnResult` has four line keys per cost: `SPENDING_STAYS`, `SPENDING_EARNS`, `ANALYST_PATH` and `SPENDING_EARNS_ANALYST`. No verdict word is used.
+- Text decimals only; no float, no library type. A figure that cannot be formed has a state and a reason, never zero. Pure: no I/O, no clock.
+
 ## Page figures
 
 `PageFigures`, `NewPageFiguresFunc`, `HouseholdInput`, `HouseholdResult`, `AccountMoveIn`, `AccountMoveOut` and their line types are declared in `internal/compute/blockapi/api.go` (declarations only; the implementation is `internal/compute/pagefig`). Design: `docs/design/builders-wave.md#Interface`.
@@ -114,6 +122,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - v8: additions only: the package `internal/compute/settingsapi` above.
 - v9: additions only: the package `internal/compute/trackapi` above (option tracking types, `OptionTracker` and `NewOptionTrackerFunc`).
 - v10: additions only: `PageFigures` and its types in `internal/compute/blockapi` above.
+- v11: additions only: the package `internal/compute/valuationapi` above (valuation function types and result types).
 
 ## Contract tests
 
@@ -121,3 +130,4 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - `internal/compute/api_test.go` tests the contract from both sides: a fake of each interface and a caller through the interface only; `TestAlertContract` does so for `EvaluateAlertsFunc` and `LoadAlertRulesFunc`.
 - `internal/compute/settingsapi/api_test.go` tests `RuleParams` and `SettingsForm` from both sides: a fake of each and a caller that resolves a stored map and parses a posted form.
 - The golden suites per interface (`internal/compute/contracttest`) come with later issues.
+- `internal/compute/valuationapi/api_test.go` tests the seven function types from both sides: a fake of each and a caller that fills every input and reads every output field.

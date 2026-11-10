@@ -1,0 +1,10 @@
+# Manifest of the fx_refresh job: the daily USD.JPY mid after each XNYS close.
+version = 1
+id = "fx_refresh"
+duration_days = 5
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "15m"
+run_bound = "10m"
