@@ -116,6 +116,26 @@ describe('HomePage layout', () => {
     }
   })
 
+  it('puts the five cards in the cells of a grid: one column, two from lg, three from 2xl', () => {
+    const grid = card(CARDS[0]).parentElement?.parentElement as Element
+    expect(grid.classList.contains('grid')).toBe(true)
+    for (const c of ['grid-cols-1', 'lg:grid-cols-2', '2xl:grid-cols-3']) expect(grid.classList.contains(c), c).toBe(true)
+    const spans: Record<string, string[]> = {
+      'macro-summary': [],
+      'market-summary': [],
+      'household-summary': ['lg:col-span-2', '2xl:col-span-1'],
+      'held-companies-summary': ['col-span-full'],
+      'options-summary': ['col-span-full'],
+    }
+    for (const name of CARDS) {
+      const cell = card(name).parentElement as Element
+      expect(cell.parentElement, name).toBe(grid)
+      expect(cell.classList.contains('min-w-0'), name).toBe(true)
+      for (const c of spans[name]!) expect(cell.classList.contains(c), `${name} ${c}`).toBe(true)
+    }
+    expect(grid.children).toHaveLength(CARDS.length)
+  })
+
   it('shows the first report link outside the fold and the rest inside', async () => {
     const [first, ...rest] = ok.report_links
     const fold = host.querySelector('[data-links="report_links"] [data-slot="accordion"]') as Element

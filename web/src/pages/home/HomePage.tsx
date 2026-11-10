@@ -1,4 +1,4 @@
-// The home page (home_page v3): the overview card, five summary cards in one column, each title a link, and the report list. Every visible
+// The home page (home_page v3): the overview card, five summary cards in a responsive grid, each title a link, and the report list. Every visible
 // string is a field of the payload; the view computes nothing and holds no route table (links go to their `href`).
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
@@ -77,12 +77,22 @@ export function HomePage({ payload }: { payload: Payload }) {
   return (
     <div className="space-y-4" data-page="home-page">
       <OverviewCard payload={payload} />
-      <div className="flex flex-col gap-4">
-        <MacroCard payload={payload.macro} titleHref={macro} />
-        <MarketSummaryCard payload={payload.market} titleHref={market} />
-        <HouseholdCard payload={payload.household} titleHref={household} />
-        <HeldCompaniesCard payload={payload.companies} titleHref={companies} />
-        <OptionsSummaryCard payload={payload.options} titleHref={options} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+        <div className="min-w-0">
+          <MacroCard payload={payload.macro} titleHref={macro} />
+        </div>
+        <div className="min-w-0">
+          <MarketSummaryCard payload={payload.market} titleHref={market} />
+        </div>
+        <div className="min-w-0 lg:col-span-2 2xl:col-span-1">
+          <HouseholdCard payload={payload.household} titleHref={household} />
+        </div>
+        <div className="min-w-0 col-span-full">
+          <HeldCompaniesCard payload={payload.companies} titleHref={companies} />
+        </div>
+        <div className="min-w-0 col-span-full">
+          <OptionsSummaryCard payload={payload.options} titleHref={options} />
+        </div>
       </div>
       <Reports links={payload.report_links} />
     </div>

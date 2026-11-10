@@ -27,6 +27,8 @@ from `@/lib/utils` instead (ADR 0034: `clsx` and `tailwind-merge` are the design
 | progress | `progress.tsx` | not retrieved (see below) | MIT |
 | slider | `slider.tsx` | not retrieved (see below) | MIT |
 | dropdown-menu | `dropdown-menu.tsx` | not retrieved (see below) | MIT |
+| popover | `popover.tsx` | not retrieved (see below) | MIT |
+| sheet | `sheet.tsx` | not retrieved (see below) | MIT |
 
 Not copied (owner-only, they add packages or pull a second library): chart, calendar, sonner, drawer, command, carousel, form, input-otp.
 
@@ -39,6 +41,8 @@ Added by #540: `slider.tsx` is the registry's `radix-nova` Slider written by han
 Added by #1010: `dropdown-menu.tsx` is the registry's `radix-nova` Dropdown Menu written by hand over `radix-ui`'s `DropdownMenu` (the shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the item and diffs it). Local edit: only the parts the top bar uses (root, trigger, content, item) are copied; the checkbox, radio, sub-menu, label, separator and shortcut parts are left out.
 
 Added by #828: `input.tsx`, `label.tsx` and `switch.tsx` are the registry's `radix-nova` Input, Label and Switch written by hand (`label` and `switch` over `radix-ui`'s `Label` and `Switch`, already installed; no package is added). The shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the items and diffs them. Licence: MIT (shadcn-ui/ui). Local edits: the switch has one size (no `size` prop).
+
+Added by #1336: `popover.tsx` and `sheet.tsx` are the registry's `radix-nova` Popover and Sheet written by hand over `radix-ui`'s `Popover` and `Dialog` (`pnpm dlx` could not run in the worker's sandbox: mise has no pnpm version set, so no registry revision was recorded; a later issue retrieves the items and diffs them). Local edits: the sheet's close button is a plain styled button (the registry uses the `button` component), and both files have `motion-safe:` on their `animate-in` and `animate-out` classes. Nothing imports them yet.
 
 | Component | File | Registry revision (SHA-256, 16 hex) | Licence |
 |---|---|---|---|
