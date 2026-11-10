@@ -1,0 +1,74 @@
+{
+  "schema": "macro_summary",
+  "schema_version": 2,
+  "run_id": "run-test",
+  "build_id": "build-test",
+  "scope": "scope-test",
+  "generated_at": "2026-11-06T09:30:00+08:00",
+  "data_times": [
+    {
+      "source": "macro_ease",
+      "data_time": "2026-11-05T00:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "card": {
+    "title": "宏观",
+    "say": "松紧度中性，较上周 −0.2。",
+    "stale": {
+      "data_time": "2026-11-05T00:00:00+08:00",
+      "stale_after": "2026-11-09T09:30:00+08:00",
+      "text": "数据日 11-05"
+    },
+    "ease": {
+      "figure": {
+        "value": 56.0,
+        "text": "56",
+        "unit": "index_points"
+      },
+      "week_change": {
+        "value": -0.2,
+        "text": "−0.2",
+        "unit": "index_points",
+        "tone": "down"
+      },
+      "marker_percent": {
+        "value": 56.04,
+        "text": "56",
+        "unit": "percent_of_track"
+      },
+      "neutral_band": {
+        "low": {
+          "value": 33.5,
+          "text": "33.5%",
+          "unit": "percent_of_track"
+        },
+        "high": {
+          "value": 66.5,
+          "text": "66.5%",
+          "unit": "percent_of_track"
+        }
+      },
+      "ticks": [
+        "0",
+        "25",
+        "50",
+        "75",
+        "100"
+      ],
+      "reading_text": "当前 56，中性；固定刻度 0 到 100。",
+      "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 33.5 到 66.5。"
+    },
+    "events": [],
+    "notes": [
+      "事件日期按发布日历，无发布时间。"
+    ],
+    "gaps": [
+      {
+        "reason": "not_built",
+        "text": "事件日历尚未接入"
+      }
+    ],
+    "data_times_text": "松紧度数据日 11-05；事件日期按发布日历，无发布时间。"
+  }
+}
