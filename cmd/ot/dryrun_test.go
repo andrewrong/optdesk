@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -352,11 +354,21 @@ currency = "USD"
 con_id = 1002
 `
 
+// dryWatchFile writes body as a watch.toml in a temporary directory and returns a readFile that reads it.
+func dryWatchFile(t *testing.T, body string) func(string) ([]byte, error) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "watch.toml")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return func(string) ([]byte, error) { return os.ReadFile(path) }
+}
+
 func TestDryRunBuildsOptionEodOverWatchList(t *testing.T) {
 	t.Parallel()
 	var ran []string
 	a, _ := dryApp(t, &ran)
-	a.deps.readFile = func(string) ([]byte, error) { return []byte(dryWatchTwoUS), nil }
+	a.deps.readFile = dryWatchFile(t, dryWatchTwoUS)
 	var got []jobs.WatchEntry
 	a.deps.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
 		t.Error("newOptionEod called")
@@ -380,7 +392,7 @@ func TestDryRunRefusesBrokenWatch(t *testing.T) {
 	t.Parallel()
 	var ran []string
 	a, _ := dryApp(t, &ran)
-	a.deps.readFile = func(string) ([]byte, error) { return []byte("[[underlying]\nbroken"), nil }
+	a.deps.readFile = dryWatchFile(t, "[[underlying]\nbroken")
 	a.deps.dialBroker = func(context.Context, string, broker.Options) (broker.Broker, error) {
 		t.Error("dialBroker called")
 		return unreachableBroker{}, nil
