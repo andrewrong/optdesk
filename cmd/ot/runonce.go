@@ -526,12 +526,8 @@ func wireJobs(
 		return err
 	}
 	jobList = append(jobList, snapJob, figJob, calJob, earnJob)
-	acctJob, err := a.accountCapture(ctx, f, extra)
-	if err != nil {
+	if jobList, err = a.withAccountJobs(ctx, f, brk, extra, jobList); err != nil {
 		return err
-	}
-	if acctJob != nil {
-		jobList = append(jobList, acctJob)
 	}
 	candJob, err := a.candidateJob(ctx, cfg, &f, extra)
 	if err != nil {

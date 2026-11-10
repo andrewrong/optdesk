@@ -76,6 +76,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
 	"github.com/andrewrong/optdesk/internal/store/instrument"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/ops"
 	optionledgerstore "github.com/andrewrong/optdesk/internal/store/optionledger"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
@@ -124,6 +125,8 @@ type deps struct {
 	dialAccount             dialAccountFunc
 	openAccount             store.OpenAccountFunc
 	newAccountCapture       newAccountCaptureFunc
+	openMark                mark.OpenFunc
+	newPositionMarks        jobs.NewPositionMarksFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
 	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
@@ -218,6 +221,7 @@ func newDeps() deps {
 	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
+	realMarkDeps(&d) // position_marks
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openOptionLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
 	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
