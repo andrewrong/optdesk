@@ -142,9 +142,9 @@ type viewModel struct {
 	Notes         []string       `json:"notes"`
 	Gaps          []gap          `json:"gaps"`
 	Stale         stale          `json:"stale"`
-	Core          gap            `json:"core"`
-	Diagnosis     gap            `json:"diagnosis"`
-	Questions     gap            `json:"questions"`
+	Core          any            `json:"core"`
+	Diagnosis     any            `json:"diagnosis"`
+	Questions     any            `json:"questions"`
 }
 
 var zoneOwner = time.FixedZone("+08:00", 8*3600)
@@ -153,7 +153,8 @@ var columns = []column{{Text: "Company"}, {Text: "Price line", Numeric: true}, {
 
 // Build returns the page.companies_page.v2 JSON read through cfg. generatedAt is written in the
 // zone of cfg (+08:00 when none). The price line cell of every row is read from the band; the
-// core, diagnosis and questions blocks are gaps until their section functions exist.
+// core, diagnosis and questions blocks are built from the compute functions and are gaps while
+// a reader or function they need is not set.
 func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, error) {
 	if cfg.Today == nil {
 		return nil, fmt.Errorf("companies_page: Config.Today is not set")
@@ -226,10 +227,31 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	if unvalued != "" {
 		vm.Unvalued = &unvalued
 	}
+	if err := cfg.fillBlocks(ctx, &vm, today); err != nil {
+		return nil, err
+	}
 	vm.Header.Title = pageTitle
 	vm.Header.DataDay = string(today)
 	vm.Header.Line = fmt.Sprintf("%s · watching %d companies", string(today)[5:], len(cfg.Subjects))
 	return json.Marshal(vm)
+}
+
+// fillBlocks builds the core, diagnosis and questions blocks; they stay gaps while a reader or
+// function the band needs is not set.
+func (c Config) fillBlocks(ctx context.Context, vm *viewModel, today contracts.Day) error {
+	if !c.bandReady() {
+		return nil
+	}
+	figs, err := c.gather(ctx, today)
+	if err != nil {
+		return err
+	}
+	if vm.Core, err = c.coreBlockOf(ctx, figs, today); err != nil {
+		return err
+	}
+	vm.Diagnosis = c.diagnosisBlockOf(figs)
+	vm.Questions, err = c.questionsBlockOf(ctx, figs, today)
+	return err
 }
 
 // moat is the owner's moat text of a symbol, or the not-entered line.
