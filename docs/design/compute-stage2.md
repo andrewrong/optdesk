@@ -1,0 +1,129 @@
+# Compute stage 2: the option figures the pages show as gaps (HV30, IVP, delta)
+
+Author: the optdesk designer (draft)
+Owner approved: (pending)
+Date: 2026-11-10
+Revision: 1
+
+Source: owner priority of 2026-11-10 ("options and their data first, fast"); `docs/design/alignment-v25.md` Decision 3 item 7 (`compute-stage2`) and its table rows "HV30 / HV(n)", "IV percentile / rank"; `docs/design/option-pages-v22.md` Decisions 1 and 5 ("The pages show 缺 for IVP and HV30 until the compute design gives them a producer"; "Delta from a model value, HV30 and IVP have no producer on main"); `docs/design/market-bars.md` Decision 10 (HV30 step); `docs/GLOSSARY.md` lines 48 and 78-79 (delta, `ivp_v1`). Not in this design, by the owner's answers of 2026-11-09 (`alignment-v25.md`): the scanner, composite scoring, Stooq, the 15 s FX stream and the 15:10 premarket capture.
+
+Read on origin/main at f72b6bc: `internal/compute/figures/{series,ivp,iv30}.go`, `internal/compute/rules/rules.json`, `internal/jobs/computefigures/*.go`, `internal/jobs/optioneod/{select,watch,job.toml}`, `internal/jobs/api.go`, `internal/store/reading/view.go`, `migrations/0013_readings.sql`, `docs/conventions/register.toml`, `docs/contracts/jobs.md`, `docs/design/{jobs-api-slim,ot-wire-split,modules}.md`, `cmd/ot/wire.go`.
+
+Needs the owner: nothing blocks the entries. Two choices are asked at the end (IVP depth, which delta a page shows); neither is an entry's input.
+
+## Goal
+
+After the entries land, the nightly `compute_figures` run stores, for every underlying of the watch list: an HV30 (it already does, when the bars store is wired), an IVP (it already does, once 252 valid IV30 sessions exist, and the option capture now keeps the at-the-money strikes that IV30 needs), and, new, one Black-Scholes delta per captured option contract, as a reading a page can read. Every figure that cannot be computed is stored as missing with a reason code, so a page can say why a value is absent instead of a bare 缺. Nothing here prints on a page: the builders read the stored readings (`docs/design/builders-wave.md`).
+
+## What main holds today
+
+- HV30 is built. `Figures.HistoricalVol` (`internal/compute/figures/series.go:13`) is the sample stdev of the last 30 log returns times the square root of 252; the rule `market.hv30_own` v1 is in `internal/compute/rules/rules.json:2`; the step `runHv30` (`internal/jobs/computefigures/hv.go:21`) reads the winner `trades` closes and stores one reading per underlying. It runs only when the job has a bar reader (`hvOn`, `hv.go:17`); `cmd/ot/wire.go:560` sets it when the bars store opens and logs "HV step left out" otherwise (`wire.go:562`).
+- IVP is built. `IvPercentile` (`internal/compute/figures/ivp.go:48`) is the share of the past 252 valid IV30 sessions at or below today's (`AtOrBelow`, today excluded), `short_history` under 252 (rule `market.ivp_own`, `rules.json:4`: `window` 252, `min_valid` 252). The step `runIvStats` (`steps.go:149`) reads the stored `market.iv30_own` readings of the underlying. So IVP exists only after 252 sessions of ok IV30 readings; there is no bootstrap from IBKR history (GLOSSARY.md:78, an owner rule).
+- IV30 needs the at-the-money strike. `Iv30` takes, per expiry, the strike with both legs and the smallest |call mid - put mid| (`iv30.go:67`, `strikeStar`). The watch capture takes strikes from `0.80 x BuyPrice` to `max(1.05 x BuyPrice, spot)` and, when more than `max_strikes` (24) fall in the range, the 24 nearest the buy price (`internal/jobs/optioneod/watch.go:139`, `select.go:35`, `job.toml:11`). A stock whose spot is far above its buy price and whose strikes are dense (a one-dollar step: strikes 88 to 111 for a buy price of 100 and a spot of 130, `watch_test.go:125`) is captured without a single strike near the spot, so its IV30 is missing and its IVP never starts.
+- Delta has no producer of its own. `obs.option_eod.delta` is IBKR's model delta, null when IBKR gave none (`internal/contracts/gen/records.go:2099`, `docs/contracts/datasets/obs.option_eod.md:37`); `option_data_page` prints a null as the gap "no data" (`internal/pages/option_data_page/format.go`, `cell`).
+- Readings are generic. `readings.reading` has `subject_kind text NOT NULL` with no CHECK (`migrations/0013_readings.sql:16`), so a kind other than `underlying` and `market` needs no migration.
+
+## Decisions
+
+1. HV30 and IVP keep their rules and their code (`hv30_v1`, `ivp_v1`). What this design changes for them is the data under IVP (Decision 8). Their gap definitions, written here once so the builders use the same words: HV30 is missing with `no_input` when there is no close, `short_history` under 31 closes (`observations` = closes minus 1, at most 30), `stale_input` when the newest close is more than 4 calendar days old, `bad_input` when a close is not above zero (`HistoricalVol`, `series.go:13`). IVP is missing with `no_input` when the day has no ok IV30 reading, `short_history` under 252 valid prior sessions (`observations` = the count, 0 to 252), `stale_input` and `bad_input` as the core gives them (`ivWindow`, `ivp.go:12`). A missing figure is stored with `state = missing_input`, its `reason_code` (1 no_input, 2 short_history, 3 stale_input, 4 zero_range, 5 bad_input; `reasonCode`, `steps.go:199`) and never a zero.
+2. Delta is Black-Scholes delta of a European option on an underlying with no dividend yield: with `d1 = (ln(S/K) + (r + sigma^2/2) T) / (sigma sqrt(T))`, a call has delta `N(d1)` and a put `N(d1) - 1`. `N` is `distuv.UnitNormal.CDF` of gonum, already a direct dependency (`go.mod:16`); the formula itself is our own code, because no option-pricing library that is widely used, stable and light on dependencies is known for Go, and these are five lines pinned by textbook values (Decision 7).
+3. The inputs are the stored ones, nothing is fetched. `sigma` is `iv_decimal` of the contract's newest ok row of the day (newest `received_at`, status 1, as `ivInputCounted` picks it, `ivinput.go:65-70`); `S` is `underlying_price` of that same row; `K` and the right come from the contract terms (`OptionTermsReader`); `r` is the newest DGS3MO point not after the day, divided by 100, at most `max_age_days` (4) calendar days old (`rateOf`, `ivinput.go:209`), used as a continuous rate exactly as `Iv30` does. `T` is minutes from the as-of session close to the expiry instant divided by 525,600 (actual over 365, the `minutesPerYear` of `iv30.go:12`); the expiry instant is the close of the expiry session, or its open for an AM-settled contract (`toChain`, `ivinput.go:146-193`). Only the contract's own row is used: no quote of another contract, no IBKR delta, no solved implied volatility.
+4. Storage: the reading `option.delta_own` v1 (convention `bs_delta_v1`, unit `decimal`, scale 6, half-even, `max_age_days` 4 for the rate), `subject_kind = option`, `subject` the instrument id as decimal text, `day` the as-of day. One reading per contract that has a newest ok row of the day, ok or missing; a contract whose newest row is not status 1 gets none (its `option_eod` row already says why). Parameters: `data_day`, `iv`, `spot`, `years`, `rate`; one input, `obs.option_eod` keyed `<instrument id>|<day>`, and one, the rate series. About seven stored rows per reading; at most about 224 readings per underlying per day (28 strikes, two rights, about four expiries in 21 to 45 days). No migration, no contracts change. `store()` (`steps.go:218`) is reused as it is, so a run costs one read and at most one insert per contract; a day-wide batch is left out.
+5. Planning: one key per underlying, `option.delta_own|underlying|<name>`, planned only when the job was built with a delta calculator; without one `Plan` and `Run` are byte for byte as today (the pattern of `PriceBars`, `job.go:170`). `Run` places the step after IV30. `Usable` counts the keys with at least one ok reading; a missing reading of one contract is data, not a failure.
+6. Delta gap definition, one reading per contract: `no_input` (1) when `iv_decimal` is null or not above 0, `underlying_price` is null or not above 0, there is no rate point, or the day has no session row; `stale_input` (3) when the rate point is older than 4 calendar days; `bad_input` (5) when the strike or the minutes are not above 0 (a contract at its expiry), or `iv_decimal` is above 10 (1000 percent) or not finite. Texts the builders print next to the figure name (this design owns the words; the builders own the rendering): HV30 `缺 · 无日线`, `缺 · 日线不足 N/30`, `缺 · 日线过旧`, `缺 · 输入无效`; IVP `缺 · 无今日 IV30`, `缺 · 历史 N/252`, `缺 · IV30 过旧`, `缺 · 输入无效`; delta `缺 · 无 IV 或标的价`, `缺 · 利率过旧`, `缺 · 输入无效`; `N` is the stored `observations` parameter.
+7. Golden values come from outside Go. `testdata/golden.json` holds six cases computed with `math.erf` of Python (not with gonum), and for two of them the textbook figure to 4 places: S 42, K 40, r 10 percent, sigma 20 percent, T 0.5 year, call 0.779131 (Hull, `N(d1) = 0.7791`) and put -0.220869; S 100, K 100, r 5 percent, sigma 20 percent, T 1 year, call 0.636831 (the classic `N(0.35) = 0.6368`) and put -0.363169; S 100, K 90, r 4 percent, sigma 30 percent, T 30/365, call 0.904266 and put -0.095734. The test requires 1e-6 against the computed value and 5e-5 against the textbook one.
+8. Making IVP reachable: the capture keeps, besides the buy-price range, the two strikes below and the two at or above the spot of each expiry (`nearestStrikes(chain.Strikes, price, band, 2)`, the function that already serves the no-buy-price case, `select.go:67`), both rights, deduplicated. That is at most four more strikes per expiry and gives the IV30 its strike pair whenever the chain has strikes within the 10 percent band. It does not shorten the wait: the first IVP of a name comes 252 valid sessions after its first ok IV30 reading, about twelve months. The repository cannot tell when that first reading was stored; the window can read `readings.reading` for `market.iv30_own`. Question 1 below asks whether to shorten it.
+9. Two known differences from IBKR's delta, both stated in the register entry: no dividend yield (for a 2 percent yield, 30 days and an at-the-money put at 30 percent IV the own |delta| is lower by about 0.007), and a European model for American contracts (the early-exercise premium of a put raises its |delta| a little, most for deep in-the-money puts). The own reading never overwrites `obs.option_eod.delta`; which of the two a page shows is the builders' choice (question 2). The dividends stored in `obs.dividend_expectation` are dated amounts, not a yield, and are not read.
+10. No new dependency, no migration, no `contracts/` file: `Contracts: unchanged` in each pull request. No edit of `internal/jobs/api.go` or `internal/compute/api.go` (`jobs-api-slim.md` Decision 1; the compute entry file has a ceiling in `docs/design/ratchet.json` that an agent never raises): the calculator interface and the options are declared in the ordinary files of `internal/jobs/computefigures`, the implementation in the new package `internal/compute/optiondelta`, wired by `cmd/ot` as `cmd/ot` already wires `internal/compute/figures`. Two modules therefore share no new type: the signature is plain floats and a string, so there is no `## Interface` entry.
+
+## Modules
+
+No new row. `internal/compute/optiondelta/**` falls under the compute row, `internal/jobs/computefigures/**` and `internal/jobs/optioneod/**` under jobs, `cmd/ot/wire_computefigures.go` under ot. Entry 1 is a judged two-module entry (compute and docs): the rule table and the register must change in one pull request, because `TestRulesMatchRegister` fails otherwise (precedent: `compute-rules` of `docs/design/compute-figures.md` and entry 11 of `docs/design/market-bars.md`).
+
+| # | issue | module | order |
+|---|---|---|---|
+| 1 | bs-delta | compute, plus docs (judged two-module entry: register and glossary) | first |
+| 2 | atm-strikes | jobs | first |
+| 3 | delta-step | jobs | after 1, 2 |
+| 4 | delta-wire | ot | after 3 |
+
+Entries 2 and 3 share `docs/contracts/jobs.md`; entry 3 is after 2 for that reason. Entry 4 edits files that `docs/design/ot-wire-split.md` (revision 1, not landed at origin/main f72b6bc) creates: it is queued only after the `ot-job-registry` entry of that design (creates `cmd/ot/wire_computefigures.go` and `docs/contracts/ot/jobs/compute_figures.md`) and its `ot-wire-tests-split` entry (creates `cmd/ot/wire_computefigures_test.go`) have landed; between designs that is not an Order line.
+
+## Issues
+
+Every test calls `t.Parallel()`, writes files only under a temporary directory, uses a fake clock, never sleeps, opens no port and touches no live broker or database. Acceptance is checked offline by reading, grep and git; test runs are under "Checked by CI". `BASE` is `git merge-base HEAD origin/main`. Each new source file is under 600 lines.
+
+### 1 bs-delta
+
+Module: compute, plus docs (judged). Size: M.
+Files: `internal/compute/optiondelta/delta.go`, `internal/compute/optiondelta/delta_test.go`, `internal/compute/optiondelta/testdata/golden.json`, `internal/compute/rules/rules.json`, `internal/compute/rules/rules_test.go`, `docs/conventions/register.toml`, `docs/GLOSSARY.md`
+Design: docs/design/compute-stage2.md#Decisions (2, 3, 4, 7, 9)
+Order: first.
+Goal: `optiondelta.Delta(right string, spot, strike, years, rate, vol float64) (float64, error)` (right `C` or `P`; an error for any other right, a spot, strike, years or vol not above 0, or a value that is not finite) with the formula of Decision 2, a type `Calc` with the method `Delta` of the same signature (the value the job receives), the rule `option.delta_own` v1 of Decision 4 with the hash the existing hash test computes for `internal/compute/optiondelta.Delta`, its `[[figure]]` register entry (all 15 keys of the existing entries, `pages = []`, `gap_text` with the Decision 6 reasons, `excludes` naming IBKR's delta, dividends and the American premium, `agreed_on` and `agreed_in` carried by the issue text), and a GLOSSARY bullet "Own delta" next to the line 48 sentence.
+Acceptance:
+1. `grep -c '"id":"option.delta_own"' internal/compute/rules/rules.json` prints 1 and `grep -c '"id":"option.delta_own".*"convention":"bs_delta_v1".*"scale":6.*"max_age_days":4' internal/compute/rules/rules.json` prints 1.
+2. `grep -c 'id = "option.delta_own"' docs/conventions/register.toml` prints 1, `git diff BASE -- docs/conventions/register.toml docs/GLOSSARY.md | grep -c '^-[^-]'` prints 0, `git diff BASE -- docs/conventions/register.toml | grep -c 'internal/compute/optiondelta.Delta'` prints 1 and `git diff BASE -- docs/conventions/register.toml | grep -c 'pending-recompute'` prints 0.
+3. `grep -c '"right"' internal/compute/optiondelta/testdata/golden.json` prints 6 and `grep -c '"textbook"' internal/compute/optiondelta/testdata/golden.json` prints 6 (four numbers, two nulls); the call of S 42, K 40 is `0.779131` in that file (`grep -c '"delta": 0.779131' internal/compute/optiondelta/testdata/golden.json` prints 1).
+4. `grep -c "distuv.UnitNormal" internal/compute/optiondelta/delta.go` prints 1 and `grep -c "math.Erf" internal/compute/optiondelta/delta.go` prints 0; `git diff BASE -- go.mod go.sum | wc -l` prints 0.
+5. `grep -hE "^func (TestDeltaGolden|TestDeltaParity|TestDeltaDomain|TestDeltaMonotoneInSpot)\(" internal/compute/optiondelta/delta_test.go | wc -l` prints 4 (new); `TestDeltaParity` requires call minus put to equal 1 within 1e-12 for every golden case.
+6. `grep -c "option.delta_own" internal/compute/rules/rules_test.go` is at least 1, `git diff BASE -- internal/compute/rules/rules_test.go | grep -c '^-func'` prints 0, `grep -c "option.delta_own" docs/GLOSSARY.md` is at least 1; `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/compute/... -race -count=1` (`TestHashesMatchSource`, `TestRulesMatchRegister`, `TestNoPendingForGoIds`, `TestRegisterEntriesComplete`, the four new tests), ci-go.
+
+### 2 atm-strikes
+
+Module: jobs. Size: S.
+Files: `internal/jobs/optioneod/select.go`, `internal/jobs/optioneod/watch_test.go`, `docs/contracts/jobs.md`
+Design: docs/design/compute-stage2.md#Decisions (8)
+Order: first.
+Goal: for an underlying with a buy price, `selectContracts` (`select.go:21`) keeps the strikes of `rangeStrikes` and also, for every selected expiry, the two strikes below and the two at or above the spot (`nearestStrikes` with the manifest's `strike_band` and a per-side count of 2, a constant in `select.go`), both rights, no strike twice, ordered as before. No manifest key is added, so `job.toml` and the plan hash do not change (`us_hash_test.go` is untouched). Both US and JP watch entries go through `selectContracts` (`run.go:264`), so both get it. `TestJPStockBuyPriceStrikes` (`jp_stock_test.go:199`, spot 3000 equal to the buy price, a 10-yen step, 12 strikes kept) stays valid unchanged, because the four spot strikes 2980 to 3010 are among the 12 nearest the buy price. `docs/contracts/jobs.md` says it in the `NewWithWatch` paragraph and adds a `- v1:` line.
+Acceptance:
+1. `TestMaxStrikesCap` of `watch_test.go` now expects, for a one-dollar step, a buy price of 100 and a spot of 130, the 28 call strikes 88 to 111 and 128 to 131 (two below the spot, the spot and the next one): `grep -c "seq(128, 131, 1)" internal/jobs/optioneod/watch_test.go` prints 1; the test keeps its name (`grep -c "func TestMaxStrikesCap" internal/jobs/optioneod/watch_test.go` prints 1).
+2. `TestStrikeRangeFromBuyPrice` (step 5, spot 130) now expects the 12 strikes 80 to 135, the 11 of the range plus 135 (125 and 130 are already in it): `grep -c "seq(80, 135, 5)" internal/jobs/optioneod/watch_test.go` prints 1 and `grep -c "seq(80, 130, 5)" internal/jobs/optioneod/watch_test.go` prints 0; and `TestNoBuyPriceKeepsBand` is byte for byte unchanged (`git diff BASE -- internal/jobs/optioneod/watch_test.go | grep -c 'TestNoBuyPriceKeepsBand'` prints 0).
+3. `grep -c "nearestStrikes" internal/jobs/optioneod/select.go` is at least 3 (the definition, the old call and the new one); `git diff BASE --stat -- internal/jobs/optioneod/job.toml internal/jobs/optioneod/manifest.go internal/jobs/optioneod/us_hash_test.go internal/jobs/optioneod/jp_stock_test.go | wc -l` prints 0.
+4. `grep -c "two strikes below and the two at or above" docs/contracts/jobs.md` prints 1; `git diff BASE -- docs/contracts/jobs.md | grep -c '^-[^-]'` prints 1 and `git diff BASE -- docs/contracts/jobs.md | grep -c '^+[^+]'` prints 2 (the edited paragraph and the new version line); `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/optioneod -race -count=1` (`TestUSPlanHashPinned` unchanged), ci-go.
+
+### 3 delta-step
+
+Module: jobs. Size: M.
+Files: `internal/jobs/computefigures/delta.go`, `internal/jobs/computefigures/delta_input.go`, `internal/jobs/computefigures/delta_test.go`, `internal/jobs/computefigures/delta_input_test.go`, `internal/jobs/computefigures/job.go`, `internal/jobs/computefigures/job.toml`, `docs/contracts/jobs.md`
+Design: docs/design/compute-stage2.md#Decisions (3, 4, 5, 6, 10)
+Order: after 1, 2.
+Goal: this entry needs the rule of entry 1 and shares `docs/contracts/jobs.md` with entry 2. In `delta.go`, `type DeltaCalc interface { Delta(right string, spot, strike, years, rate, vol float64) (float64, error) }`, `type Option func(*job)`, `WithEase(compute.Ease)`, `WithDelta(DeltaCalc)` and `NewWithOptions(stores, figs, rules, units, ops, clk, opts ...Option)`; `NewWithEase` keeps its signature and calls it. With `WithDelta`, the manifest key `delta = "option.delta_own"` plans the keys of Decision 5 and `Run` stores, for each planned underlying, the readings of Decisions 3, 4 and 6 (in `delta_input.go` the reads of the newest ok row per contract, its terms and the rate, and the minutes to the expiry instant). Without it nothing changes.
+Acceptance:
+1. `grep -hE "^func (TestDeltaStoredPerContract|TestDeltaMissingNoIv|TestDeltaMissingNoSpot|TestDeltaMissingNoRate|TestDeltaMissingStaleRate|TestDeltaExpiredIsBadInput|TestDeltaSkipsStatusNotOk|TestDeltaUsesNewestRow|TestDeltaKeyPerUnderlying|TestNilDeltaPlansLikeBefore)\(" internal/jobs/computefigures/delta_test.go internal/jobs/computefigures/delta_input_test.go | wc -l` prints 10 (new). `TestDeltaStoredPerContract` feeds one call row (spot 42, strike 40, `iv_decimal` 0.20), DGS3MO 10.0 percent, and a session table whose expiry session closes 262,800 minutes (half of 525,600) after the as-of close, with the real `optiondelta.Calc`, and requires the stored value text `0.779131`, written in the test as a literal, and the parameters `years` 0.5 and `rate` 0.1.
+2. `grep -c 'delta = "option.delta_own"' internal/jobs/computefigures/job.toml` prints 1; `git diff BASE --stat -- internal/jobs/api.go internal/compute/api.go | wc -l` prints 0.
+3. `grep -l "internal/compute/optiondelta" internal/jobs/computefigures/*.go | grep -vc _test.go` prints 0 (the job names the interface; `cmd/ot` and the tests name the implementation); `grep -c "func NewWithEase" internal/jobs/computefigures/job.go` prints 1.
+4. `grep -c "option.delta_own" docs/contracts/jobs.md` is at least 2 (the `compute_figures` paragraph and one `- v1:` line); `wc -l internal/jobs/computefigures/delta.go internal/jobs/computefigures/delta_input.go | awk '$2 != "total" && $1 >= 600' | wc -l` prints 0.
+5. `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./internal/jobs/... -race -count=1` (the existing `computefigures` tests unchanged), `go run ./scripts/arch --check`, ci-go.
+
+### 4 delta-wire
+
+Module: ot. Size: S.
+Files: `cmd/ot/wire_computefigures.go`, `cmd/ot/wire_computefigures_test.go`, `docs/contracts/ot/jobs/compute_figures.md`
+Design: docs/design/compute-stage2.md#Decisions (5, 10)
+Order: after 3.
+Goal: this entry is also queued only after the `ot-job-registry` and `ot-wire-tests-split` entries of `docs/design/ot-wire-split.md` (revision 1) have landed, which create its three files. The `compute_figures` family builds the job with `computefigures.WithDelta(optiondelta.Calc{})` next to its ease option, so `ot run-once` and the scheduler store `option.delta_own` readings; the job document names the key and the reading.
+Acceptance:
+1. `grep -c "WithDelta" cmd/ot/wire_computefigures.go` prints 1 and `grep -c "optiondelta" cmd/ot/wire_computefigures.go` is at least 2 (import and use).
+2. `grep -c "option.delta_own" docs/contracts/ot/jobs/compute_figures.md` is at least 1; the order line and the `## Version` heading of that document are still present (`grep -c "^Order\|^## Version" docs/contracts/ot/jobs/compute_figures.md` prints 2).
+3. `grep -hE "^func (TestComputeFiguresPlansDelta|TestComputeFiguresDeltaStored)\(" cmd/ot/wire_computefigures_test.go | wc -l` prints 2 (new): the first builds the family against fakes and finds a key `option.delta_own|underlying|<name>` in `Plan`, the second runs the job on one fake chain row and finds one `option.delta_own` reading with subject kind `option`.
+4. `git diff --name-only BASE` lists no path outside the Files line.
+Checked by CI: `go test ./cmd/ot -race -count=1`, `go run ./scripts/arch --check`, ci-go.
+
+## Left out
+
+- A reader for all per-contract deltas of a chain in one query. `WinnerReadings` (`internal/store/api.go`, `ReadingViewReader`) takes one subject, and `internal/store/api.go` is at 800 lines; the builders design (`docs/design/builders-wave.md`) that prints delta will add a day-wide reader in a new store package when it knows the shape it needs.
+- The text on the pages (`vol_line`, `iv_line`, the delta cell): the builders print the Decision 6 texts from the stored readings; no page, schema or web file is edited here.
+- The sentence of `contracts/datasets/readings.reading.r1.json` ("Kind of the subject: underlying or market") now misses `option`. It is a description in a generated document across languages, a contracts change of its own; not done here, `Contracts: unchanged`.
+- Gamma, theta and vega of our own, an own implied-volatility solver and a dividend yield: IBKR's stored Greeks stay as captured; dividends need a yield design (`obs.dividend_expectation` holds dated amounts).
+- The use of own delta by `option_candidates` (it reads the stored IBKR delta, `docs/design/option-candidates.md` Decision 4): unchanged until question 2 is answered.
+- A shorter IVP history, IV rank changes, and the candidates and structures figures of `alignment-v25.md` item 7: other designs (the candidates job is `docs/design/option-candidates.md`).
+- Backfill of delta for past days and an IV30 history from IBKR: not designed; the owner ruled out an IBKR bootstrap (GLOSSARY.md:78).
+- Scanner, composite scoring, Stooq, the 15 s FX stream, the 15:10 premarket capture: dropped by the owner 2026-11-09.
+
+## Questions for the owner
+
+1. IVP depth. (a) Keep `ivp_v1` at 252 valid sessions: the first IVP of a name comes about twelve months after its first ok IV30 reading. (b) A rule `market.ivp_own` v2 with `min_valid` 60 and `window` 252: an IVP from about three months, with the count stored so a page can print "IVP 72 · 63/252"; it changes the GLOSSARY entry you flagged on 2026-11-08 and is one small follow-up entry.
+2. Which delta a page shows. (a) Our own only where IBKR's is null. (b) Our own always, IBKR's kept for reconciliation as with HV30 (GLOSSARY.md:61-64). Not needed by any entry; the builders ask it first.
