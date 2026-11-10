@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -62,7 +63,7 @@ func withFundamentalsFakes(d *deps) *fundamentalsRec {
 			v computefigures.ValuationDeps, _ clock.Clock) (contracts.Job, error) {
 			rec.val = v
 			rec.figures++
-			return namedJob{id: "compute_figures"}, nil
+			return &figJob{}, nil
 		},
 		fn: real.fn,
 	}}
@@ -123,5 +124,73 @@ func TestFundamentalsJobBuiltWhenSet(t *testing.T) {
 	}
 	if rec.closed != 1 {
 		t.Errorf("fact store closed %d times, want once", rec.closed)
+	}
+}
+
+// figJob is a scheduled job that plans the given subject keys and records the keys it is run with.
+type figJob struct {
+	keys []string
+	ran  []string
+}
+
+func (j *figJob) ID() string { return "compute_figures" }
+func (j *figJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	out := make([]contracts.ExpectedKey, 0, len(j.keys))
+	for _, k := range j.keys {
+		out = append(out, contracts.ExpectedKey{DatasetID: "figures", SubjectKey: k})
+	}
+	return out, strings.Join(j.keys, ","), nil
+}
+func (j *figJob) Run(_ context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	for _, k := range keys {
+		j.ran = append(j.ran, k.SubjectKey)
+	}
+	return contracts.JobResult{Returned: len(keys), Usable: len(keys)}
+}
+func (*figJob) Schedule() (string, string, string, time.Duration) { return "cal", "close", "UTC", 0 }
+func (*figJob) RunBound() time.Duration                           { return time.Minute }
+func (*figJob) RestartSensitive() bool                            { return false }
+func (*figJob) Postcondition(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+func TestComputeFiguresKeepsEaseWithFundamentals(t *testing.T) {
+	t.Parallel()
+	const easeKey = "macro.ease|market|WALCL"
+	d := newDeps()
+	easeJob := &figJob{keys: []string{"ratio|underlying|AAA", easeKey}}
+	valJob := &figJob{keys: []string{"ratio|underlying|AAA", "valuation.buy_band|underlying|AAA"}}
+	d.newComputeFigures = func(computefigures.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps,
+		compute.Ease, clock.Clock) (contracts.Job, error) {
+		return easeJob, nil
+	}
+	d.ext = map[string]any{extFundamentals: fundamentalsDeps{
+		newFigures: func(computefigures.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps,
+			computefigures.ValuationDeps, clock.Clock) (contracts.Job, error) {
+			return valJob, nil
+		},
+	}}
+	fd := fundamentalsDeps{newFigures: d.ext[extFundamentals].(fundamentalsDeps).newFigures}
+	job, err := (jobFactory{d: d, fd: fd, facts: fakeFactStore{&fundamentalsRec{}}}).computeFigures()
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, err := job.Plan(context.Background(), "2026-11-04")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, k := range keys {
+		got = append(got, k.SubjectKey)
+	}
+	want := []string{easeKey, "ratio|underlying|AAA", "valuation.buy_band|underlying|AAA"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("plan %v, want %v", got, want)
+	}
+	if res := job.Run(context.Background(), "2026-11-04", keys); res.Returned != 3 || res.Err != nil {
+		t.Fatalf("result %+v", res)
+	}
+	if !slices.Equal(easeJob.ran, []string{easeKey}) || !slices.Equal(valJob.ran, want[1:]) {
+		t.Fatalf("ease job ran %v, valuation job ran %v", easeJob.ran, valJob.ran)
 	}
 }

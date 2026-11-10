@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"math/big"
 	"sort"
 	"strconv"
 	"sync"
@@ -63,17 +64,12 @@ func (r *symbolIDs) load(ctx context.Context) {
 		return
 	}
 	isStock := map[string]bool{}
-	for i := 0; i < len(list); i += nameBatch {
-		end := min(i+nameBatch, len(list))
-		ids := make([]int64, 0, end-i)
-		for _, e := range list[i:end] {
-			ids = append(ids, e.UnderlyingID)
-		}
+	underlying := make([]int64, 0, len(list))
+	for _, e := range list {
+		underlying = append(underlying, e.UnderlyingID)
+	}
+	r.err = inBatches(underlying, func(ids []int64) error {
 		got, err := r.names.InstrumentNames(ctx, ids)
-		if err != nil {
-			r.err = err
-			return
-		}
 		for _, n := range got {
 			stock := n.Type == "stock"
 			if _, seen := r.ids[n.Name]; seen && (isStock[n.Name] || !stock) {
@@ -81,7 +77,18 @@ func (r *symbolIDs) load(ctx context.Context) {
 			}
 			r.ids[n.Name], isStock[n.Name] = n.InstrumentID, stock
 		}
+		return err
+	})
+}
+
+// inBatches calls fn with consecutive slices of items of at most nameBatch, and stops at the first error.
+func inBatches[T any](items []T, fn func([]T) error) error {
+	for i := 0; i < len(items); i += nameBatch {
+		if err := fn(items[i:min(i+nameBatch, len(items))]); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // ID returns the instrument id of symbol; ok is false for a symbol with no match.
@@ -157,27 +164,31 @@ func offersOf(res *symbolIDs, eod store.OptionEodReader, terms store.OptionTerms
 				optIDs = append(optIDs, int64(r.InstrumentID))
 			}
 		}
-		var strikes []float64
-		have := map[float64]bool{}
-		for i := 0; i < len(optIDs); i += nameBatch {
-			got, err := terms.OptionTerms(ctx, optIDs[i:min(i+nameBatch, len(optIDs))])
-			if err != nil {
-				return nil, err
-			}
+		// A strike stays the text the terms give: it is deduplicated as text and ordered as a decimal.
+		have := map[string]*big.Rat{}
+		err = inBatches(optIDs, func(ids []int64) error {
+			got, err := terms.OptionTerms(ctx, ids)
 			for _, t := range got {
-				k, err := strconv.ParseFloat(t.Strike, 64)
-				if t.Right != "P" || err != nil || string(t.ExpirationDate) <= string(day) || have[k] {
-					continue
+				k, ok := new(big.Rat).SetString(t.Strike)
+				if t.Right == "P" && ok && string(t.ExpirationDate) > string(day) {
+					have[t.Strike] = k
 				}
-				have[k] = true
-				strikes = append(strikes, k)
 			}
+			return err
+		})
+		if err != nil {
+			return nil, err
 		}
-		sort.Float64s(strikes)
-		out := make([]string, 0, len(strikes))
-		for _, k := range strikes {
-			out = append(out, strconv.FormatFloat(k, 'f', -1, 64))
+		out := make([]string, 0, len(have))
+		for k := range have {
+			out = append(out, k)
 		}
+		sort.Slice(out, func(i, j int) bool {
+			if c := have[out[i]].Cmp(have[out[j]]); c != 0 {
+				return c < 0
+			}
+			return out[i] < out[j]
+		})
 		return out, nil
 	}
 }

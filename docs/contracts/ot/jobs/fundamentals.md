@@ -21,7 +21,7 @@ The job fetches the SEC company facts of the `cik:` entries of Market `US` in `w
 
 ## Notes
 
-With the fact store open, `compute_figures` is built through `computefigures.NewWithValuation` (`ValuationDeps`: the fact store, the watch list as `Entries`, and the compute functions of `internal/compute/valuation`); that constructor has no ease figure. Its wiring order is 160, after `compute_figures` (70): the figures job reads the facts the job wrote on an earlier run.
+With the fact store open, `compute_figures` is built through `computefigures.NewWithValuation` (`ValuationDeps`: the fact store, the watch list as `Entries`, and the compute functions of `internal/compute/valuation`); that constructor has no ease figure, so `ot` joins the job it builds with the ease job `compute_figures` has without the fact store: the plan is the union of the two and a run hands each key to the job that planned it, so the ease reading `macro.ease|market|WALCL` is still stored. Its wiring order is 160, after `compute_figures` (70): the figures job reads the facts the job wrote on an earlier run.
 
 ## Version
 
