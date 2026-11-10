@@ -41,9 +41,11 @@ function rowsOf(spec: ChartSpec): Row[] {
       if (point?.color !== undefined) row[`${key}_color`] = point.color
     })
     // The band is one range `[low, high]` per category; a missing end leaves the band out there.
-    const low = spec.band?.low[at]?.value
-    const high = spec.band?.high[at]?.value
-    row.band = low != null && high != null ? [low, high] : null
+    if (spec.band) {
+      const low = spec.band.low[at]?.value
+      const high = spec.band.high[at]?.value
+      row.band = low != null && high != null ? [low, high] : null
+    }
     return row
   })
 }
@@ -84,7 +86,7 @@ export function Chart({
     tick: { fontSize: 12, fill: 'var(--muted-foreground)' },
   } as const
   const unit = spec.unit ?? ''
-  const yAxis = { tickCount: 5, tickFormatter: (tick: string | number) => `${tick}${unit}` }
+  const yAxis = { tickFormatter: (tick: string | number) => `${tick}${unit}` }
   const common = {
     data: rows,
     margin: { left: 8, right: spec.kind === 'line' ? 56 : 8, top: 8, bottom: 8 },
@@ -93,9 +95,9 @@ export function Chart({
     <CartesianGrid key="grid" vertical={false} stroke="var(--border)" strokeWidth={1} />,
     <XAxis key="x" dataKey="category" {...axis} interval="preserveStartEnd" minTickGap={24} />,
     spec.kind === 'line' ? (
-      <YAxis key="y" {...axis} {...yAxis} domain={['auto', 'auto']} />
+      <YAxis key="y" {...axis} {...yAxis} tickCount={5} domain={['auto', 'auto']} />
     ) : (
-      <YAxis key="y" {...axis} {...yAxis} />
+      <YAxis key="y" {...axis} {...yAxis} tickCount={5} />
     ),
     <ChartTooltip key="tip" content={<ChartTooltipContent />} />,
     spec.legend ? (
