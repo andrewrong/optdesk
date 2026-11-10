@@ -258,3 +258,28 @@ func TestDialRefuses(t *testing.T) {
 		t.Fatalf("text holds the path: %q", err.Error())
 	}
 }
+
+func TestResolveCarriesErrorCodeAndText(t *testing.T) {
+	t.Parallel()
+	f := &fake{resolve: func(context.Context, *pb.ResolveContractRequest) (*pb.ResolveContractResponse, error) {
+		return &pb.ResolveContractResponse{
+			Status:    pb.ResolveStatus_RESOLVE_STATUS_NOT_LISTED,
+			ErrorCode: 200, ErrorText: "no security definition",
+		}, nil
+	}}
+	b := serve(t, f, broker.Options{})
+	r, err := b.ResolveContract(context.Background(), opt(0))
+	if err != nil || r.Listed || r.ErrorCode != 200 || r.ErrorText != "no security definition" {
+		t.Fatalf("not listed with error: %+v, %v", r, err)
+	}
+	f.resolve = func(context.Context, *pb.ResolveContractRequest) (*pb.ResolveContractResponse, error) {
+		return &pb.ResolveContractResponse{
+			Status:   pb.ResolveStatus_RESOLVE_STATUS_FOUND,
+			Contract: &pb.ContractSpec{Symbol: "SPY", ConId: 7}, ErrorCode: 2104, ErrorText: "farm ok",
+		}, nil
+	}
+	r, err = b.ResolveContract(context.Background(), opt(0))
+	if err != nil || !r.Listed || r.ErrorCode != 2104 || r.ErrorText != "farm ok" {
+		t.Fatalf("found with error: %+v, %v", r, err)
+	}
+}

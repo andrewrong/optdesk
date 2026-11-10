@@ -120,9 +120,9 @@ func (c *client) ResolveContract(ctx context.Context, k broker.Contract) (broker
 	}
 	switch resp.GetStatus() {
 	case pb.ResolveStatus_RESOLVE_STATUS_FOUND:
-		return broker.Resolved{Listed: true, Contract: fromSpec(resp.GetContract())}, nil
+		return broker.Resolved{Listed: true, Contract: fromSpec(resp.GetContract()), ErrorCode: int(resp.GetErrorCode()), ErrorText: resp.GetErrorText()}, nil
 	case pb.ResolveStatus_RESOLVE_STATUS_NOT_LISTED:
-		return broker.Resolved{Listed: false, Contract: k}, nil
+		return broker.Resolved{Listed: false, Contract: k, ErrorCode: int(resp.GetErrorCode()), ErrorText: resp.GetErrorText()}, nil
 	case pb.ResolveStatus_RESOLVE_STATUS_UNSPECIFIED:
 		return broker.Resolved{}, permanent("resolve contract: unspecified status")
 	default:
