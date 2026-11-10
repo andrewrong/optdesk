@@ -315,3 +315,20 @@ type NewDividendCaptureFunc func(
 // The option_candidates job (internal/jobs/optioncandidates.WithSettingsVersion) calls it once per run with the
 // run's instant and writes the value on every row of the run; with no function or on an error the rows carry nil.
 type SettingsVersionFunc func(ctx context.Context, at time.Time) (int64, error)
+
+// NewFundamentalsFunc is the constructor of the fundamentals job (internal/jobs/fundamentals.New): the SEC facts
+// of the cik: entries of Market US of the watch list, fetched through one FactSource.Fetch per run and written
+// through one FactWriter.InsertFacts call. The job id is fundamentals; docs/design/valuation.md#fundamentals-job.
+type NewFundamentalsFunc func(sources.FactSource, store.FactWriter, []WatchEntry, clock.Clock) (contracts.Job, error)
+
+// FundamentalsSkip names one entry of Market US the fundamentals job does not fetch. Subject is the Issuer text
+// or, when it is empty, Contract.Symbol; Reason is no_cik (an empty or non-cik: issuer) or edinet_not_fetched.
+type FundamentalsSkip struct {
+	Subject, Reason string
+}
+
+// FundamentalsSkips is implemented by the job that fundamentals.New returns: the skipped entries in
+// watch-list order.
+type FundamentalsSkips interface {
+	Skipped() []FundamentalsSkip
+}
