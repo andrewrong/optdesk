@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
@@ -82,3 +83,13 @@ func (a *app) ownerEditSecrets() (key []byte, dsn, reason string, err error) {
 
 // reasonNoBarDSN is the line logged when bars_refresh and fx_refresh (and the HV step of compute_figures) are left out.
 const reasonNoBarDSN = bar.DSNEnvBar + " is not set"
+
+// envSECUserAgent names the line of .env that holds the SEC user agent; a third-party name carries no OT_ prefix.
+const envSECUserAgent = "SEC_" +
+	"USER_AGENT"
+
+// reasonNoSECUserAgent is the line logged when the fundamentals job is left out for want of a user agent.
+const reasonNoSECUserAgent = envSECUserAgent + " is not set"
+
+// reasonNoFactDSN is the line logged when the fundamentals job and the valuation step are left out.
+const reasonNoFactDSN = store.DSNEnvFundamental + " is not set"

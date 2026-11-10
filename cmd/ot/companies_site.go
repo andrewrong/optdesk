@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -50,9 +50,33 @@ func companiesSubjects(a *app) ([]companies_page.Subject, error) {
 	return out, nil
 }
 
-// buildCompaniesAt builds companies_page for day from the view reader read (nil gives a gap). Only the price
-// line is filled, with the hand price; no compute function is set, so no row has a band.
-func buildCompaniesAt(ctx context.Context, a *app, read store.ReadingViewReader, day contracts.Day, now time.Time) ([]byte, error) {
+// siteFactsKey is the key of the fact reader that the site opener puts in siteReaders.ext.
+const siteFactsKey = "companies_facts"
+
+func init() { siteOpeners[siteFactsKey] = openCompaniesFacts }
+
+// openCompaniesFacts opens the fact store on the pages line (role ot_ro_pages, reads the view only) and gives it as
+// the reader of the page. Without the ext deps it gives no reader and goes on.
+func openCompaniesFacts(ctx context.Context, a *app, track func(io.Closer, error) bool) (any, bool) {
+	fd, ok := fundamentalsOf(a.deps)
+	if !ok || fd.openFacts == nil {
+		return nil, true
+	}
+	env, err := a.envFile()
+	if err != nil {
+		return nil, false
+	}
+	s, err := fd.openFacts(ctx, env[pagesDSNName])
+	if !track(s, err) {
+		return nil, false
+	}
+	return store.FactReader(s), true
+}
+
+// buildCompaniesAt builds companies_page for day from the readers rd (a nil reader gives a gap). With the compute
+// functions in the deps the inputs that entry 24 left nil are set by newCompaniesPage; without them only the
+// price line is filled, with the hand price, and no row has a band.
+func buildCompaniesAt(ctx context.Context, a *app, rd siteReaders, day contracts.Day, now time.Time) ([]byte, error) {
 	subjects, err := companiesSubjects(a)
 	if err != nil {
 		return nil, err
@@ -60,8 +84,14 @@ func buildCompaniesAt(ctx context.Context, a *app, read store.ReadingViewReader,
 	cfg := companies_page.Config{
 		Zone: a.profile.Zone, Today: func() contracts.Day { return day }, Subjects: subjects,
 	}
-	if read != nil {
-		cfg.Read = read
+	if rd.view != nil {
+		cfg.Read = rd.view
+	}
+	if fd, ok := fundamentalsOf(a.deps); ok {
+		facts, _ := siteReaderOf[store.FactReader](rd, siteFactsKey)
+		cfg = newCompaniesPage(cfg, companiesInputs{
+			Facts: facts, Series: rd.series, Catalog: rd.catalog, Names: rd.names, Eod: rd.eod, Terms: rd.terms, Quotes: rd.quotes,
+		}, fd.fn)
 	}
 	return companies_page.Build(ctx, cfg, now)
 }
@@ -72,32 +102,37 @@ func buildCompanies(ctx context.Context, a *app, clk clock.Clock, dayFlag string
 	if err != nil {
 		return nil, err
 	}
-	return buildCompaniesAt(ctx, a, rd.view, day, clk.Now().UTC())
+	return buildCompaniesAt(ctx, a, rd, day, clk.Now().UTC())
 }
 
-// companiesPageNamed returns companies_page for ot page and a close function: the reading view opened once with
-// the pages line of .env, no reader with a missing line, or the demo view with the demo profile.
+// companiesPageNamed returns companies_page for ot page and a close function: the site readers opened once with the
+// pages line of .env, no reader with a missing line, or the demo view with the demo profile. The series reader that
+// ot page opens, when given, replaces the one of the site readers.
 func companiesPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
-	var read store.ReadingViewReader
+	var rd siteReaders
 	closeFn := func() {}
 	switch a.profile.Name {
 	case "demo":
-		read = demoView{}
+		rd = siteReaders{view: demoView{}}
 	default:
 		env, err := a.envFile()
 		if err != nil {
 			return pages.Page{}, nil, err
 		}
-		if dsn := env[pagesDSNName]; dsn != "" {
-			v, err := a.deps.openReadingView(ctx, dsn)
+		if env[pagesDSNName] != "" {
+			r, closeAll, err := openSiteReaders(ctx, a)
 			if err != nil {
-				return pages.Page{}, nil, fmt.Errorf("open reading view with %s failed", pagesDSNName)
+				return pages.Page{}, nil, err
 			}
-			read, closeFn = v, func() { _ = v.Close() }
+			rd, closeFn = r, closeAll
 		}
 	}
-	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
-		return buildCompaniesAt(ctx, a, read, day, now)
+	build := func(ctx context.Context, ser store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
+		r := rd
+		if ser != nil {
+			r.series = ser
+		}
+		return buildCompaniesAt(ctx, a, r, day, now)
 	}
 	return pages.Page{Meta: pages.Meta{Name: companiesName}, Build: build}, closeFn, nil
 }
