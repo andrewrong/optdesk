@@ -23,7 +23,8 @@ func NewBackfillerWithRule(l store.OpsLedger, cal clock.Calendar, clk clock.Cloc
 }
 
 // Backfill runs the keys of a day at or behind the cursor that are missing or no_value.
-// It never calls SetCursor, PutExpected or PutWindow.
+// It never calls SetCursor. A key that today's plan has and the stored plan lacks is an added key:
+// it joins the stored plan (PutExpected, and PutWindow for its dataset) before the runs.
 func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets []string) (res runner.BackfillResult, err error) {
 	res = runner.BackfillResult{Day: day}
 	ctx, release, err := r.holdLease(ctx)
@@ -48,9 +49,14 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 		res.Refused = runner.RefusedNoPlan
 		return res, nil
 	}
-	keys, p, err := r.backfillPlan(ctx, day, stored, datasets)
+	keys, p, added, err := r.backfillPlan(ctx, day, stored, datasets)
 	if err != nil {
 		return res, err
+	}
+	if len(added) > 0 {
+		if err := r.storeAdded(ctx, day, p, stored, added); err != nil {
+			return res, err
+		}
 	}
 
 	present, byKey, err := r.dayState(ctx, day)
@@ -110,25 +116,64 @@ func (r *reconciler) dayState(
 	return present, byKey, nil
 }
 
-// backfillPlan selects the stored keys and reads the key-to-job map; every key is
-// validated before any key runs.
+// backfillPlan selects the keys to run from the stored keys and the added keys, reads the
+// key-to-job map and returns the added keys that were selected; every key is validated before
+// any key runs or anything is written.
 func (r *reconciler) backfillPlan(
 	ctx context.Context, day contracts.Day, stored []contracts.ExpectedKey, datasets []string,
-) ([]contracts.ExpectedKey, plan, error) {
-	keys, err := selectKeys(day, stored, datasets)
-	if err != nil {
-		return nil, plan{}, err
-	}
+) ([]contracts.ExpectedKey, plan, []contracts.ExpectedKey, error) {
 	p, err := r.plan(ctx, day, nil)
 	if err != nil {
-		return nil, plan{}, err
+		return nil, plan{}, nil, err
+	}
+	have := map[contracts.ExpectedKey]bool{}
+	for _, k := range stored {
+		have[k] = true
+	}
+	want := map[string]bool{}
+	for _, id := range datasets {
+		want[id] = true
+	}
+	var added []contracts.ExpectedKey
+	for _, k := range p.keys {
+		if !have[k] && (len(datasets) == 0 || want[k.DatasetID]) {
+			have[k] = true
+			added = append(added, k)
+		}
+	}
+	if len(datasets) == 0 {
+		datasets = nil
+	}
+	keys, err := selectKeys(day, append(append([]contracts.ExpectedKey{}, stored...), added...), datasets)
+	if err != nil {
+		return nil, plan{}, nil, err
 	}
 	for _, k := range keys {
 		if _, ok := p.job[k]; !ok {
-			return nil, plan{}, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
+			return nil, plan{}, nil, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
 		}
 	}
-	return keys, p, nil
+	return keys, p, added, nil
+}
+
+// storeAdded writes the stored plan of day with the added keys and the window of each added dataset.
+func (r *reconciler) storeAdded(
+	ctx context.Context, day contracts.Day, p plan, stored, added []contracts.ExpectedKey,
+) error {
+	all := append(append([]contracts.ExpectedKey{}, stored...), added...)
+	if err := r.ledger.PutExpected(ctx, day, p.hash, all); err != nil {
+		return err
+	}
+	prev, err := time.Parse("2006-01-02", string(day))
+	if err != nil {
+		return fmt.Errorf("backfill %s: %w", day, err)
+	}
+	_, sessions, err := r.walk(ctx, contracts.Day(prev.AddDate(0, 0, -1).Format("2006-01-02")), day)
+	if err != nil {
+		return err
+	}
+	_, err = r.putWindows(ctx, plan{keys: added, job: p.job}, sessions[day])
+	return err
 }
 
 // selectKeys filters the stored keys by dataset ids; an id with no stored key is an error.

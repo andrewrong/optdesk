@@ -294,3 +294,42 @@ func TestBackfillLiveRunning(t *testing.T) {
 		t.Fatalf("closed run %+v", r)
 	}
 }
+
+func TestBackfillAddsKeysMissingFromStoredPlan(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	l := bfSetup(bfDay, keyA)
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA, keyB}}
+	res, err := newBackfiller(l, afterClose(), job).Backfill(ctx, bfDay, nil)
+	if err != nil || res.Refused != "" {
+		t.Fatalf("res %+v err %v", res, err)
+	}
+	if len(res.Filled) != 2 || len(job.calls) != 2 {
+		t.Fatalf("filled %v calls %v", res.Filled, job.calls)
+	}
+	if l.expecteds.Load() != 1 || len(l.expected[bfDay]) != 2 || l.expected[bfDay][0] != keyA || l.expected[bfDay][1] != keyB {
+		t.Fatalf("puts %d plan %v", l.expecteds.Load(), l.expected[bfDay])
+	}
+	if l.windowsPut.Load() != 1 {
+		t.Fatalf("windows put %d", l.windowsPut.Load())
+	}
+	if _, ok := l.windows[keyB.DatasetID+"|"+string(bfDay)]; !ok {
+		t.Fatalf("no window for %s", keyB.DatasetID)
+	}
+	if l.cursors.Load() != 0 {
+		t.Fatalf("cursor set %d times", l.cursors.Load())
+	}
+}
+
+func TestBackfillKeepsRefusalWithoutPlan(t *testing.T) {
+	t.Parallel()
+	l := bfSetup(bfDay)
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA, keyB}}
+	res, err := newBackfiller(l, afterClose(), job).Backfill(context.Background(), bfDay, nil)
+	if err != nil || res.Refused != runner.RefusedNoPlan {
+		t.Fatalf("refused %q err %v", res.Refused, err)
+	}
+	if l.expecteds.Load() != 0 || len(job.calls) != 0 {
+		t.Fatalf("puts %d calls %v", l.expecteds.Load(), job.calls)
+	}
+}
