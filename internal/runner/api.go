@@ -37,11 +37,16 @@ type NewWithRuleFunc func(store.OpsLedger, clock.Calendar, clock.Clock, []contra
 // keys of the day that are not yet present, for the datasets given (nil means every
 // key of the day).
 //
+// There is no cursor test: a day with a stored plan is filled whether it is behind or
+// ahead of the cursor. A key whose window has not closed is not run and is listed in
+// InWindow. The lease is taken under an owner of its own, never the owner of Reconcile,
+// so a Reconcile and a Backfill exclude each other.
+//
 // A refusal is data: the day is refused when BackfillResult.Refused is set, the error
 // is nil and every other field is empty. An error is kept for failures (lease, ledger,
-// unknown dataset, key without a job). A backfill never moves the cursor, and never
-// writes a plan or a window. A key that is already present is not run: it is listed
-// in AlreadyPresent.
+// unknown dataset, key without a job). A backfill writes only the missing windows of a
+// stored day and the keys its plan lacks, and never moves the cursor. A key that is
+// already present is not run: it is listed in AlreadyPresent.
 type Backfiller interface {
 	Backfill(ctx context.Context, day contracts.Day, datasets []string) (BackfillResult, error)
 }
@@ -60,17 +65,21 @@ type BackfillResult struct {
 	Absent []contracts.ExpectedKey
 	// Missing keys have no usable answer and are left unmarked (a job error).
 	Missing []contracts.ExpectedKey
+	// InWindow keys were missing or no_value but were not run: their window had not
+	// closed.
+	InWindow []contracts.ExpectedKey
 }
 
 // BackfillRefusal names why a day was refused before any write. The empty value
 // means the day was not refused. A refusal comes with a nil error, the cursor is not
-// moved and nothing is run.
+// moved and nothing is run. A backfill has no cursor test, so RefusedAheadOfCursor is
+// declared and never returned; it is removed by backfill-drop-refusal.
 type BackfillRefusal string
 
 const (
-	// RefusedAheadOfCursor: the cursor is empty or the day is after the cursor day.
+	// RefusedAheadOfCursor is declared and never returned: Backfill has no cursor test.
 	RefusedAheadOfCursor BackfillRefusal = "ahead_of_cursor"
-	// RefusedNoPlan: the day is at or before the cursor but its stored plan is empty.
+	// RefusedNoPlan: the stored plan of the day is empty.
 	RefusedNoPlan BackfillRefusal = "no_plan"
 )
 
@@ -152,6 +161,16 @@ type Prober interface {
 type GapSyncer interface {
 	Sync(ctx context.Context, day contracts.Day, disabled map[string]string) error
 }
+
+// KeyGapSyncer writes and clears only the key gaps of one day, and leaves the job-level
+// gaps alone. It is a separate interface so that the implementations of GapSyncer keep
+// compiling.
+type KeyGapSyncer interface {
+	SyncKeys(ctx context.Context, day contracts.Day) error
+}
+
+// NewKeyGapSyncerFunc is the constructor of the key gap syncer (internal/runner/sched.NewKeyGapSyncer).
+type NewKeyGapSyncerFunc func(ops store.OpsLedger, sched store.SchedulerLedger, clk clockwork.Clock) KeyGapSyncer
 
 // ExecIdentityFunc returns the identity of the running executable (size, mtime and
 // inode as one string).
