@@ -388,3 +388,51 @@ func TestJPPlanHashUnchanged(t *testing.T) {
 		t.Fatal("a plan with stock keys must hash differently")
 	}
 }
+
+func incompleteWatch() []jobs.WatchEntry {
+	noCon := jpWatch("JP", "3333", "STK", "", 0)
+	noCur := jpWatch("JP", "2222", "STK", "", 910002)
+	noCur.Contract.Currency = ""
+	return []jobs.WatchEntry{noCon, noCur, jpWatch("JP", "1111", "STK", "", 910001)}
+}
+
+func TestJPWatchIncompleteEntry(t *testing.T) {
+	t.Parallel()
+	r := newStockRig(t, incompleteWatch(), stockChainOf("1111", []string{"20261210"}, []string{"3000"}))
+	if got, want := subjects(t, r.job), []string{"N225", "1111", "2222", "3333"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("plan %v, want %v", got, want)
+	}
+	for code, text := range map[string]string{
+		"3333": "option_eod_jp 3333: no con_id in watch entry",
+		"2222": "option_eod_jp 2222: no currency in watch entry",
+	} {
+		res := r.run(jpDay, contracts.ExpectedKey{DatasetID: "obs.option_eod_jp", SubjectKey: code})
+		if kindOf(res) != contracts.NoValue || res.Err.Error() != text {
+			t.Fatalf("%s: result %+v", code, res)
+		}
+	}
+	if len(r.b.snaps) != 0 || r.b.resolves != 0 || r.b.optionCalls != 0 || len(r.w.all()) != 0 {
+		t.Fatalf("broker called: snaps %d resolves %d", len(r.b.snaps), r.b.resolves)
+	}
+}
+
+func TestJPWatchIncompleteCompleteRuns(t *testing.T) {
+	t.Parallel()
+	r := newStockRig(t, incompleteWatch(), stockChainOf("1111", []string{"20261210"}, []string{"2990", "3000"}))
+	res := r.run(jpDay, stockKey1)
+	if res.Err != nil || res.Returned != 4 {
+		t.Fatalf("result %+v", res)
+	}
+	if len(r.w.all()) == 0 {
+		t.Fatal("no rows written")
+	}
+}
+
+func TestJPWatchIncompleteUSStillRejected(t *testing.T) {
+	t.Parallel()
+	_, err := NewWithWatch(newBroker(), &fakeResolver{}, &fakeWriter{},
+		[]jobs.WatchEntry{jpWatch("US", "AAPL", "STK", "", 0)}, clockwork.NewFakeClock())
+	if err == nil || !strings.Contains(err.Error(), "an underlying needs symbol, con_id and currency") {
+		t.Fatalf("err %v", err)
+	}
+}

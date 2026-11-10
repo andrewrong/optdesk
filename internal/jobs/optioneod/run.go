@@ -183,6 +183,14 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	if !ok {
 		return newErr(contracts.Permanent, "unknown underlying %q", k.SubjectKey)
 	}
+	if r.j.m.isStock(u) {
+		if u.ConID == 0 {
+			return r.j.noValue("no con_id in watch entry", u)
+		}
+		if u.Currency == "" {
+			return r.j.noValue("no currency in watch entry", u)
+		}
+	}
 	price, terr := r.price(ctx, u)
 	if terr != nil {
 		return terr
