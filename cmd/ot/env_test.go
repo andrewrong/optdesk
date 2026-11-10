@@ -156,10 +156,11 @@ var leakRows = map[string][]string{
 
 // leakExcluded names the commands that have no row, each with its reason.
 var leakExcluded = map[string]string{
-	"serve":          "listens on a port; its DSN path is seriesReader (the page row) and TestServeOnBuildError500 covers its HTTP error path",
-	"version":        "takes no DSN",
-	"help":           "takes no DSN",
-	"account-import": "needs an input file in DIR, which a static row cannot give; its open error is withheld and TestAccountImportOpenErrorWithheld covers it",
+	"serve":           "listens on a port; its DSN path is seriesReader (the page row) and TestServeOnBuildError500 covers its HTTP error path",
+	"version":         "takes no DSN",
+	"help":            "takes no DSN",
+	"compare-figures": "needs four input files, which a static row cannot give; TestCompareFiguresWithholdsDSN covers its open error",
+	"account-import":  "needs an input file in DIR, which a static row cannot give; its open error is withheld and TestAccountImportOpenErrorWithheld covers it",
 }
 
 func TestNoCommandLeaksDSN(t *testing.T) {
