@@ -1,6 +1,6 @@
 // Package mark declares the store of position marks (account.position_mark r1):
 // one stored mark per open position of each account capture. It holds
-// declarations only; the implementation is internal/store/markpg.
+// declarations only; the implementation is the package markpg under internal/store.
 package mark
 
 import (
@@ -58,5 +58,5 @@ type Store interface {
 	Close() error
 }
 
-// OpenFunc opens the store from a DSN (internal/store/markpg.Open).
+// OpenFunc opens the store from a DSN (markpg.Open, package markpg under internal/store).
 type OpenFunc func(ctx context.Context, dsn string) (Store, error)
