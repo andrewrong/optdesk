@@ -34,3 +34,21 @@ func TestServeFlags(t *testing.T) {
 		t.Fatalf("bad day: err %v", err)
 	}
 }
+
+func TestOwnerEditRefusesNonLoopbackListen(t *testing.T) {
+	t.Parallel()
+	for _, addr := range []string{"192.0.2.1:8080", ":8080", "localhost:8080", "[2001:db8::1]:8080", "nonsense"} {
+		a, _ := testApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+		a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+			t.Error("a store was opened")
+			return nil, nil
+		}
+		err := runServe(a, []string{"--owner-edit", "--addr", addr})
+		if err == nil || !strings.Contains(err.Error(), "--owner-edit") {
+			t.Fatalf("%s: err %v", addr, err)
+		}
+	}
+	if !loopbackListen("127.0.0.1:0") || !loopbackListen("[::1]:8080") {
+		t.Fatal("a loopback address was refused")
+	}
+}

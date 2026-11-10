@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -62,6 +63,9 @@ type siteReaders struct {
 
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
+
+	// edit is the POST route /owner-settings (nil: the route is absent, 404).
+	edit *ownerEdit
 
 	// the notices page: the account and earnings readers (nil with no opener in deps, which the page shows as
 	// the gap no_reader). The positions pages keep their own account field below.
@@ -224,6 +228,10 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			serveHealth(a, clk, rd, w, r)
 			return
 		}
+		if strings.TrimPrefix(r.URL.Path, "/") == ownerPostRoute && rd.edit != nil {
+			postOwnerSettings(a, clk, dayFlag, rd, newHandler, w, r)
+			return
+		}
 		pagesH.ServeHTTP(w, r)
 	})
 }
@@ -235,7 +243,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		var id int64
 		var build func(context.Context) ([]byte, error)
 		isAsset := false
-		build = extraPageBuilder(path, a, clk, dayFlag, rd)
+		build = extraPageBuilder(path, r.URL.Query(), a, clk, dayFlag, rd)
 		switch {
 		case path == "":
 		case path == "macro":
@@ -300,7 +308,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 
 // extraPageBuilder is the builder of the routes options/candidates, options/tracking, options/notices and settings, nil for any
 // other path.
-func extraPageBuilder(path string, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
+func extraPageBuilder(path string, q url.Values, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
 	if path == siteCandidatesRoute {
 		return func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
 	}
@@ -311,7 +319,9 @@ func extraPageBuilder(path string, a *app, clk clock.Clock, dayFlag string, rd s
 		return func(ctx context.Context) ([]byte, error) { return buildNotices(ctx, a, clk, dayFlag, rd) }
 	}
 	if path == siteSettingsRoute {
-		return func(ctx context.Context) ([]byte, error) { return buildSettings(ctx, a, clk, dayFlag, rd) }
+		return func(ctx context.Context) ([]byte, error) {
+			return buildSettings(ctx, a, clk, dayFlag, rd, savedNotice(q))
+		}
 	}
 	return nil
 }
