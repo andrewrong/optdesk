@@ -649,7 +649,7 @@ func withBarFakes(d *deps) *barRec {
 	return rec
 }
 
-const barEnv = "OT_PG_DSN_BAR=bar-dsn\n"
+var barEnv = bar.DSNEnvBar + "=bar-dsn\n"
 
 func barRunOnce(t *testing.T, env string) (*rig, *barRec) {
 	t.Helper()
