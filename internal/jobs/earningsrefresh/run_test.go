@@ -259,3 +259,63 @@ func TestSecondRunAfterErrorReturnsPermanent(t *testing.T) {
 		t.Fatalf("calls %d rows %+v", src.calls, st.rows)
 	}
 }
+
+func TestPostconditionRowPerKey(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: "AAPL", ReportDate: "2026-11-09"}}}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "AAPL"), us("cik:2", "NVDA"))
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	pc, ok := j.(interface {
+		Postcondition(ctx context.Context, day, datasetID, subjectKey string) (bool, error)
+	})
+	if !ok {
+		t.Fatal("job has no Postcondition")
+	}
+	ctx := context.Background()
+	for _, c := range []struct {
+		day, key string
+		want     bool
+	}{
+		{"2026-11-09", "cik:1", true},
+		{"2026-11-09", "cik:2", true},
+		{"2026-11-09", "cik:3", false},
+		{"2026-11-10", "cik:1", false},
+	} {
+		got, err := pc.Postcondition(ctx, c.day, datasetID, c.key)
+		if err != nil || got != c.want {
+			t.Fatalf("%s %s: got %v, %v; want %v", c.day, c.key, got, err, c.want)
+		}
+	}
+	if got, err := pc.Postcondition(ctx, "2026-11-09", "obs.other", "cik:1"); err == nil || got {
+		t.Fatalf("other dataset: got %v, %v", got, err)
+	}
+}
+
+func TestSameSymbolShareClass(t *testing.T) {
+	t.Parallel()
+	for _, p := range [][2]string{{"BRK B", "BRK.B"}, {"BRK-B", "BRK.B"}, {"BRK B", "BRK-B"}, {"brk b", "BRK.B"}} {
+		if !sameSymbol(p[0], p[1]) {
+			t.Fatalf("%q and %q should match", p[0], p[1])
+		}
+	}
+	if sameSymbol("BRK B", "BRKA") {
+		t.Fatal("BRK B must differ from BRKA")
+	}
+}
+
+func TestListedMatchesSpacedWatchSymbol(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: "BRK.B", ReportDate: "2026-11-09"}}}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:9", "BRK B"))
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	r := byIssuer(st, "cik:9")
+	if len(r) != 1 || r[0].Status != "listed" {
+		t.Fatalf("row %+v", r)
+	}
+}

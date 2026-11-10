@@ -147,10 +147,25 @@ func date(s string) (*types.SerializableDate, error) {
 	return &types.SerializableDate{Time: t}, nil
 }
 
-// sameSymbol matches a vendor symbol with a watch symbol; share classes (BRK.B, BRK-B) are one company.
+// sameSymbol matches a vendor symbol with a watch symbol; share classes (BRK.B, BRK-B, BRK B) are one company.
 func sameSymbol(a, b string) bool {
-	norm := func(s string) string { return strings.ToUpper(strings.ReplaceAll(s, "-", ".")) }
+	norm := func(s string) string {
+		return strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(s, "-", "."), " ", "."))
+	}
 	return norm(a) == norm(b)
+}
+
+// Postcondition is true when a row exists for the day and the subject key; Run writes the rows of every entry
+// on the first key's run, so a later key finds its row already stored.
+func (j *job) Postcondition(ctx context.Context, day, datasetID, subjectKey string) (bool, error) {
+	if datasetID != "obs.earnings_date" {
+		return false, fmt.Errorf("earningsrefresh: unknown dataset %q", datasetID)
+	}
+	rows, err := j.r.EarningsDates(ctx, subjectKey, contracts.Day(day), contracts.Day(day))
+	if err != nil {
+		return false, fmt.Errorf("earningsrefresh: earnings dates: %w", err)
+	}
+	return len(rows) > 0, nil
 }
 
 // readDay reads the rows of day: the row of each entry, the markets that have a vendor row and whether a row
