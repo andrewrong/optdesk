@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 //go:embed job.toml
@@ -54,6 +56,7 @@ type job struct {
 	r        store.EarningsDateReader
 	entries  []jobs.WatchEntry
 	clk      clock.Clock
+	tr       symbol.Translator
 }
 
 type typedError struct {
@@ -82,10 +85,22 @@ var vendor = map[string]contracts.EarningsDate{
 	"JP": {Market: "JP", Source: "jquants"},
 }
 
+var _ jobs.NewEarningsRefreshSymbolsFunc = NewWithSymbols
+
 // New builds the earnings_refresh job from the embedded job.toml. srcs holds one source per market (US, JP).
+// It matches symbols by sameSymbol, as NewWithSymbols does with a nil translator.
 func New(
 	srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, r store.EarningsDateReader,
 	entries []jobs.WatchEntry, clk clock.Clock,
+) (contracts.Job, error) {
+	return NewWithSymbols(srcs, w, r, entries, clk, nil)
+}
+
+// NewWithSymbols is New with a symbol.Translator: an entry matches a listing when both give the same
+// ToVendor(symbol, symbol.AlphaVantage). A nil tr falls back to sameSymbol.
+func NewWithSymbols(
+	srcs map[string]sources.EarningsSource, w store.EarningsDateWriter, r store.EarningsDateReader,
+	entries []jobs.WatchEntry, clk clock.Clock, tr symbol.Translator,
 ) (contracts.Job, error) {
 	if w == nil || r == nil || clk == nil {
 		return nil, errors.New("earningsrefresh: writer, reader and clock are required")
@@ -109,7 +124,7 @@ func New(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk}, nil
+	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, tr: tr}, nil
 }
 
 // ID is the job id of the manifest.
@@ -248,7 +263,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 					row.ErrorCode = ce.ErrorCode()
 				}
 			} else {
-				row = listed(row, e, listings, string(day))
+				row = listed(row, e, listings, string(day), j.tr)
 			}
 			rows = append(rows, row)
 		}
@@ -279,11 +294,27 @@ func (j *job) write(ctx context.Context, rows []contracts.EarningsDate) contract
 }
 
 // listed fills row with the earliest listing of the entry on or after day, else status absent.
-func listed(row contracts.EarningsDate, e jobs.WatchEntry, listings []sources.EarningsListing, day string) contracts.EarningsDate {
+func listed(row contracts.EarningsDate, e jobs.WatchEntry, listings []sources.EarningsListing, day string, tr symbol.Translator) contracts.EarningsDate {
+	var want string
+	if tr != nil {
+		var err error
+		if want, err = tr.ToVendor(e.Contract.Symbol, symbol.AlphaVantage); err != nil {
+			slog.Warn("earningsrefresh: entry symbol not translated", "symbol", e.Contract.Symbol, "error", err.Error())
+			row.Status = "absent"
+			return row
+		}
+	}
 	var best *sources.EarningsListing
 	for i := range listings {
 		l := &listings[i]
-		if l.ReportDate == "" || string(l.ReportDate) < day || !sameSymbol(l.Symbol, e.Contract.Symbol) {
+		if l.ReportDate == "" || string(l.ReportDate) < day {
+			continue
+		}
+		if tr == nil {
+			if !sameSymbol(l.Symbol, e.Contract.Symbol) {
+				continue
+			}
+		} else if got, err := tr.ToVendor(l.Symbol, symbol.AlphaVantage); err != nil || got != want {
 			continue
 		}
 		if best == nil || l.ReportDate < best.ReportDate {

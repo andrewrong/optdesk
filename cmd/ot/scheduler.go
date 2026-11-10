@@ -157,7 +157,7 @@ func runScheduler(
 		rec, _ := d.newReconciler(w.ledger, sl, w.cal, fw, jobs, runner.WindowRule{}, kr)
 		return rec
 	}
-	p := &prober{w: w, hasKey: cfg.fredKey != ""}
+	p := &prober{w: w, log: a.log, hasKey: cfg.fredKey != ""}
 	rec := newSwapReconciler(enabled, build, candidateProbe(w, p.probe), a.log)
 	nf, err := newNotifier(a, ledgerGaps{sl}, sender, fw, true)
 	if err != nil {
@@ -267,6 +267,7 @@ func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job,
 		}
 		j, err := w.factory.optionCandidates()
 		if err != nil {
+			logBuildFailed(w.factory.log, id, err)
 			return nil, reasonBuildJob
 		}
 		return j, ""
