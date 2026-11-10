@@ -18,7 +18,9 @@ type strikeValue struct {
 }
 
 // selectContracts picks the pairs to collect from one chain. With max_dte set the expirations are those with DTE
-// in min_dte..max_dte, and a symbol with a BuyPrice takes its strikes from rangeStrikes (watch.go) and, per expiry, the two strikes below and the two at or above the spot (strike_band applies). Otherwise: the nearest maxExpiries expirations on or after
+// in min_dte..max_dte, and a symbol with a BuyPrice takes its strikes from rangeStrikes (watch.go)
+// and, per expiry, the two strikes below and the two at or above the spot (strike_band applies). Otherwise: the nearest
+// maxExpiries expirations on or after
 // day (YYYY-MM-DD), and of the strikes those inside price*(1-band) to price*(1+band), at most perSide below the
 // price and at most perSide at or above it, nearest first; both rights. Strikes compare by value and are sent on as
 // the text the chain gave. The result is ordered by expiry, strike and right (C before P).
