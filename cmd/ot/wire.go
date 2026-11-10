@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -30,14 +32,17 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	"github.com/andrewrong/optdesk/internal/compute/settingsform"
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
+	"github.com/andrewrong/optdesk/internal/jobs/barsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/dividendcapture"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
+	"github.com/andrewrong/optdesk/internal/jobs/fxrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
@@ -72,6 +77,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/account"
 	"github.com/andrewrong/optdesk/internal/store/alert"
+	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/barpg"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
@@ -191,6 +198,11 @@ type deps struct {
 	loadFlexFile            sources.LoadFlexFileFunc
 	newFlexSource           sources.NewFlexFunc
 	importOptionTrader      jobs.ImportOptionTraderFunc
+	// bars_refresh and fx_refresh: the bar store, the two constructors and the history client.
+	openBar        bar.OpenBarFunc
+	newBarsRefresh jobs.NewBarsRefreshFunc
+	newFxRefresh   jobs.NewFxRefreshFunc
+	newHistory     broker.NewHistoryFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
 	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
@@ -225,6 +237,7 @@ func newDeps() deps {
 	d.newSettingsForm = settingsform.New
 	d.openDividend, d.newDividendCapture = eventstore.OpenDividend, dividendcapture.New
 	d.openOwnerSet = ownersetpg.Open
+	d.openBar, d.newBarsRefresh, d.newFxRefresh, d.newHistory = openBarStore, barsrefresh.New, fxrefresh.New, grpcbroker.DialHistory
 	d.openOptionLedgerRO = openOptionLedgerStore
 	d.settingsPage, d.reportPageBlocks = settings_page.NewPage, report_page.NewPage
 	return d
@@ -312,6 +325,15 @@ func newBaseDeps() deps {
 		openEarningsDates:       eventstore.OpenEarningsDate,
 		readFile:                os.ReadFile,
 	}
+}
+
+// openBarStore is barpg.Open as the bar.OpenBarFunc; a failed open is a nil interface, not a typed nil.
+func openBarStore(ctx context.Context, dsn string) (bar.BarStore, error) {
+	s, err := barpg.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // newMacroPage builds the page macro_page in zone; the run id is a label inside the page JSON only.
@@ -432,4 +454,140 @@ func newReportPage(market, slot string, zone *time.Location, risks report_page.R
 func newRiskBlock(ctx context.Context, rules compute.AlertRules, eval compute.EvaluateAlertsFunc, read compute.ReadingFunc,
 	today reportDay, at time.Time) ([]byte, error) {
 	return risks_block.Build(ctx, risks_block.Input{Rules: rules, Evaluate: eval, Read: read, Today: today, GeneratedAt: at})
+}
+
+// barsOff is the reason bars_refresh, fx_refresh and the HV step are left out for want of their line, or "" when set.
+// It names the line, never a value.
+func (c runOnceConfig) barsOff() string {
+	if c.barDSN == "" {
+		return reasonNoBarDSN
+	}
+	return ""
+}
+
+// noBarStore stands in for the bar store when OT_PG_DSN_BAR is empty: the jobs are left out, so it is never called.
+type noBarStore struct{}
+
+func (noBarStore) InsertPriceBars(context.Context, []contracts.PriceBar) (int, error) {
+	return 0, errors.New(reasonNoBarDSN)
+}
+
+func (noBarStore) PriceBars(context.Context, int64, string, contracts.Day, contracts.Day) ([]contracts.PriceBar, error) {
+	return nil, errors.New(reasonNoBarDSN)
+}
+
+func (noBarStore) InsertFxRates(context.Context, []contracts.FxRate) (int, error) {
+	return 0, errors.New(reasonNoBarDSN)
+}
+
+func (noBarStore) FxRates(context.Context, string, contracts.Day, contracts.Day) ([]contracts.FxRate, error) {
+	return nil, errors.New(reasonNoBarDSN)
+}
+
+func (noBarStore) LatestFxRate(context.Context, string, contracts.Day) (contracts.FxRate, bool, error) {
+	return contracts.FxRate{}, false, errors.New(reasonNoBarDSN)
+}
+
+func (noBarStore) Close() error { return nil }
+
+// unreachableHistory stands in for the history client when the broker is down: every call answers retryable.
+type unreachableHistory struct{}
+
+func (unreachableHistory) Bars(context.Context, broker.BarQuery) ([]broker.Bar, error) {
+	return nil, brokerDownError{}
+}
+
+func (unreachableHistory) Close() error { return nil }
+
+// barsRefresh builds bars_refresh over the broker, the history client, the instrument store opened for option_eod,
+// the bar store and the watch list.
+func (f jobFactory) barsRefresh(b broker.Broker, h broker.HistoryClient) (contracts.Job, error) {
+	j, err := f.d.newBarsRefresh(b, h, f.inst, f.bars, f.bars, f.watch, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build bars_refresh job failed: %w", err)
+	}
+	return j, nil
+}
+
+// fxRefresh builds fx_refresh over the broker, the history client and the bar store.
+func (f jobFactory) fxRefresh(b broker.Broker, h broker.HistoryClient) (contracts.Job, error) {
+	j, err := f.d.newFxRefresh(b, h, f.bars, f.bars, f.clk)
+	if err != nil {
+		return nil, fmt.Errorf("build fx_refresh job failed: %w", err)
+	}
+	return j, nil
+}
+
+// barJobs builds bars_refresh and fx_refresh beside option_eod and opens the bar reader of the HV step. It is empty for
+// a deps without the constructors. Without OT_PG_DSN_BAR the jobs hold a stand-in store, with the broker down at start
+// (or a failed history dial) a stand-in history client; reason is then not empty and names the line or the broker,
+// the caller leaves the jobs out and the HV step is not given a reader. Nothing else is touched. What it opens goes
+// to extra. No error holds a DSN or a path.
+func (a *app) barJobs(
+	ctx context.Context, cfg runOnceConfig, f *jobFactory, brk broker.Broker, brokerUp bool, extra *closerSet,
+) (js []contracts.Job, reason string, err error) {
+	if !cfg.barsWired {
+		return nil, "", nil
+	}
+	d := f.d
+	f.bars, f.hist = noBarStore{}, unreachableHistory{}
+	reason = cfg.barsOff()
+	if reason == "" {
+		s, err := d.openBar(ctx, cfg.barDSN)
+		if err != nil {
+			return nil, "", fmt.Errorf("open bar store with %s failed", bar.DSNEnvBar)
+		}
+		extra.addCloser(s)
+		f.bars = s
+		reason = reasonBrokerDown
+		if brokerUp {
+			if h, err := d.newHistory(ctx, cfg.socketPath, broker.Options{}); err == nil {
+				extra.addCloser(h)
+				f.hist, reason = h, ""
+			}
+		}
+	}
+	if reason == "" {
+		rd, err := d.openBar(ctx, cfg.pagesDSN)
+		if err != nil {
+			return nil, "", fmt.Errorf("open bar reader with %s failed", store.DSNEnvPages)
+		}
+		extra.addCloser(rd)
+		f.compute.PriceBars = rd
+	} else {
+		a.log.Warn("HV step left out", "component", "ot", "step", "market.hv30_own", "status", reason)
+	}
+	bj, err := f.barsRefresh(brk, f.hist)
+	if err != nil {
+		return nil, "", err
+	}
+	fj, err := f.fxRefresh(brk, f.hist)
+	if err != nil {
+		return nil, "", err
+	}
+	return []contracts.Job{bj, fj}, reason, nil
+}
+
+// redialers return the funcs the probe of ot scheduler uses to dial the broker and the history client anew; what
+// they open is closed through extra when withWiring returns.
+func redialers(a *app, cfg runOnceConfig, extra *closerSet) (
+	func(context.Context) (broker.Broker, error), func(context.Context) (broker.HistoryClient, error),
+) {
+	dial := func(ctx context.Context) (broker.Broker, error) {
+		b, err := a.deps.dialBroker(ctx, cfg.socketPath, broker.Options{})
+		if err != nil {
+			return nil, err
+		}
+		extra.add(b)
+		return b, nil
+	}
+	dialHistory := func(ctx context.Context) (broker.HistoryClient, error) {
+		h, err := a.deps.newHistory(ctx, cfg.socketPath, broker.Options{})
+		if err != nil {
+			return nil, err
+		}
+		extra.addCloser(h)
+		return h, nil
+	}
+	return dial, dialHistory
 }
