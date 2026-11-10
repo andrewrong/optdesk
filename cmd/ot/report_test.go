@@ -269,3 +269,78 @@ func TestReportDemoOpensNoStore(t *testing.T) {
 		t.Fatalf("site: %d state %s", rec.Code, st)
 	}
 }
+
+// reportBlockStates runs ot page for the market and slot and returns the state and the gap reasons of the
+// actions, account_moves and market_watch blocks.
+func reportBlockStates(t *testing.T, a *app, market string) map[string]string {
+	t.Helper()
+	var out bytes.Buffer
+	a.stdout = &out
+	if err := runPage(a, []string{"--name", "report_page", "--market", market, "--slot", "close", "--day", "2026-11-06"}); err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Blocks map[string]struct {
+			State string `json:"state"`
+			Gaps  []struct {
+				Reason string `json:"reason"`
+			} `json:"gaps"`
+		} `json:"blocks"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &p); err != nil {
+		t.Fatalf("%v: %q", err, out.String())
+	}
+	got := map[string]string{}
+	for _, k := range []string{"actions", "account_moves", "market_watch"} {
+		b := p.Blocks[k]
+		reasons := make([]string, 0, len(b.Gaps))
+		for _, g := range b.Gaps {
+			reasons = append(reasons, g.Reason)
+		}
+		got[k] = b.State + ":" + strings.Join(reasons, ",")
+	}
+	return got
+}
+
+func TestReportUsFillsThreeBlocks(t *testing.T) {
+	t.Parallel()
+	a := reportApp(t, "")
+	a.profile.Name = "demo"
+	got := reportBlockStates(t, a, "us")
+	for k, v := range got {
+		if strings.Contains(v, "not_built") {
+			t.Errorf("%s is not built: %s", k, v)
+		}
+	}
+	if !strings.Contains(got["actions"], "no_reader") || !strings.Contains(got["account_moves"], "no_reader") {
+		t.Fatalf("actions and account_moves lack the session reader and the ledger: %v", got)
+	}
+	if strings.HasPrefix(got["market_watch"], "gap:") {
+		t.Fatalf("market_watch is not read from the series reader: %v", got)
+	}
+}
+
+func TestReportNilReadersKeepGaps(t *testing.T) {
+	t.Parallel()
+	a := reportApp(t, "OT_PG_DSN_PAGES=pages-dsn\n")
+	a.profile.Name = "real"
+	a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) { return &fakeView{}, nil }
+	got := reportBlockStates(t, a, "us")
+	for k, v := range got {
+		if v != "gap:no_reader" {
+			t.Errorf("%s = %q, want gap:no_reader", k, v)
+		}
+	}
+}
+
+func TestReportJpKeepsJpSliceMissing(t *testing.T) {
+	t.Parallel()
+	a := reportApp(t, "")
+	a.profile.Name = "demo"
+	got := reportBlockStates(t, a, "jp")
+	for k, v := range got {
+		if v != "gap:jp_slice_missing" {
+			t.Errorf("%s = %q, want gap:jp_slice_missing", k, v)
+		}
+	}
+}

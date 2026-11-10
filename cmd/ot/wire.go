@@ -123,7 +123,7 @@ type deps struct {
 	newAccountCapture       newAccountCaptureFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
-	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
+	reportPage              func(cfg report_page.Config) pages.Page
 	alertRules              compute.DefaultAlertRulesFunc
 	evaluateAlerts          compute.EvaluateAlertsFunc
 	riskBlock               riskBlockFunc
@@ -414,9 +414,9 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 // newAssets returns the handler of /assets/* of the web bundle; the one place wire.go calls embed.Assets.
 func newAssets() http.Handler { return embed.Assets() }
 
-// newReportPage builds the page report_page of one market and slot in zone; risks gives its risks block.
-func newReportPage(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page {
-	return report_page.NewPage(report_page.Config{Market: market, Slot: slot, Zone: zone, Risks: risks})
+// newReportPage builds the page report_page of the market, slot, zone and block sources of cfg.
+func newReportPage(cfg report_page.Config) pages.Page {
+	return report_page.NewPage(cfg)
 }
 
 // newRiskBlock is risks_block.Build over the rules, the evaluation and the winner reader.
