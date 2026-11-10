@@ -1,0 +1,127 @@
+package option_tracking_page
+
+import (
+	"encoding/json"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/andrewrong/optdesk/internal/compute/trackapi"
+)
+
+func ids(rows []row) []string {
+	var out []string
+	for _, r := range rows {
+		out = append(out, r.ID)
+	}
+	return out
+}
+
+func colIDs(t *table) []string {
+	var out []string
+	for _, c := range t.Columns {
+		out = append(out, c.ID)
+	}
+	return out
+}
+
+func TestOrderKept(t *testing.T) {
+	t.Parallel()
+	res := okResult()
+	res.Open = []opt{sampleOpen("b"), sampleOpen("a"), sampleOpen("c")}
+	res.Recent = []opt{sampleClosed("z"), sampleClosed("y")}
+	res.Recon = []trackapi.TrackRecon{{Underlying: "ZZ", Code: "not_in_flex"}, {Underlying: "AA", Code: "not_in_account"}}
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main")).Accounts[0]
+	if got := ids(a.Open.Rows); !reflect.DeepEqual(got, []string{"pos-b", "pos-a", "pos-c"}) {
+		t.Fatalf("open = %v", got)
+	}
+	if got := ids(a.Recent.Rows); !reflect.DeepEqual(got, []string{"pos-z", "pos-y"}) {
+		t.Fatalf("recent = %v", got)
+	}
+	if got := ids(a.Recon.Rows); !reflect.DeepEqual(got, []string{"chk-not_in_flex-ZZ---", "chk-not_in_account-AA---"}) {
+		t.Fatalf("recon = %v", got)
+	}
+}
+
+func TestOpenColumns(t *testing.T) {
+	t.Parallel()
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")).Accounts[0]
+	want := []string{"company", "contract", "qty", "dte", "moneyness", "spot", "mid", "premium", "kept", "kept_percent",
+		"delta", "iv", "results", "ex", "guard"}
+	if got := colIDs(a.Open); !reflect.DeepEqual(got, want) {
+		t.Fatalf("columns = %v", got)
+	}
+	for _, id := range want {
+		if _, ok := a.Open.Rows[0].Cells[id]; !ok {
+			t.Errorf("row has no cell %s", id)
+		}
+	}
+}
+
+func TestRecentColumns(t *testing.T) {
+	t.Parallel()
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")).Accounts[0]
+	want := []string{"company", "contract", "qty", "status", "closed_day", "premium", "commissions", "realized"}
+	if got := colIDs(a.Recent); !reflect.DeepEqual(got, want) {
+		t.Fatalf("columns = %v", got)
+	}
+	if c := cellMap(t, a.Recent.Rows[0], "closed_day"); c["text"] != "2026-11-03" {
+		t.Fatalf("closed_day = %v", c)
+	}
+}
+
+func TestReconColumns(t *testing.T) {
+	t.Parallel()
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")).Accounts[0]
+	want := []string{"company", "contract", "qty", "code", "note"}
+	if got := colIDs(a.Recon); !reflect.DeepEqual(got, want) {
+		t.Fatalf("columns = %v", got)
+	}
+	if c := cellMap(t, a.Recon.Rows[0], "contract"); c["text"] != "P 300 2026-12-18" {
+		t.Fatalf("contract = %v", c)
+	}
+}
+
+func TestNoTotalsRow(t *testing.T) {
+	t.Parallel()
+	res := okResult()
+	res.Open = []opt{sampleOpen("a"), sampleOpen("b")}
+	res.Open[0].PremiumIncome, res.Open[1].PremiumIncome = "100", "50"
+	res.Recent = nil
+	a := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main")).Accounts[0]
+	if len(a.Open.Rows) != 2 {
+		t.Fatalf("%d rows", len(a.Open.Rows))
+	}
+	for _, r := range a.Open.Rows {
+		if !strings.HasPrefix(r.ID, "pos-") {
+			t.Errorf("row id %s", r.ID)
+		}
+		for id, c := range r.Cells {
+			if m, ok := c.(map[string]any); ok && m["text"] == "150" {
+				t.Errorf("cell %s is 150", id)
+			}
+		}
+	}
+}
+
+func TestNoMarginNoCash(t *testing.T) {
+	t.Parallel()
+	raw := strings.ToLower(string(buildRaw(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main"))))
+	for _, w := range []string{"margin", "cushion", "保证金", "assignment cash", "接盘"} {
+		if strings.Contains(raw, w) {
+			t.Errorf("output holds %q", w)
+		}
+	}
+	var vm viewModel
+	if err := json.Unmarshal([]byte(raw), &vm); err != nil {
+		t.Fatal(err)
+	}
+	a := vm.Accounts[0]
+	for _, tb := range []*table{a.Open, a.Recent, a.Recon} {
+		for _, id := range colIDs(tb) {
+			if strings.Contains(id, "cash") {
+				t.Errorf("column %s", id)
+			}
+		}
+	}
+}

@@ -3,7 +3,6 @@ package option_tracking_page
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute"
@@ -39,10 +38,4 @@ func NewPage(c Config) pages.Page {
 			return Build(ctx, c, r, day, at)
 		},
 	}
-}
-
-// Build is the pages.Builder shape; r is unused and at is generated_at in UTC.
-// The body is not written yet (option-tracking-page-builder).
-func Build(ctx context.Context, c Config, r store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
-	return nil, errors.New("option_tracking_page: not built")
 }
