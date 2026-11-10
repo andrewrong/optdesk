@@ -314,3 +314,24 @@ func TestMeta(t *testing.T) {
 		t.Fatalf("meta = %+v", p.Meta)
 	}
 }
+
+func TestOldCaptureIsStaleInput(t *testing.T) {
+	t.Parallel()
+	c := defaultConfig()
+	old := stk("AAA", 1, "100", "USD")
+	c.Account = fakeAccount{rows: map[string][]store.Position{"2026-11-02": {old}}} // 6 sessions before day
+	m, _ := build(t, c, "main")
+	if g := block(m, "delta")["gap"].(map[string]any); g["reason"] != "stale_input" {
+		t.Fatalf("gap = %v, want stale_input", g)
+	}
+}
+
+func TestStructureWithoutExpiryIsNoted(t *testing.T) {
+	t.Parallel()
+	s := structure("AAA", "USD", "", "-1", "1")
+	s.Legs = nil
+	m, _ := build(t, okConfig(compute.StructureResult{Structures: []compute.Structure{s}}, stk("AAA", 1, "100", "USD")), "main")
+	if len(m["notes"].([]any)) != 1 {
+		t.Fatalf("notes = %v", m["notes"])
+	}
+}

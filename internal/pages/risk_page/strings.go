@@ -39,6 +39,8 @@ const (
 	textVegaGap    = "部分 Vega 无法计算"
 	textForeign    = "有非美元的期权结构，未计入"
 	textOtherKinds = "有未识别的期权结构，未计入风险"
+	textStale      = "最近一次采集太旧，暂缺"
+	textNoExpiry   = "有没有到期日的期权结构，未计入风险"
 	textStaleLabel = "按采集日 "
 	unitDelta      = " 美元/美元"
 	unitVega       = " 美元/波动点"

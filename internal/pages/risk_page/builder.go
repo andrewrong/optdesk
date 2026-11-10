@@ -52,11 +52,17 @@ func build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if l.in.HeldDay == "" {
 		return json.Marshal(gapPage(c, alias, at, "no_data", textNoCapture))
 	}
+	if lag := len(l.in.SessionDays) - 1 - slices.Index(l.in.SessionDays, l.in.HeldDay); lag > staleSessions {
+		return json.Marshal(gapPage(c, alias, at, "stale_input", textStale))
+	}
 	res := c.Structures().Evaluate(l.in, compute.StructureParams{MarkMaxAgeSessions: markMaxAgeSessions,
 		CaptureTarget: captureTarget, ExitDTE: exitDTE, CommissionDays: commissionDays})
-	in, foreign := riskInput(l, res)
+	in, foreign, skipped := riskInput(l, res)
 	risk := c.Holdings().Risk(in)
 	p := assemble(c, alias, at, risk, foreign, len(res.Other) > 0)
+	if skipped > 0 {
+		p.Notes = append(p.Notes, textNoExpiry)
+	}
 	captured := l.at
 	if captured.IsZero() {
 		captured, err = time.ParseInLocation(dayLayout, string(l.in.HeldDay), c.Zone)
@@ -105,8 +111,9 @@ func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, fo
 }
 
 // riskInput is the input of Risk: the stocks of the capture and the net greeks of each recognised structure,
-// filed under its nearest expiry. A structure not in USD is left out and foreign is true.
-func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, foreign bool) {
+// filed under its nearest expiry. A structure not in USD is left out and foreign is true; one with no leg
+// expiry is left out and counted in skipped.
+func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, foreign bool, skipped int) {
 	in.Currency = currency
 	for _, s := range l.stocks {
 		in.Stocks = append(in.Stocks, blockapi.HoldingIn{Underlying: s.symbol, SecType: "STK", Currency: s.currency,
@@ -124,12 +131,13 @@ func riskInput(l loaded, res compute.StructureResult) (in blockapi.RiskIn, forei
 			}
 		}
 		if expiry == "" {
+			skipped++
 			continue
 		}
 		in.Greeks = append(in.Greeks, blockapi.GreekIn{Underlying: s.Underlying, Expiry: contracts.Day(expiry),
 			Delta: s.Greeks.Delta.Value, Vega: s.Greeks.Vega.Value})
 	}
-	return in, foreign
+	return in, foreign, skipped
 }
 
 func deltaBlock(r blockapi.RiskResult) deltaJSON {

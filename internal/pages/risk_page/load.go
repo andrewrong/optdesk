@@ -24,7 +24,8 @@ const (
 	captureTarget      = "0.50"
 	exitDTE            = 21
 	commissionDays     = 30
-	captureMaxProbe    = 4 // session days probed for the newest capture
+	captureMaxProbe    = 10 // session days probed for the newest capture
+	staleSessions      = 3  // a capture older than this many session days is the gap stale_input
 	termsBatch         = 500
 )
 
