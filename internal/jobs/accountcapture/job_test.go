@@ -85,7 +85,11 @@ func okAccount(alias string) broker.Account {
 }
 
 func okExec(alias string) broker.Executions {
-	return broker.Executions{Alias: alias, Collected: true, Executions: []broker.Execution{{ExecID: "e1-" + alias, Side: "SLD", Quantity: "1", Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Right: "C"}}}}
+	e := broker.Execution{
+		ExecID: "e1-" + alias, Side: "SLD", Quantity: "1",
+		Contract: broker.Contract{SecType: "OPT", Symbol: "SPY", Right: "C"},
+	}
+	return broker.Executions{Alias: alias, Collected: true, Executions: []broker.Execution{e}}
 }
 
 func goodReader(alias string) *fakeReader {
