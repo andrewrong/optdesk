@@ -31,14 +31,14 @@ the view-model writer is an adapter.
 behaviour by hand when an existing dependency can express it correctly. The text is verbatim and stays.
 Definitions for review (submitted to the owner as a rule clarification, see "Decide later"): *designated* means
 named in the tables below or in `web/dependency-allowlist.json`; *composition* (arranging designated components,
-passing props, layout with Tailwind utilities) is not hand-building; *thin adapters* (ECharts init and theme,
+passing props, layout with Tailwind utilities) is not hand-building; *thin adapters* (Recharts chart wrapper and theme,
 the view-model loader, the Ajv validator call) are allowed and stay under 100 lines each. The ban applies to our
 code, not to the internals of designated libraries. Upstream shadcn animations and reviewed accessibility fixes
 in copied source are allowed.
 
 **One library per job.** A second library for a job already in the tables is forbidden, in `package.json`, in
 the resolved graph through a new direct dependency, and in code. `web/dependency-allowlist.json` lists every
-package CI accepts, with its job and a denylist per job (for example Recharts, Chart.js, Redux, MobX,
+package CI accepts, with its job and a denylist per job (for example Chart.js, Victory, Redux, MobX,
 react-table, date-fns/dayjs/moment together).
 
 *Runtime* (ships in the bundle):
@@ -50,7 +50,7 @@ react-table, date-fns/dayjs/moment together).
 | Icons | Lucide (`lucide-react`) | 1.x | ISC |
 | Animation | Motion (`motion`) | 14.x | MIT |
 | Tables | TanStack Table through shadcn Data Table | 8.x (capped, see policy) | MIT |
-| Charts | ECharts via `echarts/core`, SVGRenderer | 6.x | Apache-2.0 |
+| Charts | Recharts through the shadcn `chart` component (owner 2026-11-03) | 3.x | MIT |
 | UI runtime | `react`, `react-dom` | 19.x | MIT |
 | Schema validation | Ajv, standalone code generated at build time | 8.x | MIT |
 | State | Zustand: designated, not installed until shared state exists | 5.x | MIT |
@@ -73,7 +73,7 @@ react-table, date-fns/dayjs/moment together).
 | Package manager | pnpm (via `packageManager`; `onlyBuiltDependencies` for lifecycle scripts) | 10.x (12.x fails in the worker sandbox with a store-lock EPERM, measured 2026-10-23) | MIT |
 | Runtime for build | Node 24 LTS, provided by mise on the worker and the owner's machine; CI downloads the checksum-pinned tarball from nodejs.org | exact, see policy | MIT |
 
-shadcn `chart` is excluded: it pulls in Recharts, a second chart library. Registry components that add packages
+shadcn `chart` is the chart component (owner 2026-11-03); it adds Recharts, which is the one chart library. Registry components that add packages
 (calendar, sonner, drawer, command, carousel, form, input-otp) are owner-only: an issue may use them only after
 the owner approves the package. Components that add no package are designated once in the copied source.
 
@@ -96,16 +96,13 @@ week old installs.
 - Outbound destinations are the npm registry and the Node download, at install time only; record them where the
   repo lists approved destinations.
 
-**ECharts 5.6.0 or 6.x.** Use the 6.x line (6.1.0 latest on 2026-10-23), justified as one tested implementation
-for new pages, not because npm requires it. Imports come from `echarts/core` with the SVGRenderer and only the
-charts and components used. Options are explicit and the theme is built from the design tokens, so v6's new
-defaults do not decide the look. Tooltip text is escaped (`encodeHTML` or rich text) and covered by a
-hostile-string test; ARIA text comes from Python, not auto-ARIA; no chart-side computation. Charts are built in
-TypeScript from view-model data; Python no longer emits ECharts option objects. The step 2b sheet compares every
-chart type in the page inventory against the v6 changes (theme, placement, axis layout, rich text) before a real
-chart is migrated. Old pages keep the vendored 5.6.0 until each is retired; this is the only allowed duplicate.
-5.6.0 and 6.x never load in one document, and a test asserts that 5.6.0 is referenced only by old modules. The
-duplicate ends at step 6.
+**Recharts 3.x (owner 2026-11-03).** Charts are Recharts through the shadcn `chart` component (3.10.1 in
+`frontend-whitelist.json`); it is the one chart library, and no other is added. Imports come through the shadcn
+`chart` source in `src/components/ui/`, with the Recharts parts used and no others. Colours come from the
+design tokens through the chart config. Tooltip text is escaped and covered by a hostile-string test; ARIA text
+comes from the view model, not auto-generated; no chart-side computation. Charts are built in TypeScript from
+view-model data; Python no longer emits chart option objects. Old Python-rendered pages keep their vendored
+chart script until each is retired; that is the only allowed duplicate, and it ends at step 6.
 
 **Toolchain.**
 - pnpm with `--frozen-lockfile` installs; Vite builds a static bundle; TypeScript `strict: true`,
@@ -178,9 +175,10 @@ neutral, only the signal tokens the system has: ok, hold, unknown, banner states
 wait for the owner.
 
 **Accessibility and phone rules.** Design width is 390 px with a floor of 360 px: one column, no horizontal page
-scroll, wide tables scroll inside their container; desktop content column 720 px. Text at least 16 px, touch
+scroll, wide tables scroll inside their container; on desktop the content is full width, no max-width column (owner 2026-11-10;
+docs/design/web-shell-layout.md Decisions); the 390 px phone rules stay. Text at least 16 px, touch
 targets at least 44 px, visible focus, colour never the only signal, contrast checked in both themes. Motion
-respects reduced motion: `<MotionConfig reducedMotion="user">` (Motion defaults to "never"), ECharts animation
+respects reduced motion: `<MotionConfig reducedMotion="user">` (Motion defaults to "never"), chart animation
 off, and `tw-animate-css` guarded by `motion-reduce`; no motion is needed to read a page.
 
 **Not adopted now.** `react-resizable-panels` and dnd-kit enter `package.json` only in the issue of the first
@@ -197,11 +195,11 @@ The definitions of "designated", "composition" and thin adapters, and the dispat
 change and go to the owner for approval before they are written into AGENTS.md.
 
 **(b) CLAUDE.md review checklist.** Add item 8 and add it to the request-changes list:
-- `8. Frontend: every component, icon, animation, table, chart and state use comes from the designated library of ADR 0034 (shadcn source in web/src/components/ui, Lucide, Motion, TanStack Table, ECharts, Zustand). Name any hand-built component, behaviour or second library for a job already covered, and any figure or rule computed in the browser. Financial semantics are reviewed by a person; lint cannot prove them.`
+- `8. Frontend: every component, icon, animation, table, chart and state use comes from the designated library of ADR 0034 (shadcn source in web/src/components/ui, Lucide, Motion, TanStack Table, Recharts through shadcn `chart`, Zustand). Name any hand-built component, behaviour or second library for a job already covered, and any figure or rule computed in the browser. Financial semantics are reviewed by a person; lint cannot prove them.`
 - Change the last line to: `Request changes for any failure of items 2, 3, 4, 7 or 8.`
 
 **(c) Dispatcher rule for issue drafting.** Every frontend issue names the designated components it uses (for
-example "Card, Table, Badge from shadcn; Lucide `TriangleAlert`; ECharts line"), the view-model schema and
+example "Card, Table, Badge from shadcn; Lucide `TriangleAlert`; Recharts line"), the view-model schema and
 version, and the fixture. An issue without that list is not filed. A needed component that adds no package is
 designated in the copied source; one that adds a package goes to the owner first. The worker does not choose.
 
@@ -224,7 +222,7 @@ designated in the copied source; one that adds a package goes to the owner first
   denied, measured 2026-10-23), so workers write the tests and never run them, verify sessions do not run them,
   Chromium is in the owner's runner image of option-trader since 2026-10-24 (Playwright version pinned in the lockfile), and missing
   baselines are produced by CI with --update-snapshots, uploaded as an artifact and committed by the worker; `toHaveScreenshot` against committed baselines rendered from invented
-  fixtures only, at 390 and 720 px in both themes, in the CI `quick` job; alternatives were weighed and
+  fixtures only, at 390 px and a desktop width in both themes, in the CI `quick` job; alternatives were weighed and
   rejected (Cypress: heavier, visual diff needs a paid cloud; Puppeteer: Chrome only, no assertions; Percy,
   Chromatic, Applitools: screenshots leave the machine; Vitest browser mode: Playwright underneath).
 - Tests never touch the network; the build reaches the npm registry only at install time.
@@ -239,7 +237,7 @@ layer.
 | 1a | Toolchain, `web/`, allowlist, CI gates, AGENTS.md and CLAUDE.md lines (after owner approval of the rule wording) | Sonnet |
 | 1b | Publisher: assets-first publish, unique name, latest pointer last, fail-closed shell, `_dev/` hello page | Sonnet |
 | 2a | Schema, invented fixture and Python generator stub for the home 期权摘要 card view model (options_summary.v1: four tiles + six-month premium series), versioned; re-pointed 2026-10-23 after the owner's v2.2 feedback put the home page first | Sonnet |
-| 2b | Theme mapping from v2 to shadcn variables; component sheet from fixtures (both themes, 360/390 px, chart-type comparison with ECharts 6) | Sonnet |
+| 2b | Theme mapping from v2 to shadcn variables; component sheet from fixtures (both themes, 360/390 px, chart-type check with Recharts) | Sonnet |
 | 3 | First real page: the home page assembled block by block beside the old page; 3a 期权摘要 card from the 2a fixture, 3b 持仓提醒 payload for the open report, 3c.. 宏观/市场/家庭概览/持仓公司 in the owner's order; needs 2a and 2b | Sonnet |
 | 4 | Python view-model generator fed by the change-9 facade | Opus (money figures, schema) |
 | 5 | Remaining pages by the full inventory (including 持仓页 and 复盘页) in the top-down order (宏观, 市场, 家庭, 公司, 期权) | Sonnet; Opus for money or P&L tables |
@@ -248,7 +246,7 @@ layer.
 Retirement of an old page needs: stale, gap and error fixtures; independent expected values; parity with the old
 page as regression evidence only; a tested rollback; and at least 5 sessions side by side, which is a minimum
 and not proof. Step 6 keeps ADR 0010's access, privacy and STALE requirements and resolves its no-JavaScript
-claim against the ECharts exception (ECharts is the only script before this ADR; React plus ECharts after).
+claim against the chart exception (the old pages' chart script is the only script before this ADR; React plus Recharts after).
 
 Parallel: 1a first, then 1b; 2a and 2b run in parallel after 1a; step 3 needs both; step 4 runs in parallel with
 2 and 3 once the facade exists. Inside step 5, pages run in parallel when they share no component not yet in the
@@ -269,7 +267,7 @@ sheet; the shared banner and table components land first. Step 6 only after ever
   files, and the revision and licence of each copied component are recorded. Local edits to `src/components/ui`
   are limited to tokens and reviewed accessibility fixes.
 - Tailwind 4 syntax differs from most 3.x examples; workers follow the shadcn docs for the pinned versions only.
-- ECharts bundle size: import only what is used and keep to the budget.
+- Recharts bundle size: import only what is used and keep to the budget.
 - Supply chain: a large transitive tree; lockfile, frozen installs, exact pins, release age and blocked
   lifecycle scripts are the control; `pnpm audit` is advisory.
 - Two languages raise the review load; checklist item 8 and generated types limit drift.
@@ -307,7 +305,6 @@ proposal).
   Zustand, Ajv standalone) is untested; step 1a verifies it before freezing.
 - Ajv standalone and CSP behaviour with the chosen bundle are untested.
 - The shadcn Data Table recipe targets TanStack Table 8 or 9; the cap to 8 follows the recipe.
-- ECharts 6 rendering of the current chart types is not compared with 5.6.0.
 - Node 24 on the Mac mini and the CI runner is not installed or checked.
 - Bundle size is unmeasured.
 - The npm approval of 2026-10-22/23 was not re-read; "about 20 page kinds" comes from an inventory that missed
@@ -328,7 +325,7 @@ chosen set after `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:che
 | `ajv` | `8.20.0` | schema-validation | MIT |
 | `class-variance-authority` | `0.7.1` | component-helpers | Apache-2.0 |
 | `clsx` | `2.1.1` | component-helpers | MIT |
-| `echarts` | `6.1.0` | charts | Apache-2.0 |
+| `recharts` | `3.10.1` | charts | MIT |
 | `lucide-react` | `1.61.0` | icons | ISC |
 | `motion` | `14.6.0` | animation | MIT |
 | `radix-ui` | `1.8.1` | ui-components | MIT |
@@ -385,7 +382,7 @@ worker sandbox, see the table above).
    other templates into the dlx cache, so the same package was fetched with `npm i` and run directly; the output
    is the same template. The scaffold's `oxlint` and its config were removed (ESLint is the designated linter).
 2. `pnpm add -E react react-dom radix-ui class-variance-authority clsx tailwind-merge lucide-react motion
-   @tanstack/react-table@8 echarts@6 ajv@8`
+   @tanstack/react-table@8 recharts@3 ajv@8`
 3. `pnpm add -E -D typescript@5 vite@8 @vitejs/plugin-react tailwindcss @tailwindcss/vite tw-animate-css vitest
    jsdom eslint typescript-eslint prettier @playwright/test json-schema-to-typescript @types/react
    @types/react-dom @types/node@24 shadcn@4`
@@ -425,7 +422,7 @@ Table 9, Vite 8) and shadcn recipes may not target them yet; the chosen TypeScri
 | motion | 14.6.0 | MIT |
 | zustand | 5.0.16 | MIT |
 | @tanstack/react-table | 9.3.1 | MIT |
-| echarts | 6.1.0 | Apache-2.0 |
+| recharts | 3.10.1 | MIT |
 | react | 19.3.1 | MIT |
 | typescript | 7.0.2 | Apache-2.0 |
 | vite | 8.3.5 | MIT |
