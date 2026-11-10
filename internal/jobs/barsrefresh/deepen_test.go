@@ -255,3 +255,23 @@ func TestYoungListingAskedOncePerWeek(t *testing.T) {
 		t.Fatalf("a young listing was asked %d times in 8 days: %+v", len(ps), ps)
 	}
 }
+
+func TestYoungListingWithEmptyAdjustedAskedOncePerWeek(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
+		if q.End != "" || q.Kind == broker.BarAdjustedLast {
+			return nil, nil // no older day, and no adjusted_last answer
+		}
+		return []broker.Bar{mkbar(string(runDay), "10.0000")}, nil
+	}}
+	st := &memBars{rows: storedFor(101, 400, 1)}
+	j := deepenJob(t, h, st, 1, nil)
+	for _, day := range []contracts.Day{runDay, "2026-11-10"} {
+		if res := j.Run(context.Background(), day, allKeys(1)); res.Err != nil {
+			t.Fatal(res.Err)
+		}
+	}
+	if ps := pieces(h); len(ps) != 1 {
+		t.Fatalf("asked %d times in 2 days: %+v", len(ps), ps)
+	}
+}

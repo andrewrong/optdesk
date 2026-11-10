@@ -47,6 +47,9 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 	if !oldest.After(reach) {
 		return false, nil
 	}
+	if r.askedRecently(key) {
+		return false, nil
+	}
 	if !r.claimDeepen(key) {
 		return true, nil
 	}
@@ -89,26 +92,43 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 	return false, nil
 }
 
-// claimDeepen reports whether the key may deepen today: at most deepen_names_per_run keys
-// do, and 0 is no cap. The count shares the job's started map under a day key of its own.
-func (r *runState) claimDeepen(key string) bool {
-	limit := r.j.m.DeepenNamesPerRun
-	if limit == 0 {
-		return true
-	}
+// deepenDayKey is the day key under which the job's started map records the keys that asked a
+// deepening piece on that day: it gives the per-day cap and the once-a-week limit, which must hold
+// even when the weekly adjusted_last answer is empty and stores nothing.
+func deepenDayKey(day time.Time) contracts.Day {
+	return contracts.Day("deepen " + day.Format(dayLayout))
+}
+
+// askedRecently reports whether key asked a deepening piece on one of the previous
+// adjusted_cadence_days - 1 days (a retry on the same day is not recent).
+func (r *runState) askedRecently(key string) bool {
 	j := r.j
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	day := "deepen " + r.day
-	set := j.started[day]
+	for i := 1; i < j.m.AdjustedCadenceDays; i++ {
+		if j.started[deepenDayKey(r.dayTime.AddDate(0, 0, -i))][key] {
+			return true
+		}
+	}
+	return false
+}
+
+// claimDeepen records that key asks today and reports whether it may: at most deepen_names_per_run
+// keys do, and 0 is no cap.
+func (r *runState) claimDeepen(key string) bool {
+	j := r.j
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	dk := deepenDayKey(r.dayTime)
+	set := j.started[dk]
 	if set == nil {
 		set = map[string]bool{}
-		j.started[day] = set
+		j.started[dk] = set
 	}
 	if set[key] {
 		return true
 	}
-	if len(set) >= limit {
+	if limit := j.m.DeepenNamesPerRun; limit != 0 && len(set) >= limit {
 		return false
 	}
 	set[key] = true
