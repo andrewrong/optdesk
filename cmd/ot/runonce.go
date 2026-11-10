@@ -232,7 +232,8 @@ type jobFactory struct {
 	events store.EarningsDateStore
 	earn   map[string]sources.EarningsSource
 	watch  []jobs.WatchEntry
-	// candidates, accounts and earnRd are what option_candidates gets besides the compute stores; the last two may be nil.
+	// candidates, accounts and earnRd are what option_candidates (optioncandidates.New) gets besides the compute stores;
+	// the last two may be nil.
 	candidates store.CandidateWriter
 	accounts   store.AccountReader
 	earnRd     store.EarningsDateReader
