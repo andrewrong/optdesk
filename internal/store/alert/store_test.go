@@ -3,9 +3,12 @@ package alert
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -137,6 +140,46 @@ func TestMarkSentRejectsEmptyRule(t *testing.T) {
 	}
 	if f.execs != 0 {
 		t.Errorf("%d statements ran for rejected arguments", f.execs)
+	}
+}
+
+func TestMarkSentConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		err  error
+		want contracts.ErrorKind
+	}{}
+	for _, code := range []string{"23502", "23503", "23505", "23514"} {
+		cases[code] = struct {
+			err  error
+			want contracts.ErrorKind
+		}{&pgconn.PgError{Code: code}, contracts.Permanent}
+		cases[code+" wrapped"] = struct {
+			err  error
+			want contracts.ErrorKind
+		}{fmt.Errorf("x: %w", &pgconn.PgError{Code: code}), contracts.Permanent}
+	}
+	for _, code := range []string{"40001", "40P01", "08006"} {
+		cases[code] = struct {
+			err  error
+			want contracts.ErrorKind
+		}{&pgconn.PgError{Code: code}, contracts.Retryable}
+	}
+	cases["plain"] = struct {
+		err  error
+		want contracts.ErrorKind
+	}{errors.New("boom"), contracts.Retryable}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := newFake()
+			f.failed = c.err
+			err := (&sentStore{db: f}).MarkSent(context.Background(), "a", "2026-11-05")
+			var te contracts.TypedError
+			if !errors.As(err, &te) || te.Kind() != c.want {
+				t.Fatalf("MarkSent = %v; want kind %v", err, c.want)
+			}
+		})
 	}
 }
 

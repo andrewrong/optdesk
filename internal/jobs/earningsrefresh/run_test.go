@@ -3,6 +3,7 @@ package earningsrefresh
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 type fixedClock struct{}
@@ -316,6 +318,92 @@ func TestListedMatchesSpacedWatchSymbol(t *testing.T) {
 	}
 	r := byIssuer(st, "cik:9")
 	if len(r) != 1 || r[0].Status != "listed" {
+		t.Fatalf("row %+v", r)
+	}
+}
+
+// fakeTranslator spells every share-class form of a symbol as dash-separated and refuses the symbols in bad.
+type fakeTranslator struct{ bad map[string]bool }
+
+func (f fakeTranslator) ToVendor(s string, v symbol.Vendor) (string, error) {
+	if f.bad[s] {
+		return "", errors.New("refused " + s)
+	}
+	if v != symbol.AlphaVantage {
+		return "", errors.New("unknown vendor")
+	}
+	return strings.ToUpper(strings.NewReplacer(" ", "-", ".", "-").Replace(s)), nil
+}
+
+func (fakeTranslator) OSIRoot(s string) string { return s }
+
+func buildWith(t *testing.T, tr symbol.Translator, src *fakeSource, st *memStore, entries ...jobs.WatchEntry) {
+	t.Helper()
+	j, err := NewWithSymbols(map[string]sources.EarningsSource{"US": src}, st, st, entries, fixedClock{}, tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+}
+
+func listedSymbolCase(t *testing.T, listing string) {
+	t.Helper()
+	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: listing, ReportDate: "2026-11-09"}}}
+	st := &memStore{}
+	buildWith(t, fakeTranslator{}, src, st, us("cik:9", "BRK B"))
+	r := byIssuer(st, "cik:9")
+	if len(r) != 1 || r[0].Status != "listed" {
+		t.Fatalf("row %+v", r)
+	}
+}
+
+func TestListedShareClassDash(t *testing.T) {
+	t.Parallel()
+	listedSymbolCase(t, "BRK-B")
+}
+
+func TestListedShareClassDot(t *testing.T) {
+	t.Parallel()
+	listedSymbolCase(t, "BRK.B")
+}
+
+func TestListedNilTranslator(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: "BRK.B", ReportDate: "2026-11-09"}}}
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:9", "BRK B"))
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	r := byIssuer(st, "cik:9")
+	if len(r) != 1 || r[0].Status != "listed" {
+		t.Fatalf("row %+v", r)
+	}
+}
+
+func TestListedEntryError(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{{Symbol: "BRK-B", ReportDate: "2026-11-09"}}}
+	st := &memStore{}
+	buildWith(t, fakeTranslator{bad: map[string]bool{"BRK B": true}}, src, st, us("cik:9", "BRK B"))
+	r := byIssuer(st, "cik:9")
+	if len(r) != 1 || r[0].Status != "absent" {
+		t.Fatalf("row %+v", r)
+	}
+}
+
+func TestListedListingError(t *testing.T) {
+	t.Parallel()
+	src := &fakeSource{listings: []sources.EarningsListing{
+		{Symbol: "BAD", ReportDate: "2026-11-09"},
+		{Symbol: "BRK.B", ReportDate: "2026-11-12"},
+	}}
+	st := &memStore{}
+	buildWith(t, fakeTranslator{bad: map[string]bool{"BAD": true}}, src, st, us("cik:9", "BRK B"))
+	r := byIssuer(st, "cik:9")
+	if len(r) != 1 || r[0].Status != "listed" || r[0].Symbol != "BRK.B" {
 		t.Fatalf("row %+v", r)
 	}
 }

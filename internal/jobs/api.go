@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/flexsection"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // Registry is the jobs the binary runs.
@@ -31,6 +32,11 @@ type CaptureID = uuid.UUID
 
 // NewOptionEodFunc is the constructor of the option_eod job (internal/jobs/optioneod.New).
 type NewOptionEodFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error)
+
+// NewOptionEodSymbolsFunc is NewOptionEodFunc with a symbol.Translator as the last argument. A nil translator
+// means no translation: the job behaves as it does without one, including its own matching of share-class
+// separators.
+type NewOptionEodSymbolsFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error)
 
 // NewQuoteSnapshotFunc is the constructor of the quote_snapshot job (internal/jobs/quotesnapshot.New).
 type NewQuoteSnapshotFunc func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error)
@@ -109,6 +115,13 @@ type WatchEntry struct {
 // error when a row of the day is error. The reader is how the job sees the rows of the day.
 type NewEarningsRefreshFunc func(
 	map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []WatchEntry, clock.Clock,
+) (contracts.Job, error)
+
+// NewEarningsRefreshSymbolsFunc is NewEarningsRefreshFunc with a symbol.Translator as the last argument. A nil
+// translator means no translation: the job behaves as it does without one, including its own matching of
+// share-class separators.
+type NewEarningsRefreshSymbolsFunc func(
+	map[string]sources.EarningsSource, store.EarningsDateWriter, store.EarningsDateReader, []WatchEntry, clock.Clock, symbol.Translator,
 ) (contracts.Job, error)
 
 // NewOptionEodWatchFunc is the constructor of the option_eod job that takes its underlyings from the watch

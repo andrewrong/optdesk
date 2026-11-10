@@ -5,11 +5,14 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -68,7 +71,9 @@ func OpenEarningsDate(ctx context.Context, dsn string) (store.EarningsDateStore,
 // Close releases the connections.
 func (s *earningsStore) Close() error { return s.db.Close() }
 
-// InsertEarningsDate inserts the row; a row whose key exists stays as it is and is no error.
+// InsertEarningsDate inserts the row; a row whose key exists stays as it is and is no error. A constraint
+// violation (SQLSTATE class 23: not null, foreign key, check) is a Permanent error, since the database repeats
+// it on every attempt; every other error of the insert is Retryable.
 func (s *earningsStore) InsertEarningsDate(ctx context.Context, r contracts.EarningsDate) error {
 	if r.Issuer == "" || r.Attempt < 1 {
 		return permanent(fmt.Errorf("events: a row needs an issuer and an attempt from 1"))
@@ -78,7 +83,11 @@ func (s *earningsStore) InsertEarningsDate(ctx context.Context, r contracts.Earn
 		dayText(r.ReportDate), dayText(r.FiscalPeriodEnd), r.TimeOfDay, r.Estimate, r.ErrorCode, string(r.Source),
 		r.ReceivedAt.UTC())
 	if err != nil {
-		return retryable(fmt.Errorf("events: insert: %w", err))
+		wrapped := fmt.Errorf("events: insert: %w", err)
+		if isConstraintViolation(err) {
+			return permanent(wrapped)
+		}
+		return retryable(wrapped)
 	}
 	return nil
 }
@@ -164,6 +173,12 @@ type typedErr struct {
 func (e *typedErr) Error() string             { return e.cause.Error() }
 func (e *typedErr) Unwrap() error             { return e.cause }
 func (e *typedErr) Kind() contracts.ErrorKind { return e.kind }
+
+// isConstraintViolation reports whether err is a PostgreSQL integrity constraint violation (SQLSTATE class 23).
+func isConstraintViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && strings.HasPrefix(pe.Code, "23")
+}
 
 func retryable(err error) error { return &typedErr{kind: contracts.Retryable, cause: err} }
 func permanent(err error) error { return &typedErr{kind: contracts.Permanent, cause: err} }

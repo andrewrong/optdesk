@@ -3,10 +3,13 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -235,5 +238,39 @@ func TestUnknownEnumInViewRefused(t *testing.T) {
 	}
 	if _, err := (&earningsStore{db: db}).EarningsDates(context.Background(), issuer, "2026-11-09", "2026-11-09"); err == nil {
 		t.Error("a source outside the dataset enum was returned")
+	}
+}
+
+func TestInsertEarningsConstraintViolationIsPermanent(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		err  error
+		want contracts.ErrorKind
+	}{
+		{"not null", &pgconn.PgError{Code: "23502"}, contracts.Permanent},
+		{"foreign key", &pgconn.PgError{Code: "23503"}, contracts.Permanent},
+		{"unique", &pgconn.PgError{Code: "23505"}, contracts.Permanent},
+		{"check", &pgconn.PgError{Code: "23514"}, contracts.Permanent},
+		{"wrapped check", fmt.Errorf("x: %w", &pgconn.PgError{Code: "23514"}), contracts.Permanent},
+		{"serialization", &pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		{"deadlock", &pgconn.PgError{Code: "40P01"}, contracts.Retryable},
+		{"connection", &pgconn.PgError{Code: "08006"}, contracts.Retryable},
+		{"plain", errors.New("boom"), contracts.Retryable},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			db := newFake()
+			db.failed = c.err
+			err := (&earningsStore{db: db}).InsertEarningsDate(context.Background(), row("2026-11-09", 1, "absent"))
+			var te contracts.TypedError
+			if !errors.As(err, &te) || te.Kind() != c.want {
+				t.Fatalf("got %v, want kind %s", err, c.want)
+			}
+			if !errors.Is(err, c.err) || !strings.HasPrefix(err.Error(), "events: insert: ") {
+				t.Errorf("cause or text lost: %v", err)
+			}
+		})
 	}
 }

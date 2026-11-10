@@ -593,6 +593,7 @@ type Candidate struct {
 	Rank             *int
 	RankInUnderlying *int
 	ComputedAt       time.Time
+	SettingsVersion  *int64
 }
 
 // CandidateWriter appends the rows of candidates.option_candidate (role ot_w_candidate, line DSNEnvCandidate).

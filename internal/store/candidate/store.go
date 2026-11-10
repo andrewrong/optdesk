@@ -2,10 +2,13 @@ package candidate
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -17,9 +20,9 @@ import (
 const columns = `session_day, run_id, kind, instrument_id, alias, rule_version, issuer, underlying_id, expiry, dte, ` +
 	`option_right, strike, multiplier, bid_eod, ask, spot, buy_price, sale_price, break_even, annualized_yield, ` +
 	`delta, iv, status, gates, marks, fits, next_earnings, earnings_state, next_ex_date, ex_amount, extrinsic, ` +
-	`rank, rank_in_underlying, computed_at`
+	`rank, rank_in_underlying, computed_at, settings_version`
 
-const columnCount = 34
+const columnCount = 35
 
 // insertSQL is a plain INSERT: the table is insert-only and a duplicate key is an error.
 var insertSQL = "INSERT INTO candidates.option_candidate (" + columns + ") VALUES (" + placeholders(columnCount) + ")"
@@ -71,7 +74,8 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // InsertCandidates inserts the rows in one transaction; none of them is replaced. No rows inserts none and makes
 // no database call. A row with no session day, run id or kind, or with an unknown kind, fails the call before
-// anything is written.
+// anything is written. A constraint violation of the database (SQLSTATE class 23: duplicate key, not null, foreign
+// key, check) is a Permanent error, since the same rows fail again; every other database error is Retryable.
 func (s *Store) InsertCandidates(ctx context.Context, rows []store.Candidate) (int, error) {
 	if len(rows) == 0 {
 		return 0, nil
@@ -85,7 +89,11 @@ func (s *Store) InsertCandidates(ctx context.Context, rows []store.Candidate) (i
 		args = append(args, a)
 	}
 	if err := s.db.InsertAll(ctx, insertSQL, args); err != nil {
-		return 0, retryable(fmt.Errorf("candidate: insert: %w", err))
+		err = fmt.Errorf("candidate: insert: %w", err)
+		if isConstraintViolation(err) {
+			return 0, permanent(err)
+		}
+		return 0, retryable(err)
 	}
 	return len(rows), nil
 }
@@ -116,7 +124,7 @@ func rowArgs(c store.Candidate) ([]any, error) {
 	return []any{day, c.RunID, c.Kind, c.InstrumentID, c.Alias, c.RuleVersion, c.Issuer, c.UnderlyingID, expiry, c.DTE,
 		c.Right, c.Strike, c.Multiplier, c.BidEod, c.Ask, c.Spot, c.BuyPrice, c.SalePrice, c.BreakEven,
 		c.AnnualizedYield, c.Delta, c.Iv, c.Status, c.Gates, c.Marks, c.Fits, next, c.EarningsState, ex,
-		c.ExAmount, c.Extrinsic, c.Rank, c.RankInUnderlying, c.ComputedAt}, nil
+		c.ExAmount, c.Extrinsic, c.Rank, c.RankInUnderlying, c.ComputedAt, c.SettingsVersion}, nil
 }
 
 func validKind(k string) bool {
@@ -152,6 +160,12 @@ type typedErr struct {
 func (e *typedErr) Error() string             { return e.cause.Error() }
 func (e *typedErr) Unwrap() error             { return e.cause }
 func (e *typedErr) Kind() contracts.ErrorKind { return e.kind }
+
+// isConstraintViolation reports whether err holds a PostgreSQL error of SQLSTATE class 23.
+func isConstraintViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && strings.HasPrefix(pe.Code, "23")
+}
 
 func retryable(err error) error { return &typedErr{kind: contracts.Retryable, cause: err} }
 func permanent(err error) error { return &typedErr{kind: contracts.Permanent, cause: err} }
