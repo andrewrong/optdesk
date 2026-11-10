@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -198,6 +199,10 @@ func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, 
 		}
 		newHandler(vm).ServeHTTP(&statusWriter{ResponseWriter: w, code: code}, r)
 	}
+	if unknownField(r.PostForm, a.deps.newRuleParams().Specs(), shown) {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
 	ch, err := e.form.Parse(r.PostForm, shown, cur)
 	if err != nil {
 		page(http.StatusUnprocessableEntity, settingsExtras{notice: &settings_page.Notice{Kind: "error", Text: err.Error()}})
@@ -244,6 +249,30 @@ func guardOwnerPost(w http.ResponseWriter, r *http.Request, e *ownerEdit, now ti
 		Token: settingsapi.FormToken{Expires: r.PostForm.Get("expires"), MAC: r.PostForm.Get("mac")},
 	}
 	return e.form.Check(req, now) == nil
+}
+
+// unknownField reports a posted param.<key> that is not in the registry, or a row or excluded id that is not
+// one of the shown ids: the post names something not on the page, which is 400 and no write. A refused value of
+// a known key is not this; Parse answers it and it is 422.
+func unknownField(values url.Values, specs []settingsapi.RuleParamSpec, shown []int64) bool {
+	known := make(map[string]bool, len(specs))
+	for _, s := range specs {
+		known[s.Key] = true
+	}
+	for name := range values {
+		if k, ok := strings.CutPrefix(name, "param."); ok && !known[k] {
+			return true
+		}
+	}
+	for _, name := range []string{"row", "excluded"} {
+		for _, v := range values[name] {
+			id, err := strconv.ParseInt(v, 10, 64)
+			if err != nil || !slices.Contains(shown, id) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // currentSettings reads the settings in force at now and the instrument ids the page shows (the catalog's

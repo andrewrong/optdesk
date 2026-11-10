@@ -279,12 +279,27 @@ func TestPostRefusedValueIs422(t *testing.T) {
 	h, st, form := postSite(t, true)
 	for _, f := range []url.Values{
 		{"param.min_dte": {"1"}, "confirm": {"1"}},
-		{"param.nope": {"1"}, "confirm": {"1"}},
-		{"row": {"999"}, "confirm": {"1"}},
 	} {
 		rec := serve(h, postRequest(t, form, f))
 		if rec.Code != 422 || !strings.Contains(rec.Body.String(), `"error"`) || st.calls() != 0 {
 			t.Fatalf("%v: %d %.300q", f, rec.Code, rec.Body)
+		}
+	}
+}
+
+func TestPostUnknownKeyIs400(t *testing.T) {
+	t.Parallel()
+	h, st, form := postSite(t, true)
+	for _, f := range []url.Values{
+		{"param.nope": {"1"}, "confirm": {"1"}},
+		{"param.nope": {"1"}},
+		{"row": {"999"}, "confirm": {"1"}},
+		{"row": {"x"}},
+		{"excluded": {"999"}, "confirm": {"1"}},
+	} {
+		rec := serve(h, postRequest(t, form, f))
+		if rec.Code != 400 || st.calls() != 0 {
+			t.Fatalf("%v: %d %.200q, %d applies", f, rec.Code, rec.Body, st.calls())
 		}
 	}
 }
