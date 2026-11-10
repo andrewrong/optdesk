@@ -84,6 +84,77 @@ func TestEnvFileNilReaderFallsBack(t *testing.T) {
 	}
 }
 
+func envAppVars(t *testing.T, vars map[string]string, rd store.ReadEnvFunc) *app {
+	t.Helper()
+	var out, errb bytes.Buffer
+	a, err := newApp(func(k string) string {
+		if k == "OT_ZONE" {
+			return "UTC"
+		}
+		return vars[k]
+	}, &out, &errb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.deps = deps{readEnv: rd}
+	return a
+}
+
+func TestEnvFileSecretsPath(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	var got string
+	a := envAppVars(t, map[string]string{"CREW_SECRETS": dir, "CREW_SERVICE": "optdesk-serve", "OT_HOME": t.TempDir()},
+		func(p string) (map[string]string, error) { got = p; return map[string]string{"K": "v"}, nil })
+	m, err := a.envFile()
+	if err != nil || got != dir+string(os.PathSeparator)+"optdesk-serve.env" || m["K"] != "v" {
+		t.Fatalf("path %q map %v err %v", got, m, err)
+	}
+}
+
+func TestEnvFileSecretsNeedsNoHome(t *testing.T) {
+	t.Parallel()
+	a := envAppVars(t, map[string]string{"CREW_SECRETS": "/s", "CREW_SERVICE": "x"},
+		func(string) (map[string]string, error) { return map[string]string{}, nil })
+	if _, err := a.envFile(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEnvFileSecretsMissing(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, ".env"), []byte("HOMEKEY=homesecret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a := envAppVars(t, map[string]string{"CREW_SECRETS": dir, "CREW_SERVICE": "svc", "OT_HOME": home}, nil)
+	m, err := a.envFile()
+	want := filepath.Join(dir, "svc.env")
+	if err == nil || !strings.Contains(err.Error(), want) || strings.Contains(err.Error(), "homesecret") || len(m) != 0 {
+		t.Fatalf("err %v map %v", err, m)
+	}
+}
+
+func TestEnvFileSecretsOnlyOneSet(t *testing.T) {
+	t.Parallel()
+	for name, vars := range map[string]map[string]string{
+		"secrets only": {"CREW_SECRETS": "/s"},
+		"service only": {"CREW_SERVICE": "svc"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			home := t.TempDir()
+			vars["OT_HOME"] = home
+			var got string
+			a := envAppVars(t, vars, func(p string) (map[string]string, error) { got = p; return nil, nil })
+			if _, err := a.envFile(); err != nil || got != home+string(os.PathSeparator)+".env" {
+				t.Fatalf("path %q err %v", got, err)
+			}
+		})
+	}
+}
+
 const (
 	sentDSN      = "postgres://sentinel-user:sentinel-pw@127.0.0.1:0/db"
 	sentPassword = "sentinel-pw"

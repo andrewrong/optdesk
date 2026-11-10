@@ -23,17 +23,26 @@ const envJQuantsKey = "JQUANTS_API_KEY"
 // reasonNoJQuantsKey is the line logged when the J-Quants source is left out: JP entries then get unsupported rows.
 const reasonNoJQuantsKey = envJQuantsKey + " is not set"
 
-// envFile reads $OT_HOME/.env through deps.readEnv, or defaultReadEnv when that field is nil.
+// envFile reads $CREW_SECRETS/$CREW_SERVICE.env when both are set and non-empty, else $OT_HOME/.env, through
+// deps.readEnv, or defaultReadEnv when that field is nil. A missing file under CREW_SECRETS is an error of the
+// reader, naming the path; there is no fallback to $OT_HOME/.env.
 func (a *app) envFile() (map[string]string, error) {
-	home := a.getenv("OT_HOME")
-	if home == "" {
-		return nil, fmt.Errorf("OT_HOME is not set")
+	var path string
+	secrets, service := a.getenv("CREW_SECRETS"), a.getenv("CREW_SERVICE")
+	if secrets != "" && service != "" {
+		path = secrets + string(os.PathSeparator) + service + ".env"
+	} else {
+		home := a.getenv("OT_HOME")
+		if home == "" {
+			return nil, fmt.Errorf("OT_HOME is not set")
+		}
+		path = home + string(os.PathSeparator) + ".env"
 	}
 	read := a.deps.readEnv
 	if read == nil {
 		read = defaultReadEnv
 	}
-	m, err := read(home + string(os.PathSeparator) + ".env")
+	m, err := read(path)
 	if err != nil {
 		return nil, err
 	}
