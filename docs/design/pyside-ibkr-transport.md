@@ -273,7 +273,7 @@ fixed set of words. Any other record that reaches a handler (the library's, for 
 own handlers removed and propagation on, so its DEBUG frames never reach a handler of ours.
 
 Configuration, by environment variable, none holding a secret: `OT_HOME` (required; the socket is `$OT_HOME/run/ibkr.sock`, the directory is created mode 0700, the socket is chmod 0600, a stale socket file is removed, any other file at that path is an error), `OT_IBKR_GATEWAY_HOST` (default `127.0.0.1`),
-`OT_IBKR_GATEWAY_PORT` (required), `OT_IBKR_CLIENT_ID` (nonzero, default 33), `OT_IBKR_LINES` (default 70), `OT_IBKR_SNAPSHOTS` (default 50), `OT_IBKR_MARKET_DATA_TYPE` (default 1, live). A missing required variable stops with a message that names the variable and no value. The process runs once per gateway; there is no
+`OT_IBKR_GATEWAY_PORT` (required), `OT_IBKR_CLIENT_ID` (nonzero, default 33), `OT_IBKR_LINES` (default 70), `OT_IBKR_SNAPSHOTS` (default 50), `OT_IBKR_MARKET_DATA_TYPE` (default 2, frozen: IBKR returns live data while the market is open and the last frozen value when it is closed, so pyside needs no setting to get data at any hour; owner decision 2026-11-10; the variable stays as an override). A missing required variable stops with a message that names the variable and no value. The process runs once per gateway; there is no
 worker process or pool inside it (ADR 0003's "no separate worker process" is kept in that sense; the service itself is the plan's decision).
 
 ## Issues

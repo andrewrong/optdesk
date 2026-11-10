@@ -36,7 +36,7 @@ serves (by alias) and which information is collected through each come from a co
 2. The gateways come from a TOML file, read with `tomllib` (standard library). The path is the one env key `OT_IBKR_GATEWAYS`; the file lives in the service's own config directory of the owner's machine and is
    not committed (the repository holds only an example with placeholders, decision 10). Shape, one table per gateway under `[[gateway]]`, and an optional top-level `default`:
    - `name` (required): a slug, `[a-z][a-z0-9-]{0,15}`, unique; it names the socket (`ibkr-<name>.sock`) and the key in `/health`.
-   - `port` (required, a whole number above zero); `host` (default `localhost`); `client_id` (default 33; a client id is per gateway); `market_data_type` (default 1).
+   - `port` (required, a whole number above zero); `host` (default `localhost`); `client_id` (default 33; a client id is per gateway); `market_data_type` (default 2, frozen: live data when the market is open, the last frozen value when closed; owner decision 2026-11-10).
    - `account` (required): an alias, `[a-z][a-z0-9_-]{0,31}`, never a real account id. A value shaped like an account id (letters then 5 to 9 digits, the shape `scrub` of `transport.py` removes) is refused, and the
      key is named, not the value. The alias is only a label for who reads the file and for the later account design; pyside does not send it to the gateway.
    - `collect` (required): a non-empty list from the fixed vocabulary `market_data`, `account_summary`, `positions`. Only `market_data` is served today (the three services of `ibkr.v1`). The other two are declared now and
@@ -135,7 +135,7 @@ The gateways file, one supervisor and socket per gateway, and the health endpoin
   Design: docs/design/pyside-gateways-health.md#decisions
   Acceptance:
   1. From `pyside/`, `uv run pytest tests/ibkr -n auto` passes, and `uv run ruff check` and `uv run mypy --strict src tests` print no error.
-  2. `test_gateways.py` has `test_two_entries_with_defaults` (host `localhost`, client id 33, market data type 1, `required` false), `test_first_entry_is_default_without_key`, `test_default_key_names_an_entry`,
+  2. `test_gateways.py` has `test_two_entries_with_defaults` (host `localhost`, client id 33, market data type 2, `required` false), `test_first_entry_is_default_without_key`, `test_default_key_names_an_entry`,
      `test_default_without_market_data_is_error`, `test_first_entry_without_market_data_and_no_default_is_error` and `test_from_env_is_one_default_entry` (the existing keys give one entry named `default`, `market_data`,
      required; a missing port names `OT_IBKR_GATEWAY_PORT`).
   3. `test_gateways.py` has one test per failure, each asserting a `ConfigError` whose message holds the key and not the value: `test_unknown_key`, `test_no_gateway`, `test_none_required`, `test_duplicate_name`,
