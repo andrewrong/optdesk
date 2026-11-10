@@ -12,9 +12,18 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 var _ NewOptionEodHeldFunc = NewWithHeld
+
+// NewOptionEodHeldSymbolsFunc is NewOptionEodHeldFunc with the translator last; nil means no translation.
+type NewOptionEodHeldSymbolsFunc func(
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, store.AccountReader, clock.Clock,
+	symbol.Translator,
+) (contracts.Job, error)
+
+var _ NewOptionEodHeldSymbolsFunc = NewWithHeldSymbols
 
 // heldAliases are the two IBKR accounts of the owner (docs/design/option-candidates.md, alias A and B).
 var heldAliases = []string{"A", "B"}
@@ -28,7 +37,14 @@ const heldLookbackDays = 7
 // NewWithWatch.
 func NewWithHeld(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
 	acct store.AccountReader, clk clock.Clock) (contracts.Job, error) {
-	j, err := NewWithWatch(b, res, w, watch, clk)
+	return NewWithHeldSymbols(b, res, w, watch, acct, clk, nil)
+}
+
+// NewWithHeldSymbols is NewWithHeld with a translator that gives the option root of each underlying, as
+// NewWithWatchSymbols does; a nil translator means no translation and a nil reader no held calls.
+func NewWithHeldSymbols(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
+	acct store.AccountReader, clk clock.Clock, t symbol.Translator) (contracts.Job, error) {
+	j, err := NewWithWatchSymbols(b, res, w, watch, clk, t)
 	if err != nil {
 		return nil, err
 	}

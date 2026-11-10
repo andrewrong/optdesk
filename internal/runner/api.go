@@ -72,13 +72,10 @@ type BackfillResult struct {
 
 // BackfillRefusal names why a day was refused before any write. The empty value
 // means the day was not refused. A refusal comes with a nil error, the cursor is not
-// moved and nothing is run. A backfill has no cursor test, so RefusedAheadOfCursor is
-// declared and never returned; it is removed by backfill-drop-refusal.
+// moved and nothing is run.
 type BackfillRefusal string
 
 const (
-	// RefusedAheadOfCursor is declared and never returned: Backfill has no cursor test.
-	RefusedAheadOfCursor BackfillRefusal = "ahead_of_cursor"
 	// RefusedNoPlan: the stored plan of the day is empty.
 	RefusedNoPlan BackfillRefusal = "no_plan"
 )

@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+
+	"github.com/andrewrong/optdesk/internal/compute/ivbar"
 )
 
 // repoRoot walks up from the test directory to go.mod.
@@ -76,6 +79,40 @@ func TestStoredTextGolden(t *testing.T) {
 		got, err := u.RoundHalfEven(c.Input, s)
 		if err != nil || got != c.Want {
 			t.Errorf("%s: %v -> %q (%v), want %q", c.ID, c.Input, got, err, c.Want)
+		}
+	}
+}
+
+// TestStoredTextIvbarCases requires the cases of the two IBKR rules and that the stored text of
+// market.iv_ibkr is the one ivbar.FromClose gives for the same close.
+func TestStoredTextIvbarCases(t *testing.T) {
+	t.Parallel()
+	var cases []struct {
+		ID    string  `json:"id"`
+		Input float64 `json:"input"`
+		Want  string  `json:"want"`
+	}
+	raw, err := os.ReadFile(filepath.Join("testdata", "stored_text.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]bool{}
+	for _, c := range cases {
+		found[c.ID] = true
+		if c.ID != "market.iv_ibkr" {
+			continue
+		}
+		got, err := ivbar.FromClose(strconv.FormatFloat(c.Input, 'f', -1, 64))
+		if err != nil || got != c.Want {
+			t.Errorf("market.iv_ibkr: FromClose of %v gives %q (%v), want %q", c.Input, got, err, c.Want)
+		}
+	}
+	for _, id := range []string{"market.iv_ibkr", "market.ivp_ibkr"} {
+		if !found[id] {
+			t.Errorf("stored_text.json has no case for %s", id)
 		}
 	}
 }

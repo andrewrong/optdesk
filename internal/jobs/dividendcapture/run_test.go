@@ -3,6 +3,7 @@ package dividendcapture
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -265,5 +266,31 @@ func TestEmbeddedManifest(t *testing.T) {
 	j, err := newJob(&fakeRef{}, &fakeRes{}, st, st, nil, fixedClock{})
 	if err != nil || j.ID() != "dividend_capture" {
 		t.Fatalf("%v %v", j, err)
+	}
+}
+
+func TestWrongDay(t *testing.T) {
+	t.Parallel()
+	ref := &fakeRef{by: map[int64]broker.DividendProjection{
+		1: {Status: broker.DividendOK, NextExDate: str("20261112"), NextAmount: f64(0.25)},
+	}}
+	rs := &fakeRes{}
+	st := &memStore{}
+	j, err := New(ref, rs, st, st, []jobs.WatchEntry{entry("cik:0000320193", "US", "AAPL", 1)}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []contracts.Day{"2026-11-06", "2026-11-10"} {
+		res := j.Run(context.Background(), d, nil)
+		var te contracts.TypedError
+		if !errors.As(res.Err, &te) || te.Kind() != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") {
+			t.Fatalf("day %s: result %+v", d, res)
+		}
+	}
+	if len(ref.asked) != 0 || len(rs.keys) != 0 || len(st.rows) != 0 {
+		t.Fatalf("a past day resolved %d, asked %d, wrote %d", len(rs.keys), len(ref.asked), len(st.rows))
+	}
+	if res := j.Run(context.Background(), day, nil); res.Err != nil || res.Usable != 1 || len(ref.asked) != 1 {
+		t.Fatalf("same day: result %+v, asked %d", res, len(ref.asked))
 	}
 }
