@@ -18,19 +18,21 @@ import (
 // candidatesFixture is an app whose optionCandidatesPage fake builds {"schema":"option_candidates_page"} and
 // records the reader and the days it was given.
 type candidatesFixture struct {
-	a      *app
-	builds atomic.Int32
-	days   []contracts.Day
-	got    store.CandidateReader
-	err    error
+	a        *app
+	builds   atomic.Int32
+	days     []contracts.Day
+	got      store.CandidateReader
+	gotNames store.InstrumentNameReader
+	err      error
 }
 
 func newCandidatesFixture(t *testing.T, env string) *candidatesFixture {
 	t.Helper()
 	f := &candidatesFixture{}
 	f.a, _ = testApp(t, env)
-	f.a.deps.optionCandidatesPage = func(_ *time.Location, _, _, _ string, c store.CandidateReader) pages.Page {
+	f.a.deps.optionCandidatesPage = func(_ *time.Location, _, _, _ string, c store.CandidateReader, n store.InstrumentNameReader) pages.Page {
 		f.got = c
+		f.gotNames = n
 		build := func(_ context.Context, _ store.SeriesReader, day contracts.Day, _ time.Time) ([]byte, error) {
 			f.builds.Add(1)
 			f.days = append(f.days, day)
@@ -229,5 +231,24 @@ func TestPageCommandBuildsCandidates(t *testing.T) {
 	site := strings.Replace(rec.Body.String(), `"run_id":"ot-serve"`, `"run_id":"ot-page"`, 1)
 	if site != out.String() {
 		t.Fatalf("site %s\ncommand %s", site, out.String())
+	}
+}
+
+func TestCandidatesNamesReaderPassed(t *testing.T) {
+	t.Parallel()
+	f := newCandidatesFixture(t, "")
+	names := zzzNames{}
+	h := siteHandler(f.a, candidatesClock, "2026-11-05", siteReaders{cands: demoCandidates{}, names: names}, echoHandler, http.NotFoundHandler())
+	if rec := candidatesGet(t, h, http.MethodGet, "/"+siteCandidatesRoute); rec.Code != 200 {
+		t.Fatalf("code %d", rec.Code)
+	}
+	if f.gotNames != names {
+		t.Fatalf("names reader %v", f.gotNames)
+	}
+	a, _ := testApp(t, "")
+	a.deps.optionCandidatesPage = newOptionCandidatesPage
+	b, err := buildCandidates(t.Context(), a, candidatesClock, "2026-11-05", siteReaders{cands: demoCandidates{}, names: names})
+	if err != nil || !strings.Contains(string(b), "ZZZ") {
+		t.Fatalf("%v: ticker missing: %s", err, b)
 	}
 }

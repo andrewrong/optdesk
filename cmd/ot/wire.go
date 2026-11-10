@@ -171,7 +171,7 @@ type deps struct {
 	newSettingsForm         settingsapi.NewSettingsFormFunc
 	openOwnerSet            ownerset.OpenFunc
 	settingsPage            func(c settings_page.Config) pages.Page
-	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page
+	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page
 	optionNoticesPage       optionNoticesPageFunc
 	optionTrackingPage      func(zone *time.Location, runID, buildID, scope string, r trackingReaders) pages.Page
 	openOptionLedgerRO      store.OpenOptionLedgerFunc
@@ -375,9 +375,9 @@ func newMarketPageOf(zone *time.Location, runID, buildID, scope string, readings
 
 // newOptionCandidatesPage builds the page option_candidates_page in zone from the plain arguments; the one
 // place that names option_candidates_page.Config.
-func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader) pages.Page {
+func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page {
 	return option_candidates_page.NewPage(option_candidates_page.Config{
-		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands,
+		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands, Names: names,
 	})
 }
 

@@ -71,15 +71,19 @@ func TestOptionPageNamed(t *testing.T) {
 		dsns = append(dsns, d)
 		return cEodDemo{demoOption: demoOption{}, closeCounter: cc}, nil
 	}
+	a.deps.openInstrumentName = func(_ context.Context, d string) (store.InstrumentNameStore, error) {
+		dsns = append(dsns, d)
+		return cZZZNames{closeCounter: cc}, nil
+	}
 	body, closeFn := buildNamed(t, a)
 	if !strings.Contains(body, `"schema":"option_page"`) || !strings.Contains(body, `"run_id":"ot-page"`) || strings.Contains(body, "no_reader") {
 		t.Fatalf("page %s", body)
 	}
-	if len(dsns) != 2 || dsns[0] != "pages-dsn" || dsns[1] != "pages-dsn" || closed.Load() != 0 {
+	if len(dsns) != 3 || dsns[0] != "pages-dsn" || dsns[1] != "pages-dsn" || dsns[2] != "pages-dsn" || closed.Load() != 0 {
 		t.Fatalf("dsns %v closed %d", dsns, closed.Load())
 	}
 	closeFn()
-	if closed.Load() != 2 {
+	if closed.Load() != 3 {
 		t.Fatalf("closed %d", closed.Load())
 	}
 }
@@ -143,3 +147,130 @@ func TestOptionPageScope(t *testing.T) {
 		t.Fatalf("scope: %s", rec.Body.String())
 	}
 }
+
+// zzzNames names every underlying id ZZZ, so a page that was given the reader prints the ticker.
+type zzzNames struct{}
+
+func (zzzNames) InstrumentNames(_ context.Context, ids []int64) ([]store.InstrumentName, error) {
+	out := make([]store.InstrumentName, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, store.InstrumentName{InstrumentID: id, Type: "stock", Name: "ZZZ"})
+	}
+	return out, nil
+}
+
+func TestOptionPageNamesReaderPassed(t *testing.T) {
+	t.Parallel()
+	a, _ := optionPageApp(t, "")
+	rd := siteReaders{cands: demoCandidates{}, eod: demoOption{}, names: zzzNames{}}
+	b, err := buildOptionPage(t.Context(), a, candidatesClock, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "ZZZ") {
+		t.Fatalf("ticker missing: %s", b)
+	}
+}
+
+// TestNamedOpensNameStore: both named pages open the instrument-name store with the pages line and close it once.
+func TestNamedOpensNameStore(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{candidatesName, optionPageName} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, _ := optionPageApp(t, store.DSNEnvPages+"=pages-dsn\n")
+			a.profile.Name = "real"
+			a.deps.optionCandidatesPage = newOptionCandidatesPage
+			var closed, nameCloses atomic.Int32
+			var dsn string
+			a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
+				return cCandsReader{demoCandidates: demoCandidates{}, closeCounter: closeCounter{&closed}}, nil
+			}
+			a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) {
+				return cEodDemo{demoOption: demoOption{}, closeCounter: closeCounter{&closed}}, nil
+			}
+			a.deps.openInstrumentName = func(_ context.Context, d string) (store.InstrumentNameStore, error) {
+				dsn = d
+				return cZZZNames{closeCounter: closeCounter{&nameCloses}}, nil
+			}
+			_, closeFn, err := pageNamed(a, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if dsn != "pages-dsn" || nameCloses.Load() != 0 {
+				t.Fatalf("dsn %q closes %d", dsn, nameCloses.Load())
+			}
+			closeFn()
+			if nameCloses.Load() != 1 {
+				t.Fatalf("name store closed %d times", nameCloses.Load())
+			}
+		})
+	}
+}
+
+// TestNamedOpenFailureClosesStores: a failed name-store open closes the stores opened before it.
+func TestNamedOpenFailureClosesStores(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{candidatesName, optionPageName} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, _ := optionPageApp(t, store.DSNEnvPages+"=pages-dsn\n")
+			a.profile.Name = "real"
+			a.deps.optionCandidatesPage = newOptionCandidatesPage
+			var closed atomic.Int32
+			a.deps.openCandidate = func(context.Context, string) (candidateStore, error) {
+				return cCandsReader{demoCandidates: demoCandidates{}, closeCounter: closeCounter{&closed}}, nil
+			}
+			a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) {
+				return cEodDemo{demoOption: demoOption{}, closeCounter: closeCounter{&closed}}, nil
+			}
+			a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
+				return nil, context.Canceled
+			}
+			if _, _, err := pageNamed(a, name); err == nil {
+				t.Fatal("no error")
+			}
+			want := int32(1)
+			if name == optionPageName {
+				want = 2
+			}
+			if closed.Load() != want {
+				t.Fatalf("closed %d, want %d", closed.Load(), want)
+			}
+		})
+	}
+}
+
+// TestNamedNoLineNilNames: with no pages line no store is opened and the page shows its no_reader gap.
+func TestNamedNoLineNilNames(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{candidatesName, optionPageName} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, _ := optionPageApp(t, store.DSNEnvCandidate+"=x\n")
+			a.profile.Name = "real"
+			a.deps.optionCandidatesPage = newOptionCandidatesPage
+			a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) {
+				t.Error("name store opened")
+				return nil, context.Canceled
+			}
+			p, closeFn, err := pageNamed(a, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer closeFn()
+			b, err := p.Build(t.Context(), nil, "2026-11-05", candidatesClock.Now())
+			if err != nil || !strings.Contains(string(b), "no_reader") {
+				t.Fatalf("%v %s", err, b)
+			}
+		})
+	}
+}
+
+// cZZZNames is zzzNames with a counted Close.
+type cZZZNames struct {
+	zzzNames
+	closeCounter
+}
+
+func (c cZZZNames) Close() error { return c.closeCounter.Close() }
