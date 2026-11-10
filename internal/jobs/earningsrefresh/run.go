@@ -57,6 +57,7 @@ type job struct {
 	entries  []jobs.WatchEntry
 	clk      clock.Clock
 	tr       symbol.Translator
+	log      *slog.Logger
 }
 
 type typedError struct {
@@ -77,6 +78,17 @@ func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 		return te
 	}
 	return &typedError{kind, err.Error()}
+}
+
+// logFailure logs the step and the error kind of a failed run; the kind is unknown when err has none. It
+// never logs the error text, which can carry a key or an address.
+func (j *job) logFailure(step string, err error) {
+	kind := "unknown"
+	var k interface{ Kind() contracts.ErrorKind }
+	if errors.As(err, &k) {
+		kind = string(k.Kind())
+	}
+	j.log.Warn("run failed", "step", step, "kind", kind)
 }
 
 // vendor is the row source of a market's EarningsSource.
@@ -124,7 +136,7 @@ func NewWithSymbols(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, tr: tr}, nil
+	return &job{m: m, offset: off, runBound: bound, srcs: srcs, w: w, r: r, entries: entries, clk: clk, tr: tr, log: slog.Default()}, nil
 }
 
 // ID is the job id of the manifest.
@@ -210,10 +222,13 @@ func (j *job) readDay(ctx context.Context, day contracts.Day) (have map[string]c
 func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	observed, err := date(string(day))
 	if err != nil {
-		return contracts.JobResult{Err: &typedError{contracts.Permanent, "earningsrefresh: bad day"}}
+		te := &typedError{contracts.Permanent, "earningsrefresh: bad day"}
+		j.logFailure("bad_day", te)
+		return contracts.JobResult{Err: te}
 	}
 	have, vendorRow, failedBefore, err := j.readDay(ctx, day)
 	if err != nil {
+		j.logFailure("read_day", err)
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
 	}
 	now := j.clk.Now().UTC()
@@ -234,7 +249,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 		case e.ReportDateOverride != "":
 			d, err := date(e.ReportDateOverride)
 			if err != nil {
-				return contracts.JobResult{Err: &typedError{contracts.Permanent, "earningsrefresh: bad report_date_override of " + e.Issuer}}
+				te := &typedError{contracts.Permanent, "earningsrefresh: bad report_date_override of " + e.Issuer}
+				j.logFailure("override_date", te)
+				return contracts.JobResult{Err: te}
 			}
 			row.Status, row.Source, row.ReportDate = "listed", "owner", d
 			rows = append(rows, row)
@@ -245,7 +262,26 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			pending[e.Market] = append(pending[e.Market], e)
 		}
 	}
-	failed := failedBefore
+	fetched, fetchFailed := j.fetchPending(ctx, day, pending, base)
+	rows = append(rows, fetched...)
+	failed := failedBefore || fetchFailed
+	res := j.write(ctx, rows)
+	if res.Err != nil {
+		return res
+	}
+	if failed {
+		j.logFailure("source_failed", errSourceFailed)
+		res.Err = errSourceFailed
+	}
+	return res
+}
+
+// fetchPending makes the one Fetch of each market that has pending entries and returns their rows and whether a
+// Fetch failed.
+func (j *job) fetchPending(
+	ctx context.Context, day contracts.Day, pending map[string][]jobs.WatchEntry,
+	base func(jobs.WatchEntry) contracts.EarningsDate,
+) (rows []contracts.EarningsDate, failed bool) {
 	for _, market := range []string{"US", "JP"} {
 		entries := pending[market]
 		if len(entries) == 0 {
@@ -268,14 +304,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			rows = append(rows, row)
 		}
 	}
-	res := j.write(ctx, rows)
-	if res.Err != nil {
-		return res
-	}
-	if failed {
-		res.Err = errSourceFailed
-	}
-	return res
+	return rows, failed
 }
 
 // write inserts the rows; a writer error is Retryable unless already typed.
@@ -283,6 +312,7 @@ func (j *job) write(ctx context.Context, rows []contracts.EarningsDate) contract
 	res := contracts.JobResult{}
 	for _, row := range rows {
 		if err := j.w.InsertEarningsDate(ctx, row); err != nil {
+			j.logFailure("write", err)
 			return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
 		}
 		res.Returned++
