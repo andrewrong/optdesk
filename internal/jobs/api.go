@@ -264,3 +264,7 @@ type NewBarsRefreshFunc func(
 	broker.Broker, broker.HistoryClient, store.InstrumentResolver, bar.PriceBarWriter, bar.PriceBarReader,
 	[]WatchEntry, clock.Clock,
 ) (contracts.Job, error)
+
+// NewFxRefreshFunc is the constructor of the fx_refresh job (internal/jobs/fxrefresh.New). The arguments
+// are the broker, the history client, the FX rate writer and reader and the clock.
+type NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)
