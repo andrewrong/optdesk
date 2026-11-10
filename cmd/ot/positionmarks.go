@@ -34,27 +34,9 @@ func (a *app) positionMarks(ctx context.Context, f jobFactory, brk broker.Broker
 	if f.d.openMark == nil || f.d.newPositionMarks == nil {
 		return nil, nil
 	}
-	env, err := a.envFile()
+	aliases, acctDSN, markDSN, err := a.markSettings()
 	if err != nil {
 		return nil, err
-	}
-	sockets, err := parseAccountSockets(env[envAccountSockets])
-	if err != nil {
-		return nil, err
-	}
-	main, err := accountMain(env[envIbkrGateways])
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := sockets[main]; !ok {
-		return nil, fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
-	}
-	acctDSN, markDSN := env[store.DSNEnvAccount], env[mark.DSNEnvPositionMark]
-	if acctDSN == "" {
-		return nil, fmt.Errorf("%s is not set", store.DSNEnvAccount)
-	}
-	if markDSN == "" {
-		return nil, fmt.Errorf("%s is not set", mark.DSNEnvPositionMark)
 	}
 	acct, err := f.d.openAccount(ctx, acctDSN)
 	if err != nil {
@@ -66,7 +48,7 @@ func (a *app) positionMarks(ctx context.Context, f jobFactory, brk broker.Broker
 		return nil, fmt.Errorf("open mark store with %s failed", mark.DSNEnvPositionMark)
 	}
 	extra.addCloser(w)
-	j, err := f.d.newPositionMarks(brk, markAliases(sockets, main), acct, w, f.clk)
+	j, err := f.d.newPositionMarks(brk, aliases, acct, w, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build position_marks job failed: %w", err)
 	}
@@ -92,4 +74,32 @@ func (a *app) withAccountJobs(ctx context.Context, f jobFactory, brk broker.Brok
 		return jobs, err
 	}
 	return append(jobs, marks), nil
+}
+
+// markSettings reads the lines position_marks needs: the aliases of the account job (main first) and the two DSNs.
+// It opens nothing; an error names the key only.
+func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err error) {
+	env, err := a.envFile()
+	if err != nil {
+		return nil, "", "", err
+	}
+	sockets, err := parseAccountSockets(env[envAccountSockets])
+	if err != nil {
+		return nil, "", "", err
+	}
+	main, err := accountMain(env[envIbkrGateways])
+	if err != nil {
+		return nil, "", "", err
+	}
+	if _, ok := sockets[main]; !ok {
+		return nil, "", "", fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
+	}
+	acctDSN, markDSN = env[store.DSNEnvAccount], env[mark.DSNEnvPositionMark]
+	if acctDSN == "" {
+		return nil, "", "", fmt.Errorf("%s is not set", store.DSNEnvAccount)
+	}
+	if markDSN == "" {
+		return nil, "", "", fmt.Errorf("%s is not set", mark.DSNEnvPositionMark)
+	}
+	return markAliases(sockets, main), acctDSN, markDSN, nil
 }
