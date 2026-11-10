@@ -216,3 +216,28 @@ func TestSettingsVersionRoundTrip(t *testing.T) {
 		t.Fatalf("new run = %+v, %v; want settings version 57", got, err)
 	}
 }
+
+func TestSettingsVersionMigrationDown(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	c, err := pgx.Connect(ctx, connURL(t, name, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close(ctx) }()
+	raw, err := os.ReadFile("../../../migrations/0027_candidate_settings_version.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, down, _ := strings.Cut(string(raw), "-- +goose Down")
+	if _, err := c.Exec(ctx, down); err != nil {
+		t.Fatalf("down of 0027: %v", err)
+	}
+	var have bool
+	err = c.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.columns
+		WHERE table_schema = 'candidates' AND table_name = 'option_candidate' AND column_name = 'settings_version')`).Scan(&have)
+	if err != nil || have {
+		t.Errorf("settings_version still there after down: %v, %v", have, err)
+	}
+}
