@@ -14,7 +14,21 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-func init() { register("candidates", candidatesCmd) }
+func init() {
+	register("candidates", candidatesCmd)
+	// option_candidates is held when its line is missing; candidatesOff is the one source of that reason, so it
+	// gives no startOff.
+	registerJob(jobFamily{
+		id: jobOptionCandidates, order: 110,
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			j, err := a.candidateJob(ctx, jc.cfg, jc.f, jc.extra)
+			if j == nil || err != nil {
+				return nil, "", err
+			}
+			return j, jc.cfg.candidatesOff(), nil
+		},
+	})
+}
 
 const (
 	jobOptionCandidates = "option_candidates"

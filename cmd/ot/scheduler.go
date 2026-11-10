@@ -262,8 +262,8 @@ func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job,
 		if id != jobOptionCandidates {
 			return next(ctx, id)
 		}
-		if w.candidatesOff != "" {
-			return nil, w.candidatesOff
+		if r := w.off[jobOptionCandidates]; r != "" {
+			return nil, r
 		}
 		j, err := w.factory.optionCandidates()
 		if err != nil {
@@ -274,11 +274,13 @@ func candidateProbe(w wiring, next func(context.Context, string) (contracts.Job,
 	}
 }
 
-// schedulerDisabled is startDisabled with option_candidates added when its line is missing and the job is wired.
+// schedulerDisabled is startDisabled plus, for each held job, its reason when startDisabled lacks it.
 func schedulerDisabled(cfg runOnceConfig, w wiring) map[string]string {
 	out := startDisabled(cfg, w.brokerUp)
-	if r := cfg.candidatesOff(); r != "" && w.cand != nil {
-		out[jobOptionCandidates] = r
+	for id := range w.held {
+		if _, ok := out[id]; !ok && w.off[id] != "" {
+			out[id] = w.off[id]
+		}
 	}
 	return out
 }

@@ -27,6 +27,13 @@ import (
 
 func init() {
 	register("ledger", ledgerCmd)
+	registerJob(jobFamily{
+		id: jobOptionLedger, order: 50,
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			j, err := a.optionLedgerJob(ctx, jc.cfg, *jc.f, jc.extra)
+			return j, "", err
+		},
+	})
 	extDeps[extOptionLedger] = func() any { return optionLedgerDeps{openFlexSections: openFlexSections} }
 }
 

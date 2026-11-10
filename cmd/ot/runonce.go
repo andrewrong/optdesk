@@ -11,11 +11,9 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
-	"github.com/andrewrong/optdesk/internal/clock/calendarcli"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -23,7 +21,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
-	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 func init() { register("run-once", runOnce) }
@@ -101,17 +98,6 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 	return c, nil
 }
 
-// earningsOff is the reason earnings_refresh is left out, or "" when it runs. It names a line, never a value.
-func (c runOnceConfig) earningsOff() string {
-	switch {
-	case c.eventsDSN == "":
-		return reasonNoEventsDSN
-	case c.alphaKey == "":
-		return reasonNoAlphaKey
-	}
-	return ""
-}
-
 func runOnce(a *app, args []string) error {
 	fs := flag.NewFlagSet("run-once", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -176,7 +162,7 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		if err := rec.Reconcile(ctx, day); err != nil {
 			return err
 		}
-		return printOutcomes(ctx, a.stdout, w.ledger, js, day, w.earningsOff)
+		return printOutcomes(ctx, a.stdout, w.ledger, js, day, w.off[jobEarningsRefresh])
 	})
 }
 
@@ -189,14 +175,11 @@ type wiring struct {
 	brokerUp bool
 	// factory builds a job anew for the probe of ot scheduler; its stores stay open until use returns.
 	factory jobFactory
-	// earn is the earnings_refresh job held in jobs.
-	earn contracts.Job
-	// earningsOff is the reason earn is left out of run-once and backfill; the
-	// scheduler keeps the job in jobs so that its ticker knows the schedule (preflight.go).
-	earningsOff string
-	// cand is the option_candidates job held in jobs (nil for a deps without it); candidatesOff is the reason it is left out.
-	cand          contracts.Job
-	candidatesOff string
+	// off is the reason a job is left out, by id: the startOff of every family and the reason a build returned.
+	off map[string]string
+	// held is the jobs of jobs whose build returned a reason: they are left out of run-once and backfill; the
+	// scheduler keeps them in jobs so that its ticker knows the schedule (preflight.go).
+	held map[string]contracts.Job
 	// dial dials the broker anew; the broker it returns is closed when withWiring returns.
 	dial func(ctx context.Context) (broker.Broker, error)
 	// bars holds bars_refresh and fx_refresh (empty for a deps without them); barsOff is the reason they are left out
@@ -207,17 +190,15 @@ type wiring struct {
 	dialHistory func(ctx context.Context) (broker.HistoryClient, error)
 }
 
-// runnable is jobs without earnings_refresh when its line is missing; the left-out job is logged by id and
-// reason.
+// runnable is jobs without the held jobs and the bars jobs that have a reason; each left-out job is logged by id
+// and reason.
 func (w wiring) runnable(log *slog.Logger) []contracts.Job {
 	drop := map[contracts.Job]bool{}
-	if w.earningsOff != "" {
-		log.Warn("job left out", "component", "ot", "job", jobEarningsRefresh, "status", w.earningsOff)
-		drop[w.earn] = true
-	}
-	if w.cand != nil && w.candidatesOff != "" {
-		log.Warn("job left out", "component", "ot", "job", jobOptionCandidates, "status", w.candidatesOff)
-		drop[w.cand] = true
+	for _, j := range w.jobs {
+		if _, ok := w.held[j.ID()]; ok && w.off[j.ID()] != "" {
+			log.Warn("job left out", "component", "ot", "job", j.ID(), "status", w.off[j.ID()])
+			drop[j] = true
+		}
 	}
 	if w.barsOff != "" {
 		for _, j := range w.bars {
@@ -266,177 +247,6 @@ type jobFactory struct {
 	// bars and hist are what bars_refresh and fx_refresh get: the bar store opened with the bar line and the history client.
 	bars bar.BarStore
 	hist broker.HistoryClient
-}
-
-// jobDividendCapture is the id of the dividend_capture job.
-const jobDividendCapture = "dividend_capture"
-
-// dividendCapture builds dividend_capture over the reference client, the instrument store opened for option_eod,
-// the dividend store and the watch list.
-func (f jobFactory) dividendCapture(ref broker.ReferenceClient) (contracts.Job, error) {
-	j, err := f.d.newDividendCapture(ref, f.inst, f.div, f.div, f.watch, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build dividend_capture job failed: %w", err)
-	}
-	return j, nil
-}
-
-// dividendJob builds dividend_capture beside option_eod with the same broker state: with the broker down at start
-// (the option jobs hold the stand-in) or without the events line the job is left out, with one named line, and the
-// other jobs run as before. It is nil for a deps without the constructors. The dividend store and the reference
-// client are closed by extra when withWiring returns. No error holds a DSN or a path.
-func (a *app) dividendJob(ctx context.Context, cfg runOnceConfig, f *jobFactory, brokerUp bool, extra *closerSet) (contracts.Job, error) {
-	d := f.d
-	if d.newDividendCapture == nil || d.openDividend == nil || d.newReference == nil {
-		return nil, nil
-	}
-	reason := ""
-	switch {
-	case !brokerUp:
-		reason = reasonBrokerDown
-	case cfg.eventsDSN == "":
-		reason = reasonNoEventsDSN
-	}
-	if reason != "" {
-		a.log.Warn("job left out", "component", "ot", "job", jobDividendCapture, "status", reason)
-		return nil, nil
-	}
-	s, err := d.openDividend(ctx, cfg.eventsDSN)
-	if err != nil {
-		return nil, fmt.Errorf("open dividend store with %s failed", store.DSNEnvEvents)
-	}
-	extra.addCloser(s)
-	f.div = s
-	ref, err := d.newReference(ctx, cfg.socketPath, broker.Options{})
-	if err != nil {
-		a.log.Warn("job left out", "component", "ot", "job", jobDividendCapture, "status", reasonBrokerDown)
-		return nil, nil
-	}
-	extra.addCloser(ref)
-	return f.dividendCapture(ref)
-}
-
-// earningsRefresh builds earnings_refresh over the events store, the Alpha Vantage source and the watch list.
-func (f jobFactory) earningsRefresh() (contracts.Job, error) {
-	j, err := f.d.newEarningsRefresh(f.earn, f.events, f.events, f.watch, f.clk, f.d.symbols)
-	if err != nil {
-		return nil, fmt.Errorf("build earnings_refresh job failed: %w", err)
-	}
-	return j, nil
-}
-
-// noEventsStore stands in for the events store when OT_PG_DSN_EVENTS is empty: the job is left out, so it is
-// never called.
-type noEventsStore struct{}
-
-func (noEventsStore) InsertEarningsDate(context.Context, contracts.EarningsDate) error {
-	return errors.New(reasonNoEventsDSN)
-}
-
-func (noEventsStore) EarningsDates(context.Context, string, contracts.Day, contracts.Day) ([]contracts.EarningsDate, error) {
-	return nil, errors.New(reasonNoEventsDSN)
-}
-
-func (noEventsStore) Close() error { return nil }
-
-// calendarRefresh builds calendar_refresh over the loader store; the command is the uv program of the .env
-// line (default uv) and calendarArgs, run by calendarcli.Exec in the default temporary directory.
-func (f jobFactory) calendarRefresh() (contracts.Job, error) {
-	uv := f.uv
-	if uv == "" {
-		uv = "uv"
-	}
-	argv := append([]string{uv}, calendarArgs...)
-	src := f.d.newCommandSessionSource(argv, "", calendarcli.Exec)
-	// The log handler passes only the keys of profile.logFields, so the change is one value of "status".
-	obs := func(c clock.SessionDayChange) {
-		f.log.Info("calendar change", "component", "ot", "job", "calendar_refresh",
-			"status", fmt.Sprintf("day=%s before=[%s] after=[%s]", c.Day, describeDay(c.Before), describeDay(c.After)))
-	}
-	j, err := f.d.newCalendarRefresh(src, f.loader, f.d.newDiffer(), f.clk, obs)
-	if err != nil {
-		return nil, fmt.Errorf("build calendar_refresh job failed: %w", err)
-	}
-	return j, nil
-}
-
-// describeDay renders one session-day row for the log; nil is "none" (the day is absent on that side).
-func describeDay(d *contracts.SessionDay) string {
-	if d == nil {
-		return "none"
-	}
-	return fmt.Sprintf("session=%t early_close=%t open=%s close=%s", d.IsSession, d.EarlyClose,
-		d.OpenAt.UTC().Format(time.RFC3339), d.CloseAt.UTC().Format(time.RFC3339))
-}
-
-func (f jobFactory) computeFigures() (contracts.Job, error) {
-	j, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.d.computeEase, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build compute_figures job failed: %w", err)
-	}
-	return j, nil
-}
-
-func (f jobFactory) fred() (contracts.Job, error) {
-	j, err := f.d.newFredSeries(f.src, f.ser, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build fred_series job failed: %w", err)
-	}
-	return j, nil
-}
-
-func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	return buildOptionEod(f.d, b, f.inst, f.eod, f.watch, f.clk)
-}
-
-// buildOptionEod builds option_eod over the watch list: the one constructor path of run-once, the scheduler and
-// the dry run.
-func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
-	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
-	build := d.newOptionEodWatch
-	if build == nil {
-		// A deps literal of a test that fakes only newOptionEod; newDeps always sets newOptionEodWatch.
-		build = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
-			_ []jobs.WatchEntry, c clock.Clock, t symbol.Translator) (contracts.Job, error) {
-			return d.newOptionEod(b, r, w, c, t)
-		}
-	}
-	j, err := build(b, r, w, watch, clk, d.symbols)
-	if err != nil {
-		return nil, fmt.Errorf("build option_eod job failed: %w", err)
-	}
-	return j, nil
-}
-
-// optionEodJP builds option_eod_jp over the same stores and the same watch list as option_eod.
-func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
-	return buildOptionEodJP(f.d, b, f.inst, f.eod, f.watch, f.clk)
-}
-
-// buildOptionEodJP builds option_eod_jp over the watch list (the JP stock entries add keys): the one constructor
-// path of run-once, the scheduler and the dry run.
-func buildOptionEodJP(d deps, b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter,
-	watch []jobs.WatchEntry, clk clock.Clock) (contracts.Job, error) {
-	var j contracts.Job
-	var err error
-	if d.newOptionEodJPWatch != nil {
-		j, err = d.newOptionEodJPWatch(b, r, w, watch, clk)
-	} else {
-		// A deps literal of a test that fakes only newOptionEodJP; newDeps always sets newOptionEodJPWatch.
-		j, err = d.newOptionEodJP(b, r, w, clk)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("build option_eod_jp job failed: %w", err)
-	}
-	return j, nil
-}
-
-func (f jobFactory) quoteSnapshot(b broker.Broker) (contracts.Job, error) {
-	j, err := f.d.newQuoteSnapshot(b, f.inst, f.snap, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build quote_snapshot job failed: %w", err)
-	}
-	return j, nil
 }
 
 // withWiring opens the stores and the broker, wires fred_series, option_eod, quote_snapshot, compute_figures and calendar_refresh, then
@@ -506,84 +316,49 @@ func withWiring(
 			events: events, earn: earn, watch: cfg.watch}, ledger)
 }
 
-// wireJobs builds the jobs over the open stores and calls use. option_eod_jp comes after option_eod and
-// is left out, with one named line, when the XTKS calendar answers an error for today (Decision 13).
+// wireJobs builds the jobs over the open stores, one family after the other by order (jobreg.go), and calls use. A
+// family left out answers nil; a held one answers its reason, kept in wiring.held and wiring.off.
 func wireJobs(
 	ctx context.Context, a *app, cfg runOnceConfig, use func(wiring) error, brk broker.Broker, brokerUp bool,
 	extra *closerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
-	fredJob, err := f.fred()
-	if err != nil {
-		return err
+	jc := &jobCtx{cfg: cfg, f: &f, brk: brk, brokerUp: brokerUp, cal: cal, extra: extra}
+	w := wiring{ledger: ledger, cal: cal, brokerUp: brokerUp, off: startDisabled(cfg, brokerUp), held: map[string]contracts.Job{}}
+	steps := slices.Clone(jobSteps)
+	runSteps := func(below int) error {
+		for len(steps) > 0 && (below < 0 || steps[0].after < below) {
+			js, err := steps[0].run(ctx, a, jc, &w)
+			if err != nil {
+				return err
+			}
+			w.jobs = append(w.jobs, js...)
+			steps = steps[1:]
+		}
+		return nil
 	}
-	eodJob, err := f.optionEod(brk)
-	if err != nil {
-		return err
-	}
-	jobList := []contracts.Job{fredJob, eodJob}
-	if reason := xtksReason(ctx, cal, f.clk); reason != "" {
-		a.log.Warn(reason, "component", "ot", "job", jobOptionEodJP)
-	} else {
-		jpJob, err := f.optionEodJP(brk)
+	for _, fam := range sortedJobFamilies() {
+		if err := runSteps(fam.order); err != nil {
+			return err
+		}
+		j, reason, err := fam.build(ctx, a, jc)
 		if err != nil {
 			return err
 		}
-		jobList = append(jobList, jpJob)
+		if j == nil {
+			continue
+		}
+		w.jobs = append(w.jobs, j)
+		if reason != "" {
+			w.held[fam.id], w.off[fam.id] = j, reason
+		}
 	}
-	divJob, err := a.dividendJob(ctx, cfg, &f, brokerUp, extra)
-	if err != nil {
+	if err := runSteps(-1); err != nil {
 		return err
 	}
-	if divJob != nil {
-		jobList = append(jobList, divJob)
-	}
-	// option_ledger follows option_eod (Decision 15); it is left out, never failed, without its line or file.
-	ledgerJob, err := a.optionLedgerJob(ctx, cfg, f, extra)
-	if err != nil {
-		return err
-	}
-	if ledgerJob != nil {
-		jobList = append(jobList, ledgerJob)
-	}
-	bars, barsOff, err := a.barJobs(ctx, cfg, &f, brk, brokerUp, extra)
-	if err != nil {
-		return err
-	}
-	jobList = append(jobList, bars...)
-	snapJob, err := f.quoteSnapshot(brk)
-	if err != nil {
-		return err
-	}
-	figJob, err := f.computeFigures()
-	if err != nil {
-		return err
-	}
-	calJob, err := f.calendarRefresh()
-	if err != nil {
-		return err
-	}
-	earnJob, err := f.earningsRefresh()
-	if err != nil {
-		return err
-	}
-	jobList = append(jobList, snapJob, figJob, calJob, earnJob)
-	if jobList, err = a.withAccountJobs(ctx, f, brk, extra, jobList); err != nil {
-		return err
-	}
-	candJob, err := a.candidateJob(ctx, cfg, &f, extra)
-	if err != nil {
-		return err
-	}
-	if candJob != nil {
-		jobList = append(jobList, candJob)
-	}
-	dial, dialHistory := redialers(a, cfg, extra)
-	return use(wiring{
-		ledger: ledger, cal: cal, jobs: jobList, brokerUp: brokerUp, factory: f,
-		earn: earnJob, earningsOff: cfg.earningsOff(), cand: candJob, candidatesOff: cfg.candidatesOff(),
-		bars: bars, barsOff: barsOff, barsDSNOff: cfg.barsOff(),
-		dial: dial, dialHistory: dialHistory,
-	})
+	w.factory = f
+	w.barsDSNOff = cfg.barsOff()
+	w.dial, w.dialHistory = redialers(a, cfg, extra)
+	return use(w)
 }
 
 // closerSet holds the brokers, readers and stores opened after start, so that withWiring closes them.

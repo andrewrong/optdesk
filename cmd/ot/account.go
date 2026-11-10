@@ -15,6 +15,18 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+const jobAccountCapture = "account_capture"
+
+func init() {
+	registerJob(jobFamily{
+		id: jobAccountCapture, order: 100,
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			j, err := a.accountCapture(ctx, *jc.f, jc.extra)
+			return j, "", err
+		},
+	})
+}
+
 // The lines of .env that account_capture reads (through deps.readEnv, never the process environment). Their
 // values are never printed: an error names the key only.
 const (
