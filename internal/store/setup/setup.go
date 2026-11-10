@@ -87,7 +87,7 @@ var roles = []roleSpec{
 	{roleBar, bar.DSNEnvBar},                     // ot_w_bar, line OT_PG_DSN_BAR
 	{roleOptionLedger, store.DSNEnvOptionLedger}, // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
 	{roleSettings, dsnEnvSettings},               // ot_w_settings, line OT_PG_DSN_SETTINGS
-	{roleMark, dsnEnvPosMark},                    // ot_w_posmark, line OT_PG_DSN_POSMARK
+	{roleMark, dsnEnvPosMark},                    // line OT_PG_DSN_POSMARK
 }
 
 // extensions are created in the database by Setup.
