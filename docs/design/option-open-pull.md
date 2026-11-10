@@ -500,7 +500,7 @@ Every point is fixed, and the whole file was read again against main (paths, sym
 
 - The strike band is the sigma band again, with no pricing of our own (plan v2.5 section 1, ADR 0001): puts from `spot * exp(-1.4 * sigma * sqrt(T))` up to the spot, held calls up to `exp(+1.4 ...)`, the stored band k = 1.75 or spot -25 percent; k 1.4 and 1.75 are the owner's delta 0.08 and 0.04 written as a band. The Black-Scholes text, `est_delta` and the delta floors are gone.
 - A pre-open gap pass `option_open_resolve_gap` (08:00 ET) runs before the plan (Decision 1); the evening resolve is of the previous trading day.
-- Decision 3 says which strikes drop when a cap binds; Decision 8 has `ok`, `partial`, `no_data`, `deferred` and the retry rule; Decision 9 names the default option ticks and skips tick 106; Decision 21 has the lunch break, the Tokyo session date and `short_put_jp`; Decision 22 has the postcondition, heartbeat, replacement run and start failure; Decision 6 has the ambiguous 200, no union over expiries, pruning and the run counts.
+- Decision 3 says which strikes drop when a cap binds; Decision 8 has `ok`, `partial`, `no_data`, `deferred` and the retry rule; Decision 9 names the default option ticks and skips tick 106; Decision 21 has the lunch break and the Tokyo session date; Decision 22 has the postcondition, heartbeat and start check (replacement run: `## Left out`, round 7); Decision 6 has the ambiguous 200, no union over expiries, pruning and the run counts.
 - Wave 1 gets issue 21 (read-only probe and session-loss codes without editing `transport.py`); issue 16 keeps only the guard parameter; issue 13 follows 21. SPX, SPXW, NDX and NDXP are in `## Left out`.
 
 ## Verdict round 7 (PR 1345, head 751b4007)
