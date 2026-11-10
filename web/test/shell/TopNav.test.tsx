@@ -25,7 +25,7 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 describe('TopNav', () => {
-  it('has nine links and the 期权持仓 menu: ten items in all', async () => {
+  it('has ten items: the fixed links and the 期权持仓 menu', async () => {
     await showAt('/home')
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('主导航')
     expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
