@@ -55,6 +55,10 @@ A manifest without the table has no schedule: `Schedule()` returns empty strings
 
 Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `0s`, bound 16m (8 minutes plus its budget), restart-sensitive; `fred_series` `time` 07:30 in `America/New_York`, bound 5m, not restart-sensitive; `quote_snapshot` `session_close` `-30m`, bound 16m, restart-sensitive.
 
+## account_capture
+
+- `Run` reads the live account, which has no history: a day other than the date of the clock in `America/New_York` returns NoValue "wrong day" and reads and writes nothing, so a backfill of a past day counts the key Absent and never stores today's account under a past `session_day`. Test: `internal/jobs/accountcapture/job_test.go` `TestWrongDay`.
+
 ## compute_figures
 
 `computefigures.New(jobs.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock)` builds the job `compute_figures` (type `jobs.NewComputeFiguresFunc`); the design is `docs/design/compute-figures.md`. `jobs.ComputeStores` holds the seven store interfaces the job uses: `Catalog` (`store.OptionEodCatalog`), `OptionEod` (`store.OptionEodReader`), `Terms` (`store.OptionTermsReader`), `Names` (`store.InstrumentNameReader`), `SessionDays` (`store.SessionDayReader`), `Series` (`store.SeriesReader`) and `Readings` (`store.ReadingStore`). The job is declared here; its implementation is a later issue.

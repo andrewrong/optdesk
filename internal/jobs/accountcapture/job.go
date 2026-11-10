@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -20,6 +21,9 @@ import (
 const (
 	datasetID = "account.capture"
 	runKey    = "daily"
+
+	// marketZone is the zone of the XNYS calendar of the manifest; the zone database is embedded by schedule.go.
+	marketZone = "America/New_York"
 
 	statusOK      = "ok"
 	statusFailed  = "failed"
@@ -41,6 +45,7 @@ type job struct {
 	readers map[string]broker.AccountReader
 	w       store.AccountWriter
 	clk     clock.Clock
+	loc     *time.Location
 	log     *slog.Logger
 }
 
@@ -76,7 +81,11 @@ func newJob(cfg Config, log *slog.Logger) (*job, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, main: cfg.Main, aliases: aliases, readers: cfg.Readers, w: cfg.Writer, clk: cfg.Clock, log: log}, nil
+	loc, err := time.LoadLocation(marketZone)
+	if err != nil {
+		return nil, err
+	}
+	return &job{loc: loc, m: m, main: cfg.Main, aliases: aliases, readers: cfg.Readers, w: cfg.Writer, clk: cfg.Clock, log: log}, nil
 }
 
 // ID is the job id of the manifest.
@@ -90,7 +99,12 @@ func (j *job) Plan(_ context.Context, day contracts.Day) ([]contracts.ExpectedKe
 }
 
 // Run captures every alias for every key. Returned counts the aliases tried and Usable those that ended ok.
+// A day other than the New York date of the clock is NoValue: the live account cannot show a past
+// day, so nothing is read and nothing is written.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	if string(day) != j.clk.Now().In(j.loc).Format(time.DateOnly) {
+		return contracts.JobResult{Err: &typedError{kind: contracts.NoValue, text: "wrong day"}}
+	}
 	var res contracts.JobResult
 	for _, k := range keys {
 		for _, alias := range j.aliases {
