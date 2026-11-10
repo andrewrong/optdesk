@@ -179,6 +179,7 @@ type deps struct {
 	newKeyRunner            runner.NewKeyRunnerFunc
 	newReconciler           runner.NewReconcilerFunc
 	newGapSyncer            func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.GapSyncer
+	newKeyGapSyncer         runner.NewKeyGapSyncerFunc
 	newFwClock              func() clockwork.Clock
 	notifyContext           func(context.Context) (context.Context, context.CancelFunc)
 	newNotifier             notify.NewNotifierFunc
@@ -252,8 +253,7 @@ func newDeps() deps {
 
 // newBaseDeps returns the real constructors of the fields of deps other than ext.
 func newBaseDeps() deps {
-	stats := gonumstats.New()
-	sops := own.NewSeriesOps()
+	stats, sops := gonumstats.New(), own.NewSeriesOps()
 	rl := rules.New()
 	return deps{
 		newClock:                realclock.NewReal,
@@ -315,6 +315,7 @@ func newBaseDeps() deps {
 		newKeyRunner:            reconcile.NewKeyRunner,
 		newReconciler:           reconcile.NewReconciler,
 		newGapSyncer:            sched.NewGapSyncer,
+		newKeyGapSyncer:         sched.NewKeyGapSyncer,
 		newFwClock:              clockwork.NewRealClock,
 		notifyContext:           stopOnSignal,
 		newNotifier:             core.New,

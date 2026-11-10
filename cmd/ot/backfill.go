@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -41,21 +42,21 @@ func backfill(a *app, args []string) error {
 	}
 	ctx := context.Background()
 	clk := a.deps.newClock()
-	fence, err := holdOffScheduler(ctx, a, cfg, "backfill", "backfill refused: ot scheduler holds the lock or the lock cannot be taken; check ot scheduler status")
+	fw := a.deps.newFwClock()
+	// No advisory fence: the run lease under its own owner keeps a Reconcile and a Backfill apart (Decision 3).
+	sl, err := a.deps.openSchedulerLedger(ctx, cfg.runnerDSN)
 	if err != nil {
-		return err
+		return fmt.Errorf("open scheduler ledger with %s failed", store.DSNEnvRunner)
 	}
-	defer func() { _ = fence.Close() }()
+	defer func() { _ = sl.Close() }()
 	var res runner.BackfillResult
-	var runErr, cursorErr error
-	var cursor contracts.Day
+	var runErr, syncErr error
 	err = withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
-		b := a.deps.newBackfiller(w.ledger, w.cal, clk, w.runnable(a.log), runner.WindowRule{})
+		kr := a.deps.newKeyRunner(w.ledger, sl, fw)
+		_, b := a.deps.newReconciler(w.ledger, sl, w.cal, fw, w.runnable(a.log), runner.WindowRule{}, kr)
 		res, runErr = b.Backfill(ctx, day, datasets)
-		if runErr == nil && res.Refused == runner.RefusedAheadOfCursor {
-			var cur store.Cursor
-			cur, cursorErr = w.ledger.Cursor(ctx)
-			cursor = cur.Day
+		if runErr == nil && res.Refused == "" {
+			syncErr = a.deps.newKeyGapSyncer(w.ledger, sl, fw).SyncKeys(ctx, day)
 		}
 		return nil
 	})
@@ -63,6 +64,10 @@ func backfill(a *app, args []string) error {
 		return err
 	}
 	if runErr != nil {
+		var te contracts.TypedError
+		if errors.As(runErr, &te) && te.Kind() == contracts.Retryable {
+			return errors.New("the runner lease is held, retry in a minute")
+		}
 		// The runner error may carry the text of a connection error: it is withheld.
 		what := fmt.Sprintf("backfill %s", day)
 		if *dataset != "" {
@@ -70,33 +75,28 @@ func backfill(a *app, args []string) error {
 		}
 		return fmt.Errorf("%s failed: the error text is withheld because it may hold a DSN or a key", what)
 	}
-	if cursorErr != nil {
-		return fmt.Errorf("read reconcile cursor failed")
-	}
-	if err := refusalError(res.Refused, day, cursor); err != nil {
+	if err := refusalError(res.Refused, day); err != nil {
 		return err
+	}
+	if syncErr != nil {
+		return fmt.Errorf("backfill %s: sync of the key gaps failed", day)
 	}
 	if len(res.Missing) > 0 {
 		return fmt.Errorf("backfill %s: %d key(s) are still missing", day, len(res.Missing))
 	}
 	a.log.Info("backfill "+string(day)+" done", "component", "ot", "status", "ok",
-		"already_present", len(res.AlreadyPresent), "filled", len(res.Filled), "absent", len(res.Absent), "missing", len(res.Missing))
+		"already_present", len(res.AlreadyPresent), "filled", len(res.Filled), "absent", len(res.Absent), "missing", len(res.Missing),
+		"in_window", len(res.InWindow))
 	return nil
 }
 
 // refusalError is the error for a day the backfiller refused; nil when it did not.
-func refusalError(refused runner.BackfillRefusal, day, cursor contracts.Day) error {
-	switch refused {
-	case "":
+func refusalError(refused runner.BackfillRefusal, day contracts.Day) error {
+	if refused == "" {
 		return nil
-	case runner.RefusedAheadOfCursor:
-		shown := string(cursor)
-		if shown == "" {
-			shown = "(none)"
-		}
-		return fmt.Errorf("day %s is ahead of the cursor %s: use run-once", day, shown)
-	case runner.RefusedNoPlan:
-		return fmt.Errorf("no plan was recorded for day %s: nothing to backfill", day)
+	}
+	if refused == runner.RefusedNoPlan {
+		return fmt.Errorf("no plan was recorded for day %s: the day is not planned yet or was never reconciled", day)
 	}
 	return fmt.Errorf("backfill %s was refused", day)
 }
