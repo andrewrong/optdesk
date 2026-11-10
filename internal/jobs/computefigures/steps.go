@@ -145,7 +145,8 @@ func (r *runState) runMarket(ts []target) {
 	}
 }
 
-// runIvStats computes IVP and IVR from the stored IV30 readings; no ok IV30 reading of the as-of day gives no_input.
+// runIvStats computes IVP and IVR from the stored IV30 readings, and the IVP of market.ivp_ibkr from the stored
+// market.iv_ibkr readings (never mixed with the own series); no ok IV30 reading of the as-of day gives no_input.
 func (r *runState) runIvStats(ts []target) {
 	for _, t := range ts {
 		if r.ctx.Err() != nil {
@@ -153,9 +154,13 @@ func (r *runState) runIvStats(ts []target) {
 			return
 		}
 		from := shiftDay(r.day, -lookbackDays(t.rule))
-		rows, err := r.j.stores.Readings.LatestReadings(r.ctx, r.j.m.Iv30, kindUnderlying, t.subj.name, from, r.day)
+		src := r.j.m.Iv30
+		if t.rule.ID == r.j.m.IvpIbkr {
+			src = r.j.m.IvIbkr
+		}
+		rows, err := r.j.stores.Readings.LatestReadings(r.ctx, src, kindUnderlying, t.subj.name, from, r.day)
 		if err != nil {
-			r.failStore(fmt.Errorf("computefigures: iv30 readings: %w", err))
+			r.failStore(fmt.Errorf("computefigures: %s readings: %w", src, err))
 			continue
 		}
 		var series compute.Series
@@ -180,12 +185,12 @@ func (r *runState) runIvStats(ts []target) {
 		switch {
 		case !todayOK:
 			f = r.missing(t, compute.NoInput, "")
-		case t.rule.ID == r.j.m.Ivp:
+		case t.rule.ID == r.j.m.Ivp || t.rule.ID == r.j.m.IvpIbkr:
 			f = r.j.figs.IvPercentile(t.rule.ID, series, r.day)
 		default:
 			f = r.j.figs.IvRank(t.rule.ID, series, r.day)
 		}
-		key := r.j.m.Iv30 + "|" + kindUnderlying + "|" + t.subj.name
+		key := src + "|" + kindUnderlying + "|" + t.subj.name
 		r.store(t, f, hashLines(lines), []input{{table: tableReadings, keys: []string{key}}}, figureParams(t.rule, false))
 	}
 }

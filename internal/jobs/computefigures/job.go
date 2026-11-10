@@ -46,7 +46,9 @@ type manifest struct {
 	ID         string        `toml:"id"`
 	RateSeries string        `toml:"rate_series"`
 	Iv30       string        `toml:"iv30"`
+	IvIbkr     string        `toml:"iv_ibkr"`
 	Ivp        string        `toml:"ivp"`
+	IvpIbkr    string        `toml:"ivp_ibkr"`
 	Ivr        string        `toml:"ivr"`
 	Hv30       string        `toml:"hv30"`
 	Market     []marketSpec  `toml:"market"`
@@ -115,7 +117,7 @@ func NewWithEase(stores ComputeStores, figs compute.Figures, rules compute.Rules
 
 // findRules looks up every rule the manifest names and checks the series of each market figure.
 func (j *job) findRules() error {
-	ids := []string{j.m.Iv30, j.m.Ivp, j.m.Ivr}
+	ids := []string{j.m.Iv30, j.m.Ivp, j.m.Ivr, j.m.IvpIbkr}
 	for _, ms := range j.m.Market {
 		if len(ms.Series) == 0 || (ms.Method == methodRatio && len(ms.Series) != 2) {
 			return fmt.Errorf("computefigures: manifest: bad series of %s", ms.ID)
@@ -176,7 +178,7 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 	}
 	var keys []contracts.ExpectedKey
 	for _, s := range subs {
-		for _, id := range []string{j.m.Iv30, j.m.Ivp, j.m.Ivr} {
+		for _, id := range []string{j.m.Iv30, j.m.Ivp, j.m.Ivr, j.m.IvpIbkr} {
 			keys = append(keys, keyOf(id, kindUnderlying, s.name))
 		}
 	}
