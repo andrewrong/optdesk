@@ -65,3 +65,39 @@ func TestNewJQuantsFuncContract(t *testing.T) {
 		t.Fatalf("got %+v err %v", got, err)
 	}
 }
+
+type fakeFacts struct{}
+
+func (fakeFacts) Fetch(_ context.Context, p sources.FactPlan) ([]contracts.FundamentalFact, error) {
+	var out []contracts.FundamentalFact
+	for _, s := range p.Subjects {
+		out = append(out, contracts.FundamentalFact{Subject: s, Source: "sec"})
+	}
+	return out, nil
+}
+
+type fakeCursor struct{ day contracts.Day }
+
+func (c *fakeCursor) Last() (contracts.Day, error) { return c.day, nil }
+func (c *fakeCursor) Save(d contracts.Day) error   { c.day = d; return nil }
+
+func TestSECFactSourceContract(t *testing.T) {
+	t.Parallel()
+	newSource := sources.NewSECFunc(func(sources.SECConfig) (sources.FactSource, error) { return fakeFacts{}, nil })
+	src, err := newSource(sources.SECConfig{BaseURL: "http://unused.invalid", UserAgent: "x", Clock: clockwork.NewFakeClock()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := src.Fetch(context.Background(), sources.FactPlan{Subjects: []string{"cik:0000320193"}, From: "2026-01-01", To: "2026-11-01"})
+	if err != nil || len(got) != 1 || got[0].Subject != "cik:0000320193" {
+		t.Fatalf("got %+v err %v", got, err)
+	}
+	var c sources.Cursor = &fakeCursor{}
+	if err := c.Save("2026-11-01"); err != nil {
+		t.Fatal(err)
+	}
+	if d, err := c.Last(); err != nil || d != "2026-11-01" {
+		t.Fatalf("cursor %q %v", d, err)
+	}
+	var _ sources.NewEDINETFunc = func(sources.EDINETConfig) (sources.FactSource, error) { return fakeFacts{}, nil }
+}

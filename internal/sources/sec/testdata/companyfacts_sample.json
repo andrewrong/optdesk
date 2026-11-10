@@ -1,0 +1,16 @@
+{"cik":320193,"entityName":"Sample Inc.","facts":{
+"us-gaap":{
+"NetCashProvidedByUsedInOperatingActivities":{"label":"x","units":{"USD":[
+{"start":"2024-09-29","end":"2025-09-27","val":111482000000,"accn":"0000320193-25-000079","fy":2025,"fp":"FY","form":"10-K","filed":"2025-10-31"},
+{"start":"2025-09-28","end":"2025-12-27","val":29000000000,"accn":"0000320193-26-000010","fy":2026,"fp":"Q1","form":"10-Q","filed":"2026-01-30"}]}},
+"AssetsUnlistedForTest":{"label":"x","units":{"USD":[
+{"end":"2025-09-27","val":1,"accn":"0000320193-25-000079","fy":2025,"fp":"FY","form":"10-K","filed":"2025-10-31"}]}},
+"LongTermDebt":{"label":"x","units":{"USD":[
+{"end":"2025-09-27","val":96800000000,"accn":"0000320193-25-000079","fy":2025,"fp":"FY","form":"10-K","filed":"2025-10-31"}]}}
+},
+"dei":{
+"EntityCommonStockSharesOutstanding":{"label":"x","units":{"shares":[
+{"end":"2025-10-17","val":14776353000,"accn":"0000320193-25-000079","fy":2025,"fp":"FY","form":"10-K","filed":"2025-10-31"}]}},
+"EntityPublicFloat":{"label":"x","units":{"USD":[
+{"end":"2025-03-28","val":3000000000000,"accn":"0000320193-25-000079","fy":2025,"fp":"FY","form":"10-K","filed":"2025-10-31"}]}}
+}}}
