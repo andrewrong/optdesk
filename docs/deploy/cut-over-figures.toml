@@ -1,0 +1,104 @@
+# Classes of the 54 figures of the register, Decision 8 of docs/design/cut-over.md.
+# Read by `ot compare-figures --classes`. Matching: id with version, then id, then the
+# longest prefix equal to the id or followed by a dot. The owner's [explained] entries go in
+# a separate file; this file holds none.
+
+# replayable (6 entries, 23 figures)
+[[class]]
+prefix = "home.options_summary"
+class = "replayable"
+
+[[class]]
+prefix = "home.household"
+class = "replayable"
+
+[[class]]
+prefix = "household"
+class = "replayable"
+
+[[class]]
+prefix = "option.tracking"
+class = "replayable"
+
+[[class]]
+id = "market.spx_close"
+version = 1
+class = "replayable"
+
+[[class]]
+id = "market.sp500_vs_200d"
+version = 1
+class = "replayable"
+
+# live-only (5 entries, 21 figures): checked by the parallel run only
+[[class]]
+prefix = "home.options"
+class = "live_only"
+
+[[class]]
+prefix = "structure"
+class = "live_only"
+
+[[class]]
+prefix = "companies.volatility"
+class = "live_only"
+
+[[class]]
+prefix = "option.candidates"
+class = "live_only"
+
+[[class]]
+id = "market.index_iv"
+version = 1
+class = "live_only"
+
+# new (10 figures): made in optdesk, no old value
+[[class]]
+id = "market.sp500_vs_200d"
+version = 2
+class = "new"
+
+[[class]]
+id = "market.vix_pctile_3y"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.vxn_pctile_3y"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.rvx_pctile_3y"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.sp500_pctile_3y"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.iv30_own"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.ivp_own"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.ivr_own"
+version = 1
+class = "new"
+
+[[class]]
+id = "market.vix_term_ratio"
+version = 1
+class = "new"
+
+[[class]]
+id = "macro.ease"
+version = 2
+class = "new"
