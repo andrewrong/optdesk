@@ -3,6 +3,7 @@ package companies_page
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,7 +146,7 @@ func TestExpiredAfter90Days(t *testing.T) {
 func TestAwaitingWhenValueDiffers(t *testing.T) {
 	t.Parallel()
 	c := priceCell(t, testConfig(okBand, approval("2026-10-20", "130.00")))
-	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval" {
+	if c.PriceState != "awaiting approval" || c.Text != "awaiting approval: 114.00 to 142.50" {
 		t.Fatalf("different value: %+v", c)
 	}
 	c = priceCell(t, testConfig(okBand))
@@ -185,5 +186,36 @@ func TestHandPriceShownBesideBand(t *testing.T) {
 	cfg.Subjects[0].HandPrice = ""
 	if c := priceCell(t, cfg); c.HandPrice != "" {
 		t.Fatalf("hand price invented: %q", c.HandPrice)
+	}
+}
+
+func TestAwaitingStillShowsTheFigure(t *testing.T) {
+	t.Parallel()
+	c := priceCell(t, testConfig(okBand))
+	if c.PriceState != "awaiting approval" || !strings.Contains(c.Text, "142.50") {
+		t.Fatalf("awaiting cell hides the band: %+v", c)
+	}
+}
+
+func TestOverrideTextNamedUnvaluedIsNotListed(t *testing.T) {
+	t.Parallel()
+	cfg := testConfig(okBand)
+	cfg.Override = fakeOverride{"SYN1": "unvalued by me"}
+	b, err := Build(context.Background(), cfg, time.Date(2026, 11, 10, 14, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var page struct {
+		Unvalued    *string `json:"unvalued"`
+		GeneratedAt string  `json:"generated_at"`
+	}
+	if err := json.Unmarshal(b, &page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Unvalued != nil {
+		t.Fatalf("unvalued = %q", *page.Unvalued)
+	}
+	if !strings.HasSuffix(page.GeneratedAt, "+08:00") {
+		t.Fatalf("generated_at = %q", page.GeneratedAt)
 	}
 }

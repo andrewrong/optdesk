@@ -36,52 +36,57 @@ func (c Config) bandReady() bool {
 // priceCell builds the price line cell of one subject. The override wins; then the band as the
 // compute functions give it, qualified by the owner's approval. The cell holds no formula: every
 // figure in it is text the compute functions or the owner wrote.
-func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (cell, error) {
-	out := cell{HandPrice: s.HandPrice}
+func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (out cell, unvalued bool, err error) {
+	out = cell{HandPrice: s.HandPrice}
 	if c.Override != nil {
-		line, ok, err := c.Override.Line(ctx, s.Symbol)
-		if err != nil {
-			return cell{}, fmt.Errorf("companies_page: override of %s: %w", s.Symbol, err)
+		line, ok, oerr := c.Override.Line(ctx, s.Symbol)
+		if oerr != nil {
+			return cell{}, false, fmt.Errorf("companies_page: override of %s: %w", s.Symbol, oerr)
 		}
 		if ok && line != "" {
 			out.Text, out.PriceState = line, stateOverride
-			return out, nil
+			return out, false, nil
 		}
 	}
 	if !c.bandReady() {
 		out.Text = noReaderText
-		return out, nil
+		return out, false, nil
 	}
 	source, ok := factSource(s.Issuer)
 	if !ok {
 		out.Text = unvaluedText("no issuer id")
-		return out, nil
+		return out, true, nil
 	}
-	facts, err := c.Facts.FactsFiledBy(ctx, source, s.Issuer, today)
-	if err != nil {
-		return cell{}, fmt.Errorf("companies_page: facts of %s: %w", s.Symbol, err)
+	facts, ferr := c.Facts.FactsFiledBy(ctx, source, s.Issuer, today)
+	if ferr != nil {
+		return cell{}, false, fmt.Errorf("companies_page: facts of %s: %w", s.Symbol, ferr)
 	}
 	fr := c.BuildFilings(facts, today, c.StandardOf(facts))
 	if fr.State != valuationapi.StateOK {
 		out.Text = unvaluedText(fr.Reasons...)
-		return out, nil
+		return out, true, nil
 	}
 	band := c.Band(bandName, fr.Filings, today)
 	if band.State != valuationapi.StateOK {
 		out.Text = unvaluedText(band.Reasons...)
-		return out, nil
+		return out, true, nil
 	}
-	state, err := c.approvalState(ctx, s.Symbol, band.Value, today)
-	if err != nil {
-		return cell{}, err
+	state, aerr := c.approvalState(ctx, s.Symbol, band.Value, today)
+	if aerr != nil {
+		return cell{}, false, aerr
 	}
 	out.PriceState = state
-	if state == stateBand {
-		out.Text = band.Low + " to " + band.Value
-	} else {
+	figure := band.Low + " to " + band.Value
+	switch state {
+	case stateBand:
+		out.Text = figure
+	case stateAwaiting:
+		// The owner sees the figure he is asked to approve.
+		out.Text = stateAwaiting + ": " + figure
+	default:
 		out.Text = state
 	}
-	return out, nil
+	return out, false, nil
 }
 
 // approvalState is the price state of a band whose 8% value is value: the band while the latest

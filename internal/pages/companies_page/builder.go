@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
@@ -160,10 +159,6 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		return nil, fmt.Errorf("companies_page: Config.Today is not set")
 	}
 	today := cfg.Today()
-	zone := cfg.Zone
-	if zone == nil {
-		zone = zoneOwner
-	}
 	var held map[string]bool
 	if cfg.Held != nil {
 		var err error
@@ -180,7 +175,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		Diagnosis: gap{Reason: "not_built", Text: fmt.Sprintf(notBuiltText, "diagnosis")},
 		Questions: gap{Reason: "not_built", Text: fmt.Sprintf(notBuiltText, "questions")},
 	}
-	at := generatedAt.In(zone)
+	at := generatedAt.In(cfg.zoneAt(generatedAt))
 	vm.GeneratedAt = at.Format("2006-01-02T15:04:05-07:00")
 	vm.Stale = stale{
 		DataTime:   vm.GeneratedAt,
@@ -191,7 +186,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	var holds []holdingRow
 	var unvalued string
 	for _, s := range cfg.Subjects {
-		pc, err := cfg.priceCell(ctx, s, today)
+		pc, isUnvalued, err := cfg.priceCell(ctx, s, today)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +199,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 			}
 		}
 		cells := []cell{{Text: s.Symbol}, pc, {Text: last}}
-		if strings.HasPrefix(pc.Text, "unvalued") {
+		if isUnvalued {
 			if unvalued != "" {
 				unvalued += "; "
 			}
@@ -250,4 +245,16 @@ func (c Config) moat(ctx context.Context, symbol string) (string, error) {
 		return noMoatText, nil
 	}
 	return text, nil
+}
+
+// zoneAt is the zone of cfg when generatedAt is +08:00 in it, else +08:00: the schema fixes
+// generated_at to +08:00.
+func (c Config) zoneAt(t time.Time) *time.Location {
+	if c.Zone == nil {
+		return zoneOwner
+	}
+	if _, off := t.In(c.Zone).Zone(); off != 8*3600 {
+		return zoneOwner
+	}
+	return c.Zone
 }
