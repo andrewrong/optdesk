@@ -13,14 +13,17 @@ import (
 )
 
 // OptionConfig is what BuildOption reads. A nil Zone is an error of BuildOption.
+// Names is the ticker source of the display name; nil gives the stored issuer text as the display name.
 type OptionConfig struct {
 	RunID, BuildID, Scope string
 	Zone                  *time.Location
 	Candidates            store.CandidateReader
 	Eod                   store.OptionEodReader
+	Names                 store.InstrumentNameReader
 }
 
-// StockConfig is what BuildStock reads. Key is the issuer of the company shown. A nil Zone is an error of BuildStock.
+// StockConfig is what BuildStock reads. Key is the ticker or a stored issuer text of the company shown; Names is the ticker source.
+// A nil Zone is an error of BuildStock.
 type StockConfig struct {
 	RunID, BuildID, Scope string
 	Zone                  *time.Location
