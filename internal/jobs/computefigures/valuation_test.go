@@ -161,20 +161,7 @@ func TestThreeReadingsPerCompany(t *testing.T) {
 	if r := runAll(t, j); r.Err != nil {
 		t.Fatalf("run: %v", r.Err)
 	}
-	band := reading(t, f, valuationBand, "underlying", vSymbol)
-	if band.State != "ok" || band.Value == nil || *band.Value != "182.5000" || band.Currency != "USD" ||
-		tagOf(band, "low") != "146.0000" || tagOf(band, "ref_high") != "243.3333" ||
-		tagOf(band, "base_fy_end") != "2025-09-27" || tagOf(band, "flag") != "leverage" {
-		t.Fatalf("band reading %+v", band)
-	}
-	q := reading(t, f, valuationQuestion, "underlying", vSymbol)
-	if q.State != "ok" || *q.Value != "1" || tagOf(q, "Q1") != "0.31" || tagOf(q, "Q2.reason") != "too_short" {
-		t.Fatalf("question reading %+v", q)
-	}
-	d := reading(t, f, valuationDiagnosis, "underlying", vSymbol)
-	if d.State != "ok" || tagOf(d, "group") != "cyclical" || tagOf(d, "operating_margin_median") != "0.07" {
-		t.Fatalf("diagnosis reading %+v", d)
-	}
+	checkThreeOK(t, f)
 	for _, n := range valuationNames {
 		if rows, _ := f.LatestReadings(context.Background(), n, "underlying", "NOID", dayD, dayD); len(rows) != 0 {
 			t.Fatalf("%s: %d readings for the entry without issuer, want 0", n, len(rows))
@@ -224,5 +211,24 @@ func TestValuationKeepsOtherKeys(t *testing.T) {
 	runAll(t, j)
 	if r := reading(t, f, "market.iv30_own", "underlying", "SPY"); r.State == "" {
 		t.Fatalf("iv30 reading missing: %+v", r)
+	}
+}
+
+// checkThreeOK checks the three readings of a company whose filings are ok.
+func checkThreeOK(t *testing.T, f *fx) {
+	t.Helper()
+	band := reading(t, f, valuationBand, "underlying", vSymbol)
+	if band.State != "ok" || band.Value == nil || *band.Value != "182.5000" || band.Currency != "USD" ||
+		tagOf(band, "low") != "146.0000" || tagOf(band, "ref_high") != "243.3333" ||
+		tagOf(band, "base_fy_end") != "2025-09-27" || tagOf(band, "flag") != "leverage" {
+		t.Fatalf("band reading %+v", band)
+	}
+	q := reading(t, f, valuationQuestion, "underlying", vSymbol)
+	if q.State != "ok" || *q.Value != "1" || tagOf(q, "Q1") != "0.31" || tagOf(q, "Q2.reason") != "too_short" {
+		t.Fatalf("question reading %+v", q)
+	}
+	d := reading(t, f, valuationDiagnosis, "underlying", vSymbol)
+	if d.State != "ok" || tagOf(d, "group") != "cyclical" || tagOf(d, "operating_margin_median") != "0.07" {
+		t.Fatalf("diagnosis reading %+v", d)
 	}
 }
