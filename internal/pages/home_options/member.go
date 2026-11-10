@@ -238,35 +238,7 @@ func aggregate(positions []compute.LedgerPosition, d time.Time) (agg map[string]
 		if !ok {
 			mult = big.NewRat(100, 1)
 		}
-		for _, f := range p.Fills {
-			if f.Day == "" || f.Day > last {
-				continue
-			}
-			m := touch(f.Day)
-			if m != nil {
-				m.seen = true
-			}
-			if f.Action != actionOpen {
-				continue
-			}
-			q, ok1 := rat(f.Quantity)
-			px, ok2 := rat(f.Price)
-			if !ok1 || !ok2 {
-				continue
-			}
-			cash := new(big.Rat).Mul(q, px)
-			cash.Mul(cash, mult).Neg(cash) // sold (negative quantity) is cash in
-			if q.Sign() < 0 && p.Status == statusOpen {
-				open.Add(open, cash)
-			}
-			if m == nil {
-				continue
-			}
-			m.premium.Add(m.premium, cash)
-			if q.Sign() < 0 {
-				m.sold++
-			}
-		}
+		addFills(p, mult, last, touch, open)
 		if p.Status != statusOpen {
 			if m := touch(p.ClosedOn); m != nil {
 				m.seen = true
@@ -278,6 +250,40 @@ func aggregate(positions []compute.LedgerPosition, d time.Time) (agg map[string]
 		}
 	}
 	return agg, open, newest, other
+}
+
+// addFills adds the opening rows of p that are not after last to the month of each row and, for a
+// sold row of a still open position, to open.
+func addFills(p compute.LedgerPosition, mult *big.Rat, last contracts.Day, touch func(contracts.Day) *month, open *big.Rat) {
+	for _, f := range p.Fills {
+		if f.Day == "" || f.Day > last {
+			continue
+		}
+		m := touch(f.Day)
+		if m != nil {
+			m.seen = true
+		}
+		if f.Action != actionOpen {
+			continue
+		}
+		q, ok1 := rat(f.Quantity)
+		px, ok2 := rat(f.Price)
+		if !ok1 || !ok2 {
+			continue
+		}
+		cash := new(big.Rat).Mul(q, px)
+		cash.Mul(cash, mult).Neg(cash) // sold (negative quantity) is cash in
+		if q.Sign() < 0 && p.Status == statusOpen {
+			open.Add(open, cash)
+		}
+		if m == nil {
+			continue
+		}
+		m.premium.Add(m.premium, cash)
+		if q.Sign() < 0 {
+			m.sold++
+		}
+	}
 }
 
 func monthKey(d time.Time, back int) string {
@@ -322,7 +328,30 @@ func assemble(c Config, d time.Time, at time.Time, agg map[string]*month, open *
 		k.Gaps = append(k.Gaps, gap{Kind: "gap", Reason: "unsupported_currency", Text: textOtherCcy})
 	}
 
-	// the series, oldest month first
+	fillSeries(k, agg, d)
+
+	// the tiles of the month of day
+	k.Tiles = tiles{
+		Sold:        tile{Label: "本月卖出", Figure: noData(noText)},
+		PremiumMon:  tile{Label: "本月权利金", Figure: noData(noText)},
+		OpenPremium: tile{Label: "未平权利金", Figure: noData(noText)},
+		MaxLoss:     tile{Label: "最大亏损", Figure: noData(textMaxLoss)},
+	}
+	k.Say = sayNone
+	if !noRows {
+		k.Tiles.OpenPremium.Figure = plain(open)
+	}
+	if cur.seen {
+		k.Tiles.Sold = tile{Label: "本月卖出", Caption: "按开仓行计", Figure: map[string]any{
+			"kind": "value", "value": cur.sold, "text": fmt.Sprintf("%d 组", cur.sold), "unit": "structures"}}
+		k.Tiles.PremiumMon.Figure = signed(cur.premium)
+		k.Say = fmt.Sprintf(sayMonth, cur.sold, signedText(cur.premium))
+	}
+	return s
+}
+
+// fillSeries sets the six points and the two series texts of k, oldest month first.
+func fillSeries(k *card, agg map[string]*month, d time.Time) {
 	var premiumParts, closedParts []string
 	holes := 0
 	for i := months - 1; i >= 0; i-- {
@@ -358,24 +387,6 @@ func assemble(c Config, d time.Time, at time.Time, agg map[string]*month, open *
 		k.ClosedText = "近六个月账本没有已平仓记录"
 	}
 
-	// the tiles of the month of day
-	k.Tiles = tiles{
-		Sold:        tile{Label: "本月卖出", Figure: noData(noText)},
-		PremiumMon:  tile{Label: "本月权利金", Figure: noData(noText)},
-		OpenPremium: tile{Label: "未平权利金", Figure: noData(noText)},
-		MaxLoss:     tile{Label: "最大亏损", Figure: noData(textMaxLoss)},
-	}
-	k.Say = sayNone
-	if !noRows {
-		k.Tiles.OpenPremium.Figure = plain(open)
-	}
-	if cur.seen {
-		k.Tiles.Sold = tile{Label: "本月卖出", Caption: "按开仓行计", Figure: map[string]any{
-			"kind": "value", "value": cur.sold, "text": fmt.Sprintf("%d 组", cur.sold), "unit": "structures"}}
-		k.Tiles.PremiumMon.Figure = signed(cur.premium)
-		k.Say = fmt.Sprintf(sayMonth, cur.sold, signedText(cur.premium))
-	}
-	return s
 }
 
 func noData(text string) gap { return gap{Kind: "gap", Reason: "no_data", Text: text} }
