@@ -37,3 +37,11 @@ Added by #15: `chart.tsx` is hand-written in the shape of the `radix-nova` Chart
 Added by #540: `slider.tsx` is the registry's `radix-nova` Slider written by hand over `radix-ui`'s `Slider` (the shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the item and diffs it). Local edits: single thumb with a `thumbLabel` prop for its `aria-label`, the range is always `hidden`, and `children` render inside the track (the gauge's neutral band).
 
 Added by #1010: `dropdown-menu.tsx` is the registry's `radix-nova` Dropdown Menu written by hand over `radix-ui`'s `DropdownMenu` (the shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the item and diffs it). Local edit: only the parts the top bar uses (root, trigger, content, item) are copied; the checkbox, radio, sub-menu, label, separator and shortcut parts are left out.
+
+Added by #828: `input.tsx`, `label.tsx` and `switch.tsx` are the registry's `radix-nova` Input, Label and Switch written by hand (`label` and `switch` over `radix-ui`'s `Label` and `Switch`, already installed; no package is added). The shadcn CLI cannot run in the worker's sandbox, so no registry revision was recorded; a later issue retrieves the items and diffs them. Licence: MIT (shadcn-ui/ui). Local edits: the switch has one size (no `size` prop).
+
+| Component | File | Registry revision (SHA-256, 16 hex) | Licence |
+|---|---|---|---|
+| input | `input.tsx` | not retrieved (see above) | MIT |
+| label | `label.tsx` | not retrieved (see above) | MIT |
+| switch | `switch.tsx` | not retrieved (see above) | MIT |
