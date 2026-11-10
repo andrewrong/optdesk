@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
+	"maps"
 	"strings"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages"
 )
 
@@ -41,21 +44,30 @@ func TestPageRegistryRoutes(t *testing.T) {
 
 func TestPageDupPanics(t *testing.T) {
 	t.Parallel()
-	build := pageFamily{}.build
+	build := func(context.Context, *app, clock.Clock, string, siteReaders) ([]byte, error) { return nil, nil }
 	cases := map[string]pageFamily{
 		"route": {route: "settings", build: build},
 		"name":  {route: "x/one", name: "option_notices_page", order: 99, build: build},
 		"order": {route: "x/two", name: "x_page", order: 10, build: build},
 	}
 	for what, f := range cases {
+		reg := maps.Clone(pageFamilies)
 		func() {
 			defer func() {
 				if recover() == nil {
 					t.Errorf("a clash of %s does not panic", what)
 				}
 			}()
-			registerPage(f)
+			addPage(reg, f)
 		}()
+	}
+	reg := maps.Clone(pageFamilies)
+	addPage(reg, pageFamily{route: "x/new", name: "x_new_page", order: 99, build: build})
+	if _, ok := reg["x/new"]; !ok {
+		t.Error("a page with a new route, name and order is not added")
+	}
+	if _, ok := pageFamilies["x/new"]; ok {
+		t.Error("the global registry was changed")
 	}
 }
 
@@ -85,4 +97,15 @@ func TestSiteReaderOf(t *testing.T) {
 	if _, ok := siteReaderOf[string](rd, "n"); ok {
 		t.Error("a reader of another type is returned")
 	}
+}
+
+func TestPageRouteClashPanics(t *testing.T) {
+	t.Parallel()
+	b := func(context.Context, *app, clock.Clock, string, siteReaders) ([]byte, error) { return nil, nil }
+	defer func() {
+		if recover() == nil {
+			t.Fatal("route clash with a non-nil build does not panic")
+		}
+	}()
+	registerPage(pageFamily{route: "settings", build: b})
 }

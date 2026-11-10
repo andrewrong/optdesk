@@ -29,11 +29,14 @@ type pageFamily struct {
 var pageFamilies = map[string]pageFamily{}
 
 // registerPage adds f; it panics on a clash of a non-empty name, of the route or of a non-zero order, at start.
-func registerPage(f pageFamily) {
+func registerPage(f pageFamily) { addPage(pageFamilies, f) }
+
+// addPage is registerPage over the table m, so that a test can run it on a copy.
+func addPage(m map[string]pageFamily, f pageFamily) {
 	if f.route == "" || f.build == nil {
 		panic("registerPage: a page needs a route and a build")
 	}
-	for _, g := range pageFamilies {
+	for _, g := range m {
 		if g.route == f.route {
 			panic(fmt.Sprintf("registerPage: duplicate route %q", f.route))
 		}
@@ -44,7 +47,7 @@ func registerPage(f pageFamily) {
 			panic(fmt.Sprintf("registerPage: pages %q and %q share order %d", f.route, g.route, f.order))
 		}
 	}
-	pageFamilies[f.route] = f
+	m[f.route] = f
 }
 
 func pageFamilyOfRoute(route string) (pageFamily, bool) {
