@@ -111,14 +111,14 @@ Learned from option-trader's gateway checks (its advisor, 2026-11-10), set again
 
 Owner priority 2026-11-10: the pull of 2026-11-11 09:45 ET. The cut is two waves; the first is the shortest path to a scheduled, safe open pull, each issue inside one module and as parallel as the dependencies allow.
 
-Wave 1: issues 0b (broker interface: the error code of a resolve), 2 (datasets), 5 (plan function), 4 (store), 6 (plan job, US), 7 (pull job, US, sending the existing `OPTION_EOD` kind), 21 (pyside: read-only probe and session-loss codes, no edit of `transport.py`), 15 (wiring of the four US jobs in the scheduler). Layers: 0b, 2, 5 and 21 start together; then 4 (after 2); then 6 and 7 (after 0b, 2, 4 and 5); then 15 (after 6, 7 and 21). Issue 0 is answered and is not an issue any more: the probe of 2026-11-10 at the US open (Decision 9) showed the existing `OPTION_EOD` kind on the `main` gateway (`ibkr-main.sock`) returning live ticks; the pull uses the gateway of `ibkr.sock` like `option_eod`, to be confirmed as `main` by the window before the first run (Decision 9), so the proto kind, the transport kind map and the pyside change (issues 1, 12, 8, 18 and 19) are not in wave 1, and no owner merge is needed for the first pull. The evening resolve job `option_open_resolve` runs on its slot (for the first day: issue 15, deploy, then the window's hand resolve, `## Capacity`), the gap pass at 08:00, the plan job at 08:45 and the 09:45 pull are scheduled. The safety the first pull needs exists today: the send guard of `transport.py` is installed on every client (`gateway_factory`), refuses every order id and allows only ids 1, 2, 7, 9, 20, 25, 49, 59, 71, 78 and 61 to 64, and the open pull adds no id; the broker port has no order method; the gateway runs with its "Read-Only API" setting (`pyside-gateways-health.md` decision 5). The read-only probe (option-trader's client id 0 check) and the session-loss codes are issue 21, wave 1; the first pull does not start on a gateway that is not proven read-only.
+Wave 1: issues 0 (broker interface: the error code of a resolve), 2 (datasets), 5 (plan function), 4 (store), 6 (plan job, US), 7 (pull job, US, sending the existing `OPTION_EOD` kind), 21 (pyside: read-only probe and session-loss codes, no edit of `transport.py`), 15 (wiring of the four US jobs in the scheduler). Layers: 0, 2, 5 and 21 start together; then 4 (after 2); then 6 and 7 (after 0, 2, 4 and 5); then 15 (after 6, 7 and 21). Issue 0 is answered and is not an issue any more: the probe of 2026-11-10 at the US open (Decision 9) showed the existing `OPTION_EOD` kind on the `main` gateway (`ibkr-main.sock`) returning live ticks; the pull uses the gateway of `ibkr.sock` like `option_eod`, to be confirmed as `main` by the window before the first run (Decision 9), so the proto kind, the transport kind map and the pyside change (issues 1, 12, 8, 18 and 19) are not in wave 1, and no owner merge is needed for the first pull. The evening resolve job `option_open_resolve` runs on its slot (for the first day: issue 15, deploy, then the window's hand resolve, `## Capacity`), the gap pass at 08:00, the plan job at 08:45 and the 09:45 pull are scheduled. The safety the first pull needs exists today: the send guard of `transport.py` is installed on every client (`gateway_factory`), refuses every order id and allows only ids 1, 2, 7, 9, 20, 25, 49, 59, 71, 78 and 61 to 64, and the open pull adds no id; the broker port has no order method; the gateway runs with its "Read-Only API" setting (`pyside-gateways-health.md` decision 5). The read-only probe (option-trader's client id 0 check) and the session-loss codes are issue 21, wave 1; the first pull does not start on a gateway that is not proven read-only.
 
 Wave 2, after the first pull has run: 3 (page schema v2), 9 (pages: quote time and type, refresh state), 10 (refresh endpoint, overlay, route files), 11 (web button), 1, 12, 8, 18 and 19 (the kind `OPTION_OPEN`: 15 s, no grace, from proto to the pull job), 13 (session codes and 10197 policy), 16 (guard allowlist parameter, owner merge), 17 (Japan jobs) and 20 (their wiring). Order inside wave 2: 3 after the issues of `option-page-names`; 9 after 3 and 4; 12 and 8 after 1, in parallel; 16 after 12; 13 after 21, 16 and 8; 10 after 7, 9, 13, 15, 16 and 17; 11 after 3 and 10; 18 after 1; 19 after 18, 12 and 8 (the flip of the kind in the pull job and the button's call, Decision 17); 17 after 6, 7 and 15; 20 after 17, 13 and 16. The pyside issues 13 and 16 land before the refresh button goes live (10) and before the Japan pull (20).
 
-### 0b broker-resolve-error (interface)
+### 0 broker-resolve-error (interface)
 
 Module: broker. Size: S.
-Files: `internal/broker/**`, `docs/contracts/broker.md`
+Files: `internal/broker/api.go`, `internal/broker/api_test.go`, `internal/broker/grpcbroker/dial.go`, `docs/contracts/broker.md`
 Design: docs/design/option-open-pull.md#Interface
 Order: first.
 Sequence: wave 1; first, no dependency. Found by the adversarial review: without it the jobs cannot read the error of a resolve. (`KindOptionOpen` is issue 18, wave 2.)
@@ -135,7 +135,7 @@ Checked by CI: ci-go; `go test ./internal/broker/... -race -count=1` (contract t
 Module: contracts. Size: S. Wave 2.
 Files: `contracts/proto/ibkr/v1/quote_types.proto`, `internal/contracts/genpb/**`, `pyside/src/optdesk/contracts/**`
 Design: docs/design/option-open-pull.md#Interface
-Order: first.
+Order: after 15.
 Sequence: wave 2, first of the kind issues. The pull request is the owner's merge (`contracts/proto`). Issue 18 (broker) follows it.
 Goal: `QUOTE_KIND_OPTION_OPEN = 4` exists with the comment of Decision 10, and the generated output.
 Acceptance:
@@ -168,7 +168,7 @@ Checked by CI: ci-go (generated drift, dataset schema checks); `Contracts: chang
 Module: contracts. Size: M.
 Files: `contracts/schemas/page.option_page.v2.json`, `contracts/schemas/page.stock_option_page.v2.json`, `web/src/generated/**`, `docs/contracts/page-schemas.md`
 Design: docs/design/option-open-pull.md#Decisions
-Order: first.
+Order: after 15.
 Sequence: wave 2; after the merge of the issues of `docs/design/option-page-names.md` (PR 1333), so that the two do not edit the same generated files at once.
 Goal: Decision 19, additive over v1, with the v1 files unchanged.
 Acceptance:
@@ -214,8 +214,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (golde
 Module: jobs. Size: L.
 Files: `internal/jobs/optionopen/plan.go`, `internal/jobs/optionopen/listed.go`, `internal/jobs/optionopen/plan_test.go`, `internal/jobs/optionopen/listed_test.go`, `internal/jobs/optionopen/job_plan.toml`, `internal/jobs/optionopen/job_resolve.toml`, `internal/jobs/optionopen/job_gap.toml`
 Design: docs/design/option-open-pull.md#Decisions
-Order: after 0b, 2, 4, 5.
-Sequence: wave 1; after 0b (the listed check needs `Resolved.ErrorCode`), 2, 4 (the lister and the mark store) and 5.
+Order: after 0, 2, 4, 5.
+Sequence: wave 1; after 0 (the listed check needs `Resolved.ErrorCode`), 2, 4 (the lister and the mark store) and 5.
 Goal: the job `option_open_plan` (US; the Japan job is issue 17) of Decisions 1 to 6 and the jobs `option_open_resolve` (the evening resolve, manifest `job_resolve.toml`) and `option_open_resolve_gap` (the pre-open gap pass, manifest `job_gap.toml`, Decision 1): the plan job at 08:45 uses stored con_ids only, listed through `openquote.OptionContractStore`, and never resolves (`PlanParams` of Decision 3); the resolve job puts each contract it resolves into `master.option_contract` through `OptionContractStore.PutOption` (the plan reads it with `ListOptions`), has key one stock, budget, the listed check with the validity period and the answer table of Decision 6, and it turns the `not_listed` rows of the pull (read through `OptionOpenReader`) into marks (Decision 6; it is the only writer of marks).
 Acceptance:
 1. `grep -c 'anchor = "session_open"' internal/jobs/optionopen/job_plan.toml` prints 1 and `grep -c 'offset = "-45m"' internal/jobs/optionopen/job_plan.toml` prints 1.
@@ -229,8 +229,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` with a
 Module: jobs. Size: L.
 Files: `internal/jobs/optionopen/pull.go`, `internal/jobs/optionopen/core.go`, `internal/jobs/optionopen/pull_test.go`, `internal/jobs/optionopen/core_test.go`, `internal/jobs/optionopen/job_pull.toml`
 Design: docs/design/option-open-pull.md#Decisions
-Order: after 0b, 2, 4, 5.
-Sequence: wave 1; after 0b, 2, 4 and 5; it reads the plan rows through the store of 4 and needs no code of 6. It sends the existing `QUOTE_KIND_OPTION_EOD` through `broker.KindOptionEod` to the gateway of `ibkr.sock`, the one `option_eod` uses (Decision 9: the probe covered `ibkr-main.sock`; the window confirms `default` is `main`); once issues 1, 12, 8 and 18 have landed, issue 19 changes the kind to `KindOptionOpen`.
+Order: after 0, 2, 4, 5.
+Sequence: wave 1; after 0, 2, 4 and 5; it reads the plan rows through the store of 4 and needs no code of 6. It sends the existing `QUOTE_KIND_OPTION_EOD` through `broker.KindOptionEod` to the gateway of `ibkr.sock`, the one `option_eod` uses (Decision 9: the probe covered `ibkr-main.sock`; the window confirms `default` is `main`); once issues 1, 12, 8 and 18 have landed, issue 19 changes the kind to `KindOptionOpen`.
 Goal: the job `option_open` (US; per-class retry of Decision 10; the first underlying snapshot and the re-choice of strikes at the open spot of Decision 3; the Japan job is issue 17; a key is a batch of stocks of at most 120 contracts, `## Capacity`) and the shared `core` (also behind `Refresh`) of Decisions 7, 8, 10 and 12: grouped by stock and expiry, one final status per item, the skew flag, the type from the tick, the written rows, and the postcondition and heartbeat of Decision 22.
 Acceptance:
 1. `grep -c 'retry_classes' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'offset = "15m"' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'max_per_key = 120' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'min_ok_share' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'retry_classes = \["around_spot", "puts", "held"\]' internal/jobs/optionopen/job_pull.toml` prints 1 and `grep -c 'anchor = "session_open"' internal/jobs/optionopen/job_pull.toml` prints 1.
@@ -374,9 +374,9 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (the J
 ### 18 broker-kind-option-open (interface)
 
 Module: broker. Size: S. Wave 2.
-Files: `internal/broker/**`, `docs/contracts/broker.md`
+Files: `internal/broker/api.go`, `internal/broker/api_test.go`, `internal/broker/grpcbroker/convert.go`, `internal/broker/grpcbroker/convert_test.go`, `docs/contracts/broker.md`
 Design: docs/design/option-open-pull.md#Interface
-Order: after 1.
+Order: after 0, 1.
 Sequence: wave 2; after 1 (the generated proto).
 Goal: `KindOptionOpen` in `internal/broker/api.go` and its mapping to `QUOTE_KIND_OPTION_OPEN` in `internal/broker/grpcbroker/convert.go`, with the contract test from both sides.
 Acceptance:
@@ -468,11 +468,11 @@ None open. Question B (strike band and which names get calls) is answered by the
 
 A fresh read-only agent read this file and both repos; its answer is `adversarial-option-open-pull.md`. Point by point:
 
-1. Gap (no broker issue, socket routing): adopted. Issue 0b is added (`ErrorCode` and `ErrorText` on `Resolved`, `KindOptionOpen` is issue 18; the in-flight limit of 1 is a dial option that exists, set by issue 15); the Go side dials a socket path from the wiring, `ibkr.sock` or `ibkr-main.sock` (Decision 9). Stocks off the list: kept in `## Left out`.
+1. Gap (no broker issue, socket routing): adopted. Issue 0 is added (`ErrorCode` and `ErrorText` on `Resolved`, `KindOptionOpen` is issue 18; the in-flight limit of 1 is a dial option that exists, set by issue 15); the Go side dials a socket path from the wiring, `ibkr.sock` or `ibkr-main.sock` (Decision 9). Stocks off the list: kept in `## Left out`.
 2. Unnamed risk, the plan job: adopted in part. Its key is one stock (as `option_eod`'s key is one underlying), the 300-resolve cap, the two-timeout stop and the evening resolve job (`## Capacity`) stay; the thin plan is a reported gap, not silent. Priority of the 09:45 job over the button: adopted (Decision 17, a 10-contract call inside the window).
 3. Simpler way (reuse the 16:15 instruments, no plan job): not adopted as the main path, for the reason in `## Left out`; kept as the fallback.
 4. Lock-in (Decision 17 ends "serve is read-only"): not removable, it is the owner's wish; named, flagged for the second opinion, behind a flag that is off by default, with no database line, no order method and a contract list limited to the plan. There is one connection and no second client id (Decision 9).
-5. False claim (the 'exactly one request in flight' of a clean 200): adopted. `broker.Options.ResolveInFlight` exists (default 5); the resolve job runs on a client dialled with 1 (issue 15), and issue 0b adds only the error code to `Resolved`. The earlier claim about the pyside gateway field is gone with the second gateway (Decision 9).
+5. False claim (the 'exactly one request in flight' of a clean 200): adopted. `broker.Options.ResolveInFlight` exists (default 5); the resolve job runs on a client dialled with 1 (issue 15), and issue 0 adds only the error code to `Resolved`. The earlier claim about the pyside gateway field is gone with the second gateway (Decision 9).
 6. Slip (broker issue missing, role file, deploy unowned): adopted for the broker issue; issue 4's Files gets `internal/store/setup/**`; the deploy side and question A stay the owner's and are named in `## Left out` and `## Owner questions`.
 
 ## Verdict round (PR 1345, head bca5b7c0)
@@ -482,7 +482,7 @@ Every point of the design verdict is fixed in this revision, and the owner's pri
 - Issue 9 Files now name the files that exist (`page.go`, `payload.go`, `option_build.go`, `stock_build.go`, the card, table, chain and matrix files and their tests); the two names that do not exist are gone.
 - Issue 10 Files add `site.go` and the two route files, and its acceptance 5 no longer forbids `site.go`; it is ordered after the page-names issues.
 - The wave-2 kind reaches pyside through `_KINDS` and `WORDS` in `transport.py`: issue 12 (owner merge), in parallel to 8. The probe is issue 21 (wave 1, since round 6) and issue 16 keeps only the guard parameter. Wave 1 sends the existing `OPTION_EOD` kind (the probe of 2026-11-10), so no owner merge is on the path of the first pull.
-- The order header names 3, 4 and 5 in parallel and then 6, and issue 6 names 0b.
+- The order header names 3, 4 and 5 in parallel and then 6, and issue 6 names 0.
 - The plan builder is in the jobs package (Decision 3, issue 5), so no jobs-to-compute implementation edge exists; the yield at the new bid is dropped (`## Left out`), so pages import no compute.
 - Decision 11 no longer says Japan is left out; `## Left out` no longer lists the Nikkei index options.
 - Plan classes are one set of values in Decisions 3 and 4 and in the dataset of issue 2 (acceptance 5).
@@ -496,9 +496,9 @@ Every point is fixed, and the whole file was read again against main (paths, sym
 
 - Japan wiring: issue 20 registers `option_open_plan_jp` and `option_open_jp` in `cmd/ot/wire_optionopen.go`; issue 17 no longer reports it. One file name for the `no_option` list throughout: `job_plan_jp.toml` (Decisions 3 and 21); `job_jp_noopt.toml` is gone.
 - Page refresh state: `## Interface` (Pages) declares `Quotes` and `Refresh RefreshState` on the two builder configs, owned by issue 9 (`page.go`) and filled by issue 10 in the route files.
-- The wave-2 kind reaches Go: issue 18 (broker: `KindOptionOpen` and its mapping) after 1, and issue 19 (jobs: `core.go` flips to `KindOptionOpen`) after 18, 12 and 8. Issue 0b no longer mentions the kind.
+- The wave-2 kind reaches Go: issue 18 (broker: `KindOptionOpen` and its mapping) after 1, and issue 19 (jobs: `core.go` flips to `KindOptionOpen`) after 18, 12 and 8. Issue 0 no longer mentions the kind.
 - Issue 13 is after 16 and 8 (both edit `spec.py`); issue 12 is parallel to 8 and issue 10 is after 13 and 16, as the wave-2 text says.
-- One connection, one socket (Decision 9): Decisions 10, 14, 17, Gateway safety point 1 and issue 0b no longer speak of a `live` gateway; the button sends `KindOptionEod` in wave 1 and `KindOptionOpen` after issue 19.
+- One connection, one socket (Decision 9): Decisions 10, 14, 17, Gateway safety point 1 and issue 0 no longer speak of a `live` gateway; the button sends `KindOptionEod` in wave 1 and `KindOptionOpen` after issue 19.
 - `## Capacity` wall time is redone with the wave-1 timeout of 20 s (about 9 minutes at worst).
 
 ## Verdict round 3 (PR 1345, head d2df9e9f) and the narrowing
@@ -510,14 +510,14 @@ Every point is fixed, and the whole file was read again against main (paths, sym
 
 ## Verdict round 4 (PR 1345, head 168dcab0) and the advisor's review
 
-- Marks: `option_open_resolve` is the job that resolves, runs on a client dialled with the in-flight limit of 1 (issue 15), stops after two timeouts and is the only writer of `master.option_not_listed`, turning the pull's `not_listed` rows into marks; `retry_days` and `jitter_days` are in `job_resolve.toml` (Decisions 5 and 6, issue 0b, issue 6 acceptance 2, Adversarial 5).
+- Marks: `option_open_resolve` is the job that resolves, runs on a client dialled with the in-flight limit of 1 (issue 15), stops after two timeouts and is the only writer of `master.option_not_listed`, turning the pull's `not_listed` rows into marks; `retry_days` and `jitter_days` are in `job_resolve.toml` (Decisions 5 and 6, issue 0, issue 6 acceptance 2, Adversarial 5).
 - The hand resolve of the first day happens after issue 15 has merged and been deployed (`ot run-once` with the scheduler stopped, or `ot backfill`), then the 08:45 plan (Capacity, Wave 1).
 - Issues 17 and 20 name and grep `option_open_resolve_jp`.
 - Advisor: the guards of 6 strikes and 25 per expiry (3 percent rule for SPY, QQQ, IWM) and delta a page filter stay; the 1.5 sigma band and the two rounds were replaced (owner 2026-11-10 15:33Z and Verdict round 6); sigma and its source named, spot at the open from the first underlying snapshot with a stored band (Decision 3), no chain gives NoValue; Capacity numbers 7.5, 5 and 3 minutes; port 4001 for probes only.
 
 ## Verdict round 5 (PR 1345): whole-file consistency pass against main 62e68b0c
 
-- The in-flight limit of resolves is `broker.Options.ResolveInFlight`, which exists; issue 0b adds only the error code, and issue 15 dials the resolve family with a limit of 1.
+- The in-flight limit of resolves is `broker.Options.ResolveInFlight`, which exists; issue 0 adds only the error code, and issue 15 dials the resolve family with a limit of 1.
 - Issue 15 and issue 20 say how the families register (`registerJob`, orders 120 to 140 and 160 to 180, own store open with `DSNEnvOptionOpen` from issue 4, no edit of `wire.go`, `runonce.go` or `deps`).
 - Web Files name the files that exist (`web/src/pages/options/OptionPage.tsx`, `web/src/pages/stockoption/view.tsx`); interface issues are marked `(interface)` in their heading; wave labels, the manifest names of the values (`job_plan.toml`, `job_resolve.toml`, `job_pull.toml`), Decision 15 against Decision 17, `Interface` (Jobs: `NewResolve`) and the stale lines of issue 14 and issue 0 agree.
 - Owner decision 2026-11-10 15:33Z applied: every expiry of 20 to 45 days, no rounds, the delta intent as a band (Verdict round 6), stored band to k = 1.75 or spot -25 percent, JP the same; ceilings 350, 1400 and 1200; Capacity and Owner decisions B2 updated.
