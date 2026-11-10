@@ -77,6 +77,9 @@ type siteReaders struct {
 	ledgers    compute.NewOptionLedgerFunc
 	structures compute.NewOptionStructuresFunc
 	results    compute.NewOptionResultsFunc
+
+	// the tracking page: the option ledger reader of the pages line (nil with no opener in deps).
+	optionLedger store.OptionLedgerReader
 }
 
 // openSiteReaders returns the demo readers with the demo profile, else the stores (series, the
@@ -86,7 +89,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if a.profile.Name == "demo" {
 		d := demoOption{}
 		rd := siteReaders{series: demoReader{}, eod: d, quotes: d, catalog: d, terms: d, names: d, view: demoView{}, cands: demoCandidates{},
-			noticeAccount: demoNoticeAccount{}}
+			noticeAccount: demoNoticeAccount{}, optionLedger: demoTrackingLedger{}}
 		return withPositionsRules(a, rd), func() {}, nil
 	}
 	env, err := a.envFile()
@@ -141,7 +144,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !track(view, err) {
 		return fail()
 	}
-	opt, ok := openOptionalStores(ctx, a, dsn, track)
+	opt, ledger, ok := openOptionalStores(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
@@ -150,35 +153,44 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
-		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner}
+		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
+		optionLedger: ledger}
 	return withPositionsRules(a, rd), closeAll, nil
 }
 
-// openOptionalStores opens the candidate, account and earnings stores that deps has an opener for; a missing
+// openOptionalStores opens the candidate, account, option ledger (the reader returned apart) and earnings stores that deps has an opener for; a missing
 // opener is a nil reader, which the pages show as the gap no_reader. ok is false when an open failed.
-func openOptionalStores(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (r noticesReaders, ok bool) {
+func openOptionalStores(ctx context.Context, a *app, dsn string,
+	track func(io.Closer, error) bool) (r noticesReaders, ledger store.OptionLedgerReader, ok bool) {
 	if a.deps.openCandidate != nil {
 		cs, err := a.deps.openCandidate(ctx, dsn)
 		if !track(cs, err) {
-			return r, false
+			return r, nil, false
 		}
 		r.cands = cs
 	}
 	if a.deps.openAccount != nil {
 		as, err := a.deps.openAccount(ctx, dsn)
 		if !track(as, err) {
-			return r, false
+			return r, nil, false
 		}
 		r.account = as
+	}
+	if a.deps.openOptionLedgerRO != nil {
+		ls, err := a.deps.openOptionLedgerRO(ctx, dsn)
+		if !track(ls, err) {
+			return r, nil, false
+		}
+		ledger = ls
 	}
 	if a.deps.openEarningsDates != nil {
 		es, err := a.deps.openEarningsDates(ctx, dsn)
 		if !track(es, err) {
-			return r, false
+			return r, nil, false
 		}
 		r.earn = es
 	}
-	return r, true
+	return r, ledger, true
 }
 
 // openOwnerReader opens the owner settings reader when deps has an opener, else it is nil (the page shows the
@@ -286,11 +298,14 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 	})
 }
 
-// extraPageBuilder is the builder of the routes options/candidates, options/notices and settings, nil for any
+// extraPageBuilder is the builder of the routes options/candidates, options/tracking, options/notices and settings, nil for any
 // other path.
 func extraPageBuilder(path string, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
 	if path == siteCandidatesRoute {
 		return func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
+	}
+	if path == siteTrackingRoute {
+		return func(ctx context.Context) ([]byte, error) { return buildTracking(ctx, a, clk, dayFlag, rd) }
 	}
 	if path == siteNoticesRoute {
 		return func(ctx context.Context) ([]byte, error) { return buildNotices(ctx, a, clk, dayFlag, rd) }
