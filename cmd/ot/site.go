@@ -362,8 +362,14 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 // reaches the build through its context.
 func extraPageBuilder(path string, q url.Values, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
 	f, ok := pageFamilyOfRoute(path)
-	if !ok {
-		return nil
+	if !ok || f.build == nil {
+		kf, key, kok := pageFamilyOfKeyRoute(path)
+		if !kok {
+			return nil
+		}
+		return func(ctx context.Context) ([]byte, error) {
+			return kf.buildKey(withQuery(ctx, q), a, clk, dayFlag, rd, key)
+		}
 	}
 	return func(ctx context.Context) ([]byte, error) { return f.build(withQuery(ctx, q), a, clk, dayFlag, rd) }
 }
