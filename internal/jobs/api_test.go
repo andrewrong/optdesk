@@ -727,6 +727,27 @@ func TestSymbolCtorTypes(t *testing.T) {
 	}
 }
 
+// TestSymbolWatchCtorType: the watch constructor carries the translator after the clock, and a nil translator
+// is accepted (no translation).
+func TestSymbolWatchCtorType(t *testing.T) {
+	t.Parallel()
+	var got []symbol.Translator
+	var watch jobs.NewOptionEodWatchSymbolsFunc = func(
+		_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter, _ []jobs.WatchEntry, _ clock.Clock, tr symbol.Translator,
+	) (contracts.Job, error) {
+		got = append(got, tr)
+		return fakeJob{id: "option_eod"}, nil
+	}
+	for _, tr := range []symbol.Translator{fakeTranslator{}, nil} {
+		if j, err := watch(nil, nil, nil, nil, nil, tr); err != nil || j.ID() != "option_eod" {
+			t.Fatalf("option_eod watch: %v %v", j, err)
+		}
+	}
+	if len(got) != 2 || got[0] != (fakeTranslator{}) || got[1] != nil {
+		t.Fatalf("translators passed through: %v", got)
+	}
+}
+
 type fakeMarkWriter struct{ rows []mark.PositionMark }
 
 func (w *fakeMarkWriter) WriteMarks(_ context.Context, rows []mark.PositionMark) error {
