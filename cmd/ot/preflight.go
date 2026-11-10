@@ -46,11 +46,13 @@ func (noKeySource) Fetch(context.Context, sources.FetchPlan) ([]contracts.Series
 // startDisabled is the check of Decision 8 at process start: the left-out job ids with their reasons.
 func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 	out := map[string]string{}
-	if cfg.fredKey == "" {
-		out[jobFredSeries] = reasonNoFredKey
-	}
-	if r := cfg.earningsOff(); r != "" {
-		out[jobEarningsRefresh] = r
+	for _, fam := range sortedJobFamilies() {
+		if fam.startOff == nil {
+			continue
+		}
+		if r := fam.startOff(cfg, brokerUp); r != "" {
+			out[fam.id] = r
+		}
 	}
 	switch {
 	case !cfg.barsWired:
@@ -58,11 +60,6 @@ func startDisabled(cfg runOnceConfig, brokerUp bool) map[string]string {
 		out[jobBarsRefresh], out[jobFxRefresh] = reasonNoBarDSN, reasonNoBarDSN
 	case !brokerUp:
 		out[jobBarsRefresh], out[jobFxRefresh] = reasonBrokerDown, reasonBrokerDown
-	}
-	if !brokerUp {
-		out[jobOptionEod] = reasonBrokerDown
-		out[jobOptionEodJP] = reasonBrokerDown
-		out[jobQuoteSnapshot] = reasonBrokerDown
 	}
 	return out
 }
@@ -89,8 +86,8 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		return p.built(id, j, err)
 	case jobEarningsRefresh:
 		// the lines are read once at start, so a missing one keeps the job out until the process restarts
-		if p.w.earningsOff != "" {
-			return nil, p.w.earningsOff
+		if r := p.w.off[jobEarningsRefresh]; r != "" {
+			return nil, r
 		}
 		j, err := p.w.factory.earningsRefresh()
 		return p.built(id, j, err)
@@ -136,6 +133,13 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		}
 		j, err := p.w.factory.optionEodJP(b)
 		return p.built(id, j, err)
+	}
+	// A registered family without a case is never probed back in: it stays out until the process restarts.
+	if _, ok := jobFamilies[id]; ok {
+		if r := p.w.off[id]; r != "" {
+			return nil, r
+		}
+		return nil, reasonBuildJob
 	}
 	return nil, "unknown job"
 }

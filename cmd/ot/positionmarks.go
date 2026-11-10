@@ -66,22 +66,6 @@ func realMarkDeps(d *deps) {
 	d.openMark, d.newPositionMarks = markpg.Open, positionmarks.New
 }
 
-// withAccountJobs appends account_capture and then position_marks (ten minutes after it) to jobs, each when wired.
-func (a *app) withAccountJobs(ctx context.Context, f jobFactory, brk broker.Broker, extra *closerSet, jobs []contracts.Job) ([]contracts.Job, error) {
-	acct, err := a.accountCapture(ctx, f, extra)
-	if err != nil {
-		return jobs, err
-	}
-	if acct != nil {
-		jobs = append(jobs, acct)
-	}
-	marks, err := a.positionMarks(ctx, f, brk, extra)
-	if err != nil || marks == nil {
-		return jobs, err
-	}
-	return append(jobs, marks), nil
-}
-
 // markSettings reads the lines position_marks needs: the aliases of the account job (main first) and the two DSNs.
 // markDSN is empty when its line is unset (the caller leaves the job out). It opens nothing; an error names the key only.
 func (a *app) markSettings() (aliases []string, acctDSN, markDSN string, err error) {
