@@ -116,13 +116,23 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day, key string) string {
 	r := j.readers[alias]
 	status := statusOK
+	skipped := 0
+	defer func() {
+		if skipped > 0 {
+			j.log.Warn("skipped rows of an unsupported sec type", "alias", alias, "count", skipped)
+		}
+	}()
 	acc, err := r.Account(ctx)
 	if err != nil {
 		j.logFailure(alias, "account", err)
 		status = statusFailed
-	} else if err := j.writeAccount(ctx, alias, day, key, acc); err != nil {
-		j.logFailure(alias, "write", err)
-		status = statusFailed
+	} else {
+		n, err := j.writeAccount(ctx, alias, day, key, acc)
+		skipped += n
+		if err != nil {
+			j.logFailure(alias, "write", err)
+			status = statusFailed
+		}
 	}
 	ex, err := r.Executions(ctx)
 	if err != nil {
@@ -130,8 +140,12 @@ func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day,
 		return statusFailed
 	}
 	if ex.Collected && len(ex.Executions) > 0 {
-		if err := j.w.WriteExecutions(ctx, alias, toStore(day, ex.Executions)); err != nil {
-			return statusFailed
+		rows, n := toStore(day, ex.Executions)
+		skipped += n
+		if len(rows) > 0 {
+			if err := j.w.WriteExecutions(ctx, alias, rows); err != nil {
+				return statusFailed
+			}
 		}
 	}
 	if status == statusOK && ex.Collected && ex.Pending > 0 {
@@ -151,9 +165,9 @@ func (j *job) logFailure(alias, step string, err error) {
 	j.log.Warn("capture failed", "alias", alias, "step", step, "kind", kind)
 }
 
-func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day, key string, acc broker.Account) error {
+func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day, key string, acc broker.Account) (int, error) {
 	if !acc.ValuesCollected && !acc.PositionsCollected {
-		return nil
+		return 0, nil
 	}
 	c := store.Capture{
 		ID:         alias + ":" + string(day) + ":" + key,
@@ -168,22 +182,59 @@ func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day,
 			c.Values = append(c.Values, store.AccountValue{Tag: v.Tag, Value: v.Value, Currency: v.Currency})
 		}
 	}
+	skipped := 0
 	if acc.PositionsCollected {
 		c.Positions = make([]store.Position, 0, len(acc.Positions))
 		for _, p := range acc.Positions {
-			c.Positions = append(c.Positions, positionOf(p))
+			sp, ok := positionOf(p)
+			if !ok {
+				skipped++
+				continue
+			}
+			c.Positions = append(c.Positions, sp)
 		}
 	}
-	return j.w.WriteCapture(ctx, c)
+	return skipped, j.w.WriteCapture(ctx, c)
 }
 
-func positionOf(p broker.Position) store.Position {
-	c := p.Contract
-	return store.Position{
-		Symbol: c.Symbol, SecType: c.SecType, Exchange: c.Exchange, Currency: c.Currency,
-		Expiry: isoDay(c.Expiry), Strike: c.Strike, Multiplier: c.Multiplier, Right: c.Right,
-		ConID: c.ConID, Quantity: p.Quantity, AvgCost: p.AvgCost,
+// storeSecType maps the broker sec type word (STK, IND, OPT) to the store word; false for any other word.
+func storeSecType(s string) (string, bool) {
+	switch s {
+	case "STK":
+		return "stock", true
+	case "IND":
+		return "index", true
+	case "OPT":
+		return "option", true
+	case "":
+		return "", true
 	}
+	return "", false
+}
+
+// storeRight maps the broker right word (P, C) to put or call; any other word gives the empty string.
+func storeRight(r string) string {
+	switch r {
+	case "P":
+		return "put"
+	case "C":
+		return "call"
+	}
+	return ""
+}
+
+// positionOf converts a broker position to a store row; false when its sec type has no store word.
+func positionOf(p broker.Position) (store.Position, bool) {
+	c := p.Contract
+	sec, ok := storeSecType(c.SecType)
+	if !ok {
+		return store.Position{}, false
+	}
+	return store.Position{
+		Symbol: c.Symbol, SecType: sec, Exchange: c.Exchange, Currency: c.Currency,
+		Expiry: isoDay(c.Expiry), Strike: c.Strike, Multiplier: c.Multiplier, Right: storeRight(c.Right),
+		ConID: c.ConID, Quantity: p.Quantity, AvgCost: p.AvgCost,
+	}, true
 }
 
 // isoDay turns the broker's YYYYMMDD into YYYY-MM-DD; anything else is returned as it is.
@@ -194,16 +245,23 @@ func isoDay(s string) string {
 	return s[:4] + "-" + s[4:6] + "-" + s[6:]
 }
 
-func toStore(day contracts.Day, in []broker.Execution) []store.Execution {
+// toStore converts broker executions to store rows and counts those left out for an unsupported sec type.
+func toStore(day contracts.Day, in []broker.Execution) ([]store.Execution, int) {
 	out := make([]store.Execution, 0, len(in))
+	skipped := 0
 	for _, e := range in {
 		c := e.Contract
+		sec, ok := storeSecType(c.SecType)
+		if !ok {
+			skipped++
+			continue
+		}
 		out = append(out, store.Execution{
 			ExecID: e.ExecID, PermID: e.PermID, ExecutedAt: e.Time, SessionDay: string(day),
-			Symbol: c.Symbol, SecType: c.SecType, Expiry: isoDay(c.Expiry), Strike: c.Strike, Right: c.Right,
+			Symbol: c.Symbol, SecType: sec, Expiry: isoDay(c.Expiry), Strike: c.Strike, Right: storeRight(c.Right),
 			Multiplier: c.Multiplier, Currency: c.Currency, Side: e.Side, Quantity: e.Quantity, Price: e.Price,
 			Commission: e.Commission, CommissionCurrency: e.CommissionCurrency,
 		})
 	}
-	return out
+	return out, skipped
 }
