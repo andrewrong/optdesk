@@ -145,7 +145,6 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
             name="household-trend"
             spec={trendSpec}
             ariaText={trend.meaning}
-            className="aspect-[2/1] w-full min-h-56"
           />
         ) : null}
         {(trend.series ?? []).map((series) => (
@@ -209,7 +208,6 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
             name="household-month-change"
             spec={monthChangeToSpec(change)}
             ariaText={change.meaning}
-            className="aspect-[2/1] w-full min-h-56"
           />
         ) : null}
       </Block>

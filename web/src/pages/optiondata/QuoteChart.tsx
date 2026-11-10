@@ -1,50 +1,36 @@
-// The bid, ask and last lines of the quote series by slot; a gap point is a hole in the line. Tabs switch series.
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
+// The bid, ask and last lines of the quote series by slot; a gap point is a hole in the line, never a bridge and
+// never zero. Tabs switch series; `Chart` draws each one.
+import { Chart } from '@/charts/Chart'
+import type { ChartPoint, ChartSpec } from '@/charts/spec'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Payload } from '@/types/option_data_page'
 
 type Series = Payload['quote_series'][number]
 type PayloadCell = Series['points'][number]['bid']
 
-const CONFIG: ChartConfig = {
-  bid: { label: '买价', color: 'var(--chart-1)' },
-  ask: { label: '卖价', color: 'var(--chart-2)' },
-  last: { label: '成交价', color: 'var(--chart-3)' },
+const NAMES = { bid: '买价', ask: '卖价', last: '成交价' } as const
+
+const pointOf = (cell: PayloadCell): ChartPoint =>
+  cell.kind === 'value' ? { value: cell.value, text: cell.text } : { value: null }
+
+function specOf(series: Series): ChartSpec {
+  return {
+    kind: 'line',
+    legend: true,
+    categories: series.points.map((point) => point.slot),
+    series: (['bid', 'ask', 'last'] as const).map((key) => ({
+      name: NAMES[key],
+      points: series.points.map((point) => pointOf(point[key])),
+      hole: true,
+    })),
+  }
 }
 
-const valueOf = (cell: PayloadCell) => (cell.kind === 'value' ? cell.value : null)
-
 function SeriesChart({ series }: { series: Series }) {
-  const data = series.points.map((point) => ({
-    slot: point.slot,
-    bid: valueOf(point.bid),
-    ask: valueOf(point.ask),
-    last: valueOf(point.last),
-  }))
   return (
-    <ChartContainer
-      config={CONFIG}
-      className="aspect-[2/1] w-full min-h-56"
-      data-slots={data.map((point) => point.slot).join(',')}
-    >
-      <LineChart data={data}>
-        <CartesianGrid vertical={false} />
-        <XAxis dataKey="slot" />
-        <YAxis domain={['auto', 'auto']} />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        {Object.keys(CONFIG).map((key) => (
-          <Line
-            key={key}
-            dataKey={key}
-            stroke={`var(--color-${key})`}
-            dot={false}
-            connectNulls={false}
-            isAnimationActive={false}
-          />
-        ))}
-      </LineChart>
-    </ChartContainer>
+    <div data-slots={series.points.map((point) => point.slot).join(',')}>
+      <Chart spec={specOf(series)} ariaText={series.caption} name="option-quote-series" />
+    </div>
   )
 }
 

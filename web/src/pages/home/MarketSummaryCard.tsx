@@ -2,8 +2,8 @@
 // payload; this file formats, compares and computes nothing. `value` is used only by the table's user-started sort.
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'
+import { MissingValue } from '@/components/data-table/missing-value'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/market_summary'
@@ -16,26 +16,17 @@ type Chart_ = Payload['card']['chart']
 
 function specOf(chart: Chart_): ChartSpec {
   const [close, average, band] = chart.series_names
-  const line = (
-    name: string,
-    key: 'close' | 'ma200' | 'band_low' | 'band_high',
-    extra: Partial<ChartSpec['series'][number]> = {},
-  ) => ({
+  const line = (name: string, key: 'close' | 'ma200') => ({
     name,
     points: chart.points.map((point) => ({ value: point[key] ?? null })),
-    ...extra,
   })
-  // The two band lines share one legend entry: the second one is hidden from it.
+  const end = (key: 'band_low' | 'band_high') => chart.points.map((point) => ({ value: point[key] ?? null }))
   return {
     kind: 'line',
     legend: true,
     categories: chart.points.map((point) => point.label),
-    series: [
-      line(close, 'close'),
-      line(average, 'ma200'),
-      line(band, 'band_low', { dashed: true }),
-      line(band, 'band_high', { dashed: true, legendHidden: true }),
-    ],
+    series: [line(close, 'close'), line(average, 'ma200')],
+    band: { name: band, low: end('band_low'), high: end('band_high') },
   }
 }
 
@@ -99,9 +90,7 @@ export function MarketSummaryCard({ payload, titleHref }: { payload: Payload; ti
             {card.vol_indices.map((item) => (
               <li key={item.name} className="flex items-center gap-1 text-sm">
                 <span>{item.name}</span>
-                <Badge variant="secondary" className="h-auto whitespace-normal text-left">
-                  {item.level.text}
-                </Badge>
+                {item.level.kind === 'gap' ? <MissingValue text={item.level.text} /> : <span>{item.level.text}</span>}
                 <span className="text-xs text-muted-foreground">
                   {item.day} {item.source_text}
                 </span>

@@ -1,0 +1,143 @@
+{
+  "schema": "household_risk",
+  "schema_version": 1,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "main",
+  "generated_at": "2026-11-10T10:00:00+08:00",
+  "data_times": [
+    {
+      "source": "account_capture",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    },
+    {
+      "source": "option_ledger",
+      "data_time": "2026-11-10T10:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "title": "家庭风险",
+  "sentence": "Delta 和 Vega 来自最近一次采集的持仓与期权结构；Beta、波动区间和标准指标的数据源还没有接入。",
+  "vega_title": "按到期日的 Vega",
+  "delta": {
+    "title": "按标的的 Delta",
+    "meaning": "每个标的涨跌一美元，持仓的盈亏变化多少美元；股票按股数计。",
+    "heads": [
+      "标的",
+      "Delta"
+    ],
+    "rows": [
+      {
+        "name": "AAA",
+        "delta": {
+          "value": 69.50,
+          "text": "+69.50 美元/美元",
+          "unit": "usd_signed",
+          "currency": "USD"
+        }
+      },
+      {
+        "name": "BBB",
+        "delta": {
+          "value": 40.00,
+          "text": "+40.00 美元/美元",
+          "unit": "usd_signed",
+          "currency": "USD"
+        }
+      }
+    ],
+    "total": {
+      "value": 109.50,
+      "text": "+109.50 美元/美元",
+      "unit": "usd_signed",
+      "currency": "USD"
+    },
+    "gap": null
+  },
+  "vega": {
+    "meaning": "波动率变化一个点，期权结构的盈亏变化多少美元。",
+    "heads": [
+      "到期日",
+      "Vega"
+    ],
+    "rows": [
+      {
+        "expiry_text": "2026-12-18",
+        "vega": {
+          "value": 15.75,
+          "text": "15.75 美元/波动点",
+          "unit": "usd_per_vol_point"
+        }
+      }
+    ],
+    "total": {
+      "value": 15.75,
+      "text": "15.75 美元/波动点",
+      "unit": "usd_per_vol_point"
+    },
+    "gap": null
+  },
+  "beta_delta": {
+    "title": "Beta 加权 Delta",
+    "meaning": "各标的 Delta 按 Beta 折算到基准指数。",
+    "benchmark_text": "基准指数暂缺",
+    "heads": [
+      "标的",
+      "Beta",
+      "加权 Delta"
+    ],
+    "rows": [],
+    "total": null,
+    "gap": {
+      "reason": "not_built",
+      "text": "Beta 加权 Delta 需要各标的的 Beta 和基准价格，数据源还没有接入"
+    }
+  },
+  "sigma": {
+    "title": "波动区间",
+    "meaning": "一倍、两倍标准差下的盈亏范围。",
+    "columns": [
+      "-2σ",
+      "-1σ",
+      "+1σ",
+      "+2σ"
+    ],
+    "rows": [],
+    "aria_text": "波动区间暂缺",
+    "gap": {
+      "reason": "not_built",
+      "text": "波动区间需要标的的隐含波动率，数据源还没有接入"
+    }
+  },
+  "standard_metrics": {
+    "title": "标准风险指标",
+    "metrics": [
+      {
+        "label": "标准风险指标",
+        "value_text": "暂缺",
+        "explanation": "标准风险指标需要风险指标数据源，还没有接入",
+        "table": null
+      }
+    ]
+  },
+  "notes": [],
+  "gaps": [
+    {
+      "reason": "not_built",
+      "text": "Beta 加权 Delta：Beta 加权 Delta 需要各标的的 Beta 和基准价格，数据源还没有接入"
+    },
+    {
+      "reason": "not_built",
+      "text": "波动区间：波动区间需要标的的隐含波动率，数据源还没有接入"
+    },
+    {
+      "reason": "not_built",
+      "text": "标准风险指标：标准风险指标需要风险指标数据源，还没有接入"
+    }
+  ],
+  "stale": {
+    "data_time": "2026-11-10T09:00:00+08:00",
+    "stale_after": "2026-11-14T09:00:00+08:00",
+    "text": "按采集日 2026-11-10"
+  }
+}

@@ -1,7 +1,7 @@
 // The one chart file: the legend names each series once (a series marked `legendHidden` shares its neighbour's
 // entry) and a `dashed` line carries a stroke-dasharray.
 import { act } from 'react'
-import { cloneElement, type ReactElement } from 'react'
+import { cloneElement, createElement, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Chart } from '@/charts/Chart'
@@ -10,10 +10,15 @@ import type { ChartSpec } from '@/charts/spec'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 // jsdom measures every element as 0 × 0, so the responsive container gets a fixed size.
+const yAxes: Record<string, unknown>[] = []
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('recharts')>()
   return {
     ...actual,
+    YAxis: (props: Record<string, unknown>) => {
+      yAxes.push(props)
+      return createElement(actual.YAxis, props)
+    },
     ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) => (
       <div style={{ width: 800, height: 400 }}>{cloneElement(children, { width: 800, height: 400 })}</div>
     ),
@@ -28,8 +33,8 @@ const SPEC: ChartSpec = {
   series: [
     { name: '收盘', points: points([1, 2, 3]) },
     { name: '200日均线', points: points([1, 1.5, 2]) },
-    { name: '区间', points: points([0, 1, 2]), dashed: true },
-    { name: '区间', points: points([2, 3, 4]), dashed: true, legendHidden: true },
+    { name: '虚线', points: points([0, 1, 2]), dashed: true },
+    { name: '虚线', points: points([2, 3, 4]), dashed: true, legendHidden: true },
   ],
 }
 
@@ -55,7 +60,7 @@ const legend = () =>
 describe('Chart', () => {
   it('shows each series name once in the legend, the hidden series sharing its neighbour', async () => {
     await show(SPEC)
-    expect(legend()).toEqual(['收盘', '200日均线', '区间'].sort())
+    expect(legend()).toEqual(['收盘', '200日均线', '虚线'].sort())
   })
 
   it('shows no legend unless the spec turns it on', async () => {
@@ -69,6 +74,55 @@ describe('Chart', () => {
       p.getAttribute('stroke-dasharray'),
     )
     expect(dashed).toEqual([null, null, '4 4', '4 4'])
+  })
+
+  it('draws straight lines, never a smoothed curve', async () => {
+    await show(SPEC)
+    const d = [...host.querySelectorAll('path.recharts-line-curve')].map((p) => p.getAttribute('d') ?? '')
+    expect(d).toHaveLength(4)
+    for (const path of d) expect(path).not.toContain('C')
+  })
+
+  it('draws the band as one shaded area with one legend entry and no line', async () => {
+    await show({ ...SPEC, band: { name: '区间', low: points([0, 1, 2]), high: points([2, 3, 4]) } })
+    expect(host.querySelectorAll('.recharts-area-area')).toHaveLength(1)
+    expect(host.querySelector('.recharts-area-curve')).toBeNull()
+    expect(legend()).toContain('区间')
+  })
+
+  it('shows five y axis ticks, without axis or tick line, with the unit of the spec appended', async () => {
+    yAxes.length = 0
+    await show({ ...SPEC, unit: '点' })
+    const axis = yAxes[yAxes.length - 1]!
+    expect(axis.tickCount).toBe(5)
+    expect(axis.axisLine).toBe(false)
+    expect(axis.tickLine).toBe(false)
+    expect(axis.hide).toBeUndefined()
+    expect((axis.tickFormatter as (tick: number) => string)(5400)).toBe('5400点')
+    expect(host.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick')).toHaveLength(5)
+  })
+
+  it('labels the last point of each line with its text', async () => {
+    await show({
+      ...SPEC,
+      series: [{ name: '收盘', points: [{ value: 1 }, { value: 2 }, { value: 3, text: '三点' }] }],
+    })
+    const labels = [...host.querySelectorAll('.recharts-label-list text')].map((e) => e.textContent)
+    expect(labels).toEqual(['三点'])
+  })
+
+  it('breaks a hole series at a missing point and bridges the others', async () => {
+    const gap = [{ value: 1 }, { value: null }, { value: 3 }]
+    await show({
+      ...SPEC,
+      series: [
+        { name: '洞', points: gap, hole: true },
+        { name: '桥', points: gap },
+      ],
+    })
+    const d = [...host.querySelectorAll('path.recharts-line-curve')].map((p) => p.getAttribute('d') ?? '')
+    expect(d[0]!.match(/M/g)).toHaveLength(2)
+    expect(d[1]!.match(/M/g)).toHaveLength(1)
   })
 
   it('leaves a bar series out of the legend when it is legendHidden', async () => {

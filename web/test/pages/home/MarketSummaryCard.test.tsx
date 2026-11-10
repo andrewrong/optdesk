@@ -38,7 +38,7 @@ vi.mock('recharts', async (importOriginal) => {
       xAxes.push(props)
       return null
     },
-    LineChart: ({ children }: { children?: React.ReactNode }) => <svg>{children}</svg>,
+    ComposedChart: ({ children }: { children?: React.ReactNode }) => <svg>{children}</svg>,
     BarChart: ({ children }: { children?: React.ReactNode }) => <svg>{children}</svg>,
   }
 })
@@ -123,18 +123,39 @@ describe('MarketSummaryCard', () => {
     drawn.length = 0
     await show(<MarketSummaryCard payload={payload} />)
     const spec = drawn[drawn.length - 1]!
-    expect(new Set(spec.series.map((s) => s.name))).toEqual(new Set(payload.card.chart.series_names))
+    const band = spec.band!
+    expect(new Set([...spec.series.map((s) => s.name), band.name])).toEqual(
+      new Set(payload.card.chart.series_names),
+    )
     expect(payload.card.chart.series_names).toHaveLength(3)
     expect(spec.categories.length).toBeGreaterThanOrEqual(30)
   })
 
-  it('turns the legend on and hides the second band line from it, both band lines dashed', async () => {
+  it('turns the legend on and draws the range as one band, not as two dashed series', async () => {
+    const payload = fixture('ok.json')
     drawn.length = 0
-    await show(<MarketSummaryCard payload={fixture('ok.json')} />)
+    await show(<MarketSummaryCard payload={payload} />)
     const spec = drawn[drawn.length - 1]!
     expect(spec.legend).toBe(true)
-    expect(spec.series.map((s) => s.legendHidden === true)).toEqual([false, false, false, true])
-    expect(spec.series.map((s) => s.dashed === true)).toEqual([false, false, true, true])
+    expect(spec.series).toHaveLength(2)
+    expect(spec.band?.low.map((p) => p.value)).toEqual(
+      payload.card.chart.points.map((p: { band_low?: number }) => p.band_low ?? null),
+    )
+    expect(spec.band?.high.map((p) => p.value)).toEqual(
+      payload.card.chart.points.map((p: { band_high?: number }) => p.band_high ?? null),
+    )
+  })
+
+  it('shows a gap volatility level as MissingValue and a figure level as plain text', async () => {
+    const payload = fixture('gap.json')
+    await show(<MarketSummaryCard payload={payload} />)
+    const items = [...host.querySelectorAll('[data-vol-indices] li')]
+    payload.card.vol_indices.forEach((item: { level: { kind: string; text: string } }, at: number) => {
+      const missing = items[at]!.querySelector('[data-missing]')
+      expect(missing !== null).toBe(item.level.kind === 'gap')
+      expect(items[at]!.textContent).toContain(item.level.text)
+      expect(items[at]!.querySelector('[data-slot=badge]')).toBeNull()
+    })
   })
 
   it('renders the title as a link to titleHref', async () => {
