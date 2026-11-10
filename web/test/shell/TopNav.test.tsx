@@ -58,6 +58,7 @@ describe('TopNav', () => {
       ['结构', '/options/structures'],
       ['盈亏', '/options/result'],
       ['提示', '/options/notices'],
+      ['追踪', '/options/tracking'],
     ])
   })
 
