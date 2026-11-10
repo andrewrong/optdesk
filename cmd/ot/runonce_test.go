@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/andrewrong/optdesk/internal/symbol/table"
 )
@@ -538,5 +540,158 @@ func TestRunOnceOptionEodWatchTranslator(t *testing.T) {
 	}
 	if got == nil || got != want {
 		t.Fatalf("translator %v, want the symbols of the deps", got)
+	}
+}
+
+// callsAcct is an account store that records its close; only the reads are used.
+type callsAcct struct {
+	store.AccountStore
+	closed *atomic.Int32
+}
+
+func (callsAcct) Positions(context.Context, string, string) ([]store.Position, error) {
+	return nil, nil
+}
+func (c callsAcct) Close() error { c.closed.Add(1); return nil }
+
+// callsDiv is a dividend store that records its close; only the read is used.
+type callsDiv struct {
+	dividend.Store
+	closed *atomic.Int32
+}
+
+func (callsDiv) Dividends(context.Context, int, contracts.Day, contracts.Day) ([]contracts.DividendExpectation, error) {
+	return nil, nil
+}
+func (c callsDiv) Close() error { c.closed.Add(1); return nil }
+
+// callsRig is a run-once rig with the account, candidate and events lines whose option_eod and option_candidates
+// constructors record what they were given.
+type callsRig struct {
+	*rig
+	heldAcct   store.AccountReader
+	heldTr     symbol.Translator
+	callsDiv   dividend.Reader
+	calls      atomic.Int32
+	puts       atomic.Int32
+	acctDSN    atomic.Value
+	divDSN     atomic.Value
+	closed     atomic.Int32
+	acctOpened atomic.Int32
+}
+
+func newCallsRig(t *testing.T, env string) *callsRig {
+	t.Helper()
+	c := &callsRig{rig: newRig(t, env+candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n")}
+	d := &c.a.deps
+	d.openAccount = func(_ context.Context, dsn string) (store.AccountStore, error) {
+		c.acctOpened.Add(1)
+		c.acctDSN.Store(dsn)
+		return callsAcct{closed: &c.closed}, nil
+	}
+	d.openCandidateRW = func(context.Context, string) (candidateRW, error) { return &fakeCandidateRW{closed: &c.closed}, nil }
+	d.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
+	d.newOptionEodHeld = func(
+		_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter, _ []jobs.WatchEntry, acct store.AccountReader, _ clock.Clock, tr symbol.Translator,
+	) (contracts.Job, error) {
+		c.heldAcct, c.heldTr = acct, tr
+		return namedJob{id: jobOptionEod}, nil
+	}
+	d.newOptionCandidates = func(jobs.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+		c.puts.Add(1)
+		return candJobStub{id: jobOptionCandidates}, nil
+	}
+	d.newOptionCandidatesCalls = func(
+		_ jobs.CandidateStores, div dividend.Reader, _ compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock,
+	) (contracts.Job, error) {
+		c.calls.Add(1)
+		c.callsDiv = div
+		return candJobStub{id: jobOptionCandidates}, nil
+	}
+	d.newReference = func(context.Context, string, broker.Options) (broker.ReferenceClient, error) { return &divRef{}, nil }
+	d.openDividend = func(_ context.Context, dsn string) (dividend.Store, error) {
+		c.divDSN.Store(dsn)
+		return callsDiv{closed: &c.closed}, nil
+	}
+	d.newDividendCapture = func(
+		broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []jobs.WatchEntry, clock.Clock,
+	) (contracts.Job, error) {
+		return namedJob{id: "dividend_capture"}, nil
+	}
+	return c
+}
+
+func TestOptionEodUsesHeldReader(t *testing.T) {
+	t.Parallel()
+	c := newCallsRig(t, fullEnv)
+	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatalf("%v\n%s", err, c.log)
+	}
+	if c.heldAcct == nil {
+		t.Fatal("option_eod was not built with the account reader")
+	}
+	// The store opens on the first read, with the account line, and closes with the run.
+	before := c.acctOpened.Load()
+	if _, err := c.heldAcct.Positions(context.Background(), "main", "2026-11-04"); err != nil {
+		t.Fatal(err)
+	}
+	if dsn, _ := c.acctDSN.Load().(string); c.acctOpened.Load() != before+1 || dsn != "acct-dsn" {
+		t.Fatalf("opened %d->%d dsn %q", before, c.acctOpened.Load(), dsn)
+	}
+	// Without the account line option_eod is the job of before.
+	n := newCallsRig(t, fullEnv)
+	n.a.deps.openAccount = nil
+	if err := runOnce(n.a, []string{"--day", "2026-11-04"}); err != nil || n.heldAcct != nil {
+		t.Fatalf("err %v held %v", err, n.heldAcct)
+	}
+}
+
+func TestCallsJobUsesDividendReader(t *testing.T) {
+	t.Parallel()
+	c := newCallsRig(t, fullEnv)
+	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatalf("%v\n%s", err, c.log)
+	}
+	if c.calls.Load() != 1 || c.puts.Load() != 0 || c.callsDiv == nil {
+		t.Fatalf("calls %d puts %d reader %v", c.calls.Load(), c.puts.Load(), c.callsDiv)
+	}
+	if _, err := c.callsDiv.Dividends(context.Background(), 1, "2026-11-04", "2026-12-04"); err != nil {
+		t.Fatal(err)
+	}
+	if dsn, _ := c.divDSN.Load().(string); dsn != "events-dsn" {
+		t.Fatalf("dividend store opened with %q", dsn)
+	}
+	if !slices.Contains(jobIDs(c.jobs), jobOptionCandidates) {
+		t.Fatalf("jobs %v", jobIDs(c.jobs))
+	}
+}
+
+func TestMissingEventsDSNKeepsPutsJob(t *testing.T) {
+	t.Parallel()
+	c := newCallsRig(t, strings.Replace(fullEnv, "OT_PG_DSN_EVENTS=events-dsn\n", "", 1))
+	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatalf("%v\n%s", err, c.log)
+	}
+	if c.puts.Load() != 1 || c.calls.Load() != 0 {
+		t.Fatalf("puts %d calls %d", c.puts.Load(), c.calls.Load())
+	}
+	if !slices.Contains(jobIDs(c.jobs), jobOptionCandidates) {
+		t.Fatalf("jobs %v", jobIDs(c.jobs))
+	}
+	if !strings.Contains(c.log.String(), reasonNoEventsDSN) || !strings.Contains(c.log.String(), jobOptionCandidates) {
+		t.Fatalf("no named line: %s", c.log)
+	}
+}
+
+func TestRunOnceOptionEodTranslatorWithAccountLine(t *testing.T) {
+	t.Parallel()
+	c := newCallsRig(t, fullEnv)
+	want := table.New()
+	c.a.deps.symbols = want
+	if err := runOnce(c.a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if c.heldAcct == nil || c.heldTr == nil || c.heldTr != want {
+		t.Fatalf("held reader %v translator %v, want the symbols of the deps", c.heldAcct, c.heldTr)
 	}
 }

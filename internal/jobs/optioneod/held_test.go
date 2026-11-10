@@ -2,6 +2,8 @@ package optioneod
 
 import (
 	"context"
+	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 type fakeAccount struct {
@@ -122,4 +125,70 @@ func etTime(t *testing.T, at string) time.Time {
 		t.Fatal(err)
 	}
 	return v
+}
+
+func heldSymbolsRun(t *testing.T, acct store.AccountReader, tr symbol.Translator) []broker.Contract {
+	t.Helper()
+	b := heldBroker()
+	clk := clockwork.NewFakeClockAt(etTime(t, "2026-11-06 17:00"))
+	watch := []jobs.WatchEntry{watchEntry("US", "TEST", "STK", "100", 1000001)}
+	var ctor NewOptionEodHeldSymbolsFunc = NewWithHeldSymbols
+	j, err := ctor(b, &fakeResolver{}, &fakeWriter{}, watch, acct, clk, tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), testDay, []contracts.ExpectedKey{testKey}); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	var out []broker.Contract
+	for _, s := range b.snaps {
+		if s.kind == broker.KindOptionEod {
+			out = append(out, s.cs...)
+		}
+	}
+	return out
+}
+
+func TestHeldSymbolsTranslatorAndReader(t *testing.T) {
+	t.Parallel()
+	acct := &fakeAccount{positions: map[string][]store.Position{
+		"A 2026-11-06": {shortCall("2026-11-16", "100")},
+	}}
+	tr := &askedTranslator{}
+	got := heldSymbolsRun(t, acct, tr)
+	tr.mu.Lock()
+	asked := slices.Clone(tr.asked)
+	tr.mu.Unlock()
+	if !slices.Contains(asked, "TEST") {
+		t.Fatalf("translator asked for %v, want TEST", asked)
+	}
+	if n := count(got, "20261116", "100", "C"); n != 1 {
+		t.Fatalf("held call asked %d times, want 1", n)
+	}
+}
+
+func TestHeldSymbolsNilTranslatorUnchanged(t *testing.T) {
+	t.Parallel()
+	acct := &fakeAccount{positions: map[string][]store.Position{
+		"A 2026-11-06": {shortCall("2026-11-16", "100")},
+	}}
+	want := heldContracts(t, acct)
+	got := heldSymbolsRun(t, acct, nil)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("plan with nil translator %v, want %v", got, want)
+	}
+	b := heldBroker()
+	watch := []jobs.WatchEntry{watchEntry("US", "TEST", "STK", "100", 1000001)}
+	clk := clockwork.NewFakeClockAt(etTime(t, "2026-11-06 17:00"))
+	a, err := NewWithHeld(b, &fakeResolver{}, &fakeWriter{}, watch, acct, clk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := NewWithHeldSymbols(b, &fakeResolver{}, &fakeWriter{}, watch, acct, clk, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(a.(*job).m, c.(*job).m) {
+		t.Fatal("manifest differs between NewWithHeld and NewWithHeldSymbols(nil)")
+	}
 }

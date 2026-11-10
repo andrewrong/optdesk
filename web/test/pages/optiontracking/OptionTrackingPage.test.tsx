@@ -78,7 +78,7 @@ it('shows the gap text of a no-mark row and not a zero', async () => {
   const row = host.querySelector('[data-table="open"] tbody tr')!
   expect([...row.children].map((td) => td.textContent)).toEqual([
     'Unmarked contract',
-    'Synthetic no-mark gap text',
+    '—Synthetic no-mark gap text',
   ])
   expect(text).not.toContain('0')
 })

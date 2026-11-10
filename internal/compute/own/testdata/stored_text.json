@@ -2,6 +2,8 @@
   {"id": "market.hv30_own", "input": 0.3141592653, "want": "0.314159"},
   {"id": "market.iv30_own", "input": 0.2, "want": "0.200000"},
   {"id": "market.ivp_own", "input": 0.75, "want": "0.750000"},
+  {"id": "market.iv_ibkr", "input": 0.25, "want": "0.250000"},
+  {"id": "market.ivp_ibkr", "input": 0.75, "want": "0.750000"},
   {"id": "market.ivr_own", "input": 0.3333333333, "want": "0.333333"},
   {"id": "market.vix_term_ratio", "input": 1.0625, "want": "1.062500"},
   {"id": "market.vix_pctile_3y", "input": 0.0078125, "want": "0.007812"},

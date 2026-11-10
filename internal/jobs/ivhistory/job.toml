@@ -1,0 +1,16 @@
+# Manifest of the iv_history job. The slot is a proposal; the owner confirms it.
+version = 1
+id = "iv_history"
+reading = "market.iv_ibkr"
+reading_version = 1
+convention = "ibkr_iv_bar_v1"
+backfill_days = 400
+daily_days = 5
+lookback_days = 365
+
+# Proposed slot: 10 minutes after the close of the session, before compute_figures (20 minutes).
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "10m"
+run_bound = "10m"

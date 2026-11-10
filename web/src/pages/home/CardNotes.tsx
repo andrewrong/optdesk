@@ -1,6 +1,4 @@
-// Notes and the card-level gaps list shared by the home cards: text as sent, in shadcn Alert.
-import { Info } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+// Notes and the card-level gaps list shared by the home cards: text as sent, as grey text.
 
 export function CardNotes({
   notes,
@@ -19,16 +17,13 @@ export function CardNotes({
         </p>
       ))}
       {showGaps && gaps.length > 0 ? (
-        <Alert data-gaps>
-          <Info aria-hidden />
-          <AlertDescription>
-            <ul className="list-disc pl-4">
-              {gaps.map((gap, index) => (
-                <li key={`${index}-${gap.text}`}>{gap.text}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
+        <div data-gaps className="text-xs text-muted-foreground">
+          <ul className="list-disc pl-4">
+            {gaps.map((gap, index) => (
+              <li key={`${index}-${gap.text}`}>{gap.text}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </>
   )

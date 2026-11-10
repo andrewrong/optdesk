@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -203,6 +206,9 @@ type deps struct {
 	loadFlexFile            sources.LoadFlexFileFunc
 	newFlexSource           sources.NewFlexFunc
 	importOptionTrader      jobs.ImportOptionTraderFunc
+	// option_eod with the held short calls and option_candidates with the dividend reader (Decisions 11 and 12).
+	newOptionEodHeld         optioneod.NewOptionEodHeldSymbolsFunc
+	newOptionCandidatesCalls jobs.NewOptionCandidatesCallsFunc
 	// bars_refresh and fx_refresh: the bar store, the two constructors and the history client.
 	openBar        bar.OpenBarFunc
 	newBarsRefresh jobs.NewBarsRefreshFunc
@@ -236,6 +242,7 @@ func newDeps() deps {
 	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	d.symbols = table.New()
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
+	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeldSymbols, optioncandidates.NewWithCalls
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	realMarkDeps(&d) // position_marks
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
@@ -622,4 +629,120 @@ var jobSteps = []jobStep{
 		}
 		return []contracts.Job{j}, nil
 	}},
+}
+
+// lazyStore opens a store on its first use with the ctx of that call and closes it if it was opened. The open
+// happens at run time, not at wiring, so a run that refuses its config before any job runs opens nothing.
+type lazyStore[T io.Closer] struct {
+	open func(context.Context) (T, error)
+	mu   sync.Mutex
+	s    T
+	ok   bool
+}
+
+func (l *lazyStore[T]) get(ctx context.Context) (T, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.ok {
+		s, err := l.open(ctx)
+		if err != nil {
+			var zero T
+			return zero, err
+		}
+		l.s, l.ok = s, true
+	}
+	return l.s, nil
+}
+
+func (l *lazyStore[T]) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.ok {
+		return nil
+	}
+	l.ok = false
+	return l.s.Close()
+}
+
+// lazyAccountReader is the account reader of option_eod: the store of OT_PG_DSN_ACCOUNT, opened on the first read.
+type lazyAccountReader struct{ lazyStore[store.AccountStore] }
+
+func (r *lazyAccountReader) Positions(ctx context.Context, alias, day string) ([]store.Position, error) {
+	s, err := r.get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.Positions(ctx, alias, day)
+}
+
+func (r *lazyAccountReader) Values(ctx context.Context, alias, day string) ([]store.AccountValue, error) {
+	s, err := r.get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.Values(ctx, alias, day)
+}
+
+func (r *lazyAccountReader) Executions(ctx context.Context, alias, from, to string) ([]store.Execution, error) {
+	s, err := r.get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.Executions(ctx, alias, from, to)
+}
+
+// lazyDividendReader is the dividend reader of option_candidates: the store of OT_PG_DSN_EVENTS, opened on the first read.
+type lazyDividendReader struct{ lazyStore[dividend.Store] }
+
+func (r *lazyDividendReader) Dividends(ctx context.Context, id int, from, to contracts.Day) ([]contracts.DividendExpectation, error) {
+	s, err := r.get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.Dividends(ctx, id, from, to)
+}
+
+// wireHeldCalls gives the held short calls to option_eod and the dividend reader to option_candidates, by wrapping
+// the constructors of the deps copy of f (option-candidates Decisions 11 and 12):
+//   - with OT_PG_DSN_ACCOUNT set, option_eod is built by NewWithHeldSymbols over a reader of the account store;
+//   - with OT_PG_DSN_EVENTS set, option_candidates is built by NewWithCalls over a reader of the dividend store;
+//     without it the puts job stays as it was and one line names OT_PG_DSN_EVENTS.
+//
+// Both stores open on first read and are closed through extra. No error or line holds a DSN.
+func wireHeldCalls(cfg runOnceConfig, f *jobFactory, extra *closerSet, log *slog.Logger) {
+	if f.d.newOptionEodHeld != nil && f.d.openAccount != nil && cfg.accountDSN != "" {
+		rd := &lazyAccountReader{lazyStore[store.AccountStore]{open: func(ctx context.Context) (store.AccountStore, error) {
+			s, err := f.d.openAccount(ctx, cfg.accountDSN)
+			if err != nil {
+				return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
+			}
+			return s, nil
+		}}}
+		extra.addCloser(rd)
+		held := f.d.newOptionEodHeld
+		f.d.newOptionEodWatch = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
+			clk clock.Clock, tr symbol.Translator) (contracts.Job, error) {
+			return held(b, r, w, watch, rd, clk, tr)
+		}
+	}
+	if f.d.newOptionCandidatesCalls == nil || f.d.openDividend == nil || cfg.candidatesOff() != "" {
+		return
+	}
+	if cfg.eventsDSN == "" {
+		log.Warn("covered calls left out", "component", "ot", "job", jobOptionCandidates, "status", reasonNoEventsDSN)
+		return
+	}
+	rd := &lazyDividendReader{lazyStore[dividend.Store]{open: func(ctx context.Context) (dividend.Store, error) {
+		s, err := f.d.openDividend(ctx, cfg.eventsDSN)
+		if err != nil {
+			return nil, fmt.Errorf("open dividend store with %s failed", store.DSNEnvEvents)
+		}
+		return s, nil
+	}}}
+	extra.addCloser(rd)
+	calls := f.d.newOptionCandidatesCalls
+	f.d.newOptionCandidates = func(st jobs.CandidateStores, rule compute.OptionCandidates, watch []jobs.WatchEntry,
+		clk clock.Clock) (contracts.Job, error) {
+		return calls(st, rd, rule, watch, clk)
+	}
 }

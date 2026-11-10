@@ -113,13 +113,13 @@ it('shows the ease gap once without a gauge and keeps the missing indicator reas
   expect(row.querySelectorAll('td')[1]!.textContent).not.toBe('0')
 })
 
-it('shows Python stale and page gap labels as alerts', async () => {
+it('shows Python stale and page gap labels', async () => {
   const payload = fixture('stale.json')
   payload.gaps = [{ reason: 'no_data', text: '独立的页面缺口' }]
   await show(payload)
   const alerts = [...host.querySelectorAll('[role=alert]')].map((node) => node.textContent)
   expect(alerts).toContain(payload.stale.text)
-  expect(alerts).toContain('独立的页面缺口')
+  expect(host.querySelector('[data-gaps]')?.textContent).toContain('独立的页面缺口')
 })
 
 it('colours each indicator source badge by the status Python sent', async () => {

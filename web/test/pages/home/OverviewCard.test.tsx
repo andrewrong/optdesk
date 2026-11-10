@@ -44,7 +44,7 @@ describe('OverviewCard', () => {
     expect(host.textContent).toContain(ok.say)
   })
 
-  it('lists each gap text in the Alert when there are gaps', async () => {
+  it('lists each gap text in the grey gap line when there are gaps', async () => {
     await show(ok)
     const alert = host.querySelector('[data-gap-line]')!
     expect(ok.overview.gaps.length).toBeGreaterThan(0)
