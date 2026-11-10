@@ -78,6 +78,10 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 			if err != nil {
 				return nil, err
 			}
+			rows, err = withDisplayNames(ctx, c.Names, rows)
+			if err != nil {
+				return nil, err
+			}
 			if len(rows) == 0 {
 				vm.Groups = append(vm.Groups, gapGroup(s.kind, mkGap("no_rows", gapNoRows)))
 				continue
