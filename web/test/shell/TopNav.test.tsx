@@ -25,7 +25,7 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 describe('TopNav', () => {
-  it('has nine links with the fixed labels and paths', async () => {
+  it('has nine links and the 期权持仓 menu: ten items in all', async () => {
     await showAt('/home')
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('主导航')
     expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
@@ -38,6 +38,24 @@ describe('TopNav', () => {
       ['期权数据', '/options/data'],
       ['期权候选', '/options/candidates'],
       ['建议', '/advice'],
+    ])
+    const items = [...host.querySelectorAll('nav > a, nav > button')].map((e) => e.textContent)
+    expect(items).toHaveLength(10)
+    expect(items[9]).toBe('期权持仓')
+  })
+
+  it('the 期权持仓 menu holds the links 结构 and 盈亏', async () => {
+    await showAt('/home')
+    const trigger = [...host.querySelectorAll('button')].find((b) => b.textContent === '期权持仓')
+    expect(trigger).toBeDefined()
+    await act(async () => {
+      trigger?.focus()
+      trigger?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    const menu = [...document.querySelectorAll('[role="menu"] a')]
+    expect(menu.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['结构', '/options/structures'],
+      ['盈亏', '/options/result'],
     ])
   })
 

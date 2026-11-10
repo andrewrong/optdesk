@@ -1,7 +1,18 @@
-import { Lightbulb, type LucideIcon } from 'lucide-react'
+import { ChevronDown, Lightbulb, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-// The nine items of Decision 3 (docs/design/unified-site.md), in order. Fixed shell text: no payload field is read.
+// Nine of the ten items (Decision 3 of docs/design/unified-site.md), in order; the tenth, the 期权持仓 menu, follows them (Decision 15 of docs/design/option-positions.md). Fixed shell text: no payload field is read.
+const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
+  { label: '结构', path: '/options/structures' },
+  { label: '盈亏', path: '/options/result' },
+]
+
 const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; icon?: LucideIcon })[] = [
   { label: '首页', path: '/home' },
   { label: '宏观', path: '/macro' },
@@ -35,6 +46,21 @@ export function TopNav() {
           </Button>
         )
       })}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="shrink-0">
+            期权持仓
+            <ChevronDown aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {POSITION_LINKS.map(({ label, path }) => (
+            <DropdownMenuItem key={path} asChild>
+              <a href={path}>{label}</a>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   )
 }
