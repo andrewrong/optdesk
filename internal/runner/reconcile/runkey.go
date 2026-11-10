@@ -94,7 +94,7 @@ func (k *keyRunner) RunKey(
 	if err := k.ops.RecordRun(wctx, rec); err != nil {
 		return rec, err
 	}
-	k.logFinished(job, key, attempt, now, rec)
+	k.logFinished(wctx, job, key, attempt, now, rec)
 	if status == "" {
 		return rec, nil
 	}
@@ -103,7 +103,7 @@ func (k *keyRunner) RunKey(
 
 // logFinished writes the one Info line of a run whose final row is recorded. It carries
 // counts, codes and the duration, never the message of a job error or any row content.
-func (k *keyRunner) logFinished(job contracts.Job, key contracts.ExpectedKey, attempt int, start time.Time, rec store.Run) {
+func (k *keyRunner) logFinished(ctx context.Context, job contracts.Job, key contracts.ExpectedKey, attempt int, start time.Time, rec store.Run) {
 	outcome := "degraded"
 	if rec.Status == store.RunDone {
 		outcome = "ok"
@@ -128,7 +128,7 @@ func (k *keyRunner) logFinished(job contracts.Job, key contracts.ExpectedKey, at
 	if rec.ReasonCode != "" {
 		attrs = append(attrs, slog.String("reason", rec.ReasonCode))
 	}
-	k.log.LogAttrs(context.Background(), slog.LevelInfo, "job run finished", attrs...)
+	k.log.LogAttrs(ctx, slog.LevelInfo, "job run finished", attrs...)
 }
 
 // verdict decides the mark of a run that was not cut and sets ErrorCode or ReasonCode on rec.
