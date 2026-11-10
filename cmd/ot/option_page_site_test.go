@@ -132,3 +132,14 @@ type cEodDemo struct {
 }
 
 func (c cEodDemo) Close() error { return c.closeCounter.Close() }
+
+func TestOptionPageScope(t *testing.T) {
+	t.Parallel()
+	a, _ := optionPageApp(t, "")
+	rd := siteReaders{cands: demoCandidates{}, eod: demoOption{}}
+	h := siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := candidatesGet(t, h, http.MethodGet, "/options")
+	if !strings.Contains(rec.Body.String(), `"scope":"options"`) {
+		t.Fatalf("scope: %s", rec.Body.String())
+	}
+}

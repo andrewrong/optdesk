@@ -19,6 +19,9 @@ const siteOptionRoute = "options"
 // optionPageName is the name of the page option_page, which pageNamed selects for ot page.
 const optionPageName = "option_page"
 
+// optionPageScope is the scope the page carries (docs/design/option-page-builders.md, Decision 9).
+const optionPageScope = "options"
+
 // newOptionPage builds the page option_page; a test replaces it. The page adds no field to deps.
 var newOptionPage = option_boards.NewOptionPage
 
@@ -40,10 +43,10 @@ func buildOptionPage(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	return optionPageOf(a, "ot-serve", rd.cands, rd.eod).Build(ctx, nil, day, clk.Now().UTC())
 }
 
-// optionPageOf calls newOptionPage with the plain arguments (scope "option").
+// optionPageOf calls newOptionPage with the plain arguments (scope "options").
 func optionPageOf(a *app, runID string, cands store.CandidateReader, eod store.OptionEodReader) pages.Page {
 	return newOptionPage(option_boards.OptionConfig{
-		RunID: runID, BuildID: buildIDOf(version), Scope: "option", Zone: a.profile.Zone,
+		RunID: runID, BuildID: buildIDOf(version), Scope: optionPageScope, Zone: a.profile.Zone,
 		Candidates: cands, Eod: eod,
 	})
 }
