@@ -303,7 +303,10 @@ func fillSeries(k *card, keys []string, byMonth map[string]MonthFigure) {
 	holes := 0
 	for _, key := range keys {
 		m := byMonth[key]
-		label := strings.TrimPrefix(key[5:], "0") + "月"
+		label := key + "月"
+		if t, err := time.Parse(monthLayout, key); err == nil {
+			label = strconv.Itoa(int(t.Month())) + "月"
+		}
 		pt := point{Month: key, Label: label, Premium: noData(textHole), Closed: noData(textHole)}
 		if !m.Seen {
 			holes++
