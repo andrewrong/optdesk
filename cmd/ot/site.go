@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
 // pagesDSNName is the only .env line the site reads.
@@ -58,6 +59,9 @@ type siteReaders struct {
 	names   store.InstrumentNameReader
 	view    store.ReadingViewReader
 	cands   store.CandidateReader
+
+	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
+	owner ownerset.Reader
 
 	// the notices page: the account and earnings readers (nil with no opener in deps, which the page shows as
 	// the gap no_reader). The positions pages keep their own account field below.
@@ -141,8 +145,12 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
+	owner, ok := openOwnerReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
 	rd := siteReaders{series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
-		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn}
+		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner}
 	return withPositionsRules(a, rd), closeAll, nil
 }
 
@@ -171,6 +179,19 @@ func openOptionalStores(ctx context.Context, a *app, dsn string, track func(io.C
 		r.earn = es
 	}
 	return r, true
+}
+
+// openOwnerReader opens the owner settings reader when deps has an opener, else it is nil (the page shows the
+// gap no_reader). ok is false when the open failed.
+func openOwnerReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (ownerset.Reader, bool) {
+	if a.deps.openOwnerSet == nil {
+		return nil, true
+	}
+	oset, err := a.deps.openOwnerSet(ctx, dsn)
+	if !track(oset, err) {
+		return nil, false
+	}
+	return oset, true
 }
 
 // withPositionsRules sets the compute constructors of the positions pages; the ledger, account and session
@@ -202,6 +223,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		var id int64
 		var build func(context.Context) ([]byte, error)
 		isAsset := false
+		build = extraPageBuilder(path, a, clk, dayFlag, rd)
 		switch {
 		case path == "":
 		case path == "macro":
@@ -214,10 +236,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 			build = func(ctx context.Context) ([]byte, error) {
 				return buildPositions(ctx, a, clk, dayFlag, rd, kind, sid, q)
 			}
-		case path == siteCandidatesRoute:
-			build = func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
-		case path == siteNoticesRoute:
-			build = func(ctx context.Context) ([]byte, error) { return buildNotices(ctx, a, clk, dayFlag, rd) }
+		case build != nil:
 		case path == "report":
 			q := r.URL.Query()
 			build = func(ctx context.Context) ([]byte, error) { return buildReport(ctx, a, clk, dayFlag, rd.view, q) }
@@ -265,6 +284,21 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 			newHandler(vm).ServeHTTP(w, r)
 		}
 	})
+}
+
+// extraPageBuilder is the builder of the routes options/candidates, options/notices and settings, nil for any
+// other path.
+func extraPageBuilder(path string, a *app, clk clock.Clock, dayFlag string, rd siteReaders) func(context.Context) ([]byte, error) {
+	if path == siteCandidatesRoute {
+		return func(ctx context.Context) ([]byte, error) { return buildCandidates(ctx, a, clk, dayFlag, rd) }
+	}
+	if path == siteNoticesRoute {
+		return func(ctx context.Context) ([]byte, error) { return buildNotices(ctx, a, clk, dayFlag, rd) }
+	}
+	if path == siteSettingsRoute {
+		return func(ctx context.Context) ([]byte, error) { return buildSettings(ctx, a, clk, dayFlag, rd) }
+	}
+	return nil
 }
 
 // siteIDOf is the underlying id of the last element of an options/data path: a positive number written

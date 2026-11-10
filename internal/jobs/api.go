@@ -137,6 +137,13 @@ type NewEarningsRefreshSymbolsFunc func(
 // without a BuyPrice keeps the strike_band. The list comes before the clock.
 type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock) (contracts.Job, error)
 
+// NewOptionEodWatchSymbolsFunc is NewOptionEodWatchFunc with a symbol.Translator as the last argument
+// (internal/jobs/optioneod.NewWithWatchSymbols). A nil translator means no translation: the job behaves as it
+// does without one, including its own matching of share-class separators.
+type NewOptionEodWatchSymbolsFunc func(
+	broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []WatchEntry, clock.Clock, symbol.Translator,
+) (contracts.Job, error)
+
 // NewOptionEodHeldFunc is the constructor of the option_eod job that also captures the contracts of the short
 // calls the account holds, whatever their DTE (declaration only; its implementation is a later issue). The
 // watch list comes after the writer, the reader after the list and the clock last.
@@ -290,3 +297,15 @@ type NewBarsRefreshFunc func(
 // NewFxRefreshFunc is the constructor of the fx_refresh job (internal/jobs/fxrefresh.New). The arguments
 // are the broker, the history client, the FX rate writer and reader and the clock.
 type NewFxRefreshFunc func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error)
+
+// NewDividendCaptureFunc is the constructor of the dividend_capture job (internal/jobs/dividendcapture.New;
+// docs/design/event-sources.md Decisions 2, 5, 6 and 7). Once per XNYS session day after the close it resolves
+// each entry to its instrument_id through the resolver (scheme ibkr_conid; a failed resolve is an error row
+// resolve_failed for that stock only), asks ReferenceClient.Dividends for the entries of the markets named in the
+// passed_markets key of job.toml and writes one obs.dividend_expectation row per stock through the writer:
+// present, no_value, or error with an error_code. An entry of any other market gets an unsupported row with
+// source none. One stock failing does not stop the others. The reader is how the job sees the rows of the day: a
+// stock that has a row of the day gets no second one.
+type NewDividendCaptureFunc func(
+	broker.ReferenceClient, store.InstrumentResolver, dividend.Writer, dividend.Reader, []WatchEntry, clock.Clock,
+) (contracts.Job, error)

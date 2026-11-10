@@ -3,12 +3,16 @@ package optioneod
 import (
 	"context"
 	"reflect"
+	"slices"
 	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
@@ -189,5 +193,77 @@ func TestWindowMinAboveMaxFails(t *testing.T) {
 	}
 	if want := (manifest{MinDTE: 50, MaxDTE: 40}).validate(); want == nil || err.Error() != want.Error() {
 		t.Fatalf("error %v, want the validate error %v", err, want)
+	}
+}
+
+// askedTranslator removes spaces from a root, as the real translator does for a share class, and records the
+// symbols it was asked about.
+type askedTranslator struct {
+	noSpace
+	mu    sync.Mutex
+	asked []string
+}
+
+func (a *askedTranslator) OSIRoot(s string) string {
+	a.mu.Lock()
+	a.asked = append(a.asked, s)
+	a.mu.Unlock()
+	return a.noSpace.OSIRoot(s)
+}
+
+func TestWatchSymbolsShareClass(t *testing.T) {
+	t.Parallel()
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 11, 6, 17, 0, 0, 0, loc)
+	b := newBroker()
+	b.chains = []broker.Chain{{Exchange: "SMART", TradingClass: "BRKB", Multiplier: "100",
+		Expirations: []string{"20261106"}, Strikes: []string{"95", "100", "105"}}}
+	tr := &askedTranslator{}
+	watch := []jobs.WatchEntry{watchEntry("US", "BRK B", "STK", "", 1)}
+	var ctor jobs.NewOptionEodWatchSymbolsFunc = NewWithWatchSymbols
+	j, err := ctor(b, &fakeResolver{}, &fakeWriter{}, watch, clockwork.NewFakeClockAt(now), tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), "2026-11-06", []contracts.ExpectedKey{{DatasetID: "obs.option_eod", SubjectKey: "BRK B"}})
+	_ = res
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if !slices.Contains(tr.asked, "BRK B") {
+		t.Fatalf("translator asked for %v, want BRK B", tr.asked)
+	}
+}
+
+func TestWatchSymbolsNilTranslator(t *testing.T) {
+	t.Parallel()
+	watch := []jobs.WatchEntry{
+		watchEntry("US", "ZZZ", "STK", "50", 2),
+		watchEntry("US", "BRK B", "STK", "", 1),
+		watchEntry("JP", "7203", "STK", "", 3),
+	}
+	a, err := NewWithWatch(newBroker(), &fakeResolver{}, &fakeWriter{}, watch, clockwork.NewFakeClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := NewWithWatchSymbols(newBroker(), &fakeResolver{}, &fakeWriter{}, watch, clockwork.NewFakeClock(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(a.(*job).m.Underlying, b.(*job).m.Underlying) {
+		t.Fatalf("underlyings differ: %v vs %v", a.(*job).m.Underlying, b.(*job).m.Underlying)
+	}
+	ka, _, err := a.Plan(context.Background(), "2026-11-06")
+	if err != nil {
+		t.Fatal(err)
+	}
+	kb, _, err := b.Plan(context.Background(), "2026-11-06")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(ka, kb) || len(ka) != 2 {
+		t.Fatalf("keys differ: %v vs %v", ka, kb)
 	}
 }
