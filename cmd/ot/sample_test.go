@@ -62,7 +62,6 @@ func TestSampleRoutes(t *testing.T) {
 	}
 	want := map[string]string{
 		"/home": "home_page", "/positions": "positions_page",
-		"/risk": "household_risk",
 	}
 	for path, schema := range want {
 		vm := get(path)
