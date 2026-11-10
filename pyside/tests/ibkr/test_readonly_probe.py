@@ -15,14 +15,26 @@ from optdesk.ibkr.ibgateway import IbGateway
 from optdesk.ibkr.readonly_probe import (
     PROBE_CLIENT_ID,
     GatewayNotReadOnly,
+    ProbeUnknown,
     install_probe_guard,
     prove_read_only,
 )
+from optdesk.ibkr.server import supervise
 from optdesk.ibkr.transport import NotAllowed, OrderRefused
 
 
 class ProbeClient(FakeClient):
-    async def connectAsync(self, host: str, port: int, client_id: int) -> None:
+    """Records the timeout it got; `handshake` is a coroutine the connect awaits."""
+
+    timeout: float | None = None
+    handshake: Callable[[], Awaitable[None]] | None = None
+
+    async def connectAsync(
+        self, host: str, port: int, client_id: int, timeout: float = 2.0
+    ) -> None:
+        self.timeout = timeout
+        if self.handshake is not None:
+            await self.handshake()
         await super().connectAsync(host, port, client_id)
         self.sent: list[object] = []
         self.send = self._send
@@ -38,7 +50,8 @@ class ProbeIb(FakeIb):
     def __init__(self, clock: FakeClock, answer: str) -> None:
         super().__init__(clock)
         self.answer = answer
-        self.client = ProbeClient(self)
+        self.pc = ProbeClient(self)
+        self.client = self.pc
         self.requests = 0
 
     def reqOpenOrdersAsync(self) -> Awaitable[list[object]]:
@@ -257,3 +270,132 @@ def test_other_connect_failure_stays_an_ordinary_error() -> None:
 
     with pytest.raises(ConnectionRefusedError):
         asyncio.run(run())
+
+
+def test_probe_connect_gets_the_five_second_budget_as_timeout() -> None:
+    async def run() -> float | None:
+        clock = FakeClock()
+        ib = ProbeIb(clock, "321")
+        await probe_of(clock, ib)()
+        return ib.pc.timeout
+
+    assert asyncio.run(run()) == 5.0
+
+
+def test_slow_handshake_leaves_the_rest_of_five_seconds_for_the_answer() -> None:
+    async def run() -> tuple[bool, bool, float]:
+        clock = FakeClock()
+        ib = ProbeIb(clock, "silent")
+        ib.pc.handshake = lambda: clock.sleep(3.0)
+
+        async def attempt() -> SystemExit | None:
+            try:
+                await probe_of(clock, ib)()
+            except SystemExit as stop:
+                return stop
+            return None
+
+        task = asyncio.ensure_future(attempt())
+        await clock.advance(3.0)
+        await clock.advance(1.9)
+        early = task.done()
+        await clock.advance(0.2)
+        stop = await task
+        return early, isinstance(stop, GatewayNotReadOnly), clock.monotonic()
+
+    early, refused, ended = asyncio.run(run())
+    assert (early, refused) == (False, True)
+    assert ended == pytest.approx(5.1)
+
+
+def test_probe_handshake_that_raises_is_unknown_and_disconnected() -> None:
+    async def boom() -> None:
+        raise ConnectionRefusedError
+
+    async def run() -> tuple[ProbeUnknown, bool]:
+        clock = FakeClock()
+        ib = ProbeIb(clock, "321")
+        ib.pc.handshake = boom
+        try:
+            await probe_of(clock, ib)()
+        except ProbeUnknown as unknown:
+            return unknown, ib.disconnected
+        raise AssertionError("no ProbeUnknown")
+
+    unknown, disconnected = asyncio.run(run())
+    assert isinstance(unknown.__cause__, ConnectionRefusedError)
+    assert disconnected
+    assert issubclass(ProbeUnknown, Exception)
+    assert not issubclass(ProbeUnknown, SystemExit)
+
+
+def test_probe_handshake_pending_at_five_seconds_is_unknown() -> None:
+    async def run() -> tuple[bool, bool, bool]:
+        clock = FakeClock()
+        ib = ProbeIb(clock, "321")
+        ib.pc.handshake = lambda: asyncio.Event().wait()  # type: ignore[assignment]
+
+        async def attempt() -> BaseException | None:
+            try:
+                await probe_of(clock, ib)()
+            except BaseException as stop:  # noqa: BLE001
+                return stop
+            return None
+
+        task = asyncio.ensure_future(attempt())
+        await clock.advance(4.9)
+        early = task.done()
+        await clock.advance(0.2)
+        stop = await task
+        return early, isinstance(stop, ProbeUnknown), ib.disconnected
+
+    assert asyncio.run(run()) == (False, True, True)
+
+
+def test_unknown_probe_leaves_not_connected_and_supervise_retries() -> None:
+    async def run() -> tuple[bool, int, bool]:
+        clock = FakeClock()
+        ib = ProbeIb(clock, "321")
+        calls = 0
+
+        async def probe() -> None:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise ProbeUnknown("handshake timed out")
+
+        gateway = _gateway(clock, ib, probe)
+        task = asyncio.ensure_future(supervise(gateway, clock, "main"))
+        await clock.advance(0.0)
+        first = (await gateway.status()).connected
+        await clock.advance(60.0)
+        up = (await gateway.status()).connected
+        failed = task.done()
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return first, calls, up and not failed
+
+    assert asyncio.run(run()) == (False, 2, True)
+
+
+def test_two_open_sessions_of_one_gateway_probe_one_after_the_other() -> None:
+    async def run() -> list[str]:
+        clock = FakeClock()
+        log: list[str] = []
+        release = asyncio.Event()
+
+        async def probe() -> None:
+            log.append("start")
+            await release.wait()
+            log.append("end")
+
+        gateway = _gateway(clock, FakeIb(clock), probe)
+        first = asyncio.ensure_future(gateway.open_session())
+        second = asyncio.ensure_future(gateway.open_session())
+        for _ in range(10):
+            await asyncio.sleep(0)
+        release.set()
+        await asyncio.gather(first, second, return_exceptions=True)
+        return log
+
+    assert asyncio.run(run()) == ["start", "end", "start", "end"]
