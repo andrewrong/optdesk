@@ -310,10 +310,10 @@ func TestSectionsStoreWiredToLedger(t *testing.T) {
 	l := newLedgerRig(t, fullEnv+ledgerDSNLine+sectionEnv, false)
 	sec := &sectionFakeStore{}
 	var dsns []string
-	l.a.deps.openFlexSections = func(_ context.Context, dsn string) (flexSectionStore, error) {
+	l.setSections(func(_ context.Context, dsn string) (flexSectionStore, error) {
 		dsns = append(dsns, dsn)
 		return sec, nil
-	}
+	})
 	l.run(t)
 	if !slices.Equal(dsns, []string{"led-dsn-secret"}) {
 		t.Errorf("section store opened with %v, want the option ledger line only", dsns)
@@ -332,9 +332,9 @@ func TestSectionsStoreWiredToLedger(t *testing.T) {
 func TestSectionsStoreFailureKeepsTradePath(t *testing.T) {
 	t.Parallel()
 	l := newLedgerRig(t, fullEnv+ledgerDSNLine+sectionEnv, false)
-	l.a.deps.openFlexSections = func(_ context.Context, dsn string) (flexSectionStore, error) {
+	l.setSections(func(_ context.Context, dsn string) (flexSectionStore, error) {
 		return nil, errors.New("connect to " + dsn + " failed")
-	}
+	})
 	l.run(t)
 	if !l.built || !slices.Contains(l.jobIDs(), "option_ledger") {
 		t.Fatalf("a section store failure took the job out: %v", l.jobIDs())
@@ -353,9 +353,9 @@ func TestSectionsStoreFailureKeepsTradePath(t *testing.T) {
 func TestSectionsValuesNeverPrinted(t *testing.T) {
 	t.Parallel()
 	l := newLedgerRig(t, fullEnv+ledgerDSNLine+sectionEnv, true)
-	l.a.deps.openFlexSections = func(_ context.Context, dsn string) (flexSectionStore, error) {
+	l.setSections(func(_ context.Context, dsn string) (flexSectionStore, error) {
 		return nil, errors.New("connect to " + dsn + " failed")
-	}
+	})
 	l.run(t)
 	log := l.log.String()
 	if !strings.Contains(log, "OT_PG_DSN_OPTION_LEDGER") || !strings.Contains(log, "degraded") {
@@ -367,4 +367,12 @@ func TestSectionsValuesNeverPrinted(t *testing.T) {
 			t.Errorf("a value is printed or logged: %q", secret)
 		}
 	}
+}
+
+// setSections replaces the opener of the section store in the ext deps of option_ledger.
+func (l *ledgerRig) setSections(open func(context.Context, string) (flexSectionStore, error)) {
+	if l.a.deps.ext == nil {
+		l.a.deps.ext = map[string]any{}
+	}
+	l.a.deps.ext[extOptionLedger] = optionLedgerDeps{openFlexSections: open}
 }

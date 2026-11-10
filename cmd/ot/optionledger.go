@@ -25,7 +25,10 @@ import (
 
 // Design: docs/design/option-ledger.md#12 optionledger-wire.
 
-func init() { register("ledger", ledgerCmd) }
+func init() {
+	register("ledger", ledgerCmd)
+	extDeps[extOptionLedger] = func() any { return optionLedgerDeps{openFlexSections: openFlexSections} }
+}
 
 const (
 	jobOptionLedger = "option_ledger"
@@ -57,8 +60,14 @@ type flexSectionStore interface {
 	Close() error
 }
 
-// openFlexSectionsFunc opens the Flex section store with a DSN.
-type openFlexSectionsFunc func(ctx context.Context, dsn string) (flexSectionStore, error)
+// optionLedgerDeps is the ext deps of option_ledger (see extDeps): the opener of the section store. A missing
+// entry or a nil opener means the section step is off.
+type optionLedgerDeps struct {
+	openFlexSections func(ctx context.Context, dsn string) (flexSectionStore, error)
+}
+
+// extOptionLedger is the key of optionLedgerDeps in deps.ext.
+const extOptionLedger = "optionledger"
 
 // openFlexSections is flexsectionpg.Open; a failed open is a nil interface, not a typed nil.
 func openFlexSections(ctx context.Context, dsn string) (flexSectionStore, error) {
@@ -72,8 +81,8 @@ func openFlexSections(ctx context.Context, dsn string) (flexSectionStore, error)
 // sectionsStore opens the section store with the same line as the trade store. If it cannot be opened the
 // section step is off (nil) and one `degraded` record names the line, never its value or the open error.
 func (a *app) sectionsStore(ctx context.Context, dsn string, f jobFactory, extra *closerSet) flexsection.Writer {
-	if f.d.openFlexSections != nil {
-		if s, err := f.d.openFlexSections(ctx, dsn); err == nil {
+	if od, ok := f.d.ext[extOptionLedger].(optionLedgerDeps); ok && od.openFlexSections != nil {
+		if s, err := od.openFlexSections(ctx, dsn); err == nil {
 			extra.addCloser(s)
 			return s
 		}

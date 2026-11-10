@@ -181,7 +181,6 @@ type deps struct {
 	openEarningsDates       store.OpenEarningsDateStoreFunc
 	openOptionLedgerStore   store.OpenOptionLedgerFunc
 	newOptionLedgerJob      jobs.NewOptionLedgerJobFunc
-	openFlexSections        openFlexSectionsFunc
 	loadFlexFile            sources.LoadFlexFileFunc
 	newFlexSource           sources.NewFlexFunc
 	importOptionTrader      jobs.ImportOptionTraderFunc
@@ -215,7 +214,6 @@ func newDeps() deps {
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openOptionLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
 	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
-	d.openFlexSections = openFlexSections
 	d.newRuleParams = ruleparam.New
 	d.openOwnerSet = ownersetpg.Open
 	d.openOptionLedgerRO = openOptionLedgerStore
