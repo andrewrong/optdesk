@@ -1,0 +1,118 @@
+{
+  "schema": "held_companies_summary",
+  "schema_version": 3,
+  "run_id": "run-1",
+  "build_id": "build-1",
+  "scope": "home",
+  "generated_at": "2026-11-10T21:00:00+08:00",
+  "data_times": [
+    {
+      "source": "held_companies",
+      "data_time": "2026-11-10T00:00:00+08:00"
+    }
+  ],
+  "stale_after": "2026-11-14T09:30:00+08:00",
+  "run_status": "ok",
+  "card": {
+    "title": "Held companies",
+    "say": "Held companies: 1 · 1 with a price line.",
+    "subtitle": "Price line and volatility",
+    "stale": {
+      "data_time": "2026-11-10T00:00:00+08:00",
+      "is_stale": false,
+      "text": "Data of 11-10"
+    },
+    "columns": [
+      {
+        "id": "company",
+        "label": "Company"
+      },
+      {
+        "id": "price",
+        "label": "Price line"
+      },
+      {
+        "id": "earnings",
+        "label": "Earnings"
+      },
+      {
+        "id": "day_change",
+        "label": "Day"
+      },
+      {
+        "id": "five_day_change",
+        "label": "5 days"
+      }
+    ],
+    "rows": [
+      {
+        "symbol": "DEMOA",
+        "currency": "USD",
+        "price": {
+          "kind": "value",
+          "value": 142.5,
+          "text": "142.5 · hand 85.5",
+          "unit": "price"
+        },
+        "earnings": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "earnings date: no source"
+        },
+        "day_change": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "day change: no source"
+        },
+        "five_day_change": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "5-day change: no source"
+        },
+        "day_sharp": {
+          "kind": "none"
+        },
+        "five_day_sharp": {
+          "kind": "none"
+        },
+        "volatility": {
+          "source": "own",
+          "label": "own · hv30_v1 / iv30_v1 / ivp_v1 · data day 11-10",
+          "data_day": "2026-11-10",
+          "hv30": {
+            "kind": "value",
+            "value": 31.25,
+            "text": "31.25%",
+            "unit": "percent",
+            "tone": "none"
+          },
+          "iv30": {
+            "kind": "value",
+            "value": 40.10,
+            "text": "40.10%",
+            "unit": "percent",
+            "tone": "none"
+          },
+          "ivp": {
+            "kind": "value",
+            "value": 73.02,
+            "text": "73.02% · 11-09",
+            "unit": "percent",
+            "tone": "none"
+          },
+          "reconciliation": "not shown"
+        }
+      }
+    ],
+    "sharp_note": "Sharp moves: no readings yet.",
+    "notes": [],
+    "gaps": [
+      {
+        "kind": "gap",
+        "reason": "no_data",
+        "text": "sharp moves: no sharpmove readings"
+      }
+    ],
+    "data_times_text": "Data day 11-10"
+  }
+}
