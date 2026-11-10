@@ -19,6 +19,7 @@ from decimal import Decimal
 from typing import Any
 
 from ib_async import IB, Contract, RequestError
+from ib_async.util import UNSET_DOUBLE
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.accounts import read_account, read_executions
@@ -73,15 +74,23 @@ _GREEK_FIELDS = (
 )
 
 
-def _number(value: object) -> float | None:
+# The only Quote fields that may be negative; every other field of a ticker is
+# absent when negative, since IB sends -1 for "no value".
+_SIGNED_FIELDS = frozenset({"delta", "gamma", "vega", "theta"})
+
+
+def _number(value: object, *, signed: bool = True) -> float | None:
+    """A number, or None for NaN, UNSET_DOUBLE and, unless signed, a negative."""
     if isinstance(value, bool) or not isinstance(value, int | float):
         return None
-    return None if math.isnan(value) else float(value)
+    if math.isnan(value) or value == UNSET_DOUBLE or (value < 0 and not signed):
+        return None
+    return float(value)
 
 
-def _first(ticker: Any, *names: str) -> float | None:
+def _first(ticker: Any, *names: str, signed: bool = False) -> float | None:
     for name in names:
-        number = _number(getattr(ticker, name, None))
+        number = _number(getattr(ticker, name, None), signed=signed)
         if number is not None:
             return number
     return None
@@ -96,7 +105,11 @@ def ticker_fields(ticker: Any) -> dict[str, float]:
             found[name] = number
     greeks = getattr(ticker, "modelGreeks", None)
     for name, attribute in _GREEK_FIELDS:
-        number = _first(greeks, attribute) if greeks is not None else None
+        number = (
+            _first(greeks, attribute, signed=name in _SIGNED_FIELDS)
+            if greeks is not None
+            else None
+        )
         if number is not None:
             found[name] = number
     volume = _first(ticker, "volume", "callVolume", "putVolume")
