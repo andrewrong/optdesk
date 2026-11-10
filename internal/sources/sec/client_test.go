@@ -15,7 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources"
 )
 
-const secret = "Owner Name owner@example.invalid"
+const secret = "Contact Name contact-text-marker"
 
 func server(t *testing.T, status int) (*httptest.Server, *[]string, *[]string) {
 	t.Helper()
@@ -109,7 +109,7 @@ func TestErrorHidesUserAgent(t *testing.T) {
 		if status != http.StatusForbidden {
 			want = contracts.Retryable
 		}
-		if te.Kind() != want || strings.Contains(err.Error(), "owner@example") || strings.Contains(err.Error(), "Owner Name") {
+		if te.Kind() != want || strings.Contains(err.Error(), "contact-text-marker") || strings.Contains(err.Error(), "Contact Name") {
 			t.Errorf("status %d: kind %v err %q", status, te.Kind(), err)
 		}
 	}
@@ -119,7 +119,7 @@ func TestErrorHidesUserAgent(t *testing.T) {
 	srv.Close()
 	src, _ := New(sources.SECConfig{BaseURL: base, UserAgent: secret, Clock: clockwork.NewFakeClock()})
 	_, err := src.Fetch(context.Background(), sources.FactPlan{Subjects: []string{"cik:0000320193"}})
-	if err == nil || strings.Contains(err.Error(), "Owner Name") || strings.Contains(err.Error(), base) {
+	if err == nil || strings.Contains(err.Error(), "Contact Name") || strings.Contains(err.Error(), base) {
 		t.Errorf("err %v", err)
 	}
 	// A subject that is no CIK is refused before any request.
