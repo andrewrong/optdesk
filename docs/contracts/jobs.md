@@ -106,6 +106,7 @@ Proposed slots, confirmed by the owner at review: `option_eod` `session_close` `
 - v1: `compute_figures` stores `macro.ease` when built with an `Ease` (`jobs.NewComputeFiguresEaseFunc`, additive).
 - v1: `SeriesHistoryLoader`, with `internal/jobs/serieshistory`.
 - v1: `calendar_refresh`, interface only (`jobs.CalendarObserver`, `jobs.NewCalendarRefreshFunc`).
+- v1: `position_marks`: `jobs.NewPositionMarksFunc(market broker.Broker, aliases []string, acct store.AccountReader, w mark.Writer, clk clock.Clock)` is the constructor of the `position_marks` job (`internal/jobs/positionmarks.New`, declared only until its entry lands); `market` is the one market-data gateway whatever account holds the position, `aliases` are the accounts whose positions are marked, the main one first (docs/design/position-marks.md#Interface).
 - v1: `option_eod` with a watch list, `min_dte`, `max_dte`, `max_strikes` (additive; `jobs.NewOptionEodWatchFunc`, `jobs.NewOptionEodHeldFunc`).
 - v1: `jobs.OptionEodWindow`, `jobs.NewOptionEodWatchWindowFunc`, `optioneod.NewWithWatchWindow` (additive).
 - v1: `option_eod_jp`, `trading_class`, `ledger_dataset`, `stop_after` (additive; `optioneod.NewJP`).

@@ -220,6 +220,28 @@ def test_market_data_type_set_once_per_session() -> None:
     assert asyncio.run(run()) == ([3], [3], 3)
 
 
+def test_market_data_type_defaults_to_frozen() -> None:
+    async def run() -> tuple[list[int], list[int], int]:
+        clock = FakeClock()
+        first = FakeIb(clock)
+        second = FakeIb(clock)
+        ibs = [first, second]
+        gateway = IbGateway(
+            lambda client: None,
+            host="h",
+            port=1,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: ibs.pop(0),
+        )
+        await gateway.open_session()
+        await gateway.open_session()
+        state = await gateway.status()
+        return first.market_data_types, second.market_data_types, state.market_data_type
+
+    assert asyncio.run(run()) == ([2], [2], 2)
+
+
 def test_generation_increments_on_reconnect() -> None:
     async def run() -> list[tuple[bool, int]]:
         clock = FakeClock()

@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -723,5 +724,57 @@ func TestSymbolCtorTypes(t *testing.T) {
 	}
 	if len(got) != 4 || got[0] != (fakeTranslator{}) || got[1] != (fakeTranslator{}) || got[2] != nil || got[3] != nil {
 		t.Fatalf("translators passed through: %v", got)
+	}
+}
+
+type fakeMarkWriter struct{ rows []mark.PositionMark }
+
+func (w *fakeMarkWriter) WriteMarks(_ context.Context, rows []mark.PositionMark) error {
+	w.rows = append(w.rows, rows...)
+	return nil
+}
+
+// marksJob is a fake position_marks job: one key per alias, in the order given, and on Run one mark per key.
+type marksJob struct {
+	fakeJob
+	aliases []string
+	w       mark.Writer
+}
+
+func (j marksJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	keys := make([]contracts.ExpectedKey, 0, len(j.aliases))
+	for _, a := range j.aliases {
+		keys = append(keys, contracts.ExpectedKey{DatasetID: "account.position_mark", SubjectKey: a})
+	}
+	return keys, "hash", nil
+}
+
+func (j marksJob) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	rows := make([]mark.PositionMark, 0, len(keys))
+	for _, k := range keys {
+		rows = append(rows, mark.PositionMark{Alias: k.SubjectKey, SessionDay: string(day), Basis: mark.BasisNone})
+	}
+	if err := j.w.WriteMarks(ctx, rows); err != nil {
+		return contracts.JobResult{}
+	}
+	return contracts.JobResult{Returned: len(rows), Usable: len(rows)}
+}
+
+func TestNewPositionMarksFuncContract(t *testing.T) {
+	t.Parallel()
+	w := &fakeMarkWriter{}
+	var newJob jobs.NewPositionMarksFunc = func(_ broker.Broker, aliases []string, _ store.AccountReader, mw mark.Writer, _ clock.Clock) (contracts.Job, error) {
+		return marksJob{fakeJob: fakeJob{"position_marks"}, aliases: aliases, w: mw}, nil
+	}
+	j, err := newJob(&fakeBroker{}, []string{"main", "second"}, nil, w, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j.ID() != "position_marks" {
+		t.Fatalf("id %q", j.ID())
+	}
+	_, got := planAndRun(t, j, "2026-11-06")
+	if got.Returned != 2 || len(w.rows) != 2 || w.rows[0].Alias != "main" || w.rows[1].Alias != "second" {
+		t.Fatalf("result %+v, rows %+v: the aliases are not marked main first", got, w.rows)
 	}
 }

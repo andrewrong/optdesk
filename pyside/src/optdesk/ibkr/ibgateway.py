@@ -135,7 +135,7 @@ class IbGateway:
         host: str,
         port: int,
         client_id: int,
-        market_data_type: int = 1,
+        market_data_type: int = 2,
         lines: int = DEFAULT_LINES,
         snapshots: int = DEFAULT_SNAPSHOTS,
         clock: Clock | None = None,
