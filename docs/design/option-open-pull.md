@@ -120,7 +120,8 @@ Wave 2, after the first pull has run: 3 (page schema v2), 9 (pages: quote time a
 Module: broker. Size: S.
 Files: `internal/broker/**`, `docs/contracts/broker.md`
 Design: docs/design/option-open-pull.md#Interface
-Order: wave 1; first, no dependency. Found by the adversarial review: without it the jobs cannot read the error of a resolve. (`KindOptionOpen` is issue 18, wave 2.)
+Order: first.
+Sequence: wave 1; first, no dependency. Found by the adversarial review: without it the jobs cannot read the error of a resolve. (`KindOptionOpen` is issue 18, wave 2.)
 Goal: `Resolved` carries `ErrorCode` and `ErrorText` (the proto's `ResolveContractResponse` has `error_code` and `error_text`; `grpcbroker/dial.go` builds `Resolved` today without them and copies them after this issue). The in-flight limit of resolves is `broker.Options.ResolveInFlight`, which exists today (default 5, a value of 1 works): no change of it is needed, and the resolve job `option_open_resolve` gets a client dialled with `ResolveInFlight: 1` by issue 15 (Decision 6 counts a clean 200 only for one request in flight). The client dials a socket path given by the caller, so `ibkr.sock` or `ibkr-main.sock` is a value of the wiring (Decision 9).
 Acceptance:
 1. `grep -c "KindOptionEod" internal/broker/api.go` prints at least 1 (unchanged) and `git diff $(git merge-base HEAD origin/main) -- internal/broker/api.go | grep -c "^-.*Kind"` prints 0.
@@ -134,7 +135,8 @@ Checked by CI: ci-go; `go test ./internal/broker/... -race -count=1` (contract t
 Module: contracts. Size: S. Wave 2.
 Files: `contracts/proto/ibkr/v1/quote_types.proto`, `internal/contracts/genpb/**`, `pyside/src/optdesk/contracts/**`
 Design: docs/design/option-open-pull.md#Interface
-Order: wave 2, first of the kind issues. The pull request is the owner's merge (`contracts/proto`). Issue 18 (broker) follows it.
+Order: first.
+Sequence: wave 2, first of the kind issues. The pull request is the owner's merge (`contracts/proto`). Issue 18 (broker) follows it.
 Goal: `QUOTE_KIND_OPTION_OPEN = 4` exists with the comment of Decision 10, and the generated output.
 Acceptance:
 1. `grep -c "QUOTE_KIND_OPTION_OPEN = 4" contracts/proto/ibkr/v1/quote_types.proto` prints 1.
@@ -149,7 +151,8 @@ Checked by CI: ci-go, ci-python, the buf lint and generated-drift check; `Contra
 Module: contracts. Size: M.
 Files: `contracts/datasets/obs.option_open.r1.json`, `contracts/datasets/plan.option_open_item.r1.json`, `contracts/datasets/master.option_not_listed.r1.json`, `internal/contracts/**` (generated), `docs/contracts/datasets/**`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 1; first, no dependency.
+Order: first.
+Sequence: wave 1; first, no dependency.
 Goal: the three dataset files of Decisions 4, 5 and 7 and their generated types.
 Acceptance:
 1. `grep -c '"x-primary-key": \["session_day", "capture_id", "slot", "instrument_id"\]' contracts/datasets/obs.option_open.r1.json` prints 1 and `grep -c '"slot"\|"skew"\|"outside_band"\|"plan_id"' contracts/datasets/obs.option_open.r1.json` prints at least 4.
@@ -165,7 +168,8 @@ Checked by CI: ci-go (generated drift, dataset schema checks); `Contracts: chang
 Module: contracts. Size: M.
 Files: `contracts/schemas/page.option_page.v2.json`, `contracts/schemas/page.stock_option_page.v2.json`, `web/src/generated/**`, `docs/contracts/page-schemas.md`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after the merge of the issues of `docs/design/option-page-names.md` (PR 1333), so that the two do not edit the same generated files at once.
+Order: first.
+Sequence: wave 2; after the merge of the issues of `docs/design/option-page-names.md` (PR 1333), so that the two do not edit the same generated files at once.
 Goal: Decision 19, additive over v1, with the v1 files unchanged.
 Acceptance:
 1. `grep -c '"quote"' contracts/schemas/page.option_page.v2.json contracts/schemas/page.stock_option_page.v2.json` prints at least 1 for each file.
@@ -178,7 +182,8 @@ Checked by CI: ci-go, ci-web (generated types, tsc); `Contracts: changed (schema
 Module: store. Size: L.
 Files: `migrations/0029_option_open.sql`, `migrations/0030_option_open_plan.sql`, `migrations/0031_option_not_listed.sql`, `migrations/0032_option_contract.sql`, `internal/store/openquote/**`, `docs/contracts/store.md`, `internal/store/optionopenpg/**`, `internal/store/setup/**`
 Design: docs/design/option-open-pull.md#Interface
-Order: wave 1; after 2. The new declarations-only package `internal/store/openquote` (file `api.go`, test `api_test.go` of both sides, each under 600 lines) is the interface part of this issue; `internal/store/api.go` stays as it is (800 lines on main, no ceiling to raise).
+Order: after 2.
+Sequence: wave 1; after 2. The new declarations-only package `internal/store/openquote` (file `api.go`, test `api_test.go` of both sides, each under 600 lines) is the interface part of this issue; `internal/store/api.go` stays as it is (800 lines on main, no ceiling to raise).
 Goal: the writer, readers and plan and mark stores of `## Interface`, declared in `internal/store/openquote/api.go` (the entry cell of the store row in `modules.md` gains `internal/store/openquote` in this design's pull request; `internal/store/optionopenpg` is the implementation package that imports pgx, as `markpg` is), the migrations with the views `rd.option_open_r1` and `rd.option_open_item_r1` (owner `ot_owner`, every column named) and `SELECT` on them for `ot_ro_pages`, with no grant on a base table (`ot serve` reads both, Decision 17; `docs/contracts/store.md`), the table `master.option_contract` (migration 0032: instrument id, underlying id, currency, exchange, trading class, multiplier, expiry, strike text, right, `resolved_at`; unique on the contract identity) and the implementation of `OptionContractStore` over it in `internal/store/optionopenpg`, a role `ot_w_option_open` for the writes of the three jobs and the constant `DSNEnvOptionOpen = "OT_PG_DSN_OPTION_OPEN"` in `internal/store/openquote/api.go` (the line that holds its DSN, as `DSNEnvOptionEod` does), which the wiring of issue 15 reads.
 Acceptance:
 1. `grep -c "CREATE TABLE obs.option_open\b" migrations/0029_option_open.sql` prints 1, `grep -c "rd.option_open_r1" migrations/0029_option_open.sql` prints at least 1 and `grep -c "GRANT SELECT ON obs.option_open\b.* ot_ro_pages" migrations/0029_option_open.sql` prints 0 (no grant on the base table).
@@ -194,7 +199,8 @@ Checked by CI: ci-go; `go test ./internal/store/... -race -count=1` and, under t
 Module: jobs. Size: M.
 Files: `internal/jobs/optionopen/planfunc.go`, `internal/jobs/optionopen/planfunc_test.go`, `internal/jobs/optionopen/doc.go`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 1; no dependency (independent of 4); 6 and 7 use it.
+Order: first.
+Sequence: wave 1; no dependency (independent of 4); 6 and 7 use it.
 Goal: the pure plan function of Decision 3, `PlanFunc`: every expiry of 20 to 45 days (the tie-break |DTE - 30| only decides the cut under a ceiling), `around_spot`, puts from `spot * exp(-1.4 * sigma * sqrt(T))` up to around the spot and held calls up to `spot * exp(+1.4 * sigma * sqrt(T))` (a band, no option pricing, no library), the wider stored band (k = 1.75 or spot -25 percent, whichever is nearer), sigma (prior close, last known, else 30 percent) and `PlanParams` (the guards of 6 strikes and 25 per expiry, calls for held names), no rounds (Decision 3), the `deep_puts` input (false for all), held always, the ceilings per class and per stock with the `deferred` flag (the underlying never deferred), the order and the daily rotation, and the JP parameters (DTE 14 to 90). Own implementation, because no library knows the rule; it is behind a function type so a library can replace it. `doc.go` is created by this issue; 6 and 7 add no line to it.
 Acceptance:
 1. `grep -c "time.Now\|net/http\|database/sql\|Black\|blackscholes" internal/jobs/optionopen/planfunc.go` prints 0.
@@ -208,7 +214,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (golde
 Module: jobs. Size: L.
 Files: `internal/jobs/optionopen/plan.go`, `internal/jobs/optionopen/listed.go`, `internal/jobs/optionopen/plan_test.go`, `internal/jobs/optionopen/listed_test.go`, `internal/jobs/optionopen/job_plan.toml`, `internal/jobs/optionopen/job_resolve.toml`, `internal/jobs/optionopen/job_gap.toml`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 1; after 0b (the listed check needs `Resolved.ErrorCode`), 2, 4 (the lister and the mark store) and 5.
+Order: after 0b, 2, 4, 5.
+Sequence: wave 1; after 0b (the listed check needs `Resolved.ErrorCode`), 2, 4 (the lister and the mark store) and 5.
 Goal: the job `option_open_plan` (US; the Japan job is issue 17) of Decisions 1 to 6 and the jobs `option_open_resolve` (the evening resolve, manifest `job_resolve.toml`) and `option_open_resolve_gap` (the pre-open gap pass, manifest `job_gap.toml`, Decision 1): the plan job at 08:45 uses stored con_ids only, listed through `openquote.OptionContractStore`, and never resolves (`PlanParams` of Decision 3); the resolve job puts each contract it resolves into `master.option_contract` through `OptionContractStore.PutOption` (the plan reads it with `ListOptions`), has key one stock, budget, the listed check with the validity period and the answer table of Decision 6, and it turns the `not_listed` rows of the pull (read through `OptionOpenReader`) into marks (Decision 6; it is the only writer of marks).
 Acceptance:
 1. `grep -c 'anchor = "session_open"' internal/jobs/optionopen/job_plan.toml` prints 1 and `grep -c 'offset = "-45m"' internal/jobs/optionopen/job_plan.toml` prints 1.
@@ -222,7 +229,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` with a
 Module: jobs. Size: L.
 Files: `internal/jobs/optionopen/pull.go`, `internal/jobs/optionopen/core.go`, `internal/jobs/optionopen/pull_test.go`, `internal/jobs/optionopen/core_test.go`, `internal/jobs/optionopen/job_pull.toml`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 1; after 0b, 2, 4 and 5; it reads the plan rows through the store of 4 and needs no code of 6. It sends the existing `QUOTE_KIND_OPTION_EOD` through `broker.KindOptionEod` to the gateway of `ibkr.sock`, the one `option_eod` uses (Decision 9: the probe covered `ibkr-main.sock`; the window confirms `default` is `main`); once issues 1, 12, 8 and 18 have landed, issue 19 changes the kind to `KindOptionOpen`.
+Order: after 0b, 2, 4, 5.
+Sequence: wave 1; after 0b, 2, 4 and 5; it reads the plan rows through the store of 4 and needs no code of 6. It sends the existing `QUOTE_KIND_OPTION_EOD` through `broker.KindOptionEod` to the gateway of `ibkr.sock`, the one `option_eod` uses (Decision 9: the probe covered `ibkr-main.sock`; the window confirms `default` is `main`); once issues 1, 12, 8 and 18 have landed, issue 19 changes the kind to `KindOptionOpen`.
 Goal: the job `option_open` (US; per-class retry of Decision 10; the first underlying snapshot and the re-choice of strikes at the open spot of Decision 3; the Japan job is issue 17; a key is a batch of stocks of at most 120 contracts, `## Capacity`) and the shared `core` (also behind `Refresh`) of Decisions 7, 8, 10 and 12: grouped by stock and expiry, one final status per item, the skew flag, the type from the tick, the written rows, and the postcondition and heartbeat of Decision 22.
 Acceptance:
 1. `grep -c 'retry_classes' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'offset = "15m"' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'max_per_key = 120' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'min_ok_share' internal/jobs/optionopen/job_pull.toml` prints 1; `grep -c 'retry_classes = \["around_spot", "puts", "held"\]' internal/jobs/optionopen/job_pull.toml` prints 1 and `grep -c 'anchor = "session_open"' internal/jobs/optionopen/job_pull.toml` prints 1.
@@ -236,7 +244,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (every
 Module: pyside. Size: S. Wave 2.
 Files: `pyside/src/optdesk/ibkr/spec.py`, `pyside/tests/ibkr/test_option_open.py`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 1; parallel to 12 (they meet at the spec word `option_open`); 13 follows it (same file `spec.py`).
+Order: after 1.
+Sequence: wave 2; after 1; parallel to 12 (they meet at the spec word `option_open`); 13 follows it (same file `spec.py`).
 Goal: the `OPTION_OPEN` kind of Decision 9 and 10 on the default gateway: ticks "100,101", released on bid, ask and the model values, timeout 15 s, no open-interest grace. No second gateway, no `gateway` field, no change of `gateways.py` or `ibgateway.py`.
 Acceptance:
 1. `grep -c "OPTION_OPEN" pyside/src/optdesk/ibkr/spec.py` prints at least 2.
@@ -249,7 +258,8 @@ Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `py
 Module: pages. Size: M.
 Files: `internal/pages/option_boards/quote.go`, `internal/pages/option_boards/quote_test.go`, `internal/pages/option_boards/page.go`, `internal/pages/option_boards/payload.go`, `internal/pages/option_boards/option_build.go`, `internal/pages/option_boards/stock_build.go`, `internal/pages/option_boards/option_cards.go`, `internal/pages/option_boards/option_table.go`, `internal/pages/option_boards/option_chain.go`, `internal/pages/option_boards/stock_cards.go`, `internal/pages/option_boards/stock_contracts.go`, `internal/pages/option_boards/stock_matrix.go`, `internal/pages/option_boards/option_page_test.go`, `internal/pages/option_boards/stock_page_test.go`, `internal/pages/option_boards/page_test.go`, `internal/pages/option_boards/option_schema_test.go`, `internal/pages/option_boards/stock_schema_test.go`, `internal/pages/option_boards/testdata/**` (`page.go` holds `OptionConfig`, `StockConfig` and the `Meta.Schema` values that move to v2; `payload.go` holds the structs that gain `quote` and `refresh`; the test files and testdata use the changed identifiers)
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 3 and 4 and after the issues of `option-page-names` have merged (they edit this package; if a file collides the pull request says so and waits).
+Order: after 3, 4.
+Sequence: wave 2; after 3 and 4 and after the issues of `option-page-names` have merged (they edit this package; if a file collides the pull request says so and waits).
 Goal: Decisions 18 and 19: the two configs take the fields of `## Interface` (Pages: `Quotes openquote.OptionOpenReader` and `Refresh RefreshState`), the builders write the schema names v2 and fill `quote` per row (`source` from the `slot`, `skew` and `outside_band` from the row columns) and `refresh` per page, label stored close values "close archive", copy and never compute.
 Acceptance:
 1. `grep -c "OptionOpenReader" internal/pages/option_boards/page.go` prints at least 2, `grep -c "RefreshState" internal/pages/option_boards/page.go` prints at least 1 and `grep -c "page.option_page.v2\|page.stock_option_page.v2" internal/pages/option_boards/page.go` prints at least 2.
@@ -262,7 +272,8 @@ Checked by CI: ci-go; `go test ./internal/pages/option_boards -race -count=1` (g
 Module: ot. Size: L.
 Files: `cmd/ot/live_quotes.go`, `cmd/ot/live_quotes_test.go`, `cmd/ot/serve.go`, `cmd/ot/site.go`, `cmd/ot/option_page_site.go`, `cmd/ot/option_page_site_test.go`, `cmd/ot/stock_option_site.go`, `cmd/ot/stock_option_site_test.go`, `docs/contracts/ot.md` (`site.go` opens the store readers: `openSiteReaders` / `siteReaders` gain the `OptionOpenReader` and the plan store; the two route files pass the overlay reader into the builder configs; the page-names issues edit the same route files, so this issue is ordered after them)
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 7, 9, 13, 15, 16 and 17 (17 gives the JP lunch break; the pyside hardening lands before the button goes live) and after the issues of `option-page-names` have merged. Second opinion: waived by the owner — the advisor answers it (owner 2026-11-10); the owner gives the merge word.
+Order: after 7, 9, 13, 15, 16, 17.
+Sequence: wave 2; after 7, 9, 13, 15, 16 and 17 (17 gives the JP lunch break; the pyside hardening lands before the button goes live) and after the issues of `option-page-names` have merged. Second opinion: waived by the owner — the advisor answers it (owner 2026-11-10); the owner gives the merge word.
 Goal: under `--live-quotes` (loopback only) `POST /options/refresh` with the 60 s reuse, the 40-contract and 8-symbol caps, the 15 s deadline, the session check, the hourly cap, the notice and the fallback; the overlay reader, and the `RefreshState` of each page set in the two route files (Interface: Pages); the overlay sets `slot` to `SlotRefresh` on every row it adds.
 Acceptance:
 1. `grep -c "live-quotes" cmd/ot/serve.go` prints at least 1.
@@ -280,7 +291,8 @@ Checked by CI: ci-go; `go test ./cmd/ot/... -race -count=1` (reuse under 60 s, a
 Module: web. Size: M.
 Files: `web/src/components/option-refresh.tsx`, `web/src/components/option-quote-cell.tsx`, `web/src/pages/options/OptionPage.tsx`, `web/src/pages/stockoption/view.tsx`, `web/test/components/option-refresh.test.tsx`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 3 (the types) and 10.
+Order: after 3, 10.
+Sequence: wave 2; after 3 (the types) and 10.
 Goal: Decision 20 and the time-and-type text of Decision 18, from the JSON only.
 Acceptance:
 1. `grep -c "RefreshCw" web/src/components/option-refresh.tsx` prints at least 1.
@@ -293,7 +305,8 @@ Checked by CI: ci-web (`tsc`, `eslint`, `vitest`, the build); `Contracts: unchan
 Module: pyside. Size: S. Owner-only path: `pyside/src/optdesk/ibkr/transport.py` is the owner's merge (`docs/design/modules.md`, `pyside-account-b.md`); this issue edits nothing else. Wave 2.
 Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_transport_kind.py`
 Design: docs/design/option-open-pull.md#Interface
-Order: wave 2; after 1 (the generated proto); parallel to 8; 16 follows it (same file).
+Order: after 1.
+Sequence: wave 2; after 1 (the generated proto); parallel to 8; 16 follows it (same file).
 Goal: `_KINDS` of `MarketDataServicer.Snapshot` maps `QUOTE_KIND_OPTION_OPEN` to the spec word `option_open`, and the log filter's `WORDS` holds `option_open`; without it pyside aborts the call `INVALID_ARGUMENT` and no quote ever comes. Nothing else in the file changes (the allowlist, `ORDER_IDS` and `install_guard` stay).
 Acceptance:
 1. `grep -c "QUOTE_KIND_OPTION_OPEN" pyside/src/optdesk/ibkr/transport.py` prints at least 1 and `grep -c "option_open" pyside/src/optdesk/ibkr/transport.py` prints at least 2.
@@ -306,7 +319,8 @@ Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `py
 Module: pyside. Size: M.
 Files: `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/src/optdesk/ibkr/server.py`, `pyside/src/optdesk/ibkr/spec.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/tests/ibkr/test_session_codes.py`
 Design: docs/design/option-open-pull.md#Gateway safety
-Order: wave 2; after 21, 16 and 8 (13 and 21 both edit `ibgateway.py`, 13 and 8 both edit `spec.py`).
+Order: after 8, 16, 21.
+Sequence: wave 2; after 21, 16 and 8 (13 and 21 both edit `ibgateway.py`, 13 and 8 both edit `spec.py`).
 Goal: points 2 (what issue 21 does not do: the monitor of 2110, a new generation after 1101; the 10197 policy: cancel, probe one underlying and one option at growing intervals, retry, rows `disconnected` at the deadline) and 3 (a client id of 0 rejected by the gateway file check; the stop after error 326 is issue 21) of `## Gateway safety`.
 Acceptance:
 1. `grep -c "2110" pyside/src/optdesk/ibkr/ibgateway.py` prints at least 1.
@@ -320,7 +334,8 @@ Checked by CI: ci-python (fake clock, fake ib: a 10197 with received quotes keep
 Module: ot. Size: S. Wave 1.
 Files: `cmd/ot/wire_optionopen.go`, `cmd/ot/wire_optionopen_test.go`, `docs/contracts/ot/jobs/option_open_resolve.md`, `docs/contracts/ot/jobs/option_open_resolve_gap.md`, `docs/contracts/ot/jobs/option_open_plan.md`, `docs/contracts/ot/jobs/option_open.md`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 1; after 6, 7 and 21 (the last of wave 1).
+Order: after 6, 7, 21.
+Sequence: wave 1; after 6, 7 and 21 (the last of wave 1).
 Goal: register `option_open_resolve`, `option_open_resolve_gap`, `option_open_plan` and `option_open` (US) in the scheduler wiring through the pattern of `cmd/ot/wire_optioneod.go`: the constructors with the broker, the store ports, the clock and `PlanFunc`, the pyside socket `ibkr.sock` (as `option_eod`; a profile value can name `ibkr-main.sock` instead, Decision 9), and the four slots (`session_close` plus 60 minutes, `session_open` minus 90 minutes, minus 45 minutes and plus 15 minutes) so `ot scheduler` and `ot run-once` know them, and one job document each (`TestJobDocsExist` in `cmd/ot/jobreg_test.go` fails for a registered id without `docs/contracts/ot/jobs/<id>.md` carrying an `Order:` line and a `## Version` heading). The registration is by `registerJob(jobFamily{...})` in an `init()`, as `cmd/ot/wire_optioneod.go` does, with the unused orders 120, 130, 140 and 190 (resolve, plan, pull, gap pass; the JP families of issue 20 take 160, 170 and 180). The family opens the store of `optionopenpg` itself with the DSN of `a.getenv(openquote.DSNEnvOptionOpen)` (declared by issue 4) and closes it through `jc.extra`, because `jobFactory`, `deps` and `runOnceConfig` are in files this issue may not edit; the resolve family dials its own client with `broker.Options{ResolveInFlight: 1}` (Decision 6), the plan and pull families use `jc.brk`; the watch list, the held ports and the instrument store come from `jc.f` (`watch`, `accounts`, `inst`). A missing DSN line leaves these families out with one named line and a gap (`build` returns a nil job after logging it), and a gateway socket that cannot be dialled holds them through `startOff: brokerDownOff`; the other jobs run (so the exact job lists of the existing tests, whose environment has no `OT_PG_DSN_OPTION_OPEN` line, stay as they are) (`docs/design/scheduler.md` Decision 8: `preflight_failed`, the way every broker job behaves); the scheduler start path is not edited.
 Acceptance:
 1. `grep -c "option_open" cmd/ot/wire_optionopen.go` prints at least 3, `grep -c "option_open_resolve" cmd/ot/wire_optionopen.go` prints at least 1 and `grep -c "ResolveInFlight: 1" cmd/ot/wire_optionopen.go` prints at least 2 (the evening resolve and the gap family) and `grep -c "brokerDownOff" cmd/ot/wire_optionopen.go` prints at least 4 and `grep -c "option_open_resolve_gap" cmd/ot/wire_optionopen.go` prints at least 1.
@@ -333,7 +348,8 @@ Checked by CI: ci-go; `go test ./cmd/ot/... -race -count=1` (the four jobs are i
 Module: pyside. Size: S. Owner-only path: `transport.py` (the owner's merge). Wave 2.
 Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_transport_probe.py`
 Design: docs/design/option-open-pull.md#Gateway safety
-Order: wave 2; after 12 (same file).
+Order: after 12.
+Sequence: wave 2; after 12 (same file).
 Goal: the allowlist parameter of point 3: `install_guard(client, allowed=ALLOWED_IDS)`, so a live connection can be given a smaller list. `ORDER_IDS` and the default list do not change. The probe itself is issue 21.
 Acceptance:
 1. `grep -c "def install_guard(client: Any, allowed" pyside/src/optdesk/ibkr/transport.py` prints 1.
@@ -346,7 +362,8 @@ Checked by CI: ci-python (a smaller list refuses the ids outside it; every order
 Module: jobs. Size: M. Wave 2.
 Files: `internal/jobs/optionopen/jp.go`, `internal/jobs/optionopen/jp_test.go`, `internal/jobs/optionopen/job_plan_jp.toml`, `internal/jobs/optionopen/job_pull_jp.toml`, `internal/jobs/optionopen/job_resolve_jp.toml`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 6, 7 and 15. The wiring of the two JP jobs is issue 20.
+Order: after 6, 7, 15.
+Sequence: wave 2; after 6, 7 and 15. The wiring of the two JP jobs is issue 20.
 Goal: Decision 21: `option_open_resolve_jp`, `option_open_plan_jp` and `option_open_jp` with calendar `XTKS`, DTE 14 to 90, `OSE.JPN`, multiplier 100, trading class = stock code, the `no_option` list, the slot at open plus 5 minutes, the index options of class 225, and `JPLunchBreak()` (the value `lunch_break` of `job_pull_jp.toml`).
 Acceptance:
 1. `grep -c 'calendar = "XTKS"' internal/jobs/optionopen/job_plan_jp.toml` prints at least 1, `grep -c 'offset = "-45m"' internal/jobs/optionopen/job_plan_jp.toml` prints 1 and `grep -c 'min_dte = 14' internal/jobs/optionopen/job_plan_jp.toml` prints 1, `grep -c 'max_dte = 90' internal/jobs/optionopen/job_plan_jp.toml` prints 1 and `grep -c 'no_option' internal/jobs/optionopen/job_plan_jp.toml` prints at least 1.
@@ -359,7 +376,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (the J
 Module: broker. Size: S. Wave 2.
 Files: `internal/broker/**`, `docs/contracts/broker.md`
 Design: docs/design/option-open-pull.md#Interface
-Order: wave 2; after 1 (the generated proto).
+Order: after 1.
+Sequence: wave 2; after 1 (the generated proto).
 Goal: `KindOptionOpen` in `internal/broker/api.go` and its mapping to `QUOTE_KIND_OPTION_OPEN` in `internal/broker/grpcbroker/convert.go`, with the contract test from both sides.
 Acceptance:
 1. `grep -c "KindOptionOpen" internal/broker/api.go` prints at least 1 and `grep -c "QUOTE_KIND_OPTION_OPEN" internal/broker/grpcbroker/convert.go` prints at least 1.
@@ -372,7 +390,8 @@ Checked by CI: ci-go; `go test ./internal/broker/... -race -count=1` (the mappin
 Module: jobs. Size: S. Wave 2.
 Files: `internal/jobs/optionopen/core.go`, `internal/jobs/optionopen/core_test.go`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 7, 18, 12 and 8 (the pull job, the broker kind, the transport map and the pyside spec exist and are deployed).
+Order: after 7, 8, 12, 18.
+Sequence: wave 2; after 7, 18, 12 and 8 (the pull job, the broker kind, the transport map and the pyside spec exist and are deployed).
 Goal: the core of the pull job and of `Refresh` sends `KindOptionOpen` instead of `KindOptionEod`, so the 15 s timeout and the absence of the open-interest grace of Decisions 9 and 10 reach the pull and the button.
 Acceptance:
 1. `grep -c "KindOptionOpen" internal/jobs/optionopen/core.go` prints at least 1 and `grep -c "KindOptionEod" internal/jobs/optionopen/core.go` prints 0.
@@ -384,7 +403,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (the f
 Module: ot. Size: S. Wave 2.
 Files: `cmd/ot/wire_optionopen.go`, `cmd/ot/wire_optionopen_test.go`, `docs/contracts/ot/jobs/option_open_resolve_jp.md`, `docs/contracts/ot/jobs/option_open_plan_jp.md`, `docs/contracts/ot/jobs/option_open_jp.md`
 Design: docs/design/option-open-pull.md#Decisions
-Order: wave 2; after 17 (and 15, which created the wiring files) and after 13 and 16 (the pyside hardening lands before the Japan pull).
+Order: after 13, 15, 16, 17.
+Sequence: wave 2; after 17 (and 15, which created the wiring files) and after 13 and 16 (the pyside hardening lands before the Japan pull).
 Goal: register `option_open_resolve_jp`, `option_open_plan_jp` and `option_open_jp` with `registerJob` (orders 160, 170 and 180; same file, DSN and broker rules as issue 15, the resolve family again with `ResolveInFlight: 1`) beside the four US jobs, so that `ot scheduler` and `ot run-once` know them; without it the 09:05 JST pull never runs; one job document each (`TestJobDocsExist`, as issue 15).
 Acceptance:
 1. `grep -c "option_open_jp" cmd/ot/wire_optionopen.go` prints at least 1, `grep -c "option_open_plan_jp" cmd/ot/wire_optionopen.go` prints at least 1 and `grep -c "option_open_resolve_jp" cmd/ot/wire_optionopen.go` prints at least 1, `grep -c "order: 160\|order: 170\|order: 180" cmd/ot/wire_optionopen.go` prints 3 and `grep -c "ResolveInFlight: 1" cmd/ot/wire_optionopen.go` prints at least 3.
@@ -396,7 +416,8 @@ Checked by CI: ci-go; `go test ./cmd/ot/... -race -count=1` (the seven jobs are 
 Module: pyside. Size: M. Wave 1.
 Files: `pyside/src/optdesk/ibkr/readonly_probe.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/tests/ibkr/test_readonly_probe.py`
 Design: docs/design/option-open-pull.md#Gateway safety
-Order: wave 1; no dependency; merged and deployed before the first run (issue 15 follows it). `transport.py` is not edited (it is owner-only); if `Snapshot` turns out not to answer `UNAVAILABLE` for a gateway that is not connected, the pull request says so and the fix goes to the owner-merge issue 12 or 16.
+Order: first.
+Sequence: wave 1; no dependency; merged and deployed before the first run (issue 15 follows it). `transport.py` is not edited (it is owner-only); if `Snapshot` turns out not to answer `UNAVAILABLE` for a gateway that is not connected, the pull request says so and the fix goes to the owner-merge issue 12 or 16.
 Goal: the wave-1 minimum of `## Gateway safety`: the read-only probe of point 1 (client id 0, one `reqOpenOrders`, pass only on error 321 within 5 s, its own send guard allowing only that id) run after every handshake before the session is marked connected, so a gateway not proven read-only serves nothing; error codes 10197 and 1100 with no contract mark the session lost, so open items end with a connection error (`disconnected` in the pull), not a deadline; a connect that fails with error 326 stops and fails, with no retry.
 Acceptance:
 1. `grep -c "reqOpenOrders" pyside/src/optdesk/ibkr/readonly_probe.py` prints at least 1 and `grep -c "321" pyside/src/optdesk/ibkr/readonly_probe.py` prints at least 1.
