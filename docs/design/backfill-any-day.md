@@ -7,7 +7,7 @@ Revision: 3
 
 Source: owner 2026-11-10: "why do you follow your wrong system instead of reality" (a failed past day is to be repaired now, not when the cursor allows it). Fact base: the cursor diagnosis of 2026-11-10 (day 2026-11-09 holds the cursor at 2026-11-06 because its `fred_series` keys are inside their 96 h window; four keys of that day, `account.capture`, `master.session_day`, `obs.earnings_date` and `obs.option_eod`, were expired at their window close and stored as `no_value` with reason `expired`; `ot backfill --day 2026-11-09` refuses "ahead of the cursor").
 
-Read on origin/main at 8f2376d: `AGENTS.md`, `docs/design/modules.md`, `docs/design/backfill.md`, `docs/design/scheduler.md` (Decisions 4, 5, 6, 8, 9, 11 and the Close table), `docs/contracts/runner.md`, `internal/runner/api.go`, `internal/runner/reconcile/{reconcile,backfill,runkey}.go`, `internal/runner/sched/{gaps,ticker}.go`, `internal/store/ops/ledger.go` (`acquireSQL`), `cmd/ot/{backfill,runonce,scheduler,schedstatus,wire}.go`, `internal/jobs/fredseries/job.toml`.
+Read on origin/main at f356426: `AGENTS.md`, `docs/design/modules.md`, `docs/design/backfill.md`, `docs/design/scheduler.md` (Decisions 4, 5, 6, 8, 9, 11 and the Close table), `docs/contracts/runner.md`, `internal/runner/api.go`, `internal/runner/reconcile/{reconcile,backfill,runkey}.go`, `internal/runner/sched/{gaps,ticker}.go`, `internal/store/ops/ledger.go` (`acquireSQL`), `cmd/ot/{backfill,runonce,scheduler,schedstatus,wire}.go`, `internal/jobs/fredseries/job.toml`.
 
 Needs the owner: nothing. The one trade-off (a backfill pauses the scheduler's ticks, Decision 3) is stated there.
 
