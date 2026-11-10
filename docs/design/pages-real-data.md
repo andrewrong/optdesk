@@ -22,7 +22,7 @@ Goal: the owner opens `/home`, `/household`, `/positions`, `/risk` and `/advice`
 1. Same pattern as `/options` and `/companies`: a builder in its own package of `internal/pages` (`func Build(ctx, Config, ...)`, no clock, no store write, no figure computed in it), a registered family in `cmd/ot`, and `ot page --name <page>` for the same builder. A sample route stops being served the moment its family is registered (`site.go` order, above); `sample.go` is cleaned in the last issue, not in each.
 2. Which day and which account. The day is the day of the request (`--day` or the clock), as in every builder. Each page shows one account, chosen by the query `?account=<alias>` (the key `siteAccountQuery` of `site_positions.go`), default the first alias of `siteAliases`; accounts are never pooled (owner 2026-11-08/09, `option-positions.md`). The capture used is the newest capture on or before the day within `staleSessions` sessions (the rule `household_page` already has); an older capture gives the page gap `stale_input`, none gives `no_data`, a nil reader gives `no_reader`. A gap page keeps its title and the envelope and has no row. The mark of a position is the one of that capture (`position-marks.md`).
 3. A missing value is a gap, never a zero and never a sample: a figure that needs a price the mark row lacks (`Basis` none, empty `Price`) is `missing_quote`; a block whose source no job stores is `not_built` and its text says what is missing. The web already shows a gap as a dash with the reason (`web-shell-layout.md` Decision 2).
-4. Compute stays in `compute`. The household blocks that need a mark, the positions figures and the risk figures are new functions of `blockapi.PageFigures` (one interface issue, then the implementation), so `pages` builds JSON and formats nothing it did not receive (`household_page/purity_test.go` is the model and is copied for each new package).
+4. Compute stays in `compute`. The household blocks that need a mark, the positions figures and the risk figures are new functions of a new interface `blockapi.HoldingFigures` (one interface issue, then the implementation), so `pages` builds JSON and formats nothing it did not receive (`household_page/purity_test.go` is the model and is copied for each new package).
 5. Per-page sources and blocks (the table is the contract of the issues):
 
 | page | schema | filled from stored data | stays a gap (Left out) |
@@ -42,7 +42,7 @@ Edited rows: `ot` (`cmd/**`), `pages` (`internal/pages/**`), `compute` (`interna
 
 ## Interface
 
-`internal/compute/blockapi/api.go` (compute row, entry `blockapi`) gains, in issue 3, three methods of `PageFigures` with their input and output types: `Holdings(HoldingsIn) HoldingsResult` (per position value, share of the account, unrealised profit and the totals; every figure a `compute.FigureValue`), `Risk(RiskIn) RiskResult` (delta by underlying, vega by expiry) and nothing else. Existing methods and types are unchanged, so `household_page` and the report blocks compile as they are. `internal/pages/api.go` is not edited.
+`internal/compute/blockapi/api.go` (compute row, entry `blockapi`) gains, in issue 3, a new interface `HoldingFigures` (with `NewHoldingFiguresFunc` and the input and output types) of two methods: `Holdings(HoldingsIn) HoldingsResult` (per position value, share of the account, unrealised profit and the totals; every figure a `compute.FigureValue`), `Risk(RiskIn) RiskResult` (delta by underlying, vega by expiry) and nothing else. `PageFigures` is not edited, so the test fakes of `household_page` and `report_blocks`, which implement it without embedding, still compile; only the new code uses the new interface. `internal/pages/api.go` is not edited.
 
 ## Issues
 
@@ -80,7 +80,7 @@ Module: compute. Size: S.
 Files: `internal/compute/blockapi/api.go`, `internal/compute/blockapi/api_test.go`, `docs/contracts/compute.md`
 Design: docs/design/pages-real-data.md#Interface
 Order: first. The issues 4 to 11 wait for it.
-Goal: the methods and types of the Interface section, declarations only; `api_test.go` gains a fake that implements the new `PageFigures` and a caller that uses `Holdings` and `Risk` (the contract tested from both sides). Input types carry decimal text: `HoldingIn{Underlying, SecType, Currency, Quantity, Multiplier, Cost, Mark string}`, `GreekIn{Underlying string, Expiry contracts.Day, Delta, Vega string}`; `Mark` is empty when the position has no price, which gives the gap `missing_quote` in the result and never a zero. The note of the type says the unit of delta (dollars per one dollar move of the underlying) and of vega (dollars per volatility point), the text the web shows as `meaning`.
+Goal: the methods and types of the Interface section, declarations only; `api_test.go` gains a fake that implements `HoldingFigures` and a caller that uses `Holdings` and `Risk` (the contract tested from both sides). Input types carry decimal text: `HoldingIn{Underlying, SecType, Currency, Quantity, Multiplier, Cost, Mark string}`, `GreekIn{Underlying string, Expiry contracts.Day, Delta, Vega string}`; `Mark` is empty when the position has no price, which gives the gap `missing_quote` in the result and never a zero. The note of the type says the unit of delta (dollars per one dollar move of the underlying) and of vega (dollars per volatility point), the text the web shows as `meaning`.
 Acceptance:
 1. `grep -c 'Holdings(\|Risk(' internal/compute/blockapi/api.go` prints at least 2.
 2. `git diff $(git merge-base HEAD origin/main) -- internal/compute/blockapi/api.go | grep -c '^-[^-]'` prints 0 (additive).
@@ -91,10 +91,10 @@ Acceptance:
 ### 4 pagefig-holdings-risk
 
 Module: compute. Size: M.
-Files: `internal/compute/pagefig/holdings.go` (new), `internal/compute/pagefig/holdings_test.go` (new), `internal/compute/pagefig/risk.go` (new), `internal/compute/pagefig/risk_test.go` (new), `internal/compute/pagefig/pagefig.go`
+Files: `internal/compute/pagefig/holdings.go` (new), `internal/compute/pagefig/holdings_test.go` (new), `internal/compute/pagefig/risk.go` (new), `internal/compute/pagefig/risk_test.go` (new), `internal/compute/pagefig/holdings_new.go` (new)
 Design: docs/design/pages-real-data.md#Decisions
 Order: after 3.
-Goal: `pagefig.New()` implements `Holdings` and `Risk`: value is quantity times mark times multiplier, unrealised is value minus quantity times cost times multiplier, share is value over the account total of the same currency (a currency pair with no rate stays two blocks, `unsupported_currency`, as `Household` does), stock delta is the quantity, option delta and vega are summed from the `GreekIn` rows by underlying and by expiry. A position with an empty mark gives `missing_quote` for its value, unrealised and share and is left out of every total, the totals then carry the gap `missing_quote` (a total that omitted a position is never shown as complete). Decimal arithmetic as the existing `household.go` does (the library it uses, no float).
+Goal: `pagefig.NewHoldings()` returns a `HoldingFigures` implementing `Holdings` and `Risk`: value is quantity times mark times multiplier, unrealised is value minus quantity times cost times multiplier, share is value over the account total of the same currency (a currency pair with no rate stays two blocks, `unsupported_currency`, as `Household` does), stock delta is the quantity, option delta and vega are summed from the `GreekIn` rows by underlying and by expiry. A position with an empty mark gives `missing_quote` for its value, unrealised and share and is left out of every total, the totals then carry the gap `missing_quote` (a total that omitted a position is never shown as complete). Decimal arithmetic as the existing `household.go` does (the library it uses, no float).
 Acceptance:
 1. `grep -c 'func (.*) Holdings(\|func (.*) Risk(' internal/compute/pagefig/*.go | awk -F: '{s+=$2} END {print s}'` prints 2.
 2. `grep -c 'missing_quote' internal/compute/pagefig/holdings.go` prints at least 2.
@@ -105,27 +105,27 @@ Acceptance:
 ### 5 household-holdings-blocks
 
 Module: pages. Size: M.
-Files: `internal/pages/household_page/holdings.go` (new), `internal/pages/household_page/holdings_test.go` (new), `internal/pages/household_page/builder.go`, `internal/pages/household_page/page.go`, `internal/pages/household_page/testdata/holdings.golden.json` (new)
+Files: `internal/pages/household_page/holdings.go` (new), `internal/pages/household_page/holdings_test.go` (new), `internal/pages/household_page/builder.go`, `internal/pages/household_page/page.go`, `internal/pages/household_page/strings.go`, `internal/pages/household_page/builder_test.go`, `internal/pages/household_page/testdata/holdings.golden.json` (new)
 Design: docs/design/pages-real-data.md#Decisions
 Order: after 4.
-Goal: `household_page.Config` gains `Marks store.MarkReader`; with it, composition, allocation, concentration and movers are built from `Figures().Holdings` of the capture's positions and marks and no longer the constant gap; without it (nil) they stay `missing_quote` as today. `long_term` stays the gap `not_built`. `Positions`, `Values` and marks are read for the capture day only. The page `run_status` is `ok` when every block is built, else `partial` as today.
+Goal: `household_page.Config` gains `Marks mark.Reader`; with it, composition, allocation, concentration and movers are built from `Holdings().Holdings` of the capture's positions and marks and no longer the constant gap; without it (nil) they stay `missing_quote` as today. `long_term` stays the gap `not_built`. `Positions`, `Values` and marks are read for the capture day only. The page `run_status` is `ok` when every block is built, else `partial` as today.
 Acceptance:
 1. `grep -c 'Marks' internal/pages/household_page/page.go` prints at least 1 and `grep -c 'Holdings(' internal/pages/household_page/holdings.go` prints at least 1.
-2. `grep -c 'missingQuote()' internal/pages/household_page/builder.go` prints at most 2 (long term and the nil-reader path).
+2. `grep -c 'missingQuote()' internal/pages/household_page/builder.go` prints 0 and `grep -c 'not_built' internal/pages/household_page/builder.go` prints at least 1 (the long term block and the nil-Marks path use the reason `not_built`; the texts are in `strings.go`).
 3. `grep -c 'float64\|math\.' internal/pages/household_page/holdings.go` prints 0.
 4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v '^internal/pages/household_page/' | wc -l` prints 0.
 
 ### 6 ot-household-marks
 
 Module: ot. Size: S.
-Files: `cmd/ot/household_site.go`, `cmd/ot/household_site_test.go`, `cmd/ot/site.go`
+Files: `cmd/ot/household_site.go`, `cmd/ot/household_site_test.go`, `cmd/ot/site.go`, `cmd/ot/wire.go`, `cmd/ot/optionledger.go`
 Design: docs/design/pages-real-data.md#Decisions
 Order: after 1 and 5.
-Goal: the mark reader (`store/mark`, role of `OT_PG_DSN_PAGES` through the view, as the account reader) is opened once with the site readers and set as `Config.Marks`; with no opener the field is nil and the blocks stay gaps.
+Goal: the mark reader is opened once with the site readers, read-only, through `a.openMarkReaders` of `cmd/ot/optionledger.go` (`openOptionalStores` does not open it), and set as `Config.Marks`; `wire.go` gets a read-only opener if the existing `openMark` is read-write; with no opener the field is nil and the blocks stay gaps.
 Acceptance:
 1. `grep -c 'Marks' cmd/ot/household_site.go` prints at least 1.
-2. `grep -c 'mark\.' cmd/ot/site.go` prints at least 1.
-3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^cmd/ot/household_site.go$' -e '^cmd/ot/household_site_test.go$' -e '^cmd/ot/site.go$' | wc -l` prints 0.
+2. `grep -c 'openMarkReaders' cmd/ot/household_site.go cmd/ot/site.go | awk -F: '{s+=$2} END {print s}'` prints at least 1.
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -v -e '^cmd/ot/household_site.go$' -e '^cmd/ot/household_site_test.go$' -e '^cmd/ot/site.go$' -e '^cmd/ot/wire.go$' -e '^cmd/ot/optionledger.go$' | wc -l` prints 0.
 
 ### 7 positions-page-builder
 
@@ -133,7 +133,7 @@ Module: pages. Size: L.
 Files: `internal/pages/positions_page/page.go` (new), `internal/pages/positions_page/builder.go` (new), `internal/pages/positions_page/rows.go` (new), `internal/pages/positions_page/trades.go` (new), `internal/pages/positions_page/strings.go` (new), `internal/pages/positions_page/builder_test.go` (new), `internal/pages/positions_page/purity_test.go` (new), `internal/pages/positions_page/testdata/ok.golden.json` (new)
 Design: docs/design/pages-real-data.md#Decisions
 Order: after 4.
-Goal: `positions_page.NewPage(Config, alias)` builds `page.positions_page.v3`: one view per configured alias only, `key` the alias, no pooled view. The `Config` is `RunID, BuildID, Zone, Aliases, Account store.AccountReader, Marks store.MarkReader, Ledger store.OptionLedgerReader, Sessions store.SessionDayReader, Ledgers compute.NewOptionLedgerFunc, Figures blockapi.NewPageFiguresFunc`. Stock rows: code, name, quantity, cost (`AvgCost`), price (mark), unrealised from `Holdings`; option rows add expiry, days left (from the day, as the structures page does), role and remaining premium from the replayed ledger (a position with no ledger match has the role cell as a gap). The day profit column is a gap in every row. `trades` is the executions of the last 30 session days through `Figures().Trades`. The column ids are those of `web/fixtures/positions-page/ok.json`. A nil reader gives the page gap `no_reader`; no capture gives `no_data`.
+Goal: `positions_page.NewPage(Config, alias)` builds `page.positions_page.v3`: one view per configured alias only, `key` the alias, no pooled view. The `Config` is `RunID, BuildID, Zone, Aliases, Account store.AccountReader, Marks mark.Reader, Ledger store.OptionLedgerReader, Sessions store.SessionDayReader, Ledgers compute.NewOptionLedgerFunc, Figures blockapi.NewPageFiguresFunc, Holdings blockapi.NewHoldingFiguresFunc`. Stock rows: code, name, quantity, cost (`AvgCost`), price (mark), unrealised from `Holdings`; option rows add expiry, days left (from the day, as the structures page does), role and remaining premium from the replayed ledger (a position with no ledger match has the role cell as a gap). The day profit column is a gap in every row. `trades` is the executions of the last 30 session days through `Figures().Trades`. The column ids are those of `web/fixtures/positions-page/ok.json`. A nil reader gives the page gap `no_reader`; no capture gives `no_data`.
 Acceptance:
 1. `grep -c 'page.positions_page.v3\|"positions_page"' internal/pages/positions_page/page.go` prints at least 1.
 2. `grep -c 'Holdings(\|Trades(' internal/pages/positions_page/*.go | awk -F: '{s+=$2} END {print s}'` prints at least 2.
@@ -159,7 +159,7 @@ Module: pages. Size: M.
 Files: `internal/pages/risk_page/page.go` (new), `internal/pages/risk_page/builder.go` (new), `internal/pages/risk_page/strings.go` (new), `internal/pages/risk_page/builder_test.go` (new), `internal/pages/risk_page/purity_test.go` (new), `internal/pages/risk_page/testdata/ok.golden.json` (new)
 Design: docs/design/pages-real-data.md#Decisions
 Order: after 4.
-Goal: `risk_page.NewPage(Config, alias)` builds `page.household_risk.v1`: the `delta` block (rows per underlying) and the `vega` block (rows per expiry) from `Figures().Risk` over the capture's positions, the marks and the `Greeks` of the structures (`compute.NewOptionStructuresFunc`, as `structures_page` loads them). The `beta_delta`, `sigma` and `standard_metrics` blocks are the schema's gap with reason `not_built` and a text naming the missing source; their rows and metrics are empty. `run_status` is `partial`. The `Config` mirrors issue 7 plus `Eod`, `Terms` and `Structures` as `structures_page.Config`.
+Goal: `risk_page.NewPage(Config, alias)` builds `page.household_risk.v1`: the `delta` block (rows per underlying) and the `vega` block (rows per expiry) from `Holdings().Risk` over the capture's positions, the marks and the `Greeks` of the structures (`compute.NewOptionStructuresFunc`, as `structures_page` loads them). The `beta_delta`, `sigma` and `standard_metrics` blocks are the schema's gap with reason `not_built` and a text naming the missing source; their rows and metrics are empty. `run_status` is `partial`. The `Config` mirrors issue 7 plus `Eod`, `Terms` and `Structures` as `structures_page.Config`.
 Acceptance:
 1. `grep -c 'household_risk' internal/pages/risk_page/page.go` prints at least 1.
 2. `grep -c 'Risk(' internal/pages/risk_page/builder.go` prints at least 1 and `grep -c 'not_built' internal/pages/risk_page/builder.go` prints at least 3.
@@ -279,3 +279,14 @@ ci-go for every entry: `go build ./...`, `go vet`, `golangci-lint`, `scripts/arc
 - Removing `web/src/samples`, the `sample_page` schema and `web/fixtures` (a web and contracts cut after issue 17).
 - Account B or any second alias: only the main account must work (`account-data.md` Decision 8); `siteAliases` is not changed.
 - Telegram or any other delivery of these figures (ADR 0010: account figures never reach notify).
+
+## Adversarial
+
+Read by a fresh agent with no context; its answer is `adversarial-pages-real-data.md` of the scratchpad.
+
+1. Gap against the goal (partly): not adopted as a change. Advice, sigma, beta, day profit, long term and events have no stored source; Left out names them and no job is invented (the brief forbids it). Adopted in part: Checked by CI is not a deployment check, so the owner's first look at `/household` needs the mark job to have run; the issue 6 text now says a missing mark opener leaves the blocks as gaps.
+2. Biggest unnamed risk (adopted): extending `PageFigures` breaks test fakes outside issue 3. The new methods are now a separate interface `HoldingFigures`; `PageFigures` is not edited.
+3. A simpler way (not adopted): home with only the household member. The owner asked for real data on each page, and the other four members have stored sources; merging issues across modules (1 and 6, 9 and 10) is not allowed by one-module issues. Kept the cut.
+4. Lock-in (adopted as a note): the unit text and the new interface are the commitment; it is a separate interface, so a replacement implements two small interfaces and `PageFigures` is untouched.
+5. Claim most likely false (adopted): `store.MarkReader` does not exist. Configs use `mark.Reader`; issue 6 names `openMarkReaders` of `optionledger.go` and `wire.go` in its Files line.
+6. Likeliest slip (adopted): issue 5 acceptance now says `missingQuote()` count 0 and `not_built` at least 1, with `strings.go` and `builder_test.go` in its Files; issue 6 lists `wire.go`. The arch check of `home_members` importing `companies_page` and `market_page` is named for the worker to report if `scripts/arch` rejects it.
