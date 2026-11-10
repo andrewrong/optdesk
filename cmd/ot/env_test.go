@@ -156,10 +156,9 @@ var leakRows = map[string][]string{
 
 // leakExcluded names the commands that have no row, each with its reason.
 var leakExcluded = map[string]string{
-	"serve":          "listens on a port; its DSN path is seriesReader (the page row) and TestServeOnBuildError500 covers its HTTP error path",
-	"account-import": "its DSN path is withheld and covered by TestAccountImportOpenErrorWithheld (accountimport_test.go)",
-	"version":        "takes no DSN",
-	"help":           "takes no DSN",
+	"serve":   "listens on a port; its DSN path is seriesReader (the page row) and TestServeOnBuildError500 covers its HTTP error path",
+	"version": "takes no DSN",
+	"help":    "takes no DSN",
 }
 
 func TestNoCommandLeaksDSN(t *testing.T) {
