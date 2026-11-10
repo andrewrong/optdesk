@@ -3,7 +3,9 @@ package computefigures
 import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 )
@@ -31,4 +33,27 @@ type NewComputeFiguresFunc func(ComputeStores, compute.Figures, compute.Rules, c
 // NewComputeFiguresFunc; with one the job plans and stores the key macro.ease|market|WALCL.
 type NewComputeFiguresEaseFunc func(
 	ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
+) (contracts.Job, error)
+
+// ValuationDeps is what the valuation step of the compute_figures job needs (docs/design/valuation.md
+// Decisions 3, 5 and 7). Facts is read for the issuer of each entry, source sec, cutoff the run day; Entries
+// is the watch list the keys are planned from (one set of three per entry with an Issuer, subject the
+// Contract.Symbol). The five functions are the compute functions; with any of them nil the job has no
+// valuation key.
+type ValuationDeps struct {
+	Facts        store.FactReader
+	Entries      []jobs.WatchEntry
+	StandardOf   valuationapi.StandardOfFunc
+	BuildFilings valuationapi.BuildFilingsFunc
+	Band         valuationapi.BandFunc
+	Questions    valuationapi.QuestionsFunc
+	Diagnosis    valuationapi.DiagnosisFunc
+}
+
+// NewComputeFiguresValuationFunc is the constructor of the compute_figures job that also stores, for each
+// watched company, the readings valuation.buy_band, valuation.question and valuation.diagnosis
+// (internal/jobs/computefigures.NewWithValuation); the ValuationDeps come after the SeriesOps and before the
+// clock. With any function of the deps nil it builds the plain job, whose plan has no valuation key.
+type NewComputeFiguresValuationFunc func(
+	ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, ValuationDeps, clock.Clock,
 ) (contracts.Job, error)
