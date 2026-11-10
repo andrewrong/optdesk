@@ -35,7 +35,7 @@ type NewOptionEodFunc func(broker.Broker, store.InstrumentResolver, store.Option
 // NewQuoteSnapshotFunc is the constructor of the quote_snapshot job (internal/jobs/quotesnapshot.New).
 type NewQuoteSnapshotFunc func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error)
 
-// ComputeStores is the seven store interfaces the compute_figures job reads and writes.
+// ComputeStores is the seven store interfaces the compute_figures job reads and writes, and the optional PriceBars.
 type ComputeStores struct {
 	Catalog     store.OptionEodCatalog
 	OptionEod   store.OptionEodReader
@@ -44,6 +44,9 @@ type ComputeStores struct {
 	SessionDays store.SessionDayReader
 	Series      store.SeriesReader
 	Readings    store.ReadingStore
+	// PriceBars is optional: nil skips the HV30 step (no key market.hv30_own is planned); set, the job plans and
+	// stores market.hv30_own for each underlying from the winner "trades" rows.
+	PriceBars bar.PriceBarReader
 }
 
 // NewComputeFiguresFunc is the constructor of the compute_figures job (internal/jobs/computefigures.New).
