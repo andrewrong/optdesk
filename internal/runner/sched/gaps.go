@@ -63,6 +63,36 @@ func (g *gapSyncer) Sync(ctx context.Context, day contracts.Day, disabled map[st
 	return g.apply(ctx, day, want, disabled, status.Gaps)
 }
 
+var _ runner.NewKeyGapSyncerFunc = NewKeyGapSyncer
+
+// NewKeyGapSyncer returns the key-gap-only side of Decision 4 of docs/design/backfill-any-day.md. The type is
+// runner.KeyGapSyncer.
+func NewKeyGapSyncer(ops store.OpsLedger, sched store.SchedulerLedger, clk clockwork.Clock) runner.KeyGapSyncer {
+	return &gapSyncer{ops: ops, sched: sched, clk: clk}
+}
+
+// SyncKeys recomputes only the key gaps of day, as Sync does, and leaves the job-level preflight_failed gaps
+// alone.
+func (g *gapSyncer) SyncKeys(ctx context.Context, day contracts.Day) error {
+	runs, err := g.ops.Runs(ctx, day)
+	if err != nil {
+		return err
+	}
+	present, err := g.ops.Present(ctx, day)
+	if err != nil {
+		return err
+	}
+	status, err := g.sched.Status(ctx)
+	if err != nil {
+		return err
+	}
+	want, err := g.keyGaps(ctx, day, runs, present)
+	if err != nil {
+		return err
+	}
+	return g.applyKeys(ctx, day, want, status.Gaps)
+}
+
 // keyGaps returns the kind of the gap of each dataset that needs one.
 func (g *gapSyncer) keyGaps(
 	ctx context.Context, day contracts.Day, runs []store.Run, present map[contracts.ExpectedKey]store.PresentStatus,
@@ -137,6 +167,9 @@ func (g *gapSyncer) keyKind(runs []store.Run, mark store.PresentStatus, closed b
 		case r.Status == store.RunDone && r.ErrorCode == string(contracts.Retryable):
 			retryableLast = true
 			expired = expired || r.ReasonCode == gapExpired
+		case r.Status == store.RunDone && r.ErrorCode == "":
+			latest = i // a verdict run: it decides expired, so a later one resets it
+			expired = r.ReasonCode == gapExpired
 		default:
 			latest = i
 			expired = expired || r.ReasonCode == gapExpired
@@ -166,6 +199,35 @@ func runnerKind(ok bool, latest int, retryableLast bool, runs []store.Run) strin
 		return gapExpired
 	}
 	return ""
+}
+
+// applyKeys writes the wanted key gaps that are not open with the same kind and clears the open key gaps of day
+// that no longer hold; it does not touch the job-level gaps.
+func (g *gapSyncer) applyKeys(ctx context.Context, day contracts.Day, want map[string]string, open []store.Gap) error {
+	have := map[string]string{}
+	var stale []store.Gap
+	for _, o := range open {
+		if o.Day != day || o.JobID != "" {
+			continue
+		}
+		have[o.DatasetID] = o.Reason
+		if _, ok := want[o.DatasetID]; !ok {
+			stale = append(stale, o)
+		}
+	}
+	for _, id := range sortedKeys(want) {
+		if have[id] != want[id] {
+			if err := g.sched.PutGap(ctx, store.Gap{DatasetID: id, Day: day, Reason: want[id]}); err != nil {
+				return err
+			}
+		}
+	}
+	for _, s := range stale {
+		if err := g.sched.ClearGap(ctx, store.Gap{DatasetID: s.DatasetID, Day: day}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // apply writes the wanted gaps that are not open with the same kind and clears the open gaps of day that

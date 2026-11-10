@@ -13,7 +13,10 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-var _ runner.GapSyncer = NewGapSyncer(nil, nil, nil)
+var (
+	_ runner.GapSyncer    = NewGapSyncer(nil, nil, nil)
+	_ runner.KeyGapSyncer = NewKeyGapSyncer(nil, nil, nil)
+)
 
 // gapOps is a store.OpsLedger that holds the runs, marks and windows of one day, and answers Cursor.
 type gapOps struct {
@@ -406,4 +409,60 @@ func (t tee) Sync(ctx context.Context, day contracts.Day, d map[string]string) e
 	err := t.b.Sync(ctx, day, d)
 	_ = t.a.Sync(ctx, day, d)
 	return err
+}
+
+func (r *gapRig) syncKeys(t *testing.T) {
+	t.Helper()
+	if err := NewKeyGapSyncer(r.ops, r.led, r.clk).SyncKeys(t.Context(), gapDay); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSyncKeysClears(t *testing.T) {
+	t.Parallel()
+	r := newGapRig(tickerStart)
+	r.addRun(withReason(retryRun, "expired"))
+	r.ops.mark(gapKey, store.StatusNoValue)
+	r.sync(t, nil)
+	r.wantGap(t, "expired")
+	r.addRun(withReason(store.Run{Status: store.RunDone}, "backfill"))
+	r.ops.mark(gapKey, store.StatusPresent)
+	r.syncKeys(t)
+	r.wantGap(t, "")
+}
+
+func TestSyncKeysKeepsJobGap(t *testing.T) {
+	t.Parallel()
+	r := newGapRig(tickerStart)
+	r.addRun(withReason(retryRun, "expired"))
+	r.ops.mark(gapKey, store.StatusNoValue)
+	r.sync(t, map[string]string{"opt": "x"})
+	r.ops.mark(gapKey, store.StatusPresent)
+	r.syncKeys(t)
+	want := []store.Gap{{JobID: "opt", Day: gapDay, Reason: "preflight_failed"}}
+	if got := r.led.gaps(); !slices.Equal(got, want) {
+		t.Fatalf("gaps = %+v, want %+v", got, want)
+	}
+}
+
+func TestGenuineNoValueClears(t *testing.T) {
+	t.Parallel()
+	r := newGapRig(tickerStart)
+	r.addRun(withReason(retryRun, "expired"))
+	r.ops.mark(gapKey, store.StatusNoValue)
+	r.sync(t, nil)
+	r.wantGap(t, "expired")
+	r.addRun(withReason(store.Run{Status: store.RunDone}, "backfill"))
+	r.syncKeys(t)
+	r.wantGap(t, "")
+}
+
+func TestFailedBackfillKeepsGap(t *testing.T) {
+	t.Parallel()
+	r := newGapRig(tickerStart)
+	r.addRun(withReason(retryRun, "expired"))
+	r.ops.mark(gapKey, store.StatusNoValue)
+	r.addRun(withReason(retryRun, "backfill"))
+	r.syncKeys(t)
+	r.wantGap(t, "expired")
 }

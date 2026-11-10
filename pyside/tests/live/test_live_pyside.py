@@ -46,7 +46,9 @@ def _code(call: Callable[[], object]) -> grpc.StatusCode:
 def test_live_health_gateways() -> None:
     port = os.environ.get("OT_IBKR_HEALTH_PORT")
     if not port:
-        pytest.skip("OT_IBKR_HEALTH_PORT is not set")
+        pytest.fail(
+            "OT_IBKR_HEALTH_PORT is not set: the gateway health check cannot run"
+        )
     url = f"http://127.0.0.1:{port}/health"
     with urllib.request.urlopen(url, timeout=HEALTH_TIMEOUT_S) as reply:
         assert reply.status == 200

@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	owner    = "runner"
-	leaseTTL = 10 * time.Minute
+	owner = "runner"
+	// backfillOwnerPrefix starts the lease owner of a Backfill call.
+	backfillOwnerPrefix = "backfill:"
+	leaseTTL            = 10 * time.Minute
 
 	reasonCrashed = "crashed"
 	reasonLate    = "late"
@@ -90,7 +92,7 @@ func newReconciler(
 // it are still reconciled. The cursor is set to a day only when that day and every day
 // before it are done, so every day at or before the cursor is complete.
 func (r *reconciler) Reconcile(ctx context.Context, day contracts.Day) (err error) {
-	ctx, release, err := r.holdLease(ctx)
+	ctx, release, err := r.holdLease(ctx, owner)
 	if err != nil {
 		return err
 	}
@@ -389,11 +391,11 @@ func (r *reconciler) run(
 	return rec, marked, nil
 }
 
-// holdLease takes ops.run_lease and, with a SchedulerLedger, renews it every 30 s of the
+// holdLease takes ops.run_lease under owner and, with a SchedulerLedger, renews it every 30 s of the
 // clock until release is called. A failed renewal cancels the returned context and its
 // error becomes the result of the call. release stops the renewal and frees the lease even
 // when ctx was cancelled (a drain); it sets *errp when the call had no error of its own.
-func (r *reconciler) holdLease(ctx context.Context) (context.Context, func(errp *error), error) {
+func (r *reconciler) holdLease(ctx context.Context, owner string) (context.Context, func(errp *error), error) {
 	lease, err := r.ledger.Acquire(ctx, owner, leaseTTL)
 	if err != nil {
 		return ctx, nil, err
