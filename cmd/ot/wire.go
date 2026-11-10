@@ -25,6 +25,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/gaphistory"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
 	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/earningsrefresh"
@@ -55,6 +56,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/sources/jquants"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/account"
 	"github.com/andrewrong/optdesk/internal/store/alert"
 	"github.com/andrewrong/optdesk/internal/store/candidate"
 	eventstore "github.com/andrewrong/optdesk/internal/store/events"
@@ -95,6 +97,9 @@ type deps struct {
 	newOptionEod            jobs.NewOptionEodFunc
 	newOptionEodJP          jobs.NewOptionEodFunc
 	newQuoteSnapshot        jobs.NewQuoteSnapshotFunc
+	dialAccount             dialAccountFunc
+	openAccount             store.OpenAccountFunc
+	newAccountCapture       newAccountCaptureFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
 	reportPage              func(market, slot string, zone *time.Location, risks report_page.RiskBlockFunc) pages.Page
@@ -165,6 +170,7 @@ var defaultReadEnv store.ReadEnvFunc = setup.ReadEnv
 func newDeps() deps {
 	d := newBaseDeps()
 	d.ext = newExt()
+	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	return d
 }
 

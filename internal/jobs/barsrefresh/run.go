@@ -131,7 +131,7 @@ func (r *runState) runKey(ctx context.Context, key string) (returned, usable int
 			return 0, 0, asTyped(err, contracts.Retryable)
 		}
 	}
-	return len(bars), len(bars), nil
+	return len(bars), len(bars), r.adjusted(ctx, id, c)
 }
 
 // conID is the contract id of the key: the one it carries, else one ResolveContract answer per run.
