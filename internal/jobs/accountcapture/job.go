@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
-
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -171,13 +169,15 @@ func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day,
 	return status
 }
 
-// errClass names the class of err without its text: the SQLSTATE code when err is or wraps a
-// *pgconn.PgError, else "connection" for a net error, "timeout" for a deadline or timeout, else "other".
+// errClass names the class of err without its text: the SQLSTATE code when err is or wraps an
+// error with a SQLState method (as *pgconn.PgError has), else "connection" for a net error, "timeout"
+// for a deadline or timeout, else "other".
 // It is a code or a fixed word, never a message, a DSN, an account id or a value.
 func errClass(err error) string {
-	var pe *pgconn.PgError
-	if errors.As(err, &pe) && pe.Code != "" {
-		return pe.Code
+	// *pgconn.PgError answers SQLState; depguard lets only internal/store import pgx.
+	var ss interface{ SQLState() string }
+	if errors.As(err, &ss) && ss.SQLState() != "" {
+		return ss.SQLState()
 	}
 	var ne net.Error
 	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
