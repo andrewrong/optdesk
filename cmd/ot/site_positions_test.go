@@ -322,7 +322,8 @@ func TestOpenedReadersReachPositionsPages(t *testing.T) {
 	for _, target := range []string{"/" + siteStructuresRoute, "/" + siteResultRoute} {
 		r := positionsGet(t, h, http.MethodGet, target)
 		c := rec.last(t)
-		if r.Code != 200 || strings.Contains(r.Body.String(), "no_reader") || c.cfg.Ledger != wantLedger && c.res.Ledger != wantLedger || target == "/"+siteStructuresRoute && c.cfg.Account != wantAcct {
+		if r.Code != 200 || strings.Contains(r.Body.String(), "no_reader") ||
+			c.cfg.Ledger != wantLedger && c.res.Ledger != wantLedger || target == "/"+siteStructuresRoute && c.cfg.Account != wantAcct {
 			t.Errorf("%s: %d %q %+v", target, r.Code, r.Body, c)
 		}
 	}
