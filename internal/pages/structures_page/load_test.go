@@ -167,8 +167,8 @@ func TestLoadFeedsTheRules(t *testing.T) {
 		return stubReplay{got: &r.replay, res: compute.LedgerResult{Positions: []compute.LedgerPosition{open}}}
 	}
 	r.cfg.Account = stubAccount{byDay: map[string][]store.Position{"2026-11-06": {
-		{SecType: "STK", Symbol: "AAPL", ConID: 77},
-		{SecType: "OPT", Symbol: "AAPL", Right: "put", Strike: "150", Expiry: "2026-12-18", Quantity: "-1"},
+		{SecType: "stock", Symbol: "AAPL", ConID: 77},
+		{SecType: "option", Symbol: "AAPL", Right: "put", Strike: "150", Expiry: "2026-12-18", Quantity: "-1"},
 	}}}
 	bid, ask, delta := 1.1, 1.3, -0.25
 	r.cfg.Eod = stubEod{byUnderlying: map[int64][]contracts.OptionEod{77: {
