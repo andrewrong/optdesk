@@ -1,6 +1,7 @@
 package optionresult
 
 import (
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -48,5 +49,49 @@ func TestOpenMonthNotOver(t *testing.T) {
 	in.AsOf = "2026-03-01"
 	if m = New().Summarise(in).Sections[0].Months; !m[1].Over {
 		t.Fatalf("months %+v", m)
+	}
+}
+
+func TestMonthsPremium(t *testing.T) {
+	t.Parallel()
+	sec := summarise(
+		pos("1", "closed", "USD", "-1", "2", "10", "2026-01-05"),
+		pos("2", "expired", "USD", "-2", "1.5", "5", "2026-01-20"),
+		pos("3", "assigned", "USD", "-3", "1", "7", "2026-02-03"),
+	).Sections[0]
+	if len(sec.Months) != 2 || sec.Months[0].Premium != "500.0000" || sec.Months[1].Premium != "300.0000" {
+		t.Fatalf("months %+v", sec.Months)
+	}
+	if sec.Premium != "800.0000" {
+		t.Fatalf("section premium %q", sec.Premium)
+	}
+}
+
+func TestMonthsPremiumSumsToSection(t *testing.T) {
+	t.Parallel()
+	for _, sec := range summarise(
+		pos("1", "closed", "USD", "-1", "2", "10", "2026-01-05"),
+		pos("2", "exercised", "USD", "-1", "3", "5", "2026-02-20"),
+		pos("3", "closed", "USD", "1", "4", "-1", "2026-02-09"),
+	).Sections {
+		sum := new(big.Rat)
+		for _, m := range sec.Months {
+			v, ok := parse(m.Premium)
+			if !ok {
+				t.Fatalf("month premium %q", m.Premium)
+			}
+			sum.Add(sum, v)
+		}
+		if fixed(sum, 4) != sec.Premium {
+			t.Fatalf("%s months sum %s, section %s", sec.Side, fixed(sum, 4), sec.Premium)
+		}
+	}
+}
+
+func TestMonthsPremiumBoughtPositive(t *testing.T) {
+	t.Parallel()
+	sec := summarise(pos("1", "closed", "USD", "1", "1.1", "-40", "2026-03-02")).Sections[0]
+	if sec.Months[0].Premium != "110.0000" {
+		t.Fatalf("months %+v", sec.Months)
 	}
 }

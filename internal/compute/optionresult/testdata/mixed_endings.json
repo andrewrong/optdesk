@@ -16,7 +16,7 @@
   "Sections": [
    {
     "Side": "sold", "Currency": "JPY",
-    "Months": [{"Month": "2026-03", "Realized": "1500.0000", "Running": "1500.0000", "Over": false}],
+    "Months": [{"Month": "2026-03", "Realized": "1500.0000", "Running": "1500.0000", "Premium": "2000.0000", "Over": false}],
     "Endings": [
      {"Status": "closed", "Count": 0, "Realized": "0.0000"},
      {"Status": "expired", "Count": 0, "Realized": "0.0000"},
@@ -29,8 +29,8 @@
    {
     "Side": "sold", "Currency": "USD",
     "Months": [
-     {"Month": "2026-01", "Realized": "199.3500", "Running": "199.3500", "Over": true},
-     {"Month": "2026-02", "Realized": "-1.3000", "Running": "198.0500", "Over": true}
+     {"Month": "2026-01", "Realized": "199.3500", "Running": "199.3500", "Premium": "200.0000", "Over": true},
+     {"Month": "2026-02", "Realized": "-1.3000", "Running": "198.0500", "Premium": "300.0000", "Over": true}
     ],
     "Endings": [
      {"Status": "closed", "Count": 0, "Realized": "0.0000"},
@@ -43,7 +43,7 @@
    },
    {
     "Side": "bought", "Currency": "USD",
-    "Months": [{"Month": "2026-03", "Realized": "-40.0000", "Running": "-40.0000", "Over": false}],
+    "Months": [{"Month": "2026-03", "Realized": "-40.0000", "Running": "-40.0000", "Premium": "110.0000", "Over": false}],
     "Endings": [
      {"Status": "closed", "Count": 1, "Realized": "-40.0000"},
      {"Status": "expired", "Count": 0, "Realized": "0.0000"},
