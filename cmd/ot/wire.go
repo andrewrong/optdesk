@@ -287,7 +287,6 @@ func newBaseDeps() deps {
 		openOptionCatalog:       snapshot.OpenOptionEodCatalog,
 		openOptionTerms:         instrument.OpenOptionTerms,
 		openInstrumentName:      instrument.OpenInstrumentNames,
-		openIndexIDs:            openIndexIDsDefault,
 		newOptionEodJP:          optioneod.NewJP,
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
@@ -341,7 +340,7 @@ func newBaseDeps() deps {
 		newAlphaVantage:         alphavantage.New,
 		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
-		readFile:                os.ReadFile,
+		readFile:                os.ReadFile, openIndexIDs: openIndexIDsDefault,
 	}
 }
 

@@ -12,9 +12,9 @@ var _ computefigures.IndexIDReader = (*instrument.IndexIDs)(nil)
 
 func TestIndexIDsDefaultAdapterNilOnError(t *testing.T) {
 	t.Parallel()
-	store, err := openIndexIDsDefault(context.Background(), "")
+	store, err := openIndexIDsDefault(context.Background(), "postgres://%zz")
 	if err == nil {
-		t.Fatal("open with an empty dsn succeeded")
+		t.Fatal("open with a malformed dsn succeeded")
 	}
 	if store != nil {
 		t.Fatalf("store %#v, want a nil interface", store)
