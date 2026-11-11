@@ -120,6 +120,7 @@ function Cell({ name, wide, children }: { name: string; wide?: boolean; children
 export function HouseholdPage({ payload }: { payload: Payload }) {
   const { trend, income, month_change: change } = payload
   const trendSpec = trendToSpec(trend.series ?? [])
+  const trendGap = (trend.series ?? []).some((s) => s.gap) ? null : (trend.gap ?? null)
   const incomeCurrencies = income.totals.map((cell) => cell.currency)
   return (
     <div className="min-w-0 space-y-6" data-page="household">
@@ -158,7 +159,7 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
         <MoversSection block={payload.movers} scopes={payload.scopes} />
       </Cell>
       <Cell name="trend">
-      <Block name="trend" title={trend.title} meaning={trend.meaning}>
+      <Block name="trend" title={trend.title} meaning={trend.meaning} gap={trendGap}>
         {trendSpec ? (
           <Chart
             name="household-trend"
