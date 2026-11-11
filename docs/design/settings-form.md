@@ -1,5 +1,7 @@
 # Settings form: owner rule parameters and option exclusions in the store, one POST route on `ot serve`
 
+Note (2026-11-11): `docs/design/underlyings.md` replaces `$OT_HOME/watch.toml` as the owner's hand-edited list of followed names, from the issue that removes the file loader (its issue 10); the text below stays as written until then.
+
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-09
