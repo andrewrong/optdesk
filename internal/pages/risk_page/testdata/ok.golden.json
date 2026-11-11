@@ -17,7 +17,7 @@
   ],
   "run_status": "partial",
   "title": "Household risk",
-  "sentence": "Delta and Vega come from the positions and option structures of the latest capture; the data sources of Beta, the volatility range and the standard metrics are not connected yet.",
+  "sentence": "Delta and Vega come from the latest capture; Beta-weighted Delta, the volatility range and the standard metrics are not built: no job stores Beta, the index price or risk metrics.",
   "vega_title": "Vega by expiry",
   "delta": {
     "title": "Delta by underlying",
@@ -80,7 +80,7 @@
   "beta_delta": {
     "title": "Beta-weighted Delta",
     "meaning": "Delta of each underlying converted to the benchmark index by Beta.",
-    "benchmark_text": "Benchmark index: no data yet",
+    "benchmark_text": "Benchmark index: no price stored",
     "heads": [
       "Underlying",
       "Beta",
@@ -90,7 +90,7 @@
     "total": null,
     "gap": {
       "reason": "not_built",
-      "text": "Beta-weighted Delta needs the Beta of each underlying and the benchmark price; the data source is not connected yet"
+      "text": "Beta-weighted Delta is not built: no job stores the Beta of each underlying or the benchmark index price"
     }
   },
   "sigma": {
@@ -103,10 +103,10 @@
       "+2σ"
     ],
     "rows": [],
-    "aria_text": "Volatility range: no data yet",
+    "aria_text": "Volatility range: not built",
     "gap": {
       "reason": "not_built",
-      "text": "The volatility range needs the implied volatility (IV) of the underlying; the data source is not connected yet"
+      "text": "The volatility range is not built: how it is defined from the stored IV is not designed yet"
     }
   },
   "standard_metrics": {
@@ -114,8 +114,8 @@
     "metrics": [
       {
         "label": "Standard risk metrics",
-        "value_text": "no data yet",
-        "explanation": "The standard risk metrics need a risk metrics data source; it is not connected yet",
+        "value_text": "not built",
+        "explanation": "The standard risk metrics are not built: no job stores a risk metrics source",
         "table": null
       }
     ]
@@ -124,15 +124,15 @@
   "gaps": [
     {
       "reason": "not_built",
-      "text": "Beta-weighted Delta: Beta-weighted Delta needs the Beta of each underlying and the benchmark price; the data source is not connected yet"
+      "text": "Beta-weighted Delta: Beta-weighted Delta is not built: no job stores the Beta of each underlying or the benchmark index price"
     },
     {
       "reason": "not_built",
-      "text": "Volatility range: The volatility range needs the implied volatility (IV) of the underlying; the data source is not connected yet"
+      "text": "Volatility range: The volatility range is not built: how it is defined from the stored IV is not designed yet"
     },
     {
       "reason": "not_built",
-      "text": "Standard risk metrics: The standard risk metrics need a risk metrics data source; it is not connected yet"
+      "text": "Standard risk metrics: The standard risk metrics are not built: no job stores a risk metrics source"
     }
   ],
   "stale": {
