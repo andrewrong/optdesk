@@ -3,6 +3,7 @@ package option_boards
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -197,6 +198,15 @@ func TestEodTextGreeks(t *testing.T) {
 				t.Errorf("got %+v, want %q in all three", got, c.want)
 			}
 		})
+	}
+}
+
+func TestEodTextGreekNonFiniteIsGap(t *testing.T) {
+	t.Parallel()
+	inf, nan := math.Inf(1), math.NaN()
+	got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: &nan, Gamma: &inf, VegaPerVolPoint: fp(math.Inf(-1))})
+	if got.Theta != "n/a" || got.Gamma != "n/a" || got.Vega != "n/a" {
+		t.Errorf("got %+v, want n/a in all three", got)
 	}
 }
 

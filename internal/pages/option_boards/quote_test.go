@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -243,21 +244,21 @@ func TestLiveGreeksFourDecimals(t *testing.T) {
 		EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
 	}}
 	p, _ := stockWithQuotes(t, &fakeOpens{rows: opens})
+	var vegas []string
 	for _, l := range p.Contracts.Rows {
 		if l.Quote.Source != "open_pull" {
 			continue
 		}
-		vega := "0.0600"
-		if len(l.Cells) > 8 && l.Cells[8] == "n/a" {
-			vega = "n/a"
-		}
-		want := []string{"-0.0300", "0.0400", vega, "77"}
-		got := l.Cells[6:10]
-		for i := range want {
-			if got[i] != want[i] {
-				t.Errorf("cell %d = %q, want %q", 6+i, got[i], want[i])
+		for i, w := range map[int]string{6: "-0.0300", 7: "0.0400", 9: "77"} {
+			if l.Cells[i] != w {
+				t.Errorf("cell %d = %q, want %q", i, l.Cells[i], w)
 			}
 		}
+		vegas = append(vegas, l.Cells[8])
+	}
+	slices.Sort(vegas)
+	if want := []string{"0.0600", "n/a"}; !slices.Equal(vegas, want) {
+		t.Errorf("vega cells of the open rows = %q, want %q", vegas, want)
 	}
 }
 
