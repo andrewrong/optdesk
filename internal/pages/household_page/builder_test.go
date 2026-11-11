@@ -395,6 +395,16 @@ func (emptyReplayer) Replay(compute.LedgerInput, compute.LedgerParams) compute.L
 	return compute.LedgerResult{}
 }
 
+// ledgerOf is a replayer whose ledger holds one open short put of 1 contract.
+type ledgerOf struct{ underlying, strike, expiry string }
+
+func (l ledgerOf) Replay(compute.LedgerInput, compute.LedgerParams) compute.LedgerResult {
+	return compute.LedgerResult{Positions: []compute.LedgerPosition{
+		{Underlying: l.underlying, Status: "open", Right: "P", Quantity: "-1", Strike: l.strike, Expiry: l.expiry,
+			Multiplier: "1", Currency: "JPY", PremiumIncome: "10"},
+	}}
+}
+
 func shortPut(sym, strike string) store.Position {
 	return store.Position{Symbol: sym, SecType: "option", Right: "put", Quantity: "-1", Currency: "JPY",
 		Strike: strike, Expiry: "2026-11-12"}
@@ -438,9 +448,11 @@ func TestStoredShortPutMissingFromLedgerIsGap(t *testing.T) {
 func TestStoredShortPutInLedgerIsNoGap(t *testing.T) {
 	t.Parallel()
 	acc := account()
-	acc.stored = []store.Position{shortPut("AAA", "50")}
+	acc.stored = []store.Position{shortPut("7974", "7250")}
 	var got blockapi.HouseholdInput
-	m, b := build(t, config(acc, &got), "main")
+	c := config(acc, &got)
+	c.Ledgers = func() compute.OptionLedger { return ledgerOf{"7974", "7250", "20261112"} }
+	m, b := build(t, c, "main")
 	ledgerBlocks(t, m, false)
 	if rows := m["cash_after"].(map[string]any)["rows"].([]any); len(rows) != 1 {
 		t.Fatalf("cash_after rows = %v", rows)
@@ -485,4 +497,27 @@ func TestMissingMonthStartNamesTheDate(t *testing.T) {
 		t.Fatalf("month_change gap = %q", text)
 	}
 	validate(t, b)
+}
+
+func TestStoredPutDifferentFromLedgerPutIsGap(t *testing.T) {
+	t.Parallel()
+	acc := account()
+	acc.stored = []store.Position{shortPut("7974", "7250")} // default ledger holds one open put (AAA)
+	var got blockapi.HouseholdInput
+	m, _ := build(t, config(acc, &got), "main")
+	ledgerBlocks(t, m, true)
+}
+
+func TestOnlyUnmatchedStoredPutsAreCountedAndNamed(t *testing.T) {
+	t.Parallel()
+	acc := account()
+	acc.stored = []store.Position{shortPut("7974", "7250"), shortPut("7974", "7000")}
+	var got blockapi.HouseholdInput
+	c := config(acc, &got)
+	c.Ledgers = func() compute.OptionLedger { return ledgerOf{"7974", "7250", "20261112"} }
+	m, _ := build(t, c, "main")
+	text := gapOf(t, m, "obligations")["text"].(string)
+	if !strings.HasPrefix(text, "1 short put(s)") || !strings.Contains(text, "P7000") || strings.Contains(text, "P7250") {
+		t.Fatalf("gap text = %q", text)
+	}
 }
