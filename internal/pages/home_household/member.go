@@ -184,12 +184,14 @@ func (c Config) assemble(cp capture, res blockapi.HouseholdResult, day1, mtd blo
 		DayChange:   moveTile(labelDayChange, explainDayChange, day1.DayAmount, day1.DayPct, cur),
 		MonthToDate: moveTile(labelMonthToDate, explainMonthToDate, mtd.DayAmount, mtd.DayPct, cur),
 	}
+	var saidDay, saidMonth *gapJSON
 	if len(cp.prior) == 0 {
 		d.Card.Tiles.DayChange = sayMissing(d.Card.Tiles.DayChange, textNeedsPrior+cp.day)
 	}
 	if len(cp.monthStart) == 0 {
 		d.Card.Tiles.MonthToDate = sayMissing(d.Card.Tiles.MonthToDate, textNeedsMonthStart+cp.day)
 	}
+	saidDay, saidMonth = said(d.Card.Tiles.DayChange), said(d.Card.Tiles.MonthToDate)
 	captured := at
 	if len(cp.values) > 0 && !cp.values[0].CapturedAt.IsZero() {
 		captured = cp.values[0].CapturedAt.In(c.Zone)
@@ -205,7 +207,7 @@ func (c Config) assemble(cp capture, res blockapi.HouseholdResult, day1, mtd blo
 		gap   *gapJSON
 	}{
 		{labelNetWorth, d.Card.Tiles.NetWorth.gap()}, {labelCash, d.Card.Tiles.Cash.gap()},
-		{labelDayChange, d.Card.Tiles.DayChange.gap()}, {labelMonthToDate, d.Card.Tiles.MonthToDate.gap()},
+		{labelDayChange, first(saidDay, d.Card.Tiles.DayChange.gap())}, {labelMonthToDate, first(saidMonth, d.Card.Tiles.MonthToDate.gap())},
 	} {
 		if t.gap != nil {
 			d.RunStatus = "partial"
@@ -216,14 +218,30 @@ func (c Config) assemble(cp capture, res blockapi.HouseholdResult, day1, mtd blo
 }
 
 // sayMissing words the gap of a change tile that has no figure for want of a capture day: the reason
-// stays missing_input, only the text says which capture is missing. Any other tile is returned as it is.
+// stays missing_input, only the text of the caption says which capture is missing, so the sentence is
+// printed once. Any other tile is returned as it is.
 func sayMissing(t tile, text string) tile {
 	if g := t.gap(); g == nil || g.Reason != "missing_input" {
 		return t
 	}
-	g := gapJSON{Reason: "missing_input", Text: text}
-	t.Figure, t.Caption = g, g
+	t.Figure, t.Caption = gapOf("missing_input"), gapJSON{Reason: "missing_input", Text: text}
 	return t
+}
+
+// said is the caption gap of a tile that sayMissing worded, nil for any other tile.
+func said(t tile) *gapJSON {
+	if g, ok := t.Caption.(gapJSON); ok && t.gap() != nil && g.Reason == "missing_input" && g.Text != t.gap().Text {
+		return &g
+	}
+	return nil
+}
+
+// first is a when it is set, else b.
+func first(a, b *gapJSON) *gapJSON {
+	if a != nil {
+		return a
+	}
+	return b
 }
 
 // base is the envelope with an empty card.

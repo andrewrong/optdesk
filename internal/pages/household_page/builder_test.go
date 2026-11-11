@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -530,5 +531,82 @@ func TestOnlyUnmatchedStoredPutsAreCountedAndNamed(t *testing.T) {
 	text := gapOf(t, m, "obligations")["text"].(string)
 	if !strings.HasPrefix(text, "1 short put(s)") || !strings.Contains(text, "P7000") || strings.Contains(text, "P7250") {
 		t.Fatalf("gap text = %q", text)
+	}
+}
+
+// moneyFigures answers the household figures with the lines it is given in the obligations block and
+// the trend it is given.
+type moneyFigures struct {
+	fakeFigures
+	lines []blockapi.MoneyLine
+	trend []blockapi.DayValue
+}
+
+func (f moneyFigures) Household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
+	r := f.fakeFigures.Household(in)
+	if f.lines != nil {
+		r.Obligations = f.lines
+	}
+	if f.trend != nil {
+		r.Trend = f.trend
+	}
+	return r
+}
+
+func figuresConfig(f moneyFigures) household_page.Config {
+	var got blockapi.HouseholdInput
+	f.got = &got
+	c := config(account(), &got)
+	c.Figures = func() blockapi.PageFigures { return f }
+	return c
+}
+
+func TestMoneyTextGroupsThousandsAndUsesMinusSign(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ value, cur, text, unit string }{
+		{"57849.95", "USD", "$57,849.95", "usd"},
+		{"-1684.99", "USD", "\u2212$1,684.99", "usd_signed"},
+		{"999.50", "USD", "$999.50", "usd"},
+		{"1000000.00", "USD", "$1,000,000.00", "usd"},
+		{"-0.50", "USD", "\u2212$0.50", "usd_signed"},
+		{"5550", "JPY", "¥5,550", "usd"},
+		{"-12345", "JPY", "\u2212¥12,345", "usd_signed"},
+	} {
+		line := blockapi.MoneyLine{Name: "X", Currency: tc.cur, Amount: compute.FigureValue{Value: tc.value}}
+		m, _ := build(t, figuresConfig(moneyFigures{lines: []blockapi.MoneyLine{line}}), "main")
+		rows := m["obligations"].(map[string]any)["rows"].([]any)
+		amt := rows[0].(map[string]any)["amount"].(map[string]any)
+		if amt["text"] != tc.text || amt["unit"] != tc.unit || amt["value"].(float64) != mustFloat(t, tc.value) {
+			t.Fatalf("%s %s: %v", tc.value, tc.cur, amt)
+		}
+	}
+}
+
+func mustFloat(t *testing.T, s string) float64 {
+	t.Helper()
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+func TestTrendRowsUseGroupedMoney(t *testing.T) {
+	t.Parallel()
+	trend := []blockapi.DayValue{
+		{Day: "2026-11-09", NetLiquidation: "100000.00", Currency: "USD"},
+		{Day: "2026-11-10", NetLiquidation: "99000.50", Currency: "USD"},
+	}
+	m, _ := build(t, figuresConfig(moneyFigures{trend: trend}), "main")
+	rows := m["trend"].(map[string]any)["rows"].([]any)
+	want := []struct {
+		text string
+		v    float64
+	}{{"$100,000.00", 100000.00}, {"$99,000.50", 99000.50}}
+	for i, w := range want {
+		v := rows[i].(map[string]any)["value"].(map[string]any)
+		if v["text"] != w.text || v["value"].(float64) != w.v {
+			t.Fatalf("row %d: %v", i, v)
+		}
 	}
 }

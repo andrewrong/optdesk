@@ -213,12 +213,32 @@ func makeCell(value, currency string) (moneyCell, bool) {
 		return moneyCell{}, false
 	}
 	unit := "usd"
-	text := sym + value
 	if strings.HasPrefix(value, "-") {
 		unit = "usd_signed"
-		text = "-" + sym + strings.TrimPrefix(value, "-")
 	}
-	return moneyCell{Value: json.Number(value), Text: text, Unit: unit, Currency: currency}, true
+	return moneyCell{Value: json.Number(value), Text: moneyText(sym, value), Unit: unit, Currency: currency}, true
+}
+
+// moneyText writes decimal text as money: U+2212 for a negative, the symbol, the integer part in
+// groups of three and the decimals as given.
+func moneyText(sym, value string) string {
+	neg := strings.HasPrefix(value, "-")
+	whole, frac, hasFrac := strings.Cut(strings.TrimPrefix(value, "-"), ".")
+	var b strings.Builder
+	if neg {
+		b.WriteString("\u2212")
+	}
+	b.WriteString(sym)
+	for i, r := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	if hasFrac {
+		b.WriteString("." + frac)
+	}
+	return b.String()
 }
 
 // lineGap is the reason a line has no cell.
@@ -274,7 +294,7 @@ func trendOf(alias, label string, days []blockapi.DayValue) trendBlock {
 			continue
 		}
 		b.Rows = append(b.Rows, trendPoint{Day: string(d.Day), Value: usdFigure{
-			Value: json.Number(d.NetLiquidation), Text: "$" + d.NetLiquidation, Unit: "USD"}})
+			Value: json.Number(d.NetLiquidation), Text: moneyText("$", d.NetLiquidation), Unit: "USD"}})
 	}
 	if len(b.Rows) == 0 {
 		b.Gap = &gapJSON{Reason: "no_data", Text: gapText("no_data")}

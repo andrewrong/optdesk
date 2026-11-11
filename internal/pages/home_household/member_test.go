@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -313,18 +314,38 @@ func TestOneCapturedDayNamesTheMissingCaptures(t *testing.T) {
 	const dayText = "Needs a second captured session day; first capture 2026-11-10"
 	const mtdText = "Needs the last session day of the previous month; first capture 2026-11-10"
 	dc, mtd := ts["day_change"], ts["month_to_date"]
-	if figText(dc, "figure") != dayText || figText(dc, "caption") != dayText {
+	const figure = "Input data is missing: no data yet"
+	if figText(dc, "figure") != figure || figText(dc, "caption") != dayText {
 		t.Fatalf("day_change: %v", dc)
 	}
-	if figText(mtd, "figure") != mtdText || figText(mtd, "caption") != mtdText {
+	if figText(mtd, "figure") != figure || figText(mtd, "caption") != mtdText {
 		t.Fatalf("month_to_date: %v", mtd)
 	}
-	if dc["figure"].(map[string]any)["reason"] != "missing_input" || mtd["figure"].(map[string]any)["reason"] != "missing_input" {
-		t.Fatalf("reasons %v", reasons(m))
+	for _, tl := range []map[string]any{dc, mtd} {
+		for _, k := range []string{"figure", "caption"} {
+			if tl[k].(map[string]any)["reason"] != "missing_input" {
+				t.Fatalf("reasons %v", reasons(m))
+			}
+		}
 	}
 	g := gapTextsOf(m)
 	if len(g) != 2 || g[0] != "Previous trading day: "+dayText || g[1] != "Month to date: "+mtdText {
 		t.Fatalf("gaps %q", g)
+	}
+}
+
+func TestMissingCaptureSentenceAppearsOnceInATile(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, config(map[string][]store.AccountValue{"2026-11-10": vals("100000.00", "42000.00")}))
+	ts := tilesOf(m)
+	for _, k := range []string{"day_change", "month_to_date"} {
+		b, err := json.Marshal(ts[k])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n := strings.Count(string(b), "first capture"); n != 1 {
+			t.Fatalf("%s: %d times in %s", k, n, b)
+		}
 	}
 }
 
@@ -336,7 +357,7 @@ func TestPriorDayWithoutMonthStartOnlyMonthToDateSaysSo(t *testing.T) {
 	}))
 	ts := tilesOf(m)
 	const mtdText = "Needs the last session day of the previous month; first capture 2026-11-10"
-	if figText(ts["month_to_date"], "figure") != mtdText || figText(ts["month_to_date"], "caption") != mtdText {
+	if figText(ts["month_to_date"], "figure") != "Input data is missing: no data yet" || figText(ts["month_to_date"], "caption") != mtdText {
 		t.Fatalf("month_to_date: %v", ts["month_to_date"])
 	}
 	if figText(ts["day_change"], "figure") != "+$999.50" {
