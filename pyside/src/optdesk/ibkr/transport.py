@@ -218,6 +218,7 @@ _SEC_TYPES = {
     pb.SEC_TYPE_STOCK: "STK",
     pb.SEC_TYPE_INDEX: "IND",
     pb.SEC_TYPE_OPTION: "OPT",
+    pb.SEC_TYPE_CASH: "CASH",
 }
 _RIGHTS = {pb.RIGHT_PUT: "P", pb.RIGHT_CALL: "C"}
 _SEC_TYPE_VALUES = {word: value for value, word in _SEC_TYPES.items()}
