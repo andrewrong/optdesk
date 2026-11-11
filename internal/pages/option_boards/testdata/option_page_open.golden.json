@@ -259,7 +259,8 @@
               "data_type": "live",
               "source": "open_pull",
               "skew": true,
-              "outside_band": false
+              "outside_band": false,
+              "stale": false
             }
           },
           {
@@ -363,7 +364,8 @@
               "data_type": "delayed",
               "source": "refresh",
               "skew": false,
-              "outside_band": true
+              "outside_band": true,
+              "stale": false
             }
           },
           {
@@ -469,7 +471,8 @@
               "data_type": null,
               "source": "close_archive",
               "skew": false,
-              "outside_band": false
+              "outside_band": false,
+              "stale": true
             }
           },
           {
@@ -574,7 +577,8 @@
               "data_type": null,
               "source": "close_archive",
               "skew": false,
-              "outside_band": false
+              "outside_band": false,
+              "stale": true
             }
           },
           {
@@ -677,7 +681,8 @@
               "data_type": null,
               "source": "close_archive",
               "skew": false,
-              "outside_band": false
+              "outside_band": false,
+              "stale": true
             }
           }
         ]
@@ -744,7 +749,8 @@
                 "data_type": null,
                 "source": "close_archive",
                 "skew": false,
-                "outside_band": false
+                "outside_band": false,
+                "stale": true
               }
             },
             {
@@ -780,7 +786,8 @@
                 "data_type": null,
                 "source": "close_archive",
                 "skew": false,
-                "outside_band": false
+                "outside_band": false,
+                "stale": true
               }
             }
           ]

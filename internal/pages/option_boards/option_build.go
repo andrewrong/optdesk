@@ -69,7 +69,7 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 	if err != nil {
 		return nil, err
 	}
-	qs := quoteSource{opens: opens, eod: eod, day: l.Day, zone: c.Zone}
+	qs := quoteSource{opens: opens, eod: eod, day: l.Day, zone: c.Zone, now: at}
 
 	names, err := loadNames(ctx, c.Names, shown)
 	if err != nil {

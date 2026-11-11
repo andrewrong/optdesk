@@ -16,6 +16,9 @@ const (
 	sourceArchive  = "close_archive"
 )
 
+// staleAfter is the age of a quote past which the page greys it (Decision 18, "older than 15 minutes grey").
+const staleAfter = 15 * time.Minute
+
 // archiveLabel is the word of a stored close value, shown with its date ("close archive, 11 Nov").
 const archiveLabel = "close archive"
 
@@ -26,13 +29,15 @@ const (
 	openStatusPartial = 2
 )
 
-// quote is the quote behind the prices of one row. Every field is copied from a stored row; nothing is computed.
+// quote is the quote behind the prices of one row. The fields are copied from a stored row; only Stale is derived,
+// here, from the build time, so that the web compares nothing.
 type quote struct {
 	AsOf        string  `json:"as_of"`
 	DataType    *string `json:"data_type"`
 	Source      string  `json:"source"`
 	Skew        bool    `json:"skew"`
 	OutsideBand bool    `json:"outside_band"`
+	Stale       bool    `json:"stale"` // older than staleAfter at the build time; a close archive value is always stale
 }
 
 // refreshObject is the refresh object of the two schemas, a copy of RefreshState.
@@ -69,6 +74,7 @@ type quoteSource struct {
 	eod   map[int]contracts.OptionEod
 	day   contracts.Day
 	zone  *time.Location
+	now   time.Time // the build time (generated_at), the clock of the staleness
 }
 
 // loadOpens reads the open rows of the build day by instrument id; a nil reader gives an empty map.
@@ -103,7 +109,8 @@ func (q quoteSource) of(instrumentID int) quote {
 	if o.Slot == openquote.SlotRefresh {
 		source = sourceRefresh
 	}
-	return quote{AsOf: at.In(q.zone).Format(time.TimeOnly), DataType: dataTypeOf(o.MarketDataType), Source: source, Skew: o.Skew, OutsideBand: o.OutsideBand}
+	return quote{AsOf: at.In(q.zone).Format(time.TimeOnly), DataType: dataTypeOf(o.MarketDataType), Source: source, Skew: o.Skew, OutsideBand: o.OutsideBand,
+		Stale: q.now.Sub(at) > staleAfter}
 }
 
 // archive is the close archive quote of a contract, dated by its end-of-day row, else by the data day.
@@ -112,12 +119,12 @@ func (q quoteSource) archive(instrumentID int) quote {
 	if e, ok := q.eod[instrumentID]; ok {
 		day = eodDay(e, q.day)
 	}
-	return quote{AsOf: archiveText(day), Source: sourceArchive}
+	return quote{AsOf: archiveText(day), Source: sourceArchive, Stale: true}
 }
 
 // chainQuote is the quote of a chain row; its cells are stored close bids of several contracts.
 func (q quoteSource) chainQuote() quote {
-	return quote{AsOf: archiveText(string(q.day)), Source: sourceArchive}
+	return quote{AsOf: archiveText(string(q.day)), Source: sourceArchive, Stale: true}
 }
 
 // archiveText is "close archive, 11 Nov" of a day text; a text that is not a day is shown as it is.

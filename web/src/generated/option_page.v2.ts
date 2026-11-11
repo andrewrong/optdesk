@@ -561,6 +561,10 @@ export type OutsideBand = boolean;
 export type Skew = boolean;
 export type Source2 = "open_pull" | "refresh" | "close_archive";
 /**
+ * True when the quote is older than 15 minutes at the build time (generated_at); a close archive value is always stale. Derived by the builder; the web only renders it.
+ */
+export type Stale = boolean;
+/**
  * @maxItems 200
  */
 export type Rows = Row[];
@@ -1097,6 +1101,7 @@ export interface Quote {
   outside_band: OutsideBand;
   skew: Skew;
   source: Source2;
+  stale: Stale;
 }
 /**
  * One 今日机会 card.

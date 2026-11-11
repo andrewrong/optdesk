@@ -57,7 +57,7 @@ it('renders nothing without a refresh object (a v1 payload)', async () => {
 it('copies time, data type and source of the quote', async () => {
   await show(
     <OptionQuoteCell
-      quote={{ as_of: '09:45:12', data_type: 'delayed', source: 'refresh', skew: false, outside_band: false } as never}
+      quote={{ as_of: '09:45:12', data_type: 'delayed', source: 'refresh', skew: false, outside_band: false, stale: false } as never}
     />,
   )
   expect(host.querySelector('[data-quote-time]')?.textContent).toBe('09:45:12')
@@ -89,45 +89,23 @@ it('shows a data type other than live in red words and a live one plainly', asyn
   expect(types[1]?.className).not.toContain('text-destructive')
 })
 
-// The clock is fixed: 09:45:12 New York time on 11 Nov 2026 is 14:45:12 UTC.
-const CLOCK = new Date('2026-11-11T14:45:12Z')
-const at = (as_of: string) =>
-  ({ as_of, data_type: 'live', source: 'open_pull', skew: false, outside_band: false }) as never
+const quoteOf = (stale: boolean) =>
+  ({ as_of: '09:45:12', data_type: 'live', source: 'open_pull', skew: false, outside_band: false, stale }) as never
 
-it('greys a quote older than 15 minutes of the injected clock, not a fresh one or one without a time', async () => {
+it('greys a quote the page marks stale and leaves a fresh one plain', async () => {
   await show(
     <>
-      <OptionQuoteCell quote={at('09:45:00')} now={CLOCK} market="US" />
-      <OptionQuoteCell quote={at('09:30:12')} now={CLOCK} market="US" />
-      <OptionQuoteCell quote={at('09:30:11')} now={CLOCK} market="US" />
-      <OptionQuoteCell quote={at('')} now={CLOCK} market="US" />
+      <OptionQuoteCell quote={quoteOf(false)} />
+      <OptionQuoteCell quote={quoteOf(true)} />
     </>,
   )
   const cells = [...host.querySelectorAll('[data-quote]')]
-  expect(cells.map((cell) => cell.hasAttribute('data-quote-stale'))).toEqual([false, false, true, false])
-  expect(cells[2]?.className).toContain('opacity-50')
+  expect(cells.map((cell) => cell.hasAttribute('data-quote-stale'))).toEqual([false, true])
+  expect(cells[1]?.className).toContain('opacity-50')
+  expect(cells[0]?.className).not.toContain('opacity-50')
 })
 
-it('reads the clock in the zone of the market', async () => {
-  await show(<OptionQuoteCell quote={at('23:44:00')} now={CLOCK} market="JP" />)
-  expect(host.querySelector('[data-quote-stale]')).toBeNull()
-})
-
-it('reads New York wall time with daylight saving in summer', async () => {
-  // 15 Jul 2026 13:45:12 UTC is 09:45:12 EDT.
-  const summer = new Date('2026-07-15T13:45:12Z')
-  await show(
-    <>
-      <OptionQuoteCell quote={at('09:30:12')} now={summer} market="US" />
-      <OptionQuoteCell quote={at('09:30:11')} now={summer} market="US" />
-    </>,
-  )
-  expect([...host.querySelectorAll('[data-quote]')].map((c) => c.hasAttribute('data-quote-stale'))).toEqual([false, true])
-})
-
-it('does not grey a fresh JP quote on a list that does not know the market', async () => {
-  // 09:10:00 JST on 12 Nov 2026 = 00:10:00 UTC
-  const now = new Date('2026-11-12T00:10:00Z')
-  await show(<OptionQuoteList items={[{ id: '0', quote: at('09:05:00') }]} now={now} />)
-  expect(host.querySelector('[data-quote-stale]')).toBeNull()
+it('greys a stale quote on the stock page list', async () => {
+  await show(<OptionQuoteList items={[{ id: '0', quote: quoteOf(true) }]} />)
+  expect(host.querySelector('[data-quote-stale]')).not.toBeNull()
 })

@@ -94,7 +94,7 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 		p.RunStatus = runStatus(gaps)
 		return json.Marshal(p)
 	}
-	more, notes, err := fillCompany(ctx, c, day, &p, mine, ld, names)
+	more, notes, err := fillCompany(ctx, c, day, at, &p, mine, ld, names)
 	if err != nil {
 		return nil, err
 	}
@@ -107,10 +107,10 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 
 // fillCompany fills the top bar, matrix, cards, maps and contracts from the rows of the company; it returns the
 // gaps it found and the notes to append to the notice.
-func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, p *stockPayload,
+func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, at time.Time, p *stockPayload,
 	mine []store.Candidate, ld loaded, names displayNames) ([]gap, string, error) {
 	var gaps []gap
-	rows, dayNote, err := prepareRows(ctx, c, mine, day, ld.Day)
+	rows, dayNote, err := prepareRows(ctx, c, mine, day, ld.Day, at)
 	if err != nil {
 		return nil, "", err
 	}
@@ -168,7 +168,7 @@ func bareKey(rows []store.Candidate, names displayNames) string {
 
 // prepareRows pairs each stored row with its gates, close text and quote. day is the build day, which the open rows
 // are of; dataDay is the day of the stored rows.
-func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day, dataDay contracts.Day) ([]stockRow, string, error) {
+func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day, dataDay contracts.Day, now time.Time) ([]stockRow, string, error) {
 	eod, err := loadEod(ctx, c.Eod, mine, dataDay)
 	if err != nil {
 		return nil, "", err
@@ -177,7 +177,7 @@ func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day
 	if err != nil {
 		return nil, "", err
 	}
-	qs := quoteSource{opens: opens, eod: eod, day: dataDay, zone: c.Zone}
+	qs := quoteSource{opens: opens, eod: eod, day: dataDay, zone: c.Zone, now: now}
 	rows := make([]stockRow, len(mine))
 	for i, r := range mine {
 		gates, err := parseGates(r.Gates)
