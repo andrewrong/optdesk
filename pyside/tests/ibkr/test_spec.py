@@ -12,6 +12,7 @@ from optdesk.ibkr import spec
 from optdesk.ibkr.spec import (
     DIVIDENDS,
     OPTION_EOD,
+    OPTION_OPEN,
     SNAPSHOT,
     TABLE,
     UNDERLYING_IV,
@@ -44,11 +45,21 @@ def test_snapshot_kind_ticks() -> None:
     assert row.generic_ticks == ""
     assert row.release_fields == {"bid", "ask"}
     assert row.timeout_s == 20
-    assert set(TABLE) == {OPTION_EOD, UNDERLYING_IV, SNAPSHOT, DIVIDENDS}
+    assert set(TABLE) == {
+        OPTION_EOD,
+        OPTION_OPEN,
+        UNDERLYING_IV,
+        SNAPSHOT,
+        DIVIDENDS,
+    }
 
 
 def test_timeout_is_twenty_seconds() -> None:
-    assert all(row.timeout_s == 20 for kind, row in TABLE.items() if kind != DIVIDENDS)
+    excepted = {DIVIDENDS, OPTION_OPEN}
+    assert all(
+        row.timeout_s == 20 for kind, row in TABLE.items() if kind not in excepted
+    )
+    assert kind_spec(OPTION_OPEN).timeout_s == 15
     with pytest.raises(UnknownKind):
         kind_spec("weekly")
 
@@ -83,14 +94,15 @@ def test_table_matches_proto_comment() -> None:
     )
     for name, kind in (
         ("OPTION_EOD", OPTION_EOD),
+        ("OPTION_OPEN", OPTION_OPEN),
         ("UNDERLYING_IV", UNDERLYING_IV),
         ("SNAPSHOT", SNAPSHOT),
     ):
         match = re.search(rf"{name}: (.*?)(?: [A-Z_]+:|These first values)", comment)
         assert match, name
         text = match.group(1)
-        ticks = re.search(r"generic ticks (\d+) and (\d+)", text)
-        expected = f"{ticks.group(1)},{ticks.group(2)}" if ticks else ""
+        ticks = re.search(r'generic ticks (\d+) and (\d+)|ticks "(\d+),(\d+)"', text)
+        expected = ",".join(g for g in ticks.groups() if g) if ticks else ""
         assert kind_spec(kind).generic_ticks == expected
         seconds = re.search(r"at most (\d+) s", text)
         assert seconds and kind_spec(kind).timeout_s == int(seconds.group(1))

@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 OPTION_EOD = "option_eod"
+OPTION_OPEN = "option_open"
 UNDERLYING_IV = "underlying_iv"
 SNAPSHOT = "snapshot"
 DIVIDENDS = "dividends"
@@ -57,6 +58,13 @@ TABLE: Mapping[str, KindSpec] = {
         timeout_s=20,
         grace_fields=frozenset({"open_interest"}),
         grace_s=OI_GRACE_S,
+    ),
+    # The open pull: no close, no open-interest grace.
+    OPTION_OPEN: KindSpec(
+        generic_ticks="100,101",
+        release_fields=frozenset({"bid", "ask", *_MODEL}),
+        wanted_fields=("bid", "ask", "close", "volume", "open_interest", *_MODEL),
+        timeout_s=15,
     ),
     UNDERLYING_IV: KindSpec(
         generic_ticks="104,106",
