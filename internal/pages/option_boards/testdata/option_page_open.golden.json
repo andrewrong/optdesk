@@ -202,31 +202,31 @@
                 "column": "delta",
                 "cell": {
                   "kind": "text",
-                  "text": "−0.15",
-                  "value": -15
+                  "text": "−0.16",
+                  "value": -16
                 }
               },
               {
                 "column": "bid_ask",
                 "cell": {
                   "kind": "text",
-                  "text": "$1.20 / $1.30",
-                  "value": 120
+                  "text": "$1.25 / $1.35",
+                  "value": 125
                 }
               },
               {
                 "column": "spread_pct",
                 "cell": {
                   "kind": "text",
-                  "text": "8.0%",
-                  "value": 800
+                  "text": "7.7%",
+                  "value": 769
                 }
               },
               {
                 "column": "volume",
                 "cell": {
-                  "value": 1240,
-                  "text": "1240",
+                  "value": 300,
+                  "text": "300",
                   "unit": "contracts"
                 }
               },
@@ -308,25 +308,24 @@
               {
                 "column": "delta",
                 "cell": {
-                  "kind": "text",
-                  "text": "−0.1",
-                  "value": -10
+                  "reason": "no_data",
+                  "text": "缺"
                 }
               },
               {
                 "column": "bid_ask",
                 "cell": {
                   "kind": "text",
-                  "text": "$0.95 / $1.05",
-                  "value": 95
+                  "text": "$0.9 / $1.1",
+                  "value": 90
                 }
               },
               {
                 "column": "spread_pct",
                 "cell": {
                   "kind": "text",
-                  "text": "10.0%",
-                  "value": 1000
+                  "text": "20.0%",
+                  "value": 2000
                 }
               },
               {

@@ -30,8 +30,8 @@ func tp(t time.Time) *time.Time { return &t }
 // openRows: 11 is an open pull row with a skew, 12 a refresh row, 21 an error row (no usable quote).
 func openRows() []contracts.OptionOpen {
 	return []contracts.OptionOpen{
-		{InstrumentID: 11, Slot: "0945", Status: 1, MarketDataType: 1, Skew: true, EventTs: tp(time.Date(2026, 11, 10, 14, 45, 12, 0, time.UTC))},
-		{InstrumentID: 12, Slot: openquote.SlotRefresh, Status: 2, MarketDataType: 3, OutsideBand: true, ReceivedAt: time.Date(2026, 11, 10, 15, 2, 3, 0, time.UTC)},
+		{InstrumentID: 11, Slot: "0945", Status: 1, MarketDataType: 1, Skew: true, Bid: fp(1.25), Ask: fp(1.35), Delta: fp(-0.16), IvDecimal: fp(0.4), Volume: fp(300), EventTs: tp(time.Date(2026, 11, 10, 14, 45, 12, 0, time.UTC))},
+		{InstrumentID: 12, Slot: openquote.SlotRefresh, Status: 2, MarketDataType: 3, OutsideBand: true, Bid: fp(0.9), Ask: fp(1.1), ReceivedAt: time.Date(2026, 11, 10, 15, 2, 3, 0, time.UTC)},
 		{InstrumentID: 21, Slot: "0945", Status: 8, MarketDataType: 1, EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC))},
 	}
 }
@@ -176,5 +176,81 @@ func TestStockPageQuotePerRow(t *testing.T) {
 	}
 	if err := compileSchema(t, "page.stock_option_page.v2.json").Validate(v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestStockContractLineShowsRefreshBid(t *testing.T) {
+	t.Parallel()
+	bid := 9.99
+	opens := []contracts.OptionOpen{{InstrumentID: 101, Slot: openquote.SlotRefresh, Status: 1, MarketDataType: 1, Bid: &bid,
+		EventTs: tp(time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC))}}
+	p, _ := stockWithQuotes(t, &fakeOpens{rows: opens})
+	for _, l := range p.Contracts.Rows {
+		if l.Quote.Source == "refresh" && l.Cells[2] != "9.99" {
+			t.Fatalf("line labelled refresh shows bid %s, want the refresh bid 9.99", l.Cells[2])
+		}
+	}
+}
+
+func TestStockRowsOfAnOpenQuoteShowItsPrices(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	opens := []contracts.OptionOpen{{
+		InstrumentID: 101, Slot: "0945", Status: 1, MarketDataType: 1, Bid: f(1.5), Ask: f(1.6), Delta: f(-0.2), IvDecimal: f(0.31),
+		ThetaPerCalendarDay: f(-0.03), Gamma: f(0.04), VegaPerVolPoint: f(0.06), Volume: f(77),
+		EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
+	}}
+	p, _ := stockWithQuotes(t, &fakeOpens{rows: opens})
+	var line contractLine
+	for _, l := range p.Contracts.Rows {
+		if l.Quote.Source == "open_pull" {
+			line = l
+		}
+	}
+	want := []string{"1.5", "1.6", "−0.2", "31%", "-0.03", "0.04", "0.06", "77"}
+	for i, w := range want {
+		if got := line.Cells[2+i]; got != w {
+			t.Errorf("contract cell %d = %q, want %q", 2+i, got, w)
+		}
+	}
+	for _, c := range p.Matrix.Cells {
+		switch c.Key {
+		case "c101":
+			if c.Premium != "权利金 1.5" || c.Delta != "Δ −0.2" || c.Volume != "成交量 77" {
+				t.Errorf("open cell = %+v", c)
+			}
+		case "c102":
+			if c.Premium != "权利金 1.20" {
+				t.Errorf("close cell premium = %q, want the stored close bid", c.Premium)
+			}
+		}
+	}
+}
+
+func TestOptionTableRowOfAnOpenQuoteShowsItsPrices(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	opens := []contracts.OptionOpen{{
+		InstrumentID: 11, Slot: "0945", Status: 1, MarketDataType: 1, Bid: f(2), Ask: f(2.2), Delta: f(-0.25), Volume: f(5),
+		EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
+	}}
+	m := decodeMap(t, optionWithQuotes(t, &fakeOpens{rows: opens}, RefreshState{}))
+	var open, closed any
+	for _, r := range tableRowsOf(m) {
+		switch r.(map[string]any)["id"] {
+		case "r11":
+			open = r
+		case "r12":
+			closed = r
+		}
+	}
+	if got := cellOf(t, open, "bid_ask")["text"]; got != "$2 / $2.2" {
+		t.Errorf("open bid_ask = %v", got)
+	}
+	if got := cellOf(t, open, "delta")["text"]; got != "−0.25" {
+		t.Errorf("open delta = %v", got)
+	}
+	if got := cellOf(t, closed, "bid_ask")["text"]; got != "$0.95 / $1.05" {
+		t.Errorf("close bid_ask = %v", got)
 	}
 }

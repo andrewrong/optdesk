@@ -24,6 +24,7 @@ type stockRow struct {
 	Gates []gateResult
 	Eod   eodText
 	Quote quote
+	Live  *livePrices // the prices of the open or refresh row, nil for a close archive quote
 }
 
 func (r stockRow) ok() bool { return r.C.Status == "ok" }
@@ -183,7 +184,7 @@ func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day
 		if err != nil {
 			return nil, "", fmt.Errorf("option_boards: gates of instrument %d: %w", r.InstrumentID, err)
 		}
-		rows[i] = stockRow{C: r, Gates: gates, Eod: eodTextFor(eod, r.InstrumentID), Quote: qs.of(r.InstrumentID)}
+		rows[i] = stockRow{C: r, Gates: gates, Eod: eodTextFor(eod, r.InstrumentID), Quote: qs.of(r.InstrumentID), Live: qs.live(r.InstrumentID)}
 	}
 	dayNote := ""
 	if n := chainDayNote(eod, dataDay); n != "" {

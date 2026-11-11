@@ -145,3 +145,44 @@ func dataTypeOf(t int) *string {
 	}
 	return &s
 }
+
+// livePrices is the raw decimal text of the prices of an open pull or refresh row, shown next to the quote that names it.
+// A field the row does not hold is "缺"; it is never filled from the close archive, whose label it would not carry.
+type livePrices struct {
+	Bid, Ask, Delta, IV, Theta, Gamma, Vega, Volume string
+}
+
+// live is the prices of the open or refresh row of an instrument, nil when the quote is a close archive value.
+func (q quoteSource) live(instrumentID int) *livePrices {
+	o, ok := q.opens[instrumentID]
+	if !ok {
+		return nil
+	}
+	p := &livePrices{
+		Bid: floatText(o.Bid), Ask: floatText(o.Ask), Delta: floatText(o.Delta),
+		IV: gapText, Theta: floatText(o.ThetaPerCalendarDay), Gamma: floatText(o.Gamma),
+		Vega: floatText(o.VegaPerVolPoint), Volume: floatText(o.Volume),
+	}
+	if iv := floatText(o.IvDecimal); iv != gapText {
+		if s, err := shiftPercent(iv); err == nil {
+			p.IV = s
+		}
+	}
+	return p
+}
+
+// textPtr is nil for the gap text, else a pointer to the text; the table cells read stored decimals as pointers.
+func textPtr(s string) *string {
+	if s == gapText {
+		return nil
+	}
+	return &s
+}
+
+// DeltaText is the delta as displayed: signed with the minus sign, or "缺".
+func (p livePrices) DeltaText() string {
+	if p.Delta == gapText {
+		return gapText
+	}
+	return signedText(p.Delta)
+}
