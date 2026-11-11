@@ -27,7 +27,7 @@ export function OptionCandidatesPage({ payload }: { payload: Payload }) {
           <div className="flex flex-wrap gap-2">
             {payload.chain_day ? <Badge data-chain-day>{payload.chain_day}</Badge> : null}
             {payload.computed_at ? <Badge variant="secondary" data-computed-at>{payload.computed_at}</Badge> : null}
-            {payload.rule_version ? <Badge variant="outline" data-rule-version>{payload.rule_version}</Badge> : null}
+            {payload.rule_version ? <Badge variant="outline" data-rule-version>Rule {payload.rule_version}</Badge> : null}
           </div>
           <p data-estimate-note className="text-muted-foreground">
             {payload.estimate_note}
