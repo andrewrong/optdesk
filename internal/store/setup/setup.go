@@ -62,7 +62,15 @@ const (
 	// INSERT, UPDATE, DELETE and SELECT on master.option_not_listed, INSERT, UPDATE and SELECT on
 	// master.option_contract, SELECT on rd.option_open_r1 and rd.option_open_item_r1 (migrations/0029 to 0032).
 	roleOptionOpen = "ot_w_option_open"
+
+	// roleUnderlyingResolve: INSERT and SELECT on settings.underlying, SELECT on rd.underlying_r1, nothing on any other
+	// settings table (migrations/0033_underlying.sql).
+	roleUnderlyingResolve = "ot_w_underlying_resolve"
 )
+
+// dsnEnvUnderlyingResolve is the line of roleUnderlyingResolve. It equals underlying.DSNEnvResolve; store/setup may
+// not import store/underlying.
+const dsnEnvUnderlyingResolve = "OT_PG_DSN_UNDERLYING_RESOLVE"
 
 // dsnEnvSettings is the line of roleSettings. It equals ownerset.DSNEnvSettings; setup is a sibling sub-package and
 // does not import ownerset, so the test TestSetupLineEqualsOwnersetConst of cmd/ot holds the two together.
@@ -88,22 +96,23 @@ var roles = []roleSpec{
 	{roleQuoteSnapshot, store.DSNEnvQuoteSnapshot},
 	{roleMaster, store.DSNEnvMaster},
 	{roleReadings, store.DSNEnvReadings},
-	{roleAlerts, store.DSNEnvAlerts},             // ot_w_alerts, line OT_PG_DSN_ALERTS
-	{roleFundamental, store.DSNEnvFundamental},   // ot_w_fundamental, line OT_PG_DSN_FUNDAMENTAL
-	{roleEvents, store.DSNEnvEvents},             // ot_w_events, line OT_PG_DSN_EVENTS
-	{roleCandidate, store.DSNEnvCandidate},       // ot_w_candidate, line OT_PG_DSN_CANDIDATE
-	{roleAccount, store.DSNEnvAccount},           // ot_w_account, line OT_PG_DSN_ACCOUNT
-	{roleBar, bar.DSNEnvBar},                     // ot_w_bar, line OT_PG_DSN_BAR
-	{roleOptionLedger, store.DSNEnvOptionLedger}, // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
-	{roleSettings, dsnEnvSettings},               // ot_w_settings, line OT_PG_DSN_SETTINGS
-	{roleMark, dsnEnvPosMark},                    // line OT_PG_DSN_POSMARK
-	{roleOptionOpen, dsnEnvOptionOpen},           // ot_w_option_open, line OT_PG_DSN_OPTION_OPEN
+	{roleAlerts, store.DSNEnvAlerts},                 // ot_w_alerts, line OT_PG_DSN_ALERTS
+	{roleFundamental, store.DSNEnvFundamental},       // ot_w_fundamental, line OT_PG_DSN_FUNDAMENTAL
+	{roleEvents, store.DSNEnvEvents},                 // ot_w_events, line OT_PG_DSN_EVENTS
+	{roleCandidate, store.DSNEnvCandidate},           // ot_w_candidate, line OT_PG_DSN_CANDIDATE
+	{roleAccount, store.DSNEnvAccount},               // ot_w_account, line OT_PG_DSN_ACCOUNT
+	{roleBar, bar.DSNEnvBar},                         // ot_w_bar, line OT_PG_DSN_BAR
+	{roleOptionLedger, store.DSNEnvOptionLedger},     // ot_w_optionledger, line OT_PG_DSN_OPTION_LEDGER
+	{roleSettings, dsnEnvSettings},                   // ot_w_settings, line OT_PG_DSN_SETTINGS
+	{roleMark, dsnEnvPosMark},                        // line OT_PG_DSN_POSMARK
+	{roleOptionOpen, dsnEnvOptionOpen},               // ot_w_option_open, line OT_PG_DSN_OPTION_OPEN
+	{roleUnderlyingResolve, dsnEnvUnderlyingResolve}, // ot_w_underlying_resolve, line OT_PG_DSN_UNDERLYING_RESOLVE
 }
 
 // extensions are created in the database by Setup.
 var extensions = []string{"timescaledb"}
 
-// Setup creates database optdesk, the Timescale extension and the nineteen roles on the server of cfg.AdminDSN,
+// Setup creates database optdesk, the Timescale extension and the twenty roles on the server of cfg.AdminDSN,
 // each role with a generated password, then writes the OT_PG_DSN_* lines of cfg.Home/.env.
 // It is idempotent: a role whose DSN is already in .env keeps that password, and the owner is created once.
 // The SQL runs first; .env is written only after it succeeded. No password is logged.
@@ -182,7 +191,7 @@ func createServerObjects(ctx context.Context, adminDSN string, passwords map[str
 		", " + ident(roleOptionEod) + ", " + ident(roleQuoteSnapshot) + ", " + ident(roleMaster) + ", " + ident(roleReadings) + ", " + ident(roleAlerts) +
 		", " + ident(roleFundamental) + ", " + ident(roleEvents) + ", " + ident(roleCandidate) + ", " + ident(roleAccount) +
 		", " + ident(roleBar) + ", " + ident(roleOptionLedger) + ", " + ident(roleSettings) + ", " + ident(roleMark) +
-		", " + ident(roleOptionOpen)
+		", " + ident(roleOptionOpen) + ", " + ident(roleUnderlyingResolve)
 	if _, err := conn.Exec(ctx, grant); err != nil {
 		return fmt.Errorf("setup: grant connect: %w", err)
 	}
