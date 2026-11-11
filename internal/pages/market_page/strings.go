@@ -2,48 +2,48 @@ package market_page
 
 // Fixed texts of the page.
 const (
-	pageTitle    = "市场"
-	pageSentence = "天气来自标普 500 相对 200 日线的位置；分位和期限来自已存储的数据，其余项暂未生成。"
+	pageTitle    = "Market"
+	pageSentence = "Weather comes from the S&P 500 against its 200-day average; percentile and term come from stored data, the other items are not built yet."
 
-	weatherHeadline    = "标普 500 相对 200 日线的位置"
-	weatherSentenceFmt = "与 200 日线相差 "
-	weatherNoRow       = "天气暂无数据：还没有存储"
-	weatherMissing     = "天气暂缺：输入不全"
-	weatherStale       = "天气数据已过期，数据日 "
+	weatherHeadline    = "S&P 500 against its 200-day average"
+	weatherSentenceFmt = "Gap to the 200-day average: "
+	weatherNoRow       = "Weather: no data yet, nothing stored"
+	weatherMissing     = "Weather: n/a, input incomplete"
+	weatherStale       = "Weather data is stale, data day "
 
-	indicesTitle    = "指数波动率"
-	indicesSentence = "分位是指数在近 3 年中的位置；其余列暂未生成。"
-	indicesNote     = "分位来自 Cboe 波动率指数，不是平值隐含波动率。"
+	indicesTitle    = "Index volatility"
+	indicesSentence = "Percentile is the index position over the last 3 years; the other columns are not built yet."
+	indicesNote     = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
-	termTitle        = "期限结构"
-	termSentenceFmt  = "VIX 与 3 个月 VIX 之比 "
-	termSentenceNone = "期限结构比值暂无存储。"
+	termTitle        = "Term structure"
+	termSentenceFmt  = "VIX to 3-month VIX ratio "
+	termSentenceNone = "Term structure ratio: nothing stored."
 
-	breadthNotBuilt = "市场宽度暂未生成：没有对应的数据"
-	chartNotBuilt   = "走势图暂未生成：没有存储的 200 日线"
-	ivNotBuilt      = "隐含波动率暂未生成：还没有存储"
-	rv20NotBuilt    = "20 日已实现波动率暂未生成"
-	ivRvNotBuilt    = "隐含减已实现暂未生成"
-	n225NoData      = "日经波动率暂无数据：没有对应的 FRED 序列"
+	breadthNotBuilt = "Market breadth: not built yet, no matching data"
+	chartNotBuilt   = "Trend chart: not built yet, no stored 200-day average"
+	ivNotBuilt      = "Implied volatility: not built yet, nothing stored"
+	rv20NotBuilt    = "20-day realised volatility: not built yet"
+	ivRvNotBuilt    = "Implied minus realised: not built yet"
+	n225NoData      = "Nikkei volatility: no data yet, no matching FRED series"
 
-	pctShortHistory = "历史不满 3 年，不给分位"
-	pctStale        = "分位数据已过期，数据日 "
-	pctStaleNoDay   = "分位数据已过期"
-	pctMissing      = "分位暂缺：输入不全"
-	pctNoRow        = "分位暂无数据：还没有存储"
+	pctShortHistory = "History under 3 years, no percentile"
+	pctStale        = "Percentile data is stale, data day "
+	pctStaleNoDay   = "Percentile data is stale"
+	pctMissing      = "Percentile: n/a, input incomplete"
+	pctNoRow        = "Percentile: no data yet, nothing stored"
 
-	termNoPoint    = "暂无存储的点"
-	termStaleToday = "最新点已过期"
-	termNoOlder    = "五天前暂无存储的点"
+	termNoPoint    = "No stored point"
+	termStaleToday = "Latest point is stale"
+	termNoOlder    = "No stored point five days ago"
 
-	staleLabelPrefix = "数据日 "
+	staleLabelPrefix = "Data day "
 )
 
 var (
 	pageNotes = []string{
-		"分位只在存储的历史满 3 年后给出。",
-		"期限结构的点取自已存储的序列，不补不算。",
+		"Percentile is given only when the stored history covers 3 years.",
+		"Term structure points come from the stored series, nothing is filled in or computed.",
 	}
-	indicesColumns = []string{"指数", "隐含波动率", "20 日已实现", "隐含减已实现", "3 年分位"}
+	indicesColumns = []string{"Index", "Implied volatility", "20-day realised", "Implied minus realised", "3-year percentile"}
 	termLabels     = []string{"1M", "3M"}
 )

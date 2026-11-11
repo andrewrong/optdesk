@@ -28,15 +28,15 @@ type fill struct {
 }
 
 var actionTexts = map[string]string{
-	"open": "开仓", "close": "平仓", "expire": "到期", "assign": "被指派", "exercise": "行权",
+	"open": "Open", "close": "Close", "expire": "Expire", "assign": "Assigned", "exercise": "Exercise",
 }
 
 func rightText(r string) string {
 	if r == "P" {
-		return "看跌"
+		return "Put"
 	}
 	if r == "C" {
-		return "看涨"
+		return "Call"
 	}
 	return "-"
 }
@@ -52,7 +52,7 @@ func (b *builder) legs() []any {
 	out := []any{}
 	for i, l := range b.s.Legs {
 		if i == maxLegs {
-			b.addGap(gap{Reason: reasonNoData, Text: "仅显示前 8 条腿"})
+			b.addGap(gap{Reason: reasonNoData, Text: "Showing only the first 8 legs"})
 			break
 		}
 		out = append(out, b.note(b.legRow(l)))
@@ -75,9 +75,9 @@ func (b *builder) legRow(l compute.StructureLeg) any {
 	if !okQ || !okS || !okP || l.Expiry == "" {
 		return mkGap(reasonMissing)
 	}
-	side := "买入"
+	side := "Buy"
 	if qty < 0 {
-		side = "卖出"
+		side = "Sell"
 	}
 	return leg{
 		SideText: side, RightText: rightText(l.Right), Strike: strike,
@@ -108,7 +108,7 @@ func (b *builder) fills() []fill {
 	for _, l := range b.s.Legs {
 		for _, f := range b.pos[l.PositionID].Fills {
 			if len(out) == maxFills {
-				b.addGap(gap{Reason: reasonNoData, Text: "仅显示前 50 笔成交"})
+				b.addGap(gap{Reason: reasonNoData, Text: "Showing only the first 50 fills"})
 				return out
 			}
 			row, ok := b.fillRow(l, f)
@@ -120,7 +120,7 @@ func (b *builder) fills() []fill {
 		}
 	}
 	if bad {
-		b.addGap(gap{Reason: reasonMissing, Text: "部分成交记录无法显示"})
+		b.addGap(gap{Reason: reasonMissing, Text: "Some fills cannot be shown"})
 	}
 	return out
 }
@@ -140,7 +140,7 @@ func (b *builder) fillRow(l compute.StructureLeg, f compute.LedgerFill) (fill, b
 	}
 	day := string(f.Day)
 	if day == "" {
-		day = "时间未知"
+		day = "Time unknown"
 	}
 	var fee any
 	if u, ok := usdCell(f.Commission); ok {

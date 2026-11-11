@@ -160,7 +160,7 @@ func TestFindByID(t *testing.T) {
 	other := fx.Result.Structures[0]
 	other.ID, other.Underlying = "main:T999:1", "ZZZ"
 	fx.Result.Other = []compute.Structure{other}
-	for id, want := range map[string]string{spreadID: "MSFT 看跌价差", "main:T999:1": "ZZZ 看跌价差"} {
+	for id, want := range map[string]string{spreadID: "MSFT Put spread", "main:T999:1": "ZZZ Put spread"} {
 		m := fx.build(t, id, true)
 		if m["title"] != want || m["scope"] != "main" || m["schema"] != "structure_detail" || m["schema_version"] != 3.0 {
 			t.Errorf("%s: title = %v, scope = %v", id, m["title"], m["scope"])
@@ -171,11 +171,11 @@ func TestFindByID(t *testing.T) {
 func TestIDNotOpenIsGapPage(t *testing.T) {
 	t.Parallel()
 	m := readFixture(t, "detail_spread").build(t, "main:T000:9", true)
-	if m["sentence"] != "结构已不在持仓中" || m["run_status"] != "partial" {
+	if m["sentence"] != "Structure is no longer held" || m["run_status"] != "partial" {
 		t.Fatalf("sentence = %v, status = %v", m["sentence"], m["run_status"])
 	}
 	for _, k := range []string{"payoff", "greeks"} {
-		if g := obj(t, m[k]); g["text"] != "结构已不在持仓中" {
+		if g := obj(t, m[k]); g["text"] != "Structure is no longer held" {
 			t.Errorf("%s = %v", k, g)
 		}
 	}
@@ -204,7 +204,7 @@ func TestTilesFromFigures(t *testing.T) {
 	if r := obj(t, obj(t, gt["pnl"])["figure"])["reason"]; r != "missing_quote" {
 		t.Errorf("pnl gap = %v", r)
 	}
-	if loss := obj(t, obj(t, gt["max_loss"])["figure"]); loss["reason"] != "no_rule" || loss["text"] != "无上限" {
+	if loss := obj(t, obj(t, gt["max_loss"])["figure"]); loss["reason"] != "no_rule" || loss["text"] != "No limit" {
 		t.Errorf("max_loss = %v", loss)
 	}
 }
@@ -217,7 +217,7 @@ func TestLevelsDistance(t *testing.T) {
 		lv := obj(t, l)
 		got = append(got, lv["name"].(string)+"="+obj(t, lv["price"])["text"].(string)+" "+lv["distance"].(string))
 	}
-	want := []string{"买入行权价=300 -6.2500%", "卖出行权价=310 -3.1250%", "盈亏平衡=308.5000 -3.5938%"}
+	want := []string{"Long strike=300 -6.2500%", "Short strike=310 -3.1250%", "Breakeven=308.5000 -3.5938%"}
 	if len(got) != 3 || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
 		t.Fatalf("levels = %v, want %v", got, want)
 	}

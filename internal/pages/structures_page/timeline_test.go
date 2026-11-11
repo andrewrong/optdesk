@@ -12,8 +12,8 @@ func TestTimelineDays(t *testing.T) {
 	// the dates are copied: opened 2026-10-19 (ledger piece), first expiry 2026-12-18 (legs); no day count is written
 	type want struct{ name, date, text, days string }
 	for i, w := range []want{
-		{"开仓", "2026-10-19", "0%", "开仓日"},
-		{"到期", "2026-12-18", "100%", "到期日"},
+		{"Open", "2026-10-19", "0%", "Open day"},
+		{"Expiry", "2026-12-18", "100%", "Expiry day"},
 	} {
 		s := obj(t, st[i])
 		el := obj(t, s["elapsed"])

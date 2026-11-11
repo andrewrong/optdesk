@@ -362,7 +362,7 @@ func newMacroPage(zone *time.Location, buildID string, read compute.ReadingFunc)
 		Read:    read,
 		Indicators: []macro_page.Indicator{
 			// single source moves to the job manifest in a later design
-			{SeriesID: "DGS10", Name: "10年期美债收益率", SourceText: "FRED"},
+			{SeriesID: "DGS10", Name: "10-year Treasury yield", SourceText: "FRED"},
 		},
 	}
 	return macro_page.NewPage(cfg)

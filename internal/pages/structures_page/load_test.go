@@ -153,7 +153,7 @@ func TestNoLedgerRowsIsNothingHeld(t *testing.T) {
 			t.Fatalf("rows = %v", rows)
 		}
 	}
-	if m["sentence"] != "账户 main 没有持仓中的结构" || m["run_status"] == "failed" {
+	if m["sentence"] != "Account main has no structures held" || m["run_status"] == "failed" {
 		t.Fatalf("sentence = %v, status = %v", m["sentence"], m["run_status"])
 	}
 }

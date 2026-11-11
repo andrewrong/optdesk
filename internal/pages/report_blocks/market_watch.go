@@ -69,7 +69,7 @@ func MarketWatch(c Config) BlockFunc {
 			}
 		}
 		h := newHead(keyWatch, titleWatch, subWatch, sayWatch, noDataTimes)
-		h.addGap(gapJSON{Reason: "missing_quote", Text: "重点公司：" + textMissQuote})
+		h.addGap(gapJSON{Reason: "missing_quote", Text: "Focus companies: " + textMissQuote})
 		out := watchBlock{Companies: gapOf("missing_quote")}
 		switch {
 		case len(in.Closes) == 0:

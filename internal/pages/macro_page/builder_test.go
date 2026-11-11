@@ -59,7 +59,7 @@ func f64(v float64) *float64 { return &v }
 func cfg(ids ...string) Config {
 	c := Config{RunID: "run-1", BuildID: "build-1", Scope: "macro", Zone: zone}
 	for _, id := range ids {
-		c.Indicators = append(c.Indicators, Indicator{SeriesID: id, Name: "名 " + id, SourceText: "FRED"})
+		c.Indicators = append(c.Indicators, Indicator{SeriesID: id, Name: "Name " + id, SourceText: "FRED"})
 	}
 	return c
 }
@@ -119,17 +119,17 @@ func indicator(m map[string]any, i int) map[string]any {
 const golden = `{"schema":"macro_page","schema_version":1,"run_id":"run-1","build_id":"build-1",` +
 	`"scope":"macro","generated_at":"2026-11-06T00:00:00+08:00",` +
 	`"data_times":[{"source":"DGS10","data_time":"2026-11-04T00:00:00+08:00"}],` +
-	`"run_status":"partial","title":"宏观","sentence":"宏观指标来自已存储的序列；松紧度和事件暂无数据。",` +
-	`"ease_title":"松紧度","events_title":"本周与下周","indicators_title":"指标","notes_title":"说明",` +
-	`"ease":{"reason":"no_data","text":"松紧度暂无数据"},"events":[],"indicators":[{"name":"名 DGS10",` +
-	`"latest":{"value":4.3,"text":"4.3%","unit":"percent"},"status":"good","label":"及时",` +
-	`"source_text":"FRED","detail_href":"/indicator/DGS10"},{"name":"名 DGS2",` +
-	`"latest":{"reason":"no_data","text":"暂缺"},"status":"missing","label":"缺",` +
-	`"source_text":"FRED","detail_href":null}],"notes":["日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",` +
-	`"指标取自序列最新存储的一期；没有存储的标为暂缺。"],"gaps":[{"reason":"no_data",` +
-	`"text":"松紧度暂无数据"},{"reason":"no_data","text":"事件日历暂无数据"}],` +
+	`"run_status":"partial","title":"Macro","sentence":"Macro indicators come from stored series; ease and events: no data yet.",` +
+	`"ease_title":"Ease","events_title":"This week and next","indicators_title":"Indicators","notes_title":"Notes",` +
+	`"ease":{"reason":"no_data","text":"Ease: no data yet"},"events":[],"indicators":[{"name":"Name DGS10",` +
+	`"latest":{"value":4.3,"text":"4.3%","unit":"percent"},"status":"good","label":"On time",` +
+	`"source_text":"FRED","detail_href":"/indicator/DGS10"},{"name":"Name DGS2",` +
+	`"latest":{"reason":"no_data","text":"no data yet"},"status":"missing","label":"n/a",` +
+	`"source_text":"FRED","detail_href":null}],"notes":["Dates come from the FRED release calendar and central bank schedules; dates only, no release times.",` +
+	`"Each indicator is the latest stored period of its series; a series with none stored shows n/a."],"gaps":[{"reason":"no_data",` +
+	`"text":"Ease: no data yet"},{"reason":"no_data","text":"Event calendar: no data yet"}],` +
 	`"stale":{"data_time":"2026-11-04T00:00:00+08:00",` +
-	`"stale_after":"2026-11-08T09:30:00+08:00","text":"数据日 11-04"}}`
+	`"stale_after":"2026-11-08T09:30:00+08:00","text":"Data day 11-04"}}`
 
 func TestBuildGolden(t *testing.T) {
 	t.Parallel()
@@ -159,12 +159,12 @@ func TestIndicatorStatus(t *testing.T) {
 		status, text string
 		latestKey    string
 	}{
-		{"good", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", f64(4.5))}, "good", "及时", "unit"},
-		{"good at limit", []contracts.SeriesPoint{pt(t, "2026-11-01", "2026-11-01", "percent", f64(4))}, "good", "及时", "unit"},
-		{"late", []contracts.SeriesPoint{pt(t, "2026-10-31", "2026-10-31", "percent", f64(4))}, "late", "迟到", "unit"},
-		{"missing", nil, "missing", "缺", "reason"},
-		{"nil value only", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", nil)}, "missing", "缺", "reason"},
-		{"other unit", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "index", f64(1))}, "good", "及时", "reason"},
+		{"good", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", f64(4.5))}, "good", "On time", "unit"},
+		{"good at limit", []contracts.SeriesPoint{pt(t, "2026-11-01", "2026-11-01", "percent", f64(4))}, "good", "On time", "unit"},
+		{"late", []contracts.SeriesPoint{pt(t, "2026-10-31", "2026-10-31", "percent", f64(4))}, "late", "Late", "unit"},
+		{"missing", nil, "missing", "n/a", "reason"},
+		{"nil value only", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "percent", nil)}, "missing", "n/a", "reason"},
+		{"other unit", []contracts.SeriesPoint{pt(t, "2026-11-04", "2026-11-04", "index", f64(1))}, "good", "On time", "reason"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -220,9 +220,9 @@ func TestStaleLabel(t *testing.T) {
 		dt, sa, tx string
 		nTimes     int
 	}{
-		{"one", one, []string{"A"}, "2026-11-04T00:00:00+08:00", "2026-11-08T09:30:00+08:00", "数据日 11-04", 1},
-		{"two", two, []string{"A", "B"}, "2026-11-02T00:00:00+08:00", "2026-11-06T09:30:00+08:00", "数据日 11-02", 2},
-		{"none", fakeReader{}, []string{"A"}, "2026-11-05T00:00:00+08:00", "2026-11-09T09:30:00+08:00", "没有数据日", 0},
+		{"one", one, []string{"A"}, "2026-11-04T00:00:00+08:00", "2026-11-08T09:30:00+08:00", "Data day 11-04", 1},
+		{"two", two, []string{"A", "B"}, "2026-11-02T00:00:00+08:00", "2026-11-06T09:30:00+08:00", "Data day 11-02", 2},
+		{"none", fakeReader{}, []string{"A"}, "2026-11-05T00:00:00+08:00", "2026-11-09T09:30:00+08:00", "No data day", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -293,11 +293,11 @@ func TestBuildErrors(t *testing.T) {
 func TestBuildSentenceDropsEaseWhenFilled(t *testing.T) {
 	t.Parallel()
 	m := easeBuild(t, easeRow(t, easeDay, "56.42", "steady"))
-	if m["sentence"] != "宏观指标来自已存储的序列；事件暂无数据。" {
+	if m["sentence"] != "Macro indicators come from stored series; events: no data yet." {
 		t.Errorf("sentence %v", m["sentence"])
 	}
 	m = easeBuild(t)
-	if m["sentence"] != "宏观指标来自已存储的序列；松紧度和事件暂无数据。" {
+	if m["sentence"] != "Macro indicators come from stored series; ease and events: no data yet." {
 		t.Errorf("sentence without a reading %v", m["sentence"])
 	}
 }

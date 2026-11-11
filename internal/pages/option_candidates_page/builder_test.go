@@ -228,13 +228,13 @@ func TestNilReaderIsGap(t *testing.T) {
 func TestEstimateNote(t *testing.T) {
 	t.Parallel()
 	p := buildPage(t, nil, buildDay)
-	if !strings.Contains(p.EstimateNote, "不是成交价") || len(p.EstimateNote) > 200 {
+	if !strings.Contains(p.EstimateNote, "not a traded price") || len(p.EstimateNote) > 200 {
 		t.Errorf("estimate_note = %q", p.EstimateNote)
 	}
 	rows := map[string][]store.Candidate{"2026-11-09/short_put": {cand("short_put", 1, "ok")}}
 	main := buildPage(t, rows, buildDay).Groups[0].Main
 	for _, c := range main.Columns {
-		if c.ID == "bid" && (c.Label != "Bid (EOD 估)" || c.Hint == nil || *c.Hint != "收盘 bid,下一交易日才卖,不是成交价") {
+		if c.ID == "bid" && (c.Label != "Bid (EOD estimate)" || c.Hint == nil || *c.Hint != "Closing bid, sold on the next trading day, not a traded price") {
 			t.Errorf("bid column = %+v", c)
 		}
 	}
@@ -243,7 +243,7 @@ func TestEstimateNote(t *testing.T) {
 func TestJPNote(t *testing.T) {
 	t.Parallel()
 	p := buildPage(t, nil, buildDay)
-	if len(p.Notes) != 1 || p.Notes[0] != "日本期权候选:后续设计 (option-candidates-jp)" {
+	if len(p.Notes) != 1 || p.Notes[0] != "Japanese option candidates: later design (option-candidates-jp)" {
 		t.Errorf("notes = %v", p.Notes)
 	}
 }

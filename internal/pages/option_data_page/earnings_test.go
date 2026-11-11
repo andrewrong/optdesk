@@ -72,7 +72,7 @@ func TestEarningsListedInTerm(t *testing.T) {
 		earnRow(t, "listed", "alphavantage", "2026-11-20"),
 	}}
 	u := under(buildChecked(t, earningsCfg(t, fe)))
-	if u["earnings_text"] != "E 11-20 · 来源 vendor" || u["earnings_tone"] != "in_term" {
+	if u["earnings_text"] != "E 11-20 · source vendor" || u["earnings_tone"] != "in_term" {
 		t.Fatalf("underlying = %v", u)
 	}
 	if len(fe.got) != 1 || fe.got[0] != "cik:0000000001 2026-07-09 2026-11-06" {
@@ -80,11 +80,11 @@ func TestEarningsListedInTerm(t *testing.T) {
 	}
 	fe.rows = []contracts.EarningsDate{earnRow(t, "listed", "owner", "2026-11-06")}
 	u = under(buildChecked(t, earningsCfg(t, fe)))
-	if u["earnings_text"] != "E 11-06 · 来源 owner" || u["earnings_tone"] != "in_term" {
+	if u["earnings_text"] != "E 11-06 · source owner" || u["earnings_tone"] != "in_term" {
 		t.Fatalf("owner underlying = %v", u)
 	}
 	fe.rows = []contracts.EarningsDate{earnRow(t, "listed", "jquants", "2026-11-20")}
-	if u = under(buildChecked(t, earningsCfg(t, fe))); u["earnings_text"] != "E 11-20 · 来源 vendor" {
+	if u = under(buildChecked(t, earningsCfg(t, fe))); u["earnings_text"] != "E 11-20 · source vendor" {
 		t.Fatalf("jquants underlying = %v", u)
 	}
 }
@@ -93,7 +93,7 @@ func TestEarningsListedOutside(t *testing.T) {
 	t.Parallel()
 	fe := &fakeEarnings{rows: []contracts.EarningsDate{earnRow(t, "listed", "jquants", "2026-11-21")}}
 	u := under(buildChecked(t, earningsCfg(t, fe)))
-	if u["earnings_text"] != "E 11-21 · 来源 vendor" || u["earnings_tone"] != "outside" {
+	if u["earnings_text"] != "E 11-21 · source vendor" || u["earnings_tone"] != "outside" {
 		t.Fatalf("underlying = %v", u)
 	}
 }

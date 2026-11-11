@@ -22,7 +22,7 @@ type series struct {
 	Empty   *string `json:"empty"`
 }
 
-// mkSeries is a series of pts in the given order: summary is the points' "label text" joined by "；", empty is
+// mkSeries is a series of pts in the given order: summary is the points' "label text" joined by "; ", empty is
 // the sentence when there is no point.
 func mkSeries(title, empty string, pts []point) series {
 	s := series{Title: title, Points: pts}
@@ -35,7 +35,7 @@ func mkSeries(title, empty string, pts []point) series {
 	for i, p := range pts {
 		parts[i] = p.Label + " " + p.Text
 	}
-	sum := strings.Join(parts, "；")
+	sum := strings.Join(parts, "; ")
 	s.Summary = &sum
 	return s
 }
@@ -55,7 +55,7 @@ func monthSeries(months []compute.ResultMonth) (m, r series, err error) {
 		mp = append(mp, point{Label: x.Month, Value: v, Text: x.Realized, Muted: !x.Over})
 		rp = append(rp, point{Label: x.Month, Value: run, Text: x.Running, Muted: !x.Over})
 	}
-	return mkSeries("月度已实现", "没有已平仓的月份", mp), mkSeries("累计已实现", "没有累计结果", rp), nil
+	return mkSeries("Monthly realized", "No closed months", mp), mkSeries("Cumulative realized", "No cumulative result", rp), nil
 }
 
 // endingSeries is one point per ending, value its realized result; endingLines are the same as lines.
@@ -67,9 +67,9 @@ func endingSeries(ends []compute.ResultEnding) (series, []string, error) {
 		if err != nil {
 			return series{}, nil, err
 		}
-		text := strconv.Itoa(e.Count) + " 笔, 已实现 " + e.Realized
+		text := strconv.Itoa(e.Count) + " trade(s), realized " + e.Realized
 		pts = append(pts, point{Label: e.Status, Value: v, Text: text})
 		lines = append(lines, e.Status+": "+text)
 	}
-	return mkSeries("结束方式", "没有结束的持仓", pts), lines, nil
+	return mkSeries("Endings", "No ended positions", pts), lines, nil
 }

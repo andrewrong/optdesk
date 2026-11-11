@@ -10,14 +10,14 @@ import (
 
 // Texts of the page. Option terms stay English, other text is Chinese.
 const (
-	pageTitle     = "期权提示"
-	gapNoCapture  = "近 7 天没有主账户的持仓快照"
-	gapNoReader   = "没有读取器,无法显示"
-	noteNoCapture = "近 7 天没有这个账户的持仓快照"
-	noteNoGuard   = "没有守卫记录"
+	pageTitle     = "Option notices"
+	gapNoCapture  = "No position snapshot of the main account in the last 7 days"
+	gapNoReader   = "No reader: cannot show"
+	noteNoCapture = "No position snapshot of this account in the last 7 days"
+	noteNoGuard   = "No guard record"
 	noContract    = "—"
-	staleHead     = "持仓快照来自 "
-	staleTail     = ",不是当日"
+	staleHead     = "Position snapshot is from "
+	staleTail     = ", not the current day"
 	cushionHead   = "Cushion "
 )
 
@@ -35,28 +35,28 @@ var (
 
 // noticeTitles are the titles of the known codes; a code not listed is shown as it is.
 var noticeTitles = map[string]string{
-	"expiry_today":    "今日到期",
-	"expiry_near":     "即将到期",
-	"call_guard":      "已持 call 被守卫拦截",
-	"earnings_inside": "财报日在到期日之前",
-	"assignment_seen": "疑似被行权",
-	"cushion_low":     "Cushion 偏低",
-	"capture_stale":   "持仓快照过旧",
+	"expiry_today":    "Expires today",
+	"expiry_near":     "Expiring soon",
+	"call_guard":      "Held call blocked by the guard",
+	"earnings_inside": "Earnings date is before expiry",
+	"assignment_seen": "Suspected assignment",
+	"cushion_low":     "Cushion is low",
+	"capture_stale":   "Position snapshot is too old",
 }
 
 // factLabels are the labels of the known facts; a label not listed is shown as it is.
 var factLabels = map[string]string{
-	"earnings":     "财报日",
-	"capture_day":  "快照日",
-	"session_days": "相隔交易日",
+	"earnings":     "Earnings date",
+	"capture_day":  "Snapshot day",
+	"session_days": "Trading days apart",
 	"cushion":      "Cushion",
 }
 
 // reasonTexts are the sentences of the known guard reason codes.
 var reasonTexts = map[string]string{
-	"earnings_before_expiry": "财报日在到期日之前",
-	"early_assignment_risk":  "除息前有提前被行权的风险",
-	"strike_floor":           "行权价低于卖出价下限",
+	"earnings_before_expiry": "Earnings date is before expiry",
+	"early_assignment_risk":  "Early assignment risk before the ex-dividend date",
+	"strike_floor":           "Strike is below the sell price floor",
 }
 
 func noticeTitle(code string) string {

@@ -47,7 +47,7 @@ func TestNumericCellsCarryValue(t *testing.T) {
 		t.Fatalf("gap = %+v", g)
 	}
 	m := asValue(t, moneynessCell(sampleOpen("p")))
-	if m.Text != "3.20%" || *m.Value != "3.20" || !hasBadge(m, "价外") {
+	if m.Text != "3.20%" || *m.Value != "3.20" || !hasBadge(m, "out of the money") {
 		t.Fatalf("moneyness = %+v", m)
 	}
 }
@@ -70,15 +70,15 @@ func TestMissingMarkIsGapCell(t *testing.T) {
 func TestGuardBadges(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "ok") || c.Tone != "up" || !strings.Contains(c.Text, "依据 bid") {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "ok") || c.Tone != "up" || !strings.Contains(c.Text, "Basis bid") {
 		t.Fatalf("ok = %+v", c)
 	}
 	o.Guard, o.GuardReason = "block", "early_assignment_risk"
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "阻止") || c.Tone != "down" || !strings.Contains(c.Text, "提前被行权") {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "Blocked") || c.Tone != "down" || !strings.Contains(c.Text, "Early assignment") {
 		t.Fatalf("block = %+v", c)
 	}
 	o.Guard, o.GuardReason = "unknown", "no_dividend_info"
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "未确认") || !strings.Contains(c.Text, "没有股息信息") {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "Unconfirmed") || !strings.Contains(c.Text, "No dividend information") {
 		t.Fatalf("unknown = %+v", c)
 	}
 	o.GuardReason = "no_guard_row"
@@ -86,7 +86,7 @@ func TestGuardBadges(t *testing.T) {
 		t.Fatalf("no row = %+v", g)
 	}
 	o.Right, o.Guard, o.GuardReason = "P", "n/a", ""
-	if c := asValue(t, guardCell(o)); !hasBadge(c, "不适用") || c.Text != "不适用" {
+	if c := asValue(t, guardCell(o)); !hasBadge(c, "Not applicable") || c.Text != "Not applicable" {
 		t.Fatalf("put = %+v", c)
 	}
 }
@@ -94,11 +94,11 @@ func TestGuardBadges(t *testing.T) {
 func TestEarlyAssignmentBadge(t *testing.T) {
 	t.Parallel()
 	o := sampleClosed("p")
-	if c := asValue(t, statusCell(o)); hasBadge(c, "提前") || !hasBadge(c, "assigned") {
+	if c := asValue(t, statusCell(o)); hasBadge(c, "Early") || !hasBadge(c, "assigned") {
 		t.Fatalf("not early = %+v", c)
 	}
 	o.Early = true
-	if c := asValue(t, statusCell(o)); !hasBadge(c, "提前") || !hasBadge(c, "assigned") {
+	if c := asValue(t, statusCell(o)); !hasBadge(c, "Early") || !hasBadge(c, "assigned") {
 		t.Fatalf("early = %+v", c)
 	}
 }
@@ -106,18 +106,18 @@ func TestEarlyAssignmentBadge(t *testing.T) {
 func TestEventsInLifeBadge(t *testing.T) {
 	t.Parallel()
 	o := sampleOpen("p")
-	if c := asValue(t, resultsCell(o)); c.Text != "2026-12-01" || !hasBadge(c, "在存续期内") {
+	if c := asValue(t, resultsCell(o)); c.Text != "2026-12-01" || !hasBadge(c, "In term") {
 		t.Fatalf("results = %+v", c)
 	}
-	if c := asValue(t, exCell(o)); c.Text != "2026-12-05 0.25" || !hasBadge(c, "在存续期内") {
+	if c := asValue(t, exCell(o)); c.Text != "2026-12-05 0.25" || !hasBadge(c, "In term") {
 		t.Fatalf("ex = %+v", c)
 	}
 	o.EarningsInLife, o.ExInLife = false, false
-	if c := asValue(t, resultsCell(o)); hasBadge(c, "在存续期内") {
+	if c := asValue(t, resultsCell(o)); hasBadge(c, "In term") {
 		t.Fatalf("results = %+v", c)
 	}
 	o.Right = "P"
-	if c := asValue(t, exCell(o)); c.Text != "不适用" {
+	if c := asValue(t, exCell(o)); c.Text != "Not applicable" {
 		t.Fatalf("put ex = %+v", c)
 	}
 	o.Right, o.EventStatus = "C", "no_event_row"
