@@ -1,12 +1,10 @@
-package underlyingresolve_test
+package underlyingresolve
 
 import (
 	"os"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/andrewrong/optdesk/internal/jobs/underlyingresolve"
 )
 
 func TestManifestLoads(t *testing.T) {
@@ -15,7 +13,7 @@ func TestManifestLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := underlyingresolve.LoadManifest(b)
+	m, err := LoadManifest(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +35,7 @@ func TestManifestRefusesBelowOne(t *testing.T) {
 		{"max_names = 20", "max_names = 0", "max_names"},
 		{"max_names = 20", "max_names = -3", "max_names"},
 	} {
-		_, err := underlyingresolve.LoadManifest([]byte(strings.Replace(string(b), c.from, c.to, 1)))
+		_, err := LoadManifest([]byte(strings.Replace(string(b), c.from, c.to, 1)))
 		if err == nil || !strings.Contains(err.Error(), c.key) {
 			t.Errorf("%s: err %v", c.to, err)
 		}

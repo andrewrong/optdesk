@@ -1,4 +1,4 @@
-package underlyingresolve_test
+package underlyingresolve
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/jobs/underlyingresolve"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -81,7 +80,7 @@ func newRig(t *testing.T, rows ...underlying.Row) *rig {
 		b: &fakeBroker{answers: map[string]broker.Resolved{}, errs: map[string]error{}},
 		s: &fakeSettler{rows: rows, written: true},
 	}
-	j, err := underlyingresolve.New(r.b, r.s, clockwork.NewFakeClockAt(start))
+	j, err := New(r.b, r.s, clockwork.NewFakeClockAt(start))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +194,7 @@ func TestAtMostTwentyNamesPerRun(t *testing.T) {
 	// even a caller that hands over all 21 keys gets 20 asked
 	all := make([]contracts.ExpectedKey, 0, 21)
 	for _, rw := range rows {
-		all = append(all, contracts.ExpectedKey{DatasetID: underlyingresolve.DatasetID, SubjectKey: rw.Key})
+		all = append(all, contracts.ExpectedKey{DatasetID: DatasetID, SubjectKey: rw.Key})
 	}
 	res := r.j.Run(context.Background(), "2026-11-11", all)
 	if res.Returned != 20 || len(r.b.asked) != 20 {
@@ -224,7 +223,7 @@ func TestSettleErrorIsRetryable(t *testing.T) {
 	r := newRig(t, row(1, "AAPL", underlying.StatusPending, time.Hour))
 	r.b.answers["AAPL"] = listed(1)
 	st := &errSettler{fakeSettler: r.s}
-	j, _ := underlyingresolve.New(r.b, st, clockwork.NewFakeClockAt(start))
+	j, _ := New(r.b, st, clockwork.NewFakeClockAt(start))
 	keys, _, _ := j.Plan(context.Background(), "2026-11-11")
 	res := j.Run(context.Background(), "2026-11-11", keys)
 	if res.Err == nil || res.Err.Kind() != contracts.Retryable || res.Usable != 0 {
@@ -242,9 +241,9 @@ func TestNewRefusesNil(t *testing.T) {
 	t.Parallel()
 	b, s, c := &fakeBroker{}, &fakeSettler{}, clockwork.NewFakeClockAt(start)
 	cases := map[string]func() error{
-		"broker":  func() error { _, err := underlyingresolve.New(nil, s, c); return err },
-		"settler": func() error { _, err := underlyingresolve.New(b, nil, c); return err },
-		"clock":   func() error { _, err := underlyingresolve.New(b, s, nil); return err },
+		"broker":  func() error { _, err := New(nil, s, c); return err },
+		"settler": func() error { _, err := New(b, nil, c); return err },
+		"clock":   func() error { _, err := New(b, s, nil); return err },
 	}
 	for name, f := range cases {
 		if f() == nil {
