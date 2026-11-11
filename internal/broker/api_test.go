@@ -31,7 +31,7 @@ func (f fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.Co
 	if f.down {
 		return nil, typedErr{contracts.Retryable}
 	}
-	if f.refuseUnknown && kind < broker.KindOptionEod || kind > broker.KindOptionOpen {
+	if f.refuseUnknown && (kind < broker.KindOptionEod || kind > broker.KindOptionOpen) {
 		return nil, errUnknownKind
 	}
 	out := make([]broker.Quote, len(cs))
@@ -84,6 +84,14 @@ func TestKindOptionOpenIsDistinctAndUnknownKindIsRefused(t *testing.T) {
 	}
 	if _, err := broker.Broker(fakeBroker{refuseUnknown: true}).Snapshot(context.Background(), broker.KindOptionOpen, nil); err != nil {
 		t.Fatalf("KindOptionOpen refused: %v", err)
+	}
+}
+
+func TestFakeWithoutRefuseUnknownAcceptsAnyKind(t *testing.T) {
+	t.Parallel()
+	qs, err := broker.Broker(fakeBroker{}).Snapshot(context.Background(), broker.Kind(99), []broker.Contract{{Symbol: "A"}})
+	if err != nil || len(qs) != 1 {
+		t.Fatalf("refuseUnknown is false, want one quote, got %v, %v", qs, err)
 	}
 }
 
