@@ -104,10 +104,10 @@ func (c Config) capture(ctx context.Context, alias string, in *compute.Structure
 		in.HeldDay = days[i]
 		for _, p := range rows {
 			switch strings.ToUpper(p.SecType) {
-			case "OPT":
+			case "OPTION":
 				in.Held = append(in.Held, compute.HeldOption{Underlying: p.Symbol, Right: rightLetter(p.Right),
 					Strike: p.Strike, Expiry: p.Expiry, Quantity: p.Quantity})
-			case "STK":
+			case "STOCK":
 				stocks[p.Symbol] = p.ConID
 			}
 		}
