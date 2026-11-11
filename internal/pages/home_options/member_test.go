@@ -143,7 +143,9 @@ func tileFigure(c map[string]any, k string) map[string]any {
 
 func TestGoldenOK(t *testing.T) {
 	t.Parallel()
-	got := build(t, okCfg(sold("1234.5000", "-15.2500", "-0.012355", compute.ResultMonth{Month: "2026-09", Premium: "200.0000"}, compute.ResultMonth{Month: "2026-11", Premium: "300.0000"})))
+	got := build(t, okCfg(sold("1234.5000", "-15.2500", "-0.012355",
+		compute.ResultMonth{Month: "2026-09", Premium: "200.0000"},
+		compute.ResultMonth{Month: "2026-11", Premium: "300.0000"})))
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, got, "", "  "); err != nil {
 		t.Fatal(err)
