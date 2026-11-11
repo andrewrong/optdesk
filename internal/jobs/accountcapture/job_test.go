@@ -575,8 +575,8 @@ func TestLogFailureClassSQLState(t *testing.T) {
 
 func TestLogFailureClassOther(t *testing.T) {
 	t.Parallel()
-	line := logFailureLine(t, errors.New("MARKERWORD account DU1234567"))
-	if !strings.Contains(line, "class=other") || strings.Contains(line, "MARKERWORD") || strings.Contains(line, "DU1234567") {
+	line := logFailureLine(t, errors.New("MARKERWORD account 99999"))
+	if !strings.Contains(line, "class=other") || strings.Contains(line, "MARKERWORD") || strings.Contains(line, "99999") {
 		t.Fatalf("line %q", line)
 	}
 }
