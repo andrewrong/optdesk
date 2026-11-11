@@ -12,7 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
-const secTypeStock = "STK"
+const secTypeStock = "stock"
 
 // holdingBlocks are the three blocks built from the held stocks of the capture and their marks.
 type holdingBlocks struct {

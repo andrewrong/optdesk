@@ -105,7 +105,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	}
 	return home_page.Compose(home_page.Input{
 		RunID: runID, BuildID: build, Scope: scope, Zone: zone,
-		Title: "今日总览", Say: "五张卡片，一页看完。",
+		Title: "Today", Say: "Five cards, one page.",
 		CardLinks: home_page.CardLinks{
 			Macro: "/macro", Market: "/" + siteMarketRoute, Household: "/" + siteHouseholdRoute,
 			Companies: "/" + siteCompaniesRoute, Options: "/" + siteOptionRoute,

@@ -17,6 +17,7 @@ const (
 	sessionLookback = 14 // calendar days of session days to read
 	pageTitle       = "Advice review"
 	textNotBuilt    = "no record of earlier advice is stored yet"
+	textSentence    = "Advice in the %s report, against the value after the next close"
 )
 
 type gapJSON struct {
@@ -71,7 +72,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	return json.Marshal(pageJSON{
 		Schema: "advice_page", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: "advice",
 		GeneratedAt: at.In(c.Zone).Format(timeLayout), DataTimes: []struct{}{}, RunStatus: "partial",
-		Title: pageTitle, Sentence: textNotBuilt, Day: prev.Format(dayLayout), Rows: []struct{}{},
+		Title: pageTitle, Sentence: fmt.Sprintf(textSentence, prev.Format(dayLayout)), Day: prev.Format(dayLayout), Rows: []struct{}{},
 		Gap: &gapJSON{Reason: "not_built", Text: textNotBuilt},
 	})
 }

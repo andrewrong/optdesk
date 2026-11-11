@@ -38,7 +38,7 @@ func (f *fakeMarks) Marks(_ context.Context, alias, d string) ([]mark.PositionMa
 }
 
 func stock(sym string, con int64, qty, cost string) store.Position {
-	return store.Position{Symbol: sym, SecType: "STK", Currency: "USD", Multiplier: "1", ConID: con, Quantity: qty, AvgCost: cost}
+	return store.Position{Symbol: sym, SecType: "stock", Currency: "USD", Multiplier: "1", ConID: con, Quantity: qty, AvgCost: cost}
 }
 
 func markOf(con int64, price string) mark.PositionMark {
@@ -56,7 +56,7 @@ func holdingsConfig(positions []store.Position, marks *fakeMarks) (household_pag
 }
 
 func twoStocks() []store.Position {
-	opt := store.Position{Symbol: "AAA", SecType: "OPT", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-1"}
+	opt := store.Position{Symbol: "AAA", SecType: "option", Currency: "USD", Multiplier: "100", ConID: 9, Quantity: "-1"}
 	return []store.Position{stock("AAA", 1, "100", "200"), stock("BBB", 2, "50", "10"), opt}
 }
 

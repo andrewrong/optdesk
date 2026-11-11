@@ -469,3 +469,46 @@ func TestBuildEqualsOkFixture(t *testing.T) {
 		}
 	}
 }
+
+// gapRows reads the core rows whose returns is a gap.
+func gapRows(t *testing.T, cfg Config) []struct {
+	Symbol    string `json:"symbol"`
+	PriceText string `json:"price_text"`
+	Returns   gap    `json:"returns"`
+} {
+	t.Helper()
+	var c struct {
+		Rows []struct {
+			Symbol    string `json:"symbol"`
+			PriceText string `json:"price_text"`
+			Returns   gap    `json:"returns"`
+		} `json:"rows"`
+	}
+	if err := json.Unmarshal(buildBlocks(t, cfg)["core"], &c); err != nil {
+		t.Fatal(err)
+	}
+	return c.Rows
+}
+
+func TestNoYearsGivesOneRowWithAllStrikes(t *testing.T) {
+	t.Parallel()
+	cfg := coreConfig("100", "95", "90")
+	cfg.BuildFilings = func([]contracts.FundamentalFact, contracts.Day, valuationapi.Standard) valuationapi.FilingsResult {
+		return valuationapi.FilingsResult{Reasons: []string{"fewer_than_5_years"}}
+	}
+	rows := gapRows(t, cfg)
+	if len(rows) != 1 || rows[0].Symbol != cfg.Subjects[0].Symbol || rows[0].PriceText != "100, 95, 90" ||
+		rows[0].Returns.Text != "fewer than 5 years" {
+		t.Fatalf("rows = %+v, want one row with the gap once", rows)
+	}
+}
+
+func TestNoIssuerGivesOneRow(t *testing.T) {
+	t.Parallel()
+	cfg := coreConfig("100", "95")
+	cfg.Subjects = []Subject{{Issuer: "", Market: "US", Symbol: "NOID"}}
+	rows := gapRows(t, cfg)
+	if len(rows) != 1 || rows[0].PriceText != "100, 95" || rows[0].Returns.Text != "no issuer id" {
+		t.Fatalf("rows = %+v, want one no-issuer row", rows)
+	}
+}

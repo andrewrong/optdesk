@@ -22,8 +22,8 @@ const (
 
 const (
 	siteAccountQuery = "account" // the query key naming the alias of a page
-	unknownAccount   = "未知账户"
-	demoNoFlexText   = "演示数据中没有 Flex 持仓"
+	unknownAccount   = "Unknown account"
+	demoNoFlexText   = "The demo data holds no Flex positions"
 )
 
 // aliasList is the alias list of the account pages: the field aliases, or ["main"] when it is empty. The

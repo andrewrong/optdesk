@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -104,29 +105,36 @@ func gapOf(reason, text string) gapJSON { return gapJSON{Reason: reason, Text: t
 func text2(s string) textCell { return textCell{Text: s, Value: s} }
 
 // money2 is a decimal text with exactly two places (the schema's multipleOf 0.01), without a sign for
-// zero; false when the text is not a decimal or has a non-zero digit beyond two places.
+// zero, rounded half to even; false when the text is not a decimal.
 func money2(s string) (string, bool) {
 	if !decimalText.MatchString(s) {
 		return "", false
 	}
-	neg := strings.HasPrefix(s, "-")
-	whole, frac, _ := strings.Cut(strings.TrimPrefix(s, "-"), ".")
-	frac = strings.TrimRight(frac, "0")
-	if len(frac) > 2 {
+	d, err := decimal.NewFromString(s)
+	if err != nil {
 		return "", false
 	}
-	frac += strings.Repeat("0", 2-len(frac))
-	whole = strings.TrimLeft(whole, "0")
-	if whole == "" {
-		whole = "0"
+	return d.RoundBank(2).StringFixed(2), true
+}
+
+// perShareCost is the cost of one share or one unit of the underlying: the broker's avg_cost of an
+// option is per contract, so it is divided by the multiplier (exact, printed with at most 6 places).
+// A stock keeps avg_cost; a text that is not a number, or a multiplier that is not positive, is
+// returned as it is.
+func perShareCost(p store.Position) string {
+	if p.SecType != typeOption || !decimalText.MatchString(p.AvgCost) {
+		return p.AvgCost
 	}
-	if whole == "0" && frac == "00" {
-		neg = false
+	mult := p.Multiplier
+	if mult == "" {
+		mult = "1"
 	}
-	if neg {
-		return "-" + whole + "." + frac, true
+	m, err1 := decimal.NewFromString(mult)
+	c, err2 := decimal.NewFromString(p.AvgCost)
+	if err1 != nil || err2 != nil || !m.IsPositive() || !decimalText.MatchString(mult) {
+		return p.AvgCost
 	}
-	return whole + "." + frac, true
+	return c.DivRound(m, 6).String()
 }
 
 func groupThousands(whole string) string {
@@ -160,10 +168,7 @@ func money(s, currency, unit string) any {
 	if !decimalText.MatchString(s) {
 		return gapOf("missing_input", textBadNumber)
 	}
-	v, ok := money2(s)
-	if !ok {
-		return gapOf("missing_input", textPrecision)
-	}
+	v, _ := money2(s)
 	neg := strings.HasPrefix(v, "-")
 	whole, frac, _ := strings.Cut(strings.TrimPrefix(v, "-"), ".")
 	body := sym + groupThousands(whole) + "." + frac
@@ -304,7 +309,7 @@ func holdingsOf(ps []store.Position, price map[int64]string) blockapi.HoldingsIn
 		}
 		in.Rows = append(in.Rows, blockapi.HoldingIn{
 			Underlying: p.Symbol, SecType: p.SecType, Currency: p.Currency, Quantity: p.Quantity,
-			Multiplier: mult, Cost: p.AvgCost, Mark: price[p.ConID],
+			Multiplier: mult, Cost: perShareCost(p), Mark: price[p.ConID],
 		})
 	}
 	return in
@@ -323,7 +328,7 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 		line := lines[i]
 		i++
 		dayGap := gapOf("no_data", textDayProfit)
-		cost := money(p.AvgCost, p.Currency, "usd_per_share")
+		cost := money(perShareCost(p), p.Currency, "usd_per_share")
 		var pr any = gapOf("missing_quote", textNoMark)
 		if m := price[p.ConID]; m != "" {
 			pr = money(m, p.Currency, "usd_per_share")
