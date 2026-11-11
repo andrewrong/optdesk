@@ -1,7 +1,9 @@
 package optioncandidates
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -52,5 +54,50 @@ func TestRankRunRefusesBadYield(t *testing.T) {
 	bad := "abc"
 	if err := rankRun([]store.Candidate{{Status: "ok", AnnualizedYield: &bad, Strike: "50"}}); err == nil {
 		t.Fatal("a yield that is not a number was ranked")
+	}
+}
+
+func TestRunIDOf(t *testing.T) {
+	t.Parallel()
+	ask, rank, ver := "2.05", 1, int64(3)
+	base := func() []store.Candidate {
+		return []store.Candidate{
+			{SessionDay: "2026-11-09", RunID: "x", Kind: "short_put", InstrumentID: 11, Strike: "90", Ask: &ask, Rank: &rank},
+			{SessionDay: "2026-11-09", RunID: "x", Kind: "short_put", InstrumentID: 12, Strike: "85"},
+		}
+	}
+	id := runIDOf("2026-11-09", base())
+	if len(id) != 36 || id != strings.ToLower(id) {
+		t.Fatalf("id %q", id)
+	}
+	same := base()
+	for i := range same {
+		same[i].RunID, same[i].ComputedAt, same[i].SettingsVersion = "other", time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), &ver
+	}
+	if got := runIDOf("2026-11-09", same); got != id {
+		t.Fatalf("run id, computed_at or settings version changed the id: %q %q", got, id)
+	}
+	if runIDOf("2026-11-10", base()) == id {
+		t.Error("day not in id")
+	}
+	if runIDOf("2026-11-09", base()[:1]) == id {
+		t.Error("row count not in id")
+	}
+	for name, mod := range map[string]func(*store.Candidate){
+		"strike": func(c *store.Candidate) { c.Strike = "91" },
+		"ask":    func(c *store.Candidate) { c.Ask = nil },
+		"gates":  func(c *store.Candidate) { c.Gates = `{"a":"fail"}` },
+		"rank":   func(c *store.Candidate) { c.Rank = nil },
+	} {
+		rows := base()
+		mod(&rows[0])
+		if runIDOf("2026-11-09", rows) == id {
+			t.Errorf("column %s not in id", name)
+		}
+	}
+	rev := base()
+	rev[0], rev[1] = rev[1], rev[0]
+	if runIDOf("2026-11-09", rev) == id {
+		t.Error("row order not in id")
 	}
 }

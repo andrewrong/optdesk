@@ -16,8 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -169,7 +167,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	if err != nil {
 		return fail("read_rate_failed", err)
 	}
-	runID, now := uuid.NewString(), j.clk.Now().UTC()
+	now := j.clk.Now().UTC()
 	var rows []store.Candidate
 	for _, ul := range ulist {
 		entry := entryOf(us, ul.issuer)
@@ -198,7 +196,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			Rate: rate, RateDay: rateDay, Accounts: accts, Kinds: []compute.CandidateKind{compute.KindShortPut},
 		}
 		for _, c := range j.rule.Evaluate(in, j.params) {
-			row, err := toStoreRow(c, day, runID, ul, ev, now)
+			row, err := toStoreRow(c, day, ul, ev, now)
 			if err != nil {
 				return fail("map_candidate_failed", err)
 			}
@@ -208,6 +206,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	if err := rankRun(rows); err != nil {
 		return fail("rank_candidates_failed", err)
 	}
+	setRunID(day, rows)
 	if _, err := j.st.Candidates.InsertCandidates(ctx, rows); err != nil {
 		return fail("write_candidates_failed", err)
 	}

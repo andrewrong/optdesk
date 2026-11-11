@@ -3,6 +3,7 @@ package optioncandidates
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -41,6 +42,7 @@ type fakes struct {
 	values      map[string][]store.AccountValue // by alias
 	positions   map[string][]store.Position
 	written     [][]store.Candidate
+	held        map[string]store.Candidate // the rows the store holds, by its key (DO NOTHING on a repeat)
 	writeErr    error
 	inputs      []compute.CandidateInput
 	rate        *float64
@@ -110,8 +112,19 @@ func (f *fakes) InsertCandidates(_ context.Context, rows []store.Candidate) (int
 	}
 	f.mu.Lock()
 	f.written = append(f.written, rows)
+	if f.held == nil {
+		f.held = map[string]store.Candidate{}
+	}
+	n := 0
+	for _, r := range rows {
+		k := fmt.Sprint(r.SessionDay, "|", r.RunID, "|", r.Kind, "|", r.InstrumentID, "|", r.Alias)
+		if _, dup := f.held[k]; !dup {
+			f.held[k] = r
+			n++
+		}
+	}
 	f.mu.Unlock()
-	return len(rows), nil
+	return n, nil
 }
 
 func (f *fakes) SessionDays(_ context.Context, cal string, _, _ contracts.Day) ([]contracts.SessionDay, error) {
@@ -170,25 +183,68 @@ func build(t *testing.T, st CandidateStores, f *fakes, entries ...jobs.WatchEntr
 	return j
 }
 
-func TestRerunIsNewRun(t *testing.T) {
+func TestRerunSameInputsStoresNothing(t *testing.T) {
 	t.Parallel()
 	f := newFakes()
 	j := build(t, f.stores(), f, usEntry())
-	for range 2 {
-		if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 1 || res.Usable != 1 {
+	var first contracts.JobResult
+	for i := range 2 {
+		res := j.Run(context.Background(), runDay, nil)
+		if res.Err != nil || res.Returned != 1 || res.Usable != 1 {
 			t.Fatalf("result %+v", res)
+		}
+		if i == 0 {
+			first = res
+		} else if res.Returned != first.Returned {
+			t.Fatalf("returned %d then %d", first.Returned, res.Returned)
 		}
 	}
 	if len(f.written) != 2 {
 		t.Fatalf("%d writes", len(f.written))
 	}
 	a, b := f.written[0][0], f.written[1][0]
-	if a.RunID == "" || len(a.RunID) != 36 || a.RunID == b.RunID {
+	if len(a.RunID) != 36 || a.RunID != b.RunID {
 		t.Fatalf("run ids %q %q", a.RunID, b.RunID)
+	}
+	if len(f.held) != 1 {
+		t.Fatalf("store holds %d rows", len(f.held))
 	}
 	checkRow(t, a)
 	if f.inputs[0].Spot != "100.0005" || f.inputs[0].BuyPrice != "91.5" || f.inputs[0].Kinds[0] != compute.KindShortPut {
 		t.Fatalf("input %+v", f.inputs[0])
+	}
+}
+
+func TestRerunChangedInputIsNewRun(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	j := build(t, f.stores(), f, usEntry())
+	j.Run(context.Background(), runDay, nil)
+	f.eodRows[0].Bid = f64(2.5) // the chain changed between the runs
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 1 {
+		t.Fatalf("result %+v", res)
+	}
+	if a, b := f.written[0][0].RunID, f.written[1][0].RunID; a == b {
+		t.Fatalf("same run id %q for other results", a)
+	}
+	if len(f.held) != 2 {
+		t.Fatalf("store holds %d rows, want both runs", len(f.held))
+	}
+}
+
+func TestSettingsVersionIsNotInRunID(t *testing.T) {
+	t.Parallel()
+	f, g := newFakes(), newFakes()
+	plain := build(t, f.stores(), f, usEntry())
+	stamped, err := WithSettingsVersion(build(t, g.stores(), g, usEntry()), versionOf(42, nil, new([]time.Time)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain.Run(context.Background(), runDay, nil)
+	stamped.Run(context.Background(), runDay, nil)
+	a, b := f.written[0][0], g.written[0][0]
+	if a.RunID != b.RunID || b.SettingsVersion == nil || *b.SettingsVersion != 42 || a.SettingsVersion != nil {
+		t.Fatalf("run ids %q %q, versions %v %v", a.RunID, b.RunID, a.SettingsVersion, b.SettingsVersion)
 	}
 }
 

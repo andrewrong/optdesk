@@ -250,3 +250,45 @@ func checkGuardRow(t *testing.T, r store.Candidate, status, gate, marks, exAmoun
 		t.Fatalf("ex fields %v %v", r.ExAmount, r.NextExDate)
 	}
 }
+
+func TestCallsRerunSameInputsStoresNothing(t *testing.T) {
+	t.Parallel()
+	f, st := heldFakes(1.5)
+	cj := buildCalls(t, st, &fakeDividends{}, f)
+	var returned []int
+	for range 2 {
+		res := cj.Run(context.Background(), runDay, nil)
+		if res.Err != nil {
+			t.Fatal(res.Err)
+		}
+		returned = append(returned, res.Returned)
+	}
+	if returned[0] != returned[1] || returned[0] == 0 || len(f.written) != 2 {
+		t.Fatalf("returned %v, %d writes", returned, len(f.written))
+	}
+	for i, r := range f.written[0] {
+		if len(r.RunID) != 36 || r.RunID != f.written[0][0].RunID || r.RunID != f.written[1][i].RunID {
+			t.Fatalf("row %d run id %q", i, r.RunID)
+		}
+	}
+	if len(f.held) != returned[0] {
+		t.Fatalf("store holds %d rows, one run has %d", len(f.held), returned[0])
+	}
+}
+
+func TestCallsRerunChangedInputIsNewRun(t *testing.T) {
+	t.Parallel()
+	f, st := heldFakes(1.5)
+	cj := buildCalls(t, st, &fakeDividends{}, f)
+	cj.Run(context.Background(), runDay, nil)
+	f.eodRows[1].Bid = f64(2.5)
+	if res := cj.Run(context.Background(), runDay, nil); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if a, b := f.written[0][0].RunID, f.written[1][0].RunID; a == b {
+		t.Fatalf("same run id %q for other results", a)
+	}
+	if len(f.held) != len(f.written[0])+len(f.written[1]) {
+		t.Fatalf("store holds %d rows, want both runs", len(f.held))
+	}
+}
