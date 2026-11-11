@@ -477,10 +477,14 @@ const (
 	labelDayChange   = "Previous trading day"
 	labelMonthToDate = "Month to date"
 
-	explainNetWorth    = "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
-	explainCash        = "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, the small one the amount; negative cash is margin borrowing."
-	explainDayChange   = "Net liquidation of the latest capture minus the previous captured trading day, USD; includes deposits and withdrawals, not pure return. The percentage is this change divided by the previous day."
-	explainMonthToDate = "Net liquidation of the latest capture minus the last trading day of the previous month, USD; includes deposits and withdrawals, not time-weighted return."
+	explainNetWorth = "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
+	explainCash     = "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, " +
+		"the small one the amount; negative cash is margin borrowing."
+	explainDayChange = "Net liquidation of the latest capture minus the previous captured trading day, USD; " +
+		"includes deposits and withdrawals, not pure return. The percentage is this change divided " +
+		"by the previous day."
+	explainMonthToDate = "Net liquidation of the latest capture minus the last trading day of the previous month, " +
+		"USD; includes deposits and withdrawals, not time-weighted return."
 )
 
 var gapTexts = map[string]string{

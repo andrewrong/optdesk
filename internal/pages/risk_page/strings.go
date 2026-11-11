@@ -3,8 +3,9 @@ package risk_page
 // The words of the page, written once.
 const (
 	pageTitle    = "Household risk"
-	pageSentence = "Delta and Vega come from the positions and option structures of the latest capture; the data sources of Beta, the volatility range and the standard metrics are not connected yet."
-	vegaTitle    = "Vega by expiry"
+	pageSentence = "Delta and Vega come from the positions and option structures of the latest capture; the " +
+		"data sources of Beta, the volatility range and the standard metrics are not connected yet."
+	vegaTitle = "Vega by expiry"
 
 	titleDelta   = "Delta by underlying"
 	titleBeta    = "Beta-weighted Delta"

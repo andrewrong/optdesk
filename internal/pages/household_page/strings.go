@@ -3,7 +3,8 @@ package household_page
 // The words of the page, written once.
 const (
 	pageTitle    = "Household"
-	pageSentence = "Net value, cash and option obligations come from the latest capture; position values need prices, and positions without a price show no data yet."
+	pageSentence = "Net value, cash and option obligations come from the latest capture; position values need " +
+		"prices, and positions without a price show no data yet."
 
 	titleOverview      = "Overview"
 	titleComposition   = "Holdings composition"

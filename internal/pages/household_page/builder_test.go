@@ -111,13 +111,24 @@ func gap(name, reason string) blockapi.MoneyLine {
 func (f fakeFigures) Household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
 	*f.got = in
 	return blockapi.HouseholdResult{
-		Overview:    []blockapi.MoneyLine{ok("Net value", "100000.00")},
-		Accounts:    []blockapi.MoneyLine{ok("Net liquidation", "100000.00"), ok("Cash", "42000.00"), gap("Stock value", "missing_quote"), gap("Option value", "missing_quote")},
+		Overview: []blockapi.MoneyLine{ok("Net value", "100000.00")},
+		Accounts: []blockapi.MoneyLine{
+			ok("Net liquidation", "100000.00"),
+			ok("Cash", "42000.00"),
+			gap("Stock value", "missing_quote"),
+			gap("Option value", "missing_quote"),
+		},
 		Obligations: []blockapi.MoneyLine{ok("AAA short put", "10000.00")},
 		Income:      []blockapi.MoneyLine{ok("Premium this month", "300.00")},
 		CashAfter:   []blockapi.MoneyLine{ok("Cash after assignment", "32000.00")},
 		Stress:      []blockapi.MoneyLine{ok("Cash after all assignments", "-5.50"), gap("Underlying down 10%", "missing_quote")},
-		MonthChange: []blockapi.MoneyLine{ok("Month start", "98000.00"), ok("Closed option result", "300.00"), gap("Trading result", "missing_quote"), ok("Other", "1700.00"), ok("Month end", "100000.00")},
+		MonthChange: []blockapi.MoneyLine{
+			ok("Month start", "98000.00"),
+			ok("Closed option result", "300.00"),
+			gap("Trading result", "missing_quote"),
+			ok("Other", "1700.00"),
+			ok("Month end", "100000.00"),
+		},
 		Trend: []blockapi.DayValue{
 			{Day: "2026-11-09", NetLiquidation: "99000.50", Currency: "USD"},
 			{Day: "2026-11-10", NetLiquidation: "100000.00", Currency: "USD"},

@@ -56,7 +56,16 @@ const (
 )
 
 var (
-	stockHeads  = []string{"code:Code", "name:Name", "role:Owner", "quantity:Quantity", "cost:Cost (per share)", "price:Last price (per share)", "day:Day result", "unrealised:Unrealised result"}
+	stockHeads = []string{
+		"code:Code",
+		"name:Name",
+		"role:Owner",
+		"quantity:Quantity",
+		"cost:Cost (per share)",
+		"price:Last price (per share)",
+		"day:Day result",
+		"unrealised:Unrealised result",
+	}
 	optionHeads = []string{"code:Code", "name:Name", "expiry:Expiry", "days_left:Days left", "role:Owner", "quantity:Quantity",
 		"cost:Cost (per share)", "price:Last price (per share)", "day:Day result", "unrealised:Unrealised result", "open_premium:Open premium"}
 	tradeHeads = []string{"time:Time", "account:Account", "action:Action", "instrument:Underlying · structure", "quantity:Quantity", "price:Price"}
