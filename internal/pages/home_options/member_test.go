@@ -238,7 +238,7 @@ func TestSeriesCardTextStatesRule(t *testing.T) {
 	c := card(t, okCfg(sold("1.0000", "", "")))
 	for _, k := range []string{"premium_series_text", "premium_series_caption"} {
 		s := c[k].(string)
-		for _, w := range []string{"按平仓月", "到期", "被行权", "被指派", "买回", "不扣手续费", "前 7 个字符", "不换算时区", "按账户别名", "不合并"} {
+		for _, w := range []string{"按平仓月", "到期", "被行权", "被指派", "买回", "不扣手续费", "平仓日的年月", "不换算时区", "按账户别名", "不合并"} {
 			if k == "premium_series_caption" && w == "不合并" {
 				w = "从不合并"
 			}
