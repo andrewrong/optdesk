@@ -69,7 +69,7 @@ type job struct {
 	started map[contracts.Day]map[string]bool // keys that began a first pull, per day
 }
 
-// New builds the bars_refresh job from the embedded job.toml: one key per watch entry (its Issuer) and
+// New builds the bars_refresh job from the embedded job.toml: one key per watch entry (its Issuer, or sym:<symbol> when it has none) and
 // per [[index]] (index:<symbol>).
 func New(
 	b broker.Broker, h broker.HistoryClient, res store.InstrumentResolver, w bar.PriceBarWriter,
@@ -96,7 +96,11 @@ func New(
 		return nil
 	}
 	for _, e := range entries {
-		if err := add(e.Issuer, target{contract: e.Contract, spec: specOf(typeStock, e.Contract)}); err != nil {
+		key := e.Issuer
+		if key == "" {
+			key = "sym:" + e.Contract.Symbol
+		}
+		if err := add(key, target{contract: e.Contract, spec: specOf(typeStock, e.Contract)}); err != nil {
 			return nil, err
 		}
 	}
