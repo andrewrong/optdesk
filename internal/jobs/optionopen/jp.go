@@ -1,0 +1,274 @@
+package optionopen
+
+import (
+	"context"
+	_ "embed"
+	"errors"
+	"fmt"
+	"slices"
+	"sync"
+	"time"
+	// The zone database is embedded so that a zone name loads on every machine.
+	_ "time/tzdata"
+
+	"github.com/pelletier/go-toml/v2"
+
+	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/store"
+)
+
+// The Japan side of the option open pull (docs/design/option-open-pull.md, Decision 21): the same jobs over the
+// calendar XTKS and the zone Asia/Tokyo. The session date of a run is the date in Asia/Tokyo: the pull compares
+// the day of its key with the clock in the zone of its manifest, and the plan and resolve days are the days of
+// the XTKS calendar.
+
+//go:embed job_plan_jp.toml
+var planManifestJP []byte
+
+//go:embed job_pull_jp.toml
+var pullManifestJP []byte
+
+//go:embed job_resolve_jp.toml
+var resolveManifestJP []byte
+
+// jpRules are the JP terms of the plan manifest that PlanParams does not carry: the names without options and
+// the chain of a name.
+type jpRules struct {
+	NoOption []string `toml:"-"`
+	Params   struct {
+		NoOption []string `toml:"no_option"`
+	} `toml:"params"`
+	Chain struct {
+		Exchange    string   `toml:"exchange"`
+		Multiplier  string   `toml:"multiplier"`
+		IndexNames  []string `toml:"index_names"`
+		IndexClass  string   `toml:"index_class"`
+		MaxPerIndex int      `toml:"max_per_index"`
+		MaxPerStock int      `toml:"max_per_stock"`
+	} `toml:"chain"`
+}
+
+func parseJPRules(data []byte) (jpRules, error) {
+	var r jpRules
+	if err := toml.Unmarshal(data, &r); err != nil {
+		return jpRules{}, fmt.Errorf("optionopen: jp manifest: %w", err)
+	}
+	c := r.Chain
+	if c.Exchange == "" || c.Multiplier == "" || c.MaxPerIndex < 1 || c.MaxPerStock < 1 || (len(c.IndexNames) > 0 && c.IndexClass == "") {
+		return jpRules{}, errors.New("optionopen: jp manifest: chain needs exchange, multiplier, max_per_index and max_per_stock")
+	}
+	r.NoOption = r.Params.NoOption
+	return r, nil
+}
+
+func (r jpRules) noOption(symbol string) bool { return slices.Contains(r.NoOption, symbol) }
+
+func (r jpRules) isIndex(symbol string) bool { return slices.Contains(r.Chain.IndexNames, symbol) }
+
+// tradingClass is the class of the chain of a name: the stock code, 225 for the Nikkei 225 index.
+func (r jpRules) tradingClass(symbol string) string {
+	if r.isIndex(symbol) {
+		return r.Chain.IndexClass
+	}
+	return symbol
+}
+
+// planFunc wraps base: a name of no_option keeps its place in the plan as the underlying only (no candidate and
+// no held contract), and the stocks and the index names are planned apart, at most 60 and 80 contracts per name.
+func (r jpRules) planFunc(base PlanFunc) PlanFunc {
+	return func(day time.Time, p PlanParams, names []NameInput) Plan {
+		var stocks, index []NameInput
+		for _, n := range names {
+			if r.noOption(n.Symbol) {
+				n.Candidates, n.Held = nil, nil
+			}
+			if r.isIndex(n.Symbol) {
+				index = append(index, n)
+			} else {
+				stocks = append(stocks, n)
+			}
+		}
+		p.CeilPerStock = r.Chain.MaxPerStock
+		out := base(day, p, stocks)
+		if len(index) > 0 {
+			p.CeilPerStock = r.Chain.MaxPerIndex
+			more := base(day, p, index)
+			out.Names = append(out.Names, more.Names...)
+			out.Items = append(out.Items, more.Items...)
+		}
+		// Ranks run over the merged plan, the deferred items last.
+		slices.SortStableFunc(out.Items, func(a, b Item) int {
+			switch {
+			case a.Deferred == b.Deferred:
+				return 0
+			case a.Deferred:
+				return 1
+			}
+			return -1
+		})
+		for i := range out.Items {
+			out.Items[i].Rank = i + 1
+		}
+		return out
+	}
+}
+
+// watch is the JP stocks of the watch list that have options, as the entries the shared stock list reads.
+func (r jpRules) watch(in []jobs.WatchEntry) []jobs.WatchEntry {
+	var out []jobs.WatchEntry
+	for _, e := range in {
+		if e.Market != "JP" || e.Contract.SecType != "STK" || r.noOption(e.Contract.Symbol) {
+			continue
+		}
+		e.Market = "US" // the market the shared list selects; the JP rule is applied here
+		out = append(out, e)
+	}
+	return out
+}
+
+// jpAccounts shows only the JPY positions of the names that have options.
+type jpAccounts struct {
+	store.AccountReader
+	r jpRules
+}
+
+func (a jpAccounts) Positions(ctx context.Context, alias, day string) ([]store.Position, error) {
+	rows, err := a.AccountReader.Positions(ctx, alias, day)
+	if err != nil {
+		return nil, err
+	}
+	out := rows[:0:0]
+	for _, p := range rows {
+		if p.Currency == "JPY" && !a.r.noOption(p.Symbol) {
+			out = append(out, p)
+		}
+	}
+	return out, nil
+}
+
+func (r jpRules) stored(s Stored) Stored {
+	s.Watch = r.watch(s.Watch)
+	if s.Accounts != nil {
+		s.Accounts = jpAccounts{s.Accounts, r}
+	}
+	return s
+}
+
+// jpBroker keeps of the chains of a name only the one of OSE.JPN with multiplier 100 whose trading class is the
+// code of the stock (225 for the index).
+type jpBroker struct {
+	broker.Broker
+	r jpRules
+}
+
+func (b jpBroker) ListChains(ctx context.Context, u broker.Contract) ([]broker.Chain, error) {
+	all, err := b.Broker.ListChains(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	var out []broker.Chain
+	for _, c := range all {
+		if c.Exchange == b.r.Chain.Exchange && c.Multiplier == b.r.Chain.Multiplier && c.TradingClass == b.r.tradingClass(u.Symbol) {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+// NewPlanJP builds option_open_plan_jp from the embedded job_plan_jp.toml: the plan of the JP names of the watch
+// list from stored con_ids only, DTE 14 to 90.
+func NewPlanJP(d PlanDeps) (contracts.Job, error) { return newPlanJP(planManifestJP, d) }
+
+func newPlanJP(data []byte, d PlanDeps) (contracts.Job, error) {
+	if d.Instruments == nil || d.Bars == nil || d.Options == nil || d.Plans == nil || d.Clock == nil {
+		return nil, errors.New("optionopen: instruments, bars, options, plan writer and clock are required")
+	}
+	m, err := parseManifest(data)
+	if err != nil {
+		return nil, err
+	}
+	r, err := parseJPRules(data)
+	if err != nil {
+		return nil, err
+	}
+	if d.Func == nil {
+		d.Func = BuildPlan
+	}
+	d.Func = r.planFunc(d.Func)
+	d.Stored = r.stored(d.Stored)
+	return &planJob{m: m, d: d}, nil
+}
+
+// NewResolveJP builds option_open_resolve_jp from the embedded job_resolve_jp.toml: NewResolve over the JP names,
+// asking for the chains of OSE.JPN only.
+func NewResolveJP(d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
+	r, err := parseJPRules(planManifestJP)
+	if err != nil {
+		return nil, err
+	}
+	d.Stored = r.stored(d.Stored)
+	if d.Broker != nil {
+		d.Broker = jpBroker{d.Broker, r}
+	}
+	return newListed(resolveManifestJP, d, o)
+}
+
+var _ NewPullFunc = NewPullJP
+
+// NewPullJP builds option_open_jp from the embedded job_pull_jp.toml. It is NewPull over the JP manifest: the key
+// day is the date in Asia/Tokyo.
+func NewPullJP(d PullDeps) (contracts.Job, error) { return newPullFrom(pullManifestJP, d) }
+
+// newPullFrom is the body of NewPull for a manifest given.
+func newPullFrom(data []byte, d PullDeps) (contracts.Job, error) {
+	if d.Broker == nil || d.Plans == nil || d.Contracts == nil || d.Writer == nil || d.Instruments == nil || d.Clock == nil {
+		return nil, errors.New("optionopen: pull: broker, plan store, contract store, writer, instrument reader and clock are required")
+	}
+	var m pullTable
+	if err := toml.Unmarshal(data, &m); err != nil {
+		return nil, fmt.Errorf("optionopen: pull manifest: %w", err)
+	}
+	loc, err := time.LoadLocation(m.Zone)
+	if err != nil {
+		return nil, errors.New("optionopen: pull manifest: zone is unknown")
+	}
+	p := &pull{m: m, d: d, loc: loc, retry: map[Class]bool{}}
+	if m.ID == "" || len(m.Slot) != 4 || m.Chunk < 1 || m.MaxPerKey < 1 || m.BudgetMinutes < 1 || m.MinOKShare < 0 || m.MinOKShare > 1 {
+		return nil, errors.New("optionopen: pull manifest: id, slot, chunk, max_per_key, budget_minutes and min_ok_share are out of range")
+	}
+	if p.stop, err = hhmm(m.StopAfter); err != nil {
+		return nil, errors.New("optionopen: pull manifest: stop_after must be HHMM")
+	}
+	if p.offset, err = time.ParseDuration(m.Schedule.Offset); err != nil {
+		return nil, errors.New("optionopen: pull manifest: schedule.offset is not a duration")
+	}
+	if p.runBound, err = time.ParseDuration(m.Schedule.RunBound); err != nil {
+		return nil, errors.New("optionopen: pull manifest: schedule.run_bound is not a duration")
+	}
+	for _, c := range m.RetryClasses {
+		p.retry[Class(c)] = true
+	}
+	return p, nil
+}
+
+// jpLunchBreak is the lunch_break value of job_pull_jp.toml, read once.
+var jpLunchBreak = sync.OnceValue(func() [2]string {
+	var m struct {
+		LunchBreak []string `toml:"lunch_break"`
+	}
+	if err := toml.Unmarshal(pullManifestJP, &m); err != nil || len(m.LunchBreak) != 2 {
+		panic("optionopen: job_pull_jp.toml: lunch_break must be two HHMM values")
+	}
+	for _, s := range m.LunchBreak {
+		if _, err := hhmm(s); err != nil {
+			panic("optionopen: job_pull_jp.toml: lunch_break must be two HHMM values")
+		}
+	}
+	return [2]string{m.LunchBreak[0], m.LunchBreak[1]}
+})
+
+// JPLunchBreak returns the start and the end of the TSE lunch break in Asia/Tokyo as HHMM, the value
+// lunch_break of job_pull_jp.toml: "1130" and "1230". The session check reads it.
+func JPLunchBreak() [2]string { return jpLunchBreak() }
