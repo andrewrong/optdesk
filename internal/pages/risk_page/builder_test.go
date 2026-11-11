@@ -67,11 +67,22 @@ func (replayer) Replay(compute.LedgerInput, compute.LedgerParams) compute.Ledger
 	return compute.LedgerResult{}
 }
 
-// structures answers with the given structures whatever the input.
-type structures struct{ res compute.StructureResult }
+// structures answers with the given structures whatever the input; seen, when set, receives the input.
+type structures struct {
+	res  compute.StructureResult
+	seen *compute.StructureInput
+}
 
-func (s structures) Evaluate(compute.StructureInput, compute.StructureParams) compute.StructureResult {
+func (s structures) Evaluate(in compute.StructureInput, _ compute.StructureParams) compute.StructureResult {
+	if s.seen != nil {
+		*s.seen = in
+	}
 	return s.res
+}
+
+func opt(sym, right, strike, expiry, qty string) store.Position {
+	return store.Position{Symbol: sym, SecType: "option", Right: right, Strike: strike, Expiry: expiry, Currency: "USD",
+		Quantity: qty, CapturedAt: time.Date(2026, 11, 10, 1, 0, 0, 0, time.UTC)}
 }
 
 func structure(under, cur, expiry, delta, vega string) compute.Structure {
@@ -85,7 +96,7 @@ func structure(under, cur, expiry, delta, vega string) compute.Structure {
 }
 
 func stk(sym string, id int64, qty, cur string) store.Position {
-	return store.Position{Symbol: sym, SecType: "STK", Currency: cur, ConID: id, Quantity: qty,
+	return store.Position{Symbol: sym, SecType: "stock", Currency: cur, ConID: id, Quantity: qty,
 		CapturedAt: time.Date(2026, 11, 10, 1, 0, 0, 0, time.UTC)}
 }
 
@@ -96,7 +107,7 @@ func okConfig(res compute.StructureResult, stocks ...store.Position) risk_page.C
 		Ledger:   fakeLedger{},
 		Sessions: fakeSessions{},
 		Ledgers:  func() compute.OptionLedger { return replayer{} },
-		Holdings: pagefig.NewHoldings, Structures: func() compute.OptionStructures { return structures{res} },
+		Holdings: pagefig.NewHoldings, Structures: func() compute.OptionStructures { return structures{res: res} },
 	}
 }
 
@@ -333,5 +344,31 @@ func TestStructureWithoutExpiryIsNoted(t *testing.T) {
 	m, _ := build(t, okConfig(compute.StructureResult{Structures: []compute.Structure{s}}, stk("AAA", 1, "100", "USD")), "main")
 	if len(m["notes"].([]any)) != 1 {
 		t.Fatalf("notes = %v", m["notes"])
+	}
+}
+
+// TestStoredWordsStockAndOption: the account store holds sec_type stock and option; the page reads both.
+func TestStoredWordsStockAndOption(t *testing.T) {
+	t.Parallel()
+	var seen compute.StructureInput
+	c := okConfig(compute.StructureResult{Structures: []compute.Structure{
+		structure("AAA", "USD", "2026-12-18", "-30.5", "12.25"),
+	}}, stk("AAA", 1, "100", "USD"), opt("AAA", "put", "95", "2026-12-18", "-1"))
+	c.Structures = func() compute.OptionStructures {
+		return structures{res: compute.StructureResult{Structures: []compute.Structure{
+			structure("AAA", "USD", "2026-12-18", "-30.5", "12.25"),
+		}}, seen: &seen}
+	}
+	m, _ := build(t, c, "main")
+	if len(seen.Held) != 1 || seen.Held[0].Underlying != "AAA" || seen.Held[0].Right != "P" || seen.Held[0].Expiry != "2026-12-18" {
+		t.Fatalf("held options = %+v", seen.Held)
+	}
+	drows := block(m, "delta")["rows"].([]any)
+	if len(drows) != 1 || drows[0].(map[string]any)["name"] != "AAA" {
+		t.Fatalf("delta rows = %v", drows)
+	}
+	vrows := block(m, "vega")["rows"].([]any)
+	if len(vrows) != 1 {
+		t.Fatalf("vega rows = %v", vrows)
 	}
 }
