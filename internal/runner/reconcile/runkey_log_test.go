@@ -90,8 +90,100 @@ func TestRunKeyLogsFailedRun(t *testing.T) {
 	}
 	wantAttrs(t, out[:len(out)-1], "job=j1", "day=2026-11-04", "dataset=ds", "outcome=failed",
 		"error_code=permanent", "returned=2", "usable=0", "duration=3s")
-	if strings.Contains(out, "hunter2") || strings.Contains(out, "dial tcp") {
-		t.Fatalf("the error message leaked into the line: %q", out)
+	if !strings.Contains(out, "error=") || !strings.Contains(out, "dial tcp 10.0.0.9: hunter2 refused") {
+		t.Fatalf("the error text is missing from the line: %q", out)
+	}
+}
+
+// failedLine runs one failed attempt whose job error is msg and returns the log output.
+func failedLine(t *testing.T, msg string) string {
+	t.Helper()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	k, buf := newLogRunner(clk)
+	job := &advJob{fakeJob: &fakeJob{id: "j1"}, clk: clk, d: time.Second, buf: buf,
+		res: contracts.JobResult{Err: logErr{msg: msg}}}
+	if _, err := k.RunKey(context.Background(), job, rkDay, keyA, 1, time.Time{}, time.Time{}, ""); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
+
+func TestRunKeyErrorTextRedactsDSNPassword(t *testing.T) {
+	t.Parallel()
+	out := failedLine(t, "connect postgres://ot:s3cretpw@db.local:5432/ot?sslmode=disable failed")
+	if strings.Contains(out, "s3cretpw") || strings.Contains(out, "db.local") {
+		t.Fatalf("the DSN leaked: %q", out)
+	}
+	wantAttrs(t, out[:len(out)-1], `error="connect [redacted] failed"`)
+}
+
+func TestRunKeyErrorTextRedactsURLUserinfo(t *testing.T) {
+	t.Parallel()
+	out := failedLine(t, "GET https://bob:hunter2@api.example.com/x failed")
+	if strings.Contains(out, "hunter2") {
+		t.Fatalf("the userinfo leaked: %q", out)
+	}
+}
+
+func TestRunKeyErrorTextRedactsKeyValuePairs(t *testing.T) {
+	t.Parallel()
+	out := failedLine(t, "dial host=h PassWord=hunter2 port=1 and url?api_key=abc123&x=1; token=tok9")
+	for _, s := range []string{"hunter2", "abc123", "tok9"} {
+		if strings.Contains(out, s) {
+			t.Fatalf("%q leaked: %q", s, out)
+		}
+	}
+	if !strings.Contains(out, "host=h") || !strings.Contains(out, "port=1") || !strings.Contains(out, "x=1") {
+		t.Fatalf("a harmless pair was lost: %q", out)
+	}
+}
+
+func TestRunKeyErrorTextRedactsAuthorization(t *testing.T) {
+	t.Parallel()
+	out := failedLine(t, "request failed Authorization: Bearer abc.def.ghi; retry")
+	if strings.Contains(out, "abc.def.ghi") {
+		t.Fatalf("the credential leaked: %q", out)
+	}
+	out = failedLine(t, "Authorization: Basic dXNlcjpwYXNz")
+	if strings.Contains(out, "dXNlcjpwYXNz") {
+		t.Fatalf("the credential leaked: %q", out)
+	}
+}
+
+func TestRunKeyErrorTextIsCutTo300Bytes(t *testing.T) {
+	t.Parallel()
+	out := failedLine(t, strings.Repeat("é", 100)+strings.Repeat("x", 800)+"TAILSECRET")
+	if strings.Contains(out, "TAILSECRET") {
+		t.Fatalf("the tail of a long text was logged: %q", out)
+	}
+	if got := safeErrText(strings.Repeat("é", 200)); len(got) != 300 {
+		t.Fatalf("cut length %d, want 300", len(got))
+	}
+	if got := safeErrText(strings.Repeat("a", 299) + "é"); len(got) != 299 {
+		t.Fatalf("cut length %d, want 299 (rune boundary)", len(got))
+	}
+}
+
+func TestRunKeyErrorTextHasNoNewline(t *testing.T) {
+	t.Parallel()
+	out := failedLine(t, "first line\nsecond\tline\r\nthird")
+	if n := strings.Count(out, "\n"); n != 1 {
+		t.Fatalf("%d newlines in the output, want 1: %q", n, out)
+	}
+	wantAttrs(t, out[:len(out)-1], `error="first line second line third"`)
+}
+
+func TestRunKeyOkAndDegradedLinesHaveNoErrorText(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	k, buf := newLogRunner(clk)
+	job := &advJob{fakeJob: &fakeJob{id: "j1"}, clk: clk, d: time.Second, buf: buf,
+		res: contracts.JobResult{Returned: 1, Usable: 1}}
+	if _, err := k.RunKey(context.Background(), job, rkDay, keyA, 1, time.Time{}, time.Time{}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), " error=") {
+		t.Fatalf("ok line has error=: %q", buf.String())
 	}
 }
 
