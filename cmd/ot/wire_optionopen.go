@@ -23,6 +23,11 @@ const (
 	jobOptionOpenPlan       = "option_open_plan"
 	jobOptionOpen           = "option_open"
 
+	// The ids of the three Japan jobs (Decision 21): resolve, plan and pull over XTKS.
+	jobOptionOpenResolveJP = "option_open_resolve_jp"
+	jobOptionOpenPlanJP    = "option_open_plan_jp"
+	jobOptionOpenJP        = "option_open_jp"
+
 	// envOpenResolveMaxNew is read from the process environment: a positive value is passed as MaxNew to the
 	// resolve jobs (unset or 0 keeps max_new of the manifest), so the window runs it once with 1500.
 	envOpenResolveMaxNew = "OT_OPEN_RESOLVE_MAX_NEW"
@@ -43,28 +48,13 @@ func init() {
 	registerJob(jobFamily{
 		id: jobOptionOpenPlan, order: 130, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
-			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpenPlan, true)
-			if !ok {
-				return nil, "", nil
-			}
-			j, err := optionopen.NewPlan(optionopen.PlanDeps{
-				Stored: openStored(jc, stores), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
-			})
-			return held(a, jobOptionOpenPlan, j, reason, err)
+			return buildOpenPlan(ctx, a, jc, jobOptionOpenPlan, optionopen.NewPlan)
 		},
 	})
 	registerJob(jobFamily{
 		id: jobOptionOpen, order: 140, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
-			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpen, false)
-			if !ok {
-				return nil, "", nil
-			}
-			j, err := optionopen.NewPull(optionopen.PullDeps{
-				Broker: jc.brk, Plans: stores, Contracts: stores, Writer: stores,
-				Instruments: jc.f.inst, Clock: jc.f.clk, Log: jc.f.log,
-			})
-			return held(a, jobOptionOpen, j, reason, err)
+			return buildOpenPull(ctx, a, jc, jobOptionOpen, optionopen.NewPull)
 		},
 	})
 	registerJob(jobFamily{
@@ -73,6 +63,52 @@ func init() {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveGap, optionopen.NewGap, false, broker.Options{ResolveInFlight: 1})
 		},
 	})
+	// Orders 165, 170 and 180: the Japan resolve, plan and pull, with the rules of the US families.
+	registerJob(jobFamily{
+		id: jobOptionOpenResolveJP, order: 165, startOff: ifOpenDSN(brokerDownOff),
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveJP, optionopen.NewResolveJP, true, broker.Options{ResolveInFlight: 1})
+		},
+	})
+	registerJob(jobFamily{
+		id: jobOptionOpenPlanJP, order: 170, startOff: ifOpenDSN(brokerDownOff),
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			return buildOpenPlan(ctx, a, jc, jobOptionOpenPlanJP, optionopen.NewPlanJP)
+		},
+	})
+	registerJob(jobFamily{
+		id: jobOptionOpenJP, order: 180, startOff: ifOpenDSN(brokerDownOff),
+		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			return buildOpenPull(ctx, a, jc, jobOptionOpenJP, optionopen.NewPullJP)
+		},
+	})
+}
+
+// buildOpenPlan builds a plan job (US or JP) over the stored inputs and the option open store.
+func buildOpenPlan(ctx context.Context, a *app, jc *jobCtx, id string,
+	newJob func(optionopen.PlanDeps) (contracts.Job, error)) (contracts.Job, string, error) {
+	stores, reason, ok := openOptionOpen(ctx, a, jc, id, true)
+	if !ok {
+		return nil, "", nil
+	}
+	j, err := newJob(optionopen.PlanDeps{
+		Stored: openStored(jc, stores), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
+	})
+	return held(a, id, j, reason, err)
+}
+
+// buildOpenPull builds a pull job (US or JP) over the shared broker client.
+func buildOpenPull(ctx context.Context, a *app, jc *jobCtx, id string,
+	newJob func(optionopen.PullDeps) (contracts.Job, error)) (contracts.Job, string, error) {
+	stores, reason, ok := openOptionOpen(ctx, a, jc, id, false)
+	if !ok {
+		return nil, "", nil
+	}
+	j, err := newJob(optionopen.PullDeps{
+		Broker: jc.brk, Plans: stores, Contracts: stores, Writer: stores,
+		Instruments: jc.f.inst, Clock: jc.f.clk, Log: jc.f.log,
+	})
+	return held(a, id, j, reason, err)
 }
 
 // buildOpenResolve builds the evening resolve (withPull) or the gap pass over a client of its own, dialled with

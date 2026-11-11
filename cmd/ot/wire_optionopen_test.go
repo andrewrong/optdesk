@@ -251,3 +251,60 @@ func TestOpenResolveMaxNewFromEnvironment(t *testing.T) {
 		}
 	}
 }
+
+var jpOpenIDs = []string{jobOptionOpenResolveJP, jobOptionOpenPlanJP, jobOptionOpenJP}
+
+func TestOptionOpenJPFamiliesRegisteredInOrder(t *testing.T) {
+	t.Parallel()
+	for id, order := range map[string]int{jobOptionOpenResolveJP: 165, jobOptionOpenPlanJP: 170, jobOptionOpenJP: 180} {
+		f, ok := jobFamilies[id]
+		if !ok || f.order != order {
+			t.Fatalf("%s: registered %v, order %d, want %d", id, ok, f.order, order)
+		}
+	}
+}
+
+func TestOptionOpenJPMissingDSNLeavesFamiliesOutWithOneLineEach(t *testing.T) {
+	t.Parallel()
+	h := newOpenHarness(t, nil, true, nil)
+	for _, id := range jpOpenIDs {
+		if j, reason, err := jobFamilies[id].build(t.Context(), h.a, h.jc); j != nil || reason != "" || err != nil {
+			t.Fatalf("%s: job %v reason %q err %v", id, j, reason, err)
+		}
+		if n := strings.Count(h.log.String(), "job="+id+" "); n != 1 {
+			t.Fatalf("%d lines name %s: %s", n, id, h.log.String())
+		}
+	}
+	if n := strings.Count(h.log.String(), "OT_PG_DSN_OPTION_OPEN is not set"); n != 3 {
+		t.Fatalf("%d lines name the DSN line: %s", n, h.log.String())
+	}
+}
+
+func TestOptionOpenJPDeadSocketHoldsThroughStartOff(t *testing.T) {
+	t.Parallel()
+	cfg := runOnceConfig{openDSN: deadEnv[openquote.DSNEnvOptionOpen]}
+	off := startDisabled(cfg, false)
+	for _, id := range jpOpenIDs {
+		if off[id] != reasonBrokerDown {
+			t.Fatalf("startOff[%s] = %q", id, off[id])
+		}
+	}
+	if off = startDisabled(runOnceConfig{}, false); off[jobOptionOpenJP] != "" {
+		t.Fatalf("family absent but listed: %v", off)
+	}
+}
+
+func TestOptionOpenJPResolveDialsOwnClientWithOneInFlight(t *testing.T) {
+	t.Parallel()
+	h := newOpenHarness(t, deadEnv, true, nil)
+	for _, id := range jpOpenIDs {
+		h.build(t, id)
+	}
+	if len(h.dialed) != 1 || h.dialed[0].ResolveInFlight != 1 {
+		t.Fatalf("dials %+v", h.dialed)
+	}
+	h.jc.extra.closeAll()
+	if h.closed != 1 {
+		t.Fatalf("closed %d clients, want 1", h.closed)
+	}
+}
