@@ -140,9 +140,10 @@ func heldFakes(bid float64) (*fakes, CandidateStores) {
 		{Symbol: "XYZ", SecType: "option", Right: "call", ConID: 98, Quantity: "-1"},
 	}
 	val := []store.AccountValue{{Tag: "AvailableFunds", Value: "100000", Currency: "USD"}}
-	f.positions = map[string][]store.Position{"A": pos, "B": pos}
-	f.values = map[string][]store.AccountValue{"A": val, "B": val}
+	f.positions = map[string][]store.Position{"mine_account": pos, "wife_account": pos}
+	f.values = map[string][]store.AccountValue{"mine_account": val, "wife_account": val}
 	st := f.stores()
+	st.Aliases = []string{"mine_account", "wife_account"}
 	st.Terms = callTerms{f}
 	return f, st
 }
@@ -188,7 +189,7 @@ func TestHeldCallGuardRows(t *testing.T) {
 				t.Fatal(res.Err)
 			}
 			rows := guardRows(t, f)
-			if len(rows) != 2 || rows[0].Alias != "A" || rows[1].Alias != "B" {
+			if len(rows) != 2 || rows[0].Alias != "mine_account" || rows[1].Alias != "wife_account" {
 				t.Fatalf("guard rows %+v", rows)
 			}
 			for _, r := range rows {
