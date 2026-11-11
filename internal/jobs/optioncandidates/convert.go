@@ -1,6 +1,7 @@
 package optioncandidates
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -124,7 +127,7 @@ func fitsText(f map[string]string) string {
 }
 
 // toStoreRow maps one rule row to a stored row. The ranks are set by rankRun.
-func toStoreRow(c compute.Candidate, day contracts.Day, runID string, ul underlyingRef, ev chainEarnings, now time.Time) (store.Candidate, error) {
+func toStoreRow(c compute.Candidate, day contracts.Day, ul underlyingRef, ev chainEarnings, now time.Time) (store.Candidate, error) {
 	id, err := strconv.Atoi(c.InstrumentID)
 	if err != nil {
 		return store.Candidate{}, fmt.Errorf("instrument id is not a number")
@@ -138,7 +141,7 @@ func toStoreRow(c compute.Candidate, day contracts.Day, runID string, ul underly
 		right = "call"
 	}
 	row := store.Candidate{
-		SessionDay: day, RunID: runID, Kind: string(c.Kind), InstrumentID: id, Alias: c.Alias,
+		SessionDay: day, Kind: string(c.Kind), InstrumentID: id, Alias: c.Alias,
 		RuleVersion: ruleVersion, Issuer: ul.issuer, UnderlyingID: int(ul.id), Expiry: c.Expiry, DTE: c.DTE,
 		Right: right, Strike: c.Strike, Multiplier: mult, BidEod: c.Bid, Ask: optPtr(c.Ask), Spot: optPtr(c.Spot),
 		BuyPrice: optPtr(c.BuyPrice), SalePrice: optPtr(c.SalePrice), BreakEven: c.BreakEven,
@@ -155,6 +158,28 @@ func toStoreRow(c compute.Candidate, day contracts.Day, runID string, ul underly
 		row.RankInUnderlying = &r
 	}
 	return row, nil
+}
+
+// runIDOf is the run id of a run: a name-based UUID (SHA-1) over the day and the rows as they are written, every
+// column of every row except RunID, ComputedAt and SettingsVersion. The same results give the same id, so a rerun is
+// skipped by the store key; other results are a new run. The rows are not changed.
+func runIDOf(day contracts.Day, rows []store.Candidate) string {
+	h := sha1.New()
+	h.Write([]byte(day))
+	enc := json.NewEncoder(h)
+	for _, r := range rows {
+		r.RunID, r.ComputedAt, r.SettingsVersion = "", time.Time{}, nil
+		_ = enc.Encode(r) // a struct of strings, numbers and pointers to them cannot fail
+	}
+	return uuid.NewSHA1(uuid.NameSpaceOID, h.Sum(nil)).String()
+}
+
+// setRunID stamps the run id of the ranked rows on every row.
+func setRunID(day contracts.Day, rows []store.Candidate) {
+	id := runIDOf(day, rows)
+	for i := range rows {
+		rows[i].RunID = id
+	}
 }
 
 // rankRun sets Rank of the ok rows of the whole run: yield descending, then DTE, strike and instrument id

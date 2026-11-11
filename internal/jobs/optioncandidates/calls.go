@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -68,7 +66,7 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 	if err != nil {
 		return fail("read_rate_failed", err)
 	}
-	rc := runCtx{day: day, days: days, rate: rate, rateDay: rateDay, runID: uuid.NewString(), now: j.clk.Now().UTC()}
+	rc := runCtx{day: day, days: days, rate: rate, rateDay: rateDay, now: j.clk.Now().UTC()}
 	var puts, calls, guards []store.Candidate
 	for _, ul := range ulist {
 		rows, failed := j.underlying(ctx, rc, entryOf(us, ul.issuer), ul)
@@ -94,6 +92,7 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 		return fail("rank_candidates_failed", err)
 	}
 	rows := append(append(puts, calls...), guards...)
+	setRunID(day, rows)
 	if _, err := j.st.Candidates.InsertCandidates(ctx, rows); err != nil {
 		return fail("write_candidates_failed", err)
 	}
@@ -112,7 +111,6 @@ type runCtx struct {
 	days    []contracts.Day
 	rate    string
 	rateDay contracts.Day
-	runID   string
 	now     time.Time
 }
 
@@ -161,7 +159,7 @@ func (j *callsJob) underlying(ctx context.Context, rc runCtx, entry jobs.WatchEn
 	}
 	var rows []store.Candidate
 	for _, c := range j.rule.Evaluate(in, j.params) {
-		row, err := toStoreRow(c, rc.day, rc.runID, ul, ev, rc.now)
+		row, err := toStoreRow(c, rc.day, ul, ev, rc.now)
 		if err != nil {
 			return failWith("map_candidate_failed", err)
 		}
