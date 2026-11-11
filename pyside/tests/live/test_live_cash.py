@@ -1,4 +1,4 @@
-"""Read-only live test of USD.JPY: resolve and MIDPOINT daily bars; see the package docstring to run."""
+"""Read-only live test of USD.JPY: resolve and MIDPOINT daily bars; skipped unless OT_LIVE_PYSIDE=1 (see conftest.py)."""
 
 from __future__ import annotations
 
