@@ -119,14 +119,15 @@ type ListRecord struct {
 }
 
 // ListRunRecord is one row of master.option_list_run: one (session, underlying) of a pre-open run. Session is the
-// trading day whose open the list serves, the key day of the run. Expected is the number of groups to list when
-// the run first reached the name, nil until the name's chain answer is known. Listed is recounted from the
+// trading day whose open the list serves, the key day of the run. Expected is the groups to list when the run
+// first reached the name, each "expiry|class"; nil (null) until the name's chain answer is known, an empty non-nil
+// slice when the answer is known and holds none. Listed is recounted from the
 // groups of master.option_list whose ListedSession equals Session. Reason is "not_finished", "none" (a complete
 // name) or another reason of the design.
 type ListRunRecord struct {
 	UnderlyingID int64
 	Session      contracts.Day
-	Expected     *int
+	Expected     []string
 	Listed       int
 	Reason       string
 	UpdatedAt    time.Time

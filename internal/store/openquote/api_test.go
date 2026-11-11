@@ -304,7 +304,17 @@ type listFake struct {
 var _ openquote.OptionListStore = (*listFake)(nil)
 
 func (f *listFake) PutLists(_ context.Context, rows []openquote.ListRecord) error {
-	f.lists = append(f.lists, rows...)
+	for _, r := range rows {
+		replaced := false
+		for i, o := range f.lists {
+			if o.UnderlyingID == r.UnderlyingID && o.Expiry == r.Expiry && o.Class == r.Class {
+				f.lists[i], replaced = r, true
+			}
+		}
+		if !replaced {
+			f.lists = append(f.lists, r)
+		}
+	}
 	return nil
 }
 
@@ -319,7 +329,17 @@ func (f *listFake) Lists(_ context.Context, id int64) ([]openquote.ListRecord, e
 }
 
 func (f *listFake) PutListRuns(_ context.Context, rows []openquote.ListRunRecord) error {
-	f.runs = append(f.runs, rows...)
+	for _, r := range rows {
+		replaced := false
+		for i, o := range f.runs {
+			if o.UnderlyingID == r.UnderlyingID && o.Session == r.Session {
+				f.runs[i], replaced = r, true
+			}
+		}
+		if !replaced {
+			f.runs = append(f.runs, r)
+		}
+	}
 	return nil
 }
 
@@ -349,18 +369,41 @@ func TestOptionListPutAndReadBack(t *testing.T) {
 	if none, _ := s.Lists(ctx, 6); none == nil || len(none) != 0 {
 		t.Fatalf("none = %#v", none)
 	}
-	two := 2
 	if err := s.PutListRuns(ctx, []openquote.ListRunRecord{
-		{UnderlyingID: 5, Session: "2026-11-12", Expected: &two, Listed: 2, Reason: "none", UpdatedAt: at},
+		{UnderlyingID: 5, Session: "2026-11-12", Expected: []string{"2026-12-18|AAPL", "2026-12-24|AAPL"}, Listed: 2, Reason: "none", UpdatedAt: at},
 		{UnderlyingID: 6, Session: "2026-11-12", Reason: "not_finished", UpdatedAt: at},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	runs, _ := s.ListRuns(ctx, "2026-11-12")
-	if len(runs) != 2 || runs[0].Expected == nil || *runs[0].Expected != 2 || runs[1].Expected != nil {
+	if len(runs) != 2 || len(runs[0].Expected) != 2 || runs[1].Expected != nil {
 		t.Fatalf("runs %+v", runs)
 	}
 	if none, _ := s.ListRuns(ctx, "2026-11-13"); none == nil || len(none) != 0 {
 		t.Fatalf("none = %#v", none)
+	}
+}
+
+func TestRunRowExpectedNamesTheGroups(t *testing.T) {
+	t.Parallel()
+	var s openquote.OptionListStore = &listFake{}
+	ctx := context.Background()
+	_ = s.PutListRuns(ctx, []openquote.ListRunRecord{{UnderlyingID: 5, Session: "2026-11-12",
+		Expected: []string{"2026-12-18|AAPL", "2026-12-24|AAPL"}, Reason: "not_finished"}})
+	runs, _ := s.ListRuns(ctx, "2026-11-12")
+	if len(runs) != 1 || len(runs[0].Expected) != 2 || runs[0].Expected[1] != "2026-12-24|AAPL" {
+		t.Fatalf("runs %+v", runs)
+	}
+}
+
+func TestPutListRunsUpdatesExistingKey(t *testing.T) {
+	t.Parallel()
+	var s openquote.OptionListStore = &listFake{}
+	ctx := context.Background()
+	_ = s.PutListRuns(ctx, []openquote.ListRunRecord{{UnderlyingID: 5, Session: "2026-11-12", Reason: "not_finished"}})
+	_ = s.PutListRuns(ctx, []openquote.ListRunRecord{{UnderlyingID: 5, Session: "2026-11-12", Reason: "none"}})
+	runs, _ := s.ListRuns(ctx, "2026-11-12")
+	if len(runs) != 1 || runs[0].Reason != "none" {
+		t.Fatalf("runs %+v", runs)
 	}
 }

@@ -184,7 +184,7 @@ Declared in `internal/store/api.go`: `AccountWriter` (`WriteCapture`, `WriteExec
 
 ## Option contract lists
 
-Declared in `internal/store/openquote/api.go`, apart from `Stores`: `ListRecord` (a row of `master.option_list`: underlying id, expiry, class, `ListedAt`, `ListedSession` (new field), `Count`, `TriedAt`, `Outcome`), `ListRunRecord` (a row of `master.option_list_run`: underlying id, session, `Expected` (null until known), `Listed`, `Reason`, `UpdatedAt`) and `OptionListStore` (`PutLists`, `Lists`, `PutListRuns`, `ListRuns`). Design: `docs/design/option-contract-lists.md`, Decision 6.
+Declared in `internal/store/openquote/api.go`, apart from `Stores`: `ListRecord` (a row of `master.option_list`: underlying id, expiry, class, `ListedAt`, `ListedSession` (new field), `Count`, `TriedAt`, `Outcome`), `ListRunRecord` (a row of `master.option_list_run`: underlying id, session, `Expected` (a list of `expiry|class`, null until known), `Listed`, `Reason`, `UpdatedAt`) and `OptionListStore` (`PutLists`, `Lists`, `PutListRuns`, `ListRuns`). Design: `docs/design/option-contract-lists.md`, Decision 6.
 
 - `master.option_list` has one row per (underlying, expiry, class) asked. `Outcome` is `listed`, `short` or `error`; `short` and `error` update `TriedAt` and `Outcome` and keep `ListedAt` and `ListedSession`.
 - `master.option_list_run` has one row per (session, underlying). The session is the trading day D whose open the list serves: the key day of the pre-open run.
