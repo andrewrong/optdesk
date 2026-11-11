@@ -63,7 +63,8 @@ func TestTrackingRouteServesPage(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"schema":"option_tracking_page"`) {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}
-	if innerLedger(f.got.Ledger) != store.OptionLedgerReader(led) || f.got.Account != acct || f.got.Sessions != nil || len(f.days) != 1 || f.days[0] != "2026-11-05" {
+	if innerLedger(f.got.Ledger) != store.OptionLedgerReader(led) || f.got.Account != acct ||
+		f.got.Sessions != nil || len(f.days) != 1 || f.days[0] != "2026-11-05" {
 		t.Fatalf("readers %+v days %v", f.got, f.days)
 	}
 	h = siteHandler(f.a, trackingClock, "", rd, echoHandler, http.NotFoundHandler())
