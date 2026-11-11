@@ -97,6 +97,9 @@ func hashLines(lines []string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// sessionLookbackDays is how far before the as-of day the newest session day is looked for.
+const sessionLookbackDays = 10
+
 // lookbackDays is the number of calendar days of inputs a series figure reads before the as-of day.
 func lookbackDays(rule compute.Rule) int {
 	if rule.Years > 0 {
@@ -106,7 +109,13 @@ func lookbackDays(rule compute.Rule) int {
 }
 
 // runMarket computes the figures on FRED series.
+//
+// A figure whose newest FRED point is older than the newest session day of the calendar up to the as-of day is
+// stored as it is and reported as a retryable failure: the point of that day may still arrive, and a rerun with a
+// changed input hash stores the next rev.
 func (r *runState) runMarket(ts []target) {
+	var sessionDay contracts.Day // the newest session day up to the as-of day, "" when none is known
+	sessionsRead := false
 	for _, t := range ts {
 		if r.ctx.Err() != nil {
 			r.failStore(r.ctx.Err())
@@ -132,6 +141,19 @@ func (r *runState) runMarket(ts []target) {
 		if bad {
 			continue
 		}
+		if !sessionsRead {
+			days, err := r.j.stores.SessionDays.SessionDays(r.ctx, calendarID, shiftDay(r.day, -sessionLookbackDays), r.day)
+			if err != nil {
+				r.failStore(fmt.Errorf("computefigures: session days: %w", err))
+				continue
+			}
+			for _, d := range days {
+				if dd := dayOf(d.SessionDay); d.IsSession && dd > sessionDay {
+					sessionDay = dd
+				}
+			}
+			sessionsRead = true
+		}
 		var f compute.Figure
 		switch t.spec.Method {
 		case methodRatio:
@@ -142,6 +164,13 @@ func (r *runState) runMarket(ts []target) {
 			f = r.j.figs.MovingAverageGap(t.rule.ID, series[0], r.day)
 		}
 		r.store(t, f, hashLines(lines), []input{{table: tableSeriesPoint, keys: t.spec.Series}}, figureParams(t.rule, false))
+		for i, s := range series {
+			if len(s) == 0 || sessionDay == "" || s[len(s)-1].Day >= sessionDay {
+				continue
+			}
+			r.fail(contracts.Retryable, fmt.Errorf("computefigures: %s: series %s newest point %s, waits for %s",
+				t.rule.ID, t.spec.Series[i], s[len(s)-1].Day, sessionDay))
+		}
 	}
 }
 
