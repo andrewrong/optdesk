@@ -308,3 +308,60 @@ func TestStockEmptyBidIsGap(t *testing.T) {
 		t.Errorf("contract cells = %v", cells)
 	}
 }
+
+const wantNoYieldText = "No bid or spot price stored for 2026-11-10, so no annualised yield to show"
+
+func TestStockMatrixAllNoBidIsEmptyState(t *testing.T) {
+	t.Parallel()
+	rows := stockFixture()
+	for i := range rows {
+		rows[i].BidEod = ""
+	}
+	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, "AAPL"), stockDay)
+	if p.Matrix.Empty == nil || *p.Matrix.Empty != wantNoYieldText {
+		t.Errorf("Matrix.Empty = %v", p.Matrix.Empty)
+	}
+	if len(p.Matrix.Cells) != 0 || p.Matrix.Cells == nil || p.Matrix.Strikes == nil || p.Matrix.Expiries == nil {
+		t.Errorf("matrix = %+v", p.Matrix)
+	}
+	if len(p.Contracts.Rows) != 3 {
+		t.Errorf("contract rows = %d", len(p.Contracts.Rows))
+	}
+}
+
+func TestStockMatrixAllNoSpotIsEmptyState(t *testing.T) {
+	t.Parallel()
+	rows := stockFixture()
+	for i := range rows {
+		rows[i].AnnualizedYield = nil
+	}
+	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, "AAPL"), stockDay)
+	if p.Matrix.Empty == nil || *p.Matrix.Empty != wantNoYieldText {
+		t.Errorf("Matrix.Empty = %v", p.Matrix.Empty)
+	}
+	if len(p.Matrix.Cells) != 0 {
+		t.Errorf("cells = %d", len(p.Matrix.Cells))
+	}
+}
+
+func TestStockMatrixSomeYieldKeepsGrid(t *testing.T) {
+	t.Parallel()
+	rows := stockFixture()
+	rows[1].BidEod = ""
+	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, "AAPL"), stockDay)
+	if p.Matrix.Empty != nil {
+		t.Fatalf("Matrix.Empty = %q", *p.Matrix.Empty)
+	}
+	na := 0
+	for _, c := range p.Matrix.Cells {
+		if c.YieldText == "Annualised n/a" {
+			na++
+			if c.Key != cellKey(101) {
+				t.Errorf("unexpected n/a cell %s", c.Key)
+			}
+		}
+	}
+	if na != 1 || len(p.Matrix.Cells) < 2 {
+		t.Errorf("na = %d of %d cells", na, len(p.Matrix.Cells))
+	}
+}
