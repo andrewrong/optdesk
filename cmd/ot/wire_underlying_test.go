@@ -215,3 +215,31 @@ func TestEveryListFamilyIsListed(t *testing.T) {
 		}
 	}
 }
+
+// TestOptionOpenFamiliesAreListed builds the families of option_open, US and JP, as wireJobs does, and finds each one a
+// listedJob; option_eod_jp is built over the same list.
+func TestOptionOpenFamiliesAreListed(t *testing.T) {
+	t.Parallel()
+	h := newOpenHarness(t, deadEnv, true, nil)
+	// The two pull jobs take no names (they read the stored plans of the day), so they are not listed jobs.
+	pulls := map[string]bool{jobOptionOpen: true, jobOptionOpenJP: true}
+	ids := append([]string{jobOptionOpenResolve, jobOptionOpenPlan, jobOptionOpen, jobOptionOpenResolveGap}, jpOpenIDs...)
+	for _, id := range ids {
+		j, _ := h.build(t, id)
+		if _, ok := listedOf(j); ok == pulls[id] {
+			t.Errorf("%s is %T, listed %v", id, j, ok)
+		}
+	}
+	d := newDeps()
+	d.newOptionEodJP = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock) (contracts.Job, error) {
+		return namedJob{id: jobOptionEodJP}, nil
+	}
+	d.newOptionEodJPWatch = nil
+	j, err := jobFactory{d: d}.withList(oneUSRow()).optionEodJP(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := listedOf(j); !ok {
+		t.Errorf("%s is %T, want a listedJob", jobOptionEodJP, j)
+	}
+}

@@ -33,9 +33,10 @@ var startListed = func(build listedBuild, group string, reader underlying.Reader
 	return newListedJob(ctx, build, group, reader, held, clk)
 }
 
-// heldAliases are the account aliases whose positions make a name held (the aliases optionopen reads).
 // nameKey is the name_key of a row of the list: market, a colon and the upper-case symbol.
 func nameKey(market, symbol string) string { return market + ":" + strings.ToUpper(symbol) }
+
+// heldAliases are the account aliases whose positions make a name held (the aliases optionopen reads).
 
 var heldAliases = []string{"A", "B"}
 
@@ -139,13 +140,24 @@ func (f jobFactory) listed(group string, build listedBuild) (contracts.Job, erro
 	// RunKey marks a key by the postcondition when the job has one and by the rows it returned when it has not, so a
 	// decorator may offer the method only when the inner job has it.
 	if _, ok := j.current().(runner.Postcondition); ok {
-		return listedPost{j}, nil
+		return listedPost{listedWin{j}}, nil
 	}
-	return j, nil
+	return listedWin{j}, nil
+}
+
+// listedWin is a listedJob that answers the window of the newest inner job; a job without one answers the zero rule,
+// which a reconciler reads as its own default.
+type listedWin struct{ *listedJob }
+
+func (w listedWin) Window() (calendarID string, openOffset, closeOffset time.Duration) {
+	if win, ok := w.current().(runner.Windowed); ok {
+		return win.Window()
+	}
+	return "", 0, 0
 }
 
 // listedPost is a listedJob over inner jobs that have a postcondition: it forwards it to the newest inner job.
-type listedPost struct{ *listedJob }
+type listedPost struct{ listedWin }
 
 func (p listedPost) Postcondition(ctx context.Context, day, datasetID, subjectKey string) (bool, error) {
 	pc, ok := p.current().(runner.Postcondition)
@@ -158,8 +170,8 @@ func (p listedPost) Postcondition(ctx context.Context, day, datasetID, subjectKe
 // listedOf is the listedJob inside a job built by listed.
 func listedOf(j contracts.Job) (*listedJob, bool) {
 	switch v := j.(type) {
-	case *listedJob:
-		return v, true
+	case listedWin:
+		return v.listedJob, true
 	case listedPost:
 		return v.listedJob, true
 	}

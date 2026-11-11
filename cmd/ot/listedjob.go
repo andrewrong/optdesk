@@ -10,7 +10,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
-	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -180,15 +179,6 @@ func (l *listedJob) Schedule() (calendarID, anchor, zone string, offset time.Dur
 		return s.Schedule()
 	}
 	return "", "", "", 0
-}
-
-// Window is the window of the newest inner job; a job without one answers the zero rule, which a reconciler reads as
-// its own default.
-func (l *listedJob) Window() (calendarID string, openOffset, closeOffset time.Duration) {
-	if w, ok := l.current().(runner.Windowed); ok {
-		return w.Window()
-	}
-	return "", 0, 0
 }
 
 // RunBound is the bound of the newest inner job.
