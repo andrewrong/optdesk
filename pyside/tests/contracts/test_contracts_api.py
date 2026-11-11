@@ -23,6 +23,7 @@ from optdesk.contracts.api import (
     QUOTE_KIND_OPTION_OPEN,
     QUOTE_KIND_SNAPSHOT,
     RESOLVE_STATUS_FOUND,
+    SEC_TYPE_CASH,
     SEC_TYPE_OPTION,
     AccountRequest,
     AccountResponse,
@@ -369,3 +370,7 @@ def test_bars_request_and_response_round_trip() -> None:
     assert response.bars[0].close == "1.75"
     assert not response.bars[1].HasField("volume")
     assert BarsResponse.FromString(response.SerializeToString()) == response
+
+
+def test_sec_type_cash_exists() -> None:
+    assert SEC_TYPE_CASH == 4
