@@ -15,7 +15,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
@@ -429,9 +428,10 @@ func (r *keyRun) mark(underlyingID int64, c candidate, got broker.Resolved, now 
 	jitter := time.Duration((r.j.d.Rand()*2 - 1) * float64(m.JitterDays) * float64(24*time.Hour))
 	out := contracts.OptionNotListed{
 		CheckedAt: now.UTC(), RetryAt: now.UTC().Add(time.Duration(m.RetryDays)*24*time.Hour + jitter),
-		Expiry: sessionDate(mustDay(c.expiry)), Right: gen.OptionNotListedRight(c.req.Right), Strike: c.req.Strike,
+		Expiry: sessionDate(mustDay(c.expiry)), Strike: c.req.Strike,
 		TradingClass: c.req.TradingClass, UnderlyingID: int(underlyingID),
 	}
+	setEnum(&out.Right, c.req.Right)
 	if got.ErrorCode != 0 {
 		code, text := strconv.Itoa(got.ErrorCode), got.ErrorText
 		out.ErrorCode, out.ErrorText = &code, &text

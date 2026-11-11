@@ -14,7 +14,6 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
@@ -277,12 +276,19 @@ func (j *planJob) itemsOf(day contracts.Day, symbol string, now time.Time, plan 
 		if it.Symbol != symbol {
 			continue
 		}
-		out = append(out, contracts.OptionOpenItem{
-			Class: gen.OptionOpenItemClass(it.Class), Deferred: it.Deferred, InstrumentID: int(it.Contract.InstrumentID),
+		item := contracts.OptionOpenItem{
+			Deferred: it.Deferred, InstrumentID: int(it.Contract.InstrumentID),
 			PlanID: planID, PlannedAt: now.UTC(), PlannedSpot: ns.Spot, Rank: it.Rank,
-			SessionDay: sessionDate(d), Sigma: ns.Sigma, SigmaSource: gen.OptionOpenItemSigmaSource(ns.SigmaSource),
+			SessionDay: sessionDate(d), Sigma: ns.Sigma,
 			Slot: j.m.Slot, UnderlyingID: int(ns.UnderlyingID),
-		})
+		}
+		setEnum(&item.Class, it.Class)
+		setEnum(&item.SigmaSource, ns.SigmaSource)
+		out = append(out, item)
 	}
 	return out, true
 }
+
+// setEnum sets a generated string enum field from its wire value; the generic parameter is inferred from
+// the field, so this package names no generated type.
+func setEnum[T, S ~string](dst *T, v S) { *dst = T(v) }
