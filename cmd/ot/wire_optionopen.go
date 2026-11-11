@@ -8,6 +8,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/optionopen"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
@@ -91,8 +92,10 @@ func buildOpenPlan(ctx context.Context, a *app, jc *jobCtx, id string,
 	if !ok {
 		return nil, "", nil
 	}
-	j, err := newJob(optionopen.PlanDeps{
-		Stored: openStored(jc, stores), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
+	j, err := jc.f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		return newJob(optionopen.PlanDeps{
+			Stored: openStored(jc, stores, entries), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
+		})
 	})
 	return held(a, id, j, reason, err)
 }
@@ -129,14 +132,16 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 			brk = c
 		}
 	}
-	d := optionopen.ResolveDeps{
-		Stored: openStored(jc, stores), Broker: brk, Marks: stores, Clock: jc.f.clk,
-		Log: func(line string) { a.log.Info(line, "component", "ot", "job", id) },
-	}
-	if withPull {
-		d.Pull = stores
-	}
-	j, err := newJob(d, optionopen.ResolveOptions{MaxNew: openResolveMaxNew(a)})
+	j, err := jc.f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		d := optionopen.ResolveDeps{
+			Stored: openStored(jc, stores, entries), Broker: brk, Marks: stores, Clock: jc.f.clk,
+			Log: func(line string) { a.log.Info(line, "component", "ot", "job", id) },
+		}
+		if withPull {
+			d.Pull = stores
+		}
+		return newJob(d, optionopen.ResolveOptions{MaxNew: openResolveMaxNew(a)})
+	})
 	return held(a, id, j, reason, err)
 }
 
@@ -170,11 +175,11 @@ func firstReason(rs ...string) string {
 	return ""
 }
 
-// openStored is the stored inputs of the plan and the resolve jobs: the watch list, the held ports and the
+// openStored is the stored inputs of the plan and the resolve jobs: the options names of one Plan, the held ports and the
 // instrument store of the factory. Eod is the reader of the compute stores (the pages role, which may read
 // rd.option_eod_r1); the writer role of the eod store has no right on schema rd.
-func openStored(jc *jobCtx, stores openquote.Stores) optionopen.Stored {
-	s := optionopen.Stored{Watch: jc.f.watch, Instruments: jc.f.inst, Options: stores, Accounts: jc.f.accounts}
+func openStored(jc *jobCtx, stores openquote.Stores, entries []jobs.WatchEntry) optionopen.Stored {
+	s := optionopen.Stored{Watch: entries, Instruments: jc.f.inst, Options: stores, Accounts: jc.f.accounts}
 	if jc.f.bars != nil {
 		s.Bars = jc.f.bars
 	}

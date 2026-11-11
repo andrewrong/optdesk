@@ -23,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 func init() { register("run-once", runOnce) }
@@ -44,6 +45,8 @@ type runOnceConfig struct {
 	barDSN string
 	// openDSN belongs to the four option open jobs: an empty one leaves only them out, never the run.
 	openDSN string
+	// resolveDSN belongs to underlying_resolve alone: an empty one leaves only that job out, never the run.
+	resolveDSN string
 	// barsWired is true when the deps hold the constructors of bars_refresh and fx_refresh (newDeps always does).
 	barsWired bool
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
@@ -51,9 +54,7 @@ type runOnceConfig struct {
 	// factDSN and secAgent belong to the fundamentals job and the valuation step of compute_figures: an empty one
 	// leaves only them out, never the run.
 	factDSN, secAgent string
-	// watch is $OT_HOME/watch.toml, loaded with the lines so that a refusal comes before any lock or store.
-	watch      []jobs.WatchEntry
-	socketPath string
+	socketPath        string
 }
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) { return loadConfig(a, false) }
@@ -86,6 +87,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		ledgerDSN:        env[store.DSNEnvOptionLedger],
 		barDSN:           env[bar.DSNEnvBar],
 		openDSN:          env[openquote.DSNEnvOptionOpen],
+		resolveDSN:       env[underlying.DSNEnvResolve],
 		barsWired:        a.deps.openBar != nil && a.deps.newBarsRefresh != nil && a.deps.newFxRefresh != nil && a.deps.newHistory != nil,
 	}
 	for _, l := range []struct{ name, v string }{
@@ -98,7 +100,8 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 			return runOnceConfig{}, fmt.Errorf("%s is missing in .env", l.name)
 		}
 	}
-	if c.watch, err = loadWatch(a); err != nil {
+	// watch.toml is still checked here until issue 10 of docs/design/underlyings.md; no job follows it.
+	if _, err = loadWatch(a); err != nil {
 		return runOnceConfig{}, err
 	}
 	c.socketPath = filepath.Join(a.getenv("OT_HOME"), "run", "ibkr.sock")
@@ -243,10 +246,17 @@ type jobFactory struct {
 	log     *slog.Logger
 	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
 	loader store.SessionDayStore
-	// events, earn and watch are what earnings_refresh gets: its store, one source per market and watch.toml.
+	// events and earn are what earnings_refresh gets: its store and the sources of the markets other than JP;
+	// jp builds the J-Quants source over the symbols of one Plan (nil without a key).
 	events store.EarningsDateStore
 	earn   map[string]sources.EarningsSource
-	watch  []jobs.WatchEntry
+	jp     func(symbols []string) (sources.EarningsSource, error)
+	// list and held are what every family that follows names gets (wire_underlying.go): the stored underlying list
+	// and the held names by row key.
+	list underlying.Reader
+	// entryFix, when set, rewrites the entries of each Plan of option_eod_jp (it resolves con_ids).
+	entryFix func([]jobs.WatchEntry) []jobs.WatchEntry
+	held     func(context.Context) (map[string]bool, error)
 	// candidates, accounts and earnRd are what option_candidates (optioncandidates.New) gets besides the compute stores;
 	// the last two may be nil.
 	candidates store.CandidateWriter
@@ -317,7 +327,7 @@ func withWiring(
 	if err != nil {
 		return err
 	}
-	events, earn, closeEvents, err := openEarnings(ctx, a, d, cfg)
+	events, earn, jp, closeEvents, err := openEarnings(ctx, a, d, cfg)
 	if err != nil {
 		return err
 	}
@@ -328,7 +338,7 @@ func withWiring(
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
 		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
-			events: events, earn: earn, watch: cfg.watch}, ledger)
+			events: events, earn: earn, jp: jp}, ledger)
 }
 
 // wireJobs builds the jobs over the open stores, one family after the other by order (jobreg.go), and calls use. A
@@ -338,6 +348,9 @@ func wireJobs(
 	extra *closerSet, cal clock.Calendar, f jobFactory, ledger store.OpsLedger,
 ) error {
 	wireHeldCalls(cfg, &f, extra, a.log)
+	if err := openJobList(ctx, a, cfg, &f, extra); err != nil {
+		return err
+	}
 	jc := &jobCtx{cfg: cfg, f: &f, brk: brk, brokerUp: brokerUp, cal: cal, extra: extra}
 	w := wiring{ledger: ledger, cal: cal, brokerUp: brokerUp, off: startDisabled(cfg, brokerUp), held: map[string]contracts.Job{}}
 	steps := slices.Clone(jobSteps)
@@ -508,15 +521,18 @@ func openComputeStores(
 }
 
 // openEarnings opens the earnings store with the events line (the stand-in when the line is empty) and builds the
-// Alpha Vantage source (none when the key is empty) and the J-Quants source over the JP symbols of the watch list
-// (none, with one logged line naming the key, when its key is empty). The returned func closes the store. No error holds a DSN or a key.
-func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (store.EarningsDateStore, map[string]sources.EarningsSource, func(), error) {
+// Alpha Vantage source (none when the key is empty) and the maker of the J-Quants source, which the job calls at each
+// Plan over the JP names of that Plan (nil, with one logged line naming the key, when its key is empty). The returned
+// func closes the store. No error holds a DSN or a key.
+func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (
+	store.EarningsDateStore, map[string]sources.EarningsSource, func([]string) (sources.EarningsSource, error), func(), error,
+) {
 	var events store.EarningsDateStore = noEventsStore{}
 	if cfg.eventsDSN != "" {
 		var err error
 		events, err = d.openEarningsDates(ctx, cfg.eventsDSN)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("open earnings store with %s failed", store.DSNEnvEvents)
+			return nil, nil, nil, nil, fmt.Errorf("open earnings store with %s failed", store.DSNEnvEvents)
 		}
 	}
 	earn := map[string]sources.EarningsSource{}
@@ -524,21 +540,23 @@ func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (store
 		av, err := d.newAlphaVantage(sources.EarningsConfig{BaseURL: alphaVantageBaseURL, APIKey: cfg.alphaKey})
 		if err != nil {
 			_ = events.Close()
-			return nil, nil, nil, fmt.Errorf("build Alpha Vantage source failed: %w", err)
+			return nil, nil, nil, nil, fmt.Errorf("build Alpha Vantage source failed: %w", err)
 		}
 		earn["US"] = av
 	}
+	var jp func([]string) (sources.EarningsSource, error)
 	if cfg.jquantsKey == "" {
 		a.log.Warn("JP earnings source left out", "component", "ot", "status", reasonNoJQuantsKey)
 	} else {
-		jq, err := d.newJQuants(sources.EarningsConfig{BaseURL: jquantsBaseURL, APIKey: cfg.jquantsKey, Symbols: jpSymbols(cfg.watch)})
-		if err != nil {
-			_ = events.Close()
-			return nil, nil, nil, fmt.Errorf("build J-Quants source failed: %w", err)
+		jp = func(symbols []string) (sources.EarningsSource, error) {
+			jq, err := d.newJQuants(sources.EarningsConfig{BaseURL: jquantsBaseURL, APIKey: cfg.jquantsKey, Symbols: symbols})
+			if err != nil {
+				return nil, fmt.Errorf("build J-Quants source failed: %w", err)
+			}
+			return jq, nil
 		}
-		earn["JP"] = jq
 	}
-	return events, earn, func() { _ = events.Close() }, nil
+	return events, earn, jp, func() { _ = events.Close() }, nil
 }
 
 // fredSource is the FRED source, or the stand-in that answers permanent when the key is empty.

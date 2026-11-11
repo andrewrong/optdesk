@@ -118,9 +118,9 @@ func TestFundamentalsJobBuiltWhenSet(t *testing.T) {
 		t.Fatalf("job got source %v, writer %v, entries %v", rec.src, rec.writer, rec.entries)
 	}
 	v := rec.val
-	if rec.figures != 1 || v.Facts != store.FactReader(fakeFactStore{rec}) || !slices.Equal(v.Entries, r.earnWatch) ||
+	if rec.figures == 0 || v.Facts != store.FactReader(fakeFactStore{rec}) || !slices.Equal(v.Entries, r.earnWatch) ||
 		v.StandardOf == nil || v.BuildFilings == nil || v.Band == nil || v.Questions == nil || v.Diagnosis == nil {
-		t.Fatalf("valuation step %+v built %d times", v, rec.figures)
+		t.Fatalf("valuation step %+v built %d times, want at least once (at start and at each Plan)", v, rec.figures)
 	}
 	if rec.closed != 1 {
 		t.Errorf("fact store closed %d times, want once", rec.closed)
@@ -171,7 +171,7 @@ func TestComputeFiguresKeepsEaseWithFundamentals(t *testing.T) {
 		},
 	}}
 	fd := fundamentalsDeps{newFigures: d.ext[extFundamentals].(fundamentalsDeps).newFigures}
-	job, err := (jobFactory{d: d, fd: fd, facts: fakeFactStore{&fundamentalsRec{}}}).computeFigures()
+	job, err := (jobFactory{d: d, fd: fd, facts: fakeFactStore{&fundamentalsRec{}}}).withList(oneUSRow()).computeFigures()
 	if err != nil {
 		t.Fatal(err)
 	}

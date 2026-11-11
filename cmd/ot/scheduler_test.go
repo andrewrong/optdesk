@@ -38,6 +38,11 @@ type idJob struct {
 
 func (j idJob) ID() string { return j.id }
 
+// Schedule is the slot every listed family answers from its inner job; the stub has one at the XNYS close.
+func (idJob) Schedule() (string, string, string, time.Duration) {
+	return "XNYS", "session_close", "", 0
+}
+
 type fakeSchedLedger struct {
 	store.SchedulerLedger
 	build atomic.Value

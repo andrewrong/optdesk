@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -25,13 +26,15 @@ func init() {
 const jobDividendCapture = "dividend_capture"
 
 // dividendCapture builds dividend_capture over the reference client, the instrument store opened for option_eod,
-// the dividend store and the watch list.
+// the dividend store and the dividends names of the stored list.
 func (f jobFactory) dividendCapture(ref broker.ReferenceClient) (contracts.Job, error) {
-	j, err := f.d.newDividendCapture(ref, f.inst, f.div, f.div, f.watch, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build dividend_capture job failed: %w", err)
-	}
-	return j, nil
+	return f.listed(groupDividends, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		j, err := f.d.newDividendCapture(ref, f.inst, f.div, f.div, entries, f.clk)
+		if err != nil {
+			return nil, fmt.Errorf("build dividend_capture job failed: %w", err)
+		}
+		return j, nil
+	})
 }
 
 // dividendJob builds dividend_capture beside option_eod with the same broker state: with the broker down at start

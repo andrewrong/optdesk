@@ -62,7 +62,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	zone := a.profile.Zone
 	read := homeReadings(a, rd)
 	rows := []home_companies.Row{}
-	subjects, err := companiesSubjects(a)
+	subjects, err := companiesSubjects(ctx, a, rd)
 	if err != nil {
 		return nil, err
 	}

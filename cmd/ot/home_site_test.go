@@ -92,3 +92,16 @@ func TestHomePageNamed(t *testing.T) {
 		t.Fatalf("meta %+v", p.Meta)
 	}
 }
+
+func TestHomeCompaniesRowsFromStore(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{underlying: companiesStore()}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), `"BBB"`) {
+		t.Fatalf("stored names missing: %s", body)
+	}
+}

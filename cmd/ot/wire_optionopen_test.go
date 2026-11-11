@@ -66,8 +66,9 @@ func newOpenHarness(t *testing.T, env map[string]string, brokerUp bool, dialErr 
 		}
 		return closeBroker{mu: &h.mu, closed: &h.closed}, nil
 	}
+	f := jobFactory{clk: fakeClock{time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)}, inst: openInst{}, bars: openBars{}}.withList(oneUSRow())
 	h.jc = &jobCtx{
-		f:        &jobFactory{clk: fakeClock{time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)}, inst: openInst{}, bars: openBars{}},
+		f:        &f,
 		brk:      closeBroker{mu: &h.mu, closed: &h.closed},
 		brokerUp: brokerUp, extra: &closerSet{},
 		cfg: runOnceConfig{openDSN: env[openquote.DSNEnvOptionOpen]},
@@ -336,7 +337,7 @@ func TestOpenStoredReadsEodThroughTheComputeReaderNotTheWriter(t *testing.T) {
 	want := []contracts.OptionEod{{InstrumentID: 7}}
 	jc := &jobCtx{f: &jobFactory{eod: w}}
 	jc.f.compute.OptionEod = readerEod{rows: want}
-	s := openStored(jc, nil)
+	s := openStored(jc, nil, nil)
 	if s.Eod == nil {
 		t.Fatal("Eod is nil, want the compute reader")
 	}
@@ -352,7 +353,7 @@ func TestOpenStoredReadsEodThroughTheComputeReaderNotTheWriter(t *testing.T) {
 func TestOpenStoredLeavesEodNilWithoutComputeReader(t *testing.T) {
 	t.Parallel()
 	jc := &jobCtx{f: &jobFactory{eod: &writerEod{}}}
-	if s := openStored(jc, nil); s.Eod != nil {
+	if s := openStored(jc, nil, nil); s.Eod != nil {
 		t.Fatalf("Eod = %v, want nil", s.Eod)
 	}
 }

@@ -55,8 +55,7 @@ func ivHistoryFactory(t *testing.T, rd *ivHistoryReadings) jobFactory {
 	return jobFactory{
 		clk:     fakeClock{time.Date(2026, 11, 9, 23, 0, 0, 0, time.UTC)},
 		compute: computefigures.ComputeStores{Readings: store.ReadingStore(rd)},
-		watch:   []jobs.WatchEntry{{Market: "US", Contract: broker.Contract{SecType: "STK", Symbol: "AAPL", ConID: 265598}}},
-	}
+	}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{SecType: "STK", Symbol: "AAPL", ConID: 265598}})...)
 }
 
 func TestIvHistoryFamilyPlans(t *testing.T) {
@@ -186,8 +185,7 @@ func TestIvHistoryJobResolvesJPEntry(t *testing.T) {
 	rd := &ivHistoryReadings{}
 	h := &ivHistoryHistory{}
 	b := &ivHistoryBroker{got: broker.Resolved{Listed: true, Contract: broker.Contract{ConID: 4321}}}
-	f := ivHistoryFactory(t, rd)
-	f.watch = []jobs.WatchEntry{{Market: "JP", Contract: jpContract()}}
+	f := ivHistoryFactory(t, rd).withList(listRowsOf(jobs.WatchEntry{Market: "JP", Contract: jpContract()})...)
 	j, err := f.ivHistory(h, b)
 	if err != nil {
 		t.Fatal(err)

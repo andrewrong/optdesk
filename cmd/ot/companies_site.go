@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/pages/companies_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // Design: docs/design/valuation.md#companies-route-band.
@@ -32,22 +33,31 @@ var companiesDemoSubjects = []companies_page.Subject{
 	{Issuer: "cik:0000000002", Market: "US", Symbol: "DEMOB", HandPrice: "42"},
 }
 
-// companiesSubjects are the rows of the page: the demo rows with the demo profile, else one per entry of
-// watch.toml (a broken file is an error, a missing one gives none).
-func companiesSubjects(a *app) ([]companies_page.Subject, error) {
+// companiesSubjects are the rows of the page: the demo rows with the demo profile, else one per stored underlying
+// with an issuer whose status is active, paused or retired (docs/design/underlyings.md Decision 6). No reader gives
+// none; a read error is returned.
+func companiesSubjects(ctx context.Context, a *app, rd siteReaders) ([]companies_page.Subject, error) {
 	if a.profile.Name == "demo" {
 		return companiesDemoSubjects, nil
 	}
-	entries, err := loadWatch(a)
+	if rd.underlying == nil {
+		return nil, nil
+	}
+	rows, err := rd.underlying.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]companies_page.Subject, 0, len(entries))
-	for _, e := range entries {
-		if e.Issuer == "" {
+	out := make([]companies_page.Subject, 0, len(rows))
+	for _, r := range rows {
+		switch r.Status {
+		case underlying.StatusActive, underlying.StatusPaused, underlying.StatusRetired:
+		default:
 			continue
 		}
-		out = append(out, companies_page.Subject{Issuer: e.Issuer, Market: e.Market, Symbol: e.Contract.Symbol, HandPrice: e.BuyPrice})
+		if r.Issuer == "" {
+			continue
+		}
+		out = append(out, companies_page.Subject{Issuer: r.Issuer, Market: r.Market, Symbol: r.Symbol, HandPrice: r.BuyPrice})
 	}
 	return out, nil
 }
@@ -119,7 +129,7 @@ func isZeroQuantity(q string) bool {
 // functions in the deps the inputs that entry 24 left nil are set by newCompaniesPage; without them only the
 // price line is filled, with the hand price, and no row has a band.
 func buildCompaniesAt(ctx context.Context, a *app, rd siteReaders, day contracts.Day, now time.Time) ([]byte, error) {
-	subjects, err := companiesSubjects(a)
+	subjects, err := companiesSubjects(ctx, a, rd)
 	if err != nil {
 		return nil, err
 	}

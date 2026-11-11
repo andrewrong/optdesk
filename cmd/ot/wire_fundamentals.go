@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute/valuation"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/jobs/fundamentals"
 	"github.com/andrewrong/optdesk/internal/sources"
@@ -61,11 +62,14 @@ func init() {
 			if err != nil || src == nil {
 				return nil, "", err
 			}
-			j, err := fd.newJob(src, jc.f.facts, jc.f.watch, jc.f.clk)
-			if err != nil {
-				return nil, "", fmt.Errorf("build fundamentals job failed: %w", err)
-			}
-			return j, "", nil
+			j, err := jc.f.listed(groupFundamentals, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+				j, err := fd.newJob(src, jc.f.facts, entries, jc.f.clk)
+				if err != nil {
+					return nil, fmt.Errorf("build fundamentals job failed: %w", err)
+				}
+				return j, nil
+			})
+			return j, "", err
 		},
 	})
 }

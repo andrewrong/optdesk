@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 )
 
@@ -35,6 +36,11 @@ func init() {
 // valuation step. With it, the valuation constructor has no ease input, so the job is the pair of that job and the
 // ease job, run as one (withEase): the plan and the readings of both, and nothing an existing job stored is lost.
 func (f jobFactory) computeFigures() (contracts.Job, error) {
+	return f.listed(groupFundamentals, f.computeFiguresOf)
+}
+
+// computeFiguresOf builds the job over the fundamentals entries of one Plan; only the valuation step reads them.
+func (f jobFactory) computeFiguresOf(entries []jobs.WatchEntry) (contracts.Job, error) {
 	ease, err := f.d.newComputeFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps, f.d.computeEase, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build compute_figures job failed: %w", err)
@@ -45,7 +51,7 @@ func (f jobFactory) computeFigures() (contracts.Job, error) {
 	fn := f.fd.fn
 	val, err := f.fd.newFigures(f.compute, f.d.computeFigures, f.d.computeRules, f.d.computeUnits, f.d.computeSeriesOps,
 		computefigures.ValuationDeps{
-			Facts: f.facts, Entries: f.watch, StandardOf: fn.StandardOf, BuildFilings: fn.BuildFilings,
+			Facts: f.facts, Entries: entries, StandardOf: fn.StandardOf, BuildFilings: fn.BuildFilings,
 			Band: fn.Band, Questions: fn.Questions, Diagnosis: fn.Diagnosis,
 		}, f.clk)
 	if err != nil {
