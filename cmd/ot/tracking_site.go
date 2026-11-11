@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -34,10 +35,31 @@ type trackingReaders struct {
 // trackingReadersOf picks the readers of the page from the readers of the site. Sessions is rd.sessions, opened
 // with the pages line (view rd.session_day_r1); nil with the demo profile, which the page shows as the gap no_sessions.
 func trackingReadersOf(rd siteReaders) trackingReaders {
+	var ledger store.OptionLedgerReader
+	if rd.optionLedger != nil {
+		ledger = aliasedLedger{OptionLedgerReader: rd.optionLedger, configured: rd.aliasList()}
+	}
 	return trackingReaders{
-		Ledger: rd.optionLedger, Account: rd.noticeAccount, Candidates: rd.cands, Eod: rd.eod,
+		Ledger: ledger, Account: rd.noticeAccount, Candidates: rd.cands, Eod: rd.eod,
 		Catalog: rd.catalog, Names: rd.names, Terms: rd.terms, Sessions: rd.sessions,
 	}
+}
+
+// aliasedLedger is the ledger reader of the page: it answers StoredAliases with the configured aliases while the
+// ledger stores no row, so the page names its empty account by the alias, not by "main".
+type aliasedLedger struct {
+	store.OptionLedgerReader
+	configured []string
+}
+
+// StoredAliases returns the stored aliases, the inner error unchanged, or a copy of the configured aliases
+// (never nil) when none is stored.
+func (l aliasedLedger) StoredAliases(ctx context.Context) ([]string, error) {
+	got, err := l.OptionLedgerReader.StoredAliases(ctx)
+	if err != nil || len(got) > 0 {
+		return got, err
+	}
+	return slices.Clone(l.configured), nil
 }
 
 func init() {
