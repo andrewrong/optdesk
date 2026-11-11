@@ -316,11 +316,18 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	// further than that tick read, so the states are judged against passed.
 	passed := fw.Now()
 	// The ticker may not have armed its timer when the clock moved (a waiter on the clock can be another goroutine's,
-	// such as the heartbeat of a run), so the clock keeps moving by a minute until a new write of the states arrives.
-	for wrote := false; !wrote; {
+	// such as the heartbeat of a run), and a signal of the ledger can belong to an earlier write; so the clock keeps
+	// moving by a minute until the stored states are the ones of a walk after the move.
+	usIDs := []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot, jobComputeFigures, jobCalendarRefresh}
+	for settled := false; !settled; {
+		settled = pl.state(jobOptionEodJP).NextStart.IsZero()
+		for _, id := range usIDs {
+			settled = settled && pl.state(id).NextStart.After(passed)
+		}
+		if settled {
+			break
+		}
 		select {
-		case <-pl.puts:
-			wrote = true
 		case <-t.Context().Done():
 			t.Fatal("no states written after the clock passed the last XTKS day")
 		default:
@@ -331,7 +338,7 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	if err := r.stop(t, done); err != nil {
 		t.Fatalf("scheduler: %v", err)
 	}
-	for _, id := range []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot, jobComputeFigures, jobCalendarRefresh} {
+	for _, id := range usIDs {
 		if st := pl.state(id); !st.NextStart.After(passed) {
 			t.Errorf("%s has no start after %s: %v", id, passed, st.NextStart)
 		}
