@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,40 +12,24 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 var companiesClock = fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
 
-const companiesWatch = `
-[[underlying]]
-issuer = "cik:0000320193"
-market = "US"
-symbol = "AAA"
-sec_type = "STK"
-exchange = "SMART"
-currency = "USD"
-buy_price = "85.5"
-
-[[underlying]]
-issuer = "cik:0000789019"
-market = "US"
-symbol = "BBB"
-sec_type = "STK"
-exchange = "SMART"
-currency = "USD"
-`
+// companiesStore is the stored names of the page: two active names with an issuer.
+func companiesStore() *fakeListReader {
+	return &fakeListReader{rows: []underlying.Row{
+		{Key: "US:AAA", Symbol: "AAA", Market: "US", Issuer: "cik:0000320193", Status: underlying.StatusActive, BuyPrice: "85.5"},
+		{Key: "US:BBB", Symbol: "BBB", Market: "US", Issuer: "cik:0000789019", Status: underlying.StatusActive},
+	}}
+}
 
 type noView struct{ store.ReadingViewReader }
 
-func companiesApp(t *testing.T, watch string, readErr error) *app {
+func companiesApp(t *testing.T) *app {
 	t.Helper()
 	a, _ := testApp(t, "OT_UNUSED=1\n")
-	a.deps.readFile = func(string) ([]byte, error) {
-		if readErr != nil {
-			return nil, readErr
-		}
-		return []byte(watch), nil
-	}
 	return a
 }
 
@@ -82,8 +65,8 @@ func companiesRows(t *testing.T, body []byte) []struct {
 
 func TestCompaniesRouteServes(t *testing.T) {
 	t.Parallel()
-	a := companiesApp(t, companiesWatch, nil)
-	h := siteHandler(a, companiesClock, "2026-11-05", siteReaders{view: noView{}}, echoHandler, http.NotFoundHandler())
+	a := companiesApp(t)
+	h := siteHandler(a, companiesClock, "2026-11-05", siteReaders{view: noView{}, underlying: companiesStore()}, echoHandler, http.NotFoundHandler())
 	rec := companiesGet(t, h, http.MethodGet, "/"+siteCompaniesRoute)
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"hand_price":"85.5"`) || !strings.Contains(rec.Body.String(), `"no_reader"`) {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
@@ -101,8 +84,8 @@ func TestCompaniesRouteServes(t *testing.T) {
 
 func TestHandPriceBesideGap(t *testing.T) {
 	t.Parallel()
-	a := companiesApp(t, companiesWatch, nil)
-	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{view: noView{}})
+	a := companiesApp(t)
+	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{view: noView{}, underlying: companiesStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,11 +99,11 @@ func TestHandPriceBesideGap(t *testing.T) {
 			t.Errorf("row %d: %+v", i, c)
 		}
 	}
-	// a missing file gives no rows; the demo profile gives its two rows with a hand price each.
-	a = companiesApp(t, "", fs.ErrNotExist)
+	// no reader gives no rows; the demo profile gives its two rows with a hand price each.
+	a = companiesApp(t)
 	body, err = buildCompanies(t.Context(), a, companiesClock, "", siteReaders{})
 	if err != nil || len(companiesRows(t, body)) != 0 {
-		t.Fatalf("missing file: %v %s", err, body)
+		t.Fatalf("no reader: %v %s", err, body)
 	}
 	a.profile.Name = "demo"
 	body, err = buildCompanies(t.Context(), a, companiesClock, "", siteReaders{})
@@ -132,7 +115,7 @@ func TestHandPriceBesideGap(t *testing.T) {
 
 func TestPageNameBuilds(t *testing.T) {
 	t.Parallel()
-	a := companiesApp(t, companiesWatch, nil)
+	a := companiesApp(t)
 	want, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{})
 	if err != nil {
 		t.Fatal(err)
@@ -148,19 +131,42 @@ func TestPageNameBuilds(t *testing.T) {
 	}
 }
 
-func TestBrokenWatchRefuses(t *testing.T) {
+func TestCompaniesStoreErrorRefuses(t *testing.T) {
 	t.Parallel()
-	a := companiesApp(t, "[[underlying]]\nissuer = \"bad\"\n", nil)
-	if _, err := buildCompanies(t.Context(), a, companiesClock, "", siteReaders{}); err == nil {
-		t.Fatal("broken watch.toml built")
+	a := companiesApp(t)
+	rd := siteReaders{underlying: &fakeListReader{err: errors.New("denied")}}
+	if _, err := buildCompanies(t.Context(), a, companiesClock, "", rd); err == nil {
+		t.Fatal("unreadable store built")
 	}
-	h := siteHandler(a, companiesClock, "", siteReaders{}, echoHandler, http.NotFoundHandler())
+	h := siteHandler(a, companiesClock, "", rd, echoHandler, http.NotFoundHandler())
 	if rec := companiesGet(t, h, http.MethodGet, "/"+siteCompaniesRoute); rec.Code != 500 {
 		t.Errorf("code %d", rec.Code)
 	}
-	a = companiesApp(t, "", errors.New("denied"))
-	if _, err := buildCompanies(t.Context(), a, companiesClock, "", siteReaders{}); err == nil {
-		t.Fatal("unreadable file built")
+}
+
+func TestCompaniesSubjectsFromStoredStatus(t *testing.T) {
+	t.Parallel()
+	row := func(sym, issuer, status string) underlying.Row {
+		return underlying.Row{Key: "US:" + sym, Symbol: sym, Market: "US", Issuer: issuer, Status: status, BuyPrice: "9"}
+	}
+	rd := siteReaders{underlying: &fakeListReader{rows: []underlying.Row{
+		row("AAA", "cik:1", underlying.StatusActive), row("BBB", "cik:2", underlying.StatusPaused),
+		row("CCC", "cik:3", underlying.StatusRetired), row("DDD", "cik:4", underlying.StatusPending),
+		row("EEE", "cik:5", underlying.StatusUnresolved), row("FFF", "", underlying.StatusActive),
+	}}}
+	got, err := companiesSubjects(t.Context(), companiesApp(t), rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var syms []string
+	for _, s := range got {
+		syms = append(syms, s.Symbol)
+		if s.HandPrice != "9" || s.Market != "US" {
+			t.Errorf("subject %+v", s)
+		}
+	}
+	if strings.Join(syms, ",") != "AAA,BBB,CCC" {
+		t.Fatalf("subjects %v", syms)
 	}
 }
 
@@ -193,8 +199,8 @@ type heldPage struct {
 
 func buildHeld(t *testing.T, acc store.AccountReader) (heldPage, string) {
 	t.Helper()
-	a := companiesApp(t, companiesWatch, nil)
-	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{noticeAccount: acc})
+	a := companiesApp(t)
+	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{noticeAccount: acc, underlying: companiesStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +241,7 @@ func TestCompaniesHeldIgnoresOptionsAndZero(t *testing.T) {
 
 func TestCompaniesHeldNilWithoutReader(t *testing.T) {
 	t.Parallel()
-	a := companiesApp(t, companiesWatch, nil)
+	a := companiesApp(t)
 	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{})
 	if err != nil {
 		t.Fatal(err)
@@ -248,8 +254,9 @@ func TestCompaniesHeldNilWithoutReader(t *testing.T) {
 
 func TestCompaniesHeldReaderErrorIsReturned(t *testing.T) {
 	t.Parallel()
-	a := companiesApp(t, companiesWatch, nil)
-	_, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{noticeAccount: heldAccount{err: errors.New("boom")}})
+	a := companiesApp(t)
+	rd := siteReaders{noticeAccount: heldAccount{err: errors.New("boom")}, underlying: companiesStore()}
+	_, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", rd)
 	if err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("%v", err)
 	}

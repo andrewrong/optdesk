@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/compute/ivbar"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/ivhistory"
 )
 
@@ -57,13 +58,15 @@ func ivHistoryClient(ctx context.Context, jc *jobCtx) broker.HistoryClient {
 }
 
 // ivHistory builds iv_history over the history client, the reading store opened for compute_figures and the
-// watch list; the close of a bar becomes the stored text through the ivbar package.
+// options names of the stored list; the close of a bar becomes the stored text through the ivbar package.
 func (f jobFactory) ivHistory(h broker.HistoryClient, b broker.Broker) (contracts.Job, error) {
-	j, err := ivhistory.New(ivHistoryResolving(h, b), f.compute.Readings, f.compute.Readings, f.watch, ivbar.FromClose, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build iv_history job failed: %w", err)
-	}
-	return j, nil
+	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		j, err := ivhistory.New(ivHistoryResolving(h, b), f.compute.Readings, f.compute.Readings, entries, ivbar.FromClose, f.clk)
+		if err != nil {
+			return nil, fmt.Errorf("build iv_history job failed: %w", err)
+		}
+		return j, nil
+	})
 }
 
 // resolvingHistory gives a query whose contract has no con_id the one the broker names, as bars_refresh does:

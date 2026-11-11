@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -311,7 +312,19 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	fw.Advance(97 * time.Hour)
-	<-pl.puts
+	// The ticker may not have armed its timer when the clock moved (the waiter above can be another goroutine's), so
+	// the clock keeps moving by a minute until a new write of the states arrives.
+	for wrote := false; !wrote; {
+		select {
+		case <-pl.puts:
+			wrote = true
+		case <-t.Context().Done():
+			t.Fatal("no states written after the clock passed the last XTKS day")
+		default:
+			fw.Advance(time.Minute)
+			runtime.Gosched()
+		}
+	}
 	if err := r.stop(t, done); err != nil {
 		t.Fatalf("scheduler: %v", err)
 	}

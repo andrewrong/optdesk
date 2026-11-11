@@ -30,6 +30,7 @@ func TestJobSetUnchanged(t *testing.T) {
 	want := []string{
 		"fred_series", "option_eod", "option_eod_jp", "dividend_capture", "option_ledger", "quote_snapshot",
 		"compute_figures", "calendar_refresh", "earnings_refresh", "account_capture", "option_candidates",
+		"underlying_resolve",
 	}
 	got := familyIDs()
 	i := 0

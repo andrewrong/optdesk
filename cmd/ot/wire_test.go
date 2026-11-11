@@ -100,9 +100,7 @@ func TestEarningsRefreshRegistered(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	body := "[[underlying]]\nissuer = \"cik:0000320193\"\nmarket = \"US\"\nsymbol = \"AAPL\"\nbuy_price = \"150\"\n"
-	if err := writeFile(r.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
-		t.Fatal(err)
-	}
+	r.list.rows = listRowsFromWatch(t, body)
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}

@@ -37,7 +37,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 			) (contracts.Job, error) {
 				return nil, cause
 			}
-			_, err := jobFactory{d: d}.earningsRefresh()
+			_, err := jobFactory{d: d}.withList(oneUSRow()).earningsRefresh()
 			return err
 		}},
 		{"calendar_refresh", func(_ *testing.T, cause error) error {
@@ -61,7 +61,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 			) (contracts.Job, error) {
 				return nil, cause
 			}
-			_, err := jobFactory{d: d}.computeFigures()
+			_, err := jobFactory{d: d}.withList(oneUSRow()).computeFigures()
 			return err
 		}},
 		{"option_eod", func(_ *testing.T, cause error) error {
@@ -71,7 +71,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 			) (contracts.Job, error) {
 				return nil, cause
 			}
-			_, err := jobFactory{d: d}.optionEod(nil)
+			_, err := jobFactory{d: d}.withList(oneUSRow()).optionEod(nil)
 			return err
 		}},
 		{"option_eod_jp", func(_ *testing.T, cause error) error {
@@ -80,7 +80,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 				return nil, cause
 			}
 			d.newOptionEodJPWatch = nil
-			_, err := jobFactory{d: d}.optionEodJP(nil)
+			_, err := jobFactory{d: d}.withList(oneUSRow()).optionEodJP(nil)
 			return err
 		}},
 		{"quote_snapshot", func(_ *testing.T, cause error) error {
@@ -96,7 +96,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 			d.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 				return nil, cause
 			}
-			_, err := jobFactory{d: d}.optionCandidates()
+			_, err := jobFactory{d: d}.withList(oneUSRow()).optionCandidates()
 			return err
 		}},
 		{"account_capture", func(t *testing.T, cause error) error {
@@ -150,7 +150,7 @@ func TestCandidateProbeLogsCause(t *testing.T) {
 	d.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
 		return nil, errors.New("cause-probe")
 	}
-	probe := candidateProbe(wiring{factory: jobFactory{d: d, log: slog.New(slog.NewTextHandler(&buf, nil))}},
+	probe := candidateProbe(wiring{factory: jobFactory{d: d, log: slog.New(slog.NewTextHandler(&buf, nil))}.withList(oneUSRow())},
 		func(context.Context, string) (contracts.Job, string) { return nil, "" })
 	j, reason := probe(context.Background(), jobOptionCandidates)
 	if j != nil || reason != reasonBuildJob || !strings.Contains(buf.String(), "cause-probe") {

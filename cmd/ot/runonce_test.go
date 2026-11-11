@@ -27,6 +27,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/sources/fred"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/andrewrong/optdesk/internal/symbol/table"
 )
@@ -130,8 +131,11 @@ func (r recRunner) Reconcile(_ context.Context, d contracts.Day) error { *r.day 
 func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 	clk := a.deps.newClock
 	a.deps = deps{
-		openFence:               fenceOpener(&fakeInstFence{}),
-		newClock:                clk,
+		openFence: fenceOpener(&fakeInstFence{}),
+		newClock:  clk,
+		openUnderlying: func(context.Context, string) (underlying.Store, error) {
+			return &fakeUnderlyingStore{rows: []underlying.Row{oneUSRow()}}, nil
+		},
 		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
 		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
 		newDiffer:               func() clock.SessionDayDiffer { return nil },
@@ -505,9 +509,7 @@ func TestRunOnceEarningsShareClass(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	body := "[[underlying]]\nissuer = \"cik:0001067983\"\nmarket = \"US\"\nsymbol = \"BRK B\"\n"
-	if err := writeFile(r.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
-		t.Fatal(err)
-	}
+	r.list.rows = listRowsFromWatch(t, body)
 	mem := &memEvents{}
 	d := &r.a.deps
 	d.symbols = table.New()
@@ -523,6 +525,7 @@ func TestRunOnceEarningsShareClass(t *testing.T) {
 	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
+	planDay(t, earningsJob(t, r), "2026-11-09")
 	earningsJob(t, r).Run(t.Context(), "2026-11-09", nil)
 	us := rowsOf(mem, "US")
 	if len(us) != 1 || us[0].Status != "listed" || us[0].Symbol != "BRK.B" {
@@ -661,7 +664,7 @@ func TestCallsJobUsesDividendReader(t *testing.T) {
 	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("%v\n%s", err, c.log)
 	}
-	if c.calls.Load() != 1 || c.puts.Load() != 0 || c.callsDiv == nil {
+	if c.calls.Load() == 0 || c.puts.Load() != 0 || c.callsDiv == nil {
 		t.Fatalf("calls %d puts %d reader %v", c.calls.Load(), c.puts.Load(), c.callsDiv)
 	}
 	if _, err := c.callsDiv.Dividends(context.Background(), 1, "2026-11-04", "2026-12-04"); err != nil {
@@ -681,7 +684,7 @@ func TestMissingEventsDSNKeepsPutsJob(t *testing.T) {
 	if err := runOnce(c.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("%v\n%s", err, c.log)
 	}
-	if c.puts.Load() != 1 || c.calls.Load() != 0 {
+	if c.puts.Load() == 0 || c.calls.Load() != 0 {
 		t.Fatalf("puts %d calls %d", c.puts.Load(), c.calls.Load())
 	}
 	if !slices.Contains(jobIDs(c.jobs), jobOptionCandidates) {

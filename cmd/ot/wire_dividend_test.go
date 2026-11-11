@@ -64,9 +64,7 @@ func newDivRig(t *testing.T) *divRig {
 		return namedJob{id: "dividend_capture"}, nil
 	}
 	body := "[[underlying]]\nissuer = \"cik:0000320193\"\nmarket = \"US\"\nsymbol = \"AAPL\"\n"
-	if err := writeFile(d.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
-		t.Fatal(err)
-	}
+	d.list.rows = listRowsFromWatch(t, body)
 	return d
 }
 

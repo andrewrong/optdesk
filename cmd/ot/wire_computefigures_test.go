@@ -30,7 +30,7 @@ func TestComputeFiguresJobGetsEase(t *testing.T) {
 		got = e
 		return namedJob{id: "compute_figures"}, nil
 	}
-	if _, err := (jobFactory{d: d}).computeFigures(); err != nil {
+	if _, err := (jobFactory{d: d}).withList(oneUSRow()).computeFigures(); err != nil {
 		t.Fatal(err)
 	}
 	if got == nil || got != d.computeEase {

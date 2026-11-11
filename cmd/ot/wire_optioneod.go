@@ -38,9 +38,9 @@ func init() {
 				a.log.Warn(reason, "component", "ot", "job", jobOptionEodJP)
 				return nil, "", nil
 			}
-			// The JP stock entries of watch.toml carry no con_id: ask the broker for it once per symbol, as bars_refresh does.
+			// A JP name of the list that is not resolved yet carries no con_id: ask the broker for it, as bars_refresh does.
 			f := *jc.f
-			f.watch = resolveJPConIDs(ctx, jc.brk, jc.f.watch, a.log)
+			f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, jc.brk, es, a.log) }
 			j, err := f.optionEodJP(jc.brk)
 			return j, "", err
 		},
@@ -78,7 +78,9 @@ func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEnt
 }
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
-	return buildOptionEod(f.d, b, f.inst, f.eod, f.watch, f.clk)
+	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		return buildOptionEod(f.d, b, f.inst, f.eod, entries, f.clk)
+	})
 }
 
 // buildOptionEod builds option_eod over the watch list: the one constructor path of run-once, the scheduler and
@@ -100,9 +102,15 @@ func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store
 	return j, nil
 }
 
-// optionEodJP builds option_eod_jp over the same stores and the same watch list as option_eod.
+// optionEodJP builds option_eod_jp over the same stores and the same options names as option_eod; entryFix, when
+// set, is applied to the names of each Plan.
 func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
-	return buildOptionEodJP(f.d, b, f.inst, f.eod, f.watch, f.clk)
+	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		if f.entryFix != nil {
+			entries = f.entryFix(entries)
+		}
+		return buildOptionEodJP(f.d, b, f.inst, f.eod, entries, f.clk)
+	})
 }
 
 // buildOptionEodJP builds option_eod_jp over the watch list (the JP stock entries add keys): the one constructor

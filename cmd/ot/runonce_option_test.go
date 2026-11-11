@@ -23,6 +23,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -169,6 +170,8 @@ type rig struct {
 	earnStore store.EarningsDateWriter
 	earnWatch []jobs.WatchEntry
 	avCfg     sources.EarningsConfig
+	// list is the stored underlying list every family reads at its Plan; tests set its rows.
+	list *fakeUnderlyingStore
 }
 
 // loaderDSN is the value of the loader line of the rig's .env.
@@ -201,6 +204,8 @@ func newRig(t *testing.T, env string) *rig {
 		return r.fail[name]
 	}
 	d := &r.a.deps
+	r.list = &fakeUnderlyingStore{rows: []underlying.Row{oneUSRow()}}
+	d.openUnderlying = func(context.Context, string) (underlying.Store, error) { return r.list, nil }
 	d.openFence = fenceOpener(&fakeInstFence{})
 	d.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)} }
 	d.newCalendar = func(clock.SessionSource) clock.Calendar { return nil }
@@ -532,6 +537,7 @@ func TestRunOnceDialFails(t *testing.T) {
 		t.Fatalf("Reconcile got %d jobs", len(r.jobs))
 	}
 	for _, j := range r.jobs[1:3] {
+		planDay(t, j, "2026-11-04")
 		res := j.Run(t.Context(), "2026-11-04", nil)
 		if res.Err == nil || res.Err.Kind() != contracts.Retryable {
 			t.Fatalf("%s: err %v", j.ID(), res.Err)
