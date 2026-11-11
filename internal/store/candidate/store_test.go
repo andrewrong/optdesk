@@ -30,14 +30,28 @@ type fakeDB struct {
 	insertErr error
 }
 
-func (f *fakeDB) InsertAll(_ context.Context, sql string, rows [][]any) error {
+// InsertAll applies the primary key rule of the table: a row whose key (columns 0 to 4) exists is skipped.
+func (f *fakeDB) InsertAll(_ context.Context, sql string, rows [][]any) (int, error) {
 	f.inserts++
 	f.lastSQL = sql
 	if f.insertErr != nil {
-		return f.insertErr
+		return 0, f.insertErr
 	}
-	f.rows = append(f.rows, rows...)
-	return nil
+	n := 0
+	for _, r := range rows {
+		dup := false
+		for _, have := range f.rows {
+			if reflect.DeepEqual(have[:5], r[:5]) {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			f.rows = append(f.rows, r)
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (f *fakeDB) Select(_ context.Context, sql string, args []any, scan func(scanner) error) error {
@@ -104,7 +118,7 @@ func TestInsertQueryText(t *testing.T) {
 	if !strings.HasPrefix(q, "INSERT INTO candidates.option_candidate (session_day, run_id, kind, instrument_id, alias,") {
 		t.Errorf("insert text = %q", q)
 	}
-	for _, bad := range []string{"ON CONFLICT", "UPDATE", "DELETE"} {
+	for _, bad := range []string{"UPDATE", "DELETE"} {
 		if strings.Contains(q, bad) {
 			t.Errorf("insert text holds %s: insert-only", bad)
 		}
@@ -271,5 +285,43 @@ func TestNilSettingsVersionIsNull(t *testing.T) {
 	got, err := s.Candidates(context.Background(), "2026-11-06", "short_put")
 	if err != nil || len(got) != 1 || got[0].SettingsVersion != nil {
 		t.Errorf("read = %+v, %v; want a nil settings version", got, err)
+	}
+}
+
+func TestInsertCandidatesSecondWriteStoresNothing(t *testing.T) {
+	t.Parallel()
+	db := &fakeDB{}
+	s := &Store{db: db}
+	at := time.Unix(100, 0).UTC()
+	a := sample("r1", at, ptr(1))
+	b := sample("r1", at, ptr(2))
+	b.InstrumentID = 43
+	rows := []store.Candidate{a, b}
+	n1, err1 := s.InsertCandidates(context.Background(), rows)
+	n2, err2 := s.InsertCandidates(context.Background(), rows)
+	if err1 != nil || err2 != nil || n1 != 2 || n2 != 0 || len(db.rows) != 2 {
+		t.Fatalf("counts = (%d, %v), (%d, %v), stored %d; want (2, nil), (0, nil), 2", n1, err1, n2, err2, len(db.rows))
+	}
+	c := sample("r1", at, ptr(3))
+	c.InstrumentID = 44
+	n3, err3 := s.InsertCandidates(context.Background(), []store.Candidate{a, c})
+	if err3 != nil || n3 != 1 || len(db.rows) != 3 {
+		t.Errorf("mixed call = (%d, %v), stored %d; want (1, nil), 3", n3, err3, len(db.rows))
+	}
+	other := sample("r2", at.Add(time.Hour), ptr(1))
+	if n, err := s.InsertCandidates(context.Background(), []store.Candidate{other}); err != nil || n != 1 || len(db.rows) != 4 {
+		t.Errorf("another run = (%d, %v), stored %d; want (1, nil), 4", n, err, len(db.rows))
+	}
+}
+
+func TestInsertCandidatesSqlSkipsExistingKeys(t *testing.T) {
+	t.Parallel()
+	db := &fakeDB{}
+	s := &Store{db: db}
+	if _, err := s.InsertCandidates(context.Background(), []store.Candidate{sample("r1", time.Unix(100, 0).UTC(), ptr(1))}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(db.lastSQL, "ON CONFLICT DO NOTHING") {
+		t.Errorf("insert text = %q; want ON CONFLICT DO NOTHING", db.lastSQL)
 	}
 }
