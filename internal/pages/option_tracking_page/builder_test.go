@@ -169,7 +169,7 @@ func TestAliasWithoutRowsIsGap(t *testing.T) {
 	c := cfgFor(nil, "main")
 	c.Ledger = aliasLedger{aliases: []string{"main"}}
 	a := buildPage(t, c).Accounts[0]
-	if a.Gap == nil || a.Gap.Reason != "no_data" || !strings.HasPrefix(a.Gap.Text, "no_flex_rows") || a.Open != nil {
+	if a.Gap == nil || a.Gap.Reason != "no_data" || a.Gap.Text != "No Flex record for this account" || a.Open != nil {
 		t.Fatalf("account = %+v", a)
 	}
 }
@@ -183,7 +183,7 @@ func TestNoAccountIsGapOfCheckOnly(t *testing.T) {
 	if a.Open == nil || a.Recent == nil || a.Recon != nil || a.Gap != nil {
 		t.Fatalf("account = %+v", a)
 	}
-	if len(vm.Gaps) != 1 || vm.Gaps[0].Reason != "no_data" || !strings.HasPrefix(vm.Gaps[0].Text, "no_account") {
+	if len(vm.Gaps) != 1 || vm.Gaps[0].Reason != "no_data" || vm.Gaps[0].Text != "No account position record, check table not built" {
 		t.Fatalf("gaps = %+v", vm.Gaps)
 	}
 }
@@ -246,6 +246,55 @@ func TestOutputValidatesAgainstSchema(t *testing.T) {
 		}
 		if err := schema.Validate(v); err != nil {
 			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+func TestBuildEmptyLedgerTitle(t *testing.T) {
+	t.Parallel()
+	a := gapAccount("main", codeGap(codeNoFlexRows))
+	if a.Title != "Account (main)" || a.Alias != "main" {
+		t.Fatalf("account = %+v", a)
+	}
+	res := trackapi.TrackResult{LongLegsLeftOut: 14}
+	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"a": res}, "a"))
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "a:14 long legs not listed, see the option positions page") {
+		t.Fatalf("notes = %v", vm.Notes)
+	}
+}
+
+func TestBuildGapTextsHaveNoCodeWord(t *testing.T) {
+	t.Parallel()
+	c := cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main")
+	c.Account = nil
+	if g := buildPage(t, c).Gaps[0]; g.Text != "No account position record, check table not built" || g.Reason != "no_data" {
+		t.Fatalf("gap = %+v", g)
+	}
+	res := okResult()
+	o := sampleOpen("p")
+	o.Currency = "USD"
+	o.MarkStatus, o.Mid, o.Spot = "no_mark", "", ""
+	o.Delta, o.Iv, o.Kept, o.KeptPercent, o.OtmPercent, o.Moneyness = "", "", "", "", "", ""
+	o.EventStatus, o.Guard, o.GuardReason = "no_event_row", "unknown", "no_guard_row"
+	o.Right = "C"
+	res.Open = []opt{o}
+	c = cfgFor(map[string]trackapi.TrackResult{"main": res}, "main")
+	raw := buildRaw(t, c)
+	cells := buildPage(t, c).Accounts[0].Open.Rows[0].Cells
+	for _, id := range []string{"delta", "iv", "kept", "kept_percent", "mid", "moneyness", "spot"} {
+		if g := cells[id].(map[string]any); g["text"] != "No fresh closing price" || g["reason"] != "missing_quote" {
+			t.Errorf("%s = %+v", id, g)
+		}
+	}
+	for _, id := range []string{"ex", "results"} {
+		g := cells[id].(map[string]any)
+		if g["text"] != "No candidate row of this company in the last 7 days, earnings and ex-dividend dates unknown" || g["reason"] != "missing_input" {
+			t.Errorf("%s = %+v", id, g)
+		}
+	}
+	for _, w := range []string{"no_mark", "no_event_row", "no_guard_row", "no_account"} {
+		if strings.Contains(string(raw), w) {
+			t.Errorf("page contains %s", w)
 		}
 	}
 }

@@ -1,7 +1,7 @@
 package option_tracking_page
 
-// Texts of the page. Option terms stay English, other text is Chinese. A gap text starts with
-// the tracking code (Decision 11) so a reader and a test find the cause by its first word.
+// Texts of the page. Option terms stay English, other text is Chinese. A gap text is the plain
+// sentence of its tracking code; the code word is not shown.
 const (
 	pageTitle   = "My short option tracking"
 	flexNote    = "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table"
@@ -10,6 +10,9 @@ const (
 	leftOutTail = " long legs not listed, see the option positions page"
 	staleText   = "Some open contracts have no fresh closing price, the related cells show a gap"
 	defaultName = "main"
+
+	labelAccount = "Account ("
+	labelClose   = ")"
 
 	dash       = "—"
 	unreadable = "Unreadable"
@@ -40,7 +43,7 @@ const (
 	guardUnknownTxt = "Unconfirmed"
 )
 
-// codeTexts is the sentence after the code of a gap text.
+// codeTexts is the sentence of a gap text.
 var codeTexts = map[string]string{
 	codeNoMark:     "No fresh closing price",
 	codeNoEventRow: "No candidate row of this company in the last 7 days, earnings and ex-dividend dates unknown",
@@ -50,6 +53,11 @@ var codeTexts = map[string]string{
 	codeNoValue:    "No such value",
 	codeUnreadable: unreadable,
 	"no_reader":    "No reader",
+
+	"no_sessions":   "No session reader, the page cannot tell the trading day",
+	"no_eod_reader": "No end-of-day price reader, earnings and ex-dividend dates unknown",
+	"no_candidates": "No candidate reader, earnings and ex-dividend dates unknown",
+	"no_names":      "No symbol reader, earnings and ex-dividend dates unknown",
 }
 
 // reasonOf is the common.v2 Gap reason of a tracking code.
