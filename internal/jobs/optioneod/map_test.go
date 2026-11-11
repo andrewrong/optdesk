@@ -98,6 +98,32 @@ func TestMapRow(t *testing.T) {
 	}
 }
 
+func TestWithUnderlyingPrice(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	cases := []struct {
+		name  string
+		und   *float64
+		price float64
+		want  *float64
+	}{
+		{"nil takes the price", nil, 150, f(150)},
+		{"own price kept", f(100), 150, f(100)},
+		{"zero price leaves nil", nil, 0, nil},
+		{"negative price leaves nil", nil, -1, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			row := mapRow(broker.Quote{UndPrice: tc.und}, 1, 2, time.Time{}, uuid.New(), "USD")
+			got := withUnderlyingPrice(row, tc.price).UnderlyingPrice
+			if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestOsiSymbol(t *testing.T) {
 	t.Parallel()
 	got, err := osiSymbol(broker.Contract{Symbol: "TEST", Expiry: "20261106", Right: "C", Strike: "95"})

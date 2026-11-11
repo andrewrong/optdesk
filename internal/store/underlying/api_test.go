@@ -2,12 +2,22 @@ package underlying_test
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
+
+// invalidErr is the fake's underlying.InvalidError.
+type invalidErr struct{ field, why string }
+
+func (e invalidErr) Error() string { return "underlying: " + e.field + ": " + e.why }
+func (e invalidErr) Field() string { return e.field }
+func (e invalidErr) Why() string   { return e.why }
+
+var _ underlying.InvalidError = invalidErr{}
 
 // fakeStore is an in-memory underlying.Store that keeps the promises of the interface.
 type fakeStore struct {
@@ -65,7 +75,7 @@ func (f *fakeStore) Apply(_ context.Context, c underlying.Change) (int, error) {
 	for _, a := range c.Adds {
 		key := a.Market + ":" + a.Symbol
 		if _, ok := f.newest(key); ok {
-			return 0, &underlying.InvalidError{Field: "symbol", Why: "name exists"}
+			return 0, invalidErr{field: "symbol", why: "name exists"}
 		}
 		st := underlying.StatusPending
 		if a.ConID > 0 {
@@ -78,7 +88,7 @@ func (f *fakeStore) Apply(_ context.Context, c underlying.Change) (int, error) {
 	for _, e := range c.Edits {
 		r, ok := f.newest(e.Key)
 		if !ok {
-			return 0, &underlying.InvalidError{Field: "key", Why: "unknown name"}
+			return 0, invalidErr{field: "key", why: "unknown name"}
 		}
 		if e.Status != nil && *e.Status != r.Status {
 			r.Status = *e.Status
@@ -166,8 +176,14 @@ func TestStoreContractAddResolveRead(t *testing.T) {
 	}
 	if _, err := s.Apply(ctx, underlying.Change{Adds: []underlying.Add{{Symbol: "AAPL", Market: "US"}}}); err == nil {
 		t.Error("a name added twice must fail")
-	} else if ie, ok := err.(*underlying.InvalidError); !ok || ie.Field == "" {
-		t.Errorf("error = %v; want *InvalidError naming a field", err)
+	} else {
+		wantInvalid(t, err)
+	}
+	unknown := "paused"
+	if _, err := s.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:NOPE", Status: &unknown}}}); err == nil {
+		t.Error("an unknown key must fail")
+	} else {
+		wantInvalid(t, err)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -244,5 +260,14 @@ func TestDSNEnvResolveName(t *testing.T) {
 	t.Parallel()
 	if underlying.DSNEnvResolve != "OT_PG_DSN_UNDERLYING_RESOLVE" {
 		t.Errorf("DSNEnvResolve = %q", underlying.DSNEnvResolve)
+	}
+}
+
+// wantInvalid fails the test unless err is an underlying.InvalidError that names a field.
+func wantInvalid(t *testing.T, err error) {
+	t.Helper()
+	var ie underlying.InvalidError
+	if !errors.As(err, &ie) || ie.Field() == "" {
+		t.Errorf("error = %v; want an InvalidError naming a field", err)
 	}
 }
