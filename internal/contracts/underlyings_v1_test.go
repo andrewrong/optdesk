@@ -50,8 +50,46 @@ func TestUnderlyingsV1Fixtures(t *testing.T) {
 			t.Errorf("failures = %v, want one /schema_version const", got)
 		}
 	})
+	setRow := func(m map[string]any, market, symbol, key string) {
+		r := underlyingsRows(m)[0]
+		r["market"], r["symbol"], r["key"] = market, symbol, key
+	}
+	accepted := map[string]func(m map[string]any){
+		"us-space":       func(m map[string]any) { setRow(m, "US", "BRK B", "US:BRK B") },
+		"us-dot":         func(m map[string]any) { setRow(m, "US", "BRK.B", "US:BRK.B") },
+		"us-plain":       func(m map[string]any) { setRow(m, "US", "AAPL", "US:AAPL") },
+		"jp-letter":      func(m map[string]any) { setRow(m, "JP", "278A", "JP:278A") },
+		"jp-letter-130A": func(m map[string]any) { setRow(m, "JP", "130A", "JP:130A") },
+		"jp-digits":      func(m map[string]any) { setRow(m, "JP", "7203", "JP:7203") },
+		"two-rows": func(m map[string]any) {
+			rows := underlyingsRows(m)
+			if len(rows) < 2 {
+				t.Fatal("golden has fewer than two rows")
+			}
+			setRow(m, "US", "BRK B", "US:BRK B")
+			rows[1]["market"], rows[1]["symbol"], rows[1]["key"] = "JP", "278A", "JP:278A"
+		},
+	}
+	for name, mutate := range accepted {
+		t.Run("accepts-"+name, func(t *testing.T) {
+			t.Parallel()
+			m := loadUnderlyingsV1(t, "golden")
+			mutate(m)
+			if err := s.Validate(m); err != nil {
+				t.Errorf("page is invalid: %v", err)
+			}
+		})
+	}
 	mutations := map[string]func(m map[string]any){
-		"unknown-status": func(m map[string]any) { underlyingsRows(m)[0]["status"] = "gone" },
+		"double-space":     func(m map[string]any) { setRow(m, "US", "BRK  B", "US:BRK  B") },
+		"leading-space":    func(m map[string]any) { setRow(m, "US", " BRK B", "US: BRK B") },
+		"trailing-space":   func(m map[string]any) { setRow(m, "US", "BRK B ", "US:BRK B ") },
+		"three-parts":      func(m map[string]any) { setRow(m, "US", "A B C", "US:A B C") },
+		"lower-us":         func(m map[string]any) { setRow(m, "US", "brk b", "US:brk b") },
+		"lower-jp":         func(m map[string]any) { setRow(m, "JP", "278a", "JP:278a") },
+		"symbol-too-long":  func(m map[string]any) { setRow(m, "US", "ABCDEFGHIJKLM", "US:ABCDEFGHIJKLM") },
+		"key-other-market": func(m map[string]any) { setRow(m, "US", "AAPL", "HK:AAPL") },
+		"unknown-status":   func(m map[string]any) { underlyingsRows(m)[0]["status"] = "gone" },
 		"unknown-followed-by": func(m map[string]any) {
 			underlyingsRows(m)[0]["followed_by"] = []any{"bars", "news"}
 		},
