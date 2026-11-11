@@ -308,7 +308,7 @@ func withWiring(
 		return fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
 	}
 	defer func() { _ = instr.Close() }()
-	cs, closeCompute, err := openComputeStores(ctx, d, cfg, sd)
+	cs, closeCompute, err := openComputeStores(ctx, a.log, d, cfg, sd)
 	if err != nil {
 		return err
 	}
@@ -442,8 +442,9 @@ func openSessionDays(ctx context.Context, d deps, cfg runOnceConfig) (sd, loader
 
 // openComputeStores opens the stores compute_figures reads and writes: catalog, eod, terms, names and series
 // with the pages line, the readings store with the readings line; the session days are the runner store
-// already open. The returned func closes what was opened, last opened first.
-func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.SessionDayStore) (computefigures.ComputeStores, func(), error) {
+// already open. The index-id reader is opened with the pages line when d.openIndexIDs is set; with none, or when
+// it fails, IndexIDs stays nil with one warning and the rv20 keys fail. The returned func closes what was opened, last opened first.
+func openComputeStores(ctx context.Context, log *slog.Logger, d deps, cfg runOnceConfig, sd store.SessionDayStore) (computefigures.ComputeStores, func(), error) {
 	var closers []func() error
 	closeAll := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
@@ -486,6 +487,14 @@ func openComputeStores(ctx context.Context, d deps, cfg runOnceConfig, sd store.
 	}
 	closers = append(closers, ser.Close)
 	cs.Series = ser
+	if d.openIndexIDs == nil {
+		log.Warn("index id reader left out", "component", "ot", "step", "market.rv20", "status", "no index id opener")
+	} else if ids, err := d.openIndexIDs(ctx, cfg.pagesDSN); err != nil {
+		log.Warn("index id reader left out", "component", "ot", "step", "market.rv20", "status", "open failed")
+	} else {
+		closers = append(closers, ids.Close)
+		cs.IndexIDs = ids
+	}
 	rd, err := d.openReading(ctx, cfg.readingsDSN)
 	if err != nil {
 		closeAll()

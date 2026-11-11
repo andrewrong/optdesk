@@ -126,6 +126,7 @@ type deps struct {
 	openOptionCatalog       store.OpenOptionEodCatalogFunc
 	openOptionTerms         store.OpenOptionTermsFunc
 	openInstrumentName      store.OpenInstrumentNameFunc
+	openIndexIDs            computefigures.OpenIndexIDsFunc
 	newOptionEod            optioneod.NewOptionEodSymbolsFunc
 	newOptionEodJP          optioneod.NewOptionEodFunc
 	newOptionEodJPWatch     optioneod.NewOptionEodWatchFunc
@@ -571,7 +572,7 @@ func (a *app) barJobs(
 		extra.addCloser(rd)
 		f.compute.PriceBars = rd
 	} else {
-		a.log.Warn("HV step left out", "component", "ot", "step", "market.hv30_own", "status", reason)
+		a.log.Warn("HV step left out", "component", "ot", "step", "market.hv30_own, market.rv20", "status", reason)
 	}
 	bj, err := f.barsRefresh(brk, f.hist)
 	if err != nil {
