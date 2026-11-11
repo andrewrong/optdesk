@@ -3,52 +3,52 @@ import type { MacroSummary } from "../../../../../src/generated/macro_summary.v2
 export const gap = {
   "build_id": "build-demo-0001",
   "card": {
-    "data_times_text": "松紧度数据日 无；事件日期按发布日历，无发布时间。",
+    "data_times_text": "Ease data day n/a; event dates follow the release calendar, no release time.",
     "ease": {
       "reason": "no_data",
-      "text": "松紧度暂无数据：没有存储的读数"
+      "text": "Ease: no data yet, no stored reading"
     },
     "events": [
       {
         "date": "2026-10-28",
-        "name_text": "美国 CPI",
+        "name_text": "US CPI",
         "previous": {
           "reason": "no_data",
-          "text": "前值暂缺"
+          "text": "Previous: no data yet"
         },
-        "when_text": "周三 10-28"
+        "when_text": "Wed 10-28"
       },
       {
         "date": "2026-11-06",
-        "name_text": "美国非农就业",
+        "name_text": "US nonfarm payrolls",
         "previous": {
           "reason": "no_data",
-          "text": "前值暂缺"
+          "text": "Previous: no data yet"
         },
-        "when_text": "周五 11-06"
+        "when_text": "Fri 11-06"
       }
     ],
     "gaps": [
       {
         "reason": "no_data",
-        "text": "松紧度暂无数据：没有存储的读数"
+        "text": "Ease: no data yet, no stored reading"
       },
       {
         "reason": "no_data",
-        "text": "前值暂缺"
+        "text": "Previous: no data yet"
       }
     ],
     "notes": [
-      "日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",
-      "前值是序列最新存储的一期，标注所属月份；没有存储或没有对应序列的标为暂缺。"
+      "Dates come from the FRED release calendar and central bank schedules; dates only, no release time.",
+      "Previous is the latest stored period of the series, labelled with its month; with no stored value or no matching series it shows n/a."
     ],
-    "say": "松紧度暂无数据。本周的事件是 CPI。",
+    "say": "Ease: no data yet. The event this week is CPI.",
     "stale": {
       "data_time": "2026-10-26T09:30:00+08:00",
       "stale_after": "2026-10-27T09:30:00+08:00",
-      "text": "没有数据日"
+      "text": "No data day"
     },
-    "title": "宏观"
+    "title": "Macro"
   },
   "data_times": [],
   "generated_at": "2026-10-26T09:30:00+08:00",

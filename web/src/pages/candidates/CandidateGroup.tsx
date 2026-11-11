@@ -10,7 +10,7 @@ import type { Payload } from '@/types/option_candidates_page'
 type Group = Payload['groups'][number]
 type PayloadTable = NonNullable<Group['main']>
 
-// A value cell goes to the data-table as sent: its badges (such as `过期`) ride on the note line of the cell.
+// A value cell goes to the data-table as sent: its badges (such as `Stale`) ride on the note line of the cell.
 function GroupTable({ table, name }: { table: PayloadTable; name: string }) {
   const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({ id, label, align, hint }))
   const rows = table.rows.map((row) =>
@@ -49,7 +49,7 @@ export function CandidateGroup({ group, staleText }: { group: Group; staleText: 
       {group.other ? (
         <Accordion type="single" collapsible data-other>
           <AccordionItem value="other">
-            <AccordionTrigger>未通过 / 未确认 ({group.other.rows.length})</AccordionTrigger>
+            <AccordionTrigger>Not passed / unconfirmed ({group.other.rows.length})</AccordionTrigger>
             <AccordionContent className="space-y-3">
               <GroupTable table={group.other} name="other" />
               <ReasonList table={group.other} />

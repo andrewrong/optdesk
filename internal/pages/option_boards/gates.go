@@ -78,8 +78,8 @@ func parseMarks(text string) ([]string, error) {
 
 // markTexts are the badge texts of the marks of option-candidates.md Decision 3.
 var markTexts = map[string]string{
-	"earnings_unconfirmed":    "财报日期未确认",
-	"earnings_beyond_horizon": "已过财报,60 天内无财报",
+	"earnings_unconfirmed":    "Earnings date not confirmed",
+	"earnings_beyond_horizon": "Earnings passed, none within 60 days",
 }
 
 // markText is the Chinese badge text of a mark; a mark with no text is shown as it is stored.

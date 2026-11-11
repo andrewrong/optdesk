@@ -8,8 +8,8 @@ export const confirmStep: SettingsPage = {
   confirm: {
     form: { expires: '1790000900', mac: 'ef56ab78', post_path: '/owner-settings' },
     rows: [
-      { label: 'demo 最短到期', old: '25', new: '28' },
-      { label: 'DEMOB 排除', old: '否', new: '是' },
+      { label: 'demo Shortest expiry', old: '25', new: '28' },
+      { label: 'DEMOB Excluded', old: 'No', new: 'Yes' },
     ],
   },
 }

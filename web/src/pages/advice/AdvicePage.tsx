@@ -11,12 +11,12 @@ export type { Payload as AdvicePagePayload } from '@/types/advice_page'
 
 // Fixed column heads of the table: no payload field is read for them.
 const COLUMNS: Column[] = [
-  { id: 'sentence', label: '建议', wrap: true },
-  { id: 'account', label: '账户' },
-  { id: 'ref_value', label: '参考值', align: 'right' },
-  { id: 'after_value', label: '收盘后值', align: 'right' },
-  { id: 'delta', label: '差值', align: 'right' },
-  { id: 'acted', label: '是否执行' },
+  { id: 'sentence', label: 'Advice', wrap: true },
+  { id: 'account', label: 'Account' },
+  { id: 'ref_value', label: 'Reference value', align: 'right' },
+  { id: 'after_value', label: 'Value after close', align: 'right' },
+  { id: 'delta', label: 'Change', align: 'right' },
+  { id: 'acted', label: 'Acted' },
 ]
 
 type AdviceRow = Payload['rows'][number]

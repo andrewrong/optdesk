@@ -3,9 +3,9 @@ import type { MacroSummary } from "../../../../../src/generated/macro_summary.v2
 export const ok = {
   "build_id": "build-demo-0001",
   "card": {
-    "data_times_text": "松紧度数据日 10-23；事件日期按发布日历，无发布时间。",
+    "data_times_text": "Ease data day 10-23; event dates follow the release calendar, no release time.",
     "ease": {
-      "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 34 到 66。",
+      "aria_text": "Ease 56, neutral, −0.2 vs last week; fixed scale 0 to 100, neutral band 34 to 66.",
       "figure": {
         "text": "56",
         "unit": "index_points",
@@ -28,7 +28,7 @@ export const ok = {
           "value": 34.0
         }
       },
-      "reading_text": "当前 56，中性；固定刻度 0 到 100。",
+      "reading_text": "Now 56, neutral; fixed scale 0 to 100.",
       "ticks": [
         "0",
         "25",
@@ -45,43 +45,43 @@ export const ok = {
     "events": [
       {
         "date": "2026-10-28",
-        "name_text": "美国 CPI",
-        "previous": "3.0%（9月）",
-        "when_text": "周三 10-28"
+        "name_text": "US CPI",
+        "previous": "3.0% (Sep)",
+        "when_text": "Wed 10-28"
       },
       {
         "date": "2026-11-06",
-        "name_text": "美国非农就业",
-        "previous": "+12.0 万（9月）",
-        "when_text": "周五 11-06"
+        "name_text": "US nonfarm payrolls",
+        "previous": "+120k (Sep)",
+        "when_text": "Fri 11-06"
       },
       {
         "date": "2026-11-17",
-        "name_text": "美国零售销售",
+        "name_text": "US retail sales",
         "previous": {
           "reason": "no_data",
-          "text": "前值暂缺"
+          "text": "Previous: no data yet"
         },
-        "when_text": "周二 11-17"
+        "when_text": "Tue 11-17"
       }
     ],
     "gaps": [
       {
         "reason": "no_data",
-        "text": "前值暂缺"
+        "text": "Previous: no data yet"
       }
     ],
     "notes": [
-      "日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",
-      "前值是序列最新存储的一期，标注所属月份；没有存储或没有对应序列的标为暂缺。"
+      "Dates come from the FRED release calendar and central bank schedules; dates only, no release time.",
+      "Previous is the latest stored period of the series, labelled with its month; with no stored value or no matching series it shows n/a."
     ],
-    "say": "松紧度中性，较上周 −0.2。本周的事件是 CPI。",
+    "say": "Ease is neutral, −0.2 vs last week. The event this week is CPI.",
     "stale": {
       "data_time": "2026-10-23T00:00:00+08:00",
       "stale_after": "2026-10-27T09:30:00+08:00",
-      "text": "数据日 10-23"
+      "text": "Data day 10-23"
     },
-    "title": "宏观"
+    "title": "Macro"
   },
   "data_times": [
     {

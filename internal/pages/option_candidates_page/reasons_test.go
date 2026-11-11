@@ -3,6 +3,7 @@ package option_candidates_page
 import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -26,6 +27,33 @@ func TestReasonsFromGates(t *testing.T) {
 		"no_free_shares", "strike_floor", "early_assignment_risk"} {
 		if s := reasonText(code); s == code || s == "" {
 			t.Errorf("code %s has no sentence", code)
+		}
+	}
+}
+
+func TestEveryRuleCodeHasSentence(t *testing.T) {
+	t.Parallel()
+	// the 30 codes of the GateResult comment of internal/compute/api.go
+	codes := []string{"no_buy_price", "above_buy_price",
+		"no_quote", "no_bid", "no_ask", "small_bid_size", "wide_spread", "low_open_interest", "delayed_data",
+		"earnings_before_expiry", "earnings_unsupported", "earnings_error", "no_earnings", "stale_earnings",
+		"beyond_horizon", "stale_chain",
+		"no_fit", "no_fx", "stale_account", "no_account",
+		"yield_below_cash", "no_rate", "stale_rate",
+		"no_free_shares",
+		"below_floor", "no_floor",
+		"early_assignment_risk", "no_dividend_info", "stale_dividend",
+		"strike_floor"}
+	if len(codes) != 30 {
+		t.Fatalf("%d codes", len(codes))
+	}
+	for _, code := range codes {
+		s := reasonText(code)
+		if s == "" || s == code {
+			t.Errorf("code %s has no sentence", code)
+		}
+		if strings.Contains(s, code) {
+			t.Errorf("sentence of %s contains the code: %q", code, s)
 		}
 	}
 }

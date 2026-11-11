@@ -8,16 +8,16 @@
   ],
   "generated_at": "2026-12-05T09:30:00+08:00",
   "how": [
-    "每一行是一次扫描里的一个候选，通过的和被拒绝的都在，按扫描存下的顺序。",
-    "权利金是卖出一张合约收到的净权利金；标的变动是到期收盘价低于行权价的部分乘以合约乘数，与评分用的内在价值是同一个数，两者相加只是持有到期的结果，不是已实现盈亏。",
-    "指派只是一个状态：到期时在价内。指派之后的股票盈亏属于持有的结构，不算在这一行里。"
+    "Each row is one candidate of one scan, passed and rejected alike, in the order the scan stored them.",
+    "Premium is the net premium for selling one contract; underlying move is the expiry close below the strike times the multiplier, as in scoring. Their sum is the hold-to-expiry result, not realised P&L.",
+    "Assignment is only a state: in the money at expiry. The stock profit and loss after assignment belongs to the structure held and is not counted in this row."
   ],
-  "pending": "备兑看涨的跟踪和我的交易暂未迁移到本页",
+  "pending": "Covered call tracking and my trades are not moved to this page yet",
   "rows": [
     {
-      "assigned": "在价内到期",
+      "assigned": "Expires in the money",
       "expiry_text": "2026-11-20",
-      "outcome": "价内到期，低于盈亏平衡",
+      "outcome": "Expires in the money, below breakeven",
       "premium": {
         "text": "+$150.00",
         "unit": "usd",
@@ -35,7 +35,7 @@
     {
       "assigned": null,
       "expiry_text": "2026-11-20",
-      "outcome": "价外到期",
+      "outcome": "Expires out of the money",
       "premium": {
         "text": "+$150.00",
         "unit": "usd",
@@ -53,33 +53,33 @@
     {
       "assigned": null,
       "expiry_text": "2026-12-18",
-      "outcome": "未到期",
+      "outcome": "Not expired",
       "premium": {
         "reason": "no_data",
-        "text": "未到期"
+        "text": "Not expired"
       },
       "status": "REJECT",
       "strike": "40",
       "symbol": "CCC",
       "underlying_move": {
         "reason": "no_data",
-        "text": "未到期"
+        "text": "Not expired"
       }
     },
     {
       "assigned": null,
       "expiry_text": "2026-11-20",
-      "outcome": "到期日没有收盘价",
+      "outcome": "No close price on the expiry day",
       "premium": {
         "reason": "no_data",
-        "text": "到期日没有收盘价"
+        "text": "No close price on the expiry day"
       },
       "status": "PASS",
       "strike": "30",
       "symbol": "DDD",
       "underlying_move": {
         "reason": "no_data",
-        "text": "到期日没有收盘价"
+        "text": "No close price on the expiry day"
       }
     }
   ],
@@ -88,11 +88,11 @@
   "schema": "tracking",
   "schema_version": 1,
   "scope": "tracking",
-  "sentence": "共 4 个扫描候选，其中 2 个已评分。",
+  "sentence": "4 scanned candidates, 2 scored.",
   "stale": {
     "data_time": "2026-10-08T00:00:00+08:00",
     "stale_after": "2026-11-28T09:30:00+08:00",
-    "text": "数据已过期：扫描日期"
+    "text": "Data is stale: scan date"
   },
-  "title": "系统期权跟踪"
+  "title": "System option tracking"
 }

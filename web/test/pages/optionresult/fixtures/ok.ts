@@ -68,7 +68,7 @@ export const ok = {
             muted: true
           }
         ],
-        summary: 'M1 Month text a1；M2 Month text a2',
+        summary: 'M1 Month text a1; M2 Month text a2',
         empty: null
       },
       running: {
@@ -160,7 +160,7 @@ export const ok = {
             muted: true
           }
         ],
-        summary: 'M1 Month text b1；M2 Month text b2',
+        summary: 'M1 Month text b1; M2 Month text b2',
         empty: null
       },
       running: {

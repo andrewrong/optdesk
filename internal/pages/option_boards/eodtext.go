@@ -8,10 +8,10 @@ import (
 )
 
 // gapText is shown for a value that is not stored.
-const gapText = "缺"
+const gapText = "n/a"
 
 // floatText is the shortest decimal text of a stored value; the value is printed, never parsed. Null, NaN and
-// infinity are "缺".
+// infinity are "n/a".
 func floatText(v *float64) string {
 	if v == nil || math.IsNaN(*v) || math.IsInf(*v, 0) {
 		return gapText
@@ -24,7 +24,7 @@ type eodText struct {
 	Volume, OpenInterest, Theta, Gamma, Vega string
 }
 
-// eodTextOf prints the row; a nil row gives "缺" in every field.
+// eodTextOf prints the row; a nil row gives "n/a" in every field.
 func eodTextOf(e *contracts.OptionEod) eodText {
 	if e == nil {
 		return eodText{gapText, gapText, gapText, gapText, gapText}

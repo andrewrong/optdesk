@@ -11,16 +11,16 @@ export { validate as validateStructuresList } from '@/types/structures_list'
 export type { Payload as StructuresListPayload } from '@/types/structures_list'
 
 const COLUMNS: Column[] = [
-  { id: 'symbol', label: '标的' },
-  { id: 'kind', label: '类型' },
-  { id: 'expiry', label: '到期' },
-  { id: 'moneyness', label: '在价内/外' },
-  { id: 'distance', label: '距现价', align: 'right' },
-  { id: 'earned', label: '已赚 %', align: 'right' },
-  { id: 'ex_dividend', label: '除息' },
-  { id: 'max_loss', label: '最大亏损', align: 'right' },
-  { id: 'max_gain', label: '最大盈利', align: 'right' },
-  { id: 'pnl', label: '浮盈亏', align: 'right' },
+  { id: 'symbol', label: 'Underlying' },
+  { id: 'kind', label: 'Type' },
+  { id: 'expiry', label: 'Expiry' },
+  { id: 'moneyness', label: 'In/out of the money' },
+  { id: 'distance', label: 'Distance to last', align: 'right' },
+  { id: 'earned', label: 'Earned %', align: 'right' },
+  { id: 'ex_dividend', label: 'Ex-dividend' },
+  { id: 'max_loss', label: 'Max loss', align: 'right' },
+  { id: 'max_gain', label: 'Max profit', align: 'right' },
+  { id: 'pnl', label: 'Floating P/L', align: 'right' },
 ]
 const text = (value: string) => ({ text: value, value })
 // A text of Python's that is a Badge, or its Gap as it is.

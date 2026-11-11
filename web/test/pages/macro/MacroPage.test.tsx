@@ -48,7 +48,7 @@ it('renders the Python gauge and every event and indicator with its label', asyn
   const payload = fixture('ok.json')
   await show(payload)
   expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe('56')
-  expect(host.textContent).toContain('中性，较上周 −0.2。')
+  expect(host.textContent).toContain('Neutral, −0.2 from last week.')
   const events = host.querySelectorAll('[data-events] tbody tr')
   expect(events).toHaveLength(payload.events.length)
   payload.events.forEach((event: { name_text: string; when_text: string }, i: number) => {
@@ -72,7 +72,7 @@ it('renders the Python gauge and every event and indicator with its label', asyn
       expect(rows[i]!.textContent).toContain(indicator.latest.text)
       expect(rows[i]!.textContent).toContain(indicator.source_text)
       expect(rows[i]!.querySelector('[data-slot=badge]')?.textContent).toBe(indicator.label)
-      // Issue #1456: the 详情 link leads where Python's detail_href says; a row without one has no link.
+      // Issue #1456: the Detail link leads where Python's detail_href says; a row without one has no link.
       expect(rows[i]!.querySelector('a')?.getAttribute('href') ?? null).toBe(indicator.detail_href)
     },
   )
@@ -85,7 +85,7 @@ it('draws the 0 to 100 scale, every status text, the detail links and the missin
   expect(ticks[0]).toBe('0')
   expect(ticks.at(-1)).toBe('100')
   expect(ticks).toEqual(['0', '25', '50', '75', '100'])
-  expect(payload.ease.aria_text).toContain('0 到 100')
+  expect(payload.ease.aria_text).toContain('0 to 100')
   expect(host.querySelector('[data-neutral-band]')?.textContent).toBe('33.5% – 66.5%')
   expect(host.querySelector('[role=slider]')?.getAttribute('aria-valuenow')).toBe(
     String(payload.ease.marker_percent.value),
@@ -97,8 +97,8 @@ it('draws the 0 to 100 scale, every status text, the detail links and the missin
   expect(hrefs).toEqual(
     payload.indicators.flatMap((i: { detail_href: string | null }) => (i.detail_href ? [i.detail_href] : [])),
   )
-  expect(host.textContent?.split('数据源未接入')).toHaveLength(2)
-  expect(host.textContent).toContain('没有缺口。')
+  expect(host.textContent?.split('data source not connected')).toHaveLength(2)
+  expect(host.textContent).toContain('No gaps.')
 })
 
 it('shows the ease gap once without a gauge and keeps the missing indicator reason', async () => {
@@ -107,31 +107,31 @@ it('shows the ease gap once without a gauge and keeps the missing indicator reas
   expect(host.querySelector('[role=slider]')).toBeNull()
   expect(host.textContent?.split(payload.ease.text)).toHaveLength(2)
   const row = [...host.querySelectorAll('[data-indicators] tbody tr')].find((row) =>
-    row.textContent?.includes('中国 PMI'),
+    row.textContent?.includes('China PMI'),
   )!
-  expect(row.textContent).toContain('数据源未接入')
+  expect(row.textContent).toContain('data source not connected')
   expect(row.querySelectorAll('td')[1]!.textContent).not.toBe('0')
 })
 
 it('shows Python stale and page gap labels', async () => {
   const payload = fixture('stale.json')
-  payload.gaps = [{ reason: 'no_data', text: '独立的页面缺口' }]
+  payload.gaps = [{ reason: 'no_data', text: 'standalone page gap' }]
   await show(payload)
   const alerts = [...host.querySelectorAll('[role=alert]')].map((node) => node.textContent)
   expect(alerts).toContain(payload.stale.text)
-  expect(host.querySelector('[data-gaps]')?.textContent).toContain('独立的页面缺口')
+  expect(host.querySelector('[data-gaps]')?.textContent).toContain('standalone page gap')
 })
 
 it('colours each indicator source badge by the status Python sent', async () => {
   const payload = fixture('ok.json')
   await show(payload)
-  const cls = { 及时: 'text-success', 缺: 'text-destructive', 迟到: 'text-warning' } as const
+  const cls = { 'On time': 'text-success', 'n/a': 'text-destructive', Late: 'text-warning' } as const
   // The name cell is the first of a row; a gap cell elsewhere also shows a Badge.
   const badges = [
     ...host.querySelectorAll('[data-indicators] tbody td:first-child [data-slot=badge]'),
   ]
   const seen = badges.map((b) => b.textContent)
-  expect(seen).toEqual(expect.arrayContaining(['及时', '缺', '迟到']))
+  expect(seen).toEqual(expect.arrayContaining(['On time', 'n/a', 'Late']))
   for (const b of badges) expect(b.classList).toContain(cls[b.textContent as keyof typeof cls])
 })
 

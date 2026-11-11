@@ -42,7 +42,7 @@ func TestStockRouteKey(t *testing.T) {
 	if code != 200 || schema != "stock_option_page" || !strings.Contains(sym, "DEMO") {
 		t.Fatalf("%d %q %q", code, schema, sym)
 	}
-	if shared != "" && strings.Contains(shared, "没有该标的") {
+	if shared != "" && strings.Contains(shared, "No candidate rows for this underlying") {
 		t.Fatalf("known key shows no_card: %q", shared)
 	}
 	// A key with no stored row is an empty page, not an error.

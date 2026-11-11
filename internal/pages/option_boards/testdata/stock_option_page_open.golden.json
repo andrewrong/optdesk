@@ -12,67 +12,67 @@
     }
   ],
   "run_status": "ok",
-  "title": "单股期权",
+  "title": "Stock options",
   "stale": null,
   "top": {
     "symbol": "AAPL",
     "name": "AAPL",
-    "spot": "现价 68",
+    "spot": "Last price 68",
     "day_change": null,
     "day_tone": null,
     "quote": null,
-    "iv": "IV 38% · HV30 缺 · IVP 缺",
-    "earnings": "财报 无",
-    "trend": "趋势 缺",
-    "policy": "策略 sell put,买价线内才卖",
+    "iv": "IV 38% · HV30 n/a · IVP n/a",
+    "earnings": "Earnings none",
+    "trend": "Trend n/a",
+    "policy": "Policy: sell put, only inside the bid line",
     "refresh_expiry": null,
     "refresh_strike": null
   },
-  "notice": "持仓见 /options/tracking。量与持仓取自 2026-11-09(链日)",
+  "notice": "Positions: see /options/tracking. Volume and open interest from 2026-11-09 (chain day)",
   "shared_gap": null,
   "maps": [
     {
       "expiry": "2026-11-13",
-      "heading": "11-13 周五 · 3 天",
-      "description": "波动区间 缺 (compute 尚无)",
+      "heading": "11-13 Fri · 3 days",
+      "description": "Move range n/a (compute has none yet)",
       "marks": [
         {
           "kind": "spot",
           "price": "68",
-          "text": "现价 68"
+          "text": "Last price 68"
         },
         {
           "kind": "breakeven",
           "price": "60.8",
-          "text": "盈亏平衡 60.8"
+          "text": "Breakeven 60.8"
         },
         {
           "kind": "strike",
           "price": "65",
-          "text": "行权价 65"
+          "text": "Strike 65"
         }
       ],
       "bands": []
     },
     {
       "expiry": "2026-11-20",
-      "heading": "11-20 周五 · 10 天",
-      "description": "波动区间 缺 (compute 尚无)",
+      "heading": "11-20 Fri · 10 days",
+      "description": "Move range n/a (compute has none yet)",
       "marks": [
         {
           "kind": "spot",
           "price": "68",
-          "text": "现价 68"
+          "text": "Last price 68"
         },
         {
           "kind": "breakeven",
           "price": "60.8",
-          "text": "盈亏平衡 60.8"
+          "text": "Breakeven 60.8"
         },
         {
           "kind": "strike",
           "price": "62",
-          "text": "行权价 62"
+          "text": "Strike 62"
         }
       ],
       "bands": []
@@ -82,11 +82,11 @@
     "expiries": [
       {
         "expiry": "2026-11-13",
-        "text": "11-13 周五 · 3 天"
+        "text": "11-13 Fri · 3 days"
       },
       {
         "expiry": "2026-11-20",
-        "text": "11-20 周五 · 10 天"
+        "text": "11-20 Fri · 10 days"
       }
     ],
     "strikes": [
@@ -99,10 +99,10 @@
         "key": "c102",
         "expiry": "2026-11-20",
         "strike": "62",
-        "yield_text": "年化 12.3456%",
-        "premium": "权利金 1.20",
+        "yield_text": "Annualised 12.3456%",
+        "premium": "Premium 1.20",
         "delta": "Δ −0.15",
-        "volume": "成交量 10",
+        "volume": "Volume 10",
         "shade": "worth",
         "star": false,
         "out": false,
@@ -121,10 +121,10 @@
         "key": "c101",
         "expiry": "2026-11-13",
         "strike": "65",
-        "yield_text": "年化 12.3456%",
-        "premium": "权利金 缺",
-        "delta": "Δ 缺",
-        "volume": "成交量 缺",
+        "yield_text": "Annualised 12.3456%",
+        "premium": "Premium n/a",
+        "delta": "Δ n/a",
+        "volume": "Volume n/a",
         "shade": "worth",
         "star": true,
         "out": false,
@@ -143,10 +143,10 @@
         "key": "c103",
         "expiry": "2026-11-13",
         "strike": "60",
-        "yield_text": "年化 12.3456%",
-        "premium": "权利金 1.20",
+        "yield_text": "Annualised 12.3456%",
+        "premium": "Premium 1.20",
         "delta": "Δ −0.15",
-        "volume": "成交量 缺",
+        "volume": "Volume n/a",
         "shade": "none",
         "star": false,
         "out": false,
@@ -163,7 +163,7 @@
       }
     ],
     "facts": null,
-    "legend": "★ 标的内排名第一 · 绿底 值得看 · 薄 买卖价不全 · 财 财报在期内",
+    "legend": "★ top of the underlying · green: worth a look · thin: bid/ask incomplete · earn: earnings in window",
     "empty": null
   },
   "cards": [
@@ -175,28 +175,28 @@
       "in_matrix": true,
       "title": "put 62 11-20",
       "pass_tag": true,
-      "yield_line": "年化 12.3456% · 10 天",
+      "yield_line": "Annualised 12.3456% · 10 days",
       "ladder": [
         {
-          "label": "买价",
+          "label": "Bid",
           "text": "1.20"
         },
         {
-          "label": "中间价",
-          "text": "缺"
+          "label": "Mid",
+          "text": "n/a"
         },
         {
-          "label": "卖价",
+          "label": "Ask",
           "text": "1.30"
         }
       ],
-      "advice": "建议 卖出 1 张 put (收盘 bid 估,次日才卖)",
+      "advice": "Advice: sell 1 put contract (close bid est., sold next day)",
       "amounts": [
-        "行权价 62 · 乘数 100",
-        "盈亏平衡 60.8"
+        "Strike 62 · Multiplier 100",
+        "Breakeven 60.8"
       ],
-      "risk": "风险 股价低于 62 会被行权",
-      "liquidity": "流动性 成交量 10 · 持仓 缺"
+      "risk": "Risk: assigned if the stock is below 62",
+      "liquidity": "Liquidity: volume 10 · open interest n/a"
     },
     {
       "key": "c101",
@@ -206,50 +206,50 @@
       "in_matrix": true,
       "title": "put 65 11-13",
       "pass_tag": true,
-      "yield_line": "年化 12.3456% · 3 天",
+      "yield_line": "Annualised 12.3456% · 3 days",
       "ladder": [
         {
-          "label": "买价",
+          "label": "Bid",
           "text": "1.20"
         },
         {
-          "label": "中间价",
-          "text": "缺"
+          "label": "Mid",
+          "text": "n/a"
         },
         {
-          "label": "卖价",
+          "label": "Ask",
           "text": "1.30"
         }
       ],
-      "advice": "建议 卖出 1 张 put (收盘 bid 估,次日才卖)",
+      "advice": "Advice: sell 1 put contract (close bid est., sold next day)",
       "amounts": [
-        "行权价 65 · 乘数 100",
-        "盈亏平衡 60.8"
+        "Strike 65 · Multiplier 100",
+        "Breakeven 60.8"
       ],
-      "risk": "风险 股价低于 65 会被行权",
-      "liquidity": "流动性 成交量 250 · 持仓 1200"
+      "risk": "Risk: assigned if the stock is below 65",
+      "liquidity": "Liquidity: volume 250 · open interest 1200"
     }
   ],
   "no_card": null,
   "held": [],
   "contracts": {
     "columns": [
-      "到期",
-      "行权价",
-      "买价",
-      "卖价",
+      "Expiry",
+      "Strike",
+      "Bid",
+      "Ask",
       "Δ",
       "IV",
-      "Θ/天",
+      "Θ/day",
       "Γ",
       "Vega",
-      "成交量",
-      "年化"
+      "Volume",
+      "Annualised"
     ],
     "rows": [
       {
         "expiry": "2026-11-20",
-        "expiry_text": "11-20 周五 · 10 天",
+        "expiry_text": "11-20 Fri · 10 days",
         "cells": [
           "11-20",
           "62",
@@ -257,9 +257,9 @@
           "1.30",
           "−0.15",
           "38%",
-          "缺",
-          "缺",
-          "缺",
+          "n/a",
+          "n/a",
+          "n/a",
           "10",
           "12.3456%"
         ],
@@ -273,18 +273,18 @@
       },
       {
         "expiry": "2026-11-13",
-        "expiry_text": "11-13 周五 · 3 天",
+        "expiry_text": "11-13 Fri · 3 days",
         "cells": [
           "11-13",
           "65",
-          "缺",
-          "缺",
-          "缺",
-          "缺",
-          "缺",
-          "缺",
-          "缺",
-          "缺",
+          "n/a",
+          "n/a",
+          "n/a",
+          "n/a",
+          "n/a",
+          "n/a",
+          "n/a",
+          "n/a",
           "12.3456%"
         ],
         "quote": {
@@ -297,7 +297,7 @@
       },
       {
         "expiry": "2026-11-13",
-        "expiry_text": "11-13 周五 · 3 天",
+        "expiry_text": "11-13 Fri · 3 days",
         "cells": [
           "11-13",
           "60",
@@ -305,10 +305,10 @@
           "1.30",
           "−0.15",
           "38%",
-          "缺",
-          "缺",
-          "缺",
-          "缺",
+          "n/a",
+          "n/a",
+          "n/a",
+          "n/a",
           "12.3456%"
         ],
         "quote": {
@@ -320,11 +320,11 @@
         }
       }
     ],
-    "basis": "存档收盘报价;Θ、Γ、Vega 取数据日的存档行",
+    "basis": "Archived close quotes; Theta, Gamma and Vega from the archived row of the data day",
     "notes": [],
     "empty": null
   },
-  "footer": "由存档收盘报价与候选表生成",
+  "footer": "Built from archived close quotes and the candidate table",
   "refresh": {
     "enabled": true,
     "symbols": [

@@ -78,7 +78,7 @@ describe('IndicatorDetailView recent table', () => {
   it('shows the four headers, every recent row, and meta_line of ok', async () => {
     await show(<IndicatorDetailView payload={ok} />)
     const heads = [...host.querySelectorAll('th')].map((th) => th.textContent)
-    expect(heads).toEqual(['期', '公布日', '值', '较前'])
+    expect(heads).toEqual(['Period', 'Released', 'Value', 'Change'])
     expect(text()).toContain(ok.recent.title)
     expect(ok.recent.rows.length).toBeGreaterThan(0)
     const body = [...host.querySelectorAll('tbody tr')].map((tr) =>

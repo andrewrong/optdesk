@@ -43,7 +43,7 @@ func cardRows(rows []store.Candidate) []store.Candidate {
 	return out
 }
 
-// earningsTag is "E MM-DD" for a listed date, "E 无" for absent and "E 缺" otherwise.
+// earningsTag is "E MM-DD" for a listed date, "E none" for absent and "E n/a" otherwise.
 func earningsTag(r store.Candidate) string {
 	switch {
 	case r.EarningsState == "listed" && r.NextEarnings != nil:
@@ -56,7 +56,7 @@ func earningsTag(r store.Candidate) string {
 	return earnMissing
 }
 
-// optionDeltaText is "−0.15" for a stored delta, "缺" when it is null or not a decimal.
+// optionDeltaText is "−0.15" for a stored delta, "n/a" when it is null or not a decimal.
 func optionDeltaText(delta *string) string {
 	if delta == nil || !decimalPattern.MatchString(*delta) {
 		return gapText
@@ -64,7 +64,7 @@ func optionDeltaText(delta *string) string {
 	return signedText(*delta)
 }
 
-// ivLine is "IV 38% · HV30 缺 · IVP 缺": HV30 and IVP have no producer and are always 缺.
+// ivLine is "IV 38% · HV30 n/a · IVP n/a": HV30 and IVP have no producer and are always n/a.
 func ivLine(iv *string) string {
 	pct := gapText
 	if iv != nil {
@@ -72,11 +72,11 @@ func ivLine(iv *string) string {
 			pct = s
 		}
 	}
-	return "IV " + pct + " · HV30 缺 · IVP 缺"
+	return "IV " + pct + " · HV30 n/a · IVP n/a"
 }
 
 // annualisedOf is the PercentAmount of the stored yield, or a gap when it is null or not a decimal; the text
-// is the figure or "缺".
+// is the figure or "n/a".
 func annualisedOf(yield *string) (cell any, text string) {
 	if yield != nil {
 		if s, err := shiftPercent(*yield); err == nil {
@@ -118,11 +118,11 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 		Reason:         reason,
 		Annualised:     ann,
 		AnnualisedText: annText,
-		ContractLine:   fmt.Sprintf("sell put %s · %s %s · %d 天 · Δ %s", r.Strike, md, wd, r.DTE, optionDeltaText(r.Delta)),
-		LiquidityLine:  fmt.Sprintf("成交 %s · 持仓 %s", e.Volume, e.OpenInterest),
+		ContractLine:   fmt.Sprintf("sell put %s · %s %s · %d days · Δ %s", r.Strike, md, wd, r.DTE, optionDeltaText(r.Delta)),
+		LiquidityLine:  fmt.Sprintf("Volume %s · Open interest %s", e.Volume, e.OpenInterest),
 		Tags:           tags,
-		SizeLine:       fmt.Sprintf("1 张 · 行权价 %s · 乘数 %d", r.Strike, r.Multiplier),
+		SizeLine:       fmt.Sprintf("1 contract · Strike %s · Multiplier %d", r.Strike, r.Multiplier),
 		IvLine:         ivLine(r.Iv),
-		PremiumLine:    fmt.Sprintf("权利金 %s (收盘 bid 估) · 盈亏平衡 %s · 到期在价内概率 缺 · 比现金高 缺", r.BidEod, r.BreakEven),
+		PremiumLine:    fmt.Sprintf("Premium %s (close bid est.) · Breakeven %s · in-the-money probability at expiry n/a · above cash n/a", r.BidEod, r.BreakEven),
 	}
 }

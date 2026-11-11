@@ -110,5 +110,5 @@ func chainDayNote(eod map[int]contracts.OptionEod, dataDay contracts.Day) string
 	if earliest == "" {
 		return ""
 	}
-	return "量与持仓取自 " + earliest + "(链日)"
+	return "Volume and open interest from " + earliest + " (chain day)"
 }

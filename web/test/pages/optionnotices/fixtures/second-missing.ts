@@ -15,7 +15,7 @@ export const secondMissing = {
       notices: [],
       cash_by_date: [],
       cushion_text: null,
-      note: 'miss 近 7 天没有这个账户的快照',
+      note: 'miss no snapshot of this account in the last 7 days',
     },
   ],
 } satisfies OptionNoticesPage

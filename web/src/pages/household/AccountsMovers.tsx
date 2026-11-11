@@ -78,7 +78,7 @@ export function AccountsSection({ block, scopes }: { block: Accounts; scopes: Sc
 const toneClass = (tone: string | null | undefined) =>
   tone && tone !== 'none' ? TONE_CLASS[tone as keyof typeof TONE_CLASS] : undefined
 
-// One of the two lists of 谁带动了今天 (issue #1681): the names, prices, money and tags are Python's text, in the
+// One of the two lists of What moved today (issue #1681): the names, prices, money and tags are Python's text, in the
 // order sent; nothing is summed or sorted here.
 function MoverTable({ title, heads, rows }: { title: string; heads: string[]; rows: MoverLine[] }) {
   if (rows.length === 0) return null
@@ -140,8 +140,8 @@ export function MoversSection({ block, scopes }: { block: Movers; scopes: Scope[
                 <AlertDescription>{gap.gap.text}</AlertDescription>
               </Alert>
             ) : null}
-            <MoverTable title="股票" heads={heads} rows={stocks} />
-            <MoverTable title="期权" heads={heads} rows={options} />
+            <MoverTable title="Stocks" heads={heads} rows={stocks} />
+            <MoverTable title="Options" heads={heads} rows={options} />
             {other.length + total.length > 0 ? (
               <Table>
                 <TableBody>

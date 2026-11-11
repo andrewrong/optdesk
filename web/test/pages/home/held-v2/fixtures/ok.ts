@@ -7,35 +7,35 @@ export const ok = {
     "columns": [
       {
         "id": "company",
-        "label": "公司"
+        "label": "Company"
       },
       {
         "id": "price",
-        "label": "价格"
+        "label": "Price"
       },
       {
         "id": "earnings",
-        "label": "财报日"
+        "label": "Earnings date"
       },
       {
         "id": "day_change",
-        "label": "日涨跌"
+        "label": "Day change"
       },
       {
         "id": "five_day_change",
-        "label": "5日涨跌"
+        "label": "5-day change"
       }
     ],
-    "data_times_text": "美股数据日 10-23 · 日股数据日 10-23",
+    "data_times_text": "US data day 10-23 · JP data day 10-23",
     "gaps": [
       {
         "kind": "gap",
         "reason": "no_news_source",
-        "text": "近 5 日消息：暂无数据源"
+        "text": "News, last 5 days: no data source yet"
       }
     ],
     "notes": [
-      "MSFT 财报日只显示日期：盘前、盘后时间暂无数据源。"
+      "MSFT earnings date shows the date only: pre-market and after-hours times have no data source yet."
     ],
     "rows": [
       {
@@ -49,12 +49,12 @@ export const ok = {
         },
         "day_sharp": {
           "kind": "sharp",
-          "text": "大幅"
+          "text": "big move"
         },
         "earnings": {
           "date": "2026-10-28",
           "kind": "value",
-          "text": "10-28 盘后"
+          "text": "10-28 after hours"
         },
         "five_day_change": {
           "kind": "value",
@@ -78,21 +78,21 @@ export const ok = {
           "hv30": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "HV30（自有，口径 hv30_v1）：暂无读数"
+            "text": "HV30 (own, basis hv30_v1): no reading yet"
           },
           "iv30": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "自有 iv30：暂无读数"
+            "text": "Own iv30: no reading yet"
           },
           "ivp": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "自有 ivp：暂无读数"
+            "text": "Own ivp: no reading yet"
           },
-          "label": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23",
-          "reconciliation": "缺",
-          "source": "自有 own"
+          "label": "Own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-23",
+          "reconciliation": "n/a",
+          "source": "Own"
         }
       },
       {
@@ -125,7 +125,7 @@ export const ok = {
         "price": {
           "kind": "gap",
           "reason": "missing_quote",
-          "text": "无报价"
+          "text": "No quote"
         },
         "symbol": "MSFT",
         "volatility": {
@@ -133,21 +133,21 @@ export const ok = {
           "hv30": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "HV30（自有，口径 hv30_v1）：暂无读数"
+            "text": "HV30 (own, basis hv30_v1): no reading yet"
           },
           "iv30": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "自有 iv30：暂无读数"
+            "text": "Own iv30: no reading yet"
           },
           "ivp": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "自有 ivp：暂无读数"
+            "text": "Own ivp: no reading yet"
           },
-          "label": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23",
-          "reconciliation": "缺",
-          "source": "自有 own"
+          "label": "Own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-23",
+          "reconciliation": "n/a",
+          "source": "Own"
         }
       },
       {
@@ -165,7 +165,7 @@ export const ok = {
         "earnings": {
           "date": "2026-11-19",
           "kind": "value",
-          "text": "11-19 盘前"
+          "text": "11-19 pre-market"
         },
         "five_day_change": {
           "kind": "value",
@@ -176,7 +176,7 @@ export const ok = {
         },
         "five_day_sharp": {
           "kind": "sharp",
-          "text": "大幅"
+          "text": "big move"
         },
         "price": {
           "kind": "value",
@@ -190,33 +190,33 @@ export const ok = {
           "hv30": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "HV30（自有，口径 hv30_v1）：暂无读数"
+            "text": "HV30 (own, basis hv30_v1): no reading yet"
           },
           "iv30": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "自有 iv30：暂无读数"
+            "text": "Own iv30: no reading yet"
           },
           "ivp": {
             "kind": "gap",
             "reason": "no_data",
-            "text": "自有 ivp：暂无读数"
+            "text": "Own ivp: no reading yet"
           },
-          "label": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23",
-          "reconciliation": "缺",
-          "source": "自有 own"
+          "label": "Own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-23",
+          "reconciliation": "n/a",
+          "source": "Own"
         }
       }
     ],
-    "say": "持有 9 家 · 3 家 28 日内财报 · 近 5 日消息：暂无数据源。",
-    "sharp_note": "日涨跌 3% 及以上、5日涨跌 8% 及以上标“大幅”。",
+    "say": "Holding 9 · 3 with earnings within 28 days · News, last 5 days: no data source yet.",
+    "sharp_note": "Day change of 3% or more and 5-day change of 8% or more are marked big move.",
     "stale": {
       "data_time": "2026-10-23T21:00:00+08:00",
       "is_stale": false,
-      "text": "数据日 10-23"
+      "text": "Data day 10-23"
     },
-    "subtitle": "财报日历与变化",
-    "title": "持仓公司"
+    "subtitle": "Earnings calendar and changes",
+    "title": "Held companies"
   },
   "data_times": [
     {

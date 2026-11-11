@@ -13,15 +13,15 @@ export { validate as validateMacroPage } from '@/types/macro_page'
 export type { Payload as MacroPagePayload } from '@/types/macro_page'
 
 const EVENTS: Column[] = [
-  { id: 'date', label: '日期' },
-  { id: 'name', label: '事件' },
-  { id: 'previous', label: '前值' },
+  { id: 'date', label: 'Date' },
+  { id: 'name', label: 'Event' },
+  { id: 'previous', label: 'Previous' },
 ]
 const INDICATORS: Column[] = [
-  { id: 'name', label: '指标 · 时效' },
-  { id: 'latest', label: '最新' },
-  { id: 'source', label: '来源' },
-  { id: 'detail', label: '详情' },
+  { id: 'name', label: 'Indicator · timeliness' },
+  { id: 'latest', label: 'Latest' },
+  { id: 'source', label: 'Source' },
+  { id: 'detail', label: 'Detail' },
 ]
 
 export function MacroPage({ payload }: { payload: Payload }) {
@@ -43,7 +43,7 @@ export function MacroPage({ payload }: { payload: Payload }) {
         ? indicator.latest
         : { ...indicator.latest, tone: indicator.latest.tone ?? undefined },
     source: { text: indicator.source_text },
-    ...(indicator.detail_href && { detail: { text: '详情', href: indicator.detail_href } }),
+    ...(indicator.detail_href && { detail: { text: 'Detail', href: indicator.detail_href } }),
   }))
   return (
     <div className="min-w-0 space-y-6" data-page="macro-page">

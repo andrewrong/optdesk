@@ -1,6 +1,6 @@
 {
-  "footnote": "仅显示：不改变任何建议、数量、上限或期限",
-  "headline": "未知 · 天气数据缺：没有投票数据",
+  "footnote": "Display only: changes no advice, quantity, limit or term",
+  "headline": "Unknown · weather data missing: no vote data",
   "mismatches": [],
   "rows": [],
   "schema": "market_weather",

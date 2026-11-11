@@ -55,7 +55,7 @@ describe('OptionCandidatesPage', () => {
     const page = await show(blocked)
     await act(async () => page.querySelector<HTMLElement>('[data-other] button')!.click())
     const text = page.textContent ?? ''
-    expect(text).toContain(`未通过 / 未确认 (${blocked.groups[0].other.rows.length})`)
+    expect(text).toContain(`Not passed / unconfirmed (${blocked.groups[0].other.rows.length})`)
     for (const row of blocked.groups[0].other.rows) {
       for (const reason of row.reasons) expect(text).toContain(reason.text)
     }
@@ -89,12 +89,12 @@ describe('OptionCandidatesPage', () => {
     expect(page.querySelector('[data-estimate-note]')!.textContent).toBe(ok.estimate_note)
   })
 
-  it('shows the 过期 badge on the rows of a stale fixture and the stale alert of the group', async () => {
+  it('shows the Stale badge on the rows of a stale fixture and the stale alert of the group', async () => {
     const page = await show(stale)
     const main = page.querySelector('[data-group=short_put] [data-table=main]')!
     const rows = [...main.querySelectorAll('tbody tr')]
     expect(rows).toHaveLength(stale.groups[0].main.rows.length)
-    for (const tr of rows) expect(tr.querySelector('td')!.textContent).toContain('过期')
+    for (const tr of rows) expect(tr.querySelector('td')!.textContent).toContain('Stale')
     expect(page.querySelector('[data-group-stale]')!.textContent).toContain(stale.stale.text)
   })
 

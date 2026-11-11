@@ -12,7 +12,7 @@
     }
   ],
   "run_status": "partial",
-  "title": "单股期权",
+  "title": "Stock options",
   "stale": null,
   "top": {
     "symbol": "NOPE",
@@ -23,45 +23,45 @@
     "quote": null,
     "iv": null,
     "earnings": null,
-    "trend": "趋势 缺",
-    "policy": "策略 sell put,买价线内才卖",
+    "trend": "Trend n/a",
+    "policy": "Policy: sell put, only inside the bid line",
     "refresh_expiry": null,
     "refresh_strike": null
   },
-  "notice": "持仓见 /options/tracking",
-  "shared_gap": "没有该标的的候选行",
+  "notice": "Positions: see /options/tracking",
+  "shared_gap": "No candidate rows for this underlying",
   "maps": [],
   "matrix": {
     "expiries": [],
     "strikes": [],
     "cells": [],
     "facts": null,
-    "legend": "★ 标的内排名第一 · 绿底 值得看 · 薄 买卖价不全 · 财 财报在期内",
-    "empty": "没有该标的的候选行"
+    "legend": "★ top of the underlying · green: worth a look · thin: bid/ask incomplete · earn: earnings in window",
+    "empty": "No candidate rows for this underlying"
   },
   "cards": [],
-  "no_card": "没有该标的的候选行",
+  "no_card": "No candidate rows for this underlying",
   "held": [],
   "contracts": {
     "columns": [
-      "到期",
-      "行权价",
-      "买价",
-      "卖价",
+      "Expiry",
+      "Strike",
+      "Bid",
+      "Ask",
       "Δ",
       "IV",
-      "Θ/天",
+      "Θ/day",
       "Γ",
       "Vega",
-      "成交量",
-      "年化"
+      "Volume",
+      "Annualised"
     ],
     "rows": [],
-    "basis": "存档收盘报价;Θ、Γ、Vega 取数据日的存档行",
+    "basis": "Archived close quotes; Theta, Gamma and Vega from the archived row of the data day",
     "notes": [],
-    "empty": "没有该标的的合约"
+    "empty": "No contracts for this underlying"
   },
-  "footer": "由存档收盘报价与候选表生成",
+  "footer": "Built from archived close quotes and the candidate table",
   "refresh": {
     "enabled": false,
     "symbols": [],

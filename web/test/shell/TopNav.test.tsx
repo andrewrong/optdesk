@@ -25,29 +25,29 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 describe('TopNav', () => {
-  it('has eleven items: the fixed links and the 期权持仓 menu', async () => {
+  it('has eleven items: the fixed links and the Option positions menu', async () => {
     await showAt('/home')
-    expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('主导航')
+    expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation')
     expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['首页', '/home'],
-      ['宏观', '/macro'],
-      ['家庭资产', '/household'],
-      ['持仓', '/positions'],
-      ['风险', '/risk'],
-      ['期权', '/options'],
-      ['期权数据', '/options/data'],
-      ['期权候选', '/options/candidates'],
-      ['建议', '/advice'],
-      ['设置', '/settings'],
+      ['Home', '/home'],
+      ['Macro', '/macro'],
+      ['Household', '/household'],
+      ['Positions', '/positions'],
+      ['Risk', '/risk'],
+      ['Options', '/options'],
+      ['Option data', '/options/data'],
+      ['Option candidates', '/options/candidates'],
+      ['Advice', '/advice'],
+      ['Settings', '/settings'],
     ])
     const items = [...host.querySelectorAll('nav > div > a, nav > div > button')].map((e) => e.textContent)
     expect(items).toHaveLength(11)
-    expect(items[10]).toBe('期权持仓')
+    expect(items[10]).toBe('Option positions')
   })
 
-  it('the 期权持仓 menu holds the links 结构, 盈亏 and 提示', async () => {
+  it('the Option positions menu holds the links Structures, Result and Notices', async () => {
     await showAt('/home')
-    const trigger = [...host.querySelectorAll('button')].find((b) => b.textContent === '期权持仓')
+    const trigger = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Option positions')
     expect(trigger).toBeDefined()
     await act(async () => {
       trigger?.focus()
@@ -55,22 +55,22 @@ describe('TopNav', () => {
     })
     const menu = [...document.querySelectorAll('[role="menu"] a')]
     expect(menu.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['结构', '/options/structures'],
-      ['盈亏', '/options/result'],
-      ['提示', '/options/notices'],
-      ['追踪', '/options/tracking'],
+      ['Structures', '/options/structures'],
+      ['Result', '/options/result'],
+      ['Notices', '/options/notices'],
+      ['Tracking', '/options/tracking'],
     ])
   })
 
   it.each([
-    ['/positions', '持仓'],
-    ['/risk/', '风险'],
-    ['/', '首页'],
-    ['/options/data', '期权数据'],
-    ['/options/data/9001', '期权数据'],
-    ['/options', '期权'],
-    ['/macro/', '宏观'],
-    ['/settings', '设置'],
+    ['/positions', 'Positions'],
+    ['/risk/', 'Risk'],
+    ['/', 'Home'],
+    ['/options/data', 'Option data'],
+    ['/options/data/9001', 'Option data'],
+    ['/options', 'Options'],
+    ['/macro/', 'Macro'],
+    ['/settings', 'Settings'],
   ])('marks only the link of %s', async (pathname, label) => {
     await showAt(pathname)
     const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')
@@ -83,7 +83,7 @@ describe('TopNav', () => {
   })
 
   const openSheet = async () => {
-    const button = host.querySelector('button[aria-label="菜单"]')
+    const button = host.querySelector('button[aria-label="Menu"]')
     expect(button).not.toBeNull()
     await act(async () => {
       button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -94,41 +94,41 @@ describe('TopNav', () => {
   it('the sheet is closed at first and the phone button is 44 px, hidden from md', async () => {
     await showAt('/home')
     expect(document.querySelector('[role="dialog"]')).toBeNull()
-    const button = host.querySelector('button[aria-label="菜单"]')
+    const button = host.querySelector('button[aria-label="Menu"]')
     expect(button?.className).toContain('size-11')
     expect(button?.className).toContain('md:hidden')
     expect(host.querySelector('nav > div')?.className).toContain('hidden md:flex')
   })
 
-  it('the sheet opens and lists the eleven items, the position links under 期权持仓', async () => {
+  it('the sheet opens and lists the eleven items, the position links under Option positions', async () => {
     await showAt('/home')
     const sheet = await openSheet()
     expect(sheet).not.toBeNull()
     expect(sheet?.getAttribute('data-side')).toBe('left')
     const hrefs = [...(sheet?.querySelectorAll('a') ?? [])].map((a) => [a.textContent, a.getAttribute('href')])
     expect(hrefs).toEqual([
-      ['首页', '/home'],
-      ['宏观', '/macro'],
-      ['家庭资产', '/household'],
-      ['持仓', '/positions'],
-      ['风险', '/risk'],
-      ['期权', '/options'],
-      ['期权数据', '/options/data'],
-      ['期权候选', '/options/candidates'],
-      ['建议', '/advice'],
-      ['设置', '/settings'],
-      ['结构', '/options/structures'],
-      ['盈亏', '/options/result'],
-      ['提示', '/options/notices'],
-      ['追踪', '/options/tracking'],
+      ['Home', '/home'],
+      ['Macro', '/macro'],
+      ['Household', '/household'],
+      ['Positions', '/positions'],
+      ['Risk', '/risk'],
+      ['Options', '/options'],
+      ['Option data', '/options/data'],
+      ['Option candidates', '/options/candidates'],
+      ['Advice', '/advice'],
+      ['Settings', '/settings'],
+      ['Structures', '/options/structures'],
+      ['Result', '/options/result'],
+      ['Notices', '/options/notices'],
+      ['Tracking', '/options/tracking'],
     ])
-    expect(sheet?.textContent).toContain('期权持仓')
+    expect(sheet?.textContent).toContain('Option positions')
   })
 
   it('the sheet marks the current page with aria-current', async () => {
     await showAt('/options/data/9001')
     const sheet = await openSheet()
     const marked = [...(sheet?.querySelectorAll('a[aria-current="page"]') ?? [])]
-    expect(marked.map((a) => a.textContent)).toEqual(['期权数据'])
+    expect(marked.map((a) => a.textContent)).toEqual(['Option data'])
   })
 })

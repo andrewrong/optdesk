@@ -5,5 +5,5 @@ import { ok } from './ok'
 export const gap = {
   ...ok,
   run_status: 'partial',
-  gaps: [{ kind: 'gap', reason: 'no_data', text: '估值数据不足：CCC 缺少三年财报' }],
+  gaps: [{ kind: 'gap', reason: 'no_data', text: 'Valuation: not enough data, CCC lacks three years of reports' }],
 } satisfies CorePage

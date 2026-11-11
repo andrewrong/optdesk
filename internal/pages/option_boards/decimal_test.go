@@ -105,10 +105,10 @@ func TestMonthDayAndWeekday(t *testing.T) {
 		t.Errorf("monthDay = %q, %v", md, err)
 	}
 	wd, err := weekdayText("2026-11-13")
-	if err != nil || wd != "周五" {
+	if err != nil || wd != "Fri" {
 		t.Errorf("weekdayText = %q, %v", wd, err)
 	}
-	if wd, _ := weekdayText("2026-11-15"); wd != "周日" {
+	if wd, _ := weekdayText("2026-11-15"); wd != "Sun" {
 		t.Errorf("sunday = %q", wd)
 	}
 	if _, err := monthDay("2026-13-01"); err == nil {
