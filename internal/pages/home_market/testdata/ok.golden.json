@@ -85,9 +85,10 @@
             "unit": "vol_points"
           },
           "rv20": {
-            "kind": "gap",
-            "reason": "not_built",
-            "text": "not built yet"
+            "kind": "value",
+            "value": 16.2,
+            "text": "16.2",
+            "unit": "vol_points"
           },
           "iv_minus_rv20": {
             "kind": "gap",
@@ -105,9 +106,10 @@
             "unit": "vol_points"
           },
           "rv20": {
-            "kind": "gap",
-            "reason": "not_built",
-            "text": "not built yet"
+            "kind": "value",
+            "value": 16.2,
+            "text": "16.2",
+            "unit": "vol_points"
           },
           "iv_minus_rv20": {
             "kind": "gap",
@@ -125,9 +127,10 @@
             "unit": "vol_points"
           },
           "rv20": {
-            "kind": "gap",
-            "reason": "not_built",
-            "text": "not built yet"
+            "kind": "value",
+            "value": 16.4,
+            "text": "16.4",
+            "unit": "vol_points"
           },
           "iv_minus_rv20": {
             "kind": "gap",
@@ -178,11 +181,6 @@
       "The chart draws only the stored S\u0026P 500 closes; the 200-day average and range are not built yet."
     ],
     "gaps": [
-      {
-        "kind": "gap",
-        "reason": "not_built",
-        "text": "20-day realised volatility not built yet for SPX, NDX, RUT"
-      },
       {
         "kind": "gap",
         "reason": "not_built",

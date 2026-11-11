@@ -44,6 +44,11 @@ func TestImportsStayPure(t *testing.T) {
 		if strings.Contains(string(src), "time.Now") {
 			t.Errorf("%s reads the clock", f)
 		}
+		for _, bad := range []string{"math.Sqrt", "math.Log"} {
+			if strings.Contains(string(src), bad) {
+				t.Errorf("%s computes with %s: the page shows stored values only", f, bad)
+			}
+		}
 	}
 	if checked == 0 {
 		t.Fatal("no source file checked")
