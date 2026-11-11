@@ -9,6 +9,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
@@ -25,13 +26,9 @@ var shareText = regexp.MustCompile(`^(100(\.0+)?|[0-9]{1,2}(\.[0-9]+)?)$`)
 
 // holdings reads the positions and the marks of the capture day and builds the blocks; nil when
 // Marks or Holdings is not set (the blocks stay missing_quote).
-func (c Config) holdings(ctx context.Context, alias string, cp capture) (*holdingBlocks, error) {
+func (c Config) holdings(ctx context.Context, alias string, cp capture, positions []store.Position) (*holdingBlocks, error) {
 	if c.Marks == nil || c.Holdings == nil {
 		return nil, nil
-	}
-	positions, err := c.Account.Positions(ctx, alias, cp.day)
-	if err != nil {
-		return nil, fmt.Errorf("household_page: read positions: %w", err)
 	}
 	marks, err := c.Marks.Marks(ctx, alias, cp.day)
 	if err != nil {

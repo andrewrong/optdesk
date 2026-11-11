@@ -85,11 +85,15 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		Values: valuesIn(snap.values), MonthStart: valuesIn(snap.monthStart),
 		History: snap.history, Obligations: obligations,
 	})
-	hb, err := c.holdings(ctx, alias, snap)
+	positions, err := c.Account.Positions(ctx, alias, snap.day)
+	if err != nil {
+		return nil, fmt.Errorf("household_page: read positions: %w", err)
+	}
+	hb, err := c.holdings(ctx, alias, snap, positions)
 	if err != nil {
 		return nil, err
 	}
-	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, hb, at))
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, hb, unledgered(positions, len(obligations)), at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
@@ -192,10 +196,47 @@ func (c Config) obligations(ctx context.Context, alias string, sessions []contra
 	return out, newest, nil
 }
 
+// unledgered lists the stored short puts (symbol, strike, expiry) beyond the n the ledger returned;
+// empty when the ledger holds as many as the stored positions or more.
+func unledgered(positions []store.Position, n int) []string {
+	var all []string
+	for _, p := range positions {
+		if p.SecType == secTypeOption && p.Right == "put" && strings.HasPrefix(p.Quantity, "-") {
+			all = append(all, strings.TrimSpace(p.Symbol+" P"+p.Strike+" "+p.Expiry))
+		}
+	}
+	if len(all) <= n {
+		return nil
+	}
+	return all
+}
+
+// withLedgerGap marks the obligations, income and cash after blocks as gaps when stored short puts
+// are missing from the ledger; the cash after row is dropped, since it would look complete.
+func withLedgerGap(p *pageJSON, missing []string) {
+	if len(missing) == 0 {
+		return
+	}
+	listed := missing
+	if len(listed) > maxListedPuts {
+		listed = listed[:maxListedPuts]
+	}
+	text := ""
+	for ; len(listed) > 0; listed = listed[:len(listed)-1] {
+		text = fmt.Sprintf(textNotInLedger, len(missing), strings.Join(listed, ", "))
+		if len([]rune(text)) <= maxBlockGapRunes {
+			break
+		}
+	}
+	g := gapJSON{Reason: "no_data", Text: text}
+	p.Obligations.Gap, p.Income.Gap, p.CashAfter.Gap = &g, &g, &g
+	p.CashAfter.Rows = []moneyRow{}
+}
+
 // assemble writes the page from the figures; without hb the mark blocks are the gap missing_quote,
 // movers is the gap no_data and long term the gap not_built. The run is ok when no block has a gap.
 func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp capture, ledgerAt time.Time,
-	res blockapi.HouseholdResult, hb *holdingBlocks, at time.Time) pageJSON {
+	res blockapi.HouseholdResult, hb *holdingBlocks, missing []string, at time.Time) pageJSON {
 	p := base(c, scopes, alias, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = pageTitle, pageSentence
@@ -205,6 +246,11 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	p.Obligations = moneyOf(titleObligations, meaningObligations, res.Obligations)
 	p.Income = moneyOf(titleIncome, meaningIncome, res.Income)
 	p.MonthChange = waterfallOf(res.MonthChange)
+	if len(cp.monthStart) == 0 && cp.day != "" {
+		p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{},
+			Gap: &gapJSON{Reason: "missing_input", Text: fmt.Sprintf(textNoMonthStart, cp.day[:7]+"-01")}}
+	}
+	withLedgerGap(&p, missing)
 	p.Trend = trendOf(alias, tag.Label, res.Trend)
 	p.Accounts = accountsOf(alias, tag.Label, tag.Whose, cp.day, res.Accounts)
 	if hb != nil {
