@@ -1,0 +1,13 @@
+# Manifest of the underlying_resolve job: once per XNYS session day after the close it asks the broker once for each
+# pending name and each unresolved name older than retry_days, at most max_names a run (docs/design/underlyings.md, Decision 7).
+version = 1
+id = "underlying_resolve"
+retry_days = 7
+max_names = 20
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+zone = "America/New_York"
+offset = "45m"
+run_bound = "10m"
