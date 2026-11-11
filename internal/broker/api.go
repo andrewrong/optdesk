@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Kind is the kind of a snapshot request, one of the three kinds of ibkr.v1.
+// Kind is the kind of a snapshot request, one of the four kinds of ibkr.v1.
 type Kind int
 
 // The kinds of ibkr.v1.
@@ -14,6 +14,7 @@ const (
 	KindOptionEod Kind = iota
 	KindUnderlyingIV
 	KindSnapshot
+	KindOptionOpen
 )
 
 // Contract names one instrument. Expiry is YYYYMMDD and Strike is canonical decimal text.

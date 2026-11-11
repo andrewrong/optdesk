@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/contracts"
 	pb "github.com/andrewrong/optdesk/internal/contracts/genpb"
 )
 
@@ -125,5 +126,23 @@ func TestFromExecutionsTimeUTC(t *testing.T) {
 	}
 	if want := time.Date(2026, 11, 9, 14, 0, 0, 0, time.UTC); !got.Executions[0].Time.Equal(want) || got.Executions[0].Time.Location() != time.UTC {
 		t.Fatalf("got %v", got.Executions[0].Time)
+	}
+}
+
+func TestQuoteKindMapsAllFourKinds(t *testing.T) {
+	t.Parallel()
+	for k, want := range map[broker.Kind]pb.QuoteKind{
+		broker.KindOptionEod:    pb.QuoteKind_QUOTE_KIND_OPTION_EOD,
+		broker.KindUnderlyingIV: pb.QuoteKind_QUOTE_KIND_UNDERLYING_IV,
+		broker.KindSnapshot:     pb.QuoteKind_QUOTE_KIND_SNAPSHOT,
+		broker.KindOptionOpen:   pb.QuoteKind_QUOTE_KIND_OPTION_OPEN,
+	} {
+		got, err := quoteKind(k)
+		if err != nil || got != want {
+			t.Fatalf("kind %d: got %v, err %v, want %v", k, got, err, want)
+		}
+	}
+	if _, err := quoteKind(broker.Kind(99)); err == nil || kindErr(t, err) != contracts.Permanent {
+		t.Fatalf("unknown kind: %v", err)
 	}
 }

@@ -8,7 +8,7 @@ The Go client of the pyside IBKR service. `broker.Broker` (`internal/broker/api.
 
 - `ListChains(ctx, underlying)` returns the chains; strikes are the union over all expirations, untouched.
 - `ResolveContract(ctx, c)` returns `Resolved`; `Listed == false` with a nil error is the proto's NOT_LISTED. `Resolved.ErrorCode` and `ErrorText` carry the response's `error_code` and `error_text` (0 and empty when none). Several or differing results (the service's FAILED_PRECONDITION) are `Permanent`.
-- `Snapshot(ctx, kind, cs)` returns one `Quote` per contract in the order asked, matched by `ConID`; a contract with no streamed answer gets `StatusDisconnected`. It does not split the call: the caller chunks. An unknown `Kind`, `SecType` or `Right`, and `QUOTE_STATUS_UNSPECIFIED`, are `Permanent` errors; an unknown kind fails before any call.
+- `Snapshot(ctx, kind, cs)` returns one `Quote` per contract in the order asked, matched by `ConID`; a contract with no streamed answer gets `StatusDisconnected`. It does not split the call: the caller chunks. `Kind` is `KindOptionEod`, `KindUnderlyingIV`, `KindSnapshot` or `KindOptionOpen` (the last maps to `QUOTE_KIND_OPTION_OPEN`, value 4). An unknown `Kind`, `SecType` or `Right`, and `QUOTE_STATUS_UNSPECIFIED`, are `Permanent` errors; an unknown kind fails before any call.
 - `Close()` releases the connection.
 - `SecType` is `STK`, `IND` or `OPT`; `Right` is `P` or `C`; empty is unspecified.
 
@@ -44,4 +44,4 @@ Every error is a `contracts.TypedError`. `UNAVAILABLE` and `DEADLINE_EXCEEDED` a
 
 ## Contract tests
 
-`internal/broker/grpcbroker`: `TestSnapshotOrder`, `TestQuoteFields`, `TestKinds`, `TestResolveNotListed`, `TestListChains`, `TestErrorKinds`, `TestResolveInFlight`, `TestTimeouts`, `TestDialRefuses`, `TestAccountValues`, `TestAccountPositions`, `TestAccountErrorKinds`, `TestAccountCallTimeout`, `TestDialAccountRefuses`, `TestAccountEmptyAliasRefused`, `TestDividendsContract`, `TestDividendsUnsetStatusIsError`.
+`internal/broker/grpcbroker`: `TestSnapshotOrder`, `TestQuoteFields`, `TestKinds`, `TestQuoteKindMapsAllFourKinds`, `TestResolveNotListed`, `TestListChains`, `TestErrorKinds`, `TestResolveInFlight`, `TestTimeouts`, `TestDialRefuses`, `TestAccountValues`, `TestAccountPositions`, `TestAccountErrorKinds`, `TestAccountCallTimeout`, `TestDialAccountRefuses`, `TestAccountEmptyAliasRefused`, `TestDividendsContract`, `TestDividendsUnsetStatusIsError`.

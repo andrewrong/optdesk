@@ -15,7 +15,9 @@ func (e typedErr) Error() string             { return "unavailable" }
 func (e typedErr) Kind() contracts.ErrorKind { return e.kind }
 
 // fakeBroker answers one Quote per contract, or a Retryable error when down is set.
-type fakeBroker struct{ down bool }
+type fakeBroker struct{ down, refuseUnknown bool }
+
+var errUnknownKind = errors.New("unknown kind")
 
 func (f fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
 	return nil, nil
@@ -25,9 +27,12 @@ func (f fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (broke
 	return broker.Resolved{Listed: true, Contract: c}, nil
 }
 
-func (f fakeBroker) Snapshot(_ context.Context, _ broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
+func (f fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
 	if f.down {
 		return nil, typedErr{contracts.Retryable}
+	}
+	if f.refuseUnknown && kind != broker.KindOptionEod && kind != broker.KindUnderlyingIV && kind != broker.KindSnapshot && kind != broker.KindOptionOpen {
+		return nil, errUnknownKind
 	}
 	out := make([]broker.Quote, len(cs))
 	for i, c := range cs {
@@ -55,6 +60,30 @@ func TestSnapshotReturnsOneQuotePerContractInOrder(t *testing.T) {
 	qs, err := broker.Broker(fakeBroker{}).Snapshot(context.Background(), broker.KindSnapshot, cs)
 	if err != nil || len(qs) != 2 || qs[0].Contract.Symbol != "B" || qs[1].Contract.Symbol != "A" {
 		t.Fatalf("got %v, %v", qs, err)
+	}
+}
+
+func TestKindOptionOpenIsDistinctAndUnknownKindIsRefused(t *testing.T) {
+	t.Parallel()
+	kinds := []broker.Kind{broker.KindOptionEod, broker.KindUnderlyingIV, broker.KindSnapshot, broker.KindOptionOpen}
+	seen := map[broker.Kind]bool{}
+	for _, k := range kinds {
+		if seen[k] {
+			t.Fatalf("kind %d appears twice", k)
+		}
+		seen[k] = true
+	}
+	if broker.KindOptionEod != 0 || broker.KindUnderlyingIV != 1 || broker.KindSnapshot != 2 {
+		t.Fatal("the values of the three old kinds changed")
+	}
+	if seen[broker.Kind(99)] {
+		t.Fatal("Kind(99) must not be a kind")
+	}
+	if _, err := broker.Broker(fakeBroker{refuseUnknown: true}).Snapshot(context.Background(), broker.Kind(99), nil); !errors.Is(err, errUnknownKind) {
+		t.Fatalf("unknown kind: %v", err)
+	}
+	if _, err := broker.Broker(fakeBroker{refuseUnknown: true}).Snapshot(context.Background(), broker.KindOptionOpen, nil); err != nil {
+		t.Fatalf("KindOptionOpen refused: %v", err)
 	}
 }
 
