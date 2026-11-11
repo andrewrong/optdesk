@@ -171,14 +171,15 @@ func firstReason(rs ...string) string {
 }
 
 // openStored is the stored inputs of the plan and the resolve jobs: the watch list, the held ports and the
-// instrument store of the factory.
+// instrument store of the factory. Eod is the reader of the compute stores (the pages role, which may read
+// rd.option_eod_r1); the writer role of the eod store has no right on schema rd.
 func openStored(jc *jobCtx, stores openquote.Stores) optionopen.Stored {
 	s := optionopen.Stored{Watch: jc.f.watch, Instruments: jc.f.inst, Options: stores, Accounts: jc.f.accounts}
 	if jc.f.bars != nil {
 		s.Bars = jc.f.bars
 	}
-	if jc.f.eod != nil {
-		s.Eod = jc.f.eod
+	if jc.f.compute.OptionEod != nil {
+		s.Eod = jc.f.compute.OptionEod
 	}
 	return s
 }
