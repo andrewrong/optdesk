@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -414,7 +417,7 @@ func TestCaptureFailureLogsAliasStepKind(t *testing.T) {
 				t.Fatalf("capture failed records = %d", len(got))
 			}
 			m := got[0]
-			if len(m) != 3 || m["alias"] != "a" || m["step"] != tc.step || m["kind"] != tc.kind {
+			if len(m) != 4 || m["class"] != "other" || m["alias"] != "a" || m["step"] != tc.step || m["kind"] != tc.kind {
 				t.Fatalf("attrs = %v", m)
 			}
 			for _, v := range m {
@@ -541,4 +544,55 @@ func TestWrongDay(t *testing.T) {
 // testClock is a fake clock at 21:00 UTC on testDay, the same New York date.
 func testClock() clockwork.Clock {
 	return clockwork.NewFakeClockAt(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC))
+}
+
+// logFailureLine runs logFailure on err and returns the text line it logs.
+func logFailureLine(t *testing.T, err error) string {
+	t.Helper()
+	var buf bytes.Buffer
+	j, nerr := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": goodReader("a")}, Writer: newWriter(), Clock: testClock()},
+		slog.New(slog.NewTextHandler(&buf, nil)))
+	if nerr != nil {
+		t.Fatal(nerr)
+	}
+	j.logFailure("a", "write", err)
+	return buf.String()
+}
+
+func TestLogFailureClassSQLState(t *testing.T) {
+	t.Parallel()
+	pe := &pgconn.PgError{Code: "42501", Message: "permission denied MARKERWORD"}
+	for name, err := range map[string]error{"plain": pe, "wrapped": fmt.Errorf("write: %w", pe)} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			line := logFailureLine(t, err)
+			if !strings.Contains(line, "class=42501") || strings.Contains(line, "MARKERWORD") {
+				t.Fatalf("line %q", line)
+			}
+		})
+	}
+}
+
+func TestLogFailureClassOther(t *testing.T) {
+	t.Parallel()
+	line := logFailureLine(t, errors.New("MARKERWORD account DU1234567"))
+	if !strings.Contains(line, "class=other") || strings.Contains(line, "MARKERWORD") || strings.Contains(line, "DU1234567") {
+		t.Fatalf("line %q", line)
+	}
+}
+
+func TestLogFailureClassTimeout(t *testing.T) {
+	t.Parallel()
+	line := logFailureLine(t, fmt.Errorf("write: %w", context.DeadlineExceeded))
+	if !strings.Contains(line, "class=timeout") {
+		t.Fatalf("line %q", line)
+	}
+}
+
+func TestLogFailureClassConnection(t *testing.T) {
+	t.Parallel()
+	line := logFailureLine(t, fmt.Errorf("write: %w", &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("refused")}))
+	if !strings.Contains(line, "class=connection") {
+		t.Fatalf("line %q", line)
+	}
 }

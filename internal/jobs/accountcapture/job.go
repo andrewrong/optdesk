@@ -8,9 +8,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"log/slog"
+	"net"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -168,15 +171,34 @@ func (j *job) captureAlias(ctx context.Context, alias string, day contracts.Day,
 	return status
 }
 
-// logFailure logs the alias, the step and the error kind of a failed capture step. It never logs the
-// error text, which can carry an account id.
+// errClass names the class of err without its text: the SQLSTATE code when err is or wraps a
+// *pgconn.PgError, else "connection" for a net error, "timeout" for a deadline or timeout, else "other".
+// It is a code or a fixed word, never a message, a DSN, an account id or a value.
+func errClass(err error) string {
+	var pe *pgconn.PgError
+	if errors.As(err, &pe) && pe.Code != "" {
+		return pe.Code
+	}
+	var ne net.Error
+	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
+		return "timeout"
+	}
+	var oe *net.OpError
+	if errors.As(err, &oe) || errors.As(err, &ne) {
+		return "connection"
+	}
+	return "other"
+}
+
+// logFailure logs the alias, the step, the error kind and the error class of a failed capture step. It
+// never logs the error text, which can carry an account id.
 func (j *job) logFailure(alias, step string, err error) {
 	kind := "unknown"
 	var k interface{ Kind() contracts.ErrorKind }
 	if errors.As(err, &k) {
 		kind = string(k.Kind())
 	}
-	j.log.Warn("capture failed", "alias", alias, "step", step, "kind", kind)
+	j.log.Warn("capture failed", "alias", alias, "step", step, "kind", kind, "class", errClass(err))
 }
 
 func (j *job) writeAccount(ctx context.Context, alias string, day contracts.Day, key string, acc broker.Account) (int, error) {
