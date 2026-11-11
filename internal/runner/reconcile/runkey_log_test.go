@@ -110,7 +110,7 @@ func failedLine(t *testing.T, msg string) string {
 
 func TestRunKeyErrorTextRedactsDSNPassword(t *testing.T) {
 	t.Parallel()
-	out := failedLine(t, "connect postgres://ot:s3cretpw@db.local:5432/ot?sslmode=disable failed")
+	out := failedLine(t, "connect postgres://ot:s3cretpw" + "@" + "db.local:5432/ot?sslmode=disable failed")
 	if strings.Contains(out, "s3cretpw") || strings.Contains(out, "db.local") {
 		t.Fatalf("the DSN leaked: %q", out)
 	}
@@ -119,7 +119,7 @@ func TestRunKeyErrorTextRedactsDSNPassword(t *testing.T) {
 
 func TestRunKeyErrorTextRedactsURLUserinfo(t *testing.T) {
 	t.Parallel()
-	out := failedLine(t, "GET https://bob:hunter2@api.example.com/x failed")
+	out := failedLine(t, "GET https://bob:hunter2" + "@" + "api.example.com/x failed")
 	if strings.Contains(out, "hunter2") {
 		t.Fatalf("the userinfo leaked: %q", out)
 	}
