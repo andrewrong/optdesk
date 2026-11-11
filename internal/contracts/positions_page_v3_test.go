@@ -99,3 +99,58 @@ func TestPositionsPageV3RoleCell(t *testing.T) {
 		t.Error("empty role text accepted")
 	}
 }
+
+// firstRow returns the first row of the stocks (table "stocks") or options table of the first view.
+func firstRow(t *testing.T, m map[string]any, table string) map[string]any {
+	t.Helper()
+	v := m["views"].([]any)[0].(map[string]any)
+	rows := v[table].(map[string]any)["rows"].([]any)
+	if len(rows) == 0 {
+		t.Fatalf("ok.json has no %s row", table)
+	}
+	return rows[0].(map[string]any)
+}
+
+func TestPositionsPageV3MoneyUnit(t *testing.T) {
+	t.Parallel()
+	withCost := func(unit string) map[string]any {
+		m := positionsOK(t)
+		firstRow(t, m, "stocks")["cost"] = map[string]any{
+			"value": 12300.0, "text": "¥12,300.00", "unit": unit, "currency": "JPY", "tone": "none",
+		}
+		return m
+	}
+	if !positionsValid(t, withCost("amount_per_share")) {
+		t.Error("JPY cost with unit amount_per_share rejected")
+	}
+	for _, unit := range []string{"usd_per_share", "usd", "usd_signed"} {
+		if positionsValid(t, withCost(unit)) {
+			t.Errorf("JPY cost with unit %s accepted", unit)
+		}
+	}
+}
+
+func TestPositionsPageV3Quantity(t *testing.T) {
+	t.Parallel()
+	set := func(table string, value float64, unit string) map[string]any {
+		m := positionsOK(t)
+		firstRow(t, m, table)["quantity"] = map[string]any{"value": value, "text": "0.5", "unit": unit}
+		return m
+	}
+	cases := []struct {
+		name  string
+		m     map[string]any
+		valid bool
+	}{
+		{"stock 0.5 shares", set("stocks", 0.5, "shares"), true},
+		{"option 0.5 contracts", set("options", 0.5, "contracts"), false},
+		{"option 2 contracts", set("options", 2, "contracts"), true},
+		{"stock with unit contracts", set("stocks", 1, "contracts"), false},
+		{"option with unit shares", set("options", 1, "shares"), false},
+	}
+	for _, c := range cases {
+		if got := positionsValid(t, c.m); got != c.valid {
+			t.Errorf("%s: valid = %v, want %v", c.name, got, c.valid)
+		}
+	}
+}

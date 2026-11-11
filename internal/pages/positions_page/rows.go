@@ -24,6 +24,8 @@ const (
 var (
 	decimalText = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
 	wholeText   = regexp.MustCompile(`^(-?)0*([0-9]{1,10})(\.0*)?$`)
+	// shareText is a stock quantity: at most 10 integer digits and 6 places once trailing zeros are gone.
+	shareText = regexp.MustCompile(`^(-?)0*([0-9]{1,10})(?:\.([0-9]*?)0*)?$`)
 )
 
 type gapJSON struct {
@@ -158,8 +160,8 @@ func symbolOf(currency string) (string, bool) {
 	return "", false
 }
 
-// money builds a money cell from decimal text, or the gap that stops it. unit is usd, usd_per_share or
-// usd_signed; the signed unit carries a sign in the text and the tone of the sign.
+// money builds a money cell from decimal text, or the gap that stops it. unit is amount, amount_per_share or
+// amount_signed; the signed unit carries a sign in the text and the tone of the sign.
 func money(s, currency, unit string) any {
 	sym, ok := symbolOf(currency)
 	if !ok {
@@ -177,12 +179,12 @@ func money(s, currency, unit string) any {
 	switch {
 	case neg:
 		c.Text = minus + body
-	case unit == "usd_signed" && !zero:
+	case unit == "amount_signed" && !zero:
 		c.Text = "+" + body
 	default:
 		c.Text = body
 	}
-	if unit == "usd_signed" {
+	if unit == "amount_signed" {
 		switch {
 		case zero:
 			c.Tone = "flat"
@@ -202,14 +204,26 @@ func figure(f compute.FigureValue, currency, unit string) any {
 	return money(f.Value, currency, unit)
 }
 
-// quantity is the whole-number cell of a position; false for a fractional or oversized quantity.
+// quantity is the cell of a position or fill. Unit shares takes a decimal with at most 6 places (trailing
+// zeros dropped); contracts and "" take a whole number. False for an oversized quantity, a number with too
+// many places or a text that is not a number.
 func quantity(s, unit string) (quantityCell, bool) {
-	m := wholeText.FindStringSubmatch(s)
-	if m == nil {
+	var m []string
+	frac := ""
+	if unit == "shares" {
+		m = shareText.FindStringSubmatch(s)
+		if m == nil || len(m[3]) > 6 {
+			return quantityCell{}, false
+		}
+		frac = m[3]
+	} else if m = wholeText.FindStringSubmatch(s); m == nil {
 		return quantityCell{}, false
 	}
 	digits := m[2]
-	neg := m[1] == "-" && strings.Trim(digits, "0") != ""
+	if frac != "" {
+		digits += "." + frac
+	}
+	neg := m[1] == "-" && strings.Trim(digits, "0.") != ""
 	v, txt := digits, digits
 	if neg {
 		v, txt = "-"+digits, minus+digits
@@ -316,7 +330,7 @@ func holdingsOf(ps []store.Position, price map[int64]string) blockapi.HoldingsIn
 }
 
 // rowsOf builds the stock and option rows; lines is the result of Holdings over holdingsOf(ps).
-// Positions whose quantity is not a whole number are counted in skipped and not listed.
+// Positions whose quantity cannot be shown (a fractional option, a stock over 6 places) are counted in skipped and not listed.
 func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.HoldingLine, prem map[string]string,
 	role textCell, day contracts.Day) (stocks []stockRow, options []optionRow, skipped int) {
 	stocks, options = []stockRow{}, []optionRow{}
@@ -328,12 +342,12 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 		line := lines[i]
 		i++
 		dayGap := gapOf("no_data", textDayProfit)
-		cost := money(perShareCost(p), p.Currency, "usd_per_share")
+		cost := money(perShareCost(p), p.Currency, "amount_per_share")
 		var pr any = gapOf("missing_quote", textNoMark)
 		if m := price[p.ConID]; m != "" {
-			pr = money(m, p.Currency, "usd_per_share")
+			pr = money(m, p.Currency, "amount_per_share")
 		}
-		unreal := figure(line.Unrealised, p.Currency, "usd_signed")
+		unreal := figure(line.Unrealised, p.Currency, "amount_signed")
 		if p.SecType == typeStock {
 			q, ok := quantity(p.Quantity, "shares")
 			if !ok {
@@ -360,7 +374,7 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 			if v == "" {
 				open = gapOf("missing_input", textAmbiguous)
 			} else {
-				open = money(v, p.Currency, "usd")
+				open = money(v, p.Currency, "amount")
 			}
 		}
 		options = append(options, optionRow{

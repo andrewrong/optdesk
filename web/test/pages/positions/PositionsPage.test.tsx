@@ -139,7 +139,7 @@ describe('PositionsPage', () => {
     household.stocks.rows[0].day = {
       value: 120,
       text: 'Python P&L text',
-      unit: 'usd_signed',
+      unit: 'amount_signed',
       tone: 'down',
     }
     const original = structuredClone(payload)

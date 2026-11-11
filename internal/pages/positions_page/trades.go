@@ -170,14 +170,15 @@ func actionOf(kind string, e blockapi.ExecIn) any {
 }
 
 func tradeQuantity(e blockapi.ExecIn) any {
-	q, ok := quantity(strings.TrimPrefix(e.Quantity, "-"), "")
+	unit, word := "shares", unitShare
+	if e.SecType == typeOption {
+		unit, word = "contracts", unitContract
+	}
+	q, ok := quantity(strings.TrimPrefix(e.Quantity, "-"), unit)
 	if !ok {
 		return gapOf("missing_input", textBadNumber)
 	}
-	if e.SecType == typeOption {
-		return cell{Text: q.Text + unitContract, Tone: "none"}
-	}
-	return cell{Text: q.Text + unitShare, Tone: "none"}
+	return cell{Text: q.Text + word, Tone: "none"}
 }
 
 func tradePrice(e blockapi.ExecIn) any {

@@ -1,0 +1,324 @@
+{
+  "schema": "positions_page",
+  "schema_version": 3,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "main",
+  "generated_at": "2026-11-10T10:00:00+08:00",
+  "data_times": [
+    {
+      "source": "account",
+      "data_time": "2026-11-10T09:00:00+08:00"
+    },
+    {
+      "source": "option_ledger",
+      "data_time": "2026-11-10T10:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "title": "Positions",
+  "stale": {
+    "data_time": "2026-11-10T09:00:00+08:00",
+    "stale_after": "2026-11-14T09:00:00+08:00",
+    "text": "Account data day 2026-11-10"
+  },
+  "views": [
+    {
+      "key": "main",
+      "label": "Account (main)",
+      "sentence": "Stocks 3 rows, options 0 legs.",
+      "stocks": {
+        "title": "Stocks",
+        "columns": [
+          {
+            "id": "code",
+            "label": "Code",
+            "align": "left"
+          },
+          {
+            "id": "name",
+            "label": "Name",
+            "align": "left"
+          },
+          {
+            "id": "role",
+            "label": "Owner",
+            "align": "left"
+          },
+          {
+            "id": "quantity",
+            "label": "Quantity",
+            "align": "right"
+          },
+          {
+            "id": "cost",
+            "label": "Cost (per share)",
+            "align": "right"
+          },
+          {
+            "id": "price",
+            "label": "Last price (per share)",
+            "align": "right"
+          },
+          {
+            "id": "day",
+            "label": "Day result",
+            "align": "right"
+          },
+          {
+            "id": "unrealised",
+            "label": "Unrealised result",
+            "align": "right"
+          }
+        ],
+        "rows": [
+          {
+            "code": {
+              "text": "7203",
+              "value": "7203"
+            },
+            "name": {
+              "text": "7203",
+              "value": "7203"
+            },
+            "role": {
+              "text": "Account (main)",
+              "value": "Account (main)"
+            },
+            "quantity": {
+              "value": 100,
+              "text": "100",
+              "unit": "shares"
+            },
+            "cost": {
+              "value": 12300.00,
+              "text": "¥12,300.00",
+              "unit": "amount_per_share",
+              "currency": "JPY",
+              "tone": "none"
+            },
+            "price": {
+              "value": 12450.00,
+              "text": "¥12,450.00",
+              "unit": "amount_per_share",
+              "currency": "JPY",
+              "tone": "none"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "Day result needs the previous trading day price: no data yet"
+            },
+            "unrealised": {
+              "value": 15000.00,
+              "text": "+¥15,000.00",
+              "unit": "amount_signed",
+              "currency": "JPY",
+              "tone": "up"
+            }
+          },
+          {
+            "code": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "name": {
+              "text": "AAA",
+              "value": "AAA"
+            },
+            "role": {
+              "text": "Account (main)",
+              "value": "Account (main)"
+            },
+            "quantity": {
+              "value": 0.5,
+              "text": "0.5",
+              "unit": "shares"
+            },
+            "cost": {
+              "value": 10.00,
+              "text": "$10.00",
+              "unit": "amount_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "price": {
+              "value": 11.00,
+              "text": "$11.00",
+              "unit": "amount_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "Day result needs the previous trading day price: no data yet"
+            },
+            "unrealised": {
+              "value": 0.50,
+              "text": "+$0.50",
+              "unit": "amount_signed",
+              "currency": "USD",
+              "tone": "up"
+            }
+          },
+          {
+            "code": {
+              "text": "BBB",
+              "value": "BBB"
+            },
+            "name": {
+              "text": "BBB",
+              "value": "BBB"
+            },
+            "role": {
+              "text": "Account (main)",
+              "value": "Account (main)"
+            },
+            "quantity": {
+              "value": 10.25,
+              "text": "10.25",
+              "unit": "shares"
+            },
+            "cost": {
+              "value": 10.00,
+              "text": "$10.00",
+              "unit": "amount_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "price": {
+              "value": 9.00,
+              "text": "$9.00",
+              "unit": "amount_per_share",
+              "currency": "USD",
+              "tone": "none"
+            },
+            "day": {
+              "reason": "no_data",
+              "text": "Day result needs the previous trading day price: no data yet"
+            },
+            "unrealised": {
+              "value": -10.25,
+              "text": "−$10.25",
+              "unit": "amount_signed",
+              "currency": "USD",
+              "tone": "down"
+            }
+          }
+        ],
+        "gap": null
+      },
+      "options": {
+        "title": "Options",
+        "columns": [
+          {
+            "id": "code",
+            "label": "Code",
+            "align": "left"
+          },
+          {
+            "id": "name",
+            "label": "Name",
+            "align": "left"
+          },
+          {
+            "id": "expiry",
+            "label": "Expiry",
+            "align": "left"
+          },
+          {
+            "id": "days_left",
+            "label": "Days left",
+            "align": "right"
+          },
+          {
+            "id": "role",
+            "label": "Owner",
+            "align": "left"
+          },
+          {
+            "id": "quantity",
+            "label": "Quantity",
+            "align": "right"
+          },
+          {
+            "id": "cost",
+            "label": "Cost (per share)",
+            "align": "right"
+          },
+          {
+            "id": "price",
+            "label": "Last price (per share)",
+            "align": "right"
+          },
+          {
+            "id": "day",
+            "label": "Day result",
+            "align": "right"
+          },
+          {
+            "id": "unrealised",
+            "label": "Unrealised result",
+            "align": "right"
+          },
+          {
+            "id": "open_premium",
+            "label": "Open premium",
+            "align": "right"
+          }
+        ],
+        "rows": [],
+        "gap": {
+          "reason": "no_data",
+          "text": "No positions"
+        }
+      },
+      "trades": {
+        "title": "Recent trades",
+        "columns": [
+          {
+            "id": "time",
+            "label": "Time",
+            "align": "left"
+          },
+          {
+            "id": "account",
+            "label": "Account",
+            "align": "left"
+          },
+          {
+            "id": "action",
+            "label": "Action",
+            "align": "left"
+          },
+          {
+            "id": "instrument",
+            "label": "Underlying · structure",
+            "align": "left"
+          },
+          {
+            "id": "quantity",
+            "label": "Quantity",
+            "align": "right"
+          },
+          {
+            "id": "price",
+            "label": "Price",
+            "align": "right"
+          }
+        ],
+        "rows": [],
+        "gap": {
+          "reason": "no_data",
+          "text": "No trades in the last 30 trading days"
+        }
+      }
+    }
+  ],
+  "notes": [],
+  "gaps": [
+    {
+      "reason": "no_data",
+      "text": "Stocks, Options: Day result needs the previous trading day price: no data yet"
+    }
+  ]
+}
