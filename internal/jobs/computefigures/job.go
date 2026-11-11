@@ -141,6 +141,10 @@ func (j *job) findRules() error {
 		}
 		ids = append(ids, j.m.Hv30)
 	}
+	if j.m.Rv20 == "" || len(j.m.Rv20Indices) == 0 {
+		return errors.New("computefigures: manifest: no rv20 id or rv20_indices")
+	}
+	ids = append(ids, j.m.Rv20)
 	for _, id := range ids {
 		r, ok := j.rules.Rule(id)
 		if !ok {
@@ -189,6 +193,9 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 			keys = append(keys, keyOf(j.m.Hv30, kindUnderlying, s.name))
 		}
 	}
+	for _, n := range j.m.Rv20Indices {
+		keys = append(keys, keyOf(j.m.Rv20, kindUnderlying, n))
+	}
 	for _, ms := range j.m.Market {
 		keys = append(keys, keyOf(ms.ID, kindMarket, ms.Series[0]))
 	}
@@ -212,11 +219,12 @@ type target struct {
 	spec marketSpec
 }
 
-// Run runs the steps in order: IV30, the HV30 (only with PriceBars), the market figures, IVP and IVR on the stored IV30, then the ease.
+// Run runs the steps in order: IV30, the HV30 (only with PriceBars), the RV20 of the indices, the market figures, IVP and IVR on the stored IV30, then the ease.
 // A key that fails does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	r := &runState{j: j, ctx: ctx, day: day}
 	var iv30, market, ivs, hvs []target
+	var rvs []string
 	var ease *target
 	var under map[string]subject
 	for _, k := range keys {
@@ -236,6 +244,8 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 				continue
 			}
 			market = append(market, target{rule: rule, subj: subject{kind: kind, name: subj}, spec: spec})
+		case known && j.isRv20Key(name, kind, subj):
+			rvs = append(rvs, subj)
 		case known && kind == kindUnderlying:
 			if under == nil {
 				under = r.underlyings()
@@ -260,6 +270,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r.returned = len(keys)
 	r.runIv30(iv30)
 	r.runHv30(hvs)
+	r.runRv20(rvs)
 	r.runMarket(market)
 	r.runIvStats(ivs)
 	if ease != nil {
