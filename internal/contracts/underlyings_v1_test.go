@@ -25,7 +25,7 @@ func underlyingsRows(m map[string]any) []map[string]any {
 }
 
 // TestUnderlyingsV1Fixtures validates golden, confirm and readonly, shows bad-version fails at
-// /schema_version, rejects inline mutations, and pins the content the design names.
+// /schema_version, and rejects inline mutations.
 func TestUnderlyingsV1Fixtures(t *testing.T) {
 	t.Parallel()
 	s := compilePageV2(t, "page.underlyings.v1.json")
@@ -68,6 +68,11 @@ func TestUnderlyingsV1Fixtures(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestUnderlyingsV1Content pins the content of golden, confirm and readonly that the design names.
+func TestUnderlyingsV1Content(t *testing.T) {
+	t.Parallel()
 	t.Run("golden-names", func(t *testing.T) {
 		t.Parallel()
 		got := map[string]map[string]any{}
