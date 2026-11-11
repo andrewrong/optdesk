@@ -352,3 +352,19 @@ func TestStaleLabelNoRows(t *testing.T) {
 		t.Errorf("data_times = %v", m["data_times"])
 	}
 }
+
+func TestOptionTableMissingBidIsGap(t *testing.T) {
+	t.Parallel()
+	one := candRow(1, "NOB", 1, "ok")
+	one.BidEod = ""
+	one.Ask = nil
+	one.AnnualizedYield = sPtr("0")
+	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
+	row := tableRowsOf(m)[0]
+	if c := cellOf(t, row, "annualised"); c["reason"] != "missing_input" || c["text"] != "missing bid" {
+		t.Errorf("annualised = %v", c)
+	}
+	if c := cellOf(t, row, "bid_ask"); c["text"] != "n/a / n/a" {
+		t.Errorf("bid_ask = %v", c)
+	}
+}
