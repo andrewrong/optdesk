@@ -184,6 +184,12 @@ func (c Config) assemble(cp capture, res blockapi.HouseholdResult, day1, mtd blo
 		DayChange:   moveTile(labelDayChange, explainDayChange, day1.DayAmount, day1.DayPct, cur),
 		MonthToDate: moveTile(labelMonthToDate, explainMonthToDate, mtd.DayAmount, mtd.DayPct, cur),
 	}
+	if len(cp.prior) == 0 {
+		d.Card.Tiles.DayChange = sayMissing(d.Card.Tiles.DayChange, textNeedsPrior+cp.day)
+	}
+	if len(cp.monthStart) == 0 {
+		d.Card.Tiles.MonthToDate = sayMissing(d.Card.Tiles.MonthToDate, textNeedsMonthStart+cp.day)
+	}
 	captured := at
 	if len(cp.values) > 0 && !cp.values[0].CapturedAt.IsZero() {
 		captured = cp.values[0].CapturedAt.In(c.Zone)
@@ -207,6 +213,17 @@ func (c Config) assemble(cp capture, res blockapi.HouseholdResult, day1, mtd blo
 		}
 	}
 	return d
+}
+
+// sayMissing words the gap of a change tile that has no figure for want of a capture day: the reason
+// stays missing_input, only the text says which capture is missing. Any other tile is returned as it is.
+func sayMissing(t tile, text string) tile {
+	if g := t.gap(); g == nil || g.Reason != "missing_input" {
+		return t
+	}
+	g := gapJSON{Reason: "missing_input", Text: text}
+	t.Figure, t.Caption = g, g
+	return t
 }
 
 // base is the envelope with an empty card.
@@ -485,6 +502,11 @@ const (
 		"by the previous day."
 	explainMonthToDate = "Net liquidation of the latest capture minus the last trading day of the previous month, " +
 		"USD; includes deposits and withdrawals, not time-weighted return."
+)
+
+const (
+	textNeedsPrior      = "Needs a second captured session day; first capture "
+	textNeedsMonthStart = "Needs the last session day of the previous month; first capture "
 )
 
 var gapTexts = map[string]string{
