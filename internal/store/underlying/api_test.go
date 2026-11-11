@@ -177,19 +177,13 @@ func TestStoreContractAddResolveRead(t *testing.T) {
 	if _, err := s.Apply(ctx, underlying.Change{Adds: []underlying.Add{{Symbol: "AAPL", Market: "US"}}}); err == nil {
 		t.Error("a name added twice must fail")
 	} else {
-		var ie underlying.InvalidError
-		if !errors.As(err, &ie) || ie.Field() == "" {
-			t.Errorf("error = %v; want an InvalidError naming a field", err)
-		}
+		wantInvalid(t, err)
 	}
 	unknown := "paused"
 	if _, err := s.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:NOPE", Status: &unknown}}}); err == nil {
 		t.Error("an unknown key must fail")
 	} else {
-		var ie underlying.InvalidError
-		if !errors.As(err, &ie) || ie.Field() == "" {
-			t.Errorf("error = %v; want an InvalidError naming a field", err)
-		}
+		wantInvalid(t, err)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -266,5 +260,14 @@ func TestDSNEnvResolveName(t *testing.T) {
 	t.Parallel()
 	if underlying.DSNEnvResolve != "OT_PG_DSN_UNDERLYING_RESOLVE" {
 		t.Errorf("DSNEnvResolve = %q", underlying.DSNEnvResolve)
+	}
+}
+
+// wantInvalid fails the test unless err is an underlying.InvalidError that names a field.
+func wantInvalid(t *testing.T, err error) {
+	t.Helper()
+	var ie underlying.InvalidError
+	if !errors.As(err, &ie) || ie.Field() == "" {
+		t.Errorf("error = %v; want an InvalidError naming a field", err)
 	}
 }
