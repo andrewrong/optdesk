@@ -92,3 +92,14 @@ func TestInputIsPlainValues(t *testing.T) {
 		t.Errorf("params = %+v", rule.params[0])
 	}
 }
+
+func TestNoticePositionsMapStoredWords(t *testing.T) {
+	t.Parallel()
+	got := noticePositions([]store.Position{{SecType: "option"}, {SecType: "stock"}, {SecType: "index"}})
+	want := []string{"OPT", "STK", "index"}
+	for i, w := range want {
+		if got[i].SecType != w {
+			t.Errorf("row %d SecType = %q, want %q", i, got[i].SecType, w)
+		}
+	}
+}
