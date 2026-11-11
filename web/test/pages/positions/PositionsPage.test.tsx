@@ -82,6 +82,30 @@ describe('PositionsPage', () => {
     }
     expect(payload).toEqual(original)
   })
+  it('wraps the tab list with eight views and keeps stocks, options, trades stacked in each', async () => {
+    // Issue #1438: one to eight account views; the payload of eight is built from the fixture.
+    const payload = fixture('ok.json')
+    const base = payload.views
+    payload.views = Array.from({ length: 8 }, (_, i) => ({
+      ...structuredClone(base[i % base.length]),
+      key: `view-${i}`,
+      label: `账户${i}`,
+    }))
+    await show(payload)
+    expect(host.querySelectorAll('[role=tab]')).toHaveLength(8)
+    const cls = host.querySelector('[role=tablist]')!.className
+    for (const c of ['group-data-horizontal/tabs:h-auto', 'w-full', 'flex-wrap'])
+      expect(cls.split(/\s+/)).toContain(c)
+    expect(cls.split(/\s+/)).not.toContain('group-data-horizontal/tabs:h-8')
+    expect(cls.split(/\s+/)).not.toContain('w-fit')
+    for (let i = 0; i < 8; i++) {
+      await pick(host.querySelectorAll('[role=tab]')[i]!)
+      expect(
+        [...host.querySelectorAll('[data-table]')].map((t) => t.getAttribute('data-table')),
+      ).toEqual(['stocks', 'options', ...(payload.views[i].trades ? ['trades'] : [])])
+    }
+  })
+
   it('registers the page and accepts good fixtures while rejecting every bad fixture', () => {
     expect(pages.positions_page).toBeDefined()
     for (const name of ['ok', 'gap', 'stale'])
