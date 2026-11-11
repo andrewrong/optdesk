@@ -128,8 +128,8 @@ func TestPlanKeys(t *testing.T) {
 	t.Parallel()
 	j := newJob(t, world(), newFigs())
 	keys := plan(t, j)
-	if len(keys) != 4+len(marketIDs) {
-		t.Fatalf("keys %d, want 10 (4 per underlying, 6 market)", len(keys))
+	if len(keys) != 4+3+len(marketIDs) {
+		t.Fatalf("keys %d, want 13 (4 per underlying, 3 rv20, 6 market)", len(keys))
 	}
 	if !sort.SliceIsSorted(keys, func(a, b int) bool { return keys[a].SubjectKey < keys[b].SubjectKey }) {
 		t.Fatalf("keys not sorted: %+v", keys)
@@ -142,7 +142,8 @@ func TestPlanKeys(t *testing.T) {
 		seen[k.SubjectKey] = true
 	}
 	for _, want := range []string{"market.iv30_own|underlying|SPY", "market.ivp_own|underlying|SPY", "market.ivr_own|underlying|SPY",
-		"market.vix_term_ratio|market|VIXCLS", "market.sp500_vs_200d|market|SP500"} {
+		"market.vix_term_ratio|market|VIXCLS", "market.sp500_vs_200d|market|SP500",
+		"market.rv20|underlying|SPX", "market.rv20|underlying|NDX", "market.rv20|underlying|RUT"} {
 		if !seen[want] {
 			t.Fatalf("missing key %s", want)
 		}
@@ -154,10 +155,10 @@ func TestRunStoresOkAndMissing(t *testing.T) {
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
 	f.addPoint("VXVCLS", dayD, 22)
-	j := newJob(t, f, newFigs())
+	j := rvJob(t, f, newFigs())
 	res := runAll(t, j)
-	if res.Err != nil || res.Returned != 10 || res.Usable != 10 {
-		t.Fatalf("result %+v, want 10 of 10 and no error", res)
+	if res.Err != nil || res.Returned != 14 || res.Usable != 14 {
+		t.Fatalf("result %+v, want 14 of 14 and no error", res)
 	}
 	iv := reading(t, f, "market.iv30_own", "underlying", "SPY")
 	if iv.State != "ok" || iv.Value == nil || *iv.Value != "0.200000" || iv.Rev != 1 {
@@ -177,7 +178,7 @@ func TestRerunSameInputsWritesNothing(t *testing.T) {
 	t.Parallel()
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
-	j := newJob(t, f, newFigs())
+	j := rvJob(t, f, newFigs())
 	runAll(t, j)
 	before := f.inserts
 	res := runAll(t, j)
@@ -235,7 +236,7 @@ func sp(s string) *string { return &s }
 func TestFirstRunOnEmptyStores(t *testing.T) {
 	t.Parallel()
 	f := newFx()
-	j := newJob(t, f, newFigs())
+	j := rvJob(t, f, newFigs())
 	keys := plan(t, j)
 	res := j.Run(context.Background(), dayD, keys)
 	if res.Err != nil || res.Usable != len(keys) {
@@ -248,8 +249,8 @@ func TestFirstRunOnEmptyStores(t *testing.T) {
 			t.Fatalf("%s: %+v, want missing with reason 1 or 2", k.SubjectKey, r)
 		}
 	}
-	if len(keys) != len(marketIDs) {
-		t.Fatalf("keys %d, want only the market keys on empty stores", len(keys))
+	if len(keys) != len(marketIDs)+3 {
+		t.Fatalf("keys %d, want only the market and the three rv20 keys on empty stores", len(keys))
 	}
 }
 
@@ -312,7 +313,7 @@ func TestMarketInputCurrentIsDone(t *testing.T) {
 	f.addPoint("VXNCLS", dayD, 20)
 	f.addPoint("RVXCLS", dayD, 20)
 	f.addPoint("SP500", dayD, 20)
-	res := runAll(t, newJob(t, f, newFigs()))
+	res := runAll(t, rvJob(t, f, newFigs()))
 	if res.Err != nil {
 		t.Fatalf("Err %v, want none", res.Err)
 	}
@@ -325,7 +326,7 @@ func TestMarketInputBehindOnHolidayIsDone(t *testing.T) {
 	for _, id := range []string{"VIXCLS", "VXVCLS", "VXNCLS", "RVXCLS", "SP500"} {
 		f.addPoint(id, d5, 20)
 	}
-	res := runAll(t, newJob(t, f, newFigs()))
+	res := runAll(t, rvJob(t, f, newFigs()))
 	if res.Err != nil {
 		t.Fatalf("Err %v, want none: the as-of day is no session", res.Err)
 	}
