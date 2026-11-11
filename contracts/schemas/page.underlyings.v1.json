@@ -29,8 +29,8 @@
       "additionalProperties": false,
       "required": ["key", "symbol", "market", "kind", "name", "status", "status_text", "reason", "issuer", "con_id", "options", "fundamentals", "held", "buy_price", "sale_price", "report_date_override", "note", "followed_by", "followed_text", "set_at", "editable"],
       "properties": {
-        "key": {"type": "string", "pattern": "^(US|JP):[A-Z0-9.]{1,12}$"},
-        "symbol": {"type": "string", "pattern": "^[A-Z0-9.]{1,12}$"},
+        "key": {"type": "string", "maxLength": 15, "pattern": "^(US|JP):[A-Z0-9.]+( [A-Z0-9.]+)?$"},
+        "symbol": {"type": "string", "maxLength": 12, "pattern": "^[A-Z0-9.]+( [A-Z0-9.]+)?$"},
         "market": {"enum": ["US", "JP"]},
         "kind": {"enum": ["stock", "etf"]},
         "name": {"$ref": "#/$defs/Text"},

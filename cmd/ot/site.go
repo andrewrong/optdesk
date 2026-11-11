@@ -22,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 // pagesDSNName is the only .env line the site reads.
@@ -119,6 +120,9 @@ type siteReaders struct {
 
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
+
+	// underlying is the reader of the underlyings page (nil: no opener or a failed open, the gap no_reader).
+	underlying underlying.Reader
 
 	// open, plan and optContracts are the stores of the option open pull opened with the pages line (nil in the demo
 	// profile or when the open failed: the pages show every quote as its close archive value). live is the refresh
@@ -243,12 +247,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
+	under := openUnderlyingReader(ctx, a, dsn, track)
 	sessions, ok := openSessionReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
 	rd := siteReaders{marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
-		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
+		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
@@ -349,6 +354,10 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 		}
 		if strings.TrimPrefix(r.URL.Path, "/") == ownerPostRoute && rd.edit != nil {
 			postOwnerSettings(a, clk, dayFlag, rd, newHandler, w, r)
+			return
+		}
+		if strings.TrimPrefix(r.URL.Path, "/") == underlyingsPostRoute && rd.edit != nil {
+			postOwnerUnderlyings(a, clk, dayFlag, rd, newHandler, w, r)
 			return
 		}
 		pagesH.ServeHTTP(w, r)
