@@ -48,7 +48,7 @@ var openColumns = []colDef[opt]{
 	col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent distance from the strike, positive is out of the money"),
 	col("spot", "Stock close", "right", func(o opt) any { return numCell(o.Spot, markCode(o)) }),
 	col("mid", "Mid price", "right", func(o opt) any { return numCell(o.Mid, markCode(o)) }).hinted(markNote),
-	col("premium", "Premium collected", "right", func(o opt) any { return numCell(o.PremiumIncome, codeNoValue) }),
+	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
 	col("kept", "Kept", "right", func(o opt) any { return numCell(o.Kept, markCode(o)) }),
 	col("kept_percent", "Kept %", "right", func(o opt) any { return numCell(o.KeptPercent, markCode(o)) }),
 	col("delta", "Delta", "right", func(o opt) any { return numCell(o.Delta, markCode(o)) }),
@@ -64,7 +64,7 @@ var recentColumns = []colDef[opt]{
 	col("qty", "Quantity", "right", qty),
 	col("status", "Status", "left", statusCell),
 	col("closed_day", "Closed day", "left", closedDayCell),
-	col("premium", "Premium collected", "right", func(o opt) any { return numCell(o.PremiumIncome, codeNoValue) }),
+	col("premium", "Premium collected", "right", func(o opt) any { return moneyCell(o.PremiumIncome, o.Currency) }),
 	col("commissions", "Commissions", "right", func(o opt) any { return numCell(o.Commissions, codeNoValue) }),
 	col("realized", "Realized P&L", "right", func(o opt) any { return numCell(o.RealizedPnL, codeNoValue) }),
 }
@@ -121,11 +121,14 @@ func openTable(rows []opt) *table                  { return makeTable(openColumn
 func recentTable(rows []opt) *table                { return makeTable(recentColumns, rows, posID) }
 func reconTable(rows []trackapi.TrackRecon) *table { return makeTable(reconColumns, rows, chkID) }
 
+// accountTitle is the heading of an account, as the other account pages write it.
+func accountTitle(alias string) string { return labelAccount + alias + labelClose }
+
 // formatAccount turns the tracker result of one alias into an Account. stale is true when an
 // open row has no fresh mark. A table with no rows is null, except the check table of an
 // account that was captured, where no row means nothing differs.
 func formatAccount(alias string, res trackapi.TrackResult, heldKnown bool) (a account, stale bool) {
-	a = account{Alias: alias, Title: alias, LongLegsLeftOut: res.LongLegsLeftOut}
+	a = account{Alias: alias, Title: accountTitle(alias), LongLegsLeftOut: res.LongLegsLeftOut}
 	if len(res.Open) > 0 {
 		a.Open = openTable(res.Open)
 	} else {

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/andrewrong/optdesk/internal/compute/trackapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
@@ -19,16 +21,16 @@ type gap struct {
 	Text   string `json:"text"`
 }
 
-// codeGap is the gap of a tracking code: the reason is a common.v2 reason and the text starts
-// with the code.
+// codeGap is the gap of a tracking code: the reason is a common.v2 reason and the text is the
+// plain sentence of the code, never the code word.
 func codeGap(code string) gap {
 	reason, ok := reasonOf[code]
 	if !ok {
 		reason = reasonInput
 	}
-	text := code
-	if t := codeTexts[code]; t != "" {
-		text += termSep + t
+	text, ok := codeTexts[code]
+	if !ok {
+		text = codeTexts[codeNoValue]
 	}
 	return gap{Kind: "gap", Reason: reason, Text: text}
 }
@@ -79,6 +81,46 @@ func numCell(text, code string) any {
 	c, ok := numValue(text)
 	if !ok {
 		return codeGap(codeUnreadable)
+	}
+	return c
+}
+
+// currencySymbols are the symbols of the currencies a leg can hold.
+var currencySymbols = map[string]string{"USD": "$", "JPY": "¥"}
+
+// groupThousands puts a comma between groups of three digits of a whole-number text.
+func groupThousands(whole string) string {
+	var b strings.Builder
+	for i, r := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// moneyCell is the premium text with the currency symbol, grouped thousands and two decimals; the
+// value stays the stored number. An empty text is the gap no_value, a currency with no symbol or a
+// text that is not a number is the gap unreadable, never a bare number.
+func moneyCell(text, currency string) any {
+	if text == "" {
+		return codeGap(codeNoValue)
+	}
+	c, ok := numValue(text)
+	sym, known := currencySymbols[currency]
+	if !ok || !known {
+		return codeGap(codeUnreadable)
+	}
+	d, err := decimal.NewFromString(strings.TrimPrefix(text, "+"))
+	if err != nil {
+		return codeGap(codeUnreadable)
+	}
+	neg := d.IsNegative()
+	whole, frac, _ := strings.Cut(d.Abs().RoundBank(2).StringFixed(2), ".")
+	c.Text = sym + groupThousands(whole) + "." + frac
+	if neg && c.Text != sym+"0.00" {
+		c.Text = "-" + c.Text
 	}
 	return c
 }
