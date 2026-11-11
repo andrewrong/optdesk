@@ -105,7 +105,7 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 	if in.Zone == nil {
 		return nil, errors.New("home_page: nil Zone")
 	}
-	ov, err := buildOverview(in)
+	ov, gaps, err := buildOverview(in)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func Compose(in Input, generatedAt time.Time) ([]byte, error) {
 		RunStatus:     "ok",
 		Title:         in.Title,
 		Say:           in.Say,
-		GapLine:       gapLine(len(ov.Gaps)),
+		GapLine:       gapLine(gaps),
 		Overview:      ov,
 		ReportLinks:   nonNil(in.ReportLinks),
 		Household:     in.Household,

@@ -194,7 +194,7 @@ func TestNoSeriesIsGap(t *testing.T) {
 			t.Errorf("iv = %v", row["iv"])
 		}
 	}
-	if len(d.Card.Gaps) != 3*3+3+1 {
+	if len(d.Card.Gaps) != 3+2+3+1 {
 		t.Errorf("gaps = %d", len(d.Card.Gaps))
 	}
 }
@@ -217,8 +217,8 @@ func TestGapTextsAreDistinctAndNameTheirIndex(t *testing.T) {
 				n++
 			}
 		}
-		if n != 3 {
-			t.Errorf("%s: %d gap texts start with its name, want 3", name, n)
+		if n != 1 {
+			t.Errorf("%s: %d gap texts start with its name, want 1", name, n)
 		}
 	}
 }
@@ -309,4 +309,61 @@ func TestBadConfig(t *testing.T) {
 func cell(row map[string]any, key string) map[string]any {
 	m, _ := row[key].(map[string]any)
 	return m
+}
+
+func rowsFor(t *testing.T, names ...string) []indexRow {
+	t.Helper()
+	var rows []indexRow
+	for _, n := range names {
+		row, _, err := buildRow(context.Background(), config(nil), n, time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func countGaps(gs []gap, text string) int {
+	n := 0
+	for _, g := range gs {
+		if g.Text == text && g.Reason == "not_built" {
+			n++
+		}
+	}
+	return n
+}
+
+func TestIndexGapsOnePerFeature(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		names []string
+		list  string
+	}{
+		{[]string{"SPX", "NDX", "RUT"}, "SPX, NDX, RUT"},
+		{[]string{"SPX"}, "SPX"},
+	} {
+		rows := rowsFor(t, tc.names...)
+		gs := collectGaps(card{IndexTable: indexTable{Rows: rows}})
+		if n := countGaps(gs, "20-day realised volatility not built yet for "+tc.list); n != 1 {
+			t.Errorf("%s: rv20 gaps = %d", tc.list, n)
+		}
+		if n := countGaps(gs, "Implied minus realised not built yet for "+tc.list); n != 1 {
+			t.Errorf("%s: diff gaps = %d", tc.list, n)
+		}
+		for _, g := range gs {
+			for _, n := range tc.names {
+				if strings.HasPrefix(g.Text, n+" 20-day") {
+					t.Errorf("per-index gap %q", g.Text)
+				}
+			}
+		}
+		for _, r := range rows {
+			for _, c := range []any{r.RV20, r.IVMinusRV20} {
+				if g, ok := c.(gap); !ok || g.Reason != "not_built" || g.Text != "not built yet" {
+					t.Errorf("%s cell = %v", r.Name, c)
+				}
+			}
+		}
+	}
 }

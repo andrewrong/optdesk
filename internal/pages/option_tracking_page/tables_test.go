@@ -125,3 +125,25 @@ func TestNoMarginNoCash(t *testing.T) {
 		}
 	}
 }
+
+func TestRecentPremiumShowsCurrency(t *testing.T) {
+	t.Parallel()
+	o := sampleClosed("z")
+	o.Currency, o.PremiumIncome = "USD", "320"
+	tb := recentTable([]opt{o})
+	if v := asValue(t, tb.Rows[0].Cells["premium"]); v.Text != "$320.00" {
+		t.Fatalf("premium = %+v", v)
+	}
+}
+
+func TestAccountTitleNamesAccount(t *testing.T) {
+	t.Parallel()
+	a, _ := formatAccount("a", trackapi.TrackResult{Open: []opt{sampleOpen("p")}}, false)
+	if a.Title != "Account (a)" || a.Alias != "a" {
+		t.Fatalf("account = %+v", a)
+	}
+	a, _ = formatAccount("a", trackapi.TrackResult{Recent: []opt{sampleClosed("z")}}, false)
+	if a.Title != "Account (a) · No open short options" {
+		t.Fatalf("title = %q", a.Title)
+	}
+}

@@ -250,6 +250,10 @@ func TestTickerReconcileAtStartPlus10ThenEvery15(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	h.run()
+	h.until("reconcile:2025-11-26") // the start turn reconciles the start day
+	if n := h.rec.(*fakeRec).count(); n != 1 {
+		t.Fatalf("Reconcile calls after start = %d, want 1", n)
+	}
 	h.step(5 * time.Minute)
 	if before := h.until("put"); len(before) != 0 {
 		t.Fatalf("events before the first tick: %v", before)
@@ -258,14 +262,17 @@ func TestTickerReconcileAtStartPlus10ThenEvery15(t *testing.T) {
 	if before := h.until("reconcile:2025-11-26"); len(before) != 1 || before[0] != "put" {
 		t.Fatalf("before = %v", before)
 	}
+	if n := h.rec.(*fakeRec).count(); n != 2 {
+		t.Fatalf("Reconcile calls after start + 10 minutes = %d, want 2", n)
+	}
 	h.step(14 * time.Minute) // 14:24
 	if before := h.until("put"); len(before) != 0 {
 		t.Fatalf("events before the second tick: %v", before)
 	}
 	h.step(time.Minute) // 14:25
 	h.until("reconcile:2025-11-26")
-	if n := h.rec.(*fakeRec).count(); n != 2 {
-		t.Fatalf("Reconcile calls = %d, want 2", n)
+	if n := h.rec.(*fakeRec).count(); n != 3 {
+		t.Fatalf("Reconcile calls = %d, want 3", n)
 	}
 }
 
@@ -274,6 +281,7 @@ func TestTickerSleepsToNextDue(t *testing.T) {
 	h := newHarness(t)
 	h.jobs = []contracts.Job{tickerJob{id: "a", offset: 14*time.Hour + 20*time.Second}}
 	h.run()
+	h.until("reconcile:2025-11-26") // the start turn
 	h.step(19 * time.Second)
 	if err := h.clk.BlockUntilContext(t.Context(), 1); err != nil {
 		t.Fatal(err)
@@ -290,6 +298,7 @@ func TestTickerSlotStartCallsReconcileOnce(t *testing.T) {
 	h := newHarness(t)
 	h.jobs = []contracts.Job{tickerJob{id: "a", offset: 14*time.Hour + 20*time.Second}}
 	h.run()
+	h.until("reconcile:2025-11-26") // the start turn
 	h.step(20 * time.Second)
 	h.until("reconcile:2025-11-26")
 	h.step(30 * time.Second)
@@ -299,8 +308,8 @@ func TestTickerSlotStartCallsReconcileOnce(t *testing.T) {
 	if got := h.pending(); len(got) != 0 {
 		t.Fatalf("further events: %v", got)
 	}
-	if n := h.rec.(*fakeRec).count(); n != 1 {
-		t.Fatalf("Reconcile calls = %d, want 1", n)
+	if n := h.rec.(*fakeRec).count(); n != 2 { // the start turn and the slot start
+		t.Fatalf("Reconcile calls = %d, want 2", n)
 	}
 }
 
@@ -311,6 +320,7 @@ func TestTickerCallsGapSyncerAfterReconcile(t *testing.T) {
 	h.gaps, h.ops.cursor = g, "2025-11-24"
 	h.disabled = map[string]string{"x": "no key"}
 	h.run()
+	h.until("sync:2025-11-26") // the start turn
 	h.step(10 * time.Minute)
 	before := h.until("sync:2025-11-26")
 	want := []string{"put", "reconcile:2025-11-26", "sync:2025-11-25"}
@@ -318,7 +328,7 @@ func TestTickerCallsGapSyncerAfterReconcile(t *testing.T) {
 		t.Fatalf("events = %v, want %v", before, want)
 	}
 	calls := g.calls()
-	if len(calls) != 2 || calls[0].day != "2025-11-25" || calls[1].day != "2025-11-26" {
+	if len(calls) != 4 || calls[2].day != "2025-11-25" || calls[3].day != "2025-11-26" {
 		t.Fatalf("Sync calls = %+v", calls)
 	}
 	if !maps.Equal(calls[0].disabled, h.disabled) {
@@ -417,8 +427,7 @@ func TestDrainCancelsWorkerAndClosesFence(t *testing.T) {
 	h := newHarness(t)
 	h.rec = &fakeRec{ev: h.ev, block: true}
 	cancel, done := h.run()
-	h.step(10 * time.Minute)
-	h.until("reconcile:2025-11-26")
+	h.until("reconcile:2025-11-26") // the start turn is blocked in Reconcile
 	cancel()
 	advanced := time.Duration(0)
 	for finished := false; !finished; {
@@ -497,22 +506,22 @@ func TestExecutableChangeDrainsAndReturnsReplacement(t *testing.T) {
 	if !h.fence.closed.Load() {
 		t.Fatal("fence not closed")
 	}
-	if n := h.rec.(*fakeRec).count(); n != 0 {
-		t.Fatalf("Reconcile calls = %d after the replacement was seen", n)
+	if n := h.rec.(*fakeRec).count(); n != 1 { // the start turn only, none for the tick that saw it
+		t.Fatalf("Reconcile calls = %d after the replacement was seen, want 1", n)
 	}
 }
 
 func TestTickerReprobesDisabledJobsEachTick(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
-	rec := &probeRec{fakeRec: &fakeRec{ev: h.ev}, reasons: map[string][]string{"a": {"still down"}}}
+	rec := &probeRec{fakeRec: &fakeRec{ev: h.ev}, reasons: map[string][]string{"a": {"still down", "still down"}}}
 	g := &fakeGaps{ev: h.ev}
 	h.rec, h.gaps, h.ops.cursor = rec, g, "2025-11-25"
 	h.jobs = []contracts.Job{tickerJob{id: "a", offset: 14*time.Hour + 20*time.Second}}
 	h.disabled = map[string]string{"a": "no key"}
 	h.run()
-	if h.led.last()[0].DisabledReason != "no key" {
-		t.Fatalf("start state = %+v", h.led.last())
+	if before := h.until("sync:2025-11-26"); !slices.Equal(before, []string{"reconcile:2025-11-26"}) {
+		t.Fatalf("start turn events = %v", before) // the start turn probes (the first answer), refreshes, reconciles
 	}
 	h.step(5 * time.Minute) // between ticks: no probe
 	h.until("put")
@@ -531,7 +540,7 @@ func TestTickerReprobesDisabledJobsEachTick(t *testing.T) {
 		t.Fatalf("state after a passing probe = %+v", st)
 	}
 	calls := g.calls()
-	if len(calls) != 2 || len(calls[0].disabled) != 1 || calls[0].disabled["a"] != "still down" || len(calls[1].disabled) != 0 {
+	if len(calls) != 3 || len(calls[1].disabled) != 1 || calls[1].disabled["a"] != "still down" || len(calls[2].disabled) != 0 {
 		t.Fatalf("Sync maps = %+v", calls)
 	}
 	if rec.overlap.Load() {
@@ -552,16 +561,18 @@ func TestTickerSyncGetsCopyOfDisabled(t *testing.T) {
 	caller := map[string]string{"a": "no key"}
 	h.disabled = caller
 	h.run()
+	h.until("sync:2025-11-26") // the start turn
 	caller["written-by-caller"] = "y"
 	h.step(10 * time.Minute)
 	h.until("sync:2025-11-26")
 	h.step(15 * time.Minute)
 	h.until("sync:2025-11-26")
 	// Writes after the call race with the ticker if the map is shared.
-	kept[0]["after-call"] = "z"
-	kept[1]["after-call"] = "z"
+	for _, m := range kept {
+		m["after-call"] = "z"
+	}
 	calls := g.calls()
-	if len(calls) != 2 {
+	if len(calls) != 3 {
 		t.Fatalf("Sync calls = %d", len(calls))
 	}
 	for i, c := range calls {
@@ -569,7 +580,7 @@ func TestTickerSyncGetsCopyOfDisabled(t *testing.T) {
 			t.Fatalf("call %d saw %v", i, c.disabled)
 		}
 	}
-	if calls[1].disabled["written-by-sync"] != "x" || len(kept) != 2 {
+	if calls[1].disabled["written-by-sync"] != "x" || len(kept) != 3 {
 		t.Fatalf("unexpected second map %v", calls[1].disabled)
 	}
 	if _, ok := caller["written-by-sync"]; ok {

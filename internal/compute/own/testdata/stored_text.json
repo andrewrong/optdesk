@@ -1,5 +1,6 @@
 [
   {"id": "market.hv30_own", "input": 0.3141592653, "want": "0.314159"},
+  {"id": "market.rv20", "input": 0.16206, "want": "0.162060"},
   {"id": "market.iv30_own", "input": 0.2, "want": "0.200000"},
   {"id": "market.ivp_own", "input": 0.75, "want": "0.750000"},
   {"id": "market.iv_ibkr", "input": 0.25, "want": "0.250000"},

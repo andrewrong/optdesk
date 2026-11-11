@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const maxGaps = 20
-
 // CardLinks holds the page each of the five cards links to; every value starts
 // with "/".
 type CardLinks struct {
@@ -43,10 +41,11 @@ type cardView struct {
 }
 
 // buildOverview copies one line per card (macro, market, household, companies,
-// options) and every member gap, in that order, from the members. The text of a
-// line is card.say, else card.subtitle; a card with neither is an error naming
-// its slot, and nothing is invented.
-func buildOverview(in Input) (overview, error) {
+// options) from the members and counts the gaps of the five cards, each of which
+// shows its own; overview.gaps holds only gaps no card shows, so it stays empty.
+// The text of a line is card.say, else card.subtitle; a card with neither is an
+// error naming its slot, and nothing is invented.
+func buildOverview(in Input) (overview, int, error) {
 	parts := []struct {
 		name, href string
 		doc        []byte
@@ -58,34 +57,29 @@ func buildOverview(in Input) (overview, error) {
 		{"options", in.CardLinks.Options, in.Options},
 	}
 	ov := overview{Items: []overviewLine{}, Gaps: []gapItem{}}
+	gaps := 0
 	for _, p := range parts {
 		if !strings.HasPrefix(p.href, "/") {
-			return overview{}, fmt.Errorf("home_page: %s: card link %q does not start with /", p.name, p.href)
+			return overview{}, 0, fmt.Errorf("home_page: %s: card link %q does not start with /", p.name, p.href)
 		}
 		var c cardView
 		if err := json.Unmarshal(p.doc, &c); err != nil {
-			return overview{}, fmt.Errorf("home_page: %s: not a JSON object: %w", p.name, err)
+			return overview{}, 0, fmt.Errorf("home_page: %s: not a JSON object: %w", p.name, err)
 		}
 		if c.Card.Title == "" {
-			return overview{}, fmt.Errorf("home_page: %s: card has no title", p.name)
+			return overview{}, 0, fmt.Errorf("home_page: %s: card has no title", p.name)
 		}
 		text := c.Card.Say
 		if text == "" {
 			text = c.Card.Subtitle
 		}
 		if text == "" {
-			return overview{}, fmt.Errorf("home_page: %s: card has neither say nor subtitle", p.name)
+			return overview{}, 0, fmt.Errorf("home_page: %s: card has neither say nor subtitle", p.name)
 		}
 		ov.Items = append(ov.Items, overviewLine{Label: c.Card.Title, Text: text, Href: p.href})
-		for _, g := range c.Card.Gaps {
-			ov.Gaps = append(ov.Gaps, gapItem{Card: c.Card.Title, Text: g.Text})
-		}
+		gaps += len(c.Card.Gaps)
 	}
-	if len(ov.Gaps) > maxGaps {
-		dropped := len(ov.Gaps) - (maxGaps - 1)
-		ov.Gaps = append(ov.Gaps[:maxGaps-1], gapItem{Card: "Home", Text: fmt.Sprintf("%d more gaps not listed", dropped)})
-	}
-	return ov, nil
+	return ov, gaps, nil
 }
 
 // gapLine words the number of gaps for the page's gap_line.
@@ -94,7 +88,7 @@ func gapLine(n int) string {
 		return "No gaps today"
 	}
 	if n == 1 {
-		return "1 gap, see below"
+		return "1 gap, shown in its card"
 	}
-	return fmt.Sprintf("%d gaps, see below", n)
+	return fmt.Sprintf("%d gaps, shown in their cards", n)
 }

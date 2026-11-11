@@ -264,8 +264,8 @@ func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow
 	row := indexRow{
 		Name:        name,
 		IV:          mkGap("no_data", name+" "+ivNoRow),
-		RV20:        mkGap("not_built", name+" "+rv20NotBuilt),
-		IVMinusRV20: mkGap("not_built", name+" "+diffNotBuilt),
+		RV20:        mkGap("not_built", notBuiltCell),
+		IVMinusRV20: mkGap("not_built", notBuiltCell),
 	}
 	from := contracts.Day(d.AddDate(0, 0, -readingDays).Format(dayLayout))
 	rows, err := c.Readings(ctx, figIV, subjectKind, name, from, contracts.Day(d.Format(dayLayout)))
@@ -368,15 +368,27 @@ func storedPoints(ctx context.Context, r store.SeriesReader, id string, d time.T
 	return out, nil
 }
 
-// collectGaps copies the Gap objects of the blocks in page order.
+// collectGaps copies the Gap objects of the blocks in page order. The not-built
+// cells give one gap per feature naming every index of the table, not one per index.
 func collectGaps(c card) []gap {
 	out := []gap{}
+	var rvNames, diffNames []string
 	for _, row := range c.IndexTable.Rows {
-		for _, cell := range []any{row.IV, row.RV20, row.IVMinusRV20} {
-			if g, ok := cell.(gap); ok {
-				out = append(out, g)
-			}
+		if g, ok := row.IV.(gap); ok {
+			out = append(out, g)
 		}
+		if g, ok := row.RV20.(gap); ok && g.Reason == "not_built" {
+			rvNames = append(rvNames, row.Name)
+		}
+		if g, ok := row.IVMinusRV20.(gap); ok && g.Reason == "not_built" {
+			diffNames = append(diffNames, row.Name)
+		}
+	}
+	if len(rvNames) > 0 {
+		out = append(out, mkGap("not_built", rv20NotBuilt+notBuiltFor+strings.Join(rvNames, ", ")))
+	}
+	if len(diffNames) > 0 {
+		out = append(out, mkGap("not_built", diffNotBuilt+notBuiltFor+strings.Join(diffNames, ", ")))
 	}
 	for _, v := range c.VolIndices {
 		if g, ok := v.Level.(gap); ok {

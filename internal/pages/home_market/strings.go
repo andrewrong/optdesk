@@ -12,6 +12,8 @@ const (
 	ivSource         = "IBKR implied volatility"
 	rv20NotBuilt     = "20-day realised volatility not built yet"
 	diffNotBuilt     = "Implied minus realised not built yet"
+	notBuiltCell     = "not built yet"
+	notBuiltFor      = " for "
 	levelNoRow       = " no data: not stored yet"
 	levelStale       = " data is stale, data day "
 	levelBad         = " data unusable"

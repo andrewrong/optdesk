@@ -43,7 +43,7 @@ func TestNumericCellsCarryValue(t *testing.T) {
 	if !strings.Contains(string(b), `"value":100.50`) {
 		t.Fatalf("json = %s", b)
 	}
-	if g := asGap(t, numCell("abc", codeNoValue)); g.Reason != "no_data" || !strings.HasPrefix(g.Text, "unreadable") {
+	if g := asGap(t, numCell("abc", codeNoValue)); g.Reason != "no_data" || g.Text != "Unreadable" {
 		t.Fatalf("gap = %+v", g)
 	}
 	m := asValue(t, moneynessCell(sampleOpen("p")))
@@ -57,7 +57,7 @@ func TestMissingMarkIsGapCell(t *testing.T) {
 	o := sampleOpen("p")
 	o.Mid, o.MarkStatus = "", "no_mark"
 	g := asGap(t, numCell(o.Mid, markCode(o)))
-	if g.Kind != "gap" || g.Reason != "missing_quote" || !strings.HasPrefix(g.Text, "no_mark") {
+	if g.Kind != "gap" || g.Reason != "missing_quote" || g.Text != "No fresh closing price" {
 		t.Fatalf("gap = %+v", g)
 	}
 	for _, d := range openColumns {
@@ -82,7 +82,7 @@ func TestGuardBadges(t *testing.T) {
 		t.Fatalf("unknown = %+v", c)
 	}
 	o.GuardReason = "no_guard_row"
-	if g := asGap(t, guardCell(o)); g.Reason != "missing_input" || !strings.HasPrefix(g.Text, "no_guard_row") {
+	if g := asGap(t, guardCell(o)); g.Reason != "missing_input" || g.Text != codeTexts["no_guard_row"] {
 		t.Fatalf("no row = %+v", g)
 	}
 	o.Right, o.Guard, o.GuardReason = "P", "n/a", ""
@@ -122,7 +122,7 @@ func TestEventsInLifeBadge(t *testing.T) {
 	}
 	o.Right, o.EventStatus = "C", "no_event_row"
 	for _, c := range []any{resultsCell(o), exCell(o)} {
-		if g := asGap(t, c); g.Reason != "missing_input" || !strings.HasPrefix(g.Text, "no_event_row") {
+		if g := asGap(t, c); g.Reason != "missing_input" || g.Text != codeTexts["no_event_row"] {
 			t.Fatalf("gap = %+v", g)
 		}
 	}
@@ -142,7 +142,52 @@ func TestEmptyStringIsNeverZero(t *testing.T) {
 			}
 		}
 	}
-	if g := asGap(t, numCell("", codeNoValue)); g.Reason != "no_data" || !strings.HasPrefix(g.Text, "no_value") {
+	if g := asGap(t, numCell("", codeNoValue)); g.Reason != "no_data" || g.Text != "No such value" {
+		t.Fatalf("gap = %+v", g)
+	}
+}
+
+func TestCodeGapTextHasNoCodeWord(t *testing.T) {
+	t.Parallel()
+	for _, code := range []string{"no_mark", "no_event_row", "no_guard_row", "no_account"} {
+		g := codeGap(code)
+		if g.Text != codeTexts[code] || g.Text == "" || strings.Contains(g.Text, "_") {
+			t.Errorf("%s: gap = %+v", code, g)
+		}
+	}
+	if g := codeGap("no_mark"); g.Text != "No fresh closing price" {
+		t.Fatalf("gap = %+v", g)
+	}
+}
+
+func TestPremiumCellShowsCurrency(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ in, cur, text string }{
+		{"13000.0000", "JPY", "¥13,000.00"},
+		{"5550.0000", "JPY", "¥5,550.00"},
+		{"250.5", "USD", "$250.50"},
+		{"-1234567.891", "USD", "-$1,234,567.89"},
+	} {
+		v := asValue(t, moneyCell(c.in, c.cur))
+		if v.Text != c.text || v.Value == nil {
+			t.Errorf("%s %s: cell = %+v", c.in, c.cur, v)
+		}
+	}
+	v := asValue(t, moneyCell("13000.0000", "JPY"))
+	if *v.Value != "13000.0000" {
+		t.Fatalf("value = %v", *v.Value)
+	}
+}
+
+func TestPremiumCellUnknownCurrency(t *testing.T) {
+	t.Parallel()
+	for _, cur := range []string{"", "XYZ"} {
+		g := asGap(t, moneyCell("100", cur))
+		if g.Reason != "no_data" || g.Text != "Unreadable" {
+			t.Errorf("%q: gap = %+v", cur, g)
+		}
+	}
+	if g := asGap(t, moneyCell("", "USD")); g.Text != "No such value" {
 		t.Fatalf("gap = %+v", g)
 	}
 }

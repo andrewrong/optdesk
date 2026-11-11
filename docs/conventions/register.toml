@@ -1696,6 +1696,29 @@ agreed_in = "owner approval in the optdesk dispatcher window, 2026-11-09 (market
 history = ["2026-11-09 v1: registered by docs/design/market-bars.md Decision 10; no page reads it yet."]
 
 [[figure]]
+id = "market.rv20"
+version = 1
+title_zh = "20 日已实现波动率"
+pages = []
+formula = """
+Convention rv20_v1: close-to-close log returns of consecutive stored closes, their sample standard deviation (ddof 1) over the last 20 returns (n 20), times the square root of 252 (trading days per year). An annual fraction: 0.16 is 16 percent. Needs 21 closes above zero."""
+inputs = """
+The stored daily trades closes of the index (SPX, NDX or RUT), oldest first, the last 21 of them; the newest close no older than 4 calendar days."""
+period_date = "The as-of day of the newest close used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's own volatility figure (never read here, never a fallback); adjusted closes; FRED SP500; any fill or extrapolation of a missing close; N225 (later)."""
+gap_text = """
+Fewer than 21 closes: missing, short_history. No close: missing, no_input. A newest close older than 4 calendar days: missing, stale_input. A close not above zero: missing, bad_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).HistoricalVol",
+]
+source_hash = "9cbf87d81980217ce0493ddb2594a8ee2be0ee31291231f1f7de19682b4e6bd6"
+agreed_on = "2026-11-11"
+agreed_in = "owner approval in the optdesk dispatcher window, 2026-11-11 (docs/design/market-rv20.md Decision 2: rv20 for SPX, NDX and RUT; n 20, 252 trading days, max age 4 days)"
+history = ["2026-11-11 v1: registered by docs/design/market-rv20.md Decision 7; no page reads it yet."]
+
+[[figure]]
 id = "market.ivp_own"
 version = 1
 title_zh = "自有 IV 百分位"
