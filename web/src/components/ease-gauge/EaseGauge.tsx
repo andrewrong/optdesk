@@ -1,4 +1,4 @@
-// The 松紧度 gauge: a grey track, a shaded neutral band and a dot at marker_percent. It draws payload fields only;
+// The ease gauge: a grey track, a shaded neutral band and a dot at marker_percent. It draws payload fields only;
 // the band is placed by CSS (`left`, `right: calc(100% - high%)`), so no number is computed here.
 import { Slider } from '@/components/ui/slider'
 

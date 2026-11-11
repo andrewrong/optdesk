@@ -31,8 +31,8 @@ const tableRows = () =>
   [...host.querySelectorAll('[data-mismatches] tbody tr')].map((r) =>
     [...r.querySelectorAll('td')].map((c) => c.textContent),
   )
-// The badge words of the three verdicts (board v2.2: 好/差/未知).
-const WORD = { ok: '好', bad: '差', unknown: '未知' } as const
+// The badge words of the three verdicts (board v2.2: Good/Bad/Unknown).
+const WORD = { ok: 'Good', bad: 'Bad', unknown: 'Unknown' } as const
 // jsdom has no ResizeObserver, which the Radix tooltip popper needs once it opens.
 vi.stubGlobal(
   'ResizeObserver',

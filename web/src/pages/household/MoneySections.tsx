@@ -134,7 +134,7 @@ function MoneyTable({ block }: { block: MoneyBlock }) {
   return <DataTable columns={columns} rows={[...rows, ...totalRows(block, blank)]} />
 }
 
-// 每月收入: a month with items opens to them (Python's item text, the account tag, the amount) and to Python's own
+// Monthly income: a month with items opens to them (Python's item text, the account tag, the amount) and to Python's own
 // sentence of what is in it; a month without items cannot be opened. Nothing is added up here.
 export function IncomeMonths({ block }: { block: MoneyBlock }) {
   if (block.rows.length === 0) return null

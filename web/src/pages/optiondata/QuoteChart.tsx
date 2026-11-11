@@ -8,7 +8,7 @@ import type { Payload } from '@/types/option_data_page'
 type Series = Payload['quote_series'][number]
 type PayloadCell = Series['points'][number]['bid']
 
-const NAMES = { bid: '买价', ask: '卖价', last: '成交价' } as const
+const NAMES = { bid: 'Bid', ask: 'Ask', last: 'Last' } as const
 
 const pointOf = (cell: PayloadCell): ChartPoint =>
   cell.kind === 'value' ? { value: cell.value, text: cell.text } : { value: null }

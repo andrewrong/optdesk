@@ -1,4 +1,4 @@
-// Issue #1132: the 家庭概览 card shows the text fields of the payload and nothing else. Fixtures are the
+// Issue #1132: the Household overview card shows the text fields of the payload and nothing else. Fixtures are the
 // household_summary v2 payloads of ./household-v2/fixtures/, written from the schema alone.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -69,7 +69,7 @@ describe('HouseholdCard', () => {
     expect(host.querySelector('[data-slot=card-title]')?.textContent).toBe(ok.card.title)
     expect(host.textContent).toContain(ok.card.subtitle)
     expect(host.querySelectorAll('[data-tile]')).toHaveLength(4)
-    expect(tile('net_worth').textContent).toContain('净值')
+    expect(tile('net_worth').textContent).toContain('Net value')
     expect(tile('net_worth').textContent).toContain(ok.card.tiles.net_worth.figure.text)
     expect(tile('day_change').textContent).toContain(ok.card.tiles.day_change.figure.text)
     expect(tile('day_change').textContent).toContain(ok.card.tiles.day_change.caption.text)
@@ -82,9 +82,9 @@ describe('HouseholdCard', () => {
     const net = tile('net_worth').textContent!
     const caption = ok.card.tiles.net_worth.caption.text
     expect(net).toContain(caption)
-    expect(net).toContain('家庭(本人+配偶)')
-    expect(net).toContain('女儿(单独计)')
-    expect(net).toContain('已含在合计内')
+    expect(net).toContain('Household (me + spouse)')
+    expect(net).toContain('Daughter (counted separately)')
+    expect(net).toContain('already in the total')
     expect(net).toContain(ok.card.tiles.net_worth.figure.text)
   })
 
@@ -95,7 +95,7 @@ describe('HouseholdCard', () => {
       expect(tile(id).querySelectorAll('[data-explain]')).toHaveLength(1)
     }
     const trigger = tile('month_to_date').querySelector<HTMLElement>('[data-explain]')!
-    expect(trigger.getAttribute('aria-label')).toBe('本月至今（不含出入金）')
+    expect(trigger.getAttribute('aria-label')).toBe('Month to date (excl. deposits and withdrawals)')
     await act(async () => trigger.focus())
     const text = payload.card.tiles.month_to_date.explain
     expect(document.body.querySelector('[data-slot=tooltip-content]')?.textContent).toContain(text)
@@ -111,22 +111,22 @@ describe('HouseholdCard', () => {
   it('prints the month and cash tiles as sent, and a negative cash has no pill', async () => {
     const payload = fixture('ok.json')
     await show(payload)
-    expect(tile('month_to_date').textContent).toContain('本月至今（不含出入金）')
+    expect(tile('month_to_date').textContent).toContain('Month to date (excl. deposits and withdrawals)')
     expect(tile('month_to_date').textContent).toContain('+$11,700')
     expect(tile('month_to_date').textContent).toContain('+2.94%')
 
     await act(async () => root?.unmount())
     host.remove()
     const month = payload.card.tiles.month_to_date
-    month.caption = { text: '无基数' }
+    month.caption = { text: 'No base' }
     const cash = payload.card.tiles.cash
-    cash.label = '融资借款'
-    cash.figure = { text: '融资中' }
+    cash.label = 'Margin loan'
+    cash.figure = { text: 'On margin' }
     cash.caption = { value: -5000, text: '−$5,000', unit: 'usd_signed', tone: 'down' }
     await show(payload)
-    expect(tile('month_to_date').textContent).toContain('无基数')
-    expect(tile('cash').textContent).toContain('融资借款')
-    expect(tile('cash').textContent).toContain('融资中')
+    expect(tile('month_to_date').textContent).toContain('No base')
+    expect(tile('cash').textContent).toContain('Margin loan')
+    expect(tile('cash').textContent).toContain('On margin')
     expect(tile('cash').textContent).toContain('−$5,000')
     expect(tile('cash').querySelector('[data-slot=badge]')).toBeNull()
     expect(tile('month_to_date').querySelector('[data-slot=badge]')).toBeNull()
@@ -183,7 +183,7 @@ describe('HouseholdCard', () => {
     }
   })
 
-  it('shows notes, the gaps list and the 数据时间 text', async () => {
+  it('shows notes, the gaps list and the data times text', async () => {
     await show(fixture('ok.json'))
     expect(host.textContent).toContain(ok.card.notes[1])
     expect(host.querySelector('[data-gaps]')).toBeNull()

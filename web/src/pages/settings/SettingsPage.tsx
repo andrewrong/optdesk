@@ -50,16 +50,16 @@ function ConfirmCard({ payload, confirm }: { payload: Payload; confirm: NonNulla
     <Card data-confirm>
       <CardHeader>
         <CardTitle>
-          <h2 className="text-lg font-semibold">确认修改</h2>
+          <h2 className="text-lg font-semibold">Confirm changes</h2>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>项目</TableHead>
-              <TableHead>原值</TableHead>
-              <TableHead>新值</TableHead>
+              <TableHead>Item</TableHead>
+              <TableHead>Old value</TableHead>
+              <TableHead>New value</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,9 +84,9 @@ function ConfirmCard({ payload, confirm }: { payload: Payload; confirm: NonNulla
           {payload.rows.map((row) =>
             row.excluded ? <input key={row.instrument_id} type="hidden" name="excluded" value={row.instrument_id} /> : null,
           )}
-          <Button type="submit">确认保存</Button>
+          <Button type="submit">Confirm and save</Button>
           <a href="/settings" className="text-sm underline" data-cancel>
-            取消
+            Cancel
           </a>
         </form>
       </CardContent>
@@ -103,18 +103,18 @@ function EditCard({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2 className="text-lg font-semibold">规则参数</h2>
+            <h2 className="text-lg font-semibold">Rule parameters</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table data-params>
             <TableHeader>
               <TableRow>
-                <TableHead>参数</TableHead>
-                <TableHead>单位</TableHead>
-                <TableHead>当前值</TableHead>
-                <TableHead>修改</TableHead>
-                <TableHead>范围</TableHead>
+                <TableHead>Parameter</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead>Current value</TableHead>
+                <TableHead>Change</TableHead>
+                <TableHead>Range</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -147,15 +147,15 @@ function EditCard({ payload }: { payload: Payload }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2 className="text-lg font-semibold">期权排除</h2>
+            <h2 className="text-lg font-semibold">Option exclusions</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table data-exclusions>
             <TableHeader>
               <TableRow>
-                <TableHead>标的</TableHead>
-                <TableHead>排除</TableHead>
+                <TableHead>Underlying</TableHead>
+                <TableHead>Excluded</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -181,7 +181,7 @@ function EditCard({ payload }: { payload: Payload }) {
         </CardContent>
       </Card>
       <Button type="submit" disabled={locked}>
-        保存
+        Save
       </Button>
     </form>
   )
@@ -193,17 +193,17 @@ function HistoryCard({ payload }: { payload: Payload }) {
     <Card data-history>
       <CardHeader>
         <CardTitle>
-          <h2 className="text-lg font-semibold">修改历史</h2>
+          <h2 className="text-lg font-semibold">Change history</h2>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>时间</TableHead>
-              <TableHead>项目</TableHead>
-              <TableHead>值</TableHead>
-              <TableHead>操作</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Item</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,7 +217,7 @@ function HistoryCard({ payload }: { payload: Payload }) {
                     {form ? <Token form={form} /> : null}
                     <RevertFields row={row} />
                     <Button type="submit" variant="outline" size="sm" disabled={form === null}>
-                      使用此值
+                      Use this value
                     </Button>
                   </form>
                 </TableCell>

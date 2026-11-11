@@ -1,4 +1,4 @@
-// The 市场天气 card of the home page (issue #1209, board v2.2 board 1): the three votes with verdict, source and
+// The market weather card of the home page (issue #1209, board v2.2 board 1): the three votes with verdict, source and
 // observed date, the source-mismatch lines and the footnote. Every sentence and figure is a field of the
 // `market_weather` payload; this file formats and compares nothing. The verdict badge word is the fixed label of
 // the three verdict codes.
@@ -20,16 +20,16 @@ import { StaleAlert } from './StaleAlert'
 import { WeatherIntraday } from './WeatherIntraday'
 
 const VERDICT = {
-  ok: { word: '好', variant: 'secondary' },
-  bad: { word: '差', variant: 'destructive' },
-  unknown: { word: '未知', variant: 'outline' },
+  ok: { word: 'Good', variant: 'secondary' },
+  bad: { word: 'Bad', variant: 'destructive' },
+  unknown: { word: 'Unknown', variant: 'outline' },
 } as const
 
 const COLUMNS: Column[] = [
-  { id: 'day', label: '日期' },
+  { id: 'day', label: 'Date' },
   { id: 'ibkr', label: 'IBKR', align: 'right' },
   { id: 'fred', label: 'FRED', align: 'right' },
-  { id: 'diff', label: '差', align: 'right' },
+  { id: 'diff', label: 'Bad', align: 'right' },
 ]
 
 export function WeatherCard({ payload }: { payload: Payload }) {
@@ -81,7 +81,7 @@ export function WeatherCard({ payload }: { payload: Payload }) {
         ) : null}
         <Accordion type="single" collapsible defaultValue="footnote">
           <AccordionItem value="footnote">
-            <AccordionTrigger>脚注</AccordionTrigger>
+            <AccordionTrigger>Footnotes</AccordionTrigger>
             <AccordionContent data-footnote>{payload.footnote}</AccordionContent>
           </AccordionItem>
         </Accordion>

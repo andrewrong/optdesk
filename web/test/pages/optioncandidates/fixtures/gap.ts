@@ -7,13 +7,13 @@ export const gap = {
   groups: [
     {
       kind: 'short_put',
-      title: 'gap 卖 put',
+      title: 'gap Sell put',
       day: null,
       stale: false,
       counts: { ok: 0, blocked: 0, unknown: 0 },
       main: null,
       other: null,
-      gap: { kind: 'gap' as const, reason: 'no_rows', text: 'gap 七天内没有卖 put 候选行' },
+      gap: { kind: 'gap' as const, reason: 'no_rows', text: 'gap No sell put candidate rows in the last seven days' },
     },
     ok.groups[1],
   ],

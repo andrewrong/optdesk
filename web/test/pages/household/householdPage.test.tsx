@@ -127,8 +127,8 @@ it('draws the movers as two lists under their scope, in the order and with the t
     row.current.text,
     row.amount.text,
   ]
-  expect(cells('股票')).toEqual(payload.movers.stocks.map(line))
-  expect(cells('期权')).toEqual(payload.movers.options.map(line))
+  expect(cells('Stocks')).toEqual(payload.movers.stocks.map(line))
+  expect(cells('Options')).toEqual(payload.movers.options.map(line))
   const daughter = movers.querySelector('[data-scope-rows=daughter]')!
   expect(daughter.textContent).toContain('BBB')
   expect(daughter.textContent).not.toContain(payload.movers.totals[0].text)
@@ -207,7 +207,7 @@ it('shows a gap as its text, with no figure', async () => {
   expect(stress.querySelector('table')).toBeNull()
 })
 
-it('links to /risk, and the 家庭概览 card links to /household', async () => {
+it('links to /risk, and the Household overview card links to /household', async () => {
   await show(<HouseholdPage payload={fixture('ok.json')} />)
   const link = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '/risk')
   expect(link).toBeDefined()
@@ -215,10 +215,10 @@ it('links to /risk, and the 家庭概览 card links to /household', async () => 
   host.remove()
   await show(<HouseholdCard payload={ok} />)
   const card = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '/household')
-  expect(card?.textContent).toContain('家庭页')
+  expect(card?.textContent).toContain('Household page')
 })
 
-it('colours the 带动 cell by the tone Python sent: up success, down down, flat muted, no amount none', async () => {
+it('colours the Driver cell by the tone Python sent: up success, down down, flat muted, no amount none', async () => {
   const payload = fixture('ok.json')
   const money = (tone: string, text: string) => ({ ...payload.movers.stocks[0].amount, tone, text })
   const base = payload.movers.stocks[0]
@@ -226,19 +226,19 @@ it('colours the 带动 cell by the tone Python sent: up success, down down, flat
     { ...base, name: 'UP', amount: money('up', '+$50.00') },
     { ...base, name: 'DOWN', amount: money('down', '−$30.00') },
     { ...base, name: 'FLAT', amount: money('flat', '$0.00') },
-    { ...base, name: 'NONE', amount: null, note: '无金额' },
+    { ...base, name: 'NONE', amount: null, note: 'no amount' },
   ]
   payload.movers.options = []
   await show(<HouseholdPage payload={payload} />)
   const cell = (name: string) =>
-    [...host.querySelectorAll('[data-mover-list=股票] tbody tr')]
+    [...host.querySelectorAll('[data-mover-list=Stocks] tbody tr')]
       .find((tr) => tr.querySelector('td')!.textContent!.startsWith(name))!
       .querySelectorAll('td')[3]!
   expect(cell('UP').querySelector('.text-success')?.textContent).toBe('+$50.00')
   expect(cell('DOWN').querySelector('.text-down')?.textContent).toBe('−$30.00')
   expect(cell('FLAT').querySelector('.text-muted-foreground')?.textContent).toBe('$0.00')
   expect(cell('NONE').querySelector('.text-success, .text-down, .text-muted-foreground')).toBeNull()
-  expect(cell('NONE').textContent).toBe('无金额')
+  expect(cell('NONE').textContent).toBe('no amount')
 })
 
 it.each([
@@ -284,7 +284,7 @@ it('keeps the gap of a scope with no rows as a line and draws one line for the o
   daughter.rows = []
   daughter.change = undefined
   daughter.window = undefined
-  daughter.gap = { reason: 'missing_input', text: '没有读到「走势」的数据' }
+  daughter.gap = { reason: 'missing_input', text: 'No data read for Trend' }
   await show(<HouseholdPage payload={payload} />)
   const trend = host.querySelector('[data-block=trend]')!
   expect(trend.querySelectorAll('[data-chart]')).toHaveLength(1)
@@ -301,7 +301,7 @@ it('draws no trend chart when no scope has rows', async () => {
   expect(trend.querySelectorAll('[data-scope-rows] [data-block-gap]')).toHaveLength(2)
 })
 
-// Issue #1759: the heads of 构成, 集中度 and 配置 and the words of the header links are the payload's own texts.
+// Issue #1759: the heads of Composition, Concentration and Allocation and the words of the header links are the payload's own texts.
 it('prints the heads and the header link words the payload sends, and the route is no name', async () => {
   const payload = fixture('ok.json')
   payload.composition.heads = ['H1', 'H2', 'H3']
@@ -314,7 +314,7 @@ it('prints the heads and the header link words the payload sends, and the route 
     [...host.querySelectorAll(`[data-block=${block}] th`)].map((th) => th.textContent?.trim())
   expect(heads('composition')).toEqual(['H1', 'H2', 'H3'])
   expect(heads('concentration').slice(0, 3)).toEqual(['C1', 'C2', 'C3'])
-  // 集中度 draws name, share, amount (design order); 构成 keeps name, amount, share.
+  // Concentration draws name, share, amount (design order); Composition keeps name, amount, share.
   const first = (block: string) =>
     [...host.querySelector(`[data-block=${block}] tbody tr`)!.querySelectorAll('td')].map(
       (td) => td.textContent,

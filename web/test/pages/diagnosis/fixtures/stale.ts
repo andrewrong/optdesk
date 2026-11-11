@@ -4,6 +4,6 @@ import { ok } from './ok'
 
 export const stale = {
   ...ok,
-  stale: { data_time: '2026-10-20T00:00:00Z', is_stale: true, text: '年报数据停在 10 月 20 日。' },
+  stale: { data_time: '2026-10-20T00:00:00Z', is_stale: true, text: 'Annual report data stops at 20 Oct.' },
   stale_after: '2026-10-25T00:00:00Z',
 } satisfies DiagnosisPage

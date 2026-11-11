@@ -8,86 +8,86 @@
   ],
   "ease": {
     "reason": "no_data",
-    "text": "松紧度暂无数据"
+    "text": "Ease: no data yet"
   },
-  "ease_title": "松紧度",
+  "ease_title": "Ease",
   "events": [
     {
       "date": "2026-10-28",
-      "name_text": "美国 CPI",
+      "name_text": "US CPI",
       "previous": {
         "reason": "no_data",
-        "text": "前值暂缺"
+        "text": "no data yet"
       },
-      "when_text": "周三 10-28"
+      "when_text": "Wed 10-28"
     },
     {
       "date": "2026-11-06",
-      "name_text": "美国非农就业",
+      "name_text": "US nonfarm payrolls",
       "previous": {
         "reason": "no_data",
-        "text": "前值暂缺"
+        "text": "no data yet"
       },
-      "when_text": "周五 11-06"
+      "when_text": "Fri 11-06"
     }
   ],
-  "events_title": "本周与下周",
+  "events_title": "This week and next",
   "gaps": [],
   "generated_at": "2026-10-26T09:30:00+08:00",
   "indicators": [
     {
       "detail_href": "/indicator/cpiaucsl",
-      "label": "及时",
+      "label": "On time",
       "latest": {
         "text": "2.9%",
         "unit": "percent",
         "value": 2.9
       },
-      "name": "美国 CPI 同比",
-      "source_text": "演示来源 · 10-23",
+      "name": "US CPI year on year",
+      "source_text": "Demo source · 10-23",
       "status": "good"
     },
     {
       "detail_href": null,
-      "label": "缺",
+      "label": "n/a",
       "latest": {
         "reason": "no_data",
-        "text": "数据源未接入"
+        "text": "data source not connected"
       },
-      "name": "中国 PMI",
-      "source_text": "尚无来源",
+      "name": "China PMI",
+      "source_text": "no source yet",
       "status": "missing"
     },
     {
       "detail_href": "/indicator/unrate",
-      "label": "迟到",
+      "label": "Late",
       "latest": {
         "text": "4.1%",
         "unit": "percent",
         "value": 4.1
       },
-      "name": "美国失业率",
-      "source_text": "演示来源 · 09-04",
+      "name": "US unemployment rate",
+      "source_text": "Demo source · 09-04",
       "status": "late"
     }
   ],
-  "indicators_title": "指标与时效",
+  "indicators_title": "Indicators and timeliness",
   "notes": [
-    "全部为虚构演示数据，不用于交易决策。",
-    "日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",
-    "前值是序列最新存储的一期，标注所属月份；没有存储或没有对应序列的标为暂缺。"
+    "All data is fictional demo data, not for trading decisions.",
+    "Dates come from the FRED release calendar and central bank schedules; dates only, no release times.",
+    "The previous value is the latest stored period of the series, with its month; one that is not stored or has no series is marked no data yet."
   ],
-  "notes_title": "说明",
+  "notes_title": "Notes",
   "run_id": "run-demo-0001",
   "run_status": "partial",
   "schema": "macro_page",
   "schema_version": 1,
   "scope": "macro-page",
-  "sentence": "本周关注美国 CPI，下周关注美国非农就业。",
+  "sentence": "Watch US CPI this week and US nonfarm payrolls next week.",
   "stale": {
     "data_time": "2026-10-23T00:00:00+08:00",
     "stale_after": "2026-10-27T09:30:00+08:00",
-    "text": "数据日 10-23"
+    "text": "Data day 10-23"
   },
-  "title": "宏观"
+  "title": "Macro"
 }

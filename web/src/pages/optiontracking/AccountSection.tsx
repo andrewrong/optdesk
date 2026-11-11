@@ -23,8 +23,8 @@ type Table = {
 // The guard badge text that is not settled or that blocks gets its own tone from the shared status classes of the
 // data table; any other badge is neutral. This is a style choice on text Python wrote, not a verdict of the page.
 const BADGE_STATUS: Record<string, FigureCell['source_status']> = {
-  未确认: 'late',
-  阻止: 'missing',
+  Unconfirmed: 'late',
+  Blocked: 'missing',
 }
 
 // A cell as the shared data table reads it: the first badge rides in the source Badge, the rest in the note.
@@ -76,7 +76,7 @@ export function AccountSection({ account }: { account: Account }) {
           {account.mark_day ? <Badge variant="secondary">{account.mark_day}</Badge> : null}
           {account.guard_day ? <Badge variant="secondary">{account.guard_day}</Badge> : null}
           <Badge variant="outline" data-left-out>
-            多头腿未列出 {account.long_legs_left_out}
+            Long legs left out {account.long_legs_left_out}
           </Badge>
         </CardDescription>
       </CardHeader>
@@ -90,8 +90,8 @@ export function AccountSection({ account }: { account: Account }) {
           <>
             {account.open ? <PayloadTable name="open" table={account.open} /> : null}
             <Accordion type="multiple">
-              {account.recent ? <Fold value="recent" title="最近 30 天了结" table={account.recent} /> : null}
-              {account.recon ? <Fold value="recon" title="Flex 与账户核对" table={account.recon} /> : null}
+              {account.recent ? <Fold value="recent" title="Closed in the last 30 days" table={account.recent} /> : null}
+              {account.recon ? <Fold value="recon" title="Flex reconciled with the account" table={account.recon} /> : null}
             </Accordion>
           </>
         )}

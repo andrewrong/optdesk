@@ -1,10 +1,10 @@
 {
-  "footnote": "仅显示：不改变任何建议、数量、上限或期限",
-  "headline": "差 · 数据 10-19…10-21",
+  "footnote": "Display only: changes no advice, quantity, limit or term",
+  "headline": "Bad · data 10-19…10-21",
   "mismatches": [],
   "rows": [
     {
-      "figure_text": "波动 VIX 26.40",
+      "figure_text": "Volatility VIX 26.40",
       "first_ibkr_date": "2026-09-15",
       "kind": "volatility",
       "observed": "2026-10-19",
@@ -12,7 +12,7 @@
       "verdict": "bad"
     },
     {
-      "figure_text": "趋势 标普占200日均线 98.10%",
+      "figure_text": "Trend S&P vs 200-day average 98.10%",
       "first_ibkr_date": "2026-09-15",
       "kind": "trend",
       "observed": "2026-10-20",
@@ -20,7 +20,7 @@
       "verdict": "bad"
     },
     {
-      "figure_text": "信用 高收益利差 3.12%",
+      "figure_text": "Credit high-yield spread 3.12%",
       "first_ibkr_date": "2026-09-15",
       "kind": "credit",
       "observed": "2026-10-21",

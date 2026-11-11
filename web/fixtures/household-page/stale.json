@@ -1,14 +1,14 @@
 {
   "accounts": {
     "columns": [
-      "账户",
-      "净清算值",
-      "现金",
-      "股票市值",
-      "期权市值",
-      "数据日"
+      "Account",
+      "Net liquidation",
+      "Cash",
+      "Stock market value",
+      "Option market value",
+      "Data day"
     ],
-    "meaning": "Flex 账户的净清算值、现金、股票与期权市值，取自日结单。",
+    "meaning": "Flex account net liquidation, cash, stock and option market value, from the daily statement.",
     "rows": [
       {
         "cash": {
@@ -19,8 +19,8 @@
             "value": 5000.0
           }
         },
-        "data_day": "数据日 10-29",
-        "name": "Flex 账户（配偶）",
+        "data_day": "Data day 10-29",
+        "name": "Flex account (spouse)",
         "net_liquidation": {
           "cell": {
             "currency": "USD",
@@ -46,7 +46,7 @@
             "value": 8000.0
           }
         },
-        "whose": "配偶"
+        "whose": "Spouse"
       },
       {
         "cash": {
@@ -57,8 +57,8 @@
             "value": 2000.0
           }
         },
-        "data_day": "数据日 10-29",
-        "name": "账户（女儿）",
+        "data_day": "Data day 10-29",
+        "name": "Account (daughter)",
         "net_liquidation": {
           "cell": {
             "currency": "USD",
@@ -84,20 +84,20 @@
             "value": 18000.0
           }
         },
-        "whose": "女儿"
+        "whose": "Daughter"
       }
     ],
-    "title": "账户"
+    "title": "Account"
   },
   "allocation": {
     "heads": [
-      "类别",
-      "市值",
-      "占比",
-      "目标",
-      "差距"
+      "Category",
+      "Market value",
+      "Share",
+      "Target",
+      "Difference"
     ],
-    "meaning": "实际配置对比你定的目标。",
+    "meaning": "Actual allocation against the target you set.",
     "rows": [
       {
         "amount": {
@@ -112,7 +112,7 @@
           "unit": "percentage_points",
           "value": 10.0
         },
-        "name": "股票",
+        "name": "Stocks",
         "share": {
           "text": "60%",
           "unit": "share_percent",
@@ -137,7 +137,7 @@
           "unit": "percentage_points",
           "value": -10.0
         },
-        "name": "债券",
+        "name": "Bonds",
         "share": {
           "text": "40%",
           "unit": "share_percent",
@@ -150,7 +150,7 @@
         }
       }
     ],
-    "title": "配置",
+    "title": "Allocation",
     "totals": [
       {
         "currency": "USD",
@@ -162,8 +162,8 @@
   },
   "build_id": "build-demo-0001",
   "cash_after": {
-    "meaning": "假设被指派后各账户剩下的现金。",
-    "result": "两户指派后现金都在。",
+    "meaning": "Cash left in each account if assigned.",
+    "result": "Both accounts keep cash after assignment.",
     "rows": [
       {
         "amount": {
@@ -173,7 +173,7 @@
           "unit": "usd_signed",
           "value": 8000.0
         },
-        "name": "账户甲"
+        "name": "Account A"
       },
       {
         "amount": {
@@ -183,10 +183,10 @@
           "unit": "usd_signed",
           "value": 2000.0
         },
-        "name": "账户乙"
+        "name": "Account B"
       }
     ],
-    "title": "指派后现金",
+    "title": "Cash after assignment",
     "totals": [
       {
         "currency": "USD",
@@ -204,11 +204,11 @@
       "value": 120000.0
     },
     "heads": [
-      "类别",
-      "金额",
-      "占比"
+      "Category",
+      "Amount",
+      "Share"
     ],
-    "meaning": "资产按类别的构成，占比按约合美元计算。",
+    "meaning": "Assets by category; shares are computed in approx. USD.",
     "rows": [
       {
         "amount": {
@@ -217,7 +217,7 @@
           "unit": "usd",
           "value": 60000.0
         },
-        "name": "股票",
+        "name": "Stocks",
         "share": {
           "text": "50%",
           "unit": "share_percent",
@@ -231,7 +231,7 @@
           "unit": "usd",
           "value": 15000.0
         },
-        "name": "期权",
+        "name": "Options",
         "share": {
           "text": "13%",
           "unit": "share_percent",
@@ -250,7 +250,7 @@
           "unit": "usd",
           "value": 4500000.0
         },
-        "name": "日股",
+        "name": "Japan stocks",
         "share": {
           "text": "25%",
           "unit": "share_percent",
@@ -264,7 +264,7 @@
           "unit": "usd",
           "value": 15000.0
         },
-        "name": "现金",
+        "name": "Cash",
         "share": {
           "text": "13%",
           "unit": "share_percent",
@@ -272,7 +272,7 @@
         }
       }
     ],
-    "title": "构成",
+    "title": "Composition",
     "totals": [
       {
         "currency": "USD",
@@ -295,12 +295,12 @@
   },
   "concentration": {
     "heads": [
-      "公司",
-      "占家庭净值",
-      "市值"
+      "Company",
+      "Share of household net value",
+      "Market value"
     ],
-    "meaning": "最大的几项占净值的比例；各项按各自占净值计算，合计可以超过 100%。Flex 账户（配偶） 的数据日 10-29（Flex 日结单），其余按本页数据日。",
-    "result": "最大单一敞口 AAA 40%。",
+    "meaning": "Share of net value of the largest items; each is computed on its own, the total can exceed 100%. Flex account (spouse) has data day 10-29 (Flex statement), the rest use this page's data day.",
+    "result": "Largest single exposure AAA 40%.",
     "rows": [
       {
         "accounts": [
@@ -311,8 +311,8 @@
               "unit": "usd",
               "value": 25000.0
             },
-            "label": "账户（本人）",
-            "whose": "本人"
+            "label": "Account (me)",
+            "whose": "Me"
           },
           {
             "amount": {
@@ -321,8 +321,8 @@
               "unit": "usd",
               "value": 15000.0
             },
-            "label": "Flex 账户（配偶）",
-            "whose": "配偶"
+            "label": "Flex account (spouse)",
+            "whose": "Spouse"
           }
         ],
         "amount": {
@@ -348,8 +348,8 @@
               "unit": "usd",
               "value": 10000.0
             },
-            "label": "Flex 账户（配偶）",
-            "whose": "配偶"
+            "label": "Flex account (spouse)",
+            "whose": "Spouse"
           }
         ],
         "amount": {
@@ -371,12 +371,12 @@
       {
         "gap": {
           "reason": "missing_input",
-          "text": "无该账户的集中度读数"
+          "text": "No concentration reading for this account"
         },
         "scope": "daughter"
       }
     ],
-    "title": "集中度",
+    "title": "Concentration",
     "totals": [
       {
         "currency": "USD",
@@ -395,8 +395,8 @@
   "gaps": [],
   "generated_at": "2026-11-03T10:00:00+08:00",
   "income": {
-    "meaning": "每个月的收入，美元与日元分开列出。点开一个月，看它由哪些项目组成。",
-    "result": "本月截至 10-31 收入 $1,000.00。",
+    "meaning": "Income each month, USD and JPY listed apart. Open a month to see its items.",
+    "result": "Income this month to 10-31: $1,000.00.",
     "rows": [
       {
         "amount": {
@@ -426,8 +426,8 @@
         "items": [
           {
             "account": {
-              "label": "账户（本人）",
-              "whose": "本人"
+              "label": "Account (me)",
+              "whose": "Me"
             },
             "amount": {
               "currency": "USD",
@@ -436,13 +436,13 @@
               "unit": "usd_signed",
               "value": 700.0
             },
-            "item": "AAA 11-20 P250 平仓",
-            "part": "期权"
+            "item": "AAA 11-20 P250 close",
+            "part": "Options"
           },
           {
             "account": {
-              "label": "Flex 账户（配偶）",
-              "whose": "配偶"
+              "label": "Flex account (spouse)",
+              "whose": "Spouse"
             },
             "amount": {
               "currency": "USD",
@@ -451,24 +451,24 @@
               "unit": "usd_signed",
               "value": 300.0
             },
-            "item": "BBB 股息",
-            "part": "股息"
+            "item": "BBB dividend",
+            "part": "Dividend"
           }
         ],
         "name": "2026-10",
-        "summary": "含 2 项：期权 1 项、股息 1 项"
+        "summary": "2 items: 1 option, 1 dividend"
       }
     ],
     "scope_gaps": [
       {
         "gap": {
           "reason": "no_data",
-          "text": "女儿（单独计）没有按月明细，每月收入只算家庭"
+          "text": "Daughter (counted separately) has no monthly detail; monthly income counts the household only"
         },
         "scope": "daughter"
       }
     ],
-    "title": "每月收入",
+    "title": "Monthly income",
     "totals": [
       {
         "currency": "USD",
@@ -479,7 +479,7 @@
     ]
   },
   "long_term": {
-    "meaning": "长期账户的金额。",
+    "meaning": "Amount of the long-term account.",
     "rows": [
       {
         "amount": {
@@ -488,10 +488,10 @@
           "unit": "usd",
           "value": 80000.0
         },
-        "name": "养老账户"
+        "name": "Retirement account"
       }
     ],
-    "title": "长期账户",
+    "title": "Long-term account",
     "totals": [
       {
         "currency": "USD",
@@ -502,8 +502,8 @@
     ]
   },
   "month_change": {
-    "meaning": "月初到月末的变化，一步一步看清楚。",
-    "result": "月初 $200,000.00，月末 $205,999.50。",
+    "meaning": "The change from month start to month end, step by step.",
+    "result": "Month start $200,000.00, month end $205,999.50.",
     "rows": [
       {
         "base": {
@@ -526,8 +526,8 @@
           "unit": "usd",
           "value": 200000.0
         },
-        "name": "月初",
-        "sentence": "月初的家庭资产合计，取 09-30 的日结单。"
+        "name": "Month start",
+        "sentence": "Household assets total at month start, from the 09-30 statement."
       },
       {
         "base": {
@@ -556,8 +556,8 @@
           "unit": "usd",
           "value": 203000.0
         },
-        "name": "股票市值变动",
-        "sentence": "股票市值在这个月里的变化：取 09-30 与 10-30 两份日结单之差（10-31 没有日结单，月末用 10-30 的），日结单里的股票市值相减。"
+        "name": "Stock market value change",
+        "sentence": "Change of stock market value this month: the difference of the 09-30 and 10-30 statements (there is no 10-31 statement, month end uses 10-30), stock market value in the statements subtracted."
       },
       {
         "base": {
@@ -586,8 +586,8 @@
           "unit": "usd",
           "value": 208000.0
         },
-        "name": "入金",
-        "sentence": "本月的入金，出金为负；取自现金流水。"
+        "name": "Deposits",
+        "sentence": "This month's deposits, withdrawals negative; from the cash flow."
       },
       {
         "base": {
@@ -616,8 +616,8 @@
           "unit": "usd",
           "value": 205999.5
         },
-        "name": "其他",
-        "sentence": "月初到月末的总变化，减去上面各项之后剩下的：费用、汇率、以及日结单拆不出的部分。"
+        "name": "Other",
+        "sentence": "Total change from month start to month end, minus the items above: fees, exchange rate and the part the daily statements cannot split."
       },
       {
         "base": {
@@ -640,11 +640,11 @@
           "unit": "usd",
           "value": 205999.5
         },
-        "name": "月末",
-        "sentence": "月末的家庭资产合计，取 10-30 的日结单。"
+        "name": "Month end",
+        "sentence": "Household assets total at month end, from the 10-30 statement."
       }
     ],
-    "title": "这个月为什么变了",
+    "title": "Why this month changed",
     "total": {
       "currency": "USD",
       "text": "$205,999.50",
@@ -654,17 +654,17 @@
   },
   "movers": {
     "columns": [
-      "名称",
-      "上个交易日",
-      "现价",
-      "带动"
+      "Name",
+      "Previous trading day",
+      "Last price",
+      "Driver"
     ],
-    "meaning": "今天各项资产的变化，涨跌由大到小看谁在带动。",
+    "meaning": "Today's change of each asset, largest moves first, to see what drives it.",
     "options": [
       {
         "account": {
-          "label": "账户（本人）",
-          "whose": "本人"
+          "label": "Account (me)",
+          "whose": "Me"
         },
         "amount": {
           "currency": "USD",
@@ -678,7 +678,7 @@
           "text": "2.5000",
           "value": 2.5
         },
-        "name": "AAA 11-20 P250/240 价差 ×1",
+        "name": "AAA 11-20 P250/240 spread ×1",
         "previous": {
           "currency": "USD",
           "text": "3.0000",
@@ -696,7 +696,7 @@
           "unit": "usd_signed",
           "value": 1150.0
         },
-        "name": "其他",
+        "name": "Other",
         "scope": "household"
       }
     ],
@@ -704,7 +704,7 @@
       {
         "gap": {
           "reason": "missing_input",
-          "text": "无盘中价格（Flex）"
+          "text": "No intraday prices (Flex)"
         },
         "scope": "household"
       }
@@ -712,8 +712,8 @@
     "stocks": [
       {
         "account": {
-          "label": "账户（本人）",
-          "whose": "本人"
+          "label": "Account (me)",
+          "whose": "Me"
         },
         "amount": {
           "currency": "USD",
@@ -737,8 +737,8 @@
       },
       {
         "account": {
-          "label": "账户（女儿）",
-          "whose": "女儿"
+          "label": "Account (daughter)",
+          "whose": "Daughter"
         },
         "amount": {
           "currency": "USD",
@@ -761,7 +761,7 @@
         "scope": "daughter"
       }
     ],
-    "title": "谁带动了今天",
+    "title": "What moved today",
     "totals": [
       {
         "currency": "USD",
@@ -773,22 +773,22 @@
     ]
   },
   "notes": [
-    "日元兑美元汇率 150.000。日元金额保留日元原值，约合美元只作参考，不与其他币种相加。"
+    "JPY to USD rate 150.000. Yen amounts keep their yen value; approx. USD is for reference only and is not added to other currencies."
   ],
   "obligations": {
-    "approx_usd_label": "合计 ≈USD（仅供参考）",
+    "approx_usd_label": "Total ≈USD (for reference only)",
     "approx_usd_total": {
       "text": "≈$1,167",
       "unit": "USD",
       "value": 1167.0
     },
     "columns": [
-      "名称",
-      "到期",
-      "开仓价",
-      "金额"
+      "Name",
+      "Expiry",
+      "Open price",
+      "Amount"
     ],
-    "meaning": "未来 30 天内到期、需要现金的义务。",
+    "meaning": "Obligations due within 30 days that need cash.",
     "rows": [
       {
         "amount": {
@@ -803,11 +803,11 @@
           "value": 100000.0
         },
         "due": "2026-11-15",
-        "name": "房贷",
-        "note": "账户 账户乙，到期日 2026-11-15，15 天后",
+        "name": "Mortgage",
+        "note": "Account Account B, expiry 2026-11-15, in 15 days",
         "open_price": {
           "reason": "missing_input",
-          "text": "缺开仓价"
+          "text": "no open price"
         }
       },
       {
@@ -818,18 +818,18 @@
           "value": 500.0
         },
         "due": "2026-11-30",
-        "name": "保险",
-        "note": "账户 账户甲，到期日 2026-11-30，30 天后",
+        "name": "Insurance",
+        "note": "Account Account A, expiry 2026-11-30, in 30 days",
         "open_price": {
           "reason": "missing_input",
-          "text": "缺开仓价"
+          "text": "no open price"
         }
       }
     ],
-    "title": "下 30 天到期的义务",
+    "title": "Obligations due in the next 30 days",
     "total_labels": [
-      "合计 USD",
-      "合计 JPY"
+      "Total USD",
+      "Total JPY"
     ],
     "totals": [
       {
@@ -857,7 +857,7 @@
       "unit": "USD",
       "value": 145001.0
     },
-    "meaning": "各账户合计的资产，美元与日元分开列出。",
+    "meaning": "Assets summed over accounts, USD and JPY listed apart.",
     "rows": [
       {
         "amount": {
@@ -866,7 +866,7 @@
           "unit": "usd",
           "value": 100000.0
         },
-        "name": "美元券商"
+        "name": "USD broker"
       },
       {
         "amount": {
@@ -880,7 +880,7 @@
           "unit": "usd",
           "value": 3000000.0
         },
-        "name": "日本券商"
+        "name": "Japan broker"
       },
       {
         "amount": {
@@ -889,10 +889,10 @@
           "unit": "usd",
           "value": 25000.5
         },
-        "name": "现金"
+        "name": "Cash"
       }
     ],
-    "title": "总览",
+    "title": "Overview",
     "totals": [
       {
         "currency": "USD",
@@ -913,8 +913,8 @@
       }
     ]
   },
-  "positions_link": "持仓",
-  "risk_link": "家庭风险",
+  "positions_link": "Positions",
+  "risk_link": "Household risk",
   "run_id": "run-demo-0001",
   "run_status": "ok",
   "schema": "household_page",
@@ -924,33 +924,33 @@
     {
       "accounts": [
         {
-          "label": "账户（本人）",
-          "whose": "本人"
+          "label": "Account (me)",
+          "whose": "Me"
         },
         {
-          "label": "Flex 账户（配偶）",
-          "whose": "配偶"
+          "label": "Flex account (spouse)",
+          "whose": "Spouse"
         }
       ],
       "key": "household",
-      "label": "家庭（本人+配偶）"
+      "label": "Household (me + spouse)"
     },
     {
       "accounts": [
         {
-          "label": "账户（女儿）",
-          "whose": "女儿"
+          "label": "Account (daughter)",
+          "whose": "Daughter"
         }
       ],
       "key": "daughter",
-      "label": "女儿（单独计）"
+      "label": "Daughter (counted separately)"
     }
   ],
-  "sentence": "家庭资产：$125,000.50、¥3,000,000，合计≈$145,001。",
+  "sentence": "Household: $125,000.50, ¥3,000,000, total ≈$145,001.",
   "stale": {
     "data_time": "2026-10-31T09:00:00+08:00",
     "stale_after": "2026-11-01T21:00:00+08:00",
-    "text": "数据已过期：数据时间 2026-10-31 09:00（吉隆坡）"
+    "text": "Data is out of date: Data time 2026-10-31 09:00 (UTC+8)"
   },
   "stress": {
     "approx_usd_total": {
@@ -958,7 +958,7 @@
       "unit": "USD",
       "value": 15000.0
     },
-    "meaning": "几种假设情形下的估算变化，仅供参考。",
+    "meaning": "Estimated change under a few what-if cases, for reference only.",
     "rows": [
       {
         "amount": {
@@ -968,7 +968,7 @@
           "unit": "usd_signed",
           "value": -12000.0
         },
-        "name": "股市下跌 10%"
+        "name": "Stocks fall 10%"
       },
       {
         "amount": {
@@ -983,10 +983,10 @@
           "unit": "usd_signed",
           "value": -450000.0
         },
-        "name": "日元升值 10%"
+        "name": "Yen rises 10%"
       }
     ],
-    "title": "压力",
+    "title": "Stress",
     "totals": [
       {
         "currency": "USD",
@@ -1009,15 +1009,15 @@
       }
     ]
   },
-  "title": "家庭资产",
+  "title": "Household",
   "trend": {
     "change": {
-      "text": "+2.5%：最后一点比第一点",
+      "text": "+2.5%: last point against first",
       "tone": "up",
       "unit": "percent",
       "value": 2.5
     },
-    "meaning": "家庭资产按日的走势，变化是最后一个点对第一个点。",
+    "meaning": "Household assets by day; the change is the last point against the first.",
     "rows": [
       {
         "change": {
@@ -1065,12 +1065,12 @@
     "series": [
       {
         "change": {
-          "text": "+2.5%：最后一点比第一点",
+          "text": "+2.5%: last point against first",
           "tone": "up",
           "unit": "percent",
           "value": 2.5
         },
-        "label": "家庭（本人+配偶）",
+        "label": "Household (me + spouse)",
         "rows": [
           {
             "change": {
@@ -1116,16 +1116,16 @@
           }
         ],
         "scope": "household",
-        "window": "2026-10-01 至 2026-10-03，最后一点对第一点"
+        "window": "2026-10-01 to 2026-10-03, last point against first"
       },
       {
         "change": {
-          "text": "+2.0%：最后一点比第一点",
+          "text": "+2.0%: last point against first",
           "tone": "up",
           "unit": "percent",
           "value": 2.0
         },
-        "label": "女儿（单独计）",
+        "label": "Daughter (counted separately)",
         "rows": [
           {
             "change": {
@@ -1157,10 +1157,10 @@
           }
         ],
         "scope": "daughter",
-        "window": "2026-10-01 至 2026-10-03，最后一点对第一点"
+        "window": "2026-10-01 to 2026-10-03, last point against first"
       }
     ],
-    "title": "走势",
-    "window": "2026-10-01 至 2026-10-03，最后一点对第一点"
+    "title": "Trend",
+    "window": "2026-10-01 to 2026-10-03, last point against first"
   }
 }

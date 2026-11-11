@@ -95,7 +95,7 @@ it('shows the gap sentence and the watch-list sentence, and no holdings, for gap
   const payload = fixture('gap.json')
   await show(payload)
   const text = host.textContent ?? ''
-  expect(text).toContain('持仓：数据不足')
+  expect(text).toContain('Positions: not enough data')
   expect(text).toContain(payload.watch_list.sentence)
   expect(text).toContain(payload.stale.text)
   expect(host.querySelector('[data-block=holdings]')).toBeNull()

@@ -9,12 +9,12 @@ export const gap = {
       ...cyclical,
       rows: [
         ...cyclical.rows.slice(0, 1),
-        { kind: 'gap', reason: 'no_data', text: 'DDD 只有 4 年，不够 10 年诊断。' },
+        { kind: 'gap', reason: 'no_data', text: 'DDD has only 4 years, not enough for a 10-year check.' },
       ],
     },
     {
       ...financial,
-      rows: [{ kind: 'gap', reason: 'no_reader', text: 'EEE 没有 US GAAP 年报。' }],
+      rows: [{ kind: 'gap', reason: 'no_reader', text: 'EEE has no US GAAP annual reports.' }],
     },
   ],
 } satisfies DiagnosisPage
