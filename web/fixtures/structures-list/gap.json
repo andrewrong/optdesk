@@ -25,7 +25,7 @@
               "reason": "no_data",
               "text": "Close cost missing: net roll credit cannot be computed"
             },
-            "sentence": "Earned: No quote: earned cannot be computed (your target 50%), 1 day to expiry (your target 21 days), close cost: no mark price, close cost cannot be computed, net roll credit: Close cost missing: net roll credit cannot be computed"
+            "sentence": "Earned: no quote, cannot be computed (your target 50%); 1 day to expiry (your target 21 days); close cost: no mark price, cannot be computed; net roll credit: close cost missing, cannot be computed"
           },
           "distance": "-9.1%",
           "earned": {
