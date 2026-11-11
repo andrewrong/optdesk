@@ -128,3 +128,39 @@ func TestConfigHoldsNoTokenOrAccountValue(t *testing.T) {
 		t.Fatalf("file %+v", f)
 	}
 }
+
+func TestConfigAcceptsThirdAlias(t *testing.T) {
+	t.Parallel()
+	p := writeConf(t, t.TempDir(), "flex_alias_c.toml", 0o600)
+	f, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Accounts) != 3 || f.Accounts[2].Alias != "c" {
+		t.Fatalf("accounts = %+v", f.Accounts)
+	}
+}
+
+func TestConfigRefusesBadAlias(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ file, alias string }{
+		{"flex_alias_upper.toml", "C"},
+		{"flex_alias_empty.toml", ""},
+	} {
+		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
+			p := writeConf(t, t.TempDir(), tc.file, 0o600)
+			_, err := Load(p)
+			if !errors.Is(err, sources.ErrFlexConfig) {
+				t.Fatalf("err = %v", err)
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "account[") || !strings.Contains(msg, "alias") {
+				t.Fatalf("error does not name entry and field: %v", msg)
+			}
+			if tc.alias != "" && strings.Contains(msg, tc.alias) {
+				t.Fatalf("error carries the alias value: %v", msg)
+			}
+		})
+	}
+}

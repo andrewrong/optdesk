@@ -62,6 +62,8 @@ type job struct {
 	// day is remembered and the calls that follow, for the other keys or a retry of the key, return it.
 	mu   sync.Mutex
 	done map[contracts.Day]contracts.JobResult
+	// aliasRows is the count of rows of each alias of the day's fetch, kept next to done.
+	aliasRows map[contracts.Day]map[string]int
 }
 
 type typedError struct {
@@ -107,7 +109,10 @@ func newJob(s OptionLedgerStores, cfg OptionLedgerConfig, clk clock.Clock, log *
 	if _, err := time.Parse(dayLayout, cfg.HistoryFrom); err != nil {
 		return nil, errors.New("optionledger: history_from is not a day")
 	}
-	return &job{m: m, offset: offset, runBound: bound, stores: s, cfg: cfg, clk: clk, loc: loc, log: log, done: map[contracts.Day]contracts.JobResult{}}, nil
+	return &job{
+		m: m, offset: offset, runBound: bound, stores: s, cfg: cfg, clk: clk, loc: loc, log: log,
+		done: map[contracts.Day]contracts.JobResult{}, aliasRows: map[contracts.Day]map[string]int{},
+	}, nil
 }
 
 // ID is the job id of the manifest.
@@ -156,6 +161,7 @@ type run struct {
 	// failedRequired holds the names of the required logins that failed.
 	failedRequired []string
 	res            contracts.JobResult
+	rowsByAlias    map[string]int
 }
 
 // Run fetches every query of every login once per window, once per day whatever the keys: the keys are
@@ -163,15 +169,26 @@ type run struct {
 // included, so a failed window is not retried that day. A failed window stops that query for the run. A
 // failure of a login without Required is one degraded log record and leaves the result ok; a failure of a
 // Required login fails the result. A run cut by ctx is not remembered.
-func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
+//
+// With one key the result carries that alias's own returned count and a Usable of 0: the store counts new
+// and revised rows for the whole report, not per alias. With no key it is the job-wide result.
+func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if res, ok := j.done[day]; ok {
-		return res
+	res, ok := j.done[day]
+	rows := j.aliasRows[day]
+	if !ok {
+		var rba map[string]int
+		res, rba = j.fetchAll(ctx)
+		rows = rba
+		if ctx.Err() == nil {
+			j.done[day] = res
+			j.aliasRows[day] = rba
+		}
 	}
-	res := j.fetchAll(ctx)
-	if ctx.Err() == nil {
-		j.done[day] = res
+	if len(keys) == 1 {
+		res.Returned = rows[keys[0].SubjectKey]
+		res.Usable = 0
 	}
 	return res
 }
@@ -185,10 +202,10 @@ func (j *job) Postcondition(_ context.Context, day, _, _ string) (bool, error) {
 	return ok && res.Err == nil, nil
 }
 
-func (j *job) fetchAll(ctx context.Context) contracts.JobResult {
+func (j *job) fetchAll(ctx context.Context) (contracts.JobResult, map[string]int) {
 	now := j.clk.Now().In(j.loc)
 	yesterday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -1)
-	r := &run{j: j, last: contracts.Day(yesterday.Format(dayLayout)), degraded: map[string]bool{}}
+	r := &run{j: j, last: contracts.Day(yesterday.Format(dayLayout)), degraded: map[string]bool{}, rowsByAlias: map[string]int{}}
 	aliases, err := j.stores.Read.StoredAliases(ctx)
 	r.storeErr = err
 	r.stored = make(map[string]bool, len(aliases))
@@ -207,7 +224,17 @@ func (j *job) fetchAll(ctx context.Context) contracts.JobResult {
 	if len(r.failedRequired) > 0 {
 		r.res.Err = &typedError{kind: contracts.Permanent, err: fmt.Errorf("optionledger: required login %s failed", r.failedRequired[0])}
 	}
-	return r.res
+	names := make([]string, 0, len(r.rowsByAlias))
+	for a := range r.rowsByAlias {
+		names = append(names, a)
+	}
+	sort.Strings(names)
+	attrs := []any{"total_returned", r.res.Returned, "total_usable", r.res.Usable}
+	for _, a := range names {
+		attrs = append(attrs, "rows_"+a, r.rowsByAlias[a])
+	}
+	j.log.Info("optionledger: fetched", attrs...)
+	return r.res, r.rowsByAlias
 }
 
 // fail records the failure of a login: the degraded log record (login and status only) for a login
@@ -301,6 +328,9 @@ func (r *run) fetch(ctx context.Context, l FlexRun, queryID string, w window) st
 	ins, err := r.j.stores.Ledger.RecordFlexFetch(ctx, rec, rows)
 	if err != nil {
 		return "store_error"
+	}
+	for _, row := range rows {
+		r.rowsByAlias[row.Alias]++
 	}
 	r.res.Returned += len(rows)
 	r.res.Usable += ins.New + ins.Revised
