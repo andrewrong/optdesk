@@ -511,7 +511,7 @@ func (l *liveQuotes) cardIDs(ctx context.Context, day contracts.Day) map[int]boo
 		return out
 	}
 	for _, r := range rows {
-		if r.Status == "ok" && r.RankInUnderlying != nil && *r.RankInUnderlying == 1 {
+		if isCardRow(r) {
 			out[r.InstrumentID] = true
 		}
 	}

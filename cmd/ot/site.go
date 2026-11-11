@@ -253,8 +253,8 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
 	}
-	var ok2 bool
-	if rd.ext, ok2 = openFamilyReaders(ctx, a, track); !ok2 {
+	var extOK bool
+	if rd.ext, extOK = openFamilyReaders(ctx, a, track); !extOK {
 		return fail()
 	}
 	return withPositionsRules(a, rd), closeAll, nil
