@@ -24,6 +24,7 @@ var (
 		broker.KindOptionEod:    pb.QuoteKind_QUOTE_KIND_OPTION_EOD,
 		broker.KindUnderlyingIV: pb.QuoteKind_QUOTE_KIND_UNDERLYING_IV,
 		broker.KindSnapshot:     pb.QuoteKind_QUOTE_KIND_SNAPSHOT,
+		broker.KindOptionOpen:   pb.QuoteKind_QUOTE_KIND_OPTION_OPEN,
 	}
 	statusOfProto = map[pb.QuoteStatus]broker.Status{
 		pb.QuoteStatus_QUOTE_STATUS_OK:              broker.StatusOK,
