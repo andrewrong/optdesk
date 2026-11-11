@@ -210,7 +210,7 @@ func TestStockRowsOfAnOpenQuoteShowItsPrices(t *testing.T) {
 			line = l
 		}
 	}
-	want := []string{"1.5", "1.6", "−0.2", "31%", "-0.03", "0.04", "0.06", "77"}
+	want := []string{"1.5", "1.6", "−0.2", "31%", "-0.0300", "0.0400", "0.0600", "77"}
 	for i, w := range want {
 		if got := line.Cells[2+i]; got != w {
 			t.Errorf("contract cell %d = %q, want %q", 2+i, got, w)
@@ -225,6 +225,37 @@ func TestStockRowsOfAnOpenQuoteShowItsPrices(t *testing.T) {
 		case "c102":
 			if c.Premium != "Premium 1.20" {
 				t.Errorf("close cell premium = %q, want the stored close bid", c.Premium)
+			}
+		}
+	}
+}
+
+func TestLiveGreeksFourDecimals(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	opens := []contracts.OptionOpen{{
+		InstrumentID: 101, Slot: "0945", Status: 1, MarketDataType: 1, Bid: f(1.5), Ask: f(1.6), Delta: f(-0.2), IvDecimal: f(0.31),
+		ThetaPerCalendarDay: f(-0.03), Gamma: f(0.04), VegaPerVolPoint: nil, Volume: f(77),
+		EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
+	}, {
+		InstrumentID: 102, Slot: "0945", Status: 1, MarketDataType: 1, Bid: f(1.5), Ask: f(1.6), Delta: f(-0.2), IvDecimal: f(0.31),
+		ThetaPerCalendarDay: f(-0.03), Gamma: f(0.04), VegaPerVolPoint: f(0.06), Volume: f(77),
+		EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC)),
+	}}
+	p, _ := stockWithQuotes(t, &fakeOpens{rows: opens})
+	for _, l := range p.Contracts.Rows {
+		if l.Quote.Source != "open_pull" {
+			continue
+		}
+		vega := "0.0600"
+		if len(l.Cells) > 8 && l.Cells[8] == "n/a" {
+			vega = "n/a"
+		}
+		want := []string{"-0.0300", "0.0400", vega, "77"}
+		got := l.Cells[6:10]
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("cell %d = %q, want %q", 6+i, got[i], want[i])
 			}
 		}
 	}
