@@ -122,18 +122,21 @@ func TestOptionOpenStoreThatCannotOpenIsHeldAndListedDisabled(t *testing.T) {
 	}
 }
 
-func TestOptionOpenDeadSocketIsStartOff(t *testing.T) {
+func TestOptionOpenDeadSocketHoldsJobsWithBrokerReason(t *testing.T) {
 	t.Parallel()
-	dis := startDisabled(runOnceConfig{}, false)
+	h := newOpenHarness(t, deadEnv, false, nil)
 	for _, id := range openIDs {
-		if dis[id] != reasonBrokerDown {
-			t.Fatalf("disabled[%s] = %q", id, dis[id])
+		if _, reason := h.build(t, id); reason != reasonBrokerDown {
+			t.Fatalf("%s: reason %q", id, reason)
 		}
 	}
-	h := newOpenHarness(t, deadEnv, false, nil)
-	h.build(t, jobOptionOpenResolve)
 	if len(h.dialed) != 0 {
 		t.Fatalf("dialed with the broker down: %v", h.dialed)
+	}
+	for _, id := range openIDs {
+		if r := startDisabled(runOnceConfig{}, false)[id]; r != "" {
+			t.Fatalf("startDisabled lists %s: %q", id, r)
+		}
 	}
 }
 

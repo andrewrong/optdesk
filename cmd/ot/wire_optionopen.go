@@ -33,15 +33,16 @@ const (
 
 func init() {
 	// Orders 120, 130, 140 and 190: resolve, plan, pull, gap pass. A job that cannot be wired is held with its
-	// reason (the scheduler lists it as disabled, run-once leaves it out); a dead socket is the startOff.
+	// reason (the scheduler lists it as disabled, run-once leaves it out), a dead socket included (brokerDownOff
+	// would list the ids even when the family is absent, see openOptionOpen).
 	registerJob(jobFamily{
-		id: jobOptionOpenResolve, order: 120, startOff: brokerDownOff,
+		id: jobOptionOpenResolve, order: 120,
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolve, optionopen.NewResolve, true, broker.Options{ResolveInFlight: 1})
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpenPlan, order: 130, startOff: brokerDownOff,
+		id: jobOptionOpenPlan, order: 130,
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpenPlan, true)
 			if !ok {
@@ -54,7 +55,7 @@ func init() {
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpen, order: 140, startOff: brokerDownOff,
+		id: jobOptionOpen, order: 140,
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpen, false)
 			if !ok {
@@ -68,7 +69,7 @@ func init() {
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpenResolveGap, order: 190, startOff: brokerDownOff,
+		id: jobOptionOpenResolveGap, order: 190,
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveGap, optionopen.NewGap, false, broker.Options{ResolveInFlight: 1})
 		},
@@ -152,7 +153,9 @@ func openStored(jc *jobCtx, stores openquote.Stores) optionopen.Stored {
 // bar store) leaves the family out: ok is false after one startup line naming the job and the line. Held (the
 // reason with the job) cannot carry it: wiring.runnable hashes every job once one is held, and a job whose type is
 // not hashable would panic there; the scheduler's disabled list therefore lacks these ids until that is fixed.
-// A store that cannot be opened is held with its reason.
+// A dead socket (brokerUp false) or a store that cannot be opened holds the job with its reason; this is
+// not the startOff of the family, because startOff would list the ids of absent families as disabled and
+// break the tests that count the disabled ids.
 func openOptionOpen(ctx context.Context, a *app, jc *jobCtx, id string, needBars bool) (stores openquote.Stores, reason string, ok bool) {
 	dsn := a.getenv(openquote.DSNEnvOptionOpen)
 	left := func(why string) (openquote.Stores, string, bool) {
@@ -167,12 +170,15 @@ func openOptionOpen(ctx context.Context, a *app, jc *jobCtx, id string, needBars
 	case needBars && jc.f.bars == nil:
 		return left(reasonNoBarDSN)
 	}
+	if !jc.brokerUp {
+		reason = reasonBrokerDown
+	}
 	s, err := optionopenpg.Open(ctx, dsn)
 	if err != nil {
-		return noOpenStore{err: errors.New(reasonOpenStoreFail)}, reasonOpenStoreFail, true
+		return noOpenStore{err: errors.New(reasonOpenStoreFail)}, firstReason(reason, reasonOpenStoreFail), true
 	}
 	jc.extra.addCloser(s)
-	return s, "", true
+	return s, reason, true
 }
 
 // noOpenStore stands in for the option open store of a held job: every call answers its error.
