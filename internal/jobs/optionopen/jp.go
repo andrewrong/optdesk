@@ -119,10 +119,14 @@ func (r jpRules) planFunc(base PlanFunc) PlanFunc {
 func (r jpRules) watch(in []jobs.WatchEntry) []jobs.WatchEntry {
 	var out []jobs.WatchEntry
 	for _, e := range in {
-		if e.Market != "JP" || e.Contract.SecType != "STK" || r.noOption(e.Contract.Symbol) {
+		sym := e.Contract.Symbol
+		stk := e.Contract.SecType == "STK"
+		if e.Market != "JP" || r.noOption(sym) || !(stk || e.Contract.SecType == "IND" && r.isIndex(sym)) {
 			continue
 		}
-		e.Market = "US" // the market the shared list selects; the JP rule is applied here
+		// The shared list selects market US and stocks: the JP rule is applied here, and an index entry
+		// passes as a stock (jpBroker and jpPull send it as the index it is).
+		e.Market, e.Contract.SecType = "US", "STK"
 		out = append(out, e)
 	}
 	return out
@@ -164,6 +168,9 @@ type jpBroker struct {
 }
 
 func (b jpBroker) ListChains(ctx context.Context, u broker.Contract) ([]broker.Chain, error) {
+	if b.r.isIndex(u.Symbol) {
+		u.SecType, u.Exchange = "IND", b.r.Chain.Exchange
+	}
 	all, err := b.Broker.ListChains(ctx, u)
 	if err != nil {
 		return nil, err
@@ -219,7 +226,100 @@ var _ NewPullFunc = NewPullJP
 
 // NewPullJP builds option_open_jp from the embedded job_pull_jp.toml. It is NewPull over the JP manifest: the key
 // day is the date in Asia/Tokyo.
-func NewPullJP(d PullDeps) (contracts.Job, error) { return newPullFrom(pullManifestJP, d) }
+func NewPullJP(d PullDeps) (contracts.Job, error) {
+	j, err := newPullFrom(pullManifestJP, d)
+	if err != nil {
+		return nil, err
+	}
+	m, err := parseManifest(planManifestJP)
+	if err != nil {
+		return nil, err
+	}
+	r, err := parseJPRules(planManifestJP)
+	if err != nil {
+		return nil, err
+	}
+	return &jpPull{pull: j.(*pull), params: m.params, rules: r}, nil
+}
+
+// jpPull is the pull with the JP plan parameters: at the open the core chooses the strikes again with DTE 14 to
+// 90, not the US 20 to 45, and an index name is sent as the index of OSE.JPN.
+type jpPull struct {
+	*pull
+	params PlanParams
+	rules  jpRules
+}
+
+// Run is pull.Run with runKey of jpPull.
+func (p *jpPull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	local := p.d.Clock.Now().In(p.loc)
+	if string(day) != local.Format(time.DateOnly) {
+		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
+	}
+	bs, err := p.batches(ctx, day)
+	if err != nil {
+		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
+	}
+	byKey := map[string]batch{}
+	for _, b := range bs {
+		byKey[b.subject] = b
+	}
+	var res contracts.JobResult
+	planned, ok := 0, 0
+	for _, k := range keys {
+		b, found := byKey[k.SubjectKey]
+		if !found {
+			return withErr(res, newErr(contracts.Permanent, "unknown key %q", k.SubjectKey))
+		}
+		for _, it := range b.items {
+			if !it.Deferred {
+				planned++
+			}
+		}
+		if mins := p.d.Clock.Now().In(p.loc); mins.Hour()*60+mins.Minute() >= p.stop {
+			return withErr(res, newErr(contracts.Permanent, "after %s: key %s not started, %d of %d planned items ok", p.m.StopAfter, k.SubjectKey, ok, planned))
+		}
+		rows, terr := p.runKey(ctx, b)
+		if terr != nil {
+			return withErr(res, terr)
+		}
+		res.Returned += len(rows)
+		for _, r := range rows {
+			if r.Status == stOK {
+				ok++
+			}
+		}
+		res.Usable = ok
+	}
+	if need := p.m.MinOKShare * float64(planned); float64(ok) < need {
+		return withErr(res, newErr(contracts.Permanent, "%d of %d planned items ok, under the share %.2f", ok, planned, p.m.MinOKShare))
+	}
+	return res
+}
+
+// runKey is pull.runKey with the JP parameters of the core.
+func (p *jpPull) runKey(ctx context.Context, b batch) ([]contracts.OptionOpen, contracts.TypedError) {
+	ts, err := p.targets(ctx, b.items)
+	if err != nil {
+		return nil, asTyped(err, contracts.Retryable)
+	}
+	for i := range ts {
+		if p.rules.isIndex(ts[i].Symbol) {
+			ts[i].Under.SecType, ts[i].Under.Exchange = "IND", p.rules.Chain.Exchange
+		}
+	}
+	c := &Core{
+		B: p.d.Broker, Clk: p.d.Clock, Params: p.params, Slot: p.m.Slot, Chunk: p.m.Chunk, Retry: p.retry,
+		Budget: time.Duration(p.m.BudgetMinutes) * time.Minute, Beat: time.Duration(p.m.HeartbeatSeconds) * time.Second,
+		Log: p.d.Log,
+	}
+	r := c.Pull(ctx, ts)
+	c.logger().Info(r.Summary.String(), "key", b.subject)
+	if err := p.d.Writer.InsertOptionOpen(ctx, r.Rows); err != nil {
+		return nil, asTyped(err, contracts.Retryable)
+	}
+	return r.Rows, nil
+}
 
 // newPullFrom is the body of NewPull for a manifest given.
 func newPullFrom(data []byte, d PullDeps) (contracts.Job, error) {

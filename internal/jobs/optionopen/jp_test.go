@@ -260,3 +260,63 @@ func TestJPLunchBreakIsTheManifestValue(t *testing.T) {
 		t.Errorf("lunch break %v", got)
 	}
 }
+
+func TestPullJPQuotesAPlannedContractOf60DaysToExpiry(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC))
+	s := seed(1, 1)
+	s.items[0].Class = "puts"
+	s.refs[1][0].Expiry = "2027-01-10" // 60 days after the session day
+	s.refs[1][0].Strike = "95"
+	j := newPullJP(t, s, clk)
+	keys, _, err := j.Plan(context.Background(), "2026-11-11")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := j.Run(context.Background(), "2026-11-11", keys); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	row := s.written[0][0]
+	if row.Status != stOK || row.OutsideBand {
+		t.Fatalf("got status %d outside_band %v, want ok inside the JP band 14-90", row.Status, row.OutsideBand)
+	}
+}
+
+func TestPlanJPPlansTheIndexOfTheWatchList(t *testing.T) {
+	t.Parallel()
+	r := newPlanRig()
+	r.clk.t = time.Date(2026, 11, 9, 23, 15, 0, 0, time.UTC)
+	r.seed(t, 100, putStrikes...)
+	j, err := NewPlanJP(PlanDeps{
+		Stored: Stored{Watch: []jobs.WatchEntry{{Market: "JP", Contract: broker.Contract{SecType: "IND", Symbol: "N225", Exchange: "OSE.JPN",
+			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod},
+		Marks: r.marks, Plans: r.plans, Clock: r.clk,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := r.run(t, j); res.Err != nil || len(r.plans.items) == 0 {
+		t.Fatalf("err=%v items=%d", res.Err, len(r.plans.items))
+	}
+}
+
+func TestResolveJPAsksTheChainsOfTheIndexAsAnIndex(t *testing.T) {
+	t.Parallel()
+	rules, _ := parseJPRules(planManifestJP)
+	var got broker.Contract
+	fb := &spyChains{fakeResolver: &fakeResolver{}, got: &got}
+	_, _ = jpBroker{fb, rules}.ListChains(context.Background(), broker.Contract{SecType: "STK", Symbol: "N225", Exchange: "TSEJ"})
+	if got.SecType != "IND" || got.Exchange != "OSE.JPN" {
+		t.Errorf("asked %+v", got)
+	}
+}
+
+type spyChains struct {
+	*fakeResolver
+	got *broker.Contract
+}
+
+func (s *spyChains) ListChains(ctx context.Context, u broker.Contract) ([]broker.Chain, error) {
+	*s.got = u
+	return s.fakeResolver.ListChains(ctx, u)
+}
