@@ -92,9 +92,9 @@ Can pyside carry this? From the code (`pyside/src/optdesk/ibkr/`), not from a gu
 
 Learned from option-trader's gateway checks (its advisor, 2026-11-10), set against what `pyside/src/optdesk/ibkr/` has. Five points.
 
-1. Read-only proof. Option-trader: after every handshake a short second connection with client id 0 sends one `reqOpenOrders` and passes only on the rejection "Read-Only mode" (error 321) within 5 s; no rejection means `GatewayNotReadOnly`, an alert and a stop that the starter does not restart; neither answer fails the connection. Optdesk has: the send guard of `transport.py` (`install_guard`, installed on every client before it connects; `ORDER_IDS` 3, 4, 21, 58 refused first, then an allowlist of ids 1, 2, 7, 9, 20, 25, 49, 59, 71, 78 and 61 to 64, everything else refused: stricter than option-trader's deny list, since reqOpenOrders 5, reqPnL 92 and 94 and the others are not on it) and the "Read-Only API" setting of IB Gateway as the second layer (`pyside-gateways-health.md` decision 5). It has no proof that the second layer is on. What the open pull needs: the guard already covers it (`gateway_factory` installs it on every gateway), and the open pull uses only ids already allowed (1, 2, 9, 59, 78). There is one connection to the gateway (Decision 9), so one probe per gateway process is enough. Wave 1 (issue 21): a new file `readonly_probe.py` holds the probe with its own narrow send guard (only message id 5, `reqOpenOrders`; every other id refused, the order ids first), and `ibgateway.py` runs it after every handshake and before the session is marked connected: a short connection with client id 0, one `reqOpenOrders`, passing only on error 321 ("Read-Only mode") within 5 s; anything else raises, the gateway stays not connected, and `Snapshot` already answers `UNAVAILABLE` ("the gateway is not connected", `transport.py`), so a run fails before its first request. No edit of `transport.py` is needed. Wave 2, issue 16 (owner merge): only the `allowed` parameter of `install_guard` (point 3). Source: option-trader #757, #786, #794 and its ADR 0004.
+1. Read-only proof. Option-trader: after every handshake a short second connection with client id 0 sends one `reqOpenOrders` and passes only on the rejection "Read-Only mode" (error 321) within 5 s; no rejection means `GatewayNotReadOnly`, an alert and a stop that the starter does not restart; neither answer fails the connection. Optdesk has: the send guard of `transport.py` (`install_guard`, installed on every client before it connects; `ORDER_IDS` 3, 4, 21, 58 refused first, then an allowlist of ids 1, 2, 7, 9, 20, 25, 49, 59, 71, 78 and 61 to 64, everything else refused: stricter than option-trader's deny list, since reqOpenOrders 5, reqPnL 92 and 94 and the others are not on it) and the "Read-Only API" setting of IB Gateway as the second layer (`pyside-gateways-health.md` decision 5). It had no proof that the second layer is on until issue 21 (PRs 1405 and 1417), which has landed on main. What the open pull needs: the guard already covers it (`gateway_factory` installs it on every gateway), and the open pull uses only ids already allowed (1, 2, 9, 59, 78). There is one connection to the gateway (Decision 9), so one probe per gateway process is enough. Wave 1 (issue 21, landed on main): `readonly_probe.py` holds the probe with its own narrow send guard (only message id 5, `reqOpenOrders`; every other id refused, the order ids first), and `ibgateway.py` runs it after every handshake and before the session is marked connected: a short connection with client id 0, one `reqOpenOrders`, passing only on error 321 ("Read-Only mode") within 5 s; anything else raises, the gateway stays not connected, and `Snapshot` already answers `UNAVAILABLE` ("the gateway is not connected", `transport.py`), so a run fails before its first request. No edit of `transport.py` is needed. The `allowed` parameter of `install_guard` is deferred (see `## Left out`); until a second connection role exists the guard keeps its one list and the probe has its own guard. Source: option-trader #757, #786, #794 and its ADR 0004.
 2. Health and session codes. Option-trader: a monitor of 1100/2110 (lost), 10197 (competing session), 1101/1102 (ready: a new connection generation, old subscriptions re-requested after 1101), 2103/2105/2157 (degraded); a check every 5 minutes. Optdesk has: `apiEnd` marks the session lost and wakes the jobs; `supervise` reconnects with a capped backoff and a new generation; `_on_error` ignores the codes 2100 to 2199 as informational (this swallows 2110 and 2103) and sees 1100 to 1102 and 10197 with no con id, so a 10197 (another login of the same user took the market data; the socket stays up) shows as silence: every item times out and the run ends `deadline`. The open pull cannot tell that from a thin market. Policy for the open pull, as option-trader: on 10197 keep the quotes already received, cancel the subscriptions, probe one underlying and one option at growing intervals (5, 10, 20 s), retry the unfinished items when the probe answers, and close the run partial at its deadline; the unfinished rows are written status 9 (`disconnected`), never `no_data` and never a not-listed mark (Decision 6). Wave 1 (issue 21): 10197 and 1100 mark the session lost (the path of `apiEnd`), so open items end `disconnected`, never `deadline`. Gap for wave 2: the monitor of 2110, the new generation after 1101 and the retry policy: issue 13. `pyside-gateways-health.md` (`/health` of the gateways) stays and reports a `competing_session` state in its text only if that file's contract allows it; otherwise it stays true/false.
-3. Client ids. Option-trader: fixed distinct constants per role, a check that rejects duplicates and 0, no retry on error 326 (id in use), a message allowlist per role, a pacer key per gateway. Optdesk has: a `client_id` per `[[gateway]]` entry (default 33) and a check that rejects a duplicate (host, port, client id) (`gateways.py` `_check`). The open pull adds no connection and no client id (Decision 9), so nothing is needed for the first pull. Not there, for wave 2: 0 is not rejected (0 is reserved for the probe), there is one allowlist for all gateways, and a connect that fails with 326 is retried with backoff (in wave 1, issue 21, it stops and fails). The per-role allowlist is a `install_guard` parameter in the owner-merge issue 16; the rejection of 0 is in issue 13. Client ids are fixed constants, never 0 and never shared: the job connection keeps 33; the button reaches the same connection through pyside and adds none in wave 1, and a connection added later for the button takes its own fixed id; the line cap of 100 is per gateway login, so a second id would share the 70-line budget and not add one (option-trader ADR 0012).
+3. Client ids. Option-trader: fixed distinct constants per role, a check that rejects duplicates and 0, no retry on error 326 (id in use), a message allowlist per role, a pacer key per gateway. Optdesk has: a `client_id` per `[[gateway]]` entry (default 33) and a check that rejects a duplicate (host, port, client id) (`gateways.py` `_check`). The open pull adds no connection and no client id (Decision 9), so nothing is needed for the first pull. Not there, for wave 2: 0 is not rejected (0 is reserved for the probe), there is one allowlist for all gateways, and a connect that fails with 326 is retried with backoff (in wave 1, issue 21, it stops and fails). The per-role allowlist (a parameter of `install_guard`) is deferred until a second connection role exists (`## Left out`); the rejection of 0 is in issue 13. Client ids are fixed constants, never 0 and never shared: the job connection keeps 33; the button reaches the same connection through pyside and adds none in wave 1, and a connection added later for the button takes its own fixed id; the line cap of 100 is per gateway login, so a second id would share the 70-line budget and not add one (option-trader ADR 0012).
 4. Order guard in code. Covered: the guard is installed on every client by `gateway_factory`, and the open pull uses only ids already allowed (1, 2, 9, 59, 78). The Go side adds no order method (Decision 17; `broker.Broker` has none). Nothing in this design adds a message id.
 5. Pitfalls and the pacer. Option-trader's lessons: one pacer per gateway (#757: the gateway stopped answering in a chain refresh; #786), fully specified contracts (we send con_ids), the same login elsewhere kicks the session (10197: the owner's note, Decision 10), no TWS while the gateway is up. Optdesk has one `MessagePacer` and one `LineBudget` per `IbGateway`; with a single connection to the gateway (Decision 9) that is one pacer per gateway, the rule of option-trader, and the pull and the button share it by sharing the connection. Port 4001 of IB Gateway is for probes only, never for the jobs (they go through pyside); each quote line is cancelled after its tick and the simultaneous lines stay under the account's 100 (Decision 10: 70 budget, 50 in flight); rows carry the pull time (`requested_at`, `received_at`) and the refresh re-pulls one name at a time. No change is needed: there is one connection, so no shared pacing is built (`## Left out`).
 
@@ -113,7 +113,7 @@ Owner priority 2026-11-10: the pull of 2026-11-11 09:45 ET. The cut is two waves
 
 Wave 1: issues 22 (broker interface: the error code of a resolve), 2 (datasets), 5 (plan function), 4 (store), 6 (plan job, US), 7 (pull job, US, sending the existing `OPTION_EOD` kind), 21 (pyside: read-only probe and session-loss codes, no edit of `transport.py`), 15 (wiring of the four US jobs in the scheduler). Layers: 5 and 21 start first, together; then 22 (after 5 and 21); then 2 (after 22); then 4 (after 2); then 6 and 7 (after 22, 2, 4 and 5); then 15 (after 6, 7 and 21). Issue 0 (the probe question of Decision 9) is answered and is not an issue any more: the probe of 2026-11-10 at the US open (Decision 9) showed the existing `OPTION_EOD` kind on the `main` gateway (`ibkr-main.sock`) returning live ticks; the pull uses the gateway of `ibkr.sock` like `option_eod`, to be confirmed as `main` by the window before the first run (Decision 9), so the proto kind, the transport kind map and the pyside change (issues 1, 8, 23, 12, 18 and 19) are not in wave 1, and no owner merge is needed for the first pull. The evening resolve job `option_open_resolve` runs on its slot (for the first day: issue 15, deploy, then the window's hand resolve, `## Capacity`), the gap pass at 08:00, the plan job at 08:45 and the 09:45 pull are scheduled. The safety the first pull needs exists today: the send guard of `transport.py` is installed on every client (`gateway_factory`), refuses every order id and allows only ids 1, 2, 7, 9, 20, 25, 49, 59, 71, 78 and 61 to 64, and the open pull adds no id; the broker port has no order method; the gateway runs with its "Read-Only API" setting (`pyside-gateways-health.md` decision 5). The read-only probe (option-trader's client id 0 check) and the session-loss codes are issue 21, wave 1; the first pull does not start on a gateway that is not proven read-only.
 
-Wave 2, after the first pull has run: 3 (page schema v2), 9 (pages: quote time and type, refresh state), 10 (refresh endpoint, overlay, route files), 11 (web button), 1, 23, 8, 12, 18 and 19 (the kind `OPTION_OPEN`: 15 s, no grace, from proto to the pull job), 13 (session codes and 10197 policy), 16 (guard allowlist parameter, owner merge), 17 (Japan jobs) and 20 (their wiring). Order inside wave 2: 3 after the issues of `option-page-names`; 9 after 3 and 4; 8 after 1; 23 after 1; 12 after 8 and 23; 16 after 12; 13 after 21, 16 and 8; 10 after 7, 9, 13, 15, 16 and 17; 11 after 3 and 10; 18 after 1; 19 after 18, 12 and 8 (the flip of the kind in the pull job and the button's call, Decision 17); 17 after 6, 7 and 15; 20 after 17, 13 and 16. The pyside issues 13 and 16 land before the refresh button goes live (10) and before the Japan pull (20).
+Wave 2, after the first pull has run: 3 (page schema v2), 9 (pages: quote time and type, refresh state), 10 (refresh endpoint, overlay, route files), 11 (web button), 1, 23, 8, 12, 18 and 19 (the kind `OPTION_OPEN`: 15 s, no grace, from proto to the pull job), 13 (session codes and 10197 policy), 17 (Japan jobs) and 20 (their wiring). Order inside wave 2: 3 after the issues of `option-page-names`; 9 after 3 and 4; 8 after 1; 23 after 1; 12 after 8 and 23; 13 after 21 and 8; 10 after 7, 9, 13, 15 and 17; 11 after 3 and 10; 18 after 1; 19 after 18, 12 and 8 (the flip of the kind in the pull job and the button's call, Decision 17); 17 after 6, 7 and 15; 20 after 17 and 13. The pyside issue 13 lands before the refresh button goes live (10) and before the Japan pull (20).
 
 ### 22 broker-resolve-error (interface)
 
@@ -273,8 +273,8 @@ Checked by CI: ci-go; `go test ./internal/pages/option_boards -race -count=1` (g
 Module: ot. Size: L.
 Files: `cmd/ot/live_quotes.go`, `cmd/ot/live_quotes_test.go`, `cmd/ot/serve.go`, `cmd/ot/site.go`, `cmd/ot/option_page_site.go`, `cmd/ot/option_page_site_test.go`, `cmd/ot/stock_option_site.go`, `cmd/ot/stock_option_site_test.go`, `docs/contracts/ot.md` (`site.go` opens the store readers: `openSiteReaders` / `siteReaders` gain the `OptionOpenReader` and the plan store; the two route files pass the overlay reader into the builder configs; the page-names issues edit the same route files, so this issue is ordered after them)
 Design: docs/design/option-open-pull.md#Decisions
-Order: after 7, 9, 13, 15, 16, 17.
-Sequence: wave 2; after 7, 9, 13, 15, 16 and 17 (17 gives the JP lunch break; the pyside hardening lands before the button goes live) and after the issues of `option-page-names` have merged. Second opinion: waived by the owner — the advisor answers it (owner 2026-11-10); the owner gives the merge word.
+Order: after 7, 9, 13, 15, 17.
+Sequence: wave 2; after 7, 9, 13, 15 and 17 (17 gives the JP lunch break; the pyside hardening lands before the button goes live) and after the issues of `option-page-names` have merged. Second opinion: waived by the owner — the advisor answers it (owner 2026-11-10); the owner gives the merge word.
 Goal: under `--live-quotes` (loopback only) `POST /options/refresh` with the 60 s reuse, the 40-contract and 8-symbol caps, the 15 s deadline, the session check, the hourly cap, the notice and the fallback; the overlay reader, and the `RefreshState` of each page set in the two route files (Interface: Pages); the overlay sets `slot` to `SlotRefresh` on every row it adds.
 Acceptance:
 1. `grep -c "live-quotes" cmd/ot/serve.go` prints at least 1.
@@ -307,7 +307,7 @@ Module: pyside. Size: S. Owner-only path: `pyside/src/optdesk/ibkr/transport.py`
 Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_transport_kind.py`
 Design: docs/design/option-open-pull.md#Interface
 Order: after 8, 23.
-Sequence: wave 2; after 8 (`spec.OPTION_OPEN`) and 23 (`pb.QUOTE_KIND_OPTION_OPEN` exported by `optdesk.contracts.api`, the only contracts file `transport.py` imports); 16 follows it (same file).
+Sequence: wave 2; after 8 (`spec.OPTION_OPEN`) and 23 (`pb.QUOTE_KIND_OPTION_OPEN` exported by `optdesk.contracts.api`, the only contracts file `transport.py` imports).
 Goal: `_KINDS` of `MarketDataServicer.Snapshot` maps `QUOTE_KIND_OPTION_OPEN` to the spec word `option_open`, and the log filter's `WORDS` holds `option_open`; without it pyside aborts the call `INVALID_ARGUMENT` and no quote ever comes. Nothing else in the file changes (the allowlist, `ORDER_IDS` and `install_guard` stay).
 Acceptance:
 1. `grep -c "QUOTE_KIND_OPTION_OPEN" pyside/src/optdesk/ibkr/transport.py` prints at least 1 and `grep -c "spec.OPTION_OPEN" pyside/src/optdesk/ibkr/transport.py` prints at least 2 (one in `_KINDS`, one in `WORDS`, which name the existing kinds as `spec.OPTION_EOD`, so the lowercase word is not in the file).
@@ -321,8 +321,8 @@ Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `py
 Module: pyside. Size: M.
 Files: `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/src/optdesk/ibkr/server.py`, `pyside/src/optdesk/ibkr/spec.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/tests/ibkr/test_session_codes.py`
 Design: docs/design/option-open-pull.md#Gateway safety
-Order: after 8, 16, 21.
-Sequence: wave 2; after 21, 16 and 8 (13 and 21 both edit `ibgateway.py`, 13 and 8 both edit `spec.py`).
+Order: after 8, 21.
+Sequence: wave 2; after 8 (13 and 8 both edit `spec.py`, the one real wait); 21 has landed on main (13 edits `ibgateway.py` on top of it).
 Goal: points 2 (what issue 21 does not do: the monitor of 2110, a new generation after 1101; the 10197 policy: cancel, probe one underlying and one option at growing intervals, retry, rows `disconnected` at the deadline) and 3 (a client id of 0 rejected by the gateway file check; the stop after error 326 is issue 21) of `## Gateway safety`.
 Acceptance:
 1. `grep -c "2110" pyside/src/optdesk/ibkr/ibgateway.py` prints at least 1.
@@ -344,20 +344,6 @@ Acceptance:
 2. `git diff --name-only $(git merge-base HEAD origin/main) -- cmd/ot/wire.go cmd/ot/runonce.go cmd/ot/site.go cmd/ot/pagereg.go | wc -l` prints 0 and `grep -c "registerJob" cmd/ot/wire_optionopen.go` prints at least 4 and `grep -c "order: 120\|order: 130\|order: 140\|order: 190" cmd/ot/wire_optionopen.go` prints 4.
 3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^cmd/ot/wire_optionopen\|^docs/contracts/ot/jobs/option_open"` prints 0 and `grep -c "^Order: 120\|^Order: 130\|^Order: 140\|^Order: 190" docs/contracts/ot/jobs/option_open_resolve.md docs/contracts/ot/jobs/option_open_plan.md docs/contracts/ot/jobs/option_open.md docs/contracts/ot/jobs/option_open_resolve_gap.md` prints 1 for each file.
 Checked by CI: ci-go; `go test ./cmd/ot/... -race -count=1` (the four jobs are in the list the scheduler builds; a missing socket or DSN leaves the families out with one named line and the other jobs stay).
-
-### 16 pyside-guard-allowlist
-
-Module: pyside. Size: S. Owner-only path: `transport.py` (the owner's merge). Wave 2.
-Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_transport_probe.py`
-Design: docs/design/option-open-pull.md#Gateway safety
-Order: after 12.
-Sequence: wave 2; after 12 (same file).
-Goal: the allowlist parameter of point 3: `install_guard(client, allowed=ALLOWED_IDS)`, so a live connection can be given a smaller list. `ORDER_IDS` and the default list do not change. The probe itself is issue 21.
-Acceptance:
-1. `grep -c "def install_guard(client: Any, allowed" pyside/src/optdesk/ibkr/transport.py` prints 1.
-2. `git diff $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py | grep -c "^[-+].*\(ALLOWED_IDS\|ORDER_IDS\) = "` prints 0.
-3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^pyside/src/optdesk/ibkr/transport.py\|^pyside/tests/ibkr/test_transport_probe.py"` prints 0.
-Checked by CI: ci-python (a smaller list refuses the ids outside it; every order id still refused).
 
 ### 17 jp-open-jobs
 
@@ -405,8 +391,8 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (the f
 Module: ot. Size: S. Wave 2.
 Files: `cmd/ot/wire_optionopen.go`, `cmd/ot/wire_optionopen_test.go`, `docs/contracts/ot/jobs/option_open_resolve_jp.md`, `docs/contracts/ot/jobs/option_open_plan_jp.md`, `docs/contracts/ot/jobs/option_open_jp.md`
 Design: docs/design/option-open-pull.md#Decisions
-Order: after 13, 15, 16, 17.
-Sequence: wave 2; after 17 (and 15, which created the wiring files) and after 13 and 16 (the pyside hardening lands before the Japan pull).
+Order: after 13, 15, 17.
+Sequence: wave 2; after 17 (and 15, which created the wiring files) and after 13 (the pyside hardening lands before the Japan pull).
 Goal: register `option_open_resolve_jp`, `option_open_plan_jp` and `option_open_jp` with `registerJob` (orders 160, 170 and 180; same file, DSN and broker rules as issue 15, the resolve family again with `ResolveInFlight: 1`) beside the four US jobs, so that `ot scheduler` and `ot run-once` know them; without it the 09:05 JST pull never runs; one job document each (`TestJobDocsExist`, as issue 15).
 Acceptance:
 1. `grep -c "option_open_jp" cmd/ot/wire_optionopen.go` prints at least 1, `grep -c "option_open_plan_jp" cmd/ot/wire_optionopen.go` prints at least 1 and `grep -c "option_open_resolve_jp" cmd/ot/wire_optionopen.go` prints at least 1, `grep -c "order: 160\|order: 170\|order: 180" cmd/ot/wire_optionopen.go` prints 3 and `grep -c "ResolveInFlight: 1" cmd/ot/wire_optionopen.go` prints at least 3.
@@ -419,7 +405,7 @@ Module: pyside. Size: M. Wave 1.
 Files: `pyside/src/optdesk/ibkr/readonly_probe.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/tests/ibkr/test_readonly_probe.py`, `pyside/tests/ibkr/test_accounts.py`, `pyside/tests/ibkr/test_executions.py`, `pyside/tests/ibkr/test_ibgateway.py`, `pyside/tests/ibkr/test_loop_rules.py`
 Design: docs/design/option-open-pull.md#Gateway safety
 Order: first.
-Sequence: wave 1; no dependency; merged and deployed before the first run (issue 15 follows it). `transport.py` is not edited (it is owner-only); if `Snapshot` turns out not to answer `UNAVAILABLE` for a gateway that is not connected, the pull request says so and the fix goes to the owner-merge issue 12 or 16.
+Sequence: wave 1; no dependency; merged and deployed before the first run (issue 15 follows it). `transport.py` is not edited (it is owner-only); if `Snapshot` turns out not to answer `UNAVAILABLE` for a gateway that is not connected, the pull request says so and the fix goes to the owner-merge issue 12.
 Goal: the wave-1 minimum of `## Gateway safety`: the read-only probe of point 1 (client id 0, one `reqOpenOrders`, pass only on error 321 within 5 s, its own send guard allowing only that id) run after every handshake before the session is marked connected, so a gateway not proven read-only serves nothing; error codes 10197 and 1100 with no contract mark the session lost, so open items end with a connection error (`disconnected` in the pull), not a deadline; a connect that fails with error 326 stops and fails, with no retry.
 Acceptance:
 1. `grep -c "reqOpenOrders" pyside/src/optdesk/ibkr/readonly_probe.py` prints at least 1 and `grep -c "321" pyside/src/optdesk/ibkr/readonly_probe.py` prints at least 1.
@@ -434,7 +420,7 @@ Module: contracts. Size: S. Wave 2.
 Files: `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`
 Design: docs/design/option-open-pull.md#Interface
 Order: after 1.
-Sequence: wave 2; after 1 (the generated `quote_types_pb2` holds the name, landed in #1434, which merged the generated output only); the first link of the chain 23, 12, 16, 13, 10, 19, so it and 8 are cut first; 12 follows it (`transport.py` imports `optdesk.contracts.api as pb` and nothing else of contracts, AGENTS.md and `modules.md`).
+Sequence: wave 2; after 1 (the generated `quote_types_pb2` holds the name, landed in #1434, which merged the generated output only); the first link of the chain 23, 12, 13, 10, 19, so it and 8 are cut first; 12 follows it (`transport.py` imports `optdesk.contracts.api as pb` and nothing else of contracts, AGENTS.md and `modules.md`).
 Goal: `optdesk.contracts.api` imports `QUOTE_KIND_OPTION_OPEN` from the generated `quote_types_pb2` and lists it in `__all__`, next to `QUOTE_KIND_OPTION_EOD`, so that pyside reads it through the interface file.
 Acceptance:
 1. `grep -c "QUOTE_KIND_OPTION_OPEN" pyside/src/optdesk/contracts/api.py` prints 2 (the import and `__all__`).
@@ -448,6 +434,7 @@ Every test run named above runs in CI, not in acceptance. In addition: the test 
 
 ## Left out
 
+- Entry 16 (`pyside-guard-allowlist`, the `allowed` parameter of `install_guard` in `transport.py`) is deferred (owner decision 2026-11-11, on the advice of the option-trader advisor): it would add a parameter with no caller, and the read-only probe of entry 21 already has its own guard (`readonly_probe.py` `check_probe`). It comes back when a second connection role arrives, for example the refresh button's own connection. The id 16 stays unused; entries are not renumbered.
 - A stock that is neither on the watch list nor held gets no open quote (the refresh button asks only the plan's contracts).
 - The simpler way the review named (pull at 09:45 the contracts the 16:15 `option_eod` run resolved, no plan job): not chosen because it never quotes a new expiry or a new strike band before the first close that saw it, and the owner sells at the open; it stays the fallback when issue 6 slips: issue 7 reads `plan.option_open_item`, and a stand-in plan of the last `option_eod` instruments needs only a different writer.
 
@@ -502,13 +489,25 @@ Full answer: scratchpad adversarial-oopfix.md of the dispatcher window.
 5. False claim: adopted, the same point as 1 (entry 12 acceptance 1 printed 0).
 6. Slip: adopted. Entry 23 acceptance 2 and entry 8 acceptance 4 are tightened so that an import alone does not satisfy them; the stale lines of point 1 are fixed.
 
+
+### Deferring entry 16 (2026-11-11)
+
+Full answer: scratchpad adversarial-defer16.md of the dispatcher window.
+
+1. Gap: nothing to adopt; no text keeps 13, 10 or 20 waiting on 16.
+2. Unnamed risk: not adopted as a change; `## Left out` already names the trigger (a second connection role brings back the one global allowlist).
+3. Simpler way: not adopted; keeping the `## Left out` line avoids renumber confusion.
+4. Lock-in: not adopted; reversible by adding an entry later, and the two guards (probe, `install_guard`) may merge then.
+5. False claim: adopted; `readonly_probe.py` and its `ibgateway.py` call are on main, so the future-tense text is corrected.
+6. Slip: adopted; stale tense fixed in point 1 and in the Sequence of entry 13, which now waits on 8 alone.
+
 ## Verdict round (PR 1345, head bca5b7c0)
 
 Every point of the design verdict is fixed in this revision, and the owner's priority of 2026-11-10 (the pull of 2026-11-11) orders the cut:
 
 - Issue 9 Files now name the files that exist (`page.go`, `payload.go`, `option_build.go`, `stock_build.go`, the card, table, chain and matrix files and their tests); the two names that do not exist are gone.
 - Issue 10 Files add `site.go` and the two route files, and its acceptance 5 no longer forbids `site.go`; it is ordered after the page-names issues.
-- The wave-2 kind reaches pyside through `_KINDS` and `WORDS` in `transport.py`: issue 12 (owner merge), which follows 8 and 23. The probe is issue 21 (wave 1, since round 6) and issue 16 keeps only the guard parameter. Wave 1 sends the existing `OPTION_EOD` kind (the probe of 2026-11-10), so no owner merge is on the path of the first pull.
+- The wave-2 kind reaches pyside through `_KINDS` and `WORDS` in `transport.py`: issue 12 (owner merge), which follows 8 and 23. The probe is issue 21 (wave 1, since round 6) and the guard parameter was issue 16 (deferred 2026-11-11, `## Left out`). Wave 1 sends the existing `OPTION_EOD` kind (the probe of 2026-11-10), so no owner merge is on the path of the first pull.
 - The order header names 3, 4 and 5 in parallel and then 6, and issue 6 names 22.
 - The plan builder is in the jobs package (Decision 3, issue 5), so no jobs-to-compute implementation edge exists; the yield at the new bid is dropped (`## Left out`), so pages import no compute.
 - Decision 11 no longer says Japan is left out; `## Left out` no longer lists the Nikkei index options.
@@ -524,7 +523,7 @@ Every point is fixed, and the whole file was read again against main (paths, sym
 - Japan wiring: issue 20 registers `option_open_plan_jp` and `option_open_jp` in `cmd/ot/wire_optionopen.go`; issue 17 no longer reports it. One file name for the `no_option` list throughout: `job_plan_jp.toml` (Decisions 3 and 21); `job_jp_noopt.toml` is gone.
 - Page refresh state: `## Interface` (Pages) declares `Quotes` and `Refresh RefreshState` on the two builder configs, owned by issue 9 (`page.go`) and filled by issue 10 in the route files.
 - The wave-2 kind reaches Go: issue 18 (broker: `KindOptionOpen` and its mapping) after 1, and issue 19 (jobs: `core.go` flips to `KindOptionOpen`) after 18, 12 and 8. Issue 22 no longer mentions the kind.
-- Issue 13 is after 16 and 8 (both edit `spec.py`); issue 12 follows 8 and 23 (since the round of 2026-11-11) and issue 10 is after 13 and 16, as the wave-2 text says.
+- Issue 13 is after 8 (edits `spec.py`; 16 was part of this until deferred 2026-11-11); issue 12 follows 8 and 23 (since the round of 2026-11-11) and issue 10 is after 13, as the wave-2 text says.
 - One connection, one socket (Decision 9): Decisions 10, 14, 17, Gateway safety point 1 and issue 22 no longer speak of a `live` gateway; the button sends `KindOptionEod` in wave 1 and `KindOptionOpen` after issue 19.
 - `## Capacity` wall time is redone with the wave-1 timeout of 20 s (about 9 minutes at worst).
 
@@ -554,7 +553,7 @@ Every point is fixed, and the whole file was read again against main (paths, sym
 - The strike band is the sigma band again, with no pricing of our own (plan v2.5 section 1, ADR 0001): puts from `spot * exp(-1.4 * sigma * sqrt(T))` up to the spot, held calls up to `exp(+1.4 ...)`, the stored band k = 1.75 or spot -25 percent; k 1.4 and 1.75 are the owner's delta 0.08 and 0.04 written as a band. The Black-Scholes text, `est_delta` and the delta floors are gone.
 - A pre-open gap pass `option_open_resolve_gap` (08:00 ET) runs before the plan (Decision 1); the evening resolve is of the previous trading day.
 - Decision 3 says which strikes drop when a cap binds; Decision 8 has `ok`, `partial`, `no_data`, `deferred` and the retry rule; Decision 9 names the default option ticks and skips tick 106; Decision 21 has the lunch break and the Tokyo session date; Decision 22 has the postcondition, heartbeat and start check (replacement run: `## Left out`, round 7); Decision 6 has the ambiguous 200, no union over expiries, pruning and the run counts.
-- Wave 1 gets issue 21 (read-only probe and session-loss codes without editing `transport.py`); issue 16 keeps only the guard parameter; issue 13 follows 21. SPX, SPXW, NDX and NDXP are in `## Left out`.
+- Wave 1 gets issue 21 (read-only probe and session-loss codes without editing `transport.py`); the guard parameter (once issue 16) is deferred 2026-11-11; issue 13 follows 21. SPX, SPXW, NDX and NDXP are in `## Left out`.
 
 ## Verdict round 7 (PR 1345, head 751b4007)
 
