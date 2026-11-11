@@ -10,16 +10,31 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
+
+// RefreshState is the state of the refresh button, filled by the route and copied into the refresh object of the page.
+// The builders read no clock, no flag and no calendar. Reason says in words why Enabled is false.
+type RefreshState struct {
+	Enabled bool
+	Reason  string
+	Symbols []string
+	Notice  string
+	Fresh   int
+	Total   int
+}
 
 // OptionConfig is what BuildOption reads. A nil Zone is an error of BuildOption.
 // Names is the ticker source of the display name; nil gives the stored issuer text as the display name.
+// Quotes gives the open and refresh rows of the build day (nil: every row shows its close archive value).
 type OptionConfig struct {
 	RunID, BuildID, Scope string
 	Zone                  *time.Location
 	Candidates            store.CandidateReader
 	Eod                   store.OptionEodReader
 	Names                 store.InstrumentNameReader
+	Quotes                openquote.OptionOpenReader
+	Refresh               RefreshState
 }
 
 // StockConfig is what BuildStock reads. Key is the ticker or a stored issuer text of the company shown; Names is the ticker source.
@@ -30,13 +45,15 @@ type StockConfig struct {
 	Candidates            store.CandidateReader
 	Eod                   store.OptionEodReader
 	Names                 store.InstrumentNameReader
+	Quotes                openquote.OptionOpenReader
+	Refresh               RefreshState
 	Key                   string
 }
 
 // NewOptionPage is the option_page page for c; its Build ignores the series reader and reads those of c.
 func NewOptionPage(c OptionConfig) pages.Page {
 	return pages.Page{
-		Meta: pages.Meta{Name: "option_page", Schema: "page.option_page.v1"},
+		Meta: pages.Meta{Name: "option_page", Schema: "page.option_page.v2"},
 		Build: func(ctx context.Context, r store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 			return BuildOption(ctx, c, r, day, generatedAt)
 		},
@@ -46,7 +63,7 @@ func NewOptionPage(c OptionConfig) pages.Page {
 // NewStockPage is the stock_option_page page for c; its Build ignores the series reader and reads those of c.
 func NewStockPage(c StockConfig) pages.Page {
 	return pages.Page{
-		Meta: pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v1"},
+		Meta: pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v2"},
 		Build: func(ctx context.Context, r store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 			return BuildStock(ctx, c, r, day, generatedAt)
 		},

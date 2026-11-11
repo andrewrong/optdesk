@@ -26,10 +26,10 @@ func tableColumns() []column {
 	}
 }
 
-func buildTable(rows []store.Candidate, eod map[int]contracts.OptionEod, names displayNames) table {
+func buildTable(rows []store.Candidate, eod map[int]contracts.OptionEod, names displayNames, qs quoteSource) table {
 	out := table{Columns: tableColumns(), Rows: make([]row, 0, len(rows))}
 	for _, r := range rows {
-		out.Rows = append(out.Rows, buildRow(r, eod, names))
+		out.Rows = append(out.Rows, buildRow(r, eod, names, qs))
 	}
 	return out
 }
@@ -84,18 +84,22 @@ func earningsCell(r store.Candidate) textCell {
 	return textCell{Kind: "text", Text: text}
 }
 
-func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames) row {
+func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames, qs quoteSource) row {
 	symbol := names.of(r)
 	v := verdictOf(r.Status)
 	e := eodTextFor(eod, r.InstrumentID)
 	ann, _ := annualisedOf(r.AnnualizedYield)
+	bid, askText, deltaStr, volume := r.BidEod, r.Ask, r.Delta, e.Volume
+	if l := qs.live(r.InstrumentID); l != nil {
+		bid, askText, deltaStr, volume = l.Bid, textPtr(l.Ask), textPtr(l.Delta), l.Volume
+	}
 	ask := gapText
-	if r.Ask != nil {
-		ask = "$" + *r.Ask
+	if askText != nil {
+		ask = "$" + *askText
 	}
 	var delta any = mkGap("no_data", gapText)
-	if r.Delta != nil && decimalPattern.MatchString(*r.Delta) {
-		delta = textCell{Kind: "text", Text: signedText(*r.Delta), Value: keyValue(*r.Delta, 2)}
+	if deltaStr != nil && decimalPattern.MatchString(*deltaStr) {
+		delta = textCell{Kind: "text", Text: signedText(*deltaStr), Value: keyValue(*deltaStr, 2)}
 	}
 	cells := []cellAt{
 		{Column: "symbol", Cell: textCell{Kind: "text", Text: symbol, Value: symbol}},
@@ -104,12 +108,20 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 		{Column: "strike_pct", Cell: ratioCell(strikePct(r.Strike, r.Spot))},
 		{Column: "dte", Cell: textCell{Kind: "text", Text: fmt.Sprintf("%d 天", r.DTE), Value: r.DTE}},
 		{Column: "delta", Cell: delta},
-		{Column: "bid_ask", Cell: textCell{Kind: "text", Text: "$" + r.BidEod + " / " + ask, Value: keyValue(r.BidEod, 2)}},
-		{Column: "spread_pct", Cell: ratioCell(spreadPct(r.BidEod, r.Ask))},
-		{Column: "volume", Cell: countCell(e.Volume)},
+		{Column: "bid_ask", Cell: textCell{Kind: "text", Text: dollar(bid) + " / " + ask, Value: keyValue(bid, 2)}},
+		{Column: "spread_pct", Cell: ratioCell(spreadPct(bid, askText))},
+		{Column: "volume", Cell: countCell(volume)},
 		{Column: "open_interest", Cell: countCell(e.OpenInterest)},
 		{Column: "ivp", Cell: mkGap("no_data", gapText)},
 		{Column: "earnings", Cell: earningsCell(r)},
 	}
-	return row{ID: fmt.Sprintf("r%d", r.InstrumentID), Cells: cells}
+	return row{ID: fmt.Sprintf("r%d", r.InstrumentID), Cells: cells, Quote: qs.of(r.InstrumentID)}
+}
+
+// dollar is "$" before a price text; the gap text has none.
+func dollar(price string) string {
+	if price == gapText {
+		return price
+	}
+	return "$" + price
 }

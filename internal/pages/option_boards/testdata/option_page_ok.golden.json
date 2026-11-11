@@ -1,6 +1,6 @@
 {
   "schema": "option_page",
-  "schema_version": 1,
+  "schema_version": 2,
   "run_id": "run-1",
   "build_id": "build-1",
   "scope": "options",
@@ -253,7 +253,14 @@
                   "value": null
                 }
               }
-            ]
+            ],
+            "quote": {
+              "as_of": "close archive, 9 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
           },
           {
             "id": "r12",
@@ -351,7 +358,14 @@
                   "value": null
                 }
               }
-            ]
+            ],
+            "quote": {
+              "as_of": "close archive, 10 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
           },
           {
             "id": "r21",
@@ -450,7 +464,14 @@
                   "value": null
                 }
               }
-            ]
+            ],
+            "quote": {
+              "as_of": "close archive, 9 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
           },
           {
             "id": "r22",
@@ -548,7 +569,14 @@
                   "value": null
                 }
               }
-            ]
+            ],
+            "quote": {
+              "as_of": "close archive, 10 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
           },
           {
             "id": "r23",
@@ -644,7 +672,14 @@
                   "value": null
                 }
               }
-            ]
+            ],
+            "quote": {
+              "as_of": "close archive, 10 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
           }
         ]
       },
@@ -704,7 +739,14 @@
                     "source": null
                   }
                 }
-              ]
+              ],
+              "quote": {
+                "as_of": "close archive, 10 Nov",
+                "data_type": null,
+                "source": "close_archive",
+                "skew": false,
+                "outside_band": false
+              }
             },
             {
               "id": "k62",
@@ -733,7 +775,14 @@
                     "text": "缺"
                   }
                 }
-              ]
+              ],
+              "quote": {
+                "as_of": "close archive, 10 Nov",
+                "data_type": null,
+                "source": "close_archive",
+                "skew": false,
+                "outside_band": false
+              }
             }
           ]
         }
@@ -744,5 +793,12 @@
     "日本期权:后续设计 (option-candidates-jp)",
     "量与持仓取自 2026-11-09(链日)"
   ],
-  "gaps": []
+  "gaps": [],
+  "refresh": {
+    "enabled": false,
+    "symbols": [],
+    "notice": null,
+    "fresh_count": 0,
+    "total_count": 0
+  }
 }

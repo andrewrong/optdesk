@@ -48,9 +48,14 @@ func buildContractRows(rows []stockRow) ([]contractLine, string, error) {
 		if c.Delta != nil {
 			delta = signedText(*c.Delta)
 		}
+		bid, theta, gamma, vega, volume := c.BidEod, r.Eod.Theta, r.Eod.Gamma, r.Eod.Vega, r.Eod.Volume
+		if l := r.Live; l != nil {
+			bid, ask, delta, iv, theta, gamma, vega, volume = l.Bid, l.Ask, l.DeltaText(), l.IV, l.Theta, l.Gamma, l.Vega, l.Volume
+		}
 		out = append(out, contractLine{
 			Expiry: string(c.Expiry), ExpiryText: text,
-			Cells: []string{md, c.Strike, c.BidEod, ask, delta, iv, r.Eod.Theta, r.Eod.Gamma, r.Eod.Vega, r.Eod.Volume, yield},
+			Quote: r.Quote,
+			Cells: []string{md, c.Strike, bid, ask, delta, iv, theta, gamma, vega, volume, yield},
 		})
 	}
 	note := ""

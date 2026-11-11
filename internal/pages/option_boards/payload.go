@@ -3,24 +3,25 @@ package option_boards
 
 import "encoding/json"
 
-// The typed payloads of page.option_page.v1 and page.stock_option_page.v1. Money and percentages are
+// The typed payloads of page.option_page.v2 and page.stock_option_page.v2. Money and percentages are
 // json.Number of a stored decimal text, never a float. Builders fill these structs and edit none of them.
 
-// optionPayload is page.option_page.v1.
+// optionPayload is page.option_page.v2.
 type optionPayload struct {
-	Schema        string       `json:"schema"`
-	SchemaVersion int          `json:"schema_version"`
-	RunID         string       `json:"run_id"`
-	BuildID       string       `json:"build_id"`
-	Scope         string       `json:"scope"`
-	GeneratedAt   string       `json:"generated_at"`
-	DataTimes     []sourceTime `json:"data_times"`
-	RunStatus     string       `json:"run_status"`
-	Title         string       `json:"title"`
-	Stale         staleLabel   `json:"stale"`
-	Markets       []marketPane `json:"markets"`
-	Notes         []string     `json:"notes"`
-	Gaps          []gap        `json:"gaps"`
+	Schema        string        `json:"schema"`
+	SchemaVersion int           `json:"schema_version"`
+	RunID         string        `json:"run_id"`
+	BuildID       string        `json:"build_id"`
+	Scope         string        `json:"scope"`
+	GeneratedAt   string        `json:"generated_at"`
+	DataTimes     []sourceTime  `json:"data_times"`
+	RunStatus     string        `json:"run_status"`
+	Title         string        `json:"title"`
+	Stale         staleLabel    `json:"stale"`
+	Markets       []marketPane  `json:"markets"`
+	Notes         []string      `json:"notes"`
+	Gaps          []gap         `json:"gaps"`
+	Refresh       refreshObject `json:"refresh"`
 }
 
 type marketPane struct {
@@ -107,6 +108,7 @@ type cellAt struct {
 type row struct {
 	ID    string   `json:"id"`
 	Cells []cellAt `json:"cells"`
+	Quote quote    `json:"quote"`
 }
 
 type table struct {
@@ -120,7 +122,7 @@ type chain struct {
 	Table   table  `json:"table"`
 }
 
-// stockPayload is page.stock_option_page.v1. Stale is null when the data is fresh.
+// stockPayload is page.stock_option_page.v2. Stale is null when the data is fresh.
 type stockPayload struct {
 	Schema        string         `json:"schema"`
 	SchemaVersion int            `json:"schema_version"`
@@ -142,6 +144,7 @@ type stockPayload struct {
 	Held          []heldItem     `json:"held"`
 	Contracts     contractsBlock `json:"contracts"`
 	Footer        string         `json:"footer"`
+	Refresh       refreshObject  `json:"refresh"`
 }
 
 type topBar struct {
@@ -178,6 +181,7 @@ type matrixCell struct {
 	Thin      bool   `json:"thin"`
 	Earnings  bool   `json:"earnings"`
 	Chosen    bool   `json:"chosen"`
+	Quote     quote  `json:"quote"`
 }
 
 type matrixBlock struct {
@@ -249,6 +253,7 @@ type contractLine struct {
 	Expiry     string   `json:"expiry"`
 	ExpiryText string   `json:"expiry_text"`
 	Cells      []string `json:"cells"`
+	Quote      quote    `json:"quote"`
 }
 
 type contractsBlock struct {

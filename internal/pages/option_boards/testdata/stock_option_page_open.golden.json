@@ -1,0 +1,338 @@
+{
+  "schema": "stock_option_page",
+  "schema_version": 2,
+  "run_id": "run1",
+  "build_id": "b1",
+  "scope": "stock-options",
+  "generated_at": "2026-11-10T11:00:00+08:00",
+  "data_times": [
+    {
+      "source": "candidates",
+      "data_time": "2026-11-10T14:30:00+08:00"
+    }
+  ],
+  "run_status": "ok",
+  "title": "单股期权",
+  "stale": null,
+  "top": {
+    "symbol": "AAPL",
+    "name": "AAPL",
+    "spot": "现价 68",
+    "day_change": null,
+    "day_tone": null,
+    "quote": null,
+    "iv": "IV 38% · HV30 缺 · IVP 缺",
+    "earnings": "财报 无",
+    "trend": "趋势 缺",
+    "policy": "策略 sell put,买价线内才卖",
+    "refresh_expiry": null,
+    "refresh_strike": null
+  },
+  "notice": "持仓见 /options/tracking。量与持仓取自 2026-11-09(链日)",
+  "shared_gap": null,
+  "maps": [
+    {
+      "expiry": "2026-11-13",
+      "heading": "11-13 周五 · 3 天",
+      "description": "波动区间 缺 (compute 尚无)",
+      "marks": [
+        {
+          "kind": "spot",
+          "price": "68",
+          "text": "现价 68"
+        },
+        {
+          "kind": "breakeven",
+          "price": "60.8",
+          "text": "盈亏平衡 60.8"
+        },
+        {
+          "kind": "strike",
+          "price": "65",
+          "text": "行权价 65"
+        }
+      ],
+      "bands": []
+    },
+    {
+      "expiry": "2026-11-20",
+      "heading": "11-20 周五 · 10 天",
+      "description": "波动区间 缺 (compute 尚无)",
+      "marks": [
+        {
+          "kind": "spot",
+          "price": "68",
+          "text": "现价 68"
+        },
+        {
+          "kind": "breakeven",
+          "price": "60.8",
+          "text": "盈亏平衡 60.8"
+        },
+        {
+          "kind": "strike",
+          "price": "62",
+          "text": "行权价 62"
+        }
+      ],
+      "bands": []
+    }
+  ],
+  "matrix": {
+    "expiries": [
+      {
+        "expiry": "2026-11-13",
+        "text": "11-13 周五 · 3 天"
+      },
+      {
+        "expiry": "2026-11-20",
+        "text": "11-20 周五 · 10 天"
+      }
+    ],
+    "strikes": [
+      "60",
+      "62",
+      "65"
+    ],
+    "cells": [
+      {
+        "key": "c102",
+        "expiry": "2026-11-20",
+        "strike": "62",
+        "yield_text": "年化 12.3456%",
+        "premium": "权利金 1.20",
+        "delta": "Δ −0.15",
+        "volume": "成交量 10",
+        "shade": "worth",
+        "star": false,
+        "out": false,
+        "thin": false,
+        "earnings": false,
+        "chosen": false,
+        "quote": {
+          "as_of": "close archive, 9 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
+      },
+      {
+        "key": "c101",
+        "expiry": "2026-11-13",
+        "strike": "65",
+        "yield_text": "年化 12.3456%",
+        "premium": "权利金 缺",
+        "delta": "Δ 缺",
+        "volume": "成交量 缺",
+        "shade": "worth",
+        "star": true,
+        "out": false,
+        "thin": false,
+        "earnings": false,
+        "chosen": true,
+        "quote": {
+          "as_of": "23:00:00",
+          "data_type": "frozen",
+          "source": "refresh",
+          "skew": true,
+          "outside_band": false
+        }
+      },
+      {
+        "key": "c103",
+        "expiry": "2026-11-13",
+        "strike": "60",
+        "yield_text": "年化 12.3456%",
+        "premium": "权利金 1.20",
+        "delta": "Δ −0.15",
+        "volume": "成交量 缺",
+        "shade": "none",
+        "star": false,
+        "out": false,
+        "thin": true,
+        "earnings": true,
+        "chosen": false,
+        "quote": {
+          "as_of": "close archive, 10 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
+      }
+    ],
+    "facts": null,
+    "legend": "★ 标的内排名第一 · 绿底 值得看 · 薄 买卖价不全 · 财 财报在期内",
+    "empty": null
+  },
+  "cards": [
+    {
+      "key": "c102",
+      "expiry": "2026-11-20",
+      "strike": "62",
+      "chosen": false,
+      "in_matrix": true,
+      "title": "put 62 11-20",
+      "pass_tag": true,
+      "yield_line": "年化 12.3456% · 10 天",
+      "ladder": [
+        {
+          "label": "买价",
+          "text": "1.20"
+        },
+        {
+          "label": "中间价",
+          "text": "缺"
+        },
+        {
+          "label": "卖价",
+          "text": "1.30"
+        }
+      ],
+      "advice": "建议 卖出 1 张 put (收盘 bid 估,次日才卖)",
+      "amounts": [
+        "行权价 62 · 乘数 100",
+        "盈亏平衡 60.8"
+      ],
+      "risk": "风险 股价低于 62 会被行权",
+      "liquidity": "流动性 成交量 10 · 持仓 缺"
+    },
+    {
+      "key": "c101",
+      "expiry": "2026-11-13",
+      "strike": "65",
+      "chosen": true,
+      "in_matrix": true,
+      "title": "put 65 11-13",
+      "pass_tag": true,
+      "yield_line": "年化 12.3456% · 3 天",
+      "ladder": [
+        {
+          "label": "买价",
+          "text": "1.20"
+        },
+        {
+          "label": "中间价",
+          "text": "缺"
+        },
+        {
+          "label": "卖价",
+          "text": "1.30"
+        }
+      ],
+      "advice": "建议 卖出 1 张 put (收盘 bid 估,次日才卖)",
+      "amounts": [
+        "行权价 65 · 乘数 100",
+        "盈亏平衡 60.8"
+      ],
+      "risk": "风险 股价低于 65 会被行权",
+      "liquidity": "流动性 成交量 250 · 持仓 1200"
+    }
+  ],
+  "no_card": null,
+  "held": [],
+  "contracts": {
+    "columns": [
+      "到期",
+      "行权价",
+      "买价",
+      "卖价",
+      "Δ",
+      "IV",
+      "Θ/天",
+      "Γ",
+      "Vega",
+      "成交量",
+      "年化"
+    ],
+    "rows": [
+      {
+        "expiry": "2026-11-20",
+        "expiry_text": "11-20 周五 · 10 天",
+        "cells": [
+          "11-20",
+          "62",
+          "1.20",
+          "1.30",
+          "−0.15",
+          "38%",
+          "缺",
+          "缺",
+          "缺",
+          "10",
+          "12.3456%"
+        ],
+        "quote": {
+          "as_of": "close archive, 9 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
+      },
+      {
+        "expiry": "2026-11-13",
+        "expiry_text": "11-13 周五 · 3 天",
+        "cells": [
+          "11-13",
+          "65",
+          "缺",
+          "缺",
+          "缺",
+          "缺",
+          "缺",
+          "缺",
+          "缺",
+          "缺",
+          "12.3456%"
+        ],
+        "quote": {
+          "as_of": "23:00:00",
+          "data_type": "frozen",
+          "source": "refresh",
+          "skew": true,
+          "outside_band": false
+        }
+      },
+      {
+        "expiry": "2026-11-13",
+        "expiry_text": "11-13 周五 · 3 天",
+        "cells": [
+          "11-13",
+          "60",
+          "1.20",
+          "1.30",
+          "−0.15",
+          "38%",
+          "缺",
+          "缺",
+          "缺",
+          "缺",
+          "12.3456%"
+        ],
+        "quote": {
+          "as_of": "close archive, 10 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
+      }
+    ],
+    "basis": "存档收盘报价;Θ、Γ、Vega 取数据日的存档行",
+    "notes": [],
+    "empty": null
+  },
+  "footer": "由存档收盘报价与候选表生成",
+  "refresh": {
+    "enabled": true,
+    "symbols": [
+      "AAA",
+      "BBB"
+    ],
+    "notice": "27 of 31 quotes fresh, 4 from 09:45",
+    "fresh_count": 27,
+    "total_count": 31
+  }
+}

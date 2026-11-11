@@ -14,7 +14,7 @@ const maxChainExpiries = 19
 
 // buildChain is the strike by expiry card of the first card's company (Decision 7); nil when there is no card
 // or the company has no row.
-func buildChain(rows, cards []store.Candidate, names displayNames) *chain {
+func buildChain(rows, cards []store.Candidate, names displayNames, qs quoteSource) *chain {
 	if len(cards) == 0 {
 		return nil
 	}
@@ -63,7 +63,7 @@ func buildChain(rows, cards []store.Candidate, names displayNames) *chain {
 		for _, e := range expiries {
 			cells = append(cells, cellAt{Column: "e" + e, Cell: bidCell(bids, pairKey{s, e})})
 		}
-		out = append(out, row{ID: "k" + strings.ReplaceAll(s, ".", "_"), Cells: cells})
+		out = append(out, row{ID: "k" + strings.ReplaceAll(s, ".", "_"), Cells: cells, Quote: qs.chainQuote()})
 	}
 
 	md, _ := monthDay(first.Expiry)

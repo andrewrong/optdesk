@@ -1,6 +1,6 @@
 {
   "schema": "stock_option_page",
-  "schema_version": 1,
+  "schema_version": 2,
   "run_id": "run1",
   "build_id": "b1",
   "scope": "stock-options",
@@ -108,7 +108,14 @@
         "out": false,
         "thin": false,
         "earnings": false,
-        "chosen": false
+        "chosen": false,
+        "quote": {
+          "as_of": "close archive, 9 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
       },
       {
         "key": "c101",
@@ -123,7 +130,14 @@
         "out": false,
         "thin": false,
         "earnings": false,
-        "chosen": true
+        "chosen": true,
+        "quote": {
+          "as_of": "close archive, 9 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
       },
       {
         "key": "c103",
@@ -138,7 +152,14 @@
         "out": false,
         "thin": true,
         "earnings": true,
-        "chosen": false
+        "chosen": false,
+        "quote": {
+          "as_of": "close archive, 10 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
       }
     ],
     "facts": null,
@@ -241,7 +262,14 @@
           "缺",
           "10",
           "12.3456%"
-        ]
+        ],
+        "quote": {
+          "as_of": "close archive, 9 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
       },
       {
         "expiry": "2026-11-13",
@@ -258,7 +286,14 @@
           "0.05",
           "250",
           "12.3456%"
-        ]
+        ],
+        "quote": {
+          "as_of": "close archive, 9 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
       },
       {
         "expiry": "2026-11-13",
@@ -275,12 +310,26 @@
           "缺",
           "缺",
           "12.3456%"
-        ]
+        ],
+        "quote": {
+          "as_of": "close archive, 10 Nov",
+          "data_type": null,
+          "source": "close_archive",
+          "skew": false,
+          "outside_band": false
+        }
       }
     ],
     "basis": "存档收盘报价;Θ、Γ、Vega 取数据日的存档行",
     "notes": [],
     "empty": null
   },
-  "footer": "由存档收盘报价与候选表生成"
+  "footer": "由存档收盘报价与候选表生成",
+  "refresh": {
+    "enabled": false,
+    "symbols": [],
+    "notice": null,
+    "fresh_count": 0,
+    "total_count": 0
+  }
 }
