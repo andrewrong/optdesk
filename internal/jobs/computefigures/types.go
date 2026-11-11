@@ -1,6 +1,8 @@
 package computefigures
 
 import (
+	"context"
+
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
@@ -22,7 +24,24 @@ type ComputeStores struct {
 	// PriceBars is optional: nil skips the HV30 step (no key market.hv30_own is planned); set, the job plans and
 	// stores market.hv30_own for each underlying from the winner "trades" rows.
 	PriceBars bar.PriceBarReader
+	// IndexIDs is optional and declared for the rv20 step, which no code uses yet: it maps the index names of
+	// the manifest to instrument ids.
+	IndexIDs IndexIDReader
 }
+
+// IndexIDReader reads the instruments of type index whose name is in names, ordered by instrument id.
+type IndexIDReader interface {
+	IndexIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)
+}
+
+// IndexIDStore is an IndexIDReader that is opened from a dsn and must be closed.
+type IndexIDStore interface {
+	IndexIDReader
+	Close() error
+}
+
+// OpenIndexIDsFunc opens an IndexIDStore on the dsn.
+type OpenIndexIDsFunc func(ctx context.Context, dsn string) (IndexIDStore, error)
 
 // NewComputeFiguresFunc is the constructor of the compute_figures job (internal/jobs/computefigures.New).
 type NewComputeFiguresFunc func(ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, clock.Clock) (contracts.Job, error)
