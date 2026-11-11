@@ -371,3 +371,25 @@ it('draws the month change as a transparent base stacked under the visible heigh
     rows.map((r: { height: { value: number } }) => r.height.value),
   )
 })
+
+// Issue #1444: the page keeps the payload order in a grid; seven blocks are wide, six are half from lg.
+it('puts the blocks in cells in payload order, the seven wide ones spanning two columns from lg', async () => {
+  await show(<HouseholdPage payload={fixture('ok.json')} />)
+  const cells = [...host.querySelectorAll('[data-cell]')]
+  expect(cells.map((el) => el.getAttribute('data-cell'))).toEqual([...BLOCKS])
+  const wide = ['overview', 'accounts', 'composition', 'movers', 'income', 'obligations', 'concentration']
+  cells.forEach((el) => {
+    const name = el.getAttribute('data-cell')!
+    expect(el.classList.contains('lg:col-span-2')).toBe(wide.includes(name))
+  })
+  const grid = cells[0]!.parentElement!
+  expect(grid.className).toContain('grid-cols-1')
+  expect(grid.className).toContain('lg:grid-cols-2')
+})
+
+it('leaves a gap in the trend line at a null point instead of connecting over it', () => {
+  const payload = fixture('ok.json')
+  const spec = trendToSpec(payload.trend.series)!
+  expect(spec.series.every((s) => s.hole === true)).toBe(true)
+  expect(spec.series.some((s) => s.points.some((p) => p.value === null))).toBe(true)
+})
