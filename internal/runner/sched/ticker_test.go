@@ -1,8 +1,10 @@
 package sched
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"maps"
 	"runtime"
 	"slices"
@@ -43,6 +45,7 @@ func (j tickerJob) Window() (string, time.Duration, time.Duration) {
 type fakeRec struct {
 	ev       events
 	block    bool
+	err      error // when set, Reconcile returns it
 	days     []contracts.Day
 	mu       sync.Mutex
 	inFlight atomic.Int32
@@ -50,6 +53,10 @@ type fakeRec struct {
 }
 
 func (r *fakeRec) Reconcile(ctx context.Context, day contracts.Day) error {
+	if r.err != nil {
+		r.ev.emit("reconcile:" + string(day))
+		return r.err
+	}
 	r.inFlight.Add(1)
 	defer r.inFlight.Add(-1)
 	r.mu.Lock()
@@ -135,6 +142,7 @@ type harness struct {
 	disabled map[string]string
 	exe      runner.ExecIdentityFunc
 	s        runner.Scheduler
+	log      *slog.Logger
 	stuck    bool // the worker is stuck on purpose: step does not wait for it
 }
 
@@ -164,6 +172,9 @@ func tickerCal() fakeCal {
 func (h *harness) run() (cancel context.CancelFunc, done <-chan error) {
 	h.t.Helper()
 	h.s = New(h.fence, h.led, h.ops, tickerCal(), h.clk, h.rec, h.gaps, h.jobs, h.disabled, h.exe)
+	if h.log != nil {
+		h.s.(*ticker).log = h.log
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	h.t.Cleanup(cancel)
 	ch := make(chan error, 1)
@@ -563,5 +574,64 @@ func TestTickerSyncGetsCopyOfDisabled(t *testing.T) {
 	}
 	if _, ok := caller["written-by-sync"]; ok {
 		t.Fatal("a write by Sync reached the caller's map")
+	}
+}
+
+// lockedBuf is a log buffer safe for the worker goroutine and the test.
+type lockedBuf struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuf) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuf) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+type markedTypedErr struct{}
+
+func (markedTypedErr) Error() string             { return "secret-token-hunter2" }
+func (markedTypedErr) Kind() contracts.ErrorKind { return contracts.Retryable }
+
+func TestTickerLogsReconcileFailure(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		err  error
+		kind string
+	}{
+		{"typed", markedTypedErr{}, "kind=retryable"},
+		{"plain", errors.New("secret-token-hunter2"), "kind=error"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t)
+			h.rec = &fakeRec{ev: h.ev, err: tc.err}
+			buf := &lockedBuf{}
+			h.log = slog.New(slog.NewTextHandler(buf, nil))
+			h.run()
+			h.step(10 * time.Minute)
+			h.until("reconcile:2025-11-26")
+			for tk := h.s.(*ticker); tk.busy.Load(); {
+				runtime.Gosched()
+			}
+			out := buf.String()
+			if n := bytes.Count([]byte(out), []byte("reconcile failed")); n != 1 || bytes.Count([]byte(out), []byte("\n")) != 1 {
+				t.Fatalf("log = %q, want one line \"reconcile failed\"", out)
+			}
+			if !bytes.Contains([]byte(out), []byte("day=2025-11-26")) || !bytes.Contains([]byte(out), []byte(tc.kind)) {
+				t.Fatalf("log = %q, want the day and %s", out, tc.kind)
+			}
+			if bytes.Contains([]byte(out), []byte("secret-token-hunter2")) {
+				t.Fatalf("log holds the error text: %q", out)
+			}
+		})
 	}
 }

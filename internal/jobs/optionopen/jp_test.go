@@ -320,3 +320,16 @@ func (s *spyChains) ListChains(ctx context.Context, u broker.Contract) ([]broker
 	*s.got = u
 	return s.fakeResolver.ListChains(ctx, u)
 }
+
+func TestPullJPPlanWaitsForTheStoredPlan(t *testing.T) {
+	t.Parallel()
+	s := &pullStores{}
+	j := newPullJP(t, s, clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC)))
+	if keys, _, err := j.Plan(context.Background(), pullDay); err != nil || len(keys) != 0 {
+		t.Fatalf("empty plan: keys %v err %v", keys, err)
+	}
+	s.items = seed(2, 3).items
+	if keys, _, err := j.Plan(context.Background(), pullDay); err != nil || len(keys) == 0 {
+		t.Fatalf("stored plan: keys %v err %v", keys, err)
+	}
+}
