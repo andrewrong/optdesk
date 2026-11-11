@@ -42,12 +42,27 @@ describe('OptionNoticesPage', () => {
     )
     rows.forEach((row, i) => {
       const badge = row.querySelector('[data-slot=badge][data-severity]')!
-      expect(badge.textContent).toBe(ok.accounts[0]!.notices[i]!.severity)
+      expect(badge.textContent).toBe(
+        { info: 'Info', warn: 'Warning', act: 'Action needed' }[ok.accounts[0]!.notices[i]!.severity],
+      )
+      expect(badge.getAttribute('data-severity')).toBe(ok.accounts[0]!.notices[i]!.severity)
     })
     expect(page.textContent).toContain(ok.accounts[0]!.notices[0]!.facts[0]!.text)
     expect(page.textContent).toContain(ok.accounts[0]!.notices[0]!.reasons[0]!)
     expect(page.textContent).toContain(ok.title)
     expect(page.querySelector('[data-stale]')!.textContent).toContain(ok.stale.text)
+  })
+
+  it('shows the status badge as a word and keeps the code in data-status', async () => {
+    const okPage = await show(ok)
+    const okBadge = okPage.querySelector('[data-alias=ok-main] [data-status]')!
+    expect(okBadge.textContent).toBe('Current')
+    expect(okBadge.getAttribute('data-status')).toBe('ok')
+    await act(async () => root?.unmount())
+    host.remove()
+    const missing = await show(secondMissing)
+    const badge = missing.querySelector('[data-status=no_capture]')!
+    expect(badge.textContent).toBe('No capture')
   })
 
   it('shows the cash by date table in payload order and the cushion text', async () => {

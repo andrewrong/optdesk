@@ -56,8 +56,14 @@ describe('macro_rates view', () => {
       }
       for (const gap of payload.gaps) {
         expect(text).toContain(gap.text)
-        expect(text).toContain(gap.reason)
       }
+      const gapRows = [...host.querySelectorAll('[data-gap]')]
+      expect(gapRows).toHaveLength(payload.gaps.length)
+      payload.gaps.forEach((gap, i) => {
+        const title = payload.series.find((s) => s.id === gap.series_id)?.title ?? gap.series_id
+        expect(gapRows[i]!.textContent).not.toContain(gap.reason)
+        expect(gapRows[i]!.querySelector('[data-slot=badge]')!.textContent).toBe(title)
+      })
     })
   }
 
