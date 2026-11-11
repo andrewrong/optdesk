@@ -382,7 +382,7 @@ func heldOf(ctx context.Context, r store.AccountReader, alias string, d time.Tim
 		}
 		held := []trackapi.TrackHeld{}
 		for _, p := range rows {
-			if p.SecType == "OPT" {
+			if p.SecType == "option" {
 				held = append(held, trackapi.TrackHeld{Underlying: p.Symbol, Expiry: contracts.Day(p.Expiry), Strike: p.Strike,
 					Right: side(p.Right), Quantity: p.Quantity})
 			}

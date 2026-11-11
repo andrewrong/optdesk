@@ -45,7 +45,7 @@ func (stubSessions) SessionDays(context.Context, string, contracts.Day, contract
 // stubAccount holds one stock row of MSFT (instrument 88) in the capture of 2026-11-06.
 func (stubAccount) Positions(_ context.Context, _, day string) ([]store.Position, error) {
 	if day == "2026-11-06" {
-		return []store.Position{{SecType: "STK", Symbol: "MSFT", ConID: 88}}, nil
+		return []store.Position{{SecType: "stock", Symbol: "MSFT", ConID: 88}}, nil
 	}
 	return nil, nil
 }

@@ -1,0 +1,734 @@
+[
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "pending",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends",
+      "options",
+      "fundamentals"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": [
+      "bars",
+      "dividends",
+      "options",
+      "fundamentals"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "options"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": [
+      "bars",
+      "options"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends",
+      "options"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": [
+      "bars",
+      "dividends",
+      "options"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "options"
+    ]
+  },
+  {
+    "status": "active",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": [
+      "bars",
+      "options"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends",
+      "fundamentals"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": [
+      "bars",
+      "dividends",
+      "fundamentals"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "active",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "paused",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": [
+      "bars",
+      "dividends"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": [
+      "bars"
+    ]
+  },
+  {
+    "status": "retired",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": true,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": true,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": true,
+    "held": false,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": true,
+    "followed_by": []
+  },
+  {
+    "status": "unresolved",
+    "options": false,
+    "fundamentals": false,
+    "issuer_set": false,
+    "held": false,
+    "followed_by": []
+  }
+]

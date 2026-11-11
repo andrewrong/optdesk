@@ -135,9 +135,9 @@ func heldFakes(bid float64) (*fakes, CandidateStores) {
 		BidSize: f64(5), OpenInterest: f64(40), UnderlyingPrice: f64(110), Status: 1, MarketDataType: 1, CaptureID: "c1"})
 	f.eodRows[0].UnderlyingPrice = f64(110)
 	pos := []store.Position{
-		{Symbol: "ABC", SecType: "OPT", Right: "call", ConID: 21, Quantity: "-1"},
-		{Symbol: "ABC", SecType: "OPT", Right: "call", ConID: 99, Quantity: "1"},
-		{Symbol: "XYZ", SecType: "OPT", Right: "call", ConID: 98, Quantity: "-1"},
+		{Symbol: "ABC", SecType: "option", Right: "call", ConID: 21, Quantity: "-1"},
+		{Symbol: "ABC", SecType: "option", Right: "call", ConID: 99, Quantity: "1"},
+		{Symbol: "XYZ", SecType: "option", Right: "call", ConID: 98, Quantity: "-1"},
 	}
 	val := []store.AccountValue{{Tag: "AvailableFunds", Value: "100000", Currency: "USD"}}
 	f.positions = map[string][]store.Position{"A": pos, "B": pos}

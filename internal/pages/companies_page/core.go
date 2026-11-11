@@ -193,7 +193,8 @@ func (c Config) coreBlockOf(ctx context.Context, figs []subjectFigs, today contr
 	return blk, nil
 }
 
-// coreRowsOf is the rows of one subject, one per shown offer, and its growth legend line.
+// coreRowsOf is the rows of one subject, one per shown offer (one row for all offers when
+// no figures can be built), and its growth legend line.
 func (c Config) coreRowsOf(ctx context.Context, f subjectFigs, today contracts.Day) ([]coreRow, []string, error) {
 	costs, err := c.Offers(ctx, f.sub.Symbol, today)
 	if err != nil {
@@ -203,26 +204,26 @@ func (c Config) coreRowsOf(ctx context.Context, f subjectFigs, today contracts.D
 		return nil, nil, nil
 	}
 	cyclical := f.diag.Group == "cyclical"
-	var rr valuationapi.ReturnResult
-	if f.hasYears() {
-		// The analyst input stays absent (Decision 10).
-		rr = c.ReturnAtPrice(f.fr.Filings, costs, nil, today)
+	if !f.hasYears() {
+		// No figures: one row says the gap once, with every shown strike in its price text.
+		row := coreRow{Symbol: f.sub.Symbol, PriceText: strings.Join(costs, ", "), Cyclical: cyclical}
+		if f.refused != "" {
+			row.Returns = blockGap(reasonMissingIn, f.refused)
+		} else {
+			row.Returns = blockGap(reasonMissingIn, reasonText(f.fr.Reasons...))
+		}
+		return []coreRow{row}, nil, nil
 	}
+	// The analyst input stays absent (Decision 10).
+	rr := c.ReturnAtPrice(f.fr.Filings, costs, nil, today)
 	rows := make([]coreRow, 0, len(costs))
 	for _, cost := range costs {
 		row := coreRow{Symbol: f.sub.Symbol, PriceText: cost, Cyclical: cyclical}
-		switch {
-		case f.refused != "":
-			row.Returns = blockGap(reasonMissingIn, f.refused)
-		case !f.hasYears():
-			row.Returns = blockGap(reasonMissingIn, reasonText(f.fr.Reasons...))
-		default:
-			row.Returns, row.Flag = returnsOf(rr, cost)
-		}
+		row.Returns, row.Flag = returnsOf(rr, cost)
 		rows = append(rows, row)
 	}
 	var legend []string
-	if f.hasYears() && c.ImpliedGrowth != nil {
+	if c.ImpliedGrowth != nil {
 		if spot, ok, err := c.Spot(ctx, f.sub.Symbol, today); err != nil {
 			return nil, nil, fmt.Errorf("companies_page: spot of %s: %w", f.sub.Symbol, err)
 		} else if ok && spot != "" {
