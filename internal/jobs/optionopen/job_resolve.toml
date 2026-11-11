@@ -1,0 +1,36 @@
+# Manifest of option_open_resolve (US): the evening resolve of the contracts of the band into master.option_contract.
+version = 1
+id = "option_open_resolve"
+zone = "America/New_York"
+budget_minutes = 40
+# New resolves per run (docs/design/option-open-pull.md, Capacity); NewResolve may override it with MaxNew.
+max_new = 300
+# Marks of contracts IBKR answered none for (Decision 5): the retry is seven days plus or minus two.
+retry_days = 7
+jitter_days = 2
+# Trigger (d): the stored close moved by this share since checked_at.
+spot_move = 0.05
+# Expiries are resolved up to this many days beyond max_dte, since the plan runs a trading day or more later.
+lookahead_days = 4
+gap_only = false
+
+[window]
+rule = "after_close"
+lateness_hours = 5
+calendar = "XNYS"
+
+# One hour after the close.
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "60m"
+run_bound = "10m"
+restart_sensitive = false
+
+[params]
+store_k = 1.75
+store_drop = 0.25
+calls = "held"
+min_dte = 20
+max_dte = 45
+min_puts = 6

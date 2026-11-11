@@ -21,6 +21,7 @@ export function trendToSpec(series: readonly TrendSeries[]): ChartSpec | null {
     categories: days,
     series: lines.map((s) => ({
       name: s.label,
+      hole: true,
       points: days.map((day) => {
         const row = s.rows.find((r) => r.day === day)
         return row?.change

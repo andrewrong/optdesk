@@ -4,10 +4,20 @@ import path from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ChartSpec } from '@/charts/spec'
 import { MarketPage, registration } from '@/pages/market/MarketPage'
 import { gap } from './fixtures/gap'
 import { ok } from './fixtures/ok'
 import { stale } from './fixtures/stale'
+
+// The Chart is a stub that records the spec it is given.
+const specs: Record<string, ChartSpec> = {}
+vi.mock('@/charts/Chart', () => ({
+  Chart: ({ spec, name }: { spec: ChartSpec; name: string }) => {
+    specs[name] = spec
+    return <div data-slot="chart" data-name={name} />
+  },
+}))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const badVersion = JSON.parse(
@@ -24,7 +34,7 @@ vi.stubGlobal(
 )
 let root: Root | undefined
 let host: HTMLElement
-async function show(payload: typeof ok | typeof gap | typeof stale) {
+async function show(payload: Parameters<typeof MarketPage>[0]['payload']) {
   host = document.createElement('div')
   document.body.append(host)
   await act(async () => {
@@ -75,6 +85,40 @@ describe('MarketPage', () => {
     expect(page.querySelector('[data-block="term"] [data-slot="chart"]')).toBeNull()
     expect(page.querySelector('[data-block="term"] svg, [data-block="term"] [role="img"]')).toBeNull()
     expect(page.querySelector('[data-block="weather"] [data-slot="chart"]')).not.toBeNull()
+  })
+
+  it('lays the blocks in cells, the weather and the breadth across both columns', async () => {
+    const page = await show(ok)
+    const cells = Array.from(page.querySelectorAll('[data-cell]'))
+    expect(cells.map((c) => c.getAttribute('data-cell'))).toEqual(['weather', 'indices', 'term', 'breadth'])
+    expect(cells.map((c) => c.classList.contains('lg:col-span-2'))).toEqual([true, false, false, true])
+    expect(page.querySelector('[data-page="market-page"]')?.classList.contains('min-w-0')).toBe(true)
+    expect(cells[0]!.parentElement?.className).toContain('lg:grid-cols-2')
+  })
+
+  it('shows a missing chart, term and breadth as an Alert with the reason', async () => {
+    const gaps = {
+      chart: { kind: 'gap' as const, reason: 'no_data' as const, text: '天气图缺失' },
+      term: { kind: 'gap' as const, reason: 'not_built' as const, text: '期限缺失' },
+      breadth: { kind: 'gap' as const, reason: 'no_rule' as const, text: '宽度缺失' },
+    }
+    const page = await show({ ...ok, weather: { ...ok.weather, chart: gaps.chart }, term: gaps.term, breadth: gaps.breadth })
+    for (const [cell, g] of [['weather', gaps.chart], ['term', gaps.term], ['breadth', gaps.breadth]] as const) {
+      const alert = page.querySelector(`[data-cell="${cell}"] [role="alert"]`)
+      expect(alert?.getAttribute('data-gap')).toBe(g.reason)
+      expect(alert?.textContent).toBe(g.text)
+    }
+  })
+
+  it('marks the term series as holed and keeps a null point null', async () => {
+    const points = [
+      { ...ok.term.points[0]!, today: { kind: 'gap' as const, reason: 'missing_quote' as const, text: '缺口' } },
+      ok.term.points[1]!,
+    ]
+    await show({ ...ok, term: { ...ok.term, points } })
+    const today = specs['market-term']!.series[0]!
+    expect(today.hole).toBe(true)
+    expect(today.points[0]!.value).toBeNull()
   })
 
   it('shows the stale label', async () => {

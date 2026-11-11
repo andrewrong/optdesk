@@ -4,6 +4,7 @@
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { FigureOrGap, Gap } from '@/generated/market_page.v1'
@@ -29,12 +30,12 @@ const columnsOf = (labels: string[], count: number): Column[] =>
 const rowOf = (cells: Cell[]): Record<string, Cell> =>
   Object.fromEntries(cells.map((cell, index) => [`c${index}`, cell]))
 
-// The cause of a missing block, named once.
-function GapNote({ gap }: { gap: Gap }) {
+// A missing block: the producer's text, the reason in data-gap.
+function MissingBlock({ gap }: { gap: Gap }) {
   return (
-    <Badge variant="secondary" className="h-auto whitespace-normal text-left" data-gap={gap.reason}>
-      {gap.text}
-    </Badge>
+    <Alert data-gap={gap.reason}>
+      <AlertDescription>{gap.text}</AlertDescription>
+    </Alert>
   )
 }
 
@@ -64,7 +65,7 @@ function WeatherBlock({ weather }: { weather: Weather }) {
       </CardHeader>
       <CardContent>
         {'kind' in chart ? (
-          <GapNote gap={chart} />
+          <MissingBlock gap={chart} />
         ) : (
           <Chart spec={closeLine(chart)} ariaText={chart.aria_text} name="market-weather" />
         )}
@@ -94,6 +95,7 @@ function IndicesBlock({ indices }: { indices: Payload['indices'] }) {
 function termLines(term: Exclude<Payload['term'], Gap>): ChartSpec {
   const series = (pick: (point: (typeof term.points)[number]) => FigureOrGap, name: string) => ({
     name,
+    hole: true,
     points: term.points.map((point) => {
       const figure = pick(point)
       return figure.kind === 'gap' ? { value: null, text: figure.text } : { value: figure.value, text: figure.text }
@@ -112,7 +114,7 @@ function TermBlock({ term }: { term: Payload['term'] }) {
     return (
       <Card data-block="term">
         <CardContent>
-          <GapNote gap={term} />
+          <MissingBlock gap={term} />
         </CardContent>
       </Card>
     )
@@ -135,7 +137,7 @@ function BreadthBlock({ breadth }: { breadth: Payload['breadth'] }) {
     return (
       <Card data-block="breadth">
         <CardContent>
-          <GapNote gap={breadth} />
+          <MissingBlock gap={breadth} />
         </CardContent>
       </Card>
     )
@@ -156,7 +158,7 @@ function BreadthBlock({ breadth }: { breadth: Payload['breadth'] }) {
 export function MarketPage({ payload }: { payload: Payload }) {
   const { stale } = payload
   return (
-    <div className="min-w-0 space-y-6" data-page="market-page">
+    <div className="flex min-w-0 flex-col gap-6" data-page="market-page">
       <header>
         <h1 className="text-xl font-semibold">{payload.title}</h1>
         <p className="text-sm text-muted-foreground">{payload.sentence}</p>
@@ -167,10 +169,20 @@ export function MarketPage({ payload }: { payload: Payload }) {
           generatedAt={payload.generated_at}
         />
       ) : null}
-      <WeatherBlock weather={payload.weather} />
-      <IndicesBlock indices={payload.indices} />
-      <TermBlock term={payload.term} />
-      <BreadthBlock breadth={payload.breadth} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="min-w-0 lg:col-span-2" data-cell="weather">
+          <WeatherBlock weather={payload.weather} />
+        </div>
+        <div className="min-w-0" data-cell="indices">
+          <IndicesBlock indices={payload.indices} />
+        </div>
+        <div className="min-w-0" data-cell="term">
+          <TermBlock term={payload.term} />
+        </div>
+        <div className="min-w-0 lg:col-span-2" data-cell="breadth">
+          <BreadthBlock breadth={payload.breadth} />
+        </div>
+      </div>
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
     </div>
   )

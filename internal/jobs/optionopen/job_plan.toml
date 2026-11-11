@@ -1,0 +1,38 @@
+# Manifest of option_open_plan (US): the plan of the contracts to quote at the open, from stored con_ids only.
+version = 1
+id = "option_open_plan"
+zone = "America/New_York"
+slot = "0945"
+budget_minutes = 40
+
+[window]
+rule = "after_close"
+lateness_hours = 0
+calendar = "XNYS"
+
+# 08:45 ET on an ordinary day, 45 minutes before the open.
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+offset = "-45m"
+run_bound = "45m"
+restart_sensitive = false
+
+# The parameter set (owner decisions 2026-11-10).
+[params]
+put_k = 1.4
+call_k = 1.4
+store_k = 1.75
+store_drop = 0.25
+calls = "held"
+min_dte = 20
+max_dte = 45
+min_puts = 6
+max_per_expiry = 25
+far_otm = 0.03
+five_dollar_names = ["SPY", "QQQ", "IWM"]
+deep_puts_drop = 0.15
+ceil_around_spot = 350
+ceil_puts = 1400
+ceil_calls = 1200
+ceil_per_stock = 60

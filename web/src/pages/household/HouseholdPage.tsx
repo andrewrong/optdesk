@@ -108,6 +108,15 @@ function ConcentrationSection({ block, scopes }: { block: MoneyBlock; scopes: Sc
   )
 }
 
+// One grid cell of the page: a wide cell spans both columns from lg, a half cell shares the row with its pair.
+function Cell({ name, wide, children }: { name: string; wide?: boolean; children: React.ReactNode }) {
+  return (
+    <div className={wide ? 'min-w-0 lg:col-span-2' : 'min-w-0'} data-cell={name}>
+      {children}
+    </div>
+  )
+}
+
 export function HouseholdPage({ payload }: { payload: Payload }) {
   const { trend, income, month_change: change } = payload
   const trendSpec = trendToSpec(trend.series ?? [])
@@ -133,12 +142,22 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
         <p className="mt-2 text-muted-foreground">{payload.sentence}</p>
       </header>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
-      <MoneySection name="overview" block={payload.overview} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <Cell name="overview" wide>
+        <MoneySection name="overview" block={payload.overview} />
+      </Cell>
       {payload.accounts ? (
-        <AccountsSection block={payload.accounts} scopes={payload.scopes} />
+        <Cell name="accounts" wide>
+          <AccountsSection block={payload.accounts} scopes={payload.scopes} />
+        </Cell>
       ) : null}
-      <MoneySection name="composition" block={payload.composition} />
-      <MoversSection block={payload.movers} scopes={payload.scopes} />
+      <Cell name="composition" wide>
+        <MoneySection name="composition" block={payload.composition} />
+      </Cell>
+      <Cell name="movers" wide>
+        <MoversSection block={payload.movers} scopes={payload.scopes} />
+      </Cell>
+      <Cell name="trend">
       <Block name="trend" title={trend.title} meaning={trend.meaning}>
         {trendSpec ? (
           <Chart
@@ -172,7 +191,11 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
           </section>
         ))}
       </Block>
-      <MoneySection name="stress" block={payload.stress} />
+      </Cell>
+      <Cell name="stress">
+        <MoneySection name="stress" block={payload.stress} />
+      </Cell>
+      <Cell name="income" wide>
       <Block
         name="income"
         title={income.title}
@@ -186,7 +209,6 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
             name={`household-income-${currency}`}
             spec={incomeToSpec(income, currency)}
             ariaText={income.meaning}
-            className="h-44 w-full"
           />
         ))}
         <IncomeMonths block={income} />
@@ -196,6 +218,8 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
           </p>
         ))}
       </Block>
+      </Cell>
+      <Cell name="month_change">
       <Block
         name="month_change"
         title={change.title}
@@ -211,11 +235,23 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
           />
         ) : null}
       </Block>
-      <MoneySection name="cash_after" block={payload.cash_after} />
-      <MoneySection name="obligations" block={payload.obligations} />
-      <ConcentrationSection block={payload.concentration} scopes={payload.scopes} />
-      <AllocationSection block={payload.allocation} />
-      <MoneySection name="long_term" block={payload.long_term} />
+      </Cell>
+      <Cell name="cash_after">
+        <MoneySection name="cash_after" block={payload.cash_after} />
+      </Cell>
+      <Cell name="obligations" wide>
+        <MoneySection name="obligations" block={payload.obligations} />
+      </Cell>
+      <Cell name="concentration" wide>
+        <ConcentrationSection block={payload.concentration} scopes={payload.scopes} />
+      </Cell>
+      <Cell name="allocation">
+        <AllocationSection block={payload.allocation} />
+      </Cell>
+      <Cell name="long_term">
+        <MoneySection name="long_term" block={payload.long_term} />
+      </Cell>
+      </div>
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
     </div>
   )
