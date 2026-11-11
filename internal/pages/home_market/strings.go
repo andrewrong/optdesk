@@ -2,32 +2,32 @@ package home_market
 
 // Fixed texts of the card.
 const (
-	cardTitle    = "市场"
-	cardSubtitle = "指数走势、隐含波动率和 Cboe 波动率指数"
-	sayVix       = "VIX 收在 "
-	sayNone      = "VIX 暂无可用数据"
+	cardTitle    = "Market"
+	cardSubtitle = "Index trend, implied volatility and the Cboe Volatility Index"
+	sayVix       = "VIX closed at "
+	sayNone      = "VIX: no data available"
 
-	ivNoRow          = "隐含波动率暂无数据：还没有存储"
-	ivMissing        = "隐含波动率暂缺：输入不全"
-	ivSource         = "IBKR 隐含波动率"
-	rv20NotBuilt     = "20 日已实现波动率暂未生成"
-	diffNotBuilt     = "隐含减已实现暂未生成"
-	levelNoRow       = " 暂无数据：还没有存储"
-	levelStale       = " 数据已过期，数据日 "
-	levelBad         = " 数据不可用"
-	chartNoData      = "走势图暂无数据：没有存储的标普 500 收盘"
-	ariaNone         = "走势图暂无数据"
-	ariaFmt          = "标普 500 收盘走势，共 %d 个交易日，从 %s 到 %s"
-	noDay            = "无数据"
-	noDataText       = "暂无数据"
-	noDataTimes      = "暂无数据时间"
-	staleLabelPrefix = "数据日 "
-	dataTimesPrefix  = "数据时间 "
-	volNote          = "指数水平以 Cboe 发布的点数计，不并入表格。"
+	ivNoRow          = "Implied volatility: no data, not stored yet"
+	ivMissing        = "Implied volatility: no data, inputs incomplete"
+	ivSource         = "IBKR implied volatility"
+	rv20NotBuilt     = "20-day realised volatility not built yet"
+	diffNotBuilt     = "Implied minus realised not built yet"
+	levelNoRow       = " no data: not stored yet"
+	levelStale       = " data is stale, data day "
+	levelBad         = " data unusable"
+	chartNoData      = "Chart: no data, no stored S&P 500 closes"
+	ariaNone         = "Chart: no data"
+	ariaFmt          = "S&P 500 close trend, %d trading days, from %s to %s"
+	noDay            = "no data"
+	noDataText       = "no data yet"
+	noDataTimes      = "no data time yet"
+	staleLabelPrefix = "Data day "
+	dataTimesPrefix  = "Data time "
+	volNote          = "Index levels are in points as published by Cboe, not merged into the table."
 )
 
 var (
-	columns     = []string{"指数", "隐含波动率", "20 日已实现", "差值"}
-	seriesNames = []string{"收盘", "200 日均线", "区间"}
-	notes       = []string{"走势图只画标普 500 的存储收盘，200 日均线和区间暂未生成。"}
+	columns     = []string{"Index", "Implied volatility", "20-day realised", "Difference"}
+	seriesNames = []string{"Close", "200-day average", "Range"}
+	notes       = []string{"The chart draws only the stored S&P 500 closes; the 200-day average and range are not built yet."}
 )

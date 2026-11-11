@@ -4,33 +4,33 @@
     "columns": [
       {
         "id": "company",
-        "label": "公司"
+        "label": "Company"
       },
       {
         "id": "earnings",
-        "label": "财报日"
+        "label": "Earnings date"
       },
       {
         "id": "day_change",
-        "label": "日涨跌"
+        "label": "Day change"
       },
       {
         "id": "five_day_change",
-        "label": "5日涨跌"
+        "label": "5-day change"
       }
     ],
-    "data_times_text": "美股数据日 10-23 · 日股数据日 10-23",
+    "data_times_text": "US data day 10-23 · JP data day 10-23",
     "gaps": [],
     "notes": [],
     "rows": [],
-    "say": "持有 9 家 · 2 家 21 日内财报 · 近 5 日消息：暂无数据源。",
+    "say": "Holding 9 · 2 with earnings within 21 days · news, last 5 days: no data source.",
     "stale": {
       "data_time": "2026-10-23T21:00:00+08:00",
       "stale_after": "2026-10-24T21:00:00+08:00",
-      "text": "数据日 10-23"
+      "text": "Data day 10-23"
     },
-    "subtitle": "财报日历与变化",
-    "title": "持仓公司"
+    "subtitle": "Earnings calendar and changes",
+    "title": "Held companies"
   },
   "data_times": [
     {

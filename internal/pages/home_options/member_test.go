@@ -206,14 +206,14 @@ func TestSeriesPremiumByCloseMonth(t *testing.T) {
 			if pr["kind"] != "value" || pr["text"] != tx {
 				t.Fatalf("premium of %v = %v", m["month"], pr)
 			}
-		} else if pr["kind"] != "gap" || pr["reason"] != "no_data" || pr["text"] != "没有当月平仓的卖出记录" {
+		} else if pr["kind"] != "gap" || pr["reason"] != "no_data" || pr["text"] != "No sold records closed this month" {
 			t.Fatalf("premium of %v = %v", m["month"], pr)
 		}
 		if cl := m["closed"].(map[string]any); cl["kind"] != "gap" || cl["reason"] != "no_data" {
 			t.Fatalf("closed of %v = %v", m["month"], cl)
 		}
 	}
-	if strings.Contains(string(mustJSON(t, c["gaps"])), "按平仓月统计的已了结权利金暂无数据") {
+	if strings.Contains(string(mustJSON(t, c["gaps"])), "Settled premium by closing month: no data yet") {
 		t.Fatalf("gaps = %v", c["gaps"])
 	}
 }
@@ -227,7 +227,7 @@ func TestSeriesWithoutFigureKeepsGap(t *testing.T) {
 			t.Fatalf("premium = %v", g)
 		}
 	}
-	if !strings.Contains(string(mustJSON(t, c["gaps"])), "按平仓月统计的已了结权利金暂无数据") {
+	if !strings.Contains(string(mustJSON(t, c["gaps"])), "Settled premium by closing month: no data yet") {
 		t.Fatalf("gaps = %v", c["gaps"])
 	}
 }
@@ -238,9 +238,12 @@ func TestSeriesCardTextStatesRule(t *testing.T) {
 	c := card(t, okCfg(sold("1.0000", "", "")))
 	for _, k := range []string{"premium_series_text", "premium_series_caption"} {
 		s := c[k].(string)
-		for _, w := range []string{"按平仓月", "到期", "被行权", "被指派", "买回", "不扣手续费", "平仓日的年月", "不换算时区", "按账户别名", "不合并"} {
-			if k == "premium_series_caption" && w == "不合并" {
-				w = "从不合并"
+		for _, w := range []string{
+			"by closing month", "expiry", "exercise", "assignment", "buy-back", "fees are not deducted",
+			"year and month of the closing day", "no time zone conversion", "by account alias", "not merged",
+		} {
+			if k == "premium_series_caption" && w == "not merged" {
+				w = "never merged"
 			}
 			if !strings.Contains(s, w) {
 				t.Fatalf("%s lacks %q: %s", k, w, s)
@@ -320,14 +323,14 @@ func TestNilReaderIsNoDataEverywhere(t *testing.T) {
 	t.Parallel()
 	c := cfg(nil, results{})
 	c.Ledger = nil
-	allGaps(t, card(t, c), "期权账本暂未接入")
+	allGaps(t, card(t, c), "Option ledger: not connected yet")
 }
 
 func TestEmptyLedgerIsNoDataEverywhere(t *testing.T) {
 	t.Parallel()
 	c := card(t, cfg(ledger{aliases: map[string]int{}}, results{}))
-	allGaps(t, c, "账本暂无记录")
-	if c["say"] != "期权账本暂无记录。" {
+	allGaps(t, c, "Ledger: no records yet")
+	if c["say"] != "Option ledger: no records yet." {
 		t.Fatalf("say = %v", c["say"])
 	}
 }
@@ -363,7 +366,7 @@ func TestSeriesTextAndCaptionShareNoSentence(t *testing.T) {
 	c := card(t, okCfg(sold("1.0000", "", "")))
 	text := c["premium_series_text"].(string)
 	caption := c["premium_series_caption"].(string)
-	for _, seg := range strings.FieldsFunc(text, func(r rune) bool { return r == '；' || r == '。' }) {
+	for _, seg := range strings.FieldsFunc(text, func(r rune) bool { return r == ';' || r == '.' }) {
 		if strings.Contains(caption, seg) {
 			t.Fatalf("caption repeats sentence %q", seg)
 		}
