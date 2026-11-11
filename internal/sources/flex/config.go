@@ -18,7 +18,7 @@ var (
 	loginNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 	envNameRE   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	queryIDRE   = regexp.MustCompile(`^[0-9]+$`)
-	aliasRE     = regexp.MustCompile(`^[ab]$`)
+	aliasRE     = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 )
 
 var _ sources.LoadFlexFileFunc = Load

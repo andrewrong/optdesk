@@ -1,0 +1,22 @@
+[[login]]
+name = "main"
+token_env = "OPTDESK_FLEX_TOKEN_MAIN"
+trade_queries = ["1111111"]
+required = true
+
+[[login]]
+name = "second"
+token_env = "OPTDESK_FLEX_TOKEN_SECOND"
+trade_queries = ["2222222", "3333333"]
+
+[[account]]
+alias = "a"
+account_env = "OPTDESK_FLEX_ACCOUNT_A"
+
+[[account]]
+alias = "b"
+account_env = "OPTDESK_FLEX_ACCOUNT_B"
+
+[[account]]
+alias = "c"
+account_env = "OPTDESK_FLEX_ACCOUNT_C"
