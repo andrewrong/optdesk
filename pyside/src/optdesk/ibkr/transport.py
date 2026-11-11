@@ -128,6 +128,7 @@ WORDS = frozenset(
         spec.STATUS_NO_VALUE,
         spec.STATUS_TIMEOUT,
         spec.OPTION_EOD,
+        spec.OPTION_OPEN,
         spec.UNDERLYING_IV,
         spec.SNAPSHOT,
         spec.STATUS_OK,
@@ -223,6 +224,7 @@ _SEC_TYPE_VALUES = {word: value for value, word in _SEC_TYPES.items()}
 _RIGHT_VALUES = {word: value for value, word in _RIGHTS.items()}
 _KINDS = {
     pb.QUOTE_KIND_OPTION_EOD: spec.OPTION_EOD,
+    pb.QUOTE_KIND_OPTION_OPEN: spec.OPTION_OPEN,
     pb.QUOTE_KIND_UNDERLYING_IV: spec.UNDERLYING_IV,
     pb.QUOTE_KIND_SNAPSHOT: spec.SNAPSHOT,
 }
