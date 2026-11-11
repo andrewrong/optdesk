@@ -123,8 +123,8 @@ func expectField(t *testing.T, err error, field string) {
 		}
 		return
 	}
-	var ie *underlying.InvalidError
-	if !errors.As(err, &ie) || ie.Field != field {
+	var ie underlying.InvalidError
+	if !errors.As(err, &ie) || ie.Field() != field {
 		t.Fatalf("error %v; want InvalidError with Field %q", err, field)
 	}
 }

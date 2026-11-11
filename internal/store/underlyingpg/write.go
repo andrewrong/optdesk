@@ -84,7 +84,7 @@ func (s *Store) Apply(ctx context.Context, c underlying.Change) (int, error) {
 		return nil
 	})
 	if err != nil {
-		var ie *underlying.InvalidError
+		var ie underlying.InvalidError
 		if errors.As(err, &ie) {
 			return 0, ie
 		}

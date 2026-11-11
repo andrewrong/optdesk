@@ -157,8 +157,8 @@ func TestApplyActiveWithoutConIDRefused(t *testing.T) {
 	f.seed(underlying.Row{Key: "US:MSFT", Symbol: "MSFT", Market: "US", Kind: "stock", Exchange: "SMART",
 		Currency: "USD", Status: underlying.StatusPending})
 	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{{Key: "US:MSFT", Status: sp("active")}}})
-	var ie *underlying.InvalidError
-	if !errors.As(err, &ie) || ie.Field != "status" || n != 0 || len(f.rows) != 2 {
+	var ie underlying.InvalidError
+	if !errors.As(err, &ie) || ie.Field() != "status" || n != 0 || len(f.rows) != 2 {
 		t.Fatalf("Apply = %d, %v; want InvalidError on status and no row", n, err)
 	}
 }

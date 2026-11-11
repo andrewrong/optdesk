@@ -25,7 +25,16 @@ const (
 	maxNote = 200
 )
 
-func invalid(field, why string) error { return &underlying.InvalidError{Field: field, Why: why} }
+// invalidError is the unexported implementation of underlying.InvalidError.
+type invalidError struct{ field, why string }
+
+var _ underlying.InvalidError = (*invalidError)(nil)
+
+func (e *invalidError) Error() string { return "underlying: " + e.field + ": " + e.why }
+func (e *invalidError) Field() string { return e.field }
+func (e *invalidError) Why() string   { return e.why }
+
+func invalid(field, why string) error { return &invalidError{field: field, why: why} }
 
 // ValidateAdd checks a new name and returns the row to insert: pending, or active when it carries a ConID (the
 // import). An empty Exchange and Currency take the default of the market. exists holds the keys that already have a
