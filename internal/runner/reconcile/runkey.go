@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jonboulle/clockwork"
 
@@ -94,16 +96,48 @@ func (k *keyRunner) RunKey(
 	if err := k.ops.RecordRun(wctx, rec); err != nil {
 		return rec, err
 	}
-	k.logFinished(wctx, job, key, attempt, now, rec)
+	k.logFinished(wctx, job, key, attempt, now, rec, res.Err)
 	if status == "" {
 		return rec, nil
 	}
 	return rec, k.ops.MarkPresent(wctx, day, key, status)
 }
 
+var (
+	reDSN          = regexp.MustCompile(`(?i)\bpostgres(?:ql)?://\S*`)
+	reUserinfoURL  = regexp.MustCompile(`(?i)\b[a-z][a-z0-9+.-]*://[^\s/@]*@\S*`)
+	reSecretPair   = regexp.MustCompile(`(?i)\b(password|passwd|pwd|token|secret|apikey|api_key|key)=[^\s&;]*`)
+	reAuthzHeader  = regexp.MustCompile(`(?i)(authorization:\s*)(?:bearer|basic)\s+[^\s;]+`)
+	reControlChars = regexp.MustCompile(`[\p{Cc}]+`)
+)
+
+const (
+	redacted   = "[redacted]"
+	maxErrText = 300
+)
+
+// safeErrText makes the text of a job error fit for the log: credentials are replaced by
+// [redacted], control characters become one space, and the result is at most 300 bytes.
+func safeErrText(s string) string {
+	s = reDSN.ReplaceAllString(s, redacted)                // rule 1: a postgres DSN
+	s = reUserinfoURL.ReplaceAllString(s, redacted)        // rule 1: a URL with userinfo
+	s = reSecretPair.ReplaceAllString(s, "${1}="+redacted) // rule 2: key=value secrets
+	s = reAuthzHeader.ReplaceAllString(s, "${1}"+redacted) // rule 3: Authorization credential
+	s = reControlChars.ReplaceAllString(s, " ")            // rule 4: control characters
+	if len(s) > maxErrText {                               // rule 5: cut on a rune boundary
+		n := maxErrText
+		for n > 0 && !utf8.RuneStart(s[n]) {
+			n--
+		}
+		s = s[:n]
+	}
+	return s
+}
+
 // logFinished writes the one Info line of a run whose final row is recorded. It carries
-// counts, codes and the duration, never the message of a job error or any row content.
-func (k *keyRunner) logFinished(ctx context.Context, job contracts.Job, key contracts.ExpectedKey, attempt int, start time.Time, rec store.Run) {
+// counts, codes and the duration; the message of a failed attempt's job error is logged
+// after redaction (safeErrText), and no row content is.
+func (k *keyRunner) logFinished(ctx context.Context, job contracts.Job, key contracts.ExpectedKey, attempt int, start time.Time, rec store.Run, jobErr error) {
 	outcome := "degraded"
 	if rec.Status == store.RunDone {
 		outcome = "ok"
@@ -124,6 +158,9 @@ func (k *keyRunner) logFinished(ctx context.Context, job contracts.Job, key cont
 	}
 	if rec.ErrorCode != "" {
 		attrs = append(attrs, slog.String("error_code", rec.ErrorCode))
+		if jobErr != nil {
+			attrs = append(attrs, slog.String("error", safeErrText(jobErr.Error())))
+		}
 	}
 	if rec.ReasonCode != "" {
 		attrs = append(attrs, slog.String("reason", rec.ReasonCode))
