@@ -49,7 +49,7 @@ export type Value1 = number
 export type Currency = ("USD" | "JPY")
 export type Text4 = string
 export type Tone = (("up" | "down" | "flat" | "none") | null)
-export type Unit1 = ("usd" | "usd_per_share" | "usd_signed")
+export type Unit1 = ("amount" | "amount_per_share" | "amount_signed")
 export type Value2 = number
 export type Day = (MoneyCell | Gap)
 export type DaysLeft = (DaysCell | Gap)
@@ -62,11 +62,12 @@ export type Currency1 = ("USD" | "JPY")
 export type Note = (string | null)
 export type Text6 = string
 export type Tone1 = (("up" | "down" | "flat" | "none") | null)
-export type Unit3 = ("usd" | "usd_per_share" | "usd_signed")
+export type Unit3 = ("amount" | "amount_per_share" | "amount_signed")
 export type Value4 = number
 export type Price = (MoneyCell | Gap)
 export type Text7 = string
-export type Unit4 = ("shares" | "contracts")
+export type Unit4 = "shares"
+export type Unit4b = "contracts"
 export type Value5 = number
 export type Text8 = string
 export type Value6 = string
@@ -106,7 +107,7 @@ export type Label3 = string
 export type Account = (Cell | Gap)
 export type Text9 = string
 export type Tone2 = ("up" | "down" | "flat" | "none")
-export type Unit5 = (("USD" | "usd_signed" | "percent" | "share_percent" | "index_points" | "percent_of_track" | "vol_points" | "percentage_points") | null)
+export type Unit5 = (("USD" | "amount_signed" | "percent" | "share_percent" | "index_points" | "percent_of_track" | "vol_points" | "percentage_points") | null)
 export type Value7 = (number | null)
 export type Action = (Cell | Gap)
 export type Instrument = (Cell | Gap)
@@ -188,7 +189,7 @@ expiry: Expiry
 name: TextCell
 open_premium: OpenPremium
 price: Price
-quantity: QuantityCell
+quantity: OptionQuantityCell
 role: RoleCell
 unrealised: Unrealised
 }
@@ -235,9 +236,14 @@ tone?: Tone1
 unit: Unit3
 value: Value4
 }
-export interface QuantityCell {
+export interface StockQuantityCell {
 text: Text7
 unit: Unit4
+value: Value5
+}
+export interface OptionQuantityCell {
+text: Text7
+unit: Unit4b
 value: Value5
 }
 /**
@@ -264,7 +270,7 @@ cost: MoneyCell
 day: Day1
 name: TextCell
 price: Price1
-quantity: QuantityCell
+quantity: StockQuantityCell
 role: RoleCell
 unrealised: Unrealised1
 }

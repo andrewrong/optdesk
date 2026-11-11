@@ -94,14 +94,14 @@
               "currency": "USD",
               "text": "$2.60",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 2.6
             },
             "day": {
               "currency": "USD",
               "text": "−$15.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -15.0
             },
             "days_left": {
@@ -121,14 +121,14 @@
               "currency": "USD",
               "text": "$258.00",
               "tone": "none",
-              "unit": "usd",
+              "unit": "amount",
               "value": 258.0
             },
             "price": {
               "currency": "USD",
               "text": "$3.15",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 3.15
             },
             "quantity": {
@@ -144,7 +144,7 @@
               "currency": "USD",
               "text": "−$55.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -55.0
             }
           }
@@ -205,14 +205,14 @@
               "currency": "USD",
               "text": "$138.20",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 138.2
             },
             "day": {
               "currency": "USD",
               "text": "+$120.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 120.0
             },
             "name": {
@@ -223,7 +223,7 @@
               "currency": "USD",
               "text": "$151.40",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 151.4
             },
             "quantity": {
@@ -239,7 +239,7 @@
               "currency": "USD",
               "text": "+$2,640.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 2640.0
             }
           },
@@ -257,14 +257,14 @@
               "currency": "JPY",
               "text": "¥12,300",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 12300.0
             },
             "day": {
               "currency": "JPY",
               "text": "+¥1,500",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 1500.0
             },
             "name": {
@@ -280,7 +280,7 @@
               "currency": "JPY",
               "text": "¥12,450",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 12450.0
             },
             "quantity": {
@@ -296,7 +296,7 @@
               "currency": "JPY",
               "text": "+¥2,250",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 2250.0
             }
           }
@@ -438,14 +438,14 @@
               "currency": "USD",
               "text": "$1.20",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 1.2
             },
             "day": {
               "currency": "USD",
               "text": "+$10.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 10.0
             },
             "days_left": {
@@ -465,14 +465,14 @@
               "currency": "USD",
               "text": "−$241.00",
               "tone": "none",
-              "unit": "usd",
+              "unit": "amount",
               "value": -241.0
             },
             "price": {
               "currency": "USD",
               "text": "$1.40",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 1.4
             },
             "quantity": {
@@ -488,7 +488,7 @@
               "currency": "USD",
               "text": "+$40.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 40.0
             }
           }
@@ -549,14 +549,14 @@
               "currency": "USD",
               "text": "$40.00",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 40.0
             },
             "day": {
               "currency": "USD",
               "text": "−$25.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -25.0
             },
             "name": {
@@ -567,7 +567,7 @@
               "currency": "USD",
               "text": "$38.00",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 38.0
             },
             "quantity": {
@@ -583,7 +583,7 @@
               "currency": "USD",
               "text": "−$100.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -100.0
             }
           }
@@ -725,14 +725,14 @@
               "currency": "USD",
               "text": "$2.60",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 2.6
             },
             "day": {
               "currency": "USD",
               "text": "−$15.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -15.0
             },
             "days_left": {
@@ -752,14 +752,14 @@
               "currency": "USD",
               "text": "$258.00",
               "tone": "none",
-              "unit": "usd",
+              "unit": "amount",
               "value": 258.0
             },
             "price": {
               "currency": "USD",
               "text": "$3.15",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 3.15
             },
             "quantity": {
@@ -775,7 +775,7 @@
               "currency": "USD",
               "text": "−$55.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -55.0
             }
           },
@@ -788,14 +788,14 @@
               "currency": "USD",
               "text": "$1.20",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 1.2
             },
             "day": {
               "currency": "USD",
               "text": "+$10.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 10.0
             },
             "days_left": {
@@ -815,14 +815,14 @@
               "currency": "USD",
               "text": "−$241.00",
               "tone": "none",
-              "unit": "usd",
+              "unit": "amount",
               "value": -241.0
             },
             "price": {
               "currency": "USD",
               "text": "$1.40",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 1.4
             },
             "quantity": {
@@ -838,7 +838,7 @@
               "currency": "USD",
               "text": "+$40.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 40.0
             }
           }
@@ -899,14 +899,14 @@
               "currency": "USD",
               "text": "$138.20",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 138.2
             },
             "day": {
               "currency": "USD",
               "text": "+$120.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 120.0
             },
             "name": {
@@ -917,7 +917,7 @@
               "currency": "USD",
               "text": "$151.40",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 151.4
             },
             "quantity": {
@@ -933,7 +933,7 @@
               "currency": "USD",
               "text": "+$2,640.00",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 2640.0
             }
           },
@@ -951,14 +951,14 @@
               "currency": "JPY",
               "text": "¥12,300",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 12300.0
             },
             "day": {
               "currency": "JPY",
               "text": "+¥1,500",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 1500.0
             },
             "name": {
@@ -974,7 +974,7 @@
               "currency": "JPY",
               "text": "¥12,450",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 12450.0
             },
             "quantity": {
@@ -990,7 +990,7 @@
               "currency": "JPY",
               "text": "+¥2,250",
               "tone": "up",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": 2250.0
             }
           },
@@ -1003,14 +1003,14 @@
               "currency": "USD",
               "text": "$40.00",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 40.0
             },
             "day": {
               "currency": "USD",
               "text": "−$25.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -25.0
             },
             "name": {
@@ -1021,7 +1021,7 @@
               "currency": "USD",
               "text": "$38.00",
               "tone": "none",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "value": 38.0
             },
             "quantity": {
@@ -1037,7 +1037,7 @@
               "currency": "USD",
               "text": "−$100.00",
               "tone": "down",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "value": -100.0
             }
           }
