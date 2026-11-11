@@ -340,7 +340,7 @@ func newBaseDeps() deps {
 		newAlphaVantage:         alphavantage.New,
 		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
-		readFile:                os.ReadFile,
+		readFile:                os.ReadFile, openIndexIDs: openIndexIDsDefault,
 	}
 }
 
