@@ -3,7 +3,7 @@
 import { TriangleAlert } from 'lucide-react'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/advice_page'
 export { validate as validateAdvicePage } from '@/types/advice_page'
@@ -53,10 +53,7 @@ export function AdvicePage({ payload }: { payload: Payload }) {
       ) : null}
       {payload.rows.length > 0 ? (
         <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle>{payload.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent>
             <DataTable columns={COLUMNS} rows={payload.rows.map(toRow)} />
           </CardContent>
         </Card>

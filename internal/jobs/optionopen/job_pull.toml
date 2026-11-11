@@ -1,0 +1,21 @@
+# Manifest of the option_open job: the pull of the planned contracts at the US open (Decision 10, 11 and 22).
+version = 1
+id = "option_open"
+zone = "America/New_York"
+currency = "USD"
+exchange = "SMART"
+slot = "0945"
+chunk = 30
+max_per_key = 120
+budget_minutes = 8
+stop_after = "1000"
+heartbeat_seconds = 30
+min_ok_share = 0.5
+retry_classes = ["around_spot", "puts", "held"]
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+offset = "15m"
+run_bound = "25m"
+restart_sensitive = true

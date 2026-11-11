@@ -94,6 +94,10 @@ func (MarketDataType) EnumDescriptor() ([]byte, []int) {
 //	  subscription with no generic ticks (the default ticks only), released as
 //	  soon as bid and ask have arrived; at most 20 s; wanted fields bid, ask,
 //	  last, bid_size, ask_size, last_size, close, volume and the event time.
+//	OPTION_OPEN: the option quote of the open pull: a short streaming
+//	  subscription per option with generic ticks "100,101", released as soon as
+//	  bid, ask and the model values have arrived; at most 15 s; no
+//	  open-interest grace (it is not waited for at the open).
 //
 // These first values are corrected from the owner's live measurement (ADR 0003:
 // measure first), which is a change of comment and table, not of shape.
@@ -104,6 +108,7 @@ const (
 	QuoteKind_QUOTE_KIND_OPTION_EOD    QuoteKind = 1
 	QuoteKind_QUOTE_KIND_UNDERLYING_IV QuoteKind = 2
 	QuoteKind_QUOTE_KIND_SNAPSHOT      QuoteKind = 3
+	QuoteKind_QUOTE_KIND_OPTION_OPEN   QuoteKind = 4
 )
 
 // Enum value maps for QuoteKind.
@@ -113,12 +118,14 @@ var (
 		1: "QUOTE_KIND_OPTION_EOD",
 		2: "QUOTE_KIND_UNDERLYING_IV",
 		3: "QUOTE_KIND_SNAPSHOT",
+		4: "QUOTE_KIND_OPTION_OPEN",
 	}
 	QuoteKind_value = map[string]int32{
 		"QUOTE_KIND_UNSPECIFIED":   0,
 		"QUOTE_KIND_OPTION_EOD":    1,
 		"QUOTE_KIND_UNDERLYING_IV": 2,
 		"QUOTE_KIND_SNAPSHOT":      3,
+		"QUOTE_KIND_OPTION_OPEN":   4,
 	}
 )
 
@@ -224,12 +231,13 @@ const file_ibkr_v1_quote_types_proto_rawDesc = "" +
 	"\x15MARKET_DATA_TYPE_LIVE\x10\x01\x12\x1b\n" +
 	"\x17MARKET_DATA_TYPE_FROZEN\x10\x02\x12\x1c\n" +
 	"\x18MARKET_DATA_TYPE_DELAYED\x10\x03\x12#\n" +
-	"\x1fMARKET_DATA_TYPE_DELAYED_FROZEN\x10\x04*y\n" +
+	"\x1fMARKET_DATA_TYPE_DELAYED_FROZEN\x10\x04*\x95\x01\n" +
 	"\tQuoteKind\x12\x1a\n" +
 	"\x16QUOTE_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15QUOTE_KIND_OPTION_EOD\x10\x01\x12\x1c\n" +
 	"\x18QUOTE_KIND_UNDERLYING_IV\x10\x02\x12\x17\n" +
-	"\x13QUOTE_KIND_SNAPSHOT\x10\x03*\xe7\x01\n" +
+	"\x13QUOTE_KIND_SNAPSHOT\x10\x03\x12\x1a\n" +
+	"\x16QUOTE_KIND_OPTION_OPEN\x10\x04*\xe7\x01\n" +
 	"\vQuoteStatus\x12\x1c\n" +
 	"\x18QUOTE_STATUS_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fQUOTE_STATUS_OK\x10\x01\x12\x18\n" +

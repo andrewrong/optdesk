@@ -95,7 +95,7 @@ function MarketTab({ pane }: { pane: Pane }) {
             </a>
           </Button>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {pane.cards.map((card) => (
             <OpportunityCard key={card.id} card={card} />
           ))}
@@ -131,7 +131,7 @@ export function OptionPage({ payload }: { payload: Payload }) {
       <h1 className="text-2xl font-semibold">{payload.title}</h1>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       <Tabs defaultValue={first?.market} className="min-w-0">
-        <TabsList>
+        <TabsList className="group-data-horizontal/tabs:h-auto w-full flex-wrap">
           {payload.markets.map((pane) => (
             <TabsTrigger key={pane.market} value={pane.market}>
               {pane.label}

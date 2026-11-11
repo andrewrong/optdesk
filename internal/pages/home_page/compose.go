@@ -98,7 +98,7 @@ type payload struct {
 // members (see buildOverview). stale_after is the earliest of the members that
 // carry one, else the earliest data_time day plus 4 days at 09:30 in in.Zone. It
 // returns an error when Zone is nil, a card link does not start with "/", a card
-// has neither say nor subtitle, the members hold more than 20 gaps, a member does not carry the schema, schema_version and run identity
+// has neither say nor subtitle, a member does not carry the schema, schema_version and run identity
 // of its slot (the error names the slot), or the members hold more than 20
 // distinct data times.
 func Compose(in Input, generatedAt time.Time) ([]byte, error) {

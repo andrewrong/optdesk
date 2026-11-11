@@ -82,7 +82,8 @@ func buildOverview(in Input) (overview, error) {
 		}
 	}
 	if len(ov.Gaps) > maxGaps {
-		return overview{}, fmt.Errorf("home_page: overview.gaps: %d gaps, at most %d", len(ov.Gaps), maxGaps)
+		dropped := len(ov.Gaps) - (maxGaps - 1)
+		ov.Gaps = append(ov.Gaps[:maxGaps-1], gapItem{Card: "首页", Text: fmt.Sprintf("另有 %d 处缺口未列出", dropped)})
 	}
 	return ov, nil
 }

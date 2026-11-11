@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19ibkr/v1/quote_types.proto\x12\x07ibkr.v1*\xad\x01\n\x0eMarketDataType\x12 \n\x1cMARKET_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x19\n\x15MARKET_DATA_TYPE_LIVE\x10\x01\x12\x1b\n\x17MARKET_DATA_TYPE_FROZEN\x10\x02\x12\x1c\n\x18MARKET_DATA_TYPE_DELAYED\x10\x03\x12#\n\x1fMARKET_DATA_TYPE_DELAYED_FROZEN\x10\x04*y\n\tQuoteKind\x12\x1a\n\x16QUOTE_KIND_UNSPECIFIED\x10\x00\x12\x19\n\x15QUOTE_KIND_OPTION_EOD\x10\x01\x12\x1c\n\x18QUOTE_KIND_UNDERLYING_IV\x10\x02\x12\x17\n\x13QUOTE_KIND_SNAPSHOT\x10\x03*\xe7\x01\n\x0bQuoteStatus\x12\x1c\n\x18QUOTE_STATUS_UNSPECIFIED\x10\x00\x12\x13\n\x0fQUOTE_STATUS_OK\x10\x01\x12\x18\n\x14QUOTE_STATUS_PARTIAL\x10\x02\x12\x18\n\x14QUOTE_STATUS_NO_DATA\x10\x03\x12 \n\x1cQUOTE_STATUS_NO_SUBSCRIPTION\x10\x04\x12\x18\n\x14QUOTE_STATUS_TIMEOUT\x10\x05\x12\x16\n\x12QUOTE_STATUS_ERROR\x10\x06\x12\x1d\n\x19QUOTE_STATUS_DISCONNECTED\x10\x07\x42\x38Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19ibkr/v1/quote_types.proto\x12\x07ibkr.v1*\xad\x01\n\x0eMarketDataType\x12 \n\x1cMARKET_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x19\n\x15MARKET_DATA_TYPE_LIVE\x10\x01\x12\x1b\n\x17MARKET_DATA_TYPE_FROZEN\x10\x02\x12\x1c\n\x18MARKET_DATA_TYPE_DELAYED\x10\x03\x12#\n\x1fMARKET_DATA_TYPE_DELAYED_FROZEN\x10\x04*\x95\x01\n\tQuoteKind\x12\x1a\n\x16QUOTE_KIND_UNSPECIFIED\x10\x00\x12\x19\n\x15QUOTE_KIND_OPTION_EOD\x10\x01\x12\x1c\n\x18QUOTE_KIND_UNDERLYING_IV\x10\x02\x12\x17\n\x13QUOTE_KIND_SNAPSHOT\x10\x03\x12\x1a\n\x16QUOTE_KIND_OPTION_OPEN\x10\x04*\xe7\x01\n\x0bQuoteStatus\x12\x1c\n\x18QUOTE_STATUS_UNSPECIFIED\x10\x00\x12\x13\n\x0fQUOTE_STATUS_OK\x10\x01\x12\x18\n\x14QUOTE_STATUS_PARTIAL\x10\x02\x12\x18\n\x14QUOTE_STATUS_NO_DATA\x10\x03\x12 \n\x1cQUOTE_STATUS_NO_SUBSCRIPTION\x10\x04\x12\x18\n\x14QUOTE_STATUS_TIMEOUT\x10\x05\x12\x16\n\x12QUOTE_STATUS_ERROR\x10\x06\x12\x1d\n\x19QUOTE_STATUS_DISCONNECTED\x10\x07\x42\x38Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,8 +34,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._serialized_options = b'Z6github.com/andrewrong/optdesk/internal/contracts/genpb'
   _globals['_MARKETDATATYPE']._serialized_start=39
   _globals['_MARKETDATATYPE']._serialized_end=212
-  _globals['_QUOTEKIND']._serialized_start=214
-  _globals['_QUOTEKIND']._serialized_end=335
-  _globals['_QUOTESTATUS']._serialized_start=338
-  _globals['_QUOTESTATUS']._serialized_end=569
+  _globals['_QUOTEKIND']._serialized_start=215
+  _globals['_QUOTEKIND']._serialized_end=364
+  _globals['_QUOTESTATUS']._serialized_start=367
+  _globals['_QUOTESTATUS']._serialized_end=598
 # @@protoc_insertion_point(module_scope)

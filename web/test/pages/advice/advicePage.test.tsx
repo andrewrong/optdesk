@@ -39,6 +39,12 @@ it('shows the delta and the acted word of the ok fixture', async () => {
   expect(host.querySelectorAll('tbody tr')).toHaveLength(payload.rows.length)
 })
 
+it('shows the title of the ok fixture once', async () => {
+  const payload = fixture('ok.json')
+  await show(<AdvicePage payload={payload} />)
+  expect(host.textContent!.split(payload.title)).toHaveLength(2)
+})
+
 it('shows the gap of the gap fixture once and no table row', async () => {
   const payload = fixture('gap.json')
   await show(<AdvicePage payload={payload} />)
