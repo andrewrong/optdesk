@@ -45,11 +45,15 @@ func runServe(a *app, args []string) error {
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
 	addr := fs.String("addr", "127.0.0.1:8080", "listen address")
 	edit := fs.Bool("owner-edit", false, "serve POST /owner-settings (loopback address only)")
+	live := fs.Bool("live-quotes", false, "serve POST /options/refresh, live quotes through pyside (loopback address only)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *edit && !loopbackListen(*addr) {
 		return errors.New("serve: --owner-edit needs a loopback --addr")
+	}
+	if *live && !loopbackListen(*addr) {
+		return errors.New("serve: --live-quotes needs a loopback --addr")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -75,6 +79,15 @@ func runServe(a *app, args []string) error {
 		}
 		defer closeEdit()
 		rd.edit = oe
+	}
+	if *live && a.profile.Name != "demo" {
+		lq, closeLive, err := newLiveQuotes(ctx, a, clk, rd)
+		if err != nil {
+			_ = ln.Close()
+			return err
+		}
+		defer closeLive()
+		rd.live = lq
 	}
 	a.log.Info("serve listening", "component", "ot", "status", "ok")
 	return serveHandler(ctx, ln, siteHandler(a, clk, *dayFlag, rd, a.deps.newHandler, newAssets()))

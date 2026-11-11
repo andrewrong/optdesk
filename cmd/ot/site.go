@@ -19,6 +19,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/mark"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
 )
 
@@ -52,6 +54,54 @@ type sitePageInput struct {
 	Choices      []siteChoice
 }
 
+// openOptionOpenStores opens the option open stores with a DSN (a test replaces it).
+var openOptionOpenStores openquote.OpenFunc = optionopenpg.Open
+
+// openFamilyReaders runs the openers of siteOpeners in the order of their keys; ok is false when one failed.
+func openFamilyReaders(ctx context.Context, a *app, track func(io.Closer, error) bool) (map[string]any, bool) {
+	if len(siteOpeners) == 0 {
+		return nil, true
+	}
+	keys := make([]string, 0, len(siteOpeners))
+	for k := range siteOpeners {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	ext := make(map[string]any, len(keys))
+	for _, k := range keys {
+		v, ok := siteOpeners[k](ctx, a, track)
+		if !ok {
+			return nil, false
+		}
+		ext[k] = v
+	}
+	return ext, true
+}
+
+// openOpenStoresOrNil opens the option open stores with the pages line; a failed open is logged and gives nil (the
+// pages then show every quote as its close archive value and the refresh route cannot start).
+func openOpenStoresOrNil(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) openquote.Stores {
+	oos, err := openOptionOpenStores(ctx, dsn)
+	if err != nil {
+		a.log.Warn("option open store not opened", "component", "ot", "status", "failed")
+		return nil
+	}
+	track(oos, nil)
+	return oos
+}
+
+// openQuotes returns the reader the option pages read open and refresh rows from: the overlay of the flag live-quotes
+// over the stored rows, else the stored reader, else nil.
+func (rd siteReaders) openQuotes() openquote.OptionOpenReader {
+	switch {
+	case rd.live != nil:
+		return rd.live
+	case rd.open != nil:
+		return rd.open
+	}
+	return nil
+}
+
 // siteReaders are the eight readers the site builds its live pages from.
 type siteReaders struct {
 	series  store.SeriesReader
@@ -69,6 +119,14 @@ type siteReaders struct {
 
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
+
+	// open, plan and optContracts are the stores of the option open pull opened with the pages line (nil in the demo
+	// profile or when the open failed: the pages show every quote as its close archive value). live is the refresh
+	// route and the overlay of `ot serve --live-quotes` (nil: the route options/refresh is 404).
+	open         openquote.OptionOpenReader
+	plan         openquote.OptionOpenPlanStore
+	optContracts openquote.OptionContractStore
+	live         *liveQuotes
 
 	// edit is the POST route /owner-settings (nil: the route is absent, 404).
 	edit *ownerEdit
@@ -176,6 +234,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !track(view, err) {
 		return fail()
 	}
+	oos := openOpenStoresOrNil(ctx, a, dsn, track)
 	opt, ledger, ok := openOptionalStores(ctx, a, dsn, track)
 	if !ok {
 		return fail()
@@ -191,20 +250,12 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	rd := siteReaders{marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
-	if len(siteOpeners) > 0 {
-		keys := make([]string, 0, len(siteOpeners))
-		for k := range siteOpeners {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		rd.ext = make(map[string]any, len(keys))
-		for _, k := range keys {
-			v, ok := siteOpeners[k](ctx, a, track)
-			if !ok {
-				return fail()
-			}
-			rd.ext[k] = v
-		}
+	if oos != nil {
+		rd.open, rd.plan, rd.optContracts = oos, oos, oos
+	}
+	var extOK bool
+	if rd.ext, extOK = openFamilyReaders(ctx, a, track); !extOK {
+		return fail()
 	}
 	return withPositionsRules(a, rd), closeAll, nil
 }
@@ -286,6 +337,14 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimPrefix(r.URL.Path, "/") == siteHealthRoute {
 			serveHealth(a, clk, rd, w, r)
+			return
+		}
+		if strings.TrimPrefix(r.URL.Path, "/") == liveRefreshRoute {
+			if rd.live == nil {
+				http.NotFound(w, r)
+				return
+			}
+			rd.live.ServeHTTP(w, r)
 			return
 		}
 		if strings.TrimPrefix(r.URL.Path, "/") == ownerPostRoute && rd.edit != nil {

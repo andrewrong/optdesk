@@ -107,3 +107,19 @@ func TestStockFamilyHasNoName(t *testing.T) {
 		t.Error("stock_option_page is a known name")
 	}
 }
+
+func TestStockRouteCarriesTheRefreshState(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	for live, want := range map[bool]string{false: "live quotes are off", true: "no symbols on this page"} {
+		rd := siteReaders{cands: demoCandidates{}, names: demoOption{}}
+		if live {
+			rd.live = newLiveRig(t, true, nil, liveNoon).l
+		}
+		h := siteHandler(a, stockClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+		body := candidatesGet(t, h, http.MethodGet, "/"+siteStockRoute).Body.String()
+		if !strings.Contains(body, `"refresh":{"enabled":false`) || !strings.Contains(body, want) {
+			t.Errorf("live=%v: %s", live, body)
+		}
+	}
+}
