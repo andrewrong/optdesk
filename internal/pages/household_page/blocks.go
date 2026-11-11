@@ -250,7 +250,7 @@ func moneyOf(title, meaning string, lines []blockapi.MoneyLine) moneyBlock {
 		b.Rows = append(b.Rows, moneyRow{Name: l.Name, Amount: c, Note: l.Note})
 	}
 	if reason != "" {
-		b.Gap = &gapJSON{Reason: reason, Text: strings.Join(names, "、") + "：" + gapText(reason)}
+		b.Gap = &gapJSON{Reason: reason, Text: strings.Join(names, ", ") + ": " + gapText(reason)}
 	}
 	return b
 }

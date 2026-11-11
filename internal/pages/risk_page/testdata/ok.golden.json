@@ -16,14 +16,14 @@
     }
   ],
   "run_status": "partial",
-  "title": "家庭风险",
-  "sentence": "Delta 和 Vega 来自最近一次采集的持仓与期权结构；Beta、波动区间和标准指标的数据源还没有接入。",
-  "vega_title": "按到期日的 Vega",
+  "title": "Household risk",
+  "sentence": "Delta and Vega come from the positions and option structures of the latest capture; the data sources of Beta, the volatility range and the standard metrics are not connected yet.",
+  "vega_title": "Vega by expiry",
   "delta": {
-    "title": "按标的的 Delta",
-    "meaning": "每个标的涨跌一美元，持仓的盈亏变化多少美元；股票按股数计。",
+    "title": "Delta by underlying",
+    "meaning": "How many dollars the result of the positions changes when each underlying moves one dollar; stocks count by shares.",
     "heads": [
-      "标的",
+      "Underlying",
       "Delta"
     ],
     "rows": [
@@ -31,7 +31,7 @@
         "name": "AAA",
         "delta": {
           "value": 69.50,
-          "text": "+69.50 美元/美元",
+          "text": "+69.50 USD/USD",
           "unit": "usd_signed",
           "currency": "USD"
         }
@@ -40,7 +40,7 @@
         "name": "BBB",
         "delta": {
           "value": 40.00,
-          "text": "+40.00 美元/美元",
+          "text": "+40.00 USD/USD",
           "unit": "usd_signed",
           "currency": "USD"
         }
@@ -48,16 +48,16 @@
     ],
     "total": {
       "value": 109.50,
-      "text": "+109.50 美元/美元",
+      "text": "+109.50 USD/USD",
       "unit": "usd_signed",
       "currency": "USD"
     },
     "gap": null
   },
   "vega": {
-    "meaning": "波动率变化一个点，期权结构的盈亏变化多少美元。",
+    "meaning": "How many dollars the result of the option structures changes when volatility moves one point.",
     "heads": [
-      "到期日",
+      "Expiry",
       "Vega"
     ],
     "rows": [
@@ -65,37 +65,37 @@
         "expiry_text": "2026-12-18",
         "vega": {
           "value": 15.75,
-          "text": "15.75 美元/波动点",
+          "text": "15.75 USD/vol point",
           "unit": "usd_per_vol_point"
         }
       }
     ],
     "total": {
       "value": 15.75,
-      "text": "15.75 美元/波动点",
+      "text": "15.75 USD/vol point",
       "unit": "usd_per_vol_point"
     },
     "gap": null
   },
   "beta_delta": {
-    "title": "Beta 加权 Delta",
-    "meaning": "各标的 Delta 按 Beta 折算到基准指数。",
-    "benchmark_text": "基准指数暂缺",
+    "title": "Beta-weighted Delta",
+    "meaning": "Delta of each underlying converted to the benchmark index by Beta.",
+    "benchmark_text": "Benchmark index: no data yet",
     "heads": [
-      "标的",
+      "Underlying",
       "Beta",
-      "加权 Delta"
+      "Weighted Delta"
     ],
     "rows": [],
     "total": null,
     "gap": {
       "reason": "not_built",
-      "text": "Beta 加权 Delta 需要各标的的 Beta 和基准价格，数据源还没有接入"
+      "text": "Beta-weighted Delta needs the Beta of each underlying and the benchmark price; the data source is not connected yet"
     }
   },
   "sigma": {
-    "title": "波动区间",
-    "meaning": "一倍、两倍标准差下的盈亏范围。",
+    "title": "Volatility range",
+    "meaning": "Result range at one and two standard deviations.",
     "columns": [
       "-2σ",
       "-1σ",
@@ -103,19 +103,19 @@
       "+2σ"
     ],
     "rows": [],
-    "aria_text": "波动区间暂缺",
+    "aria_text": "Volatility range: no data yet",
     "gap": {
       "reason": "not_built",
-      "text": "波动区间需要标的的隐含波动率，数据源还没有接入"
+      "text": "The volatility range needs the implied volatility (IV) of the underlying; the data source is not connected yet"
     }
   },
   "standard_metrics": {
-    "title": "标准风险指标",
+    "title": "Standard risk metrics",
     "metrics": [
       {
-        "label": "标准风险指标",
-        "value_text": "暂缺",
-        "explanation": "标准风险指标需要风险指标数据源，还没有接入",
+        "label": "Standard risk metrics",
+        "value_text": "no data yet",
+        "explanation": "The standard risk metrics need a risk metrics data source; it is not connected yet",
         "table": null
       }
     ]
@@ -124,20 +124,20 @@
   "gaps": [
     {
       "reason": "not_built",
-      "text": "Beta 加权 Delta：Beta 加权 Delta 需要各标的的 Beta 和基准价格，数据源还没有接入"
+      "text": "Beta-weighted Delta: Beta-weighted Delta needs the Beta of each underlying and the benchmark price; the data source is not connected yet"
     },
     {
       "reason": "not_built",
-      "text": "波动区间：波动区间需要标的的隐含波动率，数据源还没有接入"
+      "text": "Volatility range: The volatility range needs the implied volatility (IV) of the underlying; the data source is not connected yet"
     },
     {
       "reason": "not_built",
-      "text": "标准风险指标：标准风险指标需要风险指标数据源，还没有接入"
+      "text": "Standard risk metrics: The standard risk metrics need a risk metrics data source; it is not connected yet"
     }
   ],
   "stale": {
     "data_time": "2026-11-10T09:00:00+08:00",
     "stale_after": "2026-11-14T09:00:00+08:00",
-    "text": "按采集日 2026-11-10"
+    "text": "By capture day 2026-11-10"
   }
 }

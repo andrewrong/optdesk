@@ -99,7 +99,7 @@ func holdingRows(title, meaning string, heads []string, currency string, res blo
 		b.Rows = append(b.Rows, moneyRow{Name: l.Underlying, Amount: c, Share: shareOf(l.Share)})
 	}
 	if reason != "" {
-		b.Gap = &gapJSON{Reason: reason, Text: strings.Join(names, "、") + "：" + gapText(reason)}
+		b.Gap = &gapJSON{Reason: reason, Text: strings.Join(names, ", ") + ": " + gapText(reason)}
 		return b
 	}
 	if t, ok := cell(blockapi.MoneyLine{Currency: currency, Amount: res.TotalValue}); ok {
@@ -118,7 +118,7 @@ func allocationOf(currency string, res blockapi.HoldingsResult) allocationBlock 
 	if !ok {
 		if len(res.Rows) > 0 {
 			reason := lineGap(blockapi.MoneyLine{Amount: res.TotalValue})
-			b.Gap = &gapJSON{Reason: reason, Text: nameStock + "：" + gapText(reason)}
+			b.Gap = &gapJSON{Reason: reason, Text: nameStock + ": " + gapText(reason)}
 		}
 		return b
 	}

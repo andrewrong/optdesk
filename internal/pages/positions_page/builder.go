@@ -242,7 +242,7 @@ func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, 
 	p := c.base(alias, at)
 	p.RunStatus = "partial"
 	p.Views = []viewJSON{v}
-	p.Gaps = []gapJSON{gapOf("no_data", titleStocks+"、"+titleOptions+"："+textDayProfit)}
+	p.Gaps = []gapJSON{gapOf("no_data", titleStocks+", "+titleOptions+": "+textDayProfit)}
 	if skipped > 0 {
 		p.Notes = append(p.Notes, textSkippedStart+strconv.Itoa(skipped)+textSkippedEnd)
 	}
@@ -271,7 +271,7 @@ func (c Config) base(alias string, at time.Time) pageJSON {
 		Schema: "positions_page", SchemaVersion: 3, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
 		GeneratedAt: at.Format(stampLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{},
 		Title: pageTitle, Views: []viewJSON{},
-		Stale: staleLabel{DataTime: at.Format(stampLayout), StaleAfter: at.Format(stampLayout), Text: textStaleData + "无"},
+		Stale: staleLabel{DataTime: at.Format(stampLayout), StaleAfter: at.Format(stampLayout), Text: textStaleData + "none"},
 	}
 }
 

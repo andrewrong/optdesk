@@ -262,7 +262,7 @@ func TestRowsCarryTheAccountLabelAndTheFigures(t *testing.T) {
 		t.Fatalf("key = %v", k)
 	}
 	for _, p := range [][]any{{"views", 0, "stocks", "rows", 0, "role", "text"}, {"views", 0, "options", "rows", 0, "role", "text"}} {
-		if r := at0(t, m, p...); r != "账户（main）" {
+		if r := at0(t, m, p...); r != "Account (main)" {
 			t.Fatalf("role = %v", r)
 		}
 	}
@@ -307,7 +307,7 @@ func TestOptionWithoutLedgerMatchHasAGapPremium(t *testing.T) {
 func TestTradesAreClassifiedByFigures(t *testing.T) {
 	t.Parallel()
 	m, _ := build(t, config(account()), "main")
-	if a := at0(t, m, "views", 0, "trades", "rows", 0, "action", "text"); a != "卖出开仓" {
+	if a := at0(t, m, "views", 0, "trades", "rows", 0, "action", "text"); a != "Sell to open" {
 		t.Fatalf("action = %v", a)
 	}
 	if i := at0(t, m, "views", 0, "trades", "rows", 0, "instrument", "text"); i != "XYZ 2026-11-20 100 put" {
