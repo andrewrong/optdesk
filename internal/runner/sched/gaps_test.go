@@ -356,6 +356,7 @@ func tickerRig(t *testing.T, gaps func(h *harness, ops *gapOps, led *gapLedger) 
 	t.Cleanup(cancel)
 	go func() { _ = h.s.Run(ctx) }()
 	h.until("put")
+	h.until("sync:2025-11-26") // the Reconcile and Sync of the start turn are over: the test may now write ops
 	return h, ops, led
 }
 
@@ -372,7 +373,7 @@ func TestGapsViaTickerHook(t *testing.T) {
 			ErrorCode: string(contracts.Retryable)}}
 		h.step(10 * time.Minute)
 		h.until("sync:2025-11-26")
-		if c := fake.calls(); len(c) != 1 || c[0].day != gapDay {
+		if c := fake.calls(); len(c) != 2 || c[1].day != gapDay { // the start turn made the first call
 			t.Fatalf("calls = %+v", c)
 		}
 		want := []store.Gap{{DatasetID: "ds", Day: gapDay, Reason: "expired"}}
@@ -392,7 +393,7 @@ func TestGapsViaTickerHook(t *testing.T) {
 		h.step(10 * time.Minute)
 		h.until("sync:2025-11-26")
 		c := fake.calls()
-		if len(c) != 2 || c[0].day != earlier || c[1].day != gapDay {
+		if len(c) != 4 || c[2].day != earlier || c[3].day != gapDay { // the start turn made the first two
 			t.Fatalf("calls = %+v", c)
 		}
 		want := []store.Gap{{DatasetID: "ds", Day: earlier, Reason: "partial"}}

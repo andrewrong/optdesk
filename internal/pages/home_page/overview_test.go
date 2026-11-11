@@ -129,19 +129,12 @@ func TestOverviewHouseholdUsesSubtitle(t *testing.T) {
 
 func TestOverviewGaps(t *testing.T) {
 	t.Parallel()
-	in := inputFrom(t, "overview_gaps")
-	o, b := composeOverview(t, in)
+	o, b := composeOverview(t, inputFrom(t, "overview_gaps"))
 	validateV3(t, b)
-	want := [][2]string{{"Macro", "one event calendar item missing"}, {"Held companies", "one quote missing"}}
-	if len(o.Overview.Gaps) != len(want) {
-		t.Fatalf("gaps = %v", o.Overview.Gaps)
+	if len(o.Overview.Gaps) != 0 {
+		t.Fatalf("gaps = %v, want none", o.Overview.Gaps)
 	}
-	for i, w := range want {
-		if g := o.Overview.Gaps[i]; g.Card != w[0] || g.Text != w[1] {
-			t.Errorf("gap %d = %v, want %v", i, g, w)
-		}
-	}
-	if o.GapLine != "2 gaps, see below" {
+	if o.GapLine != "2 gaps, shown in their cards" {
 		t.Errorf("gap_line = %q", o.GapLine)
 	}
 }
@@ -150,46 +143,31 @@ func TestOverviewManyGaps(t *testing.T) {
 	t.Parallel()
 	o, b := composeOverview(t, inputFrom(t, "overview_many_gaps"))
 	validateV3(t, b)
-	wantManyGaps(t, o, "2 more gaps not listed")
-}
-
-func TestOverviewManyGapsDemo(t *testing.T) {
-	t.Parallel()
-	in := inputFrom(t, "overview_many_gaps")
-	var doc map[string]any
-	if err := json.Unmarshal(in.Options, &doc); err != nil {
-		t.Fatal(err)
+	if len(o.Overview.Gaps) != 0 {
+		t.Fatalf("gaps = %v, want none", o.Overview.Gaps)
 	}
-	card := doc["card"].(map[string]any)
-	gaps := card["gaps"].([]any)
-	for _, s := range []string{"Gap x", "Gap y"} {
-		gaps = append(gaps, map[string]any{"kind": "gap", "reason": "no_data", "text": s})
-	}
-	card["gaps"] = gaps
-	b, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	in.Options = b
-	o, out := composeOverview(t, in)
-	validateV3(t, out)
-	wantManyGaps(t, o, "4 more gaps not listed")
-}
-
-func wantManyGaps(t *testing.T, o overviewOut, last string) {
-	t.Helper()
-	g := o.Overview.Gaps
-	if len(g) != 20 {
-		t.Fatalf("gaps = %d, want 20", len(g))
-	}
-	if g[19].Card != "Home" || g[19].Text != last {
-		t.Errorf("last gap = %v, want Home %q", g[19], last)
-	}
-	if g[18].Text == last {
-		t.Errorf("gap 19 must be a member gap, got %v", g[18])
-	}
-	if o.GapLine != "20 gaps, see below" {
+	if o.GapLine != "22 gaps, shown in their cards" {
 		t.Errorf("gap_line = %q", o.GapLine)
+	}
+}
+
+func TestOverviewHomeGap(t *testing.T) {
+	t.Parallel()
+	_, b := composeOverview(t, inputFrom(t, "overview_ok"))
+	var raw struct {
+		GapLine  string `json:"gap_line"`
+		Overview struct {
+			Gaps json.RawMessage `json:"gaps"`
+		} `json:"overview"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if string(raw.Overview.Gaps) != "[]" {
+		t.Errorf("overview.gaps = %s, want []", raw.Overview.Gaps)
+	}
+	if raw.GapLine != "No gaps today" {
+		t.Errorf("gap_line = %q", raw.GapLine)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,14 +57,18 @@ func TestHomeRouteNoReaderMembersAreGaps(t *testing.T) {
 	rec := companiesGet(t, homeFixture(t, false), http.MethodGet, "/home")
 	var p struct {
 		Overview struct {
-			Gaps []struct{ Card string } `json:"gaps"`
+			Gaps json.RawMessage `json:"gaps"`
 		} `json:"overview"`
+		GapLine string `json:"gap_line"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
 		t.Fatal(err)
 	}
-	if len(p.Overview.Gaps) < 5 {
-		t.Fatalf("gaps %d: %s", len(p.Overview.Gaps), rec.Body.String())
+	if !strings.HasPrefix(string(p.Overview.Gaps), "[") {
+		t.Fatalf("overview.gaps is not a JSON array: %q", p.Overview.Gaps)
+	}
+	if p.GapLine == "" || p.GapLine == "No gaps today" {
+		t.Fatalf("gap_line %q: five members without a reader are gaps", p.GapLine)
 	}
 }
 
