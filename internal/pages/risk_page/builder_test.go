@@ -371,4 +371,7 @@ func TestStoredWordsStockAndOption(t *testing.T) {
 	if len(vrows) != 1 {
 		t.Fatalf("vega rows = %v", vrows)
 	}
+	if vrows[0].(map[string]any)["expiry_text"] != "2026-12-18" {
+		t.Fatalf("vega rows = %v", vrows)
+	}
 }
