@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,6 +73,7 @@ func realFigs() compute.Figures {
 func hvJob(t *testing.T, f *fx, b *fakeBars, figs compute.Figures) contracts.Job {
 	t.Helper()
 	st := f.stores()
+	st.IndexIDs = newIndexes()
 	if b != nil {
 		st.PriceBars = b
 	}
@@ -161,9 +163,21 @@ func TestNilPriceBarsSkipsStep(t *testing.T) {
 			t.Fatalf("planned %v without PriceBars", k)
 		}
 	}
-	runAll(t, j)
+	res := runAll(t, j)
 	if rows, _ := f.LatestReadings(context.Background(), hvName, "underlying", "SPY", dayD, dayD); len(rows) != 0 {
 		t.Fatalf("stored %d hv30 readings without PriceBars", len(rows))
+	}
+	// every rv20 key fails for want of the bar reader: Permanent, nothing stored, the other keys still stored.
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || !strings.Contains(res.Err.Error(), "no price bar reader") {
+		t.Fatalf("Err %v, want Permanent: no price bar reader", res.Err)
+	}
+	if res.Returned-res.Usable != 3 {
+		t.Fatalf("result %+v, want the three rv20 keys failed", res)
+	}
+	for _, n := range []string{"SPX", "NDX", "RUT"} {
+		if rows, _ := f.LatestReadings(context.Background(), "market.rv20", "underlying", n, dayD, dayD); len(rows) != 0 {
+			t.Fatalf("stored an rv20 reading of %s without PriceBars", n)
+		}
 	}
 }
 
@@ -206,7 +220,9 @@ type seriesFigs struct {
 }
 
 func (s *seriesFigs) HistoricalVol(id string, c compute.Series, d contracts.Day) compute.Figure {
-	s.got = c
+	if id == hvName {
+		s.got = c
+	}
 	return s.fakeFigs.HistoricalVol(id, c, d)
 }
 

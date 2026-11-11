@@ -76,7 +76,7 @@ func easeJob2(t *testing.T, s ComputeStores, figs compute.Figures, e compute.Eas
 
 func easeJobOn(t *testing.T, f *fx, e compute.Ease) contracts.Job {
 	t.Helper()
-	return easeJob2(t, f.stores(), newFigs(), e)
+	return easeJob2(t, f.rvStores(), newFigs(), e)
 }
 
 func numOf(r contracts.ReadingRecord, name string) (float64, bool) {
@@ -196,7 +196,7 @@ func TestEaseStepFailureDoesNotStopOthers(t *testing.T) {
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
 	spy := &seriesSpy{fx: f, asked: map[string][2]contracts.Day{}, fail: "DFF"}
-	s := f.stores()
+	s := f.rvStores()
 	s.Series = spy
 	j := easeJob2(t, s, newFigs(), &fakeEase{fig: okFigure()})
 	res := runAll(t, j)
@@ -265,9 +265,9 @@ func TestMarketFiguresUnchanged(t *testing.T) {
 		return f
 	}
 	a, b := fill(), fill()
-	runAll(t, newJob(t, a, newFigs()))
+	runAll(t, rvJob(t, a, newFigs()))
 	runAll(t, easeJobOn(t, b, &fakeEase{fig: okFigure()}))
-	for _, k := range plan(t, newJob(t, a, newFigs())) {
+	for _, k := range plan(t, rvJob(t, a, newFigs())) {
 		name, kind, subj, _ := parseKey(k.SubjectKey)
 		if !reflect.DeepEqual(reading(t, a, name, kind, subj), reading(t, b, name, kind, subj)) {
 			t.Fatalf("%s differs with an Ease", k.SubjectKey)

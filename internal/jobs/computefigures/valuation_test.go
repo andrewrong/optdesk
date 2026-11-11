@@ -79,7 +79,7 @@ func entry(issuer, symbol string) jobs.WatchEntry {
 
 func valuationJobOf(t *testing.T, f *fx, d ValuationDeps) contracts.Job {
 	t.Helper()
-	j, err := NewWithValuation(f.stores(), newFigs(), rules.New(), own.NewUnits(), own.NewSeriesOps(), d,
+	j, err := NewWithValuation(f.rvStores(), newFigs(), rules.New(), own.NewUnits(), own.NewSeriesOps(), d,
 		clockwork.NewFakeClockAt(closeD.Add(20*time.Minute)))
 	if err != nil {
 		t.Fatalf("NewWithValuation: %v", err)
@@ -205,8 +205,8 @@ func TestValuationKeepsOtherKeys(t *testing.T) {
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
 	j := valuationJobOf(t, f, fk.deps(&vFacts{}, []jobs.WatchEntry{entry(vIssuer, vSymbol)}))
-	if keys := plan(t, j); len(keys) != 4+len(marketIDs)+3 {
-		t.Fatalf("keys %d, want the 10 of the plain job and 3 valuation keys", len(keys))
+	if keys := plan(t, j); len(keys) != 4+1+3+len(marketIDs)+3 {
+		t.Fatalf("keys %d, want the 14 of the plain job (with bars) and 3 valuation keys", len(keys))
 	}
 	runAll(t, j)
 	if r := reading(t, f, "market.iv30_own", "underlying", "SPY"); r.State == "" {
