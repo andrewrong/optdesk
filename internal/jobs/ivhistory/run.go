@@ -149,7 +149,7 @@ func (j *job) base(name string, day time.Time, close string, now time.Time, runI
 	sum := sha256.Sum256([]byte(inputTable + "|" + name + "|" + d + "|" + close))
 	rec := contracts.ReadingRecord{
 		Name: j.m.Reading, Version: j.m.ReadingVersion, SubjectKind: kindUnderlying, Subject: name,
-		Day: types.SerializableDate{Time: day}, Cutoff: cutoff,
+		Day: types.SerializableDate{Time: day}, Cutoff: cutoff, Rev: 1,
 		JobRunID: runID, RecordedAt: now, RowsSha256: hex.EncodeToString(sum[:]),
 	}
 	setString(&rec.Unit, unitDecimal)
