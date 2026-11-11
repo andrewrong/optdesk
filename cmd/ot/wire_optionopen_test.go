@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
 // deadEnv names a port that refuses at once: the store cannot be opened.
@@ -68,8 +70,78 @@ func newOpenHarness(t *testing.T, env map[string]string, brokerUp bool, dialErr 
 		f:        &jobFactory{clk: fakeClock{time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)}, inst: openInst{}, bars: openBars{}},
 		brk:      closeBroker{mu: &h.mu, closed: &h.closed},
 		brokerUp: brokerUp, extra: &closerSet{},
+		cfg: runOnceConfig{openDSN: env[openquote.DSNEnvOptionOpen]},
 	}
 	return h
+}
+
+// newFileHarness is the harness of a deployed scheduler: the lines live in the env file that readEnv returns
+// (selected by CREW_SECRETS and CREW_SERVICE), the process environment holds no DSN, and the config comes from
+// loadConfig.
+func newFileHarness(t *testing.T, file map[string]string, brokerUp bool) (*openHarness, runOnceConfig) {
+	t.Helper()
+	h := newOpenHarness(t, nil, brokerUp, nil)
+	home, err := os.MkdirTemp("", "ot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(home) })
+	proc := map[string]string{"OT_HOME": home, "CREW_SECRETS": "/secrets", "CREW_SERVICE": "optdesk"}
+	h.a.getenv = func(k string) string { return proc[k] }
+	lines := map[string]string{"FRED_API_KEY": "k"}
+	for _, k := range []string{store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot,
+		store.DSNEnvMaster, store.DSNEnvPages, store.DSNEnvReadings, store.DSNEnvLoader} {
+		lines[k] = "postgres://u@127.0.0.1:1/x"
+	}
+	for k, v := range file {
+		lines[k] = v
+	}
+	var path string
+	h.a.deps.readEnv = func(p string) (map[string]string, error) { path = p; return lines, nil }
+	cfg, err := loadConfig(h.a, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "/secrets" + string(os.PathSeparator) + "optdesk.env"; path != want {
+		t.Fatalf("read %q, want %q", path, want)
+	}
+	h.jc.cfg = cfg
+	return h, cfg
+}
+
+func TestOptionOpenDSNOnlyInEnvFileWiresFourJobs(t *testing.T) {
+	t.Parallel()
+	h, cfg := newFileHarness(t, deadEnv, true)
+	off := startDisabled(cfg, true)
+	for _, id := range openIDs {
+		if _, ok := off[id]; ok {
+			t.Fatalf("%s is disabled: %v", id, off)
+		}
+		h.build(t, id)
+	}
+	if strings.Contains(h.log.String(), "is not set") {
+		t.Fatalf("log: %s", h.log.String())
+	}
+}
+
+func TestOptionOpenDSNInNeitherPlaceLeavesFourJobsOut(t *testing.T) {
+	t.Parallel()
+	h, cfg := newFileHarness(t, nil, true)
+	if cfg.openDSN != "" {
+		t.Fatalf("openDSN %q", cfg.openDSN)
+	}
+	off := startDisabled(cfg, true)
+	for _, id := range openIDs {
+		if _, ok := off[id]; ok {
+			t.Fatalf("%s is disabled: %v", id, off)
+		}
+		if j, reason, err := jobFamilies[id].build(t.Context(), h.a, h.jc); j != nil || reason != "" || err != nil {
+			t.Fatalf("%s: job %v reason %q err %v", id, j, reason, err)
+		}
+	}
+	if n := strings.Count(h.log.String(), "OT_PG_DSN_OPTION_OPEN is not set"); n != 4 {
+		t.Fatalf("%d lines, want 4: %s", n, h.log.String())
+	}
 }
 
 func (h *openHarness) build(t *testing.T, id string) (contracts.Job, string) {
@@ -124,15 +196,14 @@ func TestOptionOpenStoreThatCannotOpenIsHeldAndListedDisabled(t *testing.T) {
 
 func TestOptionOpenStartOffNeedsTheDSNLine(t *testing.T) {
 	t.Parallel()
-	set := func(k string) string { return deadEnv[k] }
-	none := func(string) string { return "" }
-	if got := ifOpenDSN(set, brokerDownOff)(runOnceConfig{}, false); got != reasonBrokerDown {
+	set := runOnceConfig{openDSN: deadEnv[openquote.DSNEnvOptionOpen]}
+	if got := ifOpenDSN(brokerDownOff)(set, false); got != reasonBrokerDown {
 		t.Fatalf("wired, socket dead: %q", got)
 	}
-	if got := ifOpenDSN(set, brokerDownOff)(runOnceConfig{}, true); got != "" {
+	if got := ifOpenDSN(brokerDownOff)(set, true); got != "" {
 		t.Fatalf("wired, socket up: %q", got)
 	}
-	if got := ifOpenDSN(none, brokerDownOff)(runOnceConfig{}, false); got != "" {
+	if got := ifOpenDSN(brokerDownOff)(runOnceConfig{}, false); got != "" {
 		t.Fatalf("family absent: %q", got)
 	}
 }

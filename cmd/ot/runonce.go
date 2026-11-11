@@ -22,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
 func init() { register("run-once", runOnce) }
@@ -41,6 +42,8 @@ type runOnceConfig struct {
 	ledgerDSN string
 	// barDSN belongs to bars_refresh, fx_refresh and the HV step: an empty one leaves only them out, never the run.
 	barDSN string
+	// openDSN belongs to the four option open jobs: an empty one leaves only them out, never the run.
+	openDSN string
 	// barsWired is true when the deps hold the constructors of bars_refresh and fx_refresh (newDeps always does).
 	barsWired bool
 	// jquantsKey is the J-Quants key; an empty one leaves only the JP source out (JP entries get unsupported rows).
@@ -82,6 +85,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		accountDSN:       env[store.DSNEnvAccount],
 		ledgerDSN:        env[store.DSNEnvOptionLedger],
 		barDSN:           env[bar.DSNEnvBar],
+		openDSN:          env[openquote.DSNEnvOptionOpen],
 		barsWired:        a.deps.openBar != nil && a.deps.newBarsRefresh != nil && a.deps.newFxRefresh != nil && a.deps.newHistory != nil,
 	}
 	for _, l := range []struct{ name, v string }{
