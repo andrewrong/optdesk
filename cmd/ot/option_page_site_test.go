@@ -274,3 +274,21 @@ type cZZZNames struct {
 }
 
 func (c cZZZNames) Close() error { return c.closeCounter.Close() }
+
+func TestOptionPageCarriesTheRefreshState(t *testing.T) {
+	t.Parallel()
+	a, _ := optionPageApp(t, "")
+	rd := siteReaders{cands: demoCandidates{}, eod: demoOption{}, names: demoOption{}}
+	h := siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	body := candidatesGet(t, h, http.MethodGet, "/"+siteOptionRoute).Body.String()
+	if !strings.Contains(body, `"notice":"live quotes are off (ot serve --live-quotes)"`) {
+		t.Fatalf("flag off: %s", body)
+	}
+	r := newLiveRig(t, true, liveItems(1, 3), liveNoon)
+	rd.live = r.l
+	h = siteHandler(a, candidatesClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	body = candidatesGet(t, h, http.MethodGet, "/"+siteOptionRoute).Body.String()
+	if !strings.Contains(body, `"notice":"no symbols on this page"`) {
+		t.Fatalf("flag on: %s", body)
+	}
+}
