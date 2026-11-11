@@ -106,7 +106,7 @@
             },
             "day": {
               "reason": "no_data",
-              "text": "Day result needs the previous trading day price: no data yet"
+              "text": "n/a"
             },
             "unrealised": {
               "value": 15000.00,
@@ -150,7 +150,7 @@
             },
             "day": {
               "reason": "no_data",
-              "text": "Day result needs the previous trading day price: no data yet"
+              "text": "n/a"
             },
             "unrealised": {
               "value": 0.50,
@@ -194,7 +194,7 @@
             },
             "day": {
               "reason": "no_data",
-              "text": "Day result needs the previous trading day price: no data yet"
+              "text": "n/a"
             },
             "unrealised": {
               "value": -10.25,
