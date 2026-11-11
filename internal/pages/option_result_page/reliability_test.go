@@ -21,10 +21,10 @@ func TestReliabilityLines(t *testing.T) {
 	if !strings.Contains(lines[0], "3") || !strings.Contains(lines[1], "1") {
 		t.Errorf("lines = %v", lines)
 	}
-	if !strings.Contains(lines[2], "T9") || !strings.Contains(lines[2], "T7, T8") || !strings.Contains(lines[2], "不入任何数字") {
+	if !strings.Contains(lines[2], "T9") || !strings.Contains(lines[2], "T7, T8") || !strings.Contains(lines[2], "not in any figure") {
 		t.Errorf("last line = %q", lines[2])
 	}
-	if l := strs(rel[1].(map[string]any)["lines"]); !strings.Contains(l[2], "1 笔") {
+	if l := strs(rel[1].(map[string]any)["lines"]); !strings.Contains(l[2], "1 trade(s)") {
 		t.Errorf("no broker line = %q", l[2])
 	}
 }

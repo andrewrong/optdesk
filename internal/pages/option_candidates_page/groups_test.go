@@ -48,7 +48,7 @@ func TestStaleWhenOlderDay(t *testing.T) {
 	if p.Groups[0].Stale || !p.Groups[1].Stale {
 		t.Errorf("stale flags = %v, %v", p.Groups[0].Stale, p.Groups[1].Stale)
 	}
-	if p.Stale == nil || p.Stale.Text != "候选行来自 2026-11-07,不是当日" {
+	if p.Stale == nil || p.Stale.Text != "Candidate rows are from 2026-11-07, not the current day" {
 		t.Errorf("stale label = %+v", p.Stale)
 	}
 	fresh := buildPage(t, map[string][]store.Candidate{"2026-11-09/short_put": {cand("short_put", 1, "ok")}}, buildDay)
@@ -87,7 +87,7 @@ func TestStaleRowsMarked(t *testing.T) {
 	for _, tb := range []*outTable{p.Groups[0].Main, p.Groups[0].Other} {
 		for _, r := range tb.Rows {
 			first := r.Cells[tb.Columns[0].ID]
-			if !reflect.DeepEqual(first.Badges, []string{"过期"}) {
+			if !reflect.DeepEqual(first.Badges, []string{"Stale"}) {
 				t.Errorf("stale row %s first cell badges = %v", r.ID, first.Badges)
 			}
 		}
@@ -95,7 +95,7 @@ func TestStaleRowsMarked(t *testing.T) {
 	for _, r := range p.Groups[1].Main.Rows {
 		for id, c := range r.Cells {
 			for _, b := range c.Badges {
-				if b == "过期" {
+				if b == "Stale" {
 					t.Errorf("fresh row %s cell %s has the stale badge", r.ID, id)
 				}
 			}

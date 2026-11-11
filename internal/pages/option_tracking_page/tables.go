@@ -41,40 +41,40 @@ func (d colDef[T]) hinted(h string) colDef[T] {
 type opt = trackapi.TrackedOption
 
 var openColumns = []colDef[opt]{
-	col("company", "公司", "left", company),
-	col("contract", "合约", "left", openContract),
-	col("qty", "数量", "right", qty),
+	col("company", "Company", "left", company),
+	col("contract", "Contract", "left", openContract),
+	col("qty", "Quantity", "right", qty),
 	col("dte", "DTE", "right", dteCell),
-	col("moneyness", "价内外", "right", moneynessCell).hinted("距行权价的百分比,正数为价外"),
-	col("spot", "正股收盘", "right", func(o opt) any { return numCell(o.Spot, markCode(o)) }),
-	col("mid", "中间价", "right", func(o opt) any { return numCell(o.Mid, markCode(o)) }).hinted(markNote),
-	col("premium", "已收权利金", "right", func(o opt) any { return numCell(o.PremiumIncome, codeNoValue) }),
-	col("kept", "已留住", "right", func(o opt) any { return numCell(o.Kept, markCode(o)) }),
-	col("kept_percent", "留住 %", "right", func(o opt) any { return numCell(o.KeptPercent, markCode(o)) }),
+	col("moneyness", "Moneyness", "right", moneynessCell).hinted("Percent distance from the strike, positive is out of the money"),
+	col("spot", "Stock close", "right", func(o opt) any { return numCell(o.Spot, markCode(o)) }),
+	col("mid", "Mid price", "right", func(o opt) any { return numCell(o.Mid, markCode(o)) }).hinted(markNote),
+	col("premium", "Premium collected", "right", func(o opt) any { return numCell(o.PremiumIncome, codeNoValue) }),
+	col("kept", "Kept", "right", func(o opt) any { return numCell(o.Kept, markCode(o)) }),
+	col("kept_percent", "Kept %", "right", func(o opt) any { return numCell(o.KeptPercent, markCode(o)) }),
 	col("delta", "Delta", "right", func(o opt) any { return numCell(o.Delta, markCode(o)) }),
 	col("iv", "IV", "right", func(o opt) any { return numCell(o.Iv, markCode(o)) }),
-	col("results", "下次财报", "left", resultsCell),
-	col("ex", "除息日", "left", exCell),
-	col("guard", "提前被行权", "left", guardCell),
+	col("results", "Next earnings", "left", resultsCell),
+	col("ex", "Ex-dividend date", "left", exCell),
+	col("guard", "Early assignment", "left", guardCell),
 }
 
 var recentColumns = []colDef[opt]{
-	col("company", "公司", "left", company),
-	col("contract", "合约", "left", openContract),
-	col("qty", "数量", "right", qty),
-	col("status", "状态", "left", statusCell),
-	col("closed_day", "平仓日", "left", closedDayCell),
-	col("premium", "已收权利金", "right", func(o opt) any { return numCell(o.PremiumIncome, codeNoValue) }),
-	col("commissions", "手续费", "right", func(o opt) any { return numCell(o.Commissions, codeNoValue) }),
-	col("realized", "已实现盈亏", "right", func(o opt) any { return numCell(o.RealizedPnL, codeNoValue) }),
+	col("company", "Company", "left", company),
+	col("contract", "Contract", "left", openContract),
+	col("qty", "Quantity", "right", qty),
+	col("status", "Status", "left", statusCell),
+	col("closed_day", "Closed day", "left", closedDayCell),
+	col("premium", "Premium collected", "right", func(o opt) any { return numCell(o.PremiumIncome, codeNoValue) }),
+	col("commissions", "Commissions", "right", func(o opt) any { return numCell(o.Commissions, codeNoValue) }),
+	col("realized", "Realized P&L", "right", func(o opt) any { return numCell(o.RealizedPnL, codeNoValue) }),
 }
 
 var reconColumns = []colDef[trackapi.TrackRecon]{
-	col("company", "公司", "left", reconCompany),
-	col("contract", "合约", "left", reconContract),
-	col("qty", "数量", "right", reconQty),
-	col("code", "差异", "left", reconCode),
-	col("note", "说明", "left", reconNote),
+	col("company", "Company", "left", reconCompany),
+	col("contract", "Contract", "left", reconContract),
+	col("qty", "Quantity", "right", reconQty),
+	col("code", "Difference", "left", reconCode),
+	col("note", "Note", "left", reconNote),
 }
 
 // safeID keeps the characters a row id may hold and cuts it to 96.

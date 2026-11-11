@@ -216,7 +216,7 @@ func TestNothingWhenNoClosed(t *testing.T) {
 	t.Parallel()
 	c, _ := testConfig(t, "result_empty.json")
 	m := buildMap(t, c, "main")
-	if m["nothing"] != "没有已平仓的期权持仓" || len(m["sections"].([]any)) != 0 || len(m["reliability"].([]any)) != 0 || m["run_status"] != "ok" {
+	if m["nothing"] != "No closed option positions" || len(m["sections"].([]any)) != 0 || len(m["reliability"].([]any)) != 0 || m["run_status"] != "ok" {
 		t.Errorf("page = %v", m)
 	}
 	c, _ = testConfig(t, "result_ok.json")
@@ -238,7 +238,7 @@ func TestNoReaderIsGap(t *testing.T) {
 		c := base
 		mut(&c)
 		m := buildMap(t, c, "main")
-		if m["run_status"] != "partial" || m["nothing"] != "没有读取器,无法显示" || len(m["sections"].([]any)) != 0 {
+		if m["run_status"] != "partial" || m["nothing"] != "No reader: cannot show" || len(m["sections"].([]any)) != 0 {
 			t.Errorf("%s: page = %v", name, m)
 		}
 	}

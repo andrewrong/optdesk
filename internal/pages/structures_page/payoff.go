@@ -48,19 +48,19 @@ type greeksBlock struct {
 // breakEvenCaption says which side of the break-even loses (or earns), by the kind of the structure.
 func breakEvenCaption(s compute.Structure) string {
 	if s.Figures.BreakEven.Gap != "" {
-		return "无统一的盈亏平衡价"
+		return "No single breakeven price"
 	}
 	switch s.Kind {
 	case "short_put", "put_spread", "covered_call":
-		return "到期价低于此价开始亏损"
+		return "Loses below this expiry price"
 	case "naked_call", "call_spread":
-		return "到期价高于此价开始亏损"
+		return "Loses above this expiry price"
 	case "long_put":
-		return "到期价低于此价开始盈利"
+		return "Profits below this expiry price"
 	case "long_call":
-		return "到期价高于此价开始盈利"
+		return "Profits above this expiry price"
 	}
-	return "逐腿显示, 无统一盈亏平衡价"
+	return "Shown leg by leg, no single breakeven price"
 }
 
 // spot is the underlying close of the newest quote of the underlying that has one, copied.
@@ -113,8 +113,8 @@ func (b *builder) payoff() any {
 		// compute gives no one-standard-deviation band and optdesk solves no volatility: the band is the
 		// range of the chart, and its text says so.
 		Band: band{Low: pts[0].Price, High: pts[len(pts)-1].Price,
-			Text: "图表价格范围 " + first + " 至 " + last + "，无波动率输入，不是一个标准差区间"},
-		AriaText: clip("到期盈亏图，价格 " + first + " 至 " + last + "，盈亏平衡 " + s.Figures.BreakEven.Value + "，现价 " + spot.Text),
+			Text: "Chart price range " + first + " to " + last + ", no volatility input, not a one standard deviation band"},
+		AriaText: clip("Payoff at expiry chart, price " + first + " to " + last + ", breakeven " + s.Figures.BreakEven.Value + ", last price " + spot.Text),
 	}
 }
 
@@ -156,9 +156,9 @@ func (b *builder) greeks() any {
 	if b.noQuotes {
 		return mkGap(reasonNoReader)
 	}
-	model := "IBKR 模型值，无报价日"
+	model := "IBKR model value, no quote day"
 	if s.Greeks.Day != "" {
-		model = "IBKR 模型值，取自 " + string(s.Greeks.Day)
+		model = "IBKR model value, taken from " + string(s.Greeks.Day)
 	}
 	rows := []greekRow{}
 	for i, l := range s.Legs {
@@ -166,13 +166,13 @@ func (b *builder) greeks() any {
 			break
 		}
 		q := b.quoteOfLeg(l)
-		rows = append(rows, greekRow{Label: clip(b.legLabel(l) + " 每股"), Cells: []any{
+		rows = append(rows, greekRow{Label: clip(b.legLabel(l) + " per share"), Cells: []any{
 			b.greekFig(quoteFigure(q.Delta)), b.greekFig(quoteFigure(q.Gamma)),
 			b.greekFig(quoteFigure(q.Theta)), b.greekFig(quoteFigure(q.Vega)),
 		}})
 	}
 	g := s.Greeks
-	rows = append(rows, greekRow{Label: "合计，含张数与乘数", Cells: []any{
+	rows = append(rows, greekRow{Label: "Total, with contracts and multiplier", Cells: []any{
 		b.greekFig(g.Delta), b.greekFig(g.Gamma), b.greekFig(g.Theta), b.greekFig(g.Vega),
 	}})
 	if len(rows) < 2 {

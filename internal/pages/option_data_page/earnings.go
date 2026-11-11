@@ -44,7 +44,7 @@ func applyEarnings(ctx context.Context, c Config, d time.Time, day contracts.Day
 	if string(last.Source) == "owner" {
 		word = "owner"
 	}
-	u.EarningsText = "E " + last.ReportDate.Format("01-02") + " · 来源 " + word
+	u.EarningsText = "E " + last.ReportDate.Format("01-02") + " · source " + word
 	u.EarningsTone = toneOutside
 	if expiry := latestExpiry(rows); expiry != "" && report <= expiry {
 		u.EarningsTone = toneInTerm

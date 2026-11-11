@@ -6,7 +6,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
-const volLineMissing = "IV 缺 · HV30 缺 · IVP 缺"
+const volLineMissing = "IV n/a · HV30 n/a · IVP n/a"
 
 // applyVolLine writes underlying.vol_line (docs/design/option-pages-v22.md Decisions 1, 5, 6): the stored
 // iv_decimal of one chain row, then HV30 and IVP as missing until compute gives them a producer.
@@ -30,7 +30,7 @@ func applyVolLine(sessionDay string, price *float64, kept []contracts.OptionEod,
 	}
 	if best >= 0 {
 		iv := ivCell(kept[best].IvDecimal).(figure)
-		u.VolLine = "IV " + iv.Text + " · HV30 缺 · IVP 缺"
+		u.VolLine = "IV " + iv.Text + " · HV30 n/a · IVP n/a"
 	}
 }
 
