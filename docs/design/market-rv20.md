@@ -104,19 +104,27 @@ Judged cuts that span rows (each is one pull request, the precedent being `hv30-
 
 ## Interface
 
-- Jobs (issue 1, the interface issue): `computefigures.IndexIDReader` and `ComputeStores.IndexIDs`
+The interface issues are 1 and 3 and land before everything that uses them. What lands in a later entry is used only by entries ordered after it (see Build order under Issues).
+
+- Jobs (issue 1, interface): `computefigures.IndexIDReader` and `ComputeStores.IndexIDs`
   (`internal/jobs/computefigures/types.go`), optional like `PriceBars`; contract text in
   `docs/contracts/jobs/compute_figures.md`; tested from both sides: a fake reader in the job's tests and a
-  compile-time assertion in `cmd/ot` that the store implementation satisfies it (issue 5).
-- Store (issue 2): `instrument.OpenIndexIDs(ctx, dsn) (*instrument.IndexIDs, error)`, methods `IndexIDs` and `Close`;
+  compile-time assertion in `cmd/ot` that the store implementation satisfies it (issue 5, ordered after 1 and 2).
+- Store (issue 2, used by issue 5 only): `instrument.OpenIndexIDs(ctx, dsn) (*instrument.IndexIDs, error)`, methods `IndexIDs` and `Close`;
   not an edit of `internal/store/api.go`.
-- Rule id `market.rv20` (issue 3), read by `jobs` and `pages` by id string through `compute.Rules`.
-- Manifest keys of `computefigures` (`job.toml`, issue 4): `rv20 = "market.rv20"`, `rv20_indices = ["SPX","NDX","RUT"]`.
+- Rule id `market.rv20` (issue 3, interface), read by `jobs` and `pages` by id string through `compute.Rules`.
+- Manifest keys of `computefigures` (`job.toml`, issue 4; read by issue 6's `ids_test.go`, ordered after 4): `rv20 = "market.rv20"`, `rv20_indices = ["SPX","NDX","RUT"]`.
 - Reading key (dataset `readings.reading`): `market.rv20|underlying|SPX` (same for NDX, RUT); parameters `data_day`,
   `observations`, `window`.
 - `compute.Figures`, `internal/compute/api.go` and `internal/store/api.go` are not edited.
 
 ## Issues
+
+Build order: every entry compiles and its own tests pass against main plus the entries it is ordered after, and
+nothing else. The seams that siblings consume land first: issue 1 (the job-package seam `IndexIDReader`, interface)
+and issue 3 (the rule id and register entry, interface for `jobs` and `pages` by id string) have no Order line; issues 2
+and 4 follow 1 (4 also follows 3); issues 5 and 6 follow what they use; 7 and 8 last. The chain is 1 and 3, then 2 and 4,
+then 5 and 6, then 7 and 8.
 
 ### 1 index-ids-seam (interface)
 
@@ -128,7 +136,7 @@ Goal: declare `IndexIDReader` and the optional field `ComputeStores.IndexIDs` as
 test file, the contract text; behaviour of the job unchanged.
 Acceptance:
 1. `internal/jobs/computefigures/types.go` declares `type IndexIDReader interface` with the method `IndexIDs(ctx context.Context, names []string) ([]store.InstrumentName, error)` and the field `IndexIDs IndexIDReader` in `ComputeStores` (`git grep -n "IndexIDs(ctx context.Context, names \[\]string) (\[\]store.InstrumentName, error)\|IndexIDs  *IndexIDReader" -- internal/jobs/computefigures/types.go` prints 2 lines); the field `PriceBars` is still declared there (`git grep -c "PriceBars  *bar.PriceBarReader" -- internal/jobs/computefigures/types.go` prints 1).
-2. `docs/contracts/jobs/compute_figures.md` states that a nil `IndexIDs` makes each rv20 key fail and does not skip it (`git grep -n "IndexIDs" -- docs/contracts/jobs/compute_figures.md` prints a line that contains "fail").
+2. `docs/contracts/jobs/compute_figures.md` names the optional field `ComputeStores.IndexIDs` and the reader `IndexIDReader` as a seam with no user yet (`git grep -n "IndexIDReader" -- docs/contracts/jobs/compute_figures.md` prints a line that contains "optional"); what a nil value does to a key is written by issue 4, which builds the key.
 3. `internal/jobs/computefigures/index_ids_test.go` has a fake type with the method `IndexIDs(` that is assigned to `ComputeStores{IndexIDs: ...}` (`git grep -n "IndexIDs:" -- internal/jobs/computefigures/index_ids_test.go` prints a line); `git diff --name-only BASE` lists exactly the Files line.
 Checked by CI: `go test ./internal/jobs/computefigures -race -count=1`, `go run ./scripts/arch --check`.
 
@@ -137,7 +145,7 @@ Checked by CI: `go test ./internal/jobs/computefigures -race -count=1`, `go run 
 Module: store. Size: S.
 Files: `internal/store/instrument/index_ids.go`, `internal/store/instrument/index_ids_test.go`, `internal/store/instrument/index_ids_pg_test.go`, `docs/contracts/store.md`
 Design: docs/design/market-rv20.md#decisions (4)
-Order: after 1 (the method has the signature of `IndexIDReader`).
+Order: after 1 (the method has the signature of `IndexIDReader`; the store test imports nothing of jobs, so the order is for the reviewer's contract check).
 Goal: `OpenIndexIDs` (page role DSN line, no migration) and `IndexIDs`: rows of `rd.instrument_r1` with
 `instrument_type = 'index'` and name in the list, ordered by id.
 Acceptance:
@@ -148,12 +156,12 @@ Acceptance:
 5. `internal/store/api.go` and `migrations/` are untouched and the pg test is tagged: `git diff --name-only BASE` lists exactly the Files line; `head -1 internal/store/instrument/index_ids_pg_test.go` is `//go:build pg`; `git grep -c "IndexIDs" -- docs/contracts/store.md` is at least 1.
 Checked by CI: `go test ./internal/store/instrument -race -count=1` (the `pg` test runs only in GitHub CI).
 
-### 3 rv20-rules
+### 3 rv20-rules (interface)
 
 Module: compute, plus docs (judged two-module entry, Modules above). Size: S.
 Files: `internal/compute/rules/rules.json`, `internal/compute/rules/rules_test.go`, `docs/conventions/register.toml`
 Design: docs/design/market-rv20.md#decisions (2, 3, 7)
-Order: first (shares no file with 1 and 2).
+Order: first (shares no file with 1 and 2; it lands the rule id and register entry that issues 4, 6, 7 and 8 read by id string).
 Goal: rule `market.rv20` with the numbers of Decision 2 and the hash the hash test computes for `HistoricalVol`, and its
 `[[figure]]` entry (15 keys). The old entries are unchanged.
 Acceptance:
@@ -187,12 +195,12 @@ Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/a
 Module: ot. Size: S.
 Files: `cmd/ot/runonce.go`, `cmd/ot/wire.go`, `cmd/ot/index_ids_wire_test.go`
 Design: docs/design/market-rv20.md#decisions (4)
-Order: after 1 and 2.
+Order: after 1 and 2 (the default `instrument.OpenIndexIDs` and the assertion `var _ computefigures.IndexIDReader = (*instrument.IndexIDs)(nil)` name the symbols of issue 2 and the interface of issue 1).
 Goal: a `deps` field `openIndexIDs` (default `instrument.OpenIndexIDs`) and, in `openComputeStores`, `cs.IndexIDs` set
 from it with the pages line, closed with the others; a nil `openIndexIDs`, or an opener that returns an error, leaves `IndexIDs` nil with a logged warning and does not fail `openComputeStores` (the keys then fail, Decision 4; this keeps every `cmd/ot` test that opens the compute stores with a fake `openInstrumentName` and the default deps from dialling a database). `cmd/ot/wire_computefigures_test.go` (the `rec.dsns` counts at lines 171 and 193) is not changed: `rec.dsns` records only the bar opener, and `openIndexIDs` is a separate field. the step-off warning names `market.rv20` beside `market.hv30_own`.
 Acceptance:
 1. `git grep -c "openIndexIDs: *instrument.OpenIndexIDs" -- cmd/ot/wire.go` prints 1 (the default) and `git grep -c "openIndexIDs  *func" -- cmd/ot/wire.go` prints 1 (the field) and `git grep -c "cs.IndexIDs" -- cmd/ot/runonce.go` prints 1; `git grep -n "market.rv20" -- cmd/ot/wire.go` shows the warning line near `HV step left out`.
-2. `cmd/ot/index_ids_wire_test.go` contains `var _ computefigures.IndexIDReader = (*instrument.IndexIDs)(nil)` (`git grep -c "computefigures.IndexIDReader = (\*instrument.IndexIDs)(nil)" -- cmd/ot/index_ids_wire_test.go` prints 1) and a test that `openComputeStores` returns a store with `IndexIDs` non-nil when the fake opener is set and nil when it is not.
+2. `cmd/ot/index_ids_wire_test.go` contains `var _ computefigures.IndexIDReader = (*instrument.IndexIDs)(nil)` (`git grep -c "computefigures.IndexIDReader = (\*instrument.IndexIDs)(nil)" -- cmd/ot/index_ids_wire_test.go` prints 1) and tests of `openComputeStores`: `TestIndexIDsSetWhenOpenerSet` (non-nil with the fake opener), `TestIndexIDsNilWhenNoOpener` (nil with no opener) and `TestIndexIDsNilWithWarningWhenOpenerErrors` (the opener returns an error: `IndexIDs` is nil, a warning naming `market.rv20` is logged, and `openComputeStores` returns no error); `git grep -c "^func TestIndexIDsSetWhenOpenerSet\|^func TestIndexIDsNilWhenNoOpener\|^func TestIndexIDsNilWithWarningWhenOpenerErrors" -- cmd/ot/index_ids_wire_test.go` prints 3.
 3. Size: `wc -l < cmd/ot/wire.go` is at most 800 and `wc -l < cmd/ot/runonce.go` is at most 600; `git diff --name-only BASE` lists exactly the Files line.
 Checked by CI: `go test ./cmd/ot -race -count=1`, `go run ./scripts/arch --check`.
 
@@ -223,7 +231,7 @@ Checked by CI: `go test ./internal/pages/... -race -count=1`, `go run ./scripts/
 Module: pages. Size: S.
 Files: `internal/pages/home_market/member.go`, `internal/pages/home_market/member_test.go`, `internal/pages/home_market/strings.go`, `internal/pages/home_market/purity_test.go`, `internal/pages/home_market/testdata/ok.golden.json`
 Design: docs/design/market-rv20.md#decisions (6)
-Order: after 4 and 6 (same cell rules; `docs/contracts/pages.md` is edited by 6 only).
+Order: after 3 and 4 (the rule exists and the manifest names it). It uses no code of issue 6: `home_market` imports no other page (`purity_test.go`); the cell rules are the same text of Decision 6, and `docs/contracts/pages.md` is edited by 6 only.
 Goal: `buildRow` fills `RV20` from `c.Readings` (kind `underlying`) with the cell rules of issue 6; `IVMinusRV20` stays
 `not_built` with its text. `member_test.go`'s `readings` fake errors on any name but `iv_ibkr` ("unexpected reading"),
 so it is extended to answer `market.rv20`; the `ok` golden carries the filled cell. No other golden or test builds this
@@ -244,9 +252,9 @@ Module: docs. Size: XS.
 Files: `docs/GLOSSARY.md`
 Design: docs/design/market-rv20.md#decisions (8)
 Order: after 3.
-Goal: Decision 8: the three entries keep their names and are marked not built; one sentence names `market.rv20`.
+Goal: Decision 8: the four entries (lines 88, 441, 442 and 443) keep their names and are marked not built; one sentence names `market.rv20`.
 Acceptance:
-1. Nothing is withdrawn: `git grep -n "rv20_n225\|iv_rv20_n225" -- docs/GLOSSARY.md | grep -vc "not built"` prints 0 and `git grep -n "rv20_n225" -- docs/GLOSSARY.md | grep -c "withdrawn"` prints 0; the lines still name subject `JP` (`git grep -n "rv20_n225" -- docs/GLOSSARY.md | grep -c '`JP`'` is at least 1).
+1. Nothing is withdrawn: `git grep -n "rv20_n225\|iv_rv20_n225\|market.iv_n225" -- docs/GLOSSARY.md | grep -vc "not built"` prints 0 and `git grep -n "rv20_n225" -- docs/GLOSSARY.md | grep -c "withdrawn"` prints 0; the lines still name subject `JP` (`git grep -n "rv20_n225" -- docs/GLOSSARY.md | grep -c '`JP`'` is at least 1).
 2. The id is named: `git grep -c "market.rv20[^_]" -- docs/GLOSSARY.md` is at least 1 and that line says N225 is later (`git grep -n "market.rv20[^_]" -- docs/GLOSSARY.md | grep -c "later"` is at least 1); `git diff --name-only BASE` lists exactly the Files line.
 
 ## Left out
@@ -259,6 +267,13 @@ Acceptance:
 - N225 (and TOPX): later, by the owner's word ("日本后面再说"). No option rows, no stored IV, and its bars exchange
   `OSE.JPN` is unverified. The row stays `not_built`; the glossary entries `rv20_n225`, `iv_rv20_n225` and subject `JP`
   stay, marked not built (Decision 8).
+- Rejected ways to map an index name to its instrument id (Decision 4): (a) `con_id` in the manifest of
+  `compute_figures`: the `[[index]]` rows of `bars_refresh` carry `con_id = 0` and resolve it per run through the broker,
+  so a second copy would be unverified owner data that drifts from the one that stores the bars; (b) a reader in
+  `internal/store/api.go`: the file has 800 lines and no ceiling, one added line needs an owner-only ratchet entry;
+  (c) resolving through the broker (`ResolveContract`) or `ResolveInstrument`: `compute_figures` has no broker and no
+  write role, and `ResolveInstrument` creates a row when none exists; (d) taking the subjects from `listSubjects`:
+  the indices never have option rows (Revision 1's blocking fault).
 - `market.hv30_own` for the indices: the same mapping would give it, not asked for.
 - Exchange strings of the `[[index]]` rows (NDX `NASDAQ`, RUT `RUSSELL`) are the owner's proposals, unverified live
   (`barsrefresh/job.toml` line 1); a wrong one gives no bars and, after this design, a `Retryable` failed key
@@ -290,7 +305,7 @@ Source: the adversarial review `market-rv20.adversarial.md` (a file of the desig
 5. Claim most likely false (subjects like `hv30_own`, `cmd/ot` needs no change, `iv` cell already shows `iv_ibkr`):
    adopted. Decision 5 and the Modules section are rewritten; `cmd/ot` needs a wiring issue (5); the `iv` cell claim is
    removed and the Gap is recorded in Left out.
-6. Likeliest slip: adopted point by point. Routing in `Run`'s switch is Decision 5 and acceptance 3 of issue 4;
+6. Likeliest slip: adopted point by point. Routing in `Run`'s switch is Decision 5 and acceptance 5 of issue 4;
    `TestIvRvCellsAreNotBuilt` and `builder_test.go` (`pageGaps`) are in the Files of issue 6 with the `failed` counter
    answered in Decision 6; fakes of `compute.Figures` no longer need a new method; the cross-module issue sets are
    listed as judged cuts in Modules; acceptance items are results checked by `git grep` or by reading a named test, with no diff-shape or count-only items,
