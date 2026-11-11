@@ -24,8 +24,6 @@ const (
 	captureLookup = 3   // session days searched back for the newest account capture
 )
 
-var aliases = []string{"A", "B"}
-
 // underlyingRef names one watched underlying and its instrument id.
 type underlyingRef struct {
 	issuer, symbol string
@@ -242,14 +240,14 @@ func (j *job) earnings(ctx context.Context, e jobs.WatchEntry, chainDay contract
 	return info, ce, nil
 }
 
-// accounts reads the newest capture of each alias, A and B separately. An alias with no capture in the
+// accounts reads the newest capture of each alias of j.st.Aliases separately. An alias with no capture in the
 // lookup window is left out; a nil reader gives no alias at all.
 func (j *job) accounts(ctx context.Context, symbol string, days []contracts.Day) ([]compute.AliasFunds, error) {
 	if j.st.Accounts == nil {
 		return nil, nil
 	}
 	var out []compute.AliasFunds
-	for _, alias := range aliases {
+	for _, alias := range j.st.Aliases {
 		for tries, i := 0, len(days)-1; i >= 0 && tries < captureLookup; tries, i = tries+1, i-1 {
 			values, err := j.st.Accounts.Values(ctx, alias, string(days[i]))
 			if err != nil {

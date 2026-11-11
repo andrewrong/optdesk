@@ -28,7 +28,7 @@
     "refresh_expiry": null,
     "refresh_strike": null
   },
-  "notice": "Positions: see /options/tracking. Volume and open interest from 2026-11-09 (chain day)",
+  "notice": "Positions: see /options/tracking. Volume from 2026-11-09 (chain day)",
   "shared_gap": null,
   "maps": [
     {
@@ -121,7 +121,7 @@
         "key": "c101",
         "expiry": "2026-11-13",
         "strike": "65",
-        "yield_text": "Annualised 12.3456%",
+        "yield_text": "Annualised n/a",
         "premium": "Premium n/a",
         "delta": "Δ n/a",
         "volume": "Volume n/a",
@@ -285,7 +285,7 @@
           "n/a",
           "n/a",
           "n/a",
-          "12.3456%"
+          "n/a"
         ],
         "quote": {
           "as_of": "23:00:00",

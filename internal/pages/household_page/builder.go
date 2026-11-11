@@ -76,7 +76,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if lag := len(sessions) - 1 - slices.Index(sessions, contracts.Day(snap.day)); lag > staleSessions {
 		return marshal(gapPage(c, alias, scopes, at, "stale_input", textStale))
 	}
-	obligations, ledgerAt, err := c.obligations(ctx, alias, sessions, contracts.Day(snap.day))
+	obligations, ledgerPuts, ledgerAt, err := c.obligations(ctx, alias, sessions, contracts.Day(snap.day))
 	if err != nil {
 		return nil, err
 	}
@@ -85,11 +85,15 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 		Values: valuesIn(snap.values), MonthStart: valuesIn(snap.monthStart),
 		History: snap.history, Obligations: obligations,
 	})
+	positions, err := c.Account.Positions(ctx, alias, snap.day)
+	if err != nil {
+		return nil, fmt.Errorf("household_page: read positions: %w", err)
+	}
 	hb, err := c.holdings(ctx, alias, snap)
 	if err != nil {
 		return nil, err
 	}
-	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, hb, at))
+	return marshal(c.assemble(alias, tag, scopes, snap, ledgerAt, res, hb, missingFromLedger(positions, ledgerPuts), at))
 }
 
 func marshal(p pageJSON) ([]byte, error) { return json.Marshal(p) }
@@ -160,17 +164,18 @@ func (c Config) capture(ctx context.Context, alias string, sessions []contracts.
 }
 
 // obligations replays the ledger of alias and returns its open short puts and the newest record time.
-func (c Config) obligations(ctx context.Context, alias string, sessions []contracts.Day, day contracts.Day) ([]blockapi.ObligationIn, time.Time, error) {
+func (c Config) obligations(ctx context.Context, alias string, sessions []contracts.Day,
+	day contracts.Day) ([]blockapi.ObligationIn, []string, time.Time, error) {
 	var newest time.Time
 	rows, err := c.Ledger.FlexTradeRows(ctx, alias)
 	if err != nil {
-		return nil, newest, fmt.Errorf("household_page: read ledger: %w", err)
+		return nil, nil, newest, fmt.Errorf("household_page: read ledger: %w", err)
 	}
 	trades := make([]compute.LedgerTrade, 0, len(rows))
 	for _, r := range rows {
 		attrs := map[string]string{}
 		if err := json.Unmarshal([]byte(r.Attributes), &attrs); err != nil {
-			return nil, newest, fmt.Errorf("household_page: ledger row %s: %w", r.TransactionID, err)
+			return nil, nil, newest, fmt.Errorf("household_page: ledger row %s: %w", r.TransactionID, err)
 		}
 		trades = append(trades, compute.LedgerTrade{TransactionID: r.TransactionID, Revision: r.Revision, Attributes: attrs})
 		if r.RecordedAt.After(newest) {
@@ -180,22 +185,84 @@ func (c Config) obligations(ctx context.Context, alias string, sessions []contra
 	res := c.Ledgers().Replay(compute.LedgerInput{Alias: alias, Trades: trades, SessionDays: sessions, AsOf: day},
 		compute.LedgerParams{MarkMaxAgeSessions: markMaxAgeSessions})
 	var out []blockapi.ObligationIn
+	var keys []string
 	for _, p := range res.Positions {
 		if p.Status != "open" || p.Right != "P" || !strings.HasPrefix(p.Quantity, "-") {
 			continue
 		}
+		keys = append(keys, putKey(p.Underlying, p.Strike, p.Expiry))
 		out = append(out, blockapi.ObligationIn{
 			Underlying: p.Underlying, Currency: p.Currency, Strike: p.Strike, Multiplier: p.Multiplier,
 			Contracts: strings.TrimPrefix(p.Quantity, "-"), PremiumIncome: p.PremiumIncome,
 		})
 	}
-	return out, newest, nil
+	return out, keys, newest, nil
+}
+
+const (
+	secTypeOption    = "option"
+	maxListedPuts    = 5
+	maxBlockGapRunes = 170 // the page list repeats a block gap under its title (at most 23 characters); both stay under 200
+)
+
+// putKey identifies a put by underlying, strike and expiry; the expiry loses its dashes and the strike
+// its trailing zeros, so the stored and the ledger spelling meet.
+func putKey(underlying, strike, expiry string) string {
+	if strings.Contains(strike, ".") {
+		strike = strings.TrimSuffix(strings.TrimRight(strike, "0"), ".")
+	}
+	return underlying + "|" + strike + "|" + strings.ReplaceAll(expiry, "-", "")
+}
+
+// missingFromLedger lists the stored short puts (symbol, strike, expiry) that no open short put of the
+// ledger matches; each ledger put matches one stored put.
+func missingFromLedger(positions []store.Position, ledgerKeys []string) []string {
+	left := map[string]int{}
+	for _, k := range ledgerKeys {
+		left[k]++
+	}
+	var missing []string
+	for _, p := range positions {
+		if p.SecType != secTypeOption || p.Right != "put" || !strings.HasPrefix(p.Quantity, "-") {
+			continue
+		}
+		if k := putKey(p.Symbol, p.Strike, p.Expiry); left[k] > 0 {
+			left[k]--
+			continue
+		}
+		missing = append(missing, strings.TrimSpace(p.Symbol+" P"+p.Strike+" "+p.Expiry))
+	}
+	return missing
+}
+
+// withLedgerGap marks the obligations, income and cash after blocks as gaps when stored short puts
+// are missing from the ledger; the rows stay as they are.
+func withLedgerGap(p *pageJSON, missing []string) {
+	if len(missing) == 0 {
+		return
+	}
+	listed := missing
+	if len(listed) > maxListedPuts {
+		listed = listed[:maxListedPuts]
+	}
+	text := ""
+	for ; len(listed) > 0; listed = listed[:len(listed)-1] {
+		text = fmt.Sprintf(textNotInLedger, len(missing), strings.Join(listed, ", "))
+		if len([]rune(text)) <= maxBlockGapRunes {
+			break
+		}
+	}
+	if r := []rune(text); len(r) > maxBlockGapRunes {
+		text = string(r[:maxBlockGapRunes])
+	}
+	g := gapJSON{Reason: "no_data", Text: text}
+	p.Obligations.Gap, p.Income.Gap, p.CashAfter.Gap = &g, &g, &g
 }
 
 // assemble writes the page from the figures; without hb the mark blocks are the gap missing_quote,
 // movers is the gap no_data and long term the gap not_built. The run is ok when no block has a gap.
 func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp capture, ledgerAt time.Time,
-	res blockapi.HouseholdResult, hb *holdingBlocks, at time.Time) pageJSON {
+	res blockapi.HouseholdResult, hb *holdingBlocks, missing []string, at time.Time) pageJSON {
 	p := base(c, scopes, alias, at)
 	p.RunStatus = "partial"
 	p.Title, p.Sentence = pageTitle, pageSentence
@@ -205,6 +272,11 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	p.Obligations = moneyOf(titleObligations, meaningObligations, res.Obligations)
 	p.Income = moneyOf(titleIncome, meaningIncome, res.Income)
 	p.MonthChange = waterfallOf(res.MonthChange)
+	if len(cp.monthStart) == 0 && cp.day != "" {
+		p.MonthChange = waterfallBlock{Title: titleMonthChange, Meaning: meaningMonthChange, Rows: []waterfallStep{},
+			Gap: &gapJSON{Reason: "missing_input", Text: fmt.Sprintf(textNoMonthStart, cp.day[:7]+"-01")}}
+	}
+	withLedgerGap(&p, missing)
 	p.Trend = trendOf(alias, tag.Label, res.Trend)
 	p.Accounts = accountsOf(alias, tag.Label, tag.Whose, cp.day, res.Accounts)
 	if hb != nil {

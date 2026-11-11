@@ -45,6 +45,9 @@ const (
 	textStale        = "The latest capture is over 3 trading days old"
 	textStaleLabel   = "Account data day "
 
+	textNoMonthStart = "No capture of net liquidation on the last trading day before %s: the month start is missing"
+	textNotInLedger  = "%d short put(s) in stored positions are not in the option ledger yet (no Flex record): %s"
+
 	nameMonthStart = "Month start"
 	nameMonthEnd   = "Month end"
 	whoseMain      = "Me"

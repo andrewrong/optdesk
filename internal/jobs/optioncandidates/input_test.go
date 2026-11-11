@@ -13,6 +13,8 @@ import (
 func TestAliasesAandBAreSeparate(t *testing.T) {
 	t.Parallel()
 	f := newFakes()
+	st := f.stores()
+	st.Aliases = []string{"A", "B"}
 	f.values = map[string][]store.AccountValue{
 		"A": {{Tag: "AvailableFunds", Value: "5000", Currency: "USD"}},
 		"B": {{Tag: "AvailableFunds", Value: "20000", Currency: "USD"}},
@@ -21,11 +23,45 @@ func TestAliasesAandBAreSeparate(t *testing.T) {
 		"A": {{Symbol: "ABC", SecType: "stock", Quantity: "300", AvgCost: "88"}},
 		"B": {{Symbol: "ABC", SecType: "option", Right: "call", Quantity: "-2"}},
 	}
-	build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil)
+	build(t, st, f, usEntry()).Run(context.Background(), runDay, nil)
 	got := f.inputs[0].Accounts
 	if len(got) != 2 || got[0].Alias != "A" || got[0].Funds != "5000" || got[0].Shares != 300 || got[0].AvgCost != "88" ||
 		got[1].Alias != "B" || got[1].Funds != "20000" || got[1].Shares != 0 || got[1].OpenShortCalls != 2 ||
 		got[0].CaptureDay != "2026-11-09" {
+		t.Fatalf("accounts %+v", got)
+	}
+}
+
+func TestAccountsReadByGivenAliases(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	st := f.stores()
+	st.Aliases = []string{"mine_account", "wife_account"}
+	f.values = map[string][]store.AccountValue{
+		"mine_account": {{Tag: "AvailableFunds", Value: "5000", Currency: "USD"}},
+		"wife_account": {{Tag: "AvailableFunds", Value: "20000", Currency: "USD"}},
+	}
+	f.positions = map[string][]store.Position{}
+	build(t, st, f, usEntry()).Run(context.Background(), runDay, nil)
+	got := f.inputs[0].Accounts
+	if len(got) != 2 || got[0].Alias != "mine_account" || got[0].Funds != "5000" ||
+		got[1].Alias != "wife_account" || got[1].Funds != "20000" {
+		t.Fatalf("accounts %+v", got)
+	}
+}
+
+func TestNilAliasesReadNoAccount(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	st := f.stores()
+	st.Aliases = nil
+	f.values = map[string][]store.AccountValue{
+		"A": {{Tag: "AvailableFunds", Value: "5000", Currency: "USD"}},
+		"B": {{Tag: "AvailableFunds", Value: "20000", Currency: "USD"}},
+	}
+	f.positions = map[string][]store.Position{}
+	build(t, st, f, usEntry()).Run(context.Background(), runDay, nil)
+	if got := f.inputs[0].Accounts; len(got) != 0 {
 		t.Fatalf("accounts %+v", got)
 	}
 }

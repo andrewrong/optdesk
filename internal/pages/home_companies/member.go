@@ -32,6 +32,7 @@ const (
 	hvName   = "market.hv30_own"
 	ivName   = "market.iv30_own"
 	ivpName  = "market.ivp_own"
+	ibkrName = "market.ivp_ibkr"
 
 	// lookbackDays is how far before the day a reading is looked for.
 	lookbackDays = 10
@@ -154,9 +155,20 @@ var columns = []column{
 
 // reading is the newest ok reading of a name and subject, with its day.
 type reading struct {
-	value string
-	day   time.Time
+	value  string
+	day    time.Time
+	source string
 }
+
+const (
+	notComputedText = "not computed yet, comes with the next figures run"
+	reasonFewYears  = "fewer_than_5_years"
+)
+
+const (
+	ownSource  = "own series"
+	ibkrSource = "IBKR series"
+)
 
 // Build returns the page.held_companies_summary.v3 JSON read through cfg. Each row has the buy band
 // reading (valuation.buy_band) as its price with the owner's hand price beside it, and the owner's own
@@ -238,28 +250,28 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 func (c Config) rowOf(ctx context.Context, r Row, currency string, day time.Time) (out rowOut, hasPrice bool, seen time.Time, err error) {
 	out = rowOut{
 		Symbol: r.Symbol, Currency: currency,
-		Earnings:      mkGap("no_data", "earnings date: no source"),
-		DayChange:     mkGap("no_data", "day change: no source"),
-		FiveDayChange: mkGap("no_data", "5-day change: no source"),
+		Earnings:      mkGap("no_data", "earnings date: not read by this card yet"),
+		DayChange:     mkGap("no_data", "day change: not read by this card yet"),
+		FiveDayChange: mkGap("no_data", "5-day change: not read by this card yet"),
 		DaySharp:      sharpMark{Kind: "none"}, FiveDaySharp: sharpMark{Kind: "none"},
 	}
 	hand := ""
 	if r.HandPrice != "" {
 		hand = " · hand " + r.HandPrice
 	}
-	band, err := c.newest(ctx, bandName, r.Symbol, day)
+	band, bandReason, err := c.newest(ctx, bandName, r.Symbol, day)
 	if err != nil {
 		return out, false, seen, err
 	}
-	hv, err := c.newest(ctx, hvName, r.Symbol, day)
+	hv, hvReason, err := c.newest(ctx, hvName, r.Symbol, day)
 	if err != nil {
 		return out, false, seen, err
 	}
-	iv, err := c.newest(ctx, ivName, r.Symbol, day)
+	iv, ivReason, err := c.newest(ctx, ivName, r.Symbol, day)
 	if err != nil {
 		return out, false, seen, err
 	}
-	ivp, err := c.newest(ctx, ivpName, r.Symbol, day)
+	ivp, ivpGap, err := c.ivpOf(ctx, r.Symbol, day)
 	if err != nil {
 		return out, false, seen, err
 	}
@@ -272,7 +284,7 @@ func (c Config) rowOf(ctx context.Context, r Row, currency string, day time.Time
 	case c.Read == nil:
 		out.Price = mkGap("no_reader", noReaderText+hand)
 	case band == nil:
-		out.Price = mkGap("no_data", "no band reading"+hand)
+		out.Price = mkGap("no_data", bandGapText(bandReason)+hand)
 	default:
 		bandValue, derr := decimal.NewFromString(band.value)
 		if derr != nil {
@@ -291,22 +303,41 @@ func (c Config) rowOf(ctx context.Context, r Row, currency string, day time.Time
 	if !seen.IsZero() {
 		dataDay = seen
 	}
+	label := "own · hv30_v1 / iv30_v1 / ivp_v1 · data day " + dataDay.Format("01-02")
+	ivpFig := c.percent(ivp, day, "IV percentile", "")
+	if ivp != nil {
+		ivpFig = c.percent(ivp, day, "IV percentile", ivp.source)
+		if ivp.source == ibkrSource {
+			label = "own · hv30_v1 / iv30_v1 · " + ibkrName + " · data day " + dataDay.Format("01-02")
+		}
+	} else if c.Read != nil {
+		ivpFig = ivpGap
+	}
 	out.Volatility = volatility{
-		Source: "own", Label: "own · hv30_v1 / iv30_v1 / ivp_v1 · data day " + dataDay.Format("01-02"),
+		Source: "own", Label: label,
 		DataDay: dataDay.Format(dayLayout), Reconciliation: "not shown",
-		HV30: c.percent(hv, day, "HV30"), IV30: c.percent(iv, day, "IV30"), IVP: c.percent(ivp, day, "IV percentile"),
+		HV30: c.volatilityFigure(hv, hvReason, day, "HV30"), IV30: c.volatilityFigure(iv, ivReason, day, "IV30"), IVP: ivpFig,
 	}
 	return out, hasPrice, seen, nil
 }
 
+// volatilityFigure is the percent figure of an own HV30 or IV30 reading, or the gap that says why it is
+// absent.
+func (c Config) volatilityFigure(rd *reading, reason string, day time.Time, label string) any {
+	if c.Read != nil && rd == nil {
+		return mkGap("no_data", missingText(label, reason))
+	}
+	return c.percent(rd, day, label, "")
+}
+
 // percent writes a stored fraction as a percent figure (two places, half to even), or the gap of a
 // reading that is absent.
-func (c Config) percent(rd *reading, day time.Time, label string) any {
+func (c Config) percent(rd *reading, day time.Time, label, source string) any {
 	if c.Read == nil {
 		return mkGap("no_reader", label+": "+noReaderText)
 	}
 	if rd == nil {
-		return mkGap("no_data", label+": no reading")
+		return mkGap("no_data", label+": no stored reading")
 	}
 	v, err := decimal.NewFromString(rd.value)
 	if err != nil {
@@ -314,6 +345,9 @@ func (c Config) percent(rd *reading, day time.Time, label string) any {
 	}
 	n := v.Shift(2).RoundBank(2)
 	text := n.StringFixed(2) + "%"
+	if source != "" {
+		text += " · " + source
+	}
 	if rd.day.Before(day) {
 		text += " · " + rd.day.Format("01-02")
 	}
@@ -321,8 +355,54 @@ func (c Config) percent(rd *reading, day time.Time, label string) any {
 }
 
 // newest returns the newest ok reading of name for symbol within the lookback of day, nil when none
-// or when no reader is set.
-func (c Config) newest(ctx context.Context, name, symbol string, day time.Time) (*reading, error) {
+// or when no reader is set. When there is none it also returns the reason tag of the newest not-ok row
+// of the same name inside the lookback, "" when that row has no tag or there is no row.
+func (c Config) newest(ctx context.Context, name, symbol string, day time.Time) (*reading, string, error) {
+	rows, err := c.rowsOf(ctx, name, symbol, day)
+	if err != nil {
+		return nil, "", err
+	}
+	if rd := newestOK(rows); rd != nil {
+		return rd, "", nil
+	}
+	return nil, reasonOf(rows), nil
+}
+
+// reasonOf returns the reason tag of the newest not-ok row.
+func reasonOf(rows []contracts.ReadingRecord) string {
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		if r.State == "ok" {
+			continue
+		}
+		for _, p := range r.Parameters {
+			if p.Param == "reason" && p.ValueTag != nil {
+				return *p.ValueTag
+			}
+		}
+		return ""
+	}
+	return ""
+}
+
+// missingText is the gap sentence of a reading that is not stored ok: the reason when a not-ok row
+// names one, else that it is not computed yet.
+func missingText(label, reason string) string {
+	if reason == "" {
+		return label + ": " + notComputedText
+	}
+	return label + ": missing input (" + strings.ReplaceAll(reason, "_", " ") + ")"
+}
+
+// bandGapText is the gap sentence of the buy band.
+func bandGapText(reason string) string {
+	if reason == reasonFewYears {
+		return "valuation band: needs 5 years of fundamentals, fewer stored; shown once 5 years are loaded"
+	}
+	return missingText("valuation band", reason)
+}
+
+func (c Config) rowsOf(ctx context.Context, name, symbol string, day time.Time) ([]contracts.ReadingRecord, error) {
 	if c.Read == nil {
 		return nil, nil
 	}
@@ -331,14 +411,70 @@ func (c Config) newest(ctx context.Context, name, symbol string, day time.Time) 
 	if err != nil {
 		return nil, fmt.Errorf("home_companies: %s of %s: %w", name, symbol, err)
 	}
+	return rows, nil
+}
+
+func newestOK(rows []contracts.ReadingRecord) *reading {
 	for i := len(rows) - 1; i >= 0; i-- {
 		r := rows[i]
 		if r.State != "ok" || r.Value == nil {
 			continue
 		}
-		return &reading{value: *r.Value, day: r.Day.Time}, nil
+		return &reading{value: *r.Value, day: r.Day.Time}
 	}
-	return nil, nil
+	return nil
+}
+
+// ivpOf applies the IVP rule of compute-stage2 Decision 3: market.ivp_own when ok, else
+// market.ivp_ibkr when ok, else a gap that carries the reason of the stored market.ivp_own row.
+func (c Config) ivpOf(ctx context.Context, symbol string, day time.Time) (*reading, gap, error) {
+	own, err := c.rowsOf(ctx, ivpName, symbol, day)
+	if err != nil {
+		return nil, gap{}, err
+	}
+	if rd := newestOK(own); rd != nil {
+		rd.source = ownSource
+		return rd, gap{}, nil
+	}
+	ibkr, err := c.rowsOf(ctx, ibkrName, symbol, day)
+	if err != nil {
+		return nil, gap{}, err
+	}
+	if rd := newestOK(ibkr); rd != nil {
+		rd.source = ibkrSource
+		return rd, gap{}, nil
+	}
+	return nil, ivpGapOf(own), nil
+}
+
+// ivpGapOf names why the own IVP is not ok from its newest stored row.
+func ivpGapOf(own []contracts.ReadingRecord) gap {
+	const label = "IV percentile: "
+	if len(own) == 0 {
+		return mkGap("no_data", label+"no own IV30 history is stored")
+	}
+	r := own[len(own)-1]
+	code := 0
+	if r.ReasonCode != nil {
+		code = *r.ReasonCode
+	}
+	switch code {
+	case 1:
+		return mkGap("missing_input", label+"no input, no IV30 reading for the day")
+	case 2:
+		n := 0
+		for _, p := range r.Parameters {
+			if p.Param == "observations" && p.ValueNum != nil {
+				n = int(*p.ValueNum)
+			}
+		}
+		return mkGap("missing_input", fmt.Sprintf("%sshort history, %d/252 own IV30 sessions", label, n))
+	case 3:
+		return mkGap("stale_input", label+"stale input, own IV30 is out of date")
+	case 5:
+		return mkGap("missing_input", label+"bad input, own IV30 history is unusable")
+	}
+	return mkGap("missing_input", fmt.Sprintf("%sown reading is missing (reason %d)", label, code))
 }
 
 // zone is the zone of cfg when generatedAt is +08:00 in it, else +08:00: the schema fixes the offset.

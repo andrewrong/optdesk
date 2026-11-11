@@ -269,6 +269,68 @@ func TestFredLagStaysOk(t *testing.T) {
 	}
 }
 
+// marketWorld is the world with the session days of the week of dayD: the 5th and the 6th, the 6th a session
+// unless holiday is set.
+func marketWorld(holiday bool) *fx {
+	f := world()
+	f.sessions = nil
+	d5 := shiftDay(dayD, -1)
+	f.addSession(d5, true, closeD.AddDate(0, 0, -1).Add(-6*time.Hour-30*time.Minute), closeD.AddDate(0, 0, -1))
+	if holiday {
+		f.addSession(dayD, false, time.Time{}, time.Time{})
+	} else {
+		f.addSession(dayD, true, closeD.Add(-6*time.Hour-30*time.Minute), closeD)
+	}
+	return f
+}
+
+func TestMarketInputBehindCalendarIsRetryable(t *testing.T) {
+	t.Parallel()
+	f := marketWorld(false)
+	f.addPoint("VIXCLS", shiftDay(dayD, -1), 20)
+	res := runAll(t, newJob(t, f, newFigs()))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("Err %v, want Retryable", res.Err)
+	}
+	msg := res.Err.Error()
+	for _, want := range []string{"VIXCLS", string(shiftDay(dayD, -1)), string(dayD), "waits for"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("error %q lacks %q", msg, want)
+		}
+	}
+	r := reading(t, f, "market.vix_pctile_3y", "market", "VIXCLS")
+	if r.State != "ok" || tagOf(r, "data_day") != string(shiftDay(dayD, -1)) {
+		t.Fatalf("reading %+v, want stored ok with the older data_day", r)
+	}
+}
+
+func TestMarketInputCurrentIsDone(t *testing.T) {
+	t.Parallel()
+	f := marketWorld(false)
+	f.addPoint("VIXCLS", dayD, 20)
+	f.addPoint("VXVCLS", dayD, 22)
+	f.addPoint("VXNCLS", dayD, 20)
+	f.addPoint("RVXCLS", dayD, 20)
+	f.addPoint("SP500", dayD, 20)
+	res := runAll(t, newJob(t, f, newFigs()))
+	if res.Err != nil {
+		t.Fatalf("Err %v, want none", res.Err)
+	}
+}
+
+func TestMarketInputBehindOnHolidayIsDone(t *testing.T) {
+	t.Parallel()
+	f := marketWorld(true)
+	d5 := shiftDay(dayD, -1)
+	for _, id := range []string{"VIXCLS", "VXVCLS", "VXNCLS", "RVXCLS", "SP500"} {
+		f.addPoint(id, d5, 20)
+	}
+	res := runAll(t, newJob(t, f, newFigs()))
+	if res.Err != nil {
+		t.Fatalf("Err %v, want none: the as-of day is no session", res.Err)
+	}
+}
+
 func TestPostconditionRowPerKey(t *testing.T) {
 	t.Parallel()
 	f := world()

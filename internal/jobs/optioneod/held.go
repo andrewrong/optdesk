@@ -79,7 +79,7 @@ func (j *job) heldCalls(ctx context.Context, symbol string, day time.Time) ([]he
 				continue
 			}
 			for _, p := range rows {
-				if p.SecType != "OPT" || p.Symbol != symbol || !strings.EqualFold(p.Right, "call") || p.Strike == "" || p.Expiry == "" {
+				if p.SecType != "option" || p.Symbol != symbol || !strings.EqualFold(p.Right, "call") || p.Strike == "" || p.Expiry == "" {
 					continue
 				}
 				if q, ok := new(big.Rat).SetString(p.Quantity); !ok || q.Sign() >= 0 {

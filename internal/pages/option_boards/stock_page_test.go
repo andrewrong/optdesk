@@ -271,3 +271,40 @@ func TestStockZoneRequired(t *testing.T) {
 		t.Error("nil zone gives no error")
 	}
 }
+
+func TestPremiumTextMissingBidIsGap(t *testing.T) {
+	t.Parallel()
+	if got := premiumText(""); got != "Premium n/a" {
+		t.Errorf("empty bid: %q", got)
+	}
+	if got := premiumText("n/a"); got != "Premium n/a" {
+		t.Errorf("n/a bid: %q", got)
+	}
+	if got := premiumText("1.20"); got != "Premium 1.20" {
+		t.Errorf("bid 1.20: %q", got)
+	}
+}
+
+func TestStockEmptyBidIsGap(t *testing.T) {
+	t.Parallel()
+	rows := stockFixture()
+	rows[1].BidEod = ""
+	rows[1].AnnualizedYield = sPtr("0")
+	p, _ := buildStockPayload(t, stockCfg(stockDay, rows, "AAPL"), stockDay)
+	found := false
+	for _, c := range p.Matrix.Cells {
+		if c.Key == cellKey(101) {
+			found = true
+			if c.YieldText != "Annualised n/a" || c.Premium != "Premium n/a" {
+				t.Errorf("matrix cell = %q, %q", c.YieldText, c.Premium)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("cell 101 missing")
+	}
+	cells := p.Contracts.Rows[1].Cells
+	if cells[2] != "n/a" || cells[10] != "n/a" {
+		t.Errorf("contract cells = %v", cells)
+	}
+}

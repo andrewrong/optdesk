@@ -31,7 +31,7 @@ func (f *fakeAccount) Executions(context.Context, string, string, string) ([]sto
 }
 
 func shortCall(expiry, strike string) store.Position {
-	return store.Position{Symbol: "TEST", SecType: "OPT", Right: "call", Expiry: expiry, Strike: strike, Quantity: "-1", Multiplier: "100"}
+	return store.Position{Symbol: "TEST", SecType: "option", Right: "call", Expiry: expiry, Strike: strike, Quantity: "-1", Multiplier: "100"}
 }
 
 func heldBroker() *fakeBroker {
@@ -77,7 +77,8 @@ func count(cs []broker.Contract, expiry, strike, right string) int {
 func TestHeldCallAddedAtTenDTE(t *testing.T) {
 	t.Parallel()
 	acct := &fakeAccount{positions: map[string][]store.Position{
-		"A 2026-11-06": {shortCall("2026-11-16", "100"), {Symbol: "TEST", SecType: "OPT", Right: "call", Expiry: "2026-11-16", Strike: "105", Quantity: "1"}},
+		"A 2026-11-06": {shortCall("2026-11-16", "100"), {Symbol: "TEST", SecType: "option", Right: "call", Expiry: "2026-11-16", Strike: "105", Quantity: "1"},
+			{Symbol: "TEST", SecType: "stock", Right: "call", Expiry: "2026-11-16", Strike: "95", Quantity: "-100"}},
 	}}
 	got := heldContracts(t, acct)
 	if n := count(got, "20261116", "100", "C"); n != 1 {
@@ -85,6 +86,9 @@ func TestHeldCallAddedAtTenDTE(t *testing.T) {
 	}
 	if n := count(got, "20261116", "105", "C"); n != 0 {
 		t.Fatal("a long call must not be captured")
+	}
+	if n := count(got, "20261116", "95", "C"); n != 0 {
+		t.Fatal("a stored stock position must not be held as a call")
 	}
 }
 

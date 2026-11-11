@@ -16,13 +16,15 @@ import (
 // gates that need them answer unknown. Catalog lists the underlyings that have a chain and the newest chain day
 // of each (the job takes the id of a symbol from Names); Candidates is the one writer.
 type CandidateStores struct {
-	OptionEod   store.OptionEodReader
-	Catalog     store.OptionEodCatalog
-	Terms       store.OptionTermsReader
-	Names       store.InstrumentNameReader
-	Series      store.SeriesReader
-	Earnings    store.EarningsDateReader
-	Accounts    store.AccountReader
+	OptionEod store.OptionEodReader
+	Catalog   store.OptionEodCatalog
+	Terms     store.OptionTermsReader
+	Names     store.InstrumentNameReader
+	Series    store.SeriesReader
+	Earnings  store.EarningsDateReader
+	Accounts  store.AccountReader
+	// Aliases lists the account labels whose newest capture the job reads, in this order; a nil list reads no account.
+	Aliases     []string
 	Candidates  store.CandidateWriter
 	SessionDays store.SessionDayReader
 }
