@@ -9,6 +9,7 @@ const (
 	figSp500Vs200d = "market.sp500_vs_200d"
 	figVixTerm     = "market.vix_term_ratio"
 	figIVIbkr      = "market.iv_ibkr"
+	figRv20        = "market.rv20"
 
 	kindMarket     = "market"
 	kindUnderlying = "underlying"

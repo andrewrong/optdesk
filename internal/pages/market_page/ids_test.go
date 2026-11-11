@@ -42,11 +42,11 @@ func TestIdsExistInRulesAndJob(t *testing.T) {
 	for _, m := range job.Market {
 		inJob[m.ID] = m.Series
 	}
-	for _, id := range []string{figVixPctile, figVxnPctile, figRvxPctile, figSp500Vs200d, figVixTerm} {
+	for _, id := range []string{figVixPctile, figVxnPctile, figRvxPctile, figSp500Vs200d, figVixTerm, figRv20} {
 		if !inRules[id] {
 			t.Errorf("%s is not in rules.json", id)
 		}
-		if _, ok := inJob[id]; !ok {
+		if _, ok := inJob[id]; !ok && id != figRv20 { // market.rv20 is keyed by rv20, not [[market]]
 			t.Errorf("%s is not in job.toml", id)
 		}
 	}
@@ -73,5 +73,26 @@ func TestSeriesAreStoredByFredseries(t *testing.T) {
 		if !strings.Contains(string(fb), `"`+s+`"`) {
 			t.Errorf("%s is not stored by fredseries", s)
 		}
+	}
+}
+
+func TestRv20IsInManifest(t *testing.T) {
+	t.Parallel()
+	jb, err := os.ReadFile("../../jobs/computefigures/job.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var job struct {
+		Rv20        string   `toml:"rv20"`
+		Rv20Indices []string `toml:"rv20_indices"`
+	}
+	if err := toml.Unmarshal(jb, &job); err != nil {
+		t.Fatal(err)
+	}
+	if got := job.Rv20; got != figRv20 {
+		t.Errorf("job.toml rv20 = %q, want %s", got, figRv20)
+	}
+	if got := job.Rv20Indices; len(got) != 3 || got[0] != "SPX" || got[1] != "NDX" || got[2] != "RUT" {
+		t.Errorf("job.toml rv20_indices = %v", got)
 	}
 }

@@ -1,6 +1,7 @@
 package market_page
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -22,26 +23,106 @@ func TestN225IsGap(t *testing.T) {
 	}
 }
 
-func TestIvRvCellsAreNotBuilt(t *testing.T) {
+func rv20Of(t *testing.T, m map[string]any, row int) map[string]any {
+	t.Helper()
+	return at(t, m, "indices", "rows", row, "rv20").(map[string]any)
+}
+
+func TestRv20CellShowsStoredValue(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{
+		"0.162060": "16.2", "0.162500": "16.2", "0.163500": "16.4", "0.000500": "0.0", "0.000000": "0.0",
+	} {
+		e := allOK()
+		e.rv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", in, nil, "2026-11-06")}
+		c := rv20Of(t, e.page(t), 0)
+		if c["kind"] != "value" || c["text"] != want || c["unit"] != "vol_points" || fmt.Sprint(c["value"]) != want {
+			t.Errorf("%s: rv20 = %v, want %s", in, c, want)
+		}
+	}
+}
+
+func TestRv20CellNoRowIsNoData(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	delete(e.rv, "NDX")
+	c := rv20Of(t, e.page(t), 1)
+	if c["kind"] != "gap" || c["reason"] != "no_data" || c["text"] != "NDX 20-day realised volatility: no data, not stored yet" {
+		t.Errorf("NDX rv20 = %v", c)
+	}
+}
+
+func TestRv20CellNotOkIsMissingInput(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	e.rv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(2), "")}
+	e.rv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "-0.1", nil, "")}
+	m := e.page(t)
+	if c := rv20Of(t, m, 2); c["kind"] != "gap" || c["reason"] != "missing_input" || c["text"] != "RUT 20-day realised volatility: no data, inputs incomplete" {
+		t.Errorf("RUT rv20 = %v", c)
+	}
+	if c := rv20Of(t, m, 0); c["kind"] != "gap" || c["reason"] != "missing_input" {
+		t.Errorf("negative SPX rv20 = %v", c)
+	}
+}
+
+func TestRv20SmallNegativeIsMissingInput(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	e.rv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "-0.000400", nil, "2026-11-06")}
+	if c := rv20Of(t, e.page(t), 0); c["kind"] != "gap" || c["reason"] != "missing_input" {
+		t.Errorf("rv20 = %v, want missing_input gap", c)
+	}
+}
+
+func TestN225RvStaysNotBuilt(t *testing.T) {
 	t.Parallel()
 	m := allOK().page(t)
+	if g := rv20Of(t, m, 3); g["kind"] != "gap" || g["reason"] != "not_built" || g["text"] != "N225 20-day realised volatility: not built yet" {
+		t.Errorf("N225 rv20 = %v", g)
+	}
 	for i := range 4 {
-		keys := []string{"rv20", "iv_minus_rv20"}
-		if i == 3 {
-			keys = append(keys, "iv")
-		}
-		for _, k := range keys {
-			g := at(t, m, "indices", "rows", i, k).(map[string]any)
-			if g["kind"] != "gap" || g["reason"] != "not_built" {
-				t.Errorf("row %d %s = %v", i, k, g)
-			}
+		g := at(t, m, "indices", "rows", i, "iv_minus_rv20").(map[string]any)
+		name := []string{"SPX", "NDX", "RUT", "N225"}[i]
+		if g["kind"] != "gap" || g["reason"] != "not_built" || g["text"] != name+" implied minus realised: not built yet" {
+			t.Errorf("row %d iv_minus_rv20 = %v", i, g)
 		}
 	}
-	if g := at(t, m, "indices", "rows", 0, "rv20").(map[string]any); g["text"] != "SPX 20-day realised volatility: not built yet" {
-		t.Errorf("rv20 text = %v", g["text"])
+	if g := at(t, m, "indices", "rows", 3, "iv").(map[string]any); g["reason"] != "not_built" {
+		t.Errorf("N225 iv = %v", g)
 	}
-	if g := at(t, m, "indices", "rows", 0, "iv_minus_rv20").(map[string]any); g["text"] != "SPX implied minus realised: not built yet" {
-		t.Errorf("iv_minus_rv20 text = %v", g["text"])
+}
+
+func TestIndicesHeaderNamesTheUnbuiltColumn(t *testing.T) {
+	t.Parallel()
+	s, _ := at(t, allOK().page(t), "indices", "sentence").(string)
+	if !strings.Contains(s, "implied-minus-realised column is not built yet") || strings.Contains(s, "realised columns") {
+		t.Errorf("indices sentence = %q", s)
+	}
+	p, _ := allOK().page(t)["sentence"].(string)
+	if strings.Contains(p, "realised columns") || !strings.Contains(p, "implied minus realised") {
+		t.Errorf("page sentence = %q", p)
+	}
+}
+
+func TestRv20GapsLeaveFailedCountUnchanged(t *testing.T) {
+	t.Parallel()
+	gapped := allOK()
+	gapped.rv = nil
+	for name, e := range map[string]env{"filled": allOK(), "gaps": gapped} {
+		m := e.page(t)
+		if m["run_status"] != "ok" {
+			t.Errorf("%s: run_status = %v", name, m["run_status"])
+		}
+	}
+	if c := rv20Of(t, gapped.page(t), 0); c["kind"] != "gap" {
+		t.Fatalf("rv20 not a gap: %v", c)
+	}
+	// A failed percentile still makes the page partial, whatever rv20 shows.
+	bad := allOK()
+	bad.readings[figVixPctile] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(2), "")}
+	if bad.page(t)["run_status"] != "partial" {
+		t.Error("failed percentile: not partial")
 	}
 }
 
