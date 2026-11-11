@@ -43,17 +43,19 @@ type easeSpec struct {
 }
 
 type manifest struct {
-	ID         string        `toml:"id"`
-	RateSeries string        `toml:"rate_series"`
-	Iv30       string        `toml:"iv30"`
-	IvIbkr     string        `toml:"iv_ibkr"`
-	Ivp        string        `toml:"ivp"`
-	IvpIbkr    string        `toml:"ivp_ibkr"`
-	Ivr        string        `toml:"ivr"`
-	Hv30       string        `toml:"hv30"`
-	Market     []marketSpec  `toml:"market"`
-	Ease       easeSpec      `toml:"ease"`
-	Schedule   scheduleTable `toml:"schedule"`
+	ID          string        `toml:"id"`
+	RateSeries  string        `toml:"rate_series"`
+	Iv30        string        `toml:"iv30"`
+	IvIbkr      string        `toml:"iv_ibkr"`
+	Ivp         string        `toml:"ivp"`
+	IvpIbkr     string        `toml:"ivp_ibkr"`
+	Ivr         string        `toml:"ivr"`
+	Hv30        string        `toml:"hv30"`
+	Rv20        string        `toml:"rv20"`
+	Rv20Indices []string      `toml:"rv20_indices"`
+	Market      []marketSpec  `toml:"market"`
+	Ease        easeSpec      `toml:"ease"`
+	Schedule    scheduleTable `toml:"schedule"`
 }
 
 type job struct {

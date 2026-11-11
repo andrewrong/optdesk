@@ -17,6 +17,7 @@
 ## Version history
 
 - v1: `compute_figures`, interface only (`computefigures.ComputeStores`, `computefigures.NewComputeFiguresFunc`).
+- rv20 seams (declared, not yet used): `computefigures.ComputeStores.IndexIDs` is an optional field of type `computefigures.IndexIDReader` (`IndexIDs(ctx, names []string) ([]store.InstrumentName, error)`: the instruments of type `index` whose name is in names, ordered by id); `IndexIDStore` adds `Close() error` and `OpenIndexIDsFunc` opens one from a dsn. The manifest keys `rv20 = "market.rv20"` and `rv20_indices = ["SPX", "NDX", "RUT"]` are parsed. No step reads them: the plan and the run are unchanged. Design: `docs/design/market-rv20.md` Decision 4.
 - v1: `compute_figures` stores `market.hv30_own` when `ComputeStores.PriceBars` is set (additive field).
 - v1: `compute_figures` stores `market.ivp_ibkr` per underlying from the stored `market.iv_ibkr` readings (additive; manifest keys `iv_ibkr`, `ivp_ibkr`).
 - v1: `compute_figures` stores `macro.ease` when built with an `Ease` (`computefigures.NewComputeFiguresEaseFunc`, additive).

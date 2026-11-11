@@ -7,6 +7,8 @@ ivp = "market.ivp_own"
 ivp_ibkr = "market.ivp_ibkr"
 ivr = "market.ivr_own"
 hv30 = "market.hv30_own"
+rv20 = "market.rv20"
+rv20_indices = ["SPX", "NDX", "RUT"]
 
 [[market]]
 id = "market.vix_term_ratio"
