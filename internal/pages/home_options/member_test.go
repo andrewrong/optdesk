@@ -357,3 +357,15 @@ func TestBadConfigIsError(t *testing.T) {
 		t.Error("bad day: want an error")
 	}
 }
+
+func TestSeriesTextAndCaptionShareNoSentence(t *testing.T) {
+	t.Parallel()
+	c := card(t, okCfg(sold("1.0000", "", "")))
+	text := c["premium_series_text"].(string)
+	caption := c["premium_series_caption"].(string)
+	for _, seg := range strings.FieldsFunc(text, func(r rune) bool { return r == '；' || r == '。' }) {
+		if strings.Contains(caption, seg) {
+			t.Fatalf("caption repeats sentence %q", seg)
+		}
+	}
+}
