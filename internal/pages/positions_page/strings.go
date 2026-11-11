@@ -23,7 +23,6 @@ const (
 	textAmbiguous    = "Several entries in the option ledger: no data yet"
 	textBadExpiry    = "Expiry cannot be read: no data yet"
 	textBadNumber    = "Number cannot be read: no data yet"
-	textPrecision    = "More than two decimals: no data yet"
 	textCurrency     = "Currency not supported: no data yet"
 	textNoTime       = "Fill time unknown"
 	textNoPrior      = "No earlier capture: action no data yet"

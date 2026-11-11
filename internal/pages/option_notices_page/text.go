@@ -1,6 +1,7 @@
 package option_notices_page
 
 import (
+	"math/big"
 	"regexp"
 	"strconv"
 	"time"
@@ -27,6 +28,7 @@ const (
 )
 
 var (
+	decimalText  = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
 	idPattern    = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 	idUnsafe     = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 	codeUnsafe   = regexp.MustCompile(`[^a-z_]`)
@@ -138,4 +140,34 @@ func midnight(day contracts.Day, zone *time.Location) (string, error) {
 		return "", err
 	}
 	return t.Format(timeLayout), nil
+}
+
+// percentText shows a decimal ratio as a percent with one place, half even, in exact
+// arithmetic; a text that does not parse as a decimal is returned as stored.
+func percentText(ratio string) string {
+	r, ok := new(big.Rat).SetString(ratio)
+	if !ok || !decimalText.MatchString(ratio) {
+		return ratio
+	}
+	// tenths of a percent = ratio * 1000, rounded half to even.
+	v := new(big.Rat).Mul(r, big.NewRat(1000, 1))
+	n, d := v.Num(), v.Denom()
+	q, m := new(big.Int).DivMod(n, d, new(big.Int))
+	switch new(big.Int).Lsh(m, 1).Cmp(d) {
+	case 1:
+		q.Add(q, big.NewInt(1))
+	case 0:
+		if q.Bit(0) == 1 {
+			q.Add(q, big.NewInt(1))
+		}
+	}
+	s := q.String()
+	neg := ""
+	if s[0] == '-' {
+		neg, s = "-", s[1:]
+	}
+	for len(s) < 2 {
+		s = "0" + s
+	}
+	return neg + s[:len(s)-1] + "." + s[len(s)-1:] + "%"
 }

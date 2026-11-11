@@ -114,8 +114,8 @@ func account() *fakeAccount {
 			"main|2026-11-10": {
 				pos("2026-11-10", "AAA", "stock", "USD", 1, "200", "138.2"),
 				pos("2026-11-10", "BBB", "stock", "USD", 2, "10", "12.5"),
-				option(pos("2026-11-10", "XYZ", "option", "USD", 3, "-1", "2.6"), "put", "2026-11-20", "100"),
-				option(pos("2026-11-10", "ZZZ", "option", "USD", 4, "1", "1.1"), "call", "2026-12-18", "50"),
+				option(pos("2026-11-10", "XYZ", "option", "USD", 3, "-1", "260"), "put", "2026-11-20", "100"),
+				option(pos("2026-11-10", "ZZZ", "option", "USD", 4, "1", "110"), "call", "2026-12-18", "50"),
 			},
 			"main|2026-11-09": {pos("2026-11-09", "AAA", "stock", "USD", 1, "200", "138.2")},
 		},
@@ -387,3 +387,38 @@ func TestReaderErrorIsAnError(t *testing.T) {
 }
 
 var _ blockapi.PageFigures = pagefig.New()
+
+func positionsConfig(ps ...store.Position) (positions_page.Config, map[int64]string) {
+	acc := &fakeAccount{positions: map[string][]store.Position{"main|2026-11-10": ps}}
+	c := config(acc)
+	return c, nil
+}
+
+func TestStockCostAndPriceRoundHalfToEven(t *testing.T) {
+	t.Parallel()
+	c, _ := positionsConfig(pos("2026-11-10", "AAA", "stock", "USD", 1, "10", "123.4567"))
+	c.Marks = fakeMarks{rows: []mark.PositionMark{{ConID: 1, Price: "0.5349", Basis: mark.BasisMid}}}
+	m, _ := build(t, c, "main")
+	if v := at0(t, m, "views", 0, "stocks", "rows", 0, "cost", "value"); fmt.Sprint(v) != "123.46" {
+		t.Fatalf("cost value = %v", v)
+	}
+	if v := at0(t, m, "views", 0, "stocks", "rows", 0, "cost", "text"); v != "$123.46" {
+		t.Fatalf("cost text = %v", v)
+	}
+	if v := at0(t, m, "views", 0, "stocks", "rows", 0, "price", "value"); fmt.Sprint(v) != "0.53" {
+		t.Fatalf("price = %v", v)
+	}
+}
+
+func TestOptionCostIsPerContractDividedByMultiplier(t *testing.T) {
+	t.Parallel()
+	c, _ := positionsConfig(option(pos("2026-11-10", "ORCL", "option", "USD", 3, "-1", "1005.94"), "call", "2026-11-20", "200"))
+	c.Marks = fakeMarks{rows: []mark.PositionMark{{ConID: 3, Price: "0.53", Basis: mark.BasisMid}}}
+	m, _ := build(t, c, "main")
+	if v := at0(t, m, "views", 0, "options", "rows", 0, "cost", "value"); fmt.Sprint(v) != "10.06" {
+		t.Fatalf("cost = %v", v)
+	}
+	if v := at0(t, m, "views", 0, "options", "rows", 0, "unrealised", "text"); v != "+$952.94" {
+		t.Fatalf("unrealised = %v", v)
+	}
+}

@@ -50,13 +50,27 @@ func TestCashByDateText(t *testing.T) {
 
 func TestCushionText(t *testing.T) {
 	t.Parallel()
-	p := buildPage(t, testConfig(oneCapture(), &fakeRule{result: compute.NoticeResult{Cushion: "0.1250"}}))
-	if c := p.Accounts[0].CushionText; c == nil || *c != "Cushion 0.1250" {
-		t.Errorf("cushion = %v", c)
+	cases := map[string]string{"0.1250": "Cushion 12.5%", "0.634749": "Cushion 63.5%", "n/a": "Cushion n/a"}
+	for in, want := range cases {
+		p := buildPage(t, testConfig(oneCapture(), &fakeRule{result: compute.NoticeResult{Cushion: in}}))
+		if c := p.Accounts[0].CushionText; c == nil || *c != want {
+			t.Errorf("cushion %q = %v, want %q", in, c, want)
+		}
 	}
-	p = buildPage(t, testConfig(oneCapture(), &fakeRule{}))
+	p := buildPage(t, testConfig(oneCapture(), &fakeRule{}))
 	if p.Accounts[0].CushionText != nil {
 		t.Errorf("cushion = %v", *p.Accounts[0].CushionText)
+	}
+}
+
+func TestCushionFactIsPercent(t *testing.T) {
+	t.Parallel()
+	rule := &fakeRule{result: compute.NoticeResult{Notices: []compute.Notice{{
+		Code: "cushion_low", Severity: "act", Facts: []compute.NoticeFact{{Label: "cushion", Value: "0.04"}},
+	}}}}
+	n := buildPage(t, testConfig(oneCapture(), rule)).Accounts[0].Notices[0]
+	if len(n.Facts) != 1 || n.Facts[0].Text != "4.0%" {
+		t.Errorf("facts = %+v", n.Facts)
 	}
 }
 
