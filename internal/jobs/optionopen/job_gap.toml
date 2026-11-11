@@ -2,9 +2,9 @@
 version = 1
 id = "option_open_resolve_gap"
 zone = "America/New_York"
-# Ends before the plan job at 08:45.
-budget_minutes = 30
-max_new = 150
+# Ends before the plan job at 08:45 ET (08:00 plus 40 minutes).
+budget_minutes = 40
+max_new = 4000
 retry_days = 7
 jitter_days = 2
 spot_move = 0.05
