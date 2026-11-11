@@ -12,16 +12,10 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 )
 
 const dayLayout = "2006-01-02"
-
-// The anchors of a runner.Slot.
-const (
-	anchorOpen  = "session_open"
-	anchorClose = "session_close"
-	anchorTime  = "time"
-)
 
 // Start is one start instant of a job, in UTC.
 type Start struct {
@@ -49,7 +43,7 @@ func nextStarts(
 ) ([]Start, error) {
 	zones := map[string]*time.Location{}
 	for _, j := range jobs {
-		if j.Anchor == anchorTime {
+		if j.Anchor == shared.AnchorTime {
 			if _, ok := zones[j.Zone]; !ok {
 				loc, err := time.LoadLocation(j.Zone)
 				if err != nil || j.Zone == "" {
@@ -57,7 +51,7 @@ func nextStarts(
 				}
 				zones[j.Zone] = loc
 			}
-		} else if j.Anchor != anchorOpen && j.Anchor != anchorClose {
+		} else if j.Anchor != shared.AnchorOpen && j.Anchor != shared.AnchorClose {
 			return nil, fmt.Errorf("job %s: unknown anchor %q", j.JobID, j.Anchor)
 		}
 	}
@@ -84,14 +78,9 @@ func nextStarts(
 			if !s.IsSession {
 				continue
 			}
-			var at time.Time
-			switch j.Anchor {
-			case anchorOpen:
-				at = s.OpenAt.Add(j.Offset)
-			case anchorClose:
-				at = s.CloseAt.Add(j.Offset)
-			default:
-				at = wallTime(date, zones[j.Zone], j.Offset)
+			at, err := shared.At(j, s)
+			if err != nil {
+				return nil, err
 			}
 			if at.Before(from) {
 				continue
@@ -101,11 +90,6 @@ func nextStarts(
 	}
 	sort.SliceStable(out, func(a, b int) bool { return out[a].At.Before(out[b].At) })
 	return out, nil
-}
-
-// wallTime is the instant at which the wall clock of loc shows offset since midnight of date.
-func wallTime(date time.Time, loc *time.Location, offset time.Duration) time.Time {
-	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, int(offset), loc)
 }
 
 // runsOut reports whether err says the calendar has no answer for the day: UnknownCalendar or NoValue.

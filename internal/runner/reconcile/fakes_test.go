@@ -47,6 +47,7 @@ type fakeLedger struct {
 	cursor   store.Cursor
 	puts     []store.Window
 	record   int
+	marks    int
 }
 
 func newLedger() *fakeLedger {
@@ -79,6 +80,7 @@ func (l *fakeLedger) MarkPresent(_ context.Context, d contracts.Day, k contracts
 		l.present[d] = map[contracts.ExpectedKey]store.PresentStatus{}
 	}
 	l.present[d][k] = s
+	l.marks++
 	return nil
 }
 
@@ -202,4 +204,15 @@ func (l *countingLedger) Acquire(ctx context.Context, owner string, ttl time.Dur
 func (l *countingLedger) PutExpected(ctx context.Context, d contracts.Day, h string, k []contracts.ExpectedKey) error {
 	l.expecteds++
 	return l.fakeLedger.PutExpected(ctx, d, h, k)
+}
+
+// scheduledJob is a fakeJob that declares its schedule with plain values, as runner.Scheduled asks.
+type scheduledJob struct {
+	*fakeJob
+	calendarID, anchor, zone string
+	offset                   time.Duration
+}
+
+func (j scheduledJob) Schedule() (string, string, string, time.Duration) {
+	return j.calendarID, j.anchor, j.zone, j.offset
 }

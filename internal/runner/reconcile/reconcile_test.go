@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -432,5 +433,162 @@ func TestEmptyWithoutWindowIsNoValue(t *testing.T) {
 	present, _ := led.Present(ctx, "2026-11-01")
 	if !done || present[keyA] != store.StatusNoValue {
 		t.Fatalf("done=%v present=%v", done, present)
+	}
+}
+
+// dueDay is 2026-11-05 of oneDay: XNYS closes at 21:00Z.
+const dueDay contracts.Day = "2026-11-05"
+
+func eodJob(keys ...contracts.ExpectedKey) scheduledJob {
+	return scheduledJob{fakeJob: &fakeJob{id: "eod", keys: keys}, calendarID: "XNYS", anchor: "session_close", offset: 0}
+}
+
+func dueRec(led store.OpsLedger, at string, jobs ...contracts.Job) runner.Reconciler {
+	return NewWithRule(led, oneDay(), clockwork.NewFakeClockAt(utc(at)), jobs, runner.WindowRule{CalendarID: "XNYS"})
+}
+
+func dueLedger() *fakeLedger {
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-04"}
+	return led
+}
+
+func TestScheduledJobHeldBeforeSlotInstant(t *testing.T) {
+	t.Parallel()
+	led, job := dueLedger(), eodJob(keyA)
+	if err := dueRec(led, "2026-11-05T00:09:00Z", job).Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 0 || led.record != 0 || len(job.calls) != 0 {
+		t.Fatalf("runs = %+v, calls = %v, want none", led.runs[dueDay], job.calls)
+	}
+	if led.marks != 0 || len(led.present[dueDay]) != 0 {
+		t.Fatalf("marks = %d, present = %v, want none", led.marks, led.present[dueDay])
+	}
+	if led.cursor.Day != "2026-11-04" {
+		t.Fatalf("cursor = %s, want it before the day", led.cursor.Day)
+	}
+	if len(led.expected[dueDay]) != 1 {
+		t.Fatalf("expected = %v, want the held key planned", led.expected[dueDay])
+	}
+}
+
+func TestScheduledJobStartsAtSlotInstantAndCursorAdvances(t *testing.T) {
+	t.Parallel()
+	led, job := dueLedger(), eodJob(keyA)
+	ctx := context.Background()
+	if err := dueRec(led, "2026-11-05T20:59:00Z", job).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 0 || led.cursor.Day != "2026-11-04" {
+		t.Fatalf("one minute early: runs = %+v, cursor = %s", led.runs[dueDay], led.cursor.Day)
+	}
+	if err := dueRec(led, "2026-11-05T21:00:00Z", job).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 1 || led.cursor.Day != dueDay {
+		t.Fatalf("at the instant: runs = %+v, cursor = %s", led.runs[dueDay], led.cursor.Day)
+	}
+}
+
+func TestSessionOpenNegativeOffsetHeldUntilInstant(t *testing.T) {
+	t.Parallel()
+	led := dueLedger()
+	job := scheduledJob{fakeJob: &fakeJob{id: "open", keys: []contracts.ExpectedKey{keyA}}, calendarID: "XNYS", anchor: "session_open", offset: -45 * time.Minute}
+	ctx := context.Background()
+	if err := dueRec(led, "2026-11-05T13:44:00Z", job).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 0 {
+		t.Fatalf("runs = %+v one minute before open-45m, want none", led.runs[dueDay])
+	}
+	if err := dueRec(led, "2026-11-05T13:45:00Z", job).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 1 {
+		t.Fatalf("runs = %+v at open-45m, want one", led.runs[dueDay])
+	}
+}
+
+func TestScheduledXTKSJobPastInstantStartsAtMidnightUTC(t *testing.T) {
+	t.Parallel()
+	led := dueLedger()
+	cal := fakeCalendar{sessions: []clock.Session{
+		{CalendarID: "XTKS", Day: dueDay, IsSession: true, OpenAt: utc("2026-11-05T00:00:00Z"), CloseAt: utc("2026-11-05T06:00:00Z")},
+	}}
+	job := scheduledJob{fakeJob: &fakeJob{id: "jp", keys: []contracts.ExpectedKey{keyA}}, calendarID: "XTKS", anchor: "session_open", offset: -45 * time.Minute}
+	clk := clockwork.NewFakeClockAt(utc("2026-11-05T00:09:00Z"))
+	r := NewWithRule(led, cal, clk, []contracts.Job{job}, runner.WindowRule{CalendarID: "XTKS"})
+	if err := r.Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 1 {
+		t.Fatalf("runs = %+v, want one", led.runs[dueDay])
+	}
+}
+
+func TestScheduledJobPastDayStartsAtOnce(t *testing.T) {
+	t.Parallel()
+	led, job := dueLedger(), eodJob(keyA)
+	if err := dueRec(led, "2026-11-06T21:00:00Z", job).Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 1 || led.cursor.Day != dueDay {
+		t.Fatalf("runs = %+v, cursor = %s", led.runs[dueDay], led.cursor.Day)
+	}
+}
+
+func TestUnscheduledJobStartsAtMidnightUTC(t *testing.T) {
+	t.Parallel()
+	led, job := dueLedger(), &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+	if err := dueRec(led, "2026-11-05T00:09:00Z", job).Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(led.runs[dueDay]) != 1 {
+		t.Fatalf("runs = %+v, want one", led.runs[dueDay])
+	}
+}
+
+func TestHeldJobHashStableSoPutExpectedOnce(t *testing.T) {
+	t.Parallel()
+	led := &countingLedger{fakeLedger: dueLedger()}
+	job := eodJob(keyA)
+	ctx := context.Background()
+	if err := dueRec(led, "2026-11-05T00:09:00Z", job).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if err := dueRec(led, "2026-11-05T21:00:00Z", job).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	// 2026-11-04 is behind the cursor, so only the day is planned: one call across both passes.
+	if led.expecteds != 1 {
+		t.Fatalf("PutExpected calls = %d, want 1", led.expecteds)
+	}
+}
+
+func TestBackfillOfTodayWithHeldJobReturnsEveryKey(t *testing.T) {
+	t.Parallel()
+	led := newLedger()
+	led.cursor = store.Cursor{Day: dueDay}
+	held, plain := eodJob(keyA), &fakeJob{id: "plain", keys: []contracts.ExpectedKey{keyB}}
+	clk := clockwork.NewFakeClockAt(utc("2026-11-05T00:09:00Z"))
+	led.expected[dueDay], led.hash[dueDay] = []contracts.ExpectedKey{keyA, keyB}, "plan-1"
+	b := NewBackfillerWithRule(led, oneDay(), clk, []contracts.Job{held, plain}, runner.WindowRule{CalendarID: "XNYS"})
+	res, err := b.Backfill(context.Background(), dueDay, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Refused != "" || len(res.InWindow) != 2 || res.InWindow[0] != keyA || res.InWindow[1] != keyB {
+		t.Fatalf("res = %+v, want both keys, the held one included, in the window", res)
+	}
+}
+
+func TestScheduledJobWithUnknownAnchorIsAnError(t *testing.T) {
+	t.Parallel()
+	led := dueLedger()
+	job := scheduledJob{fakeJob: &fakeJob{id: "bad", keys: []contracts.ExpectedKey{keyA}}, calendarID: "XNYS", anchor: "bogus"}
+	err := dueRec(led, "2026-11-05T21:00:00Z", job).Reconcile(context.Background(), dueDay)
+	if err == nil || !strings.Contains(err.Error(), "job bad: unknown anchor") {
+		t.Fatalf("err = %v, want unknown anchor naming the job", err)
 	}
 }

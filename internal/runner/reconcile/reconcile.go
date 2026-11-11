@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -130,12 +131,16 @@ type plan struct {
 	keys []contracts.ExpectedKey
 	job  map[contracts.ExpectedKey]contracts.Job
 	hash string
+	// held is the set of expected keys whose job is Scheduled and not yet due: the clock is before
+	// the job's slot instant on the day. It is set only when plan has the sessions of the day.
+	held map[contracts.ExpectedKey]bool
 }
 
 // plan merges the plans of the jobs for day. With sess, a job is planned only when its own calendar
-// has a session in it; with nil sess every job is planned.
+// has a session in it; with nil sess every job is planned. A held job is planned like any other, so
+// its keys, job and hash are in the plan; only held records that it is not yet due.
 func (r *reconciler) plan(ctx context.Context, day contracts.Day, sess daySessions) (plan, error) {
-	p := plan{job: map[contracts.ExpectedKey]contracts.Job{}}
+	p := plan{job: map[contracts.ExpectedKey]contracts.Job{}, held: map[contracts.ExpectedKey]bool{}}
 	h := sha256.New()
 	for _, j := range r.jobs {
 		if _, ok := sess[r.jobCalendar(j)]; sess != nil && !ok {
@@ -146,10 +151,17 @@ func (r *reconciler) plan(ctx context.Context, day contracts.Day, sess daySessio
 			return plan{}, fmt.Errorf("plan %s %s: %w", j.ID(), day, err)
 		}
 		fmt.Fprintf(h, "%s=%s;", j.ID(), hash)
+		notYet, err := r.notDue(j, sess)
+		if err != nil {
+			return plan{}, err
+		}
 		for _, k := range keys {
 			if _, dup := p.job[k]; !dup {
 				p.job[k] = j
 				p.keys = append(p.keys, k)
+				if notYet {
+					p.held[k] = true
+				}
 			}
 		}
 	}
@@ -161,6 +173,28 @@ func (r *reconciler) plan(ctx context.Context, day contracts.Day, sess daySessio
 	})
 	p.hash = hex.EncodeToString(h.Sum(nil))
 	return p, nil
+}
+
+// notDue reports whether job is Scheduled and the clock is before its slot instant on the day of
+// sess. A job that is not Scheduled, a nil sess, or a job whose calendar has no session is never held.
+func (r *reconciler) notDue(job contracts.Job, sess daySessions) (bool, error) {
+	sc, ok := job.(runner.Scheduled)
+	if !ok || sess == nil {
+		return false, nil
+	}
+	cal, anchor, zone, offset := sc.Schedule()
+	if cal == "" {
+		cal = r.jobCalendar(job)
+	}
+	s, ok := sess[cal]
+	if !ok {
+		return false, nil
+	}
+	at, err := shared.At(runner.Slot{JobID: job.ID(), CalendarID: cal, Anchor: anchor, Zone: zone, Offset: offset}, s)
+	if err != nil {
+		return false, err
+	}
+	return r.clk.Now().Before(at), nil
 }
 
 // reconcileDay plans the day, puts its windows, starts the repair and crash re-runs
@@ -204,6 +238,10 @@ func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess da
 	complete := true
 	for _, k := range p.keys {
 		if _, ok := present[k]; ok {
+			continue
+		}
+		if p.held[k] {
+			complete = false
 			continue
 		}
 		closeAt := closes[k.DatasetID]
