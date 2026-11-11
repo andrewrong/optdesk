@@ -280,3 +280,20 @@ func TestWrongDayAndWriteFailure(t *testing.T) {
 		t.Errorf("unknown key: %v", res.Err)
 	}
 }
+
+func TestRunWithOnlyNonLiveQuotesFails(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 10)
+	b := newFake(100)
+	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+		qs := okQuotes(b.clk, cs)
+		for i := range qs {
+			qs[i].MarketDataType = 2
+		}
+		return qs, nil
+	}
+	res := runAll(t, newPull(t, s, b))
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Usable != 0 {
+		t.Errorf("err %v usable %d, want a Permanent failure with no usable row", res.Err, res.Usable)
+	}
+}

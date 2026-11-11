@@ -145,7 +145,7 @@ func TestEveryPlannedItemHasOneRowAndTheTypeOfTheAnswer(t *testing.T) {
 	}
 	for _, id := range []int{11, 12} {
 		row := rowOf(t, r, id)
-		if row.Status != stOK || row.MarketDataType != 3 || row.OutsideBand {
+		if row.Status != stNoData || row.MarketDataType != 3 || row.OutsideBand {
 			t.Errorf("%d: status %d type %d outside %v", id, row.Status, row.MarketDataType, row.OutsideBand)
 		}
 		if row.CaptureID == "" || row.Slot != "0945" || row.PlanID == "" || row.SentAt == nil {
@@ -588,5 +588,36 @@ func TestRefreshDropsEverythingWhenTheBrokerIsUnavailable(t *testing.T) {
 	res := Refresh(context.Background(), b, b.clk, []Target{target(1, 11, ClassPuts, 90, Put), target(1, 12, ClassPuts, 91, Put)}, 1)
 	if len(res.Rows) != 0 || res.Asked != 2 || len(b.optCalls) != 1 {
 		t.Errorf("rows %d asked %d calls %d; want none, 2, 1", len(res.Rows), res.Asked, len(b.optCalls))
+	}
+}
+
+func TestNonLiveMarketDataTypeIsNoDataWithTheRowKept(t *testing.T) {
+	t.Parallel()
+	for _, typ := range []int{2, 3, 4} {
+		b := newFake(100)
+		b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+			qs := okQuotes(b.clk, cs)
+			for i := range qs {
+				qs[i].MarketDataType = typ
+			}
+			return qs, nil
+		}
+		r := newCore(b).Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put)})
+		row := rowOf(t, r, 11)
+		if row.Status == stOK || row.Status == stPartial || row.Status != stNoData {
+			t.Errorf("type %d: status %d, want no_data", typ, row.Status)
+		}
+		if row.MarketDataType != typ || row.Bid == nil {
+			t.Errorf("type %d: kept type %d bid %v", typ, row.MarketDataType, row.Bid)
+		}
+	}
+}
+
+func TestLiveMarketDataTypeOneStaysOk(t *testing.T) {
+	t.Parallel()
+	b := newFake(100)
+	r := newCore(b).Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put)})
+	if row := rowOf(t, r, 11); row.Status != stOK || row.MarketDataType != 1 {
+		t.Errorf("status %d type %d, want ok type 1", row.Status, row.MarketDataType)
 	}
 }

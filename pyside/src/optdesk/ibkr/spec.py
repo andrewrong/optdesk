@@ -8,8 +8,13 @@ This file has no third-party imports and never logs.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from optdesk.ibkr.model import QuoteTarget
+    from optdesk.ibkr.timing import Clock
 
 OPTION_EOD = "option_eod"
 OPTION_OPEN = "option_open"
@@ -32,6 +37,25 @@ STATUS_DISCONNECTED = "disconnected"
 CODE_NOT_LISTED = 200
 CODE_LINE_LIMIT = 101
 CODE_NO_SUBSCRIPTION = 354
+CODE_CONNECTIVITY_LOST = 1100
+CODE_DATA_LOST = 1101  # connectivity restored, market data lost: resubscribe
+CODE_DATA_KEPT = 1102  # connectivity restored, market data kept
+CODE_SERVER_LOST = 2110  # connectivity between TWS and the server is broken
+CODE_COMPETING_SESSION = 10197  # another login took the market data
+
+# The 10197 probe: wait each interval in turn, then probe one underlying and one
+# option for PROBE_WAIT_S; the sum of the intervals is the deadline of the wait.
+PROBE_INTERVALS_S = (5.0, 10.0, 20.0)
+PROBE_WAIT_S = 5.0
+SESSION_CODES = frozenset(
+    {
+        CODE_CONNECTIVITY_LOST,
+        CODE_DATA_LOST,
+        CODE_DATA_KEPT,
+        CODE_SERVER_LOST,
+        CODE_COMPETING_SESSION,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -163,3 +187,37 @@ def classify_error(code: int) -> ErrorRule:
 def is_informational(code: int) -> bool:
     """Codes that report a state of the gateway, not the failure of a request."""
     return 2100 <= code < 2200 or code in (10090, 10167)
+
+
+_UNDERLYING_TYPES = frozenset({"STK", "IND"})
+
+
+def probe_targets(targets: Sequence[QuoteTarget]) -> list[QuoteTarget]:
+    """Pick the 10197 probe: the first underlying and the first option of targets.
+
+    A batch with only one of the two probes that one; the order of targets keeps.
+    """
+    under = next((t for t in targets if t.sec_type in _UNDERLYING_TYPES), None)
+    option = next((t for t in targets if t.sec_type not in _UNDERLYING_TYPES), None)
+    return [t for t in (under, option) if t is not None]
+
+
+async def probe_until_back(clock: Clock, probe: Callable[[], Awaitable[bool]]) -> bool:
+    """After a 10197: wait each of PROBE_INTERVALS_S, then probe; True when one answers.
+
+    False is the deadline, the end of the last probe.
+    """
+    for interval in PROBE_INTERVALS_S:
+        await clock.sleep(interval)
+        if await probe():
+            return True
+    return False
+
+
+async def look_until(clock: Clock, answered: Callable[[], bool]) -> bool:
+    """Look once a second for PROBE_WAIT_S; True as soon as answered() is."""
+    for _ in range(int(PROBE_WAIT_S)):
+        await clock.sleep(1)
+        if answered():
+            return True
+    return False
