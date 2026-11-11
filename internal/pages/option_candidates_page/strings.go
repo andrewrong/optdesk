@@ -2,54 +2,54 @@ package option_candidates_page
 
 // Texts of the page. Option terms stay English, other text is Chinese (option-pages-v22 Decision 6).
 const (
-	pageTitle    = "期权候选"
-	estimateNote = "Bid (EOD 估) 是收盘 bid,下一交易日才卖,不是成交价"
-	jpNote       = "日本期权候选:后续设计 (option-candidates-jp)"
-	bidLabel     = "Bid (EOD 估)"
-	bidHint      = "收盘 bid,下一交易日才卖,不是成交价"
-	staleBadge   = "过期"
+	pageTitle    = "Option candidates"
+	estimateNote = "Bid (EOD estimate) is the closing bid, sold on the next trading day, not a traded price"
+	jpNote       = "Japanese option candidates: later design (option-candidates-jp)"
+	bidLabel     = "Bid (EOD estimate)"
+	bidHint      = "Closing bid, sold on the next trading day, not a traded price"
+	staleBadge   = "Stale"
 	dash         = "—"
-	unreadable   = "无法读取"
-	passText     = "通过"
+	unreadable   = "Unreadable"
+	passText     = "Pass"
 
-	gapNoReader   = "没有候选读取器,无法显示"
-	gapNoRun      = "近 7 天没有候选运行记录"
-	gapNoRows     = "近 7 天没有这一类候选"
-	staleTextHead = "候选行来自 "
-	staleTextTail = ",不是当日"
+	gapNoReader   = "No candidate reader: cannot show"
+	gapNoRun      = "No candidate run in the last 7 days"
+	gapNoRows     = "No candidates of this kind in the last 7 days"
+	staleTextHead = "Candidate rows are from "
+	staleTextTail = ", not the current day"
 	fitSeparator  = " "
 	listSeparator = ";"
 )
 
 var groupTitles = map[string]string{
-	kindShortPut:      "卖 put",
-	kindCoveredCall:   "备兑 call",
-	kindHeldCallGuard: "已持 call 守卫",
+	kindShortPut:      "Short put",
+	kindCoveredCall:   "Covered call",
+	kindHeldCallGuard: "Held call guard",
 }
 
 // markHints are the short Chinese hints of the marks; a mark not listed is shown as it is stored.
 var markHints = map[string]string{
-	"itm":                     "价内",
-	"earnings_unconfirmed":    "财报日未确认",
-	"earnings_beyond_horizon": "财报在合约之外",
-	"no_dividend":             "无股息",
+	"itm":                     "in the money",
+	"earnings_unconfirmed":    "earnings date not confirmed",
+	"earnings_beyond_horizon": "earnings after the contract",
+	"no_dividend":             "no dividend",
 }
 
 // fitHints are the hints of the stored fit words.
 var fitHints = map[string]string{
-	"fit":     "资金够",
-	"no_fit":  "资金不够",
-	"unknown": "未知",
+	"fit":     "Enough cash",
+	"no_fit":  "Not enough cash",
+	"unknown": "Unknown",
 }
 
 // reasonTexts holds the sentence of each known code: the codes of option-candidates.md Decisions 7, 11 and 12.
 var reasonTexts = map[string]string{
-	"no_buy_price":           "没有设定买入价",
-	"earnings_before_expiry": "财报日在到期日之前",
-	"yield_below_cash":       "年化收益不高于短期国债利率",
-	"stale_chain":            "期权链不是最新交易日的",
-	"no_fx":                  "币种不同,不换算",
-	"no_free_shares":         "没有可备兑的空闲股数",
-	"strike_floor":           "行权价低于卖出价下限",
-	"early_assignment_risk":  "除息前有提前被行权的风险",
+	"no_buy_price":           "No buy price set",
+	"earnings_before_expiry": "Earnings date is before expiry",
+	"yield_below_cash":       "Annualised yield is not above the short-term Treasury rate",
+	"stale_chain":            "Option chain is not from the latest trading day",
+	"no_fx":                  "Different currency, not converted",
+	"no_free_shares":         "No free shares to cover",
+	"strike_floor":           "Strike is below the sell price floor",
+	"early_assignment_risk":  "Early assignment risk before the ex-dividend date",
 }

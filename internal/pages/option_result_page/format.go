@@ -11,9 +11,9 @@ import (
 
 // Texts of the page. Option terms stay English, other text is Chinese.
 const (
-	pageTitle   = "期权盈亏"
-	nothingText = "没有已平仓的期权持仓"
-	noReader    = "没有读取器,无法显示"
+	pageTitle   = "Option result"
+	nothingText = "No closed option positions"
+	noReader    = "No reader: cannot show"
 	gapText     = "—"
 	dayLayout   = "2006-01-02"
 	timeLayout  = "2006-01-02T15:04:05-07:00"

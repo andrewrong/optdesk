@@ -14,21 +14,21 @@ import (
 )
 
 const (
-	pageTitle      = "持仓结构"
-	decideTitle    = "本周要决定"
-	othersTitle    = "其他结构"
-	otherNote      = "未识别的结构, 逐腿显示"
-	noReaderNote   = "账本或交易日读取器未接入 (no_reader)"
-	noCaptureNote  = "无持仓快照, 未与 Flex 对照"
-	oldCaptureNote = "持仓快照早于 3 个交易日, 未与 Flex 对照"
-	noAccountNote  = "持仓快照读取器未接入 (no_reader), 未与 Flex 对照"
+	pageTitle      = "Position structures"
+	decideTitle    = "To decide this week"
+	othersTitle    = "Other structures"
+	otherNote      = "Unidentified structures, shown leg by leg"
+	noReaderNote   = "Ledger or trading day reader not connected (no_reader)"
+	noCaptureNote  = "No position snapshot, not compared with Flex"
+	oldCaptureNote = "Position snapshot is older than 3 trading days, not compared with Flex"
+	noAccountNote  = "Position snapshot reader not connected (no_reader), not compared with Flex"
 	shownContracts = 2
 )
 
 var kindTexts = map[string]string{
-	"short_put": "卖出看跌", "covered_call": "备兑看涨", "naked_call": "裸卖看涨",
-	"put_spread": "看跌价差", "call_spread": "看涨价差", "long_put": "买入看跌", "long_call": "买入看涨",
-	"other": "未识别",
+	"short_put": "Short put", "covered_call": "Covered call", "naked_call": "Naked call",
+	"put_spread": "Put spread", "call_spread": "Call spread", "long_put": "Long put", "long_call": "Long call",
+	"other": "Unidentified",
 }
 
 type sourceTime struct {
@@ -107,10 +107,10 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 		GeneratedAt: at.In(c.Zone).Format(time.RFC3339), DataTimes: []sourceTime{},
 		RunStatus: "ok", Title: pageTitle,
 		Groups: []group{{Title: decideTitle, Rows: []row{}}, {Title: othersTitle, Rows: []row{}}},
-		Stale:  staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "按 " + string(day) + " 的账本与收盘价"},
+		Stale:  staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "Ledger and closing prices as of " + string(day)},
 	}
 	if c.Ledger == nil || c.Sessions == nil {
-		vm.RunStatus, vm.Sentence, vm.Note = "failed", "无法读取持仓结构", ptr(noReaderNote)
+		vm.RunStatus, vm.Sentence, vm.Note = "failed", "Cannot read the position structures", ptr(noReaderNote)
 		return json.Marshal(vm)
 	}
 	in, err := c.load(ctx, alias, day)
@@ -130,9 +130,9 @@ func buildList(ctx context.Context, c Config, alias string, day contracts.Day, a
 	}
 	total := len(res.Structures) + len(res.Other)
 	if total == 0 {
-		vm.Sentence = "账户 " + alias + " 没有持仓中的结构"
+		vm.Sentence = "Account " + alias + " has no structures held"
 	} else {
-		vm.Sentence = "共 " + strconv.Itoa(total) + " 个持仓结构，本周要决定 " + strconv.Itoa(len(vm.Groups[0].Rows)) + " 个"
+		vm.Sentence = "Total " + strconv.Itoa(total) + " position structures, to decide this week: " + strconv.Itoa(len(vm.Groups[0].Rows))
 	}
 	if note := c.noteOf(res); note != "" {
 		vm.Note = &note
@@ -181,19 +181,19 @@ func (c Config) noteOf(res compute.StructureResult) string {
 		parts = append(parts, oldCaptureNote)
 	}
 	if len(d.CaptureOnly) > 0 {
-		parts = append(parts, "尚未进入 Flex 的持仓: "+contractList(d.CaptureOnly))
+		parts = append(parts, "Positions not yet in Flex: "+contractList(d.CaptureOnly))
 	}
 	if len(d.LedgerOnly) > 0 {
-		parts = append(parts, "持仓快照中没有的 Flex 持仓: "+contractList(d.LedgerOnly))
+		parts = append(parts, "Flex positions missing from the position snapshot: "+contractList(d.LedgerOnly))
 	}
-	return clip(strings.Join(parts, "；"))
+	return clip(strings.Join(parts, "; "))
 }
 
 func contractList(ids []string) string {
 	shown := ids[:min(len(ids), shownContracts)]
-	out := strings.Join(shown, "、")
+	out := strings.Join(shown, ", ")
 	if len(ids) > len(shown) {
-		out += " 等 " + strconv.Itoa(len(ids)) + " 个"
+		out += " etc., " + strconv.Itoa(len(ids)) + " in all"
 	}
 	return out
 }
@@ -205,7 +205,7 @@ func (c cells) rowOf(s compute.Structure) row {
 		kind = s.Kind
 	}
 	if kind == "" {
-		kind = "未识别"
+		kind = "Unidentified"
 	}
 	expiry := "-"
 	for i, l := range s.Legs {

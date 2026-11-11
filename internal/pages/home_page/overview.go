@@ -83,7 +83,7 @@ func buildOverview(in Input) (overview, error) {
 	}
 	if len(ov.Gaps) > maxGaps {
 		dropped := len(ov.Gaps) - (maxGaps - 1)
-		ov.Gaps = append(ov.Gaps[:maxGaps-1], gapItem{Card: "首页", Text: fmt.Sprintf("另有 %d 处缺口未列出", dropped)})
+		ov.Gaps = append(ov.Gaps[:maxGaps-1], gapItem{Card: "Home", Text: fmt.Sprintf("%d more gaps not listed", dropped)})
 	}
 	return ov, nil
 }
@@ -91,7 +91,10 @@ func buildOverview(in Input) (overview, error) {
 // gapLine words the number of gaps for the page's gap_line.
 func gapLine(n int) string {
 	if n == 0 {
-		return "今天没有缺口"
+		return "No gaps today"
 	}
-	return fmt.Sprintf("%d 处缺口，见下", n)
+	if n == 1 {
+		return "1 gap, see below"
+	}
+	return fmt.Sprintf("%d gaps, see below", n)
 }

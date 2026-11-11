@@ -52,7 +52,7 @@ func TestVolLineAtTheMoney(t *testing.T) {
 		vlSpec{4, "P", "110", "2026-11-20", f64(0.4)},
 		vlSpec{5, "C", "100", "2026-11-05", f64(0.9)}, // expired before the session day
 	)
-	if got, want := volLine(t, c), "IV 24.1% · HV30 缺 · IVP 缺"; got != want {
+	if got, want := volLine(t, c), "IV 24.1% · HV30 n/a · IVP n/a"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
@@ -63,14 +63,14 @@ func TestVolLineTieBreaks(t *testing.T) {
 		vlSpec{1, "C", "105", "2026-11-20", f64(0.5)},
 		vlSpec{2, "C", "95", "2026-11-20", f64(0.2)},
 	)
-	if got, want := volLine(t, c), "IV 20.0% · HV30 缺 · IVP 缺"; got != want {
+	if got, want := volLine(t, c), "IV 20.0% · HV30 n/a · IVP n/a"; got != want {
 		t.Fatalf("lower strike: got %q, want %q", got, want)
 	}
 	c = vlCfg(t, f64(100),
 		vlSpec{1, "P", "100", "2026-11-20", f64(0.3)},
 		vlSpec{2, "C", "100", "2026-11-20", f64(0.2)},
 	)
-	if got, want := volLine(t, c), "IV 20.0% · HV30 缺 · IVP 缺"; got != want {
+	if got, want := volLine(t, c), "IV 20.0% · HV30 n/a · IVP n/a"; got != want {
 		t.Fatalf("call first: got %q, want %q", got, want)
 	}
 }
@@ -81,18 +81,18 @@ func TestVolLineMissingIV(t *testing.T) {
 		vlSpec{1, "C", "100", "2026-11-20", nil},
 		vlSpec{2, "C", "101", "2026-11-20", f64(0.256)},
 	)
-	if got, want := volLine(t, c), "IV 25.6% · HV30 缺 · IVP 缺"; got != want {
+	if got, want := volLine(t, c), "IV 25.6% · HV30 n/a · IVP n/a"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 	c = vlCfg(t, f64(100), vlSpec{1, "C", "100", "2026-11-20", nil})
-	if got, want := volLine(t, c), "IV 缺 · HV30 缺 · IVP 缺"; got != want {
+	if got, want := volLine(t, c), "IV n/a · HV30 n/a · IVP n/a"; got != want {
 		t.Fatalf("all null: got %q, want %q", got, want)
 	}
 }
 
 func TestVolLineNoTerms(t *testing.T) {
 	t.Parallel()
-	const want = "IV 缺 · HV30 缺 · IVP 缺"
+	const want = "IV n/a · HV30 n/a · IVP n/a"
 	c := vlCfg(t, f64(100), vlSpec{1, "C", "100", "2026-11-20", f64(0.241)})
 	c.Terms = nil
 	if got := volLine(t, c); got != want {

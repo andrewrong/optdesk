@@ -223,7 +223,7 @@ func TestNoReaderIsGapPage(t *testing.T) {
 	for target, want := range map[string]string{
 		"/" + siteStructuresRoute:                  "no_reader",
 		"/" + siteStructureRoutePrefix + "main:T1": "failed",
-		"/" + siteResultRoute:                      "没有读取器",
+		"/" + siteResultRoute:                      "No reader",
 	} {
 		r := positionsGet(t, h, http.MethodGet, target)
 		if r.Code != 200 || !strings.Contains(r.Body.String(), want) {

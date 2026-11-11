@@ -107,7 +107,7 @@ func TestNoTotalsRow(t *testing.T) {
 func TestNoMarginNoCash(t *testing.T) {
 	t.Parallel()
 	raw := strings.ToLower(string(buildRaw(t, cfgFor(map[string]trackapi.TrackResult{"main": okResult()}, "main"))))
-	for _, w := range []string{"margin", "cushion", "保证金", "assignment cash", "接盘"} {
+	for _, w := range []string{"margin", "cushion", "collateral", "assignment cash", "bag-holding"} {
 		if strings.Contains(raw, w) {
 			t.Errorf("output holds %q", w)
 		}

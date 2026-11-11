@@ -26,13 +26,13 @@
   ],
   "run_status": "ok",
   "card": {
-    "title": "市场",
-    "say": "VIX 收在 18.20，11-06",
-    "subtitle": "指数走势、隐含波动率和 Cboe 波动率指数",
+    "title": "Market",
+    "say": "VIX closed at 18.20, 11-06",
+    "subtitle": "Index trend, implied volatility and the Cboe Volatility Index",
     "stale": {
       "data_time": "2026-11-06T00:00:00+08:00",
       "is_stale": false,
-      "text": "数据日 11-06"
+      "text": "Data day 11-06"
     },
     "chart": {
       "points": [
@@ -58,22 +58,22 @@
         }
       ],
       "series_names": [
-        "收盘",
-        "200 日均线",
-        "区间"
+        "Close",
+        "200-day average",
+        "Range"
       ],
       "end_labels": [
         "11-02",
         "11-06"
       ],
-      "aria_text": "标普 500 收盘走势，共 5 个交易日，从 11-02 到 11-06"
+      "aria_text": "S\u0026P 500 close trend, 5 trading days, from 11-02 to 11-06"
     },
     "index_table": {
       "columns": [
-        "指数",
-        "隐含波动率",
-        "20 日已实现",
-        "差值"
+        "Index",
+        "Implied volatility",
+        "20-day realised",
+        "Difference"
       ],
       "rows": [
         {
@@ -87,14 +87,14 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "SPX 20 日已实现波动率暂未生成"
+            "text": "SPX 20-day realised volatility not built yet"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "SPX 隐含减已实现暂未生成"
+            "text": "SPX Implied minus realised not built yet"
           },
-          "source_text": "IBKR 隐含波动率"
+          "source_text": "IBKR implied volatility"
         },
         {
           "name": "NDX",
@@ -107,14 +107,14 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "NDX 20 日已实现波动率暂未生成"
+            "text": "NDX 20-day realised volatility not built yet"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "NDX 隐含减已实现暂未生成"
+            "text": "NDX Implied minus realised not built yet"
           },
-          "source_text": "IBKR 隐含波动率"
+          "source_text": "IBKR implied volatility"
         },
         {
           "name": "RUT",
@@ -127,14 +127,14 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "RUT 20 日已实现波动率暂未生成"
+            "text": "RUT 20-day realised volatility not built yet"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "RUT 隐含减已实现暂未生成"
+            "text": "RUT Implied minus realised not built yet"
           },
-          "source_text": "IBKR 隐含波动率"
+          "source_text": "IBKR implied volatility"
         }
       ]
     },
@@ -173,42 +173,42 @@
         "source_text": "RVXCLS"
       }
     ],
-    "vol_indices_note": "指数水平以 Cboe 发布的点数计，不并入表格。",
+    "vol_indices_note": "Index levels are in points as published by Cboe, not merged into the table.",
     "notes": [
-      "走势图只画标普 500 的存储收盘，200 日均线和区间暂未生成。"
+      "The chart draws only the stored S\u0026P 500 closes; the 200-day average and range are not built yet."
     ],
     "gaps": [
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "SPX 20 日已实现波动率暂未生成"
+        "text": "SPX 20-day realised volatility not built yet"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "SPX 隐含减已实现暂未生成"
+        "text": "SPX Implied minus realised not built yet"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "NDX 20 日已实现波动率暂未生成"
+        "text": "NDX 20-day realised volatility not built yet"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "NDX 隐含减已实现暂未生成"
+        "text": "NDX Implied minus realised not built yet"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "RUT 20 日已实现波动率暂未生成"
+        "text": "RUT 20-day realised volatility not built yet"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "RUT 隐含减已实现暂未生成"
+        "text": "RUT Implied minus realised not built yet"
       }
     ],
-    "data_times_text": "数据时间 11-06"
+    "data_times_text": "Data time 11-06"
   }
 }

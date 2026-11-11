@@ -45,7 +45,7 @@ func TestDecisionGroupFirst(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	groups := m["groups"].([]any)
-	if len(groups) != 2 || groups[0].(map[string]any)["title"] != "本周要决定" {
+	if len(groups) != 2 || groups[0].(map[string]any)["title"] != "To decide this week" {
 		t.Fatalf("groups = %v", groups)
 	}
 	if got := symbols(groupRows(t, m, 0)); got != "AAPL" {
@@ -57,10 +57,10 @@ func TestRowFieldsFromFigures(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	r := groupRows(t, m, 0)[0]
-	if r["kind_text"] != "卖出看跌" || r["expiry_text"] != "2026-12-18" || r["distance"] != "-9.1200%" || r["earned"] != "52.0000%" {
+	if r["kind_text"] != "Short put" || r["expiry_text"] != "2026-12-18" || r["distance"] != "-9.1200%" || r["earned"] != "52.0000%" {
 		t.Fatalf("row = %v", r)
 	}
-	if r["moneyness"] != "价外" || r["ex_dividend"] != nil {
+	if r["moneyness"] != "out of the money" || r["ex_dividend"] != nil {
 		t.Fatalf("moneyness = %v, ex_dividend = %v", r["moneyness"], r["ex_dividend"])
 	}
 	loss := r["max_loss"].(map[string]any)
@@ -82,7 +82,7 @@ func TestCompareParamsFromStructureParams(t *testing.T) {
 		t.Fatalf("params passed = %+v", r.params)
 	}
 	cmp := groupRows(t, m, 0)[0]["compare"].(map[string]any)
-	if cmp["captured_param"] != "已赚比例 60%" || cmp["exit_dte_param"] != "到期前天数 14" || cmp["close_cost"] != "120.0000" {
+	if cmp["captured_param"] != "Earned ratio 60%" || cmp["exit_dte_param"] != "Days before expiry 14" || cmp["close_cost"] != "120.0000" {
 		t.Fatalf("compare = %v", cmp)
 	}
 }
@@ -92,10 +92,10 @@ func TestOtherRowsListed(t *testing.T) {
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
 	rows := groupRows(t, m, 1)
 	last := rows[len(rows)-1]
-	if last["symbol"] != "AMD" || last["kind_text"] != "未识别" || last["compare"] != nil {
+	if last["symbol"] != "AMD" || last["kind_text"] != "Unidentified" || last["compare"] != nil {
 		t.Fatalf("other row = %v", last)
 	}
-	if !strings.Contains(m["note"].(string), "未识别的结构, 逐腿显示") {
+	if !strings.Contains(m["note"].(string), "Unidentified structures, shown leg by leg") {
 		t.Fatalf("note = %v", m["note"])
 	}
 }
@@ -171,11 +171,11 @@ func TestMainAliasDefault(t *testing.T) {
 func TestCaptureNoteShown(t *testing.T) {
 	t.Parallel()
 	m := decode(t, newRig(readResult(t, "list_ok")).build(t, "main"))
-	if n := m["note"].(string); !strings.Contains(n, "尚未进入 Flex 的持仓: TSLA 260116P00200000") {
+	if n := m["note"].(string); !strings.Contains(n, "Positions not yet in Flex: TSLA 260116P00200000") {
 		t.Fatalf("note = %q", n)
 	}
 	m = decode(t, newRig(readResult(t, "list_gaps")).build(t, "main"))
-	if n := m["note"].(string); !strings.Contains(n, "无持仓快照") {
+	if n := m["note"].(string); !strings.Contains(n, "No position snapshot") {
 		t.Fatalf("note = %q", n)
 	}
 }
