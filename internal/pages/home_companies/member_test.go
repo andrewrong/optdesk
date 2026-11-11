@@ -293,3 +293,85 @@ func TestIVPSourceOrder(t *testing.T) {
 		})
 	}
 }
+
+func notOkRow(name, subject, day, reason string) contracts.ReadingRecord {
+	r := rec(name, subject, day, "", "missing_input")
+	r.Parameters = []gen.ReadingRecordParametersElem{{Param: "reason", ValueTag: &reason}}
+	return r
+}
+
+func gapTexts(t *testing.T, read fakeView) (price, hv, iv string) {
+	t.Helper()
+	m, _ := build(t, config(home_companies.Config{
+		Rows: []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB"}},
+		Read: read,
+	}))
+	row := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	vol := row["volatility"].(map[string]any)
+	text := func(v any) string { return v.(map[string]any)["text"].(string) }
+	return text(row["price"]), text(vol["hv30"]), text(vol["iv30"])
+}
+
+func TestBandNotOkFewerThan5YearsNamesTheNeed(t *testing.T) {
+	t.Parallel()
+	price, _, _ := gapTexts(t, fakeView{rows: map[key][]contracts.ReadingRecord{
+		{"valuation.buy_band", "DEMOB"}: {notOkRow("valuation.buy_band", "DEMOB", "2026-11-10", "fewer_than_5_years")},
+	}})
+	want := "valuation band: needs 5 years of fundamentals, fewer stored; shown once 5 years are loaded"
+	if price != want {
+		t.Errorf("price text = %q, want %q", price, want)
+	}
+}
+
+func TestBandNotOkOtherReasonReadsUnderscoresAsSpaces(t *testing.T) {
+	t.Parallel()
+	price, _, _ := gapTexts(t, fakeView{rows: map[key][]contracts.ReadingRecord{
+		{"valuation.buy_band", "DEMOB"}: {notOkRow("valuation.buy_band", "DEMOB", "2026-11-10", "no_price_input")},
+	}})
+	if want := "valuation band: missing input (no price input)"; price != want {
+		t.Errorf("price text = %q, want %q", price, want)
+	}
+}
+
+func TestNoBandRowSaysNotComputedYet(t *testing.T) {
+	t.Parallel()
+	price, hv, iv := gapTexts(t, fakeView{})
+	want := "valuation band: not computed yet, comes with the next figures run"
+	if price != want {
+		t.Errorf("price text = %q, want %q", price, want)
+	}
+	if want := "HV30: not computed yet, comes with the next figures run"; hv != want {
+		t.Errorf("hv30 text = %q, want %q", hv, want)
+	}
+	if want := "IV30: not computed yet, comes with the next figures run"; iv != want {
+		t.Errorf("iv30 text = %q, want %q", iv, want)
+	}
+}
+
+func TestHVNotOkRowWithReasonNamesIt(t *testing.T) {
+	t.Parallel()
+	_, hv, _ := gapTexts(t, fakeView{rows: map[key][]contracts.ReadingRecord{
+		{"market.hv30_own", "DEMOB"}: {notOkRow("market.hv30_own", "DEMOB", "2026-11-10", "short_history")},
+	}})
+	if want := "HV30: missing input (short history)"; hv != want {
+		t.Errorf("hv30 text = %q, want %q", hv, want)
+	}
+}
+
+func TestChangeGapsSayNotReadByThisCard(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, config(home_companies.Config{
+		Rows: []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB"}},
+		Read: fakeView{},
+	}))
+	row := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	for k, want := range map[string]string{
+		"earnings":        "earnings date: not read by this card yet",
+		"day_change":      "day change: not read by this card yet",
+		"five_day_change": "5-day change: not read by this card yet",
+	} {
+		if got := row[k].(map[string]any)["text"]; got != want {
+			t.Errorf("%s text = %v, want %q", k, got, want)
+		}
+	}
+}
