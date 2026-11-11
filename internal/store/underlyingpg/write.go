@@ -48,17 +48,16 @@ func (s *Store) Apply(ctx context.Context, c underlying.Change) (int, error) {
 			return err
 		}
 		cur := map[string]underlying.Row{}
-		exists := map[string]bool{}
 		for _, r := range rows {
-			cur[r.Key], exists[r.Key] = r, true
+			cur[r.Key] = r
 		}
 		var out []underlying.Row
 		for _, a := range c.Adds {
-			r, err := ValidateAdd(a, exists)
+			r, err := ValidateAdd(a, func(k string) bool { _, ok := cur[k]; return ok })
 			if err != nil {
 				return err
 			}
-			cur[r.Key], exists[r.Key] = r, true
+			cur[r.Key] = r
 			out = append(out, r)
 		}
 		for _, e := range c.Edits {

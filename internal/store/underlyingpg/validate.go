@@ -37,9 +37,8 @@ func (e *invalidError) Why() string   { return e.why }
 func invalid(field, why string) error { return &invalidError{field: field, why: why} }
 
 // ValidateAdd checks a new name and returns the row to insert: pending, or active when it carries a ConID (the
-// import). An empty Exchange and Currency take the default of the market. exists holds the keys that already have a
-// row; a name_key is never added twice.
-func ValidateAdd(a underlying.Add, exists map[string]bool) (underlying.Row, error) {
+// import). An empty Exchange and Currency take the default of the market. exists says whether a key already has a row; a name_key is never added twice.
+func ValidateAdd(a underlying.Add, exists func(key string) bool) (underlying.Row, error) {
 	if a.Market != "US" && a.Market != "JP" {
 		return underlying.Row{}, invalid("market", "must be US or JP")
 	}
@@ -64,7 +63,7 @@ func ValidateAdd(a underlying.Add, exists map[string]bool) (underlying.Row, erro
 		return underlying.Row{}, invalid("con_id", "must be positive")
 	}
 	key := a.Market + ":" + a.Symbol
-	if exists[key] {
+	if exists != nil && exists(key) {
 		return underlying.Row{}, invalid("symbol", "name "+key+" exists")
 	}
 	r := underlying.Row{

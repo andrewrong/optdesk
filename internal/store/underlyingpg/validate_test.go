@@ -35,6 +35,8 @@ func TestValidateAddRules(t *testing.T) {
 		{"jp symbol not 4 digits", func(a *underlying.Add) { a.Market, a.Symbol = "JP", "AAPL" }, "symbol"},
 		{"kind index", func(a *underlying.Add) { a.Kind = "index" }, "kind"},
 		{"cik with 9 digits", func(a *underlying.Add) { a.Issuer = "cik:000032019" }, "issuer"},
+		{"edinet with no code", func(a *underlying.Add) { a.Issuer = "edinet:" }, "issuer"},
+		{"edinet with a punctuation code", func(a *underlying.Add) { a.Issuer = "edinet:E01-234" }, "issuer"},
 		{"issuer without scheme", func(a *underlying.Add) { a.Issuer = "0000320193" }, "issuer"},
 		{"price with 5 places", func(a *underlying.Add) { a.BuyPrice = "10.12345" }, "buy_price"},
 		{"price zero", func(a *underlying.Add) { a.SalePrice = "0" }, "sale_price"},
@@ -56,7 +58,7 @@ func TestValidateAddRules(t *testing.T) {
 
 func TestValidateAddDuplicateNameKey(t *testing.T) {
 	t.Parallel()
-	_, err := ValidateAdd(goodAdd(), map[string]bool{"US:AAPL": true})
+	_, err := ValidateAdd(goodAdd(), func(k string) bool { return k == "US:AAPL" })
 	expectField(t, err, "symbol")
 }
 
@@ -112,6 +114,20 @@ func TestValidateEditChanged(t *testing.T) {
 	next, changed, err := ValidateEdit(resolvedRow(), underlying.Edit{Note: sp("watch")})
 	if err != nil || !changed || next.Note != "watch" || next.ConID != 265598 {
 		t.Errorf("note edit = %+v, %v, %v", next, changed, err)
+	}
+}
+
+func TestInvalidErrorCarriesFieldAndWhy(t *testing.T) {
+	t.Parallel()
+	a := goodAdd()
+	a.Market = "HK"
+	_, err := ValidateAdd(a, nil)
+	var ie underlying.InvalidError
+	if !errors.As(err, &ie) {
+		t.Fatalf("error %v; want an InvalidError", err)
+	}
+	if ie.Field() != "market" || ie.Why() == "" || err.Error() == "" {
+		t.Errorf("Field %q, Why %q, Error %q; want market with a reason", ie.Field(), ie.Why(), err.Error())
 	}
 }
 

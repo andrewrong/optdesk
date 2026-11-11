@@ -167,7 +167,7 @@ func TestApplyCorrectingExchangeOfUnresolvedRowResetsIt(t *testing.T) {
 	t.Parallel()
 	f, s := seeded()
 	f.seed(underlying.Row{Key: "US:ZZZ", Symbol: "ZZZ", Market: "US", Kind: "stock", Exchange: "SMART",
-		Currency: "USD", Status: underlying.StatusUnresolved, Reason: "not listed"})
+		Currency: "USD", ConID: 7, Status: underlying.StatusUnresolved, Reason: "not listed"})
 	n, err := s.Apply(context.Background(), underlying.Change{Edits: []underlying.Edit{{Key: "US:ZZZ", Exchange: sp("ARCA")}}})
 	if err != nil || n != 1 {
 		t.Fatalf("Apply = %d, %v", n, err)
