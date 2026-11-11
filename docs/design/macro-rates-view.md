@@ -35,7 +35,7 @@ Source: `## Left out` of `docs/design/web-views-wave-2.md` ("`macro_rates`: its 
 4. The view is one page `web/src/pages/macro_rates/view.tsx` that registers itself as `macro_rates`; the shell is not edited.
 5. Not in the top bar and not on a site route: `ot serve --name macro_rates` already serves it at the root, and the shell then shows
    the view. A nav item is left out (`## Left out`).
-6. No new dependency. recharts, shadcn chart and @tanstack/react-table are already in `web/`.
+6. No new dependency. recharts and shadcn chart are already in `web/`.
 
 ## Modules
 
@@ -149,17 +149,17 @@ Files: web/src/pages/macro_rates/view.tsx, web/src/types/macro_rates.ts, web/tes
 Design: docs/design/macro-rates-view.md#decisions
 Order: after macro-rates-v2-schema
 Depends on: macro-rates-v2-schema (merged: the generated type `MacroRates`, `index.ts`, and the four fixtures).
-Goal: a payload of `page.macro_rates.v2` shows, per series, its title, latest figure or gap text, a line chart and a table of the points, and the gap lines, with every string read from the payload.
+Goal: a payload of `page.macro_rates.v2` shows, per series, its title, latest figure or gap text, a line chart of the points and no table under it, and the gap lines, with every string read from the payload.
 UI parts (frontend-stack, ADR 0034):
 - 按 frontend-stack：用 shadcn `Card`, `CardHeader`, `CardTitle` 做 the page frame and one card per series.
 - 按 frontend-stack：用 recharts through shadcn chart (`web/src/charts/Chart.tsx` over `web/src/components/ui/chart.tsx`, `LineChart`) 做 the line of the points of a series by `date`; a null value is not drawn as a zero (the point keeps `value: null`; the line joins its neighbours, as `Chart.tsx` sets `connectNulls` today).
-- 按 frontend-stack：用 the shadcn data-table pattern (`web/src/components/data-table/data-table.tsx`, @tanstack/react-table) 做 the table of the points, columns `date` and `value` (the `text`), sorting on demand only.
+- No table of the points: the series card shows the chart only, no date/value table under it (owner 2026-11-11; landed in #1496). The `text` of a point is the tooltip text of the chart.
 - 按 frontend-stack：用 shadcn `Alert` 做 the gap lines and the gap `latest`, and `Badge` 做 the reason of a gap line.
 - 按 frontend-stack：用 vitest and testing-library 做 the tests; zustand is not used (no shared state).
 Acceptance:
 1. `web/src/types/macro_rates.ts` has `SUPPORTED_VERSIONS = [2]`, `export type Payload = MacroRates` imported from `@/generated/macro_rates.v2`, and `validate = placeholderValidate<Payload>(SUPPORTED_VERSIONS)`; `grep -c "macro_rates.v1" web/src/types/macro_rates.ts` prints 0.
 2. `web/src/pages/macro_rates/view.tsx` exports `registration = { schema: 'macro_rates', page: page<Payload>(validate, MacroRatesView) }`; `git diff --stat` lists no file of `web/src/shell/`.
-3. The view shows `payload.title`, `payload.sentence`, for each series its `title`, `latest.text` (a `LatestValue` or a `Gap` alike) and the `text` of every point, and for each of `payload.gaps` its `text` and `reason`; it formats no number (`pnpm --dir web run lint` includes the no-compute check, and `grep -n "toFixed\|Intl\.\|toLocale" web/src/pages/macro_rates/view.tsx` prints nothing).
+3. The view shows `payload.title`, `payload.sentence`, for each series its `title`, `latest.text` (a `LatestValue` or a `Gap` alike) and the chart, with no table of the points (the `text` of a point is its tooltip), and for each of `payload.gaps` its `text` and `reason`; it formats no number (`pnpm --dir web run lint` includes the no-compute check, and `grep -n "toFixed\|Intl\.\|toLocale" web/src/pages/macro_rates/view.tsx` prints nothing).
 4. The chart spec is plain data: categories are the point `date`s, values are the point `value`s and the tooltip text is the point `text`; a test reads the spec of `golden` and checks that the null point has value `null`.
 5. `web/package.json` is not in the diff (the `generate:types` line landed with `macro-rates-v2-schema`).
 6. `view.test.tsx` reads `page.macro_rates.v2.golden.json`, `gap.json`, `stale.json` and `bad-version.json` of `contracts/fixtures` with `readFileSync`, renders the first three and checks that every expected string is read from the fixture (title, sentence, series title, latest text, a point text, a gap text), and checks that `validate` refuses `bad-version` with reason `unsupported_version`. It stubs `ResizeObserver`, opens no port and sleeps never.
