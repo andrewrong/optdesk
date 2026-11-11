@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-11
-Revision: 4
+Revision: 5
 
 Source: decision of optdesk-advisor, 2026-11-11 (round 1 replaced the date gate of revision 2). Read on origin/main: `AGENTS.md`, `docs/design/modules.md`, `docs/contracts/runner.md`, `internal/runner/api.go`, `internal/runner/sched/slots.go`, `internal/runner/sched/ticker.go`, `internal/runner/reconcile/**`, the job schedule and guard files named below.
 
@@ -22,9 +22,9 @@ Goal: a job that is scheduled for a start instant on day D is not started on D b
 
 ## Modules
 
-Changed, and across modules: the import rule is changed first (entries 1 and 2, below), then the runner entry (3) uses it.
+Changed, and across modules: the import rule is changed first (its sentence lands in `docs/design/modules.md` with this design pull request; entry 2, below), then the runner entry (3) uses it.
 
-- `docs` (`docs/design/modules.md`, owner-only path, the window writes it): one sentence in the **depends** paragraph names the one allowed edge between sub-packages of a row.
+- `docs` (`docs/design/modules.md`, owner-only path): this design pull request adds one sentence to the **depends** paragraph that names the one allowed edge between sub-packages of a row; it is not an issue.
 - `repo` (`scripts/arch/**`): the generator derives that edge, with a test.
 - `runner` (`internal/runner/** docs/contracts/runner.md`): `internal/runner/reconcile`, `internal/runner/sched` and a new package `internal/runner/shared`. `reconcile` and `sched` import `shared`; `shared` imports `runner`, `clock` and `contracts` and no sibling, so there is no cycle.
 
@@ -46,7 +46,7 @@ The instant comes from ONE function used by both `reconcile` and `sched`:
 
 The code moves out of `sched`: the `switch j.Anchor` and `wallTime` of `nextStarts` (`sched/slots.go`) become a call of `shared.At`, and the anchor constants move with them to `shared`. `sched` keeps its pre-validation of anchors and zones and its error text, so its tests pass unchanged. `reconcile` builds the `runner.Slot` of a job from `Scheduled.Schedule()` and the job's id and calls the same function with the session of the job's calendar that `plan` already has in `sess`. They cannot disagree because there is one body.
 
-The import rule that allows it (entries 1 and 2). Text added to the **depends** paragraph of `docs/design/modules.md`: "A sub-package `<name>/shared`, the one fixed name, is an implementation package that the other sub-packages of its own row may import. It may itself import only what any sub-package of its row imports and no sibling sub-package, so it closes no cycle. No other implementation sub-package is imported by a sibling." `scripts/arch` derives it from the tree: the component `<name>/shared`, when the directory exists, gets the sub-package import list of its row and is added to the import list of the other sub-package components of the row; no other sibling edge is added. Test of the generator: a sub-package importing `<name>/shared` passes; a sub-package importing another sibling fails; `<name>/shared` importing a sibling fails.
+The import rule that allows it (the sentence lands in `docs/design/modules.md` with this design pull request; entry 2). Sentence added to the **depends** paragraph of `docs/design/modules.md`, after the sentence that lets a sub-package import the root component: "A sub-package `<name>/shared` may be imported by its row's other sub-packages, and it imports no sibling." `scripts/arch` derives it from the tree: the component `<name>/shared`, when the directory exists, gets the sub-package import list of its row and is added to the import list of the other sub-package components of the row; no other sibling edge is added. Test of the generator: a sub-package importing `<name>/shared` passes; a sub-package importing another sibling fails; `<name>/shared` importing a sibling fails.
 
 ### Plumbing
 
@@ -68,24 +68,14 @@ All in `internal/runner/reconcile/*_test.go`; the issue reads each and changes a
 
 ## Issues
 
-### 1 modules-shared-subpackage (docs)
-
-Module: docs. Size: S. Owner-only: the window writes it (`docs/design/modules.md`).
-Files: `docs/design/modules.md`
-Design: docs/design/runner-due-gate.md#one-function-for-the-instant
-Order: first.
-Goal: the **depends** paragraph of `docs/design/modules.md` states the edge of a sub-package `<name>/shared` as the Decision quotes it, and nothing else in the file changes.
-Acceptance:
-1. The paragraph holds the three sentences of the quoted text; `git diff --name-only $(git merge-base HEAD origin/main)` lists `docs/design/modules.md` only, and no row, entry cell or depends cell differs.
-Checked by CI: the `test` check.
-Pull request body: `Contracts: unchanged`.
+Entry id 1 is unused: the rule sentence for `docs/design/modules.md` lands with this design pull request, so it has no issue.
 
 ### 2 arch-shared-subpackage (repo)
 
 Module: repo. Size: S.
 Files: `scripts/arch/main.go`, `scripts/arch/main_test.go`
 Design: docs/design/runner-due-gate.md#one-function-for-the-instant
-Order: after 1 (the generator follows the written rule).
+Order: first.
 Goal: `go run ./scripts/arch` derives the edge of `<name>/shared` and no other sibling edge.
 Acceptance:
 1. With a `internal/<name>/shared` directory, the generated import lists let every other sub-package component of the row import `<name>/shared`, and `<name>/shared` gets the sub-package list of its row and no sibling.
@@ -137,7 +127,7 @@ The slot instant needs no zone from the job for a session anchor and is the inst
 2. Hash: the held job's hash stays in `p.hash`; acceptance 6 fails if `PutExpected` runs twice.
 3. Instant computed twice: rejected; one function, `shared.At`, used by `sched` and `reconcile`.
 4. Backfill: `plan` returns held keys, so `backfillPlan` does not fail; acceptance 5.
-5. Import rule: `reconcile` importing a sibling package (first `slotat`) is not allowed by the depends paragraph, and neither is a function in the root `internal/runner`, which is declarations-only (Modules). Rejected: citing text that allows the edge (there is none), a logic file in the root, a test kit (never imported by the row's own sub-packages). The rule changes first, by the narrowest edge (one fixed name, no cycle by construction), and this design crosses `docs` and `repo` for it.
+5. Import rule: `reconcile` importing a sibling package (first `slotat`) is not allowed by the depends paragraph, and neither is a function in the root `internal/runner`, which is declarations-only (Modules). Rejected: citing text that allows the edge (there is none), a logic file in the root, a test kit (never imported by the row's own sub-packages). The rule changes first, by the narrowest edge (one fixed name, no cycle by construction), and this design crosses `docs` and `repo` for it: the rule sentence lands in `docs/design/modules.md` with this design pull request, and the generator follows in entry 2.
 6. A gate on the previous close of the calendar: not adopted; New York's previous close is 21:00Z on D-1, before 00:09Z on D, and it breaks jobs that run before the open.
 
 ### Residual risks
