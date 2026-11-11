@@ -3,6 +3,8 @@
 // state inside MatrixTable: both texts are in each cell of the payload.
 import { Info, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { OptionQuoteList } from '@/components/option-quote-cell'
+import { OptionRefresh } from '@/components/option-refresh'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/stock_option_page'
 import { ChosenCards, TopBlock } from './Cards'
@@ -12,8 +14,9 @@ import { ContractsTable, MatrixTable } from './Tables'
 export function StockOptionView({ payload }: { payload: Payload }) {
   return (
     <div className="min-w-0 space-y-6" data-page="stock-option-page">
-      <header>
+      <header className="space-y-2">
         <h1 className="text-2xl font-semibold">{payload.title}</h1>
+        <OptionRefresh refresh={'refresh' in payload ? payload.refresh : undefined} />
       </header>
       {payload.stale ? (
         <Alert variant="destructive" data-stale>
@@ -32,6 +35,15 @@ export function StockOptionView({ payload }: { payload: Payload }) {
       <MatrixTable matrix={payload.matrix} />
       <PriceMaps maps={payload.maps} />
       <ContractsTable contracts={payload.contracts} />
+      {'refresh' in payload ? (
+        <OptionQuoteList
+          items={payload.contracts.rows.map((line, index) => ({
+            id: String(index),
+            label: line.expiry_text,
+            quote: line.quote,
+          }))}
+        />
+      ) : null}
       <HeldBlock held={payload.held} />
       {payload.notice ? (
         <Alert data-notice>
