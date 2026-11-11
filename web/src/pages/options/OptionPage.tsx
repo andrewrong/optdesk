@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { OptionQuoteCell } from '@/components/option-quote-cell'
+import { OptionQuoteList } from '@/components/option-quote-cell'
 import { OptionRefresh } from '@/components/option-refresh'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { page } from '@/shell/page'
@@ -76,22 +76,11 @@ function PayloadTableView({ table, name }: { table: PayloadTable; name: string }
     Object.fromEntries(row.cells.map(({ column, cell }) => [column, cell as Cell])),
   )
   // v2 rows carry the quote behind their prices: it is shown in its own cell beside them.
-  const quotes = table.rows.map((row) => ('quote' in row ? row.quote : undefined))
+  const quotes = table.rows.flatMap((row) => ('quote' in row ? [{ id: row.id, quote: row.quote }] : []))
   return (
     <div className="min-w-0 space-y-1" data-table={name}>
       <DataTable columns={columns} rows={rows} />
-      {quotes.some(Boolean) ? (
-        <ul className="space-y-0.5" data-quotes>
-          {table.rows.map((row, index) => {
-            const quote = quotes[index]
-            return quote ? (
-              <li key={row.id} data-quote-row={row.id}>
-                <OptionQuoteCell quote={quote} />
-              </li>
-            ) : null
-          })}
-        </ul>
-      ) : null}
+      <OptionQuoteList items={quotes} />
     </div>
   )
 }

@@ -64,3 +64,27 @@ it('copies time, data type and source of the quote', async () => {
   expect(host.querySelector('[data-quote-type]')?.textContent).toBe('delayed')
   expect(host.querySelector('[data-quote-source]')?.textContent).toBe('refresh')
 })
+
+it('prints skew and outside-band on the quote cell', async () => {
+  await show(
+    <OptionQuoteCell
+      quote={{ as_of: '09:45:12', data_type: 'live', source: 'open_pull', skew: true, outside_band: true } as never}
+    />,
+  )
+  expect(host.textContent).toContain('skew')
+  expect(host.textContent).toContain('outside the planned band')
+})
+
+it('shows a data type other than live in red words and a live one plainly', async () => {
+  const quote = (data_type: string) =>
+    ({ as_of: '09:45:12', data_type, source: 'open_pull', skew: false, outside_band: false }) as never
+  await show(
+    <>
+      <OptionQuoteCell quote={quote('frozen')} />
+      <OptionQuoteCell quote={quote('live')} />
+    </>,
+  )
+  const types = host.querySelectorAll('[data-quote-type]')
+  expect(types[0]?.className).toContain('text-destructive')
+  expect(types[1]?.className).not.toContain('text-destructive')
+})

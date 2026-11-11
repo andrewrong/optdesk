@@ -3,7 +3,7 @@
 // state inside MatrixTable: both texts are in each cell of the payload.
 import { Info, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { OptionQuoteCell } from '@/components/option-quote-cell'
+import { OptionQuoteList } from '@/components/option-quote-cell'
 import { OptionRefresh } from '@/components/option-refresh'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/stock_option_page'
@@ -35,15 +35,14 @@ export function StockOptionView({ payload }: { payload: Payload }) {
       <MatrixTable matrix={payload.matrix} />
       <PriceMaps maps={payload.maps} />
       <ContractsTable contracts={payload.contracts} />
-      {'refresh' in payload && payload.contracts.rows.length > 0 ? (
-        <ul className="space-y-0.5" data-quotes>
-          {payload.contracts.rows.map((line) => (
-            <li key={`${line.expiry}-${line.cells.join('|')}`} data-quote-row>
-              <span className="mr-2 text-xs">{line.expiry_text}</span>
-              <OptionQuoteCell quote={line.quote} />
-            </li>
-          ))}
-        </ul>
+      {'refresh' in payload ? (
+        <OptionQuoteList
+          items={payload.contracts.rows.map((line, index) => ({
+            id: String(index),
+            label: line.expiry_text,
+            quote: line.quote,
+          }))}
+        />
       ) : null}
       <HeldBlock held={payload.held} />
       {payload.notice ? (

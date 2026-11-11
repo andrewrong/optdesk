@@ -10,13 +10,6 @@ const SOURCE_WORD = {
   close_archive: 'close archive',
 } as const
 
-export function quoteText(quote: Quote): string {
-  const parts: string[] = [quote.as_of]
-  if (quote.data_type) parts.push(quote.data_type)
-  parts.push(SOURCE_WORD[quote.source])
-  return parts.join(' · ')
-}
-
 export function OptionQuoteCell({ quote }: { quote: Quote }) {
   return (
     <span className="text-xs text-muted-foreground" data-quote>
@@ -27,6 +20,27 @@ export function OptionQuoteCell({ quote }: { quote: Quote }) {
         </span>
       ) : null}{' '}
       <span data-quote-source>{SOURCE_WORD[quote.source]}</span>
+      {quote.skew ? <span data-quote-skew> · skew</span> : null}
+      {quote.outside_band ? <span data-quote-outside-band> · outside the planned band</span> : null}
     </span>
+  )
+}
+
+// One quote cell per row of a table, in the order of the rows; `label` is the row's own text from the payload.
+export function OptionQuoteList({
+  items,
+}: {
+  items: { id: string; label?: string; quote: Quote }[]
+}) {
+  if (items.length === 0) return null
+  return (
+    <ul className="space-y-0.5" data-quotes>
+      {items.map(({ id, label, quote }) => (
+        <li key={id} data-quote-row={id}>
+          {label ? <span className="mr-2 text-xs">{label}</span> : null}
+          <OptionQuoteCell quote={quote} />
+        </li>
+      ))}
+    </ul>
   )
 }
