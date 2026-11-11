@@ -56,7 +56,7 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 	cards := cardRows(l.Rows)
 	tableRows := l.Rows
 	if len(tableRows) > maxTableRows {
-		notes = append(notes, fmt.Sprintf("候选表只显示前 %d 个,共 %d 个", maxTableRows, len(l.Rows)))
+		notes = append(notes, fmt.Sprintf("Candidate table shows the first %d of %d", maxTableRows, len(l.Rows)))
 		tableRows = tableRows[:maxTableRows]
 	}
 	shown := append(append([]store.Candidate{}, tableRows...), cards...)
@@ -80,13 +80,13 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 	}
 
 	pane := marketPane{
-		Market: "US", Label: "美股", Currency: "USD",
-		Headline:        fmt.Sprintf("%d 个值得看。", len(cards)),
-		CardsTitle:      "今日机会",
+		Market: "US", Label: "US stocks", Currency: "USD",
+		Headline:        fmt.Sprintf("%d worth a look.", len(cards)),
+		CardsTitle:      "Today's opportunities",
 		Cards:           buildOptionCards(cards, eod, names),
-		CandidatesTitle: "候选表",
+		CandidatesTitle: "Candidates",
 		Candidates:      buildTable(tableRows, eod, names, qs),
-		AllLink:         link{Text: fmt.Sprintf("全部 %d 个机会", len(l.Rows)), Target: candidatesAnchor},
+		AllLink:         link{Text: fmt.Sprintf("All %d opportunities", len(l.Rows)), Target: candidatesAnchor},
 		Chain:           buildChain(l.Rows, cards, names, qs),
 	}
 	p := optionPayload{

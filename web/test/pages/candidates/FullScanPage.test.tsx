@@ -56,20 +56,20 @@ describe('FullScanPage', () => {
     expect(callTable.querySelectorAll('tbody tr')).toHaveLength(call.table.rows.length)
     expect(host.querySelectorAll('[data-table]')).toHaveLength(3)
     expect(host.querySelector('[data-section=short_put] [data-liquidity]')!.textContent).toBe(
-      'SYN2 缺报价，年化、Bid、Ask 无法给出',
+      'SYN2 Quote missing: annualised, Bid and Ask cannot be given',
     )
     expect(host.querySelector('[data-back]')!.getAttribute('href')).toBe('/report/us-open')
-    expect(host.textContent).toContain('成交量、未平仓量和 IV 分位没有存入扫描')
+    expect(host.textContent).toContain('Volume, open interest and IV percentile are not stored in the scan')
   })
 
   it('gives each strategy section the twelve columns of board 17, the missing row and the E text', async () => {
     await show(fixture('ok.json'))
-    const twelve = ['标的', '判定', '年化', 'strike %', 'DTE', 'Δ', 'Bid/Ask', 'spread %', 'Vol', 'OI', 'IVP', 'E']
+    const twelve = ['Underlying', 'Verdict', 'Annualised', 'strike %', 'DTE', 'Δ', 'Bid/Ask', 'spread %', 'Vol', 'OI', 'IVP', 'E']
     for (const name of ['short_put', 'covered_call', 'put_credit_spread']) {
       const table = host.querySelector(`[data-section=${name}] [data-table=${name}]`)!
       const headers = [...table.querySelectorAll('thead th')].map((th) => th.textContent!.trim())
       expect(headers).toEqual(twelve)
-      expect(headers.some((h) => /collar|roll|领口|展期/i.test(h))).toBe(false)
+      expect(headers.some((h) => /collar|roll|Collar|Roll/i.test(h))).toBe(false)
     }
     const put = host.querySelector('[data-section=short_put]')!
     const rows = [...put.querySelectorAll('tbody tr')].map((tr) =>
@@ -78,10 +78,10 @@ describe('FullScanPage', () => {
     expect(rows.map((r) => r[11])).toEqual(['E 10-28', '—'])
     const missing = rows.find((r) => r[0] === 'SYN2')!
     expect(missing[2]).toContain('—')
-    expect(missing[2]).toContain('缺')
+    expect(missing[2]).toContain('n/a')
     expect(missing[6]).toContain('—')
-    expect(missing[6]).toContain('缺')
-    expect(put.textContent!.split('缺报价')).toHaveLength(2) // the cause, once
+    expect(missing[6]).toContain('n/a')
+    expect(put.textContent!.split('Quote missing')).toHaveLength(2) // the cause, once
     expect(rows.find((r) => r[0] === 'SYN1')![6]).toBe('1.20 / 1.30')
   })
 
@@ -90,12 +90,12 @@ describe('FullScanPage', () => {
     expect(host.querySelectorAll('[data-table]')).toHaveLength(0)
     const gaps = [...host.querySelectorAll('[data-section-gap]')]
     expect(gaps.map((g) => g.textContent)).toEqual([
-      '今天没有候选扫描',
-      '今天没有候选扫描',
-      '今天没有候选扫描',
+      'No candidate scan today',
+      'No candidate scan today',
+      'No candidate scan today',
     ])
     for (const section of host.querySelectorAll('[data-section]')) {
-      expect(section.textContent!.split('今天没有候选扫描')).toHaveLength(2) // once per section
+      expect(section.textContent!.split('No candidate scan today')).toHaveLength(2) // once per section
     }
   })
 })

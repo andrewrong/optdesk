@@ -64,8 +64,8 @@ it('shows the two groups in order, the rows in payload order, and each text as s
     payload.groups.map((group: { title: string }) => group.title),
   )
   expect(payload.groups.map((group: { title: string }) => group.title)).toEqual([
-    '本周要决定',
-    '之后到期',
+    'To decide this week',
+    'Expires later',
   ])
   payload.groups.forEach((group: { rows: Row[] }, g: number) => {
     const trs = cards[g]!.querySelectorAll('tbody tr')
@@ -94,10 +94,10 @@ it('shows the two groups in order, the rows in payload order, and each text as s
 
 it('shows the compare sentence of each row that has one, as sent', async () => {
   const payload = fixture('ok.json')
-  payload.groups[0].rows[0].compare.sentence = '已赚 12.3%（你定的 50%），平仓成本 $77.00'
+  payload.groups[0].rows[0].compare.sentence = 'Earned 12.3% (your target 50%), close cost $77.00'
   await show(payload)
   const first = host.querySelectorAll('[data-structures-group]')[0]!
-  expect(first.textContent).toContain('已赚 12.3%（你定的 50%），平仓成本 $77.00')
+  expect(first.textContent).toContain('Earned 12.3% (your target 50%), close cost $77.00')
   const sentences = [...host.querySelectorAll('[data-structures-compare]')].map((el) => el.textContent)
   expect(sentences).toEqual(
     payload.groups.flatMap((group: { rows: { compare?: { sentence: string } }[] }) =>
@@ -106,16 +106,16 @@ it('shows the compare sentence of each row that has one, as sent', async () => {
   )
 })
 
-it('shows 价内/价外 and 除息 as badges from the payload text', async () => {
+it('shows In/out of the money and ex-dividend as badges from the payload text', async () => {
   const payload = fixture('ok.json')
-  payload.groups[1].rows[0].ex_dividend = '除息 2026-11-18'
+  payload.groups[1].rows[0].ex_dividend = 'Ex-dividend 2026-11-18'
   await show(payload)
   const first = host.querySelectorAll('[data-structures-group]')[0]!.querySelector('tbody tr')!
   const badges = [...first.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent)
   expect(badges).toContain(payload.groups[0].rows[0].moneyness)
   const second = host.querySelectorAll('[data-structures-group]')[1]!.querySelector('tbody tr')!
   const flag = [...second.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent)
-  expect(flag).toContain('除息 2026-11-18')
+  expect(flag).toContain('Ex-dividend 2026-11-18')
 })
 
 it('shows a gap and the note once', async () => {

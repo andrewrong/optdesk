@@ -25,9 +25,9 @@ export interface FrameBlock {
 
 // The badge words present the closed enum `state`; they are shell text.
 const STATE_BADGE = {
-  ok: { word: '正常', variant: 'success' },
-  partial: { word: '延迟', variant: 'warning' },
-  gap: { word: '缺', variant: 'down' },
+  ok: { word: 'OK', variant: 'success' },
+  partial: { word: 'Delayed', variant: 'warning' },
+  gap: { word: 'n/a', variant: 'down' },
 } as const
 
 export function LinkButton({ link }: { link: Link }) {

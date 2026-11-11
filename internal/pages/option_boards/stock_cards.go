@@ -36,12 +36,12 @@ func buildCards(rows []stockRow, chosen int, cells []matrixCell) ([]chosenCard, 
 		cards = append(cards, chosenCard{
 			Key: key, Expiry: string(c.Expiry), Strike: c.Strike, Chosen: i == chosen, InMatrix: inMatrix[key],
 			Title: fmt.Sprintf("put %s %s", c.Strike, md), PassTag: true,
-			YieldLine: fmt.Sprintf("%s · %d 天", yt, c.DTE),
-			Ladder:    []pair{{Label: "买价", Text: c.BidEod}, {Label: "中间价", Text: gapText}, {Label: "卖价", Text: ask}},
-			Advice:    "建议 卖出 1 张 put (收盘 bid 估,次日才卖)",
-			Amounts:   []string{fmt.Sprintf("行权价 %s · 乘数 %d", c.Strike, c.Multiplier), "盈亏平衡 " + c.BreakEven},
-			Risk:      fmt.Sprintf("风险 股价低于 %s 会被行权", c.Strike),
-			Liquidity: fmt.Sprintf("流动性 成交量 %s · 持仓 %s", r.Eod.Volume, r.Eod.OpenInterest),
+			YieldLine: fmt.Sprintf("%s · %d days", yt, c.DTE),
+			Ladder:    []pair{{Label: "Bid", Text: c.BidEod}, {Label: "Mid", Text: gapText}, {Label: "Ask", Text: ask}},
+			Advice:    "Advice: sell 1 put contract (close bid est., sold next day)",
+			Amounts:   []string{fmt.Sprintf("Strike %s · Multiplier %d", c.Strike, c.Multiplier), "Breakeven " + c.BreakEven},
+			Risk:      fmt.Sprintf("Risk: assigned if the stock is below %s", c.Strike),
+			Liquidity: fmt.Sprintf("Liquidity: volume %s · open interest %s", r.Eod.Volume, r.Eod.OpenInterest),
 		})
 	}
 	return cards, nil
@@ -51,7 +51,7 @@ func buildCards(rows []stockRow, chosen int, cells []matrixCell) ([]chosenCard, 
 func buildMaps(rows []stockRow, expiries []matrixExpiry) ([]priceMap, error) {
 	maps := make([]priceMap, 0, len(expiries))
 	for _, e := range expiries {
-		pm := priceMap{Expiry: e.Expiry, Heading: e.Text, Description: "波动区间 缺 (compute 尚无)", Marks: []mapMark{}, Bands: []mapBand{}}
+		pm := priceMap{Expiry: e.Expiry, Heading: e.Text, Description: "Move range n/a (compute has none yet)", Marks: []mapMark{}, Bands: []mapBand{}}
 		spotDone := false
 		for _, r := range rows {
 			c := r.C
@@ -60,7 +60,7 @@ func buildMaps(rows []stockRow, expiries []matrixExpiry) ([]priceMap, error) {
 			}
 			if !spotDone && c.Spot != nil {
 				if _, ok := numberLiteral(*c.Spot); ok {
-					pm.Marks = append(pm.Marks, mapMark{Kind: "spot", Price: *c.Spot, Text: "现价 " + *c.Spot})
+					pm.Marks = append(pm.Marks, mapMark{Kind: "spot", Price: *c.Spot, Text: "Last price " + *c.Spot})
 					spotDone = true
 				}
 			}
@@ -68,8 +68,8 @@ func buildMaps(rows []stockRow, expiries []matrixExpiry) ([]priceMap, error) {
 				continue
 			}
 			pm.Marks = append(pm.Marks,
-				mapMark{Kind: "breakeven", Price: c.BreakEven, Text: "盈亏平衡 " + c.BreakEven},
-				mapMark{Kind: "strike", Price: c.Strike, Text: "行权价 " + c.Strike})
+				mapMark{Kind: "breakeven", Price: c.BreakEven, Text: "Breakeven " + c.BreakEven},
+				mapMark{Kind: "strike", Price: c.Strike, Text: "Strike " + c.Strike})
 		}
 		maps = append(maps, pm)
 	}

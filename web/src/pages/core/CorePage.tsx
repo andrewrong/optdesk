@@ -41,7 +41,7 @@ function RowMarks({ row }: { row: Row }) {
   return (
     <>
       {row.flag ? <Badge variant="warn">{row.flag}</Badge> : null}
-      {row.cyclical ? <Badge variant="secondary">周期</Badge> : null}
+      {row.cyclical ? <Badge variant="secondary">Cyclical</Badge> : null}
     </>
   )
 }

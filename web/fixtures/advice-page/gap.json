@@ -9,7 +9,7 @@
   "day": "2026-11-01",
   "gap": {
     "reason": "no_data",
-    "text": "2026-11-01 没有建议记录"
+    "text": "No advice record for 2026-11-01"
   },
   "generated_at": "2026-11-02T09:30:00+08:00",
   "rows": [],
@@ -18,6 +18,6 @@
   "schema": "advice_page",
   "schema_version": 1,
   "scope": "advice-page",
-  "sentence": "2026-11-01 报告里的建议，与下一个收盘后的值对比",
-  "title": "昨日建议"
+  "sentence": "Advice in the 2026-11-01 report, against the value after the next close",
+  "title": "Yesterday's advice"
 }

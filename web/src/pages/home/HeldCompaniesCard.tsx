@@ -1,4 +1,4 @@
-// The 持仓公司 card of the home page (ADR 0034 step 3d, board ab1). Every visible string is a `text` field of the
+// The Held companies card of the home page (ADR 0034 step 3d, board ab1). Every visible string is a `text` field of the
 // payload; this file formats and computes nothing. `value` is used only by the table's user-started sort and the
 // colour comes from the payload's `tone` (resolved inside the shared Data Table).
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'

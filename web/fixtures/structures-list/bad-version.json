@@ -7,29 +7,29 @@
       "rows": [
         {
           "compare": {
-            "captured_param": "已赚比例 50%",
+            "captured_param": "Share earned 50%",
             "cash_after": {
               "reason": "no_data",
-              "text": "账户现金或到期日数据不全，指派后现金无法计算"
+              "text": "Account cash or expiry data incomplete: cash after assignment cannot be computed"
             },
             "close_cost": "$100.00",
-            "exit_dte_param": "到期前天数 21",
+            "exit_dte_param": "Days to expiry 21",
             "recent_commission": {
               "reason": "no_data",
-              "text": "无IBKR佣金记录"
+              "text": "No IBKR commission record"
             },
             "roll_net": {
               "reason": "no_data",
-              "text": "无候选扫描，滚仓净收无法计算"
+              "text": "No candidate scan: net roll credit cannot be computed"
             },
-            "sentence": "已赚 33.3%（你定的 50%），距到期 1 天（你定的 21 天），平仓成本 $100.00，滚仓净收 无候选扫描，滚仓净收无法计算"
+            "sentence": "Earned 33.3% (your target 50%), 1 day to expiry (your target 21 days), close cost $100.00, net roll credit: No candidate scan: net roll credit cannot be computed"
           },
           "distance": "-9.1%",
           "earned": "33.3%",
           "ex_dividend": null,
-          "expiry_text": "10月30日 · 1天",
+          "expiry_text": "Oct 30 · 1 day",
           "href": "/structure/a1b2c3",
-          "kind_text": "价差",
+          "kind_text": "Spread",
           "max_gain": {
             "text": "+$100",
             "unit": "usd",
@@ -40,7 +40,7 @@
             "unit": "usd",
             "value": -400.0
           },
-          "moneyness": "价外",
+          "moneyness": "Out of the money",
           "pnl": {
             "text": "+$100",
             "unit": "usd",
@@ -49,35 +49,35 @@
           "symbol": "AAA"
         }
       ],
-      "title": "本周要决定"
+      "title": "To decide this week"
     },
     {
       "rows": [
         {
           "compare": {
-            "captured_param": "已赚比例 50%",
+            "captured_param": "Share earned 50%",
             "cash_after": {
               "reason": "no_data",
-              "text": "账户现金或到期日数据不全，指派后现金无法计算"
+              "text": "Account cash or expiry data incomplete: cash after assignment cannot be computed"
             },
             "close_cost": "$100.00",
-            "exit_dte_param": "到期前天数 21",
+            "exit_dte_param": "Days to expiry 21",
             "recent_commission": {
               "reason": "no_data",
-              "text": "无IBKR佣金记录"
+              "text": "No IBKR commission record"
             },
             "roll_net": {
               "reason": "no_data",
-              "text": "无候选扫描，滚仓净收无法计算"
+              "text": "No candidate scan: net roll credit cannot be computed"
             },
-            "sentence": "已赚 60.0%（你定的 50%），距到期 22 天（你定的 21 天），平仓成本 $100.00，滚仓净收 无候选扫描，滚仓净收无法计算"
+            "sentence": "Earned 60.0% (your target 50%), 22 days to expiry (your target 21 days), close cost $100.00, net roll credit: No candidate scan: net roll credit cannot be computed"
           },
           "distance": "-7.7%",
           "earned": "60.0%",
           "ex_dividend": null,
-          "expiry_text": "11月20日 · 22天",
+          "expiry_text": "Nov 20 · 22 days",
           "href": "/structure/d4e5f6",
-          "kind_text": "价差",
+          "kind_text": "Spread",
           "max_gain": {
             "text": "+$200",
             "unit": "usd",
@@ -88,7 +88,7 @@
             "unit": "usd",
             "value": -300.0
           },
-          "moneyness": "价外",
+          "moneyness": "Out of the money",
           "pnl": {
             "text": "+$200",
             "unit": "usd",
@@ -98,29 +98,29 @@
         },
         {
           "compare": {
-            "captured_param": "已赚比例 50%",
+            "captured_param": "Share earned 50%",
             "cash_after": {
               "reason": "no_data",
-              "text": "账户现金或到期日数据不全，指派后现金无法计算"
+              "text": "Account cash or expiry data incomplete: cash after assignment cannot be computed"
             },
             "close_cost": "$100.00",
-            "exit_dte_param": "到期前天数 21",
+            "exit_dte_param": "Days to expiry 21",
             "recent_commission": {
               "reason": "no_data",
-              "text": "无IBKR佣金记录"
+              "text": "No IBKR commission record"
             },
             "roll_net": {
               "reason": "no_data",
-              "text": "无候选扫描，滚仓净收无法计算"
+              "text": "No candidate scan: net roll credit cannot be computed"
             },
-            "sentence": "已赚 66.7%（你定的 50%），距到期 22 天（你定的 21 天），平仓成本 $100.00，滚仓净收 无候选扫描，滚仓净收无法计算"
+            "sentence": "Earned 66.7% (your target 50%), 22 days to expiry (your target 21 days), close cost $100.00, net roll credit: No candidate scan: net roll credit cannot be computed"
           },
           "distance": "+5.9%",
           "earned": "66.7%",
           "ex_dividend": null,
-          "expiry_text": "11月20日 · 22天",
+          "expiry_text": "Nov 20 · 22 days",
           "href": "/structure/789abc",
-          "kind_text": "价差",
+          "kind_text": "Spread",
           "max_gain": {
             "text": "+$300",
             "unit": "usd",
@@ -131,7 +131,7 @@
             "unit": "usd",
             "value": -8700.0
           },
-          "moneyness": "价内",
+          "moneyness": "In the money",
           "pnl": {
             "text": "+$200",
             "unit": "usd",
@@ -140,7 +140,7 @@
           "symbol": "CCC"
         }
       ],
-      "title": "之后到期"
+      "title": "Expires later"
     }
   ],
   "run_id": "run-demo-0001",
@@ -148,11 +148,11 @@
   "schema": "structures_list",
   "schema_version": 2,
   "scope": "structures-list",
-  "sentence": "共 3 个持仓结构，按到期日从近到远。",
+  "sentence": "3 held structures, by expiry, nearest first.",
   "stale": {
     "data_time": "2026-10-29T09:30:00+08:00",
     "stale_after": "2026-11-01T09:30:00+08:00",
-    "text": "无收盘价，无存储的希腊值"
+    "text": "No close price, no stored Greeks"
   },
-  "title": "持仓结构"
+  "title": "Held structures"
 }

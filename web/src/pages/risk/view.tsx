@@ -1,4 +1,4 @@
-// The 家庭风险 page (household_risk v1), read-only. Every visible string and figure is a field of the payload;
+// The household risk page (household_risk v1), read-only. Every visible string and figure is a field of the payload;
 // this file formats, compares and computes nothing. `value` is used only by the table's user-started sort.
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'

@@ -83,18 +83,18 @@ describe('OptionsSummaryCard', () => {
 
   it('gives a gap point a null value with its text', async () => {
     const ok = os('ok.json')
-    ok.card.premium_series_6m[0].closed = { kind: 'gap', reason: 'no_data', text: '缺数据' }
+    ok.card.premium_series_6m[0].closed = { kind: 'gap', reason: 'no_data', text: 'No data' }
     await showCard(ok)
     const point = drawn.at(-1)!.spec.series[1]!.points[0]
-    expect(point).toEqual({ value: null, text: '缺数据', label: '缺数据' })
+    expect(point).toEqual({ value: null, text: 'No data', label: 'No data' })
   })
 
-  it('counts the sold tile in groups, not 笔', async () => {
+  it('counts the sold tile as sold, not trades', async () => {
     const ok = os('ok.json')
     await showCard(ok)
     const text = tile('sold_count_month').textContent ?? ''
-    expect(text).toContain('组')
-    expect(text).not.toContain('笔')
+    expect(text).toContain('sold')
+    expect(text).not.toContain('trades')
     expect(tile('sold_count_month').querySelector('[data-tile-figure]')?.textContent).toBe(
       ok.card.tiles.sold_count_month.figure.text,
     )

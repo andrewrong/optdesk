@@ -6,7 +6,7 @@ import { StaleAlert } from '@/pages/home/StaleAlert'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const STALE = { text: '数据截至 10-23 收盘', stale_after: '2026-10-24T00:00:00Z' }
+const STALE = { text: 'Data as of 10-23 close', stale_after: '2026-10-24T00:00:00Z' }
 let root: Root | null = null
 
 async function show(now: string, generatedAt: string): Promise<HTMLElement> {

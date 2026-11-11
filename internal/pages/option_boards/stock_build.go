@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	noticeText   = "持仓见 /options/tracking"
-	noMatrixText = "没有该标的的候选行"
-	noRowsText   = "没有该标的的合约"
+	noticeText   = "Positions: see /options/tracking"
+	noMatrixText = "No candidate rows for this underlying"
+	noRowsText   = "No contracts for this underlying"
 )
 
 // stockRow is one stored row of the company with its parsed gates and end-of-day text.
@@ -188,7 +188,7 @@ func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day
 	}
 	dayNote := ""
 	if n := chainDayNote(eod, dataDay); n != "" {
-		dayNote = "。" + n
+		dayNote = ". " + n
 	}
 	return rows, dayNote, nil
 }

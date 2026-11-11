@@ -4,11 +4,11 @@ import "fmt"
 
 const (
 	maxContractRows = 200
-	contractsBasis  = "存档收盘报价;Θ、Γ、Vega 取数据日的存档行"
+	contractsBasis  = "Archived close quotes; Theta, Gamma and Vega from the archived row of the data day"
 )
 
 func contractColumns() []string {
-	return []string{"到期", "行权价", "买价", "卖价", "Δ", "IV", "Θ/天", "Γ", "Vega", "成交量", "年化"}
+	return []string{"Expiry", "Strike", "Bid", "Ask", "Δ", "IV", "Θ/day", "Γ", "Vega", "Volume", "Annualised"}
 }
 
 // buildContractRows is one line per stored row of the company in the stored order, at most maxContractRows;
@@ -60,7 +60,7 @@ func buildContractRows(rows []stockRow) ([]contractLine, string, error) {
 	}
 	note := ""
 	if cut > 0 {
-		note = fmt.Sprintf("。合约表只显示前 %d 行,另有 %d 行未显示", maxContractRows, cut)
+		note = fmt.Sprintf(". Contract table shows the first %d rows, %d more not shown", maxContractRows, cut)
 	}
 	return out, note, nil
 }

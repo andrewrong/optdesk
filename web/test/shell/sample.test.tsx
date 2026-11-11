@@ -11,7 +11,7 @@ import { ok as riskTs } from '../pages/risk/fixtures/ok'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const BANNER = '示例数据，非实时数据 / Sample data, not live data'
+const BANNER = 'Sample data, not live data'
 const NAMES = [
   'home_page',
   'household_page',

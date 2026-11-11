@@ -14,12 +14,12 @@
   ],
   "run_status": "ok",
   "card": {
-    "title": "市场概览",
-    "say": "隐含波动率高于已实现，差 +2.0 个波动点。",
-    "subtitle": "示例数据",
+    "title": "Market overview",
+    "say": "Implied volatility is above realised, diff +2.0 vol points.",
+    "subtitle": "Sample data",
     "stale": {
       "data_time": "2026-10-23T21:00:00Z",
-      "text": "数据截至 10-23 收盘",
+      "text": "Data as of 10-23 close",
       "is_stale": false
     },
     "chart": {
@@ -236,22 +236,22 @@
         }
       ],
       "series_names": [
-        "收盘",
-        "200日均线",
-        "区间"
+        "close",
+        "200-day average",
+        "Range"
       ],
       "end_labels": [
         "09-14",
         "10-23"
       ],
-      "aria_text": "示例走势图，共三十个交易日，收盘、200日均线和区间"
+      "aria_text": "Sample chart, thirty trading days, close, 200-day average and range"
     },
     "index_table": {
       "columns": [
-        "指数",
-        "隐含波动率",
-        "20日已实现",
-        "差值"
+        "Index",
+        "Implied volatility",
+        "20-day realised",
+        "Diff"
       ],
       "rows": [
         {
@@ -275,7 +275,7 @@
             "unit": "vol_points",
             "tone": "up"
           },
-          "source_text": "示例来源"
+          "source_text": "Sample source"
         },
         {
           "name": "NDX",
@@ -298,7 +298,7 @@
             "unit": "vol_points",
             "tone": "up"
           },
-          "source_text": "示例来源"
+          "source_text": "Sample source"
         },
         {
           "name": "RUT",
@@ -321,7 +321,7 @@
             "unit": "vol_points",
             "tone": "down"
           },
-          "source_text": "示例来源"
+          "source_text": "Sample source"
         }
       ]
     },
@@ -335,7 +335,7 @@
           "unit": "index_points"
         },
         "day": "10-23",
-        "source_text": "示例序列"
+        "source_text": "Sample series"
       },
       {
         "name": "VXN",
@@ -346,7 +346,7 @@
           "unit": "index_points"
         },
         "day": "10-23",
-        "source_text": "示例序列"
+        "source_text": "Sample series"
       },
       {
         "name": "RVX",
@@ -357,14 +357,14 @@
           "unit": "index_points"
         },
         "day": "10-23",
-        "source_text": "示例序列"
+        "source_text": "Sample series"
       }
     ],
-    "vol_indices_note": "指数水平以发布方点数计，不并入表格。",
+    "vol_indices_note": "Index levels are in the publisher's points and are not added to the table.",
     "notes": [
-      "示例数据，非真实行情"
+      "Sample data, not real quotes"
     ],
     "gaps": [],
-    "data_times_text": "数据时间 10-23"
+    "data_times_text": "Data times 10-23"
   }
 }

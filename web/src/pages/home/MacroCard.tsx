@@ -1,4 +1,4 @@
-// The 宏观 card of the home page (ADR 0034 step 3b, board ab1). Every visible string is a `text` field of the
+// The Macro card of the home page (ADR 0034 step 3b, board ab1). Every visible string is a `text` field of the
 // payload; this file formats and computes nothing. `value` is used only by the table's user-started sort.
 import { EaseGauge } from '@/components/ease-gauge/EaseGauge'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
@@ -15,9 +15,9 @@ import { DataTimesFold } from './DataTimesFold'
 import { TitleLink } from './OverviewCard'
 
 const COLUMNS: Column[] = [
-  { id: 'date', label: '日期' },
-  { id: 'name', label: '事件' },
-  { id: 'previous', label: '前值', align: 'right' },
+  { id: 'date', label: 'Date' },
+  { id: 'name', label: 'Event' },
+  { id: 'previous', label: 'Previous', align: 'right' },
 ]
 
 export function MacroCard({
@@ -59,11 +59,11 @@ export function MacroCard({
             </div>
             <EaseGauge ease={ease} />
             <div className="text-xs text-muted-foreground" data-neutral-band>
-              中性区间 {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
+              Neutral band {ease.neutral_band.low.text} – {ease.neutral_band.high.text}
             </div>
             <p>{ease.reading_text}</p>
             <div className="text-xs text-muted-foreground" data-week-change>
-              较上周 {ease.week_change.text}
+              vs last week {ease.week_change.text}
             </div>
           </div>
         )}

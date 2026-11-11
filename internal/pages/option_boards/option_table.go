@@ -9,11 +9,11 @@ import (
 
 // tableColumns are the 12 columns of board 5 in the fixture order.
 func tableColumns() []column {
-	hint := "IV 在过去一年中的百分位,尚无来源"
+	hint := "IV percentile over the past year, no source yet"
 	return []column{
-		{ID: "symbol", Label: "标的", Align: "left"},
-		{ID: "verdict", Label: "判定", Align: "left"},
-		{ID: "annualised", Label: "年化", Align: "right"},
+		{ID: "symbol", Label: "Underlying", Align: "left"},
+		{ID: "verdict", Label: "Verdict", Align: "left"},
+		{ID: "annualised", Label: "Annualised", Align: "right"},
 		{ID: "strike_pct", Label: "strike %", Align: "right"},
 		{ID: "dte", Label: "DTE", Align: "right"},
 		{ID: "delta", Label: "Δ", Align: "right"},
@@ -48,7 +48,7 @@ func verdictRank(key string) int {
 // ratioCell is the text cell of a percentage, or the gap missing_input naming the absent input.
 func ratioCell(r ratioResult) any {
 	if !r.OK {
-		return mkGap("missing_input", "缺 "+r.Missing)
+		return mkGap("missing_input", "missing "+r.Missing)
 	}
 	return textCell{Kind: "text", Text: r.Text, Value: r.Value}
 }
@@ -61,7 +61,7 @@ func keyValue(text string, scale int) any {
 	return nil
 }
 
-// countCell is a count of contracts from the text of an end-of-day column; a gap when the text is "缺", a text
+// countCell is a count of contracts from the text of an end-of-day column; a gap when the text is "n/a", a text
 // cell when it is not a whole number.
 func countCell(text string) any {
 	if text == gapText {
@@ -73,12 +73,12 @@ func countCell(text string) any {
 	return textCell{Kind: "text", Text: text}
 }
 
-// earningsCell is the E cell: "E MM-DD 在期内" when the gate events blocks, else the tag text.
+// earningsCell is the E cell: "E MM-DD in window" when the gate events blocks, else the tag text.
 func earningsCell(r store.Candidate) textCell {
 	text := earningsTag(r)
 	if gates, err := parseGates(r.Gates); err == nil {
 		if s, ok := gateStatus(gates, gateEvents); ok && s == gateBlock && r.NextEarnings != nil {
-			text += " 在期内"
+			text += " in window"
 		}
 	}
 	return textCell{Kind: "text", Text: text}
@@ -106,7 +106,7 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 		{Column: "verdict", Cell: textCell{Kind: "text", Text: v.Label, Value: verdictRank(v.Key)}},
 		{Column: "annualised", Cell: ann},
 		{Column: "strike_pct", Cell: ratioCell(strikePct(r.Strike, r.Spot))},
-		{Column: "dte", Cell: textCell{Kind: "text", Text: fmt.Sprintf("%d 天", r.DTE), Value: r.DTE}},
+		{Column: "dte", Cell: textCell{Kind: "text", Text: fmt.Sprintf("%d days", r.DTE), Value: r.DTE}},
 		{Column: "delta", Cell: delta},
 		{Column: "bid_ask", Cell: textCell{Kind: "text", Text: dollar(bid) + " / " + ask, Value: keyValue(bid, 2)}},
 		{Column: "spread_pct", Cell: ratioCell(spreadPct(bid, askText))},

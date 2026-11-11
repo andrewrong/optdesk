@@ -38,9 +38,9 @@ export function AliasBlock({ block }: { block: Block }) {
               <Table data-cash>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>日期</TableHead>
-                    <TableHead>币种</TableHead>
-                    <TableHead>金额</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Currency</TableHead>
+                    <TableHead>Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

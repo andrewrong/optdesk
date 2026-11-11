@@ -11,13 +11,13 @@ export const editable: SettingsPage = {
   generated_at: '2026-11-10T00:00:00Z',
   data_times: [],
   run_status: 'ok',
-  title: 'demo 设置',
+  title: 'demo Settings',
   form: { expires: '1790000000', mac: 'ab12cd34', post_path: '/owner-settings' },
   confirm: null,
-  notice: { kind: 'saved', text: 'demo 已保存 2 项' },
+  notice: { kind: 'saved', text: 'demo Saved 2 items' },
   params: [
-    { key: 'min_dte', label: 'demo 最短到期', unit: '天', value: '25', default: '21', min: '7', max: '120', kind: 'int' },
-    { key: 'max_spread', label: 'demo 最大价差', unit: '美元', value: '', default: '0.10', min: '0.01', max: '0.30', kind: 'decimal' },
+    { key: 'min_dte', label: 'demo Shortest expiry', unit: 'days', value: '25', default: '21', min: '7', max: '120', kind: 'int' },
+    { key: 'max_spread', label: 'demo Max spread', unit: 'USD', value: '', default: '0.10', min: '0.01', max: '0.30', kind: 'decimal' },
   ],
   rows: [
     { instrument_id: 9001, symbol: 'DEMOA', excluded: true },
@@ -25,7 +25,7 @@ export const editable: SettingsPage = {
     { instrument_id: 9003, symbol: 'DEMOC', excluded: false },
   ],
   history: [
-    { at: '2026-11-09 10:00', kind: 'param', name: 'demo 最短到期', key: 'min_dte', value: '30', instrument_id: null, excluded: null },
-    { at: '2026-11-08 09:00', kind: 'exclusion', name: 'DEMOA', key: null, value: '排除', instrument_id: 9001, excluded: true },
+    { at: '2026-11-09 10:00', kind: 'param', name: 'Shortest expiry', key: 'min_dte', value: '30', instrument_id: null, excluded: null },
+    { at: '2026-11-08 09:00', kind: 'exclusion', name: 'DEMOA', key: null, value: 'Excluded', instrument_id: 9001, excluded: true },
   ],
 }

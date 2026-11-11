@@ -86,10 +86,10 @@ function SavedRow({ row, form }: { row: Payload['rows'][number]; form: Payload['
           <input type="hidden" name="market" value={row.market} />
           <PriceNoteInputs price={row.price ?? ''} note={row.note ?? ''} />
           <Button type="submit" name="action" value="save">
-            保存
+            Save
           </Button>
           <Button type="submit" name="action" value="delete" variant="destructive">
-            删除
+            Delete
           </Button>
         </form>
       </TableCell>
@@ -119,16 +119,16 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>价格线</CardTitle>
+          <CardTitle>Price lines</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>代码</TableHead>
-                <TableHead>市场</TableHead>
-                <TableHead>价格</TableHead>
-                <TableHead>备注</TableHead>
+                <TableHead>Symbol</TableHead>
+                <TableHead>Market</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Note</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -142,7 +142,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>新增</CardTitle>
+          <CardTitle>Add</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-xs text-muted-foreground">{add.hint}</p>
@@ -150,7 +150,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
             <Tokens form={form} />
             <Fields markets={add.markets} />
             <Button type="submit" name="action" value="save">
-              保存
+              Save
             </Button>
           </form>
         </CardContent>
@@ -158,7 +158,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
       {payload.unset.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>未设价格线的持仓</CardTitle>
+            <CardTitle>Positions without a price line</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2" data-unset>
@@ -168,7 +168,7 @@ export function PriceLinesPage({ payload }: { payload: Payload }) {
                     <Tokens form={form} />
                     <Fields markets={add.markets} symbol={row.symbol} market={row.market} />
                     <Button type="submit" name="action" value="save">
-                      保存
+                      Save
                     </Button>
                   </form>
                 </li>

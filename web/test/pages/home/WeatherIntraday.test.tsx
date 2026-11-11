@@ -1,4 +1,4 @@
-// Issue #1224 acceptance 6, 10 and 14: the browser hides the 盘中 section from `expires_at` with a clock it does not
+// Issue #1224 acceptance 6, 10 and 14: the browser hides the intraday section from `expires_at` with a clock it does not
 // compute with, reads the page again every 60 s, and draws nothing when the payload has no section. Expected texts
 // are read from the fixtures, not from the component.
 import { readFileSync } from 'node:fs'
@@ -191,7 +191,7 @@ describe('WeatherIntraday in the card', () => {
 
   it('shows the closed text of the payload and still reads the page again', async () => {
     vi.setSystemTime(EXPIRES)
-    const closed = { ...fixture('ok'), closed: '休市 · 显示 10-21 收盘天气' }
+    const closed = { ...fixture('ok'), closed: 'Market closed · showing 10-21 close weather' }
     await show(closed)
     expect(host.querySelector('[data-closed]')?.textContent).toBe(closed.closed)
     expect(section()).toBeNull()

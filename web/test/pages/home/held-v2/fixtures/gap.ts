@@ -7,46 +7,46 @@ export const gap = {
     "columns": [
       {
         "id": "company",
-        "label": "公司"
+        "label": "Company"
       },
       {
         "id": "price",
-        "label": "价格"
+        "label": "Price"
       },
       {
         "id": "earnings",
-        "label": "财报日"
+        "label": "Earnings date"
       },
       {
         "id": "day_change",
-        "label": "日涨跌"
+        "label": "Day change"
       },
       {
         "id": "five_day_change",
-        "label": "5日涨跌"
+        "label": "5-day change"
       }
     ],
-    "data_times_text": "数据日 10-23",
+    "data_times_text": "Data day 10-23",
     "gaps": [
       {
         "kind": "gap",
         "reason": "missing_input",
-        "text": "持仓公司数据不足：原因未知"
+        "text": "Held companies: not enough data, reason unknown"
       }
     ],
     "notes": [
-      "财报日只显示日期：盘前、盘后时间暂无数据源。"
+      "Earnings date shows the date only: pre-market and after-hours times have no data source yet."
     ],
     "rows": [],
-    "say": "持仓公司数据不足：原因未知",
-    "sharp_note": "日涨跌 3% 及以上、5日涨跌 8% 及以上标“大幅”。",
+    "say": "Held companies: not enough data, reason unknown",
+    "sharp_note": "Day change of 3% or more and 5-day change of 8% or more are marked big move.",
     "stale": {
       "data_time": "2026-10-23T21:00:00+08:00",
       "is_stale": false,
-      "text": "数据日 10-23"
+      "text": "Data day 10-23"
     },
-    "subtitle": "财报日历与变化",
-    "title": "持仓公司"
+    "subtitle": "Earnings calendar and changes",
+    "title": "Held companies"
   },
   "data_times": [],
   "generated_at": "2026-10-23T21:00:00+08:00",
