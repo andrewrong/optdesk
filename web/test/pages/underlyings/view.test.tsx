@@ -59,6 +59,20 @@ describe('underlyings view', () => {
     expect(el.querySelector('[data-confirm]')).toBeNull()
   })
 
+  it('shows the flags of each row as switches and its followed_by groups as badges', async () => {
+    const p = fixture('golden')
+    const el = await render(p)
+    for (const r of p.rows) {
+      const tr = el.querySelector(`tr[data-name="${r.key}"]`)!
+      for (const f of ['options', 'fundamentals', 'held'] as const) {
+        const sw = tr.querySelector(`button[role=switch][aria-label=${f}]`)!
+        expect(sw.getAttribute('aria-checked')).toBe(String(r[f]))
+      }
+      const badges = [...tr.querySelectorAll('[data-slot=badge]')].map((b) => b.textContent)
+      expect(badges).toEqual([r.status_text, ...r.followed_by])
+    }
+  })
+
   it('shows the status text of a pending row', async () => {
     const p = fixture('golden')
     const pending = p.rows.find((r) => r.status === 'pending')!

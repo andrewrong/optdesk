@@ -136,7 +136,18 @@ function AddForm({ form }: { form: Form }) {
 
 function EditForm({ row, form }: { row: Name; form: Form }) {
   const has = (f: string) => row.editable.includes(f)
-  const values = row as unknown as Record<string, string | boolean | null>
+  // exchange and currency are editable on a pending row but are not part of the payload: they start empty.
+  const values: Record<(typeof TEXT_FIELDS)[number], string> = {
+    status: row.status,
+    name: row.name,
+    issuer: row.issuer,
+    buy_price: row.buy_price,
+    sale_price: row.sale_price,
+    report_date_override: row.report_date_override,
+    note: row.note,
+    exchange: '',
+    currency: '',
+  }
   return (
     <form
       method="post"
@@ -148,7 +159,7 @@ function EditForm({ row, form }: { row: Name; form: Form }) {
       <input type="hidden" name="key" value={row.key} />
       <div className="sm:col-span-3 font-medium">{row.key}</div>
       {TEXT_FIELDS.filter(has).map((f) => (
-        <Field key={f} id={`${row.key}-${f}`} name={f} defaultValue={String(values[f] ?? '')} />
+        <Field key={f} id={`${row.key}-${f}`} name={f} defaultValue={values[f]} />
       ))}
       {SWITCH_FIELDS.filter(has).map((f) => (
         <div key={f} className="flex items-center gap-2">
