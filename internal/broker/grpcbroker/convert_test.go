@@ -1,6 +1,7 @@
 package grpcbroker
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -144,5 +145,31 @@ func TestQuoteKindMapsAllFourKinds(t *testing.T) {
 	}
 	if _, err := quoteKind(broker.Kind(99)); err == nil || kindErr(t, err) != contracts.Permanent {
 		t.Fatalf("unknown kind: %v", err)
+	}
+}
+
+func TestCashSecTypeRoundTrip(t *testing.T) {
+	t.Parallel()
+	c := broker.Contract{SecType: "CASH", Symbol: "USD", Exchange: "IDEALPRO", Currency: "JPY"}
+	spec, err := toSpec(c)
+	if err != nil {
+		t.Fatalf("toSpec CASH: %v", err)
+	}
+	if spec.GetSecType() != pb.SecType_SEC_TYPE_CASH {
+		t.Fatalf("sec type = %v, want SEC_TYPE_CASH", spec.GetSecType())
+	}
+	if got := fromSpec(spec); got != c {
+		t.Fatalf("round trip = %+v, want %+v", got, c)
+	}
+	if got := fromSpec(&pb.ContractSpec{SecType: pb.SecType_SEC_TYPE_CASH}); got.SecType != "CASH" {
+		t.Fatalf("fromSpec CASH = %q", got.SecType)
+	}
+}
+
+func TestUnmappedSecTypeRefused(t *testing.T) {
+	t.Parallel()
+	_, err := toSpec(broker.Contract{SecType: "FUT"})
+	if err == nil || !strings.Contains(err.Error(), "unknown sec type") {
+		t.Fatalf("err = %v, want unknown sec type", err)
 	}
 }
