@@ -46,7 +46,7 @@ Declared in `internal/sources/api.go` (declarations only; the client and loader 
 - The file is outside any Git work tree and has no group or other permission bit.
 - `[[login]]`: `name` (`[a-z][a-z0-9_-]{0,31}`, unique), `token_env` (the NAME of the environment variable holding the token), `trade_queries` (a non-empty list of unique query ids, digits), `required` (boolean, default false: the login that serves the main account).
 - The loader (`internal/sources/flex`) refuses a file with no required login, or with more than one.
-- `[[account]]`: `alias` (the label `a` or `b`), `account_env` (the NAME of the variable holding the account number); this is the allow-list.
+- `[[account]]`: `alias` (`[a-z][a-z0-9_-]{0,31}`, the account label), `account_env` (the NAME of the variable holding the account number); this is the allow-list.
 - Tokens and account numbers live only in the environment; they never appear in a log, error, fixture or row.
 
 ### Flex sections (container rule, Decision 3)

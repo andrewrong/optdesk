@@ -47,9 +47,9 @@ const (
 	liveHeldClass    = "held"
 )
 
-// pull window of the US job in the zone of the exchange: 09:44 to 10:10 (Decision 17).
+// pull window of the US job in the zone of the exchange: 09:34 to 10:10 (Decision 17).
 const (
-	liveWindowFrom = 9*60 + 44
+	liveWindowFrom = 9*60 + 34
 	liveWindowTo   = 10*60 + 10
 )
 
@@ -200,7 +200,7 @@ func (l *liveQuotes) anyOpen(ctx context.Context, now time.Time) bool {
 	return false
 }
 
-// inPullWindow reports whether now is inside 09:44 to 10:10 in the zone of the US exchange.
+// inPullWindow reports whether now is inside 09:34 to 10:10 in the zone of the US exchange.
 func (l *liveQuotes) inPullWindow(now time.Time) bool {
 	n := now.In(l.markets[0].zone)
 	m := n.Hour()*60 + n.Minute()

@@ -254,6 +254,26 @@ func TestLiveRefreshInsidePullWindowAsksTenInOneChunk(t *testing.T) {
 	}
 }
 
+func TestLivePullWindowIs0934To1010Eastern(t *testing.T) {
+	t.Parallel()
+	r := newLiveRig(t, true, liveItems(1, 3), liveNoon)
+	cases := []struct {
+		at   time.Time
+		want bool
+	}{
+		{time.Date(2026, 11, 11, 14, 33, 0, 0, time.UTC), false},
+		{time.Date(2026, 11, 11, 14, 34, 0, 0, time.UTC), true},
+		{time.Date(2026, 11, 11, 15, 10, 0, 0, time.UTC), true},
+		{time.Date(2026, 11, 11, 15, 11, 0, 0, time.UTC), false},
+	}
+	for _, c := range cases {
+		r.clk.t = c.at
+		if got := r.l.inPullWindow(r.clk.Now()); got != c.want {
+			t.Errorf("%s: inPullWindow %v want %v", c.at.Format("15:04 UTC"), got, c.want)
+		}
+	}
+}
+
 func TestLiveRefreshHeldFirst(t *testing.T) {
 	t.Parallel()
 	items := liveItems(1, 50)
