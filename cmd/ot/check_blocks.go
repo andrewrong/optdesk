@@ -36,6 +36,7 @@ var pageDayKeys = map[string]string{
 	"option_notices_page":    "day",
 	"option_tracking_page":   "as_of",
 	"settings_page":          "as_of",
+	"underlyings":            "session_day",
 }
 
 // pageMetaKeys are the top-level keys of a flat page that are not blocks: the fields of its schema besides the
@@ -55,6 +56,7 @@ var pageMetaKeys = map[string][]string{
 		"schema", "schema_version", "scope", "sentence", "series_title", "stale", "stale_after", "title", "underlying", "underlyings"},
 	"settings_page": {"as_of", "build_id", "confirm", "data_times", "form", "gap", "generated_at", "notice", "run_id", "run_status",
 		"schema", "schema_version", "scope", "title"},
+	"underlyings": {"confirm", "form", "gaps", "generated_at", "notice", "schema", "schema_version", "sentence", "session_day", "title"},
 }
 
 // blockNames are the top-level block names of a page body: the keys of its `blocks` object when it has one
