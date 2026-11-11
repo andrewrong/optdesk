@@ -51,6 +51,17 @@ func yieldText(y *string) (string, error) {
 	return "Annualised " + pct, nil
 }
 
+// hasBid is false for the empty stored bid and for the gap text: such a row has no premium and no yield.
+func hasBid(bid string) bool { return bid != "" && bid != gapText }
+
+// premiumText is "Premium 1.20", or "Premium n/a" for a missing bid.
+func premiumText(bid string) string {
+	if !hasBid(bid) {
+		return "Premium n/a"
+	}
+	return "Premium " + bid
+}
+
 func volumeText(v string) string {
 	if v == gapText {
 		return "Volume n/a"
@@ -75,7 +86,15 @@ func buildMatrix(rows []stockRow, chosen int) (matrixBlock, string, error) {
 			cut++
 			continue
 		}
-		yt, err := yieldText(c.AnnualizedYield)
+		bid := c.BidEod
+		if r.Live != nil {
+			bid = r.Live.Bid
+		}
+		yield := c.AnnualizedYield
+		if !hasBid(bid) {
+			yield = nil
+		}
+		yt, err := yieldText(yield)
 		if err != nil {
 			return m, "", fmt.Errorf("option_boards: yield of instrument %d: %w", c.InstrumentID, err)
 		}
@@ -85,9 +104,9 @@ func buildMatrix(rows []stockRow, chosen int) (matrixBlock, string, error) {
 		strikes[c.Strike] = true
 		quoteGate, _ := gateStatus(r.Gates, gateQuote)
 		events, _ := gateStatus(r.Gates, gateEvents)
-		premium, delta, volume := "Premium "+c.BidEod, deltaText(c.Delta), volumeText(r.Eod.Volume)
+		premium, delta, volume := premiumText(c.BidEod), deltaText(c.Delta), volumeText(r.Eod.Volume)
 		if l := r.Live; l != nil {
-			premium, delta, volume = "Premium "+l.Bid, "Δ "+l.DeltaText(), volumeText(l.Volume)
+			premium, delta, volume = premiumText(l.Bid), "Δ "+l.DeltaText(), volumeText(l.Volume)
 		}
 		cell := matrixCell{
 			Key: cellKey(c.InstrumentID), Expiry: string(c.Expiry), Strike: c.Strike,

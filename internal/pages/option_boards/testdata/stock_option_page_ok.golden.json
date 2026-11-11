@@ -28,7 +28,7 @@
     "refresh_expiry": null,
     "refresh_strike": null
   },
-  "notice": "Positions: see /options/tracking. Volume and open interest from 2026-11-09 (chain day)",
+  "notice": "Positions: see /options/tracking. Volume from 2026-11-09 (chain day)",
   "shared_gap": null,
   "maps": [
     {

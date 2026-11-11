@@ -137,11 +137,11 @@ func TestChainDayNoteShown(t *testing.T) {
 	t.Parallel()
 	m := optionPageOf(t, tickerNames(), fixtureRows())
 	notes := m["notes"].([]any)
-	if len(notes) != 2 || notes[1] != "Volume and open interest from 2026-11-09 (chain day)" {
+	if len(notes) != 2 || notes[1] != "Volume from 2026-11-09 (chain day)" {
 		t.Errorf("notes = %v", notes)
 	}
 	p, _ := buildStockPayload(t, stockCfg(stockDay, stockFixture(), "AAPL"), stockDay)
-	if p.Notice == nil || !strings.HasSuffix(*p.Notice, ". Volume and open interest from 2026-11-09 (chain day)") {
+	if p.Notice == nil || !strings.HasSuffix(*p.Notice, ". Volume from 2026-11-09 (chain day)") {
 		t.Errorf("notice = %v", p.Notice)
 	}
 }
