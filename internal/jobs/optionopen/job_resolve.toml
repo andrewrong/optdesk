@@ -4,7 +4,7 @@ id = "option_open_resolve"
 zone = "America/New_York"
 budget_minutes = 40
 # New resolves per run (docs/design/option-open-pull.md, Capacity); NewResolve may override it with MaxNew.
-max_new = 300
+max_new = 4000
 # Marks of contracts IBKR answered none for (Decision 5): the retry is seven days plus or minus two.
 retry_days = 7
 jitter_days = 2

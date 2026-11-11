@@ -303,10 +303,10 @@ func TestMaxNewOf1500ResolvesAllThirteenHundredInOneRun(t *testing.T) {
 	}
 }
 
-func TestDefaultCapStopsAtThreeHundredAndSaysSo(t *testing.T) {
+func TestCapOf300StopsAtThreeHundredAndSaysSo(t *testing.T) {
 	t.Parallel()
 	r := newRig(bigChains()...)
-	res := r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	res := r.run(t, NewResolve, ResolveOptions{MaxNew: 300}, "AAPL")
 	if r.opts.puts != 300 || len(r.brk.asked) != 300 {
 		t.Fatalf("resolved %d, asked %d, want 300", r.opts.puts, len(r.brk.asked))
 	}
