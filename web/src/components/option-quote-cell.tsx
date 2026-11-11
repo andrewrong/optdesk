@@ -11,13 +11,8 @@ const SOURCE_WORD = {
 } as const
 
 export function OptionQuoteCell({ quote }: { quote: Quote }) {
-  const stale = quote.stale
   return (
-    <span
-      className={cn('text-xs text-muted-foreground', stale && 'opacity-50')}
-      data-quote
-      {...(stale ? { 'data-quote-stale': '' } : {})}
-    >
+    <span className="text-xs text-muted-foreground" data-quote>
       <span data-quote-time>{quote.as_of}</span>{' '}
       {quote.data_type ? (
         <span data-quote-type className={cn(quote.data_type !== 'live' && 'text-destructive')}>

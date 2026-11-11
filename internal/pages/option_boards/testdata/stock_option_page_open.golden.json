@@ -114,8 +114,7 @@
           "data_type": null,
           "source": "close_archive",
           "skew": false,
-          "outside_band": false,
-          "stale": true
+          "outside_band": false
         }
       },
       {
@@ -137,8 +136,7 @@
           "data_type": "frozen",
           "source": "refresh",
           "skew": true,
-          "outside_band": false,
-          "stale": false
+          "outside_band": false
         }
       },
       {
@@ -160,8 +158,7 @@
           "data_type": null,
           "source": "close_archive",
           "skew": false,
-          "outside_band": false,
-          "stale": true
+          "outside_band": false
         }
       }
     ],
@@ -271,8 +268,7 @@
           "data_type": null,
           "source": "close_archive",
           "skew": false,
-          "outside_band": false,
-          "stale": true
+          "outside_band": false
         }
       },
       {
@@ -296,8 +292,7 @@
           "data_type": "frozen",
           "source": "refresh",
           "skew": true,
-          "outside_band": false,
-          "stale": false
+          "outside_band": false
         }
       },
       {
@@ -321,8 +316,7 @@
           "data_type": null,
           "source": "close_archive",
           "skew": false,
-          "outside_band": false,
-          "stale": true
+          "outside_band": false
         }
       }
     ],

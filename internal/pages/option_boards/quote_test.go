@@ -257,32 +257,3 @@ func TestOptionTableRowOfAnOpenQuoteShowsItsPrices(t *testing.T) {
 		t.Errorf("close bid_ask = %v", got)
 	}
 }
-
-// A quote is stale when it is older than 15 minutes at the build time: a fresh one, one of exactly 15 minutes and
-// one a second older, with a fixed build time; a close archive value is always stale.
-func TestQuoteStaleAtTheBuildTime(t *testing.T) {
-	t.Parallel()
-	now := time.Date(2026, 11, 10, 14, 45, 12, 0, time.UTC)
-	open := func(age time.Duration) contracts.OptionOpen {
-		return contracts.OptionOpen{InstrumentID: 1, Slot: "0945", Status: 1, MarketDataType: 1, EventTs: tp(now.Add(-age))}
-	}
-	cases := []struct {
-		name string
-		age  time.Duration
-		want bool
-	}{
-		{"fresh", time.Minute, false},
-		{"exactly 15 minutes", 15 * time.Minute, false},
-		{"a second older", 15*time.Minute + time.Second, true},
-	}
-	for _, c := range cases {
-		qs := quoteSource{opens: map[int]contracts.OptionOpen{1: open(c.age)}, zone: testZone, now: now}
-		if got := qs.of(1).Stale; got != c.want {
-			t.Errorf("%s: Stale = %v, want %v", c.name, got, c.want)
-		}
-	}
-	qs := quoteSource{opens: map[int]contracts.OptionOpen{}, day: "2026-11-10", zone: testZone, now: now}
-	if !qs.of(2).Stale || !qs.chainQuote().Stale {
-		t.Error("a close archive quote is not stale")
-	}
-}

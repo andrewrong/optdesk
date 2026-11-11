@@ -2,7 +2,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, it } from 'vitest'
-import { OptionQuoteCell, OptionQuoteList } from '@/components/option-quote-cell'
+import { OptionQuoteCell } from '@/components/option-quote-cell'
 import { OptionRefresh } from '@/components/option-refresh'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -57,7 +57,7 @@ it('renders nothing without a refresh object (a v1 payload)', async () => {
 it('copies time, data type and source of the quote', async () => {
   await show(
     <OptionQuoteCell
-      quote={{ as_of: '09:45:12', data_type: 'delayed', source: 'refresh', skew: false, outside_band: false, stale: false } as never}
+      quote={{ as_of: '09:45:12', data_type: 'delayed', source: 'refresh', skew: false, outside_band: false } as never}
     />,
   )
   expect(host.querySelector('[data-quote-time]')?.textContent).toBe('09:45:12')
@@ -87,25 +87,4 @@ it('shows a data type other than live in red words and a live one plainly', asyn
   const types = host.querySelectorAll('[data-quote-type]')
   expect(types[0]?.className).toContain('text-destructive')
   expect(types[1]?.className).not.toContain('text-destructive')
-})
-
-const quoteOf = (stale: boolean) =>
-  ({ as_of: '09:45:12', data_type: 'live', source: 'open_pull', skew: false, outside_band: false, stale }) as never
-
-it('greys a quote the page marks stale and leaves a fresh one plain', async () => {
-  await show(
-    <>
-      <OptionQuoteCell quote={quoteOf(false)} />
-      <OptionQuoteCell quote={quoteOf(true)} />
-    </>,
-  )
-  const cells = [...host.querySelectorAll('[data-quote]')]
-  expect(cells.map((cell) => cell.hasAttribute('data-quote-stale'))).toEqual([false, true])
-  expect(cells[1]?.className).toContain('opacity-50')
-  expect(cells[0]?.className).not.toContain('opacity-50')
-})
-
-it('greys a stale quote on the stock page list', async () => {
-  await show(<OptionQuoteList items={[{ id: '0', quote: quoteOf(true) }]} />)
-  expect(host.querySelector('[data-quote-stale]')).not.toBeNull()
 })

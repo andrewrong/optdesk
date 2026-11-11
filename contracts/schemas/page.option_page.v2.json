@@ -511,11 +511,6 @@
           ],
           "title": "Source",
           "type": "string"
-        },
-        "stale": {
-          "description": "True when the quote is older than 15 minutes at the build time (generated_at); a close archive value is always stale. Derived by the builder; the web only renders it.",
-          "title": "Stale",
-          "type": "boolean"
         }
       },
       "required": [
@@ -523,8 +518,7 @@
         "data_type",
         "source",
         "skew",
-        "outside_band",
-        "stale"
+        "outside_band"
       ],
       "title": "Quote",
       "type": "object"
