@@ -1,9 +1,9 @@
-# UI English: every user-visible text of the pages and the site is English first
+# UI English: every user-visible text of the pages and the site is English
 
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-11
-Revision: 2
+Revision: 3
 
 Source: owner decision 2026-11-11, ask optdesk-2529, the owner's words "英文为主吧" (the user interface is English-first); window decisions the same day: a bilingual text keeps only its English half, weekdays are `Sun`..`Sat`, a missing cell is `n/a`. Read on origin/main (12e7241b): `AGENTS.md`, `docs/design/modules.md`, `docs/contracts/00-protocol.md`, `internal/pages/**`, `internal/compute/pagefig/**`, `cmd/ot/**`, `web/src/**`, `web/fixtures/**`, `web/test/**`, `contracts/schemas/**`, `contracts/fixtures/**`, `internal/contracts/**`.
 
@@ -48,7 +48,7 @@ Where a text lives:
 
 ## Decisions
 
-1. English first: every text a user reads in a page payload, a figure label, a site title, a web component, an error or empty state and the fallback notice of `web/index.html` is English. A bilingual text keeps only the English half (`Sample data, not live data`, `page did not load, do not act`). No language switch, no locale files. A text stays where it lives (a `strings.go`, an inline literal, a component); only its language changes.
+1. English: every text a user reads in a page payload, a figure label, a site title, a web component, an error or empty state and the fallback notice of `web/index.html` is English. A bilingual text keeps only the English half (`Sample data, not live data`, `page did not load, do not act`). No language switch, no locale files. A text stays where it lives (a `strings.go`, an inline literal, a component); only its language changes.
 2. Tone: short, plain, sentence case, no full stop on a label, a full stop on a sentence; an empty state is `<Subject>: <state>` ("Implied volatility: no data yet"), a gap sentence says what is missing and why ("no data: not stored yet"). ASCII punctuation only (`,` `:` `;` `.`); the Chinese `，` `：` `；` `。` `、` and full-width parentheses are not used in code that builds a text.
 3. Glossary, one English word per term, used by every issue. A term not listed is translated plainly and added to the table in the pull request description; a reviewer compares the two tables.
 
@@ -80,9 +80,11 @@ The table is built from the most frequent Chinese words of the source files (`gi
 4. Number, date and time formats are unchanged (`%d`, `+$310`, `2026-06-29`, ET and JST stamps). Only a weekday name and a text around a number change (`近 7 天` becomes `last 7 days`).
 5. Data values stay as the source gives them. On main no file these issues own holds such a value: the Japanese filing names (`第1四半期`) are in `internal/sources/jquants/testdata/earnings_date.json`, which no issue edits. A fixture or a test that carries a company name or a record is synthetic and becomes English.
 6. Schemas are not edited (Method). The builders emit English into free text; the three frozen value sets that stay Chinese (market_weather v1 labels, positions_page v1 and v2 enums, the `default` of report_page) are in Left out with the reason and the way they are skipped by a grep.
-7. Designs that prescribe Chinese texts are superseded by this file for text only: every exact Chinese string in `docs/design/*.md` reads as its English form by decision 3; their structure, fields and rules stay in force. The old files are not edited (`docs/design` is owner-only).
+7. Designs that prescribe Chinese texts are superseded by this file for text only: every exact Chinese string in `docs/design/*.md` reads as its English form by decision 3; their structure, fields and rules stay in force. The old files are not edited (`docs/design` is owner-only). An issue cut from an older design takes its texts in English, and its design-match item is judged against this design for text.
 8. A text and the golden files, fixtures and tests that pin it change in the same issue; the worker regenerates the golden files (`-update` or `UPDATE_GOLDEN=1`) and commits them. An issue that changes a text without its pinned files is not done. The glossary guard of each issue (acceptance) names the glossary words that must be in the regenerated golden files, so a golden file is read, not only blessed.
 9. No new test sleeps, no shared state: only expected strings change.
+10. No persisted row holds Chinese text produced by our code: `git grep -lP '[\x{4e00}-\x{9fff}]' origin/main -- internal/store internal/jobs migrations ':!*_test.go'` prints only `internal/jobs/optionledger/testdata/attrs_hash.json` (a test fixture, a hash input that stays, see Left out), so no migration and no backfill is needed.
+11. Each issue's counts are taken again when it is cut, because main moves (PR 1517 merged web texts; PRs 1513 and 1503 are open on pages); issue 8 is cut only when no other web pull request is open.
 
 ## Modules
 
@@ -179,31 +181,34 @@ Checked by CI: `go test ./internal/pages/... -count=1`, the `report_page` schema
 ### 7 ui-english-ot
 
 Module: ot. Size: S.
-Files: `cmd/ot/home_site.go`, `cmd/ot/site_positions.go`, `cmd/ot/wire.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/stock_option_site_test.go`, `cmd/ot/testdata/macro_page_demo.golden.json`
+Files: `cmd/ot/home_site.go`, `cmd/ot/site_positions.go`, `cmd/ot/wire.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/stock_option_site_test.go`, `cmd/ot/testdata/macro_page_demo.golden.json`, `cmd/ot/english_test.go` (new)
 Order: after 2 to 6 (the macro golden file is a page builder output).
 Design: docs/design/ui-english.md#Decisions
-Goal: the site titles, the unknown-account text, the demo series name and the macro demo golden file are English.
+Goal: the site titles, the unknown-account text, the demo series name and the macro demo golden file are English; a standing Go test keeps the Go trees English after the last Go issue.
+Standing guard: modules.md gives `internal/pages` to pages and `internal/compute` to compute, so neither row owns the other trees; the ot row owns `cmd/**`, so the guard is `cmd/ot/english_test.go` (one issue, one module). It walks the non-test `.go` files of `internal/pages`, `internal/compute/pagefig` and `cmd/ot` from the repository root (`t.Parallel()`, read-only, no temporary file) and fails on any character of `[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]` that is not in `allowedCJK`, a list declared in that file. The list is empty today: the frozen values of Left out (market_weather v1, positions_page v1 and v2, the report_page default) live in schemas and web types, none in these Go trees; a frozen value that a Go file must hold is added to `allowedCJK` with a comment naming its line in Left out.
 Acceptance:
 1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- cmd` prints nothing.
 2. Glossary guard: `git grep -h -cF 'Title: "Today"' -- cmd/ot/home_site.go` prints 1; `git grep -o 'Macro\|Ease' -- cmd/ot/testdata/macro_page_demo.golden.json | wc -l` prints at least 2 (宏观 and 松紧度 of the regenerated file); `git grep -nP '"(Home overview|Unknown acct)"' -- cmd` prints nothing.
-3. `git diff --name-only origin/main...HEAD | grep -vc '^cmd/ot/\(home_site\|site_positions\|wire\|site_positions_test\|stock_option_site_test\)\.go$\|^cmd/ot/testdata/macro_page_demo\.golden\.json$'` prints 0 (design docs/design/ui-english.md).
-Checked by CI: `go test ./cmd/... -count=1`.
+3. `git diff --name-only origin/main...HEAD | grep -vc '^cmd/ot/\(home_site\|site_positions\|wire\|site_positions_test\|stock_option_site_test\)\.go$\|^cmd/ot/english_test\.go$\|^cmd/ot/testdata/macro_page_demo\.golden\.json$'` prints 0 (design docs/design/ui-english.md).
+4. `git grep -c 'allowedCJK' -- cmd/ot/english_test.go` prints at least 2, and `git grep -h -cF 'internal/compute/pagefig' -- cmd/ot/english_test.go` prints at least 1 (the file exists and names the allow-list and the trees).
+Checked by CI: `go test ./cmd/... -count=1`, which runs the guard.
 
 ### 8 ui-english-web
 
 Module: web. Size: L (one issue, so `tsc`, `vitest` and the build are green at every merge: the sources, the tests and the fixtures that pin them change together).
-Files: `web/src/components/**`, `web/src/pages/**`, `web/src/shell/**`, `web/index.html`, `web/test/**`, `web/fixtures/**`
+Files: `web/src/components/**`, `web/src/pages/**`, `web/src/shell/**`, `web/index.html`, `web/test/**`, `web/fixtures/**` (the guard is `web/test/english.test.ts`, new, inside `web/test/**`)
 Order: first, with 1 and 2 (it reads no Go output; the fixtures are synthetic).
 Design: docs/design/ui-english.md#Decisions
-Goal: every menu label, card title, table header, empty state and notice of the web front end, the fallback of `web/index.html`, and the tests and fixtures that pin them, are English. `web/src/types/**` and `web/src/generated/**` are not edited (Left out).
+Goal: every menu label, card title, table header, empty state and notice of the web front end, the fallback of `web/index.html`, and the tests and fixtures that pin them, are English. `web/src/types/**` and `web/src/generated/**` are not edited (Left out). A standing vitest, `web/test/english.test.ts`, reads every file of `web/src` (not `web/src/generated`, not `web/src/types`) and `web/index.html` and fails on any character of the same class that is not inside a quoted value of `allowedCJK`, a list declared in that file holding the four `market_weather.v1` values below (`我`, `配偶`, `家庭` stay in the one positions test, which the guard does not read).
 Note: the only exception of the greps below is a line holding, as a whole quoted value, one of the four published `market_weather.v1` values `收盘`, `盘中试算`, `盘中`, `盘中·延迟` (the negative look-ahead of grep 1).
 Acceptance:
 1. `git grep -nP '^(?!.*["\x27](收盘|盘中试算|盘中|盘中·延迟)["\x27]).*[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- web/src/components web/src/pages web/src/shell web/index.html web/test web/fixtures ':!*.md' ':!web/test/pages/positions/PositionsPage.test.tsx'` prints nothing.
 2. `git grep -nP '^(?!.*["\x27](我|配偶|家庭)["\x27]).*[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- web/test/pages/positions/PositionsPage.test.tsx` prints nothing (the one test file that may name the published `positions_page` v1 and v2 enum values `我`, `配偶`, `家庭`; if the worker needs none, the grep still prints nothing).
 3. Glossary guard: `git grep -h -cP "label: '(Home|Macro|Household|Positions|Risk|Options|Option data|Option candidates|Advice|Settings|Structures|Result|Notices|Tracking)'" -- web/src/shell/TopNav.tsx` prints 14; `git grep -h -c 'Sample data, not live data' -- web/src/shell/SampleBanner.tsx` prints 1; `git grep -h -c 'page did not load, do not act' -- web/index.html` prints 2; `git grep -h -c '"Household"' -- web/fixtures/household-page/ok.json` prints 1.
 4. `git diff --name-only origin/main...HEAD | grep -vc '^web/\(src/\(components\|pages\|shell\)/\|index\.html$\|test/\|fixtures/\)'` prints 0 (design docs/design/ui-english.md).
-5. `git diff --name-only --diff-filter=AD origin/main...HEAD | wc -l` prints 0 (no file is added or removed, so the fixture manifest stays valid).
-Checked by CI: `tsc`, `eslint`, `vitest` and the web build.
+5. `git diff --name-only --diff-filter=D origin/main...HEAD | wc -l` prints 0 and `git diff --name-only --diff-filter=A origin/main...HEAD | grep -vc '^web/test/english\.test\.ts$'` prints 0 (no fixture is added or removed, so the fixture manifest stays valid).
+6. `git grep -c 'allowedCJK' -- web/test/english.test.ts` prints at least 2 (the file exists and names the allow-list).
+Checked by CI: `tsc`, `eslint`, `vitest` (which runs the guard) and the web build.
 
 ## Checked by CI
 
@@ -218,9 +223,9 @@ Checked by CI: `tsc`, `eslint`, `vitest` and the web build.
 - `web/src/types/**` (hand-written types, 36 lines in 10 files, comments and the frozen values above) and `web/src/generated/**` (20 lines in 9 files, comments copied from schema descriptions): not edited; `web/src/generated` is the contracts row.
 - The other Chinese in `contracts/schemas` (about 55 lines) is `description` text, a comment of the schema.
 - Data values: `internal/sources/jquants/testdata/earnings_date.json` (Japanese filing names), `internal/jobs/optionledger/testdata/attrs_hash.json` (`naïve 期权 put`, a hash input that must not change).
-- Telegram and notify messages: none is Chinese on main; if one is added, English first applies by decision 1.
+- Telegram and notify messages: none is Chinese on main; if one is added, decision 1 applies.
 - Chinese in `docs/**`, `*.md`, ADRs and commit messages: unchanged; the old designs are superseded for text by decision 7, not edited.
-- A language switch or locale files: not wanted (English first, not English only); the inline texts are not moved into locale files, so a second language later repeats this change. The owner chose English first; no hedge is added.
+- Pages are English; data values from sources (company names and the like) stay as the source gives them; there is no language switch and no locale file, so a second language later repeats this change.
 - Changing a number, a date or a currency format.
 
 ## Adversarial
