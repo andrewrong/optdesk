@@ -79,7 +79,7 @@ func TestInputIsPlainValues(t *testing.T) {
 	if got.Day != buildDay || got.Alias != "main" || got.CaptureDay != "2026-11-09" || got.PrevDay != "2026-11-06" {
 		t.Errorf("input = %+v", got)
 	}
-	if !reflect.DeepEqual(got.PrevPositions, wantPos) || len(got.Positions) != 2 || got.Positions[0] != wantPos[0] {
+	if !reflect.DeepEqual(got.PrevPositions, wantPos) || len(got.Positions) != 2 || got.Positions[0] != wantPos[0] || got.Positions[1].SecType != "STK" {
 		t.Errorf("positions = %+v prev = %+v", got.Positions, got.PrevPositions)
 	}
 	if !reflect.DeepEqual(got.Earnings, []compute.NoticeEarnings{{Symbol: "ACME", Next: &next}}) {
