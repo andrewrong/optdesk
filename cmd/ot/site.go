@@ -275,7 +275,7 @@ func withPositionsRules(a *app, rd siteReaders) siteReaders {
 }
 
 // siteHandler serves the routes of the site: health (before any page route), "" (302 to home), the live routes macro, options/data and
-// options/data/<id>, the routes report, market and options/candidates and options/notices, the six sample routes (sample.go) and
+// options/data/<id>, the routes report, market and options/candidates and options/notices, the registered page routes and
 // assets/*, which assets answers. A live page is built per request;
 // an error answers 500 with a fixed text. Any other path is 404 and a method other than GET and HEAD is 405.
 func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, assets http.Handler) http.Handler {
@@ -330,12 +330,8 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		case strings.HasPrefix(path, "assets/") && len(path) > len("assets/"):
 			isAsset = true
 		default:
-			vm, ok := sampleVM(path)
-			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-			build = func(context.Context) ([]byte, error) { return vm, nil }
+			http.NotFound(w, r)
+			return
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
@@ -344,7 +340,7 @@ func sitePages(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandl
 		}
 		switch {
 		case path == "":
-			http.Redirect(w, r, "/"+sampleHome, http.StatusFound)
+			http.Redirect(w, r, "/"+siteHomeRoute, http.StatusFound)
 		case isAsset:
 			assets.ServeHTTP(w, r)
 		default:
