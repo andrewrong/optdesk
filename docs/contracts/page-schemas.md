@@ -38,6 +38,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.market_summary.v1 | 1 |
 | page.market_weather.v1 | 1 |
 | page.option_page.v1 | 1 |
+| page.option_page.v2 | 2 |
 | page.option_result_page.v1 | 1 |
 | page.options_summary.v1 | 1 |
 | page.positions_page.v1 | 1 |
@@ -48,6 +49,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.settings_page.v1 | 1 |
 | page.settings_page.v2 | 2 |
 | page.stock_option_page.v1 | 1 |
+| page.stock_option_page.v2 | 2 |
 | page.structure_detail.v1 | 1 |
 | page.structure_detail.v2 | 2 |
 | page.structure_detail.v3 | 3 |
@@ -120,3 +122,5 @@ Also `page.option_candidates_page.v1` (`schema_version` 1, title `OptionCandidat
 Also `page.option_notices_page.v1` (`schema_version` 1, title `OptionNoticesPage`), written for this repository by `docs/design/option-notices.md#interface`: the notices of each account alias. The page name is `option_notices_page`. It refs `common.v2.json` for `Id`, `Timestamp`, `RunStatus`, `SourceTime` and `StaleLabel`. Envelope as `market_page`; page fields `day` (ISO date) and `accounts` (`AliasBlock` of `alias`, `main`, `status` `ok|no_capture|stale`, `data_day` or null, `notices`, `cash_by_date` of `{day, currency, amount_text}`, `cushion_text` or null, `note` or null). A `NoticeRow` has `id` (`^notice-[A-Za-z0-9_-]{1,64}$`), `code` (`^[a-z_]{1,32}$`), `severity` (`info`, `warn`, `act`), `title`, `contract`, `expiry` or null, `facts` of `{label, text}` and `reasons`; `code` is a pattern, not an enum, so a new code needs no schema change. Checked by `internal/contracts/option_notices_page_v1_test.go`; its type is generated into `web/src/generated/option_notices_page.v1.ts` by `generate:types`. It is not in `carryover.sha256`; it has no producer, route or fixture yet.
 
 Also `page.option_tracking_page.v1` (`schema_version` 1, title `OptionTrackingPage`), written for this repository by `docs/design/option-tracking.md#interface`: per account the open short positions, the recent closes and the reconciliation checks of the ledger. The page name is `option_tracking_page`. It refs `common.v2.json` for `Id`, `Timestamp`, `RunStatus`, `Gap`, `SourceTime` and `StaleLabel`. Envelope as `market_page`; page fields `as_of`, `mark_note` and `accounts` (1 to 4 `Account` with `alias` (`^[a-z0-9_-]{1,16}$`), `open`, `recent` and `recon` `Table`s or null, and a `gap` that is non-null exactly when the three tables are null). Row ids start `pos-` in `open` and `recent`, `chk-` in `recon`. The `Table`, `Row` and `Cell` shapes are written out in this file, with no `$ref` to another page schema. Checked by `internal/contracts/option_tracking_page_v1_test.go`; its type is generated into `web/src/generated/option_tracking_page.v1.ts` by `generate:types`. It is not in `carryover.sha256`; it has no producer, route or fixture yet.
+
+Quote and refresh (`docs/design/option-open-pull.md#3`, Decisions 18 to 20): `page.option_page.v2` and `page.stock_option_page.v2` are `page.option_page.v1` and `page.stock_option_page.v1` with `schema_version` 2, additively. Every row that carries a price gains a required `quote` object (`Quote`: `as_of`, exchange-local `HH:MM:SS` or a date text for a close archive value; `data_type`, `live`, `frozen`, `delayed` or null for a close archive value; `source`, `open_pull`, `refresh` or `close_archive`; the booleans `skew` and `outside_band`): the chain `Row` of `option_page`, and `ContractLine` and `MatrixCell` of `stock_option_page`. Each page gains a required `refresh` object (`Refresh`: `enabled`, `symbols` (at most 8), `notice` (the reason in words when `enabled` is false, or null), `fresh_count`, `total_count`). The builder copies these fields and the web renders them; nothing is computed. The ids use `https://optdesk.invalid/schemas/page.<name>.v2.json`; the v1 files are unchanged. Types: `web/src/generated/{option_page.v2,stock_option_page.v2}.ts`. The v1 type files `web/src/types/option_page.v1.types.ts` and `web/src/types/stock_option_page.ts` are outside the paths of this change and unchanged.
