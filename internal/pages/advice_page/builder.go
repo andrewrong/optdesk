@@ -15,7 +15,7 @@ const (
 	dayLayout       = "2006-01-02"
 	timeLayout      = "2006-01-02T15:04:05-07:00"
 	sessionLookback = 14 // calendar days of session days to read
-	pageTitle       = "建议回顾"
+	pageTitle       = "Advice review"
 	textNotBuilt    = "no record of earlier advice is stored yet"
 )
 

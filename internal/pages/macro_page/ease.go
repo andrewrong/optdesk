@@ -61,7 +61,7 @@ type easeReading struct {
 	dataDay time.Time
 }
 
-var bandWords = map[string]string{"tighter": "偏紧", "steady": "中性", "looser": "偏松"}
+var bandWords = map[string]string{"tighter": "Tighter", "steady": "Steady", "looser": "Looser"}
 
 // readEase reads macro.ease for day; nil with no error means no usable reading. An error
 // of read is returned.
@@ -179,9 +179,9 @@ func easeFor(ctx context.Context, c Config, day time.Time) (*easeBlock, *easeRea
 			High: trackFigure(easeBandHigh, easeBandHigh+"%"),
 		},
 		Ticks:      []string{"0", "25", "50", "75", "100"},
-		WeekChange: gap{Reason: "no_data", Text: "较上周暂无数据"},
+		WeekChange: gap{Reason: "no_data", Text: "Week change: no data yet"},
 	}
-	weekText := "较上周暂无数据"
+	weekText := "Week change: no data yet"
 	if prev != nil {
 		num := roundHalfUp(new(big.Rat).Sub(cur.value, prev.value), 1)
 		text := signedText(num)
@@ -192,10 +192,10 @@ func easeFor(ctx context.Context, c Config, day time.Time) (*easeBlock, *easeRea
 			tone = "down"
 		}
 		b.WeekChange = easeFigure{Value: json.Number(num), Text: text, Unit: "index_points", Tone: tone}
-		weekText = "较上周 " + text
+		weekText = "Week change " + text
 	}
-	b.ReadingText = "当前 " + whole + "，" + word + "；固定刻度 0 到 100。"
-	b.AriaText = "松紧度 " + whole + "，" + word + "，" + weekText +
-		"；固定刻度 0 到 100，中性带 " + easeBandLow + " 到 " + easeBandHigh + "。"
+	b.ReadingText = "Now " + whole + ", " + word + "; fixed scale 0 to 100."
+	b.AriaText = "Ease " + whole + ", " + word + ", " + weekText +
+		"; fixed scale 0 to 100, steady band " + easeBandLow + " to " + easeBandHigh + "."
 	return b, cur, nil
 }

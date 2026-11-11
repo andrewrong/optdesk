@@ -37,8 +37,8 @@ func TestIvRvCellsAreNotBuilt(t *testing.T) {
 func TestWeatherSignedPercent(t *testing.T) {
 	t.Parallel()
 	for in, want := range map[string]string{
-		"0.031250": "与 200 日线相差 +3.12%", "0.031350": "与 200 日线相差 +3.14%",
-		"-0.031250": "与 200 日线相差 -3.12%", "-0.000040": "与 200 日线相差 0.00%",
+		"0.031250": "Gap to the 200-day average: +3.12%", "0.031350": "Gap to the 200-day average: +3.14%",
+		"-0.031250": "Gap to the 200-day average: -3.12%", "-0.000040": "Gap to the 200-day average: 0.00%",
 	} {
 		e := allOK()
 		e.readings[figSp500Vs200d] = []contracts.ReadingRecord{rec("2026-11-06", "ok", in, nil, "2026-11-06")}
@@ -46,13 +46,13 @@ func TestWeatherSignedPercent(t *testing.T) {
 		if got := at(t, m, "weather", "sentence"); got != want {
 			t.Errorf("%s: sentence = %v, want %s", in, got, want)
 		}
-		if at(t, m, "weather", "headline") != "标普 500 相对 200 日线的位置" {
+		if at(t, m, "weather", "headline") != "S&P 500 against its 200-day average" {
 			t.Errorf("headline = %v", at(t, m, "weather", "headline"))
 		}
 	}
 	e := allOK()
 	e.readings[figSp500Vs200d] = nil
-	if got := at(t, e.page(t), "weather", "sentence"); got != "天气暂无数据：还没有存储" {
+	if got := at(t, e.page(t), "weather", "sentence"); got != "Weather: no data yet, nothing stored" {
 		t.Errorf("no reading: sentence = %v", got)
 	}
 }

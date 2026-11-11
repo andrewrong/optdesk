@@ -27,21 +27,21 @@ const (
 	// maxIndicators is the maxItems of the indicators array in the schema.
 	maxIndicators = 20
 
-	title           = "宏观"
-	sentence        = "宏观指标来自已存储的序列；松紧度和事件暂无数据。"
-	sentenceEase    = "宏观指标来自已存储的序列；事件暂无数据。"
-	easeTitle       = "松紧度"
-	eventsTitle     = "本周与下周"
-	indicatorsTitle = "指标"
-	notesTitle      = "说明"
+	title           = "Macro"
+	sentence        = "Macro indicators come from stored series; ease and events: no data yet."
+	sentenceEase    = "Macro indicators come from stored series; events: no data yet."
+	easeTitle       = "Ease"
+	eventsTitle     = "This week and next"
+	indicatorsTitle = "Indicators"
+	notesTitle      = "Notes"
 )
 
 var (
 	idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 	notes = []string{
-		"日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",
-		"指标取自序列最新存储的一期；没有存储的标为暂缺。",
+		"Dates come from the FRED release calendar and central bank schedules; dates only, no release times.",
+		"Each indicator is the latest stored period of its series; a series with none stored shows n/a.",
 	}
 )
 
@@ -170,13 +170,13 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 		EventsTitle:     eventsTitle,
 		IndicatorsTitle: indicatorsTitle,
 		NotesTitle:      notesTitle,
-		Ease:            gap{Reason: "no_data", Text: "松紧度暂无数据"},
+		Ease:            gap{Reason: "no_data", Text: "Ease: no data yet"},
 		Events:          []struct{}{},
 		Indicators:      []indicatorRow{},
 		Notes:           notes,
 		Gaps: []gap{
-			{Reason: "no_data", Text: "松紧度暂无数据"},
-			{Reason: "no_data", Text: "事件日历暂无数据"},
+			{Reason: "no_data", Text: "Ease: no data yet"},
+			{Reason: "no_data", Text: "Event calendar: no data yet"},
 		},
 	}
 	if c.Read != nil {
@@ -208,9 +208,9 @@ func Build(ctx context.Context, r store.SeriesReader, c Config, day contracts.Da
 			}
 		}
 	}
-	base, text := d, "没有数据日"
+	base, text := d, "No data day"
 	if oldest != nil {
-		base, text = *oldest, "数据日 "+oldest.Format("01-02")
+		base, text = *oldest, "Data day "+oldest.Format("01-02")
 	}
 	vm.Stale = staleLabel{
 		DataTime:   midnight(base, c.Zone),
@@ -258,19 +258,19 @@ func row(ind Indicator, latest *contracts.SeriesPoint, d time.Time) indicatorRow
 	}
 	switch {
 	case latest == nil:
-		out.Latest = gap{Reason: "no_data", Text: "暂缺"}
-		out.Status, out.Label = "missing", "缺"
+		out.Latest = gap{Reason: "no_data", Text: "no data yet"}
+		out.Status, out.Label = "missing", "n/a"
 		return out
 	case string(latest.Unit) != "percent":
-		out.Latest = gap{Reason: "missing_input", Text: "单位未知"}
+		out.Latest = gap{Reason: "missing_input", Text: "unit unknown"}
 	default:
 		v := *latest.Value
 		out.Latest = figure{Value: v, Text: strconv.FormatFloat(v, 'f', -1, 64) + "%", Unit: "percent"}
 	}
 	if d.Sub(latest.ObservationDate.Time) > freshnessLimitDays*24*time.Hour {
-		out.Status, out.Label = "late", "迟到"
+		out.Status, out.Label = "late", "Late"
 	} else {
-		out.Status, out.Label = "good", "及时"
+		out.Status, out.Label = "good", "On time"
 	}
 	return out
 }
