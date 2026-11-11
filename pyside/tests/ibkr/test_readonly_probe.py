@@ -261,7 +261,7 @@ def test_gateway_not_read_only_is_a_stop_the_supervisor_cannot_catch() -> None:
     assert issubclass(GatewayNotReadOnly, SystemExit)
 
 
-@pytest.mark.parametrize("code", [10197, 1100])
+@pytest.mark.parametrize("code", [2110, 1100])
 def test_session_loss_codes_without_a_contract_mark_the_session_lost(
     code: int,
 ) -> None:
@@ -277,7 +277,20 @@ def test_session_loss_codes_without_a_contract_mark_the_session_lost(
     assert asyncio.run(run()) == (True, False)
 
 
-def test_open_items_end_with_a_connection_error_on_10197() -> None:
+def test_10197_keeps_the_session_up_for_the_quote_policy() -> None:
+    # issue 1477: a 10197 holds and probes the quotes; the socket stays up
+    async def run() -> bool:
+        clock = FakeClock()
+        ib = FakeIb(clock)
+        gateway = _gateway(clock, ib, _passes)
+        await gateway.open_session()
+        ib.errorEvent.emit(-1, 10197, "competing session", None)
+        return (await gateway.status()).connected
+
+    assert asyncio.run(run()) is True
+
+
+def test_open_items_end_with_a_connection_error_on_1100() -> None:
     async def run() -> None:
         clock = FakeClock()
         ib = FakeIb(clock)
@@ -293,7 +306,7 @@ def test_open_items_end_with_a_connection_error_on_10197() -> None:
             gateway.chains(sec_type="STK", symbol="AAA", con_id=1)
         )
         await asyncio.sleep(0)
-        ib.errorEvent.emit(-1, 10197, "competing session", None)
+        ib.errorEvent.emit(-1, 1100, "connectivity lost", None)
         await task
 
     with pytest.raises(ConnectionError):

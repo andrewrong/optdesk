@@ -19,6 +19,7 @@ COLLECT_WORDS = ("market_data", "account_summary", "positions", "executions")
 DEFAULT_CLIENT_ID = 33
 DEFAULT_MARKET_DATA_TYPE = 2
 FALLBACK_NAME = "default"
+RESERVED_ID_MESSAGE = "client_id 0 is reserved for the read-only probe"
 
 _NAME = re.compile(r"[a-z][a-z0-9-]{0,15}")
 _ALIAS = re.compile(r"[a-z][a-z0-9_-]{0,31}")
@@ -72,6 +73,12 @@ def positive_int(env: Mapping[str, str], name: str, default: int | None) -> int:
     return value
 
 
+def _env_client_id(env: Mapping[str, str]) -> int:
+    if env.get("OT_IBKR_CLIENT_ID", "").strip() == "0":
+        raise ConfigError(f"OT_IBKR_CLIENT_ID: {RESERVED_ID_MESSAGE}")
+    return positive_int(env, "OT_IBKR_CLIENT_ID", DEFAULT_CLIENT_ID)
+
+
 def from_env(env: Mapping[str, str]) -> tuple[GatewaySpec, ...]:
     """Return the one gateway of the single-gateway keys: named default, required."""
     return (
@@ -79,7 +86,7 @@ def from_env(env: Mapping[str, str]) -> tuple[GatewaySpec, ...]:
             name=FALLBACK_NAME,
             host=env.get("OT_IBKR_GATEWAY_HOST") or "127.0.0.1",
             port=positive_int(env, "OT_IBKR_GATEWAY_PORT", None),
-            client_id=positive_int(env, "OT_IBKR_CLIENT_ID", DEFAULT_CLIENT_ID),
+            client_id=_env_client_id(env),
             market_data_type=positive_int(
                 env, "OT_IBKR_MARKET_DATA_TYPE", DEFAULT_MARKET_DATA_TYPE
             ),
@@ -107,6 +114,14 @@ def _text(table: Mapping[str, Any], key: str, where: str) -> str:
     value = table[key]
     if not isinstance(value, str):
         raise ConfigError(f"{where}: {key} must be text")
+    return value
+
+
+def _client_id(table: Mapping[str, Any], where: str) -> int:
+    """Read client_id; 0 passes on to _check, which names it as the probe's."""
+    value = table.get("client_id", DEFAULT_CLIENT_ID)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ConfigError(f"{where}: client_id must be a whole number above zero")
     return value
 
 
@@ -142,7 +157,7 @@ def _entry(table: object, position: int) -> GatewaySpec:
         account=account,
         collect=tuple(collect),
         host=host,
-        client_id=_whole(table, "client_id", where, DEFAULT_CLIENT_ID),
+        client_id=_client_id(table, where),
         market_data_type=_whole(
             table, "market_data_type", where, DEFAULT_MARKET_DATA_TYPE
         ),
@@ -161,6 +176,8 @@ def _check(specs: tuple[GatewaySpec, ...], default: str | None) -> str:
         if spec.name in names:
             raise ConfigError(f"gateway {position}: name is a duplicate")
         names.add(spec.name)
+        if spec.client_id <= 0:  # client id 0 belongs to the read-only probe
+            raise ConfigError(f"gateway {position}: client_id: {RESERVED_ID_MESSAGE}")
         where = (spec.host, spec.port, spec.client_id)
         if where in seen:
             raise ConfigError(
