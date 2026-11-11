@@ -308,3 +308,51 @@ func TestOptionOpenJPResolveDialsOwnClientWithOneInFlight(t *testing.T) {
 		t.Fatalf("closed %d clients, want 1", h.closed)
 	}
 }
+
+// writerEod stands in for the writer role of option_eod: every read fails and is counted.
+type writerEod struct {
+	store.OptionEodStore
+	mu    sync.Mutex
+	reads int
+}
+
+func (w *writerEod) OptionEod(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.OptionEod, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.reads++
+	return nil, errors.New("permission denied for schema rd")
+}
+
+// readerEod stands in for the reader role of option_eod: it holds rows.
+type readerEod struct{ rows []contracts.OptionEod }
+
+func (r readerEod) OptionEod(context.Context, int64, contracts.Day, contracts.Day) ([]contracts.OptionEod, error) {
+	return r.rows, nil
+}
+
+func TestOpenStoredReadsEodThroughTheComputeReaderNotTheWriter(t *testing.T) {
+	t.Parallel()
+	w := &writerEod{}
+	want := []contracts.OptionEod{{InstrumentID: 7}}
+	jc := &jobCtx{f: &jobFactory{eod: w}}
+	jc.f.compute.OptionEod = readerEod{rows: want}
+	s := openStored(jc, nil)
+	if s.Eod == nil {
+		t.Fatal("Eod is nil, want the compute reader")
+	}
+	got, err := s.Eod.OptionEod(context.Background(), 1, "2026-11-01", "2026-11-09")
+	if err != nil || len(got) != 1 || got[0].InstrumentID != 7 {
+		t.Fatalf("rows = %v, err = %v, want the rows of the reader", got, err)
+	}
+	if w.reads != 0 {
+		t.Fatalf("writer read %d times, want 0", w.reads)
+	}
+}
+
+func TestOpenStoredLeavesEodNilWithoutComputeReader(t *testing.T) {
+	t.Parallel()
+	jc := &jobCtx{f: &jobFactory{eod: &writerEod{}}}
+	if s := openStored(jc, nil); s.Eod != nil {
+		t.Fatalf("Eod = %v, want nil", s.Eod)
+	}
+}
