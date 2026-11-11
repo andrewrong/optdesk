@@ -8,8 +8,10 @@ const (
 	figRvxPctile   = "market.rvx_pctile_3y"
 	figSp500Vs200d = "market.sp500_vs_200d"
 	figVixTerm     = "market.vix_term_ratio"
+	figIVIbkr      = "market.iv_ibkr"
 
-	kindMarket = "market"
+	kindMarket     = "market"
+	kindUnderlying = "underlying"
 
 	seriesVIX   = "VIXCLS"
 	seriesVXN   = "VXNCLS"

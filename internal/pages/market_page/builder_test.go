@@ -74,6 +74,7 @@ func (f fakeSeries) SeriesPoints(_ context.Context, id string, _, _ contracts.Da
 type env struct {
 	day      string
 	readings map[string][]contracts.ReadingRecord
+	iv       map[string][]contracts.ReadingRecord // market.iv_ibkr rows by subject
 	series   map[string][]contracts.SeriesPoint
 	rerr     error
 	serr     error
@@ -88,8 +89,12 @@ func (e env) config(t *testing.T) Config {
 	}
 	return Config{RunID: "run1", BuildID: "b1", Scope: "s1", Zone: zone,
 		Readings: func(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
-			if kind != "market" {
-				t.Errorf("subject kind %q", kind)
+			wantKind := "market"
+			if name == figIVIbkr {
+				wantKind = "underlying"
+			}
+			if kind != wantKind {
+				t.Errorf("%s: subject kind %q, want %q", name, kind, wantKind)
 			}
 			day := e.day
 			if day == "" {
@@ -97,6 +102,9 @@ func (e env) config(t *testing.T) Config {
 			}
 			if string(to) != day || string(from) != date(day).AddDate(0, 0, -5).Format(dayLayout) {
 				t.Errorf("window %s..%s for day %s", from, to, day)
+			}
+			if name == figIVIbkr {
+				return e.iv[subject], e.rerr
 			}
 			return e.readings[name], e.rerr
 		}}
@@ -167,6 +175,9 @@ func allOK() env {
 		readings: map[string][]contracts.ReadingRecord{
 			figVixPctile: ok("0.685000"), figVxnPctile: ok("0.125000"), figRvxPctile: ok("0.135000"),
 			figSp500Vs200d: ok("0.031250"), figVixTerm: ok("0.905000"),
+		},
+		iv: map[string][]contracts.ReadingRecord{
+			"SPX": ok("0.215000"), "NDX": ok("0.2349"), "RUT": ok("0.1999"),
 		},
 		series: map[string][]contracts.SeriesPoint{
 			seriesVIX: {pt("2026-11-06", 21.5), pt("2026-10-30", 19.25)},
@@ -432,7 +443,7 @@ func TestRunStatusIgnoresPermanentGaps(t *testing.T) {
 	if m["run_status"] != "ok" {
 		t.Errorf("all ok: run_status = %v", m["run_status"])
 	}
-	for _, path := range [][]any{{"breadth"}, {"weather", "chart"}, {"indices", "rows", 0, "iv"}, {"indices", "rows", 3, "rank_3y"}} {
+	for _, path := range [][]any{{"breadth"}, {"weather", "chart"}, {"indices", "rows", 3, "iv"}, {"indices", "rows", 3, "rank_3y"}} {
 		if at(t, m, append(path, "kind")...) != "gap" {
 			t.Errorf("%v is not a gap", path)
 		}
@@ -494,8 +505,8 @@ func TestEnvelopeGapsEqualBlockGaps(t *testing.T) {
 		m := e.page(t)
 		want := pageGaps(t, m)
 		got := at(t, m, "gaps").([]any)
-		if len(got) != len(want) || len(got) < 15 {
-			t.Fatalf("%s: %d gaps, want %d (at least 15)", name, len(got), len(want))
+		if len(got) != len(want) || len(got) < 12 {
+			t.Fatalf("%s: %d gaps, want %d (at least 12)", name, len(got), len(want))
 		}
 		for i := range want {
 			if fmt.Sprint(got[i]) != fmt.Sprint(want[i]) {
@@ -511,5 +522,61 @@ func TestEnvelopeGapsEqualBlockGaps(t *testing.T) {
 		if !kinds[k] {
 			t.Errorf("mixed page has no gap of reason %s", k)
 		}
+	}
+}
+
+func ivCellOf(t *testing.T, m map[string]any, row int) map[string]any {
+	t.Helper()
+	return at(t, m, "indices", "rows", row, "iv").(map[string]any)
+}
+
+func TestIvShowsStoredIbkrValue(t *testing.T) {
+	t.Parallel()
+	m := allOK().page(t)
+	for i, w := range []struct{ text, value string }{{"21.5", "21.5"}, {"23.5", "23.5"}, {"20.0", "20.0"}} {
+		c := ivCellOf(t, m, i)
+		if c["kind"] != "value" || c["text"] != w.text || c["unit"] != "vol_points" || fmt.Sprint(c["value"]) != w.value {
+			t.Errorf("row %d iv = %v", i, c)
+		}
+	}
+	if m["run_status"] != "ok" {
+		t.Errorf("run_status = %v", m["run_status"])
+	}
+}
+
+func TestIvGapsNameTheIndex(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	delete(e.iv, "NDX")
+	e.iv["RUT"] = []contracts.ReadingRecord{rec("2026-11-06", "missing_input", "", intp(1), "")}
+	m := e.page(t)
+	if c := ivCellOf(t, m, 1); c["kind"] != "gap" || c["text"] != "NDX implied volatility: no data, not stored yet" {
+		t.Errorf("NDX iv = %v", c)
+	}
+	if c := ivCellOf(t, m, 2); c["kind"] != "gap" || c["text"] != "RUT implied volatility: no data, inputs incomplete" {
+		t.Errorf("RUT iv = %v", c)
+	}
+	for _, v := range []string{"0", "-0.1"} {
+		e := allOK()
+		e.iv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", v, nil, "")}
+		if c := ivCellOf(t, e.page(t), 0); c["kind"] != "gap" || c["text"] != "SPX implied volatility: no data, inputs incomplete" {
+			t.Errorf("value %s: iv = %v", v, c)
+		}
+	}
+}
+
+func TestN225IvAndUniqueGapTexts(t *testing.T) {
+	t.Parallel()
+	m := allOK().page(t)
+	if c := ivCellOf(t, m, 3); c["text"] != "N225 implied volatility: not built yet" {
+		t.Errorf("N225 iv = %v", c)
+	}
+	seen := map[string]bool{}
+	for _, g := range at(t, m, "gaps").([]any) {
+		txt := g.(map[string]any)["text"].(string)
+		if seen[txt] {
+			t.Errorf("gap text twice: %q", txt)
+		}
+		seen[txt] = true
 	}
 }
