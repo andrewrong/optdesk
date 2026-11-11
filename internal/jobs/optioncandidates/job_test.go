@@ -415,3 +415,21 @@ func TestSettingsFuncCalledOnceEvenWithNoRows(t *testing.T) {
 		t.Fatalf("%d calls for a run with no rows", len(calls))
 	}
 }
+
+func TestIssuerlessEntrySkippedByName(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	etf := jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "SPY", SecType: "STK"}}
+	j := build(t, f.stores(), f, usEntry(), etf)
+	keys, _, err := j.Plan(context.Background(), runDay)
+	if err != nil || len(keys) != 1 || keys[0].SubjectKey != "cik:0000000001" {
+		t.Fatalf("keys %v, %v", keys, err)
+	}
+	if res := j.Run(context.Background(), runDay, nil); res.Err != nil || res.Returned != 1 {
+		t.Fatalf("result %+v", res)
+	}
+	sk := j.(interface{ Skipped() []string }).Skipped()
+	if len(sk) != 1 || sk[0] != "entry SPY: no issuer, no candidates" {
+		t.Fatalf("skipped %v", sk)
+	}
+}

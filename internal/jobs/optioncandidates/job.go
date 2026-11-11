@@ -83,7 +83,10 @@ func New(st CandidateStores, rule compute.OptionCandidates, entries []jobs.Watch
 	}
 	seen := map[string]bool{}
 	for _, e := range entries {
-		if e.Issuer == "" || seen[e.Issuer] {
+		if e.Issuer == "" {
+			continue // skipped by name in split
+		}
+		if seen[e.Issuer] {
 			return nil, errors.New("optioncandidates: an entry needs a unique issuer")
 		}
 		seen[e.Issuer] = true
@@ -117,6 +120,8 @@ func (j *job) Skipped() []string {
 func (j *job) split() (us []jobs.WatchEntry, jp []string) {
 	for _, e := range j.entries {
 		switch {
+		case e.Issuer == "":
+			jp = append(jp, "entry "+e.Contract.Symbol+": no issuer, no candidates")
 		case e.Market == "JP":
 			jp = append(jp, "JP entry "+e.Issuer+": no option chain yet, no row")
 		case e.Market == "US" && e.Contract.SecType == "STK":
