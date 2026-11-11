@@ -54,7 +54,7 @@ func pageV2Leaves(t *testing.T, s *jsonschema.Schema, m map[string]any) []leaf {
 }
 
 func pageV2Gap() map[string]any {
-	return map[string]any{"reason": "no_data", "text": "尚无数据"}
+	return map[string]any{"reason": "no_data", "text": "no data yet"}
 }
 
 func trackingFirstVersion(inst map[string]any) map[string]any {

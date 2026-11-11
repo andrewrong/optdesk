@@ -173,8 +173,8 @@ func checkJPYShape(t *testing.T, page any) {
 	if tone := u["earnings_tone"]; tone != "in_term" {
 		t.Errorf("earnings_tone = %v, want in_term", tone)
 	}
-	if vl, _ := u["vol_line"].(string); !strings.Contains(vl, "HV30 缺") {
-		t.Errorf("vol_line = %q, want it to contain HV30 缺", vl)
+	if vl, _ := u["vol_line"].(string); !strings.Contains(vl, "HV30 n/a") {
+		t.Errorf("vol_line = %q, want it to contain HV30 n/a", vl)
 	}
 	if et, _ := u["earnings_text"].(string); et == "" {
 		t.Error("earnings_text is empty")

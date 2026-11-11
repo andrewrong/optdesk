@@ -25,7 +25,7 @@ func settingsForm() map[string]any {
 
 func settingsParam(kind string) map[string]any {
 	return map[string]any{
-		"key": "dte_min", "label": "最短到期天数", "unit": "天", "kind": kind,
+		"key": "dte_min", "label": "Min days to expiry", "unit": "days", "kind": kind,
 		"value": "", "default": "7", "min": "1", "max": "60",
 	}
 }
@@ -42,18 +42,18 @@ func TestSettingsPageV2FullValid(t *testing.T) {
 	inst := settingsMinimal(t)
 	inst["form"] = settingsForm()
 	inst["confirm"] = map[string]any{
-		"rows": []any{map[string]any{"label": "最短到期天数", "old": "7", "new": "10"}},
+		"rows": []any{map[string]any{"label": "Min days to expiry", "old": "7", "new": "10"}},
 		"form": settingsForm(),
 	}
 	inst["history"] = []any{
-		map[string]any{"at": "2026-01-02T03:04:05+08:00", "kind": "param", "name": "最短到期天数", "value": "10",
+		map[string]any{"at": "2026-01-02T03:04:05+08:00", "kind": "param", "name": "Min days to expiry", "value": "10",
 			"key": "dte_min", "instrument_id": nil, "excluded": nil},
 		map[string]any{"at": "2026-01-02T03:04:05+08:00", "kind": "exclusion", "name": "AMD", "value": "",
 			"key": nil, "instrument_id": 5, "excluded": true},
 	}
 	inst["params"] = []any{settingsParam("int"), settingsParam("decimal")}
 	inst["rows"] = []any{map[string]any{"instrument_id": 5, "symbol": "AMD", "excluded": true}}
-	inst["notice"] = map[string]any{"kind": "saved", "text": "已保存"}
+	inst["notice"] = map[string]any{"kind": "saved", "text": "Saved"}
 	if !pageV1Valid(t, settingsPageV2, inst) {
 		t.Fatal("full instance is invalid")
 	}
