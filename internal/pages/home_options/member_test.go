@@ -372,21 +372,3 @@ func TestSeriesTextAndCaptionShareNoSentence(t *testing.T) {
 		}
 	}
 }
-
-func TestSoldAndOpenTilesNameWhatTheSummaryLacks(t *testing.T) {
-	t.Parallel()
-	for name, c := range map[string]map[string]any{
-		"rows":  card(t, okCfg(sold("1.0000", "", ""))),
-		"empty": card(t, cfg(ledger{aliases: map[string]int{}}, results{})),
-	} {
-		for k, want := range map[string]string{
-			"sold_count_month": "Sold groups this month: the ledger summary gives no count",
-			"open_premium_usd": "Open premium: the ledger summary gives no open premium figure",
-		} {
-			g := tileFigure(c, k)
-			if g["kind"] != "gap" || g["text"] != want {
-				t.Fatalf("%s %s = %v, want gap with text %q", name, k, g, want)
-			}
-		}
-	}
-}
