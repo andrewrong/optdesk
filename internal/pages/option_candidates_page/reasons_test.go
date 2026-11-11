@@ -15,8 +15,8 @@ func TestReasonsFromGates(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []reason{
-		{"events", "block", "earnings_before_expiry", "财报日在到期日之前"},
-		{"chain_fresh", "unknown", "stale_chain", "期权链不是最新交易日的"},
+		{"events", "block", "earnings_before_expiry", "Earnings date is before expiry"},
+		{"chain_fresh", "unknown", "stale_chain", "Option chain is not from the latest trading day"},
 	}
 	if got := reasonsOf(gates); !reflect.DeepEqual(got, want) {
 		t.Errorf("reasons = %+v", got)

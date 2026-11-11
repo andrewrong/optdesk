@@ -25,16 +25,16 @@ func idList(head string, ids []string) string {
 	if len(ids) > maxIDs {
 		ids, more = ids[:maxIDs], " …"
 	}
-	return "；" + head + ": " + strings.Join(ids, ", ") + more
+	return "; " + head + ": " + strings.Join(ids, ", ") + more
 }
 
 // reliabilityOf is the three lines of one section: equal, differ, no broker figure. The ids of Unresolved and Review
 // are named in the last line and are in no figure.
 func reliabilityOf(key, heading string, r compute.ResultReliability) reliability {
-	return reliability{Key: key, Heading: heading + " 对账", Lines: []string{
-		"与券商已实现一致: " + strconv.Itoa(r.Equal) + " 笔",
-		"与券商已实现不一致: " + strconv.Itoa(r.Differ) + " 笔",
-		"没有券商数字: " + strconv.Itoa(r.NoBroker) + " 笔" + idList("未配对的平仓(不入任何数字)", r.Unresolved) +
-			idList("待复核的撤销或更正(不入任何数字)", r.Review),
+	return reliability{Key: key, Heading: heading + " reconciliation", Lines: []string{
+		"Same as broker realized: " + strconv.Itoa(r.Equal) + " trade(s)",
+		"Differs from broker realized: " + strconv.Itoa(r.Differ) + " trade(s)",
+		"No broker figure: " + strconv.Itoa(r.NoBroker) + " trade(s)" + idList("Unpaired closes (not in any figure)", r.Unresolved) +
+			idList("Cancels or corrections to review (not in any figure)", r.Review),
 	}}
 }

@@ -67,7 +67,7 @@ func AccountMoves(c Config) BlockFunc {
 			return nil, err
 		}
 		h := newHead(keyMoves, titleMoves, subMoves, sayMoves, noDataTimes)
-		h.addGap(gapJSON{Reason: "missing_quote", Text: "最大变动与异动：" + textMissQuote})
+		h.addGap(gapJSON{Reason: "missing_quote", Text: "Largest move and outliers: " + textMissQuote})
 		rows := make([]accountRow, 0, len(c.Aliases))
 		meters := make([]meterJSON, 0, len(c.Aliases))
 		var newest string
@@ -81,7 +81,7 @@ func AccountMoves(c Config) BlockFunc {
 				return nil, err
 			}
 			if reason != "" {
-				h.addGap(gapJSON{Reason: reason, Text: "账户 " + alias + "：" + gapText(reason)})
+				h.addGap(gapJSON{Reason: reason, Text: "Account " + alias + ": " + gapText(reason)})
 			}
 			if reason != "no_data" && cp.day > newest {
 				newest = cp.day

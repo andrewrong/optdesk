@@ -149,7 +149,7 @@ func dataTimes(newest contracts.Day, dataDays []string, generatedAt time.Time) s
 	}
 	if len(dataDays) > 0 {
 		sb.WriteString(alertDataLabel)
-		sb.WriteString(strings.Join(dataDays[:min(len(dataDays), maxDataDays)], "、"))
+		sb.WriteString(strings.Join(dataDays[:min(len(dataDays), maxDataDays)], ", "))
 		if len(dataDays) > maxDataDays {
 			sb.WriteString(moreWord)
 		}

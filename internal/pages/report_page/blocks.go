@@ -2,7 +2,7 @@ package report_page
 
 const (
 	// jpSuffix follows the block title in the text of a jp_slice_missing Gap.
-	jpSuffix = "的日本时段数据尚未接入"
+	jpSuffix = " Japan session data not connected yet"
 	// reasonJPMissing is the Gap reason of a block of the Japan report.
 	reasonJPMissing = "jp_slice_missing"
 )

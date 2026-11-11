@@ -76,25 +76,25 @@ type tc struct {
 
 var cases = []tc{
 	{"ok_with_items", []compute.AlertResult{
-		fired("vix_pctile_high", "VIX 分位偏高", "market.vix_pctile_3y", "w", "VIX 三年分位 0.93", "2026-11-06"),
+		fired("vix_pctile_high", "VIX percentile high", "market.vix_pctile_3y", "w", "VIX 3-year percentile 0.93", "2026-11-06"),
 		clear("a"),
-		fired("sp500_far_below_200d", "标普远低于 200 日线", "market.sp500_vs_200d", "d", "偏离 -0.06", "2026-11-05"),
+		fired("sp500_far_below_200d", "S&P far below 200-day average", "market.sp500_vs_200d", "d", "Gap -0.06", "2026-11-05"),
 	}},
 	{"ok_no_alert", []compute.AlertResult{clear("a"), clear("b")}},
 	{"partial", []compute.AlertResult{
-		fired("vix_pctile_high", "VIX 分位偏高", "market.vix_pctile_3y", "w", "VIX 三年分位 0.93", "2026-11-06"),
-		noData("spy_ivr_high", "SPY IV 排名偏高", "missing_input"),
+		fired("vix_pctile_high", "VIX percentile high", "market.vix_pctile_3y", "w", "VIX 3-year percentile 0.93", "2026-11-06"),
+		noData("spy_ivr_high", "SPY IV rank high", "missing_input"),
 	}},
-	{"gap", []compute.AlertResult{noData("a", "甲", "no_reading"), noData("b", "乙", "unit_mismatch")}},
+	{"gap", []compute.AlertResult{noData("a", "A1", "no_reading"), noData("b", "B1", "unit_mismatch")}},
 }
 
 func TestBlockOkWithItems(t *testing.T) {
 	t.Parallel()
 	m := decode(t, build(t, cases[0].res, nil))
-	if m["state"] != "ok" || m["key"] != "risks" || m["title"] != "风险" {
+	if m["state"] != "ok" || m["key"] != "risks" || m["title"] != "Risk" {
 		t.Fatalf("block = %v", m)
 	}
-	if m["say"] != "2026-11-07 有 2 条市场提醒。" {
+	if m["say"] != "2026-11-07 2 market alerts." {
 		t.Errorf("say = %v", m["say"])
 	}
 	items := m["items"].([]any)
@@ -102,8 +102,8 @@ func TestBlockOkWithItems(t *testing.T) {
 		t.Fatalf("items = %v", items)
 	}
 	first := items[0].(map[string]any)
-	if first["kind"] != "market_alert" || first["icon_key"] != "volatility" || first["title"] != "VIX 分位偏高" ||
-		first["detail"] != "VIX 三年分位 0.93（数据日 2026-11-06）" {
+	if first["kind"] != "market_alert" || first["icon_key"] != "volatility" || first["title"] != "VIX percentile high" ||
+		first["detail"] != "VIX 3-year percentile 0.93 (data day 2026-11-06)" {
 		t.Errorf("item 0 = %v", first)
 	}
 	if items[1].(map[string]any)["icon_key"] != "trend" {
@@ -112,7 +112,7 @@ func TestBlockOkWithItems(t *testing.T) {
 	if len(m["gaps"].([]any)) != 0 {
 		t.Errorf("gaps = %v", m["gaps"])
 	}
-	if m["data_times"] != "最新读数日 2026-11-06；提醒数据日 2026-11-06、2026-11-05；生成于 2026-11-08T09:00:00+08:00" {
+	if m["data_times"] != "Newest reading day 2026-11-06; alert data day 2026-11-06, 2026-11-05; generated at 2026-11-08T09:00:00+08:00" {
 		t.Errorf("data_times = %v", m["data_times"])
 	}
 }
@@ -120,7 +120,7 @@ func TestBlockOkWithItems(t *testing.T) {
 func TestBlockOkNoAlert(t *testing.T) {
 	t.Parallel()
 	m := decode(t, build(t, cases[1].res, nil))
-	if m["state"] != "ok" || m["say"] != "2026-11-07 没有市场提醒。" || len(m["items"].([]any)) != 0 {
+	if m["state"] != "ok" || m["say"] != "2026-11-07 No market alerts." || len(m["items"].([]any)) != 0 {
 		t.Errorf("block = %v", m)
 	}
 }
@@ -132,7 +132,7 @@ func TestBlockPartialNoData(t *testing.T) {
 		t.Fatalf("block = %v", m)
 	}
 	g := m["gaps"].([]any)
-	if len(g) != 1 || g[0].(map[string]any)["text"] != "SPY IV 排名偏高 暂缺" || g[0].(map[string]any)["reason"] != "missing_input" {
+	if len(g) != 1 || g[0].(map[string]any)["text"] != "SPY IV rank high: n/a" || g[0].(map[string]any)["reason"] != "missing_input" {
 		t.Errorf("gaps = %v", g)
 	}
 }
@@ -148,7 +148,7 @@ func TestBlockGapAllNoData(t *testing.T) {
 		t.Errorf("items = %v", items)
 	}
 	g := m["gaps"].([]any)
-	if len(g) != 2 || g[1].(map[string]any)["text"] != "乙 暂缺" {
+	if len(g) != 2 || g[1].(map[string]any)["text"] != "B1: n/a" {
 		t.Errorf("gaps = %v", g)
 	}
 }
@@ -159,7 +159,7 @@ func TestBlockStaleDataIsStaleInput(t *testing.T) {
 		"stale_data": "stale_input", "missing_input": "missing_input", "no_data_day": "missing_input",
 		"no_reading": "no_data", "unit_mismatch": "no_data",
 	} {
-		res := []compute.AlertResult{clear("a"), noData("r", "规则", reason)}
+		res := []compute.AlertResult{clear("a"), noData("r", "Rule", reason)}
 		g := decode(t, build(t, res, nil))["gaps"].([]any)
 		if got := g[0].(map[string]any)["reason"]; got != want {
 			t.Errorf("%s: reason = %v, want %s", reason, got, want)
@@ -171,7 +171,7 @@ func TestBlockLevelsCarried(t *testing.T) {
 	t.Parallel()
 	var res []compute.AlertResult
 	for _, l := range []string{"n", "w", "d"} {
-		res = append(res, fired("r"+l, "规则"+l, "market.ivr_own", l, "x", "2026-11-06"))
+		res = append(res, fired("r"+l, "Rule"+l, "market.ivr_own", l, "x", "2026-11-06"))
 	}
 	items := decode(t, build(t, res, nil))["items"].([]any)
 	for i, l := range []string{"n", "w", "d"} {
@@ -179,7 +179,7 @@ func TestBlockLevelsCarried(t *testing.T) {
 			t.Errorf("item %d level = %v", i, items[i])
 		}
 	}
-	bad := fired("r", "规则", "market.ivr_own", "x", "x", "2026-11-06")
+	bad := fired("r", "Rule", "market.ivr_own", "x", "x", "2026-11-06")
 	in := Input{
 		Evaluate: func(context.Context, compute.AlertRules, compute.ReadingFunc, contracts.Day) ([]compute.AlertResult, error) {
 			return []compute.AlertResult{bad}, nil
@@ -288,9 +288,9 @@ func TestBlockManyFiredStaysInSchema(t *testing.T) {
 	t.Parallel()
 	var res []compute.AlertResult
 	for i := 0; i < 16; i++ {
-		res = append(res, fired(fmt.Sprintf("r%d", i), "标题", "market.vix_pctile_3y", "w", "d", fmt.Sprintf("2026-11-%02d", i+1)))
+		res = append(res, fired(fmt.Sprintf("r%d", i), "Title", "market.vix_pctile_3y", "w", "d", fmt.Sprintf("2026-11-%02d", i+1)))
 	}
-	res = append(res, fired("long", "标题", "market.ivr_own", "w", strings.Repeat("长", 300), "2026-11-06"))
+	res = append(res, fired("long", "Title", "market.ivr_own", "w", strings.Repeat("x", 300), "2026-11-06"))
 	s := schema(t)
 	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(build(t, res, nil)))
 	if err != nil {

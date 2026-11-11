@@ -37,7 +37,7 @@ func (b *builder) timeline() []stage {
 		return []stage{}
 	}
 	return []stage{
-		{Name: "开仓", DateText: opened, Elapsed: startShare, DaysText: "开仓日"},
-		{Name: "到期", DateText: expiry, Elapsed: endShare, DaysText: "到期日"},
+		{Name: "Open", DateText: opened, Elapsed: startShare, DaysText: "Open day"},
+		{Name: "Expiry", DateText: expiry, Elapsed: endShare, DaysText: "Expiry day"},
 	}
 }

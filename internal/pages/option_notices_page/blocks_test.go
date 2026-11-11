@@ -70,7 +70,7 @@ func TestGuardReasonsAndFacts(t *testing.T) {
 	if len(n.Reasons) != 2 || n.Reasons[0] != reasonTexts["strike_floor"] || n.Reasons[1] != "odd_code" {
 		t.Errorf("reasons = %v", n.Reasons)
 	}
-	if len(n.Facts) != 1 || n.Facts[0] != (fact{Label: "财报日", Text: "2026-12-01"}) {
+	if len(n.Facts) != 1 || n.Facts[0] != (fact{Label: "Earnings date", Text: "2026-12-01"}) {
 		t.Errorf("facts = %v", n.Facts)
 	}
 }

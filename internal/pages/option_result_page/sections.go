@@ -30,7 +30,7 @@ type section struct {
 	BooksLines   []string `json:"books_lines"`
 }
 
-var sideNames = map[string]string{"sold": "卖出", "bought": "买入"}
+var sideNames = map[string]string{"sold": "Sold", "bought": "Bought"}
 
 // sectionOf is the section of one side and currency of the rule, in the shape of the schema.
 func sectionOf(alias string, s compute.ResultSection) (section, error) {
@@ -45,9 +45,9 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 	}
 	out := section{
 		Key: s.Side + "_" + strings.ToLower(s.Currency), Heading: heading,
-		Lead:  heading + "的已平仓期权, 每个币种单独列出, 不相加",
-		Scope: alias, FigureNotes: []string{}, EndingsTitle: "结束方式",
-		BooksTitle: "与券商对账", BooksNote: "券商数字取自 Flex 的 fifoPnlRealized, 只对照, 不入任何数字",
+		Lead:  heading + ": closed options, each currency listed on its own, not added together",
+		Scope: alias, FigureNotes: []string{}, EndingsTitle: "Endings",
+		BooksTitle: "Reconciliation with the broker", BooksNote: "Broker figures are taken from Flex fifoPnlRealized, compared only, not in any figure",
 	}
 	kept := gapText
 	if s.KeptShare != "" {
@@ -57,14 +57,14 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 		}
 		kept = p
 	} else {
-		out.FigureNotes = append(out.FigureNotes, "留存比例没有值: 没有卖出开仓的权利金可除")
+		out.FigureNotes = append(out.FigureNotes, "Retained ratio has no value: no sell-to-open premium to divide by")
 	}
 	if s.Realized == "" || s.Premium == "" {
-		out.FigureNotes = append(out.FigureNotes, "已实现或权利金没有值")
+		out.FigureNotes = append(out.FigureNotes, "Realized or premium has no value")
 	}
 	out.Figures = []pair{
-		{"已实现", orGap(s.Realized)}, {"权利金", orGap(s.Premium)}, {"留存比例", kept},
-		{"已平仓笔数", count(ends, "closed")}, {"被行权笔数", count(ends, "assigned")}, {"到期笔数", count(ends, "expired")},
+		{"Realized", orGap(s.Realized)}, {"Premium", orGap(s.Premium)}, {"Retained ratio", kept},
+		{"Closed trades", count(ends, "closed")}, {"Assigned trades", count(ends, "assigned")}, {"Expired trades", count(ends, "expired")},
 	}
 	var err error
 	if out.Months, out.Running, err = monthSeries(s.Months); err != nil {
@@ -74,16 +74,16 @@ func sectionOf(alias string, s compute.ResultSection) (section, error) {
 		return out, err
 	}
 	if count(ends, "assigned") != "0" {
-		t := "被行权的权利金 " + orGap(s.AssignedPremium) + ", 股数 " + orGap(s.AssignedShares) + "; 成本仍是行权价, 不扣权利金"
+		t := "Assigned premium " + orGap(s.AssignedPremium) + ", shares " + orGap(s.AssignedShares) + "; cost is still the strike, premium not deducted"
 		out.Assignment = &t
 	} else {
-		out.FigureNotes = append(out.FigureNotes, "被行权说明为空: 本段没有被行权的结束")
+		out.FigureNotes = append(out.FigureNotes, "Assigned note is empty: this section has no assignment ending")
 	}
-	out.FigureNotes = append(out.FigureNotes, "保护说明为空: 本设计没有这个数值")
+	out.FigureNotes = append(out.FigureNotes, "Protection note is empty: this design has no such figure")
 	r := s.Reliability
 	out.BooksLines = []string{
-		"一致 " + itoa(r.Equal) + " 笔, 不一致 " + itoa(r.Differ) + " 笔",
-		"没有券商数字 " + itoa(r.NoBroker) + " 笔",
+		"Same " + itoa(r.Equal) + " trade(s), differ " + itoa(r.Differ) + " trade(s)",
+		"No broker figure " + itoa(r.NoBroker) + " trade(s)",
 	}
 	return out, nil
 }
