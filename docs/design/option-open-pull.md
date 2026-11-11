@@ -133,7 +133,7 @@ Checked by CI: ci-go; `go test ./internal/broker/... -race -count=1` (contract t
 ### 1 quote-kind-option-open (interface)
 
 Module: contracts. Size: S. Wave 2.
-Files: `contracts/proto/ibkr/v1/quote_types.proto`, `internal/contracts/genpb/**`, `pyside/src/optdesk/contracts/**`
+Files: `contracts/proto/ibkr/v1/quote_types.proto`, `internal/contracts/genpb/**`, `pyside/src/optdesk/contracts/genpb/**`
 Design: docs/design/option-open-pull.md#Interface
 Order: first.
 Sequence: wave 2, first of the kind issues. The pull request is the owner's merge (`contracts/proto`). Issue 18 (broker) follows it.
