@@ -28,6 +28,10 @@ var gapManifest []byte
 // ResolveDatasetID is the dataset of the keys of the resolve jobs: one key per stock.
 const ResolveDatasetID = "master.option_contract"
 
+// GapDatasetID is the dataset of the keys of the gap pass. It differs from ResolveDatasetID so that the
+// reconciler, which keeps the first job per key, does not give the gap keys to the evening resolve.
+const GapDatasetID = "master.option_contract.gap"
+
 // stopAfterTimeouts is the number of consecutive timeouts that stops the resolves of a run (option-trader #757).
 const stopAfterTimeouts = 2
 
@@ -114,11 +118,15 @@ func (j *resolveJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.E
 	if err != nil {
 		return nil, "", err
 	}
+	dataset := ResolveDatasetID
+	if j.m.GapOnly {
+		dataset = GapDatasetID
+	}
 	keys := make([]contracts.ExpectedKey, 0, len(stocks))
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n%s", day, j.m.ID)
 	for _, s := range stocks {
-		keys = append(keys, contracts.ExpectedKey{DatasetID: ResolveDatasetID, SubjectKey: s.Symbol})
+		keys = append(keys, contracts.ExpectedKey{DatasetID: dataset, SubjectKey: s.Symbol})
 		b.WriteString("\n" + s.Symbol)
 	}
 	return keys, hashOf(b.String()), nil
