@@ -41,6 +41,11 @@
     {"path": "obs.price_bar.r1.json", "sha256": "882e004dd8cc1191ca183f269c90128eee3d26ac9531f680f927532bc32787c8"},
     {"path": "obs.fx_rate.r1.json", "sha256": "4dee75f77c641cde0007f292afebd1739a0513211c48a078b893c33bf1f766ca"},
     {"path": "account.position_mark.r1.json", "sha256": "c57dd61959e3ba4c4d07657d1c3112d80433877f37589b3bf49f0d8591822bc4"},
-    {"path": "obs.dividend_expectation.r1.json", "sha256": "fc903a85967710273378fd795784966f21f8ba70c9f076232e0d5049c4fe6c63"}
+    {"path": "obs.dividend_expectation.r1.json", "sha256": "fc903a85967710273378fd795784966f21f8ba70c9f076232e0d5049c4fe6c63"},
+    {"path": "page.underlyings.v1.golden.json", "sha256": "255178d37b6030b2f47b4b5ff7b1b00ffefa56967d715eb5ec99d4c73ff405a9"},
+    {"path": "page.underlyings.v1.confirm.json", "sha256": "5fc5336a936bde9ec8fd6b0fc43bdfc1b157f738ef1580c3fac89666ef21e163"},
+    {"path": "page.underlyings.v1.readonly.json", "sha256": "4ed5da7ffa0af8adec402d2ea37dd853a5fc07b5f960a6a0be25d9118ec0fa28"},
+    {"path": "page.underlyings.v1.bad-version.json", "sha256": "29a2ba38e9878202c5793d4265d00488efcbc81aeba877e20590afe55bafd23c"},
+    {"path": "underlyings.follow.json", "sha256": "7677a226b615c6b1df36ae5f3e0717b1a0bf79fa2479177165d148ae650fad12"}
   ]
 }

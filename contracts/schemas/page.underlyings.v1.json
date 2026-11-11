@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.underlyings.v1.json",
+  "title": "Underlyings",
+  "description": "View model of the underlyings page: the followed names with their switches, the form, the confirm step and the history. Every visible string is a field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "session_day", "title", "sentence", "rows", "form", "confirm", "notice", "history", "gaps"],
+  "properties": {
+    "schema": {"const": "underlyings"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "session_day": {"type": "string", "format": "date"},
+    "title": {"$ref": "#/$defs/Text"},
+    "sentence": {"$ref": "#/$defs/Text"},
+    "rows": {"type": "array", "items": {"$ref": "#/$defs/Row"}},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]},
+    "confirm": {"oneOf": [{"$ref": "#/$defs/Confirm"}, {"type": "null"}]},
+    "notice": {"type": "string", "maxLength": 300},
+    "history": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/HistoryLine"}},
+    "gaps": {"type": "array", "items": {"$ref": "common.v2.json#/$defs/Gap"}}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 300},
+    "Optional": {"type": "string", "maxLength": 300},
+    "Status": {"enum": ["pending", "active", "paused", "retired", "unresolved"]},
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "symbol", "market", "kind", "name", "status", "status_text", "reason", "issuer", "con_id", "options", "fundamentals", "held", "buy_price", "sale_price", "report_date_override", "note", "followed_by", "followed_text", "set_at", "editable"],
+      "properties": {
+        "key": {"type": "string", "pattern": "^(US|JP):[A-Z0-9.]{1,12}$"},
+        "symbol": {"type": "string", "pattern": "^[A-Z0-9.]{1,12}$"},
+        "market": {"enum": ["US", "JP"]},
+        "kind": {"enum": ["stock", "etf"]},
+        "name": {"$ref": "#/$defs/Text"},
+        "status": {"$ref": "#/$defs/Status"},
+        "status_text": {"$ref": "#/$defs/Text"},
+        "reason": {"$ref": "#/$defs/Optional"},
+        "issuer": {"$ref": "#/$defs/Optional"},
+        "con_id": {"type": ["integer", "null"], "minimum": 1},
+        "options": {"type": "boolean"},
+        "fundamentals": {"type": "boolean"},
+        "held": {"type": "boolean"},
+        "buy_price": {"$ref": "#/$defs/Optional"},
+        "sale_price": {"$ref": "#/$defs/Optional"},
+        "report_date_override": {"$ref": "#/$defs/Optional"},
+        "note": {"$ref": "#/$defs/Optional"},
+        "followed_by": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["bars", "dividends", "options", "fundamentals"]}
+        },
+        "followed_text": {"$ref": "#/$defs/Text"},
+        "set_at": {"$ref": "#/$defs/Text"},
+        "editable": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/Text"}}
+      }
+    },
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_path", "expires", "mac"],
+      "properties": {
+        "post_path": {"const": "/owner-underlyings"},
+        "expires": {"$ref": "#/$defs/Text"},
+        "mac": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Confirm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changes", "stops"],
+      "properties": {
+        "changes": {"type": "array", "items": {"$ref": "#/$defs/Change"}},
+        "stops": {"type": "array", "items": {"$ref": "#/$defs/Text"}}
+      }
+    },
+    "Change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "old", "new"],
+      "properties": {
+        "label": {"$ref": "#/$defs/Text"},
+        "old": {"type": "string", "maxLength": 300},
+        "new": {"type": "string", "maxLength": 300}
+      }
+    },
+    "HistoryLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "key", "text"],
+      "properties": {
+        "at": {"$ref": "#/$defs/Text"},
+        "key": {"$ref": "#/$defs/Text"},
+        "text": {"$ref": "#/$defs/Text"}
+      }
+    }
+  }
+}
