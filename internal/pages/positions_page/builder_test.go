@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -560,5 +561,48 @@ func TestGoldenJPYFractional(t *testing.T) {
 	}
 	if !bytes.Equal(want, out.Bytes()) {
 		t.Fatalf("output differs from %s:\n%s", golden, out.Bytes())
+	}
+}
+
+func TestDayResultCellIsShortAndTheSentenceIsInPageGaps(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, config(account()), "main")
+	for _, kind := range []string{"stocks", "options"} {
+		rows, _ := at0(t, m, "views", 0, kind, "rows").([]any)
+		if len(rows) == 0 {
+			t.Fatalf("no %s rows", kind)
+		}
+		for i := range rows {
+			if g := at0(t, m, "views", 0, kind, "rows", i, "day", "text"); g != "n/a" {
+				t.Fatalf("%s %d day text = %v", kind, i, g)
+			}
+			if g := at0(t, m, "views", 0, kind, "rows", i, "day", "reason"); g != "no_data" {
+				t.Fatalf("%s %d day reason = %v", kind, i, g)
+			}
+		}
+	}
+	gaps, _ := m["gaps"].([]any)
+	if len(gaps) != 1 {
+		t.Fatalf("gaps = %v", gaps)
+	}
+	if g := at0(t, m, "gaps", 0, "text"); g != "Stocks, Options: Day result needs the previous trading day price: no data yet" {
+		t.Fatalf("gap text = %v", g)
+	}
+}
+
+func TestMissingMarkPriceGapIsPrintedOnce(t *testing.T) {
+	t.Parallel()
+	m, b := build(t, config(account()), "main")
+	want := map[string]string{"price": "No price: no data yet", "unrealised": "n/a"}
+	for f, txt := range want {
+		if g := at0(t, m, "views", 0, "stocks", "rows", 1, f, "text"); g != txt {
+			t.Fatalf("%s text = %v", f, g)
+		}
+		if g := at0(t, m, "views", 0, "stocks", "rows", 1, f, "reason"); g != "missing_quote" {
+			t.Fatalf("%s reason = %v", f, g)
+		}
+	}
+	if n := strings.Count(string(b), "No price: no data yet"); n != 1 {
+		t.Fatalf("sentence printed %d times", n)
 	}
 }
