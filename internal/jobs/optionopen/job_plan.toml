@@ -3,7 +3,7 @@ version = 1
 id = "option_open_plan"
 zone = "America/New_York"
 slot = "0945"
-budget_minutes = 40
+budget_minutes = 10
 
 [window]
 rule = "after_close"
@@ -15,7 +15,7 @@ calendar = "XNYS"
 calendar = "XNYS"
 anchor = "session_open"
 offset = "-45m"
-run_bound = "45m"
+run_bound = "15m"
 restart_sensitive = false
 
 # The parameter set (owner decisions 2026-11-10).
