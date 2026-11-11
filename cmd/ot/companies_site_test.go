@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -160,5 +161,96 @@ func TestBrokenWatchRefuses(t *testing.T) {
 	a = companiesApp(t, "", errors.New("denied"))
 	if _, err := buildCompanies(t.Context(), a, companiesClock, "", siteReaders{}); err == nil {
 		t.Fatal("unreadable file built")
+	}
+}
+
+// heldAccount is an account reader whose position rows are keyed by day.
+type heldAccount struct {
+	store.AccountReader
+	byDay map[string][]store.Position
+	err   error
+}
+
+func (h heldAccount) Positions(_ context.Context, _, day string) ([]store.Position, error) {
+	return h.byDay[day], h.err
+}
+
+type heldPage struct {
+	Header struct {
+		HeldCount *int `json:"held_count"`
+	} `json:"header"`
+	Holdings *struct {
+		Rows []struct {
+			Cells []struct {
+				Text string `json:"text"`
+			} `json:"cells"`
+		} `json:"rows"`
+	} `json:"holdings"`
+	WatchList struct {
+		Rows []json.RawMessage `json:"rows"`
+	} `json:"watch_list"`
+}
+
+func buildHeld(t *testing.T, acc store.AccountReader) (heldPage, string) {
+	t.Helper()
+	a := companiesApp(t, companiesWatch, nil)
+	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{noticeAccount: acc})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p heldPage
+	if err := json.Unmarshal(body, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p, string(body)
+}
+
+func stk(sym, sec, qty string) store.Position {
+	return store.Position{Symbol: sym, SecType: sec, Quantity: qty}
+}
+
+func TestCompaniesHeldFromPositions(t *testing.T) {
+	t.Parallel()
+	for name, day := range map[string]string{"page day": "2026-11-05", "day before": "2026-11-04", "six days before": "2026-10-30"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			p, body := buildHeld(t, heldAccount{byDay: map[string][]store.Position{day: {stk("AAA", "STK", "100")}}})
+			if p.Header.HeldCount == nil || *p.Header.HeldCount != 1 || p.Holdings == nil || len(p.Holdings.Rows) != 1 {
+				t.Fatalf("held: %s", body)
+			}
+			if !strings.Contains(body, `"AAA"`) || len(p.WatchList.Rows) != 1 || strings.Contains(string(p.WatchList.Rows[0]), `"AAA"`) {
+				t.Fatalf("watch list: %s", body)
+			}
+		})
+	}
+}
+
+func TestCompaniesHeldIgnoresOptionsAndZero(t *testing.T) {
+	t.Parallel()
+	p, body := buildHeld(t, heldAccount{byDay: map[string][]store.Position{"2026-11-05": {stk("AAA", "OPT", "-1"), stk("BBB", "STK", "0")}}})
+	if p.Header.HeldCount == nil || *p.Header.HeldCount != 0 || len(p.WatchList.Rows) != 2 {
+		t.Fatalf("%s", body)
+	}
+}
+
+func TestCompaniesHeldNilWithoutReader(t *testing.T) {
+	t.Parallel()
+	a := companiesApp(t, companiesWatch, nil)
+	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p heldPage
+	if err := json.Unmarshal(body, &p); err != nil || p.Header.HeldCount != nil || p.Holdings != nil {
+		t.Fatalf("%v %s", err, body)
+	}
+}
+
+func TestCompaniesHeldReaderErrorIsReturned(t *testing.T) {
+	t.Parallel()
+	a := companiesApp(t, companiesWatch, nil)
+	_, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{noticeAccount: heldAccount{err: errors.New("boom")}})
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("%v", err)
 	}
 }
