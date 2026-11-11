@@ -293,3 +293,67 @@ func TestComposerAcceptsTheMember(t *testing.T) {
 		}
 	}
 }
+
+func figText(tile map[string]any, k string) string {
+	return tile[k].(map[string]any)["text"].(string)
+}
+
+func gapTextsOf(m map[string]any) []string {
+	var out []string
+	for _, g := range m["card"].(map[string]any)["gaps"].([]any) {
+		out = append(out, g.(map[string]any)["text"].(string))
+	}
+	return out
+}
+
+func TestOneCapturedDayNamesTheMissingCaptures(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, config(map[string][]store.AccountValue{"2026-11-10": vals("100000.00", "42000.00")}))
+	ts := tilesOf(m)
+	const dayText = "Needs a second captured session day; first capture 2026-11-10"
+	const mtdText = "Needs the last session day of the previous month; first capture 2026-11-10"
+	dc, mtd := ts["day_change"], ts["month_to_date"]
+	if figText(dc, "figure") != dayText || figText(dc, "caption") != dayText {
+		t.Fatalf("day_change: %v", dc)
+	}
+	if figText(mtd, "figure") != mtdText || figText(mtd, "caption") != mtdText {
+		t.Fatalf("month_to_date: %v", mtd)
+	}
+	if dc["figure"].(map[string]any)["reason"] != "missing_input" || mtd["figure"].(map[string]any)["reason"] != "missing_input" {
+		t.Fatalf("reasons %v", reasons(m))
+	}
+	g := gapTextsOf(m)
+	if len(g) != 2 || g[0] != "Previous trading day: "+dayText || g[1] != "Month to date: "+mtdText {
+		t.Fatalf("gaps %q", g)
+	}
+}
+
+func TestPriorDayWithoutMonthStartOnlyMonthToDateSaysSo(t *testing.T) {
+	t.Parallel()
+	m, _ := build(t, config(map[string][]store.AccountValue{
+		"2026-11-09": vals("99000.50", "41000.00"),
+		"2026-11-10": vals("100000.00", "42000.00"),
+	}))
+	ts := tilesOf(m)
+	const mtdText = "Needs the last session day of the previous month; first capture 2026-11-10"
+	if figText(ts["month_to_date"], "figure") != mtdText || figText(ts["month_to_date"], "caption") != mtdText {
+		t.Fatalf("month_to_date: %v", ts["month_to_date"])
+	}
+	if figText(ts["day_change"], "figure") != "+$999.50" {
+		t.Fatalf("day_change: %v", ts["day_change"])
+	}
+}
+
+func TestPriorDayWithoutNetLiquidationKeepsGenericText(t *testing.T) {
+	t.Parallel()
+	prior := []store.AccountValue{vals("1", "41000.00")[1]}
+	m, _ := build(t, config(map[string][]store.AccountValue{
+		"2026-11-09": prior,
+		"2026-11-10": vals("100000.00", "42000.00"),
+	}))
+	dc := tilesOf(m)["day_change"]
+	const want = "Input data is missing: no data yet"
+	if figText(dc, "figure") != want || figText(dc, "caption") != want {
+		t.Fatalf("day_change: %v", dc)
+	}
+}
