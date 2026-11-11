@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"strconv"
 	"time"
 
@@ -33,16 +34,15 @@ const (
 
 func init() {
 	// Orders 120, 130, 140 and 190: resolve, plan, pull, gap pass. A job that cannot be wired is held with its
-	// reason (the scheduler lists it as disabled, run-once leaves it out), a dead socket included (brokerDownOff
-	// would list the ids even when the family is absent, see openOptionOpen).
+	// reason (the scheduler lists it as disabled, run-once leaves it out); a dead socket is the startOff.
 	registerJob(jobFamily{
-		id: jobOptionOpenResolve, order: 120,
+		id: jobOptionOpenResolve, order: 120, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolve, optionopen.NewResolve, true, broker.Options{ResolveInFlight: 1})
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpenPlan, order: 130,
+		id: jobOptionOpenPlan, order: 130, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpenPlan, true)
 			if !ok {
@@ -55,7 +55,7 @@ func init() {
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpen, order: 140,
+		id: jobOptionOpen, order: 140, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpen, false)
 			if !ok {
@@ -69,7 +69,7 @@ func init() {
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpenResolveGap, order: 190,
+		id: jobOptionOpenResolveGap, order: 190, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveGap, optionopen.NewGap, false, broker.Options{ResolveInFlight: 1})
 		},
@@ -153,9 +153,7 @@ func openStored(jc *jobCtx, stores openquote.Stores) optionopen.Stored {
 // bar store) leaves the family out: ok is false after one startup line naming the job and the line. Held (the
 // reason with the job) cannot carry it: wiring.runnable hashes every job once one is held, and a job whose type is
 // not hashable would panic there; the scheduler's disabled list therefore lacks these ids until that is fixed.
-// A dead socket (brokerUp false) or a store that cannot be opened holds the job with its reason; this is
-// not the startOff of the family, because startOff would list the ids of absent families as disabled and
-// break the tests that count the disabled ids.
+// A store that cannot be opened is held with its reason.
 func openOptionOpen(ctx context.Context, a *app, jc *jobCtx, id string, needBars bool) (stores openquote.Stores, reason string, ok bool) {
 	dsn := a.getenv(openquote.DSNEnvOptionOpen)
 	left := func(why string) (openquote.Stores, string, bool) {
@@ -170,15 +168,12 @@ func openOptionOpen(ctx context.Context, a *app, jc *jobCtx, id string, needBars
 	case needBars && jc.f.bars == nil:
 		return left(reasonNoBarDSN)
 	}
-	if !jc.brokerUp {
-		reason = reasonBrokerDown
-	}
 	s, err := optionopenpg.Open(ctx, dsn)
 	if err != nil {
-		return noOpenStore{err: errors.New(reasonOpenStoreFail)}, firstReason(reason, reasonOpenStoreFail), true
+		return noOpenStore{err: errors.New(reasonOpenStoreFail)}, reasonOpenStoreFail, true
 	}
 	jc.extra.addCloser(s)
-	return s, reason, true
+	return s, "", true
 }
 
 // noOpenStore stands in for the option open store of a held job: every call answers its error.
@@ -212,3 +207,15 @@ func (s noOpenStore) ListOptions(context.Context, int64) ([]openquote.OptionRef,
 func (s noOpenStore) Close() error { return nil }
 
 var _ openquote.Stores = noOpenStore{}
+
+// ifOpenDSN is the startOff of the four families: off (by off) only when the DSN line is set. A family without
+// the line is left out and has no job, so its id must not be listed as disabled (the tests that count the
+// disabled ids rely on it). The line is read from the process environment, which is what app.getenv is in ot.
+func ifOpenDSN(getenv func(string) string, off func(runOnceConfig, bool) string) func(runOnceConfig, bool) string {
+	return func(cfg runOnceConfig, brokerUp bool) string {
+		if getenv(openquote.DSNEnvOptionOpen) == "" {
+			return ""
+		}
+		return off(cfg, brokerUp)
+	}
+}

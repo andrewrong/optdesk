@@ -19,7 +19,7 @@ Family file: `cmd/ot/wire_optionopen.go`; registered with `registerJob` in an `i
 
 - `OT_PG_DSN_OPTION_OPEN` missing (or the instrument or bar store missing): the job is left out with one startup line that names the job and the line; the other jobs run.
 - The store cannot be opened: the job is held with that reason; the scheduler lists it as disabled and `run-once` leaves it out.
-- A failed broker dial at start (`broker is not reachable`): the job is held with that reason, on a stand-in broker; `ot scheduler` lists it as disabled and `run-once` leaves it out.
+- A failed broker dial at start (`broker is not reachable`, the `startOff` of the family, set only when `OT_PG_DSN_OPTION_OPEN` is set): the job holds a stand-in broker and `ot scheduler` lists it as disabled.
 
 ## Version
 
