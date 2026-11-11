@@ -29,7 +29,7 @@ const COLUMNS: Column[] = [
   { id: 'day', label: 'Date' },
   { id: 'ibkr', label: 'IBKR', align: 'right' },
   { id: 'fred', label: 'FRED', align: 'right' },
-  { id: 'diff', label: 'Bad', align: 'right' },
+  { id: 'diff', label: 'Diff', align: 'right' },
 ]
 
 export function WeatherCard({ payload }: { payload: Payload }) {

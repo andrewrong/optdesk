@@ -98,6 +98,13 @@ describe('WeatherCard', () => {
     )
   })
 
+  it('heads the difference column Diff, not with the verdict word Bad', async () => {
+    await show(fixture('mismatch'))
+    const heads = [...host.querySelectorAll('[data-mismatches] thead th')].map((h) => h.textContent)
+    expect(heads).toContain('Diff')
+    expect(heads).not.toContain('Bad')
+  })
+
   it('shows the stale label of the stale fixture and none for ok', async () => {
     const stale = fixture('stale')
     await show(stale)
