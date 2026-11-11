@@ -312,8 +312,11 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	fw.Advance(97 * time.Hour)
-	// The ticker may not have armed its timer when the clock moved (the waiter above can be another goroutine's), so
-	// the clock keeps moving by a minute until a new write of the states arrives.
+	// The states written by the first tick after this move are later than passed; the minutes added below may go
+	// further than that tick read, so the states are judged against passed.
+	passed := fw.Now()
+	// The ticker may not have armed its timer when the clock moved (a waiter on the clock can be another goroutine's,
+	// such as the heartbeat of a run), so the clock keeps moving by a minute until a new write of the states arrives.
 	for wrote := false; !wrote; {
 		select {
 		case <-pl.puts:
@@ -328,17 +331,20 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	if err := r.stop(t, done); err != nil {
 		t.Fatalf("scheduler: %v", err)
 	}
-	now := fw.Now()
 	for _, id := range []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot, jobComputeFigures, jobCalendarRefresh} {
-		if st := pl.state(id); !st.NextStart.After(now) {
-			t.Errorf("%s has no start after %s: %v", id, now, st.NextStart)
+		if st := pl.state(id); !st.NextStart.After(passed) {
+			t.Errorf("%s has no start after %s: %v", id, passed, st.NextStart)
 		}
 	}
 	if st := pl.state(jobOptionEodJP); !st.NextStart.IsZero() {
 		t.Errorf("option_eod_jp starts at %v after XTKS ran out", st.NextStart)
 	}
-	if n := strings.Count(buf.String(), "XTKS"); n != 1 {
-		t.Fatalf("%d log lines name XTKS, want 1: %s", n, buf.String())
+	// Each walk of the slots logs the dropped calendar once; the minutes above may add walks, so one line or more.
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	for _, l := range lines {
+		if !strings.Contains(l, "calendar XTKS: calendar: unknown_calendar, jobs dropped") {
+			t.Fatalf("unexpected log line %q in %s", l, buf.String())
+		}
 	}
 }
 
