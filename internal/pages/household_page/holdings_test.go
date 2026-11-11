@@ -78,7 +78,8 @@ func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 	if m["run_status"] != "partial" {
 		t.Fatalf("run_status = %v", m["run_status"])
 	}
-	if len(acc.asked) != 1 || acc.asked[0] != "main 2026-11-10" || len(marks.asks) != 1 || marks.asks[0] != "main 2026-11-10" {
+	const read = "main 2026-11-10"
+	if len(acc.asked) != 2 || acc.asked[0] != read || acc.asked[1] != read || len(marks.asks) != 1 || marks.asks[0] != read {
 		t.Fatalf("reads: %v %v", acc.asked, marks.asks)
 	}
 	golden := filepath.Join("testdata", "holdings.golden.json")
@@ -110,8 +111,8 @@ func TestHoldingBlocksNilPathStaysMissingQuote(t *testing.T) {
 				t.Fatalf("%s: %s gap = %v", name, blk, g)
 			}
 		}
-		if len(acc.asked) != 0 {
-			t.Fatalf("%s: positions were read", name)
+		if len(acc.asked) != 1 {
+			t.Fatalf("%s: positions read %d times, want only the build read", name, len(acc.asked))
 		}
 	}
 }

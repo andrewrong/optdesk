@@ -1,6 +1,7 @@
 package market_page
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -72,6 +73,19 @@ func TestWeatherChartIsGap(t *testing.T) {
 	g := at(t, allOK().page(t), "weather", "chart").(map[string]any)
 	if g["kind"] != "gap" || g["reason"] != "not_built" {
 		t.Errorf("chart = %v", g)
+	}
+}
+
+func TestChartGapTextAgreesWithWeatherSentence(t *testing.T) {
+	t.Parallel()
+	m := allOK().page(t)
+	chart, _ := at(t, m, "weather", "chart").(map[string]any)["text"].(string)
+	sentence, _ := at(t, m, "weather", "sentence").(string)
+	if strings.Contains(chart, "no stored 200-day average") {
+		t.Errorf("chart text contradicts the weather sentence: %q", chart)
+	}
+	if !strings.HasPrefix(sentence, "Gap to the 200-day average") {
+		t.Errorf("weather sentence = %q", sentence)
 	}
 }
 

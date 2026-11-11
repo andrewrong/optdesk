@@ -210,7 +210,7 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	capture := captureID(r.day, k)
 	for i := 0; i < len(listed); i += r.j.m.Chunk {
 		end := min(i+r.j.m.Chunk, len(listed))
-		if terr := r.chunk(ctx, u, undID, capture, listed[i:end], res); terr != nil {
+		if terr := r.chunk(ctx, u, undID, price, capture, listed[i:end], res); terr != nil {
 			return terr
 		}
 	}
@@ -335,8 +335,8 @@ func (r *runState) listed(ctx context.Context, pairs []broker.Contract) ([]broke
 	return out, nil
 }
 
-// chunk resolves the instruments of cs, asks their quotes and writes the rows.
-func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture jobs.CaptureID, cs []broker.Contract,
+// chunk resolves the instruments of cs, asks their quotes and writes the rows; price fills underlying_price where a quote has none.
+func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price float64, capture jobs.CaptureID, cs []broker.Contract,
 	res *contracts.JobResult) contracts.TypedError {
 	ids := make([]int64, len(cs))
 	for i, c := range cs {
@@ -369,7 +369,7 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, capture
 	rows := make([]contracts.OptionEod, len(qs))
 	usable := 0
 	for i, q := range qs {
-		rows[i] = mapRow(q, ids[i], undID, r.dayTime, capture, u.Currency)
+		rows[i] = withUnderlyingPrice(mapRow(q, ids[i], undID, r.dayTime, capture, u.Currency), price)
 		if rows[i].Status == statusOK {
 			usable++
 		}

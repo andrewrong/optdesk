@@ -79,13 +79,21 @@ type Outcome struct {
 	Reason  string
 }
 
-// InvalidError names the field a value was refused for; nothing is written.
-type InvalidError struct{ Field, Why string }
+// InvalidError is the error Apply returns for a value it refuses; nothing is written. A caller reads it with
+// errors.As into a variable of this type. It is an interface so that this package holds declarations only; the
+// implementation (underlyingpg) defines its own type.
+type InvalidError interface {
+	error
+	// Field names the refused field.
+	Field() string
+	// Why says why the value was refused.
+	Why() string
+}
 
 // Writer is held by the page route and the import (role ot_w_settings).
 type Writer interface {
 	// Apply writes the change in one transaction; unchanged fields write nothing. It returns the rows written, or an
-	// *InvalidError.
+	// InvalidError, which a caller reads with errors.As.
 	Apply(ctx context.Context, c Change) (written int, err error)
 	Close() error
 }
