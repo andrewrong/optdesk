@@ -46,7 +46,7 @@ func TestCalendarChangeIsLogged(t *testing.T) {
 
 func TestCalendarUvPathSetting(t *testing.T) {
 	t.Parallel()
-	fixed := []string{"run", "--no-sync", "--project", "pyside", "python", "-m", "optdesk.calendar"}
+	fixed := []string{"run", "--locked", "--project", "pyside", "python", "-m", "optdesk.calendar"}
 	for name, tc := range map[string]struct{ env, program string }{
 		"absent": {fullEnv, "uv"},
 		"set":    {fullEnv + "OT_CALENDAR_UV=/opt/tools/uv\n", "/opt/tools/uv"},

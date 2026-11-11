@@ -222,9 +222,9 @@ type deps struct {
 }
 
 // calendarArgs is what follows the uv program in the command of calendar_refresh, that is
-// `run --no-sync --project pyside python -m optdesk.calendar`; calendarcli adds the
+// `run --locked --project pyside python -m optdesk.calendar`; calendarcli adds the
 // calendar, the days and the output file. The program is the line OT_CALENDAR_UV, or uv on PATH.
-var calendarArgs = []string{"run", "--no-sync", "--project", "pyside", "python", "-m", "optdesk.calendar"}
+var calendarArgs = []string{"run", "--locked", "--project", "pyside", "python", "-m", "optdesk.calendar"}
 
 // envCalendarUV names the line of .env that sets the path of uv.
 const envCalendarUV = "OT_CALENDAR_UV"
