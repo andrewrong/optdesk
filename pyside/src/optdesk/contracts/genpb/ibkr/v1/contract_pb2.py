@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16ibkr/v1/contract.proto\x12\x07ibkr.v1\"\xe0\x01\n\x0c\x43ontractSpec\x12\"\n\x08sec_type\x18\x01 \x01(\x0e\x32\x10.ibkr.v1.SecType\x12\x0e\n\x06symbol\x18\x02 \x01(\t\x12\x10\n\x08\x65xchange\x18\x03 \x01(\t\x12\x10\n\x08\x63urrency\x18\x04 \x01(\t\x12\x0e\n\x06\x65xpiry\x18\x05 \x01(\t\x12\x0e\n\x06strike\x18\x06 \x01(\t\x12\x1d\n\x05right\x18\x07 \x01(\x0e\x32\x0e.ibkr.v1.Right\x12\x12\n\nmultiplier\x18\x08 \x01(\t\x12\x15\n\rtrading_class\x18\t \x01(\t\x12\x0e\n\x06\x63on_id\x18\n \x01(\x03*`\n\x07SecType\x12\x18\n\x14SEC_TYPE_UNSPECIFIED\x10\x00\x12\x12\n\x0eSEC_TYPE_STOCK\x10\x01\x12\x12\n\x0eSEC_TYPE_INDEX\x10\x02\x12\x13\n\x0fSEC_TYPE_OPTION\x10\x03*=\n\x05Right\x12\x15\n\x11RIGHT_UNSPECIFIED\x10\x00\x12\r\n\tRIGHT_PUT\x10\x01\x12\x0e\n\nRIGHT_CALL\x10\x02\x42\x38Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16ibkr/v1/contract.proto\x12\x07ibkr.v1\"\xe0\x01\n\x0c\x43ontractSpec\x12\"\n\x08sec_type\x18\x01 \x01(\x0e\x32\x10.ibkr.v1.SecType\x12\x0e\n\x06symbol\x18\x02 \x01(\t\x12\x10\n\x08\x65xchange\x18\x03 \x01(\t\x12\x10\n\x08\x63urrency\x18\x04 \x01(\t\x12\x0e\n\x06\x65xpiry\x18\x05 \x01(\t\x12\x0e\n\x06strike\x18\x06 \x01(\t\x12\x1d\n\x05right\x18\x07 \x01(\x0e\x32\x0e.ibkr.v1.Right\x12\x12\n\nmultiplier\x18\x08 \x01(\t\x12\x15\n\rtrading_class\x18\t \x01(\t\x12\x0e\n\x06\x63on_id\x18\n \x01(\x03*s\n\x07SecType\x12\x18\n\x14SEC_TYPE_UNSPECIFIED\x10\x00\x12\x12\n\x0eSEC_TYPE_STOCK\x10\x01\x12\x12\n\x0eSEC_TYPE_INDEX\x10\x02\x12\x13\n\x0fSEC_TYPE_OPTION\x10\x03\x12\x11\n\rSEC_TYPE_CASH\x10\x04*=\n\x05Right\x12\x15\n\x11RIGHT_UNSPECIFIED\x10\x00\x12\r\n\tRIGHT_PUT\x10\x01\x12\x0e\n\nRIGHT_CALL\x10\x02\x42\x38Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,9 +33,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z6github.com/andrewrong/optdesk/internal/contracts/genpb'
   _globals['_SECTYPE']._serialized_start=262
-  _globals['_SECTYPE']._serialized_end=358
-  _globals['_RIGHT']._serialized_start=360
-  _globals['_RIGHT']._serialized_end=421
+  _globals['_SECTYPE']._serialized_end=377
+  _globals['_RIGHT']._serialized_start=379
+  _globals['_RIGHT']._serialized_end=440
   _globals['_CONTRACTSPEC']._serialized_start=36
   _globals['_CONTRACTSPEC']._serialized_end=260
 # @@protoc_insertion_point(module_scope)
