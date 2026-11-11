@@ -10,6 +10,8 @@ Build the view model of a page from stored values and serve it inside a static p
 - `pages.Builder`: `func(ctx, store.SeriesReader, contracts.Day, generatedAt time.Time) ([]byte, error)`.
 - `pages.Page{Meta, Build}`.
 - `macro_rates.Page()` returns `Meta{macro_rates, page.macro_rates.v3}` with the package `Build`.
+- `underlyings.Page()` returns `Meta{underlyings, page.underlyings.v1}`; its Builder builds the read-only page of no rows for the given day and instant.
+- `underlyings.Build(in Input) ([]byte, error)` (new): JSON of `contracts/schemas/page.underlyings.v1.json` from the stored rows, the held symbols, the history, the form token, the confirm block, the notice, the clock value and the owner zone; `Follows` is the one rule of "followed by"; texts in English, written by `text.go`; reads no store and no clock.
 - `embed.Handler(viewModel) http.Handler` and `embed.Assets() http.Handler`: the package embeds `all:dist` (`internal/pages/embed/dist`, written by `pnpm --dir web build`, not committed; only `dist/.gitignore` is). `Handler` writes the view model into `dist/index.html`; `Assets` answers request paths `/assets/*` from `dist/assets`: another path, an unclean path or a missing file is 404, a method other than GET and HEAD is 405. When `index.html` is absent `Handler` answers 500 with the text `web bundle not built: run pnpm --dir web build` (no path in the body).
 - `macro_page.NewPage(c)` returns `Meta{macro_page, page.macro_page.v1}`; its `Build` uses a copy of `c` whose `Indicators` is copied at construction.
 - `market_page.Build(ctx, c Config, r store.SeriesReader, day, generatedAt)` and `market_page.NewPage(c Config)` (page name `market_page`, schema `page.market_page.v1`): `Config` is `RunID`, `BuildID`, `Scope`, `Zone` (`generated_at` is written in it) and `Readings`, a `compute.ReadingFunc`; a nil `Zone` or `Readings`, a nil series reader, a bad day or id is an error of `Build`, and so is a reader error (never a Gap).
@@ -61,6 +63,7 @@ Build the view model of a page from stored values and serve it inside a static p
 - `internal/pages/api_test.go`: the interface from both sides.
 - `internal/pages/api_test.go`: `TestPagesPageContract`.
 - `internal/pages/macro_rates/page_test.go`: `TestPage`.
+- `internal/pages/underlyings/page_test.go`: `TestPage` (new), `TestBuildNilRows` (new); `builder_test.go`: `TestBuildGolden` (new), `TestBuildConfirm` (new), `TestBuildReadOnly` (new), `TestBuildHistoryLimitAndDiff` (new), `TestBuildStaleAndNoConfirmStops` (new), `TestBuildZoneAndConID` (new); `follow_test.go`: `TestFollowTable` (new), `TestFollowsNeverNil` (new).
 - `internal/pages/macro_page/page_test.go`: `TestNewPage`, `TestNewPageCopiesConfig`.
 - `internal/pages/market_page/page_test.go`: `TestNewPageMeta`, `TestConfigContract`.
 - `internal/pages/option_candidates_page/page_test.go`: `TestNewPageMeta`, `TestConfigContract`.
