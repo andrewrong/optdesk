@@ -204,13 +204,9 @@ func (c Config) questionsBlockOf(ctx context.Context, figs []subjectFigs, today 
 		var cells [4]any
 		switch {
 		case f.refused != "":
-			for i := range cells {
-				cells[i] = blockGap(reasonMissingIn, f.refused)
-			}
+			cells = sameAsQ1(f.refused)
 		case !f.hasYears():
-			for i := range cells {
-				cells[i] = blockGap(reasonMissingIn, reasonText(f.fr.Reasons...))
-			}
+			cells = sameAsQ1(reasonText(f.fr.Reasons...))
 		default:
 			cells = questionCells(c.Questions(f.fr.Filings, today))
 		}
@@ -218,6 +214,15 @@ func (c Config) questionsBlockOf(ctx context.Context, figs []subjectFigs, today 
 		blk.Rows = append(blk.Rows, row)
 	}
 	return blk, nil
+}
+
+// sameAsQ1 is the four cells of a company with no figures: Q1 states the reason, Q2 to Q4 point to it.
+func sameAsQ1(reason string) [4]any {
+	cells := [4]any{blockGap(reasonMissingIn, reason)}
+	for i := 1; i < len(cells); i++ {
+		cells[i] = blockGap(reasonMissingIn, "as Q1")
+	}
+	return cells
 }
 
 // questionCells is the figure or gap of each of Q1 to Q4.
