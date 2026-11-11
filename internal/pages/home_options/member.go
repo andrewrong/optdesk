@@ -51,11 +51,15 @@ const (
 	textOpen      = "Open premium not computed yet"
 	textMaxLoss   = "Max loss needs the combined structure, the ledger does not give it"
 	textOtherCcy  = "Ledger holds non-USD positions, not counted on this page"
-	seriesText    = "Settled premium by closing month; expiry, exercise, assignment and buy-back count, fees are not deducted; year and month of the closing day, no time zone conversion; by account alias, not merged"
+	seriesText    = "Settled premium by closing month; expiry, exercise, assignment and buy-back count, " +
+		"fees are not deducted; year and month of the closing day, no time zone conversion; " +
+		"by account alias, not merged"
 	closedText    = "Closed P/L, last six months: no data yet, monthly closed P/L is not given on this page"
-	seriesCaption = "USD, by closing month: expiry, exercise, assignment and buy-back included, fees are not deducted; the year and month of the closing day; no time zone conversion; by account alias, never merged"
-	noteCash      = "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative."
-	noteClosed    = "Premium and realised P/L count only closed sold positions, all accounts combined."
+	seriesCaption = "USD, by closing month: expiry, exercise, assignment and buy-back included, " +
+		"fees are not deducted; the year and month of the closing day; " +
+		"no time zone conversion; by account alias, never merged"
+	noteCash   = "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative."
+	noteClosed = "Premium and realised P/L count only closed sold positions, all accounts combined."
 )
 
 var monthLabels = [12]string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}

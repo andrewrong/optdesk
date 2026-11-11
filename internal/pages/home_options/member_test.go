@@ -238,7 +238,10 @@ func TestSeriesCardTextStatesRule(t *testing.T) {
 	c := card(t, okCfg(sold("1.0000", "", "")))
 	for _, k := range []string{"premium_series_text", "premium_series_caption"} {
 		s := c[k].(string)
-		for _, w := range []string{"by closing month", "expiry", "exercise", "assignment", "buy-back", "fees are not deducted", "year and month of the closing day", "no time zone conversion", "by account alias", "not merged"} {
+		for _, w := range []string{
+			"by closing month", "expiry", "exercise", "assignment", "buy-back", "fees are not deducted",
+			"year and month of the closing day", "no time zone conversion", "by account alias", "not merged",
+		} {
 			if k == "premium_series_caption" && w == "not merged" {
 				w = "never merged"
 			}
