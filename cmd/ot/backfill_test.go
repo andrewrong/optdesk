@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -318,5 +319,121 @@ func TestBackfillNoMissingPrintsNothing(t *testing.T) {
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout %q", stdout.String())
+	}
+}
+
+// bfPlanJob is a fake job with its own id and plan.
+type bfPlanJob struct {
+	fakeJob
+	id   string
+	keys []contracts.ExpectedKey
+	err  error
+}
+
+func (j bfPlanJob) ID() string { return j.id }
+func (j bfPlanJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return j.keys, "", j.err
+}
+
+// jobBackfillApp is backfillApp whose fred_series job is j.
+func jobBackfillApp(t *testing.T, j bfPlanJob, f *fakeBackfiller, g *fakeKeySyncer) *app {
+	t.Helper()
+	a, _, _, _ := backfillApp(t, fullEnv, f)
+	fakeBackfillDeps(a, f, g)
+	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) { return j, nil }
+	return a
+}
+
+func twoDatasetJob() bfPlanJob {
+	return bfPlanJob{id: "twoset", keys: []contracts.ExpectedKey{
+		{DatasetID: "ds_b", SubjectKey: "x"}, {DatasetID: "ds_a", SubjectKey: "y"}, {DatasetID: "ds_b", SubjectKey: "z"},
+	}}
+}
+
+func TestBackfillJob(t *testing.T) {
+	t.Parallel()
+	day := []string{"--day", "2026-11-04"}
+	t.Run("datasets of the plan in plan order", func(t *testing.T) {
+		f := &fakeBackfiller{}
+		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
+		if err := backfill(a, append(day, "--job", "twoset")); err != nil {
+			t.Fatal(err)
+		}
+		if len(f.datasets) != 1 || strings.Join(f.datasets[0], ",") != "ds_b,ds_a" {
+			t.Fatalf("datasets %v", f.datasets)
+		}
+	})
+	t.Run("no job leaves datasets nil", func(t *testing.T) {
+		f := &fakeBackfiller{}
+		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
+		if err := backfill(a, day); err != nil {
+			t.Fatal(err)
+		}
+		if len(f.datasets) != 1 || f.datasets[0] != nil {
+			t.Fatalf("datasets %v", f.datasets)
+		}
+	})
+	t.Run("job and dataset of the job", func(t *testing.T) {
+		f := &fakeBackfiller{}
+		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
+		if err := backfill(a, append(day, "--job", "twoset", "--dataset", "ds_a")); err != nil {
+			t.Fatal(err)
+		}
+		if len(f.datasets) != 1 || strings.Join(f.datasets[0], ",") != "ds_a" {
+			t.Fatalf("datasets %v", f.datasets)
+		}
+	})
+	refused := []struct {
+		name string
+		job  bfPlanJob
+		args []string
+		want []string
+		deny []string
+	}{
+		{"unknown job", twoDatasetJob(), []string{"--job", "nope"}, []string{"unknown job", "nope", "fake", "fred_series"}, nil},
+		{"dataset not of the job", twoDatasetJob(), []string{"--job", "twoset", "--dataset", "other"},
+			[]string{"dataset other is not a dataset of job twoset"}, nil},
+		{"plan error", bfPlanJob{id: "bad", err: errors.New("postgres://u:sentinel-pw@h/db sentinel-key")}, []string{"--job", "bad"},
+			[]string{"job bad", "plan failed"}, []string{"postgres://", "sentinel-pw", "sentinel-key"}},
+		{"no key", bfPlanJob{id: "empty"}, []string{"--job", "empty"}, []string{"job empty plans no key on the day"}, nil},
+	}
+	for _, tc := range refused {
+		t.Run(tc.name, func(t *testing.T) {
+			f, g := &fakeBackfiller{}, &fakeKeySyncer{}
+			if tc.name == "unknown job" {
+				tc.job.id = "fred_series"
+			}
+			a := jobBackfillApp(t, tc.job, f, g)
+			err := backfill(a, append(append([]string{}, day...), tc.args...))
+			if err == nil {
+				t.Fatal("want an error")
+			}
+			for _, w := range tc.want {
+				if !strings.Contains(err.Error(), w) {
+					t.Fatalf("err %q lacks %q", err, w)
+				}
+			}
+			for _, d := range tc.deny {
+				if strings.Contains(err.Error(), d) {
+					t.Fatalf("err %q holds %q", err, d)
+				}
+			}
+			if len(f.days) != 0 || len(g.days) != 0 {
+				t.Fatalf("backfill calls %d sync calls %d", len(f.days), len(g.days))
+			}
+		})
+	}
+}
+
+func TestBackfillJobRunnerError(t *testing.T) {
+	t.Parallel()
+	day := []string{"--day", "2026-11-04"}
+	{
+		f := &fakeBackfiller{err: errors.New("boom")}
+		a := jobBackfillApp(t, twoDatasetJob(), f, &fakeKeySyncer{})
+		err := backfill(a, append(day, "--job", "twoset"))
+		if err == nil || !strings.Contains(err.Error(), "backfill 2026-11-04 job twoset failed") {
+			t.Fatalf("err %v", err)
+		}
 	}
 }
