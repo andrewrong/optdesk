@@ -263,9 +263,9 @@ func validate(c Config, r store.SeriesReader) error {
 func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow, bool, error) {
 	row := indexRow{
 		Name:        name,
-		IV:          mkGap("no_data", ivNoRow),
-		RV20:        mkGap("not_built", rv20NotBuilt),
-		IVMinusRV20: mkGap("not_built", diffNotBuilt),
+		IV:          mkGap("no_data", name+" "+ivNoRow),
+		RV20:        mkGap("not_built", name+" "+rv20NotBuilt),
+		IVMinusRV20: mkGap("not_built", name+" "+diffNotBuilt),
 	}
 	from := contracts.Day(d.AddDate(0, 0, -readingDays).Format(dayLayout))
 	rows, err := c.Readings(ctx, figIV, subjectKind, name, from, contracts.Day(d.Format(dayLayout)))
@@ -283,12 +283,12 @@ func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow
 		return row, false, nil
 	}
 	if string(best.State) != "ok" || best.Value == nil {
-		row.IV = mkGap("missing_input", ivMissing)
+		row.IV = mkGap("missing_input", name+" "+ivMissing)
 		return row, false, nil
 	}
 	text, err := shiftRound(*best.Value, 2, 1)
 	if err != nil || strings.HasPrefix(text, "-") || strings.Trim(text, "0.") == "" {
-		row.IV = mkGap("missing_input", ivMissing)
+		row.IV = mkGap("missing_input", name+" "+ivMissing)
 		return row, false, nil
 	}
 	row.IV = volPoints{Kind: "value", Value: json.Number(text), Text: text, Unit: "vol_points"}
