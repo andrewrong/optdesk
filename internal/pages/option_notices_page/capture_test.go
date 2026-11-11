@@ -42,7 +42,7 @@ func TestPreviousDayFound(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("ok %v err %v", ok, err)
 	}
-	if c.PrevDay != "2026-11-05" || len(c.Prev) != 1 || c.Prev[0].SecType != "OPT" || len(c.Values) != 1 {
+	if c.PrevDay != "2026-11-05" || len(c.Prev) != 1 || c.Prev[0].SecType != "option" || len(c.Values) != 1 {
 		t.Errorf("capture = %+v", c)
 	}
 	delete(a.positions, "main/2026-11-05")

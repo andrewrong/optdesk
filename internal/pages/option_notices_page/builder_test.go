@@ -105,11 +105,11 @@ func (f *fakeRule) Evaluate(in compute.NoticeInput, p compute.NoticeParams) comp
 }
 
 func stock(symbol string) store.Position {
-	return store.Position{Symbol: symbol, SecType: "STK", Multiplier: "1", Quantity: "100", Currency: "USD"}
+	return store.Position{Symbol: symbol, SecType: "stock", Multiplier: "1", Quantity: "100", Currency: "USD"}
 }
 
 func shortPut(symbol, expiry string) store.Position {
-	return store.Position{Symbol: symbol, SecType: "OPT", Expiry: expiry, Strike: "95", Right: "P",
+	return store.Position{Symbol: symbol, SecType: "option", Expiry: expiry, Strike: "95", Right: "P",
 		Multiplier: "100", Quantity: "-1", Currency: "USD"}
 }
 
