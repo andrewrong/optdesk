@@ -164,7 +164,8 @@ func (c Config) capture(ctx context.Context, alias string, sessions []contracts.
 }
 
 // obligations replays the ledger of alias and returns its open short puts and the newest record time.
-func (c Config) obligations(ctx context.Context, alias string, sessions []contracts.Day, day contracts.Day) ([]blockapi.ObligationIn, []string, time.Time, error) {
+func (c Config) obligations(ctx context.Context, alias string, sessions []contracts.Day,
+	day contracts.Day) ([]blockapi.ObligationIn, []string, time.Time, error) {
 	var newest time.Time
 	rows, err := c.Ledger.FlexTradeRows(ctx, alias)
 	if err != nil {
