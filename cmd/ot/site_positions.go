@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"os"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/structures_page"
+	"github.com/pelletier/go-toml/v2"
 )
 
 // The addresses of the option positions pages under the site root (docs/design/option-positions.md#Interface).
@@ -26,9 +29,57 @@ const (
 	demoNoFlexText   = "演示数据中没有 Flex 持仓"
 )
 
-// siteAliases is the alias list of the positions pages; the first is main. The gateways file of
-// account-data.md is not read yet, so the list is the one main account.
-var siteAliases = []string{"main"}
+// aliasList is the alias list of the account pages: the field aliases, or ["main"] when it is empty. The
+// first is the default alias. It never returns an empty list.
+func (rd siteReaders) aliasList() []string {
+	if len(rd.aliases) == 0 {
+		return []string{"main"}
+	}
+	return rd.aliases
+}
+
+// siteAliasList reads the alias list of the account pages from the gateways file named in .env, the way
+// account_capture takes its aliases: main (accountMain) first, then the other `account` values, non-empty,
+// without repeats, sorted. The demo profile, an unreadable .env, an unset key and a missing or invalid file
+// give ["main"]; the failure logs one WARN line carrying no path and no account value. It is called once at
+// serve start.
+func siteAliasList(a *app) []string {
+	fallback := []string{"main"}
+	if a.profile.Name == "demo" {
+		return fallback
+	}
+	warn := func(why string) []string {
+		a.log.Warn("gateways file not usable for the account pages, alias main is used", "component", "ot", "reason", why)
+		return fallback
+	}
+	env, err := a.envFile()
+	if err != nil {
+		return warn("env file cannot be read")
+	}
+	path := env[envIbkrGateways]
+	main, err := accountMain(path)
+	if err != nil {
+		return warn("gateways file missing or invalid")
+	}
+	// accountMain validated the file; its other entries are read for their account only.
+	var f struct {
+		Gateway []struct {
+			Account string `toml:"account"`
+		} `toml:"gateway"`
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil || toml.Unmarshal(raw, &f) != nil {
+		return warn("gateways file missing or invalid")
+	}
+	others := []string{}
+	for _, g := range f.Gateway {
+		if g.Account != "" && g.Account != main && !slices.Contains(others, g.Account) {
+			others = append(others, g.Account)
+		}
+	}
+	sort.Strings(others)
+	return append([]string{main}, others...)
+}
 
 // positionsKind selects which of the three pages a request builds.
 type positionsKind int
@@ -73,16 +124,16 @@ func buildPositions(ctx context.Context, a *app, clk clock.Clock, dayFlag string
 	}
 	alias := q.Get(siteAccountQuery)
 	if alias == "" {
-		alias = siteAliases[0]
+		alias = rd.aliasList()[0]
 	}
 	gapText := ""
 	switch {
-	case !slices.Contains(siteAliases, alias):
+	case !slices.Contains(rd.aliasList(), alias):
 		gapText = unknownAccount
 	case a.profile.Name == "demo":
 		gapText = demoNoFlexText
 	}
-	aliases := siteAliases
+	aliases := rd.aliasList()
 	if gapText != "" {
 		// the builders see no reader: they write their no_reader gap page, whose text the route replaces
 		rd = siteReaders{}

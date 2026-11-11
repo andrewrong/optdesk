@@ -29,7 +29,7 @@ func init() {
 // the gap page no_reader (the demo profile has no session reader).
 func householdConfig(a *app, rd siteReaders) household_page.Config {
 	return household_page.Config{
-		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: siteAliases,
+		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Marks: rd.marks, Holdings: pagefig.NewHoldings,
 	}
@@ -47,7 +47,7 @@ func buildHousehold(ctx context.Context, a *app, clk clock.Clock, dayFlag string
 	}
 	alias := queryOf(ctx).Get(siteAccountQuery)
 	if alias == "" {
-		alias = siteAliases[0]
+		alias = rd.aliasList()[0]
 	}
 	return household_page.Build(ctx, householdConfig(a, rd), alias, day, clk.Now().UTC())
 }
@@ -77,7 +77,7 @@ func householdPageNamed(ctx context.Context, a *app) (pages.Page, func(), error)
 	cfg := householdConfig(a, rd)
 	cfg.RunID = "ot-page"
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
-		return household_page.Build(ctx, cfg, siteAliases[0], day, now)
+		return household_page.Build(ctx, cfg, rd.aliasList()[0], day, now)
 	}
 	return pages.Page{Meta: pages.Meta{Name: householdName, Schema: "page.household_page.v1"}, Build: build}, closeFn, nil
 }

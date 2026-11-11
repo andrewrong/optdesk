@@ -29,7 +29,7 @@ func init() {
 // the gap page no_reader (the demo profile has no session reader).
 func positionsPageConfig(a *app, rd siteReaders) positions_page.Config {
 	return positions_page.Config{
-		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: siteAliases,
+		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Marks: rd.marks, Figures: pagefig.New, Holdings: pagefig.NewHoldings,
 	}
@@ -47,7 +47,7 @@ func buildPositionsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag st
 	}
 	alias := queryOf(ctx).Get(siteAccountQuery)
 	if alias == "" {
-		alias = siteAliases[0]
+		alias = rd.aliasList()[0]
 	}
 	return positions_page.Build(ctx, positionsPageConfig(a, rd), alias, day, clk.Now().UTC())
 }
@@ -77,7 +77,7 @@ func positionsPageNamedOf(ctx context.Context, a *app) (pages.Page, func(), erro
 	cfg := positionsPageConfig(a, rd)
 	cfg.RunID = "ot-page"
 	build := func(ctx context.Context, _ store.SeriesReader, day contracts.Day, now time.Time) ([]byte, error) {
-		return positions_page.Build(ctx, cfg, siteAliases[0], day, now)
+		return positions_page.Build(ctx, cfg, rd.aliasList()[0], day, now)
 	}
 	return pages.Page{Meta: pages.Meta{Name: positionsName, Schema: "page.positions_page.v3"}, Build: build}, closeFn, nil
 }

@@ -26,7 +26,7 @@ func init() {
 // gap page no_reader.
 func riskConfig(a *app, rd siteReaders) risk_page.Config {
 	return risk_page.Config{
-		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: siteAliases,
+		RunID: "ot-serve", BuildID: buildIDOf(version), Zone: a.profile.Zone, Aliases: rd.aliasList(),
 		Account: rd.noticeAccount, Ledger: rd.optionLedger, Sessions: rd.sessions, Ledgers: rd.ledgers,
 		Figures: pagefig.New, Holdings: pagefig.NewHoldings,
 		Structures: rd.structures, Eod: rd.eod, Terms: rd.terms,
@@ -45,7 +45,7 @@ func buildRisk(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd 
 	}
 	alias := queryOf(ctx).Get(siteAccountQuery)
 	if alias == "" {
-		alias = siteAliases[0]
+		alias = rd.aliasList()[0]
 	}
 	return risk_page.NewPage(riskConfig(a, rd), alias).Build(ctx, nil, day, clk.Now().UTC())
 }
@@ -74,5 +74,5 @@ func riskPageNamed(ctx context.Context, a *app) (pages.Page, func(), error) {
 	}
 	cfg := riskConfig(a, rd)
 	cfg.RunID = "ot-page"
-	return risk_page.NewPage(cfg, siteAliases[0]), closeFn, nil
+	return risk_page.NewPage(cfg, rd.aliasList()[0]), closeFn, nil
 }

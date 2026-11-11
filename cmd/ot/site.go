@@ -88,6 +88,9 @@ type siteReaders struct {
 	structures compute.NewOptionStructuresFunc
 	results    compute.NewOptionResultsFunc
 
+	// aliases is the alias list of the account pages, read once at serve start from the gateways file (empty: ["main"]).
+	aliases []string
+
 	// the tracking page: the option ledger reader of the pages line (nil with no opener in deps).
 	optionLedger store.OptionLedgerReader
 
@@ -187,7 +190,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	}
 	rd := siteReaders{marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
-		optionLedger: ledger, sessions: sessions}
+		optionLedger: ledger, sessions: sessions, aliases: siteAliasList(a)}
 	if len(siteOpeners) > 0 {
 		keys := make([]string, 0, len(siteOpeners))
 		for k := range siteOpeners {
