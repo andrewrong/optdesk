@@ -72,7 +72,7 @@ func TestRunIDOf(t *testing.T) {
 	}
 	same := base()
 	for i := range same {
-		same[i].RunID, same[i].ComputedAt, same[i].SettingsVersion = "other", time.Now(), &ver
+		same[i].RunID, same[i].ComputedAt, same[i].SettingsVersion = "other", time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), &ver
 	}
 	if got := runIDOf("2026-11-09", same); got != id {
 		t.Fatalf("run id, computed_at or settings version changed the id: %q %q", got, id)
