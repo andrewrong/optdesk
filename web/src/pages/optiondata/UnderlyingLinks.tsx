@@ -1,5 +1,4 @@
 // The other underlyings of the option data page: label and href are shown as the builder wrote them.
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Payload } from '@/types/option_data_page'
@@ -17,7 +16,6 @@ export function UnderlyingLinks({ underlyings }: { underlyings: UnderlyingChoice
           <Button key={choice.id} asChild variant={choice.current ? 'secondary' : 'ghost'}>
             <a href={choice.href} aria-current={choice.current ? 'page' : undefined}>
               {choice.label}
-              <Badge variant="outline">{choice.id}</Badge>
             </a>
           </Button>
         ))}

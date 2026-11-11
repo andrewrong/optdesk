@@ -34,9 +34,7 @@ describe('UnderlyingLinks', () => {
     await show(choices)
     expect(anchors()).toHaveLength(3)
     expect(anchors().map((a) => a.getAttribute('href'))).toEqual(choices.map((c) => c.href))
-    expect(anchors().map((a) => a.textContent)).toEqual(
-      choices.map((c) => `${c.label}${c.id}`),
-    )
+    expect(anchors().map((a) => a.textContent)).toEqual(choices.map((c) => c.label))
   })
 
   it('marks aria-current on the current choice only', async () => {
@@ -47,11 +45,11 @@ describe('UnderlyingLinks', () => {
     )
   })
 
-  it('keeps two choices with one label apart by the id', async () => {
-    await show([
-      { id: 1, label: 'Same', href: '/a', current: false },
-      { id: 2, label: 'Same', href: '/b', current: false },
-    ])
-    expect(anchors().map((a) => a.textContent)).toEqual(['Same1', 'Same2'])
+  it('shows no id badge, only the label', async () => {
+    await show(choices)
+    expect(anchors()).toHaveLength(choices.length)
+    const found = anchors()
+    expect(found.map((a) => a.children.length)).toEqual(choices.map(() => 0))
+    expect(found.map((a) => a.textContent)).toEqual(choices.map((c) => c.label))
   })
 })
