@@ -30,8 +30,11 @@ func tp(t time.Time) *time.Time { return &t }
 // openRows: 11 is an open pull row with a skew, 12 a refresh row, 21 an error row (no usable quote).
 func openRows() []contracts.OptionOpen {
 	return []contracts.OptionOpen{
-		{InstrumentID: 11, Slot: "0945", Status: 1, MarketDataType: 1, Skew: true, Bid: fp(1.25), Ask: fp(1.35), Delta: fp(-0.16), IvDecimal: fp(0.4), Volume: fp(300), EventTs: tp(time.Date(2026, 11, 10, 14, 45, 12, 0, time.UTC))},
-		{InstrumentID: 12, Slot: openquote.SlotRefresh, Status: 2, MarketDataType: 3, OutsideBand: true, Bid: fp(0.9), Ask: fp(1.1), ReceivedAt: time.Date(2026, 11, 10, 15, 2, 3, 0, time.UTC)},
+		{InstrumentID: 11, Slot: "0945", Status: 1, MarketDataType: 1, Skew: true,
+			Bid: fp(1.25), Ask: fp(1.35), Delta: fp(-0.16), IvDecimal: fp(0.4), Volume: fp(300),
+			EventTs: tp(time.Date(2026, 11, 10, 14, 45, 12, 0, time.UTC))},
+		{InstrumentID: 12, Slot: openquote.SlotRefresh, Status: 2, MarketDataType: 3, OutsideBand: true,
+			Bid: fp(0.9), Ask: fp(1.1), ReceivedAt: time.Date(2026, 11, 10, 15, 2, 3, 0, time.UTC)},
 		{InstrumentID: 21, Slot: "0945", Status: 8, MarketDataType: 1, EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC))},
 	}
 }
