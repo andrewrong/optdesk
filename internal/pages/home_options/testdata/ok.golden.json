@@ -15,25 +15,25 @@
   ],
   "run_status": "partial",
   "card": {
-    "title": "期权概览",
-    "say": "已平仓卖出的权利金合计 +$1,234.50。",
-    "subtitle": "来自成交账本",
+    "title": "Options overview",
+    "say": "Premium from closed sold options totals +$1,234.50.",
+    "subtitle": "From the trade ledger",
     "stale": {
       "data_time": "2026-11-04T00:00:00+08:00",
-      "text": "账本截至 11-04",
+      "text": "Ledger as of 11-04",
       "is_stale": false
     },
     "tiles": {
       "sold_count_month": {
-        "label": "本月卖出",
+        "label": "Sold this month",
         "figure": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "本月卖出组数尚未计算"
+          "text": "Sold groups this month not computed yet"
         }
       },
       "premium_month_usd": {
-        "label": "已平仓权利金",
+        "label": "Closed premium",
         "figure": {
           "kind": "value",
           "value": 1234.50,
@@ -41,71 +41,71 @@
           "unit": "usd_signed",
           "tone": "up"
         },
-        "caption": "已平仓卖出的开仓现金合计；已实现 −$15.25；留存比例 -0.012355"
+        "caption": "Opening cash of closed sold positions totals; realised −$15.25; kept share -0.012355"
       },
       "open_premium_usd": {
-        "label": "未平权利金",
+        "label": "Open premium",
         "figure": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "未平权利金尚未计算"
+          "text": "Open premium not computed yet"
         }
       },
       "max_loss_usd": {
-        "label": "最大亏损",
+        "label": "Max loss",
         "figure": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "最大亏损需要组合结构，账本不给出"
+          "text": "Max loss needs the combined structure, the ledger does not give it"
         }
       }
     },
     "premium_series_6m": [
       {
         "month": "2026-06",
-        "label": "6月",
+        "label": "Jun",
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "没有当月平仓的卖出记录"
+          "text": "No sold records closed this month"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "月度已平仓盈亏不在此页给出"
+          "text": "Monthly closed P/L is not given on this page"
         }
       },
       {
         "month": "2026-07",
-        "label": "7月",
+        "label": "Jul",
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "没有当月平仓的卖出记录"
+          "text": "No sold records closed this month"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "月度已平仓盈亏不在此页给出"
+          "text": "Monthly closed P/L is not given on this page"
         }
       },
       {
         "month": "2026-08",
-        "label": "8月",
+        "label": "Aug",
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "没有当月平仓的卖出记录"
+          "text": "No sold records closed this month"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "月度已平仓盈亏不在此页给出"
+          "text": "Monthly closed P/L is not given on this page"
         }
       },
       {
         "month": "2026-09",
-        "label": "9月",
+        "label": "Sep",
         "premium": {
           "kind": "value",
           "value": 200.00,
@@ -116,26 +116,26 @@
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "月度已平仓盈亏不在此页给出"
+          "text": "Monthly closed P/L is not given on this page"
         }
       },
       {
         "month": "2026-10",
-        "label": "10月",
+        "label": "Oct",
         "premium": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "没有当月平仓的卖出记录"
+          "text": "No sold records closed this month"
         },
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "月度已平仓盈亏不在此页给出"
+          "text": "Monthly closed P/L is not given on this page"
         }
       },
       {
         "month": "2026-11",
-        "label": "11月",
+        "label": "Nov",
         "premium": {
           "kind": "value",
           "value": 300.00,
@@ -146,22 +146,22 @@
         "closed": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "月度已平仓盈亏不在此页给出"
+          "text": "Monthly closed P/L is not given on this page"
         }
       }
     ],
-    "premium_series_text": "近六个月卖出期权按平仓月统计的已了结权利金，到期、被行权、被指派、买回都算，不扣手续费；月份取平仓日的年月，不换算时区；各账户按账户别名分别统计，不合并",
-    "closed_series_text": "近六个月已平仓盈亏暂无数据：月度已平仓盈亏不在此页给出",
-    "premium_series_caption": "单位美元；按平仓月统计的已了结权利金，到期、被行权、被指派、买回平仓都计入，不扣手续费（开仓权利金）；每根柱按平仓日的年月归月，不换算时区；不同账户按账户别名分别统计，从不合并；没有当月平仓的卖出记录的月份留空",
+    "premium_series_text": "Settled premium by closing month; expiry, exercise, assignment and buy-back count, fees are not deducted; year and month of the closing day, no time zone conversion; by account alias, not merged",
+    "closed_series_text": "Closed P/L, last six months: no data yet, monthly closed P/L is not given on this page",
+    "premium_series_caption": "USD, by closing month: expiry, exercise, assignment and buy-back included, fees are not deducted; the year and month of the closing day; no time zone conversion; by account alias, never merged",
     "notes": [
-      "权利金按开仓成交现金计，不含手续费；卖出为正，买入为负。",
-      "权利金与已实现盈亏只计已平仓的卖出仓位，各账户合并。"
+      "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative.",
+      "Premium and realised P/L count only closed sold positions, all accounts combined."
     ],
     "gaps": [
       {
         "kind": "gap",
         "reason": "no_data",
-        "text": "最大亏损需要组合结构，账本不给出"
+        "text": "Max loss needs the combined structure, the ledger does not give it"
       }
     ]
   }

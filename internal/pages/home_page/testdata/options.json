@@ -15,27 +15,27 @@
   ],
   "run_status": "ok",
   "card": {
-    "title": "期权概览",
-    "say": "本月卖出 3 笔，收取权利金 +$310。",
-    "subtitle": "示例数据",
+    "title": "Options overview",
+    "say": "Sold 3 trades this month, premium collected +$310.",
+    "subtitle": "Sample data",
     "stale": {
       "data_time": "2026-10-23T21:00:00Z",
-      "text": "数据截至 10-23 收盘",
+      "text": "Data as of 10-23 close",
       "is_stale": false
     },
     "tiles": {
       "sold_count_month": {
-        "label": "本月卖出",
+        "label": "Sold this month",
         "figure": {
           "kind": "value",
           "value": 3,
-          "text": "3 笔",
+          "text": "3 trades",
           "unit": "structures"
         },
-        "caption": "示例"
+        "caption": "Sample"
       },
       "premium_month_usd": {
-        "label": "本月权利金",
+        "label": "Premium this month",
         "figure": {
           "kind": "value",
           "value": 310.0,
@@ -45,7 +45,7 @@
         }
       },
       "open_premium_usd": {
-        "label": "未平权利金",
+        "label": "Open premium",
         "figure": {
           "kind": "value",
           "value": 1250.5,
@@ -54,7 +54,7 @@
         }
       },
       "max_loss_usd": {
-        "label": "最大亏损",
+        "label": "Max loss",
         "figure": {
           "kind": "value",
           "value": 4000.0,
@@ -66,7 +66,7 @@
     "premium_series_6m": [
       {
         "month": "2026-05",
-        "label": "5月",
+        "label": "May",
         "premium": {
           "kind": "value",
           "value": 120.0,
@@ -84,7 +84,7 @@
       },
       {
         "month": "2026-06",
-        "label": "6月",
+        "label": "Jun",
         "premium": {
           "kind": "value",
           "value": -30.0,
@@ -102,7 +102,7 @@
       },
       {
         "month": "2026-07",
-        "label": "7月",
+        "label": "Jul",
         "premium": {
           "kind": "value",
           "value": 200.5,
@@ -120,7 +120,7 @@
       },
       {
         "month": "2026-08",
-        "label": "8月",
+        "label": "Aug",
         "premium": {
           "kind": "value",
           "value": 80.0,
@@ -138,7 +138,7 @@
       },
       {
         "month": "2026-09",
-        "label": "9月",
+        "label": "Sep",
         "premium": {
           "kind": "value",
           "value": 150.0,
@@ -156,7 +156,7 @@
       },
       {
         "month": "2026-10",
-        "label": "10月",
+        "label": "Oct",
         "premium": {
           "kind": "value",
           "value": 310.0,
@@ -173,8 +173,8 @@
         }
       }
     ],
-    "premium_series_text": "近六个月权利金",
-    "premium_series_caption": "示例数据，单位美元",
+    "premium_series_text": "Premium, last six months",
+    "premium_series_caption": "Sample data, in US dollars",
     "notes": [],
     "gaps": []
   }

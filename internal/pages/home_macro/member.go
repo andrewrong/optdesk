@@ -32,21 +32,21 @@ const (
 	bandHigh    = "66.5"
 	minus       = "−"
 
-	title        = "宏观"
-	sayEase      = "松紧度%s，%s。"
-	sayNoEase    = "松紧度暂无数据。"
-	textNoData   = "松紧度暂无数据"
-	textNoReader = "松紧度暂未接入"
-	textNoWeek   = "较上周暂无数据"
-	textEvents   = "事件日历尚未接入"
-	textNoDay    = "没有数据日"
-	noteDates    = "事件日期按发布日历，无发布时间。"
+	title        = "Macro"
+	sayEase      = "Ease %s, %s."
+	sayNoEase    = "Ease: no data yet."
+	textNoData   = "Ease: no data yet"
+	textNoReader = "Ease: not connected yet"
+	textNoWeek   = "Change vs last week: no data yet"
+	textEvents   = "Event calendar: not connected yet"
+	textNoDay    = "No data day"
+	noteDates    = "Event dates follow the release calendar, no release time."
 )
 
 var (
 	idPattern   = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 	decimalText = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
-	bandWords   = map[string]string{"tighter": "偏紧", "steady": "中性", "looser": "偏松"}
+	bandWords   = map[string]string{"tighter": "tighter", "steady": "neutral", "looser": "looser"}
 )
 
 // Config carries the identity of the run, the owner's zone and the reading function. A nil
@@ -162,7 +162,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 	baseText := textNoDay
 	g := gap{Reason: "no_data", Text: textNoData}
 	s.Card.Say = sayNoEase
-	s.Card.DataTimesText = textNoData + "；" + noteDates
+	s.Card.DataTimesText = textNoData + ". " + noteDates
 	if c.Read == nil {
 		g = gap{Reason: "no_reader", Text: textNoReader}
 	} else {
@@ -173,9 +173,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, at time.Time) ([]by
 		if block != nil {
 			s.Card.Ease = block
 			s.Card.Say = fmt.Sprintf(sayEase, bandWords[cur.band], weekSay(block))
-			base, baseText = cur.dataDay, "数据日 "+cur.dataDay.Format("01-02")
+			base, baseText = cur.dataDay, "Data day "+cur.dataDay.Format("01-02")
 			s.DataTimes = append(s.DataTimes, sourceTime{Source: "macro_ease", DataTime: midnight(base, c.Zone)})
-			s.Card.DataTimesText = "松紧度数据日 " + base.Format("01-02") + "；" + noteDates
+			s.Card.DataTimesText = "Ease data day " + base.Format("01-02") + ". " + noteDates
 		}
 	}
 	if s.Card.Ease == nil {
@@ -197,7 +197,7 @@ func midnight(t time.Time, zone *time.Location) string {
 // weekSay is the week-change sentence of the card, from the stored ease block.
 func weekSay(b *ease) string {
 	if f, ok := b.WeekChange.(figure); ok {
-		return "较上周 " + f.Text
+		return "vs last week " + f.Text
 	}
 	return textNoWeek
 }
@@ -323,10 +323,10 @@ func easeFor(ctx context.Context, read compute.ReadingFunc, day time.Time) (*eas
 			tone = "down"
 		}
 		b.WeekChange = figure{Value: json.Number(num), Text: text, Unit: "index_points", Tone: tone}
-		weekText = "较上周 " + text
+		weekText = "vs last week " + text
 	}
-	b.ReadingText = "当前 " + whole + "，" + word + "；固定刻度 0 到 100。"
-	b.AriaText = "松紧度 " + whole + "，" + word + "，" + weekText +
-		"；固定刻度 0 到 100，中性带 " + bandLow + " 到 " + bandHigh + "。"
+	b.ReadingText = "Now " + whole + ", " + word + "; fixed scale 0 to 100."
+	b.AriaText = "Ease " + whole + ", " + word + ", " + weekText +
+		"; fixed scale 0 to 100, neutral band " + bandLow + " to " + bandHigh + "."
 	return b, cur, nil
 }

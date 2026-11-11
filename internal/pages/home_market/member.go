@@ -336,7 +336,7 @@ func buildChart(newestFirst []point) chart {
 
 func say(vols []volIndex) string {
 	if l, ok := vols[0].Level.(indexLevel); ok {
-		return sayVix + l.Text + "，" + vols[0].Day
+		return sayVix + l.Text + ", " + vols[0].Day
 	}
 	return sayNone
 }
