@@ -182,6 +182,14 @@ describe('OptionPage', () => {
     expect(host.querySelector('[data-chain] [aria-expanded]')).toBeNull()
   })
 
+  it('lets the market tab list wrap on a narrow screen', async () => {
+    await show(fixture('ok.json'))
+    const cls = host.querySelector('[role=tablist]')!.className
+    expect(cls).toContain('group-data-horizontal/tabs:h-auto')
+    expect(cls).toContain('w-full')
+    expect(cls).toContain('flex-wrap')
+  })
+
   it('links 今日机会 to the 全部候选 section with the text and target of the payload', async () => {
     const payload = fixture('ok.json')
     await show(payload)
@@ -314,6 +322,8 @@ describe('OptionPage', () => {
     const pane = host.querySelector('[data-market=US]')!
     expect(pane.textContent).toContain('没有链数据')
     expect(pane.querySelector('[data-table=chain]')).toBeNull()
+    expect(pane.querySelector('[data-chain-empty]')).not.toBeNull()
+    expect(pane.querySelector('[data-chain]')).toBeNull()
   })
 
   it('shows the verdict of the payload, not one derived from the numbers', async () => {
