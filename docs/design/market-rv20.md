@@ -102,9 +102,20 @@ Judged cuts that span rows (each is one pull request, the precedent being `hv30-
 - Issue 2 `index-ids-store` edits `docs/contracts/store.md`, a `store` path.
 - Issue 5 `index-ids-wire` is `ot` only; it needs no file of another module.
 
+Build order (each entry compiles against main plus the entries it is ordered after):
+
+- Parallel, no Order line: issue 1 (jobs seam) and issue 3 (rules and register) share no file and no symbol.
+- Chain: 2 after 1 (the store method has the signature of the seam); 4 after 1 and 3 (it uses `IndexIDReader` and
+  `findRules` fails with "no rule" until issue 3's row exists); 5 after 1 and 2 (it uses `instrument.OpenIndexIDs` of
+  issue 2); 6 after 3 and 4 (`ids_test.go` checks `figRv20` against the rules table and the manifest); 7 after 4 and 6;
+  8 after 3. Issues 2 and 4 are parallel to each other, as are 5 and 6.
+- Issue 1 alone is the interface entry: it is the only new declaration other modules compile against without being able
+  to build it themselves (`IndexIDReader`). `instrument.OpenIndexIDs` is a concrete constructor, not a seam: issue 5 uses
+  it only after issue 2, and the rule row is data read by id string, so neither is an interface entry.
+
 ## Interface
 
-The interface issues are 1 and 3 and land before everything that uses them. What lands in a later entry is used only by entries ordered after it (see Build order under Issues).
+Issue 1 is the only interface entry. What lands in a later entry is used only by entries ordered after it (see Build order in Modules).
 
 - Jobs (issue 1, interface): `computefigures.IndexIDReader` and `ComputeStores.IndexIDs`
   (`internal/jobs/computefigures/types.go`), optional like `PriceBars`; contract text in
@@ -112,7 +123,7 @@ The interface issues are 1 and 3 and land before everything that uses them. What
   compile-time assertion in `cmd/ot` that the store implementation satisfies it (issue 5, ordered after 1 and 2).
 - Store (issue 2, used by issue 5 only): `instrument.OpenIndexIDs(ctx, dsn) (*instrument.IndexIDs, error)`, methods `IndexIDs` and `Close`;
   not an edit of `internal/store/api.go`.
-- Rule id `market.rv20` (issue 3, interface), read by `jobs` and `pages` by id string through `compute.Rules`.
+- Rule id `market.rv20` (issue 3), read by `jobs` and `pages` by id string through `compute.Rules`.
 - Manifest keys of `computefigures` (`job.toml`, issue 4; read by issue 6's `ids_test.go`, ordered after 4): `rv20 = "market.rv20"`, `rv20_indices = ["SPX","NDX","RUT"]`.
 - Reading key (dataset `readings.reading`): `market.rv20|underlying|SPX` (same for NDX, RUT); parameters `data_day`,
   `observations`, `window`.
@@ -121,10 +132,7 @@ The interface issues are 1 and 3 and land before everything that uses them. What
 ## Issues
 
 Build order: every entry compiles and its own tests pass against main plus the entries it is ordered after, and
-nothing else. The seams that siblings consume land first: issue 1 (the job-package seam `IndexIDReader`, interface)
-and issue 3 (the rule id and register entry, interface for `jobs` and `pages` by id string) have no Order line; issues 2
-and 4 follow 1 (4 also follows 3); issues 5 and 6 follow what they use; 7 and 8 last. The chain is 1 and 3, then 2 and 4,
-then 5 and 6, then 7 and 8.
+nothing else. Which run in parallel and which chain, and why, is in `## Modules` (Build order).
 
 ### 1 index-ids-seam (interface)
 
@@ -156,12 +164,12 @@ Acceptance:
 5. `internal/store/api.go` and `migrations/` are untouched and the pg test is tagged: `git diff --name-only BASE` lists exactly the Files line; `head -1 internal/store/instrument/index_ids_pg_test.go` is `//go:build pg`; `git grep -c "IndexIDs" -- docs/contracts/store.md` is at least 1.
 Checked by CI: `go test ./internal/store/instrument -race -count=1` (the `pg` test runs only in GitHub CI).
 
-### 3 rv20-rules (interface)
+### 3 rv20-rules
 
 Module: compute, plus docs (judged two-module entry, Modules above). Size: S.
 Files: `internal/compute/rules/rules.json`, `internal/compute/rules/rules_test.go`, `docs/conventions/register.toml`
 Design: docs/design/market-rv20.md#decisions (2, 3, 7)
-Order: first (shares no file with 1 and 2; it lands the rule id and register entry that issues 4, 6, 7 and 8 read by id string).
+Order: first (shares no file with 1 and 2; it lands the rule row that issue 4's `findRules` (`job.go:145`, "no rule") needs and the id that issues 6, 7 and 8 read).
 Goal: rule `market.rv20` with the numbers of Decision 2 and the hash the hash test computes for `HistoricalVol`, and its
 `[[figure]]` entry (15 keys). The old entries are unchanged.
 Acceptance:
@@ -231,7 +239,7 @@ Checked by CI: `go test ./internal/pages/... -race -count=1`, `go run ./scripts/
 Module: pages. Size: S.
 Files: `internal/pages/home_market/member.go`, `internal/pages/home_market/member_test.go`, `internal/pages/home_market/strings.go`, `internal/pages/home_market/purity_test.go`, `internal/pages/home_market/testdata/ok.golden.json`
 Design: docs/design/market-rv20.md#decisions (6)
-Order: after 3 and 4 (the rule exists and the manifest names it). It uses no code of issue 6: `home_market` imports no other page (`purity_test.go`); the cell rules are the same text of Decision 6, and `docs/contracts/pages.md` is edited by 6 only.
+Order: after 4 and 6 (same cell rules as issue 6, Decision 6; `docs/contracts/pages.md` is edited by 6 only; the rule row of issue 3 is before 4).
 Goal: `buildRow` fills `RV20` from `c.Readings` (kind `underlying`) with the cell rules of issue 6; `IVMinusRV20` stays
 `not_built` with its text. `member_test.go`'s `readings` fake errors on any name but `iv_ibkr` ("unexpected reading"),
 so it is extended to answer `market.rv20`; the `ok` golden carries the filled cell. No other golden or test builds this
