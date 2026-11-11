@@ -53,7 +53,6 @@ describe('macro_rates view', () => {
       for (const series of payload.series) {
         expect(text).toContain(series.title)
         expect(text).toContain(series.latest.text)
-        for (const point of series.points) expect(text).toContain(point.text)
       }
       for (const gap of payload.gaps) {
         expect(text).toContain(gap.text)
@@ -61,6 +60,17 @@ describe('macro_rates view', () => {
       }
     })
   }
+
+  it('shows no table or column header inside a series card', async () => {
+    const payload = fixture('golden') as Payload
+    await show(payload)
+    for (const series of payload.series) {
+      const card = host.querySelector(`[data-series="${series.id}"]`)!
+      expect(card.textContent).toContain(series.title)
+      expect(card.textContent).toContain(series.latest.text)
+      expect(card.querySelector('table, [role="table"], [role="grid"], th, [role="columnheader"]')).toBeNull()
+    }
+  })
 
   it('shows the gap latest of gap and stale in an alert', async () => {
     const payload = fixture('stale') as Payload
