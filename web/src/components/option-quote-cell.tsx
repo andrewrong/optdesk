@@ -42,7 +42,7 @@ export function isStaleQuote(asOf: string, now: Date, market: QuoteMarket): bool
   if (!quoted) return false
   const wall = new Date(now.getTime() + exchangeOffsetMinutes(market, now) * 60_000)
   const clock = secondsOfDay(String(wall.getUTCHours()), String(wall.getUTCMinutes()), String(wall.getUTCSeconds()))
-  return clock - secondsOfDay(quoted[1], quoted[2], quoted[3]) > STALE_AFTER_SECONDS
+  return clock - secondsOfDay(quoted[1] ?? '0', quoted[2] ?? '0', quoted[3] ?? '0') > STALE_AFTER_SECONDS
 }
 
 // `now` is the clock, injected so a test fixes it; by default the device clock at render time (no timer).
