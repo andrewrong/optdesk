@@ -1,5 +1,7 @@
 # Symbol: one translation layer between the IBKR contract of watch.toml and the spelling of each vendor
 
+Note (2026-11-11): `docs/design/underlyings.md` replaces `$OT_HOME/watch.toml` as the owner's hand-edited list of followed names, from the issue that removes the file loader (its issue 10); the text below stays as written until then.
+
 Author: the optdesk designer (draft)
 Owner approved: owner requirement 2026-11-10 (one company of watch.toml is recognised in every vendor's answer; one translation layer, not per-job patches); the pull request approval is pending
 Date: 2026-11-10
