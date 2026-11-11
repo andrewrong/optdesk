@@ -21,7 +21,7 @@
           "unit": "usd_signed",
           "value": 156700
         },
-        "explain": "Sum of the cash (broker TotalCashValue, USD) of the member accounts. The large figure is cash as a share of net value, the small figure is the amount; the share needs cash, net value and country breakdown from the same day. Negative cash is a margin loan: the label becomes Margin loan and the share shows On margin.",
+        "explain": "Sum of member cash (broker TotalCashValue, USD). Large figure: cash share of net value; small: amount. Needs same-day cash, net value and countries. Negative cash is a Margin loan, shown On margin.",
         "figure": {
           "text": "38%",
           "unit": "share_percent",
@@ -36,7 +36,7 @@
           "unit": "percent",
           "value": 0.45
         },
-        "explain": "The Flex daily total of the latest report day, minus the total of the previous report day, summed over members, USD. Includes deposits, withdrawals and position transfers of the day, not pure return. The percentage is this change divided by the total of the previous US trading day, not shown when that total is missing.",
+        "explain": "Flex daily total of the latest report day minus the previous one, summed over members, USD. Includes deposits, withdrawals and transfers, not pure return. Percentage is over the prior US day total.",
         "figure": {
           "text": "+$1,860",
           "tone": "up",
@@ -52,7 +52,7 @@
           "unit": "percent",
           "value": 2.94
         },
-        "explain": "Month change (month-end total minus month-start total minus deposits, USD) divided by the month-start total, simple method, not a time-weighted return. The month starts on 2026-10-01. The timing of deposits within the month is ignored.",
+        "explain": "Month change (month-end total minus month-start total minus deposits, USD) over the month-start total, simple method, not time-weighted. The month starts on 2026-10-01. Deposit timing is ignored.",
         "figure": {
           "text": "+$11,700",
           "tone": "up",
@@ -65,7 +65,7 @@
         "caption": {
           "text": "USD"
         },
-        "explain": "Sum of the net liquidation values (broker NetLiquidation, USD) of the household members' accounts, from the latest after-close snapshot; not shown when a member has no snapshot or the snapshot times are too far apart. Non-USD stocks such as JPY are converted at the broker ledger rate, hence the ≈.",
+        "explain": "Sum of member net liquidation values (broker NetLiquidation, USD), latest after-close snapshot; hidden if a member has none or times are too far apart. Non-USD stocks (JPY) use broker rates, hence ≈.",
         "figure": {
           "text": "≈$412,300",
           "unit": "USD",
