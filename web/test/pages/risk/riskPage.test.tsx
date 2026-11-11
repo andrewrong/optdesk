@@ -62,6 +62,24 @@ describe('HouseholdRiskView', () => {
     expect(host.querySelector('[data-gaps]')).toBeNull()
   })
 
+  it('lays the blocks out in board 25 order, with only the standard metrics cell full width from lg', async () => {
+    const host = await show(ok)
+    const cells = [...host.querySelectorAll('[data-cell]')]
+    expect(cells.map((cell) => cell.getAttribute('data-cell'))).toEqual([
+      'delta',
+      'vega',
+      'beta',
+      'sigma',
+      'standard-metrics',
+    ])
+    const spanning = cells.filter((cell) => cell.classList.contains('lg:col-span-2'))
+    expect(spanning.map((cell) => cell.getAttribute('data-cell'))).toEqual(['standard-metrics'])
+    const grid = cells[0]?.parentElement
+    expect(grid?.classList.contains('grid-cols-1')).toBe(true)
+    expect(grid?.classList.contains('lg:grid-cols-2')).toBe(true)
+    expect(host.querySelector('[data-page=household-risk]')?.classList.contains('min-w-0')).toBe(true)
+  })
+
   it('shows the beta delta meaning', async () => {
     const host = await show(ok)
     expect(host.textContent ?? '').toContain(ok.beta_delta.meaning)
