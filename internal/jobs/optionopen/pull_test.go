@@ -151,14 +151,18 @@ func TestPlanCutsKeysAtMostOneHundredTwentyContracts(t *testing.T) {
 	}
 }
 
-func TestNoPlanIsNoValue(t *testing.T) {
+func TestNoPlanPlansNoKeysAndRunIsNoValue(t *testing.T) {
 	t.Parallel()
-	j := newPull(t, &pullStores{}, newFake(100))
-	if _, _, err := j.Plan(context.Background(), pullDay); err == nil || err.Error() == "" {
-		t.Fatal("no plan gave no error")
-	} else if k := err.(contracts.TypedError).Kind(); k != contracts.NoValue {
-		t.Errorf("Plan kind %v", k)
+	s := &pullStores{}
+	j := newPull(t, s, newFake(100))
+	if keys, hash, err := j.Plan(context.Background(), pullDay); err != nil || len(keys) != 0 || hash != "" {
+		t.Fatalf("empty plan: keys %v hash %q err %v", keys, hash, err)
 	}
+	s.items = seed(2, 3).items
+	if keys, _, err := j.Plan(context.Background(), pullDay); err != nil || len(keys) == 0 {
+		t.Fatalf("stored plan: keys %v err %v", keys, err)
+	}
+	s.items = nil
 	res := j.Run(context.Background(), pullDay, []contracts.ExpectedKey{{DatasetID: "obs.option_open", SubjectKey: "batch-001"}})
 	if res.Err == nil || res.Err.Kind() != contracts.NoValue || res.Err.Error() != "option_open: no plan" {
 		t.Errorf("Run: %v", res.Err)
@@ -295,5 +299,15 @@ func TestRunWithOnlyNonLiveQuotesFails(t *testing.T) {
 	res := runAll(t, newPull(t, s, b))
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Usable != 0 {
 		t.Errorf("err %v usable %d, want a Permanent failure with no usable row", res.Err, res.Usable)
+	}
+}
+
+func TestPlanReturnsTheRetryableErrorOfTheStore(t *testing.T) {
+	t.Parallel()
+	s := seed(1, 1)
+	s.planErr = errors.New("db down")
+	_, _, err := newPull(t, s, newFake(100)).Plan(context.Background(), pullDay)
+	if err == nil || err.(contracts.TypedError).Kind() != contracts.Retryable {
+		t.Fatalf("Plan err %v", err)
 	}
 }
