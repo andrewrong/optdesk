@@ -10,6 +10,8 @@ enum SecType {
   SEC_TYPE_STOCK = 1;
   SEC_TYPE_INDEX = 2;
   SEC_TYPE_OPTION = 3;
+  // a cash pair of IDEALPRO: symbol is the base currency, currency the quote currency
+  SEC_TYPE_CASH = 4;
 }
 
 // Right is the side of an option.

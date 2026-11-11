@@ -1,0 +1,53 @@
+# Manifest of option_open_plan_jp: the plan of the JP contracts to quote at the open, from stored con_ids only.
+# Design: docs/design/option-open-pull.md Decision 21.
+version = 1
+id = "option_open_plan_jp"
+zone = "Asia/Tokyo"
+slot = "0905"
+budget_minutes = 20
+
+[window]
+rule = "after_close"
+lateness_hours = 0
+calendar = "XTKS"
+
+# 08:15 JST when the TSE opens at 09:00, 45 minutes before the open.
+[schedule]
+calendar = "XTKS"
+anchor = "session_open"
+offset = "-45m"
+run_bound = "30m"
+restart_sensitive = false
+
+# The parameter set: the US rule over 14 to 90 days (option-trader plan_jp_v1), no deep puts. The three ceilings
+# add up to the 600 contracts of a run.
+[params]
+put_k = 1.4
+call_k = 1.4
+store_k = 1.75
+store_drop = 0.25
+calls = "held"
+min_dte = 14
+max_dte = 90
+min_puts = 6
+max_per_expiry = 25
+far_otm = 0.03
+five_dollar_names = []
+deep_puts_drop = 0.15
+ceil_around_spot = 200
+ceil_puts = 250
+ceil_calls = 150
+ceil_per_stock = 60
+# Names quoted as underlying only: no option contract is planned, resolved or held for them (option-trader's
+# no_option_names, the owner's JP exclusion). The seed list of the JP names found without options is the owner's to fill.
+no_option = []
+
+# The chain of a name: exchange OSE.JPN, multiplier 100, trading class = the stock code. The index options of
+# class 225 take at most 80 contracts per name, a stock at most 60.
+[chain]
+exchange = "OSE.JPN"
+multiplier = "100"
+index_names = ["N225"]
+index_class = "225"
+max_per_index = 80
+max_per_stock = 60

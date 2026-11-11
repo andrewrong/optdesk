@@ -29,6 +29,8 @@ const (
 	SecType_SEC_TYPE_STOCK       SecType = 1
 	SecType_SEC_TYPE_INDEX       SecType = 2
 	SecType_SEC_TYPE_OPTION      SecType = 3
+	// a cash pair of IDEALPRO: symbol is the base currency, currency the quote currency
+	SecType_SEC_TYPE_CASH SecType = 4
 )
 
 // Enum value maps for SecType.
@@ -38,12 +40,14 @@ var (
 		1: "SEC_TYPE_STOCK",
 		2: "SEC_TYPE_INDEX",
 		3: "SEC_TYPE_OPTION",
+		4: "SEC_TYPE_CASH",
 	}
 	SecType_value = map[string]int32{
 		"SEC_TYPE_UNSPECIFIED": 0,
 		"SEC_TYPE_STOCK":       1,
 		"SEC_TYPE_INDEX":       2,
 		"SEC_TYPE_OPTION":      3,
+		"SEC_TYPE_CASH":        4,
 	}
 )
 
@@ -263,12 +267,13 @@ const file_ibkr_v1_contract_proto_rawDesc = "" +
 	"multiplier\x12#\n" +
 	"\rtrading_class\x18\t \x01(\tR\ftradingClass\x12\x15\n" +
 	"\x06con_id\x18\n" +
-	" \x01(\x03R\x05conId*`\n" +
+	" \x01(\x03R\x05conId*s\n" +
 	"\aSecType\x12\x18\n" +
 	"\x14SEC_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eSEC_TYPE_STOCK\x10\x01\x12\x12\n" +
 	"\x0eSEC_TYPE_INDEX\x10\x02\x12\x13\n" +
-	"\x0fSEC_TYPE_OPTION\x10\x03*=\n" +
+	"\x0fSEC_TYPE_OPTION\x10\x03\x12\x11\n" +
+	"\rSEC_TYPE_CASH\x10\x04*=\n" +
 	"\x05Right\x12\x15\n" +
 	"\x11RIGHT_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tRIGHT_PUT\x10\x01\x12\x0e\n" +

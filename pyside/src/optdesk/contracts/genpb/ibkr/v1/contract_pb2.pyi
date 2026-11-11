@@ -27,6 +27,8 @@ class _SecTypeEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_SecType.Value
     SEC_TYPE_STOCK: _SecType.ValueType  # 1
     SEC_TYPE_INDEX: _SecType.ValueType  # 2
     SEC_TYPE_OPTION: _SecType.ValueType  # 3
+    SEC_TYPE_CASH: _SecType.ValueType  # 4
+    """a cash pair of IDEALPRO: symbol is the base currency, currency the quote currency"""
 
 class SecType(_SecType, metaclass=_SecTypeEnumTypeWrapper):
     """SecType is the kind of instrument a contract names."""
@@ -35,6 +37,8 @@ SEC_TYPE_UNSPECIFIED: SecType.ValueType  # 0
 SEC_TYPE_STOCK: SecType.ValueType  # 1
 SEC_TYPE_INDEX: SecType.ValueType  # 2
 SEC_TYPE_OPTION: SecType.ValueType  # 3
+SEC_TYPE_CASH: SecType.ValueType  # 4
+"""a cash pair of IDEALPRO: symbol is the base currency, currency the quote currency"""
 Global___SecType: _TypeAlias = SecType  # noqa: Y015
 
 class _Right:

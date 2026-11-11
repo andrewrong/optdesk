@@ -85,6 +85,68 @@ def test_probe_passes_on_error_321() -> None:
     assert PROBE_CLIENT_ID == 0
 
 
+class SendingClient(FakeClient):
+    """Sends as the real client does: startApi (71) in the handshake, then what it is told."""
+
+    def __init__(self, ib: FakeIb) -> None:
+        super().__init__(ib)
+        self.sent: list[object] = []
+        self.after_handshake: list[int] = []
+
+    def send(self, *fields: object, **options: Any) -> None:
+        self.sent.append(fields[0])
+
+    def sendMsg(self, msg: str | None) -> None:
+        self.sent.append(msg)
+
+    async def connectAsync(
+        self, host: str, port: int, client_id: int, timeout: float = 2.0
+    ) -> None:
+        self.send(71, 2, 0, "")
+        await super().connectAsync(host, port, client_id)
+
+
+class SendingIb(ProbeIb):
+    def __init__(self, clock: FakeClock) -> None:
+        super().__init__(clock, "321")
+        self.sc = SendingClient(self)
+        self.client = self.sc
+        self.refused: list[type[Exception]] = []
+
+    def reqOpenOrdersAsync(self) -> Awaitable[list[object]]:
+        for message_id in (1, 9, 71):
+            try:
+                self.sc.send(message_id)
+            except NotAllowed as error:
+                self.refused.append(type(error))
+        self.sc.send(5)
+        return super().reqOpenOrdersAsync()
+
+
+def test_probe_passes_when_the_handshake_sends_start_api() -> None:
+    async def run() -> tuple[list[object], int]:
+        clock = FakeClock()
+        ib = SendingIb(clock)
+        await prove_read_only(host="h", port=1, make_ib=lambda: ib, clock=clock)
+        return ib.sc.sent, ib.requests
+
+    sent, requests = asyncio.run(run())
+    assert sent[0] == 71
+    assert requests == 1
+
+
+def test_probe_guard_is_in_place_for_the_request_after_the_handshake() -> None:
+    async def run() -> tuple[list[type[Exception]], list[object]]:
+        clock = FakeClock()
+        ib = SendingIb(clock)
+        await prove_read_only(host="h", port=1, make_ib=lambda: ib, clock=clock)
+        return ib.refused, ib.sc.sent
+
+    refused, sent = asyncio.run(run())
+    assert refused == [NotAllowed, NotAllowed, NotAllowed]
+    assert sent == [71, 5]
+
+
 def test_probe_fails_on_open_orders_end() -> None:
     async def run() -> None:
         clock = FakeClock()
