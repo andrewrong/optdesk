@@ -12,7 +12,7 @@ const (
 	// chartAria is the chart_aria of global_assets.
 	chartAria = "No chart data yet"
 	// gapSuffix follows the block title in the text of a not_built Gap.
-	gapSuffix = "not built yet"
+	gapSuffix = " not built yet"
 	// reasonNotBuilt is the Gap reason of a block that has no producer.
 	reasonNotBuilt = "not_built"
 )
