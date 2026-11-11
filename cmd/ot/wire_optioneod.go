@@ -47,8 +47,8 @@ func init() {
 	})
 }
 
-// resolveJPConIDs returns a copy of watch in which every JP stock entry without a con_id has the con_id of one broker lookup
-// call. An entry whose call fails, is not listed or answers con_id 0 stays as it is, with one Warn
+// resolveJPConIDs returns a copy of watch in which every JP stock entry without a con_id has the con_id the broker
+// answers to one lookup. An entry whose lookup fails, is not listed or answers con_id 0 stays as it is, with one Warn
 // line; the job then answers no_value for that stock only. Every other entry and the input are left untouched.
 func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEntry, log *slog.Logger) []jobs.WatchEntry {
 	out := make([]jobs.WatchEntry, len(watch))
