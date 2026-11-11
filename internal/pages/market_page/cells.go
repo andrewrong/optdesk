@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -24,6 +25,7 @@ const (
 const (
 	unitSharePercent = "share_percent"
 	unitIndexPoints  = "index_points"
+	unitVolPoints    = "vol_points"
 )
 
 // States of a reading.
@@ -65,8 +67,13 @@ type reading struct {
 
 // readNewest asks for the six days day-5 to day and takes the newest row.
 func readNewest(ctx context.Context, c Config, name, subject string, d time.Time) (reading, error) {
+	return readNewestKind(ctx, c, name, kindMarket, subject, d)
+}
+
+// readNewestKind is readNewest for a subject kind other than market.
+func readNewestKind(ctx context.Context, c Config, name, kind, subject string, d time.Time) (reading, error) {
 	from := contracts.Day(d.AddDate(0, 0, -5).Format(dayLayout))
-	rows, err := c.Readings(ctx, name, kindMarket, subject, from, contracts.Day(d.Format(dayLayout)))
+	rows, err := c.Readings(ctx, name, kind, subject, from, contracts.Day(d.Format(dayLayout)))
 	if err != nil {
 		return reading{}, fmt.Errorf("market_page: read %s: %w", name, err)
 	}
@@ -142,6 +149,23 @@ func percentileCell(r reading) any {
 	return mkGap(reasonMissingInput, pctMissing)
 }
 
+// ivCell is the iv cell of one index: the stored IBKR value in vol points, or a Gap
+// that names the index.
+func ivCell(name string, r reading) any {
+	if r.rec == nil {
+		return mkGap(reasonNoData, name+" "+ivNoRow)
+	}
+	v, ok := r.usable()
+	if !ok {
+		return mkGap(reasonMissingInput, name+" "+ivMissing)
+	}
+	text, err := shiftRound(v, 2, 1)
+	if err != nil || strings.HasPrefix(text, "-") || strings.Trim(text, "0.") == "" {
+		return mkGap(reasonMissingInput, name+" "+ivMissing)
+	}
+	return mkFigure(text, text, unitVolPoints)
+}
+
 // weatherSentence is the sentence of the weather block and whether it carries the figure.
 func weatherSentence(r reading) (string, bool) {
 	if v, ok := r.usable(); ok {
@@ -210,9 +234,9 @@ func buildIndices(ctx context.Context, c Config, d time.Time, days dataDays) (in
 	for _, s := range indexSpecs {
 		row := indexRow{
 			Name:        s.name,
-			IV:          mkGap(reasonNotBuilt, ivNotBuilt),
-			RV20:        mkGap(reasonNotBuilt, rv20NotBuilt),
-			IVMinusRV20: mkGap(reasonNotBuilt, ivRvNotBuilt),
+			IV:          mkGap(reasonNotBuilt, s.name+" "+ivNotBuilt),
+			RV20:        mkGap(reasonNotBuilt, s.name+" "+rv20NotBuilt),
+			IVMinusRV20: mkGap(reasonNotBuilt, s.name+" "+ivRvNotBuilt),
 			Rank3Y:      mkGap(reasonNoData, n225NoData),
 		}
 		if s.figure != "" {
@@ -221,6 +245,11 @@ func buildIndices(ctx context.Context, c Config, d time.Time, days dataDays) (in
 				return indices{}, 0, err
 			}
 			days.add(s.series, r.dataDay)
+			iv, err := readNewestKind(ctx, c, figIVIbkr, kindUnderlying, s.name, d)
+			if err != nil {
+				return indices{}, 0, err
+			}
+			row.IV = ivCell(s.name, iv)
 			row.Rank3Y = percentileCell(r)
 			if _, isGap := row.Rank3Y.(gap); isGap {
 				failed++

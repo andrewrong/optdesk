@@ -88,10 +88,15 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 	symbol := names.of(r)
 	v := verdictOf(r.Status)
 	e := eodTextFor(eod, r.InstrumentID)
-	ann, _ := annualisedOf(r.AnnualizedYield)
 	bid, askText, deltaStr, volume := r.BidEod, r.Ask, r.Delta, e.Volume
 	if l := qs.live(r.InstrumentID); l != nil {
 		bid, askText, deltaStr, volume = l.Bid, textPtr(l.Ask), textPtr(l.Delta), l.Volume
+	}
+	var ann any
+	if hasBid(bid) {
+		ann, _ = annualisedOf(r.AnnualizedYield)
+	} else {
+		ann = mkGap("missing_input", "missing bid")
 	}
 	ask := gapText
 	if askText != nil {
@@ -120,8 +125,8 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 
 // dollar is "$" before a price text; the gap text has none.
 func dollar(price string) string {
-	if price == gapText {
-		return price
+	if !hasBid(price) {
+		return gapText
 	}
 	return "$" + price
 }

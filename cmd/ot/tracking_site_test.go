@@ -63,7 +63,8 @@ func TestTrackingRouteServesPage(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"schema":"option_tracking_page"`) {
 		t.Fatalf("%d %q", rec.Code, rec.Body)
 	}
-	if f.got.Ledger != led || f.got.Account != acct || f.got.Sessions != nil || len(f.days) != 1 || f.days[0] != "2026-11-05" {
+	if innerLedger(f.got.Ledger) != store.OptionLedgerReader(led) || f.got.Account != acct ||
+		f.got.Sessions != nil || len(f.days) != 1 || f.days[0] != "2026-11-05" {
 		t.Fatalf("readers %+v days %v", f.got, f.days)
 	}
 	h = siteHandler(f.a, trackingClock, "", rd, echoHandler, http.NotFoundHandler())
@@ -168,7 +169,7 @@ func TestTrackingUsesPagesDSN(t *testing.T) {
 			t.Fatalf("code %d", rec.Code)
 		}
 	}
-	if ledOpens != 1 || f.builds.Load() != 3 || f.got.Ledger != want {
+	if ledOpens != 1 || f.builds.Load() != 3 || innerLedger(f.got.Ledger) != store.OptionLedgerReader(want) {
 		t.Fatalf("opens %d builds %d reader %v", ledOpens, f.builds.Load(), f.got.Ledger)
 	}
 	if len(dsns) != 8 {
@@ -272,4 +273,63 @@ func TestTrackingReadersSessions(t *testing.T) {
 	if trackingReadersOf(siteReaders{}).Sessions != nil {
 		t.Fatal("nil sessions not nil")
 	}
+}
+
+type aliasLedger struct {
+	store.OptionLedgerReader
+	aliases []string
+	err     error
+}
+
+func (l aliasLedger) StoredAliases(context.Context) ([]string, error) { return l.aliases, l.err }
+
+func TestTrackingLedgerStoredAliases(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	cases := []struct {
+		name    string
+		inner   aliasLedger
+		cfg     []string
+		want    []string
+		wantErr error
+	}{
+		{"empty inner uses configured", aliasLedger{}, []string{"acct-a", "bb"}, []string{"acct-a", "bb"}, nil},
+		{"stored passes through", aliasLedger{aliases: []string{"fx"}}, []string{"acct-a"}, []string{"fx"}, nil},
+		{"error passes through", aliasLedger{err: boom}, []string{"acct-a"}, nil, boom},
+		{"empty inner no config is main", aliasLedger{}, nil, []string{"main"}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := trackingReadersOf(siteReaders{optionLedger: c.inner, aliases: c.cfg}).Ledger.StoredAliases(t.Context())
+			if !errors.Is(err, c.wantErr) {
+				t.Fatalf("err %v, want %v", err, c.wantErr)
+			}
+			if strings.Join(got, ",") != strings.Join(c.want, ",") {
+				t.Fatalf("got %v, want %v", got, c.want)
+			}
+			if c.wantErr == nil && got == nil {
+				t.Fatal("nil list")
+			}
+		})
+	}
+}
+
+func TestTrackingReadersEmptySite(t *testing.T) {
+	t.Parallel()
+	got := trackingReadersOf(siteReaders{})
+	if got != (trackingReaders{}) {
+		t.Fatalf("readers %+v", got)
+	}
+	if got.Ledger != nil {
+		t.Fatal("ledger not nil")
+	}
+}
+
+// innerLedger returns the ledger the page reader wraps.
+func innerLedger(r store.OptionLedgerReader) store.OptionLedgerReader {
+	if w, ok := r.(aliasedLedger); ok {
+		return w.OptionLedgerReader
+	}
+	return r
 }

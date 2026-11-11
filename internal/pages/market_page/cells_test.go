@@ -1,6 +1,7 @@
 package market_page
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -25,12 +26,22 @@ func TestIvRvCellsAreNotBuilt(t *testing.T) {
 	t.Parallel()
 	m := allOK().page(t)
 	for i := range 4 {
-		for _, k := range []string{"iv", "rv20", "iv_minus_rv20"} {
+		keys := []string{"rv20", "iv_minus_rv20"}
+		if i == 3 {
+			keys = append(keys, "iv")
+		}
+		for _, k := range keys {
 			g := at(t, m, "indices", "rows", i, k).(map[string]any)
 			if g["kind"] != "gap" || g["reason"] != "not_built" {
 				t.Errorf("row %d %s = %v", i, k, g)
 			}
 		}
+	}
+	if g := at(t, m, "indices", "rows", 0, "rv20").(map[string]any); g["text"] != "SPX 20-day realised volatility: not built yet" {
+		t.Errorf("rv20 text = %v", g["text"])
+	}
+	if g := at(t, m, "indices", "rows", 0, "iv_minus_rv20").(map[string]any); g["text"] != "SPX implied minus realised: not built yet" {
+		t.Errorf("iv_minus_rv20 text = %v", g["text"])
 	}
 }
 
@@ -62,6 +73,19 @@ func TestWeatherChartIsGap(t *testing.T) {
 	g := at(t, allOK().page(t), "weather", "chart").(map[string]any)
 	if g["kind"] != "gap" || g["reason"] != "not_built" {
 		t.Errorf("chart = %v", g)
+	}
+}
+
+func TestChartGapTextAgreesWithWeatherSentence(t *testing.T) {
+	t.Parallel()
+	m := allOK().page(t)
+	chart, _ := at(t, m, "weather", "chart").(map[string]any)["text"].(string)
+	sentence, _ := at(t, m, "weather", "sentence").(string)
+	if strings.Contains(chart, "no stored 200-day average") {
+		t.Errorf("chart text contradicts the weather sentence: %q", chart)
+	}
+	if !strings.HasPrefix(sentence, "Gap to the 200-day average") {
+		t.Errorf("weather sentence = %q", sentence)
 	}
 }
 

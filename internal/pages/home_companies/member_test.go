@@ -103,7 +103,8 @@ func okView() fakeView {
 		{"valuation.buy_band", "DEMOA"}: {rec("valuation.buy_band", "DEMOA", "2026-11-10", "142.500000", "ok")},
 		{"market.hv30_own", "DEMOA"}:    {rec("market.hv30_own", "DEMOA", "2026-11-10", "0.3125", "ok")},
 		{"market.iv30_own", "DEMOA"}:    {rec("market.iv30_own", "DEMOA", "2026-11-10", "0.401", "ok")},
-		{"market.ivp_own", "DEMOA"}:     {rec("market.ivp_own", "DEMOA", "2026-11-09", "0.730159", "ok")},
+		{"market.ivp_own", "DEMOA"}:     {missingOwn("DEMOA", "2026-11-10", 2, 100)},
+		{"market.ivp_ibkr", "DEMOA"}:    {rec("market.ivp_ibkr", "DEMOA", "2026-11-09", "0.730159", "ok")},
 	}}
 }
 
@@ -217,7 +218,78 @@ func TestOlderReadingCarriesItsDay(t *testing.T) {
 		t.Errorf("currency = %v, want JPY", row["currency"])
 	}
 	ivp := row["volatility"].(map[string]any)["ivp"].(map[string]any)
-	if ivp["text"] != "73.02% · 11-09" {
-		t.Errorf("ivp text = %v, want 73.02%% · 11-09", ivp["text"])
+	if ivp["text"] != "73.02% · IBKR series · 11-09" {
+		t.Errorf("ivp text = %v, want 73.02%% · IBKR series · 11-09", ivp["text"])
+	}
+}
+
+func missingOwn(subject, day string, code int, observations float64) contracts.ReadingRecord {
+	r := rec("market.ivp_own", subject, day, "", "missing_input")
+	r.ReasonCode = &code
+	r.Parameters = []gen.ReadingRecordParametersElem{{Param: "observations", ValueNum: &observations}}
+	return r
+}
+
+func ivpOf(t *testing.T, view fakeView) map[string]any {
+	t.Helper()
+	m, _ := build(t, config(home_companies.Config{
+		Rows: []home_companies.Row{{Market: "US", Symbol: "DEMOA"}},
+		Read: view,
+	}))
+	row := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	return row
+}
+
+func TestIVPSourceOrder(t *testing.T) {
+	t.Parallel()
+	ibkr := rec("market.ivp_ibkr", "DEMOA", "2026-11-10", "0.5", "ok")
+	cases := []struct {
+		name      string
+		own       []contracts.ReadingRecord
+		ibkr      []contracts.ReadingRecord
+		wantKind  string
+		wantValue float64
+		wantText  string
+		wantLabel string
+	}{
+		{"own wins over ibkr", []contracts.ReadingRecord{rec("market.ivp_own", "DEMOA", "2026-11-10", "0.7", "ok")}, []contracts.ReadingRecord{ibkr},
+			"value", 70, "70.00% · own series", "ivp_v1"},
+		{"ibkr when own is missing", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 2, 100)}, []contracts.ReadingRecord{ibkr},
+			"value", 50, "50.00% · IBKR series", "market.ivp_ibkr"},
+		{"ibkr when own is not stored", nil, []contracts.ReadingRecord{ibkr},
+			"value", 50, "50.00% · IBKR series", "market.ivp_ibkr"},
+		{"both missing names own reason", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 2, 100)},
+			[]contracts.ReadingRecord{rec("market.ivp_ibkr", "DEMOA", "2026-11-10", "", "missing_input")},
+			"gap", 0, "IV percentile: short history, 100/252 own IV30 sessions", ""},
+		{"stale input", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 3, 0)}, nil,
+			"gap", 0, "IV percentile: stale input, own IV30 is out of date", ""},
+		{"no input", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 1, 0)}, nil,
+			"gap", 0, "IV percentile: no input, no IV30 reading for the day", ""},
+		{"bad input", []contracts.ReadingRecord{missingOwn("DEMOA", "2026-11-10", 5, 0)}, nil,
+			"gap", 0, "IV percentile: bad input, own IV30 history is unusable", ""},
+		{"no own row", nil, nil,
+			"gap", 0, "IV percentile: no own IV30 history is stored", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			v := okView()
+			v.rows[key{"market.ivp_own", "DEMOA"}] = tc.own
+			v.rows[key{"market.ivp_ibkr", "DEMOA"}] = tc.ibkr
+			row := ivpOf(t, v)
+			vol := row["volatility"].(map[string]any)
+			ivp := vol["ivp"].(map[string]any)
+			if ivp["kind"] != tc.wantKind || ivp["text"] != tc.wantText {
+				t.Fatalf("ivp = %v, want kind %s text %q", ivp, tc.wantKind, tc.wantText)
+			}
+			if tc.wantKind == "value" {
+				if ivp["value"].(float64) != tc.wantValue {
+					t.Errorf("value = %v, want %v", ivp["value"], tc.wantValue)
+				}
+				if !strings.Contains(vol["label"].(string), tc.wantLabel) {
+					t.Errorf("label = %q, want it to name %s", vol["label"], tc.wantLabel)
+				}
+			}
+		})
 	}
 }

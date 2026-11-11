@@ -192,7 +192,7 @@ func TestDeltaByUnderlyingVegaByExpiry(t *testing.T) {
 		t.Fatalf("status/scope = %v/%v", m["run_status"], m["scope"])
 	}
 	// AAA: 100 shares - 30.5 = 69.5; BBB: 50 - 10.004 = 39.996 -> 40.00 (cents, half up); total 109.496 -> 109.50
-	want := map[string]string{"AAA": "+69.50 USD/USD", "BBB": "+40.00 USD/USD"}
+	want := map[string]string{"AAA": "+69.50 USD per $1 move", "BBB": "+40.00 USD per $1 move"}
 	rows := block(m, "delta")["rows"].([]any)
 	if len(rows) != 2 {
 		t.Fatalf("delta rows = %v", rows)
@@ -373,5 +373,37 @@ func TestStoredWordsStockAndOption(t *testing.T) {
 	}
 	if vrows[0].(map[string]any)["expiry_text"] != "2026-12-18" {
 		t.Fatalf("vega rows = %v", vrows)
+	}
+}
+
+func TestEmptyVegaBlockNamesItsGap(t *testing.T) {
+	t.Parallel()
+	cases := map[string]compute.StructureResult{
+		"only JPY":     {Structures: []compute.Structure{structure("JJJ", "JPY", "2026-12-18", "-1", "1")}},
+		"no structure": {},
+	}
+	for name, res := range cases {
+		res := res
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			m, _ := build(t, okConfig(res, stk("AAA", 1, "100", "USD")), "main")
+			v := block(m, "vega")
+			if len(v["rows"].([]any)) != 0 || v["total"] != nil {
+				t.Fatalf("vega = %v", v)
+			}
+			g, _ := v["gap"].(map[string]any)
+			if g["reason"] != "no_data" || g["text"] != "No option structure is counted in Vega" {
+				t.Fatalf("vega gap = %v", v["gap"])
+			}
+			found := false
+			for _, pg := range m["gaps"].([]any) {
+				if pg.(map[string]any)["text"] == "Vega by expiry: No option structure is counted in Vega" {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("page gaps = %v", m["gaps"])
+			}
+		})
 	}
 }
