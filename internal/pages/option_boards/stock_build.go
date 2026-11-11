@@ -139,6 +139,10 @@ func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, p *stock
 	if p.Maps, err = buildMaps(rows, matrix.Expiries); err != nil {
 		return nil, "", err
 	}
+	if noYieldAnywhere(matrix.Cells) {
+		p.Matrix.Empty = strPtr(matrixEmptyText(ld.Day))
+		p.Matrix.Cells, p.Matrix.Strikes, p.Matrix.Expiries = []matrixCell{}, []string{}, []matrixExpiry{}
+	}
 	var contractsCut string
 	if p.Contracts.Rows, contractsCut, err = buildContractRows(rows); err != nil {
 		return nil, "", err

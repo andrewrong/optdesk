@@ -4,7 +4,7 @@ package market_page
 const (
 	pageTitle    = "Market"
 	pageSentence = "Weather, percentile and term come from stored data; " +
-		"the trend chart, market breadth and the realised columns are not built yet, " +
+		"the trend chart, market breadth and implied minus realised are not built yet, " +
 		"the Nikkei percentile has no stored series."
 
 	weatherHeadline    = "S&P 500 against its 200-day average"
@@ -14,8 +14,8 @@ const (
 	weatherStale       = "Weather data is stale, data day "
 
 	indicesTitle    = "Index volatility"
-	indicesSentence = "Percentile is the index position over 3 years; it and implied volatility come from stored data, " +
-		"realised columns are not built yet, the Nikkei percentile has no stored series."
+	indicesSentence = "Percentile is the index position over 3 years; it and the volatility columns come from stored data, " +
+		"the implied-minus-realised column is not built yet, the Nikkei percentile has no stored series."
 	indicesNote = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
 	termTitle        = "Term structure"
@@ -28,6 +28,8 @@ const (
 	ivNoRow         = "implied volatility: no data, not stored yet"
 	ivMissing       = "implied volatility: no data, inputs incomplete"
 	rv20NotBuilt    = "20-day realised volatility: not built yet"
+	rv20NoRow       = "20-day realised volatility: no data, not stored yet"
+	rv20Missing     = "20-day realised volatility: no data, inputs incomplete"
 	ivRvNotBuilt    = "implied minus realised: not built yet"
 	n225NoData      = "Nikkei volatility: no data yet, no matching FRED series"
 

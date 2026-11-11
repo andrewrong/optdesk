@@ -75,6 +75,7 @@ type env struct {
 	day      string
 	readings map[string][]contracts.ReadingRecord
 	iv       map[string][]contracts.ReadingRecord // market.iv_ibkr rows by subject
+	rv       map[string][]contracts.ReadingRecord // market.rv20 rows by subject
 	series   map[string][]contracts.SeriesPoint
 	rerr     error
 	serr     error
@@ -90,7 +91,7 @@ func (e env) config(t *testing.T) Config {
 	return Config{RunID: "run1", BuildID: "b1", Scope: "s1", Zone: zone,
 		Readings: func(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
 			wantKind := "market"
-			if name == figIVIbkr {
+			if name == figIVIbkr || name == figRv20 {
 				wantKind = "underlying"
 			}
 			if kind != wantKind {
@@ -105,6 +106,9 @@ func (e env) config(t *testing.T) Config {
 			}
 			if name == figIVIbkr {
 				return e.iv[subject], e.rerr
+			}
+			if name == figRv20 {
+				return e.rv[subject], e.rerr
 			}
 			return e.readings[name], e.rerr
 		}}
@@ -178,6 +182,9 @@ func allOK() env {
 		},
 		iv: map[string][]contracts.ReadingRecord{
 			"SPX": ok("0.215000"), "NDX": ok("0.2349"), "RUT": ok("0.1999"),
+		},
+		rv: map[string][]contracts.ReadingRecord{
+			"SPX": ok("0.162060"), "NDX": ok("0.162500"), "RUT": ok("0.163500"),
 		},
 		series: map[string][]contracts.SeriesPoint{
 			seriesVIX: {pt("2026-11-06", 21.5), pt("2026-10-30", 19.25)},
@@ -505,8 +512,8 @@ func TestEnvelopeGapsEqualBlockGaps(t *testing.T) {
 		m := e.page(t)
 		want := pageGaps(t, m)
 		got := at(t, m, "gaps").([]any)
-		if len(got) != len(want) || len(got) < 12 {
-			t.Fatalf("%s: %d gaps, want %d (at least 12)", name, len(got), len(want))
+		if len(got) != len(want) || len(got) < 9 {
+			t.Fatalf("%s: %d gaps, want %d (at least 9)", name, len(got), len(want))
 		}
 		for i := range want {
 			if fmt.Sprint(got[i]) != fmt.Sprint(want[i]) {

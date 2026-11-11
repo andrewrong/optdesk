@@ -143,3 +143,23 @@ func buildMatrix(rows []stockRow, chosen int) (matrixBlock, string, error) {
 	}
 	return m, note, nil
 }
+
+// matrixEmptyText is the one line shown in place of a matrix in which no
+// cell has a yield.
+func matrixEmptyText(day contracts.Day) string {
+	return "No bid or spot price stored for " + string(day) + ", so no annualised yield to show"
+}
+
+// noYieldAnywhere is true when cells is non-empty and every cell reads
+// "Annualised n/a".
+func noYieldAnywhere(cells []matrixCell) bool {
+	if len(cells) == 0 {
+		return false
+	}
+	for _, c := range cells {
+		if c.YieldText != "Annualised n/a" {
+			return false
+		}
+	}
+	return true
+}

@@ -166,6 +166,23 @@ func ivCell(name string, r reading) any {
 	return mkFigure(text, text, unitVolPoints)
 }
 
+// rv20Cell is the rv20 cell of one index: the stored 20-day realised volatility in vol
+// points, one decimal. A stored zero is a value; only a missing or negative input is a Gap.
+func rv20Cell(name string, r reading) any {
+	if r.rec == nil {
+		return mkGap(reasonNoData, name+" "+rv20NoRow)
+	}
+	v, ok := r.usable()
+	if !ok {
+		return mkGap(reasonMissingInput, name+" "+rv20Missing)
+	}
+	text, err := shiftRound(v, 2, 1)
+	if err != nil || strings.HasPrefix(strings.TrimSpace(v), "-") {
+		return mkGap(reasonMissingInput, name+" "+rv20Missing)
+	}
+	return mkFigure(text, text, unitVolPoints)
+}
+
 // weatherSentence is the sentence of the weather block and whether it carries the figure.
 func weatherSentence(r reading) (string, bool) {
 	if v, ok := r.usable(); ok {
@@ -250,6 +267,11 @@ func buildIndices(ctx context.Context, c Config, d time.Time, days dataDays) (in
 				return indices{}, 0, err
 			}
 			row.IV = ivCell(s.name, iv)
+			rv, err := readNewestKind(ctx, c, figRv20, kindUnderlying, s.name, d)
+			if err != nil {
+				return indices{}, 0, err
+			}
+			row.RV20 = rv20Cell(s.name, rv)
 			row.Rank3Y = percentileCell(r)
 			if _, isGap := row.Rank3Y.(gap); isGap {
 				failed++

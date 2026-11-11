@@ -160,8 +160,8 @@ func (q quoteSource) live(instrumentID int) *livePrices {
 	}
 	p := &livePrices{
 		Bid: floatText(o.Bid), Ask: floatText(o.Ask), Delta: floatText(o.Delta),
-		IV: gapText, Theta: floatText(o.ThetaPerCalendarDay), Gamma: floatText(o.Gamma),
-		Vega: floatText(o.VegaPerVolPoint), Volume: floatText(o.Volume),
+		IV: gapText, Theta: greekText(o.ThetaPerCalendarDay), Gamma: greekText(o.Gamma),
+		Vega: greekText(o.VegaPerVolPoint), Volume: floatText(o.Volume),
 	}
 	if iv := floatText(o.IvDecimal); iv != gapText {
 		if s, err := shiftPercent(iv); err == nil {
