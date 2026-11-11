@@ -50,6 +50,11 @@ func recKey(r contracts.ReadingRecord) string {
 func (m *memReadings) InsertReadings(_ context.Context, rows []contracts.ReadingRecord) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	for _, r := range rows {
+		if r.Rev < 1 {
+			return 0, newErr(contracts.Permanent, "reading check (rev >= 1) violated by %s", recKey(r))
+		}
+	}
 	n := 0
 	for _, r := range rows {
 		dup := false

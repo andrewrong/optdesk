@@ -61,6 +61,11 @@ func TestStoresOneReadingPerBar(t *testing.T) {
 	if res.Err != nil || len(st.rows) != 3 {
 		t.Fatalf("result %+v rows %d", res, len(st.rows))
 	}
+	for _, s := range st.rows {
+		if s.Rev != 1 {
+			t.Fatalf("rev %d of %+v", s.Rev, s)
+		}
+	}
 	r := byDay(st)["2026-11-09"]
 	if r.Name != "market.iv_ibkr" || r.Version != 1 || r.SubjectKind != "underlying" || r.Subject != "AAA" ||
 		string(r.Origin) != "ibkr" || string(r.Unit) != "decimal" || string(r.State) != "ok" || r.Value == nil || *r.Value != "0.28" ||
@@ -129,8 +134,25 @@ func TestLateBarReplacesMissingMarker(t *testing.T) {
 	answer = []broker.Bar{bar("2026-11-06", "0.30"), bar("2026-11-09", "0.28")}
 	res := j.Run(context.Background(), runDay, keysOf("AAA"))
 	r := byDay(st)["2026-11-09"]
-	if res.Usable != 1 || r.Rev != 1 || string(r.State) != "ok" {
+	if res.Usable != 1 || r.Rev != 2 || string(r.State) != "ok" {
 		t.Fatalf("result %+v reading %+v", res, r)
+	}
+	marker := false
+	for _, s := range st.rows {
+		marker = marker || (s.Day.Format(dayLayout) == "2026-11-09" && s.Rev == 1 && string(s.State) == "missing_input")
+	}
+	if !marker {
+		t.Fatalf("missing marker of rev 1 not stored: %+v", st.rows)
+	}
+}
+
+func TestFirstRunHasNoRevZero(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j := build(t, fixed(bar("2026-11-09", "0.28")), st, "AAA")
+	res := j.Run(context.Background(), runDay, keysOf("AAA"))
+	if res.Err != nil || res.Usable != 1 {
+		t.Fatalf("result %+v", res)
 	}
 }
 
