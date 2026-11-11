@@ -1,0 +1,1137 @@
+{
+  "$defs": {
+    "ChosenCard": {
+      "additionalProperties": false,
+      "description": "The chosen-contract card of one cell (``key`` of the cell), or of the board's chosen contract\nwhen that is no cell (``in_matrix`` false).",
+      "properties": {
+        "advice": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Advice",
+          "type": "string"
+        },
+        "amounts": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Amounts",
+          "type": "array"
+        },
+        "chosen": {
+          "title": "Chosen",
+          "type": "boolean"
+        },
+        "expiry": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Expiry",
+          "type": "string"
+        },
+        "in_matrix": {
+          "title": "In Matrix",
+          "type": "boolean"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "ladder": {
+          "items": {
+            "$ref": "#/$defs/Pair"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Ladder",
+          "type": "array"
+        },
+        "liquidity": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Liquidity",
+          "type": "string"
+        },
+        "pass_tag": {
+          "title": "Pass Tag",
+          "type": "boolean"
+        },
+        "risk": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Risk",
+          "type": "string"
+        },
+        "strike": {
+          "maxLength": 20,
+          "pattern": "^-?\\d+(\\.\\d+)?$",
+          "title": "Strike",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "yield_line": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Yield Line",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "expiry",
+        "strike",
+        "chosen",
+        "in_matrix",
+        "title",
+        "pass_tag",
+        "yield_line",
+        "ladder",
+        "advice",
+        "amounts",
+        "risk",
+        "liquidity"
+      ],
+      "title": "ChosenCard",
+      "type": "object"
+    },
+    "ContractLine": {
+      "additionalProperties": false,
+      "description": "One fetched put; ``cells`` follow the block's ``columns`` (a missing figure reads ``—``).",
+      "properties": {
+        "cells": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 11,
+          "minItems": 11,
+          "title": "Cells",
+          "type": "array"
+        },
+        "expiry": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Expiry",
+          "type": "string"
+        },
+        "expiry_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Expiry Text",
+          "type": "string"
+        },
+        "quote": {
+          "$ref": "#/$defs/Quote"
+        }
+      },
+      "required": [
+        "expiry",
+        "expiry_text",
+        "cells",
+        "quote"
+      ],
+      "title": "ContractLine",
+      "type": "object"
+    },
+    "ContractsBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Basis",
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 11,
+          "minItems": 11,
+          "title": "Columns",
+          "type": "array"
+        },
+        "empty": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Empty"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Notes",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/ContractLine"
+          },
+          "maxItems": 2000,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns",
+        "rows",
+        "basis",
+        "notes",
+        "empty"
+      ],
+      "title": "ContractsBlock",
+      "type": "object"
+    },
+    "HeldItem": {
+      "additionalProperties": false,
+      "description": "A held put: ``headline``, ``detail`` (a line made of its parts) and the account. ``earned`` is\nthe share earned as text, absent when it cannot be said.",
+      "properties": {
+        "account": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Account",
+          "type": "string"
+        },
+        "detail": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "earned": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Earned"
+        },
+        "headline": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Headline",
+          "type": "string"
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Progress"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "headline",
+        "detail",
+        "account",
+        "earned",
+        "progress"
+      ],
+      "title": "HeldItem",
+      "type": "object"
+    },
+    "MapBand": {
+      "additionalProperties": false,
+      "description": "A range on the axis: the preferred range (``pref``) or the expected move (``sigma``).",
+      "properties": {
+        "high": {
+          "maxLength": 20,
+          "pattern": "^-?\\d+(\\.\\d+)?$",
+          "title": "High",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "pref",
+            "sigma"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "low": {
+          "maxLength": 20,
+          "pattern": "^-?\\d+(\\.\\d+)?$",
+          "title": "Low",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "low",
+        "high",
+        "text"
+      ],
+      "title": "MapBand",
+      "type": "object"
+    },
+    "MapMark": {
+      "additionalProperties": false,
+      "description": "A price on the map: ``price`` for the axis, ``text`` as the old page labels it.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "spot",
+            "cap",
+            "ma50",
+            "ma200",
+            "breakeven",
+            "strike"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "price": {
+          "maxLength": 20,
+          "pattern": "^-?\\d+(\\.\\d+)?$",
+          "title": "Price",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "price",
+        "text"
+      ],
+      "title": "MapMark",
+      "type": "object"
+    },
+    "MatrixBlock": {
+      "additionalProperties": false,
+      "description": "``facts`` is the line of what the matrix is drawn on, ``legend`` the key to its marks,\n``empty`` the sentence when there is no cell (then ``cells`` is empty).",
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/MatrixCell"
+          },
+          "maxItems": 2000,
+          "title": "Cells",
+          "type": "array"
+        },
+        "empty": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Empty"
+        },
+        "expiries": {
+          "items": {
+            "$ref": "#/$defs/MatrixExpiry"
+          },
+          "maxItems": 30,
+          "title": "Expiries",
+          "type": "array"
+        },
+        "facts": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Facts"
+        },
+        "legend": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Legend",
+          "type": "string"
+        },
+        "strikes": {
+          "items": {
+            "maxLength": 20,
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Strikes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "expiries",
+        "strikes",
+        "cells",
+        "facts",
+        "legend",
+        "empty"
+      ],
+      "title": "MatrixBlock",
+      "type": "object"
+    },
+    "MatrixCell": {
+      "additionalProperties": false,
+      "description": "One existing contract. ``key`` joins it to its card. ``yield_text`` and ``premium`` are what\nthe two views of the old matrix show; ``out`` is a delta outside the band, ``thin`` poor\nliquidity, ``earnings`` an earnings date before expiry.",
+      "properties": {
+        "chosen": {
+          "title": "Chosen",
+          "type": "boolean"
+        },
+        "delta": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Delta",
+          "type": "string"
+        },
+        "earnings": {
+          "title": "Earnings",
+          "type": "boolean"
+        },
+        "expiry": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Expiry",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "out": {
+          "title": "Out",
+          "type": "boolean"
+        },
+        "premium": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Premium",
+          "type": "string"
+        },
+        "quote": {
+          "$ref": "#/$defs/Quote"
+        },
+        "shade": {
+          "enum": [
+            "worth",
+            "marginal",
+            "none"
+          ],
+          "title": "Shade",
+          "type": "string"
+        },
+        "star": {
+          "title": "Star",
+          "type": "boolean"
+        },
+        "strike": {
+          "maxLength": 20,
+          "pattern": "^-?\\d+(\\.\\d+)?$",
+          "title": "Strike",
+          "type": "string"
+        },
+        "thin": {
+          "title": "Thin",
+          "type": "boolean"
+        },
+        "volume": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Volume",
+          "type": "string"
+        },
+        "yield_text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Yield Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "expiry",
+        "strike",
+        "yield_text",
+        "premium",
+        "delta",
+        "volume",
+        "shade",
+        "star",
+        "out",
+        "thin",
+        "earnings",
+        "chosen",
+        "quote"
+      ],
+      "title": "MatrixCell",
+      "type": "object"
+    },
+    "MatrixExpiry": {
+      "additionalProperties": false,
+      "properties": {
+        "expiry": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Expiry",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expiry",
+        "text"
+      ],
+      "title": "MatrixExpiry",
+      "type": "object"
+    },
+    "Pair": {
+      "additionalProperties": false,
+      "description": "A term and its value, both text as Python wrote them (the Bid, Mid and Ask ladder).",
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "text"
+      ],
+      "title": "Pair",
+      "type": "object"
+    },
+    "PriceMap": {
+      "additionalProperties": false,
+      "description": "The map of one expiry: its marks and its bands (the expected move's edges are the ``sigma``\nband's low and high; absent when the board has no move for the expiry).",
+      "properties": {
+        "bands": {
+          "items": {
+            "$ref": "#/$defs/MapBand"
+          },
+          "maxItems": 2,
+          "title": "Bands",
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "expiry": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+          "title": "Expiry",
+          "type": "string"
+        },
+        "heading": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Heading",
+          "type": "string"
+        },
+        "marks": {
+          "items": {
+            "$ref": "#/$defs/MapMark"
+          },
+          "maxItems": 200,
+          "title": "Marks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "expiry",
+        "heading",
+        "description",
+        "marks",
+        "bands"
+      ],
+      "title": "PriceMap",
+      "type": "object"
+    },
+    "Progress": {
+      "additionalProperties": false,
+      "description": "The share earned on a held put as a bar: ``done`` is percent as text (``72.0``), ``mark`` the\nclose report's line in percent (absent while the threshold is unset) and ``note`` what says so.",
+      "properties": {
+        "done": {
+          "maxLength": 20,
+          "pattern": "^-?\\d+(\\.\\d+)?$",
+          "title": "Done",
+          "type": "string"
+        },
+        "mark": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mark"
+        },
+        "note": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "done",
+        "mark",
+        "note"
+      ],
+      "title": "Progress",
+      "type": "object"
+    },
+    "Quote": {
+      "additionalProperties": false,
+      "description": "The quote behind the prices of one row (docs/design/option-open-pull.md Decision 18): when it was taken (exchange-local HH:MM:SS, or a date text for a close archive value), the market data type of its tick, where it came from, and the two flags of the pull. Copied from the stored row, never computed.",
+      "properties": {
+        "as_of": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "As Of",
+          "type": "string"
+        },
+        "data_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "live",
+                "frozen",
+                "delayed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Data Type",
+          "description": "null for a close archive value, which has no tick type."
+        },
+        "outside_band": {
+          "title": "Outside Band",
+          "type": "boolean"
+        },
+        "skew": {
+          "title": "Skew",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "open_pull",
+            "refresh",
+            "close_archive"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as_of",
+        "data_type",
+        "source",
+        "skew",
+        "outside_band"
+      ],
+      "title": "Quote",
+      "type": "object"
+    },
+    "Refresh": {
+      "additionalProperties": false,
+      "description": "The state of the refresh button (Decisions 13 to 20): copied by the builder from the route; the web computes nothing. When enabled is false the notice says why.",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "fresh_count": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Fresh Count",
+          "type": "integer"
+        },
+        "notice": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Notice"
+        },
+        "symbols": {
+          "items": {
+            "pattern": "^[A-Za-z0-9._-]{1,32}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Symbols",
+          "type": "array"
+        },
+        "total_count": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Total Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "enabled",
+        "symbols",
+        "notice",
+        "fresh_count",
+        "total_count"
+      ],
+      "title": "Refresh",
+      "type": "object"
+    },
+    "SourceTime": {
+      "additionalProperties": false,
+      "description": "The data time of one source behind the card.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "source": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "data_time"
+      ],
+      "title": "SourceTime",
+      "type": "object"
+    },
+    "StaleLabel": {
+      "additionalProperties": false,
+      "description": "Python sends the times and the label; the browser only compares its clock with ``stale_after``.",
+      "properties": {
+        "data_time": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Data Time",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "stale_after": {
+          "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+          "title": "Stale After",
+          "type": "string",
+          "x-timezone": "owner"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data_time",
+        "stale_after",
+        "text"
+      ],
+      "title": "StaleLabel",
+      "type": "object"
+    },
+    "TopBar": {
+      "additionalProperties": false,
+      "description": "The bar above the page. ``quote`` is the quotes' time and market-data type (or the stored\nquotes' time and reason, without a market-data type); ``iv`` and ``earnings`` are absent when the\nboard has none of their parts; ``trend`` and ``policy`` always read. ``refresh_expiry`` and\n``refresh_strike`` name the chosen contract the refresh link goes back to, if any.",
+      "properties": {
+        "day_change": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Day Change"
+        },
+        "day_tone": {
+          "anyOf": [
+            {
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Day Tone"
+        },
+        "earnings": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Earnings"
+        },
+        "iv": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Iv"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        },
+        "policy": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Policy",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Quote"
+        },
+        "refresh_expiry": {
+          "anyOf": [
+            {
+              "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refresh Expiry"
+        },
+        "refresh_strike": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refresh Strike"
+        },
+        "spot": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Spot"
+        },
+        "symbol": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "trend": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Trend",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "name",
+        "spot",
+        "day_change",
+        "day_tone",
+        "quote",
+        "iv",
+        "earnings",
+        "trend",
+        "policy",
+        "refresh_expiry",
+        "refresh_strike"
+      ],
+      "title": "TopBar",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.stock_option_page.v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "cards": {
+      "items": {
+        "$ref": "#/$defs/ChosenCard"
+      },
+      "maxItems": 2000,
+      "title": "Cards",
+      "type": "array"
+    },
+    "contracts": {
+      "$ref": "#/$defs/ContractsBlock"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "footer": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Footer",
+      "type": "string"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "held": {
+      "items": {
+        "$ref": "#/$defs/HeldItem"
+      },
+      "maxItems": 50,
+      "title": "Held",
+      "type": "array"
+    },
+    "maps": {
+      "items": {
+        "$ref": "#/$defs/PriceMap"
+      },
+      "maxItems": 30,
+      "title": "Maps",
+      "type": "array"
+    },
+    "matrix": {
+      "$ref": "#/$defs/MatrixBlock"
+    },
+    "no_card": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "No Card"
+    },
+    "notice": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Notice"
+    },
+    "refresh": {
+      "$ref": "#/$defs/Refresh"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "stock_option_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "shared_gap": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Shared Gap"
+    },
+    "stale": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "top": {
+      "$ref": "#/$defs/TopBar"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "stale",
+    "top",
+    "notice",
+    "shared_gap",
+    "maps",
+    "matrix",
+    "cards",
+    "no_card",
+    "held",
+    "contracts",
+    "footer",
+    "refresh"
+  ],
+  "title": "StockOptionPage",
+  "type": "object"
+}
