@@ -56,6 +56,45 @@ func TestValidateAddRules(t *testing.T) {
 	}
 }
 
+func TestValidateAddSymbols(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, market, symbol string
+		ok                   bool
+	}{
+		{"us plain", "US", "AAPL", true},
+		{"us one inner space", "US", "BRK B", true},
+		{"us dot", "US", "BRK.B", true},
+		{"us 12 chars with space", "US", "ABCDEFGHIJ K", true},
+		{"us 13 chars with space", "US", "ABCDEFGHIJK L", false},
+		{"us double space", "US", "BRK  B", false},
+		{"us leading space", "US", " BRK", false},
+		{"us trailing space", "US", "BRK ", false},
+		{"us two spaces apart", "US", "A B C", false},
+		{"us lower case with space", "US", "brk b", false},
+		{"jp digits", "JP", "7203", true},
+		{"jp letter 278A", "JP", "278A", true},
+		{"jp letter 130A", "JP", "130A", true},
+		{"jp letter third place", "JP", "27A8", false},
+		{"jp lower case letter", "JP", "278a", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r, err := ValidateAdd(underlying.Add{Symbol: tc.symbol, Market: tc.market, Kind: underlying.KindStock}, nil)
+			if !tc.ok {
+				expectField(t, err, "symbol")
+				return
+			}
+			if err != nil {
+				t.Fatalf("ValidateAdd(%q) = %v; want accepted", tc.symbol, err)
+			}
+			if r.Symbol != tc.symbol || r.Key != tc.market+":"+tc.symbol {
+				t.Fatalf("row = key %q symbol %q; want key %q and the symbol unchanged", r.Key, r.Symbol, tc.market+":"+tc.symbol)
+			}
+		})
+	}
+}
+
 func TestValidateAddDuplicateNameKey(t *testing.T) {
 	t.Parallel()
 	_, err := ValidateAdd(goodAdd(), func(k string) bool { return k == "US:AAPL" })
