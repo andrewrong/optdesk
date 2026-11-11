@@ -20,6 +20,7 @@ from optdesk.contracts.api import (
     DIVIDEND_STATUS_NO_VALUE,
     DIVIDEND_STATUS_OK,
     QUOTE_KIND_OPTION_EOD,
+    QUOTE_KIND_OPTION_OPEN,
     QUOTE_KIND_SNAPSHOT,
     RESOLVE_STATUS_FOUND,
     SEC_TYPE_OPTION,
@@ -149,6 +150,10 @@ def test_generated_python_is_current(tmp_path: pathlib.Path) -> None:
         p.relative_to(GENPB) for p in GENPB.rglob("*") if p.suffix in (".py", ".pyi")
     }
     assert committed_files == {p.relative_to(tmp_path) for p in generated}
+
+
+def test_option_open_kind_exists() -> None:
+    assert QUOTE_KIND_OPTION_OPEN == 4
 
 
 def test_snapshot_kind_and_sizes_exist() -> None:
