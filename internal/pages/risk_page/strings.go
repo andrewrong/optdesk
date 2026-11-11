@@ -3,9 +3,8 @@ package risk_page
 // The words of the page, written once.
 const (
 	pageTitle    = "Household risk"
-	pageSentence = "Delta and Vega come from the positions and option structures of the latest capture; the " +
-		"data sources of Beta, the volatility range and the standard metrics are not connected yet."
-	vegaTitle = "Vega by expiry"
+	pageSentence = "Delta and Vega come from the latest capture; Beta-weighted Delta, the volatility range and the standard metrics are not built: no job stores Beta, the index price or risk metrics."
+	vegaTitle    = "Vega by expiry"
 
 	titleDelta   = "Delta by underlying"
 	titleBeta    = "Beta-weighted Delta"
@@ -24,13 +23,13 @@ const (
 	headBeta     = "Beta"
 	headWeighted = "Weighted Delta"
 
-	benchmarkText = "Benchmark index: no data yet"
-	sigmaAria     = "Volatility range: no data yet"
+	benchmarkText = "Benchmark index: no price stored"
+	sigmaAria     = "Volatility range: not built"
 
-	textNotBuiltBeta    = "Beta-weighted Delta needs the Beta of each underlying and the benchmark price; the data source is not connected yet"
-	textNotBuiltSigma   = "The volatility range needs the implied volatility (IV) of the underlying; the data source is not connected yet"
-	textNotBuiltMetrics = "The standard risk metrics need a risk metrics data source; it is not connected yet"
-	textMetricsMissing  = "no data yet"
+	textNotBuiltBeta    = "Beta-weighted Delta is not built: no job stores the Beta of each underlying or the benchmark index price"
+	textNotBuiltSigma   = "The volatility range is not built: how it is defined from the stored IV is not designed yet"
+	textNotBuiltMetrics = "The standard risk metrics are not built: no job stores a risk metrics source"
+	textMetricsMissing  = "not built"
 	labelMetricsMissing = "Standard risk metrics"
 
 	textNoReader   = "No reader: no data yet"
