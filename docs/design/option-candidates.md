@@ -1,5 +1,7 @@
 # Option candidates: short puts first, then covered calls and the ex-dividend guard, generated from the stored chain, gated, ranked by annualized yield
 
+Note (2026-11-11): `docs/design/underlyings.md` replaces `$OT_HOME/watch.toml` as the owner's hand-edited list of followed names, from the issue that removes the file loader (its issue 10); the text below stays as written until then.
+
 Author: the optdesk designer (draft)
 Owner approved: owner answers 2026-11-09 (the four questions); the pull request approval is pending
 Date: 2026-11-09
