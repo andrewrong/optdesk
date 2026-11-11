@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn" //nolint:depguard // the test feeds the real *pgconn.PgError that the store returns
 	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -559,15 +560,9 @@ func logFailureLine(t *testing.T, err error) string {
 	return buf.String()
 }
 
-// sqlStateErr has the SQLState method of *pgconn.PgError; depguard keeps pgx out of this package.
-type sqlStateErr struct{ code, msg string }
-
-func (e sqlStateErr) Error() string    { return e.msg }
-func (e sqlStateErr) SQLState() string { return e.code }
-
 func TestLogFailureClassSQLState(t *testing.T) {
 	t.Parallel()
-	pe := sqlStateErr{code: "42501", msg: "permission denied MARKERWORD"}
+	pe := &pgconn.PgError{Code: "42501", Message: "permission denied MARKERWORD"}
 	for name, err := range map[string]error{"plain": pe, "wrapped": fmt.Errorf("write: %w", pe)} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
