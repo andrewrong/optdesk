@@ -292,3 +292,47 @@ func TestBackfillLiveRunning(t *testing.T) {
 		t.Fatalf("closed run %+v", r)
 	}
 }
+
+func TestBackfillSkipsJobWhosePlanFails(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		dataset string
+		wantErr string
+	}{
+		{"key of the good job", "ds2", ""},
+		{"key only the failing job returns", "ds", "no job returns a key"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			l := bfSetup(bfDay, keyA, keyC)
+			bad, good := badAndGoodJobs()
+			b := NewBackfillerWithRule(l, oneDay(), afterClose(), []contracts.Job{bad, good}, runner.WindowRule{CalendarID: "XNYS"})
+			lg, buf := captureLog()
+			b.(*reconciler).log = lg
+			res, err := b.Backfill(context.Background(), bfDay, []string{tc.dataset})
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("err = %v, want %q", err, tc.wantErr)
+				}
+				if len(good.calls) != 0 {
+					t.Fatalf("good job ran: %v", good.calls)
+				}
+			} else {
+				if err != nil || len(res.Filled) != 1 || res.Filled[0] != keyC {
+					t.Fatalf("res %+v err %v", res, err)
+				}
+				if len(good.calls) != 1 || good.calls[0] != keyC {
+					t.Fatalf("good job calls = %v, want [%v]", good.calls, keyC)
+				}
+			}
+			out := buf.String()
+			if strings.Count(out, "job=bad") != 1 || strings.Count(strings.TrimSpace(out), "\n") != 0 || !strings.Contains(out, "kind=retryable") {
+				t.Fatalf("log = %q, want one line naming job bad and its kind", out)
+			}
+			if strings.Contains(out, planFailMarker) {
+				t.Fatalf("log holds the error text: %q", out)
+			}
+		})
+	}
+}

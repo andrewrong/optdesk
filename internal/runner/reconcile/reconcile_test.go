@@ -1,7 +1,9 @@
 package reconcile
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -590,5 +592,38 @@ func TestScheduledJobWithUnknownAnchorIsAnError(t *testing.T) {
 	err := dueRec(led, "2026-11-05T21:00:00Z", job).Reconcile(context.Background(), dueDay)
 	if err == nil || !strings.Contains(err.Error(), "job bad: unknown anchor") {
 		t.Fatalf("err = %v, want unknown anchor naming the job", err)
+	}
+}
+
+func captureLog() (*slog.Logger, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	return slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})), buf
+}
+
+func TestReconcileSkipsJobWhosePlanFails(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	clk := clockwork.NewFakeClockAt(utc("2026-11-04T22:00:00Z"))
+	led := newLedger()
+	led.cursor = store.Cursor{Day: "2026-11-03"}
+	bad, good := badAndGoodJobs()
+	rec := NewWithRule(led, oneDay(), clk, []contracts.Job{bad, good}, runner.WindowRule{CalendarID: "XNYS"})
+	lg, buf := captureLog()
+	rec.(*reconciler).log = lg
+	if err := rec.Reconcile(ctx, "2026-11-04"); err != nil {
+		t.Fatalf("Reconcile = %v, want nil", err)
+	}
+	if got := led.expected["2026-11-04"]; len(got) != 1 || got[0] != keyC {
+		t.Fatalf("expected = %v, want only %v", got, keyC)
+	}
+	if len(good.calls) != 1 || good.calls[0] != keyC {
+		t.Fatalf("good job calls = %v, want [%v]", good.calls, keyC)
+	}
+	out := buf.String()
+	if strings.Count(out, "job=bad") != 1 || strings.Count(strings.TrimSpace(out), "\n") != 0 || !strings.Contains(out, "kind=retryable") {
+		t.Fatalf("log = %q, want one line naming job bad and its kind", out)
+	}
+	if strings.Contains(out, planFailMarker) {
+		t.Fatalf("log holds the error text: %q", out)
 	}
 }
