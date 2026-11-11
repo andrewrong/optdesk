@@ -3,8 +3,9 @@
 // compute.OptionLedger, summarised by a compute.OptionResults, as option_tracking_page and
 // option_result_page do). The tiles copy fields of the ResultSection that compute returns
 // (Premium, Realized, KeptShare); the builder adds, divides, sums and rounds nothing, it only
-// places the decimal text (sign, dollar sign, thousands separators). No compute function returns
-// premium by month, so the six month series is the gap no_data, never zero and never a sample.
+// places the decimal text (sign, dollar sign, thousands separators). The six month series
+// copies ResultMonth.Premium of the sold USD section by close month; a month without a figure is
+// the gap no_data, never zero and never a sample.
 // The builder reads no clock and makes no request.
 package home_options
 
@@ -14,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,14 +44,16 @@ const (
 	textNoSold    = "账本没有已平仓的卖出记录"
 	textNoDay     = "没有账本日"
 	textNotCents  = "账本金额不是整分，不在此页取整"
-	textMonthly   = "月度权利金尚未计算"
+	textMonthly   = "按平仓月统计的已了结权利金暂无数据"
+	textNoClosed  = "没有当月平仓的卖出记录"
+	textClosedMon = "月度已平仓盈亏不在此页给出"
 	textSoldCount = "本月卖出组数尚未计算"
 	textOpen      = "未平权利金尚未计算"
 	textMaxLoss   = "最大亏损需要组合结构，账本不给出"
 	textOtherCcy  = "账本含非美元持仓，未计入本页"
-	seriesText    = "近六个月权利金暂无数据：月度权利金尚未计算"
-	closedText    = "近六个月已平仓盈亏暂无数据：月度金额尚未计算"
-	seriesCaption = "单位美元；月度权利金尚未计算，各月留空"
+	seriesText    = "近六个月按平仓月统计的已了结权利金：到期、被行权、被指派、买回平仓都计入；不扣手续费，是开仓权利金；月份取账本 ClosedOn 的前 7 个字符，不换算时区，按账户别名分别统计，不合并"
+	closedText    = "近六个月已平仓盈亏暂无数据：月度已平仓盈亏不在此页给出"
+	seriesCaption = "单位美元；按平仓月统计的已了结权利金，到期、被行权、被指派、买回平仓都计入，不扣手续费（开仓权利金）；月份为 ClosedOn 前 7 个字符，不换算时区，按账户别名分别统计，从不合并；没有当月平仓的卖出记录的月份留空"
 	noteCash      = "权利金按开仓成交现金计，不含手续费；卖出为正，买入为负。"
 	noteClosed    = "权利金与已实现盈亏只计已平仓的卖出仓位，各账户合并。"
 )
@@ -246,7 +250,7 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	k.Stale = stale{DataTime: midnight(base, c.Zone), Text: baseText, IsStale: at.After(staleAfter)}
 	k.Notes = []string{noteCash, noteClosed}
 	k.Gaps = []gap{noData(textMonthly), noData(textMaxLoss)}
-	k.Series = series(d)
+	k.Series = series(d, nil)
 	k.Tiles = tiles{
 		Sold:        tile{Label: "本月卖出", Figure: noData(textSoldCount)},
 		PremiumMon:  tile{Label: "已平仓权利金", Figure: noData(noText)},
@@ -272,6 +276,10 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	if sold == nil {
 		return s
 	}
+	k.Series = series(d, sold)
+	if hasFigure(k.Series) {
+		k.Gaps = slices.DeleteFunc(k.Gaps, func(g gap) bool { return g.Text == textMonthly })
+	}
 	k.Tiles.PremiumMon.Caption = caption(*sold)
 	f := money(sold.Premium)
 	k.Tiles.PremiumMon.Figure = f
@@ -281,18 +289,40 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	return s
 }
 
-// series is the six calendar months ending with the month of d, oldest first, every figure a gap.
-func series(d time.Time) []point {
+// series is the six calendar months ending with the month of d, oldest first. The premium of a
+// month is the Premium text of the month of the sold USD section with that Month, placed by money;
+// a month the section does not list, or no section, is a gap. The closed figure is always a gap.
+func series(d time.Time, sold *compute.ResultSection) []point {
 	first := time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC)
 	out := make([]point, 0, months)
 	for i := months - 1; i >= 0; i-- {
 		m := first.AddDate(0, -i, 0)
+		key := m.Format(monthLayout)
+		var prem any = noData(textNoClosed)
+		if sold != nil {
+			for _, rm := range sold.Months {
+				if rm.Month == key {
+					prem = money(rm.Premium)
+					break
+				}
+			}
+		}
 		out = append(out, point{
-			Month: m.Format(monthLayout), Label: monthLabels[m.Month()-1],
-			Premium: noData(textMonthly), Closed: noData(textMonthly),
+			Month: key, Label: monthLabels[m.Month()-1],
+			Premium: prem, Closed: noData(textClosedMon),
 		})
 	}
 	return out
+}
+
+// hasFigure reports whether any point of the series carries a premium figure.
+func hasFigure(pts []point) bool {
+	for _, p := range pts {
+		if _, ok := p.Premium.(figure); ok {
+			return true
+		}
+	}
+	return false
 }
 
 // newestDay is the newest ledger day of the positions that is not after d; text order is day order.

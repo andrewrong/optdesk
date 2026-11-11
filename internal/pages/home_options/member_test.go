@@ -79,8 +79,8 @@ func (r results) Summarise(in compute.ResultInput) compute.ResultSummary {
 	return compute.ResultSummary{Sections: r.sections}
 }
 
-func sold(premium, realized, kept string) compute.ResultSection {
-	return compute.ResultSection{Side: "sold", Currency: "USD", Premium: premium, Realized: realized, KeptShare: kept}
+func sold(premium, realized, kept string, months ...compute.ResultMonth) compute.ResultSection {
+	return compute.ResultSection{Side: "sold", Currency: "USD", Months: months, Premium: premium, Realized: realized, KeptShare: kept}
 }
 
 func cfg(l store.OptionLedgerReader, r compute.OptionResults, ps ...compute.LedgerPosition) home_options.Config {
@@ -143,7 +143,9 @@ func tileFigure(c map[string]any, k string) map[string]any {
 
 func TestGoldenOK(t *testing.T) {
 	t.Parallel()
-	got := build(t, okCfg(sold("1234.5000", "-15.2500", "-0.012355")))
+	got := build(t, okCfg(sold("1234.5000", "-15.2500", "-0.012355",
+		compute.ResultMonth{Month: "2026-09", Premium: "200.0000"},
+		compute.ResultMonth{Month: "2026-11", Premium: "300.0000"})))
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, got, "", "  "); err != nil {
 		t.Fatal(err)
@@ -184,26 +186,66 @@ func TestNegativePremiumKeepsItsSign(t *testing.T) {
 	}
 }
 
-// The six month series is a gap in every point, never zero and never a sample.
-func TestSeriesIsNoDataGap(t *testing.T) {
+// The premium of a point is the Premium of the month of the sold section with that Month; a month
+// the section does not list is a gap, and the closed series stays a gap.
+func TestSeriesPremiumByCloseMonth(t *testing.T) {
 	t.Parallel()
-	c := card(t, okCfg(sold("1234.5000", "-15.2500", "")))
+	c := card(t, okCfg(sold("500.0000", "-15.2500", "",
+		compute.ResultMonth{Month: "2026-09", Premium: "200.0000"},
+		compute.ResultMonth{Month: "2026-11", Premium: "300.0000"})))
 	pts := c["premium_series_6m"].([]any)
 	want := []string{"2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"}
+	text := map[int]string{3: "+$200.00", 5: "+$300.00"}
 	for i, p := range pts {
 		m := p.(map[string]any)
 		if m["month"] != want[i] {
 			t.Fatalf("month %d = %v", i, m["month"])
 		}
-		for _, k := range []string{"premium", "closed"} {
-			g := m[k].(map[string]any)
-			if g["kind"] != "gap" || g["reason"] != "no_data" {
-				t.Fatalf("%s of %v = %v", k, m["month"], g)
+		pr := m["premium"].(map[string]any)
+		if tx, ok := text[i]; ok {
+			if pr["kind"] != "value" || pr["text"] != tx {
+				t.Fatalf("premium of %v = %v", m["month"], pr)
 			}
+		} else if pr["kind"] != "gap" || pr["reason"] != "no_data" || pr["text"] != "没有当月平仓的卖出记录" {
+			t.Fatalf("premium of %v = %v", m["month"], pr)
+		}
+		if cl := m["closed"].(map[string]any); cl["kind"] != "gap" || cl["reason"] != "no_data" {
+			t.Fatalf("closed of %v = %v", m["month"], cl)
 		}
 	}
-	if !strings.Contains(c["premium_series_text"].(string), "尚未计算") {
-		t.Fatalf("text = %v", c["premium_series_text"])
+	if strings.Contains(string(mustJSON(t, c["gaps"])), "按平仓月统计的已了结权利金暂无数据") {
+		t.Fatalf("gaps = %v", c["gaps"])
+	}
+}
+
+// With no month figure every point is a gap and the series gap stays in the card gaps.
+func TestSeriesWithoutFigureKeepsGap(t *testing.T) {
+	t.Parallel()
+	c := card(t, okCfg(sold("1234.5000", "-15.2500", "")))
+	for _, p := range c["premium_series_6m"].([]any) {
+		if g := p.(map[string]any)["premium"].(map[string]any); g["kind"] != "gap" {
+			t.Fatalf("premium = %v", g)
+		}
+	}
+	if !strings.Contains(string(mustJSON(t, c["gaps"])), "按平仓月统计的已了结权利金暂无数据") {
+		t.Fatalf("gaps = %v", c["gaps"])
+	}
+}
+
+// The card text states the counting rule.
+func TestSeriesCardTextStatesRule(t *testing.T) {
+	t.Parallel()
+	c := card(t, okCfg(sold("1.0000", "", "")))
+	for _, k := range []string{"premium_series_text", "premium_series_caption"} {
+		s := c[k].(string)
+		for _, w := range []string{"按平仓月", "到期", "被行权", "被指派", "买回", "不扣手续费", "前 7 个字符", "不换算时区", "按账户别名", "不合并"} {
+			if k == "premium_series_caption" && w == "不合并" {
+				w = "从不合并"
+			}
+			if !strings.Contains(s, w) {
+				t.Fatalf("%s lacks %q: %s", k, w, s)
+			}
+		}
 	}
 }
 
