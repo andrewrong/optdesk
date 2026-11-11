@@ -9,7 +9,8 @@ the starter does not restart it. A probe whose handshake fails or runs out of it
 budget raises ProbeUnknown, an ordinary exception: not proof and not a refusal,
 the connection stays closed and the supervisor retries. The whole probe,
 handshake included, runs under one 5 s budget. The probe has its own send guard that allows
-message id 5 and nothing else, the order ids refused first.
+message id 5 and nothing else, the order ids refused first. The guard is installed after
+the API handshake, which sends its own startApi, and guards every send of the probe from then on.
 This file imports no ib_async.
 """
 
@@ -94,7 +95,6 @@ async def prove_read_only(
         if code == READ_ONLY_CODE:
             rejected.set()
 
-    install(ib.client)
     ib.errorEvent += on_error
     request: asyncio.Future[Any] | None = None
     waiter = asyncio.ensure_future(rejected.wait())
@@ -110,6 +110,7 @@ async def prove_read_only(
             )
         except Exception as error:
             raise ProbeUnknown(f"probe handshake failed: {error!r}") from error
+        install(ib.client)  # after the handshake: startApi must get through
         request = asyncio.ensure_future(ib.reqOpenOrdersAsync())
 
         async def answer() -> None:
