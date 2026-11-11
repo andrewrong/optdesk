@@ -34,6 +34,9 @@ var startListed = func(build listedBuild, group string, reader underlying.Reader
 }
 
 // heldAliases are the account aliases whose positions make a name held (the aliases optionopen reads).
+// nameKey is the name_key of a row of the list: market, a colon and the upper-case symbol.
+func nameKey(market, symbol string) string { return market + ":" + strings.ToUpper(symbol) }
+
 var heldAliases = []string{"A", "B"}
 
 func init() {
@@ -102,24 +105,13 @@ func heldKeys(d deps, cfg runOnceConfig, now func() time.Time, extra *closerSet)
 	}}}
 	extra.addCloser(rd)
 	return func(ctx context.Context) (map[string]bool, error) {
+		syms, err := heldSymbols(ctx, siteReaders{account: rd, aliases: heldAliases}, now())
+		if err != nil {
+			return nil, err
+		}
 		held := map[string]bool{}
-		for _, alias := range heldAliases {
-			for back := 0; back <= heldLookbackDays; back++ {
-				rows, err := rd.Positions(ctx, alias, now().UTC().AddDate(0, 0, -back).Format(time.DateOnly))
-				if err != nil {
-					return nil, err
-				}
-				if len(rows) == 0 {
-					continue
-				}
-				for _, p := range rows {
-					if p.SecType == "STK" && !isZeroQuantity(p.Quantity) {
-						sym := strings.ToUpper(p.Symbol)
-						held["US:"+sym], held["JP:"+sym] = true, true
-					}
-				}
-				break
-			}
+		for sym := range syms {
+			held[nameKey("US", sym)], held[nameKey("JP", sym)] = true, true
 		}
 		return held, nil
 	}

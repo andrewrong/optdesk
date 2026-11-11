@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -22,7 +24,7 @@ func listRowsOf(entries ...jobs.WatchEntry) []underlying.Row {
 	for _, e := range entries {
 		c := e.Contract
 		rows = append(rows, underlying.Row{
-			Key: e.Market + ":" + strings.ToUpper(c.Symbol), Symbol: c.Symbol, Market: e.Market, Kind: underlying.KindStock,
+			Key: nameKey(e.Market, c.Symbol), Symbol: c.Symbol, Market: e.Market, Kind: underlying.KindStock,
 			Exchange: c.Exchange, Currency: c.Currency, ConID: c.ConID, Issuer: e.Issuer, Status: underlying.StatusActive,
 			Options: true, Fundamentals: true, BuyPrice: e.BuyPrice, SalePrice: e.SalePrice, ReportDateOverride: e.ReportDateOverride,
 		})
@@ -136,11 +138,15 @@ func TestUnderlyingResolveFamily(t *testing.T) {
 }
 
 // markerJob is the job a constructor returns: Run answers a result that names it, so a test sees which job ran.
-type markerJob struct{ contracts.Job }
+type markerJob struct {
+	contracts.Job
+	// version stands for the settings version the constructor sets on the job it returns.
+	version int
+}
 
 func (markerJob) ID() string { return jobOptionCandidates }
-func (markerJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
-	return contracts.JobResult{Returned: 42}
+func (m markerJob) Run(context.Context, contracts.Day, []contracts.ExpectedKey) contracts.JobResult {
+	return contracts.JobResult{Returned: m.version}
 }
 func (markerJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
 	return nil, "", nil
@@ -158,7 +164,7 @@ func TestOptionCandidatesKeepsItsConstructorJob(t *testing.T) {
 			syms = append(syms, e.Contract.Symbol)
 		}
 		seen = append(seen, syms)
-		return markerJob{}, nil
+		return markerJob{version: 42}, nil
 	}
 	d.newCandidateRule = func() compute.OptionCandidates { return nil }
 	f := jobFactory{d: d, clk: fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)}}.withList(oneUSRow())
@@ -177,5 +183,35 @@ func TestOptionCandidatesKeepsItsConstructorJob(t *testing.T) {
 	}
 	if res := j.Run(context.Background(), "2026-11-04", nil); res.Returned != 42 {
 		t.Fatalf("result %+v, want the job of the constructor", res)
+	}
+}
+
+// TestEveryListFamilyIsListed wires every family that follows the stored list, with every line and fake it needs, and
+// finds each one as a listedJob.
+func TestEveryListFamilyIsListed(t *testing.T) {
+	t.Parallel()
+	r := newDivRigEnv(t, fullEnv+barEnv+store.DSNEnvFundamental+"=fund-dsn\n"+store.DSNEnvCandidate+"=cand-dsn\n"+envSECUserAgent+"=agent mail\n")
+	withFundamentalsFakes(&r.a.deps)
+	withBarFakes(&r.a.deps)
+	r.a.deps.openCandidateRW = func(context.Context, string) (candidateRW, error) {
+		return &fakeCandidateRW{closed: &atomic.Int32{}}, nil
+	}
+	r.a.deps.newOptionCandidates = func(optioncandidates.CandidateStores, compute.OptionCandidates, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
+		return candJobStub{id: jobOptionCandidates}, nil
+	}
+	r.a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
+	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"bars_refresh", "option_candidates", "dividend_capture", "fundamentals", "iv_history"} {
+		found := false
+		for _, j := range r.jobs {
+			if j.ID() == id {
+				_, found = listedOf(j)
+			}
+		}
+		if !found {
+			t.Errorf("%s is not a wired listedJob (jobs %v)", id, jobIDs(r.jobs))
+		}
 	}
 }

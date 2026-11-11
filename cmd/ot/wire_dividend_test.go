@@ -44,9 +44,11 @@ type divRig struct {
 	socket string
 }
 
-func newDivRig(t *testing.T) *divRig {
+func newDivRig(t *testing.T) *divRig { return newDivRigEnv(t, fullEnv) }
+
+func newDivRigEnv(t *testing.T, env string) *divRig {
 	t.Helper()
-	d := &divRig{rig: newRig(t, fullEnv), store: &divStore{}}
+	d := &divRig{rig: newRig(t, env), store: &divStore{}}
 	dd := &d.a.deps
 	dd.newReference = func(_ context.Context, socket string, _ broker.Options) (broker.ReferenceClient, error) {
 		d.dialed.Add(1)
