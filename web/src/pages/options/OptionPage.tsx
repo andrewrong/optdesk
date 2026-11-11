@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { OptionQuoteCell } from '@/components/option-quote-cell'
+import { OptionRefresh } from '@/components/option-refresh'
 import { DataTable, type Cell, type Column } from '@/components/data-table/data-table'
 import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/option_page'
@@ -73,9 +75,23 @@ function PayloadTableView({ table, name }: { table: PayloadTable; name: string }
   const rows = table.rows.map((row) =>
     Object.fromEntries(row.cells.map(({ column, cell }) => [column, cell as Cell])),
   )
+  // v2 rows carry the quote behind their prices: it is shown in its own cell beside them.
+  const quotes = table.rows.map((row) => ('quote' in row ? row.quote : undefined))
   return (
-    <div className="min-w-0" data-table={name}>
+    <div className="min-w-0 space-y-1" data-table={name}>
       <DataTable columns={columns} rows={rows} />
+      {quotes.some(Boolean) ? (
+        <ul className="space-y-0.5" data-quotes>
+          {table.rows.map((row, index) => {
+            const quote = quotes[index]
+            return quote ? (
+              <li key={row.id} data-quote-row={row.id}>
+                <OptionQuoteCell quote={quote} />
+              </li>
+            ) : null
+          })}
+        </ul>
+      ) : null}
     </div>
   )
 }
@@ -128,7 +144,10 @@ export function OptionPage({ payload }: { payload: Payload }) {
   const first = payload.markets[0]
   return (
     <div className="min-w-0 space-y-4" data-page="option-page">
-      <h1 className="text-2xl font-semibold">{payload.title}</h1>
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold">{payload.title}</h1>
+        <OptionRefresh refresh={'refresh' in payload ? payload.refresh : undefined} />
+      </header>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       <Tabs defaultValue={first?.market} className="min-w-0">
         <TabsList className="group-data-horizontal/tabs:h-auto w-full flex-wrap">
