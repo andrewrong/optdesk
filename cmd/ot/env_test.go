@@ -243,6 +243,7 @@ var leakExcluded = map[string]string{
 	"check":           "prints host/database of the pages DSN and no other part; TestCheckHeaderNoSecret covers it",
 	"approve-band":    "needs a band in the readings store, which a static row cannot give; its open error is withheld and TestApproveBandWithholdsDSN covers it",
 	"account-import":  "needs an input file in DIR, which a static row cannot give; its open error is withheld and TestAccountImportOpenErrorWithheld covers it",
+	"underlying":      "needs a watch.toml in a temp dir, which a static row cannot give; open error withheld, TestUnderlyingImportOpenErrorWithheld covers",
 }
 
 func TestNoCommandLeaksDSN(t *testing.T) {
