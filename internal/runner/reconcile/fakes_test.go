@@ -157,6 +157,7 @@ type fakeJob struct {
 	results map[contracts.ExpectedKey]contracts.JobResult
 	mu      sync.Mutex
 	calls   []contracts.ExpectedKey
+	planErr error // when set, Plan returns it
 }
 
 func (j *fakeJob) ID() string {
@@ -166,6 +167,9 @@ func (j *fakeJob) ID() string {
 	return "fake"
 }
 func (j *fakeJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	if j.planErr != nil {
+		return nil, "", j.planErr
+	}
 	return j.keys, "plan-1", nil
 }
 
@@ -216,3 +220,18 @@ type scheduledJob struct {
 func (j scheduledJob) Schedule() (string, string, string, time.Duration) {
 	return j.calendarID, j.anchor, j.zone, j.offset
 }
+
+// planFailMarker is the text of a failing Plan's error; no log line may hold it.
+const planFailMarker = "secret-token-hunter2"
+
+// badAndGoodJobs is a job whose Plan fails and a job whose Plan returns keyC.
+func badAndGoodJobs() (bad, good *fakeJob) {
+	bad = &fakeJob{id: "bad"}
+	bad.planErr = markedErr{kindErr{kind: contracts.Retryable}}
+	good = &fakeJob{id: "good", keys: []contracts.ExpectedKey{keyC}}
+	return bad, good
+}
+
+type markedErr struct{ kindErr }
+
+func (markedErr) Error() string { return planFailMarker }
