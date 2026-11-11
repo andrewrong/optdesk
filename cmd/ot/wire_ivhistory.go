@@ -69,14 +69,14 @@ func (f jobFactory) ivHistory(h broker.HistoryClient, b broker.Broker) (contract
 // resolvingHistory gives a query whose contract has no con_id the one the broker names, as bars_refresh does:
 // one ResolveContract per contract for the life of the client. pyside refuses a bar query without a con_id.
 type resolvingHistory struct {
-	broker.HistoryClient
+	h   broker.HistoryClient
 	b   broker.Broker
 	mu  sync.Mutex
 	ids map[broker.Contract]int64
 }
 
-func ivHistoryResolving(h broker.HistoryClient, b broker.Broker) *resolvingHistory {
-	return &resolvingHistory{HistoryClient: h, b: b, ids: map[broker.Contract]int64{}}
+func ivHistoryResolving(h broker.HistoryClient, b broker.Broker) broker.HistoryClient {
+	return &resolvingHistory{h: h, b: b, ids: map[broker.Contract]int64{}}
 }
 
 // notListedError is the Permanent answer for a contract the broker does not list.
@@ -94,8 +94,11 @@ func (r *resolvingHistory) Bars(ctx context.Context, q broker.BarQuery) ([]broke
 		}
 		q.Contract.ConID = id
 	}
-	return r.HistoryClient.Bars(ctx, q)
+	return r.h.Bars(ctx, q)
 }
+
+// Close closes the wrapped client only.
+func (r *resolvingHistory) Close() error { return r.h.Close() }
 
 func (r *resolvingHistory) conID(ctx context.Context, c broker.Contract) (int64, error) {
 	r.mu.Lock()
