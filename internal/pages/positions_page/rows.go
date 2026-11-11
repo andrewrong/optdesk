@@ -198,6 +198,9 @@ func money(s, currency, unit string) any {
 }
 
 func figure(f compute.FigureValue, currency, unit string) any {
+	if f.Gap == "missing_quote" {
+		return gapOf(f.Gap, textNA)
+	}
 	if f.Gap != "" {
 		return gapOf(f.Gap, gapText(f.Gap))
 	}
@@ -341,7 +344,7 @@ func rowsOf(ps []store.Position, price map[int64]string, lines []blockapi.Holdin
 		}
 		line := lines[i]
 		i++
-		dayGap := gapOf("no_data", textDayProfit)
+		dayGap := gapOf("no_data", textNA)
 		cost := money(perShareCost(p), p.Currency, "amount_per_share")
 		var pr any = gapOf("missing_quote", textNoMark)
 		if m := price[p.ConID]; m != "" {

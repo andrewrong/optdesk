@@ -18,6 +18,7 @@ const (
 	textStaleData = "Account data day "
 
 	textNoMark       = "No price: no data yet"
+	textNA           = "n/a"
 	textDayProfit    = "Day result needs the previous trading day price: no data yet"
 	textNoLedger     = "Not in the option ledger: no data yet"
 	textAmbiguous    = "Several entries in the option ledger: no data yet"
