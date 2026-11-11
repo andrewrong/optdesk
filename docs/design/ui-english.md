@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-11
-Revision: 4
+Revision: 5
 
 Source: owner decision 2026-11-11, ask optdesk-2529, the owner's words "英文为主吧" (the user interface is English-first); window decisions the same day: a bilingual text keeps only its English half, weekdays are `Sun`..`Sat`, a missing cell is `n/a`. Read on origin/main (12e7241b): `AGENTS.md`, `docs/design/modules.md`, `docs/contracts/00-protocol.md`, `internal/pages/**`, `internal/compute/pagefig/**`, `cmd/ot/**`, `web/src/**`, `web/fixtures/**`, `web/test/**`, `contracts/schemas/**`, `contracts/fixtures/**`, `internal/contracts/**`.
 
@@ -81,7 +81,7 @@ The table is built from the most frequent Chinese words of the source files (`gi
 5. Data values stay as the source gives them. On main no file these issues own holds such a value: the Japanese filing names (`第1四半期`) are in `internal/sources/jquants/testdata/earnings_date.json`, which no issue edits. A fixture or a test that carries a company name or a record is synthetic and becomes English.
 6. Schemas are not edited (Method). The builders emit English into free text; the three frozen value sets that stay Chinese (market_weather v1 labels, positions_page v1 and v2 enums, the `default` of report_page) are in Left out with the reason and the way they are skipped by a grep.
 7. Designs that prescribe Chinese texts are superseded by this file for text only: every exact Chinese string in `docs/design/*.md` reads as its English form by decision 3; their structure, fields and rules stay in force. The old files are not edited (`docs/design` is owner-only). An issue cut from an older design takes its texts in English, and its design-match item is judged against this design for text.
-8. A text and the golden files, fixtures and tests that pin it change in the same issue; the worker regenerates the golden files (`-update` or `UPDATE_GOLDEN=1`) and commits them. An issue that changes a text without its pinned files is not done. The one case where a pin is in another row (pagefig labels pinned by pages goldens, page builder texts pinned by `cmd/ot` tests) is handled by the sequence and the scopes of `## Issues` (CI scope per issue): the issue that owns the golden file regenerates it. The glossary guard of each issue (acceptance) names the glossary words that must be in the regenerated golden files, so a golden file is read, not only blessed.
+8. A text and the golden files, fixtures and tests that pin it change in the same issue, in whatever module the pin lives; the worker regenerates the golden files (`-update` or `UPDATE_GOLDEN=1`) and commits them. An issue that changes a text without its pinned files is not done, and no issue relies on a narrowed CI scope: every pull request is green on `go test ./...` and main stays green between merges. Where a pin sits in another module than the text, the issue's Files cross modules on purpose (the design's cut is the licence; `## Issues` names each such entry and says why: the goldens pin the text). The glossary guard of each issue (acceptance) names the glossary words that must be in the regenerated golden files, so a golden file is read, not only blessed.
 9. No new test sleeps, no shared state: only expected strings change.
 10. No persisted row holds Chinese text produced by our code: `git grep -lP '[\x{4e00}-\x{9fff}]' origin/main -- internal/store internal/jobs migrations ':!*_test.go'` prints only `internal/jobs/optionledger/testdata/attrs_hash.json` (a test fixture, a hash input that stays, see Left out), so no migration and no backfill is needed.
 11. Each issue's counts are taken again when it is cut, because main moves (PR 1517 merged web texts; PRs 1513 and 1503 are open on pages); issue 8 is cut only when no other web pull request is open.
@@ -96,13 +96,9 @@ No Go, Python or TypeScript declaration changes, no schema, no generated output:
 
 ## Issues
 
-Every `Files:` is one module. Order: issues 1, 2 and 8 touch separate paths and run first, together; 3 to 6 follow 2 (the household labels come from `pagefig`) and may run together; 7 (ot) follows 3 to 6 because `cmd/ot/testdata/macro_page_demo.golden.json` is built from the pages. Each grep below spells the class out: ideographs `\x{4e00}-\x{9fff}` and full-width punctuation `\x{3000}-\x{303f}\x{ff00}-\x{ffef}`.
+Every `Files:` is one module except the four crossing entries named below. Order: issues 1 to 6 and 8 touch disjoint paths and run together; 7 (ot) follows 2 to 6 because its standing guard needs those trees English. Each grep below spells the class out: ideographs `\x{4e00}-\x{9fff}` and full-width punctuation `\x{3000}-\x{303f}\x{ff00}-\x{ffef}`.
 
-CI scope per issue (why the cut can be built green). Two pins cross a row, and a row's issue may not edit another row's files (AGENTS.md, Modules), so the whole-tree `go test ./...` of `## Checked by CI` is replaced for issues 2 to 6 by the scopes named in each issue's `Checked by CI` line:
-
-- The household labels of `internal/compute/pagefig/household.go` are pinned by the goldens of `internal/pages/household_page`, `internal/pages/home_household`, `internal/pages/positions_page` and `internal/pages/risk_page` (their tests build the figures with `pagefig`). Issue 2 changes the labels in the compute row only, so its scope is `./internal/compute/...`. The pinned goldens are regenerated by issue 3 (`home_household`) and issue 6 (the other three), each in its own row, as Decision 8 requires of the issue that owns the golden file. Until they land, those suites are stale; so main is not left red, the gate merges 2, then 3 and 6, in that one sequence, and an issue's scope never includes a suite that a later issue of the sequence still has to regenerate (issue 3's scope is its five home packages, issue 6's scope is all of `./internal/pages/...`, which is green once 3 has landed).
-- Safe because: a figure label is data that the page builders copy into the payload; no page test computes it, the sequence changes strings only, and a stale golden fails as a byte comparison, so a wrong text is never blessed by accident; and the gate merges the sequence in one pass, so main is red at most between two merges of it.
-- `./cmd/...` tests (`TestMacroPageDemoGolden` in `cmd/ot/page_test.go`, `cmd/ot/stock_option_site_test.go`, `cmd/ot/site_positions_test.go`) pin page builder texts of issues 4 and 6 and are `cmd/**`, the ot row. They are left out of the scope of issues 3 to 6 and regenerated by issue 7, which runs the whole tree (`go test ./...`) as its scope. Issue 7 needs no output of 3 to 6 except their merged texts, and issues 3 to 6 need nothing from 7.
+Crossing entries, on purpose: issue 2 (compute and pages), issue 4 (pages and one `cmd/ot` test), issue 5 (pages and one `cmd/ot` test) and issue 6 (pages and `cmd/ot` files). Each pin below is a golden or a test that compares a builder output with the text the issue changes, so it must change in the same pull request or `go test ./...` is red: the pagefig labels are pinned by the goldens of `home_household`, `household_page`, `positions_page` and `risk_page` (their tests build the figures with `pagefig`); `cmd/ot/stock_option_site_test.go` pins an `option_boards` text; `cmd/ot/site_positions_test.go` pins an `option_result_page` text; `cmd/ot/testdata/macro_page_demo.golden.json` (`TestMacroPageDemoGolden`) pins `macro_page` and the demo series name of `cmd/ot/wire.go`. The Files of one issue are disjoint from the Files of every other, so 1 to 6 and 8 run together; issue 7 runs last because its guard walks the trees the others translate. Every `Checked by CI` below is the whole tree, as in `## Checked by CI`.
 
 ### 1 ui-english-contracts-fixtures
 
@@ -118,86 +114,86 @@ Acceptance:
 4. `git diff --name-only origin/main...HEAD | grep -vcE '^(contracts/fixtures/(page\.options_summary\.v4\.(ok|gap|stale)|page\.option_data_page\.v1\.jpy|MANIFEST\.synthetic-v1)\.json|internal/contracts/[a-z0-9_]+_test\.go)$'` prints 0, and `git diff --name-only origin/main...HEAD -- contracts/schemas web/src/generated | wc -l` prints 0 (design docs/design/ui-english.md).
 Checked by CI: `go test ./internal/contracts/... -count=1` and `go run ./scripts/hygiene`, which compares each fixture with its sha256 line of `contracts/fixtures/MANIFEST.synthetic-v1.json` (the sha256 values are checked there, by CI, not by an acceptance item).
 
-### 2 ui-english-compute
+### 2 ui-english-compute-household
 
-Module: compute. Size: S.
-Files: `internal/compute/pagefig/household.go`, `internal/compute/pagefig/household_test.go`, `internal/compute/pagefig/company_test.go`
-Order: first, with 1 and 8.
+Module: compute, crossing into pages on purpose (the goldens and tests of four pages pin the figure labels `pagefig` emits). Size: M.
+Files: `internal/compute/pagefig/household.go`, `internal/compute/pagefig/household_test.go`, `internal/compute/pagefig/company_test.go`, `internal/pages/home_household/**`, `internal/pages/household_page/**`, `internal/pages/positions_page/**`, `internal/pages/risk_page/**`
+Order: with 1, 3 to 6 and 8.
 Design: docs/design/ui-english.md#Decisions
-Goal: figure labels and the tests that pin them are English.
+Goal: the figure labels, the three `pagefig` files and the four page packages that pin them (sources, tests, golden and input files) are English in one pull request, so the labels and the goldens that carry them change together.
 Acceptance:
-1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/compute` prints nothing.
-2. Glossary guard: `git grep -h -cE '"Net value"|"Net liquidation"' -- internal/compute/pagefig/household.go` prints at least 3, and `git grep -nE '"(Net worth|Equity|NLV)"' -- internal/compute` prints nothing.
-3. `git diff --name-only origin/main...HEAD | grep -vc '^internal/compute/pagefig/\(household\|household_test\|company_test\)\.go$'` prints 0 (design docs/design/ui-english.md).
-Checked by CI (scope, see CI scope per issue): `go test ./internal/compute/... -count=1`. `./internal/pages/...` and `./cmd/...` are not in the scope: their goldens that pin these labels belong to issues 3 and 6.
+1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/compute internal/pages/home_household internal/pages/household_page internal/pages/positions_page internal/pages/risk_page` prints nothing.
+2. Glossary guard: `git grep -h -cE '"Net value"|"Net liquidation"' -- internal/compute/pagefig/household.go` prints at least 3; `git grep -nE '"(Net worth|Equity|NLV)"' -- internal/compute` prints nothing; `git grep -h -cP 'pageTitle\s+= "Household"' -- internal/pages/household_page/strings.go` prints 1; `git grep -h -c '"Household"' -- internal/pages/household_page/testdata/holdings.golden.json` prints at least 1; `git grep -h -cP 'pageTitle\s+= "Positions"' -- internal/pages/positions_page/strings.go` prints 1; `git grep -nP '"(Family assets|Holdings page)"' -- internal/pages/household_page internal/pages/positions_page` prints nothing.
+3. `git diff --name-only origin/main...HEAD | grep -vc '^internal/compute/pagefig/\(household\|household_test\|company_test\)\.go$\|^internal/pages/\(home_household\|household_page\|positions_page\|risk_page\)/'` prints 0 (design docs/design/ui-english.md).
+Checked by CI: `go test ./...`.
 
 ### 3 ui-english-pages-home
 
 Module: pages. Size: M.
-Files: `internal/pages/home_page/**`, `internal/pages/home_household/**`, `internal/pages/home_macro/**`, `internal/pages/home_market/**`, `internal/pages/home_options/**`
-Order: after 2 (the home household member uses the figure labels; its golden is regenerated here).
+Files: `internal/pages/home_page/**`, `internal/pages/home_macro/**`, `internal/pages/home_market/**`, `internal/pages/home_options/**`
+Order: with 2 (`home_household` is issue 2's, with the figure labels it pins).
 Design: docs/design/ui-english.md#Decisions
-Goal: the five home members, their golden and input files and tests are English; the inline texts (`overview.go:94`) too.
+Goal: the four home packages other than `home_household`, their golden and input files and tests are English; the inline texts (`overview.go:94`) too.
 Acceptance:
-1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/pages/home_page internal/pages/home_household internal/pages/home_macro internal/pages/home_market internal/pages/home_options` prints nothing.
-2. Glossary guard: `git grep -h -cP 'cardTitle\s+= "Market"' -- internal/pages/home_market/strings.go` prints 1; `git grep -h -c '"Market"' -- internal/pages/home_market/testdata/ok.golden.json` prints at least 1 (the golden file was regenerated, not edited around); `git grep -h -cF 'Card: "Home"' -- internal/pages/home_page/overview.go` prints 1; `git grep -nP '"(Family|Home page|Overview of the day)"' -- internal/pages/home_page internal/pages/home_household internal/pages/home_macro internal/pages/home_market internal/pages/home_options` prints nothing.
-3. `git grep -nP '\x{ff1a}|\x{ff1b}|\x{ff0c}|\x{3002}' -- internal/pages/home_household internal/pages/home_macro internal/pages/home_market internal/pages/home_options` prints nothing (the joins of `member.go` use `: ` `; ` `, ` `. `).
-4. `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/home_\(page\|household\|macro\|market\|options\)/'` prints 0 (design docs/design/ui-english.md).
-Checked by CI (scope): `go test ./internal/pages/home_page/... ./internal/pages/home_household/... ./internal/pages/home_macro/... ./internal/pages/home_market/... ./internal/pages/home_options/... -count=1` (golden suites; `./internal/pages/household_page` is issue 6's and `./cmd/...` is issue 7's).
+1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/pages/home_page internal/pages/home_macro internal/pages/home_market internal/pages/home_options` prints nothing.
+2. Glossary guard: `git grep -h -cP 'cardTitle\s+= "Market"' -- internal/pages/home_market/strings.go` prints 1; `git grep -h -c '"Market"' -- internal/pages/home_market/testdata/ok.golden.json` prints at least 1 (the golden file was regenerated, not edited around); `git grep -h -cF 'Card: "Home"' -- internal/pages/home_page/overview.go` prints 1; `git grep -nP '"(Family|Home page|Overview of the day)"' -- internal/pages/home_page internal/pages/home_macro internal/pages/home_market internal/pages/home_options` prints nothing.
+3. `git grep -nP '\x{ff1a}|\x{ff1b}|\x{ff0c}|\x{3002}' -- internal/pages/home_macro internal/pages/home_market internal/pages/home_options` prints nothing (the joins of `member.go` use `: ` `; ` `, ` `. `).
+4. `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/home_\(page\|macro\|market\|options\)/'` prints 0 (design docs/design/ui-english.md).
+Checked by CI: `go test ./...` (golden suites).
 
 ### 4 ui-english-pages-option-boards
 
-Module: pages. Size: M.
-Files: `internal/pages/option_boards/**`
-Order: after 2.
+Module: pages, crossing into ot on purpose (`cmd/ot/stock_option_site_test.go` pins an `option_boards` text, `"没有该标的"`). Size: M.
+Files: `internal/pages/option_boards/**`, `cmd/ot/stock_option_site_test.go`
+Order: with 2.
 Design: docs/design/ui-english.md#Decisions
 Goal: the option and stock option boards, their 28 files with CJK, are English; weekdays are `Sun`..`Sat`, a missing cell is `n/a`.
 Acceptance:
 1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/pages/option_boards` prints nothing.
 2. Glossary guard: `git grep -h -cF 'const gapText = "n/a"' -- internal/pages/option_boards/eodtext.go` prints 1; `git grep -h -cF '{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}' -- internal/pages/option_boards/decimal.go` prints 1; `git grep -h -c '"n/a"' -- internal/pages/option_boards/testdata/option_page_ok.golden.json` prints at least 1; `git grep -nP '"(N/A|NA|-|--|missing)"' -- internal/pages/option_boards` prints nothing.
-3. `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/option_boards/'` prints 0 (design docs/design/ui-english.md).
-Checked by CI (scope): `go test ./internal/pages/option_boards/... -count=1` (`./cmd/...` is issue 7's: `cmd/ot/stock_option_site_test.go` pins texts of this builder).
+3. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- cmd/ot/stock_option_site_test.go` prints nothing, and `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/option_boards/\|^cmd/ot/stock_option_site_test\.go$'` prints 0 (design docs/design/ui-english.md).
+Checked by CI: `go test ./...`.
 
 ### 5 ui-english-pages-option-pages
 
-Module: pages. Size: M.
-Files: `internal/pages/option_candidates_page/**`, `internal/pages/option_data_page/**`, `internal/pages/option_notices_page/**`, `internal/pages/option_result_page/**`, `internal/pages/option_tracking_page/**`, `internal/pages/structures_page/**`
-Order: after 2.
+Module: pages, crossing into ot on purpose (`cmd/ot/site_positions_test.go` pins an `option_result_page` text, `"没有读取器"`). Size: M.
+Files: `internal/pages/option_candidates_page/**`, `internal/pages/option_data_page/**`, `internal/pages/option_notices_page/**`, `internal/pages/option_result_page/**`, `internal/pages/option_tracking_page/**`, `internal/pages/structures_page/**`, `cmd/ot/site_positions_test.go`
+Order: with 2.
 Design: docs/design/ui-english.md#Decisions
 Goal: the six option pages are English.
 Acceptance:
 1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/pages/option_candidates_page internal/pages/option_data_page internal/pages/option_notices_page internal/pages/option_result_page internal/pages/option_tracking_page internal/pages/structures_page` prints nothing.
 2. Glossary guard: `git grep -h -c 'Breakeven' -- internal/pages/structures_page/detail.go` prints at least 3 (盈亏平衡 appears 3 times today); `git grep -h -c 'Premium' -- internal/pages/option_tracking_page/tables.go` prints at least 2; `git grep -nP '"[^"]*(Exercise price|Execution price|Cost of option|Profit and loss)' -- internal/pages/option_candidates_page internal/pages/option_data_page internal/pages/option_notices_page internal/pages/option_result_page internal/pages/option_tracking_page internal/pages/structures_page` prints nothing; a term that the glossary of Decision 3 lacks is listed, as `Chinese: English`, in `internal/pages/option_tracking_page/glossary_added.txt` (inside this issue's Files, a new file whose first line is `# glossary additions`), and `git grep -c '' -- internal/pages/option_tracking_page/glossary_added.txt` prints at least 1.
-3. `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/\(option_candidates_page\|option_data_page\|option_notices_page\|option_result_page\|option_tracking_page\|structures_page\)/'` prints 0 (design docs/design/ui-english.md).
-Checked by CI (scope): `go test ./internal/pages/option_candidates_page/... ./internal/pages/option_data_page/... ./internal/pages/option_notices_page/... ./internal/pages/option_result_page/... ./internal/pages/option_tracking_page/... ./internal/pages/structures_page/... -count=1`.
+3. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- cmd/ot/site_positions_test.go` prints nothing, and `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/\(option_candidates_page\|option_data_page\|option_notices_page\|option_result_page\|option_tracking_page\|structures_page\)/\|^cmd/ot/site_positions_test\.go$'` prints 0 (design docs/design/ui-english.md).
+Checked by CI: `go test ./...`.
 
 ### 6 ui-english-pages-rest
 
-Module: pages. Size: M.
-Files: `internal/pages/advice_page/**`, `internal/pages/household_page/**`, `internal/pages/macro_page/**`, `internal/pages/market_page/**`, `internal/pages/positions_page/**`, `internal/pages/report_blocks/**`, `internal/pages/report_page/**`, `internal/pages/risk_page/**`, `internal/pages/risks_block/**`
-Order: after 2.
+Module: pages, crossing into ot on purpose (`cmd/ot/testdata/macro_page_demo.golden.json` pins `macro_page` and the demo series name set in `cmd/ot/wire.go`; `TestMacroPageDemoGolden` compares them byte for byte). Size: M.
+Files: `internal/pages/advice_page/**`, `internal/pages/macro_page/**`, `internal/pages/market_page/**`, `internal/pages/report_blocks/**`, `internal/pages/report_page/**`, `internal/pages/risks_block/**`, `cmd/ot/wire.go`, `cmd/ot/testdata/macro_page_demo.golden.json`
+Order: with 2.
 Design: docs/design/ui-english.md#Decisions
-Goal: the nine other page builders are English, including the default sentences of `report_page` (`builder.go`) that its schema shows as `"default": "没有缺口。"`: the builder writes the English sentence, the schema is not touched.
+Goal: the six other page builders are English (`household_page`, `positions_page` and `risk_page` are issue 2's), including the default sentences of `report_page` (`builder.go`) that its schema shows as `"default": "没有缺口。"`: the builder writes the English sentence, the schema is not touched; the demo series name of `wire.go` and the macro demo golden file, regenerated, are English.
 Acceptance:
-1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/pages/advice_page internal/pages/household_page internal/pages/macro_page internal/pages/market_page internal/pages/positions_page internal/pages/report_blocks internal/pages/report_page internal/pages/risk_page internal/pages/risks_block` prints nothing.
-2. Glossary guard: `git grep -h -cP 'pageTitle\s+= "Household"' -- internal/pages/household_page/strings.go` prints 1; `git grep -h -c '"Household"' -- internal/pages/household_page/testdata/holdings.golden.json` prints at least 1; `git grep -h -cP 'pageTitle\s+= "Positions"' -- internal/pages/positions_page/strings.go` prints 1; `git grep -nP '"(Family assets|Holdings page)"' -- internal/pages/household_page internal/pages/positions_page` prints nothing.
-3. `git diff --name-only origin/main...HEAD -- contracts internal/contracts web/src/generated | wc -l` prints 0 (the schemas stay as published) and `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/\(advice_page\|household_page\|macro_page\|market_page\|positions_page\|report_blocks\|report_page\|risk_page\|risks_block\)/'` prints 0 (design docs/design/ui-english.md).
-Checked by CI (scope): `go test ./internal/pages/... -count=1` (green once issue 3 has landed: this issue regenerates `household_page`, `positions_page` and `risk_page` goldens that pin the pagefig labels), the `report_page` schema validation of the builder output. `./cmd/...` is issue 7's (`TestMacroPageDemoGolden`, `site_positions_test.go`).
+1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- internal/pages/advice_page internal/pages/macro_page internal/pages/market_page internal/pages/report_blocks internal/pages/report_page internal/pages/risks_block cmd/ot/wire.go cmd/ot/testdata/macro_page_demo.golden.json` prints nothing.
+2. Glossary guard: `git grep -o 'Macro\|Ease' -- cmd/ot/testdata/macro_page_demo.golden.json | wc -l` prints at least 2 (宏观 and 松紧度 of the regenerated file); `git grep -nP '"(Home overview|Unknown acct)"' -- cmd/ot/wire.go` prints nothing.
+3. `git diff --name-only origin/main...HEAD -- contracts internal/contracts web/src/generated | wc -l` prints 0 (the schemas stay as published) and `git diff --name-only origin/main...HEAD | grep -vc '^internal/pages/\(advice_page\|macro_page\|market_page\|report_blocks\|report_page\|risks_block\)/\|^cmd/ot/wire\.go$\|^cmd/ot/testdata/macro_page_demo\.golden\.json$'` prints 0 (design docs/design/ui-english.md).
+Checked by CI: `go test ./...`, the `report_page` schema validation of the builder output.
 
 ### 7 ui-english-ot
 
 Module: ot. Size: S.
-Files: `cmd/ot/home_site.go`, `cmd/ot/site_positions.go`, `cmd/ot/wire.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/stock_option_site_test.go`, `cmd/ot/testdata/macro_page_demo.golden.json`, `cmd/ot/english_test.go` (new)
-Order: after 2 to 6 (the macro golden file is a page builder output; this issue owns the `cmd/ot` golden and tests that pin the builder texts of 4 and 6).
+Files: `cmd/ot/home_site.go`, `cmd/ot/site_positions.go`, `cmd/ot/english_test.go` (new)
+Order: after 2 to 6 (the guard walks the trees they translate).
 Design: docs/design/ui-english.md#Decisions
-Goal: the site titles, the unknown-account text, the demo series name and the macro demo golden file are English; a standing Go test keeps the Go trees English after the last Go issue.
+Goal: the site titles and the unknown-account text are English (the demo series name, the macro golden file and the two `cmd/ot` tests that pin builder texts went with their builders, issues 4 to 6); a standing Go test keeps the Go trees English after the last Go issue.
 Standing guard: modules.md gives `internal/pages` to pages and `internal/compute` to compute, so neither row owns the other trees; the ot row owns `cmd/**`, so the guard is `cmd/ot/english_test.go` (one issue, one module). It walks the non-test `.go` files of `internal/pages`, `internal/compute/pagefig` and `cmd/ot` from the repository root (`t.Parallel()`, read-only, no temporary file) and fails on any character of `[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]` that is not in `allowedCJK`, a list declared in that file. The list is empty today: the frozen values of Left out (market_weather v1, positions_page v1 and v2, the report_page default) live in schemas and web types, none in these Go trees; a frozen value that a Go file must hold is added to `allowedCJK` with a comment naming its line in Left out.
 Acceptance:
 1. `git grep -nP '[\x{4e00}-\x{9fff}\x{3000}-\x{303f}\x{ff00}-\x{ffef}]' -- cmd` prints nothing.
-2. Glossary guard: `git grep -h -cF 'Title: "Today"' -- cmd/ot/home_site.go` prints 1; `git grep -o 'Macro\|Ease' -- cmd/ot/testdata/macro_page_demo.golden.json | wc -l` prints at least 2 (宏观 and 松紧度 of the regenerated file); `git grep -nP '"(Home overview|Unknown acct)"' -- cmd` prints nothing.
-3. `git diff --name-only origin/main...HEAD | grep -vc '^cmd/ot/\(home_site\|site_positions\|wire\|site_positions_test\|stock_option_site_test\)\.go$\|^cmd/ot/english_test\.go$\|^cmd/ot/testdata/macro_page_demo\.golden\.json$'` prints 0 (design docs/design/ui-english.md).
+2. Glossary guard: `git grep -h -cF 'Title: "Today"' -- cmd/ot/home_site.go` prints 1; `git grep -nP '"(Home overview|Unknown acct)"' -- cmd/ot/home_site.go cmd/ot/site_positions.go` prints nothing.
+3. `git diff --name-only origin/main...HEAD | grep -vc '^cmd/ot/\(home_site\|site_positions\)\.go$\|^cmd/ot/english_test\.go$'` prints 0 (design docs/design/ui-english.md).
 4. `git grep -c 'allowedCJK' -- cmd/ot/english_test.go` prints at least 2, and `git grep -h -cF 'internal/compute/pagefig' -- cmd/ot/english_test.go` prints at least 1 (the file exists and names the allow-list and the trees).
-Checked by CI (scope): `go test ./... -count=1`, the whole tree, which runs the guard and the `cmd/ot` tests; it is green because 2 to 6 have landed.
+Checked by CI: `go test ./...`, which runs the guard.
 
 ### 8 ui-english-web
 
@@ -219,7 +215,7 @@ Checked by CI: `tsc`, `eslint`, `vitest` (which runs the guard) and the web buil
 
 ## Checked by CI
 
-`go test ./...` (whole tree for issues 1 and 7; issues 2 to 6 run the scope each names, see CI scope per issue), `ci-go`, `tsc`, `eslint`, `vitest`, the web build and the hygiene check of the fixture manifests, on every pull request of the issues above.
+`go test ./...` (the whole tree, never a narrowed scope), `ci-go`, `tsc`, `eslint`, `vitest`, the web build and the hygiene check of the fixture manifests, on every pull request of the issues above.
 
 ## Left out
 
