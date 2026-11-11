@@ -34,31 +34,31 @@ const (
 	usd         = "USD"
 	sideSold    = "sold"
 
-	title         = "期权概览"
-	subtitle      = "来自成交账本"
-	sayNone       = "期权账本暂无记录。"
-	sayNoSold     = "账本暂无已平仓的卖出记录。"
-	sayPremium    = "已平仓卖出的权利金合计 "
-	textNoRows    = "账本暂无记录"
-	textNoReader  = "期权账本暂未接入"
-	textNoSold    = "账本没有已平仓的卖出记录"
-	textNoDay     = "没有账本日"
-	textNotCents  = "账本金额不是整分，不在此页取整"
-	textMonthly   = "按平仓月统计的已了结权利金暂无数据"
-	textNoClosed  = "没有当月平仓的卖出记录"
-	textClosedMon = "月度已平仓盈亏不在此页给出"
-	textSoldCount = "本月卖出组数尚未计算"
-	textOpen      = "未平权利金尚未计算"
-	textMaxLoss   = "最大亏损需要组合结构，账本不给出"
-	textOtherCcy  = "账本含非美元持仓，未计入本页"
-	seriesText    = "近六个月卖出期权按平仓月统计的已了结权利金，到期、被行权、被指派、买回都算，不扣手续费；月份取平仓日的年月，不换算时区；各账户按账户别名分别统计，不合并"
-	closedText    = "近六个月已平仓盈亏暂无数据：月度已平仓盈亏不在此页给出"
-	seriesCaption = "单位美元；按平仓月统计的已了结权利金，到期、被行权、被指派、买回平仓都计入，不扣手续费（开仓权利金）；每根柱按平仓日的年月归月，不换算时区；不同账户按账户别名分别统计，从不合并；没有当月平仓的卖出记录的月份留空"
-	noteCash      = "权利金按开仓成交现金计，不含手续费；卖出为正，买入为负。"
-	noteClosed    = "权利金与已实现盈亏只计已平仓的卖出仓位，各账户合并。"
+	title         = "Options overview"
+	subtitle      = "From the trade ledger"
+	sayNone       = "Option ledger: no records yet."
+	sayNoSold     = "Ledger: no closed sold records yet."
+	sayPremium    = "Premium from closed sold options totals "
+	textNoRows    = "Ledger: no records yet"
+	textNoReader  = "Option ledger: not connected yet"
+	textNoSold    = "Ledger: no closed sold records"
+	textNoDay     = "No ledger day"
+	textNotCents  = "Ledger amounts are not whole cents, not rounded on this page"
+	textMonthly   = "Settled premium by closing month: no data yet"
+	textNoClosed  = "No sold records closed this month"
+	textClosedMon = "Monthly closed P/L is not given on this page"
+	textSoldCount = "Sold groups this month not computed yet"
+	textOpen      = "Open premium not computed yet"
+	textMaxLoss   = "Max loss needs the combined structure, the ledger does not give it"
+	textOtherCcy  = "Ledger holds non-USD positions, not counted on this page"
+	seriesText    = "Settled premium by closing month; expiry, exercise, assignment and buy-back count, fees are not deducted; year and month of the closing day, no time zone conversion; by account alias, not merged"
+	closedText    = "Closed P/L, last six months: no data yet, monthly closed P/L is not given on this page"
+	seriesCaption = "USD, by closing month: expiry, exercise, assignment and buy-back included, fees are not deducted; the year and month of the closing day; no time zone conversion; by account alias, never merged"
+	noteCash      = "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative."
+	noteClosed    = "Premium and realised P/L count only closed sold positions, all accounts combined."
 )
 
-var monthLabels = [12]string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
+var monthLabels = [12]string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
 
 var (
 	idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -229,7 +229,7 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	base, baseText := at, textNoDay
 	if newest := newestDay(positions, d); newest != "" {
 		if t, err := time.Parse(dayLayout, newest); err == nil {
-			base, baseText = t, "账本截至 "+t.Format("01-02")
+			base, baseText = t, "Ledger as of "+t.Format("01-02")
 		}
 	}
 	staleAfter := time.Date(base.Year(), base.Month(), base.Day()+staleDays, 9, 30, 0, 0, c.Zone)
@@ -252,10 +252,10 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	k.Gaps = []gap{noData(textMonthly), noData(textMaxLoss)}
 	k.Series = series(d, nil)
 	k.Tiles = tiles{
-		Sold:        tile{Label: "本月卖出", Figure: noData(textSoldCount)},
-		PremiumMon:  tile{Label: "已平仓权利金", Figure: noData(noText)},
-		OpenPremium: tile{Label: "未平权利金", Figure: noData(textOpen)},
-		MaxLoss:     tile{Label: "最大亏损", Figure: noData(textMaxLoss)},
+		Sold:        tile{Label: "Sold this month", Figure: noData(textSoldCount)},
+		PremiumMon:  tile{Label: "Closed premium", Figure: noData(noText)},
+		OpenPremium: tile{Label: "Open premium", Figure: noData(textOpen)},
+		MaxLoss:     tile{Label: "Max loss", Figure: noData(textMaxLoss)},
 	}
 	k.Say = sayNone
 	if noRows {
@@ -284,7 +284,7 @@ func assemble(c Config, at, d time.Time, positions []compute.LedgerPosition, sec
 	f := money(sold.Premium)
 	k.Tiles.PremiumMon.Figure = f
 	if fig, ok := f.(figure); ok {
-		k.Say = sayPremium + fig.Text + "。"
+		k.Say = sayPremium + fig.Text + "."
 	}
 	return s
 }
@@ -347,14 +347,14 @@ func newestDay(positions []compute.LedgerPosition, d time.Time) string {
 // caption places the Realized and KeptShare of the section as text; a field the section leaves
 // empty is left out.
 func caption(sec compute.ResultSection) string {
-	parts := []string{"已平仓卖出的开仓现金合计"}
+	parts := []string{"Opening cash of closed sold positions totals"}
 	if r, ok := money(sec.Realized).(figure); ok {
-		parts = append(parts, "已实现 "+r.Text)
+		parts = append(parts, "realised "+r.Text)
 	}
 	if sec.KeptShare != "" {
-		parts = append(parts, "留存比例 "+sec.KeptShare)
+		parts = append(parts, "kept share "+sec.KeptShare)
 	}
-	return strings.Join(parts, "；")
+	return strings.Join(parts, "; ")
 }
 
 func noData(text string) gap { return gap{Kind: "gap", Reason: "no_data", Text: text} }

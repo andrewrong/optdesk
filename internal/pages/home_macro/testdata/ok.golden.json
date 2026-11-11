@@ -13,12 +13,12 @@
   ],
   "run_status": "partial",
   "card": {
-    "title": "宏观",
-    "say": "松紧度中性，较上周 −0.2。",
+    "title": "Macro",
+    "say": "Ease neutral, vs last week −0.2.",
     "stale": {
       "data_time": "2026-11-05T00:00:00+08:00",
       "stale_after": "2026-11-09T09:30:00+08:00",
-      "text": "数据日 11-05"
+      "text": "Data day 11-05"
     },
     "ease": {
       "figure": {
@@ -56,19 +56,19 @@
         "75",
         "100"
       ],
-      "reading_text": "当前 56，中性；固定刻度 0 到 100。",
-      "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 33.5 到 66.5。"
+      "reading_text": "Now 56, neutral; fixed scale 0 to 100.",
+      "aria_text": "Ease 56, neutral, vs last week −0.2; fixed scale 0 to 100, neutral band 33.5 to 66.5."
     },
     "events": [],
     "notes": [
-      "事件日期按发布日历，无发布时间。"
+      "Event dates follow the release calendar, no release time."
     ],
     "gaps": [
       {
         "reason": "not_built",
-        "text": "事件日历尚未接入"
+        "text": "Event calendar: not connected yet"
       }
     ],
-    "data_times_text": "松紧度数据日 11-05；事件日期按发布日历，无发布时间。"
+    "data_times_text": "Ease data day 11-05. Event dates follow the release calendar, no release time."
   }
 }
