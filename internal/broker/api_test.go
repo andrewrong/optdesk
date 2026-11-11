@@ -31,7 +31,7 @@ func (f fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.Co
 	if f.down {
 		return nil, typedErr{contracts.Retryable}
 	}
-	if f.refuseUnknown && kind != broker.KindOptionEod && kind != broker.KindUnderlyingIV && kind != broker.KindSnapshot && kind != broker.KindOptionOpen {
+	if f.refuseUnknown && kind < broker.KindOptionEod || kind > broker.KindOptionOpen {
 		return nil, errUnknownKind
 	}
 	out := make([]broker.Quote, len(cs))
