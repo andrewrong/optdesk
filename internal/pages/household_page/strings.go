@@ -2,71 +2,71 @@ package household_page
 
 // The words of the page, written once.
 const (
-	pageTitle    = "家庭资产"
-	pageSentence = "净值、现金和期权义务来自最近一次采集；持仓估值需要价格，没有价格的持仓暂缺。"
+	pageTitle    = "Household"
+	pageSentence = "Net value, cash and option obligations come from the latest capture; position values need prices, and positions without a price show no data yet."
 
-	titleOverview      = "总览"
-	titleComposition   = "持仓构成"
-	titleMovers        = "谁带动了今天"
-	titleTrend         = "净值走势"
-	titleStress        = "压力测试"
-	titleIncome        = "每月收入"
-	titleMonthChange   = "月度资产变化"
-	titleCashAfter     = "指派后现金"
-	titleObligations   = "期权义务"
-	titleConcentration = "集中度"
-	titleAllocation    = "资产配置"
-	titleLongTerm      = "长期持有"
-	titleAccounts      = "账户"
+	titleOverview      = "Overview"
+	titleComposition   = "Holdings composition"
+	titleMovers        = "What moved today"
+	titleTrend         = "Net value trend"
+	titleStress        = "Stress test"
+	titleIncome        = "Monthly income"
+	titleMonthChange   = "Monthly change"
+	titleCashAfter     = "Cash after assignment"
+	titleObligations   = "Option obligations"
+	titleConcentration = "Concentration"
+	titleAllocation    = "Asset allocation"
+	titleLongTerm      = "Long-term holdings"
+	titleAccounts      = "Account"
 
-	meaningOverview      = "账户的净清算值，来自最近一次采集。"
-	meaningComposition   = "持有的股票按采集日价格计的市值和占净值的比例。"
-	meaningMovers        = "当天变化来自哪些持仓，需要持仓价格。"
-	meaningTrend         = "最近交易日的净清算值，每个交易日一个点。"
-	meaningStress        = "全部卖出认沽被指派后的现金，以及标的下跌各档。"
-	meaningIncome        = "本月卖出认沽已收权利金。"
-	meaningMonthChange   = "净清算值从上月最后一个交易日到最近一次采集。"
-	meaningCashAfter     = "现金减去全部卖出认沽被指派所需的现金。"
-	meaningObligations   = "每一笔未平仓卖出认沽被指派时要付的现金。"
-	meaningConcentration = "单一标的占净值的比例，按采集日价格计。"
-	meaningAllocation    = "持有的股票按采集日价格计的市值。"
-	meaningLongTerm      = "长期持有的持仓，需要持仓价格。"
-	meaningAccounts      = "这个账户的净清算值、现金、股票和期权。"
+	meaningOverview      = "Net liquidation of the account, from the latest capture."
+	meaningComposition   = "Market value of held stocks at the capture-day price and their share of net value."
+	meaningMovers        = "Which positions drove the change today; needs position prices."
+	meaningTrend         = "Net liquidation on recent trading days, one point per trading day."
+	meaningStress        = "Cash after all short puts are assigned, and each underlying-decline step."
+	meaningIncome        = "Premium collected on short puts this month."
+	meaningMonthChange   = "Net liquidation from the last trading day of the previous month to the latest capture."
+	meaningCashAfter     = "Cash minus the cash needed if all short puts are assigned."
+	meaningObligations   = "Cash to pay if each open short put is assigned."
+	meaningConcentration = "Share of net value held in a single underlying, at the capture-day price."
+	meaningAllocation    = "Market value of held stocks at the capture-day price."
+	meaningLongTerm      = "Long-term positions; needs position prices."
+	meaningAccounts      = "Net liquidation, cash, stocks and options of this account."
 
-	textNoMovers     = "当天变化需要两个交易日的价格，暂缺"
-	textNotBuilt     = "没有持有期来源，暂缺"
-	nameStock        = "股票"
-	textMissingQuote = "需要持仓价格，暂缺"
-	textMonthSteps   = "交易结果需要持仓价格，各步骤暂缺；只列月初和月末"
-	textNoReader     = "没有读取器，暂缺"
-	textUnknown      = "未知账户"
-	textNoCapture    = "这个账户还没有采集"
-	textStale        = "最近一次采集超过 3 个交易日"
-	textStaleLabel   = "账户数据日 "
+	textNoMovers     = "The change today needs prices of two trading days: no data yet"
+	textNotBuilt     = "No holding-period source: no data yet"
+	nameStock        = "Stock"
+	textMissingQuote = "Needs position prices: no data yet"
+	textMonthSteps   = "The trading result needs position prices, so the steps show no data yet; only month start and month end are listed"
+	textNoReader     = "No reader: no data yet"
+	textUnknown      = "Unknown account"
+	textNoCapture    = "This account has no capture yet"
+	textStale        = "The latest capture is over 3 trading days old"
+	textStaleLabel   = "Account data day "
 
-	nameMonthStart = "月初"
-	nameMonthEnd   = "月末"
-	whoseMain      = "本人"
-	whoseOther     = "其他账户"
-	labelAccount   = "账户（"
-	labelClose     = "）"
-	labelDay       = "最近"
-	labelDays      = "个交易日"
+	nameMonthStart = "Month start"
+	nameMonthEnd   = "Month end"
+	whoseMain      = "Me"
+	whoseOther     = "Other account"
+	labelAccount   = "Account ("
+	labelClose     = ")"
+	labelDay       = "last "
+	labelDays      = " trading days"
 )
 
 var (
-	headsComposition   = []string{"持仓", "金额", "占比"}
-	headsConcentration = []string{"公司", "占家庭净值", "市值"}
+	headsComposition   = []string{"Position", "Amount", "Share"}
+	headsConcentration = []string{"Company", "Share of household net value", "Market value"}
 )
 
-var accountColumns = []string{"账户", "净清算值", "现金", "股票", "期权", "数据日"}
+var accountColumns = []string{"Account", "Net liquidation", "Cash", "Stocks", "Options", "Data day"}
 
 // gapTexts are the words of each gap reason a line of pagefig can carry.
 var gapTexts = map[string]string{
 	"missing_quote":        textMissingQuote,
-	"missing_input":        "缺少输入数据，暂缺",
-	"unsupported_currency": "缺少汇率或币种不支持，暂缺",
-	"no_data":              "没有数据，暂缺",
+	"missing_input":        "Input data is missing: no data yet",
+	"unsupported_currency": "Exchange rate is missing or currency is unsupported: no data yet",
+	"no_data":              "No data: no data yet",
 	"not_built":            textNotBuilt,
 	"no_reader":            textNoReader,
 	"stale_input":          textStale,
@@ -76,5 +76,5 @@ func gapText(reason string) string {
 	if t, ok := gapTexts[reason]; ok {
 		return t
 	}
-	return "暂缺"
+	return "no data yet"
 }

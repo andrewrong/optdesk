@@ -2,64 +2,64 @@ package positions_page
 
 // The words of the page, written once.
 const (
-	pageTitle = "持仓"
+	pageTitle = "Positions"
 
-	titleStocks  = "股票"
-	titleOptions = "期权"
-	titleTrades  = "最近操作"
+	titleStocks  = "Stocks"
+	titleOptions = "Options"
+	titleTrades  = "Recent trades"
 
-	labelAccount = "账户（"
-	labelClose   = "）"
+	labelAccount = "Account ("
+	labelClose   = ")"
 
-	textNoReader  = "没有读取器，暂缺"
-	textUnknown   = "未知账户"
-	textNoCapture = "这个账户还没有采集持仓"
-	textStale     = "最近一次采集超过 3 个交易日"
-	textStaleData = "账户数据日 "
+	textNoReader  = "No reader: no data yet"
+	textUnknown   = "Unknown account"
+	textNoCapture = "This account has no positions captured yet"
+	textStale     = "The latest capture is over 3 trading days old"
+	textStaleData = "Account data day "
 
-	textNoMark       = "没有价格，暂缺"
-	textDayProfit    = "当日盈亏需要前一交易日的价格，暂缺"
-	textNoLedger     = "期权账本里没有这一笔，暂缺"
-	textAmbiguous    = "期权账本里有多笔，暂缺"
-	textBadExpiry    = "到期日无法读取，暂缺"
-	textBadNumber    = "数字无法读取，暂缺"
-	textPrecision    = "小数位超过两位，暂缺"
-	textCurrency     = "币种不支持，暂缺"
-	textNoTime       = "成交时间未知"
-	textNoPrior      = "没有更早的采集，动作暂缺"
-	textManyFills    = "同一合约当天不止一笔，动作暂缺"
-	textNoTrades     = "最近 30 个交易日没有操作"
-	textSkippedStart = "有 "
-	textSkippedEnd   = " 行的数量不是整数，没有列出"
+	textNoMark       = "No price: no data yet"
+	textDayProfit    = "Day result needs the previous trading day price: no data yet"
+	textNoLedger     = "Not in the option ledger: no data yet"
+	textAmbiguous    = "Several entries in the option ledger: no data yet"
+	textBadExpiry    = "Expiry cannot be read: no data yet"
+	textBadNumber    = "Number cannot be read: no data yet"
+	textPrecision    = "More than two decimals: no data yet"
+	textCurrency     = "Currency not supported: no data yet"
+	textNoTime       = "Fill time unknown"
+	textNoPrior      = "No earlier capture: action no data yet"
+	textManyFills    = "More than one fill of the contract that day: action no data yet"
+	textNoTrades     = "No trades in the last 30 trading days"
+	textSkippedStart = "Skipped: "
+	textSkippedEnd   = " rows with a non-integer quantity are not listed"
 
-	sentenceStocks  = "股票 "
-	sentenceRows    = " 行，期权 "
-	sentenceLegs    = " 腿。"
-	sentenceNothing = "没有持仓。"
-	textNoHeld      = "没有持仓"
+	sentenceStocks  = "Stocks "
+	sentenceRows    = " rows, options "
+	sentenceLegs    = " legs."
+	sentenceNothing = "No positions."
+	textNoHeld      = "No positions"
 
-	actionSellOpen  = "卖出开仓"
-	actionBuyOpen   = "买入开仓"
-	actionSellClose = "卖出平仓"
-	actionBuyClose  = "买入平仓"
-	actionExpire    = "到期作废"
-	actionExercise  = "行权"
+	actionSellOpen  = "Sell to open"
+	actionBuyOpen   = "Buy to open"
+	actionSellClose = "Sell to close"
+	actionBuyClose  = "Buy to close"
+	actionExpire    = "Expired"
+	actionExercise  = "Exercised"
 
-	unitContract = " 张"
-	unitShare    = " 股"
-	perShare     = "/股"
+	unitContract = " contracts"
+	unitShare    = " shares"
+	perShare     = "/share"
 
-	sellPut  = "卖出认沽"
-	buyPut   = "买入认沽"
-	sellCall = "卖出认购"
-	buyCall  = "买入认购"
+	sellPut  = "Sell put"
+	buyPut   = "Buy put"
+	sellCall = "Sell call"
+	buyCall  = "Buy call"
 )
 
 var (
-	stockHeads  = []string{"code:代码", "name:名称", "role:归属", "quantity:数量", "cost:成本（每股）", "price:现价（每股）", "day:当日盈亏", "unrealised:未实现盈亏"}
-	optionHeads = []string{"code:代码", "name:名称", "expiry:到期日", "days_left:剩余天数", "role:归属", "quantity:数量",
-		"cost:成本（每股）", "price:现价（每股）", "day:当日盈亏", "unrealised:未实现盈亏", "open_premium:剩余权利金"}
-	tradeHeads = []string{"time:时间", "account:账户", "action:动作", "instrument:标的·结构", "quantity:数量", "price:价格"}
+	stockHeads  = []string{"code:Code", "name:Name", "role:Owner", "quantity:Quantity", "cost:Cost (per share)", "price:Last price (per share)", "day:Day result", "unrealised:Unrealised result"}
+	optionHeads = []string{"code:Code", "name:Name", "expiry:Expiry", "days_left:Days left", "role:Owner", "quantity:Quantity",
+		"cost:Cost (per share)", "price:Last price (per share)", "day:Day result", "unrealised:Unrealised result", "open_premium:Open premium"}
+	tradeHeads = []string{"time:Time", "account:Account", "action:Action", "instrument:Underlying · structure", "quantity:Quantity", "price:Price"}
 )
 
 // rightAligned are the columns of numbers.
@@ -70,7 +70,7 @@ var gapTexts = map[string]string{
 	"missing_quote":        textNoMark,
 	"missing_input":        textBadNumber,
 	"unsupported_currency": textCurrency,
-	"no_data":              "没有数据，暂缺",
+	"no_data":              "No data: no data yet",
 	"no_reader":            textNoReader,
 	"stale_input":          textStale,
 }
@@ -79,5 +79,5 @@ func gapText(reason string) string {
 	if t, ok := gapTexts[reason]; ok {
 		return t
 	}
-	return "暂缺"
+	return "no data yet"
 }

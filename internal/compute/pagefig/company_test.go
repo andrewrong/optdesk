@@ -28,12 +28,12 @@ func TestGlanceCountsEveryState(t *testing.T) {
 func TestUnchangedRowIsSilent(t *testing.T) {
 	t.Parallel()
 	rows := []blockapi.CompanyState{
-		{Symbol: "A", State: "band", BandToday: "低估", BandThen: "低估"},
-		{Symbol: "B", State: "band", BandToday: "合理", BandThen: "低估"},
-		{Symbol: "C", State: "band", BandToday: "合理"},
+		{Symbol: "A", State: "band", BandToday: "Undervalued", BandThen: "Undervalued"},
+		{Symbol: "B", State: "band", BandToday: "Fair", BandThen: "Undervalued"},
+		{Symbol: "C", State: "band", BandToday: "Fair"},
 	}
 	got := New().Changes(rows)
-	if len(got) != 1 || got[0].Symbol != "B" || got[0].Text != "低估 → 合理" {
+	if len(got) != 1 || got[0].Symbol != "B" || got[0].Text != "Undervalued → Fair" {
 		t.Fatalf("changes: %+v", got)
 	}
 }

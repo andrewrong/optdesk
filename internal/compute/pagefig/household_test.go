@@ -43,8 +43,8 @@ func TestMonthChangeNeedsMonthStart(t *testing.T) {
 	in.MonthStart = vals("1000", "400", "USD")
 	got = New().Household(in).MonthChange
 	want := map[string]compute.FigureValue{
-		"月初": {Value: "1000.00"}, "已平仓期权结果": {Value: "30.00"}, "交易结果": {Gap: "missing_quote"},
-		"其他": {Value: "70.00"}, "月末": {Value: "1100.00"},
+		"Month start": {Value: "1000.00"}, "Closed option result": {Value: "30.00"}, "Trading result": {Gap: "missing_quote"},
+		"Other": {Value: "70.00"}, "Month end": {Value: "1100.00"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("lines: %+v", got)
@@ -84,14 +84,14 @@ func TestStressStepsAreConstants(t *testing.T) {
 				steps[l.Name] = true
 			}
 		}
-		for _, n := range []string{"标的跌 10%", "标的跌 20%", "标的跌 30%"} {
+		for _, n := range []string{"Underlying down 10%", "Underlying down 20%", "Underlying down 30%"} {
 			if !steps[n] {
 				t.Errorf("missing step %q in %+v", n, got)
 			}
 		}
 	}
 	got := New().Household(blockapi.HouseholdInput{Values: vals("1", "300", "USD"), Obligations: []blockapi.ObligationIn{put("1", "100", "1", "1")}}).Stress
-	if got[0].Name != "全部指派后现金" || got[0].Amount.Value != "200.00" {
+	if got[0].Name != "Cash after all assignments" || got[0].Amount.Value != "200.00" {
 		t.Fatalf("assignment row: %+v", got[0])
 	}
 }
@@ -121,8 +121,8 @@ func TestStockCellsAreMissingQuote(t *testing.T) {
 	t.Parallel()
 	got := New().Household(blockapi.HouseholdInput{Values: vals("1000", "250", "USD")}).Accounts
 	want := map[string]compute.FigureValue{
-		"净清算值": {Value: "1000.00"}, "现金": {Value: "250.00"},
-		"股票市值": {Gap: "missing_quote"}, "期权市值": {Gap: "missing_quote"},
+		"Net liquidation": {Value: "1000.00"}, "Cash": {Value: "250.00"},
+		"Stock value": {Gap: "missing_quote"}, "Option value": {Gap: "missing_quote"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("rows: %+v", got)

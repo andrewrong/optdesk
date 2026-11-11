@@ -203,7 +203,7 @@ func (c Config) assemble(cp capture, res blockapi.HouseholdResult, day1, mtd blo
 	} {
 		if t.gap != nil {
 			d.RunStatus = "partial"
-			d.Card.Gaps = append(d.Card.Gaps, gapJSON{Reason: t.gap.Reason, Text: t.label + "：" + t.gap.Text})
+			d.Card.Gaps = append(d.Card.Gaps, gapJSON{Reason: t.gap.Reason, Text: t.label + ": " + t.gap.Text})
 		}
 	}
 	return d
@@ -219,7 +219,7 @@ func base(c Config, at time.Time) doc {
 			Title: cardTitle, Subtitle: cardTitle, DataTimesText: textNoCapture, Notes: []string{}, Gaps: []gapJSON{},
 			Stale: staleLabel{
 				DataTime: at.Format(timeLayout), StaleAfter: at.AddDate(0, 0, staleAfterDays).Format(timeLayout),
-				Text: textStaleLabel + "无",
+				Text: textStaleLabel + "none",
 			},
 		},
 	}
@@ -238,7 +238,7 @@ func gapDoc(c Config, at time.Time, reason, text string) doc {
 		MonthToDate: tile{Label: labelMonthToDate, Figure: g, Caption: g},
 	}
 	for _, l := range []string{labelNetWorth, labelCash, labelDayChange, labelMonthToDate} {
-		d.Card.Gaps = append(d.Card.Gaps, gapJSON{Reason: reason, Text: l + "：" + text})
+		d.Card.Gaps = append(d.Card.Gaps, gapJSON{Reason: reason, Text: l + ": " + text})
 	}
 	return d
 }
@@ -462,31 +462,31 @@ func percentFigure(v string) signed {
 
 // The words of the member, written once.
 const (
-	cardTitle      = "家庭资产"
-	textSubtitle   = "主账户 · 数据日 "
-	textDataDay    = "数据日 "
-	textStaleLabel = "账户数据日 "
-	textNoReader   = "没有读取器，暂缺"
-	textNoData     = "这个账户还没有采集"
-	textNoCapture  = "无采集"
-	textStale      = "最近一次采集超过 3 个交易日"
-	textBorrowing  = "融资中"
+	cardTitle      = "Household"
+	textSubtitle   = "Main account · Data day "
+	textDataDay    = "Data day "
+	textStaleLabel = "Account data day "
+	textNoReader   = "No reader: no data yet"
+	textNoData     = "This account has no capture yet"
+	textNoCapture  = "No capture"
+	textStale      = "The latest capture is over 3 trading days old"
+	textBorrowing  = "Borrowing"
 
-	labelNetWorth    = "净值"
-	labelCash        = "现金"
-	labelDayChange   = "上一交易日"
-	labelMonthToDate = "本月至今"
+	labelNetWorth    = "Net value"
+	labelCash        = "Cash"
+	labelDayChange   = "Previous trading day"
+	labelMonthToDate = "Month to date"
 
-	explainNetWorth    = "主账户的净清算值（券商 NetLiquidation，美元），取最近一次采集。"
-	explainCash        = "主账户的现金（TotalCashValue，美元）。大字是占净值的比例，小字是金额；现金为负是融资借款。"
-	explainDayChange   = "最近一次采集的净清算值减前一个有采集的交易日，美元；包含出入金，不是纯收益。百分比是这个变化除以前一日的值。"
-	explainMonthToDate = "最近一次采集的净清算值减上月最后一个交易日，美元；包含出入金，不是时间加权收益。"
+	explainNetWorth    = "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
+	explainCash        = "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, the small one the amount; negative cash is margin borrowing."
+	explainDayChange   = "Net liquidation of the latest capture minus the previous captured trading day, USD; includes deposits and withdrawals, not pure return. The percentage is this change divided by the previous day."
+	explainMonthToDate = "Net liquidation of the latest capture minus the last trading day of the previous month, USD; includes deposits and withdrawals, not time-weighted return."
 )
 
 var gapTexts = map[string]string{
-	"missing_quote":        "需要持仓价格，暂缺",
-	"missing_input":        "缺少输入数据，暂缺",
-	"unsupported_currency": "缺少汇率或币种不支持，暂缺",
+	"missing_quote":        "Needs position prices: no data yet",
+	"missing_input":        "Input data is missing: no data yet",
+	"unsupported_currency": "Exchange rate is missing or currency is unsupported: no data yet",
 	"no_data":              textNoData,
 	"no_reader":            textNoReader,
 	"stale_input":          textStale,
@@ -496,5 +496,5 @@ func gapText(reason string) string {
 	if t, ok := gapTexts[reason]; ok {
 		return t
 	}
-	return "暂缺"
+	return "no data yet"
 }

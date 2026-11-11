@@ -104,7 +104,7 @@ func assemble(c Config, alias string, at time.Time, risk blockapi.RiskResult, fo
 	}{{titleDelta, p.Delta.Gap}, {vegaTitle, p.Vega.Gap}, {titleBeta, p.BetaDelta.Gap}, {titleSigma, p.Sigma.Gap},
 		{titleMetrics, &gapJSON{Reason: "not_built", Text: textNotBuiltMetrics}}} {
 		if b.gap != nil {
-			p.Gaps = append(p.Gaps, gapJSON{Reason: b.gap.Reason, Text: b.title + "：" + b.gap.Text})
+			p.Gaps = append(p.Gaps, gapJSON{Reason: b.gap.Reason, Text: b.title + ": " + b.gap.Text})
 		}
 	}
 	return p
@@ -258,7 +258,7 @@ func base(c Config, alias string, at time.Time) pageJSON {
 	return pageJSON{
 		Schema: "household_risk", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
 		GeneratedAt: at.Format(timeLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{},
-		Stale: staleLabel{DataTime: at.Format(timeLayout), StaleAfter: at.Format(timeLayout), Text: textStaleLabel + "无"},
+		Stale: staleLabel{DataTime: at.Format(timeLayout), StaleAfter: at.Format(timeLayout), Text: textStaleLabel + "none"},
 	}
 }
 

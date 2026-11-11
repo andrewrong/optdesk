@@ -181,7 +181,7 @@ func TestDeltaByUnderlyingVegaByExpiry(t *testing.T) {
 		t.Fatalf("status/scope = %v/%v", m["run_status"], m["scope"])
 	}
 	// AAA: 100 shares - 30.5 = 69.5; BBB: 50 - 10.004 = 39.996 -> 40.00 (cents, half up); total 109.496 -> 109.50
-	want := map[string]string{"AAA": "+69.50 美元/美元", "BBB": "+40.00 美元/美元"}
+	want := map[string]string{"AAA": "+69.50 USD/USD", "BBB": "+40.00 USD/USD"}
 	rows := block(m, "delta")["rows"].([]any)
 	if len(rows) != 2 {
 		t.Fatalf("delta rows = %v", rows)

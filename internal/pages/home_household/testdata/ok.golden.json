@@ -15,28 +15,28 @@
   ],
   "run_status": "ok",
   "card": {
-    "title": "家庭资产",
-    "subtitle": "主账户 · 数据日 2026-11-10",
+    "title": "Household",
+    "subtitle": "Main account · Data day 2026-11-10",
     "stale": {
       "data_time": "2026-11-10T09:00:00+08:00",
       "stale_after": "2026-11-14T09:00:00+08:00",
-      "text": "账户数据日 2026-11-10"
+      "text": "Account data day 2026-11-10"
     },
     "tiles": {
       "net_worth": {
-        "label": "净值",
+        "label": "Net value",
         "figure": {
           "value": 100000.00,
           "text": "$100,000.00",
           "unit": "USD"
         },
         "caption": {
-          "text": "USD · 数据日 2026-11-10"
+          "text": "USD · Data day 2026-11-10"
         },
-        "explain": "主账户的净清算值（券商 NetLiquidation，美元），取最近一次采集。"
+        "explain": "Net liquidation of the main account (broker NetLiquidation, USD), from the latest capture."
       },
       "day_change": {
-        "label": "上一交易日",
+        "label": "Previous trading day",
         "figure": {
           "value": 999.50,
           "text": "+$999.50",
@@ -49,10 +49,10 @@
           "tone": "up",
           "unit": "percent"
         },
-        "explain": "最近一次采集的净清算值减前一个有采集的交易日，美元；包含出入金，不是纯收益。百分比是这个变化除以前一日的值。"
+        "explain": "Net liquidation of the latest capture minus the previous captured trading day, USD; includes deposits and withdrawals, not pure return. The percentage is this change divided by the previous day."
       },
       "month_to_date": {
-        "label": "本月至今",
+        "label": "Month to date",
         "figure": {
           "value": 2000.00,
           "text": "+$2,000.00",
@@ -65,10 +65,10 @@
           "tone": "up",
           "unit": "percent"
         },
-        "explain": "最近一次采集的净清算值减上月最后一个交易日，美元；包含出入金，不是时间加权收益。"
+        "explain": "Net liquidation of the latest capture minus the last trading day of the previous month, USD; includes deposits and withdrawals, not time-weighted return."
       },
       "cash": {
-        "label": "现金",
+        "label": "Cash",
         "figure": {
           "value": 42.00,
           "text": "42.00%",
@@ -80,11 +80,11 @@
           "tone": "up",
           "unit": "usd_signed"
         },
-        "explain": "主账户的现金（TotalCashValue，美元）。大字是占净值的比例，小字是金额；现金为负是融资借款。"
+        "explain": "Cash of the main account (TotalCashValue, USD). The large figure is the share of net value, the small one the amount; negative cash is margin borrowing."
       }
     },
     "notes": [],
     "gaps": [],
-    "data_times_text": "数据日 2026-11-10"
+    "data_times_text": "Data day 2026-11-10"
   }
 }

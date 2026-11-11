@@ -122,24 +122,24 @@ func household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
 	return r
 }
 
-// overview is the figure household.overview: one row, 净值, from NetLiquidation.
+// overview is the figure household.overview: one row, Net value, from NetLiquidation.
 func overview(net blockapi.ValueIn, r *big.Rat, ok bool, usdJpy string) []blockapi.MoneyLine {
 	if !ok {
-		return []blockapi.MoneyLine{gapLine("净值", net.Currency, "missing_input")}
+		return []blockapi.MoneyLine{gapLine("Net value", net.Currency, "missing_input")}
 	}
-	return []blockapi.MoneyLine{line("净值", net.Currency, r, usdJpy)}
+	return []blockapi.MoneyLine{line("Net value", net.Currency, r, usdJpy)}
 }
 
 // accounts is the figure household.accounts: net liquidation and cash from the summary; the
 // stock and option cells need quotes this input does not carry, so they are the gap missing_quote.
 func accounts(net blockapi.ValueIn, netR *big.Rat, netOK bool, cash blockapi.ValueIn, cashR *big.Rat, cashOK bool, usdJpy string) []blockapi.MoneyLine {
-	netLine := gapLine("净清算值", net.Currency, "missing_input")
+	netLine := gapLine("Net liquidation", net.Currency, "missing_input")
 	if netOK {
-		netLine = line("净清算值", net.Currency, netR, usdJpy)
+		netLine = line("Net liquidation", net.Currency, netR, usdJpy)
 	}
-	cashLine := gapLine("现金", cash.Currency, "missing_input")
+	cashLine := gapLine("Cash", cash.Currency, "missing_input")
 	if cashOK {
-		cashLine = line("现金", cash.Currency, cashR, usdJpy)
+		cashLine = line("Cash", cash.Currency, cashR, usdJpy)
 		if netOK && netR.Sign() > 0 && cash.Currency == net.Currency {
 			share := new(big.Rat).Quo(new(big.Rat).Mul(cashR, big.NewRat(100, 1)), netR)
 			cashLine.Share = compute.FigureValue{Value: money(share)}
@@ -147,15 +147,15 @@ func accounts(net blockapi.ValueIn, netR *big.Rat, netOK bool, cash blockapi.Val
 	}
 	return []blockapi.MoneyLine{
 		netLine, cashLine,
-		gapLine("股票市值", net.Currency, "missing_quote"),
-		gapLine("期权市值", net.Currency, "missing_quote"),
+		gapLine("Stock value", net.Currency, "missing_quote"),
+		gapLine("Option value", net.Currency, "missing_quote"),
 	}
 }
 
 // cashAfter is the figure household.cash_after: TotalCashValue minus the gross put notional of
 // every obligation, signed (a negative is a shortfall).
 func cashAfter(cash blockapi.ValueIn, cashR *big.Rat, cashOK bool, in blockapi.HouseholdInput) blockapi.MoneyLine {
-	const name = "指派后现金"
+	const name = "Cash after assignment"
 	if !cashOK {
 		return gapLine(name, cash.Currency, "missing_input")
 	}
@@ -177,10 +177,10 @@ func cashAfter(cash blockapi.ValueIn, cashR *big.Rat, cashOK bool, in blockapi.H
 // one row per constant step; the steps need an underlying price that the input does not carry,
 // so they are the gap missing_quote.
 func stress(after blockapi.MoneyLine) []blockapi.MoneyLine {
-	after.Name = "全部指派后现金"
+	after.Name = "Cash after all assignments"
 	rows := []blockapi.MoneyLine{after}
 	for _, s := range stressSteps {
-		rows = append(rows, gapLine("标的跌 "+s+"%", after.Currency, "missing_quote"))
+		rows = append(rows, gapLine("Underlying down "+s+"%", after.Currency, "missing_quote"))
 	}
 	return rows
 }
@@ -190,7 +190,7 @@ func stress(after blockapi.MoneyLine) []blockapi.MoneyLine {
 func obligations(in blockapi.HouseholdInput) []blockapi.MoneyLine {
 	var rows []blockapi.MoneyLine
 	for _, o := range in.Obligations {
-		name := o.Underlying + " 卖出认沽"
+		name := o.Underlying + " short put"
 		n, ok := notional(o)
 		if !ok {
 			rows = append(rows, gapLine(name, o.Currency, "missing_input"))
@@ -198,7 +198,7 @@ func obligations(in blockapi.HouseholdInput) []blockapi.MoneyLine {
 		}
 		l := line(name, o.Currency, n, in.UsdJpy)
 		if o.PremiumIncome != "" {
-			l.Note = strings.TrimSpace(l.Note + " 权利金 " + o.PremiumIncome)
+			l.Note = strings.TrimSpace(l.Note + " premium " + o.PremiumIncome)
 		}
 		rows = append(rows, l)
 	}
@@ -229,19 +229,19 @@ func premium(obs []blockapi.ObligationIn) (currencies []string, sums map[string]
 func income(obs []blockapi.ObligationIn, usdJpy string) []blockapi.MoneyLine {
 	cur, sums, bad := premium(obs)
 	if bad {
-		return []blockapi.MoneyLine{gapLine("本月权利金", obs[0].Currency, "missing_input")}
+		return []blockapi.MoneyLine{gapLine("Premium this month", obs[0].Currency, "missing_input")}
 	}
 	var rows []blockapi.MoneyLine
 	for _, c := range cur {
-		rows = append(rows, line("本月权利金", c, sums[c], usdJpy))
+		rows = append(rows, line("Premium this month", c, sums[c], usdJpy))
 	}
 	return rows
 }
 
 // monthChange is the figure household.month_change: the waterfall of net liquidation from the
-// month start: premium, the trading result (needs marks: missing_quote) and the rest as 其他.
+// month start: premium, the trading result (needs marks: missing_quote) and the rest as Other.
 func monthChange(in blockapi.HouseholdInput, end blockapi.ValueIn, endR *big.Rat, endOK bool) []blockapi.MoneyLine {
-	const name = "月度资产变化"
+	const name = "Monthly change"
 	start, startR, startOK := tagValue(in.MonthStart, "NetLiquidation")
 	if !startOK || !endOK {
 		return []blockapi.MoneyLine{gapLine(name, end.Currency, "missing_input")}
@@ -250,16 +250,16 @@ func monthChange(in blockapi.HouseholdInput, end blockapi.ValueIn, endR *big.Rat
 		return []blockapi.MoneyLine{gapLine(name, end.Currency, "unsupported_currency")}
 	}
 	c := end.Currency
-	rows := []blockapi.MoneyLine{line("月初", c, startR, in.UsdJpy)}
+	rows := []blockapi.MoneyLine{line("Month start", c, startR, in.UsdJpy)}
 	cur, sums, bad := premium(in.Obligations)
-	prem := gapLine("已平仓期权结果", c, "no_data")
-	rest := gapLine("其他", c, "no_data")
+	prem := gapLine("Closed option result", c, "no_data")
+	rest := gapLine("Other", c, "no_data")
 	if p, ok := sums[c]; ok && !bad && len(cur) == 1 {
-		prem = line("已平仓期权结果", c, p, in.UsdJpy)
+		prem = line("Closed option result", c, p, in.UsdJpy)
 		change := new(big.Rat).Sub(endR, startR)
-		rest = line("其他", c, change.Sub(change, p), in.UsdJpy)
+		rest = line("Other", c, change.Sub(change, p), in.UsdJpy)
 	}
-	rows = append(rows, prem, gapLine("交易结果", c, "missing_quote"), rest, line("月末", c, endR, in.UsdJpy))
+	rows = append(rows, prem, gapLine("Trading result", c, "missing_quote"), rest, line("Month end", c, endR, in.UsdJpy))
 	return rows
 }
 

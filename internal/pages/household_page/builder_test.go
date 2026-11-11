@@ -111,13 +111,13 @@ func gap(name, reason string) blockapi.MoneyLine {
 func (f fakeFigures) Household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
 	*f.got = in
 	return blockapi.HouseholdResult{
-		Overview:    []blockapi.MoneyLine{ok("净值", "100000.00")},
-		Accounts:    []blockapi.MoneyLine{ok("净清算值", "100000.00"), ok("现金", "42000.00"), gap("股票市值", "missing_quote"), gap("期权市值", "missing_quote")},
-		Obligations: []blockapi.MoneyLine{ok("AAA 卖出认沽", "10000.00")},
-		Income:      []blockapi.MoneyLine{ok("本月权利金", "300.00")},
-		CashAfter:   []blockapi.MoneyLine{ok("指派后现金", "32000.00")},
-		Stress:      []blockapi.MoneyLine{ok("全部指派后现金", "-5.50"), gap("标的跌 10%", "missing_quote")},
-		MonthChange: []blockapi.MoneyLine{ok("月初", "98000.00"), ok("已平仓期权结果", "300.00"), gap("交易结果", "missing_quote"), ok("其他", "1700.00"), ok("月末", "100000.00")},
+		Overview:    []blockapi.MoneyLine{ok("Net value", "100000.00")},
+		Accounts:    []blockapi.MoneyLine{ok("Net liquidation", "100000.00"), ok("Cash", "42000.00"), gap("Stock value", "missing_quote"), gap("Option value", "missing_quote")},
+		Obligations: []blockapi.MoneyLine{ok("AAA short put", "10000.00")},
+		Income:      []blockapi.MoneyLine{ok("Premium this month", "300.00")},
+		CashAfter:   []blockapi.MoneyLine{ok("Cash after assignment", "32000.00")},
+		Stress:      []blockapi.MoneyLine{ok("Cash after all assignments", "-5.50"), gap("Underlying down 10%", "missing_quote")},
+		MonthChange: []blockapi.MoneyLine{ok("Month start", "98000.00"), ok("Closed option result", "300.00"), gap("Trading result", "missing_quote"), ok("Other", "1700.00"), ok("Month end", "100000.00")},
 		Trend: []blockapi.DayValue{
 			{Day: "2026-11-09", NetLiquidation: "99000.50", Currency: "USD"},
 			{Day: "2026-11-10", NetLiquidation: "100000.00", Currency: "USD"},
@@ -173,7 +173,7 @@ func TestUnknownAliasIsGapPage(t *testing.T) {
 		t.Fatalf("not a gap page: %s", b)
 	}
 	for _, blk := range []string{"overview", "cash_after", "stress", "trend", "month_change", "movers"} {
-		if g := gapOf(t, m, blk); g["text"] != "未知账户" {
+		if g := gapOf(t, m, blk); g["text"] != "Unknown account" {
 			t.Fatalf("%s gap = %v", blk, g)
 		}
 	}

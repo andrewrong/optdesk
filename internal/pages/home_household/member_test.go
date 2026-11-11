@@ -154,7 +154,7 @@ func TestTilesCarryTheCaptureFigures(t *testing.T) {
 	}
 	tl := tilesOf(m)
 	cases := []struct{ tile, figure, caption string }{
-		{"net_worth", "$100,000.00", "USD · 数据日 2026-11-10"},
+		{"net_worth", "$100,000.00", "USD · Data day 2026-11-10"},
 		{"cash", "42.00%", "+$42,000.00"},
 		{"day_change", "+$999.50", "+1.01%"},
 		{"month_to_date", "+$2,000.00", "+2.04%"},
@@ -250,7 +250,7 @@ func TestNegativeCashIsBorrowing(t *testing.T) {
 	v["2026-11-10"] = vals("100000.00", "-500.00")
 	m, _ := build(t, config(v))
 	cash := tilesOf(m)["cash"]
-	if cash["figure"].(map[string]any)["text"] != "融资中" || cash["caption"].(map[string]any)["text"] != "−$500.00" {
+	if cash["figure"].(map[string]any)["text"] != "Borrowing" || cash["caption"].(map[string]any)["text"] != "−$500.00" {
 		t.Fatalf("cash: %v", cash)
 	}
 }

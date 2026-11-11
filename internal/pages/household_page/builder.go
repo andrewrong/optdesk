@@ -241,7 +241,7 @@ func (c Config) assemble(alias string, tag accountTag, scopes []accountScope, cp
 	}
 	for _, b := range blocks {
 		if b.gap != nil {
-			p.Gaps = append(p.Gaps, gapJSON{Reason: b.gap.Reason, Text: b.title + "：" + b.gap.Text})
+			p.Gaps = append(p.Gaps, gapJSON{Reason: b.gap.Reason, Text: b.title + ": " + b.gap.Text})
 		}
 	}
 	if len(p.Gaps) == 0 {
@@ -275,7 +275,7 @@ func base(c Config, scopes []accountScope, alias string, at time.Time) pageJSON 
 	return pageJSON{
 		Schema: "household_page", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: scope,
 		GeneratedAt: at.Format(timeLayout), DataTimes: []sourceTime{}, Notes: []string{}, Gaps: []gapJSON{}, Scopes: scopes,
-		Stale: staleLabel{DataTime: at.Format(timeLayout), StaleAfter: at.Format(timeLayout), Text: textStaleLabel + "无"},
+		Stale: staleLabel{DataTime: at.Format(timeLayout), StaleAfter: at.Format(timeLayout), Text: textStaleLabel + "none"},
 	}
 }
 
