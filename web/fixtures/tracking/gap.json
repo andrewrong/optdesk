@@ -4,7 +4,7 @@
   "generated_at": "2026-11-25T09:30:00+08:00",
   "how": [
     "Each row is one candidate of one scan, passed and rejected alike, in the order the scan stored them.",
-    "Premium is the net premium received for selling one contract; underlying move is the part of the expiry close below the strike times the contract multiplier, the same number as the intrinsic value used for scoring. Their sum is only the result of holding to expiry, not realised profit and loss.",
+    "Premium is the net premium for selling one contract; underlying move is the expiry close below the strike times the multiplier, as in scoring. Their sum is the hold-to-expiry result, not realised P&L.",
     "Assignment is only a state: in the money at expiry. The stock profit and loss after assignment belongs to the structure held and is not counted in this row."
   ],
   "note": "No candidate scan today",
