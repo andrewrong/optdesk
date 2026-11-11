@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -598,6 +599,14 @@ func TestLogFailureClassConnection(t *testing.T) {
 	t.Parallel()
 	line := logFailureLine(t, fmt.Errorf("write: %w", &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("refused")}))
 	if !strings.Contains(line, "class=connection") {
+		t.Fatalf("line %q", line)
+	}
+}
+
+func TestLogFailureClassTimeoutNotConnection(t *testing.T) {
+	t.Parallel()
+	line := logFailureLine(t, &net.OpError{Op: "dial", Net: "tcp", Err: os.ErrDeadlineExceeded})
+	if !strings.Contains(line, "class=timeout") {
 		t.Fatalf("line %q", line)
 	}
 }
