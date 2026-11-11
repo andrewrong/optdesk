@@ -672,7 +672,7 @@ func TestOptionResultsContract(t *testing.T) {
 	t.Parallel()
 	want := compute.ResultSummary{Sections: []compute.ResultSection{{
 		Side: "sold", Currency: "USD",
-		Months:   []compute.ResultMonth{{Month: "2026-01", Realized: "10.0000", Running: "10.0000", Over: true}},
+		Months:   []compute.ResultMonth{{Month: "2026-01", Realized: "10.0000", Running: "10.0000", Premium: "12.0000", Over: true}},
 		Endings:  []compute.ResultEnding{{Status: "expired", Count: 2, Realized: "10.0000"}},
 		Realized: "10.0000", Premium: "12.0000", KeptShare: "0.833333", AssignedPremium: "1.0000", AssignedShares: "100.0000",
 		Reliability: compute.ResultReliability{Equal: 1, Differ: 2, NoBroker: 3, Unresolved: []string{"t0"}, Review: []string{"t9"}},

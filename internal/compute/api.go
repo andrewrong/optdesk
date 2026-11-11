@@ -729,10 +729,11 @@ type ResultSection struct {
 	Reliability                                                   ResultReliability
 }
 
-// ResultMonth is the realized result of a month and its running total.
+// ResultMonth is the realized result of a month and its running total; Premium is the opening premium
+// of the positions closed in the month (close month), decimal text with four places.
 type ResultMonth struct {
-	Month, Realized, Running string
-	Over                     bool
+	Month, Realized, Running, Premium string
+	Over                              bool
 }
 
 // ResultEnding counts the positions that ended with Status and their realized result.
