@@ -13,12 +13,12 @@ const (
 	maxExpiries = 30
 	maxCells    = 2000
 
-	matrixLegend = "★ 标的内排名第一 · 绿底 值得看 · 薄 买卖价不全 · 财 财报在期内"
+	matrixLegend = "★ top of the underlying · green: worth a look · thin: bid/ask incomplete · earn: earnings in window"
 )
 
 func cellKey(id int) string { return fmt.Sprintf("c%d", id) }
 
-// expiryLabel is "11-13 周五 · 22 天" of a stored expiry and DTE.
+// expiryLabel is "11-13 Fri · 3 days" of a stored expiry and DTE.
 func expiryLabel(expiry contracts.Day, dte int) (string, error) {
 	md, err := monthDay(expiry)
 	if err != nil {
@@ -28,34 +28,34 @@ func expiryLabel(expiry contracts.Day, dte int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s %s · %d 天", md, wd, dte), nil
+	return fmt.Sprintf("%s %s · %d days", md, wd, dte), nil
 }
 
-// deltaText is the delta text "Δ −0.15", "Δ 缺" for null.
+// deltaText is the delta text "Δ −0.15", "Δ n/a" for null.
 func deltaText(d *string) string {
 	if d == nil {
-		return "Δ 缺"
+		return "Δ n/a"
 	}
 	return "Δ " + signedText(*d)
 }
 
-// yieldText is "年化 12.3456%" or "年化 缺".
+// yieldText is "Annualised 12.3456%" or "Annualised n/a".
 func yieldText(y *string) (string, error) {
 	if y == nil {
-		return "年化 缺", nil
+		return "Annualised n/a", nil
 	}
 	pct, err := shiftPercent(*y)
 	if err != nil {
 		return "", err
 	}
-	return "年化 " + pct, nil
+	return "Annualised " + pct, nil
 }
 
 func volumeText(v string) string {
 	if v == gapText {
-		return "成交量 缺"
+		return "Volume n/a"
 	}
-	return "成交量 " + v
+	return "Volume " + v
 }
 
 // buildMatrix draws one cell per stored row. Rows over the schema limits (cells, distinct strikes, distinct
@@ -85,9 +85,9 @@ func buildMatrix(rows []stockRow, chosen int) (matrixBlock, string, error) {
 		strikes[c.Strike] = true
 		quoteGate, _ := gateStatus(r.Gates, gateQuote)
 		events, _ := gateStatus(r.Gates, gateEvents)
-		premium, delta, volume := "权利金 "+c.BidEod, deltaText(c.Delta), volumeText(r.Eod.Volume)
+		premium, delta, volume := "Premium "+c.BidEod, deltaText(c.Delta), volumeText(r.Eod.Volume)
 		if l := r.Live; l != nil {
-			premium, delta, volume = "权利金 "+l.Bid, "Δ "+l.DeltaText(), volumeText(l.Volume)
+			premium, delta, volume = "Premium "+l.Bid, "Δ "+l.DeltaText(), volumeText(l.Volume)
 		}
 		cell := matrixCell{
 			Key: cellKey(c.InstrumentID), Expiry: string(c.Expiry), Strike: c.Strike,
@@ -120,7 +120,7 @@ func buildMatrix(rows []stockRow, chosen int) (matrixBlock, string, error) {
 	})
 	note := ""
 	if cut > 0 {
-		note = fmt.Sprintf("。矩阵超出上限,有 %d 个合约未显示", cut)
+		note = fmt.Sprintf(". Matrix over the limit, %d contracts not shown", cut)
 	}
 	return m, note, nil
 }

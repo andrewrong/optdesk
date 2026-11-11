@@ -3,8 +3,8 @@ package option_boards
 import "fmt"
 
 const (
-	ivMissing = "IV 缺"
-	ivTail    = " · HV30 缺 · IVP 缺"
+	ivMissing = "IV n/a"
+	ivTail    = " · HV30 n/a · IVP n/a"
 )
 
 // fillTop writes the stored parts of the top bar; the day change, quote and refresh fields have no source and
@@ -12,7 +12,7 @@ const (
 func fillTop(t *topBar, rows []stockRow) error {
 	first := rows[0].C
 	if first.Spot != nil {
-		t.Spot = strPtr("现价 " + *first.Spot)
+		t.Spot = strPtr("Last price " + *first.Spot)
 	}
 	t.IV = strPtr(ivMissing)
 	for _, r := range rows {
@@ -32,17 +32,17 @@ func fillTop(t *topBar, rows []stockRow) error {
 	if err != nil {
 		return err
 	}
-	t.Earnings = strPtr("财报 " + e)
+	t.Earnings = strPtr("Earnings " + e)
 	return nil
 }
 
-// earningsWord is "MM-DD" for a listed date, "无" for absent and "缺" otherwise.
+// earningsWord is "MM-DD" for a listed date, "none" for absent and "n/a" otherwise.
 func earningsWord(r stockRow) (string, error) {
 	switch {
 	case r.C.EarningsState == "listed" && r.C.NextEarnings != nil:
 		return monthDay(*r.C.NextEarnings)
 	case r.C.EarningsState == "absent":
-		return "无", nil
+		return "none", nil
 	}
 	return gapText, nil
 }
