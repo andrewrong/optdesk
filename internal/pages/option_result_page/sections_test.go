@@ -34,7 +34,10 @@ func TestSixFiguresPerSection(t *testing.T) {
 		t.Errorf("labels = %v", labels)
 	}
 	v := figureValues(secs[0])
-	want := map[string]string{"Realized": "109.5000", "Premium": "200.0000", "Retained ratio": "75.0000%", "Closed trades": "2", "Assigned trades": "1", "Expired trades": "1"}
+	want := map[string]string{
+		"Realized": "109.5000", "Premium": "200.0000", "Retained ratio": "75.0000%",
+		"Closed trades": "2", "Assigned trades": "1", "Expired trades": "1",
+	}
 	for k, w := range want {
 		if v[k] != w {
 			t.Errorf("%s = %q, want %q", k, v[k], w)

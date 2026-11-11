@@ -51,7 +51,9 @@ func TestMoneynessFromDistanceSign(t *testing.T) {
 	}
 	c := cells{}
 	for _, tc := range []struct{ right, dist, want string }{
-		{"P", "-0.05", "out of the money"}, {"P", "0.05", "in the money"}, {"C", "0.05", "out of the money"}, {"C", "-0.05", "in the money"}, {"P", "0.000000", "at the money"},
+		{"P", "-0.05", "out of the money"}, {"P", "0.05", "in the money"},
+		{"C", "0.05", "out of the money"}, {"C", "-0.05", "in the money"},
+		{"P", "0.000000", "at the money"},
 	} {
 		if got := c.moneyness(mk(tc.right, tc.dist)); got != tc.want {
 			t.Errorf("%s %s = %v, want %s", tc.right, tc.dist, got, tc.want)

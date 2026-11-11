@@ -51,7 +51,10 @@ func TestMarksAreBadges(t *testing.T) {
 	c := cand("short_put", 1, "ok")
 	c.Marks = `["itm","earnings_unconfirmed","earnings_beyond_horizon","no_dividend","future_mark"]`
 	cell := marksCell(c).(valueCell)
-	want := []string{"itm in the money", "earnings_unconfirmed earnings date not confirmed", "earnings_beyond_horizon earnings after the contract", "no_dividend no dividend", "future_mark"}
+	want := []string{
+		"itm in the money", "earnings_unconfirmed earnings date not confirmed", "earnings_beyond_horizon earnings after the contract",
+		"no_dividend no dividend", "future_mark",
+	}
 	if !reflect.DeepEqual(cell.Badges, want) {
 		t.Errorf("badges = %v", cell.Badges)
 	}

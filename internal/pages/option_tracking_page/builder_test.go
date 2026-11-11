@@ -129,7 +129,8 @@ func TestLongLegsLeftOut(t *testing.T) {
 	if !strings.Contains(strings.Join(vm.Notes, "|"), "3 long legs not listed, see the option positions page") {
 		t.Fatalf("notes = %v", vm.Notes)
 	}
-	if len(vm.Notes) < 1 || vm.Notes[0] != "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table" || vm.MarkNote != "Mid price, the midpoint of the closing bid/ask; not a traded price" {
+	if len(vm.Notes) < 1 || vm.Notes[0] != "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table" ||
+		vm.MarkNote != "Mid price, the midpoint of the closing bid/ask; not a traded price" {
 		t.Fatalf("notes = %v, mark note = %q", vm.Notes, vm.MarkNote)
 	}
 }
