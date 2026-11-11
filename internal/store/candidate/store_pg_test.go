@@ -139,9 +139,6 @@ func TestCandidateRoundTrip(t *testing.T) {
 	if n, err := st.InsertCandidates(ctx, []store.Candidate{in}); err != nil || n != 1 {
 		t.Fatalf("insert = %d, %v", n, err)
 	}
-	if _, err := st.InsertCandidates(ctx, []store.Candidate{in}); err == nil {
-		t.Error("a second row of the same key was accepted")
-	}
 	got, err := st.Candidates(ctx, "2026-11-06", "short_put")
 	if err != nil || len(got) != 1 {
 		t.Fatalf("read = %v, %v", got, err)
@@ -239,5 +236,38 @@ func TestSettingsVersionMigrationDown(t *testing.T) {
 		WHERE table_schema = 'candidates' AND table_name = 'option_candidate' AND column_name = 'settings_version')`).Scan(&have)
 	if err != nil || have {
 		t.Errorf("settings_version still there after down: %v, %v", have, err)
+	}
+}
+
+func TestCandidateSecondInsertStoresNothing(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, err := Open(ctx, connURL(t, name, "ot_w_candidate"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = st.Close() }()
+
+	t0 := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
+	rows := []store.Candidate{pgSample("r1", t0, 42, ptr(1)), pgSample("r1", t0, 43, ptr(2))}
+	n1, err1 := st.InsertCandidates(ctx, rows)
+	n2, err2 := st.InsertCandidates(ctx, rows)
+	if err1 != nil || err2 != nil || n1 != 2 || n2 != 0 {
+		t.Fatalf("counts = (%d, %v), (%d, %v); want (2, nil), (0, nil)", n1, err1, n2, err2)
+	}
+	c, err := pgx.Connect(ctx, connURL(t, name, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close(ctx) }()
+	var count int
+	if err := c.QueryRow(ctx, `SELECT count(*) FROM candidates.option_candidate`).Scan(&count); err != nil || count != 2 {
+		t.Errorf("rows = %d, %v; want 2", count, err)
+	}
+	more := append([]store.Candidate{}, rows...)
+	more = append(more, pgSample("r1", t0, 44, ptr(3)))
+	if n, err := st.InsertCandidates(ctx, more); err != nil || n != 1 {
+		t.Errorf("mixed call = (%d, %v); want (1, nil)", n, err)
 	}
 }

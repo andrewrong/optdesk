@@ -24,8 +24,10 @@ const columns = `session_day, run_id, kind, instrument_id, alias, rule_version, 
 
 const columnCount = 35
 
-// insertSQL is a plain INSERT: the table is insert-only and a duplicate key is an error.
-var insertSQL = "INSERT INTO candidates.option_candidate (" + columns + ") VALUES (" + placeholders(columnCount) + ")"
+// insertSQL is an insert-only INSERT: a row whose primary key exists is skipped, never replaced, so writing the same
+// rows twice stores nothing new.
+var insertSQL = "INSERT INTO candidates.option_candidate (" + columns + ") VALUES (" + placeholders(columnCount) +
+	") ON CONFLICT DO NOTHING"
 
 func placeholders(n int) string {
 	s := ""
@@ -45,8 +47,9 @@ type scanner interface {
 
 // database is the seam under the store: the one place pgx is touched, replaced by a fake in unit tests.
 type database interface {
-	// InsertAll runs one statement once per argument list, all in one transaction.
-	InsertAll(ctx context.Context, sql string, rows [][]any) error
+	// InsertAll runs one statement once per argument list, all in one transaction, and returns the number of rows
+	// the database inserted (a row the statement skipped counts 0).
+	InsertAll(ctx context.Context, sql string, rows [][]any) (int, error)
 	// Select runs a query and calls scan once per row, in the order the database returns them.
 	Select(ctx context.Context, sql string, args []any, scan func(scanner) error) error
 	Close() error
@@ -72,10 +75,12 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 // Close releases the connections.
 func (s *Store) Close() error { return s.db.Close() }
 
-// InsertCandidates inserts the rows in one transaction; none of them is replaced. No rows inserts none and makes
-// no database call. A row with no session day, run id or kind, or with an unknown kind, fails the call before
-// anything is written. A constraint violation of the database (SQLSTATE class 23: duplicate key, not null, foreign
-// key, check) is a Permanent error, since the same rows fail again; every other database error is Retryable.
+// InsertCandidates inserts the rows in one transaction; none of them is replaced. A row whose key exists is skipped
+// and not counted, the other rows of the call are still written, and the result is the number of rows really
+// inserted. No rows inserts none and makes no database call. A row with no session day, run id or kind, or with an
+// unknown kind, fails the call before anything is written. A not-null, foreign-key or check violation (SQLSTATE
+// class 23 other than a duplicate key, which is skipped) is a Permanent error, since the same rows fail again;
+// every other database error is Retryable.
 func (s *Store) InsertCandidates(ctx context.Context, rows []store.Candidate) (int, error) {
 	if len(rows) == 0 {
 		return 0, nil
@@ -88,14 +93,15 @@ func (s *Store) InsertCandidates(ctx context.Context, rows []store.Candidate) (i
 		}
 		args = append(args, a)
 	}
-	if err := s.db.InsertAll(ctx, insertSQL, args); err != nil {
+	n, err := s.db.InsertAll(ctx, insertSQL, args)
+	if err != nil {
 		err = fmt.Errorf("candidate: insert: %w", err)
 		if isConstraintViolation(err) {
 			return 0, permanent(err)
 		}
 		return 0, retryable(err)
 	}
-	return len(rows), nil
+	return n, nil
 }
 
 func rowArgs(c store.Candidate) ([]any, error) {
@@ -173,10 +179,10 @@ func permanent(err error) error { return &typedErr{kind: contracts.Permanent, ca
 // pgDB is the pgx adapter of database.
 type pgDB struct{ pool *pgxpool.Pool }
 
-func (d pgDB) InsertAll(ctx context.Context, sql string, rows [][]any) error {
+func (d pgDB) InsertAll(ctx context.Context, sql string, rows [][]any) (int, error) {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	var b pgx.Batch
@@ -184,16 +190,22 @@ func (d pgDB) InsertAll(ctx context.Context, sql string, rows [][]any) error {
 		b.Queue(sql, r...)
 	}
 	res := tx.SendBatch(ctx, &b)
+	inserted := 0
 	for range rows {
-		if _, err := res.Exec(); err != nil {
+		tag, err := res.Exec()
+		if err != nil {
 			_ = res.Close()
-			return err
+			return 0, err
 		}
+		inserted += int(tag.RowsAffected())
 	}
 	if err := res.Close(); err != nil {
-		return err
+		return 0, err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return inserted, nil
 }
 
 func (d pgDB) Select(ctx context.Context, sql string, args []any, scan func(scanner) error) error {

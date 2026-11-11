@@ -209,7 +209,12 @@ func TestNonRequiredLoginDegradedOk(t *testing.T) {
 	if res.Err != nil {
 		t.Fatalf("result must be ok: %v", res.Err)
 	}
-	lines := strings.Split(strings.TrimSpace(e.log.String()), "\n")
+	var lines []string // the "fetched" total record is not a degraded record
+	for _, l := range strings.Split(strings.TrimSpace(e.log.String()), "\n") {
+		if !strings.Contains(l, "optionledger: fetched") {
+			lines = append(lines, l)
+		}
+	}
 	if len(lines) != 2 {
 		t.Fatalf("log lines %d: %q", len(lines), e.log.String())
 	}
@@ -289,5 +294,40 @@ func TestRequiredFailureKeyStaysMissingWithoutRefetch(t *testing.T) {
 	}
 	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
 		t.Fatal("a failed required login must not mark the key present")
+	}
+}
+
+func TestPerAliasReturnedAndTotalLogged(t *testing.T) {
+	t.Parallel()
+	st1 := oneTrade("ACCT1", "1")
+	st1.Trades = append(st1.Trades, oneTrade("ACCT1", "2").Trades...)
+	st1.Trades = append(st1.Trades, oneTrade("ACCT1", "3").Trades...)
+	src := &fakeSource{rep: report(st1, oneTrade("ACCT2", "4"))}
+	j, e := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
+	j.cfg.Accounts = map[string]string{"ACCT1": "a", "ACCT2": "b"}
+	ctx := context.Background()
+	keys, _, err := j.Plan(ctx, "2026-11-10")
+	if err != nil || len(keys) != 2 {
+		t.Fatalf("keys %v %v", keys, err)
+	}
+	keys = append(keys, contracts.ExpectedKey{DatasetID: datasetID, SubjectKey: "c"})
+	want := map[string]int{"a": 3, "b": 1, "c": 0}
+	for _, k := range keys {
+		res := j.Run(ctx, "2026-11-10", []contracts.ExpectedKey{k})
+		if res.Err != nil || res.Returned != want[k.SubjectKey] || res.Usable != 0 {
+			t.Fatalf("key %s: %+v, want returned %d usable 0", k.SubjectKey, res, want[k.SubjectKey])
+		}
+	}
+	out := e.log.String()
+	if n := strings.Count(out, "optionledger: fetched"); n != 1 {
+		t.Fatalf("fetched records %d, want 1: %q", n, out)
+	}
+	for _, s := range []string{"total_returned=4", "rows_a=3", "rows_b=1"} {
+		if !strings.Contains(out, s) {
+			t.Fatalf("log lacks %s: %q", s, out)
+		}
+	}
+	if len(e.w.recs) != len(src.calls) || len(src.calls) == 0 {
+		t.Fatalf("writer calls %d, source calls %d", len(e.w.recs), len(src.calls))
 	}
 }
