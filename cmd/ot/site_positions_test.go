@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -65,7 +66,13 @@ func fakeBuild(rec *positionsRec, c positionsCall, vm string) pages.Page {
 // positionsApp is an app whose three page constructors are fakes that record what they were given.
 func positionsApp(t *testing.T) (*app, *positionsRec) {
 	t.Helper()
-	a, _ := testApp(t, "")
+	return positionsAppEnv(t, "")
+}
+
+// positionsAppEnv is positionsApp with the given .env text.
+func positionsAppEnv(t *testing.T, env string) (*app, *positionsRec) {
+	t.Helper()
+	a, _ := testApp(t, env)
 	rec := &positionsRec{}
 	a.deps.structuresListPage = func(c structures_page.Config, alias string) pages.Page {
 		return fakeBuild(rec, positionsCall{page: "list", alias: alias, cfg: c},
@@ -280,5 +287,43 @@ func TestSiteAliasList(t *testing.T) {
 				t.Fatalf("%d warn lines: %q", n, errb)
 			}
 		})
+	}
+}
+
+// TestOpenedReadersReachPositionsPages checks that the ledger and account readers openSiteReaders opens for
+// the tracking and notices pages are the ones the structures and result pages are built with.
+func TestOpenedReadersReachPositionsPages(t *testing.T) {
+	t.Parallel()
+	a, rec := positionsAppEnv(t, store.DSNEnvPages+"=pages-dsn\n"+store.DSNEnvOptionLedger+"=ledger-dsn\n"+store.DSNEnvAccount+"=account-dsn\n")
+	a.profile.Name = "real"
+	cc := closeCounter{n: new(atomic.Int32)}
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) { return cSeries{closeCounter: cc}, nil }
+	a.deps.openOptionEod = func(context.Context, string) (store.OptionEodStore, error) { return cEod{closeCounter: cc}, nil }
+	a.deps.openQuoteSnapshot = func(context.Context, string) (store.QuoteSnapshotStore, error) { return cQuotes{closeCounter: cc}, nil }
+	a.deps.openOptionCatalog = func(context.Context, string) (store.OptionEodCatalogStore, error) {
+		return cCatalog{closeCounter: cc}, nil
+	}
+	a.deps.openOptionTerms = func(context.Context, string) (store.OptionTermsStore, error) { return cTerms{closeCounter: cc}, nil }
+	a.deps.openInstrumentName = func(context.Context, string) (store.InstrumentNameStore, error) { return cNames{closeCounter: cc}, nil }
+	a.deps.openReadingView = func(context.Context, string) (store.ReadingViewReader, error) { return cView{closeCounter: cc}, nil }
+	wantLedger := tLedgerStore{closeCounter: cc}
+	wantAcct := cAccount{closeCounter: cc}
+	a.deps.openOptionLedgerRO = func(context.Context, string) (store.OptionLedgerStore, error) { return wantLedger, nil }
+	a.deps.openAccount = func(context.Context, string) (store.AccountStore, error) { return wantAcct, nil }
+	rd, closeFn, err := openSiteReaders(t.Context(), a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeFn()
+	if rd.ledger != rd.optionLedger || rd.account != rd.noticeAccount || rd.ledger == nil || rd.account == nil {
+		t.Fatalf("readers %+v", rd)
+	}
+	h := siteHandler(a, positionsClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	for _, target := range []string{"/" + siteStructuresRoute, "/" + siteResultRoute} {
+		r := positionsGet(t, h, http.MethodGet, target)
+		c := rec.last(t)
+		if r.Code != 200 || strings.Contains(r.Body.String(), "no_reader") || c.cfg.Ledger != wantLedger && c.res.Ledger != wantLedger || target == "/"+siteStructuresRoute && c.cfg.Account != wantAcct {
+			t.Errorf("%s: %d %q %+v", target, r.Code, r.Body, c)
+		}
 	}
 }

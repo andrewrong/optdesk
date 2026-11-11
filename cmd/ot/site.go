@@ -78,8 +78,8 @@ type siteReaders struct {
 	noticeAccount store.AccountReader
 	earnings      store.EarningsDateReader
 
-	// the option positions pages: the ledger and account readers (nil until their stores land, which the
-	// builders turn into the gap no_reader), the session days and the compute constructors; eod and terms
+	// the option positions pages: the ledger and account readers (the ones above, nil with no opener in deps
+	// and in the demo profile, which the builders turn into the gap no_reader), the session days and the compute constructors; eod and terms
 	// above are read by these pages too.
 	ledger     store.OptionLedgerReader
 	account    store.AccountReader
@@ -190,7 +190,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	}
 	rd := siteReaders{marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner,
-		optionLedger: ledger, sessions: sessions, aliases: siteAliasList(a)}
+		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if len(siteOpeners) > 0 {
 		keys := make([]string, 0, len(siteOpeners))
 		for k := range siteOpeners {
@@ -270,8 +270,8 @@ func openSessionReader(ctx context.Context, a *app, dsn string, track func(io.Cl
 	return nil, true
 }
 
-// withPositionsRules sets the compute constructors of the positions pages; the ledger and account readers
-// stay nil (ot has no store for them yet); the session readers are set by openSiteReaders.
+// withPositionsRules sets the compute constructors of the positions pages; the ledger, account and session
+// readers are set by openSiteReaders.
 func withPositionsRules(a *app, rd siteReaders) siteReaders {
 	rd.ledgers, rd.structures, rd.results = a.deps.newOptionLedger, a.deps.newOptionStructures, a.deps.newOptionResults
 	return rd
