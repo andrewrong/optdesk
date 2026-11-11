@@ -199,6 +199,30 @@ func TestNoSeriesIsGap(t *testing.T) {
 	}
 }
 
+func TestGapTextsAreDistinctAndNameTheirIndex(t *testing.T) {
+	t.Parallel()
+	d := parse(t, build(t, config(nil), fakeSeries{}))
+	seen := map[string]bool{}
+	for _, g := range d.Card.Gaps {
+		text, _ := g["text"].(string)
+		if seen[text] {
+			t.Errorf("gap text %q appears twice", text)
+		}
+		seen[text] = true
+	}
+	for _, name := range []string{"SPX", "NDX", "RUT"} {
+		n := 0
+		for text := range seen {
+			if strings.HasPrefix(text, name+" ") {
+				n++
+			}
+		}
+		if n != 3 {
+			t.Errorf("%s: %d gap texts start with its name, want 3", name, n)
+		}
+	}
+}
+
 func TestOneIndexWithoutSeriesIsGap(t *testing.T) {
 	t.Parallel()
 	s := fullSeries()
