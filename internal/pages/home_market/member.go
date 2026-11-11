@@ -28,6 +28,7 @@ const (
 	timeLayout = "2006-01-02T15:04:05-07:00"
 
 	figIV         = "market.iv_ibkr"
+	figRv20       = "market.rv20"
 	subjectKind   = "underlying"
 	seriesChart   = "SP500"
 	chartDays     = 30 // newest points of the chart
@@ -258,26 +259,24 @@ func validate(c Config, r store.SeriesReader) error {
 	return nil
 }
 
-// buildRow is the row of one index: the IV from the stored reading; the 20 day realised
-// volatility is stored nowhere, so it and the difference are Gaps. ok is false when the IV is a Gap.
+// buildRow is the row of one index: the IV and the 20 day realised volatility from their stored
+// readings; the difference is a not built Gap. ok is false when the IV is a Gap; a Gap of the
+// realised volatility does not count.
 func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow, bool, error) {
 	row := indexRow{
 		Name:        name,
 		IV:          mkGap("no_data", name+" "+ivNoRow),
-		RV20:        mkGap("not_built", notBuiltCell),
+		RV20:        mkGap("no_data", name+" "+rv20NoRow),
 		IVMinusRV20: mkGap("not_built", notBuiltCell),
 	}
-	from := contracts.Day(d.AddDate(0, 0, -readingDays).Format(dayLayout))
-	rows, err := c.Readings(ctx, figIV, subjectKind, name, from, contracts.Day(d.Format(dayLayout)))
+	rv, err := newestReading(ctx, c, figRv20, name, d)
 	if err != nil {
-		return indexRow{}, false, fmt.Errorf("home_market: read %s %s: %w", figIV, name, err)
+		return indexRow{}, false, err
 	}
-	var best *contracts.ReadingRecord
-	for i := range rows {
-		r := &rows[i]
-		if best == nil || r.Day.After(best.Day.Time) || (r.Day.Equal(best.Day.Time) && r.Rev > best.Rev) {
-			best = r
-		}
+	row.RV20 = rv20Cell(name, rv)
+	best, err := newestReading(ctx, c, figIV, name, d)
+	if err != nil {
+		return indexRow{}, false, err
 	}
 	if best == nil {
 		return row, false, nil
@@ -294,6 +293,40 @@ func buildRow(ctx context.Context, c Config, name string, d time.Time) (indexRow
 	row.IV = volPoints{Kind: "value", Value: json.Number(text), Text: text, Unit: "vol_points"}
 	row.SourceText = ivSource
 	return row, true, nil
+}
+
+// newestReading is the newest stored reading of fig for the index within the last readingDays,
+// nil when there is none.
+func newestReading(ctx context.Context, c Config, fig, name string, d time.Time) (*contracts.ReadingRecord, error) {
+	from := contracts.Day(d.AddDate(0, 0, -readingDays).Format(dayLayout))
+	rows, err := c.Readings(ctx, fig, subjectKind, name, from, contracts.Day(d.Format(dayLayout)))
+	if err != nil {
+		return nil, fmt.Errorf("home_market: read %s %s: %w", fig, name, err)
+	}
+	var best *contracts.ReadingRecord
+	for i := range rows {
+		r := &rows[i]
+		if best == nil || r.Day.After(best.Day.Time) || (r.Day.Equal(best.Day.Time) && r.Rev > best.Rev) {
+			best = r
+		}
+	}
+	return best, nil
+}
+
+// rv20Cell is the 20 day realised volatility: the stored value times 100, one decimal, half even.
+// A value that rounds to 0.0 is a value; a Gap is for missing input only.
+func rv20Cell(name string, r *contracts.ReadingRecord) any {
+	if r == nil {
+		return mkGap("no_data", name+" "+rv20NoRow)
+	}
+	if string(r.State) != "ok" || r.Value == nil {
+		return mkGap("missing_input", name+" "+rv20Missing)
+	}
+	text, err := shiftRound(*r.Value, 2, 1)
+	if err != nil || strings.HasPrefix(text, "-") {
+		return mkGap("missing_input", name+" "+rv20Missing)
+	}
+	return volPoints{Kind: "value", Value: json.Number(text), Text: text, Unit: "vol_points"}
 }
 
 // buildVol is one Cboe index: its newest stored point, a Gap when there is none, when it is
@@ -369,23 +402,20 @@ func storedPoints(ctx context.Context, r store.SeriesReader, id string, d time.T
 }
 
 // collectGaps copies the Gap objects of the blocks in page order. The not-built
-// cells give one gap per feature naming every index of the table, not one per index.
+// difference cells give one gap naming every index of the table, not one per index.
 func collectGaps(c card) []gap {
 	out := []gap{}
-	var rvNames, diffNames []string
+	var diffNames []string
 	for _, row := range c.IndexTable.Rows {
 		if g, ok := row.IV.(gap); ok {
 			out = append(out, g)
 		}
-		if g, ok := row.RV20.(gap); ok && g.Reason == "not_built" {
-			rvNames = append(rvNames, row.Name)
+		if g, ok := row.RV20.(gap); ok {
+			out = append(out, g)
 		}
 		if g, ok := row.IVMinusRV20.(gap); ok && g.Reason == "not_built" {
 			diffNames = append(diffNames, row.Name)
 		}
-	}
-	if len(rvNames) > 0 {
-		out = append(out, mkGap("not_built", rv20NotBuilt+notBuiltFor+strings.Join(rvNames, ", ")))
 	}
 	if len(diffNames) > 0 {
 		out = append(out, mkGap("not_built", diffNotBuilt+notBuiltFor+strings.Join(diffNames, ", ")))

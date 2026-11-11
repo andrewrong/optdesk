@@ -58,9 +58,16 @@ func reading(day, state, value string) contracts.ReadingRecord {
 	return r
 }
 
-func readings(m map[string]contracts.ReadingRecord) compute.ReadingFunc {
+// readings answers market.iv_ibkr from iv and market.rv20 from rv, both keyed by subject.
+func readings(iv, rv map[string]contracts.ReadingRecord) compute.ReadingFunc {
 	return func(_ context.Context, name, kind, subject string, _, _ contracts.Day) ([]contracts.ReadingRecord, error) {
-		if name != figIV || kind != "underlying" {
+		m := iv
+		switch {
+		case kind != "underlying":
+			return nil, errors.New("unexpected reading " + name + " " + kind)
+		case name == figRv20:
+			m = rv
+		case name != figIV:
 			return nil, errors.New("unexpected reading " + name + " " + kind)
 		}
 		if r, ok := m[subject]; ok {
@@ -70,8 +77,10 @@ func readings(m map[string]contracts.ReadingRecord) compute.ReadingFunc {
 	}
 }
 
-func config(m map[string]contracts.ReadingRecord) Config {
-	return Config{RunID: "run1", BuildID: "b1", Scope: "market", Zone: testZone, Readings: readings(m)}
+func config(m map[string]contracts.ReadingRecord) Config { return configRv(m, nil) }
+
+func configRv(iv, rv map[string]contracts.ReadingRecord) Config {
+	return Config{RunID: "run1", BuildID: "b1", Scope: "market", Zone: testZone, Readings: readings(iv, rv)}
 }
 
 var at = time.Date(2026, 11, 6, 21, 30, 0, 0, time.UTC)
@@ -128,10 +137,14 @@ func build(t *testing.T, c Config, r fakeSeries) []byte {
 
 func TestGolden(t *testing.T) {
 	t.Parallel()
-	c := config(map[string]contracts.ReadingRecord{
+	c := configRv(map[string]contracts.ReadingRecord{
 		"SPX": reading("2026-11-06", "ok", "0.201234"),
 		"NDX": reading("2026-11-06", "ok", "0.245"),
 		"RUT": reading("2026-11-06", "ok", "0.2175"),
+	}, map[string]contracts.ReadingRecord{
+		"SPX": reading("2026-11-06", "ok", "0.162060"),
+		"NDX": reading("2026-11-06", "ok", "0.162500"),
+		"RUT": reading("2026-11-06", "ok", "0.163500"),
 	})
 	got := build(t, c, fullSeries())
 	var pretty bytes.Buffer
@@ -194,7 +207,7 @@ func TestNoSeriesIsGap(t *testing.T) {
 			t.Errorf("iv = %v", row["iv"])
 		}
 	}
-	if len(d.Card.Gaps) != 3+2+3+1 {
+	if len(d.Card.Gaps) != 3+3+1+3+1 {
 		t.Errorf("gaps = %d", len(d.Card.Gaps))
 	}
 }
@@ -217,8 +230,8 @@ func TestGapTextsAreDistinctAndNameTheirIndex(t *testing.T) {
 				n++
 			}
 		}
-		if n != 1 {
-			t.Errorf("%s: %d gap texts start with its name, want 1", name, n)
+		if n != 2 {
+			t.Errorf("%s: %d gap texts start with its name, want 2 (iv, rv20)", name, n)
 		}
 	}
 }
@@ -345,25 +358,72 @@ func TestIndexGapsOnePerFeature(t *testing.T) {
 	} {
 		rows := rowsFor(t, tc.names...)
 		gs := collectGaps(card{IndexTable: indexTable{Rows: rows}})
-		if n := countGaps(gs, "20-day realised volatility not built yet for "+tc.list); n != 1 {
-			t.Errorf("%s: rv20 gaps = %d", tc.list, n)
-		}
 		if n := countGaps(gs, "Implied minus realised not built yet for "+tc.list); n != 1 {
 			t.Errorf("%s: diff gaps = %d", tc.list, n)
 		}
-		for _, g := range gs {
-			for _, n := range tc.names {
-				if strings.HasPrefix(g.Text, n+" 20-day") {
-					t.Errorf("per-index gap %q", g.Text)
-				}
-			}
-		}
 		for _, r := range rows {
-			for _, c := range []any{r.RV20, r.IVMinusRV20} {
-				if g, ok := c.(gap); !ok || g.Reason != "not_built" || g.Text != "not built yet" {
-					t.Errorf("%s cell = %v", r.Name, c)
-				}
+			if g, ok := r.IVMinusRV20.(gap); !ok || g.Reason != "not_built" || g.Text != "not built yet" {
+				t.Errorf("%s cell = %v", r.Name, r.IVMinusRV20)
 			}
 		}
+	}
+}
+
+func rowWith(t *testing.T, rv map[string]contracts.ReadingRecord) indexRow {
+	t.Helper()
+	row, _, err := buildRow(context.Background(), configRv(nil, rv), "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return row
+}
+
+func TestRowRv20Values(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ stored, want string }{
+		{"0.162060", "16.2"},
+		{"0.162500", "16.2"},
+		{"0.163500", "16.4"},
+		{"0.000500", "0.0"},
+		{"0.000000", "0.0"},
+	} {
+		row := rowWith(t, map[string]contracts.ReadingRecord{"SPX": reading("2026-11-06", "ok", tc.stored)})
+		v, ok := row.RV20.(volPoints)
+		if !ok || v.Kind != "value" || v.Text != tc.want || string(v.Value) != tc.want || v.Unit != "vol_points" {
+			t.Errorf("%s: cell = %+v, want value %s", tc.stored, row.RV20, tc.want)
+		}
+	}
+}
+
+func TestRowRv20NoRowIsNoData(t *testing.T) {
+	t.Parallel()
+	g, ok := rowWith(t, nil).RV20.(gap)
+	if !ok || g.Reason != "no_data" {
+		t.Fatalf("RV20 = %+v", g)
+	}
+}
+
+func TestRowRv20NotOkIsMissingInput(t *testing.T) {
+	t.Parallel()
+	for _, r := range []contracts.ReadingRecord{
+		reading("2026-11-06", "missing_input", ""),
+		reading("2026-11-06", "ok", ""),
+	} {
+		g, ok := rowWith(t, map[string]contracts.ReadingRecord{"SPX": r}).RV20.(gap)
+		if !ok || g.Reason != "missing_input" {
+			t.Fatalf("RV20 = %+v", g)
+		}
+	}
+}
+
+func TestRowRv20GapLeavesIVOk(t *testing.T) {
+	t.Parallel()
+	iv := map[string]contracts.ReadingRecord{"SPX": reading("2026-11-06", "ok", "0.2")}
+	row, ok, err := buildRow(context.Background(), configRv(iv, nil), "SPX", time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	if err != nil || !ok {
+		t.Fatalf("ok = %v err = %v", ok, err)
+	}
+	if g, isGap := row.RV20.(gap); !isGap || g.Reason != "no_data" {
+		t.Fatalf("RV20 = %+v", row.RV20)
 	}
 }
