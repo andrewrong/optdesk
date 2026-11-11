@@ -1,4 +1,4 @@
-// The 期权概览 card of the home page (options_summary v4). Every visible string is a `text`, `label` or `caption`
+// The Options overview card of the home page (options_summary v4). Every visible string is a `text`, `label` or `caption`
 // field of the payload; this file formats and computes nothing. A Gap figure shows its text, never a zero.
 import { Chart } from '@/charts/Chart'
 import type { ChartPoint, ChartSpec } from '@/charts/spec'

@@ -56,16 +56,16 @@ describe('OverviewCard', () => {
   })
 
   it('shows gap_line and no list when there is no gap', async () => {
-    await show({ ...ok, gap_line: '今天没有缺口', overview: { ...ok.overview, gaps: [] as never } })
+    await show({ ...ok, gap_line: 'No gaps today', overview: { ...ok.overview, gaps: [] as never } })
     const alert = host.querySelector('[data-gap-line]')!
-    expect(alert.textContent).toBe('今天没有缺口')
+    expect(alert.textContent).toBe('No gaps today')
     expect(alert.querySelector('[data-overview-gaps]')).toBeNull()
   })
 
   it('shows a changed text as it is', async () => {
     const changed = structuredClone(ok)
-    changed.overview.items[0].text = '另一句话'
+    changed.overview.items[0].text = 'Another sentence'
     await show(changed)
-    expect(lines()[0]!.querySelector('[data-overview-text]')?.textContent).toBe('另一句话')
+    expect(lines()[0]!.querySelector('[data-overview-text]')?.textContent).toBe('Another sentence')
   })
 })

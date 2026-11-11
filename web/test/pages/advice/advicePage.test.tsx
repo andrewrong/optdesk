@@ -35,7 +35,7 @@ it('shows the delta and the acted word of the ok fixture', async () => {
   await show(<AdvicePage payload={payload} />)
   const first = host.querySelector('tbody tr')!.textContent!
   expect(first).toContain('-0.40')
-  expect(first).toContain('已执行')
+  expect(first).toContain('Acted')
   expect(host.querySelectorAll('tbody tr')).toHaveLength(payload.rows.length)
 })
 

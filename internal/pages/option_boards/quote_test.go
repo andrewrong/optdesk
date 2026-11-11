@@ -219,11 +219,11 @@ func TestStockRowsOfAnOpenQuoteShowItsPrices(t *testing.T) {
 	for _, c := range p.Matrix.Cells {
 		switch c.Key {
 		case "c101":
-			if c.Premium != "权利金 1.5" || c.Delta != "Δ −0.2" || c.Volume != "成交量 77" {
+			if c.Premium != "Premium 1.5" || c.Delta != "Δ −0.2" || c.Volume != "Volume 77" {
 				t.Errorf("open cell = %+v", c)
 			}
 		case "c102":
-			if c.Premium != "权利金 1.20" {
+			if c.Premium != "Premium 1.20" {
 				t.Errorf("close cell premium = %q, want the stored close bid", c.Premium)
 			}
 		}

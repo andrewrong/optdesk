@@ -2,10 +2,10 @@
   "build_id": "build-demo-0001",
   "changes": {
     "lines": [
-      "AAA 回报降到国债线以下 · 10-16",
-      "AAA 3 天后财报 · 10-19"
+      "AAA return fell below the Treasury line · 10-16",
+      "AAA earnings in 3 days · 10-19"
     ],
-    "title": "有什么变了"
+    "title": "What changed"
   },
   "data_times": [
     {
@@ -18,75 +18,75 @@
   "glance": {
     "tiles": [
       {
-        "label": "低于价格线",
+        "label": "Below price line",
         "text": "0 / 1"
       },
       {
-        "label": "高过国债的回报",
+        "label": "Return above Treasury",
         "text": "1 / 3"
       },
       {
-        "label": "没有估值的持仓",
+        "label": "Positions without a valuation",
         "text": "1"
       },
       {
-        "label": "14 天内财报",
+        "label": "Earnings within 14 days",
         "text": "1"
       }
     ],
-    "title": "估值一眼"
+    "title": "Valuation at a glance"
   },
   "header": {
     "data_day": "2026-10-16",
     "held_count": 3,
-    "line": "10-16 · 家庭持有 3 家",
-    "title": "持有的公司"
+    "line": "10-16 · household holds 3",
+    "title": "Held companies"
   },
   "holdings": {
     "columns": [
       {
         "numeric": false,
-        "text": "公司"
+        "text": "Company"
       },
       {
         "numeric": true,
-        "text": "占净值"
+        "text": "Share of net value"
       },
       {
         "numeric": true,
-        "text": "价格"
+        "text": "Price"
       },
       {
         "numeric": true,
-        "text": "你的价格线"
+        "text": "Your price line"
       },
       {
         "numeric": true,
-        "text": "差距"
+        "text": "Difference"
       },
       {
         "numeric": true,
-        "text": "回报−10Y"
+        "text": "Return minus 10Y"
       },
       {
         "numeric": true,
-        "text": "市场在赌的增长"
+        "text": "Growth the market bets on"
       },
       {
         "numeric": true,
-        "text": "距高点"
+        "text": "From high"
       },
       {
         "numeric": true,
-        "text": "下次财报"
+        "text": "Next earnings"
       },
       {
         "numeric": false,
-        "text": "波动"
+        "text": "Volatility"
       },
       {
         "numeric": false,
-        "text": "五问"
+        "text": "Five questions"
       }
     ],
     "rows": [
@@ -109,15 +109,15 @@
             "tone": "none"
           },
           {
-            "text": "贵 38%",
+            "text": "38% expensive",
             "tone": "none"
           },
           {
-            "text": "−1.9 点",
+            "text": "−1.9 pts",
             "tone": "down"
           },
           {
-            "text": "年 24.0% 10-15",
+            "text": "24.0% a year 10-15",
             "tone": "none"
           },
           {
@@ -125,28 +125,28 @@
             "tone": "none"
           },
           {
-            "text": "3 天 · 10-19",
+            "text": "3 days · 10-19",
             "tone": "none"
           },
           {
-            "text": "HV30（自有，口径 hv30_v1） 25.3% · IV30 31.9% · IVP 62.0% · 对账不一致",
+            "text": "HV30 (own, basis hv30_v1) 25.3% · IV30 31.9% · IVP 62.0% · reconciliation mismatch",
             "tone": "none"
           },
           {
-            "text": "缺",
+            "text": "n/a",
             "tone": "none"
           }
         ],
         "moat": [
-          "护城河 网络效应",
-          "用户数：100 万",
-          "留存：90%",
-          "份额：40%",
-          "本季没变 · 十年后看不清",
-          "我错了的情形：利润率低于 40%（查看日 2027-02-01）",
-          "我错了的情形：对手降价（查看日 2027-05-01）",
-          "我错了的情形：流失高于 10%（查看日 2027-08-01）",
-          "填写人 owner · 2026-10-01"
+          "Moat network effect",
+          "Users: 1 million",
+          "Retention: 90%",
+          "Share: 40%",
+          "Unchanged this quarter · unclear in ten years",
+          "I am wrong if: margin below 40% (review day 2027-02-01)",
+          "I am wrong if: competitor cuts price (review day 2027-05-01)",
+          "I am wrong if: churn above 10% (review day 2027-08-01)",
+          "Filled in by owner · 2026-10-01"
         ]
       },
       {
@@ -172,11 +172,11 @@
             "tone": "none"
           },
           {
-            "text": "+0.8 点",
+            "text": "+0.8 pts",
             "tone": "up"
           },
           {
-            "text": "年 6.0% 10-15",
+            "text": "6.0% a year 10-15",
             "tone": "none"
           },
           {
@@ -184,20 +184,20 @@
             "tone": "none"
           },
           {
-            "text": "17 天 · 11-02",
+            "text": "17 days · 11-02",
             "tone": "none"
           },
           {
-            "text": "HV30（自有，口径 hv30_v1） 暂无读数 · IV30 暂无读数 · IVP 暂无读数",
+            "text": "HV30 (own, basis hv30_v1) no reading yet · IV30 no reading yet · IVP no reading yet",
             "tone": "none"
           },
           {
-            "text": "缺",
+            "text": "n/a",
             "tone": "none"
           }
         ],
         "moat": [
-          "护城河记录未填"
+          "moat record not entered"
         ]
       },
       {
@@ -223,11 +223,11 @@
             "tone": "none"
           },
           {
-            "text": "缺",
+            "text": "n/a",
             "tone": "none"
           },
           {
-            "text": "缺",
+            "text": "n/a",
             "tone": "none"
           },
           {
@@ -235,30 +235,30 @@
             "tone": "none"
           },
           {
-            "text": "22 天 · 11-07",
+            "text": "22 days · 11-07",
             "tone": "none"
           },
           {
-            "text": "HV30（自有，口径 hv30_v1） 暂无读数 · 自有 IV30 仅美股 · 自有 IV30 仅美股",
+            "text": "HV30 (own, basis hv30_v1) no reading yet · own IV30 US stocks only · own IV30 US stocks only",
             "tone": "none"
           },
           {
-            "text": "缺",
+            "text": "n/a",
             "tone": "none"
           }
         ],
         "moat": [
-          "护城河记录未填"
+          "moat record not entered"
         ]
       }
     ],
-    "volatility_note": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-16"
+    "volatility_note": "own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-16"
   },
   "notes": [
-    "† 仅显示，不影响建议",
-    "回报−10Y：按今天价格的年回报（最保守一档）减十年期国债，单位是百分点",
-    "市场在赌的增长：按 10% 折现率，现价要求公司的自由现金流每年增长多少；这不是预测。",
-    "价格线是你自己给每家公司定的价；系统只比较，不替你定。"
+    "† Shown only, does not affect advice",
+    "Return minus 10Y: annual return at today's price (most conservative case) minus the 10-year Treasury, in percentage points",
+    "Growth the market bets on: at a 10% discount rate, how much the company's free cash flow must grow each year to justify the price; this is not a forecast.",
+    "The price line is the price you set for each company; the system only compares and does not set it."
   ],
   "run_id": "run-demo-0001",
   "run_status": "ok",
@@ -268,31 +268,31 @@
   "stale": {
     "data_time": "2026-10-16T20:00:00+08:00",
     "stale_after": "2026-10-18T08:00:00+08:00",
-    "text": "数据已过期：数据时间 2026-10-16 20:00（吉隆坡）"
+    "text": "Data is out of date: Data time 2026-10-16 20:00 (UTC+8)"
   },
-  "title": "持有的公司",
-  "unvalued": "日本公司暂无反向 DCF：7203",
+  "title": "Held companies",
+  "unvalued": "No reverse DCF yet for Japanese companies: 7203",
   "watch_list": {
     "columns": [
       {
         "numeric": false,
-        "text": "公司"
+        "text": "Company"
       },
       {
         "numeric": true,
-        "text": "价格"
+        "text": "Price"
       },
       {
         "numeric": true,
-        "text": "你的目标价"
+        "text": "Your target price"
       },
       {
         "numeric": true,
-        "text": "还差"
+        "text": "Still short"
       },
       {
         "numeric": true,
-        "text": "到价后占比上限"
+        "text": "Share cap at target price"
       }
     ],
     "rows": [
@@ -321,6 +321,6 @@
         ]
       }
     ],
-    "title": "关注名单"
+    "title": "Watchlist"
   }
 }

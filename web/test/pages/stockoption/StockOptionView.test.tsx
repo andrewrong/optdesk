@@ -69,7 +69,7 @@ describe('stock option view', () => {
 
   it('prints top.iv as written and top.earnings in a secondary badge', async () => {
     const page = await show(ok)
-    expect(page).toContain('IV 24.1% · HV30 缺 · IVP 38')
+    expect(page).toContain('IV 24.1% · HV30 n/a · IVP 38')
     expect(page).toContain(ok.top.iv)
     const badge = [...(host?.querySelectorAll('[data-slot="badge"]') ?? [])].find(
       (el) => el.textContent === ok.top.earnings,

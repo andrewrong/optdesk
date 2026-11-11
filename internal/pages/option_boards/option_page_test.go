@@ -152,16 +152,16 @@ func TestCardsBestPerCompany(t *testing.T) {
 	if len(cards) != 2 || cards[0].(map[string]any)["symbol"] != "AAPL" || cards[1].(map[string]any)["symbol"] != "MSFT" {
 		t.Fatalf("cards = %v", cards)
 	}
-	if got := cards[0].(map[string]any)["contract_line"]; got != "sell put 62 · 11-13 周五 · 3 天 · Δ −0.15" {
+	if got := cards[0].(map[string]any)["contract_line"]; got != "sell put 62 · 11-13 Fri · 3 days · Δ −0.15" {
 		t.Errorf("contract_line = %v", got)
 	}
-	if got := cards[0].(map[string]any)["iv_line"]; got != "IV 38% · HV30 缺 · IVP 缺" {
+	if got := cards[0].(map[string]any)["iv_line"]; got != "IV 38% · HV30 n/a · IVP n/a" {
 		t.Errorf("iv_line = %v", got)
 	}
-	if got := cards[0].(map[string]any)["liquidity_line"]; got != "成交 1240 · 持仓 5310" {
+	if got := cards[0].(map[string]any)["liquidity_line"]; got != "Volume 1240 · Open interest 5310" {
 		t.Errorf("liquidity_line = %v", got)
 	}
-	if got := pane(m)["headline"]; got != "2 个值得看。" {
+	if got := pane(m)["headline"]; got != "2 worth a look." {
 		t.Errorf("headline = %v", got)
 	}
 
@@ -173,7 +173,7 @@ func TestCardsBestPerCompany(t *testing.T) {
 	if n := len(cardsOf(m)); n != 6 {
 		t.Errorf("cards = %d, want at most 6", n)
 	}
-	if got := pane(m)["all_link"].(map[string]any)["text"]; got != "全部 8 个机会" {
+	if got := pane(m)["all_link"].(map[string]any)["text"]; got != "All 8 opportunities" {
 		t.Errorf("all_link = %v", got)
 	}
 }
@@ -181,9 +181,9 @@ func TestCardsBestPerCompany(t *testing.T) {
 func TestVerdictFromStatus(t *testing.T) {
 	t.Parallel()
 	for status, want := range map[string]verdict{
-		"ok":      {"worth", "值得看", "good"},
-		"unknown": {"pending", "数据不全", "warn"},
-		"blocked": {"skip", "不够格", "muted"},
+		"ok":      {"worth", "Worth a look", "good"},
+		"unknown": {"pending", "Incomplete data", "warn"},
+		"blocked": {"skip", "Not eligible", "muted"},
 	} {
 		if got := verdictOf(status); got != want {
 			t.Errorf("%s: %+v, want %+v", status, got, want)
@@ -198,7 +198,7 @@ func TestUnknownGateIsPending(t *testing.T) {
 	for _, r := range tableRowsOf(m) {
 		got = append(got, cellOf(t, r, "verdict")["text"].(string))
 	}
-	if want := "值得看 值得看 值得看 不够格 数据不全"; strings.Join(got, " ") != want {
+	if want := "Worth a look Worth a look Worth a look Not eligible Incomplete data"; strings.Join(got, " ") != want {
 		t.Errorf("verdicts = %v", got)
 	}
 	// the unknown row never becomes a card
@@ -206,7 +206,7 @@ func TestUnknownGateIsPending(t *testing.T) {
 		t.Errorf("cards = %d", n)
 	}
 	// a blocked row with a blocking events gate says so in the E cell
-	if got := cellOf(t, tableRowsOf(m)[3], "earnings")["text"]; got != "E 12-01 在期内" {
+	if got := cellOf(t, tableRowsOf(m)[3], "earnings")["text"]; got != "E 12-01 in window" {
 		t.Errorf("E cell = %v", got)
 	}
 }
@@ -222,7 +222,7 @@ func TestStrikeSpreadCells(t *testing.T) {
 		t.Errorf("spread_pct = %v", c)
 	}
 	c := cellOf(t, rows[4], "spread_pct")
-	if c["reason"] != "missing_input" || c["text"] != "缺 ask" {
+	if c["reason"] != "missing_input" || c["text"] != "missing ask" {
 		t.Errorf("row without ask: %v", c)
 	}
 	if c := cellOf(t, rows[0], "ivp"); c["reason"] != "no_data" {
@@ -238,7 +238,7 @@ func TestStrikeSpreadCells(t *testing.T) {
 	one := candRow(1, "NOS", 1, "ok")
 	one.Spot = nil
 	m = decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
-	if c := cellOf(t, tableRowsOf(m)[0], "strike_pct"); c["reason"] != "missing_input" || c["text"] != "缺 spot" {
+	if c := cellOf(t, tableRowsOf(m)[0], "strike_pct"); c["reason"] != "missing_input" || c["text"] != "missing spot" {
 		t.Errorf("no spot: %v", c)
 	}
 }
@@ -247,7 +247,7 @@ func TestChainGapCell(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: fixtureRows()}}, nil, buildDay))
 	ch := pane(m)["chain"].(map[string]any)
-	if got := ch["summary"]; got != "已选:AAPL 11/13 行权价 $62 Put" {
+	if got := ch["summary"]; got != "Selected: AAPL 11/13 strike $62 Put" {
 		t.Errorf("summary = %v", got)
 	}
 	rows := ch["table"].(map[string]any)["rows"].([]any)
@@ -282,10 +282,10 @@ func TestTableCutAt200(t *testing.T) {
 		t.Errorf("rows = %d", n)
 	}
 	notes := m["notes"].([]any)
-	if len(notes) != 2 || notes[1] != "候选表只显示前 200 个,共 205 个" {
+	if len(notes) != 2 || notes[1] != "Candidate table shows the first 200 of 205" {
 		t.Errorf("notes = %v", notes)
 	}
-	if got := pane(m)["all_link"].(map[string]any)["text"]; got != "全部 205 个机会" {
+	if got := pane(m)["all_link"].(map[string]any)["text"]; got != "All 205 opportunities" {
 		t.Errorf("all_link = %v", got)
 	}
 }
@@ -313,7 +313,7 @@ func TestStaleLabelFreshDay(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: fixtureRows()}}, nil, buildDay))
 	s := optStaleOf(m)
-	if s["data_time"] != "2026-11-10T08:40:00+08:00" || s["stale_after"] != "2026-11-10T23:59:59+08:00" || s["text"] != "数据日 2026-11-10" {
+	if s["data_time"] != "2026-11-10T08:40:00+08:00" || s["stale_after"] != "2026-11-10T23:59:59+08:00" || s["text"] != "Data day 2026-11-10" {
 		t.Errorf("stale = %v", s)
 	}
 	if len(m["gaps"].([]any)) != 0 || m["run_status"] != "ok" {
@@ -327,7 +327,7 @@ func TestStaleLabelStaleDay(t *testing.T) {
 	row.SessionDay = "2026-11-08"
 	m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{"2026-11-08": {row}}}, nil, buildDay))
 	s := optStaleOf(m)
-	if s["data_time"] != "2026-11-10T08:40:00+08:00" || s["stale_after"] != "2026-11-08T23:59:59+08:00" || s["text"] != "数据日 2026-11-08,早于今日" {
+	if s["data_time"] != "2026-11-10T08:40:00+08:00" || s["stale_after"] != "2026-11-08T23:59:59+08:00" || s["text"] != "Data day 2026-11-08, before today" {
 		t.Errorf("stale = %v", s)
 	}
 	gaps := m["gaps"].([]any)
@@ -340,7 +340,8 @@ func TestStaleLabelNoRows(t *testing.T) {
 	t.Parallel()
 	m := decodeMap(t, buildOpt(t, &fakeCands{}, nil, buildDay))
 	s := optStaleOf(m)
-	if s["data_time"] != "2026-11-10T00:00:00+08:00" || s["stale_after"] != s["data_time"] || s["text"] != "没有候选行,候选任务尚未存入" {
+	if s["data_time"] != "2026-11-10T00:00:00+08:00" || s["stale_after"] != s["data_time"] ||
+		s["text"] != "No candidate rows: the candidate job has not stored any yet" {
 		t.Errorf("stale = %v", s)
 	}
 	gaps := m["gaps"].([]any)

@@ -1,4 +1,4 @@
-// The 持仓公司 card shows the text fields of the payload and nothing else. Fixtures are the synthetic payloads of
+// The Held companies card shows the text fields of the payload and nothing else. Fixtures are the synthetic payloads of
 // held-v2/fixtures/, written from the v3 schema alone.
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -61,7 +61,7 @@ describe('HeldCompaniesCard', () => {
     expect([...host.querySelectorAll('[data-companies] th')].map((h) => h.textContent)).toEqual(
       ok.card.columns.map((c) => c.label),
     )
-    expect(ok.card.columns.map((c) => c.label)).toEqual(['公司', '价格', '财报日', '日涨跌', '5日涨跌'])
+    expect(ok.card.columns.map((c) => c.label)).toEqual(['Company', 'Price', 'Earnings date', 'Day change', '5-day change'])
     expect(host.querySelector('[data-volatility]')).toBeNull()
   })
 
@@ -69,25 +69,25 @@ describe('HeldCompaniesCard', () => {
     await show(ok)
     const rows = bodyRows()
     expect(rows).toHaveLength(ok.card.rows.length)
-    expect(rows[0]).toEqual(['AMD', '$214.30', '10-28 盘后', '+3.4% 大幅', '+5.0%'])
+    expect(rows[0]).toEqual(['AMD', '$214.30', '10-28 after hours', '+3.4% big move', '+5.0%'])
     expect(rows[1]).toEqual([
       'MSFT',
-      expect.stringContaining('无报价'),
+      expect.stringContaining('No quote'),
       '11-12',
       '−0.4% · 10-22',
       '−1.0%',
     ])
     expect(rows[1]![1]).toContain('—')
-    expect(rows[2]).toEqual(['NVDA', '$131.55', '11-19 盘前', '+0.8%', '−8.4% 大幅'])
+    expect(rows[2]).toEqual(['NVDA', '$131.55', '11-19 pre-market', '+0.8%', '−8.4% big move'])
   })
 
-  it('shows 盘前 or 盘后 where the source states it, the date alone on the other row, named once in the notes', async () => {
+  it('shows pre-market or after hours where the source states it, the date alone on the other row, named once in the notes', async () => {
     await show(ok)
     const rows = bodyRows()
-    expect(rows[0]![2]).toMatch(/盘前|盘后/)
-    expect(rows[2]![2]).toMatch(/盘前|盘后/)
+    expect(rows[0]![2]).toMatch(/pre-market|after hours/)
+    expect(rows[2]![2]).toMatch(/pre-market|after hours/)
     expect(rows[1]![2]).toBe('11-12')
-    expect(rows[1]![2]).not.toMatch(/盘前|盘后/)
+    expect(rows[1]![2]).not.toMatch(/pre-market|after hours/)
     const named = ok.card.notes.filter((n) => n.includes('MSFT'))
     expect(named).toHaveLength(1)
     expect(host.textContent!.split(named[0]!)).toHaveLength(2)
@@ -96,7 +96,7 @@ describe('HeldCompaniesCard', () => {
   it('shows the news column as a gap that states the missing source', async () => {
     await show(ok)
     const gaps = [...host.querySelectorAll('[data-gaps] li')].map((l) => l.textContent)
-    expect(gaps).toEqual(['近 5 日消息：暂无数据源'])
+    expect(gaps).toEqual(['News, last 5 days: no data source yet'])
   })
 
   it('aligns the first column left and the others right', async () => {
@@ -112,7 +112,7 @@ describe('HeldCompaniesCard', () => {
     expect(trs[1]!.querySelectorAll('td')[3]!.querySelector('.text-down')).not.toBeNull()
   })
 
-  it('sorts the 财报日 column by the value (ISO date) of the cells', async () => {
+  it('sorts the earnings date column by the value (ISO date) of the cells', async () => {
     const sorted = structuredClone(ok)
     const rows = sorted.card.rows
     // texts that would sort differently from their dates
@@ -166,8 +166,8 @@ describe('HeldCompaniesCard', () => {
       [...host.querySelectorAll('[data-companies] tbody tr')].map(
         (tr) => tr.querySelectorAll('td')[col]!.querySelector('[data-slot=badge]')?.textContent ?? null,
       )
-    expect(marks(3)).toEqual(['大幅', null, null])
-    expect(marks(4)).toEqual([null, null, '大幅'])
+    expect(marks(3)).toEqual(['big move', null, null])
+    expect(marks(4)).toEqual([null, null, 'big move'])
   })
 
   it('shows sharp_note and has no mark the payload did not send', async () => {

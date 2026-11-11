@@ -6,14 +6,14 @@ type ChainRow = Payload['chain']['rows'][number]
 type PayloadCell = ChainRow['bid']
 
 const COLUMNS: Column[] = [
-  { id: 'expiry', label: '到期' },
-  { id: 'right', label: '类型' },
-  { id: 'strike', label: '行权价', align: 'right' },
-  { id: 'status', label: '状态' },
-  { id: 'bid', label: '买价', align: 'right' },
-  { id: 'ask', label: '卖价', align: 'right' },
-  { id: 'last', label: '成交价', align: 'right' },
-  { id: 'volume', label: '成交量', align: 'right' },
+  { id: 'expiry', label: 'Expiry' },
+  { id: 'right', label: 'Type' },
+  { id: 'strike', label: 'Strike', align: 'right' },
+  { id: 'status', label: 'Status' },
+  { id: 'bid', label: 'Bid', align: 'right' },
+  { id: 'ask', label: 'Ask', align: 'right' },
+  { id: 'last', label: 'Last', align: 'right' },
+  { id: 'volume', label: 'Volume', align: 'right' },
   { id: 'open_interest', label: 'OI', align: 'right' },
   { id: 'iv', label: 'IV', align: 'right' },
   { id: 'delta', label: 'Δ', align: 'right' },

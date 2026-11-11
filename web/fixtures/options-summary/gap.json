@@ -15,26 +15,26 @@
   ],
   "run_status": "partial",
   "card": {
-    "title": "期权概览",
-    "say": "本月卖出 3 笔，收取权利金 +$310。",
-    "subtitle": "示例数据",
+    "title": "Options overview",
+    "say": "Sold 3 trades this month, premium collected +$310.",
+    "subtitle": "Sample data",
     "stale": {
       "data_time": "2026-10-23T21:00:00Z",
       "stale_after": "2026-10-27T21:00:00Z",
-      "text": "数据截至 10-23 收盘"
+      "text": "Data as of 10-23 close"
     },
     "tiles": {
       "sold_count_month": {
-        "label": "本月卖出",
+        "label": "Sold this month",
         "figure": {
           "value": 3,
-          "text": "3 笔",
+          "text": "3 trades",
           "unit": "structures"
         },
-        "caption": "示例"
+        "caption": "Sample"
       },
       "premium_month_usd": {
-        "label": "本月权利金",
+        "label": "Premium this month",
         "figure": {
           "value": 310.0,
           "text": "+$310",
@@ -43,17 +43,17 @@
         }
       },
       "open_premium_usd": {
-        "label": "未平权利金",
+        "label": "Open premium",
         "figure": {
           "reason": "missing_quote",
-          "text": "缺报价，无法估算"
+          "text": "No quote, cannot estimate"
         }
       },
       "max_loss_usd": {
-        "label": "最大亏损",
+        "label": "Max loss",
         "figure": {
           "reason": "unsupported_currency",
-          "text": "含非美元持仓，暂不支持"
+          "text": "Includes non-USD positions, not supported yet"
         },
         "caption": null
       }
@@ -61,7 +61,7 @@
     "premium_series_6m": [
       {
         "month": "2026-05",
-        "label": "5月",
+        "label": "May",
         "premium": {
           "value": 120.0,
           "text": "+$120",
@@ -77,7 +77,7 @@
       },
       {
         "month": "2026-06",
-        "label": "6月",
+        "label": "Jun",
         "premium": {
           "value": -30.0,
           "text": "−$30",
@@ -93,7 +93,7 @@
       },
       {
         "month": "2026-07",
-        "label": "7月",
+        "label": "Jul",
         "premium": {
           "value": 200.5,
           "text": "+$200",
@@ -109,7 +109,7 @@
       },
       {
         "month": "2026-08",
-        "label": "8月",
+        "label": "Aug",
         "premium": {
           "value": 80.0,
           "text": "+$80",
@@ -125,7 +125,7 @@
       },
       {
         "month": "2026-09",
-        "label": "9月",
+        "label": "Sep",
         "premium": {
           "value": 150.0,
           "text": "+$150",
@@ -141,7 +141,7 @@
       },
       {
         "month": "2026-10",
-        "label": "10月",
+        "label": "Oct",
         "premium": {
           "value": 310.0,
           "text": "+$310",
@@ -156,19 +156,19 @@
         }
       }
     ],
-    "premium_series_text": "近六个月权利金",
-    "premium_series_caption": "示例数据，单位美元",
+    "premium_series_text": "Premium, last six months",
+    "premium_series_caption": "Sample data, in USD",
     "notes": [
-      "示例数据，非真实账户"
+      "Sample data, not a real account"
     ],
     "gaps": [
       {
         "reason": "missing_quote",
-        "text": "一笔持仓缺报价"
+        "text": "One position has no quote"
       },
       {
         "reason": "unsupported_currency",
-        "text": "一笔持仓为非美元"
+        "text": "One position is not in USD"
       }
     ]
   }

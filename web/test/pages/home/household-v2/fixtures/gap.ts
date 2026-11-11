@@ -4,26 +4,26 @@ import type { HouseholdSummary } from "../../../../../src/generated/household_su
 export const gap = {
   "build_id": "build-demo-0001",
   "card": {
-    "data_times_text": "净值 10-21 · 现金 10-21 · 上一交易日 10-21",
+    "data_times_text": "Net value 10-21 · Cash 10-21 · Previous trading day 10-21",
     "gaps": [
       {
         "reason": "missing_input",
-        "text": "本月还没有日结单"
+        "text": "No daily statement this month yet"
       },
       {
         "reason": "missing_input",
-        "text": "缺国家分布，现金占比暂不显示"
+        "text": "No country breakdown, cash share not shown yet"
       }
     ],
     "notes": [
-      "上一交易日的变化可能含持仓转入转出。"
+      "The previous-day change may include position transfers in or out."
     ],
     "stale": {
       "data_time": "2026-10-22T05:05:00+08:00",
       "stale_after": "2026-10-23T05:35:00+08:00",
-      "text": "数据日 10-21"
+      "text": "Data day 10-21"
     },
-    "subtitle": "两户合计 · 数据日 10-21",
+    "subtitle": "Two accounts total · data day 10-21",
     "tiles": {
       "cash": {
         "caption": {
@@ -32,12 +32,12 @@ export const gap = {
           "unit": "usd_signed",
           "value": 156700
         },
-        "explain": "各成员账户的现金（券商 TotalCashValue，美元）相加。大字是现金占净值的比例，小字是金额；占比要求现金、净值、国家分布是同一天的数据。现金为负是融资借款，标签改为融资借款，占比显示融资中。",
+        "explain": "Sum of member cash (broker TotalCashValue, USD). Large figure: cash share of net value; small: amount. Needs same-day cash, net value and countries. Negative cash is a Margin loan, shown On margin.",
         "figure": {
           "reason": "missing_input",
-          "text": "缺国家分布，现金占比暂不显示"
+          "text": "No country breakdown, cash share not shown yet"
         },
-        "label": "现金"
+        "label": "Cash"
       },
       "day_change": {
         "caption": {
@@ -46,41 +46,41 @@ export const gap = {
           "unit": "percent",
           "value": 0.45
         },
-        "explain": "最近一个报告日的 Flex 日报总值，减去前一个报告日的总值，各成员相加，美元。包含当天的入金出金和持仓转入转出，不是纯收益。百分比是这个变化除以前一个美国交易日的总值，该总值缺失时不显示。",
+        "explain": "Flex daily total of the latest report day minus the previous one, summed over members, USD. Includes deposits, withdrawals and transfers, not pure return. Percentage is over the prior US day total.",
         "figure": {
           "text": "+$1,860",
           "tone": "up",
           "unit": "usd_signed",
           "value": 1860
         },
-        "label": "上一交易日"
+        "label": "Previous trading day"
       },
       "month_to_date": {
         "caption": {
           "reason": "missing_input",
-          "text": "本月还没有日结单"
+          "text": "No daily statement this month yet"
         },
-        "explain": "本月变化（月末总值减月初总值再减入金，美元）除以月初总值，用简单法，不是时间加权收益。月初为 2026-10-01。入金在月内的先后不计。",
+        "explain": "Month change (month-end total minus month-start total minus deposits, USD) over the month-start total, simple method, not time-weighted. The month starts on 2026-10-01. Deposit timing is ignored.",
         "figure": {
           "reason": "missing_input",
-          "text": "本月还没有日结单"
+          "text": "No daily statement this month yet"
         },
-        "label": "本月至今（不含出入金）"
+        "label": "Month to date (excl. deposits and withdrawals)"
       },
       "net_worth": {
         "caption": {
           "text": "USD"
         },
-        "explain": "家庭各成员账户的净清算值（券商 NetLiquidation，美元）相加，取最近一次盘后快照；任一成员缺快照或快照时间相隔过久则不显示。含日元等非美元股票时按券商账本汇率折算，所以带≈。",
+        "explain": "Sum of member net liquidation values (broker NetLiquidation, USD), latest after-close snapshot; hidden if a member has none or times are too far apart. Non-USD stocks (JPY) use broker rates, hence ≈.",
         "figure": {
           "text": "≈$412,300",
           "unit": "USD",
           "value": 412300
         },
-        "label": "净值"
+        "label": "Net value"
       }
     },
-    "title": "家庭概览"
+    "title": "Household overview"
   },
   "currency": "USD",
   "data_times": [

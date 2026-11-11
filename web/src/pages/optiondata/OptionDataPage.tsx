@@ -69,7 +69,7 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
             ) : null}
           </span>
           <span className="text-muted-foreground">{underlying.session_day}</span>
-          <span data-field="vol_line">{underlying.vol_line ?? '缺'}</span>
+          <span data-field="vol_line">{underlying.vol_line ?? 'n/a'}</span>
           <span data-field="earnings_text">
             {underlying.earnings_text ? (
               <Badge
@@ -79,7 +79,7 @@ export function OptionDataPage({ payload }: { payload: Payload }) {
                 {underlying.earnings_text}
               </Badge>
             ) : (
-              '没有数据来源'
+              'No data source'
             )}
           </span>
         </CardContent>

@@ -1,4 +1,4 @@
-// The 宏观 card shows the fields of a macro_summary v2 payload and computes nothing. Fixtures are written from the
+// The Macro card shows the fields of a macro_summary v2 payload and computes nothing. Fixtures are written from the
 // schema alone in ./macro-v2/fixtures/; every expected text is read from them.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -64,7 +64,7 @@ describe('MacroCard (macro_summary v2)', () => {
       ok.card.ease.ticks,
     )
     expect(host.querySelector('[data-neutral-band]')?.textContent).toBe(
-      `中性区间 ${ok.card.ease.neutral_band.low.text} – ${ok.card.ease.neutral_band.high.text}`,
+      `Neutral band ${ok.card.ease.neutral_band.low.text} – ${ok.card.ease.neutral_band.high.text}`,
     )
     expect(host.textContent).toContain(ok.card.ease.reading_text)
     expect(host.querySelector('[data-week-change]')?.textContent).toContain(
@@ -79,15 +79,15 @@ describe('MacroCard (macro_summary v2)', () => {
   it('labels the week change', async () => {
     await show(ok)
     const text = host.querySelector('[data-week-change]')?.textContent ?? ''
-    expect(text.startsWith('较上周')).toBe(true)
-    expect(text.indexOf('较上周')).toBeLessThan(text.indexOf(ok.card.ease.week_change.text))
+    expect(text.startsWith('vs last week')).toBe(true)
+    expect(text.indexOf('vs last week')).toBeLessThan(text.indexOf(ok.card.ease.week_change.text))
     expect(text.endsWith(ok.card.ease.week_change.text)).toBe(true)
   })
 
-  it('shows the events of ok with the Gap text of 前值', async () => {
+  it('shows the events of ok with the Gap text of Previous', async () => {
     await show(ok)
     const headers = [...host.querySelectorAll('[data-events] th')].map((h) => h.textContent)
-    expect(headers).toEqual(['日期', '事件', '前值'])
+    expect(headers).toEqual(['Date', 'Event', 'Previous'])
     const rows = [...host.querySelectorAll('[data-events] tbody tr')].map((r) =>
       [...r.querySelectorAll('td')].map((c) => c.textContent),
     )

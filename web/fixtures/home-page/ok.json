@@ -7,45 +7,45 @@
   "generated_at": "2026-10-26T21:30:00Z",
   "data_times": [],
   "run_status": "ok",
-  "title": "今日总览",
-  "say": "五张卡片，一页看完。",
-  "gap_line": "2 处缺口，见下",
+  "title": "Today",
+  "say": "Five cards, one page.",
+  "gap_line": "2 gaps, see below",
   "overview": {
     "gaps": [
       {
-        "card": "宏观",
-        "text": "前值暂缺"
+        "card": "Macro",
+        "text": "Previous: no data yet"
       },
       {
-        "card": "持仓公司",
-        "text": "近 5 日消息：暂无数据源"
+        "card": "Held companies",
+        "text": "News, last 5 days: no data source yet"
       }
     ],
     "items": [
       {
         "href": "/macro",
-        "label": "宏观",
-        "text": "松紧度中性，较上周 −0.2。本周的事件是 CPI。"
+        "label": "Macro",
+        "text": "Ease is neutral, −0.2 vs last week. The event this week is CPI."
       },
       {
         "href": "/macro",
-        "label": "市场概览",
-        "text": "隐含波动率高于已实现，差 +2.0 个波动点。"
+        "label": "Market overview",
+        "text": "Implied volatility is above realised, diff +2.0 vol points."
       },
       {
         "href": "/household",
-        "label": "家庭概览",
-        "text": "两户合计 · 数据日 10-21"
+        "label": "Household overview",
+        "text": "Two accounts total · data day 10-21"
       },
       {
         "href": "/positions",
-        "label": "持仓公司",
-        "text": "持有 9 家 · 3 家 28 日内财报 · 近 5 日消息：暂无数据源。"
+        "label": "Held companies",
+        "text": "Holding 9 · 3 with earnings within 28 days · News, last 5 days: no data source yet."
       },
       {
         "href": "/options",
-        "label": "期权概览",
-        "text": "本月卖出 5 组，收取权利金 +$310。"
+        "label": "Options overview",
+        "text": "Sold 5 groups this month, premium collected +$310."
       }
     ]
   },
@@ -53,18 +53,18 @@
   "household": {
     "build_id": "build-demo-0001",
     "card": {
-      "data_times_text": "净值 10-21 · 现金 10-21 · 上一交易日 10-21 · 本月至今 截至 10-21",
+      "data_times_text": "Net value 10-21 · Cash 10-21 · Previous trading day 10-21 · Month to date as of 10-21",
       "gaps": [],
       "notes": [
-        "上一交易日的变化可能含持仓转入转出。",
-        "本月至今已扣除入金和出金，按简单法计算。"
+        "The previous-day change may include position transfers in or out.",
+        "Month to date excludes deposits and withdrawals, simple method."
       ],
       "stale": {
         "data_time": "2026-10-22T05:05:00+08:00",
         "stale_after": "2026-10-23T05:35:00+08:00",
-        "text": "数据日 10-21"
+        "text": "Data day 10-21"
       },
-      "subtitle": "两户合计 · 数据日 10-21",
+      "subtitle": "Two accounts total · data day 10-21",
       "tiles": {
         "cash": {
           "caption": {
@@ -73,13 +73,13 @@
             "unit": "usd_signed",
             "value": 156700
           },
-          "explain": "各成员账户的现金（券商 TotalCashValue，美元）相加。大字是现金占净值的比例，小字是金额；占比要求现金、净值、国家分布是同一天的数据。现金为负是融资借款，标签改为融资借款，占比显示融资中。",
+          "explain": "Sum of member cash (broker TotalCashValue, USD). Large figure: cash share of net value; small: amount. Needs same-day cash, net value and countries. Negative cash is a Margin loan, shown On margin.",
           "figure": {
             "text": "38%",
             "unit": "share_percent",
             "value": 38
           },
-          "label": "现金"
+          "label": "Cash"
         },
         "day_change": {
           "caption": {
@@ -88,14 +88,14 @@
             "unit": "percent",
             "value": 0.45
           },
-          "explain": "最近一个报告日的 Flex 日报总值，减去前一个报告日的总值，各成员相加，美元。包含当天的入金出金和持仓转入转出，不是纯收益。百分比是这个变化除以前一个美国交易日的总值，该总值缺失时不显示。",
+          "explain": "Flex daily total of the latest report day minus the previous one, summed over members, USD. Includes deposits, withdrawals and transfers, not pure return. Percentage is over the prior US day total.",
           "figure": {
             "text": "+$1,860",
             "tone": "up",
             "unit": "usd_signed",
             "value": 1860
           },
-          "label": "上一交易日"
+          "label": "Previous trading day"
         },
         "month_to_date": {
           "caption": {
@@ -104,29 +104,29 @@
             "unit": "percent",
             "value": 2.94
           },
-          "explain": "本月变化（月末总值减月初总值再减入金，美元）除以月初总值，用简单法，不是时间加权收益。月初为 2026-10-01。入金在月内的先后不计。",
+          "explain": "Month change (month-end total minus month-start total minus deposits, USD) over the month-start total, simple method, not time-weighted. The month starts on 2026-10-01. Deposit timing is ignored.",
           "figure": {
             "text": "+$11,700",
             "tone": "up",
             "unit": "usd_signed",
             "value": 11700
           },
-          "label": "本月至今（不含出入金）"
+          "label": "Month to date (excl. deposits and withdrawals)"
         },
         "net_worth": {
           "caption": {
-            "text": "家庭(本人+配偶) ≈$374,300 · 女儿(单独计) ≈$38,000 (已含在合计内)"
+            "text": "Household (me + spouse) ≈$374,300 · Daughter (counted separately) ≈$38,000 (already in the total)"
           },
-          "explain": "家庭各成员账户的净清算值（券商 NetLiquidation，美元）相加，取最近一次盘后快照；任一成员缺快照或快照时间相隔过久则不显示。含日元等非美元股票时按券商账本汇率折算，所以带≈。",
+          "explain": "Sum of member net liquidation values (broker NetLiquidation, USD), latest after-close snapshot; hidden if a member has none or times are too far apart. Non-USD stocks (JPY) use broker rates, hence ≈.",
           "figure": {
             "text": "≈$412,300",
             "unit": "USD",
             "value": 412300
           },
-          "label": "净值"
+          "label": "Net value"
         }
       },
-      "title": "家庭概览"
+      "title": "Household overview"
     },
     "currency": "USD",
     "data_times": [
@@ -152,35 +152,35 @@
       "columns": [
         {
           "id": "company",
-          "label": "公司"
+          "label": "Company"
         },
         {
           "id": "price",
-          "label": "价格"
+          "label": "Price"
         },
         {
           "id": "earnings",
-          "label": "财报日"
+          "label": "Earnings date"
         },
         {
           "id": "day_change",
-          "label": "日涨跌"
+          "label": "Day change"
         },
         {
           "id": "five_day_change",
-          "label": "5日涨跌"
+          "label": "5-day change"
         }
       ],
-      "data_times_text": "美股数据日 10-23 · 日股数据日 10-23",
+      "data_times_text": "US data day 10-23 · JP data day 10-23",
       "gaps": [
         {
           "kind": "gap",
           "reason": "no_news_source",
-          "text": "近 5 日消息：暂无数据源"
+          "text": "News, last 5 days: no data source yet"
         }
       ],
       "notes": [
-        "MSFT 财报日只显示日期：盘前、盘后时间暂无数据源。"
+        "MSFT earnings date shows the date only: pre-market and after-hours times have no data source yet."
       ],
       "rows": [
         {
@@ -194,12 +194,12 @@
           },
           "day_sharp": {
             "kind": "sharp",
-            "text": "大幅"
+            "text": "big move"
           },
           "earnings": {
             "date": "2026-10-28",
             "kind": "value",
-            "text": "10-28 盘后"
+            "text": "10-28 after hours"
           },
           "five_day_change": {
             "kind": "value",
@@ -223,21 +223,21 @@
             "hv30": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "HV30（自有，口径 hv30_v1）：暂无读数"
+              "text": "HV30 (own, basis hv30_v1): no reading yet"
             },
             "iv30": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "自有 iv30：暂无读数"
+              "text": "Own iv30: no reading yet"
             },
             "ivp": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "自有 ivp：暂无读数"
+              "text": "Own ivp: no reading yet"
             },
-            "label": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23",
-            "reconciliation": "缺",
-            "source": "自有 own"
+            "label": "Own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-23",
+            "reconciliation": "n/a",
+            "source": "Own"
           }
         },
         {
@@ -270,7 +270,7 @@
           "price": {
             "kind": "gap",
             "reason": "missing_quote",
-            "text": "无报价"
+            "text": "No quote"
           },
           "symbol": "MSFT",
           "volatility": {
@@ -278,21 +278,21 @@
             "hv30": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "HV30（自有，口径 hv30_v1）：暂无读数"
+              "text": "HV30 (own, basis hv30_v1): no reading yet"
             },
             "iv30": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "自有 iv30：暂无读数"
+              "text": "Own iv30: no reading yet"
             },
             "ivp": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "自有 ivp：暂无读数"
+              "text": "Own ivp: no reading yet"
             },
-            "label": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23",
-            "reconciliation": "缺",
-            "source": "自有 own"
+            "label": "Own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-23",
+            "reconciliation": "n/a",
+            "source": "Own"
           }
         },
         {
@@ -310,7 +310,7 @@
           "earnings": {
             "date": "2026-11-19",
             "kind": "value",
-            "text": "11-19 盘前"
+            "text": "11-19 pre-market"
           },
           "five_day_change": {
             "kind": "value",
@@ -321,7 +321,7 @@
           },
           "five_day_sharp": {
             "kind": "sharp",
-            "text": "大幅"
+            "text": "big move"
           },
           "price": {
             "kind": "value",
@@ -335,33 +335,33 @@
             "hv30": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "HV30（自有，口径 hv30_v1）：暂无读数"
+              "text": "HV30 (own, basis hv30_v1): no reading yet"
             },
             "iv30": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "自有 iv30：暂无读数"
+              "text": "Own iv30: no reading yet"
             },
             "ivp": {
               "kind": "gap",
               "reason": "no_data",
-              "text": "自有 ivp：暂无读数"
+              "text": "Own ivp: no reading yet"
             },
-            "label": "自有 own，口径 hv30_v1 / iv30_v1 / ivp_v1 · 数据日 10-23",
-            "reconciliation": "缺",
-            "source": "自有 own"
+            "label": "Own, basis hv30_v1 / iv30_v1 / ivp_v1 · data day 10-23",
+            "reconciliation": "n/a",
+            "source": "Own"
           }
         }
       ],
-      "say": "持有 9 家 · 3 家 28 日内财报 · 近 5 日消息：暂无数据源。",
-      "sharp_note": "日涨跌 3% 及以上、5日涨跌 8% 及以上标“大幅”。",
+      "say": "Holding 9 · 3 with earnings within 28 days · News, last 5 days: no data source yet.",
+      "sharp_note": "Day change of 3% or more and 5-day change of 8% or more are marked big move.",
       "stale": {
         "data_time": "2026-10-23T21:00:00+08:00",
         "is_stale": false,
-        "text": "数据日 10-23"
+        "text": "Data day 10-23"
       },
-      "subtitle": "财报日历与变化",
-      "title": "持仓公司"
+      "subtitle": "Earnings calendar and changes",
+      "title": "Held companies"
     },
     "data_times": [
       {
@@ -380,9 +380,9 @@
   "macro": {
     "build_id": "build-demo-0001",
     "card": {
-      "data_times_text": "松紧度数据日 10-23；事件日期按发布日历，无发布时间。",
+      "data_times_text": "Ease data day 10-23; event dates follow the release calendar, no release time.",
       "ease": {
-        "aria_text": "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 34 到 66。",
+        "aria_text": "Ease 56, neutral, −0.2 vs last week; fixed scale 0 to 100, neutral band 34 to 66.",
         "figure": {
           "text": "56",
           "unit": "index_points",
@@ -405,7 +405,7 @@
             "value": 34.0
           }
         },
-        "reading_text": "当前 56，中性；固定刻度 0 到 100。",
+        "reading_text": "Now 56, neutral; fixed scale 0 to 100.",
         "ticks": [
           "0",
           "25",
@@ -422,43 +422,43 @@
       "events": [
         {
           "date": "2026-10-28",
-          "name_text": "美国 CPI",
-          "previous": "3.0%（9月）",
-          "when_text": "周三 10-28"
+          "name_text": "US CPI",
+          "previous": "3.0% (Sep)",
+          "when_text": "Wed 10-28"
         },
         {
           "date": "2026-11-06",
-          "name_text": "美国非农就业",
-          "previous": "+12.0 万（9月）",
-          "when_text": "周五 11-06"
+          "name_text": "US nonfarm payrolls",
+          "previous": "+120k (Sep)",
+          "when_text": "Fri 11-06"
         },
         {
           "date": "2026-11-17",
-          "name_text": "美国零售销售",
+          "name_text": "US retail sales",
           "previous": {
             "reason": "no_data",
-            "text": "前值暂缺"
+            "text": "Previous: no data yet"
           },
-          "when_text": "周二 11-17"
+          "when_text": "Tue 11-17"
         }
       ],
       "gaps": [
         {
           "reason": "no_data",
-          "text": "前值暂缺"
+          "text": "Previous: no data yet"
         }
       ],
       "notes": [
-        "日期来自 FRED 发布日历和央行日程，只有日期，没有发布时间。",
-        "前值是序列最新存储的一期，标注所属月份；没有存储或没有对应序列的标为暂缺。"
+        "Dates come from the FRED release calendar and central bank schedules; dates only, no release time.",
+        "Previous is the latest stored period of the series, labelled with its month; with no stored value or no matching series it shows n/a."
       ],
-      "say": "松紧度中性，较上周 −0.2。本周的事件是 CPI。",
+      "say": "Ease is neutral, −0.2 vs last week. The event this week is CPI.",
       "stale": {
         "data_time": "2026-10-23T00:00:00+08:00",
         "stale_after": "2026-10-27T09:30:00+08:00",
-        "text": "数据日 10-23"
+        "text": "Data day 10-23"
       },
-      "title": "宏观"
+      "title": "Macro"
     },
     "data_times": [
       {
@@ -489,12 +489,12 @@
     ],
     "run_status": "ok",
     "card": {
-      "title": "市场概览",
-      "say": "隐含波动率高于已实现，差 +2.0 个波动点。",
-      "subtitle": "示例数据",
+      "title": "Market overview",
+      "say": "Implied volatility is above realised, diff +2.0 vol points.",
+      "subtitle": "Sample data",
       "stale": {
         "data_time": "2026-10-23T21:00:00Z",
-        "text": "数据截至 10-23 收盘",
+        "text": "Data as of 10-23 close",
         "is_stale": false
       },
       "chart": {
@@ -711,22 +711,22 @@
           }
         ],
         "series_names": [
-          "收盘",
-          "200日均线",
-          "区间"
+          "close",
+          "200-day average",
+          "Range"
         ],
         "end_labels": [
           "09-14",
           "10-23"
         ],
-        "aria_text": "示例走势图，共三十个交易日，收盘、200日均线和区间"
+        "aria_text": "Sample chart, thirty trading days, close, 200-day average and range"
       },
       "index_table": {
         "columns": [
-          "指数",
-          "隐含波动率",
-          "20日已实现",
-          "差值"
+          "Index",
+          "Implied volatility",
+          "20-day realised",
+          "Diff"
         ],
         "rows": [
           {
@@ -750,7 +750,7 @@
               "unit": "vol_points",
               "tone": "up"
             },
-            "source_text": "示例来源"
+            "source_text": "Sample source"
           },
           {
             "name": "NDX",
@@ -773,7 +773,7 @@
               "unit": "vol_points",
               "tone": "up"
             },
-            "source_text": "示例来源"
+            "source_text": "Sample source"
           },
           {
             "name": "RUT",
@@ -796,7 +796,7 @@
               "unit": "vol_points",
               "tone": "down"
             },
-            "source_text": "示例来源"
+            "source_text": "Sample source"
           }
         ]
       },
@@ -810,7 +810,7 @@
             "unit": "index_points"
           },
           "day": "10-23",
-          "source_text": "示例序列"
+          "source_text": "Sample series"
         },
         {
           "name": "VXN",
@@ -821,7 +821,7 @@
             "unit": "index_points"
           },
           "day": "10-23",
-          "source_text": "示例序列"
+          "source_text": "Sample series"
         },
         {
           "name": "RVX",
@@ -832,15 +832,15 @@
             "unit": "index_points"
           },
           "day": "10-23",
-          "source_text": "示例序列"
+          "source_text": "Sample series"
         }
       ],
-      "vol_indices_note": "指数水平以发布方点数计，不并入表格。",
+      "vol_indices_note": "Index levels are in the publisher's points and are not added to the table.",
       "notes": [
-        "示例数据，非真实行情"
+        "Sample data, not real quotes"
       ],
       "gaps": [],
-      "data_times_text": "数据时间 10-23"
+      "data_times_text": "Data times 10-23"
     }
   },
   "options": {
@@ -860,27 +860,27 @@
     ],
     "run_status": "ok",
     "card": {
-      "title": "期权概览",
-      "say": "本月卖出 5 组，收取权利金 +$310。",
-      "subtitle": "示例数据",
+      "title": "Options overview",
+      "say": "Sold this month: 5, premium collected +$310.",
+      "subtitle": "Sample data",
       "stale": {
         "data_time": "2026-10-23T21:00:00Z",
-        "text": "数据截至 10-23 收盘",
+        "text": "Data as of the 10-23 close",
         "is_stale": false
       },
       "tiles": {
         "sold_count_month": {
-          "label": "本月卖出",
+          "label": "Sold this month",
           "figure": {
             "kind": "value",
             "value": 3,
-            "text": "5 组",
+            "text": "5 sold",
             "unit": "structures"
           },
-          "caption": "示例"
+          "caption": "Sample"
         },
         "premium_month_usd": {
-          "label": "本月权利金",
+          "label": "Premium this month",
           "figure": {
             "kind": "value",
             "value": 310,
@@ -890,7 +890,7 @@
           }
         },
         "open_premium_usd": {
-          "label": "未平权利金",
+          "label": "Open premium",
           "figure": {
             "kind": "value",
             "value": 1250.5,
@@ -899,7 +899,7 @@
           }
         },
         "max_loss_usd": {
-          "label": "最大亏损",
+          "label": "Max loss",
           "figure": {
             "kind": "value",
             "value": 4000,
@@ -911,7 +911,7 @@
       "premium_series_6m": [
         {
           "month": "2026-05",
-          "label": "5月",
+          "label": "May",
           "premium": {
             "kind": "value",
             "value": 120,
@@ -929,7 +929,7 @@
         },
         {
           "month": "2026-06",
-          "label": "6月",
+          "label": "Jun",
           "premium": {
             "kind": "value",
             "value": -30,
@@ -947,7 +947,7 @@
         },
         {
           "month": "2026-07",
-          "label": "7月",
+          "label": "Jul",
           "premium": {
             "kind": "value",
             "value": 200.5,
@@ -965,7 +965,7 @@
         },
         {
           "month": "2026-08",
-          "label": "8月",
+          "label": "Aug",
           "premium": {
             "kind": "value",
             "value": 80,
@@ -983,7 +983,7 @@
         },
         {
           "month": "2026-09",
-          "label": "9月",
+          "label": "Sep",
           "premium": {
             "kind": "value",
             "value": 150,
@@ -1001,7 +1001,7 @@
         },
         {
           "month": "2026-10",
-          "label": "10月",
+          "label": "Oct",
           "premium": {
             "kind": "value",
             "value": 310,
@@ -1018,11 +1018,11 @@
           }
         }
       ],
-      "premium_series_text": "近六个月权利金",
-      "closed_series_text": "近六个月已平仓权利金",
-      "premium_series_caption": "示例数据，单位美元",
+      "premium_series_text": "Premium, last 6 months",
+      "closed_series_text": "Closed premium, last 6 months",
+      "premium_series_caption": "Sample data, in US dollars",
       "notes": [
-        "示例数据，非真实账户"
+        "Sample data, not a real account"
       ],
       "gaps": []
     }

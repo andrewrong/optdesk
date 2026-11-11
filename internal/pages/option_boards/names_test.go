@@ -78,7 +78,7 @@ func TestNamesTicker(t *testing.T) {
 	if strings.Join(table, ",") != "AAPL,AAPL,MSFT,MSFT,MSFT" {
 		t.Errorf("table = %v", table)
 	}
-	if !strings.Contains(chain, "期权链 · AAPL") || !strings.Contains(chain, "已选:AAPL ") {
+	if !strings.Contains(chain, "Option chain · AAPL") || !strings.Contains(chain, "Selected: AAPL ") {
 		t.Errorf("chain = %s", chain)
 	}
 	if len(f.calls) != 1 || !slices.Equal(f.calls[0], []int64{1, 2}) {
@@ -137,11 +137,11 @@ func TestChainDayNoteShown(t *testing.T) {
 	t.Parallel()
 	m := optionPageOf(t, tickerNames(), fixtureRows())
 	notes := m["notes"].([]any)
-	if len(notes) != 2 || notes[1] != "量与持仓取自 2026-11-09(链日)" {
+	if len(notes) != 2 || notes[1] != "Volume and open interest from 2026-11-09 (chain day)" {
 		t.Errorf("notes = %v", notes)
 	}
 	p, _ := buildStockPayload(t, stockCfg(stockDay, stockFixture(), "AAPL"), stockDay)
-	if p.Notice == nil || !strings.HasSuffix(*p.Notice, "。量与持仓取自 2026-11-09(链日)") {
+	if p.Notice == nil || !strings.HasSuffix(*p.Notice, ". Volume and open interest from 2026-11-09 (chain day)") {
 		t.Errorf("notice = %v", p.Notice)
 	}
 }

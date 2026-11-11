@@ -116,7 +116,7 @@ func TestStockNoKeyGolden(t *testing.T) {
 	t.Parallel()
 	p, b := buildStockPayload(t, stockCfg(stockDay, stockFixture(), "NOPE"), stockDay)
 	checkGolden(t, "stock_option_page_no_key", b)
-	if p.NoCard == nil || *p.NoCard != "没有该标的的候选行" || p.RunStatus != "partial" || p.Stale != nil || len(p.Matrix.Cells) != 0 {
+	if p.NoCard == nil || *p.NoCard != "No candidate rows for this underlying" || p.RunStatus != "partial" || p.Stale != nil || len(p.Matrix.Cells) != 0 {
 		t.Errorf("unexpected empty page: %+v", p)
 	}
 }
@@ -143,7 +143,7 @@ func TestMatrixOrder(t *testing.T) {
 	if got := strings.Join(p.Matrix.Strikes, ","); got != "60,62,65" {
 		t.Errorf("strikes = %s", got)
 	}
-	if len(p.Matrix.Expiries) != 2 || p.Matrix.Expiries[0].Expiry != "2026-11-13" || p.Matrix.Expiries[0].Text != "11-13 周五 · 3 天" {
+	if len(p.Matrix.Expiries) != 2 || p.Matrix.Expiries[0].Expiry != "2026-11-13" || p.Matrix.Expiries[0].Text != "11-13 Fri · 3 days" {
 		t.Errorf("expiries = %+v", p.Matrix.Expiries)
 	}
 	if len(p.Matrix.Cells) != 3 || p.Matrix.Cells[0].Key != "c102" {
@@ -179,10 +179,10 @@ func TestMatrixFlagsFromGates(t *testing.T) {
 
 func checkFlagTexts(t *testing.T, p stockPayload, byKey map[string]matrixCell) {
 	t.Helper()
-	if c := byKey["c101"]; c.YieldText != "年化 12.3456%" || c.Premium != "权利金 1.20" || c.Delta != "Δ −0.15" || c.Volume != "成交量 250" {
+	if c := byKey["c101"]; c.YieldText != "Annualised 12.3456%" || c.Premium != "Premium 1.20" || c.Delta != "Δ −0.15" || c.Volume != "Volume 250" {
 		t.Errorf("c101 texts = %+v", c)
 	}
-	if byKey["c103"].Volume != "成交量 缺" {
+	if byKey["c103"].Volume != "Volume n/a" {
 		t.Errorf("c103 volume = %q", byKey["c103"].Volume)
 	}
 	if len(p.Cards) != 2 || !p.Cards[1].Chosen || p.Cards[0].Chosen || p.Cards[0].Title != "put 62 11-20" {
@@ -193,7 +193,7 @@ func checkFlagTexts(t *testing.T, p stockPayload, byKey map[string]matrixCell) {
 func TestContractsElevenColumns(t *testing.T) {
 	t.Parallel()
 	p, _ := buildStockPayload(t, stockCfg(stockDay, stockFixture(), "AAPL"), stockDay)
-	if len(p.Contracts.Columns) != 11 || p.Contracts.Columns[6] != "Θ/天" {
+	if len(p.Contracts.Columns) != 11 || p.Contracts.Columns[6] != "Θ/day" {
 		t.Fatalf("columns = %v", p.Contracts.Columns)
 	}
 	if len(p.Contracts.Rows) != 3 {
@@ -208,7 +208,7 @@ func TestContractsElevenColumns(t *testing.T) {
 	if want := "11-13|65|1.20|1.30|−0.15|38%|-0.02|0.031|0.05|250|12.3456%"; got != want {
 		t.Errorf("row 1 = %s, want %s", got, want)
 	}
-	if !strings.Contains(strings.Join(p.Contracts.Rows[2].Cells, "|"), "缺|缺|缺|缺") {
+	if !strings.Contains(strings.Join(p.Contracts.Rows[2].Cells, "|"), "n/a|n/a|n/a|n/a") {
 		t.Errorf("row without eod = %v", p.Contracts.Rows[2].Cells)
 	}
 }
@@ -234,7 +234,7 @@ func TestMatrixCutAtLimits(t *testing.T) {
 	if len(p.Matrix.Cells) != 100+29 {
 		t.Errorf("cells = %d", len(p.Matrix.Cells))
 	}
-	if p.Notice == nil || !strings.Contains(*p.Notice, "矩阵超出上限,有 8 个合约未显示") {
+	if p.Notice == nil || !strings.Contains(*p.Notice, "Matrix over the limit, 8 contracts not shown") {
 		t.Errorf("notice = %v", p.Notice)
 	}
 	if len(p.Maps) != 30 || len(p.Cards) != 10 || len(p.Contracts.Rows) != 137 {
@@ -250,7 +250,7 @@ func TestStockStaleLabel(t *testing.T) {
 		rows[i].SessionDay = prev
 	}
 	p, _ := buildStockPayload(t, stockCfg(prev, rows, "AAPL"), stockDay)
-	if p.Stale == nil || p.Stale.Text != "数据日 2026-11-09,早于今日" || p.Stale.StaleAfter != "2026-11-09T23:59:59+08:00" ||
+	if p.Stale == nil || p.Stale.Text != "Data day 2026-11-09, before today" || p.Stale.StaleAfter != "2026-11-09T23:59:59+08:00" ||
 		p.Stale.DataTime != "2026-11-10T14:30:00+08:00" {
 		t.Errorf("stale = %+v", p.Stale)
 	}

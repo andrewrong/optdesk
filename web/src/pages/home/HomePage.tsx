@@ -39,14 +39,14 @@ export function validate(input: unknown): Validation {
 
 type Link = { href: string; text: string }
 
-// The first report is visible; the rest sit in the fold "全部报告". One report has no fold.
+// The first report is visible; the rest sit in the fold "All reports". One report has no fold.
 function Reports({ links }: { links: readonly Link[] }) {
   const [first, ...rest] = links
   if (!first) return null
   return (
     <Card data-links="report_links">
       <CardHeader>
-        <CardTitle>报告</CardTitle>
+        <CardTitle>Reports</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <Button asChild variant="outline">
@@ -55,7 +55,7 @@ function Reports({ links }: { links: readonly Link[] }) {
         {rest.length > 0 && (
           <Accordion type="single" collapsible>
             <AccordionItem value="all-reports">
-              <AccordionTrigger>全部报告</AccordionTrigger>
+              <AccordionTrigger>All reports</AccordionTrigger>
               <AccordionContent className="flex flex-wrap gap-2">
                 {rest.map((link, index) => (
                   <Button key={`${index}-${link.href}`} asChild variant="outline">

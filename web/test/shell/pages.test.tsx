@@ -52,7 +52,7 @@ describe('page registry', () => {
 
   it('renders the top navigation bar on a registry page', async () => {
     await show(OK)
-    expect(host.querySelector('nav[aria-label="主导航"]')).not.toBeNull()
+    expect(host.querySelector('nav[aria-label="Main navigation"]')).not.toBeNull()
   })
 
   it('renders the advice page for an advice_page payload', async () => {

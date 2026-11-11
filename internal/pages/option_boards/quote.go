@@ -147,7 +147,7 @@ func dataTypeOf(t int) *string {
 }
 
 // livePrices is the raw decimal text of the prices of an open pull or refresh row, shown next to the quote that names it.
-// A field the row does not hold is "缺"; it is never filled from the close archive, whose label it would not carry.
+// A field the row does not hold is "n/a"; it is never filled from the close archive, whose label it would not carry.
 type livePrices struct {
 	Bid, Ask, Delta, IV, Theta, Gamma, Vega, Volume string
 }
@@ -179,7 +179,7 @@ func textPtr(s string) *string {
 	return &s
 }
 
-// DeltaText is the delta as displayed: signed with the minus sign, or "缺".
+// DeltaText is the delta as displayed: signed with the minus sign, or "n/a".
 func (p livePrices) DeltaText() string {
 	if p.Delta == gapText {
 		return gapText

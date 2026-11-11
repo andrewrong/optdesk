@@ -1,4 +1,4 @@
-// The 盘中试算 section of the 市场天气 card (issue #1224): the intraday gauge beside the close gauge. Every sentence
+// The intraday estimate section of the market weather card (issue #1224): the intraday gauge beside the close gauge. Every sentence
 // and figure is a field of the `market_weather` payload, written by Python. The one comparison made here is the
 // clock against `expires_at`: from then on the section is hidden and `expired_text` stands in its place. While the
 // feature is on (`intraday` or `closed` in the payload) the page is read again every minute, so a new reading, the

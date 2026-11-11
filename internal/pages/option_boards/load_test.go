@@ -153,7 +153,7 @@ func TestEodOneCallPerUnderlying(t *testing.T) {
 	if got := eodTextFor(m, 21).Volume; got != "4" {
 		t.Errorf("instrument 21 volume = %q", got)
 	}
-	if got := eodTextFor(m, 99).Volume; got != "缺" {
+	if got := eodTextFor(m, 99).Volume; got != "n/a" {
 		t.Errorf("unknown instrument volume = %q", got)
 	}
 }
@@ -170,11 +170,11 @@ func TestEodTextGap(t *testing.T) {
 	t.Parallel()
 	e := &contracts.OptionEod{Volume: fp(1240), OpenInterest: fp(5310), ThetaPerCalendarDay: fp(-0.0312), Gamma: nil, VegaPerVolPoint: fp(0.1)}
 	got := eodTextOf(e)
-	want := eodText{Volume: "1240", OpenInterest: "5310", Theta: "-0.0312", Gamma: "缺", Vega: "0.1"}
+	want := eodText{Volume: "1240", OpenInterest: "5310", Theta: "-0.0312", Gamma: "n/a", Vega: "0.1"}
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
-	if got := eodTextOf(nil); got != (eodText{"缺", "缺", "缺", "缺", "缺"}) {
+	if got := eodTextOf(nil); got != (eodText{"n/a", "n/a", "n/a", "n/a", "n/a"}) {
 		t.Errorf("nil row: %+v", got)
 	}
 }
@@ -195,7 +195,7 @@ func TestEodChainDayBeforeDataDay(t *testing.T) {
 	if got := eodTextFor(m, 11).Volume; got != "5" {
 		t.Errorf("volume = %q, want the day before's 5", got)
 	}
-	if got := chainDayNote(m, "2026-11-10"); got != "量与持仓取自 2026-11-06(链日)" {
+	if got := chainDayNote(m, "2026-11-10"); got != "Volume and open interest from 2026-11-06 (chain day)" {
 		t.Errorf("note = %q", got)
 	}
 	if got := chainDayNote(m, "2026-11-06"); got != "" {
@@ -215,7 +215,7 @@ func TestEodChainDayNewestWins(t *testing.T) {
 	if got := eodTextFor(m, 11).Volume; got != "2" {
 		t.Errorf("volume = %q, want the newer day's 2", got)
 	}
-	if got := eodTextFor(m, 12).Volume; got != "缺" {
+	if got := eodTextFor(m, 12).Volume; got != "n/a" {
 		t.Errorf("instrument 12 only has an older day, got %q", got)
 	}
 }
@@ -241,7 +241,7 @@ func TestEodNoRowInWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := eodTextFor(m, 11).Volume; got != "缺" {
+	if got := eodTextFor(m, 11).Volume; got != "n/a" {
 		t.Errorf("volume = %q, want gap", got)
 	}
 	if got := chainDayNote(m, "2026-11-10"); got != "" {
@@ -270,7 +270,7 @@ func TestChainDayNoteEarliestAndZeroDay(t *testing.T) {
 	m := map[int]contracts.OptionEod{
 		1: eodOf("2026-11-08", "a", 1, 1), 2: eodOf("2026-11-06", "a", 2, 1), 3: {InstrumentID: 3},
 	}
-	if got := chainDayNote(m, "2026-11-10"); got != "量与持仓取自 2026-11-06(链日)" {
+	if got := chainDayNote(m, "2026-11-10"); got != "Volume and open interest from 2026-11-06 (chain day)" {
 		t.Errorf("note = %q", got)
 	}
 	if got := chainDayNote(map[int]contracts.OptionEod{3: {InstrumentID: 3}}, "2026-11-10"); got != "" {

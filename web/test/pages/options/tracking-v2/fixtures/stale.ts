@@ -7,6 +7,6 @@ export const stale = {
   stale: {
     data_time: '2026-10-01T19:00:00+08:00',
     stale_after: '2026-10-03T19:00:00+08:00',
-    text: '数据已过期，截至 10 月 1 日',
+    text: 'Data is stale, as of Oct 1',
   },
 } satisfies Tracking

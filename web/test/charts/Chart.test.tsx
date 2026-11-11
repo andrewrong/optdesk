@@ -31,10 +31,10 @@ const SPEC: ChartSpec = {
   legend: true,
   categories: ['a', 'b', 'c'],
   series: [
-    { name: '收盘', points: points([1, 2, 3]) },
-    { name: '200日均线', points: points([1, 1.5, 2]) },
-    { name: '虚线', points: points([0, 1, 2]), dashed: true },
-    { name: '虚线', points: points([2, 3, 4]), dashed: true, legendHidden: true },
+    { name: 'Close', points: points([1, 2, 3]) },
+    { name: '200-day average', points: points([1, 1.5, 2]) },
+    { name: 'dashed', points: points([0, 1, 2]), dashed: true },
+    { name: 'dashed', points: points([2, 3, 4]), dashed: true, legendHidden: true },
   ],
 }
 
@@ -60,7 +60,7 @@ const legend = () =>
 describe('Chart', () => {
   it('shows each series name once in the legend, the hidden series sharing its neighbour', async () => {
     await show(SPEC)
-    expect(legend()).toEqual(['收盘', '200日均线', '虚线'].sort())
+    expect(legend()).toEqual(['Close', '200-day average', 'dashed'].sort())
   })
 
   it('shows no legend unless the spec turns it on', async () => {
@@ -84,31 +84,31 @@ describe('Chart', () => {
   })
 
   it('draws the band as one shaded area with one legend entry and no line', async () => {
-    await show({ ...SPEC, band: { name: '区间', low: points([0, 1, 2]), high: points([2, 3, 4]) } })
+    await show({ ...SPEC, band: { name: 'range', low: points([0, 1, 2]), high: points([2, 3, 4]) } })
     expect(host.querySelectorAll('.recharts-area-area')).toHaveLength(1)
     expect(host.querySelector('.recharts-area-curve')).toBeNull()
-    expect(legend()).toContain('区间')
+    expect(legend()).toContain('range')
   })
 
   it('shows five y axis ticks, without axis or tick line, with the unit of the spec appended', async () => {
     yAxes.length = 0
-    await show({ ...SPEC, unit: '点' })
+    await show({ ...SPEC, unit: 'pts' })
     const axis = yAxes[yAxes.length - 1]!
     expect(axis.tickCount).toBe(5)
     expect(axis.axisLine).toBe(false)
     expect(axis.tickLine).toBe(false)
     expect(axis.hide).toBeUndefined()
-    expect((axis.tickFormatter as (tick: number) => string)(5400)).toBe('5400点')
+    expect((axis.tickFormatter as (tick: number) => string)(5400)).toBe('5400pts')
     expect(host.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick')).toHaveLength(5)
   })
 
   it('labels the last point of each line with its text', async () => {
     await show({
       ...SPEC,
-      series: [{ name: '收盘', points: [{ value: 1 }, { value: 2 }, { value: 3, text: '三点' }] }],
+      series: [{ name: 'Close', points: [{ value: 1 }, { value: 2 }, { value: 3, text: 'three' }] }],
     })
     const labels = [...host.querySelectorAll('.recharts-label-list text')].map((e) => e.textContent)
-    expect(labels).toEqual(['三点'])
+    expect(labels).toEqual(['three'])
   })
 
   it('breaks a hole series at a missing point and bridges the others', async () => {
@@ -116,8 +116,8 @@ describe('Chart', () => {
     await show({
       ...SPEC,
       series: [
-        { name: '洞', points: gap, hole: true },
-        { name: '桥', points: gap },
+        { name: 'hole', points: gap, hole: true },
+        { name: 'bridge', points: gap },
       ],
     })
     const d = [...host.querySelectorAll('path.recharts-line-curve')].map((p) => p.getAttribute('d') ?? '')
@@ -131,10 +131,10 @@ describe('Chart', () => {
       legend: true,
       categories: ['a', 'b'],
       series: [
-        { name: '一', points: points([1, 2]) },
-        { name: '二', points: points([2, 1]), legendHidden: true },
+        { name: 'one', points: points([1, 2]) },
+        { name: 'two', points: points([2, 1]), legendHidden: true },
       ],
     })
-    expect(legend()).toEqual(['一'])
+    expect(legend()).toEqual(['one'])
   })
 })

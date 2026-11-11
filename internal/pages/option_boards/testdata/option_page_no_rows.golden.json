@@ -7,38 +7,38 @@
   "generated_at": "2026-11-10T09:30:00+08:00",
   "data_times": [],
   "run_status": "partial",
-  "title": "期权",
+  "title": "Options",
   "stale": {
     "data_time": "2026-11-10T00:00:00+08:00",
     "stale_after": "2026-11-10T00:00:00+08:00",
-    "text": "没有候选行,候选任务尚未存入"
+    "text": "No candidate rows: the candidate job has not stored any yet"
   },
   "markets": [
     {
       "market": "US",
-      "label": "美股",
+      "label": "US stocks",
       "currency": "USD",
-      "headline": "0 个值得看。",
-      "cards_title": "今日机会",
+      "headline": "0 worth a look.",
+      "cards_title": "Today's opportunities",
       "cards": [],
-      "candidates_title": "候选表",
+      "candidates_title": "Candidates",
       "candidates": {
         "columns": [
           {
             "id": "symbol",
-            "label": "标的",
+            "label": "Underlying",
             "align": "left",
             "hint": null
           },
           {
             "id": "verdict",
-            "label": "判定",
+            "label": "Verdict",
             "align": "left",
             "hint": null
           },
           {
             "id": "annualised",
-            "label": "年化",
+            "label": "Annualised",
             "align": "right",
             "hint": null
           },
@@ -88,7 +88,7 @@
             "id": "ivp",
             "label": "IVP",
             "align": "right",
-            "hint": "IV 在过去一年中的百分位,尚无来源"
+            "hint": "IV percentile over the past year, no source yet"
           },
           {
             "id": "earnings",
@@ -100,19 +100,19 @@
         "rows": []
       },
       "all_link": {
-        "text": "全部 0 个机会",
+        "text": "All 0 opportunities",
         "target": "candidates-US"
       },
       "chain": null
     }
   ],
   "notes": [
-    "日本期权:后续设计 (option-candidates-jp)"
+    "Japan options: later design (option-candidates-jp)"
   ],
   "gaps": [
     {
       "reason": "no_data",
-      "text": "没有候选行,候选任务尚未存入"
+      "text": "No candidate rows: the candidate job has not stored any yet"
     }
   ],
   "refresh": {

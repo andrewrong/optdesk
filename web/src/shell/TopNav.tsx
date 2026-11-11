@@ -10,24 +10,24 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 
 // The links of the position menu (Decision 15 of docs/design/option-positions.md).
 const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
-  { label: '结构', path: '/options/structures' },
-  { label: '盈亏', path: '/options/result' },
-  { label: '提示', path: '/options/notices' },
-  { label: '追踪', path: '/options/tracking' },
+  { label: 'Structures', path: '/options/structures' },
+  { label: 'Result', path: '/options/result' },
+  { label: 'Notices', path: '/options/notices' },
+  { label: 'Tracking', path: '/options/tracking' },
 ]
 
 // Ten of the eleven items (Decision 3 of docs/design/unified-site.md), in order; the eleventh is the menu after them. Fixed shell text: no payload field is read.
 const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; icon?: LucideIcon })[] = [
-  { label: '首页', path: '/home' },
-  { label: '宏观', path: '/macro' },
-  { label: '家庭资产', path: '/household' },
-  { label: '持仓', path: '/positions' },
-  { label: '风险', path: '/risk' },
-  { label: '期权', path: '/options' },
-  { label: '期权数据', path: '/options/data', prefix: true },
-  { label: '期权候选', path: '/options/candidates' },
-  { label: '建议', path: '/advice', icon: Lightbulb },
-  { label: '设置', path: '/settings' },
+  { label: 'Home', path: '/home' },
+  { label: 'Macro', path: '/macro' },
+  { label: 'Household', path: '/household' },
+  { label: 'Positions', path: '/positions' },
+  { label: 'Risk', path: '/risk' },
+  { label: 'Options', path: '/options' },
+  { label: 'Option data', path: '/options/data', prefix: true },
+  { label: 'Option candidates', path: '/options/candidates' },
+  { label: 'Advice', path: '/advice', icon: Lightbulb },
+  { label: 'Settings', path: '/settings' },
 ]
 
 // The page being viewed: a trailing slash is ignored and `/` counts as `/home`.
@@ -41,16 +41,16 @@ export function TopNav() {
   const isActive = (path: string, prefix?: boolean) =>
     path === current || (prefix === true && current.startsWith(`${path}/`))
   return (
-    <nav aria-label="主导航" className="p-2">
+    <nav aria-label="Main navigation" className="p-2">
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="菜单" className="size-11 md:hidden">
+          <Button variant="ghost" size="icon" aria-label="Menu" className="size-11 md:hidden">
             <Menu aria-hidden />
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>菜单</SheetTitle>
+            <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
           <ul className="flex flex-col gap-1 px-2 pb-4">
             {ITEMS.map(({ label, path, prefix, icon: Icon }) => {
@@ -66,7 +66,7 @@ export function TopNav() {
                 </li>
               )
             })}
-            <li className="px-2 pt-2 text-sm font-medium text-muted-foreground">期权持仓</li>
+            <li className="px-2 pt-2 text-sm font-medium text-muted-foreground">Option positions</li>
             {POSITION_LINKS.map(({ label, path }) => (
               <li key={path}>
                 <Button asChild variant="ghost" className="min-h-11 w-full justify-start pl-6">
@@ -92,7 +92,7 @@ export function TopNav() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="shrink-0">
-              期权持仓
+              Option positions
               <ChevronDown aria-hidden />
             </Button>
           </DropdownMenuTrigger>

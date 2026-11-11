@@ -83,7 +83,7 @@ describe('report page', () => {
     expect(text(host)).toContain(okClose.blocks.global_assets.rotation.detail)
   })
 
-  it('links account_moves to /household and risks to /positions, with 系统状态 once and no raw series names', async () => {
+  it('links account_moves to /household and risks to /positions, with System status once and no raw series names', async () => {
     await show(okClose)
     expect(frame('account_moves')!.querySelector('a')?.getAttribute('href')).toBe('/household')
     expect(frame('risks')!.querySelector('a')?.getAttribute('href')).toBe('/positions')
@@ -100,31 +100,31 @@ describe('report page', () => {
     expect(host.querySelector('a[href="/positions"]')).toBeNull()
   })
 
-  it('shows 系统状态 once on ok-close', async () => {
+  it('shows System status once on ok-close', async () => {
     await show(okClose)
-    expect(text(host).split('系统状态').length - 1).toBe(1)
+    expect(text(host).split('System status').length - 1).toBe(1)
   })
 
-  it('writes the partial block of ok-open as 延迟 and never as partial', async () => {
+  it('writes the partial block of ok-open as Delayed and never as partial', async () => {
     await show(okOpen)
     expect(okOpen.blocks.market_line.state).toBe('partial')
-    expect(text(frame('market_line')!)).toContain('延迟')
+    expect(text(frame('market_line')!)).toContain('Delayed')
     expect(text(host)).not.toContain('partial')
   })
 
-  it('writes a partial block as 延迟, a gap block as 缺, and never the raw word', async () => {
+  it('writes a partial block as Delayed, a gap block as n/a, and never the raw word', async () => {
     await show(gap)
     expect(gap.blocks.account_moves.state).toBe('partial')
     expect(gap.blocks.risks.state).toBe('gap')
-    expect(text(frame('account_moves')!)).toContain('延迟')
+    expect(text(frame('account_moves')!)).toContain('Delayed')
     expect(text(frame('account_moves')!)).not.toContain('partial')
-    expect(text(frame('risks')!)).toContain('缺')
+    expect(text(frame('risks')!)).toContain('n/a')
     expect(text(host)).not.toContain('partial')
   })
 
   it('never renders design_note', async () => {
-    await show({ ...okClose, design_note: '不应出现的设计说明' })
-    expect(text(host)).not.toContain('不应出现的设计说明')
+    await show({ ...okClose, design_note: 'Design note that must not appear' })
+    expect(text(host)).not.toContain('Design note that must not appear')
   })
 
   it('draws the eleven blocks of okOpen, the open ones first', async () => {

@@ -163,7 +163,7 @@ describe('option data page', () => {
   it('earnings tone alone picks the variant', async () => {
     const payload = fixture('jpy')
     payload.underlying.earnings_tone = 'outside'
-    payload.underlying.earnings_text = 'E 无'
+    payload.underlying.earnings_text = 'E None'
     await show(payload)
     expect(host.querySelector('[data-earnings]')?.getAttribute('data-variant')).toBe('secondary')
   })
@@ -173,9 +173,9 @@ describe('option data page', () => {
     await show(payload)
     const count = (t: string, w: string) => t.split(w).length - 1
     const vol = host.querySelector('[data-field="vol_line"]')!
-    expect(count(vol.textContent ?? '', '缺')).toBe(1)
+    expect(count(vol.textContent ?? '', 'n/a')).toBe(1)
     const earn = host.querySelector('[data-field="earnings_text"]')!
-    expect(count(earn.textContent ?? '', '没有数据来源')).toBe(1)
+    expect(count(earn.textContent ?? '', 'No data source')).toBe(1)
     expect(earn.hasAttribute('data-earnings')).toBe(false)
     expect(earn.querySelector('[data-earnings]')).toBeNull()
     const rows: { strike: { text: string } }[] = payload.chain.rows
@@ -187,16 +187,14 @@ describe('option data page', () => {
     )
   })
 
-  it('the chain header has Chinese shell labels and English terms', async () => {
+  it('the chain header has the shell labels and the greek terms', async () => {
     await show(fixture('terms'))
     const heads = [...host.querySelectorAll('thead th')].map((h) => h.textContent ?? '')
     const all = heads.join('|')
     for (const t of ['IV', 'Δ', 'Γ', 'Θ', 'Vega', 'OI']) expect(all).toContain(t)
-    for (const t of ['到期', '类型', '行权价', '状态', '买价', '卖价', '成交价', '成交量']) {
+    for (const t of ['Expiry', 'Type', 'Strike', 'Status', 'Bid', 'Ask', 'Last', 'Volume']) {
       expect(all).toContain(t)
     }
-    expect(all).not.toContain('Expiry')
-    expect(all).not.toContain('Strike')
   })
 
   it('fits the quote y-axis to the data', async () => {

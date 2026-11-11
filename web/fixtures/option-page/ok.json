@@ -9,7 +9,7 @@
   "gaps": [
     {
       "reason": "missing_quote",
-      "text": "TGT 缺报价：Bid、Ask、成交量、持仓量无法给出"
+      "text": "TGT Quote missing: Bid, Ask, volume and open interest cannot be given"
     }
   ],
   "generated_at": "2026-10-28T09:30:00+08:00",
@@ -17,24 +17,24 @@
     {
       "all_link": {
         "target": "candidates-US",
-        "text": "全部 6 个机会"
+        "text": "All 6 opportunities"
       },
       "candidates": {
         "columns": [
           {
             "align": "left",
             "id": "symbol",
-            "label": "标的"
+            "label": "Underlying"
           },
           {
             "align": "left",
             "id": "verdict",
-            "label": "判定"
+            "label": "Verdict"
           },
           {
             "align": "right",
             "id": "annualised",
-            "label": "年化"
+            "label": "Annualised"
           },
           {
             "align": "right",
@@ -73,7 +73,7 @@
           },
           {
             "align": "right",
-            "hint": "IV 在过去一年中的百分位，由 Python 写好",
+            "hint": "IV Percentile over the past year, written by Python",
             "id": "ivp",
             "label": "IVP"
           },
@@ -97,7 +97,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 },
                 "column": "verdict"
@@ -121,7 +121,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -177,7 +177,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 无",
+                  "text": "E None",
                   "value": 0
                 },
                 "column": "earnings"
@@ -198,7 +198,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 },
                 "column": "verdict"
@@ -222,7 +222,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -270,14 +270,14 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "ivp"
               },
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-03 在期外",
+                  "text": "E 12-03 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -298,7 +298,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 },
                 "column": "verdict"
@@ -322,7 +322,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -378,7 +378,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 11-12 在期内",
+                  "text": "E 11-12 within term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -399,7 +399,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 },
                 "column": "verdict"
@@ -423,7 +423,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -479,7 +479,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-10 在期外",
+                  "text": "E 12-10 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -500,7 +500,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "勉强",
+                  "text": "Marginal",
                   "value": 1
                 },
                 "column": "verdict"
@@ -524,7 +524,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -580,7 +580,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-05 在期外",
+                  "text": "E 12-05 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -601,7 +601,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "勉强",
+                  "text": "Marginal",
                   "value": 1
                 },
                 "column": "verdict"
@@ -625,7 +625,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -681,7 +681,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-08 在期外",
+                  "text": "E 12-08 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -702,7 +702,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "跳过",
+                  "text": "Skipped",
                   "value": 3
                 },
                 "column": "verdict"
@@ -710,7 +710,7 @@
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "annualised"
               },
@@ -725,7 +725,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "22 天",
+                  "text": "22 days",
                   "value": 22
                 },
                 "column": "dte"
@@ -741,28 +741,28 @@
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "bid_ask"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "spread_pct"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "volume"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "open_interest"
               },
@@ -777,7 +777,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-01 在期外",
+                  "text": "E 12-01 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -787,7 +787,7 @@
           }
         ]
       },
-      "candidates_title": "全部候选",
+      "candidates_title": "All candidates",
       "cards": [
         {
           "annualised": {
@@ -795,22 +795,22 @@
             "unit": "percent",
             "value": 18.6
           },
-          "annualised_text": "年化 18.6%",
-          "contract_line": "sell put 62 · 11-13 周五 · 22 天 · Δ −0.15",
+          "annualised_text": "annualised 18.6%",
+          "contract_line": "sell put 62 · 11-13 Fri · 22 days · Δ −0.15",
           "id": "aaa-1113",
           "iv_line": "IV 38% · HV30 31% · IVP 72",
-          "liquidity_line": "成交 1,240 · 持仓 5,310",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $61.38 · IV 38%",
-          "reason": "年化够高，成交活跃，离财报较远。",
-          "size_line": "1 张 · 占用现金 $6,200",
+          "liquidity_line": "Volume 1,240 · open interest 5,310",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven $61.38 · IV 38%",
+          "reason": "Annualised is high enough, trading is active, earnings are far away.",
+          "size_line": "1 contract · cash used $6,200",
           "symbol": "AAA",
           "tags": [
-            "流动性好",
-            "E 无"
+            "Good liquidity",
+            "E None"
           ],
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           }
         },
@@ -820,21 +820,21 @@
             "unit": "percent",
             "value": 16.2
           },
-          "annualised_text": "年化 16.2%",
-          "contract_line": "sell put 30 · 11-13 周五 · 22 天 · Δ −0.18",
+          "annualised_text": "annualised 16.2%",
+          "contract_line": "sell put 30 · 11-13 Fri · 22 days · Δ −0.18",
           "id": "bbb-1121",
-          "iv_line": "IV 31% · HV30 29% · IVP 缺",
-          "liquidity_line": "成交 860 · 持仓 4,120",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $29.65 · IV 31.0%",
-          "reason": "年化够高，买卖价差窄。",
-          "size_line": "1 张 · 占用现金 $3,000",
+          "iv_line": "IV 31% · HV30 29% · IVP n/a",
+          "liquidity_line": "Volume 860 · open interest 4,120",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven $29.65 · IV 31.0%",
+          "reason": "Annualised is high enough, the bid-ask spread is narrow.",
+          "size_line": "1 contract · cash used $3,000",
           "symbol": "BBB",
           "tags": [
-            "流动性好"
+            "Good liquidity"
           ],
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           }
         },
@@ -844,22 +844,22 @@
             "unit": "percent",
             "value": 15.1
           },
-          "annualised_text": "年化 15.1%",
-          "contract_line": "sell put 75 · 11-13 周五 · 22 天 · Δ −0.17",
+          "annualised_text": "annualised 15.1%",
+          "contract_line": "sell put 75 · 11-13 Fri · 22 days · Δ −0.17",
           "id": "ccc-1219",
           "iv_line": "IV 26% · HV30 24% · IVP 61",
-          "liquidity_line": "成交 540 · 持仓 2,980",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $73.52 · IV 26.2%",
-          "reason": "年化够高，行权价低于近期支撑。",
-          "size_line": "1 张 · 占用现金 $7,500",
+          "liquidity_line": "Volume 540 · open interest 2,980",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven $73.52 · IV 26.2%",
+          "reason": "Annualised is high enough, the strike is below recent support.",
+          "size_line": "1 contract · cash used $7,500",
           "symbol": "CCC",
           "tags": [
-            "支撑位下方",
-            "E 11-12 在期内"
+            "Below support",
+            "E 11-12 within term"
           ],
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           }
         },
@@ -869,22 +869,22 @@
             "unit": "percent",
             "value": 14.4
           },
-          "annualised_text": "年化 14.4%",
-          "contract_line": "sell put 22 · 11-13 周五 · 22 天 · Δ −0.14",
+          "annualised_text": "annualised 14.4%",
+          "contract_line": "sell put 22 · 11-13 Fri · 22 days · Δ −0.14",
           "id": "ddd-1121",
           "iv_line": "IV 35% · HV30 27% · IVP 84",
-          "liquidity_line": "成交 2,100 · 持仓 9,800",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $21.79 · IV 34.8%",
-          "reason": "年化够高，持仓量大。",
-          "size_line": "1 张 · 占用现金 $2,200",
+          "liquidity_line": "Volume 2,100 · open interest 9,800",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven $21.79 · IV 34.8%",
+          "reason": "Annualised is high enough, open interest is large.",
+          "size_line": "1 contract · cash used $2,200",
           "symbol": "DDD",
           "tags": [
-            "流动性好",
-            "权利金偏高"
+            "Good liquidity",
+            "Premium is high"
           ],
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           }
         },
@@ -894,21 +894,21 @@
             "unit": "percent",
             "value": 9.8
           },
-          "annualised_text": "年化 9.8%",
-          "contract_line": "sell put 120 · 11-13 周五 · 22 天 · Δ −0.21",
+          "annualised_text": "annualised 9.8%",
+          "contract_line": "sell put 120 · 11-13 Fri · 22 days · Δ −0.21",
           "id": "eee-1219",
           "iv_line": "IV 23% · HV30 22% · IVP 48",
-          "liquidity_line": "成交 95 · 持仓 610",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $117.90 · IV 22.5%",
-          "reason": "年化偏低，价差偏宽。",
-          "size_line": "1 张 · 占用现金 $12,000",
+          "liquidity_line": "Volume 95 · open interest 610",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven $117.90 · IV 22.5%",
+          "reason": "Annualised is low, the spread is wide.",
+          "size_line": "1 contract · cash used $12,000",
           "symbol": "EEE",
           "tags": [
-            "价差宽"
+            "Wide spread"
           ],
           "verdict": {
             "key": "marginal",
-            "label": "勉强",
+            "label": "Marginal",
             "tone": "warn"
           }
         },
@@ -918,34 +918,34 @@
             "unit": "percent",
             "value": 8.7
           },
-          "annualised_text": "年化 8.7%",
-          "contract_line": "sell put 55 · 11-13 周五 · 22 天 · Δ −0.16",
+          "annualised_text": "annualised 8.7%",
+          "contract_line": "sell put 55 · 11-13 Fri · 22 days · Δ −0.16",
           "id": "fff-1128",
           "iv_line": "IV 24% · HV30 23% · IVP 55",
-          "liquidity_line": "成交 70 · 持仓 380",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 $54.60 · IV 24.1%",
-          "reason": "年化偏低，成交偏少。",
-          "size_line": "1 张 · 占用现金 $5,500",
+          "liquidity_line": "Volume 70 · open interest 380",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven $54.60 · IV 24.1%",
+          "reason": "Annualised is low, trading is thin.",
+          "size_line": "1 contract · cash used $5,500",
           "symbol": "FFF",
           "tags": [
-            "成交少"
+            "Thin volume"
           ],
           "verdict": {
             "key": "marginal",
-            "label": "勉强",
+            "label": "Marginal",
             "tone": "warn"
           }
         }
       ],
-      "cards_title": "今日机会",
+      "cards_title": "Opportunities today",
       "chain": {
-        "summary": "已选：AAA 11/13 行权价 $62 Put",
+        "summary": "Selected: AAA 11/13 strike $62 Put",
         "table": {
           "columns": [
             {
               "align": "left",
               "id": "strike",
-              "label": "行权价"
+              "label": "Strike"
             },
             {
               "align": "right",
@@ -1058,7 +1058,7 @@
                 },
                 {
                   "cell": {
-                    "source": "已选",
+                    "source": "Selected",
                     "text": "$0.62",
                     "unit": "usd",
                     "value": 0.62
@@ -1115,34 +1115,34 @@
             }
           ]
         },
-        "title": "AAA 期权链（Put，Mid）"
+        "title": "AAA Option chain (Put, Mid)"
       },
       "currency": "USD",
-      "headline": "4 个值得看，2 个勉强。",
-      "label": "美股",
+      "headline": "4 worth a look, 2 marginal.",
+      "label": "US stocks",
       "market": "US"
     },
     {
       "all_link": {
         "target": "candidates-JP",
-        "text": "全部 3 个机会"
+        "text": "All 3 opportunities"
       },
       "candidates": {
         "columns": [
           {
             "align": "left",
             "id": "symbol",
-            "label": "标的"
+            "label": "Underlying"
           },
           {
             "align": "left",
             "id": "verdict",
-            "label": "判定"
+            "label": "Verdict"
           },
           {
             "align": "right",
             "id": "annualised",
-            "label": "年化"
+            "label": "Annualised"
           },
           {
             "align": "right",
@@ -1181,7 +1181,7 @@
           },
           {
             "align": "right",
-            "hint": "IV 在过去一年中的百分位，由 Python 写好",
+            "hint": "IV Percentile over the past year, written by Python",
             "id": "ivp",
             "label": "IVP"
           },
@@ -1205,7 +1205,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 },
                 "column": "verdict"
@@ -1229,7 +1229,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "28 天",
+                  "text": "28 days",
                   "value": 28
                 },
                 "column": "dte"
@@ -1285,7 +1285,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 无",
+                  "text": "E None",
                   "value": 0
                 },
                 "column": "earnings"
@@ -1306,7 +1306,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "勉强",
+                  "text": "Marginal",
                   "value": 1
                 },
                 "column": "verdict"
@@ -1330,7 +1330,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "28 天",
+                  "text": "28 days",
                   "value": 28
                 },
                 "column": "dte"
@@ -1378,14 +1378,14 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "ivp"
               },
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-09 在期外",
+                  "text": "E 12-09 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -1406,7 +1406,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "待定",
+                  "text": "Pending",
                   "value": 2
                 },
                 "column": "verdict"
@@ -1430,7 +1430,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "28 天",
+                  "text": "28 days",
                   "value": 28
                 },
                 "column": "dte"
@@ -1446,14 +1446,14 @@
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "bid_ask"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "spread_pct"
               },
@@ -1484,7 +1484,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-11 在期外",
+                  "text": "E 12-11 outside term",
                   "value": 0
                 },
                 "column": "earnings"
@@ -1494,7 +1494,7 @@
           }
         ]
       },
-      "candidates_title": "全部候选",
+      "candidates_title": "All candidates",
       "cards": [
         {
           "annualised": {
@@ -1502,14 +1502,14 @@
             "unit": "percent",
             "value": 12.4
           },
-          "annualised_text": "年化 12.4%",
-          "contract_line": "sell put 2400 · 12-12 周五 · 28 天 · Δ −0.16",
+          "annualised_text": "annualised 12.4%",
+          "contract_line": "sell put 2400 · 12-12 Fri · 28 days · Δ −0.16",
           "id": "jpa-1121",
           "iv_line": "IV 25% · HV30 23% · IVP 66",
-          "liquidity_line": "成交 420 · 持仓 2,300",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 ¥2,362 · IV 25.3%",
-          "reason": "年化够高，成交活跃。",
-          "size_line": "1 张 · 占用现金 ¥240,000（≈$1,600）",
+          "liquidity_line": "Volume 420 · open interest 2,300",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven ¥2,362 · IV 25.3%",
+          "reason": "Annualised is high enough, trading is active.",
+          "size_line": "1 contract · cash used ¥240,000 (≈$1,600)",
           "size_usd_approx": {
             "text": "≈$1,600",
             "unit": "usd",
@@ -1517,11 +1517,11 @@
           },
           "symbol": "JPA",
           "tags": [
-            "流动性好"
+            "Good liquidity"
           ],
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           }
         },
@@ -1531,14 +1531,14 @@
             "unit": "percent",
             "value": 7.9
           },
-          "annualised_text": "年化 7.9%",
-          "contract_line": "sell put 1850 · 12-12 周五 · 28 天 · Δ −0.14",
+          "annualised_text": "annualised 7.9%",
+          "contract_line": "sell put 1850 · 12-12 Fri · 28 days · Δ −0.14",
           "id": "jpb-1212",
-          "iv_line": "IV 21% · HV30 22% · IVP 缺",
-          "liquidity_line": "成交 60 · 持仓 410",
-          "premium_line": "到期在价内概率 31.9% · 比现金高 7.0% · 盈亏平衡 ¥1,820 · IV 21.0%",
-          "reason": "年化偏低，成交偏少。",
-          "size_line": "1 张 · 占用现金 ¥185,000（≈$1,230）",
+          "iv_line": "IV 21% · HV30 22% · IVP n/a",
+          "liquidity_line": "Volume 60 · open interest 410",
+          "premium_line": "Chance of expiring in the money 31.9% · 7.0% above cash · breakeven ¥1,820 · IV 21.0%",
+          "reason": "Annualised is low, trading is thin.",
+          "size_line": "1 contract · cash used ¥185,000 (≈$1,230)",
           "size_usd_approx": {
             "text": "≈$1,230",
             "unit": "usd",
@@ -1546,24 +1546,24 @@
           },
           "symbol": "JPB",
           "tags": [
-            "成交少"
+            "Thin volume"
           ],
           "verdict": {
             "key": "marginal",
-            "label": "勉强",
+            "label": "Marginal",
             "tone": "warn"
           }
         }
       ],
-      "cards_title": "今日机会",
+      "cards_title": "Opportunities today",
       "currency": "JPY",
-      "headline": "1 个值得看，1 个勉强。",
-      "label": "日股",
+      "headline": "1 worth a look, 1 marginal.",
+      "label": "JP stocks",
       "market": "JP"
     }
   ],
   "notes": [
-    "示例数据，非真实报价。判定与句子由 Python 写好，页面只显示。"
+    "Sample data, not live quotes. Verdicts and sentences are written by Python; the page only shows them."
   ],
   "run_id": "run-demo-0001",
   "run_status": "partial",
@@ -1573,7 +1573,7 @@
   "stale": {
     "data_time": "2026-10-28T09:28:00+08:00",
     "stale_after": "2026-10-28T10:28:00+08:00",
-    "text": "数据时间 2026-10-28 09:28（吉隆坡）"
+    "text": "Data time 2026-10-28 09:28 (UTC+8)"
   },
-  "title": "期权"
+  "title": "Options"
 }

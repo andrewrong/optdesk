@@ -55,9 +55,9 @@ describe('PositionsPage', () => {
     const original = structuredClone(payload)
     await show(payload)
     expect([...host.querySelectorAll('[role=tab]')].map((t) => t.textContent)).toEqual([
-      '我',
-      '配偶',
-      '家庭',
+      'Me',
+      'Spouse',
+      'Household',
     ])
     for (const view of payload.views) {
       await pick(
@@ -89,7 +89,7 @@ describe('PositionsPage', () => {
     payload.views = Array.from({ length: 8 }, (_, i) => ({
       ...structuredClone(base[i % base.length]),
       key: `view-${i}`,
-      label: `账户${i}`,
+      label: `Account ${i}`,
     }))
     await show(payload)
     expect(host.querySelectorAll('[role=tab]')).toHaveLength(8)
@@ -122,7 +122,7 @@ describe('PositionsPage', () => {
     for (const gap of payload.gaps) expect(host.textContent!.split(gap.text)).toHaveLength(2)
     expect(host.querySelector('[data-gaps]')).not.toBeNull()
     expect(host.textContent).toContain(payload.notes[0])
-    expect(host.querySelector('[data-table=stocks] tbody tr')!.textContent).toContain('缺报价 †')
+    expect(host.querySelector('[data-table=stocks] tbody tr')!.textContent).toContain('no quote †')
     await act(async () => root?.unmount())
     host.remove()
     const stale = fixture('stale.json')
@@ -134,27 +134,27 @@ describe('PositionsPage', () => {
     // Source: #1205 CI contract. Deliberately mismatched text proves the browser does not calculate.
     const payload = fixture('ok.json')
     const household = payload.views[2]
-    household.sentence = '测试提供的家庭汇总文字'
-    household.stocks.rows[0].quantity.text = 'Python 数量文本'
+    household.sentence = 'household summary text from the test'
+    household.stocks.rows[0].quantity.text = 'Python quantity text'
     household.stocks.rows[0].day = {
       value: 120,
-      text: 'Python 盈亏文本',
+      text: 'Python P&L text',
       unit: 'usd_signed',
       tone: 'down',
     }
     const original = structuredClone(payload)
     await show(payload)
-    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '家庭')!)
-    expect(host.querySelector('[data-sentence]')!.textContent).toBe('测试提供的家庭汇总文字')
+    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'Household')!)
+    expect(host.querySelector('[data-sentence]')!.textContent).toBe('household summary text from the test')
     expect(host.querySelector('[data-table=stocks] .text-down')!.textContent).toBe(
-      'Python 盈亏文本',
+      'Python P&L text',
     )
     for (const [name, ascending] of [
       ['stocks', ['JPA', 'AAA', 'AMD']],
       ['options', ['XYZ 11-20 P100', 'BBB 12-18 C50']],
     ] as const) {
       const table = host.querySelector(`[data-table=${name}]`)!
-      const header = [...table.querySelectorAll('th button')].find((b) => b.textContent === '数量')!
+      const header = [...table.querySelectorAll('th button')].find((b) => b.textContent === 'Quantity')!
       const codes = () =>
         [...table.querySelectorAll('tbody tr')].map((r) => r.querySelector('td')!.textContent)
       await click(header)
@@ -170,11 +170,11 @@ describe('PositionsPage', () => {
   it('shows the gap text and no row for an empty table', async () => {
     const payload = fixture('ok.json')
     payload.views[1].stocks.rows = []
-    payload.views[1].stocks.gap = { reason: 'no_data', text: '没有股票持仓' }
+    payload.views[1].stocks.gap = { reason: 'no_data', text: 'no stock positions' }
     await show(payload)
-    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '配偶')!)
+    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'Spouse')!)
     const table = host.querySelector('[data-table=stocks]')!
-    expect(table.querySelector('[data-table-gap]')!.textContent).toBe('没有股票持仓')
+    expect(table.querySelector('[data-table-gap]')!.textContent).toBe('no stock positions')
     expect(table.querySelectorAll('tbody tr')).toHaveLength(0)
   })
 
@@ -188,12 +188,12 @@ describe('PositionsPage', () => {
       [...host.querySelectorAll('[data-table]')].map((t) => t.getAttribute('data-table')),
     ).toEqual(['stocks', 'options', 'trades'])
     expect([...host.querySelectorAll('[data-table=trades] th')].map((h) => h.textContent)).toEqual([
-      '时间',
-      '账户',
-      '动作',
-      '标的·结构',
-      '数量',
-      '价格',
+      'Time',
+      'Account',
+      'Action',
+      'Underlying · structure',
+      'Quantity',
+      'Price',
     ])
     const rows = [...host.querySelectorAll('[data-table=trades] tbody tr')]
     const cellsOf = rows.map((r) => [...r.querySelectorAll('td')].map((c) => c.textContent))
@@ -223,46 +223,46 @@ describe('PositionsPage', () => {
     expect(host.querySelector('[data-table=trades]')).toBeNull()
   })
 
-  it('shows 到期日 and 剩余天数 as payload cells, sorts days on value, and shows a gap badge without an expiry', async () => {
+  it('shows expiry and days left as payload cells, sorts days on value, and shows a gap badge without an expiry', async () => {
     // Issue #1448: the columns come from Python; values 23 and 51 are the example's days counted from
     // 2026-10-28. Text differs from value so a browser calculation would show.
     const payload = fixture('ok.json')
-    payload.views[2].options.rows[0].days_left.text = 'Python 天数文本'
-    payload.views[2].options.rows[1].expiry = { reason: 'missing_input', text: '缺到期日 †' }
-    payload.views[2].options.rows[1].days_left = { reason: 'missing_input', text: '缺到期日 †' }
+    payload.views[2].options.rows[0].days_left.text = 'Python days text'
+    payload.views[2].options.rows[1].expiry = { reason: 'missing_input', text: 'no expiry †' }
+    payload.views[2].options.rows[1].days_left = { reason: 'missing_input', text: 'no expiry †' }
     expect(validatePositionsPage(payload).ok).toBe(true)
     await show(payload)
-    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '家庭')!)
+    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'Household')!)
     const table = host.querySelector('[data-table=options]')!
     expect([...table.querySelectorAll('th')].map((h) => h.textContent)).toEqual([
-      '代码',
-      '名称',
-      '到期日',
-      '剩余天数',
-      '归属',
-      '数量',
-      '成本（每股）',
-      '现价（每股）',
-      '当日盈亏',
-      '未实现盈亏',
-      '剩余权利金',
+      'Symbol',
+      'Name',
+      'Expiry',
+      'Days left',
+      'Owner',
+      'Quantity',
+      'Cost (per share)',
+      'Last price (per share)',
+      'Day P&L',
+      'Unrealized P&L',
+      'Remaining premium',
     ])
     const rows = () => [...table.querySelectorAll('tbody tr')]
     expect(
       rows().map((r) => [...r.querySelectorAll('td')].slice(2, 4).map((c) => c.textContent)),
     ).toEqual([
-      ['2026-11-20', 'Python 天数文本'],
-      ['—缺到期日 †', '—缺到期日 †'],
+      ['2026-11-20', 'Python days text'],
+      ['—no expiry †', '—no expiry †'],
     ])
     expect(rows()[1]!.querySelectorAll('td')[3]!.querySelector('[data-missing]')).not.toBeNull()
     expect(host.querySelector('[data-table=stocks]')!.querySelectorAll('th')).toHaveLength(8)
   })
 
-  it('shows 剩余权利金 as the Python text of the first option row', async () => {
+  it('shows remaining premium as the Python text of the first option row', async () => {
     // Issue #1573: the v3 fixture's first option row is the invented XYZ put with $258.00 left.
     await show(fixture('ok.json'))
     const table = host.querySelector('[data-table=options]')!
-    expect([...table.querySelectorAll('th')].at(-1)!.textContent).toBe('剩余权利金')
+    expect([...table.querySelectorAll('th')].at(-1)!.textContent).toBe('Remaining premium')
     expect(
       [...table.querySelectorAll('tbody tr')[0]!.querySelectorAll('td')].at(-1)!.textContent,
     ).toBe('$258.00')
@@ -271,10 +271,10 @@ describe('PositionsPage', () => {
   it('sorts the options table by days left on the number Python sent', async () => {
     const payload = fixture('ok.json')
     await show(payload)
-    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '家庭')!)
+    await pick([...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'Household')!)
     const table = host.querySelector('[data-table=options]')!
     const header = [...table.querySelectorAll('th button')].find(
-      (b) => b.textContent === '剩余天数',
+      (b) => b.textContent === 'Days left',
     )!
     const days = () =>
       [...table.querySelectorAll('tbody tr')].map((r) => r.querySelectorAll('td')[3]!.textContent)
