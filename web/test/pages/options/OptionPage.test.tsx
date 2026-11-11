@@ -73,9 +73,12 @@ describe('OptionPage', () => {
     for (const name of ['ok.json', 'stale.json', 'gap.json']) {
       expect(validateOptionPage(fixture(name)).ok).toBe(true)
     }
-    for (const name of ['bad-version']) {
-      expect(validateOptionPage(fixture(`${name}.json`)).ok).toBe(false)
-    }
+    expect(validateOptionPage({ ...fixture('bad-version.json'), schema_version: 9 }).ok).toBe(false)
+  })
+
+  it('validates the ok fixture served as schema_version 2', () => {
+    const result = validateOptionPage({ ...fixture('ok.json'), schema_version: 2 })
+    expect(result.ok).toBe(true)
   })
 
   it('shows one card per payload card and one row per payload row, with the payload strings', async () => {
