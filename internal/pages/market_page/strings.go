@@ -12,7 +12,7 @@ const (
 	weatherStale       = "Weather data is stale, data day "
 
 	indicesTitle    = "Index volatility"
-	indicesSentence = "Percentile is the index position over the last 3 years; the other columns are not built yet."
+	indicesSentence = "Percentile is the index position over the last 3 years; it and the implied volatility come from stored data, the realised columns are not built yet."
 	indicesNote     = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
 	termTitle        = "Term structure"
@@ -21,9 +21,11 @@ const (
 
 	breadthNotBuilt = "Market breadth: not built yet, no matching data"
 	chartNotBuilt   = "Trend chart: not built yet, no stored 200-day average"
-	ivNotBuilt      = "Implied volatility: not built yet, nothing stored"
+	ivNotBuilt      = "implied volatility: not built yet"
+	ivNoRow         = "implied volatility: no data, not stored yet"
+	ivMissing       = "implied volatility: no data, inputs incomplete"
 	rv20NotBuilt    = "20-day realised volatility: not built yet"
-	ivRvNotBuilt    = "Implied minus realised: not built yet"
+	ivRvNotBuilt    = "implied minus realised: not built yet"
 	n225NoData      = "Nikkei volatility: no data yet, no matching FRED series"
 
 	pctShortHistory = "History under 3 years, no percentile"
