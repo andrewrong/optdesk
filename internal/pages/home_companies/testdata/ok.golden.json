@@ -77,7 +77,7 @@
         },
         "volatility": {
           "source": "own",
-          "label": "own · hv30_v1 / iv30_v1 / ivp_v1 · data day 11-10",
+          "label": "own · hv30_v1 / iv30_v1 · market.ivp_ibkr · data day 11-10",
           "data_day": "2026-11-10",
           "hv30": {
             "kind": "value",
@@ -96,7 +96,7 @@
           "ivp": {
             "kind": "value",
             "value": 73.02,
-            "text": "73.02% · 11-09",
+            "text": "73.02% · IBKR series · 11-09",
             "unit": "percent",
             "tone": "none"
           },
