@@ -1,0 +1,433 @@
+package optionopen
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
+)
+
+const (
+	runDay      = contracts.Day("2026-11-10")
+	expiry30    = "20261210" // 30 days after runDay
+	expiry30Day = contracts.Day("2026-12-10")
+)
+
+type rig struct {
+	clk   *fakeClock
+	brk   *fakeBroker
+	opts  *fakeOptions
+	marks *fakeMarks
+	inst  *fakeInstruments
+	bars  fakeBars
+	pull  fakePull
+	acct  fakeAccounts
+	logs  []string
+}
+
+func newRig(chains ...broker.Chain) *rig {
+	return &rig{
+		clk:   &fakeClock{t: time.Date(2026, 11, 10, 22, 0, 0, 0, time.UTC)},
+		brk:   &fakeBroker{chains: chains},
+		opts:  &fakeOptions{},
+		marks: &fakeMarks{},
+		inst:  &fakeInstruments{},
+		bars:  fakeBars{closes: map[string]string{"2026-11-10": "100"}},
+	}
+}
+
+func (r *rig) deps(symbols ...string) ResolveDeps {
+	return ResolveDeps{
+		Stored: Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct},
+		Broker: r.brk, Marks: r.marks, Pull: r.pull, Clock: r.clk,
+		Log:  func(l string) { r.logs = append(r.logs, l) },
+		Rand: func() float64 { return 0.5 },
+	}
+}
+
+func (r *rig) run(t *testing.T, build func(ResolveDeps, ResolveOptions) (contracts.Job, error), o ResolveOptions, symbols ...string) contracts.JobResult {
+	t.Helper()
+	j, err := build(r.deps(symbols...), o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, err := j.Plan(context.Background(), runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return j.Run(context.Background(), runDay, keys)
+}
+
+// oneChain has a few strikes around 100 so that a handful of contracts are asked.
+func oneChain() broker.Chain { return chainOf("AAPL", 990, 1010, expiry30) }
+
+func TestEmptyListWritesMarkWithRetryInsideSevenPlusMinusTwoDays(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		u    float64
+		want time.Duration
+	}{{0, 5 * 24 * time.Hour}, {0.5, 7 * 24 * time.Hour}, {0.999999, 9 * 24 * time.Hour}} {
+		r := newRig(oneChain())
+		r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) { return broker.Resolved{}, nil }
+		d := r.deps("AAPL")
+		d.Rand = func() float64 { return tc.u }
+		j, _ := NewResolve(d, ResolveOptions{})
+		keys, _, _ := j.Plan(context.Background(), runDay)
+		j.Run(context.Background(), runDay, keys)
+		if len(r.marks.marks) == 0 {
+			t.Fatal("no mark for an empty list")
+		}
+		m := r.marks.marks[0]
+		got := m.RetryAt.Sub(m.CheckedAt)
+		if diff := got - tc.want; diff < -time.Minute || diff > time.Minute {
+			t.Fatalf("u=%v: retry after %v, want about %v", tc.u, got, tc.want)
+		}
+		if m.ErrorCode != nil || m.CheckedAt != r.clk.Now() {
+			t.Fatalf("an empty list has no error code and the clock's checked_at: %+v", m)
+		}
+		if r.opts.puts != 0 {
+			t.Fatal("a not listed contract must not be stored as a contract")
+		}
+	}
+}
+
+func TestClean200NoSecurityDefinitionIsMarked(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) {
+		return broker.Resolved{ErrorCode: 200, ErrorText: "No security definition has been found for the request"}, nil
+	}
+	res := r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if res.Err != nil || len(r.marks.marks) == 0 || len(r.marks.marks) != len(r.brk.asked) {
+		t.Fatalf("every asked contract is marked: marks=%d asked=%d err=%v", len(r.marks.marks), len(r.brk.asked), res.Err)
+	}
+	if m := r.marks.marks[0]; m.ErrorCode == nil || *m.ErrorCode != "200" {
+		t.Fatalf("error code of the answer is kept: %+v", m)
+	}
+}
+
+func TestOther200IsAmbiguousAndNeverMarked(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) {
+		return broker.Resolved{ErrorCode: 200, ErrorText: "Ambiguous contract: several results"}, nil
+	}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.marks.marks) != 0 || r.opts.puts != 0 {
+		t.Fatalf("an ambiguous answer writes nothing: marks=%d", len(r.marks.marks))
+	}
+	if !strings.Contains(r.logs[0], "ambiguous=") || strings.Contains(r.logs[0], "ambiguous=0") {
+		t.Fatalf("summary counts ambiguous: %s", r.logs[0])
+	}
+}
+
+func TestAResultThatDiffersFromTheRequestIsAmbiguous(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(_ int, c broker.Contract) (broker.Resolved, error) {
+		c.ConID, c.Strike = 5, "1"
+		return broker.Resolved{Listed: true, Contract: c}, nil
+	}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if r.opts.puts != 0 || len(r.marks.marks) != 0 {
+		t.Fatal("a differing result is neither stored nor marked")
+	}
+}
+
+func TestTimeoutNeverWritesAMarkAndTwoStopTheRun(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) {
+		return broker.Resolved{}, &typedError{kind: contracts.Retryable, err: context.DeadlineExceeded}
+	}
+	res := r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.marks.marks) != 0 {
+		t.Fatal("a timeout writes no mark")
+	}
+	if len(r.brk.asked) != 2 {
+		t.Fatalf("two consecutive timeouts stop the resolves; asked %d", len(r.brk.asked))
+	}
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("the unsent rest is a retryable gap, got %v", res.Err)
+	}
+	if !strings.Contains(r.logs[0], "timeout=2") || strings.Contains(r.logs[0], "unsent=0") {
+		t.Fatalf("summary counts timeouts and the unsent: %s", r.logs[0])
+	}
+}
+
+func TestDisconnectCodesNeverMark(t *testing.T) {
+	t.Parallel()
+	for _, code := range []int{10197, 1100, 1101, 1102} {
+		r := newRig(oneChain())
+		r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) {
+			return broker.Resolved{ErrorCode: code, ErrorText: "not connected"}, nil
+		}
+		r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+		if len(r.marks.marks) != 0 || len(r.brk.asked) != 2 {
+			t.Fatalf("code %d: marks=%d asked=%d", code, len(r.marks.marks), len(r.brk.asked))
+		}
+	}
+}
+
+func TestPacingLineAndSubscriptionCodesNeverMark(t *testing.T) {
+	t.Parallel()
+	for _, code := range []int{101, 100, 162, 354, 10089, 10090, 10091, 999} {
+		r := newRig(oneChain())
+		r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) {
+			return broker.Resolved{ErrorCode: code, ErrorText: "no security definition"}, nil
+		}
+		r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+		if len(r.marks.marks) != 0 {
+			t.Fatalf("code %d wrote a mark", code)
+		}
+	}
+}
+
+func TestListedContractGoesToTheOptionContractStore(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	res := r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if res.Err != nil || r.opts.puts == 0 || r.opts.puts != len(r.brk.asked) {
+		t.Fatalf("puts=%d asked=%d err=%v", r.opts.puts, len(r.brk.asked), res.Err)
+	}
+	ref := r.opts.refs[r.opts.refs[1][0].UnderlyingID][0]
+	if ref.Expiry != expiry30Day || ref.TradingClass != "AAPL" || ref.InstrumentID == 0 {
+		t.Fatalf("stored ref: %+v", ref)
+	}
+	// A second run finds the cache full and asks nothing.
+	before := len(r.brk.asked)
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.brk.asked) != before {
+		t.Fatal("a cached contract is not asked again")
+	}
+}
+
+func TestMarkedContractIsNotAskedBeforeItsRetryAt(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) { return broker.Resolved{}, nil }
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	first := len(r.brk.asked)
+	r.clk.Advance(24 * time.Hour)
+	r.bars.closes["2026-11-11"] = "100"
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.brk.asked) != first {
+		t.Fatalf("a mark inside its validity is not asked again: %d then %d", first, len(r.brk.asked))
+	}
+	r.clk.Advance(10 * 24 * time.Hour) // past 7 + 2 days
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.brk.asked) != 2*first {
+		t.Fatalf("after retry_at the contracts are asked again: %d", len(r.brk.asked))
+	}
+}
+
+func TestSpotMoveOfFivePercentAsksAgain(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		close string
+		again bool
+	}{{"104", false}, {"105", true}} {
+		r := newRig(oneChain())
+		r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) { return broker.Resolved{}, nil }
+		r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+		first := len(r.brk.asked)
+		r.clk.Advance(24 * time.Hour)
+		r.bars.closes["2026-11-11"] = tc.close
+		j, _ := NewResolve(r.deps("AAPL"), ResolveOptions{})
+		keys, _, _ := j.Plan(context.Background(), "2026-11-11")
+		before := map[string]bool{}
+		for _, c := range r.brk.asked[:first] {
+			before[c.Strike+c.Right] = true
+		}
+		j.Run(context.Background(), "2026-11-11", keys)
+		again := false
+		for _, c := range r.brk.asked[first:] {
+			again = again || before[c.Strike+c.Right]
+		}
+		if again != tc.again {
+			t.Fatalf("close %s: marked contracts asked again = %v, want %v", tc.close, again, tc.again)
+		}
+	}
+}
+
+func pullRow(r *rig, ref openquote.OptionRef, status int, code *string) contracts.OptionOpen {
+	return contracts.OptionOpen{InstrumentID: int(ref.InstrumentID), UnderlyingID: int(ref.UnderlyingID), Status: status, ErrorCode: code}
+}
+
+func TestNotListedRowOfThePullBecomesAMarkOnlyAfterACleanAnswer(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL") // fills the cache
+	refs := r.opts.refs[r.opts.refs[1][0].UnderlyingID]
+	clean, dirty := "200", "354"
+	r.pull = fakePull{rows: []contracts.OptionOpen{
+		pullRow(r, refs[0], 4, &clean), pullRow(r, refs[1], 4, nil), pullRow(r, refs[2], 4, &dirty), pullRow(r, refs[3], 1, nil),
+	}}
+	asked := len(r.brk.asked)
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.marks.marks) != 2 {
+		t.Fatalf("two clean not_listed rows become marks, got %d", len(r.marks.marks))
+	}
+	if len(r.brk.asked) != asked {
+		t.Fatal("a mark from the pull asks the broker nothing")
+	}
+	if !strings.Contains(r.logs[len(r.logs)-1], "from_pull=2") {
+		t.Fatalf("summary counts the marks of the pull: %s", r.logs[len(r.logs)-1])
+	}
+}
+
+func bigChains() []broker.Chain {
+	// 13 trading classes of 100 contracts each: 97 puts at or below 100, the put above, the two calls around.
+	var chains []broker.Chain
+	for i := 0; i < 13; i++ {
+		chains = append(chains, chainOf("C"+string(rune('A'+i)), 904, 1001, expiry30))
+	}
+	return chains
+}
+
+func TestMaxNewOf1500ResolvesAllThirteenHundredInOneRun(t *testing.T) {
+	t.Parallel()
+	r := newRig(bigChains()...)
+	res := r.run(t, NewResolve, ResolveOptions{MaxNew: 1500}, "AAPL")
+	if res.Err != nil || r.opts.puts != 1300 {
+		t.Fatalf("resolved %d, want 1300; err=%v", r.opts.puts, res.Err)
+	}
+	if !strings.Contains(r.logs[0], "cap=1500") || !strings.Contains(r.logs[0], "found=1300") {
+		t.Fatalf("summary names the cap in force: %s", r.logs[0])
+	}
+}
+
+func TestDefaultCapStopsAtThreeHundredAndSaysSo(t *testing.T) {
+	t.Parallel()
+	r := newRig(bigChains()...)
+	res := r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if r.opts.puts != 300 || len(r.brk.asked) != 300 {
+		t.Fatalf("resolved %d, asked %d, want 300", r.opts.puts, len(r.brk.asked))
+	}
+	if res.Err != nil {
+		t.Fatalf("what the cap leaves is deferred, not a failure: %v", res.Err)
+	}
+	if !strings.Contains(r.logs[0], "cap=300") || !strings.Contains(r.logs[0], "deferred=1000") {
+		t.Fatalf("summary names the cap and the deferred: %s", r.logs[0])
+	}
+}
+
+func TestTheNearestStrikesAreResolvedFirstWhenTheCapBites(t *testing.T) {
+	t.Parallel()
+	r := newRig(bigChains()...)
+	r.run(t, NewResolve, ResolveOptions{MaxNew: 10}, "AAPL")
+	for _, c := range r.brk.asked {
+		if v := strikeValue(c.Strike); v < 99.9 || v > 100.1 {
+			t.Fatalf("strike %s is not among the nearest to the spot", c.Strike)
+		}
+	}
+}
+
+func TestGapPassResolvesOnlyWhatCacheAndMarksDoNotHold(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(n int, c broker.Contract) (broker.Resolved, error) {
+		if n%2 == 0 {
+			return broker.Resolved{}, nil // marked
+		}
+		c.ConID = int64(5000 + n)
+		return broker.Resolved{Listed: true, Contract: c}, nil // cached
+	}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	done := len(r.brk.asked)
+	// IBKR lists a new strike overnight.
+	ch := oneChain()
+	ch.Strikes = append(ch.Strikes, "99.55")
+	r.brk.chains = []broker.Chain{ch}
+	r.brk.answer = nil
+	r.run(t, NewGap, ResolveOptions{}, "AAPL")
+	newOnes := r.brk.asked[done:]
+	if len(newOnes) != 1 {
+		t.Fatalf("the gap pass asks only the new strike, asked %d", len(newOnes))
+	}
+	for _, c := range newOnes {
+		if c.Strike != "99.55" || c.Right != "P" {
+			t.Fatalf("asked a contract the cache or a mark holds: %+v", c)
+		}
+	}
+	if r.brk.listed != 2 {
+		t.Fatalf("each pass lists the chain first, listed %d", r.brk.listed)
+	}
+}
+
+func TestGapPassReadsNoPullRows(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	refs := r.opts.refs[r.opts.refs[1][0].UnderlyingID]
+	r.pull = fakePull{rows: []contracts.OptionOpen{pullRow(r, refs[0], 4, nil)}}
+	r.run(t, NewGap, ResolveOptions{}, "AAPL")
+	if len(r.marks.marks) != 0 {
+		t.Fatal("the evening resolve is the one that turns pull rows into marks")
+	}
+}
+
+func TestHeldOptionContractIsResolvedWhateverItsExpiry(t *testing.T) {
+	t.Parallel()
+	r := newRig(chainOf("AAPL", 990, 1010, expiry30, "20270219"))
+	r.acct = fakeAccounts{pos: []store.Position{{SecType: "OPT", Symbol: "AAPL", Expiry: "2027-02-19", Strike: "95.0", Right: "put", Quantity: "-1",
+		Multiplier: "100"}}}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	found := false
+	for _, c := range r.brk.asked {
+		found = found || (c.Right == "P" && c.Strike == "95.0")
+	}
+	if !found {
+		t.Fatal("a held contract outside the DTE window is asked")
+	}
+}
+
+func TestChainErrorIsRetryableAndMarksNothing(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	d := r.deps("AAPL")
+	d.Broker = errChains{r.brk}
+	j, _ := NewResolve(d, ResolveOptions{})
+	keys, _, _ := j.Plan(context.Background(), runDay)
+	res := j.Run(context.Background(), runDay, keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || len(r.marks.marks) != 0 {
+		t.Fatalf("err=%v", res.Err)
+	}
+}
+
+type errChains struct{ *fakeBroker }
+
+func (errChains) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
+	return nil, errors.New("gateway down")
+}
+
+func TestResolveSlotValues(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	for _, tc := range []struct {
+		build  func(ResolveDeps, ResolveOptions) (contracts.Job, error)
+		anchor string
+		off    time.Duration
+		id     string
+	}{
+		{NewResolve, "session_close", 60 * time.Minute, "option_open_resolve"},
+		{NewGap, "session_open", -90 * time.Minute, "option_open_resolve_gap"},
+	} {
+		j, err := tc.build(r.deps("AAPL"), ResolveOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		cal, anchor, _, off := j.(interface {
+			Schedule() (string, string, string, time.Duration)
+		}).Schedule()
+		if j.ID() != tc.id || cal != "XNYS" || anchor != tc.anchor || off != tc.off {
+			t.Fatalf("%s: %s %s %v", j.ID(), cal, anchor, off)
+		}
+	}
+}
