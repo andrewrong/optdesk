@@ -97,6 +97,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/sessionday"
 	"github.com/andrewrong/optdesk/internal/store/setup"
 	"github.com/andrewrong/optdesk/internal/store/snapshot"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
+	"github.com/andrewrong/optdesk/internal/store/underlyingpg"
 	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/andrewrong/optdesk/internal/symbol/table"
 	"github.com/jonboulle/clockwork"
@@ -171,6 +173,7 @@ type deps struct {
 	newRuleParams           settingsapi.NewRuleParamsFunc
 	newSettingsForm         settingsapi.NewSettingsFormFunc
 	openOwnerSet            ownerset.OpenFunc
+	openUnderlying          underlying.OpenFunc
 	settingsPage            func(c settings_page.Config) pages.Page
 	optionCandidatesPage    func(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page
 	optionNoticesPage       optionNoticesPageFunc
@@ -254,6 +257,7 @@ func newDeps() deps {
 	d.newSettingsForm = settingsform.New
 	d.openDividend, d.newDividendCapture = eventstore.OpenDividend, dividendcapture.New
 	d.openOwnerSet = ownersetpg.Open
+	d.openUnderlying = underlyingpg.Open
 	d.openBar, d.newBarsRefresh, d.newFxRefresh, d.newHistory = openBarStore, barsrefresh.New, fxrefresh.New, grpcbroker.DialHistory
 	d.openOptionLedgerRO = openOptionLedgerStore
 	d.settingsPage, d.reportPageBlocks = settings_page.NewPage, report_page.NewPage
