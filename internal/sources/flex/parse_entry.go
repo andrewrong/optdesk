@@ -16,7 +16,7 @@ func badGzip() error { return failCode(kindNotReport, "gzip") }
 
 // Parse reads a Flex body, plain or gzip (a body that starts with 1f 8b), and parses it with the
 // parser of the client. The limit of 50 MB is on the decompressed bytes; RawSHA256 is the hash of
-// the decompressed bytes; FetchedAt is left for the caller.
+// the decompressed bytes; the fetch instant is left for the caller.
 func Parse(r io.Reader) (sources.FlexReport, error) {
 	br := bufio.NewReader(r)
 	var src io.Reader = br
