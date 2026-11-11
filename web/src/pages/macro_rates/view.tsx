@@ -1,9 +1,8 @@
 // The macro rates page: every string is a field of the payload and every figure is the text the builder wrote;
-// this file computes nothing. The line is drawn from the numbers, the tooltip and the table read the texts.
+// this file computes nothing. The line is drawn from the numbers, the tooltip reads the texts.
 import { Info, TriangleAlert } from 'lucide-react'
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'
-import { DataTable, type Column } from '@/components/data-table/data-table'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,11 +10,6 @@ import { page } from '@/shell/page'
 import { validate, type Payload } from '@/types/macro_rates'
 
 type Series = Payload['series'][number]
-
-const COLUMNS: Column[] = [
-  { id: 'date', label: 'date' },
-  { id: 'value', label: 'value', align: 'right' },
-]
 
 // The points by `date`; a null value stays null (the line joins its neighbours, it is never a zero).
 export function chartSpecOf(series: Series): ChartSpec {
@@ -32,10 +26,6 @@ export function chartSpecOf(series: Series): ChartSpec {
 }
 
 function SeriesCard({ series }: { series: Series }) {
-  const rows = series.points.map((point) => ({
-    date: { text: point.date, value: point.date },
-    value: { text: point.text, value: point.value },
-  }))
   return (
     <Card data-series={series.id}>
       <CardHeader>
@@ -53,7 +43,6 @@ function SeriesCard({ series }: { series: Series }) {
           </Alert>
         )}
         <Chart spec={chartSpecOf(series)} ariaText={series.title} name={series.id} />
-        <DataTable columns={COLUMNS} rows={rows} />
       </CardContent>
     </Card>
   )

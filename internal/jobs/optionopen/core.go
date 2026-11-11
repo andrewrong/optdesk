@@ -459,9 +459,12 @@ func rowStatus(q broker.Quote) (int, *string) {
 	return stError, code("ERROR")
 }
 
-// contentStatus is ok with bid, ask and the model IV, partial with any other part of them, else no_data.
+// contentStatus is no_data for a frozen (2), delayed (3) or delayed frozen (4) quote, whatever its fields: it is not
+// today's open. Otherwise ok with bid, ask and the model IV, partial with any other part of them, else no_data.
 func contentStatus(q broker.Quote) int {
 	switch {
+	case q.MarketDataType >= 2 && q.MarketDataType <= 4:
+		return stNoData
 	case q.Bid != nil && q.Ask != nil && q.ImpliedVol != nil:
 		return stOK
 	case q.Bid != nil || q.Ask != nil || q.Last != nil || q.ImpliedVol != nil:
