@@ -198,8 +198,7 @@ it('shows a gap as its text, with no figure', async () => {
   await show(<HouseholdPage payload={payload} />)
   const trend = host.querySelector('[data-block=trend]')!
   // gap.json carries a gap on the block and on each of its two series: the series draw theirs, the block adds none
-  expect(trend.querySelectorAll('[data-block-gap]')).toHaveLength(payload.trend.series.length)
-  expect(payload.trend.series).toHaveLength(2)
+  expect(trend.querySelectorAll('[data-block-gap]')).toHaveLength(2)
   expect(trend.querySelector('[data-block-gap]')?.textContent).toBe(payload.trend.gap.text)
   expect(trend.querySelector('[data-block-gap]')?.getAttribute('data-reason')).toBe(
     payload.trend.gap.reason,
