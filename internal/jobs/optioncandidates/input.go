@@ -286,10 +286,10 @@ func aliasFunds(alias, symbol string, day contracts.Day, values []store.AccountV
 		}
 		n := int(new(big.Int).Quo(q.Num(), q.Denom()).Int64())
 		switch {
-		case p.SecType == "STK":
+		case p.SecType == "stock":
 			f.Shares += n
 			f.AvgCost = p.AvgCost
-		case p.SecType == "OPT" && p.Right == "call" && n < 0:
+		case p.SecType == "option" && p.Right == "call" && n < 0:
 			f.OpenShortCalls += -n
 		}
 	}

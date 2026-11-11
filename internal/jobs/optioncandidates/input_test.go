@@ -18,8 +18,8 @@ func TestAliasesAandBAreSeparate(t *testing.T) {
 		"B": {{Tag: "AvailableFunds", Value: "20000", Currency: "USD"}},
 	}
 	f.positions = map[string][]store.Position{
-		"A": {{Symbol: "ABC", SecType: "STK", Quantity: "300", AvgCost: "88"}},
-		"B": {{Symbol: "ABC", SecType: "OPT", Right: "call", Quantity: "-2"}},
+		"A": {{Symbol: "ABC", SecType: "stock", Quantity: "300", AvgCost: "88"}},
+		"B": {{Symbol: "ABC", SecType: "option", Right: "call", Quantity: "-2"}},
 	}
 	build(t, f.stores(), f, usEntry()).Run(context.Background(), runDay, nil)
 	got := f.inputs[0].Accounts
