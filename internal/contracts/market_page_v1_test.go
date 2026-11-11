@@ -23,7 +23,7 @@ func pageV1Minimal(t *testing.T, name string, extra map[string]string) map[strin
 }
 
 func pageV1Gap() map[string]any {
-	return map[string]any{"kind": "gap", "reason": "no_data", "text": "尚无数据"}
+	return map[string]any{"kind": "gap", "reason": "no_data", "text": "no data yet"}
 }
 
 func pageV1Figure() map[string]any {

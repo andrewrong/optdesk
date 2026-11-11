@@ -85,8 +85,8 @@ func TestHeldV3PriceAndMarks(t *testing.T) {
 	t.Parallel()
 	s := compileURL(t, schemasDir, schemaHost+heldV3)
 	price := map[string]any{"kind": "value", "value": 187.5, "text": "$187.50", "unit": "price"}
-	gap := map[string]any{"kind": "gap", "reason": "missing_quote", "text": "无报价"}
-	sharp := map[string]any{"kind": "sharp", "text": "急涨"}
+	gap := map[string]any{"kind": "gap", "reason": "missing_quote", "text": "no quote"}
+	sharp := map[string]any{"kind": "sharp", "text": "sharp rise"}
 	none := map[string]any{"kind": "none"}
 	ok := func(k string, v any) bool {
 		r := heldRow(t)

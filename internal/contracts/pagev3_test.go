@@ -93,7 +93,7 @@ type slotCase struct {
 }
 
 func gapOf(reason string) map[string]any {
-	return map[string]any{"kind": "gap", "reason": reason, "text": "无数据"}
+	return map[string]any{"kind": "gap", "reason": reason, "text": "no data"}
 }
 
 func v3Slots() []slotCase {
@@ -104,7 +104,7 @@ func v3Slots() []slotCase {
 			put: func(inst map[string]any, slot any) {
 				card := inst["card"].(map[string]any)
 				card["index_table"].(map[string]any)["rows"] = []any{
-					map[string]any{"name": "甲", "iv": slot, "rv20": gap, "iv_minus_rv20": gap},
+					map[string]any{"name": "Alpha", "iv": slot, "rv20": gap, "iv_minus_rv20": gap},
 				}
 			},
 			figure: map[string]any{"kind": "value", "value": 20.0, "text": "20.0", "unit": "vol_points"},
@@ -113,7 +113,7 @@ func v3Slots() []slotCase {
 			name: "page.options_summary.v3.json",
 			put: func(inst map[string]any, slot any) {
 				tiles := inst["card"].(map[string]any)["tiles"].(map[string]any)
-				tiles["max_loss_usd"] = map[string]any{"label": "最大亏损", "figure": slot}
+				tiles["max_loss_usd"] = map[string]any{"label": "Max loss", "figure": slot}
 			},
 			figure: map[string]any{"kind": "value", "value": 4000.0, "text": "$4,000", "unit": "usd"},
 		},

@@ -92,8 +92,8 @@ func TestPositionsPageV3RoleCell(t *testing.T) {
 		t.Skip("ok.json has no option row")
 		return nil
 	}
-	if !positionsValid(t, setRole("账户（main）")) {
-		t.Error("role 账户（main） rejected")
+	if !positionsValid(t, setRole("Account (main)")) {
+		t.Error("role Account (main) rejected")
 	}
 	if positionsValid(t, setRole("")) {
 		t.Error("empty role text accepted")

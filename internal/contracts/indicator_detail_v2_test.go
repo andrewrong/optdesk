@@ -20,7 +20,7 @@ func indicatorRecent(rows int) map[string]any {
 	for range rows {
 		out = append(out, indicatorRow())
 	}
-	return map[string]any{"title": "最近 12 期", "columns": []any{"期", "公布日", "值", "较前"}, "rows": out}
+	return map[string]any{"title": "Last 12 periods", "columns": []any{"Period", "Release day", "Value", "Change"}, "rows": out}
 }
 
 func TestIndicatorDetailV2Valid(t *testing.T) {

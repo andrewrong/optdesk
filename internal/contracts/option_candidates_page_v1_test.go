@@ -86,7 +86,7 @@ func TestOptionCandidatesPageNoRowsGapValid(t *testing.T) {
 	inst := candidatesMinimal(t)
 	g := candidatesGroup(inst)
 	g["main"], g["other"] = nil, nil
-	g["gap"] = map[string]any{"kind": "gap", "reason": "no_rows", "text": "7 天内无行"}
+	g["gap"] = map[string]any{"kind": "gap", "reason": "no_rows", "text": "no rows in 7 days"}
 	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
 		t.Fatal("group gap no_rows (design Decision 3) is rejected")
 	}
@@ -95,14 +95,14 @@ func TestOptionCandidatesPageNoRowsGapValid(t *testing.T) {
 func TestOptionCandidatesPageNoRunAndUnreadableGapsValid(t *testing.T) {
 	t.Parallel()
 	inst := candidatesMinimal(t)
-	inst["gaps"] = []any{map[string]any{"kind": "gap", "reason": "no_run", "text": "尚无运行"}}
+	inst["gaps"] = []any{map[string]any{"kind": "gap", "reason": "no_run", "text": "no run yet"}}
 	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
 		t.Fatal("page gap no_run is rejected")
 	}
 	g := candidatesGroup(inst)
 	table := candidatesTable()
 	table["rows"].([]any)[0].(map[string]any)["cells"] = map[string]any{
-		"strike": map[string]any{"kind": "gap", "reason": "unreadable", "text": "无法读取"},
+		"strike": map[string]any{"kind": "gap", "reason": "unreadable", "text": "unreadable"},
 	}
 	g["main"], g["gap"] = table, nil
 	if !pageV1Valid(t, optionCandidatesPageV1, inst) {
