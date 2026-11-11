@@ -120,8 +120,8 @@ func (r jpRules) watch(in []jobs.WatchEntry) []jobs.WatchEntry {
 	var out []jobs.WatchEntry
 	for _, e := range in {
 		sym := e.Contract.Symbol
-		stk := e.Contract.SecType == "STK"
-		if e.Market != "JP" || r.noOption(sym) || !(stk || e.Contract.SecType == "IND" && r.isIndex(sym)) {
+		kind := e.Contract.SecType
+		if e.Market != "JP" || r.noOption(sym) || (kind != "STK" && (kind != "IND" || !r.isIndex(sym))) {
 			continue
 		}
 		// The shared list selects market US and stocks: the JP rule is applied here, and an index entry
