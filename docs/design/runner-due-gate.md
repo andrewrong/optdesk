@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-11
-Revision: 3
+Revision: 4
 
 Source: decision of optdesk-advisor, 2026-11-11 (round 1 replaced the date gate of revision 2). Read on origin/main: `AGENTS.md`, `docs/design/modules.md`, `docs/contracts/runner.md`, `internal/runner/api.go`, `internal/runner/sched/slots.go`, `internal/runner/sched/ticker.go`, `internal/runner/reconcile/**`, the job schedule and guard files named below.
 
@@ -22,11 +22,17 @@ Goal: a job that is scheduled for a start instant on day D is not started on D b
 
 ## Modules
 
-None changed. All paths are in the runner module (`internal/runner/** docs/contracts/runner.md`, `docs/design/modules.md` row `runner`): `internal/runner/reconcile`, `internal/runner/sched` and a new package `internal/runner/slotat`. `reconcile` and `sched` import `slotat`; `slotat` imports `runner`, `clock` and `contracts`, which are runner's dependencies; there is no cycle.
+Changed, and across modules: the import rule is changed first (entries 1 and 2, below), then the runner entry (3) uses it.
+
+- `docs` (`docs/design/modules.md`, owner-only path, the window writes it): one sentence in the **depends** paragraph names the one allowed edge between sub-packages of a row.
+- `repo` (`scripts/arch/**`): the generator derives that edge, with a test.
+- `runner` (`internal/runner/** docs/contracts/runner.md`): `internal/runner/reconcile`, `internal/runner/sched` and a new package `internal/runner/shared`. `reconcile` and `sched` import `shared`; `shared` imports `runner`, `clock` and `contracts` and no sibling, so there is no cycle.
+
+Why a rule change. The shared function first went in a package `internal/runner/slotat`, then in the root package. Neither is allowed today. The **depends** paragraph of `docs/design/modules.md`, which `scripts/arch` turns into go-arch-lint for `ci-go`, lets a sub-package `<name>/<sub>` import only the root components of its row's depends cell, the standard library, external modules, its own root `<name>`, and the declarations-only packages, test kits and `genpb` it names ("a sub-package component `<name>/<sub>` may import the same and the root component `<name>`"). So `reconcile` cannot import a sibling implementation package, whatever its name. The root `internal/runner` cannot take the function either: every root package of `internal/` except `profile` holds `api.go` and tests only, the `entry` cell says "one declarations-only file per package (`api.go`)" and AGENTS.md says "an interface is one file per package, declarations only", and `docs/contracts/runner.md` says "The root package `internal/runner` holds only `api.go` and `api_test.go`". A logic file in the root would be a second file of the interface package, imported by every module that uses `runner` (cmd/ot, jobs). A test kit does not fit either: a kit is imported by the sub-packages of the rows that depend on its row, "never by ... its own row's sub-packages", and a declarations-only package holds no logic. So the rule changes (option b).
 
 ## Interface
 
-None. `internal/runner/api.go` is not edited: `Slot` and `Scheduled` already carry what the function needs, and the new package is internal to the runner module and listed in no interface row.
+`internal/runner/api.go` is not edited: `Slot` and `Scheduled` already carry what the function needs. The new package `internal/runner/shared` is an implementation package, not an interface file: it holds logic (`At`), no row lists it in an entry cell, and no module outside `runner` imports it (the rule below lets only sibling sub-packages of its own row import it). `docs/design/modules.md` changes in its rule text only; no row, entry cell or depends cell changes.
 
 ## Decision
 
@@ -36,13 +42,15 @@ A job that is `runner.Scheduled` is not started for day D before its slot instan
 
 The instant comes from ONE function used by both `reconcile` and `sched`:
 
-`slotat.At(s runner.Slot, sess clock.Session) (time.Time, error)` in `internal/runner/slotat/slotat.go`. `sess` is the session of `s.CalendarID` on the day, with `IsSession` true; `At` returns `sess.OpenAt + Offset`, `sess.CloseAt + Offset`, or, for `time`, `Offset` since midnight of the date of `sess.Day` in `s.Zone`. An unknown anchor, or an unknown or empty zone for `time`, is an error naming the job, as `NextStarts` returns today.
+`shared.At(s runner.Slot, sess clock.Session) (time.Time, error)` in `internal/runner/shared/slotat.go` (package `shared`). `sess` is the session of `s.CalendarID` on the day, with `IsSession` true; `At` returns `sess.OpenAt + Offset`, `sess.CloseAt + Offset`, or, for `time`, `Offset` since midnight of the date of `sess.Day` in `s.Zone`. An unknown anchor, or an unknown or empty zone for `time`, is an error naming the job, as `NextStarts` returns today.
 
-The code moves out of `sched`: the `switch j.Anchor` and `wallTime` of `nextStarts` (`sched/slots.go`) become a call of `slotat.At`, and the anchor constants move with them to `slotat`. `sched` keeps its pre-validation of anchors and zones and its error text, so its tests pass unchanged. `reconcile` builds the `runner.Slot` of a job from `Scheduled.Schedule()` and the job's id and calls the same function with the session of the job's calendar that `plan` already has in `sess`. They cannot disagree because there is one body.
+The code moves out of `sched`: the `switch j.Anchor` and `wallTime` of `nextStarts` (`sched/slots.go`) become a call of `shared.At`, and the anchor constants move with them to `shared`. `sched` keeps its pre-validation of anchors and zones and its error text, so its tests pass unchanged. `reconcile` builds the `runner.Slot` of a job from `Scheduled.Schedule()` and the job's id and calls the same function with the session of the job's calendar that `plan` already has in `sess`. They cannot disagree because there is one body.
+
+The import rule that allows it (entries 1 and 2). Text added to the **depends** paragraph of `docs/design/modules.md`: "A sub-package `<name>/shared`, the one fixed name, is an implementation package that the other sub-packages of its own row may import. It may itself import only what any sub-package of its row imports and no sibling sub-package, so it closes no cycle. No other implementation sub-package is imported by a sibling." `scripts/arch` derives it from the tree: the component `<name>/shared`, when the directory exists, gets the sub-package import list of its row and is added to the import list of the other sub-package components of the row; no other sibling edge is added. Test of the generator: a sub-package importing `<name>/shared` passes; a sub-package importing another sibling fails; `<name>/shared` importing a sibling fails.
 
 ### Plumbing
 
-- `plan` keeps planning every job of the day, including held ones, and returns the held state in the plan: `plan.held` is the set of expected keys whose job is not yet due, computed only when `sess` is non-nil (a job is held when `r.clk.Now()` is before `slotat.At`). `p.keys`, `p.job` and the job's hash are unchanged for a held job, so `p.hash` includes held jobs from the first pass and `PutExpected` is not rewritten when the job becomes due. A `continue` that skips the job in `plan` is wrong: the hash would change on the pass at which the job becomes due.
+- `plan` keeps planning every job of the day, including held ones, and returns the held state in the plan: `plan.held` is the set of expected keys whose job is not yet due, computed only when `sess` is non-nil (a job is held when `r.clk.Now()` is before `shared.At`). `p.keys`, `p.job` and the job's hash are unchanged for a held job, so `p.hash` includes held jobs from the first pass and `PutExpected` is not rewritten when the job becomes due. A `continue` that skips the job in `plan` is wrong: the hash would change on the pass at which the job becomes due.
 - `reconcileOn` skips a held key before `expireIfClosed` and `nextAttempt`, and sets `complete = false`: the day is not done, so the cursor stays before D. A held job writes no key (no `MarkPresent`) and no run row (no `RecordRun`). The windows of its datasets are put as today.
 - On a later pass at or after the instant, the key is no longer held and is planned and run as today.
 - A job whose instant on D has passed is not held. At 00:09Z an XTKS-session job whose slot has passed is started on D; a New York `option_eod`-like job whose slot is at the close is held.
@@ -60,13 +68,39 @@ All in `internal/runner/reconcile/*_test.go`; the issue reads each and changes a
 
 ## Issues
 
-### 1 runner-due-gate (runner)
+### 1 modules-shared-subpackage (docs)
+
+Module: docs. Size: S. Owner-only: the window writes it (`docs/design/modules.md`).
+Files: `docs/design/modules.md`
+Design: docs/design/runner-due-gate.md#one-function-for-the-instant
+Order: first.
+Goal: the **depends** paragraph of `docs/design/modules.md` states the edge of a sub-package `<name>/shared` as the Decision quotes it, and nothing else in the file changes.
+Acceptance:
+1. The paragraph holds the three sentences of the quoted text; `git diff --name-only $(git merge-base HEAD origin/main)` lists `docs/design/modules.md` only, and no row, entry cell or depends cell differs.
+Checked by CI: the `test` check.
+Pull request body: `Contracts: unchanged`.
+
+### 2 arch-shared-subpackage (repo)
+
+Module: repo. Size: S.
+Files: `scripts/arch/main.go`, `scripts/arch/main_test.go`
+Design: docs/design/runner-due-gate.md#one-function-for-the-instant
+Order: after 1 (the generator follows the written rule).
+Goal: `go run ./scripts/arch` derives the edge of `<name>/shared` and no other sibling edge.
+Acceptance:
+1. With a `internal/<name>/shared` directory, the generated import lists let every other sub-package component of the row import `<name>/shared`, and `<name>/shared` gets the sub-package list of its row and no sibling.
+2. The cases of the Decision (a sub-package importing `<name>/shared` passes; importing another sibling fails; `shared` importing a sibling fails) are cases of `scripts/arch/main_test.go`.
+3. With no `shared` directory the generated output is unchanged.
+Checked by CI: ci-go.
+Pull request body: `Contracts: unchanged`.
+
+### 3 runner-due-gate (runner)
 
 Module: runner. Size: M.
-Files: `internal/runner/slotat/slotat.go`, `internal/runner/slotat/slotat_test.go`, `internal/runner/sched/slots.go`, `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/reconcile_test.go`, `internal/runner/reconcile/calendars_test.go`, `internal/runner/reconcile/fakes_test.go`, `docs/contracts/runner.md`
+Files: `internal/runner/shared/slotat.go`, `internal/runner/shared/slotat_test.go`, `internal/runner/sched/slots.go`, `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/reconcile_test.go`, `internal/runner/reconcile/calendars_test.go`, `internal/runner/reconcile/fakes_test.go`, `docs/contracts/runner.md`
 Design: docs/design/runner-due-gate.md#decision
-Order: first.
-Goal: a `Scheduled` job's keys are held, and the day is not done, until the slot instant of the job on the day; the instant is computed by `slotat.At`, which `sched` uses too.
+Order: after 2 (the import rule must be on main, or ci-go fails the import of `shared`).
+Goal: a `Scheduled` job's keys are held, and the day is not done, until the slot instant of the job on the day; the instant is computed by `shared.At`, which `sched` uses too.
 Acceptance:
 1. At 00:09Z on D, a session-anchored `option_eod`-like fake job with no zone and the anchor `session_close` of XNYS is held: no run row, the cursor stays before D, the day is not done.
 2. At the slot instant of that job on D (the close of D plus its offset) the job is started.
@@ -101,9 +135,10 @@ The slot instant needs no zone from the job for a session anchor and is the inst
 
 1. Held versus skipped: a skipped job leaves the day complete and the cursor passes D; a held key makes `complete` false. Acceptance 1 fails on a `continue`.
 2. Hash: the held job's hash stays in `p.hash`; acceptance 6 fails if `PutExpected` runs twice.
-3. Instant computed twice: rejected; one function, `slotat.At`, used by `sched` and `reconcile`.
+3. Instant computed twice: rejected; one function, `shared.At`, used by `sched` and `reconcile`.
 4. Backfill: `plan` returns held keys, so `backfillPlan` does not fail; acceptance 5.
-5. A gate on the previous close of the calendar: not adopted; New York's previous close is 21:00Z on D-1, before 00:09Z on D, and it breaks jobs that run before the open.
+5. Import rule: `reconcile` importing a sibling package (first `slotat`) is not allowed by the depends paragraph, and neither is a function in the root `internal/runner`, which is declarations-only (Modules). Rejected: citing text that allows the edge (there is none), a logic file in the root, a test kit (never imported by the row's own sub-packages). The rule changes first, by the narrowest edge (one fixed name, no cycle by construction), and this design crosses `docs` and `repo` for it.
+6. A gate on the previous close of the calendar: not adopted; New York's previous close is 21:00Z on D-1, before 00:09Z on D, and it breaks jobs that run before the open.
 
 ### Residual risks
 
