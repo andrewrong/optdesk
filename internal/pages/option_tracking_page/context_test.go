@@ -355,8 +355,8 @@ func TestEventLookbackSevenDays(t *testing.T) {
 func TestHeldFromNewestCapture(t *testing.T) {
 	t.Parallel()
 	r := newRig()
-	opt := store.Position{SecType: "OPT", Symbol: "AAPL", Expiry: "2026-12-18", Strike: "150", Right: "put", Quantity: "-1"}
-	stk := store.Position{SecType: "STK", Symbol: "AAPL", Quantity: "100"}
+	opt := store.Position{SecType: "option", Symbol: "AAPL", Expiry: "2026-12-18", Strike: "150", Right: "put", Quantity: "-1"}
+	stk := store.Position{SecType: "stock", Symbol: "AAPL", Quantity: "100"}
 	r.positions["2026-11-08"] = []store.Position{stk, opt}
 	r.positions["2026-11-05"] = []store.Position{stk}
 	in, _, err := gather(context.Background(), r.config(), "main", buildDay)
