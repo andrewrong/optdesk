@@ -1,0 +1,33 @@
+# Manifest of option_open_resolve_gap (US): the pre-open pass that resolves only the gap of the band.
+version = 1
+id = "option_open_resolve_gap"
+zone = "America/New_York"
+# Ends before the plan job at 08:45.
+budget_minutes = 30
+max_new = 150
+retry_days = 7
+jitter_days = 2
+spot_move = 0.05
+lookahead_days = 4
+gap_only = true
+
+[window]
+rule = "after_close"
+lateness_hours = 0
+calendar = "XNYS"
+
+# 08:00 ET on an ordinary day, 90 minutes before the open.
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+offset = "-90m"
+run_bound = "10m"
+restart_sensitive = false
+
+[params]
+store_k = 1.75
+store_drop = 0.25
+calls = "held"
+min_dte = 20
+max_dte = 45
+min_puts = 6
