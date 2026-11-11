@@ -23,7 +23,7 @@ func TestMonthsSeries(t *testing.T) {
 	if len(p) != 2 || p[0]["label"] != "2026-09" || p[0]["value"] != 150.0 || p[1]["value"] != -40.5 || p[1]["text"] != "-40.5000" {
 		t.Errorf("months = %v", p)
 	}
-	if s["summary"] != "2026-09 150.0000；2026-10 -40.5000" || s["empty"] != nil {
+	if s["summary"] != "2026-09 150.0000; 2026-10 -40.5000" || s["empty"] != nil {
 		t.Errorf("summary = %v empty = %v", s["summary"], s["empty"])
 	}
 }

@@ -107,13 +107,13 @@ func TestNoOpenShortsSentence(t *testing.T) {
 	res := trackapi.TrackResult{Recent: []opt{sampleClosed("p0")}}
 	vm := buildPage(t, cfgFor(map[string]trackapi.TrackResult{"main": res}, "main"))
 	a := vm.Accounts[0]
-	if a.Open != nil || a.Recent == nil || !strings.Contains(a.Title, "没有未平仓的卖方期权") {
+	if a.Open != nil || a.Recent == nil || !strings.Contains(a.Title, "No open short options") {
 		t.Fatalf("account = %+v", a)
 	}
 	c := cfgFor(map[string]trackapi.TrackResult{"main": {}}, "main")
 	c.Account = nil
 	a = buildPage(t, c).Accounts[0]
-	if a.Gap == nil || a.Gap.Text != "没有未平仓的卖方期权" {
+	if a.Gap == nil || a.Gap.Text != "No open short options" {
 		t.Fatalf("empty account = %+v", a)
 	}
 }
@@ -126,10 +126,10 @@ func TestLongLegsLeftOut(t *testing.T) {
 	if vm.Accounts[0].LongLegsLeftOut != 3 {
 		t.Fatalf("long_legs_left_out = %d", vm.Accounts[0].LongLegsLeftOut)
 	}
-	if !strings.Contains(strings.Join(vm.Notes, "|"), "3 个多头腿未列出,见期权持仓页") {
+	if !strings.Contains(strings.Join(vm.Notes, "|"), "3 long legs not listed, see the option positions page") {
 		t.Fatalf("notes = %v", vm.Notes)
 	}
-	if len(vm.Notes) < 1 || vm.Notes[0] != "Flex 次日到账,今天新开或被指派的可能还没出现;见核对表" || vm.MarkNote != "中间价,收盘 bid/ask 的中点;不是成交价" {
+	if len(vm.Notes) < 1 || vm.Notes[0] != "Flex arrives the next day; positions opened or assigned today may not show yet; see the check table" || vm.MarkNote != "Mid price, the midpoint of the closing bid/ask; not a traded price" {
 		t.Fatalf("notes = %v, mark note = %q", vm.Notes, vm.MarkNote)
 	}
 }

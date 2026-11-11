@@ -30,21 +30,21 @@ func TestSixFiguresPerSection(t *testing.T) {
 	for _, f := range secs[0]["figures"].([]any) {
 		labels = append(labels, f.(map[string]any)["label"].(string))
 	}
-	if strings.Join(labels, ",") != "已实现,权利金,留存比例,已平仓笔数,被行权笔数,到期笔数" {
+	if strings.Join(labels, ",") != "Realized,Premium,Retained ratio,Closed trades,Assigned trades,Expired trades" {
 		t.Errorf("labels = %v", labels)
 	}
 	v := figureValues(secs[0])
-	want := map[string]string{"已实现": "109.5000", "权利金": "200.0000", "留存比例": "75.0000%", "已平仓笔数": "2", "被行权笔数": "1", "到期笔数": "1"}
+	want := map[string]string{"Realized": "109.5000", "Premium": "200.0000", "Retained ratio": "75.0000%", "Closed trades": "2", "Assigned trades": "1", "Expired trades": "1"}
 	for k, w := range want {
 		if v[k] != w {
 			t.Errorf("%s = %q, want %q", k, v[k], w)
 		}
 	}
-	if v := figureValues(secs[1]); v["留存比例"] != "—" || v["被行权笔数"] != "0" || v["到期笔数"] != "0" {
+	if v := figureValues(secs[1]); v["Retained ratio"] != "—" || v["Assigned trades"] != "0" || v["Expired trades"] != "0" {
 		t.Errorf("bought figures = %v", v)
 	}
-	if v := figureValues(secs[2]); v["留存比例"] != "100.0000%" {
-		t.Errorf("jpy kept = %q", v["留存比例"])
+	if v := figureValues(secs[2]); v["Retained ratio"] != "100.0000%" {
+		t.Errorf("jpy kept = %q", v["Retained ratio"])
 	}
 }
 
@@ -86,11 +86,11 @@ func TestNotesNameNulls(t *testing.T) {
 	t.Parallel()
 	c, _ := testConfig(t, "result_ok.json")
 	secs := sectionsOf(buildMap(t, c, "main"))
-	if n := strs(secs[0]["figure_notes"]); len(n) != 1 || !strings.Contains(n[0], "保护") {
+	if n := strs(secs[0]["figure_notes"]); len(n) != 1 || !strings.Contains(n[0], "Protection") {
 		t.Errorf("sold_usd notes = %v", n)
 	}
 	n := strings.Join(strs(secs[1]["figure_notes"]), "|")
-	for _, w := range []string{"留存比例", "被行权", "保护"} {
+	for _, w := range []string{"Retained ratio", "Assigned", "Protection"} {
 		if !strings.Contains(n, w) {
 			t.Errorf("bought_usd notes %q miss %q", n, w)
 		}

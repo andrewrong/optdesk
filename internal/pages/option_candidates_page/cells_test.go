@@ -31,7 +31,7 @@ func TestFitsPerAlias(t *testing.T) {
 	c := cand("short_put", 1, "ok")
 	c.Fits = `{"B":"no_fit","A":"fit","C":"unknown"}`
 	cell := fitCell(c).(valueCell)
-	if want := []string{"B 资金不够", "A 资金够", "C 未知"}; !reflect.DeepEqual(cell.Badges, want) {
+	if want := []string{"B Not enough cash", "A Enough cash", "C Unknown"}; !reflect.DeepEqual(cell.Badges, want) {
 		t.Errorf("badges = %v, want the stored key order %v", cell.Badges, want)
 	}
 	c.Fits = "{}"
@@ -51,7 +51,7 @@ func TestMarksAreBadges(t *testing.T) {
 	c := cand("short_put", 1, "ok")
 	c.Marks = `["itm","earnings_unconfirmed","earnings_beyond_horizon","no_dividend","future_mark"]`
 	cell := marksCell(c).(valueCell)
-	want := []string{"itm 价内", "earnings_unconfirmed 财报日未确认", "earnings_beyond_horizon 财报在合约之外", "no_dividend 无股息", "future_mark"}
+	want := []string{"itm in the money", "earnings_unconfirmed earnings date not confirmed", "earnings_beyond_horizon earnings after the contract", "no_dividend no dividend", "future_mark"}
 	if !reflect.DeepEqual(cell.Badges, want) {
 		t.Errorf("badges = %v", cell.Badges)
 	}

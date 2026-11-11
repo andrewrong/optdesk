@@ -29,13 +29,13 @@ const (
 )
 
 var gapTexts = map[string]string{
-	"missing_quote":        "无报价",
-	"stale_input":          "报价过旧",
-	"unsupported_currency": "非美元合约，不换算",
-	"no_rule":              "此结构无该数字",
-	"no_data":              "无数据",
-	"missing_input":        "缺少输入",
-	"no_reader":            "读取器未接入",
+	"missing_quote":        "No quote",
+	"stale_input":          "Stale quote",
+	"unsupported_currency": "Non-USD contract, not converted",
+	"no_rule":              "No such figure for this structure",
+	"no_data":              "No data",
+	"missing_input":        "Missing input",
+	"no_reader":            "Reader not connected",
 }
 
 func mkGap(reason string) gap {
@@ -109,20 +109,20 @@ func (c cells) moneyness(s compute.Structure) any {
 		return mkGap(reasonMissing)
 	}
 	if strings.Trim(f.Value, "-0.") == "" {
-		return "平价"
+		return "at the money"
 	}
 	below := strings.HasPrefix(f.Value, "-") // the strike lies below the underlying
 	if (s.Legs[0].Right == "P") == below {
-		return "价外"
+		return "out of the money"
 	}
-	return "价内"
+	return "in the money"
 }
 
 // maxLossCell is max_loss; an unbounded naked call is shown as such.
 func (c cells) maxLossCell(s compute.Structure) any {
 	m := c.money(s.Figures.MaxLoss)
 	if g, ok := m.(gap); ok && s.Kind == "naked_call" && g.Reason == reasonNoRule {
-		return gap{Reason: reasonNoRule, Text: "无上限"}
+		return gap{Reason: reasonNoRule, Text: "No limit"}
 	}
 	return m
 }
@@ -139,7 +139,7 @@ func (c cells) compare(s compute.Structure) *compare {
 	return &compare{
 		CloseCost: c.text(s.Figures.CloseCost), RollNet: c.text(s.Figures.RollNet),
 		CashAfter: c.text(s.Figures.CashAfter), RecentCommission: c.text(s.Figures.RecentCommission),
-		CapturedParam: "已赚比例 " + captured, ExitDTEParam: "到期前天数 " + s.ExitDTEParam,
+		CapturedParam: "Earned ratio " + captured, ExitDTEParam: "Days before expiry " + s.ExitDTEParam,
 	}
 }
 

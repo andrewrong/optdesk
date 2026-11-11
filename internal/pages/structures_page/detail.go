@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	notOpenText  = "结构已不在持仓中"
+	notOpenText  = "Structure is no longer held"
 	maxLegs      = 8
 	maxFills     = 50
 	maxGapsShown = 20
@@ -91,11 +91,11 @@ func newDetail(c Config, alias string, day contracts.Day, at time.Time) (*detail
 	return &detailModel{
 		Schema: "structure_detail", SchemaVersion: 3, RunID: c.RunID, BuildID: c.BuildID, Scope: alias,
 		GeneratedAt: at.In(c.Zone).Format(time.RFC3339), DataTimes: []sourceTime{{Source: "option_ledger", DataTime: dayAt}},
-		RunStatus: "ok", Title: "结构详情",
-		LegsTitle: "逐腿明细", PayoffTitle: "到期盈亏", GreeksTitle: "希腊字母", LevelsTitle: "关键价位",
-		TimelineTitle: "时间线", FillsTitle: "成交记录",
+		RunStatus: "ok", Title: "Structure detail",
+		LegsTitle: "Leg detail", PayoffTitle: "Payoff at expiry", GreeksTitle: "Greeks", LevelsTitle: "Key levels",
+		TimelineTitle: "Timeline", FillsTitle: "Fills",
 		Legs: []any{}, KeyLevels: []level{}, Timeline: []stage{}, Fills: []fill{}, Gaps: []gap{},
-		Stale: staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "按 " + string(day) + " 的账本与收盘价"},
+		Stale: staleLabel{DataTime: dayAt, StaleAfter: staleAt, Text: "Ledger and closing prices as of " + string(day)},
 	}, nil
 }
 
@@ -116,7 +116,7 @@ func buildDetail(ctx context.Context, c Config, alias, structureID string, day c
 		return nil, err
 	}
 	if c.Ledger == nil || c.Sessions == nil {
-		vm.gapPage("failed", mkGap(reasonNoReader), "无法读取持仓结构", structureID)
+		vm.gapPage("failed", mkGap(reasonNoReader), "Cannot read the position structures", structureID)
 		return json.Marshal(vm)
 	}
 	in, err := c.load(ctx, alias, day)
@@ -147,14 +147,14 @@ func findByID(res compute.StructureResult, id string) (compute.Structure, bool) 
 
 // gapPage fills the page of a structure that cannot be shown: every block is the one gap.
 func (vm *detailModel) gapPage(status string, g gap, sentence, id string) {
-	vm.RunStatus, vm.Sentence, vm.Subline = status, sentence, clip("结构 "+id)
+	vm.RunStatus, vm.Sentence, vm.Subline = status, sentence, clip("Structure "+id)
 	label := func(l string, caption string) tile { return tile{Label: l, Figure: g, Caption: caption} }
 	vm.Tiles = tiles{
-		PnL: label("当前盈亏", "按中间价估值"), MaxGain: label("最大盈利", "到期时"),
-		MaxLoss: label("最大亏损", "到期时"), BreakEven: label("盈亏平衡", "到期价"),
+		PnL: label("Current P&L", "Valued at mid price"), MaxGain: label("Max profit", "At expiry"),
+		MaxLoss: label("Max loss", "At expiry"), BreakEven: label("Breakeven", "Expiry price"),
 	}
 	vm.Legs = []any{g}
-	vm.LegsTotal = legsTotal{Label: "合计", PnL: g}
+	vm.LegsTotal = legsTotal{Label: "Total", PnL: g}
 	vm.Payoff, vm.Greeks = g, g
 	vm.Gaps = []gap{g}
 }
@@ -202,22 +202,22 @@ func (b *builder) fill(vm *detailModel) {
 	s := b.s
 	kind := kindTexts[s.Kind]
 	if kind == "" {
-		kind = "未识别"
+		kind = "Unidentified"
 	}
 	vm.Title = clip(s.Underlying + " " + kind)
 	if s.Underlying == "" {
 		vm.Title = kind
 	}
 	expiry := earliestExpiry(s)
-	vm.Subline = clip(kind + " · 到期 " + expiry + " · 账户 " + s.Alias)
+	vm.Subline = clip(kind + " · expiry " + expiry + " · account " + s.Alias)
 	vm.Tiles = tiles{
-		PnL:       tile{Label: "当前盈亏", Figure: b.note(b.money(s.Figures.UnrealizedPnL)), Caption: "按中间价估值"},
-		MaxGain:   tile{Label: "最大盈利", Figure: b.note(b.money(s.Figures.MaxGain)), Caption: "到期时"},
-		MaxLoss:   tile{Label: "最大亏损", Figure: b.note(b.maxLossCell(s)), Caption: "到期时"},
-		BreakEven: tile{Label: "盈亏平衡", Figure: b.note(b.money(s.Figures.BreakEven)), Caption: breakEvenCaption(s)},
+		PnL:       tile{Label: "Current P&L", Figure: b.note(b.money(s.Figures.UnrealizedPnL)), Caption: "Valued at mid price"},
+		MaxGain:   tile{Label: "Max profit", Figure: b.note(b.money(s.Figures.MaxGain)), Caption: "At expiry"},
+		MaxLoss:   tile{Label: "Max loss", Figure: b.note(b.maxLossCell(s)), Caption: "At expiry"},
+		BreakEven: tile{Label: "Breakeven", Figure: b.note(b.money(s.Figures.BreakEven)), Caption: breakEvenCaption(s)},
 	}
 	vm.Legs = b.legs()
-	vm.LegsTotal = legsTotal{Label: "合计", PnL: b.note(b.money(s.Figures.UnrealizedPnL))} // the one compute value, not a sum
+	vm.LegsTotal = legsTotal{Label: "Total", PnL: b.note(b.money(s.Figures.UnrealizedPnL))} // the one compute value, not a sum
 	vm.Payoff = b.note(b.payoff())
 	vm.Greeks = b.note(b.greeks())
 	vm.KeyLevels = b.levels()
@@ -239,9 +239,9 @@ func (b *builder) fill(vm *detailModel) {
 func (b *builder) sentence() string {
 	switch v := b.money(b.s.Figures.UnrealizedPnL).(type) {
 	case usd:
-		return clip("当前盈亏 " + v.Text + " 美元，按中间价估值")
+		return clip("Current P&L " + v.Text + " USD, valued at mid price")
 	default:
-		return "当前盈亏暂无数据"
+		return "Current P&L: no data yet"
 	}
 }
 
@@ -257,10 +257,10 @@ func earliestExpiry(s compute.Structure) string {
 }
 
 var levelTexts = map[string][2]string{
-	"strike":       {"行权价", "合约的行权价"},
-	"short_strike": {"卖出行权价", "卖出腿的行权价"},
-	"long_strike":  {"买入行权价", "买入腿的行权价"},
-	"break_even":   {"盈亏平衡", "到期盈亏为零的标的价格"},
+	"strike":       {"Strike", "Strike of the contract"},
+	"short_strike": {"Short strike", "Strike of the short leg"},
+	"long_strike":  {"Long strike", "Strike of the long leg"},
+	"break_even":   {"Breakeven", "Underlying price where the expiry result is zero"},
 }
 
 // levels are the key levels of compute with their distance, moved two places; a missing quote is a gap.
@@ -278,7 +278,7 @@ func (b *builder) levels() []level {
 		}
 		t, known := levelTexts[lv.Name]
 		if !known {
-			t = [2]string{lv.Name, "关键价位"}
+			t = [2]string{lv.Name, "Key levels"}
 		}
 		var dist any = b.missingQuote()
 		if lv.Distance != "" {

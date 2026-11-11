@@ -23,7 +23,7 @@ func TestLegsTotalEqualsTile(t *testing.T) {
 	}
 	total := obj(t, obj(t, m["legs_total"])["pnl"])["text"]
 	tile := obj(t, obj(t, obj(t, m["tiles"])["pnl"])["figure"])["text"]
-	if total != tile || total != "140.0000" || obj(t, m["legs_total"])["label"] != "合计" {
+	if total != tile || total != "140.0000" || obj(t, m["legs_total"])["label"] != "Total" {
 		t.Fatalf("total = %v, tile = %v", total, tile)
 	}
 }
@@ -32,8 +32,8 @@ func TestLegMidAndPnL(t *testing.T) {
 	t.Parallel()
 	m := readFixture(t, "detail_spread").build(t, spreadID, true)
 	short := obj(t, list(t, m["legs"])[1])
-	if short["side_text"] != "卖出" || short["right_text"] != "看跌" || short["quantity"] != -1.0 || short["expiry_text"] != "2026-12-18" ||
-		short["label"] != "MSFT 2026-12-18 310 看跌" {
+	if short["side_text"] != "Sell" || short["right_text"] != "Put" || short["quantity"] != -1.0 || short["expiry_text"] != "2026-12-18" ||
+		short["label"] != "MSFT 2026-12-18 310 Put" {
 		t.Fatalf("leg = %v", short)
 	}
 	if p := obj(t, short["price"]); p["text"] != "2.5" || p["value"] != 2.5 {
@@ -42,7 +42,7 @@ func TestLegMidAndPnL(t *testing.T) {
 	if mk := obj(t, short["mark"]); mk["text"] != "1.2" || mk["value"] != 1.2 || mk["unit"] != "usd" {
 		t.Errorf("mark = %v", mk)
 	}
-	if long := obj(t, list(t, m["legs"])[0]); long["side_text"] != "买入" || long["quantity"] != 1.0 {
+	if long := obj(t, list(t, m["legs"])[0]); long["side_text"] != "Buy" || long["quantity"] != 1.0 {
 		t.Errorf("long leg = %v", long)
 	}
 	// a leg with no mark has gaps, named by the reason of the missing quote or the missing reader
@@ -73,18 +73,18 @@ func TestFillsFromRows(t *testing.T) {
 		t.Fatalf("fills = %v", fills)
 	}
 	first := obj(t, fills[0])
-	if first["time_text"] != "2026-10-19" || first["action_text"] != "开仓" || first["leg_text"] != "MSFT 2026-12-18 300 看跌" ||
+	if first["time_text"] != "2026-10-19" || first["action_text"] != "Open" || first["leg_text"] != "MSFT 2026-12-18 300 Put" ||
 		first["quantity"] != 1.0 || obj(t, first["price"])["text"] != "1" || obj(t, first["fee"])["text"] != "0.6500" {
 		t.Fatalf("first fill = %v", first)
 	}
 	closeRow := obj(t, fills[2])
-	if closeRow["action_text"] != "平仓" || obj(t, closeRow["fee"])["reason"] != "no_data" {
+	if closeRow["action_text"] != "Close" || obj(t, closeRow["fee"])["reason"] != "no_data" {
 		t.Fatalf("close fill = %v", closeRow)
 	}
 	// the dropped row is named in gaps, so the page is partial
 	found := false
 	for _, g := range list(t, m["gaps"]) {
-		found = found || obj(t, g)["text"] == "部分成交记录无法显示"
+		found = found || obj(t, g)["text"] == "Some fills cannot be shown"
 	}
 	if !found || m["run_status"] != "partial" {
 		t.Fatalf("gaps = %v, status = %v", m["gaps"], m["run_status"])

@@ -12,7 +12,7 @@ func TestCompareOnlySingleShort(t *testing.T) {
 	t.Parallel()
 	leg := compute.StructureLeg{Right: "P"}
 	one := compute.Structure{Legs: []compute.StructureLeg{leg}, CaptureParam: "0.50", ExitDTEParam: "21"}
-	if got := (cells{}).compare(one); got == nil || got.CapturedParam != "已赚比例 50%" || got.ExitDTEParam != "到期前天数 21" {
+	if got := (cells{}).compare(one); got == nil || got.CapturedParam != "Earned ratio 50%" || got.ExitDTEParam != "Days before expiry 21" {
 		t.Fatalf("single leg compare = %+v", got)
 	}
 	two := one
@@ -39,7 +39,7 @@ func TestMoneyCellsAreNumbersOrGaps(t *testing.T) {
 		t.Fatalf("unknown reason = %v", got)
 	}
 	naked := compute.Structure{Kind: "naked_call", Figures: compute.StructureFigures{MaxLoss: compute.FigureValue{Gap: "no_rule"}}}
-	if g := c.maxLossCell(naked).(gap); g.Text != "无上限" || g.Reason != "no_rule" {
+	if g := c.maxLossCell(naked).(gap); g.Text != "No limit" || g.Reason != "no_rule" {
 		t.Fatalf("naked call max loss = %v", g)
 	}
 }
@@ -51,7 +51,7 @@ func TestMoneynessFromDistanceSign(t *testing.T) {
 	}
 	c := cells{}
 	for _, tc := range []struct{ right, dist, want string }{
-		{"P", "-0.05", "价外"}, {"P", "0.05", "价内"}, {"C", "0.05", "价外"}, {"C", "-0.05", "价内"}, {"P", "0.000000", "平价"},
+		{"P", "-0.05", "out of the money"}, {"P", "0.05", "in the money"}, {"C", "0.05", "out of the money"}, {"C", "-0.05", "in the money"}, {"P", "0.000000", "at the money"},
 	} {
 		if got := c.moneyness(mk(tc.right, tc.dist)); got != tc.want {
 			t.Errorf("%s %s = %v, want %s", tc.right, tc.dist, got, tc.want)

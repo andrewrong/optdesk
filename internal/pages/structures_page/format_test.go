@@ -30,7 +30,7 @@ func TestShiftDayAndClip(t *testing.T) {
 	}
 	long := ""
 	for range 300 {
-		long += "字"
+		long += "é"
 	}
 	if got := []rune(clip(long)); len(got) != 200 {
 		t.Fatalf("clip kept %d runes", len(got))
