@@ -87,12 +87,12 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "SPX 20-day realised volatility not built yet"
+            "text": "not built yet"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "SPX Implied minus realised not built yet"
+            "text": "not built yet"
           },
           "source_text": "IBKR implied volatility"
         },
@@ -107,12 +107,12 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "NDX 20-day realised volatility not built yet"
+            "text": "not built yet"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "NDX Implied minus realised not built yet"
+            "text": "not built yet"
           },
           "source_text": "IBKR implied volatility"
         },
@@ -127,12 +127,12 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "RUT 20-day realised volatility not built yet"
+            "text": "not built yet"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "RUT Implied minus realised not built yet"
+            "text": "not built yet"
           },
           "source_text": "IBKR implied volatility"
         }
@@ -181,32 +181,12 @@
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "SPX 20-day realised volatility not built yet"
+        "text": "20-day realised volatility not built yet for SPX, NDX, RUT"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "SPX Implied minus realised not built yet"
-      },
-      {
-        "kind": "gap",
-        "reason": "not_built",
-        "text": "NDX 20-day realised volatility not built yet"
-      },
-      {
-        "kind": "gap",
-        "reason": "not_built",
-        "text": "NDX Implied minus realised not built yet"
-      },
-      {
-        "kind": "gap",
-        "reason": "not_built",
-        "text": "RUT 20-day realised volatility not built yet"
-      },
-      {
-        "kind": "gap",
-        "reason": "not_built",
-        "text": "RUT Implied minus realised not built yet"
+        "text": "Implied minus realised not built yet for SPX, NDX, RUT"
       }
     ],
     "data_times_text": "Data time 11-06"

@@ -284,6 +284,10 @@
         {
           "reason": "no_data",
           "text": "Gap 9"
+        },
+        {
+          "reason": "no_data",
+          "text": "one more event calendar item missing"
         }
       ],
       "notes": [],
