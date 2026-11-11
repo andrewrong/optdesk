@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -78,12 +79,22 @@ func parseAccountSockets(v string) (map[string]string, error) {
 
 // accountMain reads the gateways file at path and returns the `account` field of its one required entry.
 func accountMain(path string) (string, error) {
+	list, err := accountAliases(path)
+	if err != nil {
+		return "", err
+	}
+	return list[0], nil
+}
+
+// accountAliases parses the gateways file at path once and returns main (the `account` of its one required
+// entry) first, then the `account` values of the other entries, non-empty, without repeats, in sorted order.
+func accountAliases(path string) ([]string, error) {
 	if path == "" {
-		return "", fmt.Errorf("%s is not set", envIbkrGateways)
+		return nil, fmt.Errorf("%s is not set", envIbkrGateways)
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("%s names a file that cannot be read", envIbkrGateways)
+		return nil, fmt.Errorf("%s names a file that cannot be read", envIbkrGateways)
 	}
 	var f struct {
 		Gateway []struct {
@@ -92,7 +103,7 @@ func accountMain(path string) (string, error) {
 		} `toml:"gateway"`
 	}
 	if err := toml.Unmarshal(raw, &f); err != nil {
-		return "", fmt.Errorf("%s names a file that is not valid", envIbkrGateways)
+		return nil, fmt.Errorf("%s names a file that is not valid", envIbkrGateways)
 	}
 	main, n := "", 0
 	for _, g := range f.Gateway {
@@ -101,9 +112,16 @@ func accountMain(path string) (string, error) {
 		}
 	}
 	if n != 1 || main == "" {
-		return "", fmt.Errorf("%s needs exactly one required entry with an account", envIbkrGateways)
+		return nil, fmt.Errorf("%s needs exactly one required entry with an account", envIbkrGateways)
 	}
-	return main, nil
+	others := []string{}
+	for _, g := range f.Gateway {
+		if !g.Required && g.Account != "" && g.Account != main && !slices.Contains(others, g.Account) {
+			others = append(others, g.Account)
+		}
+	}
+	sort.Strings(others)
+	return append([]string{main}, others...), nil
 }
 
 // accountCapture builds account_capture from the lines of .env. An unset OT_ACCOUNT_SOCKETS refuses the job

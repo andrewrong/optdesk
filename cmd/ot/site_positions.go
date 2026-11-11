@@ -5,15 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
-	"os"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages/option_result_page"
 	"github.com/andrewrong/optdesk/internal/pages/structures_page"
-	"github.com/pelletier/go-toml/v2"
 )
 
 // The addresses of the option positions pages under the site root (docs/design/option-positions.md#Interface).
@@ -39,7 +36,7 @@ func (rd siteReaders) aliasList() []string {
 }
 
 // siteAliasList reads the alias list of the account pages from the gateways file named in .env, the way
-// account_capture takes its aliases: main (accountMain) first, then the other `account` values, non-empty,
+// account_capture takes its aliases: main first (accountAliases), then the other `account` values, non-empty,
 // without repeats, sorted. The demo profile, an unreadable .env, an unset key and a missing or invalid file
 // give ["main"]; the failure logs one WARN line carrying no path and no account value. It is called once at
 // serve start.
@@ -56,29 +53,11 @@ func siteAliasList(a *app) []string {
 	if err != nil {
 		return warn("env file cannot be read")
 	}
-	path := env[envIbkrGateways]
-	main, err := accountMain(path)
+	list, err := accountAliases(env[envIbkrGateways])
 	if err != nil {
 		return warn("gateways file missing or invalid")
 	}
-	// accountMain validated the file; its other entries are read for their account only.
-	var f struct {
-		Gateway []struct {
-			Account string `toml:"account"`
-		} `toml:"gateway"`
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil || toml.Unmarshal(raw, &f) != nil {
-		return warn("gateways file missing or invalid")
-	}
-	others := []string{}
-	for _, g := range f.Gateway {
-		if g.Account != "" && g.Account != main && !slices.Contains(others, g.Account) {
-			others = append(others, g.Account)
-		}
-	}
-	sort.Strings(others)
-	return append([]string{main}, others...)
+	return list
 }
 
 // positionsKind selects which of the three pages a request builds.
