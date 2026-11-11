@@ -50,7 +50,7 @@ export function PositionsPage({ payload }: { payload: Payload }) {
       </div>
       <StaleAlert stale={payload.stale} generatedAt={payload.generated_at} />
       <Tabs defaultValue={payload.views[0].key} className="min-w-0">
-        <TabsList>
+        <TabsList className="group-data-horizontal/tabs:h-auto w-full flex-wrap">
           {payload.views.map((view) => (
             <TabsTrigger key={view.key} value={view.key}>
               {view.label}
