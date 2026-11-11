@@ -57,7 +57,7 @@ func TestRiskRouteServesFromReaders(t *testing.T) {
 	rec := companiesGet(t, h, http.MethodGet, "/"+siteRiskRoute)
 	body := rec.Body.String()
 	if rec.Code != 200 || !strings.Contains(body, riskName) || strings.Contains(body, `"no_reader"`) ||
-		strings.Contains(body, `"no_data"`) || !strings.Contains(body, `"run_status":"partial"`) {
+		strings.Contains(body, "This account has no capture yet") || !strings.Contains(body, `"run_status":"partial"`) {
 		t.Fatalf("%d %q", rec.Code, body)
 	}
 	if len(asked) == 0 || asked[0] != "main" {
