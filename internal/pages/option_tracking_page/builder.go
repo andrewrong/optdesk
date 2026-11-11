@@ -110,7 +110,7 @@ func Build(ctx context.Context, c Config, _ store.SeriesReader, day contracts.Da
 }
 
 func gapAccount(alias string, g gap) account {
-	return account{Alias: alias, Title: alias, Gap: &g}
+	return account{Alias: alias, Title: accountTitle(alias), Gap: &g}
 }
 
 func buildAccounts(ctx context.Context, c Config, day contracts.Day, vm *viewModel) error {
