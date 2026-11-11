@@ -34,7 +34,7 @@ func TestSourceStaysPure(t *testing.T) {
 		for _, im := range af.Imports {
 			path, _ := strconv.Unquote(im.Path.Value)
 			for _, bad := range forbidden {
-				if path == bad || strings.HasSuffix(path, "/"+bad) {
+				if path == bad || strings.HasSuffix(path, "/"+bad) || strings.Contains(path, "/"+bad+"/") {
 					t.Errorf("%s imports %s", f, path)
 				}
 			}

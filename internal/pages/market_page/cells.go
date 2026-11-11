@@ -177,7 +177,7 @@ func rv20Cell(name string, r reading) any {
 		return mkGap(reasonMissingInput, name+" "+rv20Missing)
 	}
 	text, err := shiftRound(v, 2, 1)
-	if err != nil || strings.HasPrefix(text, "-") {
+	if err != nil || strings.HasPrefix(strings.TrimSpace(v), "-") {
 		return mkGap(reasonMissingInput, name+" "+rv20Missing)
 	}
 	return mkFigure(text, text, unitVolPoints)

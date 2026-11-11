@@ -66,6 +66,15 @@ func TestRv20CellNotOkIsMissingInput(t *testing.T) {
 	}
 }
 
+func TestRv20SmallNegativeIsMissingInput(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	e.rv["SPX"] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "-0.000400", nil, "2026-11-06")}
+	if c := rv20Of(t, e.page(t), 0); c["kind"] != "gap" || c["reason"] != "missing_input" {
+		t.Errorf("rv20 = %v, want missing_input gap", c)
+	}
+}
+
 func TestN225RvStaysNotBuilt(t *testing.T) {
 	t.Parallel()
 	m := allOK().page(t)
