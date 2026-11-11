@@ -16,7 +16,7 @@ const (
 	indicesTitle    = "Index volatility"
 	indicesSentence = "Percentile is the index position over 3 years; it and implied volatility come from stored data, " +
 		"realised columns are not built yet, the Nikkei percentile has no stored series."
-	indicesNote     = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
+	indicesNote = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
 	termTitle        = "Term structure"
 	termSentenceFmt  = "VIX to 3-month VIX ratio "
