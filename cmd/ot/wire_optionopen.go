@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"os"
 	"strconv"
 	"time"
 
@@ -36,13 +35,13 @@ func init() {
 	// Orders 120, 130, 140 and 190: resolve, plan, pull, gap pass. A job that cannot be wired is held with its
 	// reason (the scheduler lists it as disabled, run-once leaves it out); a dead socket is the startOff.
 	registerJob(jobFamily{
-		id: jobOptionOpenResolve, order: 120, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
+		id: jobOptionOpenResolve, order: 120, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolve, optionopen.NewResolve, true, broker.Options{ResolveInFlight: 1})
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpenPlan, order: 130, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
+		id: jobOptionOpenPlan, order: 130, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpenPlan, true)
 			if !ok {
@@ -55,7 +54,7 @@ func init() {
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpen, order: 140, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
+		id: jobOptionOpen, order: 140, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			stores, reason, ok := openOptionOpen(ctx, a, jc, jobOptionOpen, false)
 			if !ok {
@@ -69,7 +68,7 @@ func init() {
 		},
 	})
 	registerJob(jobFamily{
-		id: jobOptionOpenResolveGap, order: 190, startOff: ifOpenDSN(os.Getenv, brokerDownOff),
+		id: jobOptionOpenResolveGap, order: 190, startOff: ifOpenDSN(brokerDownOff),
 		build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
 			return buildOpenResolve(ctx, a, jc, jobOptionOpenResolveGap, optionopen.NewGap, false, broker.Options{ResolveInFlight: 1})
 		},
@@ -148,14 +147,14 @@ func openStored(jc *jobCtx, stores openquote.Stores) optionopen.Stored {
 	return s
 }
 
-// openOptionOpen checks the inputs of the family and opens the store of optionopenpg with the DSN of the process
-// environment, closed through jc.extra. A missing line, a missing instrument store (or, with needBars, a missing
+// openOptionOpen checks the inputs of the family and opens the store of optionopenpg with the DSN of the env file
+// (jc.cfg.openDSN), closed through jc.extra. A missing line, a missing instrument store (or, with needBars, a missing
 // bar store) leaves the family out: ok is false after one startup line naming the job and the line. Held (the
 // reason with the job) cannot carry it: wiring.runnable hashes every job once one is held, and a job whose type is
 // not hashable would panic there; the scheduler's disabled list therefore lacks these ids until that is fixed.
 // A store that cannot be opened is held with its reason.
 func openOptionOpen(ctx context.Context, a *app, jc *jobCtx, id string, needBars bool) (stores openquote.Stores, reason string, ok bool) {
-	dsn := a.getenv(openquote.DSNEnvOptionOpen)
+	dsn := jc.cfg.openDSN
 	left := func(why string) (openquote.Stores, string, bool) {
 		a.log.Warn("option open job not wired", "component", "ot", "job", id, "status", why)
 		return nil, "", false
@@ -210,10 +209,10 @@ var _ openquote.Stores = noOpenStore{}
 
 // ifOpenDSN is the startOff of the four families: off (by off) only when the DSN line is set. A family without
 // the line is left out and has no job, so its id must not be listed as disabled (the tests that count the
-// disabled ids rely on it). The line is read from the process environment, which is what app.getenv is in ot.
-func ifOpenDSN(getenv func(string) string, off func(runOnceConfig, bool) string) func(runOnceConfig, bool) string {
+// disabled ids rely on it). The line is read from the env file, as cfg.openDSN, like every other job's.
+func ifOpenDSN(off func(runOnceConfig, bool) string) func(runOnceConfig, bool) string {
 	return func(cfg runOnceConfig, brokerUp bool) string {
-		if getenv(openquote.DSNEnvOptionOpen) == "" {
+		if cfg.openDSN == "" {
 			return ""
 		}
 		return off(cfg, brokerUp)
