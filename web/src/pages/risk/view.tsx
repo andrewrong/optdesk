@@ -160,7 +160,7 @@ function MetricsBlock({ block }: { block: Payload['standard_metrics'] }) {
 
 export function HouseholdRiskView({ payload }: { payload: Payload }) {
   return (
-    <div className="space-y-4" data-page="household-risk">
+    <div className="min-w-0 space-y-4" data-page="household-risk">
       <Card>
         <CardHeader>
           <CardTitle>{payload.title}</CardTitle>
@@ -172,11 +172,23 @@ export function HouseholdRiskView({ payload }: { payload: Payload }) {
           </Alert>
         </CardContent>
       </Card>
-      <DeltaBlock block={payload.delta} />
-      <BetaBlock block={payload.beta_delta} />
-      <SigmaBlock block={payload.sigma} />
-      <VegaBlock title={payload.vega_title} block={payload.vega} />
-      <MetricsBlock block={payload.standard_metrics} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="min-w-0" data-cell="delta">
+          <DeltaBlock block={payload.delta} />
+        </div>
+        <div className="min-w-0" data-cell="vega">
+          <VegaBlock title={payload.vega_title} block={payload.vega} />
+        </div>
+        <div className="min-w-0" data-cell="beta">
+          <BetaBlock block={payload.beta_delta} />
+        </div>
+        <div className="min-w-0" data-cell="sigma">
+          <SigmaBlock block={payload.sigma} />
+        </div>
+        <div className="min-w-0 lg:col-span-2" data-cell="standard-metrics">
+          <MetricsBlock block={payload.standard_metrics} />
+        </div>
+      </div>
       <CardNotes notes={[...payload.notes]} gaps={[...payload.gaps]} />
     </div>
   )
