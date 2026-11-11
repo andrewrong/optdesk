@@ -187,8 +187,8 @@ func (fakeAccounts) Executions(context.Context, string, string, string) ([]store
 	return nil, nil
 }
 
-// fakeBroker answers ResolveContract by a script per call; the default is a listed contract with a new con_id.
-type fakeBroker struct {
+// fakeResolver answers ResolveContract by a script per call; the default is a listed contract with a new con_id.
+type fakeResolver struct {
 	mu     sync.Mutex
 	chains []broker.Chain
 	answer func(n int, c broker.Contract) (broker.Resolved, error)
@@ -197,14 +197,14 @@ type fakeBroker struct {
 	listed int
 }
 
-func (f *fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
+func (f *fakeResolver) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.listed++
 	return f.chains, nil
 }
 
-func (f *fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+func (f *fakeResolver) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	n := len(f.asked)
@@ -217,10 +217,10 @@ func (f *fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (brok
 	return broker.Resolved{Listed: true, Contract: c}, nil
 }
 
-func (*fakeBroker) Snapshot(context.Context, broker.Kind, []broker.Contract) ([]broker.Quote, error) {
+func (*fakeResolver) Snapshot(context.Context, broker.Kind, []broker.Contract) ([]broker.Quote, error) {
 	return nil, fmt.Errorf("the plan and resolve jobs never ask a quote")
 }
-func (*fakeBroker) Close() error { return nil }
+func (*fakeResolver) Close() error { return nil }
 
 func watchOf(symbols ...string) []jobs.WatchEntry {
 	var out []jobs.WatchEntry

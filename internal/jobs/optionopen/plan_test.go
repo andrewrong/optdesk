@@ -118,7 +118,7 @@ func TestPlanOfAStockWithNoStoredChainIsNoValue(t *testing.T) {
 	r.seed(t, 100, putStrikes...)
 	j := r.job(t, "AAPL", "MSFT")
 	res := r.run(t, j)
-	if res.Err == nil || res.Err.Kind() != contracts.NoValue || res.Err.Error() != "no resolved chain of MSFT" {
+	if res.Err == nil || res.Err.Kind() != contracts.NoValue || res.Err.Error() != "option_open: no resolved chain of MSFT" {
 		t.Fatalf("err=%v", res.Err)
 	}
 	if len(r.plans.items) == 0 {

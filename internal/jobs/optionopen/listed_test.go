@@ -21,7 +21,7 @@ const (
 
 type rig struct {
 	clk   *fakeClock
-	brk   *fakeBroker
+	brk   *fakeResolver
 	opts  *fakeOptions
 	marks *fakeMarks
 	inst  *fakeInstruments
@@ -34,7 +34,7 @@ type rig struct {
 func newRig(chains ...broker.Chain) *rig {
 	return &rig{
 		clk:   &fakeClock{t: time.Date(2026, 11, 10, 22, 0, 0, 0, time.UTC)},
-		brk:   &fakeBroker{chains: chains},
+		brk:   &fakeResolver{chains: chains},
 		opts:  &fakeOptions{},
 		marks: &fakeMarks{},
 		inst:  &fakeInstruments{},
@@ -457,7 +457,7 @@ func TestChainErrorIsRetryableAndMarksNothing(t *testing.T) {
 	}
 }
 
-type errChains struct{ *fakeBroker }
+type errChains struct{ *fakeResolver }
 
 func (errChains) ListChains(context.Context, broker.Contract) ([]broker.Chain, error) {
 	return nil, errors.New("gateway down")

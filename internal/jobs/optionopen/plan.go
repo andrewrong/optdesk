@@ -101,27 +101,6 @@ func (j *planJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expe
 	return keys, hex.EncodeToString(sum[:]), nil
 }
 
-type typedError struct {
-	kind contracts.ErrorKind
-	err  error
-}
-
-func (e *typedError) Error() string             { return e.err.Error() }
-func (e *typedError) Unwrap() error             { return e.err }
-func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
-
-func newErr(kind contracts.ErrorKind, format string, a ...any) contracts.TypedError {
-	return &typedError{kind: kind, err: fmt.Errorf(format, a...)}
-}
-
-func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
-	var te contracts.TypedError
-	if errors.As(err, &te) {
-		return te
-	}
-	return &typedError{kind: kind, err: err}
-}
-
 // skipped is a stock the run could not plan: why, and whether the run should be retried.
 type skipped struct {
 	err contracts.TypedError
