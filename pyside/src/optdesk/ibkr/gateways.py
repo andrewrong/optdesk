@@ -19,7 +19,6 @@ COLLECT_WORDS = ("market_data", "account_summary", "positions", "executions")
 DEFAULT_CLIENT_ID = 33
 DEFAULT_MARKET_DATA_TYPE = 2
 FALLBACK_NAME = "default"
-PROBE_CLIENT_ID = 0
 RESERVED_ID_MESSAGE = "client_id 0 is reserved for the read-only probe"
 
 _NAME = re.compile(r"[a-z][a-z0-9-]{0,15}")
@@ -75,7 +74,7 @@ def positive_int(env: Mapping[str, str], name: str, default: int | None) -> int:
 
 
 def _env_client_id(env: Mapping[str, str]) -> int:
-    if env.get("OT_IBKR_CLIENT_ID", "").strip() == str(PROBE_CLIENT_ID):
+    if env.get("OT_IBKR_CLIENT_ID", "").strip() == "0":
         raise ConfigError(f"OT_IBKR_CLIENT_ID: {RESERVED_ID_MESSAGE}")
     return positive_int(env, "OT_IBKR_CLIENT_ID", DEFAULT_CLIENT_ID)
 

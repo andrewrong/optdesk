@@ -314,7 +314,7 @@ class IbGateway:
     async def _market_data_back(self, targets: Sequence[QuoteTarget]) -> bool:
         if not self._blocked:
             return True
-        if self._recovery is None:  # one shared run per gateway
+        if self._recovery is None:  # one shared run; after a failed one, blocked stays
             self._recovery = asyncio.ensure_future(
                 spec.probe_until_back(self._clock, partial(self._probe_data, targets))
             )
