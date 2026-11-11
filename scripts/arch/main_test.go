@@ -736,3 +736,59 @@ func TestOwnerRowIsTheFirstMatchingRow(t *testing.T) {
 		}
 	}
 }
+
+// sharedFiles is treeFiles plus the sub-package b/shared and a sibling b/other.
+func sharedFiles() map[string]string {
+	files := maps.Clone(treeFiles)
+	files["internal/b/shared/s.go"] = "package shared\n"
+	files["internal/b/other/o.go"] = "package other\n"
+	return files
+}
+
+func TestTreeSharedIsImportedByTheOtherSubPackagesOfItsRow(t *testing.T) {
+	t.Parallel()
+	for _, e := range []edge{
+		{"b/sub", "b/shared", true},
+		{"b/other", "b/shared", true},
+		{"b/sub", "b/other", false},
+		{"b/other", "b/sub", false},
+		{"b/shared", "b/sub", false},
+		{"b/shared", "b/other", false},
+		{"b/shared", "b/shared", false},
+		{"b/shared", "b", true},
+		{"b/shared", "a", true},
+		{"b", "b/shared", false},
+		{"a/sub", "b/shared", false},
+		{"ot", "b/shared", false},
+	} {
+		if got := slices.Contains(lintDeps(t, sharedFiles(), e.from), e.to); got != e.want {
+			t.Errorf("%s imports %s = %v, want %v", e.from, e.to, got, e.want)
+		}
+	}
+}
+
+func TestTreeSharedEdgeIsInTheTomlToo(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for p, src := range sharedFiles() {
+		write(t, filepath.Join(dir, p), src)
+	}
+	toml, _, err := generate(treeModules, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := mayImportOf(t, string(toml), "b/sub"); !strings.Contains(b, `"b/shared"`) {
+		t.Errorf("b/sub lacks b/shared:\n%s", b)
+	}
+	if b := mayImportOf(t, string(toml), "b/shared"); strings.Contains(b, `"b/sub"`) || strings.Contains(b, `"b/shared"`) {
+		t.Errorf("b/shared imports a sibling:\n%s", b)
+	}
+}
+
+func TestTreeWithoutSharedAddsNoEdge(t *testing.T) {
+	t.Parallel()
+	checkEdges(t, []edge{
+		{"b/sub", "b/shared", false},
+		{"a/sub", "a/shared", false},
+	})
+}

@@ -99,6 +99,10 @@ var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 // of their row may import; the other generated packages are importable by their root only.
 var importableGenerated = []string{"internal/contracts/genpb"}
 
+// sharedSub is the sub-package that the other sub-packages of its row may import, and that
+// imports no sibling; no module outside its row imports it.
+const sharedSub = "shared"
+
 // kind is what the files of a package directory say about it.
 type kind int
 
@@ -269,7 +273,11 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 		}
 		for _, d := range r.depends {
 			if name == "ot" {
-				deps = append(deps, owned(pkgs, d, kindImpl, kindDecl)...)
+				for _, o := range owned(pkgs, d, kindImpl, kindDecl) {
+					if o != byRow[d]+"/"+sharedSub {
+						deps = append(deps, o)
+					}
+				}
 			} else {
 				deps = addUnique(deps, owned(pkgs, d, kindDecl), "")
 			}
@@ -283,6 +291,9 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 		}
 		for _, sub := range subsOf(name, dirs) {
 			subs := addUnique(subDeps(deps, name), owned(pkgs, r.name, kindDecl), name+"/"+sub)
+			if sub != sharedSub && slices.Contains(dirs, "internal/"+name+"/"+sharedSub) {
+				subs = addUnique(subs, []string{name + "/" + sharedSub}, "")
+			}
 			if slices.Contains(generated, "internal/"+name+"/"+sub) {
 				subs = nil // generated output imports no component of the repository
 			}
