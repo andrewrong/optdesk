@@ -148,12 +148,48 @@ func TestOverviewGaps(t *testing.T) {
 
 func TestOverviewManyGaps(t *testing.T) {
 	t.Parallel()
-	_, err := home_page.Compose(inputFrom(t, "overview_many_gaps"), fixedNow)
-	if err == nil {
-		t.Fatal("want an error")
+	o, b := composeOverview(t, inputFrom(t, "overview_many_gaps"))
+	validateV3(t, b)
+	wantManyGaps(t, o, "另有 2 处缺口未列出")
+}
+
+func TestOverviewManyGapsDemo(t *testing.T) {
+	t.Parallel()
+	in := inputFrom(t, "overview_many_gaps")
+	var doc map[string]any
+	if err := json.Unmarshal(in.Options, &doc); err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), "overview.gaps") || !strings.Contains(err.Error(), "21") {
-		t.Errorf("error %q must name overview.gaps and 21", err)
+	card := doc["card"].(map[string]any)
+	gaps := card["gaps"].([]any)
+	for _, s := range []string{"缺口 x", "缺口 y"} {
+		gaps = append(gaps, map[string]any{"kind": "gap", "reason": "no_data", "text": s})
+	}
+	card["gaps"] = gaps
+	b, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Options = b
+	o, out := composeOverview(t, in)
+	validateV3(t, out)
+	wantManyGaps(t, o, "另有 4 处缺口未列出")
+}
+
+func wantManyGaps(t *testing.T, o overviewOut, last string) {
+	t.Helper()
+	g := o.Overview.Gaps
+	if len(g) != 20 {
+		t.Fatalf("gaps = %d, want 20", len(g))
+	}
+	if g[19].Card != "首页" || g[19].Text != last {
+		t.Errorf("last gap = %v, want 首页 %q", g[19], last)
+	}
+	if g[18].Text == last {
+		t.Errorf("gap 19 must be a member gap, got %v", g[18])
+	}
+	if o.GapLine != "20 处缺口，见下" {
+		t.Errorf("gap_line = %q", o.GapLine)
 	}
 }
 
