@@ -1,0 +1,807 @@
+{
+  "schema": "option_page",
+  "schema_version": 2,
+  "run_id": "run-1",
+  "build_id": "build-1",
+  "scope": "options",
+  "generated_at": "2026-11-10T09:30:00+08:00",
+  "data_times": [
+    {
+      "source": "candidates",
+      "data_time": "2026-11-10T08:40:00+08:00"
+    }
+  ],
+  "run_status": "ok",
+  "title": "期权",
+  "stale": {
+    "data_time": "2026-11-10T08:40:00+08:00",
+    "stale_after": "2026-11-10T23:59:59+08:00",
+    "text": "数据日 2026-11-10"
+  },
+  "markets": [
+    {
+      "market": "US",
+      "label": "美股",
+      "currency": "USD",
+      "headline": "2 个值得看。",
+      "cards_title": "今日机会",
+      "cards": [
+        {
+          "id": "c11",
+          "symbol": "AAPL",
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          },
+          "reason": "各关卡通过",
+          "annualised": {
+            "value": 12.3456,
+            "text": "12.3456%",
+            "unit": "percent"
+          },
+          "annualised_text": "12.3456%",
+          "contract_line": "sell put 62 · 11-13 周五 · 3 天 · Δ −0.15",
+          "liquidity_line": "成交 1240 · 持仓 5310",
+          "tags": [
+            "E 12-01"
+          ],
+          "size_line": "1 张 · 行权价 62 · 乘数 100",
+          "size_usd_approx": null,
+          "iv_line": "IV 38% · HV30 缺 · IVP 缺",
+          "premium_line": "权利金 1.20 (收盘 bid 估) · 盈亏平衡 60.80 · 到期在价内概率 缺 · 比现金高 缺"
+        },
+        {
+          "id": "c21",
+          "symbol": "MSFT",
+          "verdict": {
+            "key": "worth",
+            "label": "值得看",
+            "tone": "good"
+          },
+          "reason": "各关卡通过 · 财报日期未确认",
+          "annualised": {
+            "value": 12.3456,
+            "text": "12.3456%",
+            "unit": "percent"
+          },
+          "annualised_text": "12.3456%",
+          "contract_line": "sell put 30.5 · 11-13 周五 · 3 天 · Δ −0.15",
+          "liquidity_line": "成交 10 · 持仓 缺",
+          "tags": [
+            "E 无",
+            "财报日期未确认"
+          ],
+          "size_line": "1 张 · 行权价 30.5 · 乘数 100",
+          "size_usd_approx": null,
+          "iv_line": "IV 38% · HV30 缺 · IVP 缺",
+          "premium_line": "权利金 0.40 (收盘 bid 估) · 盈亏平衡 60.80 · 到期在价内概率 缺 · 比现金高 缺"
+        }
+      ],
+      "candidates_title": "候选表",
+      "candidates": {
+        "columns": [
+          {
+            "id": "symbol",
+            "label": "标的",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "verdict",
+            "label": "判定",
+            "align": "left",
+            "hint": null
+          },
+          {
+            "id": "annualised",
+            "label": "年化",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "strike_pct",
+            "label": "strike %",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "dte",
+            "label": "DTE",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "delta",
+            "label": "Δ",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "bid_ask",
+            "label": "Bid/Ask",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "spread_pct",
+            "label": "spread %",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "volume",
+            "label": "Vol",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "open_interest",
+            "label": "OI",
+            "align": "right",
+            "hint": null
+          },
+          {
+            "id": "ivp",
+            "label": "IVP",
+            "align": "right",
+            "hint": "IV 在过去一年中的百分位,尚无来源"
+          },
+          {
+            "id": "earnings",
+            "label": "E",
+            "align": "left",
+            "hint": null
+          }
+        ],
+        "rows": [
+          {
+            "id": "r11",
+            "cells": [
+              {
+                "column": "symbol",
+                "cell": {
+                  "kind": "text",
+                  "text": "AAPL",
+                  "value": "AAPL"
+                }
+              },
+              {
+                "column": "verdict",
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                }
+              },
+              {
+                "column": "annualised",
+                "cell": {
+                  "value": 12.3456,
+                  "text": "12.3456%",
+                  "unit": "percent"
+                }
+              },
+              {
+                "column": "strike_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "−8.1%",
+                  "value": -815
+                }
+              },
+              {
+                "column": "dte",
+                "cell": {
+                  "kind": "text",
+                  "text": "3 天",
+                  "value": 3
+                }
+              },
+              {
+                "column": "delta",
+                "cell": {
+                  "kind": "text",
+                  "text": "−0.15",
+                  "value": -15
+                }
+              },
+              {
+                "column": "bid_ask",
+                "cell": {
+                  "kind": "text",
+                  "text": "$1.20 / $1.30",
+                  "value": 120
+                }
+              },
+              {
+                "column": "spread_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "8.0%",
+                  "value": 800
+                }
+              },
+              {
+                "column": "volume",
+                "cell": {
+                  "value": 1240,
+                  "text": "1240",
+                  "unit": "contracts"
+                }
+              },
+              {
+                "column": "open_interest",
+                "cell": {
+                  "value": 5310,
+                  "text": "5310",
+                  "unit": "contracts"
+                }
+              },
+              {
+                "column": "ivp",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "earnings",
+                "cell": {
+                  "kind": "text",
+                  "text": "E 12-01",
+                  "value": null
+                }
+              }
+            ],
+            "quote": {
+              "as_of": "22:45:12",
+              "data_type": "live",
+              "source": "open_pull",
+              "skew": true,
+              "outside_band": false
+            }
+          },
+          {
+            "id": "r12",
+            "cells": [
+              {
+                "column": "symbol",
+                "cell": {
+                  "kind": "text",
+                  "text": "AAPL",
+                  "value": "AAPL"
+                }
+              },
+              {
+                "column": "verdict",
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                }
+              },
+              {
+                "column": "annualised",
+                "cell": {
+                  "value": 12.3456,
+                  "text": "12.3456%",
+                  "unit": "percent"
+                }
+              },
+              {
+                "column": "strike_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "−11.1%",
+                  "value": -1111
+                }
+              },
+              {
+                "column": "dte",
+                "cell": {
+                  "kind": "text",
+                  "text": "10 天",
+                  "value": 10
+                }
+              },
+              {
+                "column": "delta",
+                "cell": {
+                  "kind": "text",
+                  "text": "−0.1",
+                  "value": -10
+                }
+              },
+              {
+                "column": "bid_ask",
+                "cell": {
+                  "kind": "text",
+                  "text": "$0.95 / $1.05",
+                  "value": 95
+                }
+              },
+              {
+                "column": "spread_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "10.0%",
+                  "value": 1000
+                }
+              },
+              {
+                "column": "volume",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "open_interest",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "ivp",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "earnings",
+                "cell": {
+                  "kind": "text",
+                  "text": "E 12-01",
+                  "value": null
+                }
+              }
+            ],
+            "quote": {
+              "as_of": "23:02:03",
+              "data_type": "delayed",
+              "source": "refresh",
+              "skew": false,
+              "outside_band": true
+            }
+          },
+          {
+            "id": "r21",
+            "cells": [
+              {
+                "column": "symbol",
+                "cell": {
+                  "kind": "text",
+                  "text": "MSFT",
+                  "value": "MSFT"
+                }
+              },
+              {
+                "column": "verdict",
+                "cell": {
+                  "kind": "text",
+                  "text": "值得看",
+                  "value": 0
+                }
+              },
+              {
+                "column": "annualised",
+                "cell": {
+                  "value": 12.3456,
+                  "text": "12.3456%",
+                  "unit": "percent"
+                }
+              },
+              {
+                "column": "strike_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "−7.6%",
+                  "value": -758
+                }
+              },
+              {
+                "column": "dte",
+                "cell": {
+                  "kind": "text",
+                  "text": "3 天",
+                  "value": 3
+                }
+              },
+              {
+                "column": "delta",
+                "cell": {
+                  "kind": "text",
+                  "text": "−0.15",
+                  "value": -15
+                }
+              },
+              {
+                "column": "bid_ask",
+                "cell": {
+                  "kind": "text",
+                  "text": "$0.40 / $0.44",
+                  "value": 40
+                }
+              },
+              {
+                "column": "spread_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "9.5%",
+                  "value": 952
+                }
+              },
+              {
+                "column": "volume",
+                "cell": {
+                  "value": 10,
+                  "text": "10",
+                  "unit": "contracts"
+                }
+              },
+              {
+                "column": "open_interest",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "ivp",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "earnings",
+                "cell": {
+                  "kind": "text",
+                  "text": "E 无",
+                  "value": null
+                }
+              }
+            ],
+            "quote": {
+              "as_of": "close archive, 9 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
+          },
+          {
+            "id": "r22",
+            "cells": [
+              {
+                "column": "symbol",
+                "cell": {
+                  "kind": "text",
+                  "text": "MSFT",
+                  "value": "MSFT"
+                }
+              },
+              {
+                "column": "verdict",
+                "cell": {
+                  "kind": "text",
+                  "text": "不够格",
+                  "value": 2
+                }
+              },
+              {
+                "column": "annualised",
+                "cell": {
+                  "value": 12.3456,
+                  "text": "12.3456%",
+                  "unit": "percent"
+                }
+              },
+              {
+                "column": "strike_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "−54.1%",
+                  "value": -5407
+                }
+              },
+              {
+                "column": "dte",
+                "cell": {
+                  "kind": "text",
+                  "text": "3 天",
+                  "value": 3
+                }
+              },
+              {
+                "column": "delta",
+                "cell": {
+                  "kind": "text",
+                  "text": "−0.15",
+                  "value": -15
+                }
+              },
+              {
+                "column": "bid_ask",
+                "cell": {
+                  "kind": "text",
+                  "text": "$0.50 / $0.60",
+                  "value": 50
+                }
+              },
+              {
+                "column": "spread_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "18.2%",
+                  "value": 1818
+                }
+              },
+              {
+                "column": "volume",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "open_interest",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "ivp",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "earnings",
+                "cell": {
+                  "kind": "text",
+                  "text": "E 12-01 在期内",
+                  "value": null
+                }
+              }
+            ],
+            "quote": {
+              "as_of": "close archive, 10 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
+          },
+          {
+            "id": "r23",
+            "cells": [
+              {
+                "column": "symbol",
+                "cell": {
+                  "kind": "text",
+                  "text": "MSFT",
+                  "value": "MSFT"
+                }
+              },
+              {
+                "column": "verdict",
+                "cell": {
+                  "kind": "text",
+                  "text": "数据不全",
+                  "value": 1
+                }
+              },
+              {
+                "column": "annualised",
+                "cell": {
+                  "value": 12.3456,
+                  "text": "12.3456%",
+                  "unit": "percent"
+                }
+              },
+              {
+                "column": "strike_pct",
+                "cell": {
+                  "kind": "text",
+                  "text": "−57.0%",
+                  "value": -5704
+                }
+              },
+              {
+                "column": "dte",
+                "cell": {
+                  "kind": "text",
+                  "text": "3 天",
+                  "value": 3
+                }
+              },
+              {
+                "column": "delta",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "bid_ask",
+                "cell": {
+                  "kind": "text",
+                  "text": "$1.20 / 缺",
+                  "value": 120
+                }
+              },
+              {
+                "column": "spread_pct",
+                "cell": {
+                  "reason": "missing_input",
+                  "text": "缺 ask"
+                }
+              },
+              {
+                "column": "volume",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "open_interest",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "ivp",
+                "cell": {
+                  "reason": "no_data",
+                  "text": "缺"
+                }
+              },
+              {
+                "column": "earnings",
+                "cell": {
+                  "kind": "text",
+                  "text": "E 缺",
+                  "value": null
+                }
+              }
+            ],
+            "quote": {
+              "as_of": "close archive, 10 Nov",
+              "data_type": null,
+              "source": "close_archive",
+              "skew": false,
+              "outside_band": false
+            }
+          }
+        ]
+      },
+      "all_link": {
+        "text": "全部 5 个机会",
+        "target": "candidates-US"
+      },
+      "chain": {
+        "title": "期权链 · AAPL",
+        "summary": "已选:AAPL 11/13 行权价 $62 Put",
+        "table": {
+          "columns": [
+            {
+              "id": "strike",
+              "label": "行权价",
+              "align": "left",
+              "hint": null
+            },
+            {
+              "id": "e2026-11-13",
+              "label": "11-13",
+              "align": "right",
+              "hint": null
+            },
+            {
+              "id": "e2026-11-20",
+              "label": "11-20",
+              "align": "right",
+              "hint": null
+            }
+          ],
+          "rows": [
+            {
+              "id": "k60",
+              "cells": [
+                {
+                  "column": "strike",
+                  "cell": {
+                    "kind": "text",
+                    "text": "60",
+                    "value": null
+                  }
+                },
+                {
+                  "column": "e2026-11-13",
+                  "cell": {
+                    "reason": "no_data",
+                    "text": "缺"
+                  }
+                },
+                {
+                  "column": "e2026-11-20",
+                  "cell": {
+                    "value": 0.95,
+                    "text": "$0.95",
+                    "unit": "usd",
+                    "source": null
+                  }
+                }
+              ],
+              "quote": {
+                "as_of": "close archive, 10 Nov",
+                "data_type": null,
+                "source": "close_archive",
+                "skew": false,
+                "outside_band": false
+              }
+            },
+            {
+              "id": "k62",
+              "cells": [
+                {
+                  "column": "strike",
+                  "cell": {
+                    "kind": "text",
+                    "text": "62",
+                    "value": null
+                  }
+                },
+                {
+                  "column": "e2026-11-13",
+                  "cell": {
+                    "value": 1.20,
+                    "text": "$1.20",
+                    "unit": "usd",
+                    "source": null
+                  }
+                },
+                {
+                  "column": "e2026-11-20",
+                  "cell": {
+                    "reason": "no_data",
+                    "text": "缺"
+                  }
+                }
+              ],
+              "quote": {
+                "as_of": "close archive, 10 Nov",
+                "data_type": null,
+                "source": "close_archive",
+                "skew": false,
+                "outside_band": false
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "notes": [
+    "日本期权:后续设计 (option-candidates-jp)",
+    "量与持仓取自 2026-11-09(链日)"
+  ],
+  "gaps": [],
+  "refresh": {
+    "enabled": true,
+    "symbols": [
+      "AAA",
+      "BBB"
+    ],
+    "notice": "27 of 31 quotes fresh, 4 from 09:45",
+    "fresh_count": 27,
+    "total_count": 31
+  }
+}

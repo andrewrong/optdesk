@@ -1,6 +1,6 @@
 {
   "schema": "option_page",
-  "schema_version": 1,
+  "schema_version": 2,
   "run_id": "run-1",
   "build_id": "build-1",
   "scope": "options",
@@ -114,5 +114,12 @@
       "reason": "no_data",
       "text": "没有候选行,候选任务尚未存入"
     }
-  ]
+  ],
+  "refresh": {
+    "enabled": false,
+    "symbols": [],
+    "notice": null,
+    "fresh_count": 0,
+    "total_count": 0
+  }
 }

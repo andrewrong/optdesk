@@ -2,7 +2,6 @@ package option_boards
 
 import (
 	"bytes"
-	"os"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -10,24 +9,7 @@ import (
 
 func TestStockValidatesSchema(t *testing.T) {
 	t.Parallel()
-	raw, err := os.ReadFile("../../../contracts/schemas/page.stock_option_page.v1.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
-	if err != nil {
-		t.Fatal(err)
-	}
-	comp := jsonschema.NewCompiler()
-	comp.AssertFormat()
-	const id = "https://option-trader.invalid/schemas/stock_option_page.v1.json"
-	if err := comp.AddResource(id, doc); err != nil {
-		t.Fatal(err)
-	}
-	schema, err := comp.Compile(id)
-	if err != nil {
-		t.Fatal(err)
-	}
+	schema := compileSchema(t, "page.stock_option_page.v2.json")
 	stale := stockFixture()
 	for i := range stale {
 		stale[i].SessionDay = "2026-11-09"

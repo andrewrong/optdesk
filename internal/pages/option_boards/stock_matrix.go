@@ -83,13 +83,13 @@ func buildMatrix(rows []stockRow, chosen int) (matrixBlock, string, error) {
 			expiries[c.Expiry] = c.DTE
 		}
 		strikes[c.Strike] = true
-		quote, _ := gateStatus(r.Gates, gateQuote)
+		quoteGate, _ := gateStatus(r.Gates, gateQuote)
 		events, _ := gateStatus(r.Gates, gateEvents)
 		cell := matrixCell{
 			Key: cellKey(c.InstrumentID), Expiry: string(c.Expiry), Strike: c.Strike,
 			YieldText: yt, Premium: "权利金 " + c.BidEod, Delta: deltaText(c.Delta), Volume: volumeText(r.Eod.Volume),
 			Shade: "none", Star: c.RankInUnderlying != nil && *c.RankInUnderlying == 1,
-			Out: false, Thin: quote != gatePass, Earnings: events == gateBlock, Chosen: i == chosen,
+			Out: false, Thin: quoteGate != gatePass, Earnings: events == gateBlock, Chosen: i == chosen, Quote: r.Quote,
 		}
 		if r.ok() {
 			cell.Shade = "worth"

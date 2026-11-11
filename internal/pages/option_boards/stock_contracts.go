@@ -50,6 +50,7 @@ func buildContractRows(rows []stockRow) ([]contractLine, string, error) {
 		}
 		out = append(out, contractLine{
 			Expiry: string(c.Expiry), ExpiryText: text,
+			Quote: r.Quote,
 			Cells: []string{md, c.Strike, c.BidEod, ask, delta, iv, r.Eod.Theta, r.Eod.Gamma, r.Eod.Vega, r.Eod.Volume, yield},
 		})
 	}

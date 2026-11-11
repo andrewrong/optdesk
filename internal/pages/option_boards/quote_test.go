@@ -1,0 +1,180 @@
+package option_boards
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/openquote"
+)
+
+type fakeOpens struct {
+	rows []contracts.OptionOpen
+	err  error
+	days []contracts.Day
+}
+
+func (f *fakeOpens) OptionOpen(_ context.Context, day contracts.Day) ([]contracts.OptionOpen, error) {
+	f.days = append(f.days, day)
+	return f.rows, f.err
+}
+
+func tp(t time.Time) *time.Time { return &t }
+
+// openRows: 11 is an open pull row with a skew, 12 a refresh row, 21 an error row (no usable quote).
+func openRows() []contracts.OptionOpen {
+	return []contracts.OptionOpen{
+		{InstrumentID: 11, Slot: "0945", Status: 1, MarketDataType: 1, Skew: true, EventTs: tp(time.Date(2026, 11, 10, 14, 45, 12, 0, time.UTC))},
+		{InstrumentID: 12, Slot: openquote.SlotRefresh, Status: 2, MarketDataType: 3, OutsideBand: true, ReceivedAt: time.Date(2026, 11, 10, 15, 2, 3, 0, time.UTC)},
+		{InstrumentID: 21, Slot: "0945", Status: 8, MarketDataType: 1, EventTs: tp(time.Date(2026, 11, 10, 14, 45, 0, 0, time.UTC))},
+	}
+}
+
+func refreshState() RefreshState {
+	return RefreshState{Enabled: true, Symbols: []string{"AAA", "BBB"}, Notice: "27 of 31 quotes fresh, 4 from 09:45", Fresh: 27, Total: 31}
+}
+
+func optionWithQuotes(t *testing.T, q openquote.OptionOpenReader, rs RefreshState) []byte {
+	t.Helper()
+	c := OptionConfig{
+		RunID: "run-1", BuildID: "build-1", Scope: "options", Zone: testZone,
+		Candidates: &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: fixtureRows()}},
+		Eod:        fixtureEod(), Names: tickerNames(), Quotes: q, Refresh: rs,
+	}
+	b, err := BuildOption(context.Background(), c, nil, buildDay, buildAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func quoteOfRow(t *testing.T, m map[string]any, id string) map[string]any {
+	t.Helper()
+	for _, r := range tableRowsOf(m) {
+		if rm := r.(map[string]any); rm["id"] == id {
+			return rm["quote"].(map[string]any)
+		}
+	}
+	t.Fatalf("no row %s", id)
+	return nil
+}
+
+func TestOptionPageQuotePerRow(t *testing.T) {
+	t.Parallel()
+	reader := &fakeOpens{rows: openRows()}
+	m := decodeMap(t, optionWithQuotes(t, reader, refreshState()))
+	if len(reader.days) != 1 || reader.days[0] != buildDay {
+		t.Fatalf("open rows asked for %v, want the build day", reader.days)
+	}
+	want := map[string]map[string]any{
+		"r11": {"as_of": "22:45:12", "data_type": "live", "source": "open_pull", "skew": true, "outside_band": false},
+		"r12": {"as_of": "23:02:03", "data_type": "delayed", "source": "refresh", "skew": false, "outside_band": true},
+		"r21": {"as_of": "close archive, 9 Nov", "data_type": nil, "source": "close_archive", "skew": false, "outside_band": false},
+		"r22": {"as_of": "close archive, 10 Nov", "data_type": nil, "source": "close_archive", "skew": false, "outside_band": false},
+	}
+	for id, w := range want {
+		got := quoteOfRow(t, m, id)
+		for k, v := range w {
+			if got[k] != v {
+				t.Errorf("%s quote.%s = %v, want %v", id, k, got[k], v)
+			}
+		}
+	}
+}
+
+func TestOptionPageRefreshCopied(t *testing.T) {
+	t.Parallel()
+	got := decodeMap(t, optionWithQuotes(t, nil, refreshState()))["refresh"].(map[string]any)
+	if got["enabled"] != true || got["notice"] != "27 of 31 quotes fresh, 4 from 09:45" || got["fresh_count"] != 27.0 || got["total_count"] != 31.0 {
+		t.Fatalf("refresh = %v", got)
+	}
+	if s := got["symbols"].([]any); len(s) != 2 || s[0] != "AAA" {
+		t.Fatalf("symbols = %v", s)
+	}
+}
+
+func TestOptionPageDisabledRefreshSaysWhy(t *testing.T) {
+	t.Parallel()
+	got := decodeMap(t, optionWithQuotes(t, nil, RefreshState{Reason: "market closed; stored quotes of 16:00"}))["refresh"].(map[string]any)
+	if got["enabled"] != false || got["notice"] != "market closed; stored quotes of 16:00" {
+		t.Fatalf("refresh = %v", got)
+	}
+	if s := got["symbols"].([]any); len(s) != 0 {
+		t.Fatalf("symbols = %v, want []", s)
+	}
+	empty := decodeMap(t, optionWithQuotes(t, nil, RefreshState{Enabled: true}))["refresh"].(map[string]any)
+	if empty["notice"] != nil {
+		t.Fatalf("empty notice = %v, want null", empty["notice"])
+	}
+}
+
+func TestOptionPageOpenReaderError(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	c := OptionConfig{Zone: testZone, Candidates: &fakeCands{}, Quotes: &fakeOpens{err: boom}}
+	if _, err := BuildOption(context.Background(), c, nil, buildDay, buildAt); !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want the reader error", err)
+	}
+}
+
+func TestOptionPageOpenGolden(t *testing.T) {
+	t.Parallel()
+	b := optionWithQuotes(t, &fakeOpens{rows: openRows()}, refreshState())
+	goldenCheck(t, "option_page_open", b)
+	v, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := compileSchema(t, "page.option_page.v2.json").Validate(v); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func stockWithQuotes(t *testing.T, q openquote.OptionOpenReader) (stockPayload, []byte) {
+	t.Helper()
+	c := stockCfg(stockDay, stockFixture(), "AAPL")
+	c.Quotes, c.Refresh = q, refreshState()
+	return buildStockPayload(t, c, stockDay)
+}
+
+func TestStockPageQuotePerRow(t *testing.T) {
+	t.Parallel()
+	opens := []contracts.OptionOpen{
+		{InstrumentID: 101, Slot: openquote.SlotRefresh, Status: 1, MarketDataType: 2, Skew: true, EventTs: tp(time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC))},
+	}
+	p, b := stockWithQuotes(t, &fakeOpens{rows: opens})
+	wantOpen := quote{AsOf: "23:00:00", DataType: dataTypeOf(2), Source: "refresh", Skew: true}
+	wantArchive := quote{AsOf: "close archive, 9 Nov", Source: "close_archive"}
+	for _, c := range p.Matrix.Cells {
+		w := wantArchive
+		if c.Key == "c101" {
+			w = wantOpen
+		}
+		if c.Key == "c103" || c.Key == "c201" {
+			w.AsOf = "close archive, 10 Nov"
+		}
+		if c.Quote.AsOf != w.AsOf || c.Quote.Source != w.Source || c.Quote.Skew != w.Skew || (c.Quote.DataType == nil) != (w.DataType == nil) {
+			t.Errorf("cell %s quote = %+v, want %+v", c.Key, c.Quote, w)
+		}
+	}
+	if len(p.Contracts.Rows) != 3 {
+		t.Fatalf("contract rows = %d", len(p.Contracts.Rows))
+	}
+	if p.Refresh.TotalCount != 31 || p.Refresh.FreshCount != 27 {
+		t.Fatalf("refresh = %+v", p.Refresh)
+	}
+	checkGolden(t, "stock_option_page_open", b)
+	v, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := compileSchema(t, "page.stock_option_page.v2.json").Validate(v); err != nil {
+		t.Fatal(err)
+	}
+}

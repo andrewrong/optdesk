@@ -21,7 +21,7 @@ const staleNoRowsText = gapNoRows
 
 var errNoZone = errors.New("option_boards: nil zone")
 
-// BuildOption builds page.option_page.v1 (Decisions 3 to 7 and 9). r is unused; at is given in UTC and written
+// BuildOption builds page.option_page.v2 (Decisions 3 to 7 and 9). r is unused; at is given in UTC and written
 // in c.Zone as generated_at. A nil Candidates gives the gap no_reader; a store error fails the build.
 func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 	if c.Zone == nil {
@@ -65,6 +65,12 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 		return nil, err
 	}
 
+	opens, err := loadOpens(ctx, c.Quotes, day)
+	if err != nil {
+		return nil, err
+	}
+	qs := quoteSource{opens: opens, eod: eod, day: l.Day, zone: c.Zone}
+
 	names, err := loadNames(ctx, c.Names, shown)
 	if err != nil {
 		return nil, err
@@ -79,12 +85,12 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 		CardsTitle:      "今日机会",
 		Cards:           buildOptionCards(cards, eod, names),
 		CandidatesTitle: "候选表",
-		Candidates:      buildTable(tableRows, eod, names),
+		Candidates:      buildTable(tableRows, eod, names, qs),
 		AllLink:         link{Text: fmt.Sprintf("全部 %d 个机会", len(l.Rows)), Target: candidatesAnchor},
-		Chain:           buildChain(l.Rows, cards, names),
+		Chain:           buildChain(l.Rows, cards, names, qs),
 	}
 	p := optionPayload{
-		Schema: "option_page", SchemaVersion: 1,
+		Schema: "option_page", SchemaVersion: 2,
 		RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
 		GeneratedAt: zoneTime(at, c.Zone),
 		DataTimes:   dataTimes,
@@ -94,6 +100,7 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 		Markets:     []marketPane{pane},
 		Notes:       notes,
 		Gaps:        gaps,
+		Refresh:     refreshOf(c.Refresh),
 	}
 	return json.Marshal(p)
 }

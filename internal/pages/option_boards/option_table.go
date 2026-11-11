@@ -26,10 +26,10 @@ func tableColumns() []column {
 	}
 }
 
-func buildTable(rows []store.Candidate, eod map[int]contracts.OptionEod, names displayNames) table {
+func buildTable(rows []store.Candidate, eod map[int]contracts.OptionEod, names displayNames, qs quoteSource) table {
 	out := table{Columns: tableColumns(), Rows: make([]row, 0, len(rows))}
 	for _, r := range rows {
-		out.Rows = append(out.Rows, buildRow(r, eod, names))
+		out.Rows = append(out.Rows, buildRow(r, eod, names, qs))
 	}
 	return out
 }
@@ -84,7 +84,7 @@ func earningsCell(r store.Candidate) textCell {
 	return textCell{Kind: "text", Text: text}
 }
 
-func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames) row {
+func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayNames, qs quoteSource) row {
 	symbol := names.of(r)
 	v := verdictOf(r.Status)
 	e := eodTextFor(eod, r.InstrumentID)
@@ -111,5 +111,5 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 		{Column: "ivp", Cell: mkGap("no_data", gapText)},
 		{Column: "earnings", Cell: earningsCell(r)},
 	}
-	return row{ID: fmt.Sprintf("r%d", r.InstrumentID), Cells: cells}
+	return row{ID: fmt.Sprintf("r%d", r.InstrumentID), Cells: cells, Quote: qs.of(r.InstrumentID)}
 }

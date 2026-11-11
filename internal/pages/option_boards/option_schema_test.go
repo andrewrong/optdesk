@@ -46,7 +46,7 @@ func compileSchema(t *testing.T, file string) *jsonschema.Schema {
 
 func TestOptionPageValidatesSchema(t *testing.T) {
 	t.Parallel()
-	schema := compileSchema(t, "page.option_page.v1.json")
+	schema := compileSchema(t, "page.option_page.v2.json")
 	stale := okRow(1, "AAA", 1, 1, 1)
 	stale.SessionDay = "2026-11-08"
 	cases := map[string]store.CandidateReader{

@@ -23,20 +23,21 @@ type stockRow struct {
 	C     store.Candidate
 	Gates []gateResult
 	Eod   eodText
+	Quote quote
 }
 
 func (r stockRow) ok() bool { return r.C.Status == "ok" }
 
-// BuildStock builds page.stock_option_page.v1. r is unused; at is given in UTC and written in c.Zone as generated_at.
+// BuildStock builds page.stock_option_page.v2. r is unused; at is given in UTC and written in c.Zone as generated_at.
 // The company is c.Key, or for a bare key the display name of the first ok row of the data day, else of the first row.
 func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 	if c.Zone == nil {
 		return nil, errors.New("option_boards: nil zone")
 	}
 	p := stockPayload{
-		Schema: "stock_option_page", SchemaVersion: 1, RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
+		Schema: "stock_option_page", SchemaVersion: 2, RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
 		GeneratedAt: zoneTime(at, c.Zone), DataTimes: []sourceTime{}, Title: stockTitle,
-		Maps: []priceMap{}, Cards: []chosenCard{}, Held: []heldItem{}, Footer: footerText,
+		Maps: []priceMap{}, Cards: []chosenCard{}, Held: []heldItem{}, Footer: footerText, Refresh: refreshOf(c.Refresh),
 		Matrix:    matrixBlock{Expiries: []matrixExpiry{}, Strikes: []string{}, Cells: []matrixCell{}, Legend: matrixLegend},
 		Contracts: contractsBlock{Columns: contractColumns(), Rows: []contractLine{}, Basis: contractsBasis, Notes: []string{}},
 	}
@@ -92,7 +93,7 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 		p.RunStatus = runStatus(gaps)
 		return json.Marshal(p)
 	}
-	more, notes, err := fillCompany(ctx, c, &p, mine, ld, names)
+	more, notes, err := fillCompany(ctx, c, day, &p, mine, ld, names)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +106,10 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 
 // fillCompany fills the top bar, matrix, cards, maps and contracts from the rows of the company; it returns the
 // gaps it found and the notes to append to the notice.
-func fillCompany(ctx context.Context, c StockConfig, p *stockPayload, mine []store.Candidate, ld loaded, names displayNames) ([]gap, string, error) {
+func fillCompany(ctx context.Context, c StockConfig, day contracts.Day, p *stockPayload,
+	mine []store.Candidate, ld loaded, names displayNames) ([]gap, string, error) {
 	var gaps []gap
-	rows, dayNote, err := prepareRows(ctx, c, mine, ld.Day)
+	rows, dayNote, err := prepareRows(ctx, c, mine, day, ld.Day)
 	if err != nil {
 		return nil, "", err
 	}
@@ -163,21 +165,28 @@ func bareKey(rows []store.Candidate, names displayNames) string {
 	return names.of(rows[0])
 }
 
-func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day contracts.Day) ([]stockRow, string, error) {
-	eod, err := loadEod(ctx, c.Eod, mine, day)
+// prepareRows pairs each stored row with its gates, close text and quote. day is the build day, which the open rows
+// are of; dataDay is the day of the stored rows.
+func prepareRows(ctx context.Context, c StockConfig, mine []store.Candidate, day, dataDay contracts.Day) ([]stockRow, string, error) {
+	eod, err := loadEod(ctx, c.Eod, mine, dataDay)
 	if err != nil {
 		return nil, "", err
 	}
+	opens, err := loadOpens(ctx, c.Quotes, day)
+	if err != nil {
+		return nil, "", err
+	}
+	qs := quoteSource{opens: opens, eod: eod, day: dataDay, zone: c.Zone}
 	rows := make([]stockRow, len(mine))
 	for i, r := range mine {
 		gates, err := parseGates(r.Gates)
 		if err != nil {
 			return nil, "", fmt.Errorf("option_boards: gates of instrument %d: %w", r.InstrumentID, err)
 		}
-		rows[i] = stockRow{C: r, Gates: gates, Eod: eodTextFor(eod, r.InstrumentID)}
+		rows[i] = stockRow{C: r, Gates: gates, Eod: eodTextFor(eod, r.InstrumentID), Quote: qs.of(r.InstrumentID)}
 	}
 	dayNote := ""
-	if n := chainDayNote(eod, day); n != "" {
+	if n := chainDayNote(eod, dataDay); n != "" {
 		dayNote = "。" + n
 	}
 	return rows, dayNote, nil
