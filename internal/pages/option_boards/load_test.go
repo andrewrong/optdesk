@@ -195,7 +195,7 @@ func TestEodChainDayBeforeDataDay(t *testing.T) {
 	if got := eodTextFor(m, 11).Volume; got != "5" {
 		t.Errorf("volume = %q, want the day before's 5", got)
 	}
-	if got := chainDayNote(m, "2026-11-10"); got != "Volume and open interest from 2026-11-06 (chain day)" {
+	if got := chainDayNote(m, "2026-11-10"); got != "Volume from 2026-11-06 (chain day)" {
 		t.Errorf("note = %q", got)
 	}
 	if got := chainDayNote(m, "2026-11-06"); got != "" {
@@ -270,7 +270,7 @@ func TestChainDayNoteEarliestAndZeroDay(t *testing.T) {
 	m := map[int]contracts.OptionEod{
 		1: eodOf("2026-11-08", "a", 1, 1), 2: eodOf("2026-11-06", "a", 2, 1), 3: {InstrumentID: 3},
 	}
-	if got := chainDayNote(m, "2026-11-10"); got != "Volume and open interest from 2026-11-06 (chain day)" {
+	if got := chainDayNote(m, "2026-11-10"); got != "Volume from 2026-11-06 (chain day)" {
 		t.Errorf("note = %q", got)
 	}
 	if got := chainDayNote(map[int]contracts.OptionEod{3: {InstrumentID: 3}}, "2026-11-10"); got != "" {
