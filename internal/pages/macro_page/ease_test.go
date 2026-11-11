@@ -87,10 +87,10 @@ func TestEaseFromReading(t *testing.T) {
 	if v, s := fig(t, e, "week_change"); v != -0.2 || s != "−0.2" {
 		t.Errorf("week_change %v %q", v, s)
 	}
-	if e["reading_text"] != "当前 56，中性；固定刻度 0 到 100。" {
+	if e["reading_text"] != "Now 56, Steady; fixed scale 0 to 100." {
 		t.Errorf("reading_text %v", e["reading_text"])
 	}
-	if e["aria_text"] != "松紧度 56，中性，较上周 −0.2；固定刻度 0 到 100，中性带 33.5 到 66.5。" {
+	if e["aria_text"] != "Ease 56, Steady, Week change −0.2; fixed scale 0 to 100, steady band 33.5 to 66.5." {
 		t.Errorf("aria_text %v", e["aria_text"])
 	}
 	dt := m["data_times"].([]any)[0].(map[string]any)
@@ -98,7 +98,7 @@ func TestEaseFromReading(t *testing.T) {
 		t.Errorf("data_times %v", m["data_times"])
 	}
 	gaps := m["gaps"].([]any)
-	if len(gaps) != 1 || gaps[0].(map[string]any)["text"] != "事件日历暂无数据" {
+	if len(gaps) != 1 || gaps[0].(map[string]any)["text"] != "Event calendar: no data yet" {
 		t.Errorf("gaps %v", gaps)
 	}
 }
@@ -113,10 +113,10 @@ func TestEaseWeekChangeSign(t *testing.T) {
 
 func TestEaseBandWords(t *testing.T) {
 	t.Parallel()
-	for band, word := range map[string]string{"tighter": "偏紧", "steady": "中性", "looser": "偏松"} {
+	for band, word := range map[string]string{"tighter": "Tighter", "steady": "Steady", "looser": "Looser"} {
 		m := easeBuild(t, easeRow(t, easeDay, "50.00", band))
 		rt := m["ease"].(map[string]any)["reading_text"].(string)
-		if !strings.Contains(rt, "，"+word+"；") {
+		if !strings.Contains(rt, ", "+word+";") {
 			t.Errorf("band %s: reading_text %q", band, rt)
 		}
 	}
@@ -126,7 +126,7 @@ func TestEaseWeekChangeGap(t *testing.T) {
 	t.Parallel()
 	m := easeBuild(t, easeRow(t, easeDay, "56.42", "steady"))
 	wc := m["ease"].(map[string]any)["week_change"].(map[string]any)
-	if wc["reason"] != "no_data" || wc["text"] != "较上周暂无数据" {
+	if wc["reason"] != "no_data" || wc["text"] != "Week change: no data yet" {
 		t.Errorf("week_change %v", wc)
 	}
 }
@@ -139,7 +139,7 @@ func TestEaseMissingReadingKeepsGap(t *testing.T) {
 	} {
 		m := easeBuild(t, rows...)
 		b, _ := json.Marshal(m["ease"])
-		if string(b) != `{"reason":"no_data","text":"松紧度暂无数据"}` {
+		if string(b) != `{"reason":"no_data","text":"Ease: no data yet"}` {
 			t.Errorf("%s: ease %s", name, b)
 		}
 		if len(m["gaps"].([]any)) != 2 {
@@ -163,7 +163,7 @@ func TestEaseMarkerInsideBandIsSteady(t *testing.T) {
 	t.Parallel()
 	m := easeBuild(t, easeRow(t, easeDay, "33.70", "steady"))
 	e := m["ease"].(map[string]any)
-	if !strings.Contains(e["reading_text"].(string), "中性") {
+	if !strings.Contains(e["reading_text"].(string), "Steady") {
 		t.Errorf("reading_text %v", e["reading_text"])
 	}
 	mv, _ := fig(t, e, "marker_percent")

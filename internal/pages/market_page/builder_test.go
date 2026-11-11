@@ -198,7 +198,7 @@ func TestPercentileThreeOk(t *testing.T) {
 func TestPercentileShortHistoryIsNoData(t *testing.T) {
 	t.Parallel()
 	r := rank(t, withVix(rec("2026-11-06", "missing_input", "", intp(2), "")).page(t), 0)
-	if r["kind"] != "gap" || r["reason"] != "no_data" || r["text"] != "历史不满 3 年，不给分位" {
+	if r["kind"] != "gap" || r["reason"] != "no_data" || r["text"] != "History under 3 years, no percentile" {
 		t.Errorf("rank_3y = %v", r)
 	}
 }
@@ -206,11 +206,11 @@ func TestPercentileShortHistoryIsNoData(t *testing.T) {
 func TestPercentileStaleInputUsesDataDay(t *testing.T) {
 	t.Parallel()
 	r := rank(t, withVix(rec("2026-11-06", "missing_input", "", intp(3), "2026-11-03")).page(t), 0)
-	if r["reason"] != "stale_input" || r["text"] != "分位数据已过期，数据日 11-03" {
+	if r["reason"] != "stale_input" || r["text"] != "Percentile data is stale, data day 11-03" {
 		t.Errorf("rank_3y = %v", r)
 	}
 	r = rank(t, withVix(rec("2026-11-06", "missing_input", "", intp(3), "")).page(t), 0)
-	if r["reason"] != "stale_input" || r["text"] != "分位数据已过期" {
+	if r["reason"] != "stale_input" || r["text"] != "Percentile data is stale" {
 		t.Errorf("no data day: rank_3y = %v", r)
 	}
 }
@@ -225,7 +225,7 @@ func TestPercentileOtherReasonIsMissingInput(t *testing.T) {
 		"negative":       rec("2026-11-06", "ok", "-0.1", nil, ""),
 	} {
 		g := rank(t, withVix(r).page(t), 0)
-		if g["reason"] != "missing_input" || g["text"] != "分位暂缺：输入不全" {
+		if g["reason"] != "missing_input" || g["text"] != "Percentile: n/a, input incomplete" {
 			t.Errorf("%s: rank_3y = %v", name, g)
 		}
 	}
@@ -240,7 +240,7 @@ func TestPercentileNoRowIsNoData(t *testing.T) {
 	e := allOK()
 	delete(e.readings, figVixPctile)
 	r := rank(t, e.page(t), 0)
-	if r["reason"] != "no_data" || r["text"] != "分位暂无数据：还没有存储" {
+	if r["reason"] != "no_data" || r["text"] != "Percentile: no data yet, nothing stored" {
 		t.Errorf("rank_3y = %v", r)
 	}
 }
@@ -299,7 +299,7 @@ func TestStaleLabelOldestDataDay(t *testing.T) {
 	e.series = map[string][]contracts.SeriesPoint{seriesVIX: {pt("2026-11-06", 21)}, seriesVXV: {pt("2026-11-06", 22)}}
 	m := e.page(t)
 	s := at(t, m, "stale").(map[string]any)
-	if s["text"] != "数据日 11-02" || s["is_stale"] != true || s["data_time"] != "2026-11-02T00:00:00+08:00" {
+	if s["text"] != "Data day 11-02" || s["is_stale"] != true || s["data_time"] != "2026-11-02T00:00:00+08:00" {
 		t.Errorf("stale = %v", s)
 	}
 	if m["stale_after"] != "2026-11-06T09:30:00+08:00" {
@@ -307,7 +307,7 @@ func TestStaleLabelOldestDataDay(t *testing.T) {
 	}
 	e.readings[figVxnPctile] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "0.125", nil, "2026-11-05")}
 	e.day = "2026-11-09"
-	if s := at(t, e.page(t), "stale").(map[string]any); s["is_stale"] != false || s["text"] != "数据日 11-05" {
+	if s := at(t, e.page(t), "stale").(map[string]any); s["is_stale"] != false || s["text"] != "Data day 11-05" {
 		t.Errorf("fresh stale = %v", s)
 	}
 	none := env{}.page(t)
@@ -443,7 +443,7 @@ func TestRunStatusIgnoresPermanentGaps(t *testing.T) {
 	e := allOK()
 	delete(e.readings, figVixTerm)
 	m = e.page(t)
-	if m["run_status"] != "ok" || at(t, m, "term", "sentence") != "期限结构比值暂无存储。" {
+	if m["run_status"] != "ok" || at(t, m, "term", "sentence") != "Term structure ratio: nothing stored." {
 		t.Errorf("no term ratio: %v %v", m["run_status"], at(t, m, "term", "sentence"))
 	}
 	e = allOK()
