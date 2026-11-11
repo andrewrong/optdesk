@@ -75,7 +75,7 @@ Six entries; entries 1, 2 and 3 are interfaces (entry 2 owns `broker.ContractLis
 
 ### 1 list-rpc (interface; the design's judged cut: contracts and pyside, owner-only)
 
-Files: `contracts/proto/ibkr/v1/resolve.proto`, `internal/contracts/genpb/resolve.pb.go`, `resolve_grpc.pb.go`, `resolve_proto_test.go` (same directory), `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2.py`, `resolve_pb2.pyi`, `resolve_pb2_grpc.py`, `resolve_pb2_grpc.pyi` (same directory), `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`, `docs/contracts/00-protocol.md`, `pyside/src/optdesk/ibkr/model.py`, `lister.py`, `list_rpc.py`, `transport.py`, `server.py` (same directory), `pyside/tests/ibkr/test_list_contracts.py`, `pyside/tests/ibkr/test_lister.py`, `pyside/tests/live/allowed.py`, `pyside/tests/live/client.py`
+Files: `contracts/proto/ibkr/v1/resolve.proto`, `internal/contracts/genpb/resolve.pb.go`, `internal/contracts/genpb/resolve_grpc.pb.go`, `internal/contracts/genpb/resolve_proto_test.go`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2.pyi`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2_grpc.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2_grpc.pyi`, `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`, `docs/contracts/00-protocol.md`, `pyside/src/optdesk/ibkr/model.py`, `pyside/src/optdesk/ibkr/lister.py`, `pyside/src/optdesk/ibkr/list_rpc.py`, `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/server.py`, `pyside/tests/ibkr/test_list_contracts.py`, `pyside/tests/ibkr/test_lister.py`, `pyside/tests/live/allowed.py`, `pyside/tests/live/client.py`
 Design: docs/design/option-contract-lists.md#Decisions (1, 2)
 Order: first.
 Contracts: ibkr.v1.resolve v1 additive
@@ -113,7 +113,7 @@ Acceptance:
 
 ### 4 list-store-impl (store, migration)
 
-Files: `internal/store/optionopenpg/lists.go`, `lists_test.go`, `lists_pg_test.go` (same directory), `migrations/0034_option_list.sql`
+Files: `internal/store/optionopenpg/lists.go`, `internal/store/optionopenpg/lists_test.go`, `internal/store/optionopenpg/lists_pg_test.go`, `migrations/0034_option_list.sql`
 Order: after 3.
 Contracts: unchanged
 
@@ -123,7 +123,7 @@ Acceptance:
 
 ### 5 list-jobs (jobs; new files only)
 
-Files: `internal/jobs/optionopen/list.go`, `list_run.go`, `list_test.go`, `list_run_test.go`, `job_list_preopen.toml` (same directory)
+Files: `internal/jobs/optionopen/list.go`, `internal/jobs/optionopen/list_run.go`, `internal/jobs/optionopen/list_test.go`, `internal/jobs/optionopen/list_run_test.go`, `internal/jobs/optionopen/job_list_preopen.toml`
 Order: after 2 and 3.
 Contracts: unchanged
 
