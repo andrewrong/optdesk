@@ -113,7 +113,7 @@ func TestNewPullNeedsItsPorts(t *testing.T) {
 	}
 }
 
-func TestPullScheduleIsTheOpenPlusFifteenMinutes(t *testing.T) {
+func TestPullScheduleIsTheOpenPlusFiveMinutes(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 1)
 	j := newPull(t, s, newFake(100))
@@ -125,7 +125,7 @@ func TestPullScheduleIsTheOpenPlusFifteenMinutes(t *testing.T) {
 		t.Fatal("the job has no schedule")
 	}
 	cal, anchor, _, off := sc.Schedule()
-	if j.ID() != "option_open" || cal != "XNYS" || anchor != "session_open" || off != 15*time.Minute || sc.RunBound() != 25*time.Minute {
+	if j.ID() != "option_open" || cal != "XNYS" || anchor != "session_open" || off != 5*time.Minute || sc.RunBound() != 25*time.Minute {
 		t.Errorf("id %s slot %s %s %v bound %v", j.ID(), cal, anchor, off, sc.RunBound())
 	}
 }
