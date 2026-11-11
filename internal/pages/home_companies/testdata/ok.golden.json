@@ -57,17 +57,17 @@
         "earnings": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "earnings date: no source"
+          "text": "earnings date: not read by this card yet"
         },
         "day_change": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "day change: no source"
+          "text": "day change: not read by this card yet"
         },
         "five_day_change": {
           "kind": "gap",
           "reason": "no_data",
-          "text": "5-day change: no source"
+          "text": "5-day change: not read by this card yet"
         },
         "day_sharp": {
           "kind": "none"

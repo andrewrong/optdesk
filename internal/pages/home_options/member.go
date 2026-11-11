@@ -47,8 +47,8 @@ const (
 	textMonthly   = "Settled premium by closing month: no data yet"
 	textNoClosed  = "No sold records closed this month"
 	textClosedMon = "Monthly closed P/L is not given on this page"
-	textSoldCount = "Sold groups this month not computed yet"
-	textOpen      = "Open premium not computed yet"
+	textSoldCount = "Sold groups this month: the ledger summary gives no count"
+	textOpen      = "Open premium: the ledger summary gives no open premium figure"
 	textMaxLoss   = "Max loss needs the combined structure, the ledger does not give it"
 	textOtherCcy  = "Ledger holds non-USD positions, not counted on this page"
 	seriesText    = "Settled premium by closing month; expiry, exercise, assignment and buy-back count, " +
