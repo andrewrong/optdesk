@@ -10,7 +10,8 @@ import (
 
 // months groups the rows by the month of ClosedOn (YYYY-MM), oldest first, with the
 // running sum. A month is Over when it ends before the month of asOf; with no asOf every
-// month is over.
+// month is over. The Premium of a month is the sum of the opening premiums of its rows (all
+// four endings, no commissions).
 func months(rows []row, asOf contracts.Day) []compute.ResultMonth {
 	sums := map[string]*big.Rat{}
 	prem := map[string]*big.Rat{}
