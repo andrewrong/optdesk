@@ -1,4 +1,4 @@
-// Issue #1204: the option page from invented fixtures. Expected strings are typed from board 5 (期权页, ab5).
+// Issue #1204: the option page from invented fixtures. Expected strings are typed from board 5 (Option page, ab5).
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { act } from 'react'
@@ -85,10 +85,10 @@ describe('OptionPage', () => {
     const payload = fixture('ok.json')
     await show(payload)
     const us = payload.markets[0]
-    expect(host.querySelector('[data-headline]')!.textContent).toBe('4 个值得看，2 个勉强。')
+    expect(host.querySelector('[data-headline]')!.textContent).toBe('4 worth a look, 2 marginal.')
     const cards = [...host.querySelectorAll('[data-market=US] [data-opportunity]')]
     expect(cards).toHaveLength(us.cards.length)
-    expect(cards[0]!.textContent).toContain('值得看')
+    expect(cards[0]!.textContent).toContain('Worth a look')
     expect(cards[0]!.textContent).toContain(us.cards[0].annualised_text)
     expect(cards[0]!.textContent).toContain(us.cards[0].contract_line)
     expect(cards[0]!.textContent).toContain(us.cards[0].size_line)
@@ -101,7 +101,7 @@ describe('OptionPage', () => {
   it('reorders the rows by TanStack sorting when a column header is clicked', async () => {
     await show(fixture('ok.json'))
     const table = host.querySelector('[data-market=US] [data-table=candidates]')!
-    const header = [...table.querySelectorAll('th button')].find((b) => b.textContent === '标的')!
+    const header = [...table.querySelectorAll('th button')].find((b) => b.textContent === 'Underlying')!
     await click(header)
     expect(firstColumn(table)).toEqual(['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'TGT'])
     await click(header)
@@ -111,16 +111,16 @@ describe('OptionPage', () => {
   it('lists the eleven candidate columns and sorts the rows by the Δ sort value', async () => {
     // A stored-scan table as the builder writes it (issue #1758); the deltas are invented.
     const labels = [
-      '标的',
-      '判定',
-      '年化',
-      '合约',
-      '行权价 %',
+      'Underlying',
+      'Verdict',
+      'Annualised',
+      'Contract',
+      'strike %',
       'Δ',
       'Bid',
       'Ask',
       'IV',
-      '到期',
+      'Expiry',
       'E',
     ]
     const ids = [
@@ -137,7 +137,7 @@ describe('OptionPage', () => {
       'earnings',
     ]
     const text = (t: string, value: number | string) => ({ kind: 'text', text: t, value })
-    const gap = { kind: 'gap', reason: 'no_data', text: '缺' }
+    const gap = { kind: 'gap', reason: 'no_data', text: 'n/a' }
     const row = (symbol: string, delta: string, value: number) => ({
       id: symbol,
       cells: ids.map((column) => ({
@@ -148,9 +148,9 @@ describe('OptionPage', () => {
             : column === 'delta'
               ? text(delta, value)
               : column === 'verdict'
-                ? text('值得看', 0)
+                ? text('Worth a look', 0)
                 : column === 'dte'
-                  ? text('30 天', 30)
+                  ? text('30 days', 30)
                   : gap,
       })),
     })
@@ -167,20 +167,20 @@ describe('OptionPage', () => {
     expect(firstColumn(table)).toEqual(['BBB', 'AAA', 'CCC']) // −30, −16, −5 ascending
   })
 
-  it('shows TGT as 跳过 with gap cells, and no zero, for Bid/Ask, spread, volume and open interest', async () => {
+  it('shows TGT as Skipped with gap cells, and no zero, for Bid/Ask, spread, volume and open interest', async () => {
     await show(fixture('ok.json'))
     const row = [
       ...host.querySelectorAll('[data-market=US] [data-table=candidates] tbody tr'),
     ].find((r) => r.querySelector('td')!.textContent === 'TGT')!
     const cells = [...row.querySelectorAll('td')].map((c) => c.textContent)
-    expect(cells[1]).toBe('跳过')
-    expect(cells.filter((c) => c === '—缺')).toHaveLength(5) // annualised, Bid/Ask, spread %, volume, open interest
+    expect(cells[1]).toBe('Skipped')
+    expect(cells.filter((c) => c === '—n/a')).toHaveLength(5) // annualised, Bid/Ask, spread %, volume, open interest
   })
 
   it('marks the chosen contract in the chain, which is shown without a click', async () => {
     await show(fixture('ok.json'))
     const chain = host.querySelector('[data-table=chain]')!
-    expect(chain.textContent).toContain('已选')
+    expect(chain.textContent).toContain('Selected')
     expect(chain.querySelectorAll('tbody tr')).toHaveLength(4)
     expect(host.querySelector('[data-chain] [aria-expanded]')).toBeNull()
   })
@@ -193,7 +193,7 @@ describe('OptionPage', () => {
     expect(cls).toContain('flex-wrap')
   })
 
-  it('links 今日机会 to the 全部候选 section with the text and target of the payload', async () => {
+  it('links Opportunities today to the All candidates section with the text and target of the payload', async () => {
     const payload = fixture('ok.json')
     await show(payload)
     const pane = payload.markets[0]
@@ -207,19 +207,19 @@ describe('OptionPage', () => {
   it('shows the gap sentence of gap.json once, and the stale label of stale.json', async () => {
     await show(fixture('gap.json'))
     const gaps = host.querySelector('[data-gaps]')!
-    expect(gaps.textContent!.split('AAA 11/28 行权价 $46 缺 Mid')).toHaveLength(2)
+    expect(gaps.textContent!.split('AAA 11/28 strike $46 n/a Mid')).toHaveLength(2)
     await act(async () => root?.unmount())
     host.remove()
     await show(fixture('stale.json'))
-    expect(host.textContent).toContain('数据已过期：数据时间 2026-10-28 09:28（吉隆坡）')
+    expect(host.textContent).toContain('Data is stale: data time 2026-10-28 09:28 (UTC+8)')
   })
 
   it('shows the JP tab with JPY text and its ≈USD text from the payload', async () => {
     await show(fixture('ok.json'))
-    const jp = [...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '日股')!
+    const jp = [...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'JP stocks')!
     await pick(jp)
     const card = host.querySelector('[data-market=JP] [data-opportunity]')!
-    expect(card.textContent).toContain('¥240,000（≈$1,600）')
+    expect(card.textContent).toContain('¥240,000 (≈$1,600)')
   })
 
   it('shows the premium line of the payload card as given', async () => {
@@ -227,7 +227,7 @@ describe('OptionPage', () => {
     await show(payload)
     const card = host.querySelector('[data-market=US] [data-opportunity] [data-premium-line]')!
     expect(card.textContent).toBe(payload.markets[0].cards[0].premium_line)
-    expect(card.textContent).toContain('到期在价内概率')
+    expect(card.textContent).toContain('Chance of expiring in the money')
   })
 
   it('has a tooltip with the payload hint on the IVP header', async () => {
@@ -262,11 +262,11 @@ describe('OptionPage', () => {
       }
     }
     check(payload.markets[0])
-    const jp = [...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === '日股')!
+    const jp = [...host.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'JP stocks')!
     await pick(jp)
     check(payload.markets[1])
     const first = payload.markets[0].cards[0]
-    expect(first.contract_line).toBe('sell put 62 · 11-13 周五 · 22 天 · Δ −0.15')
+    expect(first.contract_line).toBe('sell put 62 · 11-13 Fri · 22 days · Δ −0.15')
     expect(first.iv_line).toBe('IV 38% · HV30 31% · IVP 72')
   })
 
@@ -274,7 +274,7 @@ describe('OptionPage', () => {
     const payload = fixture('ok.json')
     await show(payload)
     const cards = payload.markets[0].cards as { id: string; tags: string[] }[]
-    for (const text of ['E 11-12 在期内', 'E 无', '权利金偏高']) {
+    for (const text of ['E 11-12 within term', 'E None', 'Premium is high']) {
       const card = cards.find((c) => c.tags.includes(text))!
       const tag = [...host.querySelectorAll(`[data-opportunity=${card.id}] [data-slot=badge]`)].find(
         (b) => b.textContent === text,
@@ -285,26 +285,26 @@ describe('OptionPage', () => {
     }
   })
 
-  it('shows the IVP 缺 line without a number', async () => {
+  it('shows the IVP n/a line without a number', async () => {
     const payload = fixture('ok.json')
     await show(payload)
-    const card = payload.markets[0].cards.find((c: { iv_line: string }) => c.iv_line.includes('IVP 缺'))
+    const card = payload.markets[0].cards.find((c: { iv_line: string }) => c.iv_line.includes('IVP n/a'))
     const el = host.querySelector(`[data-opportunity=${card.id}]`)!
-    expect(card.iv_line).toBe('IV 31% · HV30 29% · IVP 缺')
-    expect(el.textContent).toContain('IVP 缺')
+    expect(card.iv_line).toBe('IV 31% · HV30 29% · IVP n/a')
+    expect(el.textContent).toContain('IVP n/a')
     expect(el.textContent).not.toMatch(/IVP\s*\d/)
   })
 
   it('has the twelve candidate columns of the board in order, and the link with the count', async () => {
     const payload = fixture('ok.json')
     await show(payload)
-    const labels = ['标的', '判定', '年化', 'strike %', 'DTE', 'Δ', 'Bid/Ask', 'spread %', 'Vol', 'OI', 'IVP', 'E']
+    const labels = ['Underlying', 'Verdict', 'Annualised', 'strike %', 'DTE', 'Δ', 'Bid/Ask', 'spread %', 'Vol', 'OI', 'IVP', 'E']
     for (const pane of payload.markets) {
       expect(pane.candidates.columns.map((c: { label: string }) => c.label)).toEqual(labels)
     }
     const table = host.querySelector('[data-market=US] [data-table=candidates]')!
     expect([...table.querySelectorAll('th')].map((h) => h.textContent)).toEqual(labels)
-    expect(host.querySelector('[data-market=US] [data-all-link]')!.textContent).toBe('全部 6 个机会')
+    expect(host.querySelector('[data-market=US] [data-all-link]')!.textContent).toBe('All 6 opportunities')
   })
 
   it('shows every chain row on first render with no click', async () => {
@@ -318,12 +318,12 @@ describe('OptionPage', () => {
     }
   })
 
-  it('shows 没有链数据 for a pane whose chain is null', async () => {
+  it('shows No chain data for a pane whose chain is null', async () => {
     const payload = fixture('ok.json')
     payload.markets[0].chain = null
     await show(payload)
     const pane = host.querySelector('[data-market=US]')!
-    expect(pane.textContent).toContain('没有链数据')
+    expect(pane.textContent).toContain('No chain data')
     expect(pane.querySelector('[data-table=chain]')).toBeNull()
     expect(pane.querySelector('[data-chain-empty]')).not.toBeNull()
     expect(pane.querySelector('[data-chain]')).toBeNull()
@@ -332,10 +332,10 @@ describe('OptionPage', () => {
   it('shows the verdict of the payload, not one derived from the numbers', async () => {
     const payload = fixture('ok.json')
     const card = payload.markets[0].cards[0]
-    card.verdict = { key: 'skip', label: '跳过', tone: 'muted' } // while the annualised figure is the best one
+    card.verdict = { key: 'skip', label: 'Skipped', tone: 'muted' } // while the annualised figure is the best one
     await show(payload)
     const shown = host.querySelector(`[data-opportunity=${card.id}] [data-verdict]`)!
-    expect(shown.textContent).toBe('跳过')
+    expect(shown.textContent).toBe('Skipped')
     expect(host.querySelector('[data-headline]')!.textContent).toBe(payload.markets[0].headline)
   })
 

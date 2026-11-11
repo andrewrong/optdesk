@@ -104,9 +104,9 @@ describe('HomePage layout', () => {
 
   it('shows a changed overview text', async () => {
     const changed = structuredClone(ok)
-    changed.overview.items[2].text = '一句换过的话'
+    changed.overview.items[2].text = 'A replaced sentence'
     await renderWith(changed)
-    expect(host.textContent).toContain('一句换过的话')
+    expect(host.textContent).toContain('A replaced sentence')
   })
 
   it('orders the cards macro, market, household, companies, options', () => {
@@ -144,7 +144,7 @@ describe('HomePage layout', () => {
     await act(async () => {
       ;(fold.querySelector('[data-slot="accordion-trigger"]') as HTMLElement).click()
     })
-    expect(fold.textContent).toContain('全部报告')
+    expect(fold.textContent).toContain('All reports')
     for (const link of rest) expect(fold.contains(anchorOf(link)), link.text).toBe(true)
   })
 

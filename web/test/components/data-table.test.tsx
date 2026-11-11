@@ -8,14 +8,14 @@ import { DataTable, type Cell } from '@/components/data-table/data-table'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const COLUMNS = [
-  { id: 'name', label: '名称' },
-  { id: 'amount', label: '金额', align: 'right' as const },
+  { id: 'name', label: 'Name' },
+  { id: 'amount', label: 'Amount', align: 'right' as const },
 ]
 // Invented rows. By text the amounts sort "10", "9", "—", by value 9 before 10 (the gap has none and goes last).
 const ROWS: Record<string, Cell>[] = [
   { name: { text: 'ten' }, amount: { text: '10', value: 10, tone: 'up' } },
   { name: { text: 'nine' }, amount: { text: '9', value: 9, tone: 'down' } },
-  { name: { text: 'none' }, amount: { reason: 'no_data', text: '无数据' } },
+  { name: { text: 'none' }, amount: { reason: 'no_data', text: 'no data' } },
   { name: { text: 'five' }, amount: { text: '5', value: 5, tone: 'flat' } },
   // A JPY cell with its Python-made ≈USD text (issue #1362): shown beside the amount, not computed.
   {
@@ -49,7 +49,7 @@ describe('DataTable sharp mark', () => {
     host = document.createElement('div')
     document.body.append(host)
     const rows: Record<string, Cell>[] = [
-      { name: { text: 'hot' }, amount: { text: '+4.0%', value: 4, sharp: { text: '大幅' } } },
+      { name: { text: 'hot' }, amount: { text: '+4.0%', value: 4, sharp: { text: 'sharp' } } },
       { name: { text: 'calm' }, amount: { text: '+1.0%', value: 1, sharp: null } },
       { name: { text: 'plain' }, amount: { text: '+0.5%', value: 0.5 } },
     ]
@@ -58,8 +58,8 @@ describe('DataTable sharp mark', () => {
       root.render(<DataTable columns={COLUMNS} rows={rows} />)
     })
     const badges = [...host.querySelectorAll('[data-sharp]')]
-    expect(badges.map((b) => b.textContent)).toEqual(['大幅'])
-    expect(badges[0]?.closest('td')?.textContent).toBe('+4.0% 大幅')
+    expect(badges.map((b) => b.textContent)).toEqual(['sharp'])
+    expect(badges[0]?.closest('td')?.textContent).toBe('+4.0% sharp')
     expect(badges[0]?.getAttribute('data-variant')).toBe('destructive')
     expect(badges[0]?.querySelector('svg')).not.toBeNull()
   })
@@ -80,8 +80,8 @@ describe('DataTable', () => {
     await show()
     const gap = host.querySelector('[data-missing]')
     expect(gap?.textContent).toContain('—')
-    expect(gap?.querySelector('.sr-only')?.textContent).toBe('无数据')
-    expect(gap?.closest('td')?.textContent).toContain('无数据')
+    expect(gap?.querySelector('.sr-only')?.textContent).toBe('no data')
+    expect(gap?.closest('td')?.textContent).toContain('no data')
     expect(gap?.closest('td')?.textContent).not.toContain('0')
   })
 
@@ -126,8 +126,8 @@ describe('DataTable source badge status', () => {
       root = createRoot(host)
       root.render(
         <DataTable
-          columns={[{ id: 'name', label: '名称' }]}
-          rows={[{ name: { text: 'x', source: '标签', source_status: sourceStatus } }]}
+          columns={[{ id: 'name', label: 'Name' }]}
+          rows={[{ name: { text: 'x', source: 'label', source_status: sourceStatus } }]}
         />,
       )
     })

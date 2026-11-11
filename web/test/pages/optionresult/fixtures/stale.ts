@@ -72,7 +72,7 @@ export const stale = {
             muted: true
           }
         ],
-        summary: 'M1 Month text s1；M2 Month text s2',
+        summary: 'M1 Month text s1; M2 Month text s2',
         empty: null
       },
       running: {

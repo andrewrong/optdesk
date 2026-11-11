@@ -53,23 +53,23 @@ it('shows the header and the open table of ok in payload order', async () => {
 
 it('shows the badges as given', async () => {
   const text = await show(ok)
-  for (const badge of ['价内', '价外']) expect(badgeOf(badge)).toBeTruthy()
-  expect(text).toContain('在存续期内')
+  for (const badge of ['In the money', 'Out of the money']) expect(badgeOf(badge)).toBeTruthy()
+  expect(text).toContain('within term')
 })
 
 it('puts the recent and check tables in closed accordion items', async () => {
   const text = await show(ok)
   const items = [...host.querySelectorAll('[data-slot="accordion-item"]')]
   expect(items.map((el) => el.getAttribute('data-state'))).toEqual(['closed', 'closed'])
-  expect(text).toContain('最近 30 天了结')
-  expect(text).toContain('Flex 与账户核对')
+  expect(text).toContain('Closed in the last 30 days')
+  expect(text).toContain('Flex reconciled with the account')
 })
 
 it('shows the early-assignment badge once the recent item is opened', async () => {
   await show(ok)
   const trigger = host.querySelector('[data-slot="accordion-trigger"]') as HTMLElement
   await act(async () => trigger.click())
-  expect(badgeOf('提前')).toBeTruthy()
+  expect(badgeOf('Early')).toBeTruthy()
 })
 
 it('shows the gap text of a no-mark row and not a zero', async () => {
@@ -85,8 +85,8 @@ it('shows the gap text of a no-mark row and not a zero', async () => {
 
 it('shows the unconfirmed guard badge in a tone other than the blocking one', async () => {
   await show(ok)
-  const unknown = badgeOf('未确认')
-  const blocked = badgeOf('阻止')
+  const unknown = badgeOf('Unconfirmed')
+  const blocked = badgeOf('Blocked')
   expect(unknown.className).not.toBe(blocked.className)
 })
 

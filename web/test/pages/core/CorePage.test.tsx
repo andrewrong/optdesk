@@ -89,8 +89,8 @@ describe('CorePage', () => {
   it('shows the flag and the cyclical mark', async () => {
     await mount(ok)
     expect(host.textContent).toContain(ok.rows[0]!.flag)
-    expect(host.querySelector('[data-row="BBB"]')!.textContent).toContain('周期')
-    expect(host.querySelector('[data-row="AAA"]')!.textContent).not.toContain('周期')
+    expect(host.querySelector('[data-row="BBB"]')!.textContent).toContain('Cyclical')
+    expect(host.querySelector('[data-row="AAA"]')!.textContent).not.toContain('Cyclical')
   })
 
   it('shows the gap text of a row whose returns are a Gap, and no dot', async () => {

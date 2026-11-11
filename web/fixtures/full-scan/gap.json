@@ -1,19 +1,19 @@
 {
   "back": {
     "href": "/report/us-open",
-    "label": "回到报告"
+    "label": "Back to report"
   },
   "build_id": "build-demo-0001",
   "data_times": [],
   "gaps": [
     {
       "reason": "no_data",
-      "text": "成交量、未平仓量和 IV 分位没有存入扫描"
+      "text": "Volume, open interest and IV percentile are not stored in the scan"
     }
   ],
   "generated_at": "2026-10-28T09:30:00+08:00",
   "notes": [
-    "示例数据，非真实报价。判定与句子由 Python 写好，页面只显示。"
+    "Sample data, not live quotes. Verdicts and sentences are written by Python; the page only shows them."
   ],
   "run_id": "run-demo-0001",
   "run_status": "partial",
@@ -24,28 +24,28 @@
     {
       "gap": {
         "reason": "no_data",
-        "text": "今天没有候选扫描"
+        "text": "No candidate scan today"
       },
       "strategy": "short_put",
-      "title": "卖出看跌"
+      "title": "Sell put"
     },
     {
       "gap": {
         "reason": "no_data",
-        "text": "今天没有候选扫描"
+        "text": "No candidate scan today"
       },
       "strategy": "covered_call",
-      "title": "备兑看涨"
+      "title": "Covered call"
     },
     {
       "gap": {
         "reason": "no_data",
-        "text": "今天没有候选扫描"
+        "text": "No candidate scan today"
       },
       "strategy": "put_credit_spread",
-      "title": "卖出看跌价差"
+      "title": "Sell put spread"
     }
   ],
   "stale": null,
-  "title": "全部候选"
+  "title": "All candidates"
 }

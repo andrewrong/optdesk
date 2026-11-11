@@ -6,5 +6,5 @@ export const readOnly: SettingsPage = {
   ...editable,
   form: null,
   notice: null,
-  gap: { reason: 'not_built', text: 'demo 编辑开关未打开' },
+  gap: { reason: 'not_built', text: 'demo Edit switch is off' },
 }

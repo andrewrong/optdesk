@@ -16,8 +16,8 @@
       },
       "acted": {
         "badge": true,
-        "text": "已执行",
-        "value": "已执行"
+        "text": "Acted",
+        "value": "Acted"
       },
       "after_value": {
         "text": "1.10",
@@ -32,9 +32,9 @@
         "value": 1.5
       },
       "sentence": {
-        "source": "紧急",
-        "text": "AAA 卖出的 50 看跌 买回平仓",
-        "value": "AAA 卖出的 50 看跌 买回平仓"
+        "source": "Urgent",
+        "text": "AAA sold 50 put buy back to close",
+        "value": "AAA sold 50 put buy back to close"
       }
     },
     {
@@ -44,8 +44,8 @@
       },
       "acted": {
         "badge": true,
-        "text": "未执行",
-        "value": "未执行"
+        "text": "Not acted",
+        "value": "Not acted"
       },
       "after_value": {
         "text": "0.95",
@@ -60,8 +60,8 @@
         "value": 0.85
       },
       "sentence": {
-        "text": "BBB 卖出的 30 看跌 继续持有",
-        "value": "BBB 卖出的 30 看跌 继续持有"
+        "text": "BBB sold 30 put keep holding",
+        "value": "BBB sold 30 put keep holding"
       }
     }
   ],
@@ -70,6 +70,6 @@
   "schema": "advice_page",
   "schema_version": 2,
   "scope": "advice-page",
-  "sentence": "2026-11-01 报告里的建议，与下一个收盘后的值对比",
-  "title": "昨日建议"
+  "sentence": "Advice in the 2026-11-01 report, against the value after the next close",
+  "title": "Yesterday's advice"
 }

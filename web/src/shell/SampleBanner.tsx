@@ -6,7 +6,7 @@ export function SampleBanner() {
   return (
     <Alert role="status">
       <FlaskConical aria-hidden />
-      <AlertDescription>示例数据，非实时数据 / Sample data, not live data</AlertDescription>
+      <AlertDescription>Sample data, not live data</AlertDescription>
     </Alert>
   )
 }

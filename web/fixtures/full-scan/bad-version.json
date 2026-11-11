@@ -1,7 +1,7 @@
 {
   "back": {
     "href": "/report/us-open",
-    "label": "回到报告"
+    "label": "Back to report"
   },
   "build_id": "build-demo-0001",
   "data_times": [
@@ -13,12 +13,12 @@
   "gaps": [
     {
       "reason": "no_data",
-      "text": "成交量、未平仓量和 IV 分位没有存入扫描"
+      "text": "Volume, open interest and IV percentile are not stored in the scan"
     }
   ],
   "generated_at": "2026-10-28T09:30:00+08:00",
   "notes": [
-    "示例数据，非真实报价。判定与句子由 Python 写好，页面只显示。"
+    "Sample data, not live quotes. Verdicts and sentences are written by Python; the page only shows them."
   ],
   "run_id": "run-demo-0001",
   "run_status": "partial",
@@ -27,35 +27,35 @@
   "scope": "full-scan",
   "sections": [
     {
-      "liquidity": "2 个候选缺报价，年化、Bid、Ask 无法给出",
+      "liquidity": "2 candidates miss a quote: annualised, Bid and Ask cannot be given",
       "strategy": "short_put",
-      "sub": "2 行，按判定排序",
+      "sub": "2 rows, sorted by verdict",
       "table": {
         "columns": [
           {
             "align": "left",
             "id": "symbol",
-            "label": "标的"
+            "label": "Underlying"
           },
           {
             "align": "left",
             "id": "verdict",
-            "label": "判定"
+            "label": "Verdict"
           },
           {
             "align": "right",
             "id": "annualised",
-            "label": "年化"
+            "label": "Annualised"
           },
           {
             "align": "left",
             "id": "contract",
-            "label": "合约"
+            "label": "Contract"
           },
           {
             "align": "right",
             "id": "strike_pct",
-            "label": "行权价 %"
+            "label": "strike %"
           },
           {
             "align": "right",
@@ -79,24 +79,24 @@
           },
           {
             "align": "right",
-            "hint": "按风险中性模型 N(-d2) 估计的到期在价内概率",
+            "hint": "Probability of finishing in the money at expiry, estimated by the risk-neutral model N(-d2)",
             "id": "itm",
-            "label": "到期在价内概率"
+            "label": "Probability in the money at expiry"
           },
           {
             "align": "right",
             "id": "excess",
-            "label": "比现金"
+            "label": "vs cash"
           },
           {
             "align": "right",
             "id": "breakeven",
-            "label": "盈亏平衡"
+            "label": "Breakeven"
           },
           {
             "align": "right",
             "id": "dte",
-            "label": "到期"
+            "label": "Expiry"
           },
           {
             "align": "right",
@@ -118,7 +118,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 },
                 "column": "verdict"
@@ -134,7 +134,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "SYN1 11/21 行权价 $48 Put",
+                  "text": "SYN1 11/21 strike $48 Put",
                   "value": "20261121"
                 },
                 "column": "contract"
@@ -142,63 +142,63 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "strike_pct"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "delta"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "bid"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "ask"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "iv"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "itm"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "excess"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "breakeven"
               },
               {
                 "cell": {
                   "kind": "text",
-                  "text": "19 天",
+                  "text": "19 days",
                   "value": 19
                 },
                 "column": "dte"
@@ -206,7 +206,7 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "earnings"
               }
@@ -226,7 +226,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "待定",
+                  "text": "Pending",
                   "value": 2
                 },
                 "column": "verdict"
@@ -234,14 +234,14 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "annualised"
               },
               {
                 "cell": {
                   "kind": "text",
-                  "text": "SYN2 11/21 行权价 $48 Put",
+                  "text": "SYN2 11/21 strike $48 Put",
                   "value": "20261121"
                 },
                 "column": "contract"
@@ -249,63 +249,63 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "strike_pct"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "delta"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "bid"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "ask"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "iv"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "itm"
               },
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "excess"
               },
               {
                 "cell": {
                   "reason": "missing_quote",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "breakeven"
               },
               {
                 "cell": {
                   "kind": "text",
-                  "text": "19 天",
+                  "text": "19 days",
                   "value": 19
                 },
                 "column": "dte"
@@ -313,7 +313,7 @@
               {
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 },
                 "column": "earnings"
               }
@@ -322,38 +322,38 @@
           }
         ]
       },
-      "title": "卖出看跌"
+      "title": "Sell put"
     },
     {
-      "note": "判定为已存的检查结果（通过、待定、跳过）；值得看与勉强见卖出看跌表。",
+      "note": "The verdict is the stored check result (passed, pending, skipped); worth a look and marginal are in the sell put table.",
       "strategy": "covered_call",
-      "sub": "1 行，按判定排序",
+      "sub": "1 rows, sorted by verdict",
       "table": {
         "columns": [
           {
             "align": "left",
             "id": "symbol",
-            "label": "标的"
+            "label": "Underlying"
           },
           {
             "align": "left",
             "id": "verdict",
-            "label": "判定"
+            "label": "Verdict"
           },
           {
             "align": "right",
             "id": "annualised",
-            "label": "年化"
+            "label": "Annualised"
           },
           {
             "align": "left",
             "id": "contract",
-            "label": "合约"
+            "label": "Contract"
           },
           {
             "align": "right",
             "id": "dte",
-            "label": "到期"
+            "label": "Expiry"
           }
         ],
         "rows": [
@@ -370,7 +370,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "通过",
+                  "text": "Passed",
                   "value": 0
                 },
                 "column": "verdict"
@@ -386,7 +386,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "SYN1 11/21 行权价 $52 Call",
+                  "text": "SYN1 11/21 strike $52 Call",
                   "value": "20261121"
                 },
                 "column": "contract"
@@ -394,7 +394,7 @@
               {
                 "cell": {
                   "kind": "text",
-                  "text": "19 天",
+                  "text": "19 days",
                   "value": 19
                 },
                 "column": "dte"
@@ -404,21 +404,21 @@
           }
         ]
       },
-      "title": "备兑看涨"
+      "title": "Covered call"
     },
     {
       "gap": {
         "reason": "no_data",
-        "text": "今天没有候选扫描"
+        "text": "No candidate scan today"
       },
       "strategy": "put_credit_spread",
-      "title": "卖出看跌价差"
+      "title": "Sell put spread"
     }
   ],
   "stale": {
     "data_time": "2026-10-28T09:28:00+08:00",
     "stale_after": "2026-10-28T10:28:00+08:00",
-    "text": "数据时间 2026-10-28 09:28（吉隆坡）"
+    "text": "Data time 2026-10-28 09:28 (UTC+8)"
   },
-  "title": "全部候选"
+  "title": "All candidates"
 }

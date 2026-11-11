@@ -24,18 +24,18 @@ afterEach(async () => {
 
 describe('MissingValue', () => {
   it('shows a dash on one button and keeps the reason as sr-only text', async () => {
-    await show('数据源未接入')
+    await show('source not connected')
     const button = host.querySelector('button')!
     expect(button.textContent).toContain('—')
     const hidden = button.querySelector('.sr-only')!
-    expect(hidden.textContent).toBe('数据源未接入')
+    expect(hidden.textContent).toBe('source not connected')
     expect(host.querySelectorAll('button')).toHaveLength(1)
   })
 
   it('opens the reason in a popover on tap', async () => {
-    await show('数据源未接入')
+    await show('source not connected')
     await act(async () => host.querySelector('button')!.click())
     const popover = document.body.querySelector('[data-slot="popover-content"]')
-    expect(popover?.textContent).toBe('数据源未接入')
+    expect(popover?.textContent).toBe('source not connected')
   })
 })

@@ -1,4 +1,4 @@
-// The 市场概览 card of the home page (market_summary v3). Every visible string and figure is a field of the
+// The Market overview card of the home page (market_summary v3). Every visible string and figure is a field of the
 // payload; this file formats, compares and computes nothing. `value` is used only by the table's user-started sort.
 import { Chart } from '@/charts/Chart'
 import type { ChartSpec } from '@/charts/spec'

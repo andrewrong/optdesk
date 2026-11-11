@@ -1,4 +1,4 @@
-// The 家庭概览 card of the home page (ADR 0034 step 3c, board ab1). Every visible string is a `text` field of the
+// The Household overview card of the home page (ADR 0034 step 3c, board ab1). Every visible string is a `text` field of the
 // payload; this file formats and computes nothing. The gain or loss colour comes from the payload's `tone` only.
 import { ChevronRight, Info } from 'lucide-react'
 import { TONE_CLASS } from '@/components/data-table/data-table'
@@ -105,7 +105,7 @@ export function HouseholdCard({
         <CardAction>
           <Button asChild variant="link">
             <a href="/household">
-              家庭页
+              Household page
               <ChevronRight />
             </a>
           </Button>

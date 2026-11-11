@@ -4,43 +4,43 @@
     "columns": [
       {
         "id": "company",
-        "label": "公司"
+        "label": "Company"
       },
       {
         "id": "earnings",
-        "label": "财报日"
+        "label": "Earnings date"
       },
       {
         "id": "day_change",
-        "label": "日涨跌"
+        "label": "Day change"
       },
       {
         "id": "five_day_change",
-        "label": "5日涨跌"
+        "label": "5-day change"
       }
     ],
-    "data_times_text": "数据日 10-23",
+    "data_times_text": "Data day 10-23",
     "gaps": [
       {
         "reason": "missing_input",
-        "text": "持仓公司数据不足：原因未知"
+        "text": "Held companies: not enough data, reason unknown"
       }
     ],
     "notes": [
-      "财报日只显示日期：盘前、盘后时间暂无数据源。"
+      "Earnings date shows the date only: pre-market and after-hours times have no data source yet."
     ],
     "rows": {
       "reason": "missing_input",
-      "text": "持仓公司数据不足：原因未知"
+      "text": "Held companies: not enough data, reason unknown"
     },
-    "say": "持仓公司数据不足：原因未知",
+    "say": "Held companies: not enough data, reason unknown",
     "stale": {
       "data_time": "2026-10-23T21:00:00+08:00",
       "stale_after": "2026-10-24T21:00:00+08:00",
-      "text": "数据日 10-23"
+      "text": "Data day 10-23"
     },
-    "subtitle": "财报日历与变化",
-    "title": "持仓公司"
+    "subtitle": "Earnings calendar and changes",
+    "title": "Held companies"
   },
   "data_times": [],
   "generated_at": "2026-10-23T21:00:00+08:00",

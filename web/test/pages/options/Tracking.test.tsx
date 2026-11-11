@@ -56,7 +56,7 @@ it('shows the current version, every tile, the notes, the comparison and My trad
     }
   }
   for (const figure of ['31', '24', '3', '+0.9%', '+0.2%']) expect(text).toContain(figure)
-  expect(text).toContain('太早，不下结论。')
+  expect(text).toContain('Too early to conclude.')
   for (const cell of (current.covered_calls.comparison.rows as unknown as string[][]).flat()) expect(text).toContain(cell)
   for (const cell of (current.my_trades as unknown as { rows: string[][] }).rows.flat()) expect(text).toContain(cell)
   expect(text).not.toContain('OLD')
@@ -72,16 +72,16 @@ it('folds the group rows closed', async () => {
 it('renders a my_trades gap as text with no My trades table and folds older versions', async () => {
   await show(gap)
   const text = host.textContent ?? ''
-  expect(text).toContain('我的交易还没有数据来源')
-  expect(text).toContain('这一组还没有可汇总的结果')
+  expect(text).toContain('My trades have no data source yet')
+  expect(text).toContain('This group has no results to sum up yet')
   expect(host.querySelectorAll('table')).toHaveLength(0)
 
   await act(async () => root?.unmount())
   host.remove()
   await show(ok)
   const old = [...host.querySelectorAll('[data-slot="accordion-item"]')].find((i) =>
-    i.textContent?.includes('更早的规则版本'),
+    i.textContent?.includes('Earlier rule versions'),
   )
   expect(old?.querySelector('[data-slot="accordion-trigger"]')?.getAttribute('aria-expanded')).toBe('false')
-  expect(host.textContent).not.toContain('规则 v2')
+  expect(host.textContent).not.toContain('Rule v2')
 })

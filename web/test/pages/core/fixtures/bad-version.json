@@ -8,14 +8,14 @@
   "data_times": [],
   "run_status": "ok",
   "stale": null,
-  "title": "核心持仓",
-  "sentence": "三家公司。",
+  "title": "Core holdings",
+  "sentence": "Three companies.",
   "notes": [],
   "gaps": [],
-  "basis_note": "不给目标价 · 不进规则",
-  "scale": { "low_text": "0%", "high_text": "15%", "treasury": { "text": "国债 4.2%", "marker_percent": 28 } },
+  "basis_note": "No target price · not in any rule",
+  "scale": { "low_text": "0%", "high_text": "15%", "treasury": { "text": "Treasury 4.2%", "marker_percent": 28 } },
   "rows": [],
-  "jp_note": "日股暂未纳入。",
+  "jp_note": "Japan stocks not included yet.",
   "legend": [],
-  "snapshot_text": "快照 2026-10-26"
+  "snapshot_text": "Snapshot 2026-10-26"
 }

@@ -35,18 +35,18 @@ export const ok = {
             id: 'pos-2',
             cells: {
               contract: { text: 'Row two contract', value: null, badges: [], tone: 'none' },
-              moneyness: { text: 'Row two money', value: null, badges: ['价外'], tone: 'none' },
+              moneyness: { text: 'Row two money', value: null, badges: ['Out of the money'], tone: 'none' },
               dte: { text: '45 days', value: 45, badges: [], tone: 'none' },
-              guard: { text: 'Row two guard', value: null, badges: ['未确认'], tone: 'none' },
+              guard: { text: 'Row two guard', value: null, badges: ['Unconfirmed'], tone: 'none' },
             },
           },
           {
             id: 'pos-1',
             cells: {
               contract: { text: 'Row one contract', value: null, badges: [], tone: 'none' },
-              moneyness: { text: 'Row one money', value: null, badges: ['价内', '在存续期内'], tone: 'down' },
+              moneyness: { text: 'Row one money', value: null, badges: ['In the money', 'within term'], tone: 'down' },
               dte: { text: '9 days', value: 9, badges: [], tone: 'none' },
-              guard: { text: 'Row one guard', value: null, badges: ['阻止'], tone: 'none' },
+              guard: { text: 'Row one guard', value: null, badges: ['Blocked'], tone: 'none' },
             },
           },
         ],
@@ -57,7 +57,7 @@ export const ok = {
           {
             id: 'pos-9',
             cells: {
-              contract: { text: 'Recent row contract', value: null, badges: ['提前'], tone: 'none' },
+              contract: { text: 'Recent row contract', value: null, badges: ['Early'], tone: 'none' },
             },
           },
         ],
