@@ -70,7 +70,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 		rows = append(rows, home_companies.Row{Issuer: s.Issuer, Market: s.Market, Symbol: s.Symbol, HandPrice: s.HandPrice})
 	}
 	hh, err := home_household.Build(ctx, home_household.Config{
-		RunID: runID, BuildID: build, Scope: scope, Zone: zone, Alias: siteAliases[0],
+		RunID: runID, BuildID: build, Scope: scope, Zone: zone, Alias: rd.aliasList()[0],
 		Account: rd.noticeAccount, Sessions: rd.sessions, Figures: pagefig.New,
 	}, day, now)
 	if err != nil {

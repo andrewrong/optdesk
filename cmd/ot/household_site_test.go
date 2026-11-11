@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -64,6 +66,35 @@ func householdReaders(asked *[]string) siteReaders {
 		optionLedger:  householdLedger{},
 		sessions:      householdSessions{},
 		ledgers:       optionledger.New,
+	}
+}
+
+func TestHouseholdRouteReadsAliasesOfGatewaysFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "gateways.toml")
+	body := "[[gateway]]\naccount = \"acct-a\"\nrequired = true\n\n[[gateway]]\naccount = \"acct-b\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := testApp(t, envIbkrGateways+"="+path+"\n")
+	var asked []string
+	rd := householdReaders(&asked)
+	rd.aliases = siteAliasList(a)
+	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute)
+	if rec.Code != 200 || len(asked) == 0 {
+		t.Fatalf("%d %v %q", rec.Code, asked, rec.Body)
+	}
+	for _, al := range asked {
+		if al != "acct-a" {
+			t.Fatalf("asked %v", asked)
+		}
+	}
+	asked = nil
+	rec = companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute+"?"+siteAccountQuery+"=main")
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"no_data"`) || len(asked) != 0 {
+		t.Fatalf("main: %d asked %v %q", rec.Code, asked, rec.Body)
 	}
 }
 
