@@ -109,7 +109,10 @@ func newJob(s OptionLedgerStores, cfg OptionLedgerConfig, clk clock.Clock, log *
 	if _, err := time.Parse(dayLayout, cfg.HistoryFrom); err != nil {
 		return nil, errors.New("optionledger: history_from is not a day")
 	}
-	return &job{m: m, offset: offset, runBound: bound, stores: s, cfg: cfg, clk: clk, loc: loc, log: log, done: map[contracts.Day]contracts.JobResult{}, aliasRows: map[contracts.Day]map[string]int{}}, nil
+	return &job{
+		m: m, offset: offset, runBound: bound, stores: s, cfg: cfg, clk: clk, loc: loc, log: log,
+		done: map[contracts.Day]contracts.JobResult{}, aliasRows: map[contracts.Day]map[string]int{},
+	}, nil
 }
 
 // ID is the job id of the manifest.
