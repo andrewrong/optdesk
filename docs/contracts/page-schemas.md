@@ -56,6 +56,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.structures_list.v1 | 1 |
 | page.tracking.v1 | 1 |
 | page.tracking.v2 | 2 |
+| page.underlyings.v1 | 1 |
 
 Also `common.v1` (`contracts/schemas/common.v1.json`, `$id` `https://optdesk.invalid/schemas/common.v1.json`): only `$defs` `Id`, `Timestamp`, `RunStatus`, `SourceTime`, `StaleLabel`, `Gap`, `UsdFigure`, `PercentFigure`, `SharePercentFigure`, `UsdSignedFigure`, used as `common.v1.json#/$defs/<Name>`.
 
@@ -126,3 +127,5 @@ Also `page.option_tracking_page.v1` (`schema_version` 1, title `OptionTrackingPa
 Quote and refresh (`docs/design/option-open-pull.md#3`, Decisions 18 to 20): `page.option_page.v2` and `page.stock_option_page.v2` are `page.option_page.v1` and `page.stock_option_page.v1` with `schema_version` 2, additively. Every row that carries a price gains a required `quote` object (`Quote`: `as_of`, exchange-local `HH:MM:SS` or a date text for a close archive value; `data_type`, `live`, `frozen`, `delayed` or null for a close archive value; `source`, `open_pull`, `refresh` or `close_archive`; the booleans `skew` and `outside_band`): the chain `Row` of `option_page`, and `ContractLine` and `MatrixCell` of `stock_option_page`. Each page gains a required `refresh` object (`Refresh`: `enabled`, `symbols` (at most 8), `notice` (the reason in words when `enabled` is false, or null), `fresh_count`, `total_count`). The builder copies these fields and the web renders them; nothing is computed. The ids use `https://optdesk.invalid/schemas/page.<name>.v2.json`; the v1 files are unchanged. Types: `web/src/generated/{option_page.v2,stock_option_page.v2}.ts`. The v1 type files `web/src/types/option_page.v1.types.ts` and `web/src/types/stock_option_page.ts` are outside the paths of this change and unchanged.
 
 The `Contracts:` line of the pull request of these two files names them as new: `page.option_page.v2 v2 (new), page.stock_option_page.v2 v2 (new)`.
+
+Also `page.underlyings.v1` (`schema_version` 1, title `Underlyings`), written for this repository by `docs/design/underlyings.md#interface`: the followed names with their switches, the owner form, the confirm step with its `stops` lines, and the history. `gaps` are `common.v2` `Gap`s. Type: `web/src/generated/underlyings.v1.ts`; fixtures `contracts/fixtures/page.underlyings.v1.{golden,confirm,readonly,bad-version}.json` and the follow table `contracts/fixtures/underlyings.follow.json` (the one table of Decision 6; `dividends` needs an issuer) are listed in `MANIFEST.synthetic-v1.json`.
