@@ -287,6 +287,7 @@ func newBaseDeps() deps {
 		openOptionCatalog:       snapshot.OpenOptionEodCatalog,
 		openOptionTerms:         instrument.OpenOptionTerms,
 		openInstrumentName:      instrument.OpenInstrumentNames,
+		openIndexIDs:            openIndexIDsDefault,
 		newOptionEodJP:          optioneod.NewJP,
 		newQuoteSnapshot:        quotesnapshot.New,
 		openReading:             reading.Open,
