@@ -329,15 +329,17 @@ func TestTheNearestStrikesAreResolvedFirstWhenTheCapBites(t *testing.T) {
 	}
 }
 
-func TestGapPassResolvesOnlyWhatCacheAndMarksDoNotHold(t *testing.T) {
+func TestGapPassResolvesOnlyWhatTheCacheDoesNotHold(t *testing.T) {
 	t.Parallel()
 	r := newRig(oneChain())
+	cached := map[string]bool{}
 	r.brk.answer = func(n int, c broker.Contract) (broker.Resolved, error) {
 		if n%2 == 0 {
 			return broker.Resolved{}, nil // marked
 		}
+		cached[c.Strike+c.Right] = true
 		c.ConID = int64(5000 + n)
-		return broker.Resolved{Listed: true, Contract: c}, nil // cached
+		return broker.Resolved{Listed: true, Contract: c}, nil
 	}
 	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
 	done := len(r.brk.asked)
@@ -347,17 +349,71 @@ func TestGapPassResolvesOnlyWhatCacheAndMarksDoNotHold(t *testing.T) {
 	r.brk.chains = []broker.Chain{ch}
 	r.brk.answer = nil
 	r.run(t, NewGap, ResolveOptions{}, "AAPL")
-	newOnes := r.brk.asked[done:]
-	if len(newOnes) != 1 {
-		t.Fatalf("the gap pass asks only the new strike, asked %d", len(newOnes))
-	}
-	for _, c := range newOnes {
-		if c.Strike != "99.55" || c.Right != "P" {
-			t.Fatalf("asked a contract the cache or a mark holds: %+v", c)
+	sawNew := false
+	for _, c := range r.brk.asked[done:] {
+		if cached[c.Strike+c.Right] {
+			t.Fatalf("asked a contract the cache holds: %+v", c)
 		}
+		sawNew = sawNew || c.Strike == "99.55"
+	}
+	if !sawNew {
+		t.Fatal("the gap pass does not ask the new strike")
 	}
 	if r.brk.listed != 2 {
 		t.Fatalf("each pass lists the chain first, listed %d", r.brk.listed)
+	}
+}
+
+// markedCount is how many marks the rig's store holds.
+func markedCount(r *rig) int {
+	got, _ := r.marks.NotListed(context.Background(), r.clk.Now())
+	return len(got)
+}
+
+func TestMorningChainListingAMarkedStrikeEndsItsMarkInTheGapPassOnly(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) { return broker.Resolved{}, nil }
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	first, marked := len(r.brk.asked), markedCount(r)
+	if marked == 0 {
+		t.Fatal("the first run wrote no marks")
+	}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if len(r.brk.asked) != first {
+		t.Fatalf("the evening pass keeps the marks, asked %d more", len(r.brk.asked)-first)
+	}
+	r.run(t, NewGap, ResolveOptions{}, "AAPL")
+	if len(r.brk.asked) != first+marked {
+		t.Fatalf("the gap pass asks the %d marked contracts the morning chain lists, asked %d", marked, len(r.brk.asked)-first)
+	}
+}
+
+func TestStrikeListedAtAnotherExpiryEndsItsMark(t *testing.T) {
+	t.Parallel()
+	const later = "20261218"
+	r := newRig(chainOf("AAPL", 990, 1010, expiry30, later))
+	r.brk.answer = func(n int, c broker.Contract) (broker.Resolved, error) {
+		if c.Expiry == later && c.Strike == "100.0" {
+			return broker.Resolved{}, nil // not listed at the later expiry
+		}
+		c.ConID = int64(7000 + n)
+		return broker.Resolved{Listed: true, Contract: c}, nil
+	}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if markedCount(r) == 0 {
+		t.Fatal("the first run marked nothing at the later expiry")
+	}
+	first := len(r.brk.asked)
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	again := 0
+	for _, c := range r.brk.asked[first:] {
+		if c.Expiry == later && c.Strike == "100.0" {
+			again++
+		}
+	}
+	if again == 0 {
+		t.Fatal("a strike stored listed at another expiry must end its mark and be asked again (Decision 5 trigger b)")
 	}
 }
 
@@ -429,5 +485,34 @@ func TestResolveSlotValues(t *testing.T) {
 		if j.ID() != tc.id || cal != "XNYS" || anchor != tc.anchor || off != tc.off {
 			t.Fatalf("%s: %s %s %v", j.ID(), cal, anchor, off)
 		}
+	}
+}
+
+func TestStrikeNewlyInTheChainEndsItsMark(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(int, broker.Contract) (broker.Resolved, error) { return broker.Resolved{}, nil }
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	first := len(r.brk.asked)
+	r.clk.Advance(24 * time.Hour)
+	r.bars.closes["2026-11-11"] = "100"
+	r.brk.chains = []broker.Chain{chainOf("AAPL", 900, 1001, expiry30)} // the chain gained strikes after checked_at
+	j, _ := NewGap(r.deps("AAPL"), ResolveOptions{})
+	keys, _, _ := j.Plan(context.Background(), "2026-11-11")
+	j.Run(context.Background(), "2026-11-11", keys)
+	if len(r.brk.asked) == first {
+		t.Fatal("a strike newly listed in the chain must end its mark and be asked again (Decision 5 trigger c)")
+	}
+}
+
+func TestListedAnswerWithoutConIDIsAmbiguousAndNeverMarked(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.brk.answer = func(_ int, c broker.Contract) (broker.Resolved, error) {
+		return broker.Resolved{Listed: true, Contract: c}, nil // ConID 0
+	}
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if n := markedCount(r); n != 0 {
+		t.Fatalf("a listed answer with no con_id wrote %d marks", n)
 	}
 }

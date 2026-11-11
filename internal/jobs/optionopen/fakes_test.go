@@ -117,8 +117,20 @@ func (f *fakeMarks) NotListed(_ context.Context, now time.Time) ([]contracts.Opt
 	return out, nil
 }
 
-func (f *fakeMarks) RemoveNotListed(context.Context, openquote.NotListedKey) (bool, error) {
-	return false, nil
+func (f *fakeMarks) RemoveNotListed(_ context.Context, k openquote.NotListedKey) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var keep []contracts.OptionNotListed
+	removed := false
+	for _, m := range f.marks {
+		if int64(m.UnderlyingID) == k.UnderlyingID && markKey(m) == refKey(k.Expiry, k.Strike, k.Right, k.TradingClass) {
+			removed = true
+			continue
+		}
+		keep = append(keep, m)
+	}
+	f.marks = keep
+	return removed, nil
 }
 
 func (f *fakeMarks) RemoveNotListedByUnderlying(_ context.Context, id int64) (int, error) {

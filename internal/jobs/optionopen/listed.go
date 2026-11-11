@@ -158,6 +158,8 @@ func classify(got broker.Resolved, err error, req broker.Contract) outcome {
 			return outAmbiguous
 		}
 		return outFound
+	case got.Listed && got.ErrorCode == 0:
+		return outAmbiguous // listed with no con_id: neither a contract nor an empty list
 	case got.ErrorCode == 0:
 		return outNotListed // an empty list
 	case got.ErrorCode == 200:
@@ -318,7 +320,7 @@ func (r *keyRun) run(ctx context.Context) contracts.TypedError {
 	if err != nil {
 		return asTyped(err, contracts.Retryable)
 	}
-	marked, terr := r.marks(ctx, id, spot, refs, now)
+	marked, terr := r.marks(ctx, id, spot, refs, chains, now)
 	if terr != nil {
 		return terr
 	}
@@ -439,16 +441,21 @@ func (r *keyRun) mark(underlyingID int64, c candidate, got broker.Resolved, now 
 	return out
 }
 
+// statusNotListed is the status of a pull row whose contract is not listed (Decision 8).
+const statusNotListed = 4
+
 func mustDay(d contracts.Day) time.Time {
 	t, _ := dayTime(d)
 	return t
 }
 
 // marks reads the marks of the stock, applies the early ends and the pull rows, and returns the active marks by
-// contract key. Triggers (a) and (d) of Decision 5 are applied: a mark past retry_at is not returned by the
-// store, and a stored close that moved by spot_move since checked_at ends every mark of the stock. Triggers (b)
-// and (c) have no stored basis (no listing time, no chain history) and are not applied.
-func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openquote.OptionRef, now time.Time) (map[string]bool, contracts.TypedError) {
+// contract key. The four triggers of Decision 5 end a mark early: (a) a mark past retry_at is not returned by the
+// store; (b) the same strike, right and class is stored listed at another expiry; (c) the morning chain, listed
+// by the gap pass first, lists the marked strike at the marked expiry; (d) a stored close that moved by spot_move
+// since checked_at ends every mark of the stock.
+func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openquote.OptionRef,
+	chains []broker.Chain, now time.Time) (map[string]bool, contracts.TypedError) {
 	j := r.j
 	all, err := j.d.Marks.NotListed(ctx, now)
 	if err != nil {
@@ -487,6 +494,10 @@ func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openq
 		}
 		mine = nil
 	}
+	mine, terr := r.endMarks(ctx, id, mine, refs, chains)
+	if terr != nil {
+		return nil, terr
+	}
 	out := map[string]bool{}
 	for _, m := range mine {
 		out[markKey(m)] = true
@@ -500,6 +511,57 @@ func (r *keyRun) marks(ctx context.Context, id int64, spot float64, refs []openq
 	return out, nil
 }
 
+// endMarks removes the marks that trigger (b) or (c) of Decision 5 ends and returns the others. Trigger (c) is the
+// gap pass's: it is the pass that lists the morning chain first, so the evening pass keeps its marks.
+func (r *keyRun) endMarks(ctx context.Context, id int64, mine []contracts.OptionNotListed, refs []openquote.OptionRef,
+	chains []broker.Chain) ([]contracts.OptionNotListed, contracts.TypedError) {
+	listedAt := map[string][]contracts.Day{}
+	for _, ref := range refs {
+		k := strikeKey(ref.Strike) + "|" + ref.Right + "|" + ref.TradingClass
+		listedAt[k] = append(listedAt[k], ref.Expiry)
+	}
+	var keep []contracts.OptionNotListed
+	for _, m := range mine {
+		if r.otherExpiry(m, listedAt) || (r.j.m.GapOnly && chainLists(chains, m)) {
+			key := openquote.NotListedKey{UnderlyingID: id, Expiry: contracts.Day(m.Expiry.Format(time.DateOnly)),
+				Strike: m.Strike, Right: string(m.Right), TradingClass: m.TradingClass}
+			if _, err := r.j.d.Marks.RemoveNotListed(ctx, key); err != nil {
+				return nil, asTyped(err, contracts.Retryable)
+			}
+			continue
+		}
+		keep = append(keep, m)
+	}
+	return keep, nil
+}
+
+// otherExpiry is trigger (b): the strike of the mark is stored listed at an expiry other than the mark's.
+func (r *keyRun) otherExpiry(m contracts.OptionNotListed, listedAt map[string][]contracts.Day) bool {
+	day := contracts.Day(m.Expiry.Format(time.DateOnly))
+	for _, e := range listedAt[strikeKey(m.Strike)+"|"+string(m.Right)+"|"+m.TradingClass] {
+		if e != day {
+			return true
+		}
+	}
+	return false
+}
+
+// chainLists is trigger (c): a chain of the mark's class lists its expiry and its strike.
+func chainLists(chains []broker.Chain, m contracts.OptionNotListed) bool {
+	exp := m.Expiry.Format("20060102")
+	for _, ch := range chains {
+		if ch.TradingClass != m.TradingClass || !containsString(ch.Expirations, exp) {
+			continue
+		}
+		for _, s := range ch.Strikes {
+			if strikeKey(s) == strikeKey(m.Strike) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // fromPull makes a mark of each not_listed row of the pull of this stock whose answer was a clean 200 (no error
 // code or 200) and that is not marked yet.
 func (r *keyRun) fromPull(id int64, refs []openquote.OptionRef, now time.Time, marked map[string]bool) []contracts.OptionNotListed {
@@ -509,7 +571,7 @@ func (r *keyRun) fromPull(id int64, refs []openquote.OptionRef, now time.Time, m
 	}
 	var out []contracts.OptionNotListed
 	for _, row := range r.pulled {
-		if row.Status != 4 || int64(row.UnderlyingID) != id {
+		if row.Status != statusNotListed || int64(row.UnderlyingID) != id {
 			continue
 		}
 		if row.ErrorCode != nil && *row.ErrorCode != "" && *row.ErrorCode != "200" {
