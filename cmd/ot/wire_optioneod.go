@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -37,10 +38,43 @@ func init() {
 				a.log.Warn(reason, "component", "ot", "job", jobOptionEodJP)
 				return nil, "", nil
 			}
-			j, err := jc.f.optionEodJP(jc.brk)
+			// The JP stock entries of watch.toml carry no con_id: ask the broker for it once per symbol, as bars_refresh does.
+			f := *jc.f
+			f.watch = resolveJPConIDs(ctx, jc.brk, jc.f.watch, a.log)
+			j, err := f.optionEodJP(jc.brk)
 			return j, "", err
 		},
 	})
+}
+
+// resolveJPConIDs returns a copy of watch in which every JP stock entry without a con_id has the con_id of one broker lookup
+// call. An entry whose call fails, is not listed or answers con_id 0 stays as it is, with one Warn
+// line; the job then answers no_value for that stock only. Every other entry and the input are left untouched.
+func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEntry, log *slog.Logger) []jobs.WatchEntry {
+	out := make([]jobs.WatchEntry, len(watch))
+	copy(out, watch)
+	for i, e := range out {
+		if e.Market != "JP" || e.Contract.SecType != "STK" || e.Contract.ConID != 0 {
+			continue
+		}
+		got, err := b.ResolveContract(ctx, e.Contract)
+		reason := ""
+		switch {
+		case err != nil:
+			reason = err.Error()
+		case !got.Listed:
+			reason = "not listed"
+		case got.Contract.ConID == 0:
+			reason = "answer has no con_id"
+		}
+		if reason != "" {
+			log.Warn("option_eod_jp: con_id of watch stock not resolved", "component", "ot", "job", jobOptionEodJP,
+				"symbol", e.Contract.Symbol, "reason", reason)
+			continue
+		}
+		out[i].Contract.ConID = got.Contract.ConID
+	}
+	return out
 }
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
