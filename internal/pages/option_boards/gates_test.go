@@ -35,7 +35,7 @@ func TestParseMarks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"财报日期未确认", "已过财报,60 天内无财报", "itm"}
+	want := []string{"Earnings date not confirmed", "Earnings passed, none within 60 days", "itm"}
 	if got := markBadges(marks); !reflect.DeepEqual(got, want) {
 		t.Errorf("badges = %v, want %v", got, want)
 	}

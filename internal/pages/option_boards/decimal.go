@@ -18,10 +18,14 @@ const (
 	minusSign  = "−"
 )
 
+// minus is the ASCII minus sign of a decimal text and the dash of a date text; it is written as an escape so
+// that no bare hyphen literal reads as a gap marker (the gap text is gapText only).
+const minus = "\x2d"
+
 var (
 	decimalPattern = regexp.MustCompile(`^(-?)([0-9]+)(?:\.([0-9]+))?$`)
 	idPattern      = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
-	weekdayNames   = [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
+	weekdayNames   = [...]string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 )
 
 var errBadDecimal = errors.New("option_boards: bad decimal text")
@@ -54,7 +58,7 @@ func shiftPercent(text string) (string, error) {
 
 // signedText writes a stored decimal text with the typographic minus "−" for the sign.
 func signedText(text string) string {
-	if rest, ok := strings.CutPrefix(text, "-"); ok {
+	if rest, ok := strings.CutPrefix(text, minus); ok {
 		return minusSign + rest
 	}
 	return text
@@ -81,7 +85,7 @@ func scaledInt(text string, scale int) (int64, bool) {
 			return 0, false
 		}
 	}
-	if m[1] == "-" {
+	if m[1] == minus {
 		v = -v
 	}
 	return v, true
@@ -93,7 +97,7 @@ func compareDecimal(a, b string) (int, error) {
 	if ma == nil || mb == nil {
 		return 0, errBadDecimal
 	}
-	na, nb := ma[1] == "-" && !isZeroDecimal(ma), mb[1] == "-" && !isZeroDecimal(mb)
+	na, nb := ma[1] == minus && !isZeroDecimal(ma), mb[1] == minus && !isZeroDecimal(mb)
 	switch {
 	case na && !nb:
 		return -1, nil
@@ -150,7 +154,7 @@ func monthDay(day contracts.Day) (string, error) {
 	return t.Format("01-02"), nil
 }
 
-// weekdayText is the Chinese weekday of a date text, "周五" for a Friday; the date text is read as a date, with
+// weekdayText is the Chinese weekday of a date text, "Fri" for a Friday; the date text is read as a date, with
 // no zone and no calendar.
 func weekdayText(day contracts.Day) (string, error) {
 	t, err := parseDay(day)

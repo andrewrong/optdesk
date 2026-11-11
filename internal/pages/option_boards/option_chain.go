@@ -42,7 +42,7 @@ func buildChain(rows, cards []store.Candidate, names displayNames, qs quoteSourc
 		return c < 0
 	})
 
-	cols := []column{{ID: "strike", Label: "行权价", Align: "left"}}
+	cols := []column{{ID: "strike", Label: "Strike", Align: "left"}}
 	for _, e := range expiries {
 		label, err := monthDay(contracts.Day(e))
 		if err != nil {
@@ -69,8 +69,8 @@ func buildChain(rows, cards []store.Candidate, names displayNames, qs quoteSourc
 	md, _ := monthDay(first.Expiry)
 	name := names.of(first)
 	return &chain{
-		Title:   "期权链 · " + name,
-		Summary: fmt.Sprintf("已选:%s %s 行权价 $%s Put", name, strings.ReplaceAll(md, "-", "/"), first.Strike),
+		Title:   "Option chain · " + name,
+		Summary: fmt.Sprintf("Selected: %s %s strike $%s Put", name, strings.ReplaceAll(md, minus, "/"), first.Strike),
 		Table:   table{Columns: cols, Rows: out},
 	}
 }

@@ -12,90 +12,90 @@
     }
   ],
   "run_status": "ok",
-  "title": "期权",
+  "title": "Options",
   "stale": {
     "data_time": "2026-11-10T08:40:00+08:00",
     "stale_after": "2026-11-10T23:59:59+08:00",
-    "text": "数据日 2026-11-10"
+    "text": "Data day 2026-11-10"
   },
   "markets": [
     {
       "market": "US",
-      "label": "美股",
+      "label": "US stocks",
       "currency": "USD",
-      "headline": "2 个值得看。",
-      "cards_title": "今日机会",
+      "headline": "2 worth a look.",
+      "cards_title": "Today's opportunities",
       "cards": [
         {
           "id": "c11",
           "symbol": "AAPL",
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           },
-          "reason": "各关卡通过",
+          "reason": "All gates passed",
           "annualised": {
             "value": 12.3456,
             "text": "12.3456%",
             "unit": "percent"
           },
           "annualised_text": "12.3456%",
-          "contract_line": "sell put 62 · 11-13 周五 · 3 天 · Δ −0.15",
-          "liquidity_line": "成交 1240 · 持仓 5310",
+          "contract_line": "sell put 62 · 11-13 Fri · 3 days · Δ −0.15",
+          "liquidity_line": "Volume 1240 · Open interest 5310",
           "tags": [
             "E 12-01"
           ],
-          "size_line": "1 张 · 行权价 62 · 乘数 100",
+          "size_line": "1 contract · Strike 62 · Multiplier 100",
           "size_usd_approx": null,
-          "iv_line": "IV 38% · HV30 缺 · IVP 缺",
-          "premium_line": "权利金 1.20 (收盘 bid 估) · 盈亏平衡 60.80 · 到期在价内概率 缺 · 比现金高 缺"
+          "iv_line": "IV 38% · HV30 n/a · IVP n/a",
+          "premium_line": "Premium 1.20 (close bid est.) · Breakeven 60.80 · in-the-money probability at expiry n/a · above cash n/a"
         },
         {
           "id": "c21",
           "symbol": "MSFT",
           "verdict": {
             "key": "worth",
-            "label": "值得看",
+            "label": "Worth a look",
             "tone": "good"
           },
-          "reason": "各关卡通过 · 财报日期未确认",
+          "reason": "All gates passed · Earnings date not confirmed",
           "annualised": {
             "value": 12.3456,
             "text": "12.3456%",
             "unit": "percent"
           },
           "annualised_text": "12.3456%",
-          "contract_line": "sell put 30.5 · 11-13 周五 · 3 天 · Δ −0.15",
-          "liquidity_line": "成交 10 · 持仓 缺",
+          "contract_line": "sell put 30.5 · 11-13 Fri · 3 days · Δ −0.15",
+          "liquidity_line": "Volume 10 · Open interest n/a",
           "tags": [
-            "E 无",
-            "财报日期未确认"
+            "E none",
+            "Earnings date not confirmed"
           ],
-          "size_line": "1 张 · 行权价 30.5 · 乘数 100",
+          "size_line": "1 contract · Strike 30.5 · Multiplier 100",
           "size_usd_approx": null,
-          "iv_line": "IV 38% · HV30 缺 · IVP 缺",
-          "premium_line": "权利金 0.40 (收盘 bid 估) · 盈亏平衡 60.80 · 到期在价内概率 缺 · 比现金高 缺"
+          "iv_line": "IV 38% · HV30 n/a · IVP n/a",
+          "premium_line": "Premium 0.40 (close bid est.) · Breakeven 60.80 · in-the-money probability at expiry n/a · above cash n/a"
         }
       ],
-      "candidates_title": "候选表",
+      "candidates_title": "Candidates",
       "candidates": {
         "columns": [
           {
             "id": "symbol",
-            "label": "标的",
+            "label": "Underlying",
             "align": "left",
             "hint": null
           },
           {
             "id": "verdict",
-            "label": "判定",
+            "label": "Verdict",
             "align": "left",
             "hint": null
           },
           {
             "id": "annualised",
-            "label": "年化",
+            "label": "Annualised",
             "align": "right",
             "hint": null
           },
@@ -145,7 +145,7 @@
             "id": "ivp",
             "label": "IVP",
             "align": "right",
-            "hint": "IV 在过去一年中的百分位,尚无来源"
+            "hint": "IV percentile over the past year, no source yet"
           },
           {
             "id": "earnings",
@@ -170,7 +170,7 @@
                 "column": "verdict",
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 }
               },
@@ -194,7 +194,7 @@
                 "column": "dte",
                 "cell": {
                   "kind": "text",
-                  "text": "3 天",
+                  "text": "3 days",
                   "value": 3
                 }
               },
@@ -242,7 +242,7 @@
                 "column": "ivp",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
@@ -277,7 +277,7 @@
                 "column": "verdict",
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 }
               },
@@ -301,7 +301,7 @@
                 "column": "dte",
                 "cell": {
                   "kind": "text",
-                  "text": "10 天",
+                  "text": "10 days",
                   "value": 10
                 }
               },
@@ -309,7 +309,7 @@
                 "column": "delta",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
@@ -332,21 +332,21 @@
                 "column": "volume",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "open_interest",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "ivp",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
@@ -381,7 +381,7 @@
                 "column": "verdict",
                 "cell": {
                   "kind": "text",
-                  "text": "值得看",
+                  "text": "Worth a look",
                   "value": 0
                 }
               },
@@ -405,7 +405,7 @@
                 "column": "dte",
                 "cell": {
                   "kind": "text",
-                  "text": "3 天",
+                  "text": "3 days",
                   "value": 3
                 }
               },
@@ -445,21 +445,21 @@
                 "column": "open_interest",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "ivp",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "earnings",
                 "cell": {
                   "kind": "text",
-                  "text": "E 无",
+                  "text": "E none",
                   "value": null
                 }
               }
@@ -487,7 +487,7 @@
                 "column": "verdict",
                 "cell": {
                   "kind": "text",
-                  "text": "不够格",
+                  "text": "Not eligible",
                   "value": 2
                 }
               },
@@ -511,7 +511,7 @@
                 "column": "dte",
                 "cell": {
                   "kind": "text",
-                  "text": "3 天",
+                  "text": "3 days",
                   "value": 3
                 }
               },
@@ -543,28 +543,28 @@
                 "column": "volume",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "open_interest",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "ivp",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "earnings",
                 "cell": {
                   "kind": "text",
-                  "text": "E 12-01 在期内",
+                  "text": "E 12-01 in window",
                   "value": null
                 }
               }
@@ -592,7 +592,7 @@
                 "column": "verdict",
                 "cell": {
                   "kind": "text",
-                  "text": "数据不全",
+                  "text": "Incomplete data",
                   "value": 1
                 }
               },
@@ -616,7 +616,7 @@
                 "column": "dte",
                 "cell": {
                   "kind": "text",
-                  "text": "3 天",
+                  "text": "3 days",
                   "value": 3
                 }
               },
@@ -624,14 +624,14 @@
                 "column": "delta",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "bid_ask",
                 "cell": {
                   "kind": "text",
-                  "text": "$1.20 / 缺",
+                  "text": "$1.20 / n/a",
                   "value": 120
                 }
               },
@@ -639,35 +639,35 @@
                 "column": "spread_pct",
                 "cell": {
                   "reason": "missing_input",
-                  "text": "缺 ask"
+                  "text": "missing ask"
                 }
               },
               {
                 "column": "volume",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "open_interest",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "ivp",
                 "cell": {
                   "reason": "no_data",
-                  "text": "缺"
+                  "text": "n/a"
                 }
               },
               {
                 "column": "earnings",
                 "cell": {
                   "kind": "text",
-                  "text": "E 缺",
+                  "text": "E n/a",
                   "value": null
                 }
               }
@@ -683,17 +683,17 @@
         ]
       },
       "all_link": {
-        "text": "全部 5 个机会",
+        "text": "All 5 opportunities",
         "target": "candidates-US"
       },
       "chain": {
-        "title": "期权链 · AAPL",
-        "summary": "已选:AAPL 11/13 行权价 $62 Put",
+        "title": "Option chain · AAPL",
+        "summary": "Selected: AAPL 11/13 strike $62 Put",
         "table": {
           "columns": [
             {
               "id": "strike",
-              "label": "行权价",
+              "label": "Strike",
               "align": "left",
               "hint": null
             },
@@ -726,7 +726,7 @@
                   "column": "e2026-11-13",
                   "cell": {
                     "reason": "no_data",
-                    "text": "缺"
+                    "text": "n/a"
                   }
                 },
                 {
@@ -771,7 +771,7 @@
                   "column": "e2026-11-20",
                   "cell": {
                     "reason": "no_data",
-                    "text": "缺"
+                    "text": "n/a"
                   }
                 }
               ],
@@ -789,8 +789,8 @@
     }
   ],
   "notes": [
-    "日本期权:后续设计 (option-candidates-jp)",
-    "量与持仓取自 2026-11-09(链日)"
+    "Japan options: later design (option-candidates-jp)",
+    "Volume and open interest from 2026-11-09 (chain day)"
   ],
   "gaps": [],
   "refresh": {
