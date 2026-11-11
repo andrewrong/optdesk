@@ -88,3 +88,39 @@ it('shows a data type other than live in red words and a live one plainly', asyn
   expect(types[0]?.className).toContain('text-destructive')
   expect(types[1]?.className).not.toContain('text-destructive')
 })
+
+// The clock is fixed: 09:45:12 New York time on 11 Nov 2026 is 14:45:12 UTC.
+const CLOCK = new Date('2026-11-11T14:45:12Z')
+const at = (as_of: string) =>
+  ({ as_of, data_type: 'live', source: 'open_pull', skew: false, outside_band: false }) as never
+
+it('greys a quote older than 15 minutes of the injected clock, not a fresh one or one without a time', async () => {
+  await show(
+    <>
+      <OptionQuoteCell quote={at('09:45:00')} now={CLOCK} />
+      <OptionQuoteCell quote={at('09:30:12')} now={CLOCK} />
+      <OptionQuoteCell quote={at('09:30:11')} now={CLOCK} />
+      <OptionQuoteCell quote={at('')} now={CLOCK} />
+    </>,
+  )
+  const cells = [...host.querySelectorAll('[data-quote]')]
+  expect(cells.map((cell) => cell.hasAttribute('data-quote-stale'))).toEqual([false, false, true, false])
+  expect(cells[2]?.className).toContain('opacity-50')
+})
+
+it('reads the clock in the zone of the market', async () => {
+  await show(<OptionQuoteCell quote={at('23:44:00')} now={CLOCK} market="JP" />)
+  expect(host.querySelector('[data-quote-stale]')).toBeNull()
+})
+
+it('reads New York wall time with daylight saving in summer', async () => {
+  // 15 Jul 2026 13:45:12 UTC is 09:45:12 EDT.
+  const summer = new Date('2026-07-15T13:45:12Z')
+  await show(
+    <>
+      <OptionQuoteCell quote={at('09:30:12')} now={summer} />
+      <OptionQuoteCell quote={at('09:30:11')} now={summer} />
+    </>,
+  )
+  expect([...host.querySelectorAll('[data-quote]')].map((c) => c.hasAttribute('data-quote-stale'))).toEqual([false, true])
+})

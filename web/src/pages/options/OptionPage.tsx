@@ -65,7 +65,15 @@ function OpportunityCard({ card }: { card: Opportunity }) {
   )
 }
 
-function PayloadTableView({ table, name }: { table: PayloadTable; name: string }) {
+function PayloadTableView({
+  table,
+  name,
+  market,
+}: {
+  table: PayloadTable
+  name: string
+  market: Pane['market']
+})  {
   const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({
     id,
     label,
@@ -80,7 +88,7 @@ function PayloadTableView({ table, name }: { table: PayloadTable; name: string }
   return (
     <div className="min-w-0 space-y-1" data-table={name}>
       <DataTable columns={columns} rows={rows} />
-      <OptionQuoteList items={quotes} />
+      <OptionQuoteList items={quotes} market={market} />
     </div>
   )
 }
@@ -108,7 +116,7 @@ function MarketTab({ pane }: { pane: Pane }) {
       </section>
       <section id={pane.all_link.target} className="space-y-2">
         <h2 className="text-base font-semibold">{pane.candidates_title}</h2>
-        <PayloadTableView table={pane.candidates} name="candidates" />
+        <PayloadTableView table={pane.candidates} name="candidates" market={pane.market} />
       </section>
       {pane.chain ? (
         <Card data-chain>
@@ -117,7 +125,7 @@ function MarketTab({ pane }: { pane: Pane }) {
             <CardDescription>{pane.chain.summary}</CardDescription>
           </CardHeader>
           <CardContent>
-            <PayloadTableView table={pane.chain.table} name="chain" />
+            <PayloadTableView table={pane.chain.table} name="chain" market={pane.market} />
           </CardContent>
         </Card>
       ) : (
