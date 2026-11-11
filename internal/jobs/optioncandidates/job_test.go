@@ -150,7 +150,10 @@ func newFakes() *fakes {
 }
 
 func (f *fakes) stores() CandidateStores {
-	return CandidateStores{OptionEod: f, Catalog: f, Terms: f, Names: f, Series: f, Earnings: f, Accounts: f, Candidates: f, SessionDays: f, Aliases: []string{"A", "B"}}
+	return CandidateStores{
+		OptionEod: f, Catalog: f, Terms: f, Names: f, Series: f, Earnings: f, Accounts: f, Candidates: f, SessionDays: f,
+		Aliases: []string{"A", "B"},
+	}
 }
 
 func usEntry() jobs.WatchEntry {
