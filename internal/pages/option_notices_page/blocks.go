@@ -71,7 +71,7 @@ func okBlock(alias string, main bool, dataDay, buildDay contracts.Day, res compu
 			AmountText: clip(amountText(c.Amount, c.Currency))})
 	}
 	if res.Cushion != "" {
-		t := clip(cushionHead + res.Cushion)
+		t := clip(cushionHead + percentText(res.Cushion))
 		b.CushionText = &t
 	}
 	if note != "" {
@@ -92,7 +92,11 @@ func noticeRowOf(alias string, i int, n compute.Notice) noticeRow {
 			row.Reasons = append(row.Reasons, clip(reasonText(f.Value)))
 			continue
 		}
-		row.Facts = append(row.Facts, fact{Label: clip(factLabel(f.Label)), Text: clip(f.Value)})
+		text := f.Value
+		if f.Label == "cushion" {
+			text = percentText(text)
+		}
+		row.Facts = append(row.Facts, fact{Label: clip(factLabel(f.Label)), Text: clip(text)})
 	}
 	return row
 }

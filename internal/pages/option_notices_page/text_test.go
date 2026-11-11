@@ -28,3 +28,16 @@ func TestAmountTextAndClip(t *testing.T) {
 		t.Errorf("clip long = %d runes", len([]rune(got)))
 	}
 }
+
+func TestPercentText(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"0.1250": "12.5%", "0.634749": "63.5%", "0.04": "4.0%", "0.0625": "6.2%", "0.0675": "6.8%",
+		"1": "100.0%", "n/a": "n/a", "": "",
+	}
+	for in, want := range cases {
+		if got := percentText(in); got != want {
+			t.Errorf("percentText(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

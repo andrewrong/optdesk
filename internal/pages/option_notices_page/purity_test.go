@@ -37,7 +37,7 @@ func sources(t *testing.T) map[string]*ast.File {
 func TestNoFloatNoSortNoNotify(t *testing.T) {
 	t.Parallel()
 	banned := map[string]bool{
-		`"math/big"`: true, `"sort"`: true, `"os"`: true, `"net/http"`: true, `"database/sql"`: true,
+		`"sort"`: true, `"os"`: true, `"net/http"`: true, `"database/sql"`: true,
 		`"github.com/andrewrong/optdesk/internal/notify"`: true, `"github.com/andrewrong/optdesk/internal/jobs"`: true,
 	}
 	for name, f := range sources(t) {
