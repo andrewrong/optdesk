@@ -15,6 +15,7 @@ var (
 		pb.SecType_SEC_TYPE_STOCK:  "STK",
 		pb.SecType_SEC_TYPE_INDEX:  "IND",
 		pb.SecType_SEC_TYPE_OPTION: "OPT",
+		pb.SecType_SEC_TYPE_CASH:   "CASH",
 	}
 	rightText = map[pb.Right]string{
 		pb.Right_RIGHT_PUT:  "P",
