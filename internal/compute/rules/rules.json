@@ -1,5 +1,6 @@
 [
   {"id":"market.hv30_own","version":1,"convention":"hv30_v1","unit":"decimal","scale":6,"compare":"","n":30,"window":0,"min_valid":0,"years":0,"trading_days":252,"max_age_days":4,"hash":"afe994b62432c69e13f21a7ce33ec312b2b45f003f2cb44d785fcf9422f0b0d6"},
+  {"id":"market.rv20","version":1,"convention":"rv20_v1","unit":"decimal","scale":6,"compare":"","n":20,"window":0,"min_valid":0,"years":0,"trading_days":252,"max_age_days":4,"hash":"9cbf87d81980217ce0493ddb2594a8ee2be0ee31291231f1f7de19682b4e6bd6"},
   {"id":"market.iv30_own","version":1,"convention":"iv30_v1","unit":"decimal","scale":6,"compare":"","n":0,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":4,"hash":"03cf7d637f3e2b5f1a4e81f5cf0565662b9dbcd4f6c21ec50c11f97e4677c183"},
   {"id":"market.ivp_own","version":1,"convention":"ivp_v1","unit":"decimal","scale":6,"compare":"at_or_below","n":0,"window":252,"min_valid":252,"years":0,"trading_days":0,"max_age_days":4,"hash":"899cb7e0ea366a887d74cb9e20b696bda2e904ace061512d8b5983971dc0cb8b"},
   {"id":"market.iv_ibkr","version":1,"convention":"ibkr_iv_bar_v1","unit":"decimal","scale":6,"compare":"","n":0,"window":0,"min_valid":0,"years":0,"trading_days":0,"max_age_days":0,"hash":"f6c28b2329a53d6fb846f65a8ac2c4621000f98eacfe09f71ee39b5eaee41489"},

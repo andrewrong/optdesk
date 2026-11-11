@@ -422,6 +422,18 @@ func TestCompareFixedPerID(t *testing.T) {
 	}
 }
 
+func TestMarketRv20Numbers(t *testing.T) {
+	t.Parallel()
+	r, ok := New().Rule("market.rv20")
+	if !ok {
+		t.Fatal("market.rv20 not found")
+	}
+	if r.Version != 1 || r.Convention != "rv20_v1" || r.Unit != "decimal" || r.Scale != 6 ||
+		r.N != 20 || r.TradingDays != 252 || r.MaxAgeDays != 4 || r.Compare != "" {
+		t.Errorf("market.rv20: %+v", r)
+	}
+}
+
 func TestNoPendingForGoIds(t *testing.T) {
 	t.Parallel()
 	figs, _ := readRegister(t)
