@@ -1,91 +1,112 @@
-# Runner due gate: a job is planned on day D only once D has begun in the job's zone
+# Runner due gate: a Scheduled job is not started for day D before its slot instant on D
 
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-11
-Revision: 2
+Revision: 3
 
-Source: decision of optdesk-advisor, 2026-11-11. Read on origin/main: `AGENTS.md`, `docs/design/modules.md`, `docs/design/runner-window.md`, `docs/design/scheduler.md`, `internal/runner/api.go`, `internal/runner/sched/ticker.go`, `internal/runner/reconcile/**`, the seven jobs named below.
+Source: decision of optdesk-advisor, 2026-11-11 (round 1 replaced the date gate of revision 2). Read on origin/main: `AGENTS.md`, `docs/design/modules.md`, `docs/contracts/runner.md`, `internal/runner/api.go`, `internal/runner/sched/slots.go`, `internal/runner/sched/ticker.go`, `internal/runner/reconcile/**`, the job schedule and guard files named below.
 
-Goal: a job whose guard returns NoValue "wrong day" for a day that has not begun in New York is no longer run on that day, so the New York session is not lost.
+Goal: a job that is scheduled for a start instant on day D is not started on D before that instant, so a guard that answers "wrong day" at 00:09Z can no longer make the key final and lose the New York session.
 
 ## Facts
 
-- `internal/runner/sched/ticker.go` `dayOf` gives the run day in UTC.
 - The reconciler has no "not yet" rule: `plan` (`internal/runner/reconcile/reconcile.go:135-141`) plans every job for the UTC date from 00:00Z, and `nextAttempt` (`:280-312`) starts any key that has no run.
-- Seven jobs guard with an equality test of the day against their own zone's date and return NoValue "wrong day": `optioneod/run.go:119`, `accountcapture/job.go:104`, `dividendcapture/run.go:212`, `earningsrefresh/run.go:235`, `positionmarks/run.go:122`, `quotesnapshot/run.go:99`, `optionopen/pull.go:208`.
-- `runkey.go:139` records NoValue as ok and final. At 00:09Z on date D New York is still on D-1, so the guard answers "wrong day", the key is final, and the session of D in New York is never captured.
-- The reconciler has no zone of its own: `Windowed.Window()` returns the calendar id and offsets only, and `internal/clock` calendars carry no zone. The zone is the `zone` value of `Scheduled.Schedule()` (`internal/runner/api.go`), an optional method of the job that the reconciler receives as `contracts.Job`; all seven jobs above implement it.
+- `runkey.go:139` records NoValue as ok and final. Seven jobs guard with an equality test of the day against their own zone's date and return NoValue "wrong day": `optioneod/run.go:119`, `accountcapture/job.go:104`, `dividendcapture/run.go:212`, `earningsrefresh/run.go:235`, `positionmarks/run.go:122`, `quotesnapshot/run.go:99`, `optionopen/pull.go:208`. At 00:09Z on D New York is on D-1, the guard answers "wrong day", the key is final, and the real slot is skipped.
+- A zone gate does not serve. Five of the seven jobs have no zone: a session anchor forbids one (`optioneod/schedule.go:59-60`, `quotesnapshot/schedule.go:59-60`), and `optioneod`, `accountcapture`, `positionmarks`, `quotesnapshot` and optionopen's `job_pull.toml` declare none; their guards read the manifest zone (`optioneod/run.go:92`). With a UTC fallback the gate never holds `option_eod`.
+- A date gate does not serve either, even with a zone. It only moves the early run to about 05:15Z, about 16 hours before the slot. `accountcapture/job.go:104`, `dividendcapture/run.go:212` and `earningsrefresh/run.go:235` write at once, and `optionopen/pull.go:208` pulls quotes at New York midnight; the key becomes final and the real slot is skipped.
+- `sched/slots.go` `nextStarts` already computes the slot instant of a job on a day: `session_open` and `session_close` are the calendar session's `OpenAt` / `CloseAt` plus `Offset`; `time` is `Offset` since midnight of the day in `Zone`. The ticker wakes a turn at that instant. The reconciler computes no instant.
+- `reconcileOn` (`reconcile.go:174-233`) computes `complete` from `p.keys` only. `plan` writes `p.hash` from the jobs it plans (`:149`), and `PutExpected` runs when the hash differs from the stored one.
+- `backfillPlan` (`backfill.go:128-170`) calls `plan` and returns the error "no job returns a key of dataset" when a selected stored key's job is missing from the plan.
+- `runner.Slot` and `runner.Scheduled` (`internal/runner/api.go`) carry the schedule as plain values: calendar id, anchor, zone, offset.
 
 ## Modules
 
-None changed. Only `internal/runner/reconcile`, inside the runner module.
+None changed. All paths are in the runner module (`internal/runner/** docs/contracts/runner.md`, `docs/design/modules.md` row `runner`): `internal/runner/reconcile`, `internal/runner/sched` and a new package `internal/runner/slotat`. `reconcile` and `sched` import `slotat`; `slotat` imports `runner`, `clock` and `contracts`, which are runner's dependencies; there is no cycle.
 
 ## Interface
 
-None. No method is added to `internal/runner/api.go`; the reconciler type-asserts `runner.Scheduled` on the job it already receives and reads the zone from `Schedule()`.
+None. `internal/runner/api.go` is not edited: `Slot` and `Scheduled` already carry what the function needs, and the new package is internal to the runner module and listed in no interface row.
 
 ## Decision
 
-In `internal/runner/reconcile` a job is not planned on day D until D <= the date of the clock in the job's own zone.
+A job that is `runner.Scheduled` is not started for day D before its slot instant on D. The instant is the calendar session of D plus the anchor, zone and offset of the job, which is the instant `sched/slots.go` computes to wake a turn. Until then the job's keys are HELD and the day is not done. Session anchors need no zone lookup (the session instant carries it). A day whose instant has passed, which includes every past day, passes at once, so backfill and catch-up are unchanged. A job that is not `Scheduled` is unchanged.
 
-- The test uses the reconciler's clock and the zone of the job: the `zone` of `Scheduled.Schedule()`. A job that is not `Scheduled`, or has an empty zone, is tested in UTC, which is today's behaviour. There is no calendar-to-zone map.
-- A job that is "not yet" on D is HELD for D: `plan` does not start it and reports the day as held, and `reconcileOn` returns done=false for D, so the cursor stays before D. Skipping the job with a plain `continue` is wrong: the day would then be complete without the job and the cursor would pass D, which is the same loss without even a NoValue row. No key is created for a held job.
-- Only `Reconcile` (the cursor walk) holds a job. `Backfill` plans with `plan`, too; a backfill names days that are over, and a held job there is a bug to test, so the gate takes effect only for a day not before the zone date and is covered by a backfill test of today.
-- On a later pass, once D has begun in the zone, the job is planned and run as today.
-- A job whose zone date has reached D, and any day before today in the zone, is planned as today. A past day is unchanged.
-- Jobs of other zones on the same UTC date are not held back: at 00:09Z an XTKS job is planned on the UTC date because Tokyo is already on that date, while a NY job of the same date is not.
+### One function for the instant
+
+The instant comes from ONE function used by both `reconcile` and `sched`:
+
+`slotat.At(s runner.Slot, sess clock.Session) (time.Time, error)` in `internal/runner/slotat/slotat.go`. `sess` is the session of `s.CalendarID` on the day, with `IsSession` true; `At` returns `sess.OpenAt + Offset`, `sess.CloseAt + Offset`, or, for `time`, `Offset` since midnight of the date of `sess.Day` in `s.Zone`. An unknown anchor, or an unknown or empty zone for `time`, is an error naming the job, as `NextStarts` returns today.
+
+The code moves out of `sched`: the `switch j.Anchor` and `wallTime` of `nextStarts` (`sched/slots.go`) become a call of `slotat.At`, and the anchor constants move with them to `slotat`. `sched` keeps its pre-validation of anchors and zones and its error text, so its tests pass unchanged. `reconcile` builds the `runner.Slot` of a job from `Scheduled.Schedule()` and the job's id and calls the same function with the session of the job's calendar that `plan` already has in `sess`. They cannot disagree because there is one body.
+
+### Plumbing
+
+- `plan` keeps planning every job of the day, including held ones, and returns the held state in the plan: `plan.held` is the set of expected keys whose job is not yet due, computed only when `sess` is non-nil (a job is held when `r.clk.Now()` is before `slotat.At`). `p.keys`, `p.job` and the job's hash are unchanged for a held job, so `p.hash` includes held jobs from the first pass and `PutExpected` is not rewritten when the job becomes due. A `continue` that skips the job in `plan` is wrong: the hash would change on the pass at which the job becomes due.
+- `reconcileOn` skips a held key before `expireIfClosed` and `nextAttempt`, and sets `complete = false`: the day is not done, so the cursor stays before D. A held job writes no key (no `MarkPresent`) and no run row (no `RecordRun`). The windows of its datasets are put as today.
+- On a later pass at or after the instant, the key is no longer held and is planned and run as today.
+- A job whose instant on D has passed is not held. At 00:09Z an XTKS-session job whose slot has passed is started on D; a New York `option_eod`-like job whose slot is at the close is held.
+- Only `reconcileOn` consults `plan.held`. `Backfill` sees the held jobs' keys: `plan` returns them in `p.keys` and `p.job`, so `backfillPlan` finds the job of every stored key and does not return "no job returns a key of dataset". `backfill.go` is unchanged: backfill names days the operator chose and ignores `held`; backfill of today returns the keys of every job, held or not, and no error.
+- A job that is not `Scheduled` has no slot and is never held.
+- A clock that is behind the instant by a step back is held again for that pass only; a run already recorded is not undone.
 
 ### Tests that pin today's behaviour
 
-All in `internal/runner/reconcile/*_test.go`. The tests below use a fake clock at or after the end of the day they reconcile, so every job is already due on D and they keep passing unchanged; the issue reads each and changes a test only where its clock is before the zone date of a job.
+All in `internal/runner/reconcile/*_test.go`; the issue reads each and changes a test only where its fake clock is before the slot instant of one of its jobs on the day it reconciles. Most tests use a fake clock at or after the end of the day and a fake job that is not `Scheduled`, so they pass unchanged.
 
 - `TestCursorHoldsOnGap` (`reconcile_test.go`), `TestWalkPastHeldDay`, `TestFullCycleLateRun`: a gap holds the cursor. They stay; "not yet" is one more reason for a gap.
-- `TestCursorAdvancesOverCompletePrefixAcrossCalendars`, `TestUnionWalksBothCalendars`, `TestJobNotPlannedOnOtherCalendarHoliday`, `TestCalendarRunsOutDropsOnlyItsJobs`, `TestSingleCalendarUnchanged` (`calendars_test.go`): the cursor passes a day only when every job is complete. Where the fake clock is set to the UTC date of the day with a NY job and an Asian job, it changes: the clock moves to a time at which the NY job is due, or the test states that the NY job holds the cursor.
-- `TestEmptyBeforeCloseStaysMissing`, `TestNoValueErrorFinalBeforeClose`, `TestRetryableBeforeCloseRetries`, `TestExpiredDayCompletesCursorAdvances`, `TestReconcileEarlyCloseOptionWindow` (window and retry tests): unchanged, they run on days that have begun in the zone.
+- `TestCursorAdvancesOverCompletePrefixAcrossCalendars`, `TestUnionWalksBothCalendars`, `TestJobNotPlannedOnOtherCalendarHoliday`, `TestCalendarRunsOutDropsOnlyItsJobs`, `TestSingleCalendarUnchanged` (`calendars_test.go`): the cursor passes a day only when every job is complete. Where a fake job is `Scheduled` and the clock is before its instant, the clock moves to the instant or the test states that the job holds the cursor.
+- `TestEmptyBeforeCloseStaysMissing`, `TestNoValueErrorFinalBeforeClose`, `TestRetryableBeforeCloseRetries`, `TestExpiredDayCompletesCursorAdvances`, `TestReconcileEarlyCloseOptionWindow` (window and retry tests): unchanged. `retry_test.go` stays out of Files.
 
 ## Issues
 
 ### 1 runner-due-gate (runner)
 
-Module: runner. Size: S.
-Files: `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/reconcile_test.go`, `internal/runner/reconcile/calendars_test.go`, `internal/runner/reconcile/fakes_test.go`
+Module: runner. Size: M.
+Files: `internal/runner/slotat/slotat.go`, `internal/runner/slotat/slotat_test.go`, `internal/runner/sched/slots.go`, `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/reconcile_test.go`, `internal/runner/reconcile/calendars_test.go`, `internal/runner/reconcile/fakes_test.go`, `docs/contracts/runner.md`
 Design: docs/design/runner-due-gate.md#decision
 Order: first.
-Goal: `plan` skips a job on day D while D is after the date of the clock in the job's zone, and that job counts as missing for D.
+Goal: a `Scheduled` job's keys are held, and the day is not done, until the slot instant of the job on the day; the instant is computed by `slotat.At`, which `sched` uses too.
 Acceptance:
-1. A fake-clock test at 00:09Z on date D: a job of the calendar XNYS (zone America/New_York) is not started on D, a job of the calendar XTKS (zone Asia/Tokyo) of the same UTC date D is started and run to done, and the cursor still holds before D.
-2. A fake-clock test at 05:01Z on date D (New York 00:01 on D in winter; 01:01 in summer): the NY job is started on D.
-3. A past day is unchanged: a test with the clock one day or more after D starts every job as before and advances the cursor as before.
-4. A test of `Backfill` for today and a test of a job that is not `Scheduled` (tested in UTC) pass.
-5. `TestCursorHoldsOnGap`, `TestCursorAdvancesOverCompletePrefixAcrossCalendars` and `TestUnionWalksBothCalendars` are named in the pull request description, each with "unchanged" or the reason it changed.
-6. `git diff --name-only $(git merge-base HEAD origin/main)` lists only paths under `internal/runner/reconcile/`.
+1. At 00:09Z on D, a session-anchored `option_eod`-like fake job with no zone and the anchor `session_close` of XNYS is held: no run row, the cursor stays before D, the day is not done.
+2. At the slot instant of that job on D (the close of D plus its offset) the job is started.
+3. At 00:09Z on D an XTKS-session job whose slot instant has passed is started on D.
+4. A past day starts at once: with the clock a day or more after D every job starts as before and the cursor advances as before.
+5. `Backfill` of today, with a held job, returns the keys of every job of the day, held ones included, and no error.
+6. The plan hash with a held job equals the plan hash after the job becomes due, so `PutExpected` is called once, not twice.
+7. A job that is not `Scheduled` is unchanged: it is started at 00:09Z on D as before.
+8. `docs/contracts/runner.md` (lines 5, 12, 38) states when keys are planned and that a `Scheduled` job is held until its slot instant, and lists the pinned tests of this design; `TestCursorHoldsOnGap`, `TestCursorAdvancesOverCompletePrefixAcrossCalendars` and `TestUnionWalksBothCalendars` are named in the pull request description, each with "unchanged" or the reason it changed.
+9. `git diff --name-only $(git merge-base HEAD origin/main)` lists only the paths of Files above; `internal/runner/api.go` is not among them.
 Checked by CI: ci-go.
 Pull request body: `Contracts: unchanged`.
 
 ## Left out
 
-- Changing the guards of the seven jobs. An optional later change gives their NoValue the reason text "not yet" instead of "wrong day"; it is not needed once the reconciler holds the day.
-- The ticker's `dayOf` and the walk limit: they keep the UTC date; the reconciler decides what is due. A zone ahead of UTC (Tokyo) has date D+1 while the limit is D, so its jobs run up to 15 hours late; harmless, and the stated bug (New York, behind UTC) needs no change. A later issue in `internal/runner/sched` may raise the limit if Asia jobs need it; no second entry now because nothing requires it.
-- Gating on instants (a job due after the previous session's close of its calendar) instead of zones: rejected, New York's previous close is 21:00Z on D-1, which is before 00:09Z on D, so it would not hold the job and it breaks jobs that run before the open.
+- Changing the guards of the seven jobs. An optional later change gives their NoValue the reason text "not yet" instead of "wrong day"; it is not needed once the reconciler holds the key.
+- The ticker's `dayOf` and its UTC walk limit stay. They break one job once the JP open jobs exist: `option_open_plan_jp` runs at open minus 45 minutes, which is 23:15Z of the previous UTC date (option-open-pull Decision 21). The ticker reconciles only up to the UTC date of now, so at 23:15Z on D-1 it does not walk the XTKS session day D, and the plan job runs only after 00:00Z, up to 45 minutes after its slot, or later when the 15-minute tick comes. This is not harmless; the limit is fixed before the JP open jobs are cut, in a separate issue in `internal/runner/sched`, not by this entry.
 - The stop-gap of returning Retryable from the seven jobs on a wrong day: rejected because Retryable has no backoff, gives about 80 rows a day per job, and can retry forever.
 
 ## Adversarial
 
-### Answers to the six points of the adversarial review
+### Why not a date gate
 
-The full answer is in "scratchpad adversarial-duegate.md of the dispatcher window".
+A date gate (the job is held until D has begun in its zone, revision 2) is rejected, by two findings.
 
-1. Held versus skipped: adopted. A skipped job leaves the day complete and the cursor passes D; the job is now held (done=false), and acceptance 1 starts the XTKS job to done to prove it.
-2. No zone source in the reconciler: adopted. The zone is `Scheduled.Schedule()`'s, with UTC when absent; the calendar-zone fallback is removed. The walk limit is not changed (Left out, not needed for New York); `Backfill` of today is pinned by a test.
-3. A simpler gate on instants: not adopted. Previous close of New York is before 00:09Z on D, so it does not hold, and it breaks pre-open jobs.
-4. Lock-in of zone and schedule: adopted as a stated cost. Zone comes from `Schedule()` on purpose; the UTC-clock tests are the contract and say so.
-5. False claims: adopted. The Facts and Interface lines are corrected; "tests keep passing" is now "the issue reads each and changes one only where its clock is before the zone date".
-6. Likeliest slip, a `continue` in `plan`: adopted. The Decision forbids it and acceptance 1 fails on it.
+1. The zone is empty for five of the seven jobs: a session anchor forbids a zone (`optioneod/schedule.go:59-60`, `quotesnapshot/schedule.go:59-60`), and `optioneod`, `accountcapture`, `positionmarks`, `quotesnapshot` and optionopen's `job_pull.toml` have none; their guards read the manifest zone (`optioneod/run.go:92`). With a UTC fallback the gate never holds `option_eod`, and a test with a zoned fake job would pass while the real jobs stay broken.
+2. Even with a zone, a date gate moves the early run only to about 05:15Z, about 16 hours before the slot. `accountcapture/job.go:104`, `dividendcapture/run.go:212` and `earningsrefresh/run.go:235` write at once, and `optionopen/pull.go:208` pulls quotes at New York midnight. The key becomes final and the real slot is skipped.
+
+The slot instant needs no zone from the job for a session anchor and is the instant the ticker already wakes for.
+
+### Other points
+
+1. Held versus skipped: a skipped job leaves the day complete and the cursor passes D; a held key makes `complete` false. Acceptance 1 fails on a `continue`.
+2. Hash: the held job's hash stays in `p.hash`; acceptance 6 fails if `PutExpected` runs twice.
+3. Instant computed twice: rejected; one function, `slotat.At`, used by `sched` and `reconcile`.
+4. Backfill: `plan` returns held keys, so `backfillPlan` does not fail; acceptance 5.
+5. A gate on the previous close of the calendar: not adopted; New York's previous close is 21:00Z on D-1, before 00:09Z on D, and it breaks jobs that run before the open.
 
 ### Residual risks
 
-- A zone missing or unparsable: the job is tested in UTC and the reconciler logs once; it never blocks a day for ever.
-- A day that never becomes due, such as a calendar day of a closed market: the walk takes session days of the job's calendar only, so the gate adds no day the walk did not already hold.
-- A clock that steps back across midnight in the zone: the job is held again for that pass only; a run already recorded is not undone.
-- A held cursor delays the jobs of later days only until D begins in New York (about five hours after 00:00Z); the walk past a held day (`TestWalkPastHeldDay`) still reconciles later days, so no other job waits.
+- A `Scheduled` job with an unknown anchor or zone makes `At` return an error, which `plan` returns as `NextStarts` does today; the ticker already fails on the same value, so no new failure appears.
+- A day that never becomes due, such as a closed market's day: the walk takes session days of the job's calendar only and `plan` plans only jobs with a session, so the gate adds no day the walk did not already hold.
+- A held cursor delays the jobs of later days only until the instant; `TestWalkPastHeldDay` shows later days are still reconciled.
