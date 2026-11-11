@@ -444,7 +444,9 @@ func openSessionDays(ctx context.Context, d deps, cfg runOnceConfig) (sd, loader
 // with the pages line, the readings store with the readings line; the session days are the runner store
 // already open. The index-id reader is opened with the pages line when d.openIndexIDs is set; with none, or when
 // it fails, IndexIDs stays nil with one warning and the rv20 keys fail. The returned func closes what was opened, last opened first.
-func openComputeStores(ctx context.Context, log *slog.Logger, d deps, cfg runOnceConfig, sd store.SessionDayStore) (computefigures.ComputeStores, func(), error) {
+func openComputeStores(
+	ctx context.Context, log *slog.Logger, d deps, cfg runOnceConfig, sd store.SessionDayStore,
+) (computefigures.ComputeStores, func(), error) {
 	var closers []func() error
 	closeAll := func() {
 		for i := len(closers) - 1; i >= 0; i-- {
