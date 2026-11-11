@@ -294,3 +294,73 @@ func TestOptionContractPutAndList(t *testing.T) {
 		t.Fatalf("none = %#v", none)
 	}
 }
+
+// listFake keeps the promises of OptionListStore in memory: the caller side of the contract.
+type listFake struct {
+	lists []openquote.ListRecord
+	runs  []openquote.ListRunRecord
+}
+
+var _ openquote.OptionListStore = (*listFake)(nil)
+
+func (f *listFake) PutLists(_ context.Context, rows []openquote.ListRecord) error {
+	f.lists = append(f.lists, rows...)
+	return nil
+}
+
+func (f *listFake) Lists(_ context.Context, id int64) ([]openquote.ListRecord, error) {
+	out := []openquote.ListRecord{}
+	for _, r := range f.lists {
+		if r.UnderlyingID == id {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (f *listFake) PutListRuns(_ context.Context, rows []openquote.ListRunRecord) error {
+	f.runs = append(f.runs, rows...)
+	return nil
+}
+
+func (f *listFake) ListRuns(_ context.Context, session contracts.Day) ([]openquote.ListRunRecord, error) {
+	out := []openquote.ListRunRecord{}
+	for _, r := range f.runs {
+		if r.Session == session {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func TestOptionListPutAndReadBack(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var s openquote.OptionListStore = &listFake{}
+	at := time.Date(2026, 11, 12, 11, 20, 0, 0, time.UTC)
+	if err := s.PutLists(ctx, []openquote.ListRecord{{UnderlyingID: 5, Expiry: "2026-12-18", Class: "AAPL",
+		ListedAt: at, ListedSession: "2026-11-12", Count: 516, TriedAt: at, Outcome: "listed"}}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Lists(ctx, 5)
+	if len(got) != 1 || got[0].Count != 516 || got[0].ListedSession != "2026-11-12" {
+		t.Fatalf("got %+v", got)
+	}
+	if none, _ := s.Lists(ctx, 6); none == nil || len(none) != 0 {
+		t.Fatalf("none = %#v", none)
+	}
+	two := 2
+	if err := s.PutListRuns(ctx, []openquote.ListRunRecord{
+		{UnderlyingID: 5, Session: "2026-11-12", Expected: &two, Listed: 2, Reason: "none", UpdatedAt: at},
+		{UnderlyingID: 6, Session: "2026-11-12", Reason: "not_finished", UpdatedAt: at},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	runs, _ := s.ListRuns(ctx, "2026-11-12")
+	if len(runs) != 2 || runs[0].Expected == nil || *runs[0].Expected != 2 || runs[1].Expected != nil {
+		t.Fatalf("runs %+v", runs)
+	}
+	if none, _ := s.ListRuns(ctx, "2026-11-13"); none == nil || len(none) != 0 {
+		t.Fatalf("none = %#v", none)
+	}
+}

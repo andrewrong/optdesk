@@ -103,6 +103,49 @@ type OptionContractStore interface {
 	ListOptions(ctx context.Context, underlyingID int64) ([]OptionRef, error)
 }
 
+// ListRecord is one row of master.option_list: one (underlying, expiry, class) group asked of the broker.
+// ListedSession is the day D of the pre-open run that listed the group; a group is listed for a session when
+// ListedSession equals it, never by resolved_at. A short or error outcome updates TriedAt and Outcome and keeps
+// ListedAt and ListedSession.
+type ListRecord struct {
+	UnderlyingID  int64
+	Expiry        contracts.Day
+	Class         string
+	ListedAt      time.Time
+	ListedSession contracts.Day
+	Count         int // contracts stored by the listing
+	TriedAt       time.Time
+	Outcome       string // "listed", "short" or "error"
+}
+
+// ListRunRecord is one row of master.option_list_run: one (session, underlying) of a pre-open run. Session is the
+// trading day whose open the list serves, the key day of the run. Expected is the number of groups to list when
+// the run first reached the name, nil until the name's chain answer is known. Listed is recounted from the
+// groups of master.option_list whose ListedSession equals Session. Reason is "not_finished", "none" (a complete
+// name) or another reason of the design.
+type ListRunRecord struct {
+	UnderlyingID int64
+	Session      contracts.Day
+	Expected     *int
+	Listed       int
+	Reason       string
+	UpdatedAt    time.Time
+}
+
+// OptionListStore writes and reads master.option_list and master.option_list_run. It is separate from Stores.
+type OptionListStore interface {
+	// PutLists writes the rows in one transaction; a row whose key (underlying, expiry, class) exists is replaced.
+	// No rows make no database call.
+	PutLists(ctx context.Context, rows []ListRecord) error
+	// Lists returns the rows of the underlying ordered by expiry and class; none gives an empty slice.
+	Lists(ctx context.Context, underlyingID int64) ([]ListRecord, error)
+	// PutListRuns writes the rows in one transaction; a row whose key (session, underlying) exists is updated.
+	// No rows make no database call.
+	PutListRuns(ctx context.Context, rows []ListRunRecord) error
+	// ListRuns returns the rows of the session ordered by underlying id; a session with none gives an empty slice.
+	ListRuns(ctx context.Context, session contracts.Day) ([]ListRunRecord, error)
+}
+
 // Stores is every store of the option open pull on one connection, with Close.
 type Stores interface {
 	OptionOpenStore
