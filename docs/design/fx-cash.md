@@ -3,7 +3,7 @@
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-11
-Revision: 3
+Revision: 4
 
 Source: the `fx_refresh` job failed 3 of 3 runs. The owner asked to fix the FX contract type. The job itself is already designed (`docs/design/market-bars.md` Decision 9) and stays as it is; only the contract type it sends is unmapped.
 Read on origin/main at 9a95c180: `AGENTS.md`, `docs/design/modules.md`, `docs/design/market-bars.md` (Decision 9), `internal/jobs/fxrefresh/run.go`, `internal/broker/grpcbroker/{convert,history}.go` and `convert_test.go`, `contracts/proto/ibkr/v1/contract.proto`, `pyside/src/optdesk/ibkr/{transport,ibgateway,history,spec}.py`, `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`, `pyside/tests/live/test_live_pyside.py`.
@@ -49,6 +49,7 @@ Design: docs/design/fx-cash.md#Interface
 Order: first.
 Sequence: the pull request is the owner's merge (`contracts/proto`); entries 2, 3 and 4 follow it.
 Goal: `SEC_TYPE_CASH = 4` exists in `SecType` with its comment, and in the generated Go and Python output.
+Regenerate: Go with `buf generate` at the repository root (`buf.gen.yaml` has the Go plugins only, output `internal/contracts/genpb`). Python with, from `pyside/`: `uv run python -m grpc_tools.protoc -I ../contracts/proto --python_out=src/optdesk/contracts/genpb --mypy_out=src/optdesk/contracts/genpb --grpc_python_out=src/optdesk/contracts/genpb --mypy_grpc_out=src/optdesk/contracts/genpb ibkr/v1/contract.proto` (`grpcio-tools` and `mypy-protobuf` are in the dev group of `pyside/pyproject.toml`; no script or Makefile holds it, so this design names it; run on the unchanged `contract.proto` it reproduces the committed `contract_pb2.py` and `contract_pb2.pyi` byte for byte, checked 2026-11-11).
 Acceptance:
 1. `grep -c "SEC_TYPE_CASH = 4" contracts/proto/ibkr/v1/contract.proto` prints 1.
 2. `grep -rl "SEC_TYPE_CASH" internal/contracts/genpb | wc -l` prints at least 1.
@@ -97,18 +98,28 @@ Acceptance:
 2. `git diff $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py | grep -c "^-[^-]"` prints 0.
 3. `grep -c "SEC_TYPE_CASH" pyside/tests/ibkr/test_transport_cash.py` prints at least 2 (the resolve path with its answer, and the bars path, over the fake gateway of `pyside/tests/ibkr`), and `grep -c "sleep\|connect(" pyside/tests/ibkr/test_transport_cash.py` prints 0.
 4. `grep -c "OT_LIVE_PYSIDE\|skip" pyside/tests/live/test_live_cash.py` prints at least 1, `grep -c "MIDPOINT\|midpoint" pyside/tests/live/test_live_cash.py` prints at least 1, `grep -c "4001" pyside/tests/live/test_live_cash.py` prints 0 (the socket comes from the existing live client, not a literal port), and `grep -ci "order\|place" pyside/tests/live/test_live_cash.py` prints 0 (read-only; follows `test_live_pyside.py`).
-5. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/ibkr/transport.py -e pyside/tests/ibkr/test_transport_cash.py -e pyside/tests/live/test_live_cash.py` prints nothing.
+5. `grep -c "wife_client\|default_client" pyside/tests/live/test_live_cash.py` prints 0 and `grep -c "main_client" pyside/tests/live/test_live_cash.py` prints at least 1 (the fixtures of `pyside/tests/live/conftest.py` are `default_client`, `main_client` and `wife_client`; only `main_client`, the gateway on 4001, is used).
+6. The live test asserts at least one MIDPOINT bar: `grep -c "len(.*bars.*) *>= *1\|len(.*bars.*) *> *0\|assert .*bars" pyside/tests/live/test_live_cash.py` prints at least 1. Zero bars is a failure of the test, not a pass: `internal/jobs/fxrefresh/run.go` treats an empty answer as success (returns 0 rows and no error), so this test is the only place that makes it visible.
+7. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/ibkr/transport.py -e pyside/tests/ibkr/test_transport_cash.py -e pyside/tests/live/test_live_cash.py` prints nothing.
 Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`); the live test is skipped there. Run once by the window after the deploy: `OT_LIVE_PYSIDE=1`, read-only.
 
 ## Checked by CI
 
 Every test run named above runs in CI, not in acceptance. No test connects to a live broker; tests use the fake gateway and the fake clock, `tmp_path` and `t.TempDir()`, in parallel.
 
+## After deploy
+
+The window runs the live test (`OT_LIVE_PYSIDE=1`, entry 4), then checks two things: the first `fx_refresh` run after the deploy is a success, AND the stored USD/JPY row count rose. A success with zero new rows is not a fix: `fxrefresh/run.go` returns `(0, nil)` when IB sends no bars, and `useRTH` True for CASH (`ibgateway.py`) is unverified. Zero rows means the fix is not done, and the `useRTH` design follows at once (a flag on the bars rpc), without waiting for another run.
+
+The job asks IB for `duration_days = 5`, so it refills only the last five days. Days of the failed period older than that are not recovered; no one-off backfill is planned (see Left out).
+
 ## Left out
 
 - A live quote instead of the daily bar (option-trader style): a later design if a figure needs a decision-grade rate.
 - MYR via FRED `DEXMAUS` through `fred_series`: IDEALPRO has no USD.MYR, and nothing reads MYR.
 - Other pairs and any FX position or order: no cash order is placed.
+- Zero bars treated as success in `internal/jobs/fxrefresh/run.go`: it returns `(0, nil)` for an empty answer, so a silent failure looks like a success. Not changed here because Decision 5 keeps the job as it is; the live test (entry 4, item 6) and the row-count check after deploy make it visible instead.
+- A one-off backfill of the days of the failed period older than five days: none is planned; the daily job refills the last five days only.
 - A `useRTH` flag for the bars rpc: only if the live run shows IB returns no daily MIDPOINT bars for CASH.
 
 ## Adversarial
