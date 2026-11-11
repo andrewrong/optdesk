@@ -29,7 +29,7 @@ const (
 	textManyFills    = "More than one fill of the contract that day: action no data yet"
 	textNoTrades     = "No trades in the last 30 trading days"
 	textSkippedStart = "Skipped: "
-	textSkippedEnd   = " rows with a non-integer quantity are not listed"
+	textSkippedEnd   = " rows whose quantity cannot be shown are not listed"
 
 	sentenceStocks  = "Stocks "
 	sentenceRows    = " rows, options "
