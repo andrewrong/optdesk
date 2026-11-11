@@ -17,6 +17,7 @@ import math
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import replace
 from decimal import Decimal
+from functools import partial
 from typing import Any
 
 from ib_async import IB, Contract, RequestError
@@ -144,7 +145,7 @@ def _decimal_text(strike: float) -> str:
 
 
 _CLIENT_ID_IN_USE = 326
-_HELD = "held"  # a quote held by a 10197; never leaves this file as a status
+_HELD = "held"  # a quote held by a 10197, never sent on as a status
 _SESSION_LOSS_CODES = frozenset({spec.CODE_CONNECTIVITY_LOST, spec.CODE_SERVER_LOST})
 
 
@@ -164,8 +165,8 @@ class _Job:
         self.grace = asyncio.Event()
         self.error: tuple[int, str] | None = None
         self.on_error: Callable[[int, str], None] | None = None
-        self.blocked = False  # 10197: the line was cancelled, the item is held
-        self.resubscribe: Callable[[], None] | None = None  # after a 1101
+        self.blocked = False  # 10197: the line was cancelled
+        self.resubscribe: Callable[[], None] = lambda: None  # after a 1101
 
     def wake(self) -> None:
         self.event.set()
@@ -212,9 +213,8 @@ class IbGateway:
         self._generation = 0
         self._data_type = 0
         self._jobs: set[_Job] = set()
-        self._soft_lost = False  # lost by 1100 or 2110: a 1101 or 1102 revives it
-        self._blocked = False  # 10197 seen, the market data not back yet
-        self._recovery: asyncio.Task[bool] | None = None
+        self._soft_lost = self._blocked = False  # 1100 or 2110 / 10197 seen
+        self._recovery: asyncio.Future[bool] | None = None
         self._lost = asyncio.Event()
         self._account_lock = asyncio.Lock()
         self._probe_lock = asyncio.Lock()  # one probe of this gateway at a time
@@ -277,7 +277,8 @@ class IbGateway:
         if code == _CLIENT_ID_IN_USE and not self._connected:
             self._id_in_use = True
         con_id = getattr(contract, "conId", 0)
-        if not con_id and self._session_code(code, text):
+        if not con_id and code in spec.SESSION_CODES:
+            self._session_code(code, text)
             return
         if spec.is_informational(code):
             return
@@ -290,74 +291,50 @@ class IbGateway:
                 if job.on_error is not None:
                     job.on_error(code, text)
 
-    def _session_code(self, code: int, text: str) -> bool:
-        """Act on a session code of the gateway; True when the code was one."""
+    def _session_code(self, code: int, text: str) -> None:
         if code in _SESSION_LOSS_CODES:  # 1100 and 2110: the session is lost
             self._on_end(self._ib, soft=True)
         elif code in (spec.CODE_DATA_LOST, spec.CODE_DATA_KEPT):
-            if self._connected or self._soft_lost:
-                self._restored(code == spec.CODE_DATA_LOST)
-        elif code == spec.CODE_COMPETING_SESSION:
+            if not (self._connected or self._soft_lost):
+                return  # the socket ended: it stays down
+            self._lost = self._lost if self._connected else asyncio.Event()
+            self._connected, self._soft_lost = True, False
+            if code == spec.CODE_DATA_LOST:  # 1101: a new generation, lines again
+                self._generation += 1
+                for job in list(self._jobs):
+                    job.resubscribe()
+        else:  # 10197
             self._blocked = True  # the quotes in hand stay, the lines are cancelled
             for job in list(self._jobs):
                 job.blocked = True
                 job.wake()
                 if job.on_error is not None:
                     job.on_error(code, text)
-        else:
-            return False
-        return True
-
-    def _restored(self, data_lost: bool) -> None:
-        """1101 (data lost) starts a new generation and asks the old lines again."""
-        if not self._connected:
-            self._connected, self._soft_lost = True, False
-            self._lost = asyncio.Event()
-        if data_lost:
-            self._generation += 1
-            for job in list(self._jobs):
-                if job.resubscribe is not None:
-                    job.resubscribe()
 
     async def _market_data_back(self, targets: Sequence[QuoteTarget]) -> bool:
-        """After a 10197, wait for the probe to answer; one shared run per gateway."""
         if not self._blocked:
             return True
-        if self._recovery is None:
-            self._recovery = asyncio.ensure_future(self._recover(targets))
-        return await asyncio.shield(self._recovery)
-
-    async def _recover(self, targets: Sequence[QuoteTarget]) -> bool:
-        """Probe at growing intervals; False at the deadline, the last interval."""
-        try:
-            for interval in spec.PROBE_INTERVALS_S:
-                await self._clock.sleep(interval)
-                if self._connected and await self._probe_data(targets):
-                    self._blocked = False
-                    return True
-            return False
-        finally:
-            self._recovery = None
+        if self._recovery is None:  # one shared run per gateway
+            self._recovery = asyncio.ensure_future(
+                spec.probe_until_back(self._clock, partial(self._probe_data, targets))
+            )
+        back = await asyncio.shield(self._recovery)
+        self._recovery, self._blocked = None, self._blocked and not back
+        return back
 
     async def _probe_data(self, targets: Sequence[QuoteTarget]) -> bool:
-        """Quote the underlying and the option of the probe; True when both answer."""
-        ib = self._ib
         contracts = [
             Contract(conId=t.con_id, exchange=t.exchange or "SMART")
             for t in spec.probe_targets(targets)
         ]
         try:
-            tickers = [ib.reqMktData(c, "", False, False) for c in contracts]
-            for _ in range(int(spec.PROBE_WAIT_S)):  # one look a second
-                await self._clock.sleep(1)
-                if tickers and all(ticker_fields(t) for t in tickers):
-                    return True
-            return False
-        except ConnectionError:
-            return False
+            tickers = [self._ib.reqMktData(c, "", False, False) for c in contracts]
+            return await spec.look_until(
+                self._clock, lambda: all(ticker_fields(t) for t in tickers)
+            )
         finally:
             for contract in contracts:
-                self._cancel(ib, contract)
+                self._cancel(self._ib, contract)
 
     def _current(self, generation: int) -> bool:
         return self._connected and self._generation == generation
@@ -507,9 +484,7 @@ class IbGateway:
                     row = await self._quote(row_spec, target, generation)
                 if row.status != _HELD:
                     break
-                if not await self._market_data_back(targets):
-                    # the deadline: the unfinished row ends disconnected, with
-                    # the fields it holds, never no_data or a not-listed mark
+                if not await self._market_data_back(targets):  # the deadline:
                     row = replace(row, status=spec.STATUS_DISCONNECTED)
                     break
             await on_quote(row)
@@ -548,8 +523,6 @@ class IbGateway:
 
         if not self._current(generation):
             return row(spec.STATUS_DISCONNECTED)
-        if self._blocked:
-            return row(_HELD)
         ib = self._ib
         async with self._lines.lease():
             await self._pacer.start()
@@ -572,8 +545,8 @@ class IbGateway:
             timed_out = False
             try:
                 ticker = ib.reqMktData(contract, row_spec.generic_ticks, False, False)
-                job.resubscribe = lambda: ib.reqMktData(
-                    contract, row_spec.generic_ticks, False, False
+                job.resubscribe = partial(
+                    ib.reqMktData, contract, row_spec.generic_ticks, False, False
                 )
 
                 def watch(*_: object) -> None:
