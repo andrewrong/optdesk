@@ -103,7 +103,7 @@ func TestSetupPG(t *testing.T) {
 	}
 	for _, key := range []string{
 		store.DSNEnvRunner, store.DSNEnvSeriesFred, store.DSNEnvPages, store.DSNEnvLoader,
-		store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot, store.DSNEnvMaster, dsnEnvOptionOpen,
+		store.DSNEnvOptionEod, store.DSNEnvQuoteSnapshot, store.DSNEnvMaster,
 	} {
 		c, err := pgx.Connect(ctx, env[key])
 		if err != nil {

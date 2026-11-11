@@ -135,7 +135,7 @@ Checked by CI: ci-go; `go test ./internal/broker/... -race -count=1` (contract t
 Module: contracts. Size: S. Wave 2.
 Files: `contracts/proto/ibkr/v1/quote_types.proto`, `internal/contracts/genpb/**`, `pyside/src/optdesk/contracts/**`
 Design: docs/design/option-open-pull.md#Interface
-Order: first.
+Order: after 15.
 Sequence: wave 2, first of the kind issues. The pull request is the owner's merge (`contracts/proto`). Issue 18 (broker) follows it.
 Goal: `QUOTE_KIND_OPTION_OPEN = 4` exists with the comment of Decision 10, and the generated output.
 Acceptance:
@@ -168,7 +168,7 @@ Checked by CI: ci-go (generated drift, dataset schema checks); `Contracts: chang
 Module: contracts. Size: M.
 Files: `contracts/schemas/page.option_page.v2.json`, `contracts/schemas/page.stock_option_page.v2.json`, `web/src/generated/**`, `docs/contracts/page-schemas.md`
 Design: docs/design/option-open-pull.md#Decisions
-Order: first.
+Order: after 15.
 Sequence: wave 2; after the merge of the issues of `docs/design/option-page-names.md` (PR 1333), so that the two do not edit the same generated files at once.
 Goal: Decision 19, additive over v1, with the v1 files unchanged.
 Acceptance:
