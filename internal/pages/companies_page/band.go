@@ -36,44 +36,44 @@ func (c Config) bandReady() bool {
 // priceCell builds the price line cell of one subject. The override wins; then the band as the
 // compute functions give it, qualified by the owner's approval. The cell holds no formula: every
 // figure in it is text the compute functions or the owner wrote.
-func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (out cell, unvalued bool, err error) {
+func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (out cell, reason string, err error) {
 	out = cell{HandPrice: s.HandPrice}
 	if c.Override != nil {
 		line, ok, oerr := c.Override.Line(ctx, s.Symbol)
 		if oerr != nil {
-			return cell{}, false, fmt.Errorf("companies_page: override of %s: %w", s.Symbol, oerr)
+			return cell{}, "", fmt.Errorf("companies_page: override of %s: %w", s.Symbol, oerr)
 		}
 		if ok && line != "" {
 			out.Text, out.PriceState = line, stateOverride
-			return out, false, nil
+			return out, "", nil
 		}
 	}
 	if !c.bandReady() {
 		out.Text = noReaderText
-		return out, false, nil
+		return out, "", nil
 	}
 	source, ok := factSource(s.Issuer)
 	if !ok {
-		out.Text = unvaluedText("no issuer id")
-		return out, true, nil
+		out.Text = unvaluedCell
+		return out, "no issuer id", nil
 	}
 	facts, ferr := c.Facts.FactsFiledBy(ctx, source, s.Issuer, today)
 	if ferr != nil {
-		return cell{}, false, fmt.Errorf("companies_page: facts of %s: %w", s.Symbol, ferr)
+		return cell{}, "", fmt.Errorf("companies_page: facts of %s: %w", s.Symbol, ferr)
 	}
 	fr := c.BuildFilings(facts, today, c.StandardOf(facts))
 	if fr.State != valuationapi.StateOK {
-		out.Text = unvaluedText(fr.Reasons...)
-		return out, true, nil
+		out.Text = unvaluedCell
+		return out, reasonText(fr.Reasons...), nil
 	}
 	band := c.Band(bandName, fr.Filings, today)
 	if band.State != valuationapi.StateOK {
-		out.Text = unvaluedText(band.Reasons...)
-		return out, true, nil
+		out.Text = unvaluedCell
+		return out, reasonText(band.Reasons...), nil
 	}
 	state, aerr := c.approvalState(ctx, s.Symbol, band.Value, today)
 	if aerr != nil {
-		return cell{}, false, aerr
+		return cell{}, "", aerr
 	}
 	out.PriceState = state
 	figure := band.Low + " to " + band.Value
@@ -86,7 +86,7 @@ func (c Config) priceCell(ctx context.Context, s Subject, today contracts.Day) (
 	default:
 		out.Text = state
 	}
-	return out, false, nil
+	return out, "", nil
 }
 
 // approvalState is the price state of a band whose 8% value is value: the band while the latest
@@ -130,9 +130,6 @@ func factSource(issuer string) (string, bool) {
 	return "", false
 }
 
-func unvaluedText(reasons ...string) string {
-	if len(reasons) == 0 {
-		return "unvalued"
-	}
-	return "unvalued: " + strings.Join(reasons, ", ")
-}
+// unvaluedCell is the price cell of a company that cannot be valued; the reason is stated once, in
+// the unvalued line of the page.
+const unvaluedCell = "unvalued"

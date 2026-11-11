@@ -77,3 +77,41 @@ func TestQuestionsNilFunctionGivesGap(t *testing.T) {
 		t.Fatalf("questions = %v", blk)
 	}
 }
+
+func TestQuestionsOfCompanyWithNoFiguresStateTheReasonOnce(t *testing.T) {
+	t.Parallel()
+	cfg := coreConfig("120")
+	cfg.Subjects = append(cfg.Subjects, Subject{Market: "US", Symbol: "NOID"})
+	cfg.Questions = func(valuationapi.Filings, contracts.Day) valuationapi.QuestionsResult {
+		return valuationapi.QuestionsResult{}
+	}
+	cfg.BuildFilings = func([]contracts.FundamentalFact, contracts.Day, valuationapi.Standard) valuationapi.FilingsResult {
+		return valuationapi.FilingsResult{State: valuationapi.StateUnvalued, Reasons: []string{"fewer_than_5_years"}}
+	}
+	var blk struct {
+		Rows []struct {
+			Q  [4]map[string]any
+			Q1 map[string]any `json:"q1"`
+			Q2 map[string]any `json:"q2"`
+			Q3 map[string]any `json:"q3"`
+			Q4 map[string]any `json:"q4"`
+		} `json:"rows"`
+	}
+	if err := json.Unmarshal(buildBlocks(t, cfg)["questions"], &blk); err != nil {
+		t.Fatal(err)
+	}
+	if len(blk.Rows) != 2 {
+		t.Fatalf("rows = %+v", blk.Rows)
+	}
+	for i, want := range []string{"fewer than 5 years", "no issuer id"} {
+		r := blk.Rows[i]
+		if r.Q1["reason"] != "missing_input" || r.Q1["text"] != want {
+			t.Errorf("row %d q1 = %v", i, r.Q1)
+		}
+		for j, c := range []map[string]any{r.Q2, r.Q3, r.Q4} {
+			if c["reason"] != "missing_input" || c["text"] != "as Q1" {
+				t.Errorf("row %d q%d = %v", i, j+2, c)
+			}
+		}
+	}
+}

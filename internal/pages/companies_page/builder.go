@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
@@ -186,8 +187,9 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	vm.WatchList = watchBlock{Title: "Watch list", Columns: columns, Rows: []row{}}
 	var holds []holdingRow
 	var unvalued string
+	var why reasonGroups
 	for _, s := range cfg.Subjects {
-		pc, isUnvalued, err := cfg.priceCell(ctx, s, today)
+		pc, reason, err := cfg.priceCell(ctx, s, today)
 		if err != nil {
 			return nil, err
 		}
@@ -200,11 +202,8 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 			}
 		}
 		cells := []cell{{Text: s.Symbol}, pc, {Text: last}}
-		if isUnvalued {
-			if unvalued != "" {
-				unvalued += "; "
-			}
-			unvalued += s.Symbol + ": " + pc.Text
+		if reason != "" {
+			why.add(reason, s.Symbol)
 		}
 		if held[s.Issuer] {
 			moat, err := cfg.moat(ctx, s.Symbol)
@@ -224,7 +223,7 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 		vm.Holdings = &holdingsBlock{Columns: columns, Rows: append([]holdingRow{}, holds...)}
 		vm.Header.HeldCount = &n
 	}
-	if unvalued != "" {
+	if unvalued = why.line(); unvalued != "" {
 		vm.Unvalued = &unvalued
 	}
 	if err := cfg.fillBlocks(ctx, &vm, today); err != nil {
@@ -279,4 +278,29 @@ func (c Config) zoneAt(t time.Time) *time.Location {
 		return zoneOwner
 	}
 	return c.Zone
+}
+
+// reasonGroups collects the companies of each unvalued reason, reasons in order of first appearance.
+type reasonGroups struct {
+	order     []string
+	companies map[string][]string
+}
+
+func (g *reasonGroups) add(reason, symbol string) {
+	if g.companies == nil {
+		g.companies = map[string][]string{}
+	}
+	if _, seen := g.companies[reason]; !seen {
+		g.order = append(g.order, reason)
+	}
+	g.companies[reason] = append(g.companies[reason], symbol)
+}
+
+// line is each reason once with its companies: "fewer than 5 years: A, B; no standard: C".
+func (g *reasonGroups) line() string {
+	groups := make([]string, 0, len(g.order))
+	for _, r := range g.order {
+		groups = append(groups, r+": "+strings.Join(g.companies[r], ", "))
+	}
+	return strings.Join(groups, "; ")
 }
