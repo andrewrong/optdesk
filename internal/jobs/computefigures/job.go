@@ -219,11 +219,13 @@ type target struct {
 	spec marketSpec
 }
 
-// Run runs the steps in order: IV30, the HV30 (only with PriceBars), the RV20 of the indices, the market figures, IVP and IVR on the stored IV30, then the ease.
+// Run runs the steps in order: IV30, the HV30 (only with PriceBars), the RV20 of the indices, the market
+// figures, IVP and IVR on the stored IV30, then the ease.
 // A key that fails does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	r := &runState{j: j, ctx: ctx, day: day}
-	var iv30, market, ivs, hvs []target
+	var market []target
+	var l underlyingLists
 	var rvs []string
 	var ease *target
 	var under map[string]subject
@@ -255,24 +257,17 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 				r.fail(contracts.Retryable, fmt.Errorf("computefigures: %s has no option rows on %s", subj, day))
 				continue
 			}
-			switch {
-			case name == j.m.Iv30:
-				iv30 = append(iv30, target{rule: rule, subj: s})
-			case j.hvOn() && name == j.m.Hv30:
-				hvs = append(hvs, target{rule: rule, subj: s})
-			default:
-				ivs = append(ivs, target{rule: rule, subj: s})
-			}
+			l.add(j, target{rule: rule, subj: s})
 		default:
 			r.fail(contracts.Permanent, fmt.Errorf("computefigures: unknown key %q", k.SubjectKey))
 		}
 	}
 	r.returned = len(keys)
-	r.runIv30(iv30)
-	r.runHv30(hvs)
+	r.runIv30(l.iv30)
+	r.runHv30(l.hvs)
 	r.runRv20(rvs)
 	r.runMarket(market)
-	r.runIvStats(ivs)
+	r.runIvStats(l.ivs)
 	if ease != nil {
 		r.runEase(*ease)
 	}
@@ -284,6 +279,21 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		res.Err = r.firstErr
 	}
 	return res
+}
+
+// underlyingLists are the underlying targets of a Run by step.
+type underlyingLists struct{ iv30, hvs, ivs []target }
+
+// add puts t in the list of its step: IV30, HV30 (only with PriceBars), else IVP and IVR.
+func (l *underlyingLists) add(j *job, t target) {
+	switch name := t.rule.ID; {
+	case name == j.m.Iv30:
+		l.iv30 = append(l.iv30, t)
+	case j.hvOn() && name == j.m.Hv30:
+		l.hvs = append(l.hvs, t)
+	default:
+		l.ivs = append(l.ivs, t)
+	}
 }
 
 // underlyings lists the subjects of the as-of day by name; a failed listing is a retryable failure and an empty map.
