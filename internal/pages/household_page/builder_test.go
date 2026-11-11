@@ -387,6 +387,17 @@ func TestOutputValidatesAgainstSchema(t *testing.T) {
 		_, b := build(t, c, alias)
 		validate(t, b)
 	}
+	// pages that carry the ledger gap and the month-start gap go through the schema too
+	withPut := account()
+	withPut.stored = []store.Position{shortPut("7974", "7250")}
+	m, b := build(t, config(withPut, &got), "main")
+	ledgerBlocks(t, m, true)
+	validate(t, b)
+	noStart := account()
+	delete(noStart.values["main"], "2026-10-30")
+	m, b = build(t, config(noStart, &got), "main")
+	gapOf(t, m, "month_change")
+	validate(t, b)
 }
 
 type emptyReplayer struct{}

@@ -252,6 +252,9 @@ func withLedgerGap(p *pageJSON, missing []string) {
 			break
 		}
 	}
+	if r := []rune(text); len(r) > maxBlockGapRunes {
+		text = string(r[:maxBlockGapRunes])
+	}
 	g := gapJSON{Reason: "no_data", Text: text}
 	p.Obligations.Gap, p.Income.Gap, p.CashAfter.Gap = &g, &g, &g
 	p.CashAfter.Rows = []moneyRow{}
