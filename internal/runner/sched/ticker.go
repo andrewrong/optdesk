@@ -205,7 +205,9 @@ func (t *ticker) watchdog(ctx context.Context, fail chan<- error) {
 // loop is the one waiting goroutine. It calls no ledger, calendar, broker or job.
 func (t *ticker) loop(ctx context.Context, start time.Time, first string) error {
 	nextTick, mark, lastTurn, skipped := start.Add(firstTickDelay), start, start, false
-	t.submit(turn{}) // refresh at start; not a tick
+	// The first turn reconciles the start day: a process that lives under firstTickDelay still plans
+	// a key that is inside its window and not done, and a start after the close only expires it.
+	t.submit(turn{reconcile: true, day: dayOf(start)})
 	for {
 		now := t.clk.Now()
 		fire, stopTimer := t.timer(now, t.waitFor(now, lastTurn, nextTick, mark, skipped))
