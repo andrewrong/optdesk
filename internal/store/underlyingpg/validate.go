@@ -12,8 +12,10 @@ import (
 // The rules of docs/design/underlyings.md Decision 3. This file is pure: no database, no clock, so the page route
 // and the import share it.
 var (
-	usSymbol  = regexp.MustCompile(`^[A-Z0-9.]{1,12}$`)
-	jpSymbol  = regexp.MustCompile(`^[0-9]{4}$`)
+	// usSymbol allows one inner single space (`BRK B`, as IB holds it); ValidateAdd also limits it to 12 characters.
+	usSymbol = regexp.MustCompile(`^[A-Z0-9.]+( [A-Z0-9.]+)?$`)
+	// jpSymbol: TSE codes issued since 2024 may carry a letter in the fourth place (130A).
+	jpSymbol  = regexp.MustCompile(`^[0-9]{3}[0-9A-Z]$`)
 	exchange  = regexp.MustCompile(`^[A-Z0-9._-]{1,16}$`)
 	currency  = regexp.MustCompile(`^[A-Z]{3}$`)
 	issuerRe  = regexp.MustCompile(`^(cik:[0-9]{10}|edinet:[A-Za-z0-9]{1,16})$`)
@@ -46,7 +48,7 @@ func ValidateAdd(a underlying.Add, exists func(key string) bool) (underlying.Row
 	if a.Market == "JP" {
 		sym = jpSymbol
 	}
-	if !sym.MatchString(a.Symbol) {
+	if !sym.MatchString(a.Symbol) || (a.Market == "US" && len(a.Symbol) > 12) {
 		return underlying.Row{}, invalid("symbol", "does not match the pattern of market "+a.Market)
 	}
 	if a.Kind != underlying.KindStock && a.Kind != underlying.KindETF {
