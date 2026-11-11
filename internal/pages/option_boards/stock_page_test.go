@@ -205,7 +205,7 @@ func TestContractsElevenColumns(t *testing.T) {
 		}
 	}
 	got := strings.Join(p.Contracts.Rows[1].Cells, "|")
-	if want := "11-13|65|1.20|1.30|−0.15|38%|-0.02|0.031|0.05|250|12.3456%"; got != want {
+	if want := "11-13|65|1.20|1.30|−0.15|38%|-0.0200|0.0310|0.0500|250|12.3456%"; got != want {
 		t.Errorf("row 1 = %s, want %s", got, want)
 	}
 	if !strings.Contains(strings.Join(p.Contracts.Rows[2].Cells, "|"), "n/a|n/a|n/a|n/a") {

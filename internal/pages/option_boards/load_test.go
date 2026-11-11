@@ -3,6 +3,7 @@ package option_boards
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -170,12 +171,42 @@ func TestEodTextGap(t *testing.T) {
 	t.Parallel()
 	e := &contracts.OptionEod{Volume: fp(1240), OpenInterest: fp(5310), ThetaPerCalendarDay: fp(-0.0312), Gamma: nil, VegaPerVolPoint: fp(0.1)}
 	got := eodTextOf(e)
-	want := eodText{Volume: "1240", OpenInterest: "5310", Theta: "-0.0312", Gamma: "n/a", Vega: "0.1"}
+	want := eodText{Volume: "1240", OpenInterest: "5310", Theta: "-0.0312", Gamma: "n/a", Vega: "0.1000"}
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 	if got := eodTextOf(nil); got != (eodText{"n/a", "n/a", "n/a", "n/a", "n/a"}) {
 		t.Errorf("nil row: %+v", got)
+	}
+}
+
+func TestEodTextGreeks(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name string
+		in   float64
+		want string
+	}{
+		{"rounds to four decimals", 0.1234567, "0.1235"},
+		{"tiny negative keeps its sign", -0.00001, "-0.0000"},
+		{"large value", 1500, "1500.0000"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: fp(c.in), Gamma: fp(c.in), VegaPerVolPoint: fp(c.in)})
+			if got.Theta != c.want || got.Gamma != c.want || got.Vega != c.want {
+				t.Errorf("got %+v, want %q in all three", got, c.want)
+			}
+		})
+	}
+}
+
+func TestEodTextGreekNonFiniteIsGap(t *testing.T) {
+	t.Parallel()
+	inf, nan := math.Inf(1), math.NaN()
+	got := eodTextOf(&contracts.OptionEod{ThetaPerCalendarDay: &nan, Gamma: &inf, VegaPerVolPoint: fp(math.Inf(-1))})
+	if got.Theta != "n/a" || got.Gamma != "n/a" || got.Vega != "n/a" {
+		t.Errorf("got %+v, want n/a in all three", got)
 	}
 }
 
