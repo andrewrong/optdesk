@@ -113,7 +113,7 @@ Owner priority 2026-11-10: the pull of 2026-11-11 09:45 ET. The cut is two waves
 
 Wave 1: issues 22 (broker interface: the error code of a resolve), 2 (datasets), 5 (plan function), 4 (store), 6 (plan job, US), 7 (pull job, US, sending the existing `OPTION_EOD` kind), 21 (pyside: read-only probe and session-loss codes, no edit of `transport.py`), 15 (wiring of the four US jobs in the scheduler). Layers: 5 and 21 start first, together; then 22 (after 5 and 21); then 2 (after 22); then 4 (after 2); then 6 and 7 (after 22, 2, 4 and 5); then 15 (after 6, 7 and 21). Issue 0 (the probe question of Decision 9) is answered and is not an issue any more: the probe of 2026-11-10 at the US open (Decision 9) showed the existing `OPTION_EOD` kind on the `main` gateway (`ibkr-main.sock`) returning live ticks; the pull uses the gateway of `ibkr.sock` like `option_eod`, to be confirmed as `main` by the window before the first run (Decision 9), so the proto kind, the transport kind map and the pyside change (issues 1, 12, 8, 18 and 19) are not in wave 1, and no owner merge is needed for the first pull. The evening resolve job `option_open_resolve` runs on its slot (for the first day: issue 15, deploy, then the window's hand resolve, `## Capacity`), the gap pass at 08:00, the plan job at 08:45 and the 09:45 pull are scheduled. The safety the first pull needs exists today: the send guard of `transport.py` is installed on every client (`gateway_factory`), refuses every order id and allows only ids 1, 2, 7, 9, 20, 25, 49, 59, 71, 78 and 61 to 64, and the open pull adds no id; the broker port has no order method; the gateway runs with its "Read-Only API" setting (`pyside-gateways-health.md` decision 5). The read-only probe (option-trader's client id 0 check) and the session-loss codes are issue 21, wave 1; the first pull does not start on a gateway that is not proven read-only.
 
-Wave 2, after the first pull has run: 3 (page schema v2), 9 (pages: quote time and type, refresh state), 10 (refresh endpoint, overlay, route files), 11 (web button), 1, 12, 8, 18 and 19 (the kind `OPTION_OPEN`: 15 s, no grace, from proto to the pull job), 13 (session codes and 10197 policy), 16 (guard allowlist parameter, owner merge), 17 (Japan jobs) and 20 (their wiring). Order inside wave 2: 3 after the issues of `option-page-names`; 9 after 3 and 4; 12 and 8 after 1, in parallel; 16 after 12; 13 after 21, 16 and 8; 10 after 7, 9, 13, 15, 16 and 17; 11 after 3 and 10; 18 after 1; 19 after 18, 12 and 8 (the flip of the kind in the pull job and the button's call, Decision 17); 17 after 6, 7 and 15; 20 after 17, 13 and 16. The pyside issues 13 and 16 land before the refresh button goes live (10) and before the Japan pull (20).
+Wave 2, after the first pull has run: 3 (page schema v2), 9 (pages: quote time and type, refresh state), 10 (refresh endpoint, overlay, route files), 11 (web button), 1, 23, 8, 12, 18 and 19 (the kind `OPTION_OPEN`: 15 s, no grace, from proto to the pull job), 13 (session codes and 10197 policy), 16 (guard allowlist parameter, owner merge), 17 (Japan jobs) and 20 (their wiring). Order inside wave 2: 3 after the issues of `option-page-names`; 9 after 3 and 4; 8 after 1; 23 after 1; 12 after 8 and 23; 16 after 12; 13 after 21, 16 and 8; 10 after 7, 9, 13, 15, 16 and 17; 11 after 3 and 10; 18 after 1; 19 after 18, 12 and 8 (the flip of the kind in the pull job and the button's call, Decision 17); 17 after 6, 7 and 15; 20 after 17, 13 and 16. The pyside issues 13 and 16 land before the refresh button goes live (10) and before the Japan pull (20).
 
 ### 22 broker-resolve-error (interface)
 
@@ -242,15 +242,16 @@ Checked by CI: ci-go; `go test ./internal/jobs/optionopen -race -count=1` (every
 ### 8 pyside-option-open-kind
 
 Module: pyside. Size: S. Wave 2.
-Files: `pyside/src/optdesk/ibkr/spec.py`, `pyside/tests/ibkr/test_option_open.py`
+Files: `pyside/src/optdesk/ibkr/spec.py`, `pyside/tests/ibkr/test_option_open.py`, `pyside/tests/ibkr/test_spec.py`
 Design: docs/design/option-open-pull.md#Decisions
 Order: after 1.
-Sequence: wave 2; after 1; parallel to 12 (they meet at the spec word `option_open`); 13 follows it (same file `spec.py`).
+Sequence: wave 2; after 1; 12 follows it (`transport.py` maps to `spec.OPTION_OPEN`, which this entry introduces); 13 follows it (same file `spec.py`).
 Goal: the `OPTION_OPEN` kind of Decision 9 and 10 on the default gateway: ticks "100,101", released on bid, ask and the model values, timeout 15 s, no open-interest grace. No second gateway, no `gateway` field, no change of `gateways.py` or `ibgateway.py`.
 Acceptance:
 1. `grep -c "OPTION_OPEN" pyside/src/optdesk/ibkr/spec.py` prints at least 2.
 2. `git diff --name-only $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/gateways.py pyside/src/optdesk/ibkr/ibgateway.py pyside/src/optdesk/ibkr/api.py pyside/src/optdesk/ibkr/transport.py | wc -l` prints 0.
-3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^pyside/src/optdesk/ibkr/spec.py\|^pyside/tests/ibkr/test_option_open.py"` prints 0.
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/ibkr/spec.py -e pyside/tests/ibkr/test_option_open.py -e pyside/tests/ibkr/test_spec.py` prints nothing.
+4. `grep -c "OPTION_OPEN" pyside/tests/ibkr/test_spec.py` prints at least 2: the two assertions of that file that the new row would break are updated for it, `set(TABLE) == {OPTION_EOD, UNDERLYING_IV, SNAPSHOT, DIVIDENDS}` (it names `OPTION_OPEN`) and `all(row.timeout_s == 20 ...)` (it excepts `OPTION_OPEN`, whose timeout is 15 s).
 Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`: the kind completes on bid, ask and model values, times out at 15 s as `PARTIAL` or `NO_DATA`, has no grace); the live tests under `pyside/tests/live/` stay skipped.
 
 ### 9 option-boards-quote-fields
@@ -305,13 +306,13 @@ Checked by CI: ci-web (`tsc`, `eslint`, `vitest`, the build); `Contracts: unchan
 Module: pyside. Size: S. Owner-only path: `pyside/src/optdesk/ibkr/transport.py` is the owner's merge (`docs/design/modules.md`, `pyside-account-b.md`); this issue edits nothing else. Wave 2.
 Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_transport_kind.py`
 Design: docs/design/option-open-pull.md#Interface
-Order: after 1.
-Sequence: wave 2; after 1 (the generated proto); parallel to 8; 16 follows it (same file).
+Order: after 8, 23.
+Sequence: wave 2; after 8 (`spec.OPTION_OPEN`) and 23 (`pb.QUOTE_KIND_OPTION_OPEN` exported by `optdesk.contracts.api`, the only contracts file `transport.py` imports); 16 follows it (same file).
 Goal: `_KINDS` of `MarketDataServicer.Snapshot` maps `QUOTE_KIND_OPTION_OPEN` to the spec word `option_open`, and the log filter's `WORDS` holds `option_open`; without it pyside aborts the call `INVALID_ARGUMENT` and no quote ever comes. Nothing else in the file changes (the allowlist, `ORDER_IDS` and `install_guard` stay).
 Acceptance:
 1. `grep -c "QUOTE_KIND_OPTION_OPEN" pyside/src/optdesk/ibkr/transport.py` prints at least 1 and `grep -c "option_open" pyside/src/optdesk/ibkr/transport.py` prints at least 2.
 2. `grep -c "ORDER_IDS = frozenset" pyside/src/optdesk/ibkr/transport.py` prints 1 and `git diff $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py | grep -c "^[-+].*ALLOWED_IDS = "` prints 0.
-3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^pyside/src/optdesk/ibkr/transport.py\|^pyside/tests/ibkr/test_transport_kind.py"` prints 0.
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/ibkr/transport.py -e pyside/tests/ibkr/test_transport_kind.py` prints nothing.
 Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`: the kind is accepted, an unknown kind is still `INVALID_ARGUMENT`).
 
 ### 13 pyside-session-codes
@@ -425,6 +426,20 @@ Acceptance:
 3. `git diff --name-only $(git merge-base HEAD origin/main) -- pyside/src/optdesk/ibkr/transport.py pyside/src/optdesk/ibkr/api.py | wc -l` prints 0.
 4. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vc "^pyside/src/optdesk/ibkr/readonly_probe.py\|^pyside/src/optdesk/ibkr/ibgateway.py\|^pyside/tests/ibkr/test_readonly_probe.py\|^pyside/tests/ibkr/test_accounts.py\|^pyside/tests/ibkr/test_executions.py\|^pyside/tests/ibkr/test_ibgateway.py\|^pyside/tests/ibkr/test_loop_rules.py"` prints 0.
 Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`: a fake client that answers 321 passes, one that answers nothing or an open-orders end fails and the gateway stays not connected, no order id passes the probe guard; 10197 and 1100 end the open items; 326 is not retried).
+
+### 23 pyside-contracts-option-open (interface)
+
+Module: contracts. Size: S. Wave 2.
+Files: `pyside/src/optdesk/contracts/api.py`, `pyside/tests/contracts/test_contracts_api.py`
+Design: docs/design/option-open-pull.md#Interface
+Order: after 1.
+Sequence: wave 2; after 1 (the generated `quote_types_pb2` holds the name, landed in #1434, which merged the generated output only); 12 follows it (`transport.py` imports `optdesk.contracts.api as pb` and nothing else of contracts, AGENTS.md and `modules.md`).
+Goal: `optdesk.contracts.api` imports `QUOTE_KIND_OPTION_OPEN` from the generated `quote_types_pb2` and lists it in `__all__`, next to `QUOTE_KIND_OPTION_EOD`, so that pyside reads it through the interface file.
+Acceptance:
+1. `grep -c "QUOTE_KIND_OPTION_OPEN" pyside/src/optdesk/contracts/api.py` prints 2 (the import and `__all__`).
+2. `grep -c "QUOTE_KIND_OPTION_OPEN" pyside/tests/contracts/test_contracts_api.py` prints at least 1 (the contract test names it and its value 4).
+3. `git diff --name-only $(git merge-base HEAD origin/main) | grep -vxF -e pyside/src/optdesk/contracts/api.py -e pyside/tests/contracts/test_contracts_api.py` prints nothing.
+Checked by CI: ci-python (`uv sync --locked`, `ruff check`, `mypy --strict`, `pytest -n auto`: the contract test of both sides passes with the new name); `Contracts: unchanged`.
 
 ## Checked by CI
 
