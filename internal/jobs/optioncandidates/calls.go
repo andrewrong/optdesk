@@ -207,7 +207,7 @@ func (j *callsJob) heldShortCalls(ctx context.Context, symbol string, days []con
 		return nil, nil
 	}
 	seen := map[string]bool{}
-	for _, alias := range aliases {
+	for _, alias := range j.st.Aliases {
 		for tries, i := 0, len(days)-1; i >= 0 && tries < captureLookup; tries, i = tries+1, i-1 {
 			values, err := j.st.Accounts.Values(ctx, alias, string(days[i]))
 			if err != nil {
