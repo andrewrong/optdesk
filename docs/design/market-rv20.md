@@ -71,7 +71,7 @@ reading and compute nothing. Revision 1 also stored `market.iv_rv20`; that is dr
    use `runHv30` unchanged (target = rule + id), so the stored reading, its inputs (`obs.price_bar`, id|trades) and
    parameters (`data_day`, `observations`, `window`) are those of `hv30_own`.
 6. Pages: `rv20` is the stored value times 100 in `vol_points`, one decimal, half-even, through the existing
-   `shiftRound(v, 2, 1)` (`0.162060` shows `16.2`). A row with no reading is Gap `no_data`; a reading not `ok` is Gap
+   `shiftRound(v, 2, 1)` (`0.162060` shows `16.2`). A stored value that rounds to `0.0` is a value and prints `0.0`; a Gap is for missing input only, so the `rv20` cell does not take `ivCell`'s branch that turns an all-zeros text (`strings.Trim(text, "0.") == ""`) into a Gap. A row with no reading is Gap `no_data`; a reading not `ok` is Gap
    `missing_input`; N225 keeps `not_built`. The pages read the newest reading of the last `readingDays` as their `iv`
    cell does (`readNewestKind`, kind `underlying`). A `rv20` Gap does not enter the page's `failed` counter
    (`cells.go:254` counts the percentile only, as it does for `iv`). `iv_minus_rv20` stays Gap `not_built` on every row
@@ -104,7 +104,7 @@ Judged cuts that span rows (each is one pull request, the precedent being `hv30-
 
 Build order (each entry compiles against main plus the entries it is ordered after):
 
-- Parallel, no Order line: issue 1 (jobs seam) and issue 3 (rules and register) share no file and no symbol.
+- Parallel, both `Order: first`: issue 1 (jobs seam) and issue 3 (rules and register) share no file and no symbol.
 - Chain: 2 after 1 (the store method has the signature of the seam); 4 after 1 and 3 (it uses `IndexIDReader` and
   `findRules` fails with "no rule" until issue 3's row exists); 5 after 1 and 2 (it uses `instrument.OpenIndexIDs` of
   issue 2); 6 after 3 and 4 (`ids_test.go` checks `figRv20` against the rules table and the manifest); 7 after 4 and 6;
