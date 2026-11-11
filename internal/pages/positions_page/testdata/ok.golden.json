@@ -93,14 +93,14 @@
             "cost": {
               "value": 138.20,
               "text": "$138.20",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
             "price": {
               "value": 151.40,
               "text": "$151.40",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
@@ -111,7 +111,7 @@
             "unrealised": {
               "value": 2640.00,
               "text": "+$2,640.00",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "currency": "USD",
               "tone": "up"
             }
@@ -137,7 +137,7 @@
             "cost": {
               "value": 12.50,
               "text": "$12.50",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
@@ -247,14 +247,14 @@
             "cost": {
               "value": 2.60,
               "text": "$2.60",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
             "price": {
               "value": 3.15,
               "text": "$3.15",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
@@ -265,14 +265,14 @@
             "unrealised": {
               "value": -55.00,
               "text": "−$55.00",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "currency": "USD",
               "tone": "down"
             },
             "open_premium": {
               "value": 258.00,
               "text": "$258.00",
-              "unit": "usd",
+              "unit": "amount",
               "currency": "USD",
               "tone": "none"
             }
@@ -307,14 +307,14 @@
             "cost": {
               "value": 1.10,
               "text": "$1.10",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
             "price": {
               "value": 1.00,
               "text": "$1.00",
-              "unit": "usd_per_share",
+              "unit": "amount_per_share",
               "currency": "USD",
               "tone": "none"
             },
@@ -325,7 +325,7 @@
             "unrealised": {
               "value": -10.00,
               "text": "−$10.00",
-              "unit": "usd_signed",
+              "unit": "amount_signed",
               "currency": "USD",
               "tone": "down"
             },

@@ -25,7 +25,7 @@
             {
               "enum": [
                 "USD",
-                "usd_signed",
+                "amount_signed",
                 "percent",
                 "share_percent",
                 "index_points",
@@ -220,9 +220,9 @@
         },
         "unit": {
           "enum": [
-            "usd",
-            "usd_per_share",
-            "usd_signed"
+            "amount",
+            "amount_per_share",
+            "amount_signed"
           ],
           "title": "Unit",
           "type": "string"
@@ -285,6 +285,35 @@
         "align"
       ],
       "title": "OptionColumn",
+      "type": "object"
+    },
+    "OptionQuantityCell": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "contracts",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "OptionQuantityCell",
       "type": "object"
     },
     "OptionRow": {
@@ -356,7 +385,7 @@
           "title": "Price"
         },
         "quantity": {
-          "$ref": "#/$defs/QuantityCell"
+          "$ref": "#/$defs/OptionQuantityCell"
         },
         "role": {
           "$ref": "#/$defs/RoleCell"
@@ -471,7 +500,7 @@
           "title": "Price"
         },
         "quantity": {
-          "$ref": "#/$defs/QuantityCell"
+          "$ref": "#/$defs/StockQuantityCell"
         },
         "role": {
           "$ref": "#/$defs/RoleCell"
@@ -660,9 +689,9 @@
         },
         "unit": {
           "enum": [
-            "usd",
-            "usd_per_share",
-            "usd_signed"
+            "amount",
+            "amount_per_share",
+            "amount_signed"
           ],
           "title": "Unit",
           "type": "string"
@@ -682,38 +711,6 @@
         "currency"
       ],
       "title": "PremiumCell",
-      "type": "object"
-    },
-    "QuantityCell": {
-      "additionalProperties": false,
-      "properties": {
-        "text": {
-          "maxLength": 200,
-          "minLength": 1,
-          "title": "Text",
-          "type": "string"
-        },
-        "unit": {
-          "enum": [
-            "shares",
-            "contracts"
-          ],
-          "title": "Unit",
-          "type": "string"
-        },
-        "value": {
-          "maximum": 1000000000,
-          "minimum": -1000000000,
-          "title": "Value",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "value",
-        "text",
-        "unit"
-      ],
-      "title": "QuantityCell",
       "type": "object"
     },
     "RoleCell": {
@@ -792,6 +789,35 @@
         "text"
       ],
       "title": "StaleLabel",
+      "type": "object"
+    },
+    "StockQuantityCell": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "const": "shares",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "text",
+        "unit"
+      ],
+      "title": "StockQuantityCell",
       "type": "object"
     },
     "TextCell": {
