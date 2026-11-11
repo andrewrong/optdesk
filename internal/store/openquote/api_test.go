@@ -294,3 +294,116 @@ func TestOptionContractPutAndList(t *testing.T) {
 		t.Fatalf("none = %#v", none)
 	}
 }
+
+// listFake keeps the promises of OptionListStore in memory: the caller side of the contract.
+type listFake struct {
+	lists []openquote.ListRecord
+	runs  []openquote.ListRunRecord
+}
+
+var _ openquote.OptionListStore = (*listFake)(nil)
+
+func (f *listFake) PutLists(_ context.Context, rows []openquote.ListRecord) error {
+	for _, r := range rows {
+		replaced := false
+		for i, o := range f.lists {
+			if o.UnderlyingID == r.UnderlyingID && o.Expiry == r.Expiry && o.Class == r.Class {
+				f.lists[i], replaced = r, true
+			}
+		}
+		if !replaced {
+			f.lists = append(f.lists, r)
+		}
+	}
+	return nil
+}
+
+func (f *listFake) Lists(_ context.Context, id int64) ([]openquote.ListRecord, error) {
+	out := []openquote.ListRecord{}
+	for _, r := range f.lists {
+		if r.UnderlyingID == id {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (f *listFake) PutListRuns(_ context.Context, rows []openquote.ListRunRecord) error {
+	for _, r := range rows {
+		replaced := false
+		for i, o := range f.runs {
+			if o.UnderlyingID == r.UnderlyingID && o.Session == r.Session {
+				f.runs[i], replaced = r, true
+			}
+		}
+		if !replaced {
+			f.runs = append(f.runs, r)
+		}
+	}
+	return nil
+}
+
+func (f *listFake) ListRuns(_ context.Context, session contracts.Day) ([]openquote.ListRunRecord, error) {
+	out := []openquote.ListRunRecord{}
+	for _, r := range f.runs {
+		if r.Session == session {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func TestOptionListPutAndReadBack(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var s openquote.OptionListStore = &listFake{}
+	at := time.Date(2026, 11, 12, 11, 20, 0, 0, time.UTC)
+	if err := s.PutLists(ctx, []openquote.ListRecord{{UnderlyingID: 5, Expiry: "2026-12-18", Class: "AAPL",
+		ListedAt: at, ListedSession: "2026-11-12", Count: 516, TriedAt: at, Outcome: "listed"}}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Lists(ctx, 5)
+	if len(got) != 1 || got[0].Count != 516 || got[0].ListedSession != "2026-11-12" {
+		t.Fatalf("got %+v", got)
+	}
+	if none, _ := s.Lists(ctx, 6); none == nil || len(none) != 0 {
+		t.Fatalf("none = %#v", none)
+	}
+	if err := s.PutListRuns(ctx, []openquote.ListRunRecord{
+		{UnderlyingID: 5, Session: "2026-11-12", Expected: []string{"2026-12-18|AAPL", "2026-12-24|AAPL"}, Listed: 2, Reason: "none", UpdatedAt: at},
+		{UnderlyingID: 6, Session: "2026-11-12", Reason: "not_finished", UpdatedAt: at},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	runs, _ := s.ListRuns(ctx, "2026-11-12")
+	if len(runs) != 2 || len(runs[0].Expected) != 2 || runs[1].Expected != nil {
+		t.Fatalf("runs %+v", runs)
+	}
+	if none, _ := s.ListRuns(ctx, "2026-11-13"); none == nil || len(none) != 0 {
+		t.Fatalf("none = %#v", none)
+	}
+}
+
+func TestRunRowExpectedNamesTheGroups(t *testing.T) {
+	t.Parallel()
+	var s openquote.OptionListStore = &listFake{}
+	ctx := context.Background()
+	_ = s.PutListRuns(ctx, []openquote.ListRunRecord{{UnderlyingID: 5, Session: "2026-11-12",
+		Expected: []string{"2026-12-18|AAPL", "2026-12-24|AAPL"}, Reason: "not_finished"}})
+	runs, _ := s.ListRuns(ctx, "2026-11-12")
+	if len(runs) != 1 || len(runs[0].Expected) != 2 || runs[0].Expected[1] != "2026-12-24|AAPL" {
+		t.Fatalf("runs %+v", runs)
+	}
+}
+
+func TestPutListRunsUpdatesExistingKey(t *testing.T) {
+	t.Parallel()
+	var s openquote.OptionListStore = &listFake{}
+	ctx := context.Background()
+	_ = s.PutListRuns(ctx, []openquote.ListRunRecord{{UnderlyingID: 5, Session: "2026-11-12", Reason: "not_finished"}})
+	_ = s.PutListRuns(ctx, []openquote.ListRunRecord{{UnderlyingID: 5, Session: "2026-11-12", Reason: "none"}})
+	runs, _ := s.ListRuns(ctx, "2026-11-12")
+	if len(runs) != 1 || runs[0].Reason != "none" {
+		t.Fatalf("runs %+v", runs)
+	}
+}
