@@ -64,14 +64,26 @@ reading and compute nothing. Revision 1 also stored `market.iv_rv20`; that is dr
    rows makes it fail `Permanent` ("ambiguous"); neither guesses an id. With `PriceBars` or `IndexIDs` nil the keys are still
    planned (Decision 5) and each fails `Permanent` naming the cause ("no price bar reader", "no index reader"): a run never
    goes green with nothing stored. This covers the case where `cmd/ot/wire.go:555-575` leaves the bar reader off.
-   Class: `docs/contracts/jobs/compute_figures.md:15` fixes a store error as `Retryable` and a bad rule as `Permanent` and
-   says nothing of an absent reader; an absent reader is a wiring state that does not heal within the day, so it is
-   `Permanent` and the scheduler does not retry it all day (issue 4 adds this line to the contract); an unknown index
-   instrument stays `Retryable` because `bars_refresh` may create it later in the day.
-   Interim state, built and accepted: issue 9 (the composition-root step after the module issues) binds the default
-   opener, so between the merges of issue 4 and issue 9 every scheduled run records three failed rv20 keys. That is chosen
-   for a visible failure over a green empty run, and the gap closes when 9 lands; 9 is registered in the same round as 5.
-   The alternative, ordering issue 4's `Plan` change behind issue 9, was rejected: it makes the module issues a chain
+   The unit of failure on main is the run of the day, not the key: `runState.fail` (`steps.go:38-42`) keeps one run-level
+   first error, a done run whose error is `Permanent` counts as a final verdict and is not retried that day
+   (`reconcile.go:325-326`), `verdict` sets `ErrorCode` and no present mark (`runkey.go:178-179`), and a done run without a
+   mark is read as an expired gap day (`sched/gaps_test.go:189-195`). The other figures of the run are still stored.
+   So, with an absent reader (`PriceBars` or `IndexIDs` nil), the run of the day ends `Permanent` with no present mark:
+   the other keys store, there is no retry that day, and the next day is a fresh run. Class: `docs/contracts/jobs/compute_figures.md:15`
+   fixes a store error as `Retryable` and a bad rule as `Permanent` and says nothing of an absent reader; an absent reader
+   is a wiring state that does not heal within the day, so it is `Permanent` (issue 4 adds this line to the contract); an
+   unknown index instrument stays `Retryable` because `bars_refresh` may create it later in the day, and an ambiguous one
+   is `Permanent`.
+   Who reads the present mark or gap state of `compute_figures`: the morning notification (`internal/notify/core/morning.go`,
+   `GapsSince` and `OpenGaps`) and `ot check scheduler` (`cmd/ot/check_scheduler.go`) list a gap day; no page and no job reads
+   it (grep of `internal/pages` and `internal/jobs` for the gap readers finds none). The effect of an absent reader is
+   therefore one named gap day in the morning notice, with the other figures stored.
+   Rollout: production has the bar reader and the pages line configured (the lines `OT_PG_DSN_BAR` and `OT_PG_DSN_PAGES`,
+   and the broker up at start, `cmd/ot/wire.go:555-575`), so the absent-reader case is interim only. Issues 4 and 9 are
+   built in parallel; the dispatcher holds issue 4's merge (`crew ticket hold`) until issue 9's pull request is green, then
+   merges both in one round before the next `compute_figures` slot. The interim therefore covers no scheduled run; if it
+   happens anyway it is a gap day with its other figures stored. This is chosen for a visible failure over a green empty
+   run. The alternative, ordering issue 4's `Plan` change behind issue 9, was rejected: it makes the module issues a chain
    (the rule of Build order) and would let a run be green with nothing stored in the meantime.
 5. Plan and Run: `Plan` adds one key `market.rv20|underlying|<name>` per listed name of the manifest, sorted with the
    rest, whether or not the readers are set (so a missing reader is a failed key, not a missing key). `Run`'s
@@ -124,7 +136,7 @@ issue needs the unmerged work of a sibling module issue.
   1; it wires the declared `OpenIndexIDsFunc` with a fake and names nothing of `instrument`), 6 `market-page-rv20` (pages;
   after 1 and 3), 7 `home-market-rv20` (pages; after 1 and 3; it uses no code of issue 6, `home_market` imports no
   other page), 8 `glossary-rv20` (docs; after 3).
-- Composition-root step after the module issues (the precedents are `docs/design/underlyings.md` issue 9b, `docs/design/market-bars.md` entry 12 `hv30-step` and 13 `bars-wire`, and the ot wiring entries of `docs/design/option-open-pull.md`): issue 9 `index-ids-bind` (ot; after 2 and 5) binds the default
+- Composition-root step after the module issues (the precedents are `docs/design/underlyings.md` issue 9b, `docs/design/market-bars.md` entry 13 `bars-wire`, and the ot wiring entries of `docs/design/option-open-pull.md`): issue 9 `index-ids-bind` (ot; after 2 and 5) binds the default
   `instrument.OpenIndexIDs` through an adapter to `OpenIndexIDsFunc` and asserts that `*instrument.IndexIDs` satisfies
   `computefigures.IndexIDReader`. Until it lands the opener is nil and each rv20 key fails visibly (Decision 4), so
   nothing is silently wrong in between. Issues 5 and 9 share `cmd/ot/wire.go`, hence the order.
@@ -217,7 +229,7 @@ Acceptance:
 3. Decision 3, a close not above zero: a test with one close `0` or `-1` requires state `missing`, reason `bad_input` and no stored value, never `0` (`git grep -n "bad_input" -- internal/jobs/computefigures/rv_test.go` prints at least 1 line, and the same test asserts the reading's `Value` is nil).
 4. Decision 1, basis: `rv_test.go` stores `adjusted_last` rows with other closes beside the `trades` rows and requires the `trades` value (`git grep -c "adjusted_last" -- internal/jobs/computefigures/rv_test.go` is at least 1); `git grep -c "adjusted_last\|historical_vol\|market.iv30_own\|Iv30" -- internal/jobs/computefigures/rv.go` prints 0.
 5. Decision 5, planning and routing: `Plan` yields exactly the keys `market.rv20|underlying|SPX`, `NDX`, `RUT` beyond the old ones and no other rv20 key (a test whose expected list names the three); the rv20 name is tested before `case known && kindUnderlying:` in `job.go` (`git grep -n "j.m.Rv20\|case known && kindUnderlying" -- internal/jobs/computefigures/job.go` lists a `j.m.Rv20` line above that case line) and a test shows the key is not stored by `runIvStats` (no `ivp` or `ivr` reading for the name).
-6. Decision 4, failure and never green with nothing stored: with `PriceBars` nil, with `IndexIDs` nil, with an unknown name and with a name of two rows, each key fails (`JobResult` error, `Usable` 0). Four tests in `rv_test.go`, one each, assert the error text: `TestRv20NoBarReaderFails` ("no price bar reader", `Permanent`), `TestRv20NoIndexReaderFails` ("no index reader", `Permanent`), `TestRv20UnknownIndexFailsRetryable` ("no index instrument named", Retryable) and `TestRv20AmbiguousIndexFailsPermanent` ("ambiguous", Permanent); `git grep -c "^func TestRv20NoBarReaderFails\|^func TestRv20NoIndexReaderFails\|^func TestRv20UnknownIndexFailsRetryable\|^func TestRv20AmbiguousIndexFailsPermanent" -- internal/jobs/computefigures/rv_test.go` prints 4. The existing `TestNilPriceBarsSkipsStep` (`hv_test.go:155`) is rewritten to assert the failed rv20 keys (`git grep -n "no price bar reader" -- internal/jobs/computefigures/hv_test.go` prints a line) while still asserting no hv30 key is planned or stored.
+6. Decision 4, failure and never green with nothing stored: with `PriceBars` nil, with `IndexIDs` nil, with an unknown name and with a name of two rows, no rv20 reading is stored and the `JobResult` carries the error of the class Decision 4 gives, while the other keys of the run are still stored. Four tests in `rv_test.go`, one each, assert the error text: `TestRv20NoBarReaderFails` ("no price bar reader", `Permanent`), `TestRv20NoIndexReaderFails` ("no index reader", `Permanent`), `TestRv20UnknownIndexFailsRetryable` ("no index instrument named", Retryable) and `TestRv20AmbiguousIndexFailsPermanent` ("ambiguous", Permanent); `git grep -c "^func TestRv20NoBarReaderFails\|^func TestRv20NoIndexReaderFails\|^func TestRv20UnknownIndexFailsRetryable\|^func TestRv20AmbiguousIndexFailsPermanent" -- internal/jobs/computefigures/rv_test.go` prints 4. The existing `TestNilPriceBarsSkipsStep` (`hv_test.go:155`) is rewritten to assert the failed rv20 keys (`git grep -n "no price bar reader" -- internal/jobs/computefigures/hv_test.go` prints a line) while still asserting no hv30 key is planned or stored.
 7. `git grep -n "rv20" -- docs/contracts/jobs/compute_figures.md` prints a line that says an absent reader fails the key as `Permanent`; `wc -l < internal/jobs/computefigures/rv.go` is under 600; `git diff --name-only BASE` lists only the Files line.
 Checked by CI: `go test ./internal/jobs/... -race -count=1`, `go run ./scripts/arch --check`.
 
@@ -234,7 +246,7 @@ this keeps every `cmd/ot` test that opens the compute stores with a fake `openIn
 The step-off warning names `market.rv20` beside `market.hv30_own`. `cmd/ot/wire_computefigures_test.go` (the `rec.dsns`
 counts at lines 171 and 193) is not changed: `rec.dsns` records only the bar opener, and `openIndexIDs` is a separate field.
 Acceptance:
-1. `git grep -c "openIndexIDs  *computefigures.OpenIndexIDsFunc" -- cmd/ot/wire.go` prints 1 (the field) and `git grep -c "cs.IndexIDs" -- cmd/ot/runonce.go` prints 1; `git grep -n "market.rv20" -- cmd/ot/wire.go` shows the warning line near `HV step left out`; `git grep -c "instrument.OpenIndexIDs" -- cmd/ot/wire.go cmd/ot/runonce.go cmd/ot/index_ids_wire_test.go` prints 0 for each file (the default belongs to issue 9).
+1. `git grep -c "openIndexIDs  *computefigures.OpenIndexIDsFunc" -- cmd/ot/wire.go` prints 1 (the field) and `git grep -c "cs.IndexIDs" -- cmd/ot/runonce.go` prints 1; `git grep -n "market.rv20" -- cmd/ot/wire.go` shows the warning line near `HV step left out`; `git grep -c "instrument.OpenIndexIDs" -- cmd/ot/wire.go cmd/ot/runonce.go cmd/ot/index_ids_wire_test.go` prints nothing (no file matches; the default belongs to issue 9).
 2. `cmd/ot/index_ids_wire_test.go` has three tests of `openComputeStores` with a fake `OpenIndexIDsFunc`: `TestIndexIDsSetWhenOpenerSet` (non-nil), `TestIndexIDsNilWhenNoOpener` (nil with no opener) and `TestIndexIDsNilWithWarningWhenOpenerErrors` (the opener returns an error: `IndexIDs` is nil, a warning naming `market.rv20` is logged, and `openComputeStores` returns no error); `git grep -c "^func TestIndexIDsSetWhenOpenerSet\|^func TestIndexIDsNilWhenNoOpener\|^func TestIndexIDsNilWithWarningWhenOpenerErrors" -- cmd/ot/index_ids_wire_test.go` prints 3.
 3. Size: `wc -l < cmd/ot/wire.go` is at most 800 and `wc -l < cmd/ot/runonce.go` is at most 600; `git diff --name-only BASE` lists exactly the Files line.
 Checked by CI: `go test ./cmd/ot -race -count=1`, `go run ./scripts/arch --check`.
