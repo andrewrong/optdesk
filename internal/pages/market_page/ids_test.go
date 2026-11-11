@@ -30,7 +30,7 @@ func TestIdsExistInRulesAndJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	var job struct {
-		Market      []struct {
+		Market []struct {
 			ID     string   `toml:"id"`
 			Series []string `toml:"series"`
 		} `toml:"market"`
