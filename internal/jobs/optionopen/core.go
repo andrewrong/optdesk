@@ -52,8 +52,8 @@ type Target struct {
 
 func (t Target) class() Class { return Class(t.Item.Class) }
 
-// Core is the shared core of the pull and of Refresh (Decisions 7, 8, 10 and 12). It sends the existing
-// broker.KindOptionEod in wave 1; the kind switch of the later issue changes the one constant kindOf.
+// Core is the shared core of the pull and of Refresh (Decisions 7, 8, 10 and 12). It sends
+// broker.KindOptionOpen in wave 1 (Decisions 9 and 10); the one constant kindOf names the kind.
 type Core struct {
 	B      broker.Broker
 	Clk    clock.Clock
@@ -70,9 +70,9 @@ type Core struct {
 	Log  *slog.Logger
 }
 
-// kindOf is the kind of snapshot the core sends: wave 1 asks for the option_eod kind (Decision 9); the kind switch
-// issue changes it to broker.KindOptionOpen.
-const kindOf = broker.KindOptionEod
+// kindOf is the kind of snapshot the core sends: wave 1 asks for the option_open kind (Decisions 9 and 10), with
+// its 15 s timeout and no open-interest grace.
+const kindOf = broker.KindOptionOpen
 
 // Result is the rows of a run: exactly one terminal row per target, in the order of the targets by stock.
 type Result struct {

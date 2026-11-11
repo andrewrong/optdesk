@@ -153,8 +153,8 @@ func TestEveryPlannedItemHasOneRowAndTheTypeOfTheAnswer(t *testing.T) {
 		}
 	}
 	for _, c := range b.kinds {
-		if c != broker.KindOptionEod {
-			t.Errorf("wave 1 sends KindOptionEod, got %v", c)
+		if c != broker.KindOptionOpen {
+			t.Errorf("wave 1 sends KindOptionOpen, got %v", c)
 		}
 	}
 }
