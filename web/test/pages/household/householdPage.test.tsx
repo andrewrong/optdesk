@@ -197,6 +197,8 @@ it('shows a gap as its text, with no figure', async () => {
   const payload = fixture('gap.json')
   await show(<HouseholdPage payload={payload} />)
   const trend = host.querySelector('[data-block=trend]')!
+  // gap.json carries a gap on the block and on each of its two series: the series draw theirs, the block adds none
+  expect(trend.querySelectorAll('[data-block-gap]')).toHaveLength(2)
   expect(trend.querySelector('[data-block-gap]')?.textContent).toBe(payload.trend.gap.text)
   expect(trend.querySelector('[data-block-gap]')?.getAttribute('data-reason')).toBe(
     payload.trend.gap.reason,
@@ -205,6 +207,20 @@ it('shows a gap as its text, with no figure', async () => {
   const stress = host.querySelector('[data-block=stress]')!
   expect(stress.querySelector('[data-block-gap]')?.textContent).toBe(payload.stress.gap.text)
   expect(stress.querySelector('table')).toBeNull()
+})
+
+it('shows the trend gap sentence when the payload has no series', async () => {
+  const payload = fixture('ok.json')
+  payload.trend.rows = []
+  payload.trend.series = []
+  payload.trend.gap = { reason: 'no_data', text: 'No net liquidation history yet.' }
+  await show(<HouseholdPage payload={payload} />)
+  const trend = host.querySelector('[data-block=trend]')!
+  const gaps = trend.querySelectorAll('[data-block-gap]')
+  expect(gaps).toHaveLength(1)
+  expect(gaps[0]!.textContent).toBe('No net liquidation history yet.')
+  expect(gaps[0]!.getAttribute('data-reason')).toBe('no_data')
+  expect(trend.querySelector('[data-chart]')).toBeNull()
 })
 
 it('links to /risk, and the Household overview card links to /household', async () => {

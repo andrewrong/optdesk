@@ -91,12 +91,20 @@ type testCell struct {
 // priceCell builds the page and returns the price line cell of the first watch row.
 func priceCell(t *testing.T, cfg Config) testCell {
 	t.Helper()
+	c, _ := priceCellAndUnvalued(t, cfg)
+	return c
+}
+
+// priceCellAndUnvalued also returns the unvalued line of the page, empty when it is null.
+func priceCellAndUnvalued(t *testing.T, cfg Config) (testCell, string) {
+	t.Helper()
 	b, err := Build(context.Background(), cfg, time.Date(2026, 11, 10, 14, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var page struct {
-		SchemaVersion int `json:"schema_version"`
+		SchemaVersion int     `json:"schema_version"`
+		Unvalued      *string `json:"unvalued"`
 		WatchList     struct {
 			Rows []struct {
 				Cells []testCell `json:"cells"`
@@ -109,7 +117,11 @@ func priceCell(t *testing.T, cfg Config) testCell {
 	if page.SchemaVersion != 2 || len(page.WatchList.Rows) != 1 {
 		t.Fatalf("page = %s", b)
 	}
-	return page.WatchList.Rows[0].Cells[1]
+	un := ""
+	if page.Unvalued != nil {
+		un = *page.Unvalued
+	}
+	return page.WatchList.Rows[0].Cells[1], un
 }
 
 func TestBandIsThePriceLine(t *testing.T) {
@@ -161,14 +173,14 @@ func TestBankIsUnvalued(t *testing.T) {
 	cfg.BuildFilings = func([]contracts.FundamentalFact, contracts.Day, valuationapi.Standard) valuationapi.FilingsResult {
 		return valuationapi.FilingsResult{State: valuationapi.StateUnvalued, Reasons: []string{"financial_sic"}}
 	}
-	c := priceCell(t, cfg)
-	if c.Text != "unvalued: financial_sic" || c.PriceState != "" {
-		t.Fatalf("filings refusal: %+v", c)
+	c, un := priceCellAndUnvalued(t, cfg)
+	if c.Text != "unvalued" || c.PriceState != "" || un != "financial sic: SYN1" {
+		t.Fatalf("filings refusal: %+v %q", c, un)
 	}
 	cfg = testConfig(valuationapi.BandFigure{State: valuationapi.StateMissingInput, Reasons: []string{"fewer_than_5_years"}})
-	c = priceCell(t, cfg)
-	if c.Text != "unvalued: fewer_than_5_years" || c.PriceState != "" {
-		t.Fatalf("band missing input: %+v", c)
+	c, un = priceCellAndUnvalued(t, cfg)
+	if c.Text != "unvalued" || c.PriceState != "" || un != "fewer than 5 years: SYN1" {
+		t.Fatalf("band missing input: %+v %q", c, un)
 	}
 }
 

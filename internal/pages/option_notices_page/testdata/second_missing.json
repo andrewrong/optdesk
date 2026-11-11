@@ -1,7 +1,7 @@
 {
   "positions": {
     "main/2026-11-09": [
-      {"Symbol": "ACME", "SecType": "STK", "Strike": "", "Multiplier": "1", "Quantity": "100", "Currency": "USD"}
+      {"Symbol": "ACME", "SecType": "stock", "Strike": "", "Multiplier": "1", "Quantity": "100", "Currency": "USD"}
     ]
   },
   "values": {},

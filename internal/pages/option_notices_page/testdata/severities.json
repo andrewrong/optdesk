@@ -1,7 +1,7 @@
 {
   "positions": {
     "main/2026-11-09": [
-      {"Symbol": "ACME", "SecType": "OPT", "Expiry": "2026-11-09", "Strike": "95", "Right": "P", "Multiplier": "100", "Quantity": "-1", "Currency": "USD"}
+      {"Symbol": "ACME", "SecType": "option", "Expiry": "2026-11-09", "Strike": "95", "Right": "P", "Multiplier": "100", "Quantity": "-1", "Currency": "USD"}
     ]
   },
   "values": {"main/2026-11-09": [{"Tag": "Cushion", "Value": "0.04", "Currency": "USD"}]},

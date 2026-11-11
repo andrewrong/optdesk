@@ -238,7 +238,7 @@ func (j *callsJob) heldShortCalls(ctx context.Context, symbol string, days []con
 
 func isShortCall(p store.Position, symbol string) bool {
 	q, ok := new(big.Rat).SetString(strings.TrimSpace(p.Quantity))
-	return ok && q.Sign() < 0 && strings.EqualFold(p.Symbol, symbol) && p.SecType == "OPT" && p.Right == "call"
+	return ok && q.Sign() < 0 && strings.EqualFold(p.Symbol, symbol) && p.SecType == "option" && p.Right == "call"
 }
 
 // chainQuotes is quotes of input.go for both rights: the rows of the chain day, the terms of their contracts

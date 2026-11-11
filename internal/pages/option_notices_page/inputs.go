@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -13,10 +12,27 @@ import (
 
 const kindHeldCallGuard = "held_call_guard"
 
+// Stored sec types (migrations/0019_account.sql) and the broker words the notice rules compare with.
+const (
+	storedStock  = "stock"
+	storedOption = "option"
+)
+
+// ruleSecType maps a stored sec type to the broker word of the rules; any other word is unchanged.
+func ruleSecType(stored string) string {
+	switch stored {
+	case storedStock:
+		return "STK"
+	case storedOption:
+		return "OPT"
+	}
+	return stored
+}
+
 func noticePositions(rows []store.Position) []compute.NoticePosition {
 	out := make([]compute.NoticePosition, 0, len(rows))
 	for _, p := range rows {
-		out = append(out, compute.NoticePosition{Symbol: p.Symbol, SecType: p.SecType, Expiry: p.Expiry,
+		out = append(out, compute.NoticePosition{Symbol: p.Symbol, SecType: ruleSecType(p.SecType), Expiry: p.Expiry,
 			Strike: p.Strike, Right: p.Right, Multiplier: p.Multiplier, Quantity: p.Quantity, Currency: p.Currency})
 	}
 	return out
@@ -80,7 +96,7 @@ func earningsInputs(ctx context.Context, r store.EarningsDateReader, rows []stor
 	out := []compute.NoticeEarnings{}
 	seen := map[string]bool{}
 	for _, p := range rows {
-		if p.Symbol == "" || !strings.EqualFold(p.SecType, "OPT") || seen[p.Symbol] {
+		if p.Symbol == "" || p.SecType != storedOption || seen[p.Symbol] {
 			continue
 		}
 		seen[p.Symbol] = true

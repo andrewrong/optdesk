@@ -108,10 +108,10 @@ func (c Config) capture(ctx context.Context, alias string, l *loaded, conIDs map
 		l.at = rows[0].CapturedAt
 		for _, p := range rows {
 			switch strings.ToUpper(p.SecType) {
-			case "OPT":
+			case "OPTION":
 				l.in.Held = append(l.in.Held, compute.HeldOption{Underlying: p.Symbol, Right: rightLetter(p.Right),
 					Strike: p.Strike, Expiry: p.Expiry, Quantity: p.Quantity})
-			case "STK":
+			case "STOCK":
 				conIDs[p.Symbol] = p.ConID
 				l.stocks = append(l.stocks, stock{symbol: p.Symbol, currency: p.Currency, quantity: p.Quantity})
 			}

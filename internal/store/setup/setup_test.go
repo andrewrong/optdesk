@@ -112,8 +112,8 @@ func TestPasswordFromDSN(t *testing.T) {
 
 func TestRolesTable(t *testing.T) {
 	t.Parallel()
-	if len(roles) != 19 {
-		t.Fatalf("%d roles, want 19", len(roles))
+	if len(roles) != 20 {
+		t.Fatalf("%d roles, want 20", len(roles))
 	}
 	keys := map[string]string{}
 	for _, r := range roles {
@@ -335,4 +335,20 @@ func TestOptionOpenRoleSpec(t *testing.T) {
 		}
 	}
 	t.Error("ot_w_option_open is not in the role list")
+}
+
+func TestUnderlyingResolveRoleSpec(t *testing.T) {
+	t.Parallel()
+	if roleUnderlyingResolve != "ot_w_underlying_resolve" || dsnEnvUnderlyingResolve != "OT_PG_DSN_UNDERLYING_RESOLVE" {
+		t.Fatalf("role %q, line %q", roleUnderlyingResolve, dsnEnvUnderlyingResolve)
+	}
+	for _, r := range roles {
+		if r.name == roleUnderlyingResolve {
+			if r.envKey != "OT_PG_DSN_UNDERLYING_RESOLVE" {
+				t.Errorf("ot_w_underlying_resolve line = %q", r.envKey)
+			}
+			return
+		}
+	}
+	t.Error("ot_w_underlying_resolve is not in the role list")
 }
