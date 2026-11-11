@@ -36,8 +36,9 @@ function exchangeOffsetMinutes(market: QuoteMarket, now: Date): number {
 
 // Decision 18: a quote older than 15 minutes is grey. `as_of` is the exchange-local HH:MM:SS of the day, so the clock
 // is read as the exchange's wall time; a date text (a close archive value) or an empty time is not a time and is never
-// called stale here. A clock before the quote (never older) is not stale either.
-export function isStaleQuote(asOf: string, now: Date, market: QuoteMarket): boolean {
+// called stale here, and a page that does not know the market (the stock page) judges nothing rather than guess a zone. A clock before the quote (never older) is not stale either.
+export function isStaleQuote(asOf: string, now: Date, market: QuoteMarket | undefined): boolean {
+  if (!market) return false
   const quoted = /^(\d{2}):(\d{2}):(\d{2})$/.exec(asOf)
   if (!quoted) return false
   const wall = new Date(now.getTime() + exchangeOffsetMinutes(market, now) * 60_000)
@@ -49,7 +50,7 @@ export function isStaleQuote(asOf: string, now: Date, market: QuoteMarket): bool
 export function OptionQuoteCell({
   quote,
   now = new Date(),
-  market = 'US',
+  market,
 }: {
   quote: Quote
   now?: Date

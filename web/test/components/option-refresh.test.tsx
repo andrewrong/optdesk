@@ -2,7 +2,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, it } from 'vitest'
-import { OptionQuoteCell } from '@/components/option-quote-cell'
+import { OptionQuoteCell, OptionQuoteList } from '@/components/option-quote-cell'
 import { OptionRefresh } from '@/components/option-refresh'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -97,10 +97,10 @@ const at = (as_of: string) =>
 it('greys a quote older than 15 minutes of the injected clock, not a fresh one or one without a time', async () => {
   await show(
     <>
-      <OptionQuoteCell quote={at('09:45:00')} now={CLOCK} />
-      <OptionQuoteCell quote={at('09:30:12')} now={CLOCK} />
-      <OptionQuoteCell quote={at('09:30:11')} now={CLOCK} />
-      <OptionQuoteCell quote={at('')} now={CLOCK} />
+      <OptionQuoteCell quote={at('09:45:00')} now={CLOCK} market="US" />
+      <OptionQuoteCell quote={at('09:30:12')} now={CLOCK} market="US" />
+      <OptionQuoteCell quote={at('09:30:11')} now={CLOCK} market="US" />
+      <OptionQuoteCell quote={at('')} now={CLOCK} market="US" />
     </>,
   )
   const cells = [...host.querySelectorAll('[data-quote]')]
@@ -118,9 +118,16 @@ it('reads New York wall time with daylight saving in summer', async () => {
   const summer = new Date('2026-07-15T13:45:12Z')
   await show(
     <>
-      <OptionQuoteCell quote={at('09:30:12')} now={summer} />
-      <OptionQuoteCell quote={at('09:30:11')} now={summer} />
+      <OptionQuoteCell quote={at('09:30:12')} now={summer} market="US" />
+      <OptionQuoteCell quote={at('09:30:11')} now={summer} market="US" />
     </>,
   )
   expect([...host.querySelectorAll('[data-quote]')].map((c) => c.hasAttribute('data-quote-stale'))).toEqual([false, true])
+})
+
+it('does not grey a fresh JP quote on a list that does not know the market', async () => {
+  // 09:10:00 JST on 12 Nov 2026 = 00:10:00 UTC
+  const now = new Date('2026-11-12T00:10:00Z')
+  await show(<OptionQuoteList items={[{ id: '0', quote: at('09:05:00') }]} now={now} />)
+  expect(host.querySelector('[data-quote-stale]')).toBeNull()
 })

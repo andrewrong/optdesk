@@ -73,7 +73,7 @@ function PayloadTableView({
   table: PayloadTable
   name: string
   market: Pane['market']
-})  {
+}) {
   const columns: Column[] = table.columns.map(({ id, label, align, hint }) => ({
     id,
     label,
