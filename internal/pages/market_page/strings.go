@@ -3,7 +3,9 @@ package market_page
 // Fixed texts of the page.
 const (
 	pageTitle    = "Market"
-	pageSentence = "Weather comes from the S&P 500 against its 200-day average; percentile and term come from stored data, the other items are not built yet."
+	pageSentence = "Weather, percentile and term come from stored data; " +
+		"the trend chart, market breadth and the realised columns are not built yet, " +
+		"the Nikkei percentile has no stored series."
 
 	weatherHeadline    = "S&P 500 against its 200-day average"
 	weatherSentenceFmt = "Gap to the 200-day average: "
@@ -12,15 +14,16 @@ const (
 	weatherStale       = "Weather data is stale, data day "
 
 	indicesTitle    = "Index volatility"
-	indicesSentence = "Percentile is the index position over 3 years; it and implied volatility come from stored data, realised columns are not built yet."
-	indicesNote     = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
+	indicesSentence = "Percentile is the index position over 3 years; it and implied volatility come from stored data, " +
+		"realised columns are not built yet, the Nikkei percentile has no stored series."
+	indicesNote = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
 	termTitle        = "Term structure"
 	termSentenceFmt  = "VIX to 3-month VIX ratio "
 	termSentenceNone = "Term structure ratio: nothing stored."
 
 	breadthNotBuilt = "Market breadth: not built yet, no matching data"
-	chartNotBuilt   = "Trend chart: not built yet, no stored 200-day average"
+	chartNotBuilt   = "Trend chart: not built yet, only the latest gap to the 200-day average is stored, no daily line"
 	ivNotBuilt      = "implied volatility: not built yet"
 	ivNoRow         = "implied volatility: no data, not stored yet"
 	ivMissing       = "implied volatility: no data, inputs incomplete"

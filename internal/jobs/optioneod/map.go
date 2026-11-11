@@ -97,6 +97,14 @@ func mapRow(q broker.Quote, instrumentID, underlyingID int64, day time.Time, cap
 	}
 }
 
+// withUnderlyingPrice sets underlying_price to price when the row has none and price is positive; a quote's own UndPrice stays.
+func withUnderlyingPrice(row contracts.OptionEod, price float64) contracts.OptionEod {
+	if row.UnderlyingPrice == nil && price > 0 {
+		row.UnderlyingPrice = &price
+	}
+	return row
+}
+
 // osiSymbol is the 21-character option symbol: symbol padded to 6, yymmdd, C or P, strike times 1000 in 8 digits.
 func osiSymbol(c broker.Contract) (string, error) { return osiSymbolWith(c, c.Symbol) }
 
