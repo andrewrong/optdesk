@@ -237,6 +237,8 @@ func missingFromLedger(positions []store.Position, ledgerKeys []string) []string
 
 // withLedgerGap marks the obligations, income and cash after blocks as gaps when stored short puts
 // are missing from the ledger; the cash after row is dropped, since it would look complete.
+// This is the one change that is more than a gap text: the row is the plain-cash figure the issue
+// (#1598) orders dropped, and no figure is computed here.
 func withLedgerGap(p *pageJSON, missing []string) {
 	if len(missing) == 0 {
 		return
