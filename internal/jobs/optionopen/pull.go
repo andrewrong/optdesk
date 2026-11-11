@@ -141,6 +141,9 @@ func (p *pull) RunBound() time.Duration { return p.runBound }
 // RestartSensitive is true when a restart between the slot start and the window close must be avoided.
 func (p *pull) RestartSensitive() bool { return p.m.Schedule.RestartSensitive }
 
+// errNoPlan marks the empty stored plan inside the NoValue error of batches, so Plan can tell it from a store error.
+var errNoPlan = errors.New("no plan")
+
 // batch is one key: stocks whose items together are at most max_per_key (a single stock over it is a batch alone).
 type batch struct {
 	subject string
@@ -154,7 +157,7 @@ func (p *pull) batches(ctx context.Context, day contracts.Day) ([]batch, error) 
 		return nil, newErr(contracts.Retryable, "plan: %v", err)
 	}
 	if len(items) == 0 {
-		return nil, newErr(contracts.NoValue, "no plan")
+		return nil, newErr(contracts.NoValue, "%w", errNoPlan)
 	}
 	var out []batch
 	for i := 0; i < len(items); {
@@ -172,9 +175,14 @@ func (p *pull) batches(ctx context.Context, day contracts.Day) ([]batch, error) 
 	return out, nil
 }
 
-// Plan returns one key per batch of the stored plan and a hash of the batches and their plan ids. No plan is NoValue.
+// Plan returns one key per batch of the stored plan and a hash of the batches and their plan ids. Before the plan of
+// the day is stored it returns no keys and no error, so the pull waits for a later pass; Run of the same day with no
+// plan is NoValue.
 func (p *pull) Plan(ctx context.Context, day contracts.Day) ([]contracts.ExpectedKey, string, error) {
 	bs, err := p.batches(ctx, day)
+	if errors.Is(err, errNoPlan) {
+		return nil, "", nil
+	}
 	if err != nil {
 		return nil, "", err
 	}

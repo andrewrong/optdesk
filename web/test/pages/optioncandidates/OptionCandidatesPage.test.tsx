@@ -44,6 +44,7 @@ describe('OptionCandidatesPage', () => {
     expect(text).toContain(ok.chain_day)
     expect(text).toContain(ok.computed_at)
     expect(text).toContain(ok.rule_version)
+    expect(page.querySelector('[data-rule-version]')!.textContent).toBe(`Rule ${ok.rule_version}`)
     expect(text).toContain(ok.groups[0].title)
     expect(text).toContain(ok.groups[1].title)
     expect(page.querySelectorAll('[data-tab]')).toHaveLength(2)

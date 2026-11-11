@@ -223,6 +223,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	if err := decorate(ctx, c, d, day, sessionDay, latest, rows, &vm); err != nil {
 		return nil, err
 	}
+	sortChainRows(vm.Chain.Rows)
 	vm.DataTimes = append(vm.DataTimes, sourceTime{Source: "option_eod", DataTime: fmtTime(eodTime, c.Zone)})
 	vm.Sentence = fmt.Sprintf("%d contracts on %s.", len(rows), sessionDay)
 

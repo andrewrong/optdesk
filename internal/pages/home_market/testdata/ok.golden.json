@@ -87,12 +87,12 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "20 日已实现波动率暂未生成"
+            "text": "SPX 20 日已实现波动率暂未生成"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "隐含减已实现暂未生成"
+            "text": "SPX 隐含减已实现暂未生成"
           },
           "source_text": "IBKR 隐含波动率"
         },
@@ -107,12 +107,12 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "20 日已实现波动率暂未生成"
+            "text": "NDX 20 日已实现波动率暂未生成"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "隐含减已实现暂未生成"
+            "text": "NDX 隐含减已实现暂未生成"
           },
           "source_text": "IBKR 隐含波动率"
         },
@@ -127,12 +127,12 @@
           "rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "20 日已实现波动率暂未生成"
+            "text": "RUT 20 日已实现波动率暂未生成"
           },
           "iv_minus_rv20": {
             "kind": "gap",
             "reason": "not_built",
-            "text": "隐含减已实现暂未生成"
+            "text": "RUT 隐含减已实现暂未生成"
           },
           "source_text": "IBKR 隐含波动率"
         }
@@ -181,32 +181,32 @@
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "20 日已实现波动率暂未生成"
+        "text": "SPX 20 日已实现波动率暂未生成"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "隐含减已实现暂未生成"
+        "text": "SPX 隐含减已实现暂未生成"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "20 日已实现波动率暂未生成"
+        "text": "NDX 20 日已实现波动率暂未生成"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "隐含减已实现暂未生成"
+        "text": "NDX 隐含减已实现暂未生成"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "20 日已实现波动率暂未生成"
+        "text": "RUT 20 日已实现波动率暂未生成"
       },
       {
         "kind": "gap",
         "reason": "not_built",
-        "text": "隐含减已实现暂未生成"
+        "text": "RUT 隐含减已实现暂未生成"
       }
     ],
     "data_times_text": "数据时间 11-06"

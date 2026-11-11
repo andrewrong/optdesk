@@ -7,12 +7,14 @@ type Notice = Payload['accounts'][number]['notices'][number]
 
 const SEVERITY_VARIANT = { info: 'secondary', warn: 'warning', act: 'destructive' } as const
 
+const SEVERITY_LABEL: Record<string, string> = { info: 'Info', warn: 'Warning', act: 'Action needed' }
+
 function NoticeItem({ notice }: { notice: Notice }) {
   return (
     <li data-notice={notice.id} className="space-y-1">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={SEVERITY_VARIANT[notice.severity]} data-severity={notice.severity}>
-          {notice.severity}
+          {SEVERITY_LABEL[notice.severity] ?? notice.severity}
         </Badge>
         <span className="font-medium" data-notice-title>
           {notice.title}

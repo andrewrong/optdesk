@@ -445,8 +445,16 @@ func (t *ticker) reconcileAndSync(ctx context.Context, day contracts.Day) {
 		cursor, haveCursor = cur.Day, err == nil
 	}
 	rctx, cancel := context.WithTimeout(ctx, reconcileTimeout)
-	_ = t.rec.Reconcile(rctx, day)
+	err := t.rec.Reconcile(rctx, day)
 	cancel()
+	if err != nil {
+		kind := "error"
+		var te contracts.TypedError
+		if errors.As(err, &te) {
+			kind = string(te.Kind())
+		}
+		t.log.Error("reconcile failed", slog.String("day", string(day)), slog.String("kind", kind))
+	}
 	if t.gaps == nil || !haveCursor {
 		return
 	}

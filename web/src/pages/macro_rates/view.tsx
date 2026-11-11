@@ -49,6 +49,7 @@ function SeriesCard({ series }: { series: Series }) {
 }
 
 export function MacroRatesView({ payload }: { payload: Payload }) {
+  const titleOf = (id: string) => payload.series.find((series) => series.id === id)?.title ?? id
   return (
     <div className="min-w-0 space-y-6" data-page="macro-rates">
       <Card>
@@ -61,7 +62,7 @@ export function MacroRatesView({ payload }: { payload: Payload }) {
         <Alert key={`${index}-${gap.text}`} data-gap={gap.reason}>
           <TriangleAlert aria-hidden />
           <AlertDescription>
-            <Badge variant="outline">{gap.reason}</Badge> {gap.text}
+            <Badge variant="outline">{titleOf(gap.series_id)}</Badge> {gap.text}
           </AlertDescription>
         </Alert>
       ))}
