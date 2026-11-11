@@ -450,8 +450,8 @@ func TestStoredShortPutMissingFromLedgerIsGap(t *testing.T) {
 	c.Ledgers = func() compute.OptionLedger { return emptyReplayer{} }
 	m, b := build(t, c, "main")
 	ledgerBlocks(t, m, true)
-	if rows := m["cash_after"].(map[string]any)["rows"].([]any); len(rows) != 0 {
-		t.Fatalf("cash_after rows = %v", rows)
+	if rows := m["cash_after"].(map[string]any)["rows"].([]any); len(rows) != 1 {
+		t.Fatalf("cash_after rows = %v, want the row kept beside the gap", rows)
 	}
 	validate(t, b)
 }

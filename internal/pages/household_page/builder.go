@@ -236,9 +236,7 @@ func missingFromLedger(positions []store.Position, ledgerKeys []string) []string
 }
 
 // withLedgerGap marks the obligations, income and cash after blocks as gaps when stored short puts
-// are missing from the ledger; the cash after row is dropped, since it would look complete.
-// This is the one change that is more than a gap text: the row is the plain-cash figure the issue
-// (#1598) orders dropped, and no figure is computed here.
+// are missing from the ledger; the rows stay as they are.
 func withLedgerGap(p *pageJSON, missing []string) {
 	if len(missing) == 0 {
 		return
@@ -259,7 +257,6 @@ func withLedgerGap(p *pageJSON, missing []string) {
 	}
 	g := gapJSON{Reason: "no_data", Text: text}
 	p.Obligations.Gap, p.Income.Gap, p.CashAfter.Gap = &g, &g, &g
-	p.CashAfter.Rows = []moneyRow{}
 }
 
 // assemble writes the page from the figures; without hb the mark blocks are the gap missing_quote,
