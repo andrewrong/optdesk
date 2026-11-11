@@ -42,6 +42,11 @@ type fakeAcctStore struct {
 
 func (f fakeAcctStore) Close() error { f.n.Add(1); return nil }
 
+// Positions answers none: the held-name reader of the job list reads it.
+func (fakeAcctStore) Positions(context.Context, string, string) ([]store.Position, error) {
+	return nil, nil
+}
+
 // acctRig is run-once over fakes with the account lines in .env; got holds what the constructor received.
 type acctRig struct {
 	a              *app
@@ -103,11 +108,12 @@ func TestAccountCaptureDryRun(t *testing.T) {
 	if r.built.Load() != 1 || r.cfg.Main != "b" || len(r.cfg.Readers) != 2 || r.cfg.Writer == nil || r.cfg.Clock == nil {
 		t.Fatalf("built %d cfg main %q readers %d", r.built.Load(), r.cfg.Main, len(r.cfg.Readers))
 	}
-	if strings.Join(r.dialed, ",") != "/s/a.sock,/s/b.sock" || r.opened.Load() != 1 {
+	if strings.Join(r.dialed, ",") != "/s/a.sock,/s/b.sock" || r.opened.Load() != 2 {
 		t.Fatalf("dialed %v opened %d", r.dialed, r.opened.Load())
 	}
-	if r.closed.Load() != 3 {
-		t.Fatalf("closed %d, want two readers and the store", r.closed.Load())
+	// The plan printed by run-once reads the held names of the job list through a second account store.
+	if r.closed.Load() != 4 {
+		t.Fatalf("closed %d, want two readers and the two stores", r.closed.Load())
 	}
 	if !slices.Contains(ids, "account_capture") {
 		t.Fatalf("jobs %v lack account_capture", ids)

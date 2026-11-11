@@ -521,13 +521,15 @@ func (unreachableHistory) Bars(context.Context, broker.BarQuery) ([]broker.Bar, 
 func (unreachableHistory) Close() error { return nil }
 
 // barsRefresh builds bars_refresh over the broker, the history client, the instrument store opened for option_eod,
-// the bar store and the watch list.
+// the bar store and the bars names of the stored list.
 func (f jobFactory) barsRefresh(b broker.Broker, h broker.HistoryClient) (contracts.Job, error) {
-	j, err := f.d.newBarsRefresh(b, h, f.inst, f.bars, f.bars, f.watch, f.clk)
-	if err != nil {
-		return nil, fmt.Errorf("build bars_refresh job failed: %w", err)
-	}
-	return j, nil
+	return f.listed(groupBars, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+		j, err := f.d.newBarsRefresh(b, h, f.inst, f.bars, f.bars, entries, f.clk)
+		if err != nil {
+			return nil, fmt.Errorf("build bars_refresh job failed: %w", err)
+		}
+		return j, nil
+	})
 }
 
 // fxRefresh builds fx_refresh over the broker, the history client and the bar store.

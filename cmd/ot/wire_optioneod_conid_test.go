@@ -194,14 +194,17 @@ func TestOptionEodJPFamilyResolvesConIDAtBuild(t *testing.T) {
 	d := newDeps()
 	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	b := &conidBroker{ids: map[string]int64{"1111": 910001}}
-	f := &jobFactory{d: d, clk: clk, inst: conidInst{r: res}, eod: conidEod{},
-		watch: []jobs.WatchEntry{jpConIDEntry("1111", 0)}}
+	f0 := jobFactory{d: d, clk: clk, inst: conidInst{r: res}, eod: conidEod{}}.withList(listRowsOf(jpConIDEntry("1111", 0))...)
+	f := &f0
 	jc := &jobCtx{f: f, brk: b, brokerUp: true, cal: openCalendar{}}
 	j, _, err := fam.build(context.Background(), &app{log: log}, jc)
 	if err != nil || j == nil {
 		t.Fatalf("build %v %v", j, err)
 	}
 	key := contracts.ExpectedKey{DatasetID: "obs.option_eod_jp", SubjectKey: "1111"}
+	if _, _, err := j.Plan(context.Background(), "2026-11-09"); err != nil {
+		t.Fatal(err)
+	}
 	out := j.Run(context.Background(), "2026-11-09", []contracts.ExpectedKey{key})
 	if out.Err != nil {
 		t.Fatalf("result %+v: %v", out, out.Err)
@@ -214,7 +217,7 @@ func TestOptionEodJPFamilyResolvesConIDAtBuild(t *testing.T) {
 	if !found {
 		t.Fatalf("resolver saw %v, want %v", res.keys, want)
 	}
-	if f.watch[0].Contract.ConID != 0 {
-		t.Fatal("the factory watch list was written")
+	if rows, _ := f.list.Current(context.Background()); rows[0].ConID != 0 {
+		t.Fatal("the stored list was written")
 	}
 }

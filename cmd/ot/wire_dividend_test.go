@@ -44,9 +44,11 @@ type divRig struct {
 	socket string
 }
 
-func newDivRig(t *testing.T) *divRig {
+func newDivRig(t *testing.T) *divRig { return newDivRigEnv(t, fullEnv) }
+
+func newDivRigEnv(t *testing.T, env string) *divRig {
 	t.Helper()
-	d := &divRig{rig: newRig(t, fullEnv), store: &divStore{}}
+	d := &divRig{rig: newRig(t, env), store: &divStore{}}
 	dd := &d.a.deps
 	dd.newReference = func(_ context.Context, socket string, _ broker.Options) (broker.ReferenceClient, error) {
 		d.dialed.Add(1)
@@ -64,9 +66,7 @@ func newDivRig(t *testing.T) *divRig {
 		return namedJob{id: "dividend_capture"}, nil
 	}
 	body := "[[underlying]]\nissuer = \"cik:0000320193\"\nmarket = \"US\"\nsymbol = \"AAPL\"\n"
-	if err := writeFile(d.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
-		t.Fatal(err)
-	}
+	d.list.rows = listRowsFromWatch(t, body)
 	return d
 }
 

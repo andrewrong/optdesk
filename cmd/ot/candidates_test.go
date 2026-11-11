@@ -20,6 +20,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -220,7 +221,9 @@ func TestCandidatesNamesJPEntry(t *testing.T) {
 	a.stdout = &out
 	var cl atomic.Int32
 	a.deps.openCandidate = func(context.Context, string) (candidateStore, error) { return &fakeCandidateRW{closed: &cl}, nil }
-	a.deps.readFile = func(string) ([]byte, error) { return []byte(watchTwo), nil }
+	a.deps.openUnderlying = func(context.Context, string) (underlying.Store, error) {
+		return &fakeUnderlyingStore{rows: listRowsFromWatch(t, watchTwo)}, nil
+	}
 	if err := candidatesCmd(a, nil); err != nil {
 		t.Fatal(err)
 	}
