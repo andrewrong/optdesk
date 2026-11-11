@@ -94,6 +94,19 @@ def test_1100_then_1101_revives_the_session_with_a_new_generation() -> None:
     assert connected and after == first + 1
 
 
+def test_1102_revives_the_session_on_the_same_generation_without_new_lines() -> None:
+    async def run() -> tuple[bool, int, int, list[int]]:
+        gateway, fake = await _opened(FakeClock())
+        first = (await gateway.status()).generation
+        fake.errorEvent.emit(-1, 1100, "lost", None)
+        fake.errorEvent.emit(-1, 1102, "restored, data kept", None)
+        state = await gateway.status()
+        return state.connected, first, state.generation, fake.subscribed
+
+    connected, first, after, subscribed = asyncio.run(run())
+    assert connected and after == first and subscribed == []
+
+
 def test_1101_does_not_revive_a_session_the_socket_ended() -> None:
     async def run() -> bool:
         gateway, fake = await _opened(FakeClock())
