@@ -43,6 +43,7 @@ const (
 	textStale      = "The latest capture is too old: no data yet"
 	textNoExpiry   = "Option structures without an expiry are not counted in risk"
 	textStaleLabel = "By capture day "
-	unitDelta      = " USD/USD"
+	unitDelta      = " USD per $1 move"
+	textNoVega     = "No option structure is counted in Vega"
 	unitVega       = " USD/vol point"
 )

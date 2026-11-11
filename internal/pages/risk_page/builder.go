@@ -166,7 +166,9 @@ func vegaBlock(r blockapi.RiskResult) vegaJSON {
 		}
 		b.Rows = append(b.Rows, vegaRow{ExpiryText: ln.Key, Vega: v})
 	}
-	if v, ok := vegaCell(r.VegaTotal); ok {
+	if v, ok := vegaCell(r.VegaTotal); ok && len(b.Rows) == 0 && r.VegaTotal.Gap == "" {
+		b.Gap = &gapJSON{Reason: "no_data", Text: textNoVega}
+	} else if ok {
 		b.Total = &v
 	} else {
 		b.Gap = riskGap(r.VegaTotal)
