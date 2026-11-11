@@ -110,8 +110,8 @@ func TestHoldingBlocksNilPathStaysMissingQuote(t *testing.T) {
 				t.Fatalf("%s: %s gap = %v", name, blk, g)
 			}
 		}
-		if len(acc.asked) != 1 {
-			t.Fatalf("%s: positions read %d times, want once (the ledger gap check)", name, len(acc.asked))
+		if len(acc.asked) != 0 {
+			t.Fatalf("%s: positions were read", name)
 		}
 	}
 }

@@ -89,7 +89,7 @@ func Build(ctx context.Context, c Config, alias string, day contracts.Day, at ti
 	if err != nil {
 		return nil, fmt.Errorf("household_page: read positions: %w", err)
 	}
-	hb, err := c.holdings(ctx, alias, snap, positions)
+	hb, err := c.holdings(ctx, alias, snap)
 	if err != nil {
 		return nil, err
 	}
