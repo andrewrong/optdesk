@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -136,7 +137,8 @@ func (r *reconciler) backfillPlan(
 	if err != nil {
 		return nil, plan{}, err
 	}
-	pDay, err := r.plan(ctx, day, sess)
+	// pAll has planned every job and logged the failing ones: pDay does not log them again.
+	pDay, err := r.planLogged(ctx, day, sess, slog.New(slog.DiscardHandler))
 	if err != nil {
 		return nil, plan{}, err
 	}

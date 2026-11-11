@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -140,6 +141,14 @@ type plan struct {
 // has a session in it; with nil sess every job is planned. A held job is planned like any other, so
 // its keys, job and hash are in the plan; only held records that it is not yet due.
 func (r *reconciler) plan(ctx context.Context, day contracts.Day, sess daySessions) (plan, error) {
+	return r.planLogged(ctx, day, sess, r.log)
+}
+
+// planLogged is plan with the logger for the jobs it skips. A job whose Plan returns an error is
+// skipped for this pass: its keys, job and hash entry are left out and the other jobs are planned.
+// The log line has the job id, the day and the kind of the error, never its text, which may hold a
+// secret.
+func (r *reconciler) planLogged(ctx context.Context, day contracts.Day, sess daySessions, lg *slog.Logger) (plan, error) {
 	p := plan{job: map[contracts.ExpectedKey]contracts.Job{}, held: map[contracts.ExpectedKey]bool{}}
 	h := sha256.New()
 	for _, j := range r.jobs {
@@ -148,7 +157,13 @@ func (r *reconciler) plan(ctx context.Context, day contracts.Day, sess daySessio
 		}
 		keys, hash, err := j.Plan(ctx, day)
 		if err != nil {
-			return plan{}, fmt.Errorf("plan %s %s: %w", j.ID(), day, err)
+			kind := "error"
+			var te contracts.TypedError
+			if errors.As(err, &te) {
+				kind = string(te.Kind())
+			}
+			lg.Warn("plan failed, job skipped", slog.String("job", j.ID()), slog.String("day", string(day)), slog.String("kind", kind))
+			continue
 		}
 		fmt.Fprintf(h, "%s=%s;", j.ID(), hash)
 		notYet, err := r.notDue(j, sess)

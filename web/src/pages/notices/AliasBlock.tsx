@@ -10,6 +10,8 @@ import type { Payload } from '@/types/option_notices_page'
 
 type Block = Payload['accounts'][number]
 
+const STATUS_LABEL: Record<string, string> = { ok: 'Current', stale: 'Stale', no_capture: 'No capture' }
+
 export function AliasBlock({ block }: { block: Block }) {
   return (
     <Card data-alias={block.alias} className="min-w-0">
@@ -17,7 +19,7 @@ export function AliasBlock({ block }: { block: Block }) {
         <CardTitle className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold">{block.alias}</h2>
           <Badge variant="outline" data-status={block.status}>
-            {block.status}
+            {STATUS_LABEL[block.status] ?? block.status}
           </Badge>
           {block.data_day ? <Badge variant="secondary">{block.data_day}</Badge> : null}
         </CardTitle>

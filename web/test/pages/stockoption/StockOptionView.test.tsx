@@ -126,6 +126,10 @@ describe('stock option view', () => {
     expect(validate(ok).ok).toBe(true)
   })
 
+  it('validates the ok fixture served as schema_version 2', () => {
+    expect(validate({ ...ok, schema_version: 2 }).ok).toBe(true)
+  })
+
   it('registers under its schema name', () => {
     expect(registration.schema).toBe(ok.schema)
   })
