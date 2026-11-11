@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/compute/ivbar"
@@ -26,7 +27,7 @@ func init() {
 				}
 				return nil, "", nil
 			}
-			j, err := jc.f.ivHistory(h)
+			j, err := jc.f.ivHistory(h, jc.brk)
 			return j, "", err
 		},
 	})
@@ -57,10 +58,61 @@ func ivHistoryClient(ctx context.Context, jc *jobCtx) broker.HistoryClient {
 
 // ivHistory builds iv_history over the history client, the reading store opened for compute_figures and the
 // watch list; the close of a bar becomes the stored text through the ivbar package.
-func (f jobFactory) ivHistory(h broker.HistoryClient) (contracts.Job, error) {
-	j, err := ivhistory.New(h, f.compute.Readings, f.compute.Readings, f.watch, ivbar.FromClose, f.clk)
+func (f jobFactory) ivHistory(h broker.HistoryClient, b broker.Broker) (contracts.Job, error) {
+	j, err := ivhistory.New(ivHistoryResolving(h, b), f.compute.Readings, f.compute.Readings, f.watch, ivbar.FromClose, f.clk)
 	if err != nil {
 		return nil, fmt.Errorf("build iv_history job failed: %w", err)
 	}
 	return j, nil
+}
+
+// resolvingHistory gives a query whose contract has no con_id the one the broker names, as bars_refresh does:
+// one ResolveContract per contract for the life of the client. pyside refuses a bar query without a con_id.
+type resolvingHistory struct {
+	h   broker.HistoryClient
+	b   broker.Broker
+	mu  sync.Mutex
+	ids map[broker.Contract]int64
+}
+
+func ivHistoryResolving(h broker.HistoryClient, b broker.Broker) broker.HistoryClient {
+	return &resolvingHistory{h: h, b: b, ids: map[broker.Contract]int64{}}
+}
+
+// notListedError is the Permanent answer for a contract the broker does not list.
+type notListedError struct{ symbol string }
+
+func (e notListedError) Error() string           { return "iv_history: " + e.symbol + " is not listed" }
+func (notListedError) Kind() contracts.ErrorKind { return contracts.Permanent }
+
+// Bars reads the bars of q, with the con_id of its contract resolved when it has none.
+func (r *resolvingHistory) Bars(ctx context.Context, q broker.BarQuery) ([]broker.Bar, error) {
+	if q.Contract.ConID == 0 {
+		id, err := r.conID(ctx, q.Contract)
+		if err != nil {
+			return nil, err
+		}
+		q.Contract.ConID = id
+	}
+	return r.h.Bars(ctx, q)
+}
+
+// Close closes the wrapped client only.
+func (r *resolvingHistory) Close() error { return r.h.Close() }
+
+func (r *resolvingHistory) conID(ctx context.Context, c broker.Contract) (int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if id, ok := r.ids[c]; ok {
+		return id, nil
+	}
+	got, err := r.b.ResolveContract(ctx, c)
+	if err != nil {
+		return 0, err
+	}
+	if !got.Listed || got.Contract.ConID == 0 {
+		return 0, notListedError{symbol: c.Symbol}
+	}
+	r.ids[c] = got.Contract.ConID
+	return got.Contract.ConID, nil
 }
