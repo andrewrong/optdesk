@@ -322,6 +322,8 @@ describe('OptionPage', () => {
     const pane = host.querySelector('[data-market=US]')!
     expect(pane.textContent).toContain('没有链数据')
     expect(pane.querySelector('[data-table=chain]')).toBeNull()
+    expect(pane.querySelector('[data-chain-empty]')).not.toBeNull()
+    expect(pane.querySelector('[data-chain]')).toBeNull()
   })
 
   it('shows the verdict of the payload, not one derived from the numbers', async () => {
