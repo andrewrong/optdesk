@@ -1,0 +1,25 @@
+# Manifest of the option_open_jp job: the pull of the planned JP contracts at the TSE open plus 5 minutes (Decision 21).
+version = 1
+id = "option_open_jp"
+zone = "Asia/Tokyo"
+currency = "JPY"
+exchange = "TSEJ"
+slot = "0905"
+chunk = 30
+max_per_key = 120
+budget_minutes = 8
+stop_after = "0930"
+heartbeat_seconds = 30
+min_ok_share = 0.5
+retry_classes = ["around_spot", "puts", "held"]
+# The TSE lunch break, HH:MM as HHMM: the refresh asks nothing inside it (the calendar knows only open and close).
+# Read through optionopen.JPLunchBreak().
+lunch_break = ["1130", "1230"]
+
+# 09:05 JST, five minutes after the open, with a 20 minute bound.
+[schedule]
+calendar = "XTKS"
+anchor = "session_open"
+offset = "5m"
+run_bound = "20m"
+restart_sensitive = true
