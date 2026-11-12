@@ -69,9 +69,9 @@ type typedError struct {
 func (e *typedError) Error() string             { return e.msg }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
-// errSourceFailed is the one error of a day that holds an error row. It carries no text of the source, so a
-// first run and a second run return the same value and no key or address can leak.
-var errSourceFailed = &typedError{contracts.Permanent, "earningsrefresh: a source failed today; no retry the same day"}
+// errSourceFailed is the one error of a run whose Fetch failed. It carries no text of the source, so no key or
+// address can leak.
+var errSourceFailed = &typedError{contracts.Permanent, "earningsrefresh: a source failed"}
 
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 	var te contracts.TypedError
@@ -200,30 +200,41 @@ func (j *job) Postcondition(ctx context.Context, day, datasetID, subjectKey stri
 	return len(rows) > 0, nil
 }
 
-// readDay reads the rows of day: the row of each entry, the markets that have a vendor row and whether a row
-// is an error.
-func (j *job) readDay(ctx context.Context, day contracts.Day) (have map[string]contracts.EarningsDate, vendorRow map[string]bool, failed bool, err error) {
-	have, vendorRow = map[string]contracts.EarningsDate{}, map[string]bool{}
+// readDay reads the rows of day: the stored answer of each entry, the markets that have a vendor answer and the
+// highest attempt of each issuer whose latest row is an error. An error row is not an answer: it is left out of
+// have and vendorRow, so the next run fetches again and writes the next attempt.
+func (j *job) readDay(ctx context.Context, day contracts.Day) (
+	have map[string]contracts.EarningsDate, vendorRow map[string]bool, errAttempt map[string]int, err error,
+) {
+	have, vendorRow, errAttempt = map[string]contracts.EarningsDate{}, map[string]bool{}, map[string]int{}
 	for _, e := range j.entries {
 		rows, err := j.r.EarningsDates(ctx, e.Issuer, day, day)
 		if err != nil {
-			return nil, nil, false, err
+			return nil, nil, nil, err
 		}
 		if len(rows) == 0 {
 			continue
 		}
-		row := rows[len(rows)-1]
+		row := rows[0]
+		for _, x := range rows {
+			if x.Attempt > row.Attempt {
+				row = x
+			}
+		}
+		if row.Status == "error" {
+			errAttempt[e.Issuer] = row.Attempt
+			continue
+		}
 		have[e.Issuer] = row
-		failed = failed || row.Status == "error"
 		if row.Source != "owner" && row.Source != "none" {
 			vendorRow[e.Market] = true
 		}
 	}
-	return have, vendorRow, failed, nil
+	return have, vendorRow, errAttempt, nil
 }
 
 // Run writes the rows of day that are missing. It makes at most one Fetch per source and none for a market
-// that already has a vendor row of the day (error included), and never retries.
+// that already has a vendor row of the day; an error row is not one, so it is fetched again with the next attempt.
 func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	observed, err := date(string(day))
 	if err != nil {
@@ -234,7 +245,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	// Development mode: the vendors answer for today, so a past day runs with the clock's date in the manifest zone.
 	day = contracts.Day(j.clk.Now().In(j.loc).Format(dayLayout))
 	observed, _ = date(string(day))
-	have, vendorRow, failedBefore, err := j.readDay(ctx, day)
+	have, vendorRow, errAttempt, err := j.readDay(ctx, day)
 	if err != nil {
 		j.logFailure("read_day", err)
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
@@ -242,7 +253,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	now := j.clk.Now().UTC()
 	base := func(e jobs.WatchEntry) contracts.EarningsDate {
 		return contracts.EarningsDate{
-			Attempt: 1, Issuer: e.Issuer, Market: vendor[e.Market].Market, ObservedOn: *observed,
+			Attempt: errAttempt[e.Issuer] + 1, Issuer: e.Issuer, Market: vendor[e.Market].Market, ObservedOn: *observed,
 			ReceivedAt: now, Symbol: e.Contract.Symbol,
 		}
 	}
@@ -272,12 +283,11 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	}
 	fetched, fetchFailed := j.fetchPending(ctx, day, pending, base)
 	rows = append(rows, fetched...)
-	failed := failedBefore || fetchFailed
 	res := j.write(ctx, rows)
 	if res.Err != nil {
 		return res
 	}
-	if failed {
+	if fetchFailed {
 		j.logFailure("source_failed", errSourceFailed)
 		res.Err = errSourceFailed
 	}
