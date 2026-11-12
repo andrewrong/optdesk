@@ -98,8 +98,12 @@ type evBroker struct {
 	c evc
 }
 
-func (f evSD) Close() error     { return f.c.close() }
-func (f evLedger) Close() error { return f.c.close() }
+func (f evSD) Close() error { return f.c.close() }
+func (evLedger) Acquire(context.Context, string, time.Duration) (store.Lease, error) {
+	return store.Lease{}, nil
+}
+func (evLedger) Release(context.Context, store.Lease) error { return nil }
+func (f evLedger) Close() error                             { return f.c.close() }
 func (f evLedger) Cursor(context.Context) (store.Cursor, error) {
 	return store.Cursor{Day: f.d}, nil
 }
@@ -348,16 +352,12 @@ func newRig(t *testing.T, env string) *rig {
 		r.snapRes, r.snapW = res, w
 		return brokerJob{Job: namedJob{id: "quote_snapshot"}, b: b}, r.fail["snapjob"]
 	}
-	d.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, rule runner.WindowRule) runner.Reconciler {
-		r.jobs, r.rule = js, rule
-		return recReconciler{r}
-	}
 	fakeBackfillDeps(r.a, &fakeBackfiller{}, &fakeKeySyncer{})
 	d.newReconciler = func(
 		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, rule runner.WindowRule, _ runner.KeyRunner,
 	) (runner.Reconciler, runner.Backfiller) {
-		r.jobs, r.backRule = js, rule
-		return nil, &fakeBackfiller{}
+		r.jobs, r.rule, r.backRule = js, rule, rule
+		return recReconciler{r}, &fakeBackfiller{}
 	}
 	return r
 }

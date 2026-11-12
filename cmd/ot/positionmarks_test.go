@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/jonboulle/clockwork"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -63,11 +64,15 @@ func newMarkRig(t *testing.T, withDSN bool) *markRig {
 		}
 		return marksJob{}, nil
 	}
-	d.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, _ runner.WindowRule) runner.Reconciler {
+	d.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	d.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	d.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		for _, j := range js {
 			r.ids = append(r.ids, j.ID())
 		}
-		return recRunner{day: new(contracts.Day)}
+		return recRunner{day: new(contracts.Day)}, nil
 	}
 	return r
 }

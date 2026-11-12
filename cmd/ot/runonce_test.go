@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/jonboulle/clockwork"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -71,6 +73,10 @@ func (f fakeLedger) Cursor(context.Context) (store.Cursor, error) {
 func (f fakeLedger) Present(context.Context, contracts.Day) (map[contracts.ExpectedKey]store.PresentStatus, error) {
 	return nil, nil
 }
+func (f fakeLedger) Acquire(context.Context, string, time.Duration) (store.Lease, error) {
+	return store.Lease{}, nil
+}
+func (f fakeLedger) Release(context.Context, store.Lease) error               { return nil }
 func (f fakeLedger) Runs(context.Context, contracts.Day) ([]store.Run, error) { return nil, nil }
 func (f fakeSeries) Close() error                                             { f.n.Add(1); return nil }
 
@@ -131,8 +137,11 @@ func (r recRunner) Reconcile(_ context.Context, d contracts.Day) error { *r.day 
 func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 	clk := a.deps.newClock
 	a.deps = deps{
-		openFence: fenceOpener(&fakeInstFence{}),
-		newClock:  clk,
+		openFence:           fenceOpener(&fakeInstFence{}),
+		newClock:            clk,
+		newFwClock:          func() clockwork.Clock { return clockwork.NewFakeClock() },
+		openSchedulerLedger: func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil },
+		newKeyRunner:        func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil },
 		openUnderlying: func(context.Context, string) (underlying.Store, error) {
 			return &fakeUnderlyingStore{rows: []underlying.Row{oneUSRow()}}, nil
 		},
@@ -210,8 +219,10 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newQuoteSnapshot: func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
-		newRunner: func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Reconciler {
-			return recRunner{day}
+		newReconciler: func(
+			store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+		) (runner.Reconciler, runner.Backfiller) {
+			return recRunner{day}, nil
 		},
 		openEarningsDates: func(context.Context, string) (store.EarningsDateStore, error) {
 			opened.Add(1)
@@ -409,23 +420,6 @@ func TestRunOnceCursorEmptyAndError(t *testing.T) {
 	}
 	if got != "" || opened.Load() != closed.Load() || opened.Load() == 0 {
 		t.Fatalf("reconciled %q opened %d closed %d", got, opened.Load(), closed.Load())
-	}
-}
-
-func TestRunOnceRefusedWhileSchedulerLive(t *testing.T) {
-	t.Parallel()
-	a, _ := testApp(t, fullEnv)
-	var opened, closed atomic.Int32
-	var got contracts.Day
-	runOnceFakes(a, &opened, &closed, &got)
-	inst := &fakeInstFence{held: true}
-	a.deps.openFence = fenceOpener(inst)
-	err := runOnce(a, []string{"--day", "2026-03-04"})
-	if err == nil || !strings.Contains(err.Error(), "ot scheduler status") {
-		t.Fatalf("err %v", err)
-	}
-	if got != "" || opened.Load() != 0 || inst.count() != 1 {
-		t.Fatalf("reconciled %q, opened %d, tries %d", got, opened.Load(), inst.count())
 	}
 }
 
@@ -705,5 +699,97 @@ func TestRunOnceOptionEodTranslatorWithAccountLine(t *testing.T) {
 	}
 	if c.heldAcct == nil || c.heldTr == nil || c.heldTr != want {
 		t.Fatalf("held reader %v translator %v, want the symbols of the deps", c.heldAcct, c.heldTr)
+	}
+}
+
+func TestRunOnceTakesNoFence(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	a.deps.openFence = func(context.Context, string) (store.InstanceFence, error) {
+		t.Error("openFence called")
+		return nil, errors.New("no fence")
+	}
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != "2026-03-04" {
+		t.Fatalf("reconciled %q", got)
+	}
+}
+
+func TestRunOnceNamesRunningJob(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
+	a, _ := leaseRig(t, []store.Run{
+		{ID: "old", Status: store.RunRunning, LeaseUntil: now.Add(-time.Minute), Key: contracts.ExpectedKey{DatasetID: "other.v1"}},
+		{ID: "live", Status: store.RunRunning, LeaseUntil: now.Add(time.Minute), Key: contracts.ExpectedKey{DatasetID: "figures.v1"}},
+	})
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	want := "run-once refused: job compute_figures is running (dataset figures.v1); retry when it has finished"
+	if err == nil || err.Error() != want {
+		t.Fatalf("err %v, want %q", err, want)
+	}
+	if strings.Contains(err.Error(), "secret-ledger-text") {
+		t.Fatalf("err holds the ledger text: %v", err)
+	}
+}
+
+func TestRunOnceLeaseHeldNoRun(t *testing.T) {
+	t.Parallel()
+	a, _ := leaseRig(t, nil)
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.HasPrefix(err.Error(), "run-once refused:") || !strings.Contains(err.Error(), "runner lease is held by another run") ||
+		strings.Contains(err.Error(), "secret-ledger-text") {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestRunOnceClosesLedger(t *testing.T) {
+	t.Parallel()
+	a, slClosed := leaseRig(t, nil)
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err == nil {
+		t.Fatal("want a refusal")
+	}
+	if slClosed.Load() != 1 {
+		t.Fatalf("refusal path: scheduler ledger closed %d times", slClosed.Load())
+	}
+	b, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(b, &opened, &closed, &got)
+	var sc atomic.Int32
+	b.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) {
+		return &countSchedLedger{closed: &sc}, nil
+	}
+	if err := runOnce(b, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if sc.Load() != 1 {
+		t.Fatalf("success path: scheduler ledger closed %d times", sc.Load())
+	}
+}
+
+type dbDownRunner struct{}
+
+// Reconcile fails Retryable as ops/ledger.go wraps a database error, e.g. "ops: set cursor: conn reset".
+func (dbDownRunner) Reconcile(context.Context, contracts.Day) error { return secretRetryable{} }
+
+func TestRunOnceDBErrorIsNotALeaseRefusal(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	a.deps.newReconciler = func(
+		store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
+		return dbDownRunner{}, nil
+	}
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	if err == nil || strings.Contains(err.Error(), "runner lease is held by another run") {
+		t.Fatalf("a ledger failure with the lease free was reported as a held lease: %v", err)
 	}
 }

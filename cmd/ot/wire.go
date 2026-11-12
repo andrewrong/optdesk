@@ -118,7 +118,6 @@ type deps struct {
 	newFRED                 sources.NewFREDFunc
 	newFredSeries           fredseries.NewFredSeriesFunc
 	newSeriesHistory        serieshistory.NewSeriesHistoryFunc
-	newRunner               runner.NewWithRuleFunc
 	newBackfiller           runner.NewBackfillerWithRuleFunc
 	dialBroker              broker.DialFunc
 	newReference            broker.NewReferenceFunc
@@ -281,7 +280,6 @@ func newBaseDeps() deps {
 		newFRED:                 fred.New,
 		newFredSeries:           fredseries.New,
 		newSeriesHistory:        serieshistory.New,
-		newRunner:               reconcile.NewWithRule,
 		newBackfiller:           reconcile.NewBackfillerWithRule,
 		dialBroker:              grpcbroker.Dial,
 		newReference:            grpcbroker.DialReference,
