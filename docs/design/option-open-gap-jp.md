@@ -47,7 +47,7 @@ So about four of the six steps exist for the US. The delta of this design: the s
 
 ### Same-morning visibility
 
-11. What shows a failed key today: `sched/gaps.go` `keyKind` gives a missing key a gap only after the window close of its dataset (`!closed || running` gives none, except the crash brake), and a `no_value` key none unless the runner wrote `expired`. The readers of open gaps are `ot check scheduler`, the Telegram notifier (`NotifyGaps`, which prints a reason it does not know as "unknown", `internal/notify/core/text.go`), the morning notice and the freshness read; no web page lists the gaps of the day (`pages/gaps.Lines` has only test callers) [unverified beyond `grep` of non-test callers]. So the same-morning view is made with the existing kind `expired`, not a new one: the list datasets have their own windows (Decision 6) and the list job states a window that closes at its stop time, `close_offset = "-7h20m"` of the session close (US 16:00 gives 08:40 ET, the plan is at 08:45; JP 15:30 gives 08:10 JST, the plan is at 08:15; the JP pre-open pass `-8h30m` gives 07:00 JST). A key still retrying at that instant ends `expired` through the Close table, retries stop at the plan, and `expired` is a gap that Telegram and `ot check scheduler` already report. The day's failures also need a page: `ops.capture_run` (status, error_code, reason_code, usable_n) has no `rd` view and no web page reads runs on main, and `rd.job_gap_r1` holds gaps only, so entries 6 and 7 add the view, its reader and a builder of today's runs that erred or stored nothing; the page schema and the web view are not in this design (Left out).
+11. What shows a failed key today: `sched/gaps.go` `keyKind` gives a missing key a gap only after the window close of its dataset (`!closed || running` gives none, except the crash brake), and a `no_value` key none unless the runner wrote `expired`. The readers of open gaps are `ot check scheduler`, the Telegram notifier (`NotifyGaps`, which prints a reason it does not know as "unknown", `internal/notify/core/text.go`), the morning notice and the freshness read; no web page lists the gaps of the day (`pages/gaps.Lines` has only test callers) [unverified beyond `grep` of non-test callers]. So the same-morning view is made with the existing kind `expired`, not a new one: the list datasets have their own windows (Decision 6) and the list job states a window that closes at its stop time, `close_offset = "-7h20m"` of the session close (US 16:00 gives 08:40 ET, the plan is at 08:45; JP 15:30 gives 08:10 JST, the plan is at 08:15; the JP pre-open pass `-8h30m` gives 07:00 JST). A key still retrying at that instant ends `expired` through the Close table, retries stop at the plan, and `expired` is a gap that Telegram and `ot check scheduler` already report. The day's failures also need a page: `ops.capture_run` (status, error_code, reason_code, usable_n) has no `rd` view and no web page reads runs on main, and `rd.job_gap_r1` holds gaps only, so entries 6 to 10 add the view and its reader, the page schema, the builder of today's runs that erred or stored nothing, the web view (a new page reached from the existing menu, because `web/` has no ops or status page) and the serving wiring. The owner works on the web page, so a builder without a view would show nothing.
 
 ### Load: IBKR's limits, and which limit bounds which stage
 
@@ -71,7 +71,7 @@ So about four of the six steps exist for the US. The delta of this design: the s
 
 ### What does not change
 
-13. `Contracts: unchanged`: no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto` changes (the five columns are in `master.option_list`, a store table; `docs/contracts/store.md` states them). Not edited: `internal/jobs/api.go`. Edited, by entries 1 and 2 only: `internal/store/openquote/api.go` (five fields) and one new migration. `option_list_run` is not written by this design (its CHECK of reasons does not hold a new one, and its `PutListRuns` overwrites on conflict, `lists.go:33-40`; the list job of `option-contract-lists.md` owns it). `docs/design/modules.md` is not edited: the new files sit in the rows jobs and ot.
+13. This design pull request: `Contracts: unchanged`: no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto` changes (the five columns are in `master.option_list`, a store table; `docs/contracts/store.md` states them). The issue of entry 7 adds `contracts/schemas/page.ops_runs_page.v1.json`, so that pull request carries `Contracts: changed`. Not edited: `internal/jobs/api.go`. Edited, by entries 1 and 2 only: `internal/store/openquote/api.go` (five fields) and one new migration. `option_list_run` is not written by this design (its CHECK of reasons does not hold a new one, and its `PutListRuns` overwrites on conflict, `lists.go:33-40`; the list job of `option-contract-lists.md` owns it). `docs/design/modules.md` is not edited: the new files sit in the rows jobs and ot.
 
 ## Interface
 
@@ -175,21 +175,73 @@ Acceptance:
 5. The result matches docs/design/option-open-gap-jp.md#same-morning-visibility.
 Checked by CI: ci-go; `go test ./internal/store ./internal/store/ops -race -count=1`; the `pg` test runs only in GitHub CI.
 
-### 7 pages-ops-runs-builder
+### 7 contracts-ops-runs-page-schema (interface)
+
+Module: contracts. Size: S.
+Files: `contracts/schemas/page.ops_runs_page.v1.json` (new), `web/src/generated/ops_runs_page.v1.ts` (new, generated), `internal/contracts/ops_runs_page_v1_test.go` (new), `docs/contracts/page-schemas.md`
+Design: docs/design/option-open-gap-jp.md#same-morning-visibility
+Order: independent of the other entries (it builds in parallel with 6); before 8 and 9. Interface entry: it carries the Design line and the pull request carries `Contracts: changed` (the schema is a file under `contracts/schemas`).
+Goal: the JSON schema of the ops runs page, version 1: `day`, `runs` (rows of `dataset`, `key`, `status`, `error_code`, `reason_code`, `returned_n`, `usable_n` and the producer's `text`), `gaps` (rows of `dataset`, `day`, `reason`, `text`) and `notes`; every text is the producer's, the schema has no number the view must compute; the generated TypeScript type is produced from the schema and committed with it (never edited by hand); the contract test holds one valid and two invalid payloads (a missing `runs`, an unknown field).
+Acceptance:
+1. `grep -c "page.ops_runs_page.v1" docs/contracts/page-schemas.md` prints at least 1, and `grep -c '"additionalProperties": false' contracts/schemas/page.ops_runs_page.v1.json` prints at least 3.
+2. `grep -c "OpsRunsPage\|Run\b\|Gap\b" web/src/generated/ops_runs_page.v1.ts` prints at least 3, and the generated file equals the output of the project's generator for the schema (`git diff --exit-code` after `pnpm run generate` in CI).
+3. `grep -rhE "^func (TestOpsRunsPageValid|TestOpsRunsPageMissingRunsRefused|TestOpsRunsPageUnknownFieldRefused)\(" internal/contracts | wc -l` prints 3.
+4. `git diff --name-only origin/main` lists no path outside the Files line.
+5. The result matches docs/design/option-open-gap-jp.md#same-morning-visibility.
+Checked by CI: ci-go; `go test ./internal/contracts -race -count=1`; the contracts generation check.
+
+### 8 pages-ops-runs-builder
 
 Module: pages. Size: S.
-Files: `internal/pages/ops_runs/builder.go` (new), `internal/pages/ops_runs/builder_test.go` (new), `docs/contracts/pages.md`
+Files: `internal/pages/ops_runs_page/builder.go` (new), `internal/pages/ops_runs_page/builder_test.go` (new), `internal/pages/ops_runs_page/purity_test.go` (new), `docs/contracts/pages.md`
 Design: docs/design/option-open-gap-jp.md#same-morning-visibility
-Order: after 6.
-Goal: a builder `ops_runs.Build(runs []store.RunRow, gaps []store.Gap)` of today's runs that erred (`error_code` set) or stored nothing (`status` finished with `usable_n` 0), plus today's open gaps, one line each with dataset, key, status, error code, reason code and returned and usable counts; it reads the rows and does no arithmetic beyond the filter; no page schema and no web view are in this entry (they are a contracts entry and a web entry the owner schedules; a later pull request changes `contracts/schemas` and carries its own `Contracts:` line).
+Order: after 6 and 7 (it reads `store.RunRow` and builds the schema's payload); in parallel with 9.
+Goal: `Build(runs []store.RunRow, gaps []store.Gap)` returns the payload of the schema: today's runs that erred (`error_code` set) or stored nothing (finished with `usable_n` 0), plus today's open gaps, each with its `text` written by the builder (dataset, key, status, codes and counts); the filter is the only logic; no database import.
 Acceptance:
-1. `grep -c "usable_n\|UsableN" internal/pages/ops_runs/builder.go` prints at least 1, and `grep -c "pgx\|database/sql" internal/pages/ops_runs/builder.go` prints 0.
-2. `grep -rhE "^func (TestErroredRunIsListed|TestEmptyRunIsListed|TestCleanRunIsNotListed|TestOpenGapIsListed|TestNoRunsGivesNoLines)\(" internal/pages/ops_runs | wc -l` prints 5.
+1. `grep -c "pgx\|database/sql" internal/pages/ops_runs_page/builder.go` prints 0, and `grep -c "UsableN" internal/pages/ops_runs_page/builder.go` prints at least 1.
+2. `grep -rhE "^func (TestErroredRunIsListed|TestEmptyRunIsListed|TestCleanRunIsNotListed|TestOpenGapIsListed|TestNoRunsGivesEmptyPayload|TestPayloadValidatesAgainstSchema)\(" internal/pages/ops_runs_page | wc -l` prints 6.
 3. `git diff --name-only origin/main` lists no path outside the Files line.
 4. The result matches docs/design/option-open-gap-jp.md#same-morning-visibility.
-Checked by CI: ci-go; `go test ./internal/pages/ops_runs -race -count=1`.
+Checked by CI: ci-go; `go test ./internal/pages/ops_runs_page -race -count=1`.
 
-### 8 ot-list-jp-wiring
+### 9 web-ops-runs-view
+
+Module: web. Size: S.
+Files: `web/src/pages/ops_runs/OpsRunsPage.tsx` (new), `web/src/pages/ops_runs/OpsRunsPage.test.tsx` (new), `web/src/main.tsx`, `web/src/shell/TopNav.tsx`
+Design: docs/design/option-open-gap-jp.md#same-morning-visibility
+Order: after 7; in parallel with 8 (the test uses a fixture payload of the schema).
+Goal: a new page, because `web/` has no ops or status page to extend (the nearest are the Notices page, which is about option positions, and the Diagnosis page, which is about companies); it follows `DiagnosisPage.tsx`: the view shows the producer's texts and computes, ranks and formats nothing; it is reachable from the existing nav through a "Runs" link in the menu of `TopNav.tsx` (path `/ops/runs`) and a route in `main.tsx`.
+Frontend lines (按 frontend-stack, `docs/adr/0034-frontend-stack.md`):
+- 按 frontend-stack：用 shadcn Data Table（TanStack Table 8）做 runs 表，列头取自 schema，不排序不求和。
+- 按 frontend-stack：用 shadcn Card 和 Badge 做 gaps 区块和状态标记，文字取自 producer。
+- 按 frontend-stack：用 Ajv standalone（`validate` of `@/types/ops_runs_page`）做 payload 校验，校验失败显示 StaleAlert。
+- 按 frontend-stack：用 Lucide 做导航图标，用 Tailwind 做布局，不加新依赖。
+- 按 frontend-stack：用 Vitest 和 jsdom 做渲染测试，用 Playwright 做版面测试。
+Acceptance:
+1. `grep -c "ops_runs_page" web/src/pages/ops_runs/OpsRunsPage.tsx` prints at least 1, and `grep -c "/ops/runs" web/src/shell/TopNav.tsx web/src/main.tsx` prints at least 1 for each.
+2. `grep -c "sort(\|reduce(\|toFixed(\|Intl\." web/src/pages/ops_runs/OpsRunsPage.tsx` prints 0 (the view computes nothing).
+3. `git diff origin/main -- package.json pnpm-lock.yaml | wc -l` prints 0 (no new dependency).
+4. `grep -rhE "^\s*(it|test)\(" web/src/pages/ops_runs/OpsRunsPage.test.tsx | wc -l` prints at least 3.
+5. `git diff --name-only origin/main` lists no path outside the Files line.
+6. The result matches docs/design/option-open-gap-jp.md#same-morning-visibility.
+Checked by CI: web: `tsc`, `eslint`, `vitest` and the build.
+
+### 10 ot-ops-runs-page-wiring
+
+Module: ot. Size: S.
+Files: `cmd/ot/ops_runs_site.go` (new), `cmd/ot/ops_runs_site_test.go` (new), `cmd/ot/wire.go`, `docs/contracts/ot/pages/ops_runs_page.md` (new)
+Design: docs/design/option-open-gap-jp.md#same-morning-visibility
+Order: after 6 and 8. The entry also reads `cmd/ot/pagereg_test.go`, `cmd/ot/pagelist_test.go` and `cmd/ot/check_blocks.json` and, if a test there names every page, reports the file as a needed change in its pull request and does not edit it (the Files rule).
+Goal: the page `ops_runs_page` is served by `ot serve` from the run reader and the gap reader, read-only, like `notices_site.go`; its contract doc states the sources and the day.
+Acceptance:
+1. `grep -c "ops_runs_page" cmd/ot/wire.go cmd/ot/ops_runs_site.go` prints at least 1 for each.
+2. `grep -c "^Order: \|^Sources: " docs/contracts/ot/pages/ops_runs_page.md` prints 2.
+3. `grep -rhE "^func (TestOpsRunsSiteServesPayload|TestOpsRunsSiteIsReadOnly)\(" cmd/ot | wc -l` prints 2.
+4. `git diff --name-only origin/main` lists no path outside the Files line.
+5. The result matches docs/design/option-open-gap-jp.md#same-morning-visibility.
+Checked by CI: ci-go; `go test ./cmd/ot -race -count=1`.
+
+### 11 ot-list-jp-wiring
 
 Module: ot. Size: S.
 Files: `cmd/ot/wire_optionopen.go`, `cmd/ot/wire_optionopen_test.go`, `docs/contracts/ot/jobs/option_open_resolve_gap.md`, `docs/contracts/ot/jobs/option_list_preopen_jp.md` (new), `docs/contracts/ot/jobs/option_list_gap.md` (new), `docs/contracts/ot/jobs/option_list_gap_jp.md` (new)
@@ -207,13 +259,12 @@ Checked by CI: ci-go; `go test ./cmd/ot -race -count=1`.
 
 ## Checked by CI
 
-ci-go runs `go test ./internal/store/openquote ./internal/store/optionopenpg ./internal/jobs/optionopen ./cmd/ot -race -count=1` for entries 1 to 8 (with `./internal/store ./internal/store/ops ./internal/pages/ops_runs`). Nothing here needs PostgreSQL, a live broker or a sleep. The first live check is the dispatcher's: one read-only probe of `ListContracts` on an OSE name on port 4001 once the rpc entry and the pyside restart are in (Doubt 1).
+ci-go runs `go test ./internal/store/openquote ./internal/store/optionopenpg ./internal/jobs/optionopen ./cmd/ot -race -count=1` for entries 1 to 11 (with `./internal/store ./internal/store/ops ./internal/contracts ./internal/pages/ops_runs_page`); the web check (`tsc`, `eslint`, `vitest`, build) runs for entry 9. Nothing here needs PostgreSQL, a live broker or a sleep. The first live check is the dispatcher's: one read-only probe of `ListContracts` on an OSE name on port 4001 once the rpc entry and the pyside restart are in (Doubt 1).
 
 ## Left out
 
 - A new gap kind `retrying` in `sched/gaps.go`: the notifier prints an unknown reason as "unknown" and `notify` is another module, the rank would need renumbering, and every routine Retryable of every job would become a gap. The early window close of Decision 11 gives the same-morning `expired` gap with no runner change.
 
-- The page schema (`contracts/schemas`) and the web view of the ops page: entries 6 and 7 give the view, the reader and the builder only; the schema is a contracts entry (its pull request changes `Contracts:`) and the view a web entry, scheduled by the owner. Until then the same-morning view is `ot check scheduler` and the Telegram notifier (Decision 11).
 - A per-contract resolve for JP, a daily or per-name cap, and any write of `master.option_list_run` by the gap: the owner's real limit is the lane (Decision 12), and the table's reasons are the list job's.
 - A live snapshot of the underlying when the stored bar is missing: Decision 17 asks the gateway for the last daily bar instead (`HistoryClient`); a live snapshot is a later change if the owner wants it (`Broker.Snapshot` has only `KindOptionEod`).
 - Stopping the next stage when a key is retrying: the stages are ordered by the clock; the plan reads what is stored and its own `Retryable` shows a name that has nothing.
@@ -222,7 +273,7 @@ ci-go runs `go test ./internal/store/openquote ./internal/store/optionopenpg ./i
 ## Doubts
 
 1. Whether the pyside `ListContracts` serves the OSE names (class = stock code, OSE.JPN, multiplier 100) is unverified. The dispatcher probes port 4001 once entry 1 of `option-contract-lists.md` (#1742) and the pyside restart are in. If it does not, entry 2's JP jobs end every name `unserved` (retrying, visible) and JP stays on the evening per-contract resolve.
-2. There is no web ops page that lists failed runs or open gaps on main (Decision 11). The owner's "same morning" is met on Telegram and `ot check scheduler`, and entries 6 and 7 add the view, the reader and the builder of the runs page; its schema and web view are the owner's to schedule.
+2. There is no web ops page that lists failed runs or open gaps on main (Decision 11). The owner's "same morning" is met on Telegram and `ot check scheduler`, and entries 6 to 10 add the runs page end to end (Decision 11). Its nav slot is a "Runs" link in the `TopNav` menu; the ten main items of `docs/design/unified-site.md` Decision 3 are not changed, which is the owner's call if a main item is wanted.
 3. The seven days for the invalid cache are a group freshness here, not a per-contract date, because one listing answers a whole expiry. The owner's words ("store both with 7 days") are met for the invalid side; the valid side ends at the contract's expiry, not at seven days (Decision 4). Owner call if valid contracts must also be re-listed every seven days: the list job already re-lists a stale group, so the valid ones are refreshed then.
 4. IBKR's numbers (50 messages per second, 100 market-data lines) are from memory of the TWS documentation and not checked here; the numbers that bind the code are pyside's (40 per second, 70 lines, 50 snapshots, the details lane).
 5. The list job has one key and, once it is present, is not re-run (`option-contract-lists.md` Decision 4): a name added after the gap pass (08:00 ET, 07:30 JST) is listed by nothing before the plan; the plan is `Retryable` for it and the next day lists it. Owner call if a later pass is wanted.
