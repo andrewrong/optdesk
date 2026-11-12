@@ -385,7 +385,7 @@ func newOptionTrackingPage(zone *time.Location, runID, buildID, scope string, r 
 	return option_tracking_page.NewPage(option_tracking_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone,
 		Ledger: r.Ledger, Account: r.Account, Candidates: r.Candidates, Eod: r.Eod, Catalog: r.Catalog,
-		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions,
+		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions, Marks: r.Marks,
 		Tracker: optiontrack.New(), Replay: optionledger.New(),
 		Params:     trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30},
 		CalendarID: "XNYS",

@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
 // trackingFixture is an app whose optionTrackingPage fake builds {"schema":"option_tracking_page"} and records
@@ -332,4 +333,28 @@ func innerLedger(r store.OptionLedgerReader) store.OptionLedgerReader {
 		return w.OptionLedgerReader
 	}
 	return r
+}
+
+func TestTrackingReadersMarks(t *testing.T) {
+	t.Parallel()
+	m := &positionsMarks{}
+	got := trackingReadersOf(siteReaders{marks: m})
+	if got.Marks != mark.Reader(m) {
+		t.Fatalf("Marks %v", got.Marks)
+	}
+	if trackingReadersOf(siteReaders{}).Marks != nil {
+		t.Fatal("nil marks not nil")
+	}
+}
+
+func TestTrackingBuildPassesMarks(t *testing.T) {
+	t.Parallel()
+	f := newTrackingFixture(t, "")
+	m := &positionsMarks{}
+	if _, err := buildTracking(t.Context(), f.a, trackingClock, "2026-11-05", siteReaders{marks: m}); err != nil {
+		t.Fatal(err)
+	}
+	if f.got.Marks != mark.Reader(m) {
+		t.Fatalf("recorded Marks %v", f.got.Marks)
+	}
 }
