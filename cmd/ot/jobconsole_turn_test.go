@@ -611,3 +611,60 @@ func TestJobFilterPassedToBackfillWith(t *testing.T) {
 		t.Fatalf("datasets %v day %s", got, r.bf.days[0])
 	}
 }
+
+// jcErrorLines returns the lines of the log buffer of the rig at level ERROR.
+func jcErrorLines(r *jcRig) []string {
+	var out []string
+	for _, l := range strings.Split(strings.TrimSpace(r.out.String()), "\n") {
+		if strings.Contains(l, "level=ERROR") {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+func TestFailedBackfillLogsErrorLine(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	r.bf.err = errors.New("dayState: boom")
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "error")
+	got := jcErrorLines(r)
+	if len(got) != 1 {
+		t.Fatalf("ERROR lines %q, want one", got)
+	}
+	for _, w := range []string{`msg="console request failed"`, "component=ot", "status=failed", "job=fred_series", "day=" + jcDay, `error="dayState: boom"`} {
+		if !strings.Contains(got[0], w) {
+			t.Fatalf("line %q lacks %s", got[0], w)
+		}
+	}
+}
+
+func TestPlanFailedLogsErrorLine(t *testing.T) {
+	t.Parallel()
+	r := newJCRig(t)
+	r.host.set([]contracts.Job{jcJob{id: "fred_series", keys: jcKey, planFn: func() error { return errors.New("plan: boom") }}}, r.bf)
+	r.add(1, "fred_series", jcDay, false)
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "plan_failed")
+	got := jcErrorLines(r)
+	if len(got) != 1 {
+		t.Fatalf("ERROR lines %q, want one", got)
+	}
+	for _, w := range []string{`msg="console request failed"`, "job=fred_series", "day=" + jcDay, `error="plan: boom"`} {
+		if !strings.Contains(got[0], w) {
+			t.Fatalf("line %q lacks %s", got[0], w)
+		}
+	}
+}
+
+func TestLeaseHeldWritesNoErrorLine(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	r.bf.err = jcTyped{contracts.Retryable}
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "lease_held")
+	if got := jcErrorLines(r); len(got) != 0 {
+		t.Fatalf("ERROR lines %q, want none", got)
+	}
+}
