@@ -80,8 +80,24 @@ func TestPlanTargetNotListedOrFailedIsNotDropped(t *testing.T) {
 	if un.status != "no_data" {
 		t.Errorf("unlisted status = %q", un.status)
 	}
-	bad := planTarget(context.Background(), &resolver{err: errors.New("x")}, p)
-	if bad.status != "error" {
-		t.Errorf("failed status = %q", bad.status)
+}
+
+func TestPlanTargetJPYStockFailedLookupUsesTSEJ(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ secType, want string }{{"stock", "STK"}, {"index", "IND"}} {
+		p := store.Position{SecType: tc.secType, Currency: "JPY", ConID: 9, Symbol: "4063"}
+		tg := planTarget(context.Background(), &resolver{err: errors.New("ambiguous")}, p)
+		if tg.status != "" || tg.contract.Exchange != "TSEJ" || tg.contract.ConID != 9 || tg.contract.SecType != tc.want {
+			t.Errorf("%s target = %+v", tc.secType, tg)
+		}
+	}
+}
+
+func TestPlanTargetJPYOptionFailedLookupIsError(t *testing.T) {
+	t.Parallel()
+	p := store.Position{SecType: "option", Currency: "JPY", ConID: 9}
+	tg := planTarget(context.Background(), &resolver{err: errors.New("x")}, p)
+	if tg.status != "error" {
+		t.Errorf("failed status = %q", tg.status)
 	}
 }
