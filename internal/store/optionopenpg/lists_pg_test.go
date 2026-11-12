@@ -16,7 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
-// listStore makes a database, applies 0034_option_list.sql and the band columns of 0035 to it and opens the writer on it.
+// listStore makes a database, applies 0034_option_list.sql and the band columns of 0036 to it and opens the writer on it.
 func listStore(t *testing.T) openquote.OptionListStore {
 	t.Helper()
 	ctx := context.Background()
@@ -34,14 +34,14 @@ func listStore(t *testing.T) openquote.OptionListStore {
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
 		t.Fatalf("apply 0034: %v", err)
 	}
-	// 0035 also makes ops and rd objects this database lacks: only its first statement, the band columns, applies here.
-	raw, err = os.ReadFile("../../../migrations/0035_option_list_band_run_view.sql")
+	// 0036 also makes ops and rd objects this database lacks: only its first statement, the band columns, applies here.
+	raw, err = os.ReadFile("../../../migrations/0036_option_list_band_run_view.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	band, _, _ := strings.Cut(string(raw), "-- ops.option_run_reason:")
 	if _, err := c.Exec(ctx, strings.Replace(band, "-- +goose Up", "", 1)); err != nil {
-		t.Fatalf("apply 0035 band columns: %v", err)
+		t.Fatalf("apply 0036 band columns: %v", err)
 	}
 	w, err := Open(ctx, connURL(t, name, "ot_w_option_open"))
 	if err != nil {
