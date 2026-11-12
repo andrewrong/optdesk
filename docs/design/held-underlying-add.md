@@ -52,7 +52,7 @@ so a row can be added through the resolve store with no migration.
    - `Plan` calls the inner `Plan`, then, for today only, reads (no write) the newest positions of `heldAliases` (lookback
      `cmd/ot/companies_site.go:89`) and `Current`; for each distinct (symbol, currency) of a position whose stored `SecType`
      is `stock` or `option` (the words of `migrations/0019_account.sql:22`, written as literals like the sec_type fix
-     does and moved to the `store` constants when they exist; `Depends on: #SECTYPE`; not the broker words `STK`/`OPT`;
+     does and moved to the `store` constants when they exist; the reader fix of those words is #1819, not a dependency; not the broker words `STK`/`OPT`;
      the tests use the stored words) with nonzero quantity
      (`companies_site.go:123`) that is not an index option (decision 8), has no row of the symbol and passes `Check`, it appends one expected key (`market:SYMBOL`, the inner dataset id), held keys first, at most 20
      (`max_names` of `job.toml`). The hash is the inner hash joined with the held keys.
@@ -94,7 +94,7 @@ so a row can be added through the resolve store with no migration.
    `Input.HeldRefused map[string]string` that `cmd/ot` fills with the `Why` of `Check` ("currency GBP has no market",
    "symbol does not match the pattern of market JP") or the index text of decision 8. Gone when the row is active. When
    the positions cannot be read the page builds anyway (today it fails, `cmd/ot/underlyings_site.go:76-78`) with one gap
-   `no_data` "Held names could not be read from the positions; held names may be missing here" (`Input.HeldError`). A held-added row (`Note` `NoteHeld`, con_id above 0) shows "Resolved as US stock <SYM>, con_id N; check the con_id" in its note column. The page route reaches `Check` through `HeldAdder` on its store; a store without it is a start-up error.
+   `no_data` "Held names could not be read from the positions; held names may be missing here" (`Input.HeldError`). A held-added row (`Note` `NoteHeld`, con_id above 0) shows "Resolved as <market> stock <SYM>, con_id N; check the con_id" in its note column (item 2.3). The page route reaches `Check` through `HeldAdder` on its store; a store without it is a start-up error.
 10. Pending order: one term, `ORDER BY (note = $2) DESC, name_key` in `pendingSQL`
     (`internal/store/underlyingpg/read.go:22-23`), so held rows are not starved by the cut at `max_names` 20 (`job.go:77`).
     A row whose `ResolveContract` errors stays first each day; one the broker does not list is settled unresolved and
@@ -132,7 +132,8 @@ row, path, entry cell or depends cell changes; `ot` already depends on store and
 Owning module: store. Interface file `internal/store/underlying/api.go`; contract test
 `internal/store/underlying/api_test.go`. Added beside `Settler`:
 
-    // HeldAdder is held by the held-name wrapper of cmd/ot over the resolve store (role ot_w_underlying_resolve).
+    // HeldAdder has two holders in cmd/ot: the held-name wrapper over the resolve store (role ot_w_underlying_resolve),
+    // which calls Check and Add, and the underlyings page route on its own store and role, which calls Check only.
     type HeldAdder interface {
         // Check applies the rules of Add without writing and returns the key (market:SYMBOL), or an InvalidError
         // whose Why says the reason (currency with no market, symbol refused).
@@ -161,29 +162,32 @@ held-first order of `Pending`.
    6. `git grep -n "func TestStoreCheck\|func TestAddWritesPendingHeldRow\|func TestAddSkipsExistingKey\|func TestPendingHeldFirstSQL" -- internal/store/underlyingpg` prints four lines; `store_pg_test.go` carries `//go:build pg` and `func TestAddThroughResolveRole`.
    7. No migration is part of the entry: its Files line holds none and `Add` uses the INSERT grant of `migrations/0033_underlying.sql:53`.
    8. `git grep -n "var _ underlying.HeldAdder" -- internal/store/underlyingpg` prints the compile-time assertion.
-2. pages: the named states of a held name that is not followed. Depends on: none.
+2. pages: the named states of a held name that is not followed. Depends on: 1 (`underlying.NoteHeld`).
    Design: docs/design/held-underlying-add.md#decisions
    Files: internal/pages/underlyings/builder.go, internal/pages/underlyings/text.go, internal/pages/underlyings/builder_test.go
    1. `git grep -n "HeldOptions\|HeldRefused" -- internal/pages/underlyings/builder.go` prints both `Input` fields (`map[string]bool`, `map[string]string`).
-   2. `git grep -n "no_data" -- internal/pages/underlyings/builder.go` prints the constant and the append; `text.go` holds four texts (no row, pending, unresolved, refused with the given reason), each built to at most 200 characters, the pending text containing "at least one session day".
+   2. `git grep -n "no_data" -- internal/pages/underlyings/builder.go` prints the constant and the append; `text.go` holds four texts (no row, pending, unresolved, refused with the given reason), each built to at most 200 characters (`builder_test.go` contains `func TestHeldTextsAtMost200Characters`, which builds all four with a 20-character symbol and a 300-character reason and checks each length), the pending text containing "at least one session day".
    3. A row whose `Note` is `underlying.NoteHeld` and whose `ConID` is above 0 shows the note "Resolved as US stock <SYM>, con_id N; check the con_id" (JP likewise, market from the row); `git grep -n "Resolved as" -- internal/pages/underlyings/text.go` prints it and `builder_test.go` contains `func TestHeldAddedRowShowsResolvedText`. The exchange is not shown: `Outcome` has no exchange and `Settle` keeps only the con_id (`write.go:112-121`).
    4. `builder_test.go` contains `func TestHeldNameWithoutRowIsAGap`, `func TestHeldPendingRowIsAGap`, `func TestHeldUnresolvedRowIsAGap`, `func TestHeldRefusedNameShowsItsReason`, `func TestHeldActiveRowGivesNoGap`; the first also covers a name only in `HeldOptions`.
    5. `git grep -n "HeldError" -- internal/pages/underlyings/builder.go` prints the field; `builder_test.go` also contains `func TestHeldReadFailureIsAGap`.
    6. The page schema is unchanged: every new gap uses the reason `no_data` of `common.v2.json:15`, and no file under `contracts/` or `web/` is in Files.
-3. ot: the wrapper, the index set, the start-up error and the page inputs. Depends on: 1, 2, #SECTYPE (stored words `stock`/`option`/`index` read from positions).
+3. ot: the wrapper, the index set and the start-up error of the resolve job. Depends on: 1.
    Design: docs/design/held-underlying-add.md#decisions
-   Files: cmd/ot/held_underlying_rows.go, cmd/ot/held_underlying_rows_test.go, cmd/ot/wire_underlying.go, cmd/ot/wire_underlying_test.go, cmd/ot/underlyings_site.go, cmd/ot/underlyings_site_test.go
+   Files: cmd/ot/held_underlying_rows.go, cmd/ot/held_underlying_rows_test.go, cmd/ot/wire_underlying.go, cmd/ot/wire_underlying_test.go
    1. `git grep -n "underlying.HeldAdder" -- cmd/ot/wire_underlying.go` prints the assertion, followed by a returned error when it fails; `git grep -n "heldRows(" -- cmd/ot/wire_underlying.go` prints the wrap, guarded by `cfg.accountDSN`.
    2. `git grep -n "func (.*) Schedule(\|func (.*) RunBound(\|func (.*) RestartSensitive(" -- cmd/ot/held_underlying_rows.go` prints three lines, each calling the inner job by type assertion.
    3. `git grep -n "\.Add(" -- cmd/ot/held_underlying_rows.go` prints one line and it lies inside `Run`; `git grep -n "func (.*) Plan(" -A12 -- cmd/ot/held_underlying_rows.go` shows no call of `Add`; `git grep -n "underlyingresolve" -- cmd/ot/held_underlying_rows.go` prints nothing.
    4. `git grep -n "barsrefresh.DefaultManifest\|\.Indexes" -- cmd/ot/held_underlying_rows.go` prints the one read of the index table, `git grep -n "SPX\|NDX\|RUT\|N225" -- cmd/ot` prints nothing outside test files, and `git grep -n "option_eod_jp\|not supported: index option" -- cmd/ot/held_underlying_rows.go` prints both texts.
    5. `held_underlying_rows_test.go` contains `func TestHeldPlanAddsKeyWithoutWriting`, `func TestHeldRunAddsThenRunsInner`, `func TestHeldRunSoldNameDoesNothing`, `func TestHeldPlanSkipsIndexAndRefused`, `func TestHeldRowForwardsOptionals`, `func TestHeldPlanPastDayPlansInnerOnly` (a past day returns the inner keys alone), `func TestHeldPlanReadsStoredWords` (sec_type `stock`/`option` planned, `STK`/`OPT` not), `func TestHeldPlanReadFailureKeepsInnerKeys` (inner keys and hash returned, one Warn, no error); `wire_underlying_test.go` contains `func TestResolveRefusesStoreWithoutHeldAdder`.
-   6. `git grep -n "HeldOptions\|HeldRefused" -- cmd/ot/underlyings_site.go` prints the lines that fill both from `heldSets` and `HeldAdder.Check` (the page store must satisfy `HeldAdder`, else a start-up error; the fakes of that file gain `Check` and `Add`); `underlyings_site_test.go` contains `func TestUnderlyingsPageGapForHeldOption` and `func TestUnderlyingsPageRefusedReason` and `func TestUnderlyingsPageHeldReadFailure` (the page is built, one gap).
+4. ot, composition-root step ordered after the module issues 2 and 3: the page inputs. Depends on: 1, 2, 3.
+   Design: docs/design/held-underlying-add.md#decisions
+   Files: cmd/ot/underlyings_site.go, cmd/ot/underlyings_site_test.go
+   1. `git grep -n "HeldOptions\|HeldRefused" -- cmd/ot/underlyings_site.go` prints the lines that fill both from `heldSets` and `HeldAdder.Check` (the page store must satisfy `HeldAdder`, else a start-up error; the fakes of that file gain `Check` and `Add`); `underlyings_site_test.go` contains `func TestUnderlyingsPageGapForHeldOption` and `func TestUnderlyingsPageRefusedReason` and `func TestUnderlyingsPageHeldReadFailure` (the page is built, one gap).
 
 ## Checked by CI
 
 `go test ./internal/store/... ./internal/pages/underlyings/... ./cmd/ot/...` (the pg test in GitHub CI), `go vet`,
-`golangci-lint`, `scripts/arch`, the web build; each entry compiles and passes alone in the order 1, 2, 3; the size rule
+`golangci-lint`, `scripts/arch`, the web build; each entry compiles and passes alone once entry 1 has landed; entries 2 and 3 are independent of each other, entry 4 comes after 2 and 3; the size rule
 (new files under 600 lines, `wire_underlying.go` and `underlyings_site.go` under 800).
 
 ## Left out
@@ -206,14 +210,14 @@ Full answer: `held-adversarial.md` in the dispatcher's scratchpad (local, not pu
    page states and the day-late line (decision 9), sold position named (decision 6); `Pending` order: r2 changed it (decision 10).
 2. Plan with a side effect, wrapper hides optional methods: adopted (decision 7, grep item 3.2); second DSN named; r2 moved the write out of `Plan`.
 3. A simpler way: variant (a) not adopted (advisor: an `Apply` call from a wiring file is a permission change); the
-   one-method `HeldAdder` is adopted. "Gap alone first" is possible: entry 2 depends on nothing and may land first.
+   one-method `HeldAdder` is adopted. "Gap alone first" is possible: entries 2 and 3 depend on entry 1 only, so they build in parallel; the page inputs of `cmd/ot` are entry 4, after 2 and 3.
 4. Lock-in (resolve type widened, Note as origin, permanent rows, two markets): the widening is gone (decision 1); `Note`
    as origin stays, fragility stated (decision 4); permanent rows and USD/JPY only are in decisions 5 and Left out.
 5. False or unchecked claims: Flex claim removed (Problem); options-off claim corrected (decision 5); "table" wording is
    now "one map beside the literals" (decision 3); `max_names` order stated (decision 10); the JP and zone variants of
    option_list_preopen (`docs/design/option-open-gap-jp.md:129`) are not designed here: only the US job exists on main.
 6. Slip risks: Design lines and Depends on added; acceptance items are file-reading or `git grep` forms; no line counts;
-   entry 3 depends on 1 and 2. The pinned page fixture `contracts/fixtures/page.underlyings.v1.golden.json` is not in any
+   entry 3 depends on 1, entry 2 on 1, entry 4 on 1, 2 and 3. The pinned page fixture `contracts/fixtures/page.underlyings.v1.golden.json` is not in any
    Files line: its held name AAA has a row, so no gap is emitted and it stays unchanged; if a gap appears in it, the
    change is reported, not edited (module contracts).
 The ten contradictions: 1 (Settler vs rejected (a)) and 2, 3, 5 of Slip (compile break, ordering, Depends): fixed by
@@ -244,3 +248,5 @@ r4 (advisor r2 and r3): B1 stored words `stock`/`option`/`index` in decisions 7 
 B2 the false "con_id and name" removed, the page says "Resolved as <market> stock <SYM>, con_id N" (item 2.3), the stronger chain check is in Left out;
 B4 `Check` is a method of `HeldAdder`, errors typed `InvalidError`, no function outside the interface; B5 other Plan callers named and held
 keys planned for today only (decision 7, `TestHeldPlanPastDayPlansInnerOnly`); small: `builder.go:24`, `manifest.go:46,85` confirmed.
+
+r5 (design session on head 213497de): entry 3 split so it needs the interface entry only: the page inputs (`underlyings_site.go`, old item 3.6) are entry 4 after 2 and 3; `#SECTYPE` dropped from Depends on (the reader fix is #1819, decision 7); entry 2 depends on 1 (`NoteHeld`); item 2.2 names `TestHeldTextsAtMost200Characters`; `HeldAdder` doc names both holders; decision 9 text uses `<market>`.
