@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
@@ -331,5 +332,82 @@ func TestPullJPPlanWaitsForTheStoredPlan(t *testing.T) {
 	s.items = seed(2, 3).items
 	if keys, _, err := j.Plan(context.Background(), pullDay); err != nil || len(keys) == 0 {
 		t.Fatalf("stored plan: keys %v err %v", keys, err)
+	}
+}
+
+func TestPullJPKeysCarryTheJPDataset(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC))
+	jk, _, err := newPullJP(t, seed(5, 50), clk).Plan(context.Background(), pullDay)
+	if err != nil || len(jk) == 0 {
+		t.Fatalf("keys %v err %v", jk, err)
+	}
+	uk, _, err := newPull(t, seed(5, 50), newFake(100)).Plan(context.Background(), pullDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jk) != len(uk) {
+		t.Fatalf("%d JP keys, %d US keys", len(jk), len(uk))
+	}
+	for i, k := range jk {
+		if k.DatasetID != PullDatasetIDJP || k.SubjectKey != uk[i].SubjectKey {
+			t.Errorf("key %+v, US %+v", k, uk[i])
+		}
+	}
+}
+
+func TestPullJPWindowIsXTKS(t *testing.T) {
+	t.Parallel()
+	j := newPullJP(t, seed(1, 1), clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC)))
+	cal, open, closeOff := j.(runner.Windowed).Window()
+	if cal != "XTKS" || open != 0 || closeOff != 0 {
+		t.Errorf("window %s %v %v", cal, open, closeOff)
+	}
+}
+
+func TestUSAndJPPullKeysAreDisjoint(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC))
+	us := newPull(t, seed(5, 50), newFake(100))
+	jp := newPullJP(t, seed(5, 50), clk)
+	owner := map[contracts.ExpectedKey]string{}
+	total := 0
+	for _, j := range []contracts.Job{us, jp} { // the first planner of a key owns it, as planLogged does
+		keys, _, err := j.Plan(context.Background(), pullDay)
+		if err != nil {
+			t.Fatal(err)
+		}
+		total += len(keys)
+		for _, k := range keys {
+			if _, dup := owner[k]; !dup {
+				owner[k] = j.ID()
+			}
+		}
+	}
+	if len(owner) != total || total == 0 {
+		t.Fatalf("merged %d keys of %d planned", len(owner), total)
+	}
+	for k, id := range owner {
+		if want := map[string]string{PullDatasetID: "option_open", PullDatasetIDJP: "option_open_jp"}[k.DatasetID]; id != want {
+			t.Errorf("key %+v owned by %s", k, id)
+		}
+	}
+}
+
+func TestJPPullRunsItsOwnKeys(t *testing.T) {
+	t.Parallel()
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC))
+	s := seed(1, 2)
+	j := newPullJP(t, s, clk)
+	keys, _, err := j.Plan(context.Background(), pullDay)
+	if err != nil || len(keys) == 0 {
+		t.Fatalf("keys %v err %v", keys, err)
+	}
+	keys = append(keys, contracts.ExpectedKey{DatasetID: PullDatasetID, SubjectKey: keys[0].SubjectKey})
+	if res := j.Run(context.Background(), pullDay, keys); res.Err != nil || res.Returned == 0 {
+		t.Fatalf("err=%v returned %d", res.Err, res.Returned)
+	}
+	if len(s.written) == 0 || len(s.written[0]) == 0 {
+		t.Errorf("written %+v", s.written)
 	}
 }

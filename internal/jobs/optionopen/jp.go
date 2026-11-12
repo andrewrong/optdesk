@@ -224,6 +224,10 @@ func NewResolveJP(d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
 
 var _ NewPullFunc = NewPullJP
 
+// PullDatasetIDJP is the dataset id of the keys of the JP pull. It is a key dataset id only, not a stored table: the
+// rows stay in obs.option_open. A key of its own keeps the JP batches from being dropped as duplicates of the US keys.
+const PullDatasetIDJP = "obs.option_open.jp"
+
 // NewPullJP builds option_open_jp from the embedded job_pull_jp.toml. It is NewPull over the JP manifest: the key
 // day is the date in Asia/Tokyo.
 func NewPullJP(d PullDeps) (contracts.Job, error) {
@@ -239,7 +243,9 @@ func NewPullJP(d PullDeps) (contracts.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &jpPull{pull: j.(*pull), params: m.params, rules: r}, nil
+	pl := j.(*pull)
+	pl.datasetID = PullDatasetIDJP
+	return &jpPull{pull: pl, params: m.params, rules: r}, nil
 }
 
 // jpPull is the pull with the JP plan parameters: at the open the core chooses the strikes again with DTE 14 to
