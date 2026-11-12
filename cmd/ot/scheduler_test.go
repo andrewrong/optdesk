@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/symbol"
@@ -794,5 +795,36 @@ func TestSchedulerNeedsLoaderDSN(t *testing.T) {
 	err := <-r.start()
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || strings.Contains(err.Error(), "loader-dsn") {
 		t.Fatalf("err %v", err)
+	}
+}
+
+type lockRec struct{ noopRec }
+
+func TestSwapDuringRunKeepsJobLock(t *testing.T) {
+	t.Parallel()
+	newRec := func(
+		store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
+		return lockRec{}, nil
+	}
+	var seen []runner.JobLocks
+	withLocks := func(_ runner.Reconciler, _ runner.Backfiller, l runner.JobLocks) { seen = append(seen, l) }
+	locks := shared.NewJobLocks()
+	build := newBuild(newRec, withLocks, locks, nil, nil, nil, clockwork.NewFakeClock(), nil, nil)
+	build(nil)
+	build(nil) // a swap
+	if len(seen) != 2 || seen[0] == nil || seen[1] == nil {
+		t.Fatalf("sets %v", seen)
+	}
+	unlock, ok := seen[0].TryLock("job_a")
+	if !ok {
+		t.Fatal("the first set refused a free job")
+	}
+	if _, ok := seen[1].TryLock("job_a"); ok {
+		t.Fatal("the second set took a job the first one holds")
+	}
+	unlock()
+	if _, ok := seen[1].TryLock("job_a"); !ok {
+		t.Fatal("the job stayed locked after unlock")
 	}
 }

@@ -12,11 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/notify"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/reconcile"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -157,17 +160,17 @@ func runScheduler(
 	kr := d.newKeyRunner(w.ledger, sl, fw)
 	host, closeConsole := openConsoleHost(ctx, a, cfg.runnerDSN, d.newKeyGapSyncer, w.ledger, sl, fw)
 	defer closeConsole()
-	build := func(jobs []contracts.Job) runner.Reconciler {
-		rec, bf := d.newReconciler(w.ledger, sl, w.cal, fw, jobs, runner.WindowRule{}, kr)
-		if host != nil {
-			fb, _ := bf.(runner.ForceBackfiller)
-			if fb == nil {
-				consoleOff(a, "the backfiller cannot force")
-			}
-			host.set(jobs, fb)
+	locks := shared.NewJobLocks() // one set for every build, so a swap keeps the locks of a run in flight
+	build := newBuild(d.newReconciler, withJobLocks, locks, w.ledger, sl, w.cal, fw, kr, func(jobs []contracts.Job, bf runner.Backfiller) {
+		if host == nil {
+			return
 		}
-		return rec
-	}
+		fb, _ := bf.(runner.ForceBackfiller)
+		if fb == nil {
+			consoleOff(a, "the backfiller cannot force")
+		}
+		host.set(jobs, fb)
+	})
 	p := &prober{w: w, log: a.log, hasKey: cfg.fredKey != ""}
 	swap := newSwapReconciler(enabled, build, candidateProbe(w, p.probe), a.log)
 	rec := &consoleReconciler{sw: swap, host: host}
@@ -210,6 +213,31 @@ func runScheduler(
 		return err
 	}
 	return errors.New("scheduler stopped with an error; its text is withheld because it may hold a DSN or a key")
+}
+
+// withJobLocks gives the lock set to a reconciler and its backfiller (reconcile.WithJobLocks).
+func withJobLocks(r runner.Reconciler, bf runner.Backfiller, locks runner.JobLocks) {
+	reconcile.WithJobLocks(r, locks)
+	reconcile.WithJobLocks(bf, locks)
+}
+
+// newBuild makes the build func of the swap reconciler: each call makes a new reconciler and backfiller,
+// gives both the one lock set, and hands the job set and backfiller to built (nil: none). The set is made
+// once by the caller, so a run that started before a swap still holds its job
+// (docs/design/console-run-lock.md Decision 2).
+func newBuild(
+	newRec runner.NewReconcilerFunc, withLocks func(runner.Reconciler, runner.Backfiller, runner.JobLocks), locks runner.JobLocks,
+	ops store.OpsLedger, sl store.SchedulerLedger, cal clock.Calendar, clk clockwork.Clock, kr runner.KeyRunner,
+	built func([]contracts.Job, runner.Backfiller),
+) func([]contracts.Job) runner.Reconciler {
+	return func(jobs []contracts.Job) runner.Reconciler {
+		rec, bf := newRec(ops, sl, cal, clk, jobs, runner.WindowRule{}, kr)
+		withLocks(rec, bf, locks)
+		if built != nil {
+			built(jobs, bf)
+		}
+		return rec
+	}
 }
 
 // consoleOff turns the job console down with one warn line; the scheduler goes on. The line holds no error

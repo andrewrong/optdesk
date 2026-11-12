@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
@@ -28,6 +27,7 @@ const (
 	reasonPlanFailed  = "plan_failed"
 	reasonError       = "error"
 	reasonSlotNear    = "slot_near"
+	reasonJobRunning  = "job_running"
 )
 
 // outcome is how a claimed request ended.
@@ -37,9 +37,20 @@ type outcome struct {
 	lines  []jobrequest.KeyLine
 }
 
-// turn is ConsoleTurn: start, read the queue, finish the withdrawn, take the first request no slot holds,
-// run it and write its end.
-func (h *consoleHost) turn(ctx context.Context, hold runner.SlotHold) (bool, error) {
+// turn is ConsoleTurn: claim the first request of the queue and run it here, to its end. The hold of the
+// slot is no longer used (Decision 3 of docs/design/console-run-lock.md); the per-job lock replaces it.
+func (h *consoleHost) turn(ctx context.Context) (bool, error) {
+	took, run := h.claimNext(ctx)
+	if run != nil {
+		run(ctx)
+	}
+	return took, nil
+}
+
+// claimNext starts the host, reads the queue, finishes the withdrawn and claims the first request left. It
+// returns whether it did any work and, for a claimed request, the ConsoleRun that runs it and writes its end.
+// It starts no goroutine.
+func (h *consoleHost) claimNext(ctx context.Context) (took bool, run runner.ConsoleRun) {
 	if _, _, started := h.current(); !started {
 		sctx, cancel := clockTimeout(ctx, h.clk, startPhase)
 		err := h.Start(sctx)
@@ -58,7 +69,6 @@ func (h *consoleHost) turn(ctx context.Context, hold runner.SlotHold) (bool, err
 		h.warn("console queue read failed")
 		return false, nil
 	}
-	took := false
 	var waiting []jobrequest.Row
 	for _, r := range rows {
 		if r.WithdrawnAt.IsZero() {
@@ -71,18 +81,6 @@ func (h *consoleHost) turn(ctx context.Context, hold runner.SlotHold) (bool, err
 		took = true
 	}
 	for _, r := range waiting {
-		if hold != nil {
-			job, at, held := hold(turnMax(jobs, r.Request.JobID))
-			if held {
-				if r.HoldJob != job || !r.HoldAt.Equal(at) {
-					if err := h.phase(ctx, func(c context.Context) error { return h.q.Hold(c, r.ID, job, at) }); err != nil {
-						h.warn("console hold write failed")
-						return took, nil
-					}
-				}
-				continue
-			}
-		}
 		claimed, err := h.claim(ctx, r)
 		if err != nil {
 			h.warn("console claim failed")
@@ -91,8 +89,7 @@ func (h *consoleHost) turn(ctx context.Context, hold runner.SlotHold) (bool, err
 		if !claimed {
 			continue
 		}
-		h.runClaimed(ctx, hold, r, jobs, bf)
-		return true, nil
+		return true, func(c context.Context) { h.runClaimed(c, r, jobs, bf) }
 	}
 	return took, nil
 }
@@ -104,13 +101,8 @@ func (h *consoleHost) phase(ctx context.Context, f func(context.Context) error) 
 	return f(c)
 }
 
-// claim clears the hold of a request that is taken, then claims it.
+// claim claims a request.
 func (h *consoleHost) claim(ctx context.Context, r jobrequest.Row) (claimed bool, err error) {
-	if r.HoldJob != "" || !r.HoldAt.IsZero() {
-		if err := h.phase(ctx, func(c context.Context) error { return h.q.Hold(c, r.ID, "", time.Time{}) }); err != nil {
-			return false, err
-		}
-	}
 	err = h.phase(ctx, func(c context.Context) (err error) { claimed, err = h.q.Claim(c, r.ID, h.clk.Now()); return })
 	return claimed, err
 }
@@ -127,9 +119,9 @@ func (h *consoleHost) finish(ctx context.Context, id int64, s jobrequest.State, 
 }
 
 // runClaimed runs a claimed request, writes its end and, after a run of a missing key, syncs the key gaps.
-func (h *consoleHost) runClaimed(ctx context.Context, hold runner.SlotHold, r jobrequest.Row, jobs []contracts.Job, bf runner.ForceBackfiller) {
+func (h *consoleHost) runClaimed(ctx context.Context, r jobrequest.Row, jobs []contracts.Job, bf runner.ForceBackfiller) {
 	day := contracts.Day(r.Request.Day)
-	out := h.execute(ctx, hold, r.Request, jobs, bf)
+	out := h.execute(ctx, r.Request, jobs, bf)
 	if !h.finish(ctx, r.ID, out.state, out.reason, out.lines) {
 		return
 	}
@@ -144,7 +136,7 @@ func (h *consoleHost) runClaimed(ctx context.Context, hold runner.SlotHold, r jo
 }
 
 // execute runs the request for any day, with or without force; it refuses only a job id the table lacks.
-func (h *consoleHost) execute(ctx context.Context, hold runner.SlotHold, req jobrequest.Request, jobs []contracts.Job, bf runner.ForceBackfiller) outcome {
+func (h *consoleHost) execute(ctx context.Context, req jobrequest.Request, jobs []contracts.Job, bf runner.ForceBackfiller) outcome {
 	_, ok := jobRowOf(req.JobID)
 	if !ok {
 		return refused(reasonNotRunnable)
@@ -179,7 +171,7 @@ func (h *consoleHost) execute(ctx context.Context, hold runner.SlotHold, req job
 	if len(datasets) == 0 {
 		return refused(reasonNoKey)
 	}
-	res, err := bf.BackfillWith(ctx, day, datasets, runner.BackfillOptions{Force: req.Force, Job: req.JobID, Hold: hold})
+	res, err := bf.BackfillWith(ctx, day, datasets, runner.BackfillOptions{Force: req.Force, Job: req.JobID})
 	out := classify(ctx, res, err)
 	if out.reason == reasonError {
 		h.logFailed(req, err)
@@ -213,6 +205,8 @@ func classify(ctx context.Context, res runner.BackfillResult, err error) outcome
 		return outcome{jobrequest.StateFailed, reasonError, lines}
 	case !hasGroup(lines, runner.GroupRan) && !hasGroup(lines, runner.GroupRerun) && hasGroup(lines, runner.GroupNotDue):
 		return outcome{jobrequest.StateRefused, reasonNotDue, lines}
+	case !hasGroup(lines, runner.GroupRan) && !hasGroup(lines, runner.GroupRerun) && hasJobRunning(lines):
+		return outcome{jobrequest.StateRefused, reasonJobRunning, lines}
 	}
 	for _, l := range lines {
 		if l.Group == runner.GroupNotReached && l.ReasonCode == reasonSlotNear {
@@ -242,6 +236,16 @@ func hasGroup(lines []jobrequest.KeyLine, group string) bool {
 	return false
 }
 
+// hasJobRunning tells whether a lease_held line carries the reason job_running.
+func hasJobRunning(lines []jobrequest.KeyLine) bool {
+	for _, l := range lines {
+		if l.Group == runner.GroupLeaseHeld && l.ReasonCode == reasonJobRunning {
+			return true
+		}
+	}
+	return false
+}
+
 // keyLines converts the lines of the runner to the lines the store keeps.
 func keyLines(keys []runner.KeyRun) []jobrequest.KeyLine {
 	out := make([]jobrequest.KeyLine, 0, len(keys))
@@ -253,20 +257,4 @@ func keyLines(keys []runner.KeyRun) []jobrequest.KeyLine {
 		})
 	}
 	return out
-}
-
-// turnMax is how long a request of the job can keep the worker: the start phase, the run bound of the first
-// key, the Finish and the SyncKeys. A job that is not in the set is refused at the claim and runs no key.
-func turnMax(jobs []contracts.Job, id string) time.Duration {
-	for _, j := range jobs {
-		if j.ID() != id {
-			continue
-		}
-		bound := defaultRunBound
-		if b, ok := j.(runner.Bounded); ok {
-			bound = b.RunBound()
-		}
-		return startPhase + bound + finishTimeout + syncTimeout
-	}
-	return startPhase + finishTimeout
 }

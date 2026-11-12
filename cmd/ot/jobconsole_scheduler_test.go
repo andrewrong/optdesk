@@ -235,3 +235,19 @@ func TestSchedulerRunsWithZeroOpenerAndNilBackfiller(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestWrapperForwardsClaimConsole(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	build := func([]contracts.Job) runner.Reconciler { return noopRec{} }
+	sw := newSwapReconciler([]contracts.Job{jcJob{id: "fred_series", keys: jcKey}}, build, nil, slog.New(slog.DiscardHandler))
+	rec := &consoleReconciler{sw: sw, host: r.host}
+	runs, err := rec.ClaimConsole(t.Context())
+	if err != nil || len(runs) != 1 || r.log.count("claim:1") != 1 {
+		t.Fatalf("runs %d, err %v, calls %v", len(runs), err, r.log.items)
+	}
+	off := &consoleReconciler{sw: sw}
+	if runs, err := off.ClaimConsole(t.Context()); len(runs) != 0 || err != nil {
+		t.Fatalf("console off: %v %v", runs, err)
+	}
+}
