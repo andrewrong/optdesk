@@ -74,7 +74,7 @@ Acceptance:
 3. The file has a `-- +goose Down` that drops the function.
 
 ### 4 jobs-held-aliases
-Order: none. Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/**` tests that use `heldAliases`, `internal/jobs/optionopen/inputs.go`, `internal/jobs/optionopen/**` tests that use `heldAliases` (found by grep).
+Order: after 3. Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/**` tests that use `heldAliases`, `internal/jobs/optionopen/inputs.go`, `internal/jobs/optionopen/**` tests that use `heldAliases` (found by grep).
 Acceptance:
 1. The two package variables `heldAliases` are gone. Every existing constructor signature in both packages is unchanged (`NewWithHeldSymbols` and the `deps` types of `cmd/ot` still compile). The list is a new optional input whose zero value means no held names: `optionopen.Stored.HeldAliases []string`, and in `optioneod` a new function `WithHeldAliases(NewOptionEodHeldSymbolsFunc, []string) NewOptionEodHeldSymbolsFunc`.
 2. A test per package gives one alias and shows its positions are read, and gives none and shows no read.
