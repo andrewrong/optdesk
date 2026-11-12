@@ -170,8 +170,8 @@ func TestWindowOverridesManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if j.m.MinDTE != 21 || j.m.MaxDTE != 60 || j.m.MaxStrikes != 24 {
-		t.Fatalf("partial window %d %d %d, want 21 60 24", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
+	if j.m.MinDTE != 14 || j.m.MaxDTE != 60 || j.m.MaxStrikes != 24 {
+		t.Fatalf("partial window %d %d %d, want 14 60 24", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
 	}
 }
 
@@ -181,8 +181,8 @@ func TestZeroWindowKeepsManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if j.m.MinDTE != 21 || j.m.MaxDTE != 45 || j.m.MaxStrikes != 24 {
-		t.Fatalf("window %d %d %d, want the manifest 21 45 24", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
+	if j.m.MinDTE != 14 || j.m.MaxDTE != 56 || j.m.MaxStrikes != 24 {
+		t.Fatalf("window %d %d %d, want the manifest 14 56 24", j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes)
 	}
 }
 
@@ -266,5 +266,23 @@ func TestWatchSymbolsNilTranslator(t *testing.T) {
 	}
 	if !reflect.DeepEqual(ka, kb) || len(ka) != 2 {
 		t.Fatalf("keys differ: %v vs %v", ka, kb)
+	}
+}
+
+func TestNewWithSymbolsKeepsOldBand(t *testing.T) {
+	t.Parallel()
+	c, err := NewWithSymbols(newBroker(), &fakeResolver{}, &fakeWriter{}, clockwork.NewFakeClock(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := c.(*job).m; m.StrikeBandBelow != 0 || m.StrikeBandAbove != 0 {
+		t.Fatalf("bands %v %v, want 0", m.StrikeBandBelow, m.StrikeBandAbove)
+	}
+	j, err := windowJob(t, OptionEodWindow{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := j.m; m.StrikeBandBelow != 0.20 || m.StrikeBandAbove != 0.05 || m.MinDTE != 14 || m.MaxDTE != 56 {
+		t.Fatalf("manifest %+v", m)
 	}
 }

@@ -2,6 +2,7 @@ package optioneod
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -110,5 +111,84 @@ func TestSelectContractFields(t *testing.T) {
 		Right: "C", Multiplier: "100", TradingClass: "TEST"}
 	if len(got) != 2 || got[0] != want || got[1].Right != "P" {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func wideChain() broker.Chain {
+	return broker.Chain{Expirations: []string{"20261127"}, Strikes: seq(250, 400, 5)}
+}
+
+func callStrikes(cs []broker.Contract) []string {
+	var out []string
+	for _, c := range cs {
+		if c.Right == "C" {
+			out = append(out, c.Strike)
+		}
+	}
+	return out
+}
+
+func TestSelectWideBandNoSideCap(t *testing.T) {
+	t.Parallel()
+	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, MaxStrikesPerSide: 8, StrikeBandBelow: 0.20, StrikeBandAbove: 0.05}
+	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	want := seq(285, 370, 5)
+	if len(want) != 18 || !reflect.DeepEqual(callStrikes(got), want) || len(got) != 36 {
+		t.Fatalf("strikes %v (%d contracts), want %v for both rights", callStrikes(got), len(got), want)
+	}
+}
+
+func TestSelectWideBandBuyPrice(t *testing.T) {
+	t.Parallel()
+	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, MaxStrikesPerSide: 8, StrikeBandBelow: 0.20, StrikeBandAbove: 0.05,
+		MaxStrikes: 5, buy: map[string]string{"T": "340"}}
+	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	// the 5 nearest 340 are 330..350, all inside the band strikes 285..370
+	if want := seq(285, 370, 5); !reflect.DeepEqual(callStrikes(got), want) {
+		t.Fatalf("strikes %v, want %v", callStrikes(got), want)
+	}
+	m.StrikeBandBelow, m.StrikeBandAbove = 0.01, 0.01 // band 352..359 holds 355 only
+	got = selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	if want := []string{"330", "335", "340", "345", "350", "355"}; !reflect.DeepEqual(callStrikes(got), want) {
+		t.Fatalf("strikes %v, want union %v", callStrikes(got), want)
+	}
+}
+
+func TestSelectWideBandExpiries(t *testing.T) {
+	t.Parallel()
+	chain := broker.Chain{Expirations: []string{"20261125", "20261126", "20261218", "20270107", "20270108"}, Strikes: []string{"100"}}
+	m := manifest{StrikeBand: 0.1, StrikeBandBelow: 0.20, StrikeBandAbove: 0.05, MinDTE: 14, MaxDTE: 56}
+	seen := map[string]bool{}
+	for _, c := range selectContracts(chain, underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 100, m) {
+		seen[c.Expiry] = true
+	}
+	if len(seen) != 3 || !seen["20261126"] || !seen["20261218"] || !seen["20270107"] {
+		t.Fatalf("expiries %v", seen)
+	}
+}
+
+func TestValidateRefusesNegativeStrikeBand(t *testing.T) {
+	t.Parallel()
+	base := func() manifest { return manifest{Zone: "America/New_York", FreezeAfter: "1700"} }
+	if err := base().validate(); err != nil {
+		t.Fatalf("valid base refused: %v", err)
+	}
+	below, above := base(), base()
+	below.StrikeBandBelow, above.StrikeBandAbove = -0.01, -0.01
+	for name, m := range map[string]manifest{"below": below, "above": above} {
+		err := m.validate()
+		if err == nil || !strings.Contains(err.Error(), "band") {
+			t.Errorf("%s: negative band gave error %v, want one naming the band", name, err)
+		}
+	}
+}
+
+func TestSelectWideBandOneKeyFallsBackToStrikeBand(t *testing.T) {
+	t.Parallel()
+	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, StrikeBandBelow: 0.20}
+	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	// 284.41 .. 391.06 (above falls back to 0.10), no cap by side
+	if want := seq(285, 390, 5); !reflect.DeepEqual(callStrikes(got), want) {
+		t.Fatalf("strikes %v, want %v", callStrikes(got), want)
 	}
 }
