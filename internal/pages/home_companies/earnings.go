@@ -10,7 +10,7 @@ import (
 
 const earningsLookbackDays = 120
 
-// publishedPrefix is the frozen schema text "已公布 " (published) written as escapes: the English guard
+// publishedPrefix is the frozen schema text for "published" in Chinese, written as escapes: the English guard
 // of cmd/ot allows no CJK character in a Go source file of internal/pages.
 const publishedPrefix = "\u5df2\u516c\u5e03 "
 
