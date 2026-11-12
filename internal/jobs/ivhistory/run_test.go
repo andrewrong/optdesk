@@ -180,3 +180,58 @@ func TestUnknownKeyIsPermanent(t *testing.T) {
 		t.Fatalf("result %+v", res)
 	}
 }
+
+const noData162 = "broker: bars: Unknown: broker error 162: Historical Market Data Service error message:HMDS query returned no data: X.T@SMART Option_Implied_Volatility"
+
+func noDataFor(sym string, errText string) *fakeHistory {
+	return &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
+		if q.Contract.Symbol == sym {
+			return nil, newErr(contracts.Permanent, "%s", errText)
+		}
+		return []broker.Bar{bar("2026-11-09", "0.28")}, nil
+	}}
+}
+
+func TestNoDataAnswerIsNoInput(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j := build(t, noDataFor("XXX", noData162), st, "XXX", "BBB")
+	res := j.Run(context.Background(), runDay, keysOf("XXX", "BBB"))
+	if res.Err != nil || res.Returned != 2 || res.Usable != 1 || len(st.rows) != 2 {
+		t.Fatalf("result %+v rows %d", res, len(st.rows))
+	}
+	for _, r := range st.rows {
+		switch r.Subject {
+		case "XXX":
+			if string(r.State) != "missing_input" || r.ReasonCode == nil || *r.ReasonCode != 1 || r.Day.Format(dayLayout) != "2026-11-09" {
+				t.Fatalf("XXX reading %+v", r)
+			}
+		case "BBB":
+			if string(r.State) != "ok" {
+				t.Fatalf("BBB reading %+v", r)
+			}
+		}
+	}
+}
+
+func TestNoDataRerunStoresNothingNew(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j := build(t, noDataFor("XXX", noData162), st, "XXX")
+	j.Run(context.Background(), runDay, keysOf("XXX"))
+	first := len(st.rows)
+	res := j.Run(context.Background(), runDay, keysOf("XXX"))
+	if first != 1 || len(st.rows) != first || res.Err != nil {
+		t.Fatalf("rows %d then %d, result %+v", first, len(st.rows), res)
+	}
+}
+
+func TestOtherBrokerErrorStaysFailed(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j := build(t, noDataFor("XXX", "broker error 200"), st, "XXX")
+	res := j.Run(context.Background(), runDay, keysOf("XXX"))
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || len(st.rows) != 0 {
+		t.Fatalf("result %+v rows %d", res, len(st.rows))
+	}
+}
