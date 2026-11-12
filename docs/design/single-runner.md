@@ -7,7 +7,7 @@ Source: owner 2026-11-12 15:39Z (optdesk-3414): only the scheduler process runs 
 
 ## Goal
 
-Today three processes can run a job: the scheduler, `ot run-once` (`reconcileDay`, `Reconcile`) and `ot backfill` (`Backfill`), so `ops.run_lease` (`ledger.go` `acquireSQL`, `reconcile.go` `leaseTTL`, `holdLease`, `backfillOwner`) and the `LeaseUntil` liveness of `ops.capture_run` rows (`runkey.go`, `nextAttempt`, `closeExpired`, `sched/gaps.go`) keep them apart, and a killed run blocks for `leaseTTL`. After this design one process runs jobs (the table `ops.run_lease` and the column `lease_until` stay, unused; Left out). The two commands post a request to the job console queue and may wait for its outcome. A `running` row is a live run of the scheduler, because the scheduler closes every `running` row at start. Same-job overlap stays refused by the in-process per-job try-lock (#1915, `console-run-lock.md` Decision 2).
+Today three processes can run a job: the scheduler, `ot run-once` (`reconcileDay`, `Reconcile`) and `ot backfill` (`Backfill`), so `ops.run_lease` (`ledger.go` `acquireSQL`, `reconcile.go` `leaseTTL`, `holdLease`, `backfillOwner`) and the `LeaseUntil` liveness of `ops.capture_run` rows (`runkey.go`, `nextAttempt`, `closeExpired`, `sched/gaps.go`) keep them apart, and a killed run blocks for `leaseTTL`. After this design one process runs jobs (the table `ops.run_lease` and the column `lease_until` stay, unused; Left out). The two commands post a request to the job console queue and may wait for its outcome. A `running` row is a live run only while this process holds the try-lock of its job; any other `running` row is closed as crashed (Decisions 4 and 5). Same-job overlap stays refused by the in-process per-job try-lock (#1915, `console-run-lock.md` Decision 2).
 
 ## Modules
 
@@ -87,7 +87,7 @@ Issue 2, `internal/runner/api.go` (owner runner): declares
    Acceptance: (a) `scheduler.md` states that the instance fence is the one-process guarantee (retried for 60 s at start), that a start closes running rows as `crashed`, and that `run-once` and `backfill` only enqueue and need the console on; (b) its crash-recovery text no longer says a lapsed lease marks a run `crashed`; (c) `index-iv-history.md` no longer says `run-once` runs synchronously.
 
 
-7. runner: no lease, a `running` row is live.
+7. runner: no lease, a `running` row of a free job lock is crashed.
    Files: `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/backfill.go`, `internal/runner/reconcile/backfill_force.go`, `internal/runner/reconcile/runkey.go`, `internal/runner/reconcile/fakes_test.go`, `internal/runner/reconcile/reconcile_test.go`, `internal/runner/reconcile/backfill_test.go`, `internal/runner/reconcile/backfill_force_test.go`, `internal/runner/reconcile/backfill_window_test.go`, `internal/runner/reconcile/runkey_test.go`, `internal/runner/reconcile/count_test.go`, `internal/runner/sched/gaps.go`, `internal/runner/sched/gaps_test.go`, `internal/runner/sched/gaps_stop_test.go`, `internal/runner/sched/ticker_restart_test.go`, `docs/contracts/runner.md`
    Order: after 5.
    The issue also waits for issue #1915 to merge, and migration 0039 is applied first (Decision 9).
