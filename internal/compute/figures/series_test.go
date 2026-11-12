@@ -43,7 +43,7 @@ func TestContract(t *testing.T) {
 	t.Parallel()
 	stats := gonumstats.New()
 	contracttest.Figures(contracttest.Wrap(t), figures.New, stats, own.NewRolling(stats), own.NewSeriesOps(),
-		"HistoricalVol", "MovingAverageGap", "PercentileInYears", "Ratio")
+		"HistoricalVol", "MovingAverageGap", "PercentileInYears", "Ratio", "Combine")
 }
 
 func TestHistoricalVol(t *testing.T) {
