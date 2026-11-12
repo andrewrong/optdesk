@@ -25,7 +25,7 @@ afterEach(async () => {
 const links = () => [...host.querySelectorAll('a')]
 
 describe('TopNav', () => {
-  it('has eleven items: the fixed links and the Option positions menu', async () => {
+  it('has twelve items: the fixed links and the Option positions menu', async () => {
     await showAt('/home')
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation')
     expect(links().map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
@@ -39,10 +39,11 @@ describe('TopNav', () => {
       ['Option candidates', '/options/candidates'],
       ['Advice', '/advice'],
       ['Settings', '/settings'],
+      ['Job console', '/job-console'],
     ])
     const items = [...host.querySelectorAll('nav > div > a, nav > div > button')].map((e) => e.textContent)
-    expect(items).toHaveLength(11)
-    expect(items[10]).toBe('Option positions')
+    expect(items).toHaveLength(12)
+    expect(items[11]).toBe('Option positions')
   })
 
   it('the Option positions menu holds the links Structures, Result and Notices', async () => {
@@ -78,6 +79,12 @@ describe('TopNav', () => {
     expect(marked.map((a) => a.textContent)).toEqual([label])
   })
 
+  it('lists the job console link', async () => {
+    await showAt('/job-console')
+    const marked = links().filter((a) => a.getAttribute('aria-current') === 'page')
+    expect(marked.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['Job console', '/job-console']])
+  })
+
   it('marks none on a page that is not in the bar', async () => {
     await showAt('/structure')
     expect(links().some((a) => a.hasAttribute('aria-current'))).toBe(false)
@@ -101,7 +108,7 @@ describe('TopNav', () => {
     expect(host.querySelector('nav > div')?.className).toContain('hidden md:flex')
   })
 
-  it('the sheet opens and lists the eleven items, the position links under Option positions', async () => {
+  it('the sheet opens and lists the twelve items, the position links under Option positions', async () => {
     await showAt('/home')
     const sheet = await openSheet()
     expect(sheet).not.toBeNull()
@@ -118,6 +125,7 @@ describe('TopNav', () => {
       ['Option candidates', '/options/candidates'],
       ['Advice', '/advice'],
       ['Settings', '/settings'],
+      ['Job console', '/job-console'],
       ['Structures', '/options/structures'],
       ['Result', '/options/result'],
       ['Notices', '/options/notices'],

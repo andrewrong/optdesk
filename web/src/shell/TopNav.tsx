@@ -29,6 +29,7 @@ const ITEMS: readonly (Record<'label' | 'path', string> & { prefix?: boolean; ic
   { label: 'Option candidates', path: '/options/candidates' },
   { label: 'Advice', path: '/advice', icon: Lightbulb },
   { label: 'Settings', path: '/settings' },
+  { label: 'Job console', path: '/job-console' },
 ]
 
 // The page being viewed: a trailing slash is ignored and `/` counts as `/home`.
