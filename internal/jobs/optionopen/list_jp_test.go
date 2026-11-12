@@ -289,3 +289,15 @@ func TestJPEmptyAnswerIsListedZeroNotShort(t *testing.T) {
 		require.Zero(t, rows[0].Count)
 	}
 }
+
+// onlyContracts lists contracts but not chains.
+type onlyContracts struct{ broker.ContractLister }
+
+func TestJPListerWithoutChainsIsRefused(t *testing.T) {
+	t.Parallel()
+	g := newJPRig(t, nil)
+	inner := g.tweak
+	g.tweak = func(d *ListDeps) { inner(d); d.Lister = onlyContracts{g.lst} }
+	_, err := NewListPreopenJP(g.deps())
+	require.Error(t, err, "an index would be sent as a stock")
+}

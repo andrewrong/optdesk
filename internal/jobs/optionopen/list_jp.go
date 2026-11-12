@@ -3,6 +3,7 @@ package optionopen
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -61,9 +62,11 @@ func NewListPreopenJP(d ListDeps) (contracts.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	if cl, ok := d.Lister.(chainLister); ok {
-		d.Lister = jpLister{d.Lister, cl, r}
+	cl, ok := d.Lister.(chainLister)
+	if !ok {
+		return nil, errors.New("optionopen: the JP list needs a lister that also lists chains")
 	}
+	d.Lister = jpLister{d.Lister, cl, r}
 	return newListPreopen(listManifestJP, r.listRules(), d)
 }
 
