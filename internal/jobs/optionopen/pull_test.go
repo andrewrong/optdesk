@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/contracts/gen"
+	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
@@ -138,7 +139,7 @@ func TestPlanCutsKeysAtMostOneHundredTwentyContracts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(keys) != 3 || hash == "" || keys[0].DatasetID != "obs.option_open" || keys[0].SubjectKey == keys[1].SubjectKey {
+	if len(keys) != 3 || hash == "" || keys[0].DatasetID != PullDatasetID || keys[0].SubjectKey == keys[1].SubjectKey {
 		t.Errorf("keys %v hash %q", keys, hash)
 	}
 	_, hash2, _ := newPull(t, seed(5, 50), newFake(100)).Plan(context.Background(), pullDay)
@@ -163,7 +164,7 @@ func TestNoPlanPlansNoKeysAndRunIsNoValue(t *testing.T) {
 		t.Fatalf("stored plan: keys %v err %v", keys, err)
 	}
 	s.items = nil
-	res := j.Run(context.Background(), pullDay, []contracts.ExpectedKey{{DatasetID: "obs.option_open", SubjectKey: "batch-001"}})
+	res := j.Run(context.Background(), pullDay, []contracts.ExpectedKey{{DatasetID: PullDatasetID, SubjectKey: "batch-001"}})
 	if res.Err == nil || res.Err.Kind() != contracts.NoValue || res.Err.Error() != "option_open: no plan" {
 		t.Errorf("Run: %v", res.Err)
 	}
@@ -309,5 +310,27 @@ func TestPlanReturnsTheRetryableErrorOfTheStore(t *testing.T) {
 	_, _, err := newPull(t, s, newFake(100)).Plan(context.Background(), pullDay)
 	if err == nil || err.(contracts.TypedError).Kind() != contracts.Retryable {
 		t.Fatalf("Plan err %v", err)
+	}
+}
+
+func TestPullKeysCarryTheUSDataset(t *testing.T) {
+	t.Parallel()
+	keys, _, err := newPull(t, seed(5, 50), newFake(100)).Plan(context.Background(), pullDay)
+	if err != nil || len(keys) == 0 {
+		t.Fatalf("keys %v err %v", keys, err)
+	}
+	for _, k := range keys {
+		if k.DatasetID != PullDatasetID {
+			t.Errorf("key %+v", k)
+		}
+	}
+}
+
+func TestPullWindowIsXNYS(t *testing.T) {
+	t.Parallel()
+	j := newPull(t, seed(1, 1), newFake(100))
+	cal, open, closeOff := j.(runner.Windowed).Window()
+	if cal != "XNYS" || open != 0 || closeOff != 0 {
+		t.Errorf("window %s %v %v", cal, open, closeOff)
 	}
 }
