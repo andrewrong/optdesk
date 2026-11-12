@@ -1,7 +1,7 @@
 # Held underlying add: a held stock with no row on the list gets a pending row, or a named state on the page
 
 Author: window (draft for advisor review)
-Revision: 3
+Revision: 4
 Variant: (b) of the advisor decision of 2026-11-12, with `Add` on its own one-method interface (not on `Settler`,
 not through `Apply` from a wiring file; variant (a) is rejected). Contracts: unchanged.
 
@@ -34,7 +34,10 @@ so a row can be added through the resolve store with no migration.
    (`migrations/0008_master_instrument.sql:13`): a name with no row has no instrument. Not `rd.underlying_r1.market`:
    that is the row being made.
 4. Origin: no column exists (`migrations/0033_underlying.sql:11-31`); the origin is the `Note` value `NoteHeld` ("Added:
-   held position"; `validate.go:27` allows 200). `Settle` copies the row (`write.go:112-121`), so it survives the
+   held position; check the con_id"; `validate.go:27` allows 200). The note column is on the page (`view.tsx:85`), and the
+   row shows its con_id. The broker's resolve answer carries no name (`broker.Resolved`, `internal/broker/api.go:88-93`;
+   `ContractSpec`, `contracts/proto/ibkr/v1/contract.proto:25-39`), so a resolved name cannot be shown; the note tells the
+   owner to check the con_id, which is how a wrong match (decision 8) becomes visible. `Settle` copies the row (`write.go:112-121`), so it survives the
    resolve. An owner who overwrites the note takes the row over; code that reads the origin from `Note` is fragile.
 5. Stopping. The row persists; no job removes or retires it. On the page the owner sets retired, paused or options off.
    For a held option the chain does not stop: `followedBy` keeps `options` while an option on the name is held
@@ -49,6 +52,11 @@ so a row can be added through the resolve store with no migration.
      nonzero quantity (`companies_site.go:123`) that is not an index option (decision 8), has no row of the symbol and
      passes `CheckHeld`, it appends one expected key (`market:SYMBOL`, the inner dataset id), held keys first, at most 20
      (`max_names` of `job.toml`). The hash is the inner hash joined with the held keys.
+     When the day's plan gains a key the reconciler takes it: every pass re-plans, merges the keys and, when the hash
+     differs from the stored one, puts the day's expected keys again (`internal/runner/reconcile/reconcile.go:151-189,238-244`).
+     A `Plan` error would make it skip the whole job (`reconcile.go:160-166`), so when the position read fails `Plan`
+     returns the inner keys and hash unchanged (pending names still planned), logs one `Warn` with the job id and no text, and
+     the page names the failure (decision 9).
    - The runner calls `Run` once per key (`internal/runner/reconcile/runkey.go:100`), so a `Run`-side write needs a key:
      the held key is it. `Run` on a key with no row calls `Add` for its pair (read again from the positions; a name sold
      since the plan does nothing), then the inner `Run`, whose `due` read now holds the new row and resolves it in the
@@ -61,11 +69,12 @@ so a row can be added through the resolve store with no migration.
      account_capture (`cmd/ot/wire.go:41,251`) and `cmd/ot/accountimport.go`.
 8. Index options. The position data has no underlying type: `store.Position` holds the position's own `SecType`
    (stock, index, option) and the option's `ConID` (`internal/store/api.go:708-724`; `internal/jobs/accountcapture/job.go:236-268`
-   maps only the position's own word), so "index" cannot be read from an option position. The rule is a symbol set in
-   `cmd/ot`: SPX, NDX, RUT, N225, the `[[index]]` names of `internal/jobs/barsrefresh/job.toml:13-37` and the index of
-   `internal/jobs/optioneod/job_jp.toml:24-25`. Such an `OPT` position is never planned or added. The page shows N225 as
-   "index option, covered by option_eod_jp" (that job lists N225, `job_jp.toml:23-25`) and the others as "not supported:
-   index option" (`optioneod/job.toml` lists no index). Not covered: an index outside the set, say XSP or VIX, is added as a
+   maps only the position's own word), so "index" cannot be read from an option position. The rule is one table of data, the
+   `[[index]]` tables of `internal/jobs/barsrefresh/job.toml:13-37` (SPX, NDX, RUT, N225), read by `cmd/ot` through
+   `barsrefresh.DefaultManifest().Indexes` (`internal/jobs/barsrefresh/manifest.go:85`), no symbol in code. Such an `OPT`
+   position is never planned or added. The page shows an index of currency JPY as "index option, covered by option_eod_jp"
+   (that job lists N225 only, `internal/jobs/optioneod/job_jp.toml:24-25`; id `jobOptionEodJP`, `cmd/ot/preflight.go:21`) and any
+   other as "not supported: index option" (`optioneod/job.toml` lists no index). Not covered: an index outside the set, say XSP or VIX, is added as a
    stock; the resolve asks for `STK` on SMART (`job.go:133-139`), so a stock with the same ticker would resolve to an
    unrelated con_id. The page shows con_id and name; the owner retires it. A fix needs the underlying type in the position
    contract (`contracts/proto`), out of scope.
@@ -74,8 +83,10 @@ so a row can be added through the resolve store with no migration.
    list"); a pending row ("X: pending; the first option chain comes at least one session day after the resolve"); an
    unresolved row ("X: unresolved, no option chain: <reason>"); and a refused name with its own text and reason from a new
    `Input.HeldRefused map[string]string` that `cmd/ot` fills with the `Why` of `CheckHeld` ("currency GBP has no market",
-   "symbol does not match the pattern of market JP") or the index text of decision 8. Gone when the row is active.
-10. Pending order: one term, `ORDER BY (note = 'Added: held position') DESC, name_key` in `pendingSQL`
+   "symbol does not match the pattern of market JP") or the index text of decision 8. Gone when the row is active. When
+   the positions cannot be read the page builds anyway (today it fails, `cmd/ot/underlyings_site.go:76-78`) with one gap
+   `no_data` "Held names could not be read from the positions; held names may be missing here" (`Input.HeldError`).
+10. Pending order: one term, `ORDER BY (note = $2) DESC, name_key` in `pendingSQL`
     (`internal/store/underlyingpg/read.go:22-23`), so held rows are not starved by the cut at `max_names` 20 (`job.go:77`).
     A row whose `ResolveContract` errors stays first each day; one the broker does not list is settled unresolved and
     leaves the front for `retry_days` 7 (`job.toml`).
@@ -120,7 +131,7 @@ Owning module: store. Interface file `internal/store/underlying/api.go`; contrac
         Add(ctx context.Context, symbol, currency string) (added bool, err error)
     }
 
-and the constant `NoteHeld = "Added: held position"`. The comment of `Settler.Pending` adds: rows with `Note` `NoteHeld`
+and the constant `NoteHeld = "Added: held position; check the con_id"`. The comment of `Settler.Pending` adds: rows with `Note` `NoteHeld`
 come first. The contract test pins the written fields (status pending, kind stock, Options true, ConID 0, Note NoteHeld,
 Fundamentals false, Issuer empty), added true then false, false after a retired edit, an InvalidError for GBP, and the
 held-first order of `Pending`.
@@ -131,7 +142,7 @@ held-first order of `Pending`.
    Design: docs/design/held-underlying-add.md#interface
    Files: internal/store/underlying/api.go, internal/store/underlying/api_test.go, internal/store/underlyingpg/write.go, internal/store/underlyingpg/validate.go, internal/store/underlyingpg/read.go, internal/store/underlyingpg/store_test.go, internal/store/underlyingpg/store_pg_test.go, internal/store/underlyingpg/validate_test.go
    1. `git grep -n "type HeldAdder interface" -- internal/store/underlying/api.go` prints one line, and `type Settler interface` lists the same three methods as before.
-   2. `git grep -n "NoteHeld" -- internal/store/underlying/api.go` prints the constant; the file has no `func` line.
+   2. `git grep -n "NoteHeld" -- internal/store/underlying/api.go` prints the constant, whose text contains "check the con_id", and `TestHeldAdderContract` pins that the written note is `NoteHeld`; the file has no `func` line.
    3. `api_test.go` contains `func TestHeldAdderContract` (the written fields, added true then false, retired false, GBP InvalidError) and `func TestPendingHeldFirst`.
    4. `git grep -n "func (s \*Store) Add(\|func CheckHeld(\|marketOfCurrency" -- internal/store/underlyingpg` prints the method, the function and the map holding USD and JPY only.
    5. `git grep -n "note = " -- internal/store/underlyingpg/read.go` prints the one ORDER BY term of `pendingSQL`.
@@ -144,16 +155,17 @@ held-first order of `Pending`.
    1. `git grep -n "HeldOptions\|HeldRefused" -- internal/pages/underlyings/builder.go` prints both `Input` fields (`map[string]bool`, `map[string]string`).
    2. `git grep -n "no_data" -- internal/pages/underlyings/builder.go` prints the constant and the append; `text.go` holds four texts (no row, pending, unresolved, refused with the given reason), each built to at most 200 characters, the pending text containing "at least one session day".
    3. `builder_test.go` contains `func TestHeldNameWithoutRowIsAGap`, `func TestHeldPendingRowIsAGap`, `func TestHeldUnresolvedRowIsAGap`, `func TestHeldRefusedNameShowsItsReason`, `func TestHeldActiveRowGivesNoGap`; the first also covers a name only in `HeldOptions`.
-   4. The page schema is unchanged: every new gap uses the reason `no_data` of `common.v2.json:15`, and no file under `contracts/` or `web/` is in Files.
+   4. `git grep -n "HeldError" -- internal/pages/underlyings/builder.go` prints the field; `builder_test.go` also contains `func TestHeldReadFailureIsAGap`.
+   5. The page schema is unchanged: every new gap uses the reason `no_data` of `common.v2.json:15`, and no file under `contracts/` or `web/` is in Files.
 3. ot: the wrapper, the index set, the start-up error and the page inputs. Depends on: 1, 2.
    Design: docs/design/held-underlying-add.md#decisions
    Files: cmd/ot/held_underlying_rows.go, cmd/ot/held_underlying_rows_test.go, cmd/ot/wire_underlying.go, cmd/ot/wire_underlying_test.go, cmd/ot/underlyings_site.go, cmd/ot/underlyings_site_test.go
    1. `git grep -n "underlying.HeldAdder" -- cmd/ot/wire_underlying.go` prints the assertion, followed by a returned error when it fails; `git grep -n "heldRows(" -- cmd/ot/wire_underlying.go` prints the wrap, guarded by `cfg.accountDSN`.
    2. `git grep -n "func (.*) Schedule(\|func (.*) RunBound(\|func (.*) RestartSensitive(" -- cmd/ot/held_underlying_rows.go` prints three lines, each calling the inner job by type assertion.
    3. `git grep -n "\.Add(" -- cmd/ot/held_underlying_rows.go` prints one line and it lies inside `Run`; `git grep -n "func (.*) Plan(" -A12 -- cmd/ot/held_underlying_rows.go` shows no call of `Add`; `git grep -n "underlyingresolve" -- cmd/ot/held_underlying_rows.go` prints nothing.
-   4. `git grep -n "SPX\|NDX\|RUT\|N225" -- cmd/ot/held_underlying_rows.go` prints the index set, and `git grep -n "option_eod_jp\|not supported: index option" -- cmd/ot/held_underlying_rows.go` prints both texts.
-   5. `held_underlying_rows_test.go` contains `func TestHeldPlanAddsKeyWithoutWriting`, `func TestHeldRunAddsThenRunsInner`, `func TestHeldRunSoldNameDoesNothing`, `func TestHeldPlanSkipsIndexAndRefused`, `func TestHeldRowForwardsOptionals`; `wire_underlying_test.go` contains `func TestResolveRefusesStoreWithoutHeldAdder`.
-   6. `git grep -n "HeldOptions\|HeldRefused" -- cmd/ot/underlyings_site.go` prints the lines that fill both from `heldSets` and `CheckHeld`; `underlyings_site_test.go` contains `func TestUnderlyingsPageGapForHeldOption` and `func TestUnderlyingsPageRefusedReason`.
+   4. `git grep -n "barsrefresh.DefaultManifest\|\.Indexes" -- cmd/ot/held_underlying_rows.go` prints the one read of the index table, `git grep -n "SPX\|NDX\|RUT\|N225" -- cmd/ot` prints nothing outside test files, and `git grep -n "option_eod_jp\|not supported: index option" -- cmd/ot/held_underlying_rows.go` prints both texts.
+   5. `held_underlying_rows_test.go` contains `func TestHeldPlanAddsKeyWithoutWriting`, `func TestHeldRunAddsThenRunsInner`, `func TestHeldRunSoldNameDoesNothing`, `func TestHeldPlanSkipsIndexAndRefused`, `func TestHeldRowForwardsOptionals`, `func TestHeldPlanReadFailureKeepsInnerKeys` (inner keys and hash returned, one Warn, no error); `wire_underlying_test.go` contains `func TestResolveRefusesStoreWithoutHeldAdder`.
+   6. `git grep -n "HeldOptions\|HeldRefused" -- cmd/ot/underlyings_site.go` prints the lines that fill both from `heldSets` and `CheckHeld`; `underlyings_site_test.go` contains `func TestUnderlyingsPageGapForHeldOption` and `func TestUnderlyingsPageRefusedReason` and `func TestUnderlyingsPageHeldReadFailure` (the page is built, one gap).
 
 ## Checked by CI
 
@@ -164,6 +176,7 @@ held-first order of `Pending`.
 ## Left out
 
 - A sold position: the row stays and the chain runs until the owner retires it (decision 6).
+- A resolved name on the page: the broker answer has none (decision 4); a name needs a `contracts/proto` change.
 - An index outside the set of decision 8, and a stock whose ticker equals an index option's: needs the underlying type in the position contract.
 - The import skipping a held key (readers section): the owner sets the issuer on the page.
 - A held ETF is added as kind stock: the position has no kind; the owner edits it.
@@ -206,3 +219,9 @@ r2 (advisor review r1 of head 39ff94f8, all points adopted unless noted):
 - A store without `HeldAdder` is a start-up error (decision 1), test `TestResolveRefusesStoreWithoutHeldAdder`.
 - Second DSN stated; Options true for shares only kept, with the covered-call reason; each reader answered; the import
   case is named, not fixed (separate path). Contract test pins the written fields; items 1.7 and 2.4 are results.
+
+r3 (advisor lean): one held key per missing name kept, with the reconcile behaviour cited (reconcile.go:151-189,238-244) and
+the read-failure path named: inner keys, one Warn, a page gap, three tests (decision 7, 9). The index set is the barsrefresh
+`[[index]]` data read through `DefaultManifest().Indexes`, no literal (decision 8, item 3.4). Not adopted: the resolved name
+of a held-added row on the page, because the resolve answer carries none; instead `NoteHeld` tells the owner to check the
+con_id (decision 4, item 1.2).
