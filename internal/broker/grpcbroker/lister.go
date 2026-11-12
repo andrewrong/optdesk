@@ -2,6 +2,7 @@ package grpcbroker
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,10 +26,14 @@ func (c *client) ListContracts(ctx context.Context, underlying broker.Contract, 
 	if !ok {
 		return nil, permanent("list contracts: unknown right")
 	}
+	wire, err := expiryWire(expiry)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, c.opts.CallTimeout)
 	defer cancel()
 	resp, err := c.cons.ListContracts(ctx, &pb.ListContractsRequest{
-		Underlying: spec, Expiry: string(expiry), Right: r, TradingClass: tradingClass,
+		Underlying: spec, Expiry: wire, Right: r, TradingClass: tradingClass,
 	})
 	if err != nil {
 		if status.Code(err) == codes.Unimplemented {
@@ -44,4 +49,18 @@ func (c *client) ListContracts(ctx context.Context, underlying broker.Contract, 
 		out = append(out, fromSpec(s))
 	}
 	return out, nil
+}
+
+// expiryWire turns a Day (YYYY-MM-DD or YYYYMMDD, a real calendar date) into the YYYYMMDD the
+// service accepts; any other Day is a Permanent error.
+func expiryWire(d contracts.Day) (string, error) {
+	for _, layout := range []string{time.DateOnly, "20060102"} {
+		if len(d) != len(layout) {
+			continue
+		}
+		if t, err := time.Parse(layout, string(d)); err == nil {
+			return t.Format("20060102"), nil
+		}
+	}
+	return "", permanent("list contracts: expiry is not a date in the form YYYY-MM-DD or YYYYMMDD")
 }
