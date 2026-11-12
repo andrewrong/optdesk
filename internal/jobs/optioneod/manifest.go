@@ -68,6 +68,8 @@ type manifest struct {
 	MaxExpiries          int           `toml:"max_expiries"`
 	StrikeBand           float64       `toml:"strike_band"`
 	MaxStrikesPerSide    int           `toml:"max_strikes_per_side"`
+	StrikeBandBelow      float64       `toml:"strike_band_below"`
+	StrikeBandAbove      float64       `toml:"strike_band_above"`
 	MinDTE               int           `toml:"min_dte"`
 	MaxDTE               int           `toml:"max_dte"`
 	MaxStrikes           int           `toml:"max_strikes"`
@@ -150,7 +152,7 @@ func (m *manifest) applyDefaults() {
 }
 
 func (m manifest) validate() error {
-	if m.MaxExpiries < 0 || m.MaxStrikesPerSide < 0 || m.Chunk < 0 || m.BudgetMinutes < 0 || m.StrikeBand < 0 {
+	if m.MaxExpiries < 0 || m.MaxStrikesPerSide < 0 || m.Chunk < 0 || m.BudgetMinutes < 0 || m.StrikeBand < 0 || m.StrikeBandBelow < 0 || m.StrikeBandAbove < 0 {
 		return fmt.Errorf("optioneod: manifest: counts and the band must not be negative")
 	}
 	if m.MinDTE < 0 || m.MaxDTE < 0 || m.MaxStrikes < 0 || (m.MaxDTE > 0 && m.MinDTE > m.MaxDTE) {
@@ -207,6 +209,9 @@ func (m manifest) canonical() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d|%s|%s|%s|%d|%s|%d|%g|%d|%d|%d|%s|%s", m.Version, m.ID, m.Zone, m.Window.Rule, *m.Window.LatenessHours,
 		m.Window.Calendar, m.MaxExpiries, m.StrikeBand, m.MaxStrikesPerSide, m.Chunk, m.BudgetMinutes, m.FreezeAfter, m.OptionPriceIncrement)
+	if m.StrikeBandBelow != 0 || m.StrikeBandAbove != 0 {
+		fmt.Fprintf(&b, "|band%g-%g", m.StrikeBandBelow, m.StrikeBandAbove)
+	}
 	if m.MinDTE != 0 || m.MaxDTE != 0 || m.MaxStrikes != 0 {
 		fmt.Fprintf(&b, "|dte%d-%d|%d", m.MinDTE, m.MaxDTE, m.MaxStrikes)
 	}

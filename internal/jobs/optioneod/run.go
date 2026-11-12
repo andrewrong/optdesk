@@ -76,6 +76,7 @@ func NewWithSymbols(b broker.Broker, res store.InstrumentResolver, w store.Optio
 	j.sym = t
 	// Without a watch list the job keeps the nearest max_expiries and the strike band, as before.
 	j.m.MinDTE, j.m.MaxDTE, j.m.MaxStrikes = 0, 0, 0
+	j.m.StrikeBandBelow, j.m.StrikeBandAbove = 0, 0
 	return j, nil
 }
 
