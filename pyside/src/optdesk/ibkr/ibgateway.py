@@ -259,6 +259,7 @@ class IbGateway:
         ib.reqMarketDataType(self._wanted_type)
         self._data_type = self._wanted_type
         self._generation += 1
+        self._lost = self._lost if self._soft_lost else asyncio.Event()  # fresh
         self._connected = True
 
     async def status(self) -> SessionState:
@@ -297,7 +298,7 @@ class IbGateway:
         elif code in (spec.CODE_DATA_LOST, spec.CODE_DATA_KEPT):
             if not (self._connected or self._soft_lost):
                 return  # the socket ended: it stays down
-            self._lost = self._lost if self._connected else asyncio.Event()
+            self._lost = asyncio.Event() if self._lost.is_set() else self._lost
             self._connected, self._soft_lost = True, False
             if code == spec.CODE_DATA_LOST:  # 1101: a new generation, lines again
                 self._generation += 1
