@@ -73,6 +73,10 @@ func (f fakeLedger) Cursor(context.Context) (store.Cursor, error) {
 func (f fakeLedger) Present(context.Context, contracts.Day) (map[contracts.ExpectedKey]store.PresentStatus, error) {
 	return nil, nil
 }
+func (f fakeLedger) Acquire(context.Context, string, time.Duration) (store.Lease, error) {
+	return store.Lease{}, nil
+}
+func (f fakeLedger) Release(context.Context, store.Lease) error               { return nil }
 func (f fakeLedger) Runs(context.Context, contracts.Day) ([]store.Run, error) { return nil, nil }
 func (f fakeSeries) Close() error                                             { f.n.Add(1); return nil }
 
@@ -765,5 +769,27 @@ func TestRunOnceClosesLedger(t *testing.T) {
 	}
 	if sc.Load() != 1 {
 		t.Fatalf("success path: scheduler ledger closed %d times", sc.Load())
+	}
+}
+
+type dbDownRunner struct{}
+
+// Reconcile fails Retryable as ops/ledger.go wraps a database error, e.g. "ops: set cursor: conn reset".
+func (dbDownRunner) Reconcile(context.Context, contracts.Day) error { return secretRetryable{} }
+
+func TestRunOnceDBErrorIsNotALeaseRefusal(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	a.deps.newReconciler = func(
+		store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
+		return dbDownRunner{}, nil
+	}
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	if err == nil || strings.Contains(err.Error(), "runner lease is held by another run") {
+		t.Fatalf("a ledger failure with the lease free was reported as a held lease: %v", err)
 	}
 }

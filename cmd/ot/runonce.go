@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
@@ -147,8 +148,7 @@ func runOnce(a *app, args []string) error {
 		return err
 	}
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
-		var ref refusal
-		if errors.As(err, &ref) {
+		if ref := refusal(""); errors.As(err, &ref) {
 			return err
 		}
 		return fmt.Errorf("run-once %s: %w", day, err)
@@ -156,7 +156,7 @@ func runOnce(a *app, args []string) error {
 	return nil
 }
 
-// reconcileDay opens the stores, wires the jobs and reconciles day; it closes the stores on every path.
+// reconcileDay opens the stores, wires the jobs and reconciles day, closing the stores on every path. No fence: Reconcile holds the run lease.
 func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, day contracts.Day) error {
 	check := func(ledger store.OpsLedger) error {
 		cur, err := ledger.Cursor(ctx)
@@ -168,7 +168,6 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 		}
 		return nil
 	}
-	// No fence: Reconcile holds and renews the run lease, so only a run of the same job refuses this one.
 	fw := a.deps.newFwClock()
 	sl, err := a.deps.openSchedulerLedger(ctx, cfg.runnerDSN)
 	if err != nil {
@@ -177,14 +176,9 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 	defer func() { _ = sl.Close() }()
 	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
 		js := w.runnable(a.log)
-		kr := a.deps.newKeyRunner(w.ledger, sl, fw)
-		rec, _ := a.deps.newReconciler(w.ledger, sl, w.cal, fw, js, runner.WindowRule{}, kr)
+		rec, _ := a.deps.newReconciler(w.ledger, sl, w.cal, fw, js, runner.WindowRule{}, a.deps.newKeyRunner(w.ledger, sl, fw))
 		if err := rec.Reconcile(ctx, day); err != nil {
-			var te contracts.TypedError
-			if errors.As(err, &te) && te.Kind() == contracts.Retryable {
-				return leaseRefusal(ctx, w.ledger, js, day, fw.Now())
-			}
-			return err
+			return cmp.Or(leaseRefusal(ctx, w.ledger, js, day, fw.Now()), err)
 		}
 		return printOutcomes(ctx, a.stdout, w.ledger, js, day, w.off[jobEarningsRefresh])
 	})
@@ -194,16 +188,26 @@ type refusal string // an answer run-once gives as it stands, without the "run-o
 
 func (r refusal) Error() string { return string(r) }
 
-// leaseRefusal names the job whose plan holds the dataset of a live run of day; no DSN, no ledger error.
+// leaseRefusal answers a Reconcile error with the refusal when another run holds the run lease (probed by taking it
+// under another owner), else nil. It names the job whose plan holds the dataset of a live run; no DSN, no ledger error.
 func leaseRefusal(ctx context.Context, ledger store.OpsLedger, js []contracts.Job, day contracts.Day, now time.Time) error {
-	runs, _ := ledger.Runs(ctx, day)
-	for _, r := range runs {
-		for _, j := range js {
-			keys, _, err := j.Plan(ctx, day)
-			if r.Status == store.RunRunning && r.LeaseUntil.After(now) && err == nil &&
-				slices.ContainsFunc(keys, func(k contracts.ExpectedKey) bool { return k.DatasetID == r.Key.DatasetID }) {
-				return refusal("run-once refused: job " + j.ID() + " is running (dataset " + r.Key.DatasetID + "); retry when it has finished")
-			}
+	runs, runsErr := ledger.Runs(ctx, day)
+	probe, err := ledger.Acquire(ctx, "run-once-probe", time.Minute)
+	if err == nil {
+		_ = ledger.Release(ctx, probe)
+	}
+	if err == nil || runsErr != nil { // the lease is free, or the ledger cannot say (a database failure)
+		return nil
+	}
+	live := func(ds string) bool {
+		return slices.ContainsFunc(runs, func(r store.Run) bool {
+			return r.Key.DatasetID == ds && r.Status == store.RunRunning && r.LeaseUntil.After(now)
+		})
+	}
+	for _, j := range js {
+		keys, _, perr := j.Plan(ctx, day)
+		if i := slices.IndexFunc(keys, func(k contracts.ExpectedKey) bool { return live(k.DatasetID) }); perr == nil && i >= 0 {
+			return refusal("run-once refused: job " + j.ID() + " is running (dataset " + keys[i].DatasetID + "); retry when it has finished")
 		}
 	}
 	return refusal("run-once refused: the runner lease is held by another run; retry in a minute")
@@ -573,27 +577,4 @@ func openEarnings(ctx context.Context, a *app, d deps, cfg runOnceConfig) (
 		}
 	}
 	return events, earn, jp, func() { _ = events.Close() }, nil
-}
-
-// fredSource is the FRED source, or the stand-in that answers permanent when the key is empty.
-func fredSource(d deps, cfg runOnceConfig, clk clock.Clock) (sources.Source, error) {
-	if cfg.fredKey == "" {
-		return noKeySource{}, nil
-	}
-	src, err := d.newFRED(sources.FREDConfig{BaseURL: fredBaseURL, APIKey: cfg.fredKey, Clock: clk})
-	if err != nil {
-		return nil, fmt.Errorf("build FRED source failed: %w", err)
-	}
-	return src, nil
-}
-
-// jpSymbols is the symbol of each JP entry of the watch list, in file order: the codes one J-Quants call each.
-func jpSymbols(watch []jobs.WatchEntry) []string {
-	var out []string
-	for _, e := range watch {
-		if e.Market == "JP" {
-			out = append(out, e.Contract.Symbol)
-		}
-	}
-	return out
 }

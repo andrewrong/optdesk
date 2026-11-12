@@ -98,8 +98,12 @@ type evBroker struct {
 	c evc
 }
 
-func (f evSD) Close() error     { return f.c.close() }
-func (f evLedger) Close() error { return f.c.close() }
+func (f evSD) Close() error { return f.c.close() }
+func (evLedger) Acquire(context.Context, string, time.Duration) (store.Lease, error) {
+	return store.Lease{}, nil
+}
+func (evLedger) Release(context.Context, store.Lease) error { return nil }
+func (f evLedger) Close() error                             { return f.c.close() }
 func (f evLedger) Cursor(context.Context) (store.Cursor, error) {
 	return store.Cursor{Day: f.d}, nil
 }
