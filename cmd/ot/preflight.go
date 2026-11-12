@@ -209,6 +209,14 @@ func (s *swapReconciler) Reconcile(ctx context.Context, day contracts.Day) error
 	return cur.Reconcile(ctx, day)
 }
 
+// current returns the jobs the reconciler may run, the enabled ones plus every job a probe brought back, and
+// whether a reconciler is built at all.
+func (s *swapReconciler) current() ([]contracts.Job, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]contracts.Job(nil), s.enabled...), s.cur != nil
+}
+
 // Probe returns "" when the job id is back and now part of the reconciler, else the reason it stays out.
 // Each rebuild re-probes the enabled option_eod_jp and builds the new reconciler without it when the reason
 // is reasonNoXTKS (Decision 13); the job stays in enabled, so a later probe can bring it back.
