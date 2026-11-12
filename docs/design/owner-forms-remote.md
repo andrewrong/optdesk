@@ -23,7 +23,8 @@ None changed. `Contracts: unchanged`.
    upload `POST /owner-flex-import` (`flexImportPostRoute`, `site.go`; landed with #1901) are registered when the
    store DSN line exists (`rd.edit != nil`, `site.go` registration) and answer 404 otherwise, as now. With the DSN
    but `OT_OWNER_TOKEN` unset or under 32 bytes, every owner POST answers `403` with the line `owner token not set:
-   set OT_OWNER_TOKEN`. `--owner-edit` is still accepted and ignored (one log line) so no launcher breaks; it no
+   set OT_OWNER_TOKEN`. `serve.go` calls `newOwnerEdit` (`settings.go`; it drops the form key and the listen address and stays nil without the
+   DSN line) on every start, not only under `--owner-edit`, and drops the loopback `--addr` test; `--owner-edit` is still accepted and ignored (one log line) so no launcher breaks; it no
    longer gates anything.
 2. **No network guard.** `hostNameOK`, `ownerLoopbackNames`, the `Check` and `CheckUpload` calls (the latter in
    `postOwnerFlexImport`, `flex_import_post.go`, which also reads `expires`/`mac` from the multipart fields), the
@@ -43,7 +44,8 @@ None changed. `Contracts: unchanged`.
    and default ports differ, so an Origin-equals-Host test could refuse every phone post).
 6. **Page form fields stay, inert.** The page contracts require `expires` and `mac` (schemas, builders, web).
    `cmd/ot` passes a constant well-formed dummy (`expires` `0`, `mac` 64 zeros) where it passed `form.Token(now)`
-   and ignores the posted values; this covers `flex_import_site.go`, which builds its token with `form.Token`, as
+   and ignores the posted values. `readUploadFields` no longer reads `expires`/`mac` and no longer refuses a file part
+   that comes before the fields, so `TestFIFileBeforeFieldsRefused` (`flex_import_limits_test.go`) is deleted. This covers `flex_import_site.go`, which builds its token with `form.Token`, as
    the three other pages do. `form.Parse` is still used (it verifies no MAC; it takes the key `OT_FORM_KEY` named
    today, and that argument goes with the key). Retiring the fields is Left out. The gap texts that
    mention `--owner-edit` are left alone (Left out).
@@ -90,7 +92,10 @@ None changed. `Contracts: unchanged`.
    - `POST /owner-flex-import` without the cookie answers 403 with a multipart body whose first part is not read
      (a test body with a broken stream after the first part still gets 403, not the broken-upload path), imports
      nothing, and with the right cookie on a non-loopback `RemoteAddr` and `Host: x.ts.net:28000` the files are
-     imported; the 64 MiB cap and 8-file limit tests pass unchanged.
+     imported; the cap and 8-file tests
+     (`TestFIStreamOver413`, `TestFINineFilesTooMany` and the others of `flex_import_limits_test.go`) keep their
+     expected status codes and texts, their requests changed only to carry a valid `ot_owner` cookie
+     (`TestFIStreamOver413` builds its own request, so it gains the cookie by hand).
    - A POST with the right cookie succeeds on a request with `Host: x.ts.net:28000` and a non-loopback `RemoteAddr`;
      a wrong cookie and no cookie give 403.
    - With the DSN present and the token unset, every owner POST gives 403 and the body holds `OT_OWNER_TOKEN`;
@@ -99,8 +104,8 @@ None changed. `Contracts: unchanged`.
      wrong one answers 403.
    - The pages of the three routes carry `expires` `0` and a 64-zero `mac` and validate against their schemas.
    - Tests generate the token; no file in the diff holds a token value.
-   - New files under 600 lines; `site.go` (621 lines) gets one registration line for the login route and no growth
-     beyond that, else reported in the PR.
+   - New files under 600 lines; `site.go` (621 lines) gets one registration line for the login route and
+     is at most 622 lines.
    Contracts: unchanged.
 
 ## Left out
