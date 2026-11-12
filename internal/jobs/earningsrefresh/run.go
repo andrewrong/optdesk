@@ -69,10 +69,6 @@ type typedError struct {
 func (e *typedError) Error() string             { return e.msg }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
 
-// errSourceFailed is the one error of a run whose Fetch failed. It carries no text of the source, so no key or
-// address can leak.
-var errSourceFailed = &typedError{contracts.Permanent, "earningsrefresh: a source failed"}
-
 func asTyped(err error, kind contracts.ErrorKind) contracts.TypedError {
 	var te contracts.TypedError
 	if errors.As(err, &te) {
@@ -235,7 +231,10 @@ func (j *job) readDay(ctx context.Context, day contracts.Day) (
 
 // Run writes the rows of day that are missing. It makes at most one Fetch per source and none for a market
 // that already has a vendor row of the day; an error row is not one, so it is fetched again with the next attempt.
-func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
+//
+// With one key that names a watch entry, only a failure of that entry's market is an error; otherwise any failed
+// market is.
+func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	observed, err := date(string(day))
 	if err != nil {
 		te := &typedError{contracts.Permanent, "earningsrefresh: bad day"}
@@ -287,19 +286,49 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	if res.Err != nil {
 		return res
 	}
-	if fetchFailed {
-		j.logFailure("source_failed", errSourceFailed)
-		res.Err = errSourceFailed
+	if counted := j.countedFailures(keys, fetchFailed); len(counted) > 0 {
+		var texts, markets, codes []string
+		for _, m := range counted {
+			lm := strings.ToLower(m)
+			texts = append(texts, lm+": "+fetchFailed[m])
+			markets = append(markets, lm)
+			codes = append(codes, fetchFailed[m])
+		}
+		te := &typedError{contracts.Permanent, "earningsrefresh: " + strings.Join(texts, "; ")}
+		j.log.Warn("run failed", "step", "source_failed", "kind", string(te.kind),
+			"market", strings.Join(markets, ","), "code", strings.Join(codes, ","))
+		res.Err = te
 	}
 	return res
 }
 
-// fetchPending makes the one Fetch of each market that has pending entries and returns their rows and whether a
-// Fetch failed.
+// countedFailures returns the failed markets (US, then JP) that fail this run: the market of the one watch entry
+// named by keys, or every failed market when keys is empty or names no entry.
+func (j *job) countedFailures(keys []contracts.ExpectedKey, failed map[string]string) []string {
+	only := ""
+	if len(keys) == 1 {
+		for _, e := range j.entries {
+			if e.Issuer == keys[0].SubjectKey {
+				only = e.Market
+			}
+		}
+	}
+	var out []string
+	for _, m := range []string{"US", "JP"} {
+		if _, ok := failed[m]; ok && (only == "" || only == m) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// fetchPending makes the one Fetch of each market that has pending entries and returns their rows and the error code
+// of each market whose Fetch failed.
 func (j *job) fetchPending(
 	ctx context.Context, day contracts.Day, pending map[string][]jobs.WatchEntry,
 	base func(jobs.WatchEntry) contracts.EarningsDate,
-) (rows []contracts.EarningsDate, failed bool) {
+) (rows []contracts.EarningsDate, failed map[string]string) {
+	failed = map[string]string{}
 	for _, market := range []string{"US", "JP"} {
 		entries := pending[market]
 		if len(entries) == 0 {
@@ -310,12 +339,12 @@ func (j *job) fetchPending(
 			row := base(e)
 			row.Source = vendor[market].Source
 			if err != nil {
-				failed = true
 				row.Status, row.ErrorCode = "error", "unknown"
 				var ce sources.CodedError
 				if errors.As(err, &ce) && ce.ErrorCode() != "" {
 					row.ErrorCode = ce.ErrorCode()
 				}
+				failed[market] = row.ErrorCode
 			} else {
 				row = listed(row, e, listings, string(day), j.tr)
 			}
