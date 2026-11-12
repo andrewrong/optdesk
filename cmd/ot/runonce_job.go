@@ -39,9 +39,15 @@ func runOnceJob(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig,
 		return fmt.Errorf("open scheduler ledger with %s failed", store.DSNEnvRunner)
 	}
 	defer func() { _ = sl.Close() }()
-	return withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
-		return runWiredJob(ctx, a, w, sl, fw, day, id, force)
-	})
+	var answer error
+	if err := withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
+		answer = runWiredJob(ctx, a, w, sl, fw, day, id, force)
+		return nil
+	}); err != nil {
+		// A wiring error names the variable of the store, never its value.
+		return fmt.Errorf("run-once %s: %w", day, err)
+	}
+	return answer
 }
 
 // runWiredJob is runOnceJob after the wiring is built: it checks that the job is runnable, backfills its keys, prints
@@ -114,14 +120,6 @@ func hasJob(js []contracts.Job, id string) bool {
 }
 
 func isBarsJob(w wiring, id string) bool { return hasJob(w.bars, id) }
-
-// runOnceErr gives an error of the run-once of one job as it stands when it already says run-once, else with the day.
-func runOnceErr(err error, day contracts.Day) error {
-	if strings.HasPrefix(err.Error(), "run-once") {
-		return err
-	}
-	return fmt.Errorf("run-once %s: %w", day, err)
-}
 
 // checkJobCount checks how many --job names a run-once takes and where --force is allowed.
 func checkJobCount(n int, dryRun, force bool) error {

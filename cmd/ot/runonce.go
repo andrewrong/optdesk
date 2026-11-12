@@ -154,10 +154,7 @@ func runOnce(a *app, args []string) error {
 		return err
 	}
 	if len(jobNames) == 1 && !*dryRun {
-		if err := runOnceJob(ctx, a, clk, cfg, day, jobNames[0], *force); err != nil {
-			return runOnceErr(err, day)
-		}
-		return nil
+		return runOnceJob(ctx, a, clk, cfg, day, jobNames[0], *force)
 	}
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
 		if ref := refusal(""); errors.As(err, &ref) {
