@@ -131,8 +131,11 @@ const (
 	heldTextMax  = 200
 )
 
-// clip cuts s to at most n runes.
-func clip(s string, n int) string {
+// clipRunes cuts s to at most n runes; a negative n gives "".
+func clipRunes(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
 	if r := []rune(s); len(r) > n {
 		return string(r[:n])
 	}
@@ -141,13 +144,13 @@ func clip(s string, n int) string {
 
 // heldText joins a head and a reason so the whole is at most heldTextMax runes; the reason is cut, not the head.
 func heldText(head, reason string) string {
-	return head + clip(reason, heldTextMax-len([]rune(head)))
+	return clipRunes(head+clipRunes(reason, heldTextMax-len([]rune(head))), heldTextMax)
 }
 
-func heldNoRowText(sym string) string { return clip(sym+": held, not on the list", heldTextMax) }
+func heldNoRowText(sym string) string { return clipRunes(sym+": held, not on the list", heldTextMax) }
 
 func heldPendingText(sym string) string {
-	return clip(sym+": pending; the first option chain comes at least one session day after the resolve", heldTextMax)
+	return clipRunes(sym+": pending; the first option chain comes at least one session day after the resolve", heldTextMax)
 }
 
 func heldUnresolvedText(sym, reason string) string {

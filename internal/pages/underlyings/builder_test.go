@@ -340,3 +340,15 @@ func TestHeldAddedRowShowsResolvedText(t *testing.T) {
 		t.Fatalf("notes %q", notes)
 	}
 }
+
+func TestHeldRefusedLongSymbolStaysWithin200(t *testing.T) {
+	t.Parallel()
+	sym := strings.Repeat("S", 190)
+	in := heldInput()
+	in.Held = map[string]bool{sym: true}
+	in.HeldRefused = map[string]string{sym: "symbol does not match the pattern of market JP"}
+	got := heldGapTexts(t, in)
+	if len(got) != 1 || len([]rune(got[0])) > 200 {
+		t.Fatalf("got %q", got)
+	}
+}
