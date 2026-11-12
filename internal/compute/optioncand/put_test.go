@@ -234,7 +234,23 @@ func TestFundingPerAlias(t *testing.T) {
 	in.Accounts = []compute.AliasFunds{{Alias: "A", Funds: "20000", Currency: "USD", CaptureDay: "2026-11-05"}}
 	wantGate(t, only(t, eval(in)), "funding", compute.GateUnknown, "stale_account")
 	in.Accounts = nil
-	wantGate(t, only(t, eval(in)), "funding", compute.GateUnknown, "no_account")
+	wantGate(t, only(t, eval(in)), "funding", compute.GatePass, "")
+}
+
+func TestNoAccountIsMarkNotUnknown(t *testing.T) {
+	t.Parallel()
+	in := baseInput()
+	in.Accounts = nil
+	c := only(t, eval(in))
+	if c.Status != "ok" || c.Rank != 1 || !hasMark(c, "no_account") || len(c.Fits) != 0 {
+		t.Errorf("status %s rank %d marks %v fits %v", c.Status, c.Rank, c.Marks, c.Fits)
+	}
+	in.Accounts = []compute.AliasFunds{{Alias: "A", Funds: "20000", Currency: "USD", CaptureDay: "2026-11-05"}}
+	c = only(t, eval(in))
+	wantGate(t, c, "funding", compute.GateUnknown, "stale_account")
+	if hasMark(c, "no_account") {
+		t.Errorf("marks %v", c.Marks)
+	}
 }
 
 func TestNoFxIsUnknown(t *testing.T) {

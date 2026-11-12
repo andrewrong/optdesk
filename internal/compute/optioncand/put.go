@@ -65,7 +65,7 @@ func fundingGate(in compute.CandidateInput, strike *big.Rat, multiplier string) 
 	accounts := append([]compute.AliasFunds(nil), in.Accounts...)
 	sort.SliceStable(accounts, func(i, j int) bool { return accounts[i].Alias < accounts[j].Alias })
 	if len(accounts) == 0 {
-		return gate("funding", compute.GateUnknown, "no_account"), nil
+		return gate("funding", compute.GatePass, ""), nil
 	}
 	mult, multOK := parseDec(multiplier)
 	fits := map[string]string{}

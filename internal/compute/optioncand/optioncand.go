@@ -96,6 +96,9 @@ func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute
 	if q.OpenInterest == 0 {
 		marks = append(marks, "no_open_interest")
 	}
+	if len(in.Accounts) == 0 {
+		marks = append(marks, "no_account")
+	}
 	row := compute.Candidate{
 		Kind: compute.KindShortPut, Underlying: in.Underlying, InstrumentID: q.InstrumentID,
 		Expiry: q.Expiry, DTE: dte, Right: "P", Strike: q.Strike, Multiplier: q.Multiplier,
