@@ -48,7 +48,7 @@
     {"path": "page.underlyings.v1.bad-version.json", "sha256": "29a2ba38e9878202c5793d4265d00488efcbc81aeba877e20590afe55bafd23c"},
     {"path": "underlyings.follow.json", "sha256": "7677a226b615c6b1df36ae5f3e0717b1a0bf79fa2479177165d148ae650fad12"},
     {"path": "page.flex_import.v1.golden.json", "sha256": "d5013721cb42b4dfd6e9f906b082b6f838aa9c7cb4bd819ed8d44d0263b6889b"},
-    {"path": "page.flex_import.v1.result.json", "sha256": "a500ff1ec5f096c4e86fea4e452c493d8e2973646c862071967fd2d9e571a441"},
+    {"path": "page.flex_import.v1.result.json", "sha256": "db31a2c8a2afe1d1d1cfc5551c132a18af0c366563fa5435fcb53c02399a272b"},
     {"path": "page.flex_import.v1.disabled.json", "sha256": "c3f2deb4c555d536b63cf3c49082a01b02fa1d22b347e293a2e0b3e837097d06"},
     {"path": "page.flex_import.v1.bad-version.json", "sha256": "b3a4892723a25018ef3a3870c0db8ff776402dc297d7286fe8441737140b6ac4"}
   ]
