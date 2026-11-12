@@ -20,6 +20,7 @@ The schema ids with the `const` of their `schema_version`:
 | page.advice_page.v1 | 1 |
 | page.companies_page.v1 | 1 |
 | page.companies_page.v2 | 2 |
+| page.flex_import.v1 | 1 |
 | page.full_scan.v1 | 1 |
 | page.held_companies_summary.v1 | 1 |
 | page.home_page.v1 | 1 |
@@ -129,3 +130,5 @@ Quote and refresh (`docs/design/option-open-pull.md#3`, Decisions 18 to 20): `pa
 The `Contracts:` line of the pull request of these two files names them as new: `page.option_page.v2 v2 (new), page.stock_option_page.v2 v2 (new)`.
 
 Also `page.underlyings.v1` (`schema_version` 1, title `Underlyings`), written for this repository by `docs/design/underlyings.md#interface`: the followed names with their switches, the owner form, the confirm step with its `stops` lines, and the history. `gaps` are `common.v2` `Gap`s. Type: `web/src/generated/underlyings.v1.ts`; fixtures `contracts/fixtures/page.underlyings.v1.{golden,confirm,readonly,bad-version}.json` and the follow table `contracts/fixtures/underlyings.follow.json` (the one table of Decision 6; `dividends` needs an issuer) are listed in `MANIFEST.synthetic-v1.json`.
+
+Also `page.flex_import.v1` (`schema_version` 1, title `FlexImport`), written for this repository by `docs/design/flex-xml-import.md#6 flex-import-page-schema`: the upload form (null when the route is off), the results of one post (`files`) and the recent imports (`recent`). `status` is one of `stored`, `present`, `nothing_found`, `unconfigured`, `failed`; `reason` is one of `not_report`, `too_large`, `too_many_files`, `bad_gzip`, `store_error` or empty; the counts are integers of at least 0; `gaps` are `common.v2` `Gap`s. Type: `web/src/generated/flex_import.v1.ts`; fixtures `contracts/fixtures/page.flex_import.v1.{golden,result,disabled,bad-version}.json` are listed in `MANIFEST.synthetic-v1.json` and checked by `TestFlexImportV1Fixtures`.

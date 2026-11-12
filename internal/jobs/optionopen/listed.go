@@ -229,10 +229,17 @@ func (j *resolveJob) Run(ctx context.Context, day contracts.Day, keys []contract
 		res.Err = newErr(contracts.Retryable, "%d contracts were not sent", cnt.unsent)
 	}
 	j.logf("%s day=%s cap=%d used=%d asked=%d found=%d not_listed=%d ambiguous=%d timeout=%d disconnect=%d error=%d "+
-		"deferred=%d unsent=%d from_pull=%d",
+		"deferred=%d unsent=%d from_pull=%d run_err=%s",
 		j.m.ID, day, j.maxNew, j.usedOn(day), cnt.asked, cnt.found, cnt.notListed, cnt.ambiguous, cnt.timeout, cnt.disconnect, cnt.other,
-		cnt.deferred, cnt.unsent, cnt.fromPull)
+		cnt.deferred, cnt.unsent, cnt.fromPull, runErrText(res.Err))
 	return res
+}
+
+func runErrText(err contracts.TypedError) string {
+	if err == nil {
+		return "none"
+	}
+	return fmt.Sprintf("%s: %s", err.Kind(), err.Error())
 }
 
 func (j *resolveJob) logf(format string, a ...any) {
@@ -306,6 +313,9 @@ type keyRun struct {
 
 func (r *keyRun) run(ctx context.Context) contracts.TypedError {
 	j := r.j
+	if r.st.ConID == 0 {
+		return newErr(contracts.Retryable, "no con_id of %s", r.st.Symbol)
+	}
 	id, err := j.d.underlyingID(ctx, r.st)
 	if err != nil {
 		return asTyped(err, contracts.Retryable)

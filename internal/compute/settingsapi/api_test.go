@@ -100,3 +100,32 @@ func TestSettingsFormParsesPost(t *testing.T) {
 		t.Fatalf("change = %+v", ch)
 	}
 }
+
+type fakeUploader struct{}
+
+func (fakeUploader) CheckUpload(r settingsapi.FormRequest, maxBody int64, now time.Time) error {
+	if !strings.HasPrefix(r.ContentType, "multipart/form-data") {
+		return errors.New("content type refused")
+	}
+	if r.BodySize < 0 || r.BodySize > maxBody {
+		return errors.New("body size refused")
+	}
+	return nil
+}
+
+func TestUploadCheckerAppliesCallerCap(t *testing.T) {
+	t.Parallel()
+	var u settingsapi.UploadChecker = fakeUploader{}
+	now := time.Date(2026, 11, 9, 9, 0, 0, 0, time.UTC)
+	r := settingsapi.FormRequest{ContentType: "multipart/form-data; boundary=x", BodySize: 100}
+	if err := u.CheckUpload(r, 100, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := u.CheckUpload(r, 99, now); err == nil {
+		t.Fatal("body over the cap accepted")
+	}
+	r.ContentType = "application/x-www-form-urlencoded"
+	if err := u.CheckUpload(r, 100, now); err == nil {
+		t.Fatal("wrong content type accepted")
+	}
+}
