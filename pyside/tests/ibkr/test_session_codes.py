@@ -312,3 +312,52 @@ def test_1100_reconnect_1102_then_every_session_guarded_call_works() -> None:
             await gateway.executions()
 
     asyncio.run(run())
+
+
+def test_1100_during_open_session_leaves_the_session_not_connected() -> None:
+    async def run() -> tuple[bool, bool]:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+
+        async def lost_while_probing() -> None:
+            fake.errorEvent.emit(-1, 1100, "lost", None)
+
+        gateway = IbGateway(
+            lambda client: None,
+            host="127.0.0.1",
+            port=4002,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: fake,
+            readonly_probe=lost_while_probing,
+        )
+        await gateway.open_session()
+        return (await gateway.status()).connected, gateway._lost.is_set()
+
+    connected, lost = asyncio.run(run())
+    assert not (connected and lost)
+
+
+def test_apiend_during_open_session_does_not_report_connected() -> None:
+    async def run() -> bool:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+
+        async def ended_while_probing() -> None:
+            for handler in list(fake.client.apiEnd.handlers):
+                handler()
+
+        gateway = IbGateway(
+            lambda client: None,
+            host="127.0.0.1",
+            port=4002,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: fake,
+            readonly_probe=ended_while_probing,
+        )
+        await gateway.open_session()
+        fake.errorEvent.emit(-1, 1102, "restored, data kept", None)
+        return (await gateway.status()).connected
+
+    assert asyncio.run(run()) is False
