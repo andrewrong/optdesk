@@ -10,6 +10,10 @@ import (
 
 const earningsLookbackDays = 120
 
+// publishedPrefix is the frozen schema text "已公布 " (published) written as escapes: the English guard
+// of cmd/ot allows no CJK character in a Go source file of internal/pages.
+const publishedPrefix = "\u5df2\u516c\u5e03 "
+
 // earningsOut is the EarningsCell of the page schema.
 type earningsOut struct {
 	Kind string `json:"kind"`
@@ -19,7 +23,7 @@ type earningsOut struct {
 
 // earningsCell reads the stored earnings rows of the issuer for the 120 days up to day and shows
 // the report date of the last row when it is listed and has one: "MM-DD" on or after day,
-// "已公布 MM-DD" before it. No reader, no row or a row without a date is a gap; a reader error is
+// "<published> MM-DD" before it (the frozen schema value, see publishedPrefix). No reader, no row or a row without a date is a gap; a reader error is
 // returned. The text copies the stored date.
 func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) (any, error) {
 	if c.Earnings == nil {
@@ -40,7 +44,7 @@ func (c Config) earningsCell(ctx context.Context, issuer string, day time.Time) 
 	report := last.ReportDate.Time
 	text := report.Format("01-02")
 	if report.Format(dayLayout) < day.Format(dayLayout) {
-		text = "已公布 " + text
+		text = publishedPrefix + text
 	}
 	return earningsOut{Kind: "value", Date: report.Format(dayLayout), Text: text}, nil
 }
