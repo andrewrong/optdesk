@@ -90,6 +90,12 @@ func evaluatePut(in compute.CandidateInput, p compute.CandidateParams, q compute
 	if mark != "" {
 		marks = append(marks, mark)
 	}
+	if _, ok := parseDec(in.BuyPrice); !ok {
+		marks = append(marks, "no_buy_price")
+	}
+	if q.OpenInterest == 0 {
+		marks = append(marks, "no_open_interest")
+	}
 	row := compute.Candidate{
 		Kind: compute.KindShortPut, Underlying: in.Underlying, InstrumentID: q.InstrumentID,
 		Expiry: q.Expiry, DTE: dte, Right: "P", Strike: q.Strike, Multiplier: q.Multiplier,

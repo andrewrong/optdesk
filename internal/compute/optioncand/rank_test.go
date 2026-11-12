@@ -110,3 +110,19 @@ func TestDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestNoBuyPriceRowsRankedByYield(t *testing.T) {
+	t.Parallel()
+	in := rankInput()
+	in.BuyPrice = ""
+	in.Quotes = in.Quotes[:3]
+	rows := eval(in)
+	if got, want := ids(rows), []string{"hiy", "mid", "lowy"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("order %v, want %v", got, want)
+	}
+	for i, r := range rows {
+		if r.Rank != i+1 || r.RankInUnderlying != i+1 || r.Status != "ok" || !hasMark(r, "no_buy_price") {
+			t.Errorf("%s rank %d/%d status %s marks %v", r.InstrumentID, r.Rank, r.RankInUnderlying, r.Status, r.Marks)
+		}
+	}
+}

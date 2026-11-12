@@ -50,6 +50,9 @@ func evaluateCall(in compute.CandidateInput, p compute.CandidateParams, q comput
 				marks = append(marks, m)
 			}
 		}
+		if q.OpenInterest == 0 {
+			marks = append(marks, "no_open_interest")
+		}
 		row := compute.Candidate{
 			Kind: compute.KindCoveredCall, Underlying: in.Underlying, InstrumentID: q.InstrumentID,
 			Alias: a.Alias, Expiry: q.Expiry, DTE: dte, Right: "C", Strike: q.Strike,
