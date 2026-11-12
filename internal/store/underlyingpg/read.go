@@ -20,7 +20,7 @@ const (
 
 	currentSQL = `SELECT * FROM ` + newestPerKey + ` ORDER BY name_key`
 	pendingSQL = `SELECT * FROM ` + newestPerKey +
-		` WHERE status = 'pending' OR (status = 'unresolved' AND set_at < $1) ORDER BY name_key`
+		` WHERE status = 'pending' OR (status = 'unresolved' AND set_at < $1) ORDER BY (note = $2) DESC, name_key`
 	historySQL = `SELECT ` + columns + ` FROM rd.underlying_r1 ORDER BY set_at DESC, id DESC LIMIT $1`
 	// The newest row of one key, read by Settle in its transaction.
 	newestSQL = `SELECT ` + columns + ` FROM rd.underlying_r1 WHERE name_key = $1 ORDER BY set_at DESC, id DESC LIMIT 1`
@@ -69,9 +69,10 @@ func (s *Store) History(ctx context.Context, limit int) ([]underlying.Row, error
 	return rows, nil
 }
 
-// Pending returns the newest rows that are pending, or unresolved with SetAt before retryBefore.
+// Pending returns the newest rows that are pending, or unresolved with SetAt before retryBefore; rows with Note
+// NoteHeld come first, then Key order.
 func (s *Store) Pending(ctx context.Context, retryBefore time.Time) ([]underlying.Row, error) {
-	rows, err := selectRows(ctx, s.db, pendingSQL, retryBefore)
+	rows, err := selectRows(ctx, s.db, pendingSQL, retryBefore, underlying.NoteHeld)
 	if err != nil {
 		return nil, retryable(fmt.Errorf("underlyingpg: pending: %w", err))
 	}

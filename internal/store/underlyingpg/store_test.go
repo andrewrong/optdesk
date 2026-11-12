@@ -62,6 +62,20 @@ func (f *fakeDB) Select(_ context.Context, sql string, args []any, scan func(sca
 			out = append(out, r)
 		}
 		sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	case pendingSQL:
+		before, held := args[0].(time.Time), args[1].(string)
+		for _, r := range f.newest() {
+			if r.Status == underlying.StatusPending || (r.Status == underlying.StatusUnresolved && r.SetAt.Before(before)) {
+				out = append(out, r)
+			}
+		}
+		sort.Slice(out, func(i, j int) bool {
+			hi, hj := out[i].Note == held, out[j].Note == held
+			if hi != hj {
+				return hi
+			}
+			return out[i].Key < out[j].Key
+		})
 	case newestSQL:
 		if r, ok := f.newest()[args[0].(string)]; ok {
 			out = append(out, r)
@@ -238,5 +252,81 @@ func TestSettle(t *testing.T) {
 				t.Errorf("reason = %q", got.Reason)
 			}
 		})
+	}
+}
+
+func TestStoreCheck(t *testing.T) {
+	t.Parallel()
+	s := newStore(newFake())
+	for _, tc := range []struct{ symbol, currency, key, field string }{
+		{"AAPL", "USD", "US:AAPL", ""},
+		{"BRK B", "USD", "US:BRK B", ""},
+		{"7203", "JPY", "JP:7203", ""},
+		{"130A", "JPY", "JP:130A", ""},
+		{"AAPL", "GBP", "", "currency"},
+		{"AAPL", "", "", "currency"},
+		{"aapl", "USD", "", "symbol"},
+		{"AAPL", "JPY", "", "symbol"},
+		{"7203", "USD", "US:7203", ""},
+	} {
+		key, err := s.Check(tc.symbol, tc.currency)
+		var ie underlying.InvalidError
+		switch {
+		case tc.field == "" && (err != nil || key != tc.key):
+			t.Errorf("Check(%q, %q) = %q, %v; want %q", tc.symbol, tc.currency, key, err, tc.key)
+		case tc.field != "" && (!errors.As(err, &ie) || ie.Field() != tc.field || ie.Why() == "" || key != ""):
+			t.Errorf("Check(%q, %q) = %q, %v; want an InvalidError on %s", tc.symbol, tc.currency, key, err, tc.field)
+		}
+	}
+}
+
+func TestAddWritesPendingHeldRow(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	added, err := newStore(f).Add(context.Background(), "AAPL", "USD")
+	if err != nil || !added || len(f.rows) != 1 {
+		t.Fatalf("Add = %v, %v with %d rows", added, err, len(f.rows))
+	}
+	r := f.rows[0]
+	if r.Key != "US:AAPL" || r.Market != "US" || r.Status != underlying.StatusPending || r.Kind != underlying.KindStock ||
+		!r.Options || r.Fundamentals || r.Issuer != "" || r.ConID != 0 || r.Exchange != "SMART" || r.Currency != "USD" ||
+		r.Note != underlying.NoteHeld {
+		t.Errorf("row = %+v", r)
+	}
+	if _, err := newStore(f).Add(context.Background(), "AAPL", "GBP"); err == nil || len(f.rows) != 1 {
+		t.Errorf("Add GBP = %v with %d rows; want an error and no write", err, len(f.rows))
+	}
+}
+
+func TestAddSkipsExistingKey(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		row  underlying.Row
+	}{
+		{"active", underlying.Row{Key: "US:AAPL", Symbol: "AAPL", Market: "US", Status: underlying.StatusActive, ConID: 1}},
+		{"retired", underlying.Row{Key: "US:AAPL", Symbol: "AAPL", Market: "US", Status: underlying.StatusRetired}},
+		{"other market", underlying.Row{Key: "JP:AAPL", Symbol: "AAPL", Market: "JP", Status: underlying.StatusPaused}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFake()
+			f.seed(tc.row)
+			added, err := newStore(f).Add(context.Background(), "AAPL", "USD")
+			if err != nil || added || len(f.rows) != 1 {
+				t.Errorf("Add = %v, %v with %d rows; want false and nothing written", added, err, len(f.rows))
+			}
+		})
+	}
+}
+
+func TestPendingHeldFirstSQL(t *testing.T) {
+	t.Parallel()
+	f := newFake()
+	f.seed(underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: underlying.StatusPending})
+	f.seed(underlying.Row{Key: "US:ZZZ", Symbol: "ZZZ", Market: "US", Status: underlying.StatusPending, Note: underlying.NoteHeld})
+	rows, err := newStore(f).Pending(context.Background(), time.Time{})
+	if err != nil || len(rows) != 2 || rows[0].Key != "US:ZZZ" || rows[1].Key != "US:AAA" {
+		t.Errorf("Pending = %+v, %v; want the held row first", rows, err)
 	}
 }

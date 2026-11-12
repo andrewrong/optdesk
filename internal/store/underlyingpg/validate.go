@@ -38,6 +38,9 @@ func (e *invalidError) Why() string   { return e.why }
 
 func invalid(field, why string) error { return &invalidError{field: field, why: why} }
 
+// marketOfCurrency is the one place a currency becomes a market (HeldAdder).
+var marketOfCurrency = map[string]string{"USD": "US", "JPY": "JP"}
+
 // ValidateAdd checks a new name and returns the row to insert: pending, or active when it carries a ConID (the
 // import). An empty Exchange and Currency take the default of the market. exists says whether a key already has a row; a name_key is never added twice.
 func ValidateAdd(a underlying.Add, exists func(key string) bool) (underlying.Row, error) {
