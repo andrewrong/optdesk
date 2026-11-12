@@ -164,13 +164,21 @@ func TestFailedWindowStopsThatQueryOnly(t *testing.T) {
 	}
 }
 
-func TestNoRetryAfterFailure(t *testing.T) {
+func TestFailedDayFetchedAgainOnRetry(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{fail: true}
 	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
-	j.Run(context.Background(), "2026-11-10", nil)
-	if len(src.calls) != 1 {
-		t.Fatalf("calls %d, want 1", len(src.calls))
+	ctx := context.Background()
+	j.Run(ctx, "2026-11-10", nil)
+	j.Run(ctx, "2026-11-10", nil)
+	if len(src.calls) != 2 {
+		t.Fatalf("calls %d, want 2", len(src.calls))
+	}
+	src.fail = false
+	src.rep = report(oneTrade("ACCT1", "7"))
+	res := j.Run(ctx, "2026-11-10", nil)
+	if len(src.calls) != 3 || res.Err != nil || res.Returned != 1 {
+		t.Fatalf("calls %d result %+v", len(src.calls), res)
 	}
 }
 
@@ -279,7 +287,7 @@ func TestRetriedKeyDoesNotFetchAgainAndIsPresent(t *testing.T) {
 	}
 }
 
-func TestRequiredFailureKeyStaysMissingWithoutRefetch(t *testing.T) {
+func TestRequiredFailureKeyMissingUntilRetrySucceeds(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{fail: true}
 	j, _ := build(t, []FlexRun{{Name: "main", QueryIDs: []string{"q1"}, Required: true, Source: src}}, nil)
@@ -288,12 +296,17 @@ func TestRequiredFailureKeyStaysMissingWithoutRefetch(t *testing.T) {
 		if res := j.Run(ctx, "2026-11-10", nil); res.Err == nil {
 			t.Fatal("want error")
 		}
+		if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
+			t.Fatal("a failed required login must not mark the key present")
+		}
 	}
-	if len(src.calls) != 1 {
-		t.Fatalf("fetched %d times, want 1", len(src.calls))
+	src.fail = false
+	src.rep = report(oneTrade("ACCT1", "7"))
+	if res := j.Run(ctx, "2026-11-10", nil); res.Err != nil {
+		t.Fatal(res.Err)
 	}
-	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); ok {
-		t.Fatal("a failed required login must not mark the key present")
+	if ok, _ := j.Postcondition(ctx, "2026-11-10", datasetID, "a"); !ok {
+		t.Fatal("key must be present once the retry succeeds")
 	}
 }
 
