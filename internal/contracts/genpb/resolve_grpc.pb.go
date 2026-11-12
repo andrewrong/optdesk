@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ContractsService_ListChains_FullMethodName      = "/ibkr.v1.ContractsService/ListChains"
 	ContractsService_ResolveContract_FullMethodName = "/ibkr.v1.ContractsService/ResolveContract"
+	ContractsService_ListContracts_FullMethodName   = "/ibkr.v1.ContractsService/ListContracts"
 )
 
 // ContractsServiceClient is the client API for ContractsService service.
@@ -33,6 +34,9 @@ type ContractsServiceClient interface {
 	ListChains(ctx context.Context, in *ListChainsRequest, opts ...grpc.CallOption) (*ListChainsResponse, error)
 	// ResolveContract resolves one fully specified contract.
 	ResolveContract(ctx context.Context, in *ResolveContractRequest, opts ...grpc.CallOption) (*ResolveContractResponse, error)
+	// ListContracts lists the real option contracts of one underlying, expiry and
+	// trading class, with their con_ids: one contract-details request, no strike.
+	ListContracts(ctx context.Context, in *ListContractsRequest, opts ...grpc.CallOption) (*ListContractsResponse, error)
 }
 
 type contractsServiceClient struct {
@@ -63,6 +67,16 @@ func (c *contractsServiceClient) ResolveContract(ctx context.Context, in *Resolv
 	return out, nil
 }
 
+func (c *contractsServiceClient) ListContracts(ctx context.Context, in *ListContractsRequest, opts ...grpc.CallOption) (*ListContractsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListContractsResponse)
+	err := c.cc.Invoke(ctx, ContractsService_ListContracts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContractsServiceServer is the server API for ContractsService service.
 // All implementations must embed UnimplementedContractsServiceServer
 // for forward compatibility.
@@ -73,6 +87,9 @@ type ContractsServiceServer interface {
 	ListChains(context.Context, *ListChainsRequest) (*ListChainsResponse, error)
 	// ResolveContract resolves one fully specified contract.
 	ResolveContract(context.Context, *ResolveContractRequest) (*ResolveContractResponse, error)
+	// ListContracts lists the real option contracts of one underlying, expiry and
+	// trading class, with their con_ids: one contract-details request, no strike.
+	ListContracts(context.Context, *ListContractsRequest) (*ListContractsResponse, error)
 	mustEmbedUnimplementedContractsServiceServer()
 }
 
@@ -88,6 +105,9 @@ func (UnimplementedContractsServiceServer) ListChains(context.Context, *ListChai
 }
 func (UnimplementedContractsServiceServer) ResolveContract(context.Context, *ResolveContractRequest) (*ResolveContractResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveContract not implemented")
+}
+func (UnimplementedContractsServiceServer) ListContracts(context.Context, *ListContractsRequest) (*ListContractsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListContracts not implemented")
 }
 func (UnimplementedContractsServiceServer) mustEmbedUnimplementedContractsServiceServer() {}
 func (UnimplementedContractsServiceServer) testEmbeddedByValue()                          {}
@@ -146,6 +166,24 @@ func _ContractsService_ResolveContract_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContractsService_ListContracts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContractsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContractsServiceServer).ListContracts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContractsService_ListContracts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContractsServiceServer).ListContracts(ctx, req.(*ListContractsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContractsService_ServiceDesc is the grpc.ServiceDesc for ContractsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -160,6 +198,10 @@ var ContractsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveContract",
 			Handler:    _ContractsService_ResolveContract_Handler,
+		},
+		{
+			MethodName: "ListContracts",
+			Handler:    _ContractsService_ListContracts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

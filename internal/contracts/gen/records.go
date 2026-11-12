@@ -1050,9 +1050,13 @@ func (j *EarningsDate) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// optionledger.flex_fetch r1: one Flex request pair (one window of one query of
-// one login) with its outcome and counts; insert only. No token and no account
-// number is stored.
+// optionledger.flex_fetch r2: one record per request pair of the daily job (one
+// window of one query of one login) or per file of the web import, with its
+// outcome and counts; insert only. For an import record, ok means the file was
+// read, also when nothing was found and when the account is not configured;
+// first_date and last_date are the period of the alias's statements, else its
+// trade dates, else the day of the request. No token and no account number is
+// stored.
 type FlexFetch struct {
 	// Flex error code as text when the service gave one; empty otherwise.
 	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
@@ -1067,19 +1071,22 @@ type FlexFetch struct {
 	// Instant the request pair finished, UTC.
 	FinishedAt time.Time `json:"finished_at" yaml:"finished_at" mapstructure:"finished_at"`
 
-	// First day of the window.
+	// First day of the window; for an import record the first day of the period of
+	// the alias's statements, else of its trade dates, else the day of the request.
 	FirstDate types.SerializableDate `json:"first_date" yaml:"first_date" mapstructure:"first_date"`
 
-	// Last day of the window.
+	// Last day of the window; for an import record the last day of the period of the
+	// alias's statements, else of its trade dates, else the day of the request.
 	LastDate types.SerializableDate `json:"last_date" yaml:"last_date" mapstructure:"last_date"`
 
-	// Name of the login of flex.toml.
+	// Name of the login of flex.toml; import names the web import.
 	Login string `json:"login" yaml:"login" mapstructure:"login"`
 
 	// Version of the report parser.
 	ParserVersion string `json:"parser_version" yaml:"parser_version" mapstructure:"parser_version"`
 
-	// Flex query id, digits, as text.
+	// Flex query id as text: digits for a window of the daily job; file:<request
+	// id>:<ordinal>:<alias> for a file of the web import.
 	QueryID string `json:"query_id" yaml:"query_id" mapstructure:"query_id"`
 
 	// SHA-256 of the report, 64 lower-case hex digits; empty when no report arrived.
@@ -1107,8 +1114,9 @@ type FlexFetch struct {
 	// Statements of an account the allow-list does not map; not stored.
 	StatementsUnmapped int `json:"statements_unmapped" yaml:"statements_unmapped" mapstructure:"statements_unmapped"`
 
-	// ok: the report was parsed and stored; failed: the window failed and nothing but
-	// this record was stored.
+	// ok: the report was parsed and stored, or for an import record the file was read
+	// (also nothing found and account not configured); failed: the window or file
+	// failed and nothing but this record was stored.
 	Status FlexFetchStatus `json:"status" yaml:"status" mapstructure:"status"`
 }
 

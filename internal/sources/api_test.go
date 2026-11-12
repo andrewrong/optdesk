@@ -2,6 +2,8 @@ package sources_test
 
 import (
 	"context"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/jonboulle/clockwork"
@@ -100,4 +102,16 @@ func TestSECFactSourceContract(t *testing.T) {
 		t.Fatalf("cursor %q %v", d, err)
 	}
 	var _ sources.NewEDINETFunc = func(sources.EDINETConfig) (sources.FactSource, error) { return fakeFacts{}, nil }
+}
+
+func TestParseFlexFuncContract(t *testing.T) {
+	t.Parallel()
+	parse := sources.ParseFlexFunc(func(r io.Reader) (sources.FlexReport, error) {
+		b, err := io.ReadAll(r)
+		return sources.FlexReport{RawSHA256: string(b)}, err
+	})
+	got, err := parse(strings.NewReader("body"))
+	if err != nil || got.RawSHA256 != "body" || !got.FetchedAt.IsZero() {
+		t.Fatalf("got %+v err %v", got, err)
+	}
 }

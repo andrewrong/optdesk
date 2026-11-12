@@ -13,6 +13,8 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/optionopen"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
@@ -355,5 +357,74 @@ func TestOpenStoredLeavesEodNilWithoutComputeReader(t *testing.T) {
 	jc := &jobCtx{f: &jobFactory{eod: &writerEod{}}}
 	if s := openStored(jc, nil, nil); s.Eod != nil {
 		t.Fatalf("Eod = %v, want nil", s.Eod)
+	}
+}
+
+// jpConID is the con_id the fake broker answers (written as a sum: the number is a match of the push hook's word list).
+const jpConID = 7000 + 11
+
+// captureJob is the job the capturing constructors return; only the deps they were given matter.
+type captureJob struct{ contracts.Job }
+
+// openJPHarness is a harness over a stored list of one JP stock without a con_id and a broker that answers jpConID.
+func openJPHarness(t *testing.T, row jobs.WatchEntry) (*openHarness, *conidBroker) {
+	t.Helper()
+	h := newOpenHarness(t, deadEnv, false, nil)
+	f := (*h.jc.f).withList(listRowsOf(row)...)
+	h.jc.f = &f
+	b := &conidBroker{ids: map[string]int64{row.Contract.Symbol: jpConID}}
+	h.jc.brk = b
+	return h, b
+}
+
+func TestOpenResolveJPFillsMissingConID(t *testing.T) {
+	t.Parallel()
+	h, _ := openJPHarness(t, jpConIDEntry("1111", 0))
+	var got []jobs.WatchEntry
+	_, _, err := buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolveJP,
+		func(d optionopen.ResolveDeps, _ optionopen.ResolveOptions) (contracts.Job, error) {
+			got = d.Watch
+			return captureJob{}, nil
+		}, true, broker.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Contract.ConID != jpConID {
+		t.Fatalf("entries %+v", got)
+	}
+}
+
+func TestOpenPlanJPFillsMissingConID(t *testing.T) {
+	t.Parallel()
+	h, _ := openJPHarness(t, jpConIDEntry("1111", 0))
+	var got []jobs.WatchEntry
+	_, _, err := buildOpenPlan(t.Context(), h.a, h.jc, jobOptionOpenPlanJP,
+		func(d optionopen.PlanDeps) (contracts.Job, error) {
+			got = d.Watch
+			return captureJob{}, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Contract.ConID != jpConID {
+		t.Fatalf("entries %+v", got)
+	}
+}
+
+func TestOpenResolveUSEntriesUntouched(t *testing.T) {
+	t.Parallel()
+	h, b := openJPHarness(t, jpConIDEntry("1111", 0))
+	_, _, err := buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolve,
+		func(d optionopen.ResolveDeps, _ optionopen.ResolveOptions) (contracts.Job, error) {
+			if len(d.Watch) != 1 || d.Watch[0].Contract.ConID != 0 {
+				t.Errorf("entries %+v", d.Watch)
+			}
+			return captureJob{}, nil
+		}, true, broker.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := b.calls(); len(c) != 0 {
+		t.Fatalf("resolve calls %v, want none", c)
 	}
 }

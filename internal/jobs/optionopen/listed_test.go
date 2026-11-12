@@ -516,3 +516,51 @@ func TestListedAnswerWithoutConIDIsAmbiguousAndNeverMarked(t *testing.T) {
 		t.Fatalf("a listed answer with no con_id wrote %d marks", n)
 	}
 }
+
+// noConIDRun runs the resolve job over a watch list whose stock has ConID 0.
+func noConIDRun(t *testing.T) (*rig, contracts.JobResult) {
+	t.Helper()
+	r := newRig(oneChain())
+	d := r.deps("AAPL")
+	for i := range d.Watch {
+		d.Watch[i].Contract.ConID = 0
+	}
+	j, err := NewResolve(d, ResolveOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, err := j.Plan(context.Background(), runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r, j.Run(context.Background(), runDay, keys)
+}
+
+func TestResolveNoConIDIsKeyErr(t *testing.T) {
+	t.Parallel()
+	r, res := noConIDRun(t)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "no con_id of AAPL") {
+		t.Fatalf("err=%v", res.Err)
+	}
+	if len(r.marks.marks) != 0 {
+		t.Fatalf("marks=%v", r.marks.marks)
+	}
+}
+
+func TestResolveSummaryCarriesRunErr(t *testing.T) {
+	t.Parallel()
+	r, _ := noConIDRun(t)
+	last := r.logs[len(r.logs)-1]
+	if !strings.Contains(last, "asked=0") || !strings.Contains(last, "run_err=retryable: ") || strings.Contains(last, "run_err=none") {
+		t.Fatalf("line=%q", last)
+	}
+}
+
+func TestResolveSummaryRunErrNone(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
+	if last := r.logs[len(r.logs)-1]; !strings.HasSuffix(last, " run_err=none") {
+		t.Fatalf("line=%q", last)
+	}
+}

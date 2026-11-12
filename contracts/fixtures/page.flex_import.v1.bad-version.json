@@ -1,0 +1,28 @@
+{
+  "schema": "flex_import",
+  "schema_version": 2,
+  "title": "Flex import",
+  "sentence": "Choose up to 8 Flex XML files; 1 earlier import is listed below.",
+  "scope_note": "Only trades of level EXECUTION are read, from the same Flex query that option_ledger uses for trades (the TradeQueries entry of its login in flex.toml); cash, positions, NAV and the other sections of the file are not imported.",
+  "form": {
+    "post_path": "/owner-flex-import",
+    "expires": "1900000000",
+    "mac": "0123456789abcdef",
+    "max_files": 8,
+    "max_file_text": "64 MiB"
+  },
+  "gaps": [],
+  "files": [],
+  "recent": [
+    {
+      "at_text": "2026-11-10 21:05",
+      "alias": "alpha",
+      "status": "present",
+      "reason": "",
+      "rows_parsed": 12,
+      "rows_new": 0,
+      "rows_present": 12,
+      "unmapped_statements": 0
+    }
+  ]
+}
