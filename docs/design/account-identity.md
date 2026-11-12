@@ -45,7 +45,7 @@ Source: owner 2026-11-12 (asks optdesk-3211, optdesk-3212): the owner names each
 
 ## Interface
 
-- (interface) `internal/accounts/api.go`, owner accounts: `type Book interface { Alias(id string) (alias string, ok bool); Main() string; Aliases() []string }` and `type ErrUnknownAccount`; `Load` is in `internal/accounts/toml`. Consumed by `cmd/ot` only.
+- (interface) `internal/accounts/api.go`, owner accounts: `type Book interface { Alias(id string) (alias string, ok bool); Main() string; Aliases() []string }` and `var ErrUnknownAccount error` (a sentinel value, no method); `Load` is in `internal/accounts/toml`. Consumed by `cmd/ot` only.
 - File `$OT_HOME/accounts.toml` (Decision 1).
 - Wire: `AccountResponse.account`, `ExecutionsResponse.account` carry the IBKR account id (contracts comment, implemented by pyside, consumed by grpcbroker and the resolver).
 - (interface) `internal/broker/api.go`: comment of `Account.Alias` and `Executions.Alias` only: the value the gateway reports, replaced by the owner alias before a job sees it.
@@ -58,7 +58,7 @@ Entries 1 to 5 are the smallest cut (file, reader, rename, held lists, Flex edge
 ### 1 accounts-interface (interface)
 Design line: this file, Decisions 2, 6. Files: `internal/accounts/api.go`, `internal/accounts/api_test.go`.
 Acceptance:
-1. `api.go` declares exactly `Book` and `ErrUnknownAccount` of Interface, no logic; its test checks the contract from both sides with a fake and run-time built invented ids.
+1. `api.go` declares exactly `Book` and the sentinel `ErrUnknownAccount` of Interface, no logic; its test checks the contract from both sides with a fake and run-time built invented ids.
 
 ### 2 accounts-file
 Order: after 1. Files: `internal/accounts/toml/**`, `docs/contracts/accounts.md`.
@@ -70,23 +70,23 @@ Acceptance:
 Order: none. Files: `migrations/0037_account_alias_rename.sql`, `internal/store/**` tests that list migrations (found by grep for `0036`).
 Acceptance:
 1. The migration creates only `ops.rename_account_alias(text, text)`, which in one transaction updates `alias` from old to new in `account.capture`, `account.position`, `account.value`, `account.execution` (`0019`), `account.position_mark` (`0026`), `candidates.option_candidate` (`0018`, `0027`), `optionledger.flex_fetch`, `optionledger.flex_trade_row` (`0022`), `optionledger.flex_section_row`, `optionledger.flex_section_status` (`0024`), and `ops.capture_expected_key` only if its table holds the alias as a column; each named in the file; no table, column or view changes.
-2. The function raises one exception naming the table, and changes nothing, when a row under the new alias has the primary key of a row under the old one.
+2. In the function body the existence check of a new-alias row with the key of an old-alias row, for every table, comes before the first UPDATE, and its `RAISE EXCEPTION` names the table.
 3. The file has a `-- +goose Down` that drops the function.
 
 ### 4 jobs-held-aliases
 Order: none. Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/**` tests that use `heldAliases`, `internal/jobs/optionopen/inputs.go`, `internal/jobs/optionopen/**` tests that use `heldAliases` (found by grep).
 Acceptance:
-1. The two package variables `heldAliases` are gone; each package takes the alias list from its constructor input or `Stored`; unset means no held names.
+1. The two package variables `heldAliases` are gone. Every existing constructor signature in both packages is unchanged (`NewWithHeldSymbols` and the `deps` types of `cmd/ot` still compile). The list is a new optional input whose zero value means no held names: `optionopen.Stored.HeldAliases []string`, and in `optioneod` a new function `WithHeldAliases(NewOptionEodHeldSymbolsFunc, []string) NewOptionEodHeldSymbolsFunc`.
 2. A test per package gives one alias and shows its positions are read, and gives none and shows no read.
 
 ### 5 ot-flex-edge-and-pages
-Order: after 2, 3, 4. Files: `cmd/ot/accounts.go` (new), `cmd/ot/accounts_test.go` (new), `cmd/ot/optionledger.go`, `cmd/ot/optionledger_test.go`, `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/accountimport.go`, `cmd/ot/accountimport_test.go`, `cmd/ot/ledgerimport.go`, `cmd/ot/ledgerimport_test.go`, the `cmd/ot` files that construct `optioneod` and `optionopen` (found by grep for `NewWithHeld` and `Stored{`), `cmd/ot/testdata/**` holding a flex `[[account]]` (found by grep), `docs/contracts/ot/accounts.md`. `cmd/ot/wire.go` is 795 lines: if wiring needs it, report, do not edit.
+Order: after 2, 3, 4. Files: `cmd/ot/accounts.go` (new), `cmd/ot/accounts_test.go` (new), `cmd/ot/optionledger.go`, `cmd/ot/optionledger_test.go`, `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/accountimport.go`, `cmd/ot/accountimport_test.go`, `cmd/ot/ledgerimport.go`, `cmd/ot/ledgerimport_test.go`, `cmd/ot/wire_optionopen.go` (`openStored` sets `Stored.HeldAliases`), `cmd/ot/wire.go` (only `wireHeldCalls` wraps the held constructor with `optioneod.WithHeldAliases(held, book.Aliases())`: at most 4 added lines, the file stays under 800), `cmd/ot/testdata/**` holding a flex `[[account]]` (found by grep), `docs/contracts/ot/accounts.md`. Any other edit of `wire.go` (795 lines) is reported, not made.
 Acceptance:
 1. `optionledger.go` builds `Accounts map[number]alias` from the book (`internal/jobs/optionledger/map.go` is untouched and keeps mapping `st.AccountID`); it no longer reads `ff.Accounts` or `AccountEnv`; a test shows a statement whose id is not in the book stores no row and is the refused state.
 2. The account pages take the alias list from `book.Aliases()`, main first; the demo profile keeps `["main"]`.
-3. `optioneod` and `optionopen` get `book.Aliases()`.
+3. `optioneod` (through `wireHeldCalls`) and `optionopen` (through `openStored`) get `book.Aliases()`.
 4. The importers refuse a `--map` target that is not an alias of the book.
-5. `serve` and every job that needs the alias list refuse to start when `accounts.toml` cannot be loaded (the missing-file refusal of issue 2), so nothing collects under a new alias before the file is written (Decision 9).
+5. `serve` and every job that needs the alias list refuse to start when `accounts.toml` cannot be loaded, except under the demo profile (the missing-file refusal of issue 2), so nothing collects under a new alias before the file is written (Decision 9).
 6. The no-id test of Decision 8 passes for the ledger wiring and the page JSON.
 
 ### 6 ot-gateway-resolver
@@ -135,7 +135,7 @@ Acceptance:
 
 Full review: `account-identity-adversarial.md` in the designer's scratchpad (a local file, not committed).
 
-1. Gap against the goal (datasets, web, surviving names, importers, run rows): adopted by keeping the column, so datasets and web need no change (Decision 10); importers in Issue 5.4; run rows in Left out; `name` slugs in Left out.
+1. Gap against the goal (datasets, web, surviving names, importers, run rows): adopted by keeping the column, so datasets and web need no change (Decision 13); importers in Issue 5.4; run rows in Left out; `name` slugs in Left out.
 2. Id in logs, jobs, page JSON: adopted. Decision 8 and the test in Issues 5 and 6.
 3. Simpler way: adopted, cut A, with the coordinator's change that the reader is one owned module (Decision 2) and the rename replaces the delete. Cut B (id as key) not adopted: it costs eight tables and every page for no owner-visible gain.
 4. Lock-in: the id is not a key, so the case disappears (Left out).

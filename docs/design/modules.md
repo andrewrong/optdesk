@@ -6,7 +6,7 @@ Revision: 1
 
 Source: restart plan v2.5, parts 2 (three layers), 4 and 4.1 (module table), 8 (repository). The plan text
 says "ten modules" and its table lists eleven rows (contracts, clock, broker, sources, store, compute, runner,
-jobs, notify, pages, web); this map follows the table. The rows pyside, ci, deploy, repo, ot and docs are added so that every
+jobs, notify, pages, web); this map follows the table. The rows pyside, ci, deploy, repo, ot and docs are added, and `accounts` is a library module outside the layers that only `ot` depends on, so that every
 path of the planned tree belongs to a row; they are not layer modules and no Go package depends on them, except that
 `cmd/ot` (row ot) imports `internal/profile` of repo.
 
