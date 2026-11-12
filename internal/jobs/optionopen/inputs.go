@@ -30,15 +30,13 @@ const (
 	priorSigmaDays   = 5
 )
 
-var heldAliases = []string{"A", "B"}
-
 // stock is one underlying of the plan: the watch list and the held stocks.
 type stock struct {
 	Symbol, Exchange, Currency string
 	ConID                      int64
 }
 
-// Stored is the set of readers of the stored inputs. Accounts and Eod may be nil: no held names, sigma by default.
+// Stored is the set of readers of the stored inputs. Accounts and Eod may be nil: no held names, sigma by default; so may HeldAliases.
 type Stored struct {
 	Watch       []jobs.WatchEntry
 	Instruments store.InstrumentResolver
@@ -46,6 +44,8 @@ type Stored struct {
 	Options     openquote.OptionContractStore
 	Accounts    store.AccountReader
 	Eod         store.OptionEodReader
+	// HeldAliases are the owner aliases whose positions are read; unset means no held names.
+	HeldAliases []string
 }
 
 // positions returns the newest rows of each alias, searching back from day.
@@ -54,7 +54,7 @@ func (s Stored) positions(ctx context.Context, day time.Time) ([]store.Position,
 		return nil, nil
 	}
 	var out []store.Position
-	for _, alias := range heldAliases {
+	for _, alias := range s.HeldAliases {
 		for back := 0; back <= heldLookbackDays; back++ {
 			rows, err := s.Accounts.Positions(ctx, alias, day.AddDate(0, 0, -back).Format(time.DateOnly))
 			if err != nil {
