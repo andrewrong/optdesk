@@ -2,22 +2,6 @@
 /* eslint-disable */
 
 export type Text = string;
-export type Kind = "gap";
-export type Reason =
-  | "missing_quote"
-  | "no_data"
-  | "unsupported_currency"
-  | "not_built"
-  | "no_reader"
-  | "no_news_source"
-  | "no_rule"
-  | "market_closed"
-  | "stale"
-  | "flex_time_unknown"
-  | "jp_slice_missing"
-  | "missing_input"
-  | "stale_input";
-export type Text1 = string;
 export type Optional = string;
 
 /**
@@ -205,13 +189,10 @@ export interface Form {
   expires: Text;
   mac: Text;
 }
-/**
- * A named data gap, used in place of a figure that cannot be computed. Never a zero.
- */
 export interface Gap {
-  kind: Kind;
-  reason: Reason;
-  text: Text1;
+  kind: "gap";
+  reason: "job_requests_unavailable" | "no_such_request";
+  text: string;
 }
 export interface Job {
   id: string;

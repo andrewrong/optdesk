@@ -13,7 +13,7 @@
     "title": {"$ref": "#/$defs/Text"},
     "sentence": {"type": "string", "maxLength": 300},
     "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]},
-    "gaps": {"type": "array", "items": {"$ref": "common.v2.json#/$defs/Gap"}},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
     "jobs": {"type": "array", "items": {"$ref": "#/$defs/Job"}},
     "requests": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/Request"}},
     "selected": {"type": ["integer", "null"], "minimum": 1},
@@ -21,6 +21,16 @@
   },
   "$defs": {
     "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"enum": ["job_requests_unavailable", "no_such_request"]},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
     "Optional": {"type": "string", "maxLength": 600},
     "Form": {
       "type": "object",

@@ -52,3 +52,21 @@ func TestJobConsoleGoldenForceOnlyForForceJobs(t *testing.T) {
 		}
 	}
 }
+
+// TestJobConsoleAcceptsDesignGaps: the two gaps Decision 12 names validate; another reason does not.
+func TestJobConsoleAcceptsDesignGaps(t *testing.T) {
+	t.Parallel()
+	s := compilePageV2(t, "page.job_console.v1.json")
+	for _, reason := range []string{"job_requests_unavailable", "no_such_request"} {
+		g := loadJobConsoleV1(t, "golden")
+		g["gaps"] = []any{map[string]any{"kind": "gap", "reason": reason, "text": "gap text"}}
+		if err := s.Validate(g); err != nil {
+			t.Errorf("gap %s refused: %v", reason, err)
+		}
+	}
+	g := loadJobConsoleV1(t, "golden")
+	g["gaps"] = []any{map[string]any{"kind": "gap", "reason": "no_data", "text": "gap text"}}
+	if err := s.Validate(g); err == nil {
+		t.Error("gap reason no_data accepted")
+	}
+}
