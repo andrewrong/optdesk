@@ -270,7 +270,7 @@ func TestRunnerRoleUpdatesJobRequestColumns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.admin.Exec(ctx, `SELECT pg_advisory_lock(964)`); err != nil {
+	if _, err := s.admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
 		t.Fatal(err)
 	}
 	_, err := s.admin.Exec(ctx, "ALTER ROLE ot_runner PASSWORD "+literal(testPassword))
@@ -278,7 +278,7 @@ func TestRunnerRoleUpdatesJobRequestColumns(t *testing.T) {
 	if err == nil {
 		r = connectAs(ctx, t, adminDSN(t, s.db), roleRunner, testPassword)
 	}
-	_, _ = s.admin.Exec(ctx, `SELECT pg_advisory_unlock(964)`)
+	_, _ = s.admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -66,7 +66,7 @@ func newDatabase(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("connect admin: %v", err)
 	}
-	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(962)`); err != nil {
+	if _, err := admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
 		t.Fatal(err)
 	}
 	for _, r := range testRoles {
@@ -80,7 +80,7 @@ func newDatabase(t *testing.T) string {
 			}
 		}
 	}
-	_, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(962)`)
+	_, _ = admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
 	suffix := make([]byte, 6)
 	if _, err := rand.Read(suffix); err != nil {
 		t.Fatal(err)
