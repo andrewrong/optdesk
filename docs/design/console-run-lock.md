@@ -56,7 +56,7 @@ A second addition, the one owner of the console request goroutines (Decision 4) 
 5. ot (built against `ConsoleClaimer` of issue 1 with a fake; Order: after issue 2, whose constructor option `scheduler.go` uses): Decisions 3, 4 (ot part) and 7. Files: `cmd/ot/jobconsole_turn.go`, `cmd/ot/jobconsole_sched.go`, `cmd/ot/jobconsole_host.go`, `cmd/ot/scheduler.go`, `cmd/ot/jobconsole_turn_test.go`, `cmd/ot/jobconsole_scheduler_test.go`, `cmd/ot/scheduler_test.go`. Acceptance: `consoleReconciler` in `jobconsole_sched.go` forwards `ClaimConsole` to the host (when the console is off it returns none) and the host implements it (the claim of the first request of the queue, a `ConsoleRun` per claimed request, no goroutine started) and keeps `ConsoleTurn`; `jobconsole_turn.go` no longer sets `Hold` nor calls `q.Hold`; `classify` returns `refused` `job_running` as Decision 7 (`TestClassifyJobRunning`); `scheduler.go` creates the lock set once outside `build` and passes it into each reconciler (`TestSwapDuringRunKeepsJobLock`: a swap during a run, then a console request for that job, is refused `job_running`).
 6. pages: Decision 8. Files: `internal/pages/job_console/text.go`, `internal/pages/job_console/builder_test.go`. Acceptance: `refusedText` has a `job_running` case with the text of Decision 8.
 
-Order: 1 first; then 2, 3, 4 and 5 in any order (each builds against issue 1 alone); then 6. Merging 5 before 2 only means the console may overlap a run of the same job, as it may today.
+Order: 1 first; then 2, 3 and 4 in any order (each builds against issue 1 alone); issue 5 after issue 2; then 6. Merging 5 before 2 only means the console may overlap a run of the same job, as it may today.
 
 ## Left out
 
