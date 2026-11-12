@@ -22,8 +22,10 @@ UNDERLYING_IV = "underlying_iv"
 SNAPSHOT = "snapshot"
 DIVIDENDS = "dividends"
 
-# Seconds an OPTION_EOD quote waits for open_interest after its release fields.
-OI_GRACE_S = 5.0
+# Seconds an OPTION_EOD quote waits for open_interest after its release fields,
+# bounded by the item timeout (timeout_s): the wait is the rest of the item's
+# time, and it ends the moment open_interest arrives.
+OI_GRACE_S = 20.0
 
 STATUS_OK = "ok"
 STATUS_PARTIAL = "partial"
