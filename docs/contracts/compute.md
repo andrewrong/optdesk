@@ -92,7 +92,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 ## Rule parameters and settings form
 
-`RuleParamSpec`, `RuleParams`, `NewRuleParamsFunc`, `FormToken`, `FormRequest`, `FormField`, `FormState`, `FormChange`, `SettingsForm` and `NewSettingsFormFunc` are declared in the package `internal/compute/settingsapi` (declarations only, imports `time` only), not in `internal/compute/api.go`. `RuleParams` is the registry of the twelve owner parameters; `SettingsForm` issues the form token, guards a POST and parses a posted form. Design: `docs/design/settings-form.md#Interface`.
+`RuleParamSpec`, `RuleParams`, `NewRuleParamsFunc`, `FormToken`, `FormRequest`, `FormField`, `FormState`, `FormChange`, `SettingsForm`, `UploadChecker` and `NewSettingsFormFunc` are declared in the package `internal/compute/settingsapi` (declarations only, imports `time` only), not in `internal/compute/api.go`. `RuleParams` is the registry of the twelve owner parameters; `SettingsForm` issues the form token, guards a POST and parses a posted form; `UploadChecker` (`CheckUpload(r, maxBody, now)`) is a separate interface, reached by a type assertion on the form, that guards a `multipart/form-data` POST under the cap the caller names (design: `docs/design/flex-xml-import.md#2 upload-guard`). Design: `docs/design/settings-form.md#Interface`.
 
 - Text only; no float. Pure: the clock is passed in.
 
