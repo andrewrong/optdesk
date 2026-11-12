@@ -1,0 +1,28 @@
+# Manifest of option_list_preopen (US): the pre-open pass that stores the real contract list of every watched stock.
+version = 1
+id = "option_list_preopen"
+zone = "America/New_York"
+# 06:15 to 07:00 ET; a last call of at most 25 s and one 30 s wait may follow.
+list_budget_minutes = 45
+# Expiries 21 to 45 calendar days out are listed (calendar days from the key day).
+dte_min = 21
+dte_max = 45
+# A list with fewer than this share of the stored contracts of its group is short.
+list_min_ratio = 0.5
+# New contracts written per run.
+list_max_new = 60000
+# A run that starts after this clock time (zone above) makes no broker call; a run in progress stops asking at it.
+stop_time = "07:30"
+
+[window]
+rule = "after_close"
+lateness_hours = 0
+calendar = "XNYS"
+
+# Open minus 195 minutes: 06:15 ET on an ordinary day.
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+offset = "-195m"
+run_bound = "47m"
+restart_sensitive = false
