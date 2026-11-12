@@ -203,7 +203,7 @@
                 "cell": {
                   "kind": "text",
                   "text": "−0.16",
-                  "value": -16
+                  "value": -1600
                 }
               },
               {
@@ -414,7 +414,7 @@
                 "cell": {
                   "kind": "text",
                   "text": "−0.15",
-                  "value": -15
+                  "value": -1500
                 }
               },
               {
@@ -520,7 +520,7 @@
                 "cell": {
                   "kind": "text",
                   "text": "−0.15",
-                  "value": -15
+                  "value": -1500
                 }
               },
               {
