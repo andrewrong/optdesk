@@ -96,12 +96,28 @@ func TestHomePageNamed(t *testing.T) {
 func TestHomeCompaniesRowsFromStore(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{underlying: companiesStore(), account: holdsAAA{}, aliases: []string{"main"}}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `"AAA"`) || strings.Contains(string(body), `"BBB"`) {
+		t.Fatalf("only the held name belongs in the card: %s", body)
+	}
+	if !strings.Contains(string(body), "Held companies: 1") {
+		t.Fatalf("say is not the held count: %s", body)
+	}
+}
+
+func TestHomeCompaniesNoAccountNoRows(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
 	rd := siteReaders{underlying: companiesStore()}
 	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), `"BBB"`) {
-		t.Fatalf("stored names missing: %s", body)
+	if strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), "Held companies: 0") {
+		t.Fatalf("no account reader must give no rows: %s", body)
 	}
 }
