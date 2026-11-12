@@ -76,7 +76,8 @@ type BackfillResult struct {
 const (
 	// GroupAlreadyPresent: the key was present and a plain backfill did not run it.
 	GroupAlreadyPresent = "already_present"
-	// GroupNotDue: the window of the key had not closed; it was not run.
+	// GroupNotDue: the key is held, the slot of its job has not come; it was not run
+	// and DueAt is that slot instant. A key inside its window that is not held is run.
 	GroupNotDue = "not_due"
 	// GroupRerun: the key was present and a forced call ran it again.
 	GroupRerun = "rerun"
@@ -90,7 +91,8 @@ const (
 
 // KeyRun is the line of one key in BackfillResult.Keys. Status is the string form of
 // store.RunStatus for GroupRan and empty otherwise; Mark is the string form of the
-// mark of the key after the call; DueAt is the instant the key becomes due.
+// mark of the key after the call; DueAt is the slot instant of the job, set for
+// GroupNotDue.
 type KeyRun struct {
 	Key                                 contracts.ExpectedKey
 	Group                               string
