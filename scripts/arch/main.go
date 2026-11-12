@@ -274,9 +274,7 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 		}
 		for _, d := range r.depends {
 			if name == "ot" {
-				for _, o := range owned(pkgs, d, kindImpl, kindDecl) {
-					deps = append(deps, o)
-				}
+				deps = append(deps, owned(pkgs, d, kindImpl, kindDecl)...)
 			} else {
 				deps = addUnique(deps, owned(pkgs, d, kindDecl), "")
 			}
