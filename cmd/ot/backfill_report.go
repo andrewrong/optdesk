@@ -212,7 +212,7 @@ func printKeyLines(w io.Writer, day contracts.Day, keys []runner.KeyRun, inWindo
 		if o.reason != "" {
 			fmt.Fprintf(&b, " reason=%s", o.reason)
 		}
-		if t, ok := texts[id]; ok && t != "" && (o.outcome == outFailed || o.outcome == outNoValue) {
+		if t, ok := texts[id]; ok && t != "" && o.outcome == outFailed {
 			fmt.Fprintf(&b, " error=%q", redactErrText(t))
 		}
 		_, _ = fmt.Fprintln(w, b.String())

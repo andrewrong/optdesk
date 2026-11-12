@@ -99,7 +99,7 @@ func TestPrintKeyLines(t *testing.T) {
 	texts := map[keyID]string{{"a", "1"}: "after stop_after", {"a", "2"}: "dial postgres://u:pw@h/db", {"a", "3"}: "old"}
 	var buf bytes.Buffer
 	c := printKeyLines(&buf, "2026-11-04", keys, []contracts.ExpectedKey{k("a", "1"), k("b", "9")}, texts)
-	want := `key day=2026-11-04 dataset=a subject=1 outcome=no_value rows=0 reason=no_value error="after stop_after"
+	want := `key day=2026-11-04 dataset=a subject=1 outcome=no_value rows=0 reason=no_value
 key day=2026-11-04 dataset=a subject=2 outcome=failed rows=0 reason=e error="dial [redacted]"
 key day=2026-11-04 dataset=a subject=3 outcome=written rows=7
 key day=2026-11-04 dataset=b subject=9 outcome=skipped rows=0 reason=in_window
@@ -122,5 +122,15 @@ func TestStatusLineNothingWritten(t *testing.T) {
 	c := printKeyLines(&buf, "2026-11-04", keys, nil, nil)
 	if line := statusLine("2026-11-04", c); line != "backfill 2026-11-04 status=nothing_written written=0 present=0 no_value=2 failed=0 skipped=0" {
 		t.Fatal(line)
+	}
+}
+
+func TestNoValueKeyPrintsNoErrorText(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	keys := []runner.KeyRun{{Key: contracts.ExpectedKey{DatasetID: "a", SubjectKey: "1"}, Group: runner.GroupRan, Mark: "no_value", ReasonCode: "r"}}
+	printKeyLines(&buf, "2026-11-04", keys, nil, map[keyID]string{{"a", "1"}: "after stop_after"})
+	if strings.Contains(buf.String(), "error=") {
+		t.Fatalf("no_value line carries error text: %q", buf.String())
 	}
 }
