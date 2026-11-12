@@ -10,6 +10,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -248,5 +249,147 @@ func TestNoKeyDatasetIsRefusedNoKey(t *testing.T) {
 	}
 	if l.writes() != 0 || len(jobC.calls) != 0 {
 		t.Fatalf("writes %d", l.writes())
+	}
+}
+
+func TestBackfillWithTakesNoLease(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	for _, force := range []bool{false, true} {
+		l := bfSetup(bfDay, keyA)
+		if force {
+			l.present[bfDay] = map[contracts.ExpectedKey]store.PresentStatus{keyA: store.StatusPresent}
+		}
+		job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+		if _, err := forceRec(l, afterClose(), job).BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Force: force}); err != nil {
+			t.Fatal(err)
+		}
+		if l.acquired.Load() != 0 || l.released.Load() != 0 {
+			t.Fatalf("force %v: BackfillWith acquired %d released %d", force, l.acquired.Load(), l.released.Load())
+		}
+	}
+	// A lease held by another owner does not refuse it.
+	h := &heldLedger{spyLedger: bfSetup(bfDay, keyA), holder: "runner"}
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+	res, err := forceRec(h, afterClose(), job).BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{})
+	if err != nil || len(job.calls) != 1 || lineOf(t, res, keyA).Group != runner.GroupRan {
+		t.Fatalf("res %+v err %v calls %d", res, err, len(job.calls))
+	}
+	// Reconcile still takes its own.
+	l := bfSetup("2026-11-03")
+	if err := NewWithRule(l, oneDay(), afterClose(), []contracts.Job{job}, runner.WindowRule{CalendarID: "XNYS"}).Reconcile(ctx, bfDay); err != nil {
+		t.Fatal(err)
+	}
+	if l.acquired.Load() != 1 {
+		t.Fatalf("Reconcile acquired %d", l.acquired.Load())
+	}
+}
+
+func TestJobLockReleasedOnEveryReturn(t *testing.T) {
+	t.Parallel()
+	free := func(t *testing.T, locks runner.JobLocks, id string) {
+		t.Helper()
+		unlock, ok := locks.TryLock(id)
+		if !ok {
+			t.Fatal("the job's lock was not released")
+		}
+		unlock()
+	}
+	results := map[string]contracts.JobResult{
+		"ok":    {Returned: 1, Usable: 1},
+		"error": {Err: kindErr{kind: contracts.Permanent}},
+	}
+	for name, res := range results {
+		job := &fakeJob{keys: []contracts.ExpectedKey{keyA}, results: map[contracts.ExpectedKey]contracts.JobResult{keyA: res}}
+		ctx := context.Background()
+
+		locks := shared.NewJobLocks()
+		l := bfSetup(bfDay, keyA)
+		l.present[bfDay] = map[contracts.ExpectedKey]store.PresentStatus{keyA: store.StatusPresent}
+		rec := forceRec(l, afterClose(), job)
+		WithJobLocks(rec, locks)
+		if _, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Force: true}); err != nil {
+			t.Fatal(err)
+		}
+		free(t, locks, "fake") // bareRun
+
+		locks = shared.NewJobLocks()
+		rec = forceRec(bfSetup(bfDay, keyA), afterClose(), job)
+		WithJobLocks(rec, locks)
+		if _, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		free(t, locks, "fake") // runMissingKey
+
+		locks = shared.NewJobLocks()
+		rl := bfSetup("2026-11-03")
+		rc := NewWithRule(rl, oneDay(), afterClose(), []contracts.Job{job}, runner.WindowRule{CalendarID: "XNYS"})
+		WithJobLocks(rc, locks)
+		if err := rc.Reconcile(ctx, bfDay); err != nil {
+			t.Fatal(err)
+		}
+		free(t, locks, "fake") // the key run of Reconcile
+		_ = name
+	}
+
+	// A cancelled context returns too.
+	locks := shared.NewJobLocks()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	rec := forceRec(bfSetup(bfDay, keyA), afterClose(), &fakeJob{keys: []contracts.ExpectedKey{keyA}})
+	WithJobLocks(rec, locks)
+	_, _ = rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{})
+	free(t, locks, "fake")
+}
+
+func TestBusyJobIsJobRunning(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	locks := shared.NewJobLocks()
+	// The lock is held by a run of another reconciler of the same set (a run begun before a swap).
+	other := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	WithJobLocks(other, locks)
+	unlock, ok := other.locks.TryLock("fake")
+	if !ok {
+		t.Fatal("lock refused")
+	}
+
+	for _, force := range []bool{false, true} {
+		l := bfSetup(bfDay, keyA)
+		if force {
+			l.present[bfDay] = map[contracts.ExpectedKey]store.PresentStatus{keyA: store.StatusPresent}
+		}
+		job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+		rec := forceRec(l, afterClose(), job)
+		WithJobLocks(rec, locks)
+		res, err := rec.BackfillWith(ctx, bfDay, nil, runner.BackfillOptions{Force: force})
+		if err != nil {
+			t.Fatal(err)
+		}
+		line := lineOf(t, res, keyA)
+		if line.Group != runner.GroupLeaseHeld || line.ReasonCode != "job_running" || len(job.calls) != 0 || len(l.runs[bfDay]) != 0 {
+			t.Fatalf("force %v: line %+v calls %d runs %d", force, line, len(job.calls), len(l.runs[bfDay]))
+		}
+	}
+
+	// Reconcile leaves the key: no run, no cursor move, and it returns without waiting.
+	rl := bfSetup("2026-11-03")
+	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
+	rc := NewWithRule(rl, oneDay(), afterClose(), []contracts.Job{job}, runner.WindowRule{CalendarID: "XNYS"})
+	WithJobLocks(rc, locks)
+	if err := rc.Reconcile(ctx, bfDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(job.calls) != 0 || rl.cursor.Day != "2026-11-03" {
+		t.Fatalf("calls %d cursor %q", len(job.calls), rl.cursor.Day)
+	}
+
+	// Once the holder ends, the next tick runs the key.
+	unlock()
+	if err := rc.Reconcile(ctx, bfDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(job.calls) != 1 || rl.cursor.Day != bfDay {
+		t.Fatalf("calls %d cursor %q", len(job.calls), rl.cursor.Day)
 	}
 }

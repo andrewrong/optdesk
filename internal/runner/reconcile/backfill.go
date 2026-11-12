@@ -74,7 +74,7 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 			res.Missing = append(res.Missing, k)
 			continue
 		}
-		_, out, err := r.backfillKey(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, deadlineFor(p.job[k], closeAt, r.clk.Now()))
+		_, out, err := r.backfillKey(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, deadlineFor(p.job[k], closeAt, r.clk.Now()), reasonBackfill)
 		if err != nil {
 			return res, err
 		}
@@ -292,9 +292,9 @@ func (r *reconciler) closeOf(ctx context.Context, datasetID string, day contract
 // mark afterwards: StatusPresent (filled), StatusNoValue (absent) or "" (missing: no usable answer, a job
 // error leaves the key unmarked, or no_value as it was, told apart by the ErrorCode of the new run row).
 func (r *reconciler) backfillKey(
-	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt, deadline time.Time,
+	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt, deadline time.Time, reason string,
 ) (store.Run, store.PresentStatus, error) {
-	rec, err := r.kr.RunKey(ctx, job, day, k, seq, closeAt, deadline, reasonBackfill)
+	rec, err := r.kr.RunKey(ctx, job, day, k, seq, closeAt, deadline, reason)
 	if err != nil {
 		return rec, "", err
 	}
