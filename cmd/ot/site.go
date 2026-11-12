@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
@@ -123,6 +124,9 @@ type siteReaders struct {
 
 	// underlying is the reader of the underlyings page (nil: no opener or a failed open, the gap no_reader).
 	underlying underlying.Reader
+
+	// jobReq is the reader of the job console page (nil: no opener or a failed open, the gap job_requests_unavailable).
+	jobReq jobrequest.Reader
 
 	// open, plan and optContracts are the stores of the option open pull opened with the pages line (nil in the demo
 	// profile or when the open failed: the pages show every quote as its close archive value). live is the refresh
@@ -248,12 +252,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	under := openUnderlyingReader(ctx, a, dsn, track)
+	jobReq := openJobRequestReader(ctx, a, dsn, track)
 	sessions, ok := openSessionReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
 	rd := siteReaders{marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
-		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under,
+		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
@@ -358,6 +363,10 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 		}
 		if strings.TrimPrefix(r.URL.Path, "/") == underlyingsPostRoute && rd.edit != nil {
 			postOwnerUnderlyings(a, clk, dayFlag, rd, newHandler, w, r)
+			return
+		}
+		if strings.TrimPrefix(r.URL.Path, "/") == jobConsolePostRoute && rd.edit != nil {
+			postOwnerJobConsole(a, clk, rd, w, r)
 			return
 		}
 		pagesH.ServeHTTP(w, r)

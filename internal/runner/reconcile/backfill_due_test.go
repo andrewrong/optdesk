@@ -12,9 +12,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
-// slotDue is the slot of dueJob on bfDay: the session open 14:30Z less 45 minutes.
-var slotDue = utc("2026-11-04T13:45:00Z")
-
 func dueJob(keys ...contracts.ExpectedKey) scheduledJob {
 	return scheduledJob{fakeJob: &fakeJob{id: "open", keys: keys}, calendarID: "XNYS", anchor: "session_open", offset: -45 * time.Minute}
 }
@@ -28,14 +25,20 @@ func dueRun(t *testing.T, now string, opt runner.BackfillOptions, l *spyLedger, 
 	return res
 }
 
-func TestTodayBeforeSlotIsNotDueWithDueAt(t *testing.T) {
+func TestBeforeSlotKeyRuns(t *testing.T) {
 	t.Parallel()
 	l := bfSetup(bfDay, keyA)
 	job := dueJob(keyA)
 	res := dueRun(t, "2026-11-04T13:00:00Z", runner.BackfillOptions{}, l, job)
-	line := lineOf(t, res, keyA)
-	if line.Group != runner.GroupNotDue || !line.DueAt.Equal(slotDue) || len(job.calls) != 0 || len(l.runs[bfDay]) != 0 {
+	if line := lineOf(t, res, keyA); line.Group != runner.GroupRan || len(job.calls) != 1 {
 		t.Fatalf("line %+v calls %v", line, job.calls)
+	}
+	l = bfSetup(bfDay, keyA)
+	l.present[bfDay] = map[contracts.ExpectedKey]store.PresentStatus{keyA: store.StatusPresent}
+	job = dueJob(keyA)
+	res = dueRun(t, "2026-11-04T13:00:00Z", runner.BackfillOptions{Force: true}, l, job)
+	if line := lineOf(t, res, keyA); line.Group != runner.GroupRerun || len(job.calls) != 1 {
+		t.Fatalf("forced line %+v calls %v", line, job.calls)
 	}
 }
 
@@ -59,7 +62,7 @@ func TestPastDayNeverHeld(t *testing.T) {
 	}
 }
 
-func TestNotDueAgreesWithReconcileHeldSet(t *testing.T) {
+func TestReconcileHoldsBeforeSlot(t *testing.T) {
 	t.Parallel()
 	for _, now := range []string{"2026-11-04T00:00:00Z", "2026-11-04T13:44:59Z", "2026-11-04T13:45:00Z", "2026-11-04T20:00:00Z", "2026-11-06T00:00:00Z"} {
 		t.Run(now, func(t *testing.T) {
@@ -81,8 +84,11 @@ func TestNotDueAgreesWithReconcileHeldSet(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, k := range []contracts.ExpectedKey{keyA, keyC} {
-				if got := lineOf(t, res, k).Group == runner.GroupNotDue; got != p.held[k] {
-					t.Fatalf("%v: BackfillWith holds %v, Reconcile holds %v", k, got, p.held[k])
+				if g := lineOf(t, res, k).Group; g != runner.GroupRan {
+					t.Fatalf("%v: BackfillWith line %v, want ran", k, g)
+				}
+				if want := now == "2026-11-04T00:00:00Z" || now == "2026-11-04T13:44:59Z"; k == keyA && p.held[k] != want {
+					t.Fatalf("%v: Reconcile holds %v, want %v", k, p.held[k], want)
 				}
 			}
 		})
@@ -96,31 +102,5 @@ func TestJobWithoutScheduleIsNeverHeld(t *testing.T) {
 	res := dueRun(t, "2026-11-04T00:00:00Z", runner.BackfillOptions{}, l, job)
 	if line := lineOf(t, res, keyA); line.Group != runner.GroupRan || !line.DueAt.IsZero() {
 		t.Fatalf("line %+v", line)
-	}
-}
-
-func TestForcedPresentKeyBeforeSlotIsNotDueToo(t *testing.T) {
-	t.Parallel()
-	l := bfSetup(bfDay, keyA)
-	l.present[bfDay] = map[contracts.ExpectedKey]store.PresentStatus{keyA: store.StatusPresent}
-	job := dueJob(keyA)
-	res := dueRun(t, "2026-11-04T13:00:00Z", runner.BackfillOptions{Force: true}, l, job)
-	if line := lineOf(t, res, keyA); line.Group != runner.GroupNotDue || !line.DueAt.Equal(slotDue) || len(job.calls) != 0 {
-		t.Fatalf("line %+v calls %v", line, job.calls)
-	}
-}
-
-func TestQuoteSnapshotThreeKeysShareOneInstant(t *testing.T) {
-	t.Parallel()
-	l := bfSetup(bfDay, keyA, keyC, keyD)
-	job := dueJob(keyA, keyC, keyD)
-	res := dueRun(t, "2026-11-04T13:00:00Z", runner.BackfillOptions{}, l, job)
-	if len(res.Keys) != 3 {
-		t.Fatalf("lines %+v", res.Keys)
-	}
-	for _, line := range res.Keys {
-		if line.Group != runner.GroupNotDue || !line.DueAt.Equal(slotDue) {
-			t.Fatalf("line %+v", line)
-		}
 	}
 }

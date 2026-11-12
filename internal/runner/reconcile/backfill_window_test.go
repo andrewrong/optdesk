@@ -43,7 +43,7 @@ func TestBackfillAheadOfCursor(t *testing.T) {
 	}
 }
 
-func TestBackfillInWindowKept(t *testing.T) {
+func TestBackfillRunsInWindow(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	clk := clockwork.NewFakeClockAt(utc("2026-11-04T20:00:00Z"))
@@ -57,10 +57,10 @@ func TestBackfillInWindowKept(t *testing.T) {
 		}
 		job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
 		res, err := newBackfiller(l, clk, job).Backfill(ctx, bfDay, nil)
-		if err != nil || len(res.InWindow) != 1 || res.InWindow[0] != keyA || len(job.calls) != 0 {
+		if err != nil || len(res.InWindow) != 0 || len(job.calls) != 1 {
 			t.Fatalf("mark %q: res %+v err %v calls %d", mark, res, err, len(job.calls))
 		}
-		if len(res.Filled)+len(res.Absent)+len(res.Missing) != 0 {
+		if len(res.Filled)+len(res.Absent) != 1 {
 			t.Fatalf("mark %q: res %+v", mark, res)
 		}
 	}

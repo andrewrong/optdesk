@@ -104,7 +104,7 @@ func TestCheckServeRoutes(t *testing.T) {
 	if e.c.failed {
 		t.Fatalf("a good site failed:\n%s", out)
 	}
-	if len(calls) != len(serveRoutes) || len(serveRoutes) != 12 {
+	if len(calls) != len(serveRoutes) || len(serveRoutes) != 13 {
 		t.Fatalf("calls %v", calls)
 	}
 	fresh := 0
@@ -298,5 +298,18 @@ func TestCheckRepoDirFlag(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("%v: repo dir %q, want %q", tc.args, got, tc.want)
 		}
+	}
+}
+
+func TestServeRoutesIncludeJobConsole(t *testing.T) {
+	t.Parallel()
+	found := false
+	for _, rt := range serveRoutes {
+		if rt.page == "job_console" && rt.path == "/job-console" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("serveRoutes has no /job-console route: %v", serveRoutes)
 	}
 }
