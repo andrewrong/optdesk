@@ -1,0 +1,38 @@
+# Manifest of option_list_zone (US): the second list slot before the open. It reads a pre-open spot of each name and
+# lists again the expiries whose target zone left the stored range.
+# Design: docs/design/option-open-gap-jp.md Decision 13.
+version = 1
+id = "option_list_zone"
+zone = "America/New_York"
+# 08:15 to 08:40 ET; a last call of at most 25 s and one 30 s wait may follow.
+list_budget_minutes = 25
+# The key of the job: the zone slot of the dataset of the US list.
+dataset = "master.option_list"
+subject = "zone"
+mode = "zone"
+list_ttl_days = 7
+band_k = 1.5
+band_floor_pct = 0.10
+min_strikes_side = 3
+zone_near = 0.5
+zone_far = 1.05
+list_min_ratio = 0.5
+list_max_new = 60000
+stop_time = "08:40"
+
+[[window_dte]]
+min_dte = 21
+max_dte = 45
+
+[window]
+rule = "after_close"
+lateness_hours = 0
+calendar = "XNYS"
+
+# Open minus 75 minutes: 08:15 ET on an ordinary day, before the plan slot of 08:45 ET.
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+offset = "-75m"
+run_bound = "27m"
+restart_sensitive = false
