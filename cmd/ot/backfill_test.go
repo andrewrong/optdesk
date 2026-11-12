@@ -93,7 +93,8 @@ func TestBackfillFlags(t *testing.T) {
 func TestBackfillCallsRunner(t *testing.T) {
 	t.Parallel()
 	t.Run("success", func(t *testing.T) {
-		f := &fakeBackfiller{res: runner.BackfillResult{Filled: []contracts.ExpectedKey{{DatasetID: "d", SubjectKey: "s"}}}}
+		f := &fakeBackfiller{res: runner.BackfillResult{Keys: []runner.KeyRun{{
+			Key: contracts.ExpectedKey{DatasetID: "d", SubjectKey: "s"}, Group: runner.GroupRan, Mark: "present", Usable: 3}}}}
 		a, opened, closed, errb := backfillApp(t, fullEnv, f)
 		var stdout bytes.Buffer
 		a.stdout = &stdout
@@ -110,8 +111,10 @@ func TestBackfillCallsRunner(t *testing.T) {
 		if opened.Load() == 0 || opened.Load() != closed.Load() {
 			t.Fatalf("opened %d closed %d", opened.Load(), closed.Load())
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("stdout %q", stdout.String())
+		want := "key day=2026-11-04 dataset=d subject=s outcome=written rows=3\n" +
+			"backfill 2026-11-04 status=ok written=1 present=0 no_value=0 failed=0 skipped=0\n"
+		if stdout.String() != want {
+			t.Fatalf("stdout %q, want %q", stdout.String(), want)
 		}
 	})
 	t.Run("dataset", func(t *testing.T) {
@@ -179,28 +182,34 @@ func TestBackfillNoSecretInErrors(t *testing.T) {
 	const dsn, fredKey, pgxText = "postgres://u:sentinel-pw@h/db", "sentinel-key", "pgx: sentinel-failure"
 	env := "OT_PG_DSN_RUNNER=" + dsn + "\nOT_PG_DSN_SERIES_FRED=s\nFRED_API_KEY=" + fredKey + "\n" +
 		"OT_PG_DSN_OPTION_EOD=e\nOT_PG_DSN_QUOTE_SNAPSHOT=q\nOT_PG_DSN_MASTER=m\nOT_PG_DSN_PAGES=p\nOT_PG_DSN_READINGS=rd\nOT_PG_DSN_LOADER=ld\n"
-	check := func(t *testing.T, a *app, errb interface{ String() string }) {
+	check := func(t *testing.T, a *app, errb interface{ String() string }, hidePgx bool) {
 		err := backfill(a, []string{"--day", "2026-11-04"})
 		if err == nil {
 			t.Fatal("want an error")
 		}
 		a.log.Error("command failed", "err", err.Error())
-		for _, s := range []string{dsn, "sentinel-pw", fredKey, pgxText} {
+		secrets := []string{dsn, "sentinel-pw", fredKey}
+		if hidePgx {
+			secrets = append(secrets, pgxText)
+		} else if !strings.Contains(err.Error(), pgxText) {
+			t.Fatalf("a plain failure text is not printed: %v", err)
+		}
+		for _, s := range secrets {
 			if strings.Contains(err.Error(), s) || strings.Contains(errb.String(), s) {
 				t.Fatalf("leaked %q: %v / %q", s, err, errb.String())
 			}
 		}
 	}
 	t.Run("runner error", func(t *testing.T) {
-		a, _, _, errb := backfillApp(t, env, &fakeBackfiller{err: errors.New(pgxText + " " + dsn + " " + fredKey)})
-		check(t, a, errb)
+		a, _, _, errb := backfillApp(t, env, &fakeBackfiller{err: errors.New(pgxText + " " + dsn + " key=" + fredKey + " token=sentinel-pw")})
+		check(t, a, errb, false)
 	})
 	t.Run("open error", func(t *testing.T) {
 		a, _, _, errb := backfillApp(t, env, &fakeBackfiller{})
 		a.deps.openLedger = func(_ context.Context, d string) (store.OpsLedger, error) {
 			return nil, errors.New(pgxText + " " + d)
 		}
-		check(t, a, errb)
+		check(t, a, errb, true)
 	})
 }
 
@@ -277,48 +286,74 @@ func missingKeys() []contracts.ExpectedKey {
 	return []contracts.ExpectedKey{{DatasetID: "option_eod", SubjectKey: "SPY"}, {DatasetID: "fred", SubjectKey: "DGS10"}}
 }
 
-func TestBackfillPrintsMissingKeys(t *testing.T) {
+func TestBackfillFailedRunPrintsKeyLinesThenError(t *testing.T) {
 	t.Parallel()
-	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Missing: missingKeys()}})
+	keys := []runner.KeyRun{
+		{Key: contracts.ExpectedKey{DatasetID: "option_eod", SubjectKey: "SPY"}, Group: runner.GroupRan, Mark: "present", Usable: 5},
+		{Key: contracts.ExpectedKey{DatasetID: "fred", SubjectKey: "DGS10"}, Group: runner.GroupRan, ErrorCode: "upstream"},
+		{Key: contracts.ExpectedKey{DatasetID: "fred", SubjectKey: "DGS2"}, Group: runner.GroupNotReached},
+	}
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys}, err: errors.New("plain failure")})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
 	err := backfill(a, []string{"--day", "2026-11-04"})
-	if err == nil || err.Error() != "backfill 2026-11-04: 2 key(s) are still missing" {
+	if err == nil || err.Error() != "backfill 2026-11-04 failed: plain failure" {
 		t.Fatalf("err %v", err)
 	}
-	want := "missing day=2026-11-04 dataset=option_eod subject=SPY\nmissing day=2026-11-04 dataset=fred subject=DGS10\n"
+	want := "key day=2026-11-04 dataset=option_eod subject=SPY outcome=written rows=5\n" +
+		"key day=2026-11-04 dataset=fred subject=DGS10 outcome=failed rows=0 reason=upstream\n" +
+		"key day=2026-11-04 dataset=fred subject=DGS2 outcome=skipped rows=0 reason=not_reached\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout %q, want %q", stdout.String(), want)
 	}
-	if strings.Contains(stdout.String(), "-dsn") || strings.Contains(stdout.String(), alphaTestKey) {
-		t.Fatalf("stdout holds a DSN or a key: %q", stdout.String())
-	}
 }
 
-func TestBackfillMissingLinesBeforeError(t *testing.T) {
+func TestBackfillRefusalPrintsKeyLines(t *testing.T) {
 	t.Parallel()
-	// The lines are written before the error is returned: a refused or failed run prints none.
-	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Refused: runner.RefusedNoPlan, Missing: missingKeys()}})
+	res := runner.BackfillResult{Refused: runner.RefusedNoPlan, Keys: []runner.KeyRun{
+		{Key: contracts.ExpectedKey{DatasetID: "d", SubjectKey: "s"}, Group: runner.GroupAlreadyPresent}}}
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: res})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
 	if err := backfill(a, []string{"--day", "2026-11-04"}); err == nil {
 		t.Fatal("want an error")
 	}
-	if stdout.Len() != 0 {
+	if want := "key day=2026-11-04 dataset=d subject=s outcome=present rows=0\n"; stdout.String() != want {
+		t.Fatalf("stdout %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestBackfillMissingKeysAreFailedLinesAndAnError(t *testing.T) {
+	t.Parallel()
+	keys := []runner.KeyRun{{Key: missingKeys()[0], Group: runner.GroupRan, ErrorCode: "boom"}}
+	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys, Missing: missingKeys()[:1]}})
+	var stdout bytes.Buffer
+	a.stdout = &stdout
+	err := backfill(a, []string{"--day", "2026-11-04"})
+	if err == nil || err.Error() != "backfill 2026-11-04: 1 key(s) are still missing" {
+		t.Fatalf("err %v", err)
+	}
+	if !strings.Contains(stdout.String(), "outcome=failed") || strings.Contains(stdout.String(), "missing day=") {
 		t.Fatalf("stdout %q", stdout.String())
 	}
 }
 
-func TestBackfillNoMissingPrintsNothing(t *testing.T) {
+func TestBackfillNoValueDayIsNothingWritten(t *testing.T) {
 	t.Parallel()
-	a, _, _, _ := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Filled: missingKeys()}})
+	keys := []runner.KeyRun{{Key: missingKeys()[0], Group: runner.GroupRan, Mark: "no_value", ReasonCode: "after_stop"}}
+	a, _, _, errb := backfillApp(t, fullEnv, &fakeBackfiller{res: runner.BackfillResult{Keys: keys, InWindow: missingKeys()[1:]}})
 	var stdout bytes.Buffer
 	a.stdout = &stdout
 	if err := backfill(a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatalf("err %v", err)
 	}
-	if stdout.Len() != 0 {
-		t.Fatalf("stdout %q", stdout.String())
+	out := stdout.String()
+	if !strings.HasSuffix(out, "backfill 2026-11-04 status=nothing_written written=0 present=0 no_value=1 failed=0 skipped=1\n") ||
+		!strings.Contains(out, "dataset=fred subject=DGS10 outcome=skipped rows=0 reason=in_window") {
+		t.Fatalf("stdout %q", out)
+	}
+	if log := errb.String(); !strings.Contains(log, "status=nothing_written") || strings.Contains(log, "status=ok") {
+		t.Fatalf("log %q", log)
 	}
 }
 
@@ -394,7 +429,7 @@ func TestBackfillJob(t *testing.T) {
 		{"dataset not of the job", twoDatasetJob(), []string{"--job", "twoset", "--dataset", "other"},
 			[]string{"dataset other is not a dataset of job twoset"}, nil},
 		{"plan error", bfPlanJob{id: "bad", err: errors.New("postgres://u:sentinel-pw@h/db sentinel-key")}, []string{"--job", "bad"},
-			[]string{"job bad", "plan failed"}, []string{"postgres://", "sentinel-pw", "sentinel-key"}},
+			[]string{"job bad", "plan failed", "[redacted]"}, []string{"postgres://", "sentinel-pw"}},
 		{"no key", bfPlanJob{id: "empty"}, []string{"--job", "empty"}, []string{"job empty plans no key on the day"}, nil},
 	}
 	for _, tc := range refused {

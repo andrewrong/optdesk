@@ -55,6 +55,9 @@ func backfill(a *app, args []string) error {
 	defer func() { _ = sl.Close() }()
 	var res runner.BackfillResult
 	var runErr, syncErr error
+	// The key runner takes slog.Default() at construction: the report handler is installed before it.
+	report, restore := installKeyReport()
+	defer restore()
 	err = withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
 		if *job != "" {
 			if datasets, filterErr = jobDatasets(ctx, w.runnable(a.log), *job, *dataset, day); filterErr != nil {
@@ -75,13 +78,19 @@ func backfill(a *app, args []string) error {
 	if filterErr != nil {
 		return filterErr
 	}
+	return finishBackfill(a, day, *job, *dataset, res, runErr, syncErr, report.recorded())
+}
+
+// finishBackfill prints the key lines of res, then returns the error of the run, of a refusal, of the key gap
+// sync or of the keys still missing, or prints the status line and logs the counts.
+func finishBackfill(a *app, day contracts.Day, job, dataset string, res runner.BackfillResult, runErr, syncErr error, texts map[keyID]string) error {
+	counts := printKeyLines(a.stdout, day, res.Keys, res.InWindow, texts)
 	if runErr != nil {
 		var te contracts.TypedError
 		if errors.As(runErr, &te) && te.Kind() == contracts.Retryable {
 			return errors.New("the runner lease is held, retry in a minute")
 		}
-		// The runner error may carry the text of a connection error: it is withheld.
-		return runFailedError(day, *job, *dataset)
+		return runFailedError(day, job, dataset, runErr)
 	}
 	if err := refusalError(res.Refused, day); err != nil {
 		return err
@@ -89,17 +98,18 @@ func backfill(a *app, args []string) error {
 	if syncErr != nil {
 		return fmt.Errorf("backfill %s: sync of the key gaps failed", day)
 	}
-	if err := missingError(a.stdout, res.Missing, day); err != nil {
-		return err
+	if n := len(res.Missing); n > 0 {
+		return fmt.Errorf("backfill %s: %d key(s) are still missing", day, n)
 	}
-	a.log.Info("backfill "+string(day)+" done", "component", "ot", "status", "ok",
-		"already_present", len(res.AlreadyPresent), "filled", len(res.Filled), "absent", len(res.Absent), "missing", len(res.Missing),
-		"in_window", len(res.InWindow))
+	_, _ = fmt.Fprintln(a.stdout, statusLine(day, counts))
+	a.log.Info("backfill "+string(day)+" done", "component", "ot", "status", counts.status(),
+		"written", counts.written, "present", counts.present, "no_value", counts.noValue, "failed", counts.failed, "skipped", counts.skipped)
 	return nil
 }
 
-// runFailedError is the withheld error of a failed backfill; it names the job and the dataset when set.
-func runFailedError(day contracts.Day, job, dataset string) error {
+// runFailedError is the error of a failed backfill; it names the job and the dataset when set and carries
+// the redacted text of the runner error.
+func runFailedError(day contracts.Day, job, dataset string, err error) error {
 	what := fmt.Sprintf("backfill %s", day)
 	if job != "" {
 		what += " job " + job
@@ -107,7 +117,7 @@ func runFailedError(day contracts.Day, job, dataset string) error {
 	if dataset != "" {
 		what += " dataset " + dataset
 	}
-	return fmt.Errorf("%s failed: the error text is withheld because it may hold a DSN or a key", what)
+	return fmt.Errorf("%s failed: %s", what, redactErrText(err.Error()))
 }
 
 // refusalError is the error for a day the backfiller refused; nil when it did not.
@@ -142,7 +152,7 @@ func jobDatasets(ctx context.Context, jobs []contracts.Job, name, dataset string
 	}
 	keys, _, err := found.Plan(ctx, day)
 	if err != nil {
-		return nil, fmt.Errorf("backfill %s job %s: plan failed: the error text is withheld because it may hold a DSN or a key", day, name)
+		return nil, fmt.Errorf("backfill %s job %s: plan failed: %s", day, name, redactErrText(err.Error()))
 	}
 	var out []string
 	seen := map[string]bool{}
@@ -162,15 +172,4 @@ func jobDatasets(ctx context.Context, jobs []contracts.Job, name, dataset string
 		return []string{dataset}, nil
 	}
 	return out, nil
-}
-
-// missingError prints one line per missing key to out and returns the error that counts them; nil when none is missing.
-func missingError(out io.Writer, missing []contracts.ExpectedKey, day contracts.Day) error {
-	if len(missing) == 0 {
-		return nil
-	}
-	for _, k := range missing {
-		_, _ = fmt.Fprintf(out, "missing day=%s dataset=%s subject=%s\n", day, k.DatasetID, k.SubjectKey)
-	}
-	return fmt.Errorf("backfill %s: %d key(s) are still missing", day, len(missing))
 }
