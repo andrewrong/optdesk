@@ -737,11 +737,11 @@ func TestOwnerRowIsTheFirstMatchingRow(t *testing.T) {
 	}
 }
 
-// sharedFiles is treeFiles plus the sub-package b/shared and a sibling b/other.
+// sharedFiles is treeFiles plus the sub-package b/shared, a sibling b/other and c/shared of a row outside the depends cell of ot.
 func sharedFiles() map[string]string {
 	files := maps.Clone(treeFiles)
-	files["internal/b/shared/s.go"] = "package shared\n"
-	files["internal/b/other/o.go"] = "package other\n"
+	sh := "package shared\n"
+	maps.Copy(files, map[string]string{"internal/b/shared/s.go": sh, "internal/b/other/o.go": "package other\n", "internal/c/shared/s.go": sh})
 	return files
 }
 
@@ -759,11 +759,18 @@ func TestTreeSharedIsImportedByTheOtherSubPackagesOfItsRow(t *testing.T) {
 		{"b/shared", "a", true},
 		{"b", "b/shared", false},
 		{"a/sub", "b/shared", false},
-		{"ot", "b/shared", false},
+		{"ot", "b/shared", true},
 	} {
 		if got := slices.Contains(lintDeps(t, sharedFiles(), e.from), e.to); got != e.want {
 			t.Errorf("%s imports %s = %v, want %v", e.from, e.to, got, e.want)
 		}
+	}
+}
+
+func TestTreeOTDoesNotImportSharedOfARowOutsideItsDependsCell(t *testing.T) {
+	t.Parallel()
+	if slices.Contains(lintDeps(t, sharedFiles(), "ot"), "c/shared") {
+		t.Error("ot imports c/shared, a row outside its depends cell")
 	}
 }
 
@@ -777,11 +784,10 @@ func TestTreeSharedEdgeIsInTheTomlToo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b := mayImportOf(t, string(toml), "b/sub"); !strings.Contains(b, `"b/shared"`) {
-		t.Errorf("b/sub lacks b/shared:\n%s", b)
-	}
-	if b := mayImportOf(t, string(toml), "b/shared"); strings.Contains(b, `"b/sub"`) || strings.Contains(b, `"b/shared"`) {
-		t.Errorf("b/shared imports a sibling:\n%s", b)
+	for _, e := range []edge{{"b/sub", "b/shared", true}, {"ot", "b/shared", true}, {"b/shared", "b/sub", false}, {"b/shared", "b/shared", false}} {
+		if m := mayImportOf(t, string(toml), e.from); strings.Contains(m, `"`+e.to+`"`) != e.want {
+			t.Errorf("%s may_import %s, want %v:\n%s", e.from, e.to, e.want, m)
+		}
 	}
 }
 
