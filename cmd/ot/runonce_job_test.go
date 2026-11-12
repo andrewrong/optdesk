@@ -21,7 +21,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
-	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -74,6 +73,9 @@ func (j *onceJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey,
 	return ks, "h", nil
 }
 
+// onceNamed is a job with the id that plans one key in the dataset d.<id>.
+func onceNamed(id string) contracts.Job { return &onceJob{id: id, datasets: []string{"d." + id}} }
+
 func onceJobDeps(a *app, f *onceBackfiller, g *fakeKeySyncer, ledgerClosed *atomic.Int32) {
 	fakeBackfillDeps(a, nil, g)
 	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) {
@@ -104,7 +106,7 @@ func onceAppEnv(t *testing.T, f *onceBackfiller, env string) (a *app, out *bytes
 	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 		return &onceJob{id: "fred_series", datasets: []string{"series.fred"}}, nil
 	}
-	named := func(id string) contracts.Job { return &onceJob{id: id, datasets: []string{"d." + id}} }
+	named := onceNamed
 	a.deps.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		return named(jobOptionEod), nil
 	}
@@ -142,6 +144,17 @@ func onceWiredApp(t *testing.T, f *onceBackfiller) *app {
 	return a
 }
 
+// onceFakeWiring replaces the real wiring: use gets a wiring with one job per id of jobTable, each planning one key.
+func onceFakeWiring() func(context.Context, *app, clock.Clock, runOnceConfig, func(store.OpsLedger) error, func(wiring) error) error {
+	return func(_ context.Context, _ *app, _ clock.Clock, _ runOnceConfig, _ func(store.OpsLedger) error, use func(wiring) error) error {
+		w := wiring{held: map[string]contracts.Job{}, off: map[string]string{}}
+		for _, row := range jobTable {
+			w.jobs = append(w.jobs, onceNamed(row.ID))
+		}
+		return use(w)
+	}
+}
+
 func TestRunOnceJobAnyJobName(t *testing.T) {
 	t.Parallel()
 	if len(jobTable) != 24 {
@@ -151,22 +164,18 @@ func TestRunOnceJobAnyJobName(t *testing.T) {
 		t.Run(row.ID, func(t *testing.T) {
 			t.Parallel()
 			f := &onceBackfiller{}
-			a := onceWiredApp(t, f)
-			w := wiring{jobs: []contracts.Job{&onceJob{id: row.ID, datasets: []string{"d"}}}, held: map[string]contracts.Job{}, off: map[string]string{}}
-			if err := runWiredJob(context.Background(), a, w, &fakeSchedLedger{}, clockwork.NewFakeClock(), "2026-11-04", row.ID, false); err != nil {
+			a, _, _, _, _, _ := onceFredApp(t, f)
+			a.deps.runWiring = onceFakeWiring()
+			if err := runOnce(a, []string{"--job", row.ID, "--day", "2026-11-04"}); err != nil {
 				t.Fatal(err)
 			}
 			if len(f.opts) != 1 || f.opts[0].Job != row.ID {
-				t.Fatalf("options %+v, want Job %s", f.opts, row.ID)
+				t.Fatalf("opts %+v", f.opts)
+			}
+			if len(f.datasets) != 1 || len(f.datasets[0]) != 1 || f.datasets[0][0] != "d."+row.ID {
+				t.Fatalf("datasets %v, want only those of %s", f.datasets, row.ID)
 			}
 		})
-	}
-	// The same names pass the flag check of run-once itself (here the wiring lacks them: not wired, not unknown).
-	f := &onceBackfiller{}
-	a, _, _, _, _, _ := onceFredApp(t, f)
-	err := runOnce(a, []string{"--job", "iv_history", "--day", "2026-11-04"})
-	if err == nil || !strings.Contains(err.Error(), "job iv_history is") || strings.Contains(err.Error(), "unknown job") {
-		t.Fatalf("err %v", err)
 	}
 }
 
@@ -315,67 +324,5 @@ func TestRunOnceJobKeyErrorFails(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "status=failed keys=1") || !strings.Contains(out.String(), "error=permanent") {
 		t.Fatalf("out %q", out.String())
-	}
-}
-
-// onceJobFixture is the extra env and fakes the real wiring needs to build a job of the table with fakes only.
-// The ids it lacks cannot be built here: option_open* ping a database in optionopenpg.Open, the others need a
-// fake of several stores each; TestRunOnceJobAnyJobName covers them through runWiredJob.
-func onceJobFixture(id string) (env string, fake func(*deps)) {
-	named := func(id string) contracts.Job { return &onceJob{id: id, datasets: []string{"d." + id}} }
-	switch id {
-	case jobBarsRefresh, jobFxRefresh:
-		return fullEnv + barEnv, func(d *deps) {
-			withBarFakes(d)
-			d.newBarsRefresh = func(broker.Broker, broker.HistoryClient, store.InstrumentResolver, bar.PriceBarWriter,
-				bar.PriceBarReader, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
-				return named(jobBarsRefresh), nil
-			}
-			d.newFxRefresh = func(broker.Broker, broker.HistoryClient, bar.FxRateWriter, bar.FxRateReader, clock.Clock) (contracts.Job, error) {
-				return named(jobFxRefresh), nil
-			}
-		}
-	case jobFundamentals:
-		return fullEnv + "OT_PG_DSN_FUNDAMENTAL=fund-dsn\nSEC_USER_AGENT=agent mail\n", func(d *deps) {
-			withFundamentalsFakes(d)
-			fd := d.ext[extFundamentals].(fundamentalsDeps)
-			fd.newJob = func(sources.FactSource, store.FactWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error) {
-				return named(jobFundamentals), nil
-			}
-			d.ext[extFundamentals] = fd
-		}
-	}
-	return fullEnv, func(*deps) {}
-}
-
-// TestRunOnceJobAnyJobNameThroughRunOnce runs each id of the table through runOnce --job over the real wiring with
-// fake stores; an id the fakes cannot build must still pass the name check and answer "is not wired", not "unknown".
-func TestRunOnceJobAnyJobNameThroughRunOnce(t *testing.T) {
-	t.Parallel()
-	wired := map[string]bool{
-		"fred_series": true, jobOptionEod: true, jobQuoteSnapshot: true, "compute_figures": true, "calendar_refresh": true,
-		jobEarningsRefresh: true, jobBarsRefresh: true, jobFxRefresh: true, jobFundamentals: true,
-	}
-	for _, row := range jobTable {
-		t.Run(row.ID, func(t *testing.T) {
-			t.Parallel()
-			f := &onceBackfiller{}
-			env, fake := onceJobFixture(row.ID)
-			a, _, _, _, _, _ := onceAppEnv(t, f, env)
-			fake(&a.deps)
-			err := runOnce(a, []string{"--job", row.ID, "--day", "2026-11-04"})
-			if !wired[row.ID] {
-				if err == nil || strings.Contains(err.Error(), "unknown job") || len(f.opts) != 0 {
-					t.Fatalf("err %v, calls %d", err, len(f.opts))
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(f.opts) != 1 || f.opts[0].Job != row.ID {
-				t.Fatalf("opts %+v", f.opts)
-			}
-		})
 	}
 }

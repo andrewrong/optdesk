@@ -218,6 +218,8 @@ type deps struct {
 	newBarsRefresh barsrefresh.NewBarsRefreshFunc
 	newFxRefresh   fxrefresh.NewFxRefreshFunc
 	newHistory     broker.NewHistoryFunc
+	// runWiring opens the stores and calls use with the wiring of the jobs (ot run-once --job); newDeps sets withWiring, nil also means it.
+	runWiring func(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, check func(store.OpsLedger) error, use func(wiring) error) error
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
 	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
@@ -245,6 +247,7 @@ func newDeps() deps {
 	// option_eod_jp is built over the watch list too: each JP stock entry adds a key (the dry run included).
 	d.newOptionEodJPWatch = optioneod.NewJPWithWatch
 	d.symbols = table.New()
+	d.runWiring = withWiring
 	d.newOptionCandidates, d.newCandidateRule = optioncandidates.New, optioncand.New
 	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeldSymbols, optioncandidates.NewWithCalls
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New

@@ -39,8 +39,12 @@ func runOnceJob(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig,
 		return fmt.Errorf("open scheduler ledger with %s failed", store.DSNEnvRunner)
 	}
 	defer func() { _ = sl.Close() }()
+	wire := a.deps.runWiring // nil: withWiring, the wiring of the scheduler and ot backfill
+	if wire == nil {
+		wire = withWiring
+	}
 	var answer error
-	if err := withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
+	if err := wire(ctx, a, clk, cfg, nil, func(w wiring) error {
 		answer = runWiredJob(ctx, a, w, sl, fw, day, id, force)
 		return nil
 	}); err != nil {
