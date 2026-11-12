@@ -359,7 +359,6 @@ export type TotalCount = number;
 export type RunId = string;
 export type RunStatus = "ok" | "partial" | "failed";
 export type Schema = "stock_option_page";
-export type SchemaVersion = 3;
 export type Scope = string;
 export type SharedGap = string | null;
 export type DataTime1 = string;
@@ -395,7 +394,7 @@ export interface StockOptionPage {
   run_id: RunId;
   run_status: RunStatus;
   schema: Schema;
-  schema_version: SchemaVersion;
+  schema_version: 3;
   scope: Scope;
   shared_gap: SharedGap;
   stale: StaleLabel | null;
