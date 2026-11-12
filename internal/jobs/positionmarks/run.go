@@ -186,6 +186,17 @@ func formatCounts(counts map[string]map[string]int) string {
 	return strings.Join(parts, "; ")
 }
 
+// count adds one written row to the per-market, per-status counts of the log.
+func (o *outcome) count(r mark.PositionMark) {
+	if o.counts == nil {
+		o.counts = map[string]map[string]int{}
+	}
+	if o.counts[r.Currency] == nil {
+		o.counts[r.Currency] = map[string]int{}
+	}
+	o.counts[r.Currency][r.Status]++
+}
+
 // runAlias marks one alias: the newest capture of the day, the positions that still need a mark, in batches.
 func (j *job) runAlias(ctx context.Context, alias, day string, start time.Time) outcome {
 	var o outcome
@@ -242,13 +253,7 @@ func (j *job) runAlias(ctx context.Context, alias, day string, start time.Time) 
 		o.down += down
 		for _, r := range rows {
 			o.rows++
-			if o.counts == nil {
-				o.counts = map[string]map[string]int{}
-			}
-			if o.counts[r.Currency] == nil {
-				o.counts[r.Currency] = map[string]int{}
-			}
-			o.counts[r.Currency][r.Status]++
+			o.count(r)
 			if r.Basis != mark.BasisNone {
 				o.priced++
 				o.hasMarks = true
