@@ -50,7 +50,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 25 {
+	if !slices.Equal(got, want) || len(got) != 24 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -128,9 +128,9 @@ func TestTodayOnlyIsExactlyTheTwelve(t *testing.T) {
 	}
 }
 
-func TestListedOnlyIsExactlyTheNine(t *testing.T) {
+func TestListedOnlyIsExactlyTheEight(t *testing.T) {
 	t.Parallel()
-	want := []string{"option_ledger", "option_list_preopen", "option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp",
+	want := []string{"option_ledger", "option_open", "option_open_jp", "option_open_plan", "option_open_plan_jp",
 		"option_open_resolve", "option_open_resolve_gap", "option_open_resolve_jp"}
 	if got := idsOfKind(kindListedOnly); !slices.Equal(got, want) {
 		t.Fatalf("listed_only %v", got)
