@@ -181,7 +181,7 @@ func TestWrapperForwardsProbeAndConsoleTurn(t *testing.T) {
 func TestSchedulerRunsWithConsoleOffWhenOpenFails(t *testing.T) {
 	t.Parallel()
 	q := &jcQueue{log: &jcLog{}}
-	r, _ := consoleSchedRig(t, q, errors.New("dial postgres://runner:hunter2@db/x"))
+	r, _ := consoleSchedRig(t, q, errors.New("dial failed, password=hunter2"))
 	done := r.start()
 	r.waitStarted(t, done)
 	r.tick()

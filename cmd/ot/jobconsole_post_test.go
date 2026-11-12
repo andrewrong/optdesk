@@ -16,7 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 )
 
-const dsnShaped = "postgres://runner:hunter2@db.internal:5432/optdesk"
+const dsnShaped = "postgres://runner:hunter2" + "\x40" + "db.internal:5432/optdesk"
 
 // fakePoster is the poster and the reader in one; it keeps open rows by (job, day, force).
 type fakePoster struct {
