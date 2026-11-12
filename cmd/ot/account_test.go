@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/jonboulle/clockwork"
 	"os"
 	"path/filepath"
 	"slices"
@@ -96,11 +97,15 @@ func TestAccountCaptureDryRun(t *testing.T) {
 	t.Parallel()
 	r := newAcctRig(t, gwMainB, "a=/s/a.sock,b=/s/b.sock")
 	var ids []string
-	r.a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, _ runner.WindowRule) runner.Reconciler {
+	r.a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	r.a.deps.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	r.a.deps.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		for _, j := range js {
 			ids = append(ids, j.ID())
 		}
-		return recRunner{day: new(contracts.Day)}
+		return recRunner{day: new(contracts.Day)}, nil
 	}
 	if err := runOnce(r.a, []string{"--day", "2026-03-04"}); err != nil {
 		t.Fatal(err)

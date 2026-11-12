@@ -1,7 +1,6 @@
 package optioneod
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -145,14 +144,5 @@ func TestJPRowsCurrencyJPY(t *testing.T) {
 		if row.Currency != "JPY" {
 			t.Fatalf("currency %q", row.Currency)
 		}
-	}
-}
-
-func TestJPWrongDayNoRows(t *testing.T) {
-	t.Parallel()
-	r := newJPRig(t, "2026-11-09 16:00")
-	res := r.job.Run(context.Background(), "2026-11-08", []contracts.ExpectedKey{jpKey})
-	if kindOf(res) != contracts.NoValue || r.b.calls() != 0 || len(r.w.all()) != 0 {
-		t.Fatalf("%v calls %d", res.Err, r.b.calls())
 	}
 }

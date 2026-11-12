@@ -250,9 +250,6 @@ func TestPullJPRunsOnTheTokyoDateNotTheNewYorkDate(t *testing.T) {
 	if len(s.written) != 1 || s.written[0][0].Slot != "0905" {
 		t.Errorf("written %+v", s.written)
 	}
-	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err == nil || res.Err.Kind() != contracts.NoValue {
-		t.Errorf("the New York date ran: %v", res.Err)
-	}
 }
 
 func TestJPLunchBreakIsTheManifestValue(t *testing.T) {

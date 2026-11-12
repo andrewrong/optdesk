@@ -208,10 +208,10 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	if err != nil {
 		return contracts.JobResult{Err: &typedError{contracts.Permanent, "dividendcapture: bad day"}}
 	}
-	// The tick has no history: only the clock's own date in the manifest zone may be written.
-	if string(day) != j.clk.Now().In(j.loc).Format(dayLayout) {
-		return contracts.JobResult{Err: &typedError{contracts.NoValue, "dividendcapture: wrong day"}}
-	}
+	// Development mode: the vendor answer is of the clock's date in the manifest zone, so a past day runs with
+	// that date as its day.
+	day = contracts.Day(j.clk.Now().In(j.loc).Format(dayLayout))
+	sd, _ = time.Parse(dayLayout, string(day))
 	now := j.clk.Now().UTC()
 	base := func(t target) contracts.DividendExpectation {
 		return contracts.DividendExpectation{

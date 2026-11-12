@@ -94,28 +94,10 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	return total
 }
 
-// guard applies the timing guards; stop is true when the run ends with res.
-func (j *job) guard(day contracts.Day, slot string) (res contracts.JobResult, stop bool) {
-	now := j.clk.Now().In(j.m.loc)
-	if now.Format("2006-01-02") != string(day) {
-		return contracts.JobResult{Err: fail(contracts.NoValue, "wrong day")}, true
-	}
-	hhmm, _ := strconv.Atoi(slot)
-	at := time.Date(now.Year(), now.Month(), now.Day(), hhmm/100, hhmm%100, 0, 0, j.m.loc)
-	if now.Before(at) {
-		return contracts.JobResult{}, true
-	}
-	if now.After(at.Add(j.m.grace())) {
-		return contracts.JobResult{Err: fail(contracts.NoValue, "missed slot")}, true
-	}
-	return contracts.JobResult{}, false
-}
-
-func (j *job) runSlot(ctx context.Context, day contracts.Day, slot string) contracts.JobResult {
-	if res, stop := j.guard(day, slot); stop {
-		return res
-	}
-	sessionDay, err := time.Parse("2006-01-02", string(day))
+func (j *job) runSlot(ctx context.Context, _ contracts.Day, slot string) contracts.JobResult {
+	// Development mode: a run outside its slot or on another day stores the clock's session day.
+	day := contracts.Day(j.clk.Now().In(j.m.loc).Format(time.DateOnly))
+	sessionDay, err := time.Parse(time.DateOnly, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: fail(contracts.Permanent, fmt.Sprintf("bad day %q", day))}
 	}

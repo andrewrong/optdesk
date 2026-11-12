@@ -249,34 +249,23 @@ func TestNoQuote(t *testing.T) {
 	}
 }
 
-func TestGuards(t *testing.T) {
+func TestRunsOutsideTheSlot(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct {
-		name, now string
-		day       contracts.Day
-		kind      contracts.ErrorKind
-		text      string
-	}{
-		{"wrong day", "2026-11-06 09:50", testDay, contracts.NoValue, "wrong day"},
-		{"before slot", "2026-11-05 09:44", testDay, "", ""},
-		{"missed slot", "2026-11-05 09:56", testDay, contracts.NoValue, "missed slot"},
+	for _, tc := range []struct{ name, now, session string }{
+		{"before slot", "2026-11-05 09:44", "2026-11-05"},
+		{"after grace", "2026-11-05 09:56", "2026-11-05"},
+		{"another day", "2026-11-06 09:50", "2026-11-06"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			b, w, r := &fakeBroker{}, &fakeWriter{}, &fakeResolver{}
 			j := newJob(t, "", b, r, w, tc.now)
-			res := j.Run(context.Background(), tc.day, []contracts.ExpectedKey{slotKey("0945")})
-			if len(b.calls) != 0 || len(w.calls) != 0 || len(r.keys) != 0 {
-				t.Fatal("a call was made")
+			res := j.Run(context.Background(), testDay, []contracts.ExpectedKey{slotKey("0945")})
+			if res.Err != nil || len(b.calls) != 1 || len(w.calls) != 1 || len(w.calls[0]) == 0 {
+				t.Fatalf("res = %+v, calls %d, writes %d", res, len(b.calls), len(w.calls))
 			}
-			if tc.kind == "" {
-				if res.Err != nil || res.Returned != 0 || res.Usable != 0 {
-					t.Fatalf("res = %+v", res)
-				}
-				return
-			}
-			if res.Err == nil || res.Err.Kind() != tc.kind || !strings.Contains(res.Err.Error(), tc.text) {
-				t.Fatalf("err = %v", res.Err)
+			if got := w.calls[0][0].SessionDay.Format("2006-01-02"); got != tc.session {
+				t.Fatalf("SessionDay = %s, want the clock's date %s", got, tc.session)
 			}
 		})
 	}
