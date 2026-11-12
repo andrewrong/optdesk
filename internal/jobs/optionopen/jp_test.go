@@ -252,6 +252,45 @@ func TestPullJPRunsOnTheTokyoDateNotTheNewYorkDate(t *testing.T) {
 	}
 }
 
+func TestPullJPRunReadsThePlanOfItsGivenDay(t *testing.T) {
+	t.Parallel()
+	// the Tokyo date is 2026-11-11
+	clk := clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC))
+	ctx := context.Background()
+
+	s := seed(1, 2)
+	s.onlyDay = "2026-11-10"
+	j := newPullJP(t, s, clk)
+	keys, _, err := j.Plan(ctx, "2026-11-10")
+	if err != nil || len(keys) == 0 {
+		t.Fatalf("Plan: keys %v err %v", keys, err)
+	}
+	if res := j.Run(ctx, "2026-11-10", keys); res.Err != nil || len(s.written) != 1 {
+		t.Fatalf("given day: err %v written %d", res.Err, len(s.written))
+	}
+	if s.planDay != "2026-11-10" {
+		t.Errorf("last plan read for %s, want 2026-11-10", s.planDay)
+	}
+
+	s2 := seed(1, 2)
+	s2.onlyDay = "2026-11-11"
+	j2 := newPullJP(t, s2, clk)
+	keys2, _, err := j2.Plan(ctx, "2026-11-11")
+	if err != nil || len(keys2) == 0 {
+		t.Fatalf("Plan: keys %v err %v", keys2, err)
+	}
+	if res := j2.Run(ctx, "2026-11-10", keys2); res.Err != nil || len(s2.written) != 1 {
+		t.Fatalf("fallback: err %v written %d", res.Err, len(s2.written))
+	}
+
+	s3 := seed(1, 2)
+	s3.onlyDay = "2026-11-09"
+	res := newPullJP(t, s3, clk).Run(ctx, "2026-11-10", []contracts.ExpectedKey{{SubjectKey: "batch-001"}})
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "the plan of 2026-11-10 is gone") {
+		t.Fatalf("neither: %v", res.Err)
+	}
+}
+
 func TestJPLunchBreakIsTheManifestValue(t *testing.T) {
 	t.Parallel()
 	if got := JPLunchBreak(); got != [2]string{"1130", "1230"} {
