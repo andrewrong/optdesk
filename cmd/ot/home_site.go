@@ -89,6 +89,9 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	if rd.view != nil {
 		cc.Read = rd.view
 	}
+	if rd.earnings != nil {
+		cc.Earnings = rd.earnings
+	}
 	co, err := home_companies.Build(ctx, cc, now)
 	if err != nil {
 		return nil, err
