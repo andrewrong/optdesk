@@ -147,7 +147,7 @@ func (p *pull) RunBound() time.Duration { return p.runBound }
 // RestartSensitive is true when a restart between the slot start and the window close must be avoided.
 func (p *pull) RestartSensitive() bool { return p.m.Schedule.RestartSensitive }
 
-// errNoPlan marks the empty stored plan inside the NoValue error of batches, so Plan can tell it from a store error.
+// errNoPlan is the empty stored plan: Plan returns no key for it, Run is Retryable.
 var errNoPlan = errors.New("no plan")
 
 // batch is one key: stocks whose items together are at most max_per_key (a single stock over it is a batch alone).
@@ -163,7 +163,7 @@ func (p *pull) batches(ctx context.Context, day contracts.Day) ([]batch, error) 
 		return nil, newErr(contracts.Retryable, "plan: %v", err)
 	}
 	if len(items) == 0 {
-		return nil, newErr(contracts.NoValue, "%w", errNoPlan)
+		return nil, errNoPlan
 	}
 	var out []batch
 	for i := 0; i < len(items); {
@@ -218,12 +218,31 @@ func newErr(kind contracts.ErrorKind, format string, a ...any) contracts.TypedEr
 // end the postcondition of Decision 22 holds: at least min_ok_share of the planned items that are not deferred
 // are ok, else the run is a failed run.
 func (p *pull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	return p.fault(day, keys, p.run(ctx, day, keys))
+}
+
+// fault writes the one fault line of a Retryable end through the Log of the job and returns res.
+func (p *pull) fault(day contracts.Day, keys []contracts.ExpectedKey, res contracts.JobResult) contracts.JobResult {
+	if res.Err != nil && res.Err.Kind() == contracts.Retryable && p.d.Log != nil {
+		key := ""
+		if len(keys) > 0 {
+			key = keys[0].SubjectKey
+		}
+		p.d.Log.Warn(fmt.Sprintf("fault stage=%s day=%s key=%s reason=%s", p.m.ID, day, key, res.Err.Error()))
+	}
+	return res
+}
+
+func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	now := p.d.Clock.Now()
 	local := now.In(p.loc)
 	if string(day) != local.Format(time.DateOnly) {
 		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
 	}
 	bs, err := p.batches(ctx, day)
+	if errors.Is(err, errNoPlan) {
+		return contracts.JobResult{Err: newErr(contracts.Retryable, "the plan of %s is gone", day)}
+	}
 	if err != nil {
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
 	}
