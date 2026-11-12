@@ -142,7 +142,7 @@ func TestHostSeesJobBroughtBackByProbe(t *testing.T) {
 	}
 }
 
-func (r *jcRig) turnOf(c runner.ConsoleTurner) bool {
+func (r *jcRig) turnOf(c runner.ConsoleTurner) bool { //nolint:staticcheck // SA1019: kept until deleted
 	r.t.Helper()
 	took, err := c.ConsoleTurn(r.t.Context(), jcNever)
 	if err != nil {
@@ -210,7 +210,7 @@ func TestSchedulerRunsWithConsoleOffWhenStartFails(t *testing.T) {
 		t.Fatalf("%d console-off lines: %q", n, r.errb.String())
 	}
 	// the host tries Start again at the next turn and so needs no restart once the table exists.
-	if took, err := r.sched.rec.(runner.ConsoleTurner).ConsoleTurn(t.Context(), jcNever); err != nil || took {
+	if took, err := r.sched.rec.(runner.ConsoleTurner).ConsoleTurn(t.Context(), jcNever); err != nil || took { //nolint:staticcheck // SA1019: kept until deleted
 		t.Fatalf("turn %v %v", took, err)
 	}
 	if q.log.count("fail_running") != 2 {
@@ -224,7 +224,7 @@ func TestSchedulerRunsWithZeroOpenerAndNilBackfiller(t *testing.T) {
 	done := r.start()
 	r.waitStarted(t, done)
 	r.tick()
-	turner, ok := r.sched.rec.(runner.ConsoleTurner)
+	turner, ok := r.sched.rec.(runner.ConsoleTurner) //nolint:staticcheck // SA1019: kept until deleted
 	if !ok {
 		t.Fatal("the reconciler cannot turn the console")
 	}

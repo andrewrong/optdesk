@@ -130,6 +130,8 @@ type ForceBackfiller interface {
 // turn of the console's request queue. It runs on the worker, so it never overlaps a
 // Reconcile, and took tells whether a request was handled. A cancelled ctx ends the turn
 // interrupted. The turn has no bound of its own; each key has the RunBound of its job.
+//
+// Deprecated: replaced by ConsoleClaimer; it runs on the worker and never overlaps a Reconcile.
 type ConsoleTurner interface {
 	ConsoleTurn(ctx context.Context, hold SlotHold) (took bool, err error)
 }
