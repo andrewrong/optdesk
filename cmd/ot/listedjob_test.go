@@ -210,3 +210,28 @@ func TestListedGroupOffPlansZeroKeys(t *testing.T) {
 		t.Fatalf("keys %v err %v", keys, err)
 	}
 }
+
+func TestListedJobHeldOptionOutsideGroup(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name    string
+		options bool
+	}{{"options off", false}, {"watched and held", true}} {
+		row := activeRow("AAA")
+		row.Options = c.options
+		build := func([]jobs.WatchEntry) (contracts.Job, error) { return &fakeInner{}, nil }
+		held := func(context.Context) (map[string]bool, error) { return map[string]bool{"option:US:AAA": true}, nil }
+		j, err := newListedJob(context.Background(), build, groupOptions, &fakeListReader{rows: []underlying.Row{row}}, held,
+			clockwork.NewFakeClock())
+		if err != nil {
+			t.Fatal(err)
+		}
+		entries, ok, err := j.entries(context.Background())
+		if err != nil || !ok {
+			t.Fatalf("%s: entries %v %v", c.name, ok, err)
+		}
+		if len(entries) != 1 || entries[0].Contract.Symbol != "AAA" {
+			t.Errorf("%s: entries %+v", c.name, entries)
+		}
+	}
+}

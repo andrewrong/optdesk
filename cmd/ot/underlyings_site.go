@@ -88,29 +88,46 @@ func buildUnderlyingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag 
 // heldSymbols is the set of stock symbols with a nonzero quantity in the newest positions of each alias of the
 // site, searched back from now. No account reader gives an empty set.
 func heldSymbols(ctx context.Context, rd siteReaders, now time.Time) (map[string]bool, error) {
-	held := map[string]bool{}
+	held, _, err := heldSets(ctx, rd, now)
+	return held, err
+}
+
+// heldSets reads the newest positions of each alias once and returns the stock symbols held (shares) and the symbols
+// with an option position of nonzero quantity.
+func heldSets(ctx context.Context, rd siteReaders, now time.Time) (shares, options map[string]bool, err error) {
+	shares, options = map[string]bool{}, map[string]bool{}
 	if rd.account == nil {
-		return held, nil
+		return shares, options, nil
 	}
 	for _, alias := range rd.aliases {
 		for back := 0; back <= heldLookbackDays; back++ {
 			rows, err := rd.account.Positions(ctx, alias, now.AddDate(0, 0, -back).Format(time.DateOnly))
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if len(rows) == 0 {
 				continue
 			}
-			addHeld(held, rows)
+			addHeld(shares, rows)
+			addHeldOptions(options, rows)
 			break
 		}
 	}
-	return held, nil
+	return shares, options, nil
 }
 
 func addHeld(held map[string]bool, rows []store.Position) {
 	for _, p := range rows {
 		if p.SecType == "STK" && !isZeroQuantity(p.Quantity) {
+			held[p.Symbol] = true
+		}
+	}
+}
+
+// addHeldOptions adds the underlying symbol of each option position with a nonzero quantity.
+func addHeldOptions(held map[string]bool, rows []store.Position) {
+	for _, p := range rows {
+		if p.SecType == "OPT" && !isZeroQuantity(p.Quantity) {
 			held[p.Symbol] = true
 		}
 	}

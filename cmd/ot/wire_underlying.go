@@ -106,13 +106,16 @@ func heldKeys(d deps, cfg runOnceConfig, now func() time.Time, extra *closerSet)
 	}}}
 	extra.addCloser(rd)
 	return func(ctx context.Context) (map[string]bool, error) {
-		syms, err := heldSymbols(ctx, siteReaders{account: rd, aliases: heldAliases}, now())
+		syms, opts, err := heldSets(ctx, siteReaders{account: rd, aliases: heldAliases}, now())
 		if err != nil {
 			return nil, err
 		}
 		held := map[string]bool{}
 		for sym := range syms {
 			held[nameKey("US", sym)], held[nameKey("JP", sym)] = true, true
+		}
+		for sym := range opts {
+			held["option:"+nameKey("US", sym)], held["option:"+nameKey("JP", sym)] = true, true
 		}
 		return held, nil
 	}

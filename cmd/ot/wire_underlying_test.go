@@ -243,3 +243,42 @@ func TestOptionOpenFamiliesAreListed(t *testing.T) {
 		t.Errorf("%s is %T, want a listedJob", jobOptionEodJP, j)
 	}
 }
+
+type posAcctStore struct {
+	store.AccountStore
+	rows []store.Position
+}
+
+func (s posAcctStore) Positions(_ context.Context, alias, _ string) ([]store.Position, error) {
+	if alias != "A" {
+		return nil, nil
+	}
+	return s.rows, nil
+}
+func (posAcctStore) Close() error { return nil }
+
+func TestHeldKeysOptionPositions(t *testing.T) {
+	t.Parallel()
+	st := posAcctStore{rows: []store.Position{
+		{Symbol: "AAA", SecType: "OPT", Quantity: "-2"},
+		{Symbol: "BBB", SecType: "OPT", Quantity: "0"},
+		{Symbol: "CCC", SecType: "STK", Quantity: "100"},
+	}}
+	d := deps{openAccount: func(context.Context, string) (store.AccountStore, error) { return st, nil }}
+	cfg := runOnceConfig{accountDSN: "dsn"}
+	var extra closerSet
+	now := func() time.Time { return time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC) }
+	got, err := heldKeys(d, cfg, now, &extra)(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{"option:US:AAA": true, "option:JP:AAA": true, "US:CCC": true, "JP:CCC": true}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for k := range want {
+		if !got[k] {
+			t.Errorf("missing %s in %v", k, got)
+		}
+	}
+}
