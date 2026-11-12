@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 var stockClock = fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}
@@ -122,4 +126,96 @@ func TestStockRouteCarriesTheRefreshState(t *testing.T) {
 			t.Errorf("live=%v: %s", live, body)
 		}
 	}
+}
+
+// okView is a fake ReadingViewReader answering one ok reading for the name market.rv20 and the subject DEMO only.
+type okView struct{ store.ReadingViewReader }
+
+func (okView) WinnerReadings(_ context.Context, name, _, subject string, _, to contracts.Day) ([]contracts.ReadingRecord, error) {
+	if name != "market.rv20" || subject != "DEMO" {
+		return nil, nil
+	}
+	d, err := time.Parse("2006-01-02", string(to))
+	if err != nil {
+		return nil, err
+	}
+	v := "0.31"
+	var rec contracts.ReadingRecord
+	rec.Name, rec.State, rec.Value = name, "ok", &v
+	rec.Day.Time = d
+	return []contracts.ReadingRecord{rec}, nil
+}
+
+type volRows struct {
+	VolView *struct {
+		Rows []struct {
+			Label string `json:"label"`
+			Text  string `json:"text"`
+			Gap   string `json:"gap"`
+		} `json:"rows"`
+	} `json:"vol_view"`
+}
+
+func stockVolRows(t *testing.T, rd siteReaders) volRows {
+	t.Helper()
+	a, _ := testApp(t, "")
+	h := siteHandler(a, stockClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
+	rec := candidatesGet(t, h, http.MethodGet, "/"+siteStockRoute+"/DEMO")
+	if rec.Code != 200 {
+		t.Fatalf("status %d", rec.Code)
+	}
+	var p volRows
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.VolView == nil || len(p.VolView.Rows) != 8 {
+		t.Fatalf("vol_view %+v", p.VolView)
+	}
+	return p
+}
+
+func TestStockPageVolView(t *testing.T) {
+	t.Parallel()
+	p := stockVolRows(t, siteReaders{cands: demoCandidates{}, view: okView{}})
+	for _, r := range p.VolView.Rows {
+		if r.Label == "rv20" && r.Text == "0.31" {
+			return
+		}
+	}
+	t.Fatalf("no row with the fake's text: %+v", p.VolView.Rows)
+}
+
+func TestStockPageNoViewReader(t *testing.T) {
+	t.Parallel()
+	p := stockVolRows(t, siteReaders{cands: demoCandidates{}})
+	for _, r := range p.VolView.Rows {
+		if r.Gap == "" || r.Text != "" {
+			t.Fatalf("row %+v: want a gap and no text", r)
+		}
+	}
+}
+
+type demoOnlyView struct{ store.ReadingViewReader }
+
+func (demoOnlyView) WinnerReadings(_ context.Context, name, _, subject string, _, to contracts.Day) ([]contracts.ReadingRecord, error) {
+	if name != "market.rv20" || subject != "DEMO" {
+		return nil, nil
+	}
+	d, _ := time.Parse("2006-01-02", string(to))
+	v := "0.31"
+	var rec contracts.ReadingRecord
+	rec.Name, rec.State, rec.Value = name, "ok", &v
+	rec.Day.Time = d
+	return []contracts.ReadingRecord{rec}, nil
+}
+
+func TestStockPageVolViewBySubject(t *testing.T) {
+	t.Parallel()
+	p := stockVolRows(t, siteReaders{cands: demoCandidates{}, view: demoOnlyView{}})
+	for _, r := range p.VolView.Rows {
+		if r.Label == "rv20" && r.Text == "0.31" {
+			return
+		}
+	}
+	t.Fatalf("readings of DEMO's subject did not reach the page: %+v", p.VolView.Rows)
 }
