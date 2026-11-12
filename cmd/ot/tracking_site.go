@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
 // siteTrackingRoute is the address of the page option_tracking_page under the site root. The bar item that
@@ -30,6 +31,7 @@ type trackingReaders struct {
 	Names      store.InstrumentNameReader
 	Terms      store.OptionTermsReader
 	Sessions   store.SessionDayReader
+	Marks      mark.Reader
 }
 
 // trackingReadersOf picks the readers of the page from the readers of the site. Sessions is rd.sessions, opened
@@ -41,7 +43,7 @@ func trackingReadersOf(rd siteReaders) trackingReaders {
 	}
 	return trackingReaders{
 		Ledger: ledger, Account: rd.noticeAccount, Candidates: rd.cands, Eod: rd.eod,
-		Catalog: rd.catalog, Names: rd.names, Terms: rd.terms, Sessions: rd.sessions,
+		Catalog: rd.catalog, Names: rd.names, Terms: rd.terms, Sessions: rd.sessions, Marks: rd.marks,
 	}
 }
 
