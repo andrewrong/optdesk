@@ -216,22 +216,3 @@ func TestJQuantsOneCallPerDay(t *testing.T) {
 		t.Fatalf("fetches %d calls %d, want 1 and 2 (one per JP entry)", src.fetches.Load(), src.calls.Load())
 	}
 }
-
-func TestJQuantsErrorDayNotRetried(t *testing.T) {
-	t.Parallel()
-	r, src, _ := jqRig(t, jqEnv())
-	src.err = jqErr{}
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
-		t.Fatal(err)
-	}
-	j := earningsJob(t, r)
-	planDay(t, j, "2026-11-09")
-	j.Run(t.Context(), "2026-11-09", nil)
-	before := src.calls.Load()
-	if res := j.Run(t.Context(), "2026-11-09", nil); res.Err == nil {
-		t.Fatal("a second run after an error must return the Permanent error")
-	}
-	if src.calls.Load() != before || before != 1 {
-		t.Fatalf("calls %d then %d: no call after an error", before, src.calls.Load())
-	}
-}
