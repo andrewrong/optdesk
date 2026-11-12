@@ -165,6 +165,7 @@ func (h *consoleHost) execute(ctx context.Context, hold runner.SlotHold, req job
 		return outcome{state: jobrequest.StateInterrupted, reason: reasonStopped}
 	}
 	if err != nil {
+		h.logFailed(req, err)
 		return outcome{state: jobrequest.StateFailed, reason: reasonPlanFailed}
 	}
 	var datasets []string
@@ -179,7 +180,19 @@ func (h *consoleHost) execute(ctx context.Context, hold runner.SlotHold, req job
 		return refused(reasonNoKey)
 	}
 	res, err := bf.BackfillWith(ctx, day, datasets, runner.BackfillOptions{Force: req.Force, Job: req.JobID, Hold: hold})
-	return classify(ctx, res, err)
+	out := classify(ctx, res, err)
+	if out.reason == reasonError {
+		h.logFailed(req, err)
+	}
+	return out
+}
+
+// logFailed writes the one ERROR line of a request that ends failed with the text of its error.
+func (h *consoleHost) logFailed(req jobrequest.Request, err error) {
+	if h.log == nil {
+		return
+	}
+	h.log.Error("console request failed", "component", "ot", "status", "failed", "job", req.JobID, "day", req.Day, "error", err.Error())
 }
 
 // classify gives the end state of a call in the precedence of Decision 9.

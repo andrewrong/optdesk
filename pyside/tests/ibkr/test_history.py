@@ -82,15 +82,18 @@ def test_no_cap_after_55_requests() -> None:
 class PacingGateway:
     """Answers the first `codes` sends with a BrokerError of that code, then bars."""
 
-    def __init__(self, clock: FakeClock, codes: list[int]) -> None:
+    def __init__(
+        self, clock: FakeClock, codes: list[int], text: str = "pacing violation"
+    ) -> None:
         self.clock = clock
         self.codes = codes
+        self.text = text
         self.sent: list[float] = []
 
     async def fetch(self, words: WireRequest) -> list[HistoryBar]:
         self.sent.append(self.clock.monotonic())
         if len(self.sent) <= len(self.codes):
-            raise spec.BrokerError(self.codes[len(self.sent) - 1], "pacing")
+            raise spec.BrokerError(self.codes[len(self.sent) - 1], self.text)
         return [HistoryBar("2026-01-02", "1", "2", "0.5", "1.5", None)]
 
 
@@ -107,6 +110,36 @@ def test_pacing_answer_162_is_retried_after_60_seconds() -> None:
     sent, n = asyncio.run(run())
     assert sent == [0.0, 60.0]
     assert n == 1
+
+
+def test_162_without_pacing_text_is_raised_at_once() -> None:
+    async def run() -> list[float]:
+        clock = FakeClock()
+        gateway = PacingGateway(clock, [162], "HMDS query returned no data")
+        task = asyncio.ensure_future(
+            HistoryReader(clock).bars(request(), gateway.fetch)
+        )
+        await drain(clock, task)
+        with pytest.raises(spec.BrokerError) as info:
+            task.result()
+        assert info.value.code == 162
+        return gateway.sent
+
+    assert asyncio.run(run()) == [0.0]
+
+
+def test_pacing_violation_text_is_case_insensitive() -> None:
+    async def run() -> list[float]:
+        clock = FakeClock()
+        gateway = PacingGateway(clock, [162], "Pacing Violation: too many requests")
+        task = asyncio.ensure_future(
+            HistoryReader(clock).bars(request(), gateway.fetch)
+        )
+        await drain(clock, task)
+        task.result()
+        return gateway.sent
+
+    assert asyncio.run(run()) == [0.0, 60.0]
 
 
 @pytest.mark.parametrize("codes", [[162, 162], [200]])
