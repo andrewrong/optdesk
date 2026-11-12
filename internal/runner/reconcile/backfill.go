@@ -66,10 +66,6 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 		if err != nil {
 			return res, err
 		}
-		if !closeAt.IsZero() && now.Before(closeAt) {
-			res.InWindow = append(res.InWindow, k)
-			continue
-		}
 		live, err := r.closeExpired(ctx, byKey[k], now)
 		if err != nil {
 			return res, err

@@ -126,8 +126,6 @@ func fillLists(res *runner.BackfillResult, k contracts.ExpectedKey, line runner.
 	switch line.Group {
 	case runner.GroupAlreadyPresent, runner.GroupRerun:
 		res.AlreadyPresent = append(res.AlreadyPresent, k)
-	case runner.GroupNotDue:
-		res.InWindow = append(res.InWindow, k)
 	case runner.GroupRan:
 		switch store.PresentStatus(line.Mark) {
 		case store.StatusPresent:
@@ -154,14 +152,6 @@ func (r *reconciler) backfillOne(
 	switch {
 	case isPresent && !opt.Force:
 		line.Group = runner.GroupAlreadyPresent
-		return line, nil
-	case p.held[k]:
-		line.Group = runner.GroupNotDue
-		if at, ok, err := slotAt(job, sess, r.rule); err != nil {
-			return line, err
-		} else if ok {
-			line.DueAt = at
-		}
 		return line, nil
 	}
 
