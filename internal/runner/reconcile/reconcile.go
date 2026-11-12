@@ -193,23 +193,34 @@ func (r *reconciler) planLogged(ctx context.Context, day contracts.Day, sess day
 // notDue reports whether job is Scheduled and the clock is before its slot instant on the day of
 // sess. A job that is not Scheduled, a nil sess, or a job whose calendar has no session is never held.
 func (r *reconciler) notDue(job contracts.Job, sess daySessions) (bool, error) {
-	sc, ok := job.(runner.Scheduled)
-	if !ok || sess == nil {
-		return false, nil
-	}
-	cal, anchor, zone, offset := sc.Schedule()
-	if cal == "" {
-		cal = r.jobCalendar(job)
-	}
-	s, ok := sess[cal]
-	if !ok {
-		return false, nil
-	}
-	at, err := shared.At(runner.Slot{JobID: job.ID(), CalendarID: cal, Anchor: anchor, Zone: zone, Offset: offset}, s)
-	if err != nil {
+	at, ok, err := slotAt(job, sess, r.rule)
+	if err != nil || !ok {
 		return false, err
 	}
 	return r.clk.Now().Before(at), nil
+}
+
+// slotAt is the slot instant of a Scheduled job on the day of sess, taken from its declared schedule
+// (def is the window rule that names the calendar of a schedule that names none). ok is false for a job
+// that is not Scheduled, a nil sess, or a job whose calendar has no session that day.
+func slotAt(job contracts.Job, sess daySessions, def runner.WindowRule) (at time.Time, ok bool, err error) {
+	sc, isSched := job.(runner.Scheduled)
+	if !isSched || sess == nil {
+		return time.Time{}, false, nil
+	}
+	cal, anchor, zone, offset := sc.Schedule()
+	if cal == "" {
+		cal = calendarIDOf(ruleOf(job, def))
+	}
+	s, has := sess[cal]
+	if !has {
+		return time.Time{}, false, nil
+	}
+	at, err = shared.At(runner.Slot{JobID: job.ID(), CalendarID: cal, Anchor: anchor, Zone: zone, Offset: offset}, s)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return at, true, nil
 }
 
 // reconcileDay plans the day, puts its windows, starts the repair and crash re-runs
@@ -349,6 +360,7 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 			}
 		case isCrash(run):
 			crashes++
+		case run.ReasonCode == reasonConsoleStop: // a console_stop run is no attempt and no crash
 		case run.ReasonCode == reasonEmptyBeforeClose, beforeClose && isRetryable(run):
 		default:
 			counted++
@@ -366,12 +378,17 @@ func (r *reconciler) nextAttempt(runs []store.Run, closeAt time.Time) (crashed *
 
 // closeRow picks the row of the Close table of Decision 8 for the runs of a missing key whose
 // window has closed: the index of the run to rewrite, the reason it gets, or ok false when no
-// row matches. Retryable runs are not counted by rows 2 and 4.
+// row matches. Retryable runs are not counted by rows 2 and 4, and a console_stop run is no run at all
+// for any row: a newest console_stop row never hides an earlier retryable run.
 func closeRow(runs []store.Run) (idx int, reason string, ok bool) {
 	crashes, latest := 0, -1
-	lastCrash := -1
+	lastCrash, newest := -1, -1 // newest: the last run that is not console_stop
 	for i, run := range runs {
+		if run.ReasonCode != reasonConsoleStop {
+			newest = i
+		}
 		switch {
+		case run.ReasonCode == reasonConsoleStop: // console_stop rows are skipped by every row
 		case isCrash(run):
 			crashes++
 			lastCrash = i
@@ -385,8 +402,8 @@ func closeRow(runs []store.Run) (idx int, reason string, ok bool) {
 		return lastCrash, reasonCrashedRepeatedly, true
 	case latest >= 0 && runs[latest].Status == store.RunPartial: // row 2
 		return latest, reasonExpired, true
-	case isRetryable(runs[len(runs)-1]): // row 3
-		return len(runs) - 1, reasonExpired, true
+	case newest >= 0 && isRetryable(runs[newest]): // row 3
+		return newest, reasonExpired, true
 	case latest >= 0: // row 4: done without a mark
 		return latest, reasonExpired, true
 	}

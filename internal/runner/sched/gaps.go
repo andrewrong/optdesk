@@ -21,7 +21,9 @@ const (
 	reasonCrashed       = "crashed"
 	reasonAbandonedStop = "abandoned_stop"
 	reasonEmptyBefore   = "empty_before_close"
-	crashBrake          = 3
+	// reasonConsoleStop is the reason of a key cut by a console stop; no reader counts it.
+	reasonConsoleStop = "console_stop"
+	crashBrake        = 3
 )
 
 // gapRank orders the kinds of key gaps of one dataset and day, which share one record: the worst wins.
@@ -147,6 +149,7 @@ func (g *gapSyncer) keyKind(runs []store.Run, mark store.PresentStatus, closed b
 	if mark == store.StatusPresent {
 		return ""
 	}
+	runs = dropConsoleStop(runs)
 	now := g.clk.Now()
 	crashes, latest, running := 0, -1, false
 	proof, expired, retryableLast := false, false, false
@@ -185,6 +188,18 @@ func (g *gapSyncer) keyKind(runs []store.Run, mark store.PresentStatus, closed b
 		return ""
 	}
 	return runnerKind(true, latest, retryableLast, runs)
+}
+
+// dropConsoleStop is runs without the console_stop ones: such a run is no run for a reader, so it hides no
+// earlier one.
+func dropConsoleStop(runs []store.Run) []store.Run {
+	out := make([]store.Run, 0, len(runs))
+	for _, r := range runs {
+		if r.ReasonCode != reasonConsoleStop {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // runnerKind picks row 2, 3 or 4 of the Close table; it is "" unless ok, which for a no_value key means

@@ -47,7 +47,7 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 		res.Refused = runner.RefusedNoPlan
 		return res, nil
 	}
-	keys, p, err := r.backfillPlan(ctx, day, stored, datasets)
+	keys, p, _, err := r.backfillPlan(ctx, day, stored, datasets)
 	if err != nil {
 		return res, err
 	}
@@ -78,7 +78,7 @@ func (r *reconciler) Backfill(ctx context.Context, day contracts.Day, datasets [
 			res.Missing = append(res.Missing, k)
 			continue
 		}
-		out, err := r.backfillKey(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt)
+		_, out, err := r.backfillKey(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, deadlineFor(p.job[k], closeAt, r.clk.Now()))
 		if err != nil {
 			return res, err
 		}
@@ -125,28 +125,29 @@ func (r *reconciler) dayState(
 
 // backfillPlan validates the day, then writes what it lacks: the windows of the datasets that
 // have none and the keys of the plan of the day that the stored plan lacks (Decision 8). It
-// returns the selected keys and the key-to-job map. Every error is returned before any write.
+// returns the selected keys, the plan (the key-to-job map and, in held, the keys whose job is not yet due
+// on the day) and the sessions of the day. Every error is returned before any write.
 func (r *reconciler) backfillPlan(
 	ctx context.Context, day contracts.Day, stored []contracts.ExpectedKey, datasets []string,
-) ([]contracts.ExpectedKey, plan, error) {
+) ([]contracts.ExpectedKey, plan, daySessions, error) {
 	sess, err := r.sessionsOf(ctx, day)
 	if err != nil {
-		return nil, plan{}, err
+		return nil, plan{}, nil, err
 	}
 	pAll, err := r.plan(ctx, day, nil)
 	if err != nil {
-		return nil, plan{}, err
+		return nil, plan{}, nil, err
 	}
 	// pAll has planned every job and logged the failing ones: pDay does not log them again.
 	pDay, err := r.planLogged(ctx, day, sess, slog.New(slog.DiscardHandler))
 	if err != nil {
-		return nil, plan{}, err
+		return nil, plan{}, nil, err
 	}
 	added := r.addedKeys(stored, pDay, sess)
 	all := append(append([]contracts.ExpectedKey(nil), stored...), added...)
 	keys, err := selectKeys(day, all, datasets)
 	if err != nil {
-		return nil, plan{}, err
+		return nil, plan{}, nil, err
 	}
 	jobs := map[contracts.ExpectedKey]contracts.Job{}
 	for k, j := range pAll.job {
@@ -157,19 +158,19 @@ func (r *reconciler) backfillPlan(
 	}
 	for _, k := range keys {
 		if _, ok := jobs[k]; !ok {
-			return nil, plan{}, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
+			return nil, plan{}, nil, fmt.Errorf("backfill %s: no job returns a key of dataset %s", day, k.DatasetID)
 		}
 	}
-	p := plan{keys: all, job: jobs, hash: pDay.hash}
+	p := plan{keys: all, job: jobs, hash: pDay.hash, held: pDay.held}
 	if err := r.putMissingWindows(ctx, day, p, sess); err != nil {
-		return nil, plan{}, err
+		return nil, plan{}, nil, err
 	}
 	if len(added) > 0 {
 		if err := r.ledger.PutExpected(ctx, day, pDay.hash, all); err != nil {
-			return nil, plan{}, err
+			return nil, plan{}, nil, err
 		}
 	}
-	return keys, p, nil
+	return keys, p, sess, nil
 }
 
 // sessionsOf is the sessions of day: an empty map when it is a session of no calendar.
@@ -231,7 +232,11 @@ func (r *reconciler) putMissingWindows(ctx context.Context, day contracts.Day, p
 	return err
 }
 
-// selectKeys filters the stored keys by dataset ids; an id with no stored key is an error.
+// errNoKey is the error of selectKeys for a dataset with no key on the day; BackfillWith answers it as
+// runner.RefusedNoKey.
+var errNoKey = errors.New("no key on the day")
+
+// selectKeys filters the stored keys by dataset ids; an id with no stored key is an error matching errNoKey.
 func selectKeys(day contracts.Day, stored []contracts.ExpectedKey, datasets []string) ([]contracts.ExpectedKey, error) {
 	if datasets == nil {
 		return stored, nil
@@ -249,7 +254,7 @@ func selectKeys(day contracts.Day, stored []contracts.ExpectedKey, datasets []st
 	}
 	for _, id := range datasets {
 		if !want[id] {
-			return nil, fmt.Errorf("backfill %s: dataset %s has no key on the day", day, id)
+			return nil, fmt.Errorf("backfill %s: dataset %s has %w", day, id, errNoKey)
 		}
 	}
 	return out, nil
@@ -287,26 +292,23 @@ func (r *reconciler) closeOf(ctx context.Context, datasetID string, day contract
 	return w.CloseAt, nil
 }
 
-// backfillKey runs k once and reports its mark afterwards: StatusPresent (filled),
-// StatusNoValue (absent) or "" (missing: no usable answer, a job error leaves the key
-// unmarked, or no_value as it was, told apart by the ErrorCode of the new run row).
+// backfillKey runs k once through RunKey, which must end by deadline, and reports the new run row and the
+// mark afterwards: StatusPresent (filled), StatusNoValue (absent) or "" (missing: no usable answer, a job
+// error leaves the key unmarked, or no_value as it was, told apart by the ErrorCode of the new run row).
 func (r *reconciler) backfillKey(
-	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt time.Time,
-) (store.PresentStatus, error) {
-	rec, _, err := r.run(ctx, job, day, k, seq, closeAt, reasonBackfill)
+	ctx context.Context, job contracts.Job, day contracts.Day, k contracts.ExpectedKey, seq int, closeAt, deadline time.Time,
+) (store.Run, store.PresentStatus, error) {
+	rec, err := r.kr.RunKey(ctx, job, day, k, seq, closeAt, deadline, reasonBackfill)
 	if err != nil {
-		return "", err
+		return rec, "", err
 	}
 	present, err := r.ledger.Present(ctx, day)
 	if err != nil {
-		return "", err
+		return rec, "", err
 	}
 	status := present[k]
-	if status != store.StatusNoValue {
-		return status, nil
+	if status == store.StatusNoValue && rec.ErrorCode != "" {
+		return rec, "", nil
 	}
-	if rec.ErrorCode != "" {
-		return "", nil
-	}
-	return status, nil
+	return rec, status, nil
 }
