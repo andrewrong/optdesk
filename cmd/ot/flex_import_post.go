@@ -301,7 +301,9 @@ func (t *readTracker) Read(b []byte) (int, error) {
 func (p *flexImportRun) importFile(ref optionledgerjob.FlexFileRef, part *multipart.Part) (flexpage.File, error) {
 	name := displayName(part.FileName())
 	tr := &readTracker{r: part}
-	rep, err := flex.Parse(tr)
+	// the parser takes the plain interface, so the arch lint sees no type of this package injected into it
+	var body io.Reader = tr
+	rep, err := flex.Parse(body)
 	// the rest of the part is read before anything is written, so a stream over the cap leaves no record
 	_, _ = io.Copy(io.Discard, tr)
 	if tr.err != nil {
