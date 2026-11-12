@@ -2,6 +2,7 @@ package optioneod
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/broker"
@@ -168,12 +169,16 @@ func TestSelectWideBandExpiries(t *testing.T) {
 
 func TestValidateRefusesNegativeStrikeBand(t *testing.T) {
 	t.Parallel()
-	for name, m := range map[string]manifest{
-		"below": {StrikeBandBelow: -0.01},
-		"above": {StrikeBandAbove: -0.01},
-	} {
-		if err := m.validate(); err == nil {
-			t.Errorf("%s: negative band accepted", name)
+	base := func() manifest { return manifest{Zone: "America/New_York", FreezeAfter: "1700"} }
+	if err := base().validate(); err != nil {
+		t.Fatalf("valid base refused: %v", err)
+	}
+	below, above := base(), base()
+	below.StrikeBandBelow, above.StrikeBandAbove = -0.01, -0.01
+	for name, m := range map[string]manifest{"below": below, "above": above} {
+		err := m.validate()
+		if err == nil || !strings.Contains(err.Error(), "band") {
+			t.Errorf("%s: negative band gave error %v, want one naming the band", name, err)
 		}
 	}
 }
