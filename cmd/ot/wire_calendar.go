@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func (f jobFactory) calendarProjectDir() (string, error) {
 		return "", fmt.Errorf("calendar_refresh: resolve the project directory failed, set %s: %w", envCalendarProject, err)
 	}
 	if !f.d.hasProject(dir) {
-		return "", fmt.Errorf("calendar_refresh: the pyside project has no pyproject.toml, set the line %s or run ot from the checkout", envCalendarProject)
+		return "", errors.New("calendar_refresh: the pyside project has no pyproject.toml, set the line OT_CALENDAR_PROJECT or run ot from the checkout")
 	}
 	return dir, nil
 }
