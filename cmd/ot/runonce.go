@@ -298,7 +298,9 @@ type jobFactory struct {
 	// the last two may be nil.
 	candidates store.CandidateWriter
 	accounts   store.AccountReader
-	earnRd     store.EarningsDateReader
+	// candAliases is the account labels of the gateways file, main first; a nil list reads no account.
+	candAliases []string
+	earnRd      store.EarningsDateReader
 	// div is the dividend store of dividend_capture, opened with the events line.
 	div dividend.Store
 	// bars and hist are what bars_refresh and fx_refresh get: the bar store opened with the bar line and the history client.
