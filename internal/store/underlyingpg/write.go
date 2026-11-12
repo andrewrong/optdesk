@@ -137,3 +137,60 @@ func cut(s string, n int) string {
 	}
 	return string([]rune(s)[:n])
 }
+
+var _ underlying.HeldAdder = (*Store)(nil)
+
+// Check applies the rules of Add without a write: the market of the currency, then the symbol rules of that market.
+// It returns the key, market:SYMBOL.
+func (s *Store) Check(symbol, currency string) (string, error) {
+	r, err := heldRow(symbol, currency)
+	if err != nil {
+		return "", err
+	}
+	return r.Key, nil
+}
+
+// heldRow is the row Add writes for symbol in the market of currency.
+func heldRow(symbol, currency string) (underlying.Row, error) {
+	market, ok := marketOfCurrency[currency]
+	if !ok {
+		return underlying.Row{}, invalid("currency", "no market for currency "+currency)
+	}
+	return ValidateAdd(underlying.Add{
+		Symbol: symbol, Market: market, Kind: underlying.KindStock, Options: true, Note: underlying.NoteHeld,
+	}, nil)
+}
+
+// Add inserts one pending held row under the table lock, unless a row of the symbol exists in any status under
+// either market; then it writes nothing and returns false.
+func (s *Store) Add(ctx context.Context, symbol, currency string) (bool, error) {
+	row, err := heldRow(symbol, currency)
+	if err != nil {
+		return false, err
+	}
+	added := false
+	err = s.db.InTx(ctx, func(q querier) error {
+		added = false
+		if err := q.Exec(ctx, lockSQL); err != nil {
+			return err
+		}
+		rows, err := selectRows(ctx, q, currentSQL)
+		if err != nil {
+			return err
+		}
+		for _, r := range rows {
+			if r.Symbol == symbol {
+				return nil
+			}
+		}
+		if err := insertRow(ctx, q, row); err != nil {
+			return err
+		}
+		added = true
+		return nil
+	})
+	if err != nil {
+		return false, classify(fmt.Errorf("underlyingpg: add: %w", err))
+	}
+	return added, nil
+}

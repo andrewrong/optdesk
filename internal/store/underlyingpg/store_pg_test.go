@@ -267,3 +267,32 @@ func TestPageRoleCannotSelectTheBaseTable(t *testing.T) {
 		t.Errorf("view read as ot_ro_pages = %+v, %v", cur, err)
 	}
 }
+
+func TestAddThroughResolveRole(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	admin := pgxAs(t, name)
+	st := openAs(t, name, "ot_w_underlying_resolve")
+	h, ok := st.(underlying.HeldAdder)
+	if !ok {
+		t.Fatal("the store is not a HeldAdder")
+	}
+	at := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	seedRow(t, admin, "US:AAA", "pending", nil, at)
+	if added, err := h.Add(ctx, "ZZZ", "USD"); err != nil || !added {
+		t.Fatalf("Add = %v, %v; want true", added, err)
+	}
+	if added, err := h.Add(ctx, "ZZZ", "USD"); err != nil || added {
+		t.Fatalf("second Add = %v, %v; want false", added, err)
+	}
+	rows, err := st.Pending(ctx, at)
+	if err != nil || len(rows) != 2 || rows[0].Key != "US:ZZZ" || rows[1].Key != "US:AAA" {
+		t.Fatalf("Pending = %+v, %v; want the held row first", rows, err)
+	}
+	r := rows[0]
+	if r.Status != "pending" || r.Kind != "stock" || !r.Options || r.Fundamentals || r.ConID != 0 || r.Issuer != "" ||
+		r.Note != underlying.NoteHeld || r.Exchange != "SMART" || r.Currency != "USD" {
+		t.Errorf("row = %+v", r)
+	}
+}
