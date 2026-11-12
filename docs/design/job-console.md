@@ -6,7 +6,7 @@ Date: 2026-11-12
 Revision: 4 (the runnable set is cut to the jobs that use their day; the hold, the withdraw and the round 3 faults are answered in `## Adversarial`)
 
 Source: owner asks of 2026-11-12. optdesk-2879: "I don't want to operate in a terminal; I click on web pages; we are a product." optdesk-2881: "every job can be run on its own, and is idempotent." The follow-up named in `docs/design/flex-xml-import.md` (`## Left out`, "Follow-up design `job-console`").
-Status: draft. Read on origin/main at 746e8aedd819. "[unverified]" marks a claim not checked in code, docs or a probe.
+Status: draft. Read on origin/main at db5f0f224079. "[unverified]" marks a claim not checked in code, docs or a probe.
 
 ## Goal
 
@@ -16,7 +16,7 @@ Idempotent means, here and in `## Idempotency of the jobs`: a second run of a jo
 
 ## What main holds today
 
-Each line is read on origin/main at 746e8aedd819 unless marked.
+Each line is read on origin/main at db5f0f224079 unless marked.
 
 - **`ot serve` has no runner line, no broker for jobs and no lease.** `runServe` opens the site readers and, with `--owner-edit`, one settings writer (`cmd/ot/serve.go:74-82`, `newOwnerEdit` at `cmd/ot/settings.go:53-77`, `ownerEditSecrets` at `cmd/ot/env.go:70-85`, which reads `OT_FORM_KEY` and `OT_PG_DSN_SETTINGS` only). `store.DSNEnvRunner` is read by `run-once`, `backfill` and `scheduler`, not by `serve` or `site.go`. The only writes of `serve` are two posts, `/owner-settings` and `/owner-underlyings`, each behind `rd.edit` and `guardOwnerPost` (`cmd/ot/site.go:355-362`, `cmd/ot/settings.go:245-259`): loopback address, Host check, Origin check, MAC token with expiry, body cap 64 KiB. The `/owner-settings` writer is opened once at start (`settings.go:68-76`); the underlyings post opens its writer per post and closes it (`cmd/ot/underlyings_post.go:113-124`).
 - **The scheduler process holds what a run needs, and the ticker runs everything on one worker.** `ot scheduler` takes the instance fence, builds the wiring and runs the ticker (`cmd/ot/scheduler.go:85-91,133-194`). The loop goroutine only reads the clock; every ledger, probe, Reconcile and Sync call runs on one worker goroutine that takes one `turn` at a time (`internal/runner/sched/ticker.go:300-306` `submit` never blocks and drops a turn when the worker is busy; `ticker.go:308-321` the worker; `ticker.go:323-333` `runTurn`). A turn that finds the worker busy is retried after `busyRetry` (5 s) and does not advance `mark`, so its slot is not counted as covered (`ticker.go:236-247`, `waitFor` at `ticker.go:253`). Every wake of the loop, at least every `ceiling` (30 s), submits one turn, a refresh-only one when nothing is due. The worker publishes the schedule as `[]Start{JobID, At}` (`internal/runner/sched/slots.go:21-24`, stored at `ticker.go:98,363`).
@@ -381,7 +381,7 @@ Round 3 (the advisor's r3 findings F1 to F9 and N1 to N7, and the adversarial pa
 - *A5, the false claims: "a slot is only delayed" (removed, A2); "the jobs keep their own guard" (removed: the plan jobs have no day guard, which is why they are not runnable); the outcome `present` for a forced `NoValue` (replaced, F9); `verdict` overwriting the console tag with `empty_before_close` and two causes of a cut.* All four adopted: Decision 4 keeps the tag in the verdict and at both causes of a cut (`TestConsoleEmptyBeforeCloseKeepsTag`, `TestConsoleCutKeepsTagByRequestCancel`, `TestConsoleCutKeepsTagByOwnDeadline`).
 - *A6, the slip risks: entry 11 integration with nil openers and a nil `Backfiller` in old scheduler tests; entry 3 packing too many behaviours; five ordering layers; `wire.go:225` offers `ext map[string]any`.* Entry 10 has `TestSchedulerRunsWithZeroOpenerAndNilBackfiller` and leaves `scheduler_test.go` untouched; entry 3 is split into 3 and 4 and the ticker into 5; the layers are two (interfaces first, wiring last); `ext` is not used because the two `wire.go` lines match how `deps` carries the other openers (Doubt 10).
 - *Other attacks.* `ConsoleTurner` as one turn: sound (no change). The ctx check between keys: kept, with the in-flight key cut by the `RunKey` deadline and the tag kept. The JP morning: see F5. The 409: removed with the force in the index. The grants: see F7.
-The whole file was read against origin/main at 746e8aedd819 before the push; the cites of the idempotency table are those of revision 3 (re-read at 0e90c286531d) and were not re-read line by line at 746e8aedd819 [unverified]; the cites of "What main holds" and of the runnable set were.
+The whole file was read against origin/main at db5f0f224079 before the push; the cites of the idempotency table are those of revision 3 (re-read at 0e90c286531d) and were not re-read line by line at db5f0f224079 [unverified]; the cites of "What main holds" and of the runnable set were.
 
 ## Doubts (least sure)
 
