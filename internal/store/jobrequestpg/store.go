@@ -116,6 +116,9 @@ func (s *Store) Enqueue(ctx context.Context, r jobrequest.Request) (jobrequest.E
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return jobrequest.Enqueued{}, fmt.Errorf("jobrequestpg: enqueue: %w", err)
 		}
+		if attempt == 1 {
+			break // the insert after an empty read failed too
+		}
 		if s.afterMiss != nil {
 			s.afterMiss(ctx)
 		}
@@ -130,7 +133,7 @@ func (s *Store) Enqueue(ctx context.Context, r jobrequest.Request) (jobrequest.E
 			}
 			return jobrequest.Enqueued{Row: open, Outcome: out}, nil
 		}
-		if attempt == 0 && s.beforeRetry != nil {
+		if s.beforeRetry != nil {
 			s.beforeRetry(ctx)
 		}
 	}
