@@ -4,6 +4,7 @@ package sources
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -80,6 +81,11 @@ type FlexConfig struct {
 
 // NewFlexFunc is the constructor of the Flex source (internal/sources/flex).
 type NewFlexFunc func(FlexConfig) (FlexSource, error)
+
+// ParseFlexFunc parses one Flex body, plain or gzip, with the parser of the client (internal/sources/flex).
+// The limit of 50 MB is on the decompressed bytes. RawSHA256 is the hash of the decompressed bytes and
+// FetchedAt is left zero for the caller. The errors are typed as those of FlexSource.Fetch.
+type ParseFlexFunc func(r io.Reader) (FlexReport, error)
 
 // FlexFile is the content of $OT_HOME/flex.toml: the logins and the account allow-list.
 type FlexFile struct {
