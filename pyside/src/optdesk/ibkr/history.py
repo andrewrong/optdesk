@@ -84,8 +84,9 @@ class HistoryReader:
     """Paces historical requests on one clock and sends them through a fetch function.
 
     Starts are one at a time, in the order callers arrive, at least 11 seconds
-    apart, and no identical request starts within 15 seconds. A pacing answer
-    of IBKR (code 162) is waited out for 60 seconds and fetched once more.
+    apart, and no identical request starts within 15 seconds. A pacing violation
+    (code 162 with that text) is waited out for 60 seconds and fetched once more;
+    any other answer, 162 with other text included, is raised at once.
     """
 
     def __init__(self, clock: Clock) -> None:
@@ -116,7 +117,7 @@ class HistoryReader:
         try:
             return await fetch(words)
         except spec.BrokerError as exc:
-            if exc.code != PACING_CODE:
+            if exc.code != PACING_CODE or "pacing violation" not in exc.text.lower():
                 raise
         await self._clock.sleep(PACING_RETRY_S)
         await self._take_slot(request)
