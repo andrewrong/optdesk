@@ -99,7 +99,7 @@ func TestResolveJPConIDsFillsOnlyJPStockWithoutConID(t *testing.T) {
 	input := append([]jobs.WatchEntry(nil), watch...)
 	b := &conidBroker{ids: map[string]int64{"1111": 910001, "7203": 1}}
 	log, buf := conidLog()
-	got := resolveJPConIDs(context.Background(), b, watch, log)
+	got := resolveJPConIDs(context.Background(), b, watch, log, jobOptionEodJP)
 	want := []jobs.WatchEntry{us, jpConIDEntry("1111", 910001), jpConIDEntry("7203", 7203)}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v, want %+v", got, want)
@@ -124,7 +124,7 @@ func TestResolveJPConIDsFailureLeavesEntryAndGoesOn(t *testing.T) {
 		notListed: map[string]bool{"1111": true},
 	}
 	log, buf := conidLog()
-	got := resolveJPConIDs(context.Background(), b, watch, log)
+	got := resolveJPConIDs(context.Background(), b, watch, log, jobOptionEodJP)
 	for i, wantID := range []int64{0, 0, 910003, 0} {
 		if got[i].Contract.ConID != wantID {
 			t.Errorf("entry %s con_id %d, want %d", got[i].Contract.Symbol, got[i].Contract.ConID, wantID)
@@ -219,5 +219,39 @@ func TestOptionEodJPFamilyResolvesConIDAtBuild(t *testing.T) {
 	}
 	if rows, _ := f.list.Current(context.Background()); rows[0].ConID != 0 {
 		t.Fatal("the stored list was written")
+	}
+}
+
+func TestResolveJPConIDsWarnNamesTheJob(t *testing.T) {
+	t.Parallel()
+	b := &conidBroker{notListed: map[string]bool{"1111": true}}
+	log, buf := conidLog()
+	resolveJPConIDs(context.Background(), b, []jobs.WatchEntry{jpConIDEntry("1111", 0)}, log, jobOptionOpenResolveJP)
+	lines := conidWarns(buf)
+	if len(lines) != 1 || !strings.Contains(lines[0], jobOptionOpenResolveJP+": con_id of watch stock not resolved") ||
+		!strings.Contains(lines[0], "job="+jobOptionOpenResolveJP) {
+		t.Fatalf("warn lines %q", lines)
+	}
+}
+
+func TestOptionEodJPStillUsesEntryFix(t *testing.T) {
+	t.Parallel()
+	log, _ := conidLog()
+	var seen []jobs.WatchEntry
+	d := newDeps()
+	d.newOptionEodJPWatch = func(_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter,
+		w []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
+		seen = w
+		return nil, nil
+	}
+	f0 := jobFactory{d: d, clk: fakeClock{time.Date(2026, 11, 9, 16, 0, 0, 0, time.UTC)}}.withList(listRowsOf(jpConIDEntry("1111", 0))...)
+	f0.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry {
+		return resolveJPConIDs(context.Background(), &conidBroker{ids: map[string]int64{"1111": 910001}}, es, log, jobOptionEodJP)
+	}
+	if _, err := f0.optionEodJP(nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 1 || seen[0].Contract.ConID != 910001 {
+		t.Fatalf("entries %+v", seen)
 	}
 }

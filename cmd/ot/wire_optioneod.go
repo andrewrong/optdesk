@@ -40,7 +40,9 @@ func init() {
 			}
 			// A JP name of the list that is not resolved yet carries no con_id: ask the broker for it, as bars_refresh does.
 			f := *jc.f
-			f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, jc.brk, es, a.log) }
+			f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry {
+				return resolveJPConIDs(ctx, jc.brk, es, a.log, jobOptionEodJP)
+			}
 			j, err := f.optionEodJP(jc.brk)
 			return j, "", err
 		},
@@ -49,8 +51,8 @@ func init() {
 
 // resolveJPConIDs returns a copy of watch in which every JP stock entry without a con_id has the con_id the broker
 // answers to one lookup. An entry whose lookup fails, is not listed or answers con_id 0 stays as it is, with one Warn
-// line; the job then answers no_value for that stock only. Every other entry and the input are left untouched.
-func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEntry, log *slog.Logger) []jobs.WatchEntry {
+// line naming job (the job that ran it); the job then answers no_value (or an error) for that stock only. Every other entry and the input are left untouched.
+func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEntry, log *slog.Logger, job string) []jobs.WatchEntry {
 	out := make([]jobs.WatchEntry, len(watch))
 	copy(out, watch)
 	for i, e := range out {
@@ -68,7 +70,7 @@ func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEnt
 			reason = "answer has no con_id"
 		}
 		if reason != "" {
-			log.Warn("option_eod_jp: con_id of watch stock not resolved", "component", "ot", "job", jobOptionEodJP,
+			log.Warn(job+": con_id of watch stock not resolved", "component", "ot", "job", job,
 				"symbol", e.Contract.Symbol, "reason", reason)
 			continue
 		}
@@ -106,11 +108,16 @@ func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store
 // set, is applied to the names of each Plan.
 func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
-		if f.entryFix != nil {
-			entries = f.entryFix(entries)
-		}
-		return buildOptionEodJP(f.d, b, f.inst, f.eod, entries, f.clk)
+		return buildOptionEodJP(f.d, b, f.inst, f.eod, f.fixedEntries(entries), f.clk)
 	})
+}
+
+// fixedEntries is es after entryFix when it is set, es itself otherwise.
+func (f jobFactory) fixedEntries(es []jobs.WatchEntry) []jobs.WatchEntry {
+	if f.entryFix != nil {
+		return f.entryFix(es)
+	}
+	return es
 }
 
 // buildOptionEodJP builds option_eod_jp over the watch list (the JP stock entries add keys): the one constructor
