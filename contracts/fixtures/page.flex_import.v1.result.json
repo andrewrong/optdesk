@@ -1,0 +1,122 @@
+{
+  "schema": "flex_import",
+  "schema_version": 1,
+  "title": "Flex import",
+  "sentence": "5 files read: 1 stored, 1 already present, 1 without trades, 1 unmapped, 1 failed.",
+  "scope_note": "Only trades of level EXECUTION are read, from the same Flex query that option_ledger uses for trades (the TradeQueries entry of its login in flex.toml); cash, positions, NAV and the other sections of the file are not imported.",
+  "form": {
+    "post_path": "/owner-flex-import",
+    "expires": "1900000000",
+    "mac": "0123456789abcdef",
+    "max_files": 8,
+    "max_file_text": "64 MiB"
+  },
+  "gaps": [],
+  "files": [
+    {
+      "name": "flex-a.xml",
+      "status": "stored",
+      "reason": "",
+      "status_text": "Stored: 7 new rows",
+      "period_first": "2026-01-01",
+      "period_last": "2026-06-30",
+      "aliases": [
+        {
+          "alias": "alpha",
+          "statements": 1,
+          "rows_parsed": 12,
+          "rows_new": 7,
+          "rows_present": 5
+        },
+        {
+          "alias": "beta",
+          "statements": 1,
+          "rows_parsed": 4,
+          "rows_new": 4,
+          "rows_present": 0
+        }
+      ],
+      "unmapped_statements": 1
+    },
+    {
+      "name": "flex-b.xml.gz",
+      "status": "present",
+      "reason": "",
+      "status_text": "Already stored: no new rows",
+      "period_first": "2026-07-01",
+      "period_last": "2026-09-30",
+      "aliases": [
+        {
+          "alias": "alpha",
+          "statements": 1,
+          "rows_parsed": 12,
+          "rows_new": 0,
+          "rows_present": 12
+        }
+      ],
+      "unmapped_statements": 0
+    },
+    {
+      "name": "flex-c.xml",
+      "status": "nothing_found",
+      "reason": "",
+      "status_text": "No trades found in the file",
+      "period_first": "2026-10-01",
+      "period_last": "2026-10-31",
+      "aliases": [],
+      "unmapped_statements": 0
+    },
+    {
+      "name": "flex-d.xml",
+      "status": "unconfigured",
+      "reason": "",
+      "status_text": "No alias of the file is configured",
+      "period_first": "2026-10-01",
+      "period_last": "2026-10-31",
+      "aliases": [],
+      "unmapped_statements": 2
+    },
+    {
+      "name": "notes.xml",
+      "status": "failed",
+      "reason": "not_report",
+      "status_text": "Failed: the file is not a Flex report",
+      "period_first": "",
+      "period_last": "",
+      "aliases": [],
+      "unmapped_statements": 0
+    }
+  ],
+  "recent": [
+    {
+      "at_text": "2026-11-12 09:30",
+      "alias": "alpha",
+      "status": "present",
+      "reason": "",
+      "rows_parsed": 12,
+      "rows_new": 0,
+      "rows_present": 12,
+      "unmapped_statements": 0
+    },
+    {
+      "at_text": "2026-11-12 09:30",
+      "alias": "",
+      "status": "failed",
+      "reason": "not_report",
+      "rows_parsed": 0,
+      "rows_new": 0,
+      "rows_present": 0,
+      "unmapped_statements": 0
+    },
+    {
+      "at_text": "2026-11-12 09:29",
+      "alias": "beta",
+      "status": "stored",
+      "reason": "",
+      "rows_parsed": 4,
+      "rows_new": 4,
+      "rows_present": 0,
+      "unmapped_statements": 0
+    }
+  ]
+}

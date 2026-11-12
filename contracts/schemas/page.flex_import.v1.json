@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.flex_import.v1.json",
+  "title": "FlexImport",
+  "description": "View model of the Flex import page: the upload form, the results of one post and the recent imports. Every visible string is a field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "title", "sentence", "scope_note", "form", "gaps", "files", "recent"],
+  "properties": {
+    "schema": {"const": "flex_import"},
+    "schema_version": {"const": 1},
+    "title": {"$ref": "#/$defs/Text"},
+    "sentence": {"$ref": "#/$defs/Text"},
+    "scope_note": {"$ref": "#/$defs/Text"},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]},
+    "gaps": {"type": "array", "items": {"$ref": "common.v2.json#/$defs/Gap"}},
+    "files": {"type": "array", "items": {"$ref": "#/$defs/File"}},
+    "recent": {"type": "array", "items": {"$ref": "#/$defs/Recent"}}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 500},
+    "Optional": {"type": "string", "maxLength": 500},
+    "Count": {"type": "integer", "minimum": 0},
+    "Status": {"enum": ["stored", "present", "nothing_found", "unconfigured", "failed"]},
+    "Reason": {"enum": ["not_report", "too_large", "too_many_files", "bad_gzip", "store_error", ""]},
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_path", "expires", "mac", "max_files", "max_file_text"],
+      "properties": {
+        "post_path": {"const": "/owner-flex-import"},
+        "expires": {"$ref": "#/$defs/Text"},
+        "mac": {"$ref": "#/$defs/Text"},
+        "max_files": {"type": "integer", "minimum": 1},
+        "max_file_text": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "File": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "reason", "status_text", "period_first", "period_last", "aliases", "unmapped_statements"],
+      "properties": {
+        "name": {"type": "string", "maxLength": 80},
+        "status": {"$ref": "#/$defs/Status"},
+        "reason": {"$ref": "#/$defs/Reason"},
+        "status_text": {"$ref": "#/$defs/Text"},
+        "period_first": {"$ref": "#/$defs/Optional"},
+        "period_last": {"$ref": "#/$defs/Optional"},
+        "aliases": {"type": "array", "items": {"$ref": "#/$defs/Alias"}},
+        "unmapped_statements": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "Alias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias", "statements", "rows_parsed", "rows_new", "rows_present"],
+      "properties": {
+        "alias": {"$ref": "#/$defs/Text"},
+        "statements": {"$ref": "#/$defs/Count"},
+        "rows_parsed": {"$ref": "#/$defs/Count"},
+        "rows_new": {"$ref": "#/$defs/Count"},
+        "rows_present": {"$ref": "#/$defs/Count"}
+      }
+    },
+    "Recent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at_text", "alias", "status", "reason", "rows_parsed", "rows_new", "rows_present", "unmapped_statements"],
+      "properties": {
+        "at_text": {"$ref": "#/$defs/Text"},
+        "alias": {"$ref": "#/$defs/Optional"},
+        "status": {"$ref": "#/$defs/Status"},
+        "reason": {"$ref": "#/$defs/Reason"},
+        "rows_parsed": {"$ref": "#/$defs/Count"},
+        "rows_new": {"$ref": "#/$defs/Count"},
+        "rows_present": {"$ref": "#/$defs/Count"},
+        "unmapped_statements": {"$ref": "#/$defs/Count"}
+      }
+    }
+  }
+}

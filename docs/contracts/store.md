@@ -143,6 +143,8 @@ Declared in `internal/store/api.go`: `CandidateWriter` (`InsertCandidates(ctx, [
 
 Declared in `internal/store/api.go`: `OptionLedgerWriter` (`RecordFlexFetch` applies the revision rule of Decision 5 in one transaction, `ImportFlexTradeRows` applies Decision 6), `OptionLedgerReader` (`FlexTradeRows` the highest revision per transaction sorted by transaction id, `LatestOkFetch`, `StoredAliases`), `OptionLedgerStore` (both and `Close`), `OpenOptionLedgerFunc`, the plain types `FlexTradeRow`, `FlexFetchRecord`, `FlexInsert`, `FlexImportResult`, and `DSNEnvOptionLedger` (`OT_PG_DSN_OPTION_LEDGER`). Schema `optionledger` (tables `flex_fetch`, `flex_trade_row`, insert-only), role `ot_w_optionledger` (INSERT and SELECT only), views `rd.flex_trade_row_r1` and `rd.flex_fetch_r1` read by `ot_ro_pages`. Revision rule: a new key is revision 1, an equal hash is not written, a changed hash is the next revision. Import rule: an absent key with no equal hash is inserted, an equal hash is `same`, a taken key with another hash is a `conflict`. Imports: `internal/store` imports neither `internal/compute` nor the generated records; callers map. The implementation is `internal/store/optionledger` (a later issue). Design: `docs/design/option-ledger.md#Interface`.
 
+The read of past imports is `ImportLog` (`RecentFetches(ctx, login, limit)`: the records of `login` whose `query_id` starts with `file:`, newest first by `finished_at` then `fetch_id`, both descending, from `rd.flex_fetch_r1`), declared in `internal/store/optionledger/api.go`, declarations only, an interface file inside an implementation package; `internal/store/api.go` does not mention it. The store type implements it in a later entry. Design: `docs/design/flex-xml-import.md#3 import-log-api`.
+
 ## Flex sections
 
 Declared in the declarations-only package `internal/store/flexsection` (not in `internal/store/api.go`): `Writer` (`RecordSections`), `Reader` (`Rows`, `Statuses`), `Store` (both and `Close`), `OpenFunc`, and the plain types `Row`, `Status` and `Insert`; the implementation is `internal/store/flexsectionpg`.
@@ -212,6 +214,7 @@ Declared in `internal/store/openquote/api.go`, apart from `Stores`: `ListRecord`
 - `internal/store/api_candidate_test.go`: `TestCandidateContract` holds `CandidateWriter`, `CandidateReader` and `DSNEnvCandidate` from both sides (two runs of a day read as the newer one, ranked rows first); `TestCandidateContractSettingsVersion` holds `SettingsVersion` (nil on an old row, the written value on a new one).
 
 - `internal/store/optionledger_api_test.go`: `TestOptionLedgerWriterContract` (revision rule and import rule from both sides) and `TestOptionLedgerReaderContract`.
+- `internal/store/optionledger/api_test.go`: `TestImportLogContract` holds `ImportLog` from both sides against an in-test fake.
 
 - `internal/store/instrument/resolve_test.go` and `read_test.go`: `TestResolveCreates`, `TestResolveSame`, `TestResolveLock`, `TestResolveExtraTaken`, `TestResolveChecks` and `TestInstruments` against an in-test fake.
 - `internal/store/instrument/instrument_pg_test.go` (build tag `pg`): `TestMigration0008PG`, `TestForeignKeysPG`, `TestConcurrentResolvePG` and `TestMasterGrantsPG`.
