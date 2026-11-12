@@ -120,9 +120,6 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
 	}
 	minutes := local.Hour()*60 + local.Minute()
-	if j.stop >= 0 && minutes >= j.stop {
-		return contracts.JobResult{Err: newErr(contracts.NoValue, "after session")}
-	}
 	if minutes < j.freeze {
 		return contracts.JobResult{}
 	}
