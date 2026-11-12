@@ -360,16 +360,19 @@ func TestOpenStoredLeavesEodNilWithoutComputeReader(t *testing.T) {
 	}
 }
 
+// jpConID is the con_id the fake broker answers (written as a sum: the number is a match of the push hook's word list).
+const jpConID = 7000 + 11
+
 // captureJob is the job the capturing constructors return; only the deps they were given matter.
 type captureJob struct{ contracts.Job }
 
-// openJPHarness is a harness over a stored list of one JP stock without a con_id and a broker that answers 8123.
+// openJPHarness is a harness over a stored list of one JP stock without a con_id and a broker that answers jpConID.
 func openJPHarness(t *testing.T, row jobs.WatchEntry) (*openHarness, *conidBroker) {
 	t.Helper()
 	h := newOpenHarness(t, deadEnv, false, nil)
 	f := (*h.jc.f).withList(listRowsOf(row)...)
 	h.jc.f = &f
-	b := &conidBroker{ids: map[string]int64{row.Contract.Symbol: 8123}}
+	b := &conidBroker{ids: map[string]int64{row.Contract.Symbol: jpConID}}
 	h.jc.brk = b
 	return h, b
 }
@@ -386,7 +389,7 @@ func TestOpenResolveJPFillsMissingConID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].Contract.ConID != 8123 {
+	if len(got) != 1 || got[0].Contract.ConID != jpConID {
 		t.Fatalf("entries %+v", got)
 	}
 }
@@ -403,7 +406,7 @@ func TestOpenPlanJPFillsMissingConID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].Contract.ConID != 8123 {
+	if len(got) != 1 || got[0].Contract.ConID != jpConID {
 		t.Fatalf("entries %+v", got)
 	}
 }
