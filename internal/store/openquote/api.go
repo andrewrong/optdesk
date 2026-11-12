@@ -116,6 +116,13 @@ type ListRecord struct {
 	Count         int // contracts stored by the listing
 	TriedAt       time.Time
 	Outcome       string // "listed", "short" or "error"
+	// BandLo and BandHi are the confirmed strike range of the group, decimal text; empty means none stored.
+	// A short or error outcome keeps the stored band as it keeps ListedAt.
+	BandLo      string
+	BandHi      string
+	Sigma       float64 // the volatility the band was sized with
+	SigmaSource string  // "iv", "rv20" or "default"
+	InBand      int     // contracts of the group inside the band
 }
 
 // ListRunRecord is one row of master.option_list_run: one (session, underlying) of a pre-open run. Session is the
