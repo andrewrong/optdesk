@@ -32,16 +32,34 @@ func selectContracts(chain broker.Chain, u underlying, day string, price float64
 	} else {
 		expiries = nearestExpiries(chain.Expirations, d, m.MaxExpiries)
 	}
+	// With strike_band_below or strike_band_above set the window is price*(1-below) to price*(1+above), an unset
+	// one falling back to strike_band, and every listed strike inside it is taken (no cap per side).
+	wide := m.StrikeBandBelow != 0 || m.StrikeBandAbove != 0
+	lo, hi, perSide := price*(1-m.StrikeBand), price*(1+m.StrikeBand), m.MaxStrikesPerSide
+	if wide {
+		below, above := m.StrikeBandBelow, m.StrikeBandAbove
+		if below == 0 {
+			below = m.StrikeBand
+		}
+		if above == 0 {
+			above = m.StrikeBand
+		}
+		lo, hi, perSide = price*(1-below), price*(1+above), 0
+	}
 	var strikes []strikeValue
 	if bp := m.buy[u.Symbol]; bp != "" {
 		limit := m.MaxStrikes
 		if limit == 0 {
 			limit = defaultMaxStrikes
 		}
+		near := spotStrikesPerSide
+		if wide {
+			near = 0
+		}
 		strikes = mergeStrikes(rangeStrikes(chain.Strikes, bp, price, limit),
-			nearestStrikes(chain.Strikes, price, m.StrikeBand, spotStrikesPerSide))
+			nearestStrikes(chain.Strikes, price, lo, hi, near))
 	} else {
-		strikes = nearestStrikes(chain.Strikes, price, m.StrikeBand, m.MaxStrikesPerSide)
+		strikes = nearestStrikes(chain.Strikes, price, lo, hi, perSide)
 	}
 	out := make([]broker.Contract, 0, len(expiries)*len(strikes)*2)
 	for _, e := range expiries {
@@ -85,8 +103,8 @@ func nearestExpiries(all []string, day string, n int) []string {
 	return keep
 }
 
-func nearestStrikes(all []string, price, band float64, perSide int) []strikeValue {
-	lo, hi := price*(1-band), price*(1+band)
+// nearestStrikes takes the strikes in lo..hi, at most perSide below the price and perSide at or above it (0 = no cap).
+func nearestStrikes(all []string, price, lo, hi float64, perSide int) []strikeValue {
 	var below, above []strikeValue
 	for _, t := range all {
 		v, err := strconv.ParseFloat(t, 64)
@@ -101,10 +119,10 @@ func nearestStrikes(all []string, price, band float64, perSide int) []strikeValu
 	}
 	sort.Slice(below, func(i, j int) bool { return below[i].value > below[j].value })
 	sort.Slice(above, func(i, j int) bool { return above[i].value < above[j].value })
-	if len(below) > perSide {
+	if perSide > 0 && len(below) > perSide {
 		below = below[:perSide]
 	}
-	if len(above) > perSide {
+	if perSide > 0 && len(above) > perSide {
 		above = above[:perSide]
 	}
 	out := append(below, above...)
