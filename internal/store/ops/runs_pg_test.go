@@ -26,10 +26,11 @@ func newRunsDatabase(t *testing.T) string {
 		t.Fatal(err)
 	}
 	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
-	_, up, ok := strings.Cut(up, "-- ops.option_run_reason:")
+	_, tail, ok := strings.Cut(up, "CREATE TABLE ops.option_run_reason")
 	if !ok {
 		t.Fatal("0035 has no reason table section")
 	}
+	up = "CREATE TABLE ops.option_run_reason" + tail
 	ctx := context.Background()
 	c, err := pgx.Connect(ctx, connURL(t, name, ""))
 	if err != nil {
