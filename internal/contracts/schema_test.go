@@ -11,9 +11,20 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
+// datasetRevision names the revision of a dataset's schema file; r1 unless listed.
+// fixtureRevision is the revision of every fixture file.
+const fixtureRevision = "r1"
+
+var datasetRevision = map[string]string{"optionledger.flex_fetch": "r2"}
+
 func compileDataset(t *testing.T, name string) *jsonschema.Schema {
 	t.Helper()
-	f, err := os.Open(filepath.Join("..", "..", "contracts", "datasets", name+".r1.json"))
+	rev := "r1"
+	if r, ok := datasetRevision[name]; ok {
+		rev = r
+	}
+	file := name + "." + rev + ".json"
+	f, err := os.Open(filepath.Join("..", "..", "contracts", "datasets", file))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,10 +35,10 @@ func compileDataset(t *testing.T, name string) *jsonschema.Schema {
 	}
 	c := jsonschema.NewCompiler()
 	c.AssertFormat()
-	if err := c.AddResource(name+".r1.json", doc); err != nil {
+	if err := c.AddResource(file, doc); err != nil {
 		t.Fatal(err)
 	}
-	s, err := c.Compile(name + ".r1.json")
+	s, err := c.Compile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +47,7 @@ func compileDataset(t *testing.T, name string) *jsonschema.Schema {
 
 func loadRecords(t *testing.T, name string) ([]map[string]any, []byte) {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", name+".r1.json"))
+	b, err := os.ReadFile(filepath.Join("..", "..", "contracts", "fixtures", name+"."+fixtureRevision+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}

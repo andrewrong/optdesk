@@ -62,5 +62,16 @@ type SettingsForm interface {
 	Parse(values map[string][]string, shown []int64, cur FormState) (FormChange, error)
 }
 
+// UploadChecker guards a multipart upload under a cap the caller names. It is
+// a separate interface so no implementation of SettingsForm changes; a caller
+// reaches it by a type assertion on the form. Design:
+// docs/design/flex-xml-import.md#2 upload-guard.
+type UploadChecker interface {
+	// CheckUpload applies the guard of Check (remote address, Host, Origin,
+	// token, expiry) with the content type multipart/form-data and a body size
+	// from 0 to maxBody; the error text is fixed.
+	CheckUpload(r FormRequest, maxBody int64, now time.Time) error
+}
+
 // NewSettingsFormFunc builds a form for a MAC key, a token lifetime and a registry.
 type NewSettingsFormFunc func(key []byte, ttl time.Duration, p RuleParams) SettingsForm
