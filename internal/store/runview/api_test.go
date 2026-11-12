@@ -71,7 +71,7 @@ func (f *fake) NotWired(ctx context.Context) ([]runview.Reason, error) {
 func (f *fake) ReplaceReasons(_ context.Context, day contracts.Day, dataset, subject string, rs []runview.Reason) error {
 	kept := f.reasons[:0:0]
 	for _, r := range f.reasons {
-		if !(r.Day == day && r.Dataset == dataset && r.Subject == subject) {
+		if r.Day != day || r.Dataset != dataset || r.Subject != subject {
 			kept = append(kept, r)
 		}
 	}
