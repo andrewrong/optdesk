@@ -407,3 +407,33 @@ func TestPutListRunsUpdatesExistingKey(t *testing.T) {
 		t.Fatalf("runs %+v", runs)
 	}
 }
+
+func TestListRecordBandRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var s openquote.OptionListStore = &listFake{}
+	at := time.Date(2026, 11, 12, 11, 20, 0, 0, time.UTC)
+	want := openquote.ListRecord{UnderlyingID: 5, Expiry: "2026-12-18", Class: "AAPL", ListedAt: at,
+		ListedSession: "2026-11-12", Count: 40, TriedAt: at, Outcome: "listed",
+		BandLo: "180.5", BandHi: "230", Sigma: 0.32, SigmaSource: "rv20", InBand: 38}
+	if err := s.PutLists(ctx, []openquote.ListRecord{want}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Lists(ctx, 5)
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("got %+v want %+v", got, want)
+	}
+}
+
+func TestListRecordBandEmptyIsNone(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var s openquote.OptionListStore = &listFake{}
+	if err := s.PutLists(ctx, []openquote.ListRecord{{UnderlyingID: 5, Expiry: "2026-12-18", Class: "AAPL", Outcome: "error"}}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Lists(ctx, 5)
+	if len(got) != 1 || got[0].BandLo != "" || got[0].BandHi != "" || got[0].SigmaSource != "" || got[0].InBand != 0 {
+		t.Fatalf("got %+v", got)
+	}
+}
