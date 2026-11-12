@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +16,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/contracts/gen"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
 func homeFixture(t *testing.T, demo bool) http.Handler {
@@ -177,5 +182,98 @@ func TestHomeCompaniesNoEarningsReaderIsGap(t *testing.T) {
 	kind, reason, _ := homeEarningsCell(t, siteReaders{})
 	if kind != "gap" || reason != "no_reader" {
 		t.Fatalf("a site without an earnings reader keeps the no_reader gap: %q %q", kind, reason)
+	}
+}
+
+// holdsDEMOB holds shares of DEMOB on every day.
+type holdsDEMOB struct{ holdsAAA }
+
+func (holdsDEMOB) Positions(context.Context, string, string) ([]store.Position, error) {
+	return []store.Position{{Symbol: "DEMOB", SecType: "stock", Quantity: "10"}}, nil
+}
+
+// fakeSymbolCatalog lists underlying 7 and names it DEMOB.
+type fakeSymbolCatalog struct{}
+
+func (fakeSymbolCatalog) OptionEodLatest(context.Context, contracts.Day) ([]store.OptionEodLatest, error) {
+	return []store.OptionEodLatest{{UnderlyingID: 7, SessionDay: "2026-11-05"}}, nil
+}
+
+func (fakeSymbolCatalog) InstrumentNames(_ context.Context, ids []int64) ([]store.InstrumentName, error) {
+	var out []store.InstrumentName
+	for _, id := range ids {
+		if id == 7 {
+			out = append(out, store.InstrumentName{InstrumentID: 7, Type: "stock", Name: "DEMOB"})
+		}
+	}
+	return out, nil
+}
+
+// recordingBars answers six ascending closes and records the instrument ids asked.
+type recordingBars struct {
+	mu  sync.Mutex
+	ids []int64
+}
+
+func (f *recordingBars) PriceBars(_ context.Context, id int64, _ string, _, _ contracts.Day) ([]contracts.PriceBar, error) {
+	f.mu.Lock()
+	f.ids = append(f.ids, id)
+	f.mu.Unlock()
+	var out []contracts.PriceBar
+	for i := range 6 {
+		d := time.Date(2026, 10, 29+i, 0, 0, 0, 0, time.UTC)
+		out = append(out, contracts.PriceBar{Close: strconv.Itoa(100 + i), SessionDay: types.SerializableDate{Time: d}})
+	}
+	return out, nil
+}
+
+func homeDayChangeCell(t *testing.T, bars bar.PriceBarReader) map[string]any {
+	t.Helper()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{
+		underlying: &fakeListReader{rows: []underlying.Row{{
+			Key: "US:DEMOB", Symbol: "DEMOB", Market: "US", Issuer: "cik:0000000001", Status: underlying.StatusActive,
+		}}},
+		account: holdsDEMOB{}, aliases: []string{"main"}, catalog: fakeSymbolCatalog{}, names: fakeSymbolCatalog{},
+	}
+	if bars != nil {
+		rd.bars = bars
+	}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Companies struct {
+			Card struct {
+				Rows []struct {
+					DayChange map[string]any `json:"day_change"`
+				} `json:"rows"`
+			} `json:"card"`
+		} `json:"companies"`
+	}
+	if err := json.Unmarshal(body, &p); err != nil || len(p.Companies.Card.Rows) != 1 {
+		t.Fatalf("rows %d, err %v: %s", len(p.Companies.Card.Rows), err, body)
+	}
+	return p.Companies.Card.Rows[0].DayChange
+}
+
+func TestHomeCompaniesDayChangeFromBars(t *testing.T) {
+	t.Parallel()
+	bars := &recordingBars{}
+	cell := homeDayChangeCell(t, bars)
+	if cell["kind"] != "value" || cell["unit"] != "percent" {
+		t.Fatalf("day change must be a percent value: %v", cell)
+	}
+	if len(bars.ids) == 0 || bars.ids[0] != 7 {
+		t.Fatalf("reader called with ids %v, want 7", bars.ids)
+	}
+}
+
+func TestHomeCompaniesNoBarsKeepsGap(t *testing.T) {
+	t.Parallel()
+	cell := homeDayChangeCell(t, nil)
+	if cell["kind"] != "gap" || cell["reason"] != "no_reader" {
+		t.Fatalf("no bar reader keeps the no_reader gap: %v", cell)
 	}
 }
