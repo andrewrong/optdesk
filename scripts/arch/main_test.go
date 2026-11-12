@@ -759,11 +759,20 @@ func TestTreeSharedIsImportedByTheOtherSubPackagesOfItsRow(t *testing.T) {
 		{"b/shared", "a", true},
 		{"b", "b/shared", false},
 		{"a/sub", "b/shared", false},
-		{"ot", "b/shared", false},
+		{"ot", "b/shared", true},
 	} {
 		if got := slices.Contains(lintDeps(t, sharedFiles(), e.from), e.to); got != e.want {
 			t.Errorf("%s imports %s = %v, want %v", e.from, e.to, got, e.want)
 		}
+	}
+}
+
+func TestTreeOTDoesNotImportSharedOfARowOutsideItsDependsCell(t *testing.T) {
+	t.Parallel()
+	files := sharedFiles()
+	files["internal/c/shared/s.go"] = "package shared\n"
+	if slices.Contains(lintDeps(t, files, "ot"), "c/shared") {
+		t.Errorf("ot imports c/shared, a row outside its depends cell")
 	}
 }
 
@@ -779,6 +788,9 @@ func TestTreeSharedEdgeIsInTheTomlToo(t *testing.T) {
 	}
 	if b := mayImportOf(t, string(toml), "b/sub"); !strings.Contains(b, `"b/shared"`) {
 		t.Errorf("b/sub lacks b/shared:\n%s", b)
+	}
+	if o := mayImportOf(t, string(toml), "ot"); !strings.Contains(o, `"b/shared"`) {
+		t.Errorf("ot lacks b/shared:\n%s", o)
 	}
 	if b := mayImportOf(t, string(toml), "b/shared"); strings.Contains(b, `"b/sub"`) || strings.Contains(b, `"b/shared"`) {
 		t.Errorf("b/shared imports a sibling:\n%s", b)

@@ -100,7 +100,8 @@ var generated = []string{"internal/contracts/gen", "internal/contracts/genpb"}
 var importableGenerated = []string{"internal/contracts/genpb"}
 
 // sharedSub is the sub-package that the other sub-packages of its row may import, and that
-// imports no sibling; no module outside its row imports it.
+// imports no sibling; no module outside its row imports it, except ot, which imports it
+// for the rows of its depends cell.
 const sharedSub = "shared"
 
 // kind is what the files of a package directory say about it.
@@ -274,9 +275,7 @@ func derive(rows []row, pkgs []pkg) ([]component, error) {
 		for _, d := range r.depends {
 			if name == "ot" {
 				for _, o := range owned(pkgs, d, kindImpl, kindDecl) {
-					if o != byRow[d]+"/"+sharedSub {
-						deps = append(deps, o)
-					}
+					deps = append(deps, o)
 				}
 			} else {
 				deps = addUnique(deps, owned(pkgs, d, kindDecl), "")
