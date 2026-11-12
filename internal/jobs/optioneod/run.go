@@ -360,6 +360,12 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price f
 	usable := 0
 	for i, q := range qs {
 		rows[i] = withUnderlyingPrice(mapRow(q, ids[i], undID, r.dayTime, capture, u.Currency), price)
+		if r.j.stop >= 0 {
+			at := q.ReceivedAt.In(r.j.loc)
+			if at.Hour()*60+at.Minute() >= r.j.stop {
+				rows[i] = afterSession(rows[i])
+			}
+		}
 		if rows[i].Status == statusOK {
 			usable++
 		}

@@ -176,3 +176,27 @@ func TestCaptureIDValue(t *testing.T) {
 		t.Fatal("capture id is the SHA1 uuid of day|dataset|subject")
 	}
 }
+
+func TestAfterSessionKeepsIdentity(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	ev := time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)
+	q := broker.Quote{Status: broker.StatusOK, MarketDataType: 2, Generation: 7, ReceivedAt: ev.Add(time.Minute), EventTs: &ev,
+		Bid: f(1), Ask: f(2), Last: f(3), Volume: f(4), OpenInterest: f(5), BidSize: f(6), AskSize: f(7),
+		ImpliedVol: f(0.2), Delta: f(0.5), Gamma: f(0.1), Vega: f(0.3), Theta: f(-0.4), UndPrice: f(100)}
+	in := mapRow(q, 11, 22, time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), uuid.New(), "USD")
+	got := afterSession(in)
+	if got.Status != statusNoQuote || got.ErrorCode == nil || *got.ErrorCode != "AFTER_SESSION" {
+		t.Fatalf("status %d code %v", got.Status, got.ErrorCode)
+	}
+	for i, v := range []*float64{got.Bid, got.Ask, got.BidSize, got.AskSize, got.Last, got.Volume, got.OpenInterest,
+		got.UnderlyingPrice, got.IvDecimal, got.Delta, got.Gamma, got.ThetaPerCalendarDay, got.VegaPerVolPoint} {
+		if v != nil {
+			t.Fatalf("quote column %d kept: %v", i, *v)
+		}
+	}
+	if !got.SessionDay.Equal(in.SessionDay.Time) || got.CaptureID != in.CaptureID || got.InstrumentID != 11 || got.UnderlyingID != 22 ||
+		!got.ReceivedAt.Equal(in.ReceivedAt) || got.EventTs == nil || !got.EventTs.Equal(ev) || got.MarketDataType != 2 {
+		t.Fatalf("identity changed: %+v", got)
+	}
+}

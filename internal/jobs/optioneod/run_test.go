@@ -53,6 +53,7 @@ type snapCall struct {
 }
 
 type fakeBroker struct {
+	clk         clockwork.Clock // when set, quotes are received at its time
 	price       *float64
 	noUndPrice  bool // option quotes carry no UndPrice
 	chains      []broker.Chain
@@ -118,7 +119,7 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 	out := make([]broker.Quote, len(cs))
 	for i, c := range cs {
 		out[i] = broker.Quote{Contract: c, Status: b.status[c.ConID], Generation: 7, MarketDataType: 1,
-			ReceivedAt: time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC), Bid: num(1), Ask: num(2), Last: num(1.5), UndPrice: num(100)}
+			ReceivedAt: b.receivedAt(), Bid: num(1), Ask: num(2), Last: num(1.5), UndPrice: num(100)}
 		if b.noUndPrice {
 			out[i].UndPrice = nil
 		}
@@ -130,6 +131,14 @@ func (b *fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.C
 }
 
 func (b *fakeBroker) Close() error { return nil }
+
+// receivedAt is the time of the rig's clock when the broker has one, else a fixed time.
+func (b *fakeBroker) receivedAt() time.Time {
+	if b.clk != nil {
+		return b.clk.Now()
+	}
+	return time.Date(2026, 11, 6, 22, 0, 0, 0, time.UTC)
+}
 
 func (b *fakeBroker) calls() int { return len(b.snaps) + b.resolves }
 
@@ -579,5 +588,20 @@ func TestRootNilTranslator(t *testing.T) {
 	}
 	if got := (&job{sym: noSpace{}}).root("BRK B"); got != "BRKB" {
 		t.Fatalf("translator: got %q", got)
+	}
+}
+
+func TestRunUSLateLocalTimeKeepsRows(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, "2026-11-06 23:30")
+	r.b.clk = r.clk
+	res := r.run(testDay, testKey)
+	if res.Err != nil || res.Usable != res.Returned || res.Returned == 0 {
+		t.Fatalf("result %+v", res)
+	}
+	for _, row := range r.w.all() {
+		if row.Status != statusOK || row.ErrorCode != nil || row.Bid == nil {
+			t.Fatalf("US row changed: %+v", row)
+		}
 	}
 }

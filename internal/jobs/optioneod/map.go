@@ -105,6 +105,19 @@ func withUnderlyingPrice(row contracts.OptionEod, price float64) contracts.Optio
 	return row
 }
 
+// afterSession returns row as a quote taken at or after the session's end: Status statusNoQuote, ErrorCode AFTER_SESSION,
+// and every quote column (Bid, Ask, BidSize, AskSize, Last, Volume, OpenInterest, UnderlyingPrice, IvDecimal, Delta, Gamma,
+// ThetaPerCalendarDay, VegaPerVolPoint) nil; SessionDay, CaptureID, InstrumentID, UnderlyingID, ReceivedAt, EventTs and
+// MarketDataType stay.
+func afterSession(row contracts.OptionEod) contracts.OptionEod {
+	code := "AFTER_SESSION"
+	row.Status = statusNoQuote
+	row.ErrorCode = &code
+	row.Bid, row.Ask, row.BidSize, row.AskSize, row.Last, row.Volume, row.OpenInterest = nil, nil, nil, nil, nil, nil, nil
+	row.UnderlyingPrice, row.IvDecimal, row.Delta, row.Gamma, row.ThetaPerCalendarDay, row.VegaPerVolPoint = nil, nil, nil, nil, nil, nil
+	return row
+}
+
 // osiSymbol is the 21-character option symbol: symbol padded to 6, yymmdd, C or P, strike times 1000 in 8 digits.
 func osiSymbol(c broker.Contract) (string, error) { return osiSymbolWith(c, c.Symbol) }
 

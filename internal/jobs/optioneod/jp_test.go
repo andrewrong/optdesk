@@ -26,6 +26,7 @@ func newJPRig(t *testing.T, at string) *rig {
 	}
 	r := &rig{b: newBroker(), res: &fakeResolver{}, w: &fakeWriter{}, clk: clockwork.NewFakeClockAt(now)}
 	r.b.price = num(40000)
+	r.b.clk = r.clk
 	r.b.chains = []broker.Chain{
 		{Exchange: "OSE.JPN", TradingClass: "225W", Multiplier: "1000", Expirations: []string{"20261113"}, Strikes: []string{"40000"}},
 		{Exchange: "OSE.JPN", TradingClass: "N225M", Multiplier: "100", Expirations: []string{"20261113"}, Strikes: []string{"40000"}},
@@ -122,10 +123,35 @@ func TestChainOfClassRule(t *testing.T) {
 
 func TestRunAfterStopAfterStores(t *testing.T) {
 	t.Parallel()
-	for _, at := range []string{"2026-11-09 17:00", "2026-11-09 23:30"} {
+	for _, at := range []string{"2026-11-09 17:00", "2026-11-09 18:27", "2026-11-09 23:30"} {
 		late := newJPRig(t, at)
-		if res := late.run(jpDay, jpKey); res.Err != nil || late.b.calls() == 0 {
-			t.Fatalf("%s: %v calls %d", at, res.Err, late.b.calls())
+		if res := late.run(jpDay, jpKey); res.Err != nil || late.b.calls() == 0 || res.Usable != 0 {
+			t.Fatalf("%s: %v calls %d usable %d", at, res.Err, late.b.calls(), res.Usable)
+		}
+		rows := late.w.all()
+		if len(rows) == 0 {
+			t.Fatalf("%s: no rows", at)
+		}
+		for _, row := range rows {
+			if row.Status != statusNoQuote || row.ErrorCode == nil || *row.ErrorCode != "AFTER_SESSION" ||
+				row.Bid != nil || row.Ask != nil || row.Last != nil || row.UnderlyingPrice != nil {
+				t.Fatalf("%s: row %+v", at, row)
+			}
+		}
+	}
+}
+
+func TestRunBeforeStopAfterKeepsClose(t *testing.T) {
+	t.Parallel()
+	r := newJPRig(t, "2026-11-09 16:50")
+	res := r.run(jpDay, jpKey)
+	rows := r.w.all()
+	if res.Err != nil || len(rows) == 0 || res.Usable != len(rows) {
+		t.Fatalf("result %+v rows %d", res, len(rows))
+	}
+	for _, row := range rows {
+		if row.Status != statusOK || row.Bid == nil || row.ErrorCode != nil {
+			t.Fatalf("row %+v", row)
 		}
 	}
 }
