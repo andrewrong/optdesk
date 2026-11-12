@@ -337,12 +337,15 @@ func TestWithdrawalAfterQueueReadBeforeClaimStillRuns(t *testing.T) {
 	r.wantEnd(jobrequest.StateDone, "completed")
 }
 
-func TestForceForForceNoJobRefusedNotRunnable(t *testing.T) {
+func TestForceOnJobWithoutForceRuns(t *testing.T) {
 	t.Parallel()
 	r := newJCRig(t, "fred_series")
 	r.add(1, "fred_series", jcDay, true)
 	r.turn(jcNever)
-	r.wantEnd(jobrequest.StateRefused, "not_runnable")
+	r.wantEnd(jobrequest.StateDone, "completed")
+	if n := r.log.count("backfill"); n != 1 {
+		t.Fatalf("backfiller ran %d times", n)
+	}
 }
 
 func TestStartRetriedOnEveryTurn(t *testing.T) {
@@ -404,36 +407,48 @@ func TestWithdrawalOfRunningIgnored(t *testing.T) {
 
 func TestLeftOutAndNotRunnable(t *testing.T) {
 	t.Parallel()
-	for job, reason := range map[string]string{"calendar_refresh": "left_out", "no_such_job": "not_runnable", "option_ledger": "not_runnable"} {
+	for job, c := range map[string]struct {
+		state  jobrequest.State
+		reason string
+		calls  int
+	}{
+		"calendar_refresh": {jobrequest.StateRefused, "left_out", 0},
+		"no_such_job":      {jobrequest.StateRefused, "not_runnable", 0},
+		"option_ledger":    {jobrequest.StateDone, "completed", 1},
+	} {
 		r := newJCRig(t, "fred_series", "option_ledger") // calendar_refresh is in the table and not in the set
 		r.add(1, job, jcDay, false)
 		r.turn(jcNever)
-		if r.wantEnd(jobrequest.StateRefused, reason); r.log.count("backfill") != 0 {
-			t.Fatalf("%s: the backfiller ran", job)
+		r.wantEnd(c.state, c.reason)
+		if n := r.log.count("backfill"); n != c.calls {
+			t.Fatalf("%s: backfiller ran %d times, want %d", job, n, c.calls)
 		}
 	}
 }
 
-func TestNotTodayRefusedAtClaim(t *testing.T) {
+func TestListedOnlyJobRunsWithAndWithoutForce(t *testing.T) {
 	t.Parallel()
-	r := newJCRig(t, "calendar_refresh")
-	r.add(1, "calendar_refresh", jcDay, false)
-	r.fc.Advance(15 * time.Hour) // past midnight in New York
-	r.turn(jcNever)
-	r.wantEnd(jobrequest.StateRefused, "not_today")
+	for _, force := range []bool{true, false} {
+		r := newJCRig(t, "option_open_plan")
+		r.add(1, "option_open_plan", jcDay, force)
+		r.turn(jcNever)
+		r.wantEnd(jobrequest.StateDone, "completed")
+		if n := r.log.count("backfill"); n != 1 {
+			t.Fatalf("force %v: backfiller ran %d times", force, n)
+		}
+	}
 }
 
-func TestTodayOnlyUsesTheJobsZone(t *testing.T) {
+func TestDayThatIsNotTodayRuns(t *testing.T) {
 	t.Parallel()
 	// At 20:00 UTC it is 15:00 on the 12th in New York and 05:00 on the 13th in Tokyo.
-	for _, c := range [][3]string{{"option_eod_jp", "2026-11-13", "ran"}, {"option_eod_jp", "2026-11-12", "not_today"},
-		{"option_eod", "2026-11-13", "not_today"}, {"option_eod", "2026-11-12", "ran"}} {
+	for _, c := range [][2]string{{"calendar_refresh", jcDay}, {"option_eod_jp", "2026-11-12"}, {"option_eod", "2026-11-13"}, {"option_eod", "2026-11-01"}} {
 		r := newJCRig(t, c[0])
-		r.fc.Advance(5 * time.Hour)
+		r.fc.Advance(15 * time.Hour)
 		r.add(1, c[0], c[1], false)
 		r.turn(jcNever)
-		if c[2] == "ran" && r.log.count("backfill") != 1 || c[2] != "ran" && r.wantEnd(jobrequest.StateRefused, c[2]).id != 1 {
-			t.Errorf("%s %s: calls %v", c[0], c[1], r.log.items)
+		if n := r.log.count("backfill"); n != 1 {
+			t.Errorf("%s %s: backfiller ran %d times, calls %v", c[0], c[1], n, r.log.items)
 		}
 	}
 }
