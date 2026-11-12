@@ -145,7 +145,6 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		openUnderlying: func(context.Context, string) (underlying.Store, error) {
 			return &fakeUnderlyingStore{rows: []underlying.Row{oneUSRow()}}, nil
 		},
-		hasProject:              testHasProject,
 		newCalendar:             func(clock.SessionSource) clock.Calendar { return nil },
 		newCommandSessionSource: func([]string, string, clock.CommandFunc) clock.SessionSource { return nil },
 		newDiffer:               func() clock.SessionDayDiffer { return nil },

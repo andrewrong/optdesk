@@ -35,8 +35,9 @@ func calendarCommand(uv, project string) []string {
 	return []string{uv, "run", "--locked", "--project", project, "python", "-m", "optdesk.calendar"}
 }
 
-// hasPyproject is the real deps.hasProject.
-func hasPyproject(dir string) bool {
+// hasPyproject tells whether dir holds the pyproject.toml of the calendar generator; a package variable so that
+// the tests, whose working directory has no pyside directory, can stand in for the checkout.
+var hasPyproject = func(dir string) bool {
 	_, err := os.Stat(filepath.Join(dir, "pyproject.toml"))
 	return err == nil
 }
@@ -52,7 +53,7 @@ func (f jobFactory) calendarProjectDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("calendar_refresh: resolve the project directory failed, set %s: %w", envCalendarProject, err)
 	}
-	if !f.d.hasProject(dir) {
+	if !hasPyproject(dir) {
 		return "", errors.New("calendar_refresh: the pyside project has no pyproject.toml, set the line OT_CALENDAR_PROJECT or run ot from the checkout")
 	}
 	return dir, nil

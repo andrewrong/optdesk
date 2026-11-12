@@ -231,7 +231,6 @@ func newRig(t *testing.T, env string) *rig {
 		r.argv = argv
 		return nil
 	}
-	d.hasProject = testHasProject
 	d.newDiffer = func() clock.SessionDayDiffer { return nil }
 	d.newCalendarRefresh = func(
 		_ clock.SessionSource, sd store.SessionDayStore, _ clock.SessionDayDiffer, _ clock.Clock, obs calendarrefresh.CalendarObserver,

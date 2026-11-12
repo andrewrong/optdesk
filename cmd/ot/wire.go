@@ -220,8 +220,6 @@ type deps struct {
 	newHistory     broker.NewHistoryFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
-	// hasProject tells whether dir holds the pyproject.toml of the calendar generator.
-	hasProject func(dir string) bool
 	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
 	ext map[string]any
 }
@@ -339,7 +337,7 @@ func newBaseDeps() deps {
 		newAlphaVantage:         alphavantage.New,
 		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
-		readFile:                os.ReadFile, openIndexIDs: openIndexIDsDefault, hasProject: hasPyproject,
+		readFile:                os.ReadFile, openIndexIDs: openIndexIDsDefault,
 	}
 }
 

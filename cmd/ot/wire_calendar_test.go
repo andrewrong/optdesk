@@ -70,6 +70,9 @@ func TestCalendarUvPathSetting(t *testing.T) {
 	}
 }
 
+// init is the one write of hasPyproject, before any test runs.
+func init() { hasPyproject = testHasProject }
+
 // testHasProject stands for the pyside directory of the checkout, which the working directory of a test
 // (cmd/ot) does not hold; any other directory is looked at for real.
 func testHasProject(dir string) bool {
