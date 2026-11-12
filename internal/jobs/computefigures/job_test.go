@@ -94,6 +94,15 @@ func (g *fakeFigs) PercentileInYears(id string, s compute.Series, d contracts.Da
 	return g.fromSeries(id, s, d)
 }
 
+func (g *fakeFigs) Combine(id string, parts []compute.Figure, d contracts.Day) compute.Figure {
+	_, f := g.fig(id, d)
+	if len(parts) == 0 {
+		return miss(f, compute.NoInput)
+	}
+	f.DataDay, f.Observations, f.Value = parts[0].DataDay, len(parts), parts[0].Value
+	return f
+}
+
 func (g *fakeFigs) Ratio(id string, a, b compute.Series, d contracts.Day) compute.Figure {
 	return g.fromSeries(id, a, d)
 }

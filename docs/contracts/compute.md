@@ -26,6 +26,7 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 - Parameters are fixed per figure id by `Rules`, not per call; `Compare` (`Below`, `AtOrBelow`) is fixed per id.
 - Standard library plus `contracts` only in this package; no I/O.
 - A new field of `Rule` or a new `Figures` method is an interface change.
+- `Figures.Combine(id, parts, asOf)` joins the figures of one subject and day by the convention of the rule: `vol_blend_v1` is the mean of three parts, `vol_diff_v1` is `parts[0]` minus `parts[1]`. Its `Day` is the as-of day, its `DataDay` the newest `DataDay` of the parts and `Observations` the count of parts; a wrong count or an unknown id is `bad_input`, a part that is not ok is `no_input`, and the newest part older than `max_age_days` is `stale_input`. Design: `docs/design/vol-edge.md#interface`.
 
 ## Alert rules
 
