@@ -90,7 +90,7 @@ Acceptance:
 6. The no-id test of Decision 8 passes for the ledger wiring and the page JSON.
 
 ### 6 ot-gateway-resolver
-Order: after 5. Files: `cmd/ot/account.go`, `cmd/ot/account_test.go`, `cmd/ot/accounts.go`, `cmd/ot/accounts_test.go`, `cmd/ot/candidates.go`, `cmd/ot/notices_site.go`, `cmd/ot/positionmarks.go`, `cmd/ot/wire_underlying.go` (the callers of `accountAliases`/`accountMain` and the third `heldAliases`), `cmd/ot/testdata/**` holding `OT_ACCOUNT_SOCKETS` (found by grep).
+Order: after 5. Files: `cmd/ot/account.go`, `cmd/ot/account_test.go`, `cmd/ot/accounts.go`, `cmd/ot/accounts_test.go`, `cmd/ot/candidates.go` (`candidateAliases`, which calls `accountAliases` on main since #1896), `cmd/ot/notices_site.go`, `cmd/ot/positionmarks.go`, `cmd/ot/wire_underlying.go` (the callers of `accountAliases`/`accountMain` and the third `heldAliases`), `cmd/ot/testdata/**` holding `OT_ACCOUNT_SOCKETS` (found by grep).
 Acceptance:
 1. `OT_ACCOUNT_SOCKETS` parses as a plain list; a `label=` form is refused; `accountAliases`, `accountMain` and `siteAliasList` no longer read the gateways file, and neither do their callers in `candidates.go`, `notices_site.go` and `positionmarks.go`; `wire_underlying.go` takes the held list from `book.Aliases()` in place of its `heldAliases` variable.
 2. The resolver gives `accountcapture.Config.Readers` one reader per alias whose answers carry the alias; tests with fake readers cover a match, an id not in the book (named state `unknown_account`, nothing stored, no id in the text) and a socket down.
@@ -121,7 +121,7 @@ Acceptance:
 ## Checked by CI
 
 - `scripts/hygiene` (checks.yml): no committed file holds an id-shaped string; the tests of issues 2, 5, 6 build their ids at run time.
-- `go test`, `go-arch-lint` generated from the `accounts` row and the `ot` depends cell, `buf` and generated-output check (issue 8), `go test -tags pg` for the migration of issue 3 (rename in all ten tables, and the collision refusal) (GitHub CI only).
+- `go test`, `go-arch-lint` generated from the `accounts` row and the `ot` depends cell, `buf` and generated-output check (issue 8), `go test -tags pg` for the migration of issue 3 (rename in the nine tables of Decision 9, and the collision refusal) (GitHub CI only).
 - `ruff check`, `mypy --strict`, `pytest -n auto` for issue 7.
 
 ## Left out
@@ -140,4 +140,4 @@ Full review: `account-identity-adversarial.md` in the designer's scratchpad (a l
 3. Simpler way: adopted, cut A, with the coordinator's change that the reader is one owned module (Decision 2) and the rename replaces the delete. Cut B (id as key) not adopted: it costs eight tables and every page for no owner-visible gain.
 4. Lock-in: the id is not a key, so the case disappears (Left out).
 5. False claims: migration number is 0037; `internal/accounts` gets its row and the `ot` depends cell (Modules); hygiene scan and held lists are Decisions 1, 10; no issue spans modules; `wire.go` (795) is not edited.
-6. Slip cause: the 6-module interface issue is gone; chain is 1, then 2, 3 and 4 in parallel, then 5, 6, 7; the migration and deploy order is Decision 9.
+6. Slip cause: the 6-module interface issue is gone; chain is 1, then 2 and 3 in parallel, 4 after 3 (they share the tests of the store package that list migrations), then 5, 6, 7; the migration and deploy order is Decision 9.

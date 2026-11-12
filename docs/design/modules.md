@@ -8,7 +8,7 @@ Source: restart plan v2.5, parts 2 (three layers), 4 and 4.1 (module table), 8 (
 says "ten modules" and its table lists eleven rows (contracts, clock, broker, sources, store, compute, runner,
 jobs, notify, pages, web); this map follows the table. The rows pyside, ci, deploy, repo, ot and docs are added, and `accounts` is a library module outside the layers that only `ot` depends on, so that every
 path of the planned tree belongs to a row; they are not layer modules and no Go package depends on them, except that
-`cmd/ot` (row ot) imports `internal/profile` of repo.
+`cmd/ot` (row ot) imports `internal/profile` of repo and `internal/accounts` of accounts.
 
 How the table is read (`crew issue check`, `crew ask draft`): the table under `## Modules` has the columns
 module, paths, entry, tests, depends. A path belongs to the first row one of whose globs matches it (`**` is any
