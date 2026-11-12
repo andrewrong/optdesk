@@ -550,7 +550,12 @@ func TestResolveNoConIDIsKeyErr(t *testing.T) {
 func TestResolveSummaryCarriesRunErr(t *testing.T) {
 	t.Parallel()
 	r, _ := noConIDRun(t)
-	last := r.logs[len(r.logs)-1]
+	var last string
+	for _, l := range r.logs {
+		if strings.Contains(l, "run_err=") {
+			last = l
+		}
+	}
 	if !strings.Contains(last, "asked=0") || !strings.Contains(last, "run_err=retryable: ") || strings.Contains(last, "run_err=none") {
 		t.Fatalf("line=%q", last)
 	}
@@ -562,5 +567,38 @@ func TestResolveSummaryRunErrNone(t *testing.T) {
 	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
 	if last := r.logs[len(r.logs)-1]; !strings.HasSuffix(last, " run_err=none") {
 		t.Fatalf("line=%q", last)
+	}
+}
+
+func TestResolveMissingCloseAsksTheGatewayOnce(t *testing.T) {
+	t.Parallel()
+	r := newRig(oneChain())
+	r.bars = fakeBars{}
+	h := &fakeHistory{err: errors.New("gateway down")}
+	d := r.deps("AAPL")
+	d.History = h
+	j, err := NewResolve(d, ResolveOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, _ := j.Plan(context.Background(), runDay)
+	res := j.Run(context.Background(), runDay, keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || h.asked != 1 {
+		t.Fatalf("err=%v asked=%d", res.Err, h.asked)
+	}
+	var fault bool
+	for _, l := range r.logs {
+		fault = fault || strings.HasPrefix(l, "fault stage=option_open_resolve day=2026-11-10 key=AAPL reason=")
+	}
+	if !fault {
+		t.Fatalf("logs %q", r.logs)
+	}
+	h.err = nil
+	if res := j.Run(context.Background(), runDay, keys); res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("a good fetch with no bar: %v", res.Err)
+	}
+	h.bars = []broker.Bar{{Close: "100"}}
+	if res := j.Run(context.Background(), runDay, keys); res.Err != nil {
+		t.Fatalf("fetched close: %v", res.Err)
 	}
 }

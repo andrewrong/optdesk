@@ -158,6 +158,9 @@ func (f fakeFigures) MovingAverageGap(id string, _ compute.Series, d contracts.D
 func (f fakeFigures) PercentileInYears(id string, _ compute.Series, d contracts.Day) compute.Figure {
 	return f.make(id, d)
 }
+func (f fakeFigures) Combine(id string, _ []compute.Figure, d contracts.Day) compute.Figure {
+	return f.make(id, d)
+}
 func (f fakeFigures) Ratio(id string, _, _ compute.Series, d contracts.Day) compute.Figure {
 	return f.make(id, d)
 }

@@ -87,7 +87,7 @@ func (l *listedJob) entries(ctx context.Context) ([]jobs.WatchEntry, bool, error
 		if r.Status == underlying.StatusActive {
 			anyActive = true
 		}
-		if slices.Contains(followedBy(r, held[r.Key]), l.group) {
+		if slices.Contains(followedBy(r, held[r.Key], held["option:"+r.Key]), l.group) {
 			out = append(out, watchEntry(r))
 		}
 	}

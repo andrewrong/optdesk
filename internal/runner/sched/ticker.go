@@ -62,6 +62,7 @@ func New(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, ca
 	if t.disabled == nil {
 		t.disabled = map[string]string{}
 	}
+	t.turner, _ = rec.(runner.ConsoleTurner)
 	t.log = slog.Default()
 	t.known = t.probeKnown()
 	t.lastTick.Store(clk.Now().UnixNano())
@@ -73,18 +74,20 @@ func New(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, ca
 type turn struct {
 	reconcile bool
 	day       contracts.Day
+	console   bool // refresh, then one turn of the request queue; never set with reconcile
 }
 
 type ticker struct {
-	fence store.Fence
-	sched store.SchedulerLedger
-	ops   store.OpsLedger
-	cal   clock.Calendar
-	clk   clockwork.Clock
-	rec   runner.Reconciler
-	gaps  runner.GapSyncer
-	jobs  []contracts.Job
-	exe   runner.ExecIdentityFunc
+	fence  store.Fence
+	sched  store.SchedulerLedger
+	ops    store.OpsLedger
+	cal    clock.Calendar
+	clk    clockwork.Clock
+	rec    runner.Reconciler
+	turner runner.ConsoleTurner // rec when it has the optional method, else nil
+	gaps   runner.GapSyncer
+	jobs   []contracts.Job
+	exe    runner.ExecIdentityFunc
 
 	known map[string]bool // the calendars of the jobs, other than defaultCalendar, that answered at construction
 	log   *slog.Logger
@@ -96,6 +99,7 @@ type ticker struct {
 	held     atomic.Bool
 	busy     atomic.Bool
 	starts   atomic.Pointer[[]Start] // the schedule published by the worker
+	covered  atomic.Int64            // UnixNano of the loop's mark, published for the slot hold
 	tasks    chan turn
 	wake     chan struct{} // the worker published a new schedule
 }
@@ -205,6 +209,7 @@ func (t *ticker) watchdog(ctx context.Context, fail chan<- error) {
 // loop is the one waiting goroutine. It calls no ledger, calendar, broker or job.
 func (t *ticker) loop(ctx context.Context, start time.Time, first string) error {
 	nextTick, mark, lastTurn, skipped := start.Add(firstTickDelay), start, start, false
+	t.covered.Store(mark.UnixNano())
 	// The first turn reconciles the start day: a process that lives under firstTickDelay still plans
 	// a key that is inside its window and not done, and a start after the close only expires it.
 	t.submit(turn{reconcile: true, day: dayOf(start)})
@@ -233,8 +238,10 @@ func (t *ticker) loop(ctx context.Context, start time.Time, first string) error 
 			}
 		}
 		skipped = false
-		if !t.submit(turn{reconcile: tickDue || slotDue, day: dayOf(now)}) {
-			skipped = tickDue || slotDue
+		reconcile := tickDue || slotDue
+		// A due slot or tick goes before a waiting request: the request turn is for a wake with neither.
+		if !t.submit(turn{reconcile: reconcile, day: dayOf(now), console: !reconcile && t.turner != nil}) {
+			skipped = reconcile
 			continue
 		}
 		if tickDue {
@@ -244,6 +251,7 @@ func (t *ticker) loop(ctx context.Context, start time.Time, first string) error 
 		}
 		if tickDue || slotDue {
 			mark = now // this Reconcile covers every start up to now
+			t.covered.Store(mark.UnixNano())
 		}
 	}
 }
@@ -328,7 +336,33 @@ func (t *ticker) runTurn(ctx context.Context, tn turn) {
 	if tn.reconcile {
 		t.reconcileAndSync(ctx, tn.day)
 	}
+	if tn.console && t.turner != nil {
+		if _, err := t.turner.ConsoleTurn(ctx, t.slotHold); err != nil {
+			t.log.Error("console turn failed", slog.String("kind", "error"))
+		}
+	}
 }
+
+// slotHold is the runner.SlotHold of a console turn. It reads the schedule the worker published: the
+// first start of an enabled job after the loop's published mark and not after now+bound is held, which
+// takes in a start inside (now, now+bound] and an earlier one the loop has not yet marked covered. A
+// schedule not yet published is held with no job.
+func (t *ticker) slotHold(bound time.Duration) (string, time.Time, bool) {
+	p := t.starts.Load()
+	if p == nil {
+		return "", time.Time{}, true
+	}
+	now := t.clk.Now()
+	mark, limit := time.Unix(0, t.covered.Load()), now.Add(bound)
+	for _, s := range *p {
+		if s.At.After(mark) && !s.At.After(limit) {
+			return s.JobID, s.At, true
+		}
+	}
+	return "", time.Time{}, false
+}
+
+var _ runner.SlotHold = (*ticker)(nil).slotHold
 
 // probe re-probes every left-out job when the reconciler can; a passing job leaves the map.
 func (t *ticker) probe(ctx context.Context) {

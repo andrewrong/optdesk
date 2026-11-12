@@ -69,6 +69,8 @@ func describe(res runner.BackfillResult) string {
 	switch res.Refused {
 	case runner.RefusedNoPlan:
 		return "no plan"
+	case runner.RefusedNoKey:
+		return "no key"
 	default:
 		return "done"
 	}
@@ -363,5 +365,65 @@ func TestProberContract(t *testing.T) {
 	var without runner.Reconciler = &fakeReconciler{}
 	if _, probed := probeOf(ctx, without, "option_eod"); probed {
 		t.Fatal("a Reconciler without Probe must show no probe")
+	}
+}
+
+// fakeConsole implements ForceBackfiller and ConsoleTurner.
+type fakeConsole struct {
+	gotOpt  runner.BackfillOptions
+	gotHold runner.SlotHold
+	took    bool
+}
+
+func (f *fakeConsole) BackfillWith(_ context.Context, day contracts.Day, _ []string, opt runner.BackfillOptions) (runner.BackfillResult, error) {
+	f.gotOpt = opt
+	return runner.BackfillResult{
+		Day:     day,
+		Refused: runner.RefusedNoKey,
+		Keys:    []runner.KeyRun{{Group: runner.GroupNotReached}},
+	}, nil
+}
+
+func (f *fakeConsole) ConsoleTurn(_ context.Context, hold runner.SlotHold) (bool, error) {
+	f.gotHold = hold
+	return f.took, nil
+}
+
+// forceOne is a caller of ForceBackfiller.
+func forceOne(b runner.ForceBackfiller, job string, hold runner.SlotHold) (runner.BackfillResult, error) {
+	return b.BackfillWith(context.Background(), "2026-11-06", []string{"DGS10"}, runner.BackfillOptions{Force: true, Job: job, Hold: hold})
+}
+
+// turn is a caller of ConsoleTurner.
+func turn(c runner.ConsoleTurner, hold runner.SlotHold) (bool, error) {
+	return c.ConsoleTurn(context.Background(), hold)
+}
+
+func TestForceBackfillerCarriesOptionsAndKeys(t *testing.T) {
+	t.Parallel()
+	f := &fakeConsole{}
+	hold := func(time.Duration) (string, time.Time, bool) { return "j", time.Time{}, true }
+	res, err := forceOne(f, "j", hold)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.gotOpt.Force || f.gotOpt.Job != "j" || f.gotOpt.Hold == nil {
+		t.Fatalf("options = %+v", f.gotOpt)
+	}
+	if res.Refused != "no_key" || len(res.Keys) != 1 || res.Keys[0].Group != runner.GroupNotReached {
+		t.Fatalf("result = %+v", res)
+	}
+}
+
+func TestConsoleTurnerPassesSlotHold(t *testing.T) {
+	t.Parallel()
+	f := &fakeConsole{took: true}
+	var hold runner.SlotHold = func(b time.Duration) (string, time.Time, bool) { return "", time.Time{}, b > 0 }
+	took, err := turn(f, hold)
+	if err != nil || !took {
+		t.Fatalf("took = %v, err = %v", took, err)
+	}
+	if _, _, held := f.gotHold(time.Minute); !held {
+		t.Fatal("hold not passed through")
 	}
 }

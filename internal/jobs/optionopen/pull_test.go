@@ -1,9 +1,12 @@
 package optionopen
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -152,10 +155,16 @@ func TestPlanCutsKeysAtMostOneHundredTwentyContracts(t *testing.T) {
 	}
 }
 
-func TestNoPlanPlansNoKeysAndRunIsNoValue(t *testing.T) {
+func TestVanishedPlanRunIsRetryableWithFault(t *testing.T) {
 	t.Parallel()
 	s := &pullStores{}
-	j := newPull(t, s, newFake(100))
+	var buf bytes.Buffer
+	b := newFake(100)
+	j, err := NewPull(PullDeps{Broker: b, Plans: s, Contracts: s, Writer: s, Instruments: s, Clock: b.clk,
+		Log: slog.New(slog.NewTextHandler(&buf, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if keys, hash, err := j.Plan(context.Background(), pullDay); err != nil || len(keys) != 0 || hash != "" {
 		t.Fatalf("empty plan: keys %v hash %q err %v", keys, hash, err)
 	}
@@ -165,8 +174,11 @@ func TestNoPlanPlansNoKeysAndRunIsNoValue(t *testing.T) {
 	}
 	s.items = nil
 	res := j.Run(context.Background(), pullDay, []contracts.ExpectedKey{{DatasetID: PullDatasetID, SubjectKey: "batch-001"}})
-	if res.Err == nil || res.Err.Kind() != contracts.NoValue || res.Err.Error() != "option_open: no plan" {
-		t.Errorf("Run: %v", res.Err)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("Run: %v", res.Err)
+	}
+	if !strings.Contains(buf.String(), "fault stage=option_open day=2026-11-11 key=batch-001 reason=") {
+		t.Errorf("log %q", buf.String())
 	}
 }
 

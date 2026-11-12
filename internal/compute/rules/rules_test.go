@@ -666,3 +666,27 @@ func TestHashCoversEaseScoreLogic(t *testing.T) {
 		t.Fatal("changing which DGS10 observation usChange subtracts leaves the macro.ease hash unchanged")
 	}
 }
+
+func TestVolRuleNumbers(t *testing.T) {
+	t.Parallel()
+	want := map[string]struct {
+		convention string
+		n          int
+	}{
+		"market.rv60":             {"rv60_v1", 60},
+		"market.rv120":            {"rv120_v1", 120},
+		"market.vol_forecast":     {"vol_blend_v1", 0},
+		"market.vol_edge":         {"vol_diff_v1", 0},
+		"market.vol_forecast_err": {"vol_diff_v1", 0},
+	}
+	for id, w := range want {
+		r, ok := New().Rule(id)
+		if !ok {
+			t.Fatalf("%s not found", id)
+		}
+		if r.Version != 1 || r.Convention != w.convention || r.Unit != "decimal" || r.Scale != 6 ||
+			r.N != w.n || r.TradingDays != 252 || r.MaxAgeDays != 4 || r.Compare != "" {
+			t.Errorf("%s: %+v", id, r)
+		}
+	}
+}

@@ -1,6 +1,11 @@
 [
   {"id": "market.hv30_own", "input": 0.3141592653, "want": "0.314159"},
   {"id": "market.rv20", "input": 0.16206, "want": "0.162060"},
+  {"id": "market.rv60", "input": 0.16206, "want": "0.162060"},
+  {"id": "market.rv120", "input": 0.14159, "want": "0.141590"},
+  {"id": "market.vol_forecast", "input": 0.1875, "want": "0.187500"},
+  {"id": "market.vol_edge", "input": -0.0325, "want": "-0.032500"},
+  {"id": "market.vol_forecast_err", "input": 0.0125, "want": "0.012500"},
   {"id": "market.iv30_own", "input": 0.2, "want": "0.200000"},
   {"id": "market.ivp_own", "input": 0.75, "want": "0.750000"},
   {"id": "market.iv_ibkr", "input": 0.25, "want": "0.250000"},

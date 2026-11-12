@@ -411,3 +411,32 @@ func TestJPPullRunsItsOwnKeys(t *testing.T) {
 		t.Errorf("written %+v", s.written)
 	}
 }
+
+func TestJPPlanAndResolveHaveTheirOwnDatasetAndWindow(t *testing.T) {
+	t.Parallel()
+	_, plan := jpPlanRig(t, planManifestJP, "7203")
+	keys, _, err := plan.Plan(context.Background(), runDay)
+	if err != nil || len(keys) != 1 || keys[0].DatasetID != "plan.option_open_item.jp" || keys[0].SubjectKey != "jp" {
+		t.Fatalf("plan keys %v err %v", keys, err)
+	}
+	r := newRig(oneChain())
+	d := r.deps()
+	d.Watch = jpWatch("7203")
+	res, err := NewResolveJP(d, ResolveOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rk, _, err := res.Plan(context.Background(), runDay)
+	if err != nil || len(rk) != 1 || rk[0].DatasetID != "master.option_contract.jp" || rk[0].SubjectKey != "7203" {
+		t.Fatalf("resolve keys %v err %v", rk, err)
+	}
+	if c, _, _ := res.(runner.Windowed).Window(); c != "XTKS" {
+		t.Errorf("resolve window %s", c)
+	}
+	us := newRig(oneChain())
+	uj, _ := NewResolve(us.deps("AAPL"), ResolveOptions{})
+	uk, _, _ := uj.Plan(context.Background(), runDay)
+	if len(uk) != 1 || uk[0].DatasetID != ResolveDatasetID {
+		t.Errorf("US resolve keys %v", uk)
+	}
+}

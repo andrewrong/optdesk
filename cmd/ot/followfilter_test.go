@@ -34,7 +34,7 @@ func TestFollowedByFixture(t *testing.T) {
 		if c.IssuerSet {
 			r.Issuer = "cik:0000000001"
 		}
-		got := followedBy(r, c.Held)
+		got := followedBy(r, c.Held, false)
 		if !slices.Equal(got, c.FollowedBy) && (len(got) != 0 || len(c.FollowedBy) != 0) {
 			t.Errorf("%+v: got %v, want %v", c, got, c.FollowedBy)
 		}
@@ -61,5 +61,28 @@ func TestWatchEntryEmptyIssuerStaysEmpty(t *testing.T) {
 	t.Parallel()
 	if e := watchEntry(underlying.Row{Symbol: "FFF", Kind: underlying.KindETF}); e.Issuer != "" {
 		t.Fatalf("issuer %q", e.Issuer)
+	}
+}
+
+func TestFollowedByHeldOption(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		row  underlying.Row
+		want []string
+	}{
+		{"active, options off", underlying.Row{Status: underlying.StatusActive}, []string{"bars", "options"}},
+		{"paused", underlying.Row{Status: underlying.StatusPaused}, []string{"bars", "options"}},
+		{"retired", underlying.Row{Status: underlying.StatusRetired}, []string{"bars", "options"}},
+		{"pending", underlying.Row{Status: underlying.StatusPending}, nil},
+		{"active, options on", underlying.Row{Status: underlying.StatusActive, Options: true}, []string{"bars", "options"}},
+		{"paused with issuer", underlying.Row{Status: underlying.StatusPaused, Issuer: "cik:0000000001"},
+			[]string{"bars", "dividends", "options"}},
+	}
+	for _, c := range cases {
+		got := followedBy(c.row, false, true)
+		if !slices.Equal(got, c.want) {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
 	}
 }

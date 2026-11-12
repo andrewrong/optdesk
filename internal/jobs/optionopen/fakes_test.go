@@ -15,6 +15,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 type fakeClock struct {
@@ -238,4 +239,57 @@ func chainOf(class string, lo, hi int, expiries ...string) broker.Chain {
 		ch.Strikes = append(ch.Strikes, strconv.FormatFloat(float64(k)/10, 'f', 1, 64))
 	}
 	return ch
+}
+
+// fakeReasons keeps the last set written per (day, dataset, subject).
+type fakeReasons struct {
+	mu   sync.Mutex
+	sets map[string][]runview.Reason
+	n    int
+}
+
+func (f *fakeReasons) ReplaceReasons(_ context.Context, day contracts.Day, dataset, subject string, rs []runview.Reason) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.sets == nil {
+		f.sets = map[string][]runview.Reason{}
+	}
+	f.sets[string(day)+"|"+dataset+"|"+subject] = rs
+	f.n++
+	return nil
+}
+
+func (f *fakeReasons) of(day contracts.Day, dataset, subject string) []runview.Reason {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.sets[string(day)+"|"+dataset+"|"+subject]
+}
+
+// fakeHistory answers Bars by a script and counts the requests.
+type fakeHistory struct {
+	mu    sync.Mutex
+	bars  []broker.Bar
+	err   error
+	asked int
+}
+
+func (f *fakeHistory) Bars(context.Context, broker.BarQuery) ([]broker.Bar, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.asked++
+	return f.bars, f.err
+}
+func (*fakeHistory) Close() error { return nil }
+
+// fakeListRows are the list job's rows of the plan's ListRows port.
+type fakeListRows struct {
+	groups map[int64][]openquote.ListRecord
+	runs   []openquote.ListRunRecord
+}
+
+func (f fakeListRows) Lists(_ context.Context, id int64) ([]openquote.ListRecord, error) {
+	return f.groups[id], nil
+}
+func (f fakeListRows) ListRuns(context.Context, contracts.Day) ([]openquote.ListRunRecord, error) {
+	return f.runs, nil
 }
