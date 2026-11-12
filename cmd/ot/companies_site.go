@@ -105,7 +105,7 @@ func heldIssuers(acc store.AccountReader, alias string, day contracts.Day, subje
 		}
 		symbols := map[string]bool{}
 		for _, p := range rows {
-			if p.SecType == "STK" && !isZeroQuantity(p.Quantity) {
+			if p.SecType == "stock" && !isZeroQuantity(p.Quantity) {
 				symbols[p.Symbol] = true
 			}
 		}

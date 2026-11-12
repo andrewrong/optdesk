@@ -118,7 +118,7 @@ func heldSets(ctx context.Context, rd siteReaders, now time.Time) (shares, optio
 
 func addHeld(held map[string]bool, rows []store.Position) {
 	for _, p := range rows {
-		if p.SecType == "STK" && !isZeroQuantity(p.Quantity) {
+		if p.SecType == "stock" && !isZeroQuantity(p.Quantity) {
 			held[p.Symbol] = true
 		}
 	}
@@ -127,7 +127,7 @@ func addHeld(held map[string]bool, rows []store.Position) {
 // addHeldOptions adds the underlying symbol of each option position with a nonzero quantity.
 func addHeldOptions(held map[string]bool, rows []store.Position) {
 	for _, p := range rows {
-		if p.SecType == "OPT" && !isZeroQuantity(p.Quantity) {
+		if p.SecType == "option" && !isZeroQuantity(p.Quantity) {
 			held[p.Symbol] = true
 		}
 	}

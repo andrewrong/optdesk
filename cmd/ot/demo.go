@@ -99,7 +99,7 @@ func (demoNoticeAccount) Positions(_ context.Context, alias, day string) ([]stor
 	if alias != demoNoticesMain {
 		return []store.Position{}, nil
 	}
-	return []store.Position{{Alias: alias, SessionDay: day, Symbol: "DEMO", SecType: "OPT", Currency: "USD",
+	return []store.Position{{Alias: alias, SessionDay: day, Symbol: "DEMO", SecType: "option", Currency: "USD",
 		Expiry: "2026-11-20", Strike: "95", Multiplier: "100", Right: "put", Quantity: "-1"}}, nil
 }
 
