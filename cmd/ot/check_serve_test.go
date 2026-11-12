@@ -23,7 +23,7 @@ func serveBody(t *testing.T, page, day string, blocks ...string) []byte {
 	body := map[string]any{"schema": page, "schema_version": 1}
 	if k, ok := pageDayKeys[page]; ok {
 		body[k] = day
-	} else {
+	} else if page != "flex_import" { // the page declares no day
 		body["data_times"] = []map[string]string{{"source": "x", "data_time": day + "T00:00:00Z"}}
 	}
 	inner := map[string]any{}
@@ -104,13 +104,19 @@ func TestCheckServeRoutes(t *testing.T) {
 	if e.c.failed {
 		t.Fatalf("a good site failed:\n%s", out)
 	}
-	if len(calls) != len(serveRoutes) || len(serveRoutes) != 12 {
+	if len(calls) != len(serveRoutes) || len(serveRoutes) != 13 {
 		t.Fatalf("calls %v", calls)
 	}
 	fresh := 0
 	for _, l := range lines(out) {
 		if strings.Contains(l, ".fresh ") {
 			fresh++
+			if strings.Contains(l, "serve.flex_import.fresh") { // a page with no data day is explained
+				if !strings.HasPrefix(l, "EXPLAINED ") {
+					t.Errorf("fresh line %q", l)
+				}
+				continue
+			}
 			if !strings.HasPrefix(l, "PASS ") || !strings.Contains(l, " 2026-11-06 ") {
 				t.Errorf("fresh line %q", l)
 			}
