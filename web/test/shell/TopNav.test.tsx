@@ -60,7 +60,6 @@ describe('TopNav', () => {
       ['Result', '/options/result'],
       ['Notices', '/options/notices'],
       ['Tracking', '/options/tracking'],
-      ['Runs', '/ops/today'],
     ])
   })
 
@@ -130,7 +129,6 @@ describe('TopNav', () => {
       ['Result', '/options/result'],
       ['Notices', '/options/notices'],
       ['Tracking', '/options/tracking'],
-      ['Runs', '/ops/today'],
     ])
     expect(sheet?.textContent).toContain('Option positions')
   })
