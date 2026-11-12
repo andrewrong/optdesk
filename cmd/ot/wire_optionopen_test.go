@@ -380,7 +380,7 @@ func TestOpenResolveJPFillsMissingConID(t *testing.T) {
 	var got []jobs.WatchEntry
 	_, _, err := buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolveJP,
 		func(d optionopen.ResolveDeps, _ optionopen.ResolveOptions) (contracts.Job, error) {
-			got = d.Stored.Watch
+			got = d.Watch
 			return captureJob{}, nil
 		}, true, broker.Options{})
 	if err != nil {
@@ -397,7 +397,7 @@ func TestOpenPlanJPFillsMissingConID(t *testing.T) {
 	var got []jobs.WatchEntry
 	_, _, err := buildOpenPlan(t.Context(), h.a, h.jc, jobOptionOpenPlanJP,
 		func(d optionopen.PlanDeps) (contracts.Job, error) {
-			got = d.Stored.Watch
+			got = d.Watch
 			return captureJob{}, nil
 		})
 	if err != nil {
@@ -413,8 +413,8 @@ func TestOpenResolveUSEntriesUntouched(t *testing.T) {
 	h, b := openJPHarness(t, jpConIDEntry("1111", 0))
 	_, _, err := buildOpenResolve(t.Context(), h.a, h.jc, jobOptionOpenResolve,
 		func(d optionopen.ResolveDeps, _ optionopen.ResolveOptions) (contracts.Job, error) {
-			if len(d.Stored.Watch) != 1 || d.Stored.Watch[0].Contract.ConID != 0 {
-				t.Errorf("entries %+v", d.Stored.Watch)
+			if len(d.Watch) != 1 || d.Watch[0].Contract.ConID != 0 {
+				t.Errorf("entries %+v", d.Watch)
 			}
 			return captureJob{}, nil
 		}, true, broker.Options{})
