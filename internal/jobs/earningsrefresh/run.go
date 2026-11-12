@@ -204,9 +204,9 @@ func (j *job) Postcondition(ctx context.Context, day, datasetID, subjectKey stri
 // highest attempt of each issuer whose latest row is an error. An error row is not an answer: it is left out of
 // have and vendorRow, so the next run fetches again and writes the next attempt.
 func (j *job) readDay(ctx context.Context, day contracts.Day) (
-	have map[string]contracts.EarningsDate, vendorRow map[string]bool, errAttempt map[string]int, err error,
+	have map[string]contracts.EarningsDate, vendorRow map[string]bool, lastErrorAttempt map[string]int, err error,
 ) {
-	have, vendorRow, errAttempt = map[string]contracts.EarningsDate{}, map[string]bool{}, map[string]int{}
+	have, vendorRow, lastErrorAttempt = map[string]contracts.EarningsDate{}, map[string]bool{}, map[string]int{}
 	for _, e := range j.entries {
 		rows, err := j.r.EarningsDates(ctx, e.Issuer, day, day)
 		if err != nil {
@@ -222,7 +222,7 @@ func (j *job) readDay(ctx context.Context, day contracts.Day) (
 			}
 		}
 		if row.Status == "error" {
-			errAttempt[e.Issuer] = row.Attempt
+			lastErrorAttempt[e.Issuer] = row.Attempt
 			continue
 		}
 		have[e.Issuer] = row
@@ -230,7 +230,7 @@ func (j *job) readDay(ctx context.Context, day contracts.Day) (
 			vendorRow[e.Market] = true
 		}
 	}
-	return have, vendorRow, errAttempt, nil
+	return have, vendorRow, lastErrorAttempt, nil
 }
 
 // Run writes the rows of day that are missing. It makes at most one Fetch per source and none for a market
@@ -245,7 +245,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	// Development mode: the vendors answer for today, so a past day runs with the clock's date in the manifest zone.
 	day = contracts.Day(j.clk.Now().In(j.loc).Format(dayLayout))
 	observed, _ = date(string(day))
-	have, vendorRow, errAttempt, err := j.readDay(ctx, day)
+	have, vendorRow, lastErrorAttempt, err := j.readDay(ctx, day)
 	if err != nil {
 		j.logFailure("read_day", err)
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
@@ -253,7 +253,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	now := j.clk.Now().UTC()
 	base := func(e jobs.WatchEntry) contracts.EarningsDate {
 		return contracts.EarningsDate{
-			Attempt: errAttempt[e.Issuer] + 1, Issuer: e.Issuer, Market: vendor[e.Market].Market, ObservedOn: *observed,
+			Attempt: lastErrorAttempt[e.Issuer] + 1, Issuer: e.Issuer, Market: vendor[e.Market].Market, ObservedOn: *observed,
 			ReceivedAt: now, Symbol: e.Contract.Symbol,
 		}
 	}
