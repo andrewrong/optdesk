@@ -67,7 +67,7 @@ func init() {
 			if err != nil {
 				return nil, "", fmt.Errorf("build underlying_resolve job failed: %w", err)
 			}
-			return j, "", nil
+			return wrapHeld(a, jc, j, st)
 		},
 	})
 }
@@ -179,4 +179,37 @@ func listedOf(j contracts.Job) (*listedJob, bool) {
 		return v.listedJob, true
 	}
 	return nil, false
+}
+
+// wrapHeld wraps the resolve job in heldRows when the account line is set: the held names of the positions get a
+// pending row. Without the line the job is not wrapped; a store that cannot add is a start-up error.
+func wrapHeld(a *app, jc *jobCtx, j contracts.Job, st underlying.Store) (contracts.Job, string, error) {
+	if jc.cfg.accountDSN == "" || a.deps.openAccount == nil {
+		return j, "", nil
+	}
+	adder, ok := st.(underlying.HeldAdder)
+	if !ok {
+		return nil, "", errors.New("underlying store cannot add held names")
+	}
+	m, err := underlyingresolve.DefaultManifest()
+	if err != nil {
+		return nil, "", fmt.Errorf("build underlying_resolve job failed: %w", err)
+	}
+	zone, err := time.LoadLocation(m.Schedule.Zone)
+	if err != nil {
+		return nil, "", fmt.Errorf("underlying_resolve zone: %w", err)
+	}
+	rd := &lazyAccountReader{lazyStore[store.AccountStore]{open: func(ctx context.Context) (store.AccountStore, error) {
+		s, err := a.deps.openAccount(ctx, jc.cfg.accountDSN)
+		if err != nil {
+			return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
+		}
+		return s, nil
+	}}}
+	jc.extra.addCloser(rd)
+	w, err := heldRows(j, st, adder, rd, jc.f.clk, a.log, underlyingresolve.DatasetID, m.MaxNames, zone)
+	if err != nil {
+		return nil, "", fmt.Errorf("build underlying_resolve job failed: %w", err)
+	}
+	return w, "", nil
 }
