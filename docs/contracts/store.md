@@ -197,6 +197,11 @@ Declared in `internal/store/openquote/api.go`, apart from `Stores`: `ListRecord`
 - Reasons of a run row (twelve): `not_finished`, `none`, `no_expiry_in_window`, `listchains_failed`, `budget`, `stop_time`, `timeouts`, `unserved`, `broker_down`, `list_max_new`, `all_short`, `some_short`. A row is written at run start as `not_finished` for a name with no row; `Expected` is set once (a non-empty value is never replaced); a re-run writes a reason only when `Listed` is below `Expected`.
 - A watched US stock with no run row is a gap: the run did not reach it or died before writing.
 - Tests: `internal/store/openquote/api_test.go`: `TestOptionListPutAndReadBack`.
+- `ListRecord` also carries the confirmed band (`docs/design/option-open-gap-jp.md`, entry 1): `BandLo` and `BandHi` (decimal text; empty means none stored), `Sigma`, `SigmaSource` (`iv`, `rv20` or `default`) and `InBand` (int); `ListedAt` is as before. Tests: `TestListRecordBandRoundTrip`, `TestListRecordBandEmptyIsNone`.
+
+## Run view
+
+`internal/store/runview/api.go` declares, in a package of its own (`internal/store/api.go` is at its ceiling), `Row` (session day, dataset, key, status, finished at, returned and usable counts, error code, reason code), `Reason` (day, dataset, subject, scope, code, detail, at), `Reader` and `ReasonWriter`. `Reader.RunsOn(ctx, day)` and `ReasonsOn(ctx, day)` return the rows of a session day ascending, never nil; `NotWired(ctx)` returns the reasons stored under the constant `NotWiredDay` (the date `1970-01-01`) and the dataset `ops.not_wired` (`NotWiredDataset`), ascending by scope, never nil. `ReasonWriter.ReplaceReasons(ctx, day, dataset, subject, reasons)` replaces the whole set of that day, dataset and subject in one transaction, so a clean run (no reasons) clears an earlier reason and another subject is untouched. Declarations only: no migration and no Postgres code yet. Tests: `internal/store/runview/api_test.go`: `TestRunviewContractBothSides`, `TestReasonsOnNeverNil`, `TestReplaceReasonsClearsOld`.
 
 ## Contract tests
 

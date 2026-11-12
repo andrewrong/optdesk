@@ -51,7 +51,8 @@ const (
 	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0022_optionledger.sql)
 
 	// roleSettings: INSERT and SELECT on the two settings tables, SELECT on rd.rule_param_r1 and rd.option_exclusion_r1
-	// (migrations/0025_settings.sql).
+	// (migrations/0025_settings.sql); SELECT on settings.job_request and settings.job_request_withdraw, INSERT of the
+	// post's columns only, SELECT on rd.job_request_r1 (migrations/0035_job_request.sql).
 	roleSettings = "ot_w_settings"
 
 	// roleMark: INSERT and SELECT on account.position_mark, SELECT on rd.account_position_mark_r1

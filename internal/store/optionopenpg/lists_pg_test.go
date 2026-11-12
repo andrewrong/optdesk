@@ -16,7 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 )
 
-// listStore makes a database, applies 0034_option_list.sql to it and opens the writer on it.
+// listStore makes a database, applies 0034_option_list.sql and the band columns of 0035 to it and opens the writer on it.
 func listStore(t *testing.T) openquote.OptionListStore {
 	t.Helper()
 	ctx := context.Background()
@@ -33,6 +33,15 @@ func listStore(t *testing.T) openquote.OptionListStore {
 	defer func() { _ = c.Close(ctx) }()
 	if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
 		t.Fatalf("apply 0034: %v", err)
+	}
+	// 0035 also makes ops and rd objects this database lacks: only its first statement, the band columns, applies here.
+	raw, err = os.ReadFile("../../../migrations/0035_option_list_band_run_view.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	band, _, _ := strings.Cut(string(raw), "-- ops.option_run_reason:")
+	if _, err := c.Exec(ctx, strings.Replace(band, "-- +goose Up", "", 1)); err != nil {
+		t.Fatalf("apply 0035 band columns: %v", err)
 	}
 	w, err := Open(ctx, connURL(t, name, "ot_w_option_open"))
 	if err != nil {
@@ -137,5 +146,36 @@ func TestRunListedEqualsCountOfListRowsOfSession(t *testing.T) {
 	}
 	if other, _ := s.ListRuns(ctx, "2026-11-11"); len(other) != 0 {
 		t.Errorf("other session: %+v", other)
+	}
+}
+
+func TestBandRoundTripAndShortKeepsItPG(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := listStore(t)
+	at := time.Date(2026, 11, 12, 11, 20, 0, 0, time.UTC)
+	rec := openquote.ListRecord{UnderlyingID: 1, Expiry: "2026-12-18", Class: "AAPL", ListedAt: at, ListedSession: "2026-11-12",
+		Count: 516, TriedAt: at, Outcome: "listed", BandLo: "180.50", BandHi: "220", Sigma: 0.31, SigmaSource: "iv", InBand: 120}
+	if err := s.PutLists(ctx, []openquote.ListRecord{rec}); err != nil {
+		t.Fatal(err)
+	}
+	failed := openquote.ListRecord{UnderlyingID: 1, Expiry: "2026-12-18", Class: "AAPL", TriedAt: at.Add(time.Hour), Outcome: "error"}
+	if err := s.PutLists(ctx, []openquote.ListRecord{failed}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Lists(ctx, 1)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	want := rec
+	want.TriedAt, want.Outcome = at.Add(time.Hour), "error"
+	if !reflect.DeepEqual(got[0], want) {
+		t.Errorf("got %+v want %+v", got[0], want)
+	}
+	// A listing with an inverted band is refused by the check.
+	bad := rec
+	bad.Class, bad.BandLo, bad.BandHi = "BAD", "300", "200"
+	if err := s.PutLists(ctx, []openquote.ListRecord{bad}); err == nil {
+		t.Error("band_lo > band_hi was stored")
 	}
 }

@@ -184,6 +184,14 @@ func (b jpBroker) ListChains(ctx context.Context, u broker.Contract) ([]broker.C
 	return out, nil
 }
 
+// PlanDatasetIDJP is the dataset of the one key of the JP plan job, subject planSubjectJP.
+const PlanDatasetIDJP = "plan.option_open_item.jp"
+
+const planSubjectJP = "jp"
+
+// ResolveDatasetIDJP is the dataset of the keys of the JP resolve: its own, so that its window is the XTKS one.
+const ResolveDatasetIDJP = "master.option_contract.jp"
+
 // NewPlanJP builds option_open_plan_jp from the embedded job_plan_jp.toml: the plan of the JP names of the watch
 // list from stored con_ids only, DTE 14 to 90.
 func NewPlanJP(d PlanDeps) (contracts.Job, error) { return newPlanJP(planManifestJP, d) }
@@ -205,7 +213,7 @@ func newPlanJP(data []byte, d PlanDeps) (contracts.Job, error) {
 	}
 	d.Func = r.planFunc(d.Func)
 	d.Stored = r.stored(d.Stored)
-	return &planJob{m: m, d: d}, nil
+	return &planJob{m: m, d: d, dataset: PlanDatasetIDJP, subject: planSubjectJP}, nil
 }
 
 // NewResolveJP builds option_open_resolve_jp from the embedded job_resolve_jp.toml: NewResolve over the JP names,
@@ -219,7 +227,7 @@ func NewResolveJP(d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
 	if d.Broker != nil {
 		d.Broker = jpBroker{d.Broker, r}
 	}
-	return newListed(resolveManifestJP, d, o)
+	return newListed(resolveManifestJP, ResolveDatasetIDJP, d, o)
 }
 
 var _ NewPullFunc = NewPullJP
@@ -258,11 +266,18 @@ type jpPull struct {
 
 // Run is pull.Run with runKey of jpPull.
 func (p *jpPull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	return p.fault(day, keys, p.run(ctx, day, keys))
+}
+
+func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	local := p.d.Clock.Now().In(p.loc)
 	if string(day) != local.Format(time.DateOnly) {
 		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
 	}
 	bs, err := p.batches(ctx, day)
+	if errors.Is(err, errNoPlan) {
+		return contracts.JobResult{Err: newErr(contracts.Retryable, "the plan of %s is gone", day)}
+	}
 	if err != nil {
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
 	}
