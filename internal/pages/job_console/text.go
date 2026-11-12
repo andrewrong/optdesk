@@ -250,6 +250,8 @@ func refusedText(in stateIn) (string, bool) {
 		return "this job cannot be run from the page", true
 	case "not_today":
 		return "the day is not today any more in the job's zone", true
+	case "job_running":
+		return "this job is already running; press Run again when it ends", true
 	}
 	return "", false
 }

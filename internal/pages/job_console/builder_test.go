@@ -284,6 +284,7 @@ func TestRequestStateText(t *testing.T) {
 		{jobrequest.StateRefused, "left_out", "the scheduler holds this job out"},
 		{jobrequest.StateRefused, "not_runnable", "this job cannot be run from the page"},
 		{jobrequest.StateRefused, "not_today", "the day is not today any more in the job's zone"},
+		{jobrequest.StateRefused, "job_running", "this job is already running; press Run again when it ends"},
 		{jobrequest.StateFailed, "slot_near", "stopped before the next key because a slot starts soon; press Run again after it"},
 		{jobrequest.StateFailed, "lease_held", "another run holds the lease"},
 		{jobrequest.StateFailed, "plan_failed", "the plan of the day could not be read"},
