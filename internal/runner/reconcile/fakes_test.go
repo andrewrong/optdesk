@@ -2,11 +2,14 @@ package reconcile
 
 import (
 	"context"
+	"slices"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -235,3 +238,125 @@ func badAndGoodJobs() (bad, good *fakeJob) {
 type markedErr struct{ kindErr }
 
 func (markedErr) Error() string { return planFailMarker }
+
+// depJob is a scheduled fakeJob that declares its upstreams.
+type depJob struct {
+	scheduledJob
+	after []string
+}
+
+func (j depJob) After() []string { return j.after }
+
+// evLog records the start and the end of job runs in order.
+type evLog struct {
+	mu sync.Mutex
+	ev []string
+}
+
+func (l *evLog) add(s string) {
+	l.mu.Lock()
+	l.ev = append(l.ev, s)
+	l.mu.Unlock()
+}
+
+func (l *evLog) all() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.ev)
+}
+
+// logJob logs "start:<id>" and "end:<id>" around the run of a fakeJob.
+type logJob struct {
+	*fakeJob
+	log *evLog
+}
+
+func (j logJob) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	j.log.add("start:" + j.id)
+	defer j.log.add("end:" + j.id)
+	return j.fakeJob.Run(ctx, d, k)
+}
+
+// logDep is a depJob that logs its runs.
+type logDep struct {
+	depJob
+	log *evLog
+}
+
+func (j logDep) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	j.log.add("start:" + j.id)
+	defer j.log.add("end:" + j.id)
+	return j.fakeJob.Run(ctx, d, k)
+}
+
+func upJob(keys ...contracts.ExpectedKey) *fakeJob { return &fakeJob{id: "up", keys: keys} }
+
+// dep is the dependent "dep" of "up": its slot is the session close plus offset.
+func dep(offset time.Duration, keys ...contracts.ExpectedKey) depJob {
+	return depJob{
+		scheduledJob: scheduledJob{fakeJob: &fakeJob{id: "dep", keys: keys}, calendarID: "XNYS", anchor: "session_close", offset: offset},
+		after:        []string{"up"},
+	}
+}
+
+func rowOf(t *testing.T, l *fakeLedger, day contracts.Day, k contracts.ExpectedKey) store.Run {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, r := range l.runs[day] {
+		if r.Key == k {
+			return r
+		}
+	}
+	t.Fatalf("no run row for %v", k)
+	return store.Run{}
+}
+
+// holdLocks wraps a lock set. The first unlock of job id waits until a TryLock of id has failed, so the
+// turn that holds the job's lock is still holding it when a trigger asks for it; unlocking is closed
+// when that unlock starts. No sleep: both are channels.
+type holdLocks struct {
+	runner.JobLocks
+	id        string
+	unlocking chan struct{}
+	failed    chan struct{}
+	mu        sync.Mutex
+	held      bool
+	seen      bool
+}
+
+func (h *holdLocks) TryLock(id string) (func(), bool) {
+	unlock, ok := h.JobLocks.TryLock(id)
+	if id != h.id {
+		return unlock, ok
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !ok {
+		if !h.seen {
+			h.seen = true
+			close(h.failed)
+		}
+		return unlock, ok
+	}
+	if h.held {
+		return unlock, ok
+	}
+	h.held = true
+	return func() {
+		close(h.unlocking)
+		<-h.failed
+		unlock()
+	}, ok
+}
+
+// afterJob is a job whose run waits for ready to be closed.
+type afterJob struct {
+	*fakeJob
+	ready chan struct{}
+}
+
+func (j afterJob) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	<-j.ready
+	return j.fakeJob.Run(ctx, d, k)
+}

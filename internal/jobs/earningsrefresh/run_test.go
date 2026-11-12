@@ -486,7 +486,14 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 				t.Fatalf("records = %v", recs)
 			}
 			m := recs[0]
-			if m["msg"] != "run failed" || m["level"] != "WARN" || m["step"] != c.step || m["kind"] != c.kind || len(m) != 4 {
+			wantLen := 4
+			if c.step == "source_failed" {
+				wantLen = 6
+				if m["market"] != "us" || m["code"] != "unknown" {
+					t.Fatalf("record = %v", m)
+				}
+			}
+			if m["msg"] != "run failed" || m["level"] != "WARN" || m["step"] != c.step || m["kind"] != c.kind || len(m) != wantLen {
 				t.Fatalf("record = %v", m)
 			}
 			for _, v := range m {
@@ -509,5 +516,75 @@ func TestPastDayRunsClockDay(t *testing.T) {
 	}
 	if got := st.rows[0].ObservedOn.Format(dayLayout); got != string(day) {
 		t.Fatalf("ObservedOn = %s, want the clock's date %s", got, day)
+	}
+}
+
+func perMarketJob(t *testing.T, usSrc, jpSrc *fakeSource) (contracts.Job, *memStore) {
+	t.Helper()
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": usSrc, "JP": jpSrc}, st,
+		us("cik:1", "AAPL"), jp("edinet:E1", "7203"))
+	return j, st
+}
+
+func keyOf(issuer string) []contracts.ExpectedKey {
+	return []contracts.ExpectedKey{{DatasetID: datasetID, SubjectKey: issuer}}
+}
+
+func TestPerMarketUSOkJPFails(t *testing.T) {
+	t.Parallel()
+	mk := func() (contracts.Job, *memStore) {
+		return perMarketJob(t,
+			&fakeSource{listings: []sources.EarningsListing{{Symbol: "AAPL", ReportDate: "2026-11-12"}}},
+			&fakeSource{err: codedErr{"http_status"}})
+	}
+	j, st := mk()
+	if res := j.Run(context.Background(), day, keyOf("cik:1")); res.Err != nil {
+		t.Fatalf("US subject: %v", res.Err)
+	}
+	if r := byIssuer(st, "cik:1"); len(r) != 1 || r[0].Status != "listed" {
+		t.Fatalf("US rows %+v", r)
+	}
+	j, st = mk()
+	res := j.Run(context.Background(), day, keyOf("edinet:E1"))
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "earningsrefresh: jp: http_status" {
+		t.Fatalf("JP subject err %v", res.Err)
+	}
+	if r := byIssuer(st, "edinet:E1"); len(r) != 1 || r[0].Status != "error" || r[0].ErrorCode != "http_status" {
+		t.Fatalf("JP rows %+v", r)
+	}
+}
+
+func TestPerMarketBothOk(t *testing.T) {
+	t.Parallel()
+	j, _ := perMarketJob(t,
+		&fakeSource{listings: []sources.EarningsListing{{Symbol: "AAPL", ReportDate: "2026-11-12"}}},
+		&fakeSource{listings: []sources.EarningsListing{{Symbol: "7203", ReportDate: "2026-11-12"}}})
+	for _, k := range [][]contracts.ExpectedKey{keyOf("cik:1"), keyOf("edinet:E1"), nil} {
+		if res := j.Run(context.Background(), day, k); res.Err != nil {
+			t.Fatalf("keys %v: %v", k, res.Err)
+		}
+	}
+}
+
+func TestPerMarketBothFail(t *testing.T) {
+	t.Parallel()
+	mk := func() contracts.Job {
+		j, _ := perMarketJob(t, &fakeSource{err: codedErr{"rate_limited"}}, &fakeSource{err: codedErr{"network"}})
+		return j
+	}
+	cases := []struct {
+		keys []contracts.ExpectedKey
+		want string
+	}{
+		{keyOf("cik:1"), "earningsrefresh: us: rate_limited"},
+		{keyOf("edinet:E1"), "earningsrefresh: jp: network"},
+		{nil, "earningsrefresh: us: rate_limited; jp: network"},
+	}
+	for _, c := range cases {
+		res := mk().Run(context.Background(), day, c.keys)
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != c.want {
+			t.Fatalf("keys %v: err %v, want %q", c.keys, res.Err, c.want)
+		}
 	}
 }

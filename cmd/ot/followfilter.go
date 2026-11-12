@@ -16,7 +16,8 @@ const (
 
 // followedBy returns the groups that follow the name of r, in the order bars, dividends, options, fundamentals
 // (Decision 6). held is whether the owner holds shares of it; heldOption is whether the owner holds an option on it,
-// which adds the options group to an active, paused or retired row (and bars to a paused or retired one). Pure: no store, no broker.
+// which adds the options group (and fundamentals, with an issuer) to an active, paused or retired row (and bars to a paused or retired one).
+// Pure: no store, no broker.
 func followedBy(r underlying.Row, held, heldOption bool) []string {
 	var groups []string
 	switch r.Status {
@@ -28,7 +29,7 @@ func followedBy(r underlying.Row, held, heldOption bool) []string {
 		if r.Options || heldOption {
 			groups = append(groups, groupOptions)
 		}
-		if r.Fundamentals && r.Issuer != "" {
+		if (r.Fundamentals || heldOption) && r.Issuer != "" {
 			groups = append(groups, groupFundamentals)
 		}
 	case underlying.StatusPaused, underlying.StatusRetired:
@@ -40,6 +41,9 @@ func followedBy(r underlying.Row, held, heldOption bool) []string {
 		}
 		if heldOption {
 			groups = append(groups, groupOptions)
+			if r.Issuer != "" {
+				groups = append(groups, groupFundamentals)
+			}
 		}
 	}
 	return groups

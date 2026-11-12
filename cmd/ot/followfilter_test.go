@@ -77,7 +77,31 @@ func TestFollowedByHeldOption(t *testing.T) {
 		{"pending", underlying.Row{Status: underlying.StatusPending}, nil},
 		{"active, options on", underlying.Row{Status: underlying.StatusActive, Options: true}, []string{"bars", "options"}},
 		{"paused with issuer", underlying.Row{Status: underlying.StatusPaused, Issuer: "cik:0000000001"},
-			[]string{"bars", "dividends", "options"}},
+			[]string{"bars", "dividends", "options", "fundamentals"}},
+	}
+	for _, c := range cases {
+		got := followedBy(c.row, false, true)
+		if !slices.Equal(got, c.want) {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestFollowedByHeldOptionFundamentals(t *testing.T) {
+	t.Parallel()
+	const issuer = "cik:0000000001"
+	want := []string{"bars", "dividends", "options", "fundamentals"}
+	cases := []struct {
+		name string
+		row  underlying.Row
+		want []string
+	}{
+		{"paused", underlying.Row{Status: underlying.StatusPaused, Issuer: issuer}, want},
+		{"retired", underlying.Row{Status: underlying.StatusRetired, Issuer: issuer}, want},
+		{"active, fundamentals off", underlying.Row{Status: underlying.StatusActive, Issuer: issuer}, want},
+		{"paused, no issuer", underlying.Row{Status: underlying.StatusPaused}, []string{"bars", "options"}},
+		{"active, no issuer", underlying.Row{Status: underlying.StatusActive, Fundamentals: true}, []string{"bars", "options"}},
+		{"pending", underlying.Row{Status: underlying.StatusPending, Issuer: issuer}, nil},
 	}
 	for _, c := range cases {
 		got := followedBy(c.row, false, true)

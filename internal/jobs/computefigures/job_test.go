@@ -517,3 +517,14 @@ func TestNewWithEaseNilPlansLikeNew(t *testing.T) {
 		t.Fatalf("plans differ: %v %s vs %v %s", ka, ha, kb, hb)
 	}
 }
+
+func TestAfterIsTheThreeUpstreams(t *testing.T) {
+	t.Parallel()
+	d, ok := newJob(t, world(), newFigs()).(interface{ After() []string })
+	if !ok {
+		t.Fatal("compute_figures has no After")
+	}
+	if got := d.After(); !reflect.DeepEqual(got, []string{"option_eod", "option_eod_jp", "quote_snapshot"}) {
+		t.Fatalf("After() = %v", got)
+	}
+}

@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"math"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -619,5 +621,53 @@ func TestLiveMarketDataTypeOneStaysOk(t *testing.T) {
 	r := newCore(b).Pull(context.Background(), []Target{target(1, 11, ClassAroundSpot, 95, Put)})
 	if row := rowOf(t, r, 11); row.Status != stOK || row.MarketDataType != 1 {
 		t.Errorf("status %d type %d, want ok type 1", row.Status, row.MarketDataType)
+	}
+}
+
+func TestRoundDelta(t *testing.T) {
+	t.Parallel()
+	nan, inf := math.NaN(), math.Inf(-1)
+	for _, tc := range []struct {
+		name string
+		in   *float64
+		want string // shortest text of the result; "nil" for nil
+	}{
+		{"nil", nil, "nil"},
+		{"long delta", f(-0.31495717239425247), "-0.315"},
+		{"four places stay", f(-0.2446), "-0.2446"},
+		{"half", f(-0.5), "-0.5"},
+		{"below half of the last place", f(0.00004), "0"},
+		{"nan", &nan, "NaN"},
+		{"infinity", &inf, "-Inf"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := roundDelta(tc.in)
+			text := "nil"
+			if got != nil {
+				text = strconv.FormatFloat(*got, 'f', -1, 64)
+			}
+			if text != tc.want {
+				t.Errorf("roundDelta = %s, want %s", text, tc.want)
+			}
+		})
+	}
+}
+
+func TestRowStoresDeltaFourPlaces(t *testing.T) {
+	t.Parallel()
+	b := newFake(100)
+	b.opt = func(_ int, cs []broker.Contract) ([]broker.Quote, error) {
+		q := okQuote(b.clk, cs[0])
+		q.Delta, q.Gamma = f(-0.31495717239425247), f(0.0123456789)
+		return []broker.Quote{q}, nil
+	}
+	r := newCore(b).Pull(context.Background(), []Target{target(1, 11, ClassPuts, 90, Put)})
+	row := rowOf(t, r, 11)
+	if row.Delta == nil || *row.Delta != -0.315 {
+		t.Errorf("delta = %v, want -0.315", row.Delta)
+	}
+	if row.Gamma == nil || *row.Gamma != 0.0123456789 {
+		t.Errorf("gamma = %v, want 0.0123456789", row.Gamma)
 	}
 }

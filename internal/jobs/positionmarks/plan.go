@@ -74,9 +74,12 @@ func contractOf(p store.Position) (c broker.Contract, ok bool) {
 	return c, true
 }
 
+// exchangeTSEJ is the Tokyo exchange a JPY stock or index is quoted on when ResolveContract fails.
+const exchangeTSEJ = "TSEJ"
+
 // planTarget maps one position; a contract outside USD (JPY in practice) is first looked up with
-// ResolveContract and takes the exchange of the answer. A failed lookup gives the row status "error", an
-// unlisted contract "no_data"; the run goes on with the other positions.
+// ResolveContract and takes the exchange of the answer. A failed lookup of a stock or index falls back to TSEJ
+// and the con id; one of an option gives the row status "error", an unlisted contract "no_data"; the run goes on with the other positions.
 func planTarget(ctx context.Context, market broker.Broker, p store.Position) target {
 	c, ok := contractOf(p)
 	if !ok {
@@ -87,6 +90,10 @@ func planTarget(ctx context.Context, market broker.Broker, p store.Position) tar
 	}
 	r, err := market.ResolveContract(ctx, c)
 	if err != nil {
+		if c.SecType == "STK" || c.SecType == "IND" {
+			c.Exchange = exchangeTSEJ
+			return target{pos: p, contract: c}
+		}
 		return target{pos: p, status: statusError}
 	}
 	if !r.Listed || r.Contract.Exchange == "" {

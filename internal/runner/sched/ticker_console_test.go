@@ -2,6 +2,7 @@ package sched
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"slices"
 	"sync/atomic"
@@ -225,5 +226,112 @@ func TestNoConsoleWithoutInterface(t *testing.T) {
 	}
 	if h.s.(*ticker).turner != nil {
 		t.Fatal("console turner found on a plain Reconciler")
+	}
+}
+
+// claimRec is a Reconciler with ConsoleClaimer only. The first claim returns one ConsoleRun that emits
+// "run" and waits for release or its context; later claims return none.
+type claimRec struct {
+	*fakeRec
+	claims    atomic.Int32
+	cancelled atomic.Bool
+	release   chan struct{}
+}
+
+func (r *claimRec) ClaimConsole(context.Context) ([]runner.ConsoleRun, error) {
+	if r.claims.Add(1) > 1 {
+		return nil, nil
+	}
+	return []runner.ConsoleRun{func(ctx context.Context) {
+		r.ev.emit("run")
+		select {
+		case <-r.release:
+		case <-ctx.Done():
+			r.cancelled.Store(true)
+			r.ev.emit("run-cancelled")
+		}
+	}}, nil
+}
+
+// TestConsoleRunDoesNotBlockWorker (new): a ConsoleRun that is still running leaves the worker free
+// for a tick.
+func TestConsoleRunDoesNotBlockWorker(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	rec := &claimRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{})}
+	h.rec = rec
+	h.run()
+	h.until("reconcile:2025-11-26")
+	h.step(30 * time.Second)
+	h.until("run")
+	// The first tick is 14:10:00; a loop that took a wake late sees it one step later, so step until it ran.
+	for ran := false; !ran; {
+		h.step(30 * time.Second)
+		ran = slices.Contains(h.pending(), "reconcile:2025-11-26")
+	}
+	close(rec.release)
+}
+
+// TestConsoleRunsDrainedAtStop (new): after a stop Run waits drainGrace for a ConsoleRun, cancels its
+// context, and returns after it ended.
+func TestConsoleRunsDrainedAtStop(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	rec := &claimRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{})}
+	h.rec = rec
+	cancel, done := h.run()
+	h.until("reconcile:2025-11-26")
+	h.step(30 * time.Second)
+	h.until("run")
+	cancel()
+	advanced := time.Duration(0)
+	for finished := false; !finished; {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatal(err)
+			}
+			finished = true
+		default:
+			if advanced < drainGrace && rec.cancelled.Load() {
+				t.Fatalf("run cancelled after %v, before the grace", advanced)
+			}
+			// Past the grace, give the run a chance to see its cancel before the clock moves on.
+			for range 10000 {
+				if advanced < drainGrace || rec.cancelled.Load() {
+					break
+				}
+				runtime.Gosched()
+			}
+			h.clk.Advance(time.Second)
+			advanced += time.Second
+			runtime.Gosched()
+		}
+	}
+	if advanced < drainGrace {
+		t.Fatalf("drained after %v, want at least %v", advanced, drainGrace)
+	}
+	if !rec.cancelled.Load() {
+		t.Fatal("Run returned before the ConsoleRun ended")
+	}
+}
+
+// TestConsoleRunsCancelledOnFenceLoss (new): a lost fence cancels the context of a ConsoleRun at once,
+// with no grace of the clock.
+func TestConsoleRunsCancelledOnFenceLoss(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	rec := &claimRec{fakeRec: h.rec.(*fakeRec), release: make(chan struct{})}
+	h.rec = rec
+	_, done := h.run()
+	h.until("reconcile:2025-11-26")
+	h.step(30 * time.Second)
+	h.until("run")
+	close(h.fence.lost)
+	if err := <-done; !errors.Is(err, ErrFenceLost) {
+		t.Fatalf("Run = %v, want ErrFenceLost", err)
+	}
+	if !rec.cancelled.Load() {
+		t.Fatal("the ConsoleRun was not cancelled")
 	}
 }

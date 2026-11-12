@@ -369,6 +369,10 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			postOwnerJobConsole(a, clk, rd, w, r)
 			return
 		}
+		if strings.TrimPrefix(r.URL.Path, "/") == flexImportPostRoute && rd.edit != nil {
+			postOwnerFlexImport(a, clk, rd, newHandler, w, r)
+			return
+		}
 		pagesH.ServeHTTP(w, r)
 	})
 }

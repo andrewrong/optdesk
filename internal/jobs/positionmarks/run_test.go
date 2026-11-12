@@ -46,16 +46,20 @@ func (f *fakeAcct) Executions(context.Context, string, string, string) ([]store.
 
 type fakeMarket struct {
 	broker.Broker
-	clk     *clockwork.FakeClock
-	mu      sync.Mutex
-	calls   [][]broker.Contract
-	kinds   []broker.Kind
-	quote   func(c broker.Contract) broker.Quote
-	err     error
-	advance time.Duration
+	clk        *clockwork.FakeClock
+	mu         sync.Mutex
+	calls      [][]broker.Contract
+	kinds      []broker.Kind
+	quote      func(c broker.Contract) broker.Quote
+	err        error
+	resolveErr error
+	advance    time.Duration
 }
 
 func (m *fakeMarket) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+	if m.resolveErr != nil {
+		return broker.Resolved{}, m.resolveErr
+	}
 	return broker.Resolved{Listed: true, Contract: broker.Contract{Exchange: "TSEJ"}}, nil
 }
 
@@ -343,6 +347,22 @@ func TestRunJPYPositionAndUnsupportedSecType(t *testing.T) {
 	}
 }
 
+func TestRunJPYStockWithFailingLookupIsQuoted(t *testing.T) {
+	t.Parallel()
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 7, "JPY")}})
+	e.m.resolveErr = errors.New("ambiguous")
+	res := e.run()
+	if res.Err != nil || res.Returned != 1 || res.Usable != 1 {
+		t.Fatalf("res = %+v", res)
+	}
+	if len(e.m.calls) != 1 || len(e.m.calls[0]) != 1 || e.m.calls[0][0].Exchange != "TSEJ" || e.m.calls[0][0].ConID != 7 {
+		t.Fatalf("sent = %+v", e.m.calls)
+	}
+	if r := e.w.rows[0]; r.Basis == mark.BasisNone || r.Status == "error" {
+		t.Fatalf("row = %+v", r)
+	}
+}
+
 func TestRunErrorsCarryNoAccountText(t *testing.T) {
 	t.Parallel()
 	e := setup(t, []string{"main-alias"}, map[string][]store.Position{})
@@ -502,5 +522,20 @@ func TestPastDayMarksClockDay(t *testing.T) {
 	}
 	if e.a.lastDay != "2026-11-06" {
 		t.Fatalf("positions read for day %q, want the clock's date 2026-11-06", e.a.lastDay)
+	}
+}
+
+func TestAfterIsAccountCapture(t *testing.T) {
+	t.Parallel()
+	j, err := New(&fakeMarket{}, []string{"a"}, &fakeAcct{}, &fakeWriter{}, clockwork.NewFakeClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, ok := j.(interface{ After() []string })
+	if !ok {
+		t.Fatal("position_marks has no After")
+	}
+	if got := d.After(); len(got) != 1 || got[0] != "account_capture" {
+		t.Fatalf("After() = %v", got)
 	}
 }

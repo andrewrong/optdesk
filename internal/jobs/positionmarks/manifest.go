@@ -94,6 +94,9 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 	return s.calendar, s.anchor, s.zone, s.offset
 }
 
+// After is the ids of the jobs of the same day that position_marks reads.
+func (j *job) After() []string { return []string{"account_capture"} }
+
 // RunBound is the longest time one run may take; 0 when the table gives none.
 func (j *job) RunBound() time.Duration { return j.m.sched.runBound }
 

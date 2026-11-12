@@ -349,38 +349,3 @@ func TestUnmarkedRunKeyCutIsAbandonedStop(t *testing.T) {
 		t.Fatalf("run %+v err %v", r.run, r.err)
 	}
 }
-
-// failSched is a SchedulerLedger whose lease renewal always fails.
-type failSched struct {
-	store.SchedulerLedger
-	err error
-}
-
-func (s failSched) RenewLease(context.Context, store.Lease, time.Duration) (store.Lease, error) {
-	return store.Lease{}, s.err
-}
-
-func TestLeaseRenewalFailureCutIsNotConsoleStop(t *testing.T) {
-	t.Parallel()
-	l := bfSetup(bfDay, keyA)
-	clk := clockwork.NewFakeClockAt(utc("2026-11-04T15:00:00Z"))
-	job := newBoundBlock(time.Hour, contracts.JobResult{})
-	renewErr := errors.New("lease lost")
-	rec := newReconciler(l, failSched{err: renewErr}, oneDay(), clk, []contracts.Job{job}, runner.WindowRule{CalendarID: "XNYS"}, nil)
-	out := goBackfill(context.Background(), rec, runner.BackfillOptions{}, job.started)
-	waitTimers(t, clk, 3) // the lease renewal, the heartbeat and the deadline timer
-	clk.Advance(beat)
-	got := <-out
-	if !errors.Is(got.err, renewErr) {
-		t.Fatalf("err %v", got.err)
-	}
-	runs := l.runs[bfDay]
-	if len(runs) != 1 || runs[0].ReasonCode != "abandoned_stop" {
-		t.Fatalf("runs %+v", runs)
-	}
-	job.mu.Lock()
-	defer job.mu.Unlock()
-	if errors.Is(job.cause, errConsoleStop) || errors.Is(job.cause, errConsoleBound) {
-		t.Fatalf("cause %v is tagged", job.cause)
-	}
-}
