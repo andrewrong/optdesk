@@ -256,19 +256,18 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
-	under := openUnderlyingReader(ctx, a, dsn, track)
+	under, ok := openUnderlyingReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
 	jobReq := openJobRequestReader(ctx, a, dsn, track)
 	sessions, ok := openSessionReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
-	var bars bar.PriceBarReader
-	if a.deps.openBar != nil {
-		bs, err := a.deps.openBar(ctx, dsn)
-		if !track(bs, err) {
-			return fail()
-		}
-		bars = bs
+	bars, ok := openBarReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
 	}
 	rd := siteReaders{
 		bars: bars, marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
@@ -618,4 +617,16 @@ func openMarkReader(ctx context.Context, a *app, dsn string, track func(io.Close
 		return nil
 	}
 	return ms
+}
+
+// openBarReader opens the price bar reader when deps has an opener, else it is nil; a failed open is false.
+func openBarReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (bar.PriceBarReader, bool) {
+	if a.deps.openBar == nil {
+		return nil, true
+	}
+	bs, err := a.deps.openBar(ctx, dsn)
+	if !track(bs, err) {
+		return nil, false
+	}
+	return bs, true
 }

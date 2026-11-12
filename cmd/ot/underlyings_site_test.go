@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -192,4 +193,125 @@ type errReader struct{}
 func (errReader) Current(context.Context) ([]underlying.Row, error) { return nil, errors.New("down") }
 func (errReader) History(context.Context, int) ([]underlying.Row, error) {
 	return nil, errors.New("down")
+}
+
+// Check and Add make the fake an underlying.HeldAdder: GBP has no market, anything else is US:SYMBOL.
+func (s *fakeUnderlyingStore) Check(symbol, currency string) (string, error) {
+	if currency == "GBP" {
+		return "", fakeInvalid{why: "currency GBP has no market"}
+	}
+	return "US:" + symbol, nil
+}
+
+func (s *fakeUnderlyingStore) Add(context.Context, string, string) (bool, error) { return false, nil }
+
+// fakeInvalid is the underlying.InvalidError of the fake.
+type fakeInvalid struct{ why string }
+
+func (e fakeInvalid) Error() string { return "invalid: " + e.why }
+func (e fakeInvalid) Field() string { return "currency" }
+func (e fakeInvalid) Why() string   { return e.why }
+
+// positionsOf serves fixed positions, or err, on every day.
+type positionsOf struct {
+	rows []store.Position
+	err  error
+}
+
+func (p positionsOf) Positions(context.Context, string, string) ([]store.Position, error) {
+	return p.rows, p.err
+}
+
+func (positionsOf) Values(context.Context, string, string) ([]store.AccountValue, error) {
+	return nil, nil
+}
+
+func (positionsOf) Executions(context.Context, string, string, string) ([]store.Execution, error) {
+	return nil, nil
+}
+
+// underlyingsGaps builds the page over an empty list and the account and returns the texts of its gaps.
+func underlyingsGaps(t *testing.T, acct positionsOf) []string {
+	t.Helper()
+	a, _ := testApp(t, underlyingsEnv)
+	rd := siteReaders{underlying: &fakeUnderlyingStore{}, account: acct, aliases: []string{"main"}}
+	out, err := buildUnderlyingsPage(context.Background(), a, fakeClock{postNow}, "", rd, underlyingsExtras{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Gaps []struct{ Text string } `json:"gaps"`
+	}
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	var texts []string
+	for _, g := range p.Gaps {
+		if strings.HasPrefix(g.Text, "Editing is off") {
+			continue // the read-only notice, not a held gap
+		}
+		texts = append(texts, g.Text)
+	}
+	return texts
+}
+
+func TestUnderlyingsPageGapForHeldOption(t *testing.T) {
+	t.Parallel()
+	got := underlyingsGaps(t, positionsOf{rows: []store.Position{{Symbol: "AAA", SecType: "option", Quantity: "1", Currency: "USD"}}})
+	if len(got) != 1 || !strings.Contains(got[0], "AAA") {
+		t.Fatalf("gaps = %q", got)
+	}
+}
+
+func TestUnderlyingsPageRefusedReason(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		pos  store.Position
+		want string
+	}{
+		{store.Position{Symbol: "UKX", SecType: "stock", Quantity: "5", Currency: "GBP"}, "currency GBP has no market"},
+		{store.Position{Symbol: "SPX", SecType: "option", Quantity: "1", Currency: "USD"}, "not supported: index option"},
+		{store.Position{Symbol: "N225", SecType: "option", Quantity: "1", Currency: "JPY"}, "index option, covered by option_eod_jp"},
+	}
+	for _, c := range cases {
+		got := underlyingsGaps(t, positionsOf{rows: []store.Position{c.pos}})
+		if len(got) != 1 || !strings.Contains(got[0], c.want) {
+			t.Errorf("%s: gaps = %q; want %q", c.pos.Symbol, got, c.want)
+		}
+	}
+}
+
+func TestUnderlyingsPageHeldReadFailure(t *testing.T) {
+	t.Parallel()
+	got := underlyingsGaps(t, positionsOf{err: errors.New("positions down")})
+	if len(got) != 1 || !strings.Contains(got[0], "could not be read") {
+		t.Fatalf("gaps = %q", got)
+	}
+}
+
+// noAdderStore is an underlying.Store whose Check and Add are hidden.
+type noAdderStore struct {
+	underlying.Store
+	closed *bool
+}
+
+func (s noAdderStore) Close() error { *s.closed = true; return nil }
+
+func TestUnderlyingStoreWithoutHeldAdderIsAStartupError(t *testing.T) {
+	t.Parallel()
+	a, logs := testApp(t, underlyingsEnv)
+	var closed bool
+	a.deps.openUnderlying = func(context.Context, string) (underlying.Store, error) {
+		return noAdderStore{Store: &fakeUnderlyingStore{}, closed: &closed}, nil
+	}
+	rd, ok := openUnderlyingReader(context.Background(), a, "dsn", func(io.Closer, error) bool { return true })
+	if ok || rd != nil {
+		t.Fatalf("ok=%v reader=%v; want a start-up error", ok, rd)
+	}
+	if !closed {
+		t.Error("the store was not closed")
+	}
+	if strings.Count(logs.String(), "level=WARN") != 1 {
+		t.Errorf("log = %q; want one Warn line", logs)
+	}
 }
