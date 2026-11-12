@@ -27,7 +27,7 @@ func (r riskAccount) Positions(_ context.Context, alias, day string) ([]store.Po
 	if alias != "main" || day != "2026-11-05" {
 		return []store.Position{}, nil
 	}
-	return []store.Position{{Symbol: "AAA", SecType: "STK", Currency: "USD", ConID: 1, Quantity: "10",
+	return []store.Position{{Symbol: "AAA", SecType: "stock", Currency: "USD", ConID: 1, Quantity: "10",
 		CapturedAt: time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC)}}, nil
 }
 

@@ -220,7 +220,7 @@ func TestCompaniesHeldFromPositions(t *testing.T) {
 	for name, day := range map[string]string{"page day": "2026-11-05", "day before": "2026-11-04", "six days before": "2026-10-30"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			p, body := buildHeld(t, heldAccount{byDay: map[string][]store.Position{day: {stk("AAA", "STK", "100")}}})
+			p, body := buildHeld(t, heldAccount{byDay: map[string][]store.Position{day: {stk("AAA", "stock", "100")}}})
 			if p.Header.HeldCount == nil || *p.Header.HeldCount != 1 || p.Holdings == nil || len(p.Holdings.Rows) != 1 {
 				t.Fatalf("held: %s", body)
 			}
@@ -233,7 +233,7 @@ func TestCompaniesHeldFromPositions(t *testing.T) {
 
 func TestCompaniesHeldIgnoresOptionsAndZero(t *testing.T) {
 	t.Parallel()
-	p, body := buildHeld(t, heldAccount{byDay: map[string][]store.Position{"2026-11-05": {stk("AAA", "OPT", "-1"), stk("BBB", "STK", "0")}}})
+	p, body := buildHeld(t, heldAccount{byDay: map[string][]store.Position{"2026-11-05": {stk("AAA", "option", "-1"), stk("BBB", "stock", "0")}}})
 	if p.Header.HeldCount == nil || *p.Header.HeldCount != 0 || len(p.WatchList.Rows) != 2 {
 		t.Fatalf("%s", body)
 	}
