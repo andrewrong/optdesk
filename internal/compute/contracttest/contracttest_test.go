@@ -251,6 +251,10 @@ func (f fakeFigures) Ratio(id string, _, _ compute.Series, d contracts.Day) comp
 	return f.figure("Ratio", id, d)
 }
 
+func (f fakeFigures) Combine(id string, _ []compute.Figure, d contracts.Day) compute.Figure {
+	return f.figure("Combine", id, d)
+}
+
 func figuresOf(s *script) compute.NewFiguresFunc {
 	return func(_ compute.Stats, _ compute.Rolling, _ compute.SeriesOps, r compute.Rules) compute.Figures {
 		return fakeFigures{s, r}

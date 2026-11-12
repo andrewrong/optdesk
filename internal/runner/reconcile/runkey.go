@@ -2,6 +2,7 @@ package reconcile
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -22,9 +23,27 @@ const (
 	beat = 30 * time.Second
 	// reasonAbandonedStop is the reason of a run cut with no rows returned (Decision 10).
 	reasonAbandonedStop = "abandoned_stop"
+	// reasonConsoleStop is the reason of a key cut by a console stop (a deploy cancel or the key's own
+	// console deadline): no crash strike, no attempt, no gap, which no reader counts.
+	reasonConsoleStop = "console_stop"
 	// defaultRunBound is the run bound of a job that has no Bounded method.
 	defaultRunBound = 30 * time.Minute
 )
+
+// consoleKey marks a key context made by BackfillWith; RunKey only reads it.
+type consoleKey struct{}
+
+var (
+	// errConsoleStop is the cause of the key context cancelled by the turn's own context (a deploy).
+	errConsoleStop = errors.New("console stop")
+	// errConsoleBound is the cause of a marked key context cut at the key's own deadline.
+	errConsoleBound = errors.New("console key bound")
+)
+
+// consoleCut reports whether cause is one of the two console stops.
+func consoleCut(cause error) bool {
+	return errors.Is(cause, errConsoleStop) || errors.Is(cause, errConsoleBound)
+}
 
 type keyRunner struct {
 	ops store.OpsLedger
@@ -62,19 +81,25 @@ func (k *keyRunner) RunKey(
 		return rec, err
 	}
 
-	runCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	runCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	// A deadline that is not after the start (a run begun after the window close and its
 	// bound) cuts nothing: that case is as unbounded as it was before the key runner, and
 	// the follow-up of the design settles its bound.
 	if deadline.After(now) {
-		cut := k.clk.AfterFunc(deadline.Sub(now), cancel)
+		// A console key is cut for the console's own bound; any other cut is a plain cancel (a strike).
+		var cause error
+		if ctx.Value(consoleKey{}) != nil {
+			cause = errConsoleBound
+		}
+		cut := k.clk.AfterFunc(deadline.Sub(now), func() { cancel(cause) })
 		defer cut.Stop()
 	}
 	stop := k.heartbeat(wctx, runCtx, rec)
 
 	res := job.Run(runCtx, day, []contracts.ExpectedKey{key})
 	cutNow := runCtx.Err() != nil
+	console := cutNow && consoleCut(context.Cause(runCtx))
 	stop()
 
 	rec.FinishedAt = k.clk.Now()
@@ -83,9 +108,15 @@ func (k *keyRunner) RunKey(
 	switch {
 	case cutNow && res.Returned > 0:
 		rec.Status = store.RunPartial
+		if console {
+			rec.ReasonCode = reasonConsoleStop
+		}
 	case cutNow:
 		rec.Status = store.RunAbandoned
 		rec.ReasonCode = reasonAbandonedStop
+		if console {
+			rec.ReasonCode = reasonConsoleStop
+		}
 	default:
 		rec.Status = store.RunDone
 		var err error
@@ -244,6 +275,10 @@ func runBound(job contracts.Job) time.Duration {
 	}
 	return defaultRunBound
 }
+
+// holdBound is how far ahead the console looks for a slot start before it runs a key of job: the run
+// bound of the job plus the timeouts of what follows the request (holdMargin).
+func holdBound(job contracts.Job) time.Duration { return runBound(job) + holdMargin }
 
 // deadlineFor is the end of a run: max(CloseAt, start) + the run bound of the job (Decision 8
 // of docs/design/scheduler.md), where start is now, the instant the run begins. A run that
