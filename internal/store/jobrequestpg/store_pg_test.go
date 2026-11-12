@@ -23,7 +23,7 @@ import (
 
 const rolePassword = "pg-test-only"
 
-var testRoles = []string{"ot_owner", "ot_ro_pages", "ot_runner", "ot_w_settings", ""}
+var testRoles = []string{"ot_owner", "ot_ro_pages", "ot_runner", "ot_w_settings"}
 
 // connURL builds the URL of database dbname on the server the libpq variables name; user "" is the administrator.
 func connURL(t *testing.T, dbname, user string) string {
