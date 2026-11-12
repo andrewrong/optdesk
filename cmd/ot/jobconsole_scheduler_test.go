@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/jonboulle/clockwork"
@@ -249,5 +250,35 @@ func TestWrapperForwardsClaimConsole(t *testing.T) {
 	off := &consoleReconciler{sw: sw}
 	if runs, err := off.ClaimConsole(t.Context()); len(runs) != 0 || err != nil {
 		t.Fatalf("console off: %v %v", runs, err)
+	}
+}
+
+type lockRec struct{ noopRec }
+
+func TestSwapDuringRunKeepsJobLock(t *testing.T) {
+	t.Parallel()
+	newRec := func(
+		store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
+		return lockRec{}, nil
+	}
+	var seen []runner.JobLocks
+	withLocks := func(_ runner.Reconciler, _ runner.Backfiller, l runner.JobLocks) { seen = append(seen, l) }
+	build := newBuild(newRec, withLocks, shared.NewJobLocks(), nil, nil, nil, clockwork.NewFakeClock(), nil, nil)
+	build(nil)
+	build(nil) // a swap
+	if len(seen) != 2 || seen[0] == nil || seen[1] == nil {
+		t.Fatalf("sets %v", seen)
+	}
+	unlock, ok := seen[0].TryLock("job_a")
+	if !ok {
+		t.Fatal("the first set refused a free job")
+	}
+	if _, ok := seen[1].TryLock("job_a"); ok {
+		t.Fatal("the second set took a job the first one holds")
+	}
+	unlock()
+	if _, ok := seen[1].TryLock("job_a"); !ok {
+		t.Fatal("the job stayed locked after unlock")
 	}
 }
