@@ -4,6 +4,8 @@ package broker
 import (
 	"context"
 	"time"
+
+	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
 // Kind is the kind of a snapshot request, one of the four kinds of ibkr.v1.
@@ -256,3 +258,19 @@ type HistoryClient interface {
 
 // NewHistoryFunc connects a HistoryClient to the service at socketPath.
 type NewHistoryFunc func(ctx context.Context, socketPath string, o Options) (HistoryClient, error)
+
+// ContractLister lists the real contracts of one underlying and expiry. It is separate from Broker;
+// the client of grpcbroker.Dial implements both. Errors are contracts.TypedError as for Broker.
+type ContractLister interface {
+	// ListContracts returns the contracts, each with its ConID, Strike and Multiplier, of underlying
+	// (a stock or index with a ConID) at expiry and tradingClass; a contract of another class is
+	// left out. right is "C", "P" or empty for both. It is one call with no strike. A service
+	// that does not serve the call gives an error that matches ErrNotServed with errors.Is.
+	ListContracts(ctx context.Context, underlying Contract, expiry contracts.Day, right, tradingClass string) ([]Contract, error)
+}
+
+// notServedError is the type of ErrNotServed; its Error method is in errors.go.
+type notServedError string
+
+// ErrNotServed is the service not serving ListContracts (an older pyside answers UNIMPLEMENTED).
+const ErrNotServed = notServedError("broker: contract listing is not served")
