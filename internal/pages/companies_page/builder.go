@@ -229,10 +229,33 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 	if err := cfg.fillBlocks(ctx, &vm, today); err != nil {
 		return nil, err
 	}
+	if err := cfg.fillStatus(&vm, today, generatedAt); err != nil {
+		return nil, err
+	}
 	vm.Header.Title = pageTitle
 	vm.Header.DataDay = string(today)
 	vm.Header.Line = fmt.Sprintf("%s · watching %d companies", string(today)[5:], len(cfg.Subjects))
 	return json.Marshal(vm)
+}
+
+// fillStatus sets data_times to the page day at 00:00 and run_status to partial while the page
+// has a gap, an unvalued line or a block that is still a gap.
+func (c Config) fillStatus(vm *viewModel, today contracts.Day, generatedAt time.Time) error {
+	day, err := time.ParseInLocation("2006-01-02", string(today), c.zoneAt(generatedAt))
+	if err != nil {
+		return fmt.Errorf("companies_page: today %q: %w", today, err)
+	}
+	vm.DataTimes = []sourceTime{{Source: "companies", DataTime: day.Format("2006-01-02T15:04:05-07:00")}}
+	if len(vm.Gaps) > 0 || vm.Unvalued != nil || isGap(vm.Core) || isGap(vm.Diagnosis) || isGap(vm.Questions) {
+		vm.RunStatus = "partial"
+	}
+	return nil
+}
+
+// isGap reports whether a block is still the gap value Build started it with.
+func isGap(block any) bool {
+	_, ok := block.(gap)
+	return ok
 }
 
 // fillBlocks builds the core, diagnosis and questions blocks; they stay gaps while a reader or
