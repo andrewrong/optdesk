@@ -23,8 +23,6 @@ const (
 	finishTimeout = 30 * time.Second
 	// syncTimeout bounds the SyncKeys after a request.
 	syncTimeout = 2 * time.Minute
-	// defaultRunBound is the bound of a job without runner.Bounded.
-	defaultRunBound = 30 * time.Minute
 	// warnEvery is the least gap between two warn lines about the store.
 	warnEvery = time.Minute
 	// queueLimit is how many waiting requests one turn reads.
@@ -74,8 +72,20 @@ func (h *consoleHost) set(jobs []contracts.Job, bf runner.ForceBackfiller) {
 }
 
 // ConsoleTurn is one turn of the queue (runner.ConsoleTurner); the order of it is in turn.go.
-func (h *consoleHost) ConsoleTurn(ctx context.Context, hold runner.SlotHold) (bool, error) {
-	return h.turn(ctx, hold)
+// The slot hold is ignored: the console no longer holds a request for a slot.
+func (h *consoleHost) ConsoleTurn(ctx context.Context, _ runner.SlotHold) (bool, error) {
+	return h.turn(ctx)
+}
+
+// ClaimConsole claims the first request of the queue left after the withdrawn are finished, and returns one
+// ConsoleRun for it (none when the queue holds nothing to take). It starts no goroutine; the ticker runs the
+// ConsoleRun. A store failure is warned and ends the claim with no run, as in ConsoleTurn.
+func (h *consoleHost) ClaimConsole(ctx context.Context) ([]runner.ConsoleRun, error) {
+	_, run := h.claimNext(ctx)
+	if run == nil {
+		return nil, nil
+	}
+	return []runner.ConsoleRun{run}, nil
 }
 
 // current returns the job set and the backfiller, and whether the host has started.
