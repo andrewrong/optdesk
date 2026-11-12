@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -140,18 +141,16 @@ func runOnce(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	clk := a.deps.newClock()
+	ctx, clk := context.Background(), a.deps.newClock()
 	day, err := dayOrDefault(clk, *dayFlag)
 	if err != nil {
 		return err
 	}
-	fence, err := holdOffScheduler(ctx, a, cfg, "run-once", "run-once refused: ot scheduler holds the lock or the lock cannot be taken; check ot scheduler status")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = fence.Close() }()
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
+		var ref refusal
+		if errors.As(err, &ref) {
+			return err
+		}
 		return fmt.Errorf("run-once %s: %w", day, err)
 	}
 	return nil
@@ -162,21 +161,52 @@ func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfi
 	check := func(ledger store.OpsLedger) error {
 		cur, err := ledger.Cursor(ctx)
 		if err != nil {
-			return fmt.Errorf("read reconcile cursor failed")
+			return errors.New("read reconcile cursor failed")
 		}
 		if cur.Day != "" && day <= cur.Day {
 			return fmt.Errorf("day %s is at or before the cursor %s: nothing to reconcile; use ot backfill --day %s", day, cur.Day, day)
 		}
 		return nil
 	}
+	// No fence: Reconcile holds and renews the run lease, so only a run of the same job refuses this one.
+	fw := a.deps.newFwClock()
+	sl, err := a.deps.openSchedulerLedger(ctx, cfg.runnerDSN)
+	if err != nil {
+		return fmt.Errorf("open scheduler ledger with %s failed", store.DSNEnvRunner)
+	}
+	defer func() { _ = sl.Close() }()
 	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
 		js := w.runnable(a.log)
-		rec := a.deps.newRunner(w.ledger, w.cal, clk, js, runner.WindowRule{})
+		kr := a.deps.newKeyRunner(w.ledger, sl, fw)
+		rec, _ := a.deps.newReconciler(w.ledger, sl, w.cal, fw, js, runner.WindowRule{}, kr)
 		if err := rec.Reconcile(ctx, day); err != nil {
+			var te contracts.TypedError
+			if errors.As(err, &te) && te.Kind() == contracts.Retryable {
+				return leaseRefusal(ctx, w.ledger, js, day, fw.Now())
+			}
 			return err
 		}
 		return printOutcomes(ctx, a.stdout, w.ledger, js, day, w.off[jobEarningsRefresh])
 	})
+}
+
+type refusal string // an answer run-once gives as it stands, without the "run-once <day>:" prefix
+
+func (r refusal) Error() string { return string(r) }
+
+// leaseRefusal names the job whose plan holds the dataset of a live run of day; no DSN, no ledger error.
+func leaseRefusal(ctx context.Context, ledger store.OpsLedger, js []contracts.Job, day contracts.Day, now time.Time) error {
+	runs, _ := ledger.Runs(ctx, day)
+	for _, r := range runs {
+		for _, j := range js {
+			keys, _, err := j.Plan(ctx, day)
+			if r.Status == store.RunRunning && r.LeaseUntil.After(now) && err == nil &&
+				slices.ContainsFunc(keys, func(k contracts.ExpectedKey) bool { return k.DatasetID == r.Key.DatasetID }) {
+				return refusal("run-once refused: job " + j.ID() + " is running (dataset " + r.Key.DatasetID + "); retry when it has finished")
+			}
+		}
+	}
+	return refusal("run-once refused: the runner lease is held by another run; retry in a minute")
 }
 
 // wiring is what run-once, backfill and ot scheduler build from the open stores.
@@ -422,20 +452,6 @@ func dialOrStandIn(ctx context.Context, a *app, socketPath string) (broker.Broke
 		return unreachableBroker{}, false
 	}
 	return b, true
-}
-
-// holdOffScheduler takes the instance fence and keeps it until the caller closes it: a hand command refuses
-// while ot scheduler holds it (Decision 6). The error texts hold no DSN.
-func holdOffScheduler(ctx context.Context, a *app, cfg runOnceConfig, who, refusal string) (store.Fence, error) {
-	inst, err := a.deps.openFence(ctx, cfg.runnerDSN)
-	if err != nil {
-		return nil, fmt.Errorf("open instance fence with %s failed", store.DSNEnvRunner)
-	}
-	fence, err := inst.TryLock(ctx, who)
-	if err != nil {
-		return nil, errors.New(refusal)
-	}
-	return fence, nil
 }
 
 // openSessionDays opens the window store with the runner line and the store of calendar_refresh with the loader

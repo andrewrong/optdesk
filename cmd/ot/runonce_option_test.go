@@ -348,16 +348,12 @@ func newRig(t *testing.T, env string) *rig {
 		r.snapRes, r.snapW = res, w
 		return brokerJob{Job: namedJob{id: "quote_snapshot"}, b: b}, r.fail["snapjob"]
 	}
-	d.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, rule runner.WindowRule) runner.Reconciler {
-		r.jobs, r.rule = js, rule
-		return recReconciler{r}
-	}
 	fakeBackfillDeps(r.a, &fakeBackfiller{}, &fakeKeySyncer{})
 	d.newReconciler = func(
 		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, rule runner.WindowRule, _ runner.KeyRunner,
 	) (runner.Reconciler, runner.Backfiller) {
-		r.jobs, r.backRule = js, rule
-		return nil, &fakeBackfiller{}
+		r.jobs, r.rule, r.backRule = js, rule, rule
+		return recReconciler{r}, &fakeBackfiller{}
 	}
 	return r
 }

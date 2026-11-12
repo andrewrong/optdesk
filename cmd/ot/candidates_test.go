@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/jonboulle/clockwork"
 	"io"
 	"slices"
 	"strings"
@@ -100,11 +101,15 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
-	a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, _ runner.WindowRule) runner.Reconciler {
+	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	a.deps.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	a.deps.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		for _, j := range js {
 			ids = append(ids, j.ID())
 		}
-		return recRunner{&day}
+		return recRunner{&day}, nil
 	}
 	if err := runOnce(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
@@ -134,11 +139,15 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
-	a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, _ runner.WindowRule) runner.Reconciler {
+	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	a.deps.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	a.deps.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		for _, j := range js {
 			ids = append(ids, j.ID())
 		}
-		return recRunner{&day}
+		return recRunner{&day}, nil
 	}
 	if err := runOnce(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)

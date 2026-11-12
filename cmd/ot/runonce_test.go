@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/jonboulle/clockwork"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -131,8 +133,11 @@ func (r recRunner) Reconcile(_ context.Context, d contracts.Day) error { *r.day 
 func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 	clk := a.deps.newClock
 	a.deps = deps{
-		openFence: fenceOpener(&fakeInstFence{}),
-		newClock:  clk,
+		openFence:           fenceOpener(&fakeInstFence{}),
+		newClock:            clk,
+		newFwClock:          func() clockwork.Clock { return clockwork.NewFakeClock() },
+		openSchedulerLedger: func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil },
+		newKeyRunner:        func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil },
 		openUnderlying: func(context.Context, string) (underlying.Store, error) {
 			return &fakeUnderlyingStore{rows: []underlying.Row{oneUSRow()}}, nil
 		},
@@ -210,8 +215,10 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 		newQuoteSnapshot: func(broker.Broker, store.InstrumentResolver, store.QuoteSnapshotWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
-		newRunner: func(store.OpsLedger, clock.Calendar, clock.Clock, []contracts.Job, runner.WindowRule) runner.Reconciler {
-			return recRunner{day}
+		newReconciler: func(
+			store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+		) (runner.Reconciler, runner.Backfiller) {
+			return recRunner{day}, nil
 		},
 		openEarningsDates: func(context.Context, string) (store.EarningsDateStore, error) {
 			opened.Add(1)
@@ -409,23 +416,6 @@ func TestRunOnceCursorEmptyAndError(t *testing.T) {
 	}
 	if got != "" || opened.Load() != closed.Load() || opened.Load() == 0 {
 		t.Fatalf("reconciled %q opened %d closed %d", got, opened.Load(), closed.Load())
-	}
-}
-
-func TestRunOnceRefusedWhileSchedulerLive(t *testing.T) {
-	t.Parallel()
-	a, _ := testApp(t, fullEnv)
-	var opened, closed atomic.Int32
-	var got contracts.Day
-	runOnceFakes(a, &opened, &closed, &got)
-	inst := &fakeInstFence{held: true}
-	a.deps.openFence = fenceOpener(inst)
-	err := runOnce(a, []string{"--day", "2026-03-04"})
-	if err == nil || !strings.Contains(err.Error(), "ot scheduler status") {
-		t.Fatalf("err %v", err)
-	}
-	if got != "" || opened.Load() != 0 || inst.count() != 1 {
-		t.Fatalf("reconciled %q, opened %d, tries %d", got, opened.Load(), inst.count())
 	}
 }
 
@@ -705,5 +695,148 @@ func TestRunOnceOptionEodTranslatorWithAccountLine(t *testing.T) {
 	}
 	if c.heldAcct == nil || c.heldTr == nil || c.heldTr != want {
 		t.Fatalf("held reader %v translator %v, want the symbols of the deps", c.heldAcct, c.heldTr)
+	}
+}
+
+// leaseLedger is a ledger whose run lease another owner holds: Acquire fails Retryable with secret text, and Runs
+// returns runs.
+type leaseLedger struct {
+	fakeLedger
+	runs []store.Run
+}
+
+type secretRetryable struct{}
+
+func (secretRetryable) Error() string             { return "secret-ledger-text" }
+func (secretRetryable) Kind() contracts.ErrorKind { return contracts.Retryable }
+
+func (l leaseLedger) Acquire(context.Context, string, time.Duration) (store.Lease, error) {
+	return store.Lease{}, secretRetryable{}
+}
+func (l leaseLedger) Runs(context.Context, contracts.Day) ([]store.Run, error) { return l.runs, nil }
+
+// acquireRunner is a reconciler that takes the run lease of the ledger the wiring built, as Reconcile does.
+type acquireRunner struct{ led store.OpsLedger }
+
+func (r acquireRunner) Reconcile(ctx context.Context, _ contracts.Day) error {
+	_, err := r.led.Acquire(ctx, "owner", time.Minute)
+	return err
+}
+
+// leasePlanJob is a job that plans one key of dataset.
+type leasePlanJob struct {
+	fakeJob
+	id, dataset string
+}
+
+func (j leasePlanJob) ID() string { return j.id }
+func (j leasePlanJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey, string, error) {
+	return []contracts.ExpectedKey{{DatasetID: j.dataset}}, "h", nil
+}
+
+// countSchedLedger counts Close calls.
+type countSchedLedger struct {
+	fakeSchedLedger
+	closed *atomic.Int32
+}
+
+func (l *countSchedLedger) Close() error { l.closed.Add(1); return nil }
+
+// leaseRig is run-once deps whose ledger holds the lease; slClosed counts Close of the scheduler ledger.
+func leaseRig(t *testing.T, runs []store.Run) (a *app, slClosed *atomic.Int32) {
+	t.Helper()
+	a, _ = testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	now := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
+	a.deps.newFwClock = func() clockwork.Clock { return clockwork.NewFakeClockAt(now) }
+	a.deps.openLedger = func(context.Context, string) (store.OpsLedger, error) {
+		return leaseLedger{fakeLedger: fakeLedger{n: &closed}, runs: runs}, nil
+	}
+	a.deps.newComputeFigures = func(
+		computefigures.ComputeStores, compute.Figures, compute.Rules, compute.Units, compute.SeriesOps, compute.Ease, clock.Clock,
+	) (contracts.Job, error) {
+		return leasePlanJob{id: "compute_figures", dataset: "figures.v1"}, nil
+	}
+	slClosed = new(atomic.Int32)
+	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) {
+		return &countSchedLedger{closed: slClosed}, nil
+	}
+	a.deps.newReconciler = func(
+		led store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, _ []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
+		return acquireRunner{led}, nil
+	}
+	return a, slClosed
+}
+
+func TestRunOnceTakesNoFence(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(a, &opened, &closed, &got)
+	a.deps.openFence = func(context.Context, string) (store.InstanceFence, error) {
+		t.Error("openFence called")
+		return nil, errors.New("no fence")
+	}
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != "2026-03-04" {
+		t.Fatalf("reconciled %q", got)
+	}
+}
+
+func TestRunOnceNamesRunningJob(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
+	a, _ := leaseRig(t, []store.Run{
+		{ID: "old", Status: store.RunRunning, LeaseUntil: now.Add(-time.Minute), Key: contracts.ExpectedKey{DatasetID: "other.v1"}},
+		{ID: "live", Status: store.RunRunning, LeaseUntil: now.Add(time.Minute), Key: contracts.ExpectedKey{DatasetID: "figures.v1"}},
+	})
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	want := "run-once refused: job compute_figures is running (dataset figures.v1); retry when it has finished"
+	if err == nil || err.Error() != want {
+		t.Fatalf("err %v, want %q", err, want)
+	}
+	if strings.Contains(err.Error(), "secret-ledger-text") {
+		t.Fatalf("err holds the ledger text: %v", err)
+	}
+}
+
+func TestRunOnceLeaseHeldNoRun(t *testing.T) {
+	t.Parallel()
+	a, _ := leaseRig(t, nil)
+	err := runOnce(a, []string{"--day", "2026-03-04"})
+	if err == nil || !strings.HasPrefix(err.Error(), "run-once refused:") || !strings.Contains(err.Error(), "runner lease is held by another run") ||
+		strings.Contains(err.Error(), "secret-ledger-text") {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func TestRunOnceClosesLedger(t *testing.T) {
+	t.Parallel()
+	a, slClosed := leaseRig(t, nil)
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err == nil {
+		t.Fatal("want a refusal")
+	}
+	if slClosed.Load() != 1 {
+		t.Fatalf("refusal path: scheduler ledger closed %d times", slClosed.Load())
+	}
+	b, _ := testApp(t, fullEnv)
+	var opened, closed atomic.Int32
+	var got contracts.Day
+	runOnceFakes(b, &opened, &closed, &got)
+	var sc atomic.Int32
+	b.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) {
+		return &countSchedLedger{closed: &sc}, nil
+	}
+	if err := runOnce(b, []string{"--day", "2026-03-04"}); err != nil {
+		t.Fatal(err)
+	}
+	if sc.Load() != 1 {
+		t.Fatalf("success path: scheduler ledger closed %d times", sc.Load())
 	}
 }
