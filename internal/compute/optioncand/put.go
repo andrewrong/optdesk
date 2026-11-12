@@ -13,11 +13,11 @@ const (
 	daysPerYear   = 365
 )
 
-// buyPriceGate: strike minus bid (a missing bid counts as no premium) is at most the buy price.
+// buyPriceGate: with no usable buy price it passes (owner 2026-11-12); otherwise strike minus bid (a missing bid counts as no premium) is at most the buy price.
 func buyPriceGate(in compute.CandidateInput, strike, bid *big.Rat) compute.GateResult {
 	buy, ok := parseDec(in.BuyPrice)
 	if !ok {
-		return gate("buy_price", compute.GateBlock, "no_buy_price")
+		return gate("buy_price", compute.GatePass, "") // marked no_buy_price by evaluatePut
 	}
 	net := new(big.Rat).Sub(strike, bid)
 	if net.Cmp(buy) > 0 {
@@ -49,7 +49,8 @@ func quoteGate(q compute.OptionQuote, p compute.CandidateParams, bid, ask *big.R
 	if spread.Cmp(new(big.Rat).Mul(maxSpread, mid)) > 0 {
 		return block("wide_spread")
 	}
-	if q.OpenInterest < p.MinOpenInterest {
+	// 0 is an open interest that was not captured (marked no_open_interest), not a block
+	if q.OpenInterest > 0 && q.OpenInterest < p.MinOpenInterest {
 		return block("low_open_interest")
 	}
 	if q.MarketDataType != 1 && q.MarketDataType != 2 {
