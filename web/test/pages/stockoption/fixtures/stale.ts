@@ -1,4 +1,4 @@
-import type { StockOptionPage } from '../../../../src/generated/stock_option_page.v1'
+import type { StockOptionPage } from '../../../../src/generated/stock_option_page.v3'
 import { ok } from './ok'
 
 export const stale = {

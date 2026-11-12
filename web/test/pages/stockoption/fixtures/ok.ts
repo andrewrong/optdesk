@@ -1,8 +1,8 @@
-import type { StockOptionPage } from '../../../../src/generated/stock_option_page.v1'
+import type { StockOptionPage } from '../../../../src/generated/stock_option_page.v3'
 
 export const ok = {
   schema: 'stock_option_page',
-  schema_version: 1,
+  schema_version: 3,
   build_id: 'build-1',
   run_id: 'run-1',
   run_status: 'ok',
@@ -68,6 +68,7 @@ export const ok = {
         premium: 'premium 1.20',
         volume: 'volume 120',
         yield_text: 'Return 1.2%',
+        quote: { as_of: '09:30:00', data_type: 'delayed', outside_band: false, skew: false, source: 'open_pull' },
       },
     ],
   },
@@ -90,6 +91,7 @@ export const ok = {
         expiry: '2026-02-20',
         expiry_text: 'Expiry Feb 20',
         cells: ['Feb 20', '95', '1.10', '1.30', '-0.20', '30%', '-0.03', '0.05', '0.12', '120', '1.2%'],
+        quote: { as_of: '09:30:00', data_type: 'delayed', outside_band: false, skew: false, source: 'open_pull' },
       },
     ],
   },
@@ -102,6 +104,22 @@ export const ok = {
       progress: { done: '72.0', mark: '50', note: 'Progress note: past the target line' },
     },
   ],
+  refresh: { enabled: true, fresh_count: 1, notice: null, symbols: ['SMPL'], total_count: 1 },
+  vol_view: {
+    name: 'Volatility view SMPL',
+    rows: [
+      { label: 'Implied vol', text: 'IV 24.1%', data_day: '2026-01-05', gap: '' },
+      { label: 'Realised vol 20d', text: 'RV20 19.0%', data_day: '2026-01-05', gap: '' },
+      { label: 'Realised vol 60d', text: 'RV60 21.0%', data_day: '2026-01-05', gap: '' },
+      { label: 'Realised vol 120d', text: 'RV120 22.0%', data_day: '2026-01-05', gap: '' },
+      { label: 'Forecast vol', text: 'Forecast 20.5%', data_day: '2026-01-05', gap: '' },
+      { label: 'Vol edge', text: 'Edge +3.6 points', data_day: '2026-01-05', gap: '' },
+      { label: 'IV percentile', text: 'IVP 38', data_day: '2026-01-05', gap: '' },
+      { label: 'Forecast error', text: '', data_day: '', gap: 'no_input' },
+    ],
+    method: 'Method: the forecast is a blend of realised vol',
+    coaching: 'Coaching: implied is above the forecast',
+  },
   notice: 'Notice: see the card first',
   shared_gap: null,
   footer: 'Footer: made from archived quotes',

@@ -1,4 +1,4 @@
-import type { StockOptionPage } from '../../../../src/generated/stock_option_page.v1'
+import type { StockOptionPage } from '../../../../src/generated/stock_option_page.v3'
 import { ok } from './ok'
 
 export const gap = {
@@ -10,6 +10,19 @@ export const gap = {
   maps: [],
   contracts: { ...ok.contracts, rows: [], empty: 'Contracts empty no put fetched' },
   held: [],
+  vol_view: {
+    ...ok.vol_view,
+    rows: [
+      { label: 'Implied vol', text: '', data_day: '', gap: 'no_input' },
+      { label: 'Realised vol 20d', text: '', data_day: '', gap: 'no_input' },
+      { label: 'Realised vol 60d', text: '', data_day: '', gap: 'no_input' },
+      { label: 'Realised vol 120d', text: '', data_day: '', gap: 'no_input' },
+      { label: 'Forecast vol', text: '', data_day: '', gap: 'no_input' },
+      { label: 'Vol edge', text: '', data_day: '', gap: 'no_input' },
+      { label: 'IV percentile', text: '', data_day: '', gap: 'no_input' },
+      { label: 'Forecast error', text: '', data_day: '', gap: 'no_input' },
+    ],
+  },
   notice: null,
   shared_gap: 'Gap the quotes are missing for this run',
 } satisfies StockOptionPage
