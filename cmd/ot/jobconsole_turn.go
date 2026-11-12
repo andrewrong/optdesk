@@ -143,18 +143,11 @@ func (h *consoleHost) runClaimed(ctx context.Context, hold runner.SlotHold, r jo
 	}
 }
 
-// execute checks the request against the table and the job set, and runs it.
+// execute runs the request for any day, with or without force; it refuses only a job id the table lacks.
 func (h *consoleHost) execute(ctx context.Context, hold runner.SlotHold, req jobrequest.Request, jobs []contracts.Job, bf runner.ForceBackfiller) outcome {
-	row, ok := jobRowOf(req.JobID)
-	if !ok || !row.runnable() || (req.Force && !row.Force) {
+	_, ok := jobRowOf(req.JobID)
+	if !ok {
 		return refused(reasonNotRunnable)
-	}
-	allowed, err := dayAllowed(row, h.clk.Now(), req.Day)
-	if err != nil {
-		return refused(reasonNotRunnable)
-	}
-	if !allowed {
-		return refused(reasonNotToday)
 	}
 	var job contracts.Job
 	for _, j := range jobs {
@@ -247,27 +240,6 @@ func keyLines(keys []runner.KeyRun) []jobrequest.KeyLine {
 		})
 	}
 	return out
-}
-
-// dayAllowed applies the day rule of the row: an any-day job takes a day not after today of the market zone,
-// a today-only job takes today in its own zone.
-func dayAllowed(row jobRow, now time.Time, day string) (bool, error) {
-	if _, err := time.Parse(dayLayout, day); err != nil {
-		return false, err
-	}
-	zone := row.Zone
-	if zone == "" {
-		zone = marketZone
-	}
-	loc, err := time.LoadLocation(zone)
-	if err != nil {
-		return false, err
-	}
-	today := now.In(loc).Format(dayLayout)
-	if row.Kind == kindTodayOnly {
-		return day == today, nil
-	}
-	return day <= today, nil
 }
 
 // turnMax is how long a request of the job can keep the worker: the start phase, the run bound of the first
