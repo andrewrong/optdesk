@@ -17,7 +17,7 @@
       "today": "2026-11-12",
       "note": null,
       "force": false,
-      "force_why": "a present key is never replaced; run missing only",
+      "force_why": "revision rows: a forced run adds a revision that the reader does not prefer; run missing only",
       "why_text": "",
       "needs_text": ""
     },
@@ -93,7 +93,7 @@
     },
     {
       "id": 19,
-      "job": "compute_figures",
+      "job": "calendar_refresh",
       "day": "2026-11-12",
       "force": true,
       "state": "done",
@@ -102,8 +102,8 @@
       "reason": "completed",
       "keys": [
         {
-          "dataset": "figures",
-          "subject": "US:AAPL",
+          "dataset": "calendar",
+          "subject": "US:2026-11-12",
           "outcome": "unconfirmed",
           "outcome_text": "re-run returned 12 rows; the key was already present and the page cannot tell whether anything new was stored",
           "present": "the key is present now",
@@ -113,7 +113,7 @@
     },
     {
       "id": 18,
-      "job": "quote_snapshot",
+      "job": "calendar_refresh",
       "day": "2026-11-12",
       "force": true,
       "state": "done",
@@ -122,8 +122,8 @@
       "reason": "completed",
       "keys": [
         {
-          "dataset": "quotes",
-          "subject": "US:AAPL",
+          "dataset": "calendar",
+          "subject": "US:2026-11-12",
           "outcome": "nothing_found",
           "outcome_text": "the job answered no value (for example outside its slot); the key stays present",
           "present": "the key is present now",

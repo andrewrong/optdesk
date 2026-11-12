@@ -35,3 +35,20 @@ func TestJobConsoleBadVersion(t *testing.T) {
 		t.Errorf("failures = %v, want one /schema_version const", got)
 	}
 }
+
+// TestJobConsoleGoldenForceOnlyForForceJobs: a forced request names a job whose force is true.
+func TestJobConsoleGoldenForceOnlyForForceJobs(t *testing.T) {
+	t.Parallel()
+	g := loadJobConsoleV1(t, "golden")
+	force := map[string]bool{}
+	for _, j := range g["jobs"].([]any) {
+		m := j.(map[string]any)
+		force[m["id"].(string)] = m["force"].(bool)
+	}
+	for _, r := range g["requests"].([]any) {
+		m := r.(map[string]any)
+		if m["force"].(bool) && !force[m["job"].(string)] {
+			t.Errorf("request %v: force on force-no job %v", m["id"], m["job"])
+		}
+	}
+}
