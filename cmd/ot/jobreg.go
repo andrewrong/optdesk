@@ -8,6 +8,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 // Design: docs/design/ot-wire-split.md#Decisions 2 to 4.
@@ -37,6 +38,34 @@ type jobCtx struct {
 	brokerUp bool
 	cal      clock.Calendar
 	extra    *closerSet
+
+	// scheduler is true only when the scheduler wires: a job left out is then recorded as not_wired.
+	scheduler bool
+	// notWired records the jobs left out (nil unless scheduler).
+	notWired *notWiredRecorder
+	// reasons is the reason writer of the ledger of the run (nil when the ledger is not one); a family reads it
+	// through reasonsFor.
+	reasons runview.ReasonWriter
+}
+
+// newJobCtx is the context of one wiring: rw is the reason writer of the ledger (nil when it is not one), and the
+// recorder of not_wired jobs exists only when cfg says the scheduler wires.
+func newJobCtx(cfg runOnceConfig, f *jobFactory, brk broker.Broker, brokerUp bool, cal clock.Calendar, extra *closerSet,
+	rw runview.ReasonWriter) *jobCtx {
+	jc := &jobCtx{cfg: cfg, f: f, brk: brk, brokerUp: brokerUp, cal: cal, extra: extra, reasons: rw, scheduler: cfg.scheduler}
+	if jc.scheduler {
+		jc.notWired = newNotWiredRecorder(rw, f.clk)
+	}
+	return jc
+}
+
+// reasonsFor is the reason writer of the families that write reason rows; a ledger that is not a ReasonWriter is
+// an error naming the job, never a nil port.
+func (jc *jobCtx) reasonsFor(job string) (runview.ReasonWriter, error) {
+	if jc.reasons == nil {
+		return nil, fmt.Errorf("job %s: the ledger cannot write reasons", job)
+	}
+	return jc.reasons, nil
 }
 
 var jobFamilies = map[string]jobFamily{}

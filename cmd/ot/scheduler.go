@@ -90,6 +90,7 @@ func schedulerCmd(a *app, args []string) error {
 		return err
 	}
 	defer func() { _ = fence.Close() }() // the ticker closes it on drain too; Close is safe twice
+	cfg.scheduler = true                 // the one place a job left out is recorded as not_wired
 	err = withWiring(ctx, a, a.deps.newClock(), cfg, nil, func(w wiring) error {
 		return runScheduler(ctx, a, fw, cfg, fence, ln, sender, w, alertsDSN, rules)
 	})
