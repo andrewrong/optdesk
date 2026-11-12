@@ -1,130 +1,146 @@
-# Account identity: the IBKR account id is the key everywhere
+# Account identity: one owner alias per account, from one accounts.toml, mapped at the source edges
 
 Author: the optdesk designer (draft)
 Owner approved: (pending)
 Date: 2026-11-12
-Revision: 1
+Revision: 4
 
-Source: owner 2026-11-12 (ask optdesk-3211): accounts are named differently in different places (gateway side `main`/gateways `account`, Flex ledger side `a`/`b`, pages "alias"); pages cannot join them and the owner cannot tell what a/b are. "Align the names; configure it in ONE place; stop naming accounts everywhere; use the U-prefixed IBKR account number." Dev mode: data may be deleted and re-collected; no time rules.
+Source: owner 2026-11-12 (asks optdesk-3211, optdesk-3212): the owner names each account once, meaningfully (`mine`, `wife`, `daughter`), in ONE config place, keyed to the IBKR U-account id; no `a`/`b`; no per-file names; pages show the owner's alias; positions join the Flex ledger. Dev mode: data may be deleted and re-collected. Revision 2 replaces the id-as-key rewrite (9 issues, 6 modules) by the simpler cut A of the adversarial review: the store key stays `alias`, its value becomes the owner alias.
 
-## What main holds today (names of an account)
+## Today
 
-- Gateways file `account` field = "alias" (pyside `GatewaySpec.account`; proto `AccountResponse.account` and `ExecutionsResponse.account` say "never the account id"; `broker.Account.Alias`). Read in Go by `cmd/ot/account.go:91 accountAliases` (main = the `required` entry) and by `cmd/ot/site_positions.go:43 siteAliasList` for the pages.
-- `OT_ACCOUNT_SOCKETS` `label=socket` (`cmd/ot/account.go:~60 parseAccountSockets`): a second name, the socket label, must equal the alias.
-- Flex: `flex.toml [[account]] alias` (`a`/`b`, `internal/sources/flex/config.go:21,214`) plus `account_env` (the NAME of a variable holding the id); `cmd/ot/optionledger.go:187` builds `Accounts map[number]alias`; `internal/jobs/optionledger/types.go:35`, `sections.go:86` map `st.AccountID` to the alias.
-- Store: column `alias` in `account.capture/position/value/execution` (migrations/0019), `option_candidate` (0018, 0027), `flex_trade` (0022, "alias is the only identity"), `flex_section*` (0024), `position_mark` (0026), and their views. `store.OptionLedgerReader.StoredAliases` (`internal/store/api.go:691`).
-- Readers: `internal/pages/positions_page/builder.go:89,101`, `internal/pages/household_page/builder.go:41,50` (`Config.Aliases`, `alias ""` = main), `internal/pages/option_tracking_page/builder.go:117`, `internal/pages/home_options/member.go:194` (StoredAliases), `cmd/ot/tracking_site.go:48 aliasedLedger`, `cmd/ot/optionledger.go:252` and `ot ledger --alias`, jobs `accountcapture`, `positionmarks`, `optioncandidates`, `optionledger`.
-- The id is dropped on purpose today (pyside-account-b.md Decisions: scrub regex, ib_async log line), so the two sides never meet.
-
-## Goal
-
-One key per account: the IBKR account id (`U0000001` shape). The gateway reports it (managed accounts) and the Flex statement reports it (`accountId`), so no mapping exists anywhere. The ids live only in the runtime store and in one file under `$OT_HOME`; never in code, commits, committed config or fixtures (tests use `U0000001`, `U0000002`).
+- Gateway alias: gateways file `account` (pyside) answers in `AccountResponse.account`/`ExecutionsResponse.account`; `OT_ACCOUNT_SOCKETS` `label=socket` must equal it; `cmd/ot/account.go` `accountAliases`, `cmd/ot/site_positions.go` `siteAliasList`.
+- Flex alias: `flex.toml [[account]] alias` + `account_env` (`internal/sources/flex/config.go`), turned into `map[number]alias` in `cmd/ot/optionledger.go`; `internal/jobs/optionledger` already takes that map as plain data.
+- Pyside already holds the id (`accounts.py _one_account`, `managedAccounts()`); a Flex statement always carries `accountId` (`parse.go`). The two sides differ only in the label they put on it.
 
 ## Decisions
 
-1. The key of an account in every store row, reader, page scope, job key and CLI flag is `account_id` (the U id). The word "alias" in code and schema then means only the owner alias of `accounts.toml`, shown on pages; store columns are `account_id`.
-2. The one config place is `$OT_HOME/accounts.toml`, one line per account, `alias = "U-id"`, the alias chosen by the owner (`mine`, `wife`, `daughter`), plus one line `main = "mine"` naming the main alias (alias regexp `^[a-z][a-z0-9_-]{0,31}$`, as flex's; `main` is reserved; the single letters `a` and `b` are refused so the old names cannot come back). Example: `main = "mine"`, `mine = "U0000001"`, `wife = "U0000002"`. Other configs never name an account by their own name: they refer to it by this alias or by the U id (today none needs to: Decisions 4 to 6). Read by Go only, owned by a new package `internal/accounts` (own implementation of a 30-line parse over the already-used TOML library; no new dependency). It is the allow-list (which accounts the pages, the ledger plan and the flex job handle) and the one map U id to owner alias. The file is a runtime file like `flex.toml`; no example with real ids is committed (an example with `U0000001` is).
-3. The page shows the owner alias with the id: `wife (U0000002)`. The store, code and page scope carry the id; the URL may carry the alias, which resolves to the id at the page edge. an id not in `accounts.toml` is the existing unknown-account gap page. `alias ""` stays "the main account" and means the `main` alias.
-4. Gateway side: the pyside server answers with the account id the gateway reports (the single managed account; two managed accounts stays refused as today). The gateways file `account` field and `broker.Account.Alias` go; `broker.Account` gets `ID`. `token_env` and any env key stay for credentials only and name nothing. Safety nets stay: the id is only in rpc responses and the store, never in a log line (the logger level and the scrub regex stay; the test that asserted an id-shaped string never reaches a response is inverted to assert it reaches the response and no log record).
-5. `OT_ACCOUNT_SOCKETS` becomes a plain list of sockets (`path,path`); the label is not a name of an account. A socket whose gateway reports an id not in `accounts.toml` is skipped with a WARN naming no id; main absent is the existing Retryable failure of account_capture.
-6. Flex: `flex.toml [[account]]` (`alias`, `account_env`) is removed; `flex.toml` keeps `[[login]]` and token env names only. A statement is kept when its `accountId` is in `accounts.toml`, otherwise refused as today's unknown account. The ledger plan has one key per `accounts.toml` account. `FlexAccount` and `OptionLedgerConfig.Accounts map[number]alias` go (the allow-list is a `[]string` of ids).
-7. Existing rows under aliases: delete and re-collect, no mapping. The migration renames column `alias` to `account_id` in every table and view of the list above and deletes all rows of the account-keyed tables (`account.*`, `position_mark`, `option_candidate`, `flex_trade*`, `flex_section*` and their fetch rows) because the old key cannot be turned into an id without a table, which Decision 1 forbids. Flex rows come back by `ot backfill option_ledger` for the Flex window; gateway captures and marks are point-in-time and restart from the next run (dev mode accepts the loss of past captures). The migration and the `ot` step that follows it are run by the window (setup pg, migrate, setup pg) as usual.
-8. `StoredAliases` becomes `StoredAccounts`; every `Config.Aliases` becomes `Accounts []accounts.Account` (id, alias, main). Pages never merge accounts (unchanged).
-9. Push and notify stay account-free (ADR 0010); neither the alias nor the id is used there.
+1. The one config place is `$OT_HOME/accounts.toml`: lines `<alias> = "<U-number>"` (alias `^[a-z][a-z0-9_-]{0,31}$`, id a `U` and 5 to 9 digits) and one line `main = "<alias>"` (`main` is reserved as a key). It lives only under `$OT_HOME`, never committed. The committed example shows `<U-number>`, not a digit string; tests write the file at run time with invented ids built from two pieces (`"U" + "000" + "0001"`), because `scripts/hygiene/main.go` fails any committed `U` plus 6 to 8 digits (the practice of `pyside-account-b.md`).
+2. One reader, one owner: a new module `accounts` (package `internal/accounts`, `api.go` declarations only; implementation in `internal/accounts/toml`) reads the file and answers `Alias(id)`, `Main()`, `Aliases()`. `modules.md` gets the row below (owner-only file, edited with this PR); `ot` adds `accounts` to its depends cell; no other depends cell changes. `cmd/ot` constructs it and hands plain data (alias lists, `map[number]alias`, readers keyed by alias) to sources, jobs and pages, which import nothing new.
+3. The store keeps its `alias` columns and reader parameters; the value stored is the owner alias. `alias ""` stays the main account and means the `main` line. No store interface change.
+4. Pyside reports the raw account id the gateway reports, in the `account` field of both responses (no contracts field change; comment only, not a blocker). It maps nothing and reads no `accounts.toml`. Two managed accounts stays refused by pyside, so one response is one account.
+5. Mapping is per answer, which is per row: each gateway response and each Flex statement (`parse.go` already refuses a statement mixing accounts) carries exactly one account id, and every row under it takes that id's alias; no mapping per socket or per file. A statement with several accounts in a report is several statements and maps each. `OT_ACCOUNT_SOCKETS` becomes a plain list of sockets (no label); a resolver in `cmd/ot` gives the job one reader per `accounts.toml` alias, found by the id each socket's answer reports, cached per socket.
+6. An id not in `accounts.toml` is refused, never stored under a default, `main` or the raw id: the reading is a permanent typed error `unknown account`, which the existing job result and gap page show as the named state `unknown_account` (the text carries no id and the socket index only). Flex does the same per statement as today.
+7. Flex: `cmd/ot` builds `map[number]alias` from the accounts module; `flex.toml [[account]]` and `account_env` become unread, removed from `internal/sources/flex/config.go` in a later entry.
+8. Ids are personal data. Go holds an id only in the accounts module, on the wire and in the resolver's compare; logs, job keys, errors, results, run rows and page JSON use the alias. Proof: a `cmd/ot` test runs the account and ledger wiring with a run-time built invented id and asserts no log record, job key, error text or page JSON contains it; pyside keeps its log scrub and its test.
+9. Old rows are renamed, not deleted: the Flex ledger cannot come back, because the store keeps only `raw_sha256` of a Flex fetch (`0022_optionledger.sql`), not the XML, and a new query has a limited look-back. Migration `0037` creates `ops.rename_account_alias(old text, new text)` which updates the column `alias` from `old` to `new` in `account.capture`, `account.position`, `account.value`, `account.execution`, `account.position_mark`, `candidates.option_candidate`, `optionledger.flex_fetch`, `optionledger.flex_trade_row`, `optionledger.flex_section_row`, `optionledger.flex_section_status` (found by grep for `alias`, each named in the file). The window stops serve and the scheduler, runs `setup pg`, `migrate`, `setup pg`, calls the function once per old alias (`a`, `b`, `main`), creates `accounts.toml`, then starts the new binaries. The function runs as the owner role (the writer roles have no UPDATE), so the window runs it after `migrate`, as it runs `migrate` after a merge; migration `0037` has a `-- +goose Down` that drops the function (it cannot undo a rename). `ops.capture_expected_key` (`0003`) is renamed too if it holds the alias as a column; if its key is hashed its rows stay (Left out).
+10. The two hard-coded owner lists `heldAliases = {"A","B"}` (`internal/jobs/optioneod/held.go`, `internal/jobs/optionopen/inputs.go`) become a list given by the caller; unset means no held names (the behaviour of a nil reader), so nothing breaks between merges; `cmd/ot` passes `book.Aliases()`.
+11. Other users of the word alias keep it, unchanged, as the stored name stays an alias: `internal/compute` interfaces (`AliasFunds`, `trackapi`, `blockapi`), `optionledger/replay.go`, the generated contracts, the cmd site files. Legacy imports (`internal/jobs/cutover/*`, the alias map of `optionledger/importfile.go`, `cmd/ot/accountimport.go`, `ledgerimport.go`) keep `--map from=to`; `from` is the option-trader name, `to` must be an alias of the book (checked in `cmd/ot` only).
+12. Pages show the alias only, never the id; page JSON carries aliases only.
+13. `tools/ot-history-export` refusing an id-shaped alias stays right; `tools/ot-flex-export` selects the column `alias`, which stays. Web and datasets need no change.
 
 ## Modules
 
 | module | change |
 | --- | --- |
-| contracts | proto comments and `account` meaning in `account.proto`; no field added |
-| pyside | return the real id; drop `account` from gateways file; tests |
-| broker | `Account.Alias` to `Account.ID`; Go client |
-| sources | flex config without `[[account]]`; `FlexConfig` without accounts |
-| store | migration rename and delete; `account_id` columns; `StoredAccounts` |
-| jobs | accountcapture, positionmarks, optioncandidates, optionledger use ids |
-| pages | positions_page, household_page, option_tracking_page, home_options take `Accounts` |
-| repo | new `internal/accounts` (config reader, interface file `api.go`) |
-| ot | wiring, `ot ledger --account`, drop `siteAliasList`/`accountAliases` |
-| docs | contracts docs, glossary term |
+| accounts | NEW row, after repo and before ot: `accounts \| internal/accounts/** docs/contracts/accounts.md \| internal/accounts/api.go \| internal/accounts/api_test.go \|  \|` (no depends); layer table row: outside the layers, reads `$OT_HOME/accounts.toml`, provides the id to alias map |
+| repo | `arch.toml` and `.go-arch-lint.yml` gain the `accounts` component and the `ot` edge (derived from the table) |
+| jobs | `optioneod`, `optionopen` take the held alias list |
+| ot | depends cell gains `accounts`; `cmd/ot/accounts.go` wiring; account, optionledger, site_positions, importers |
+| pyside | servicers answer the managed id; gateways `account` no longer read |
+| contracts | comment of `account` in `account.proto` and its generated output |
+| broker | comment of `Account.Alias`, error texts of grpcbroker |
+| sources | flex config without `[[account]]` |
+| store | one migration with the rename function |
 
 ## Interface
 
-- Owning module repo, `internal/accounts/api.go`: `type Account struct { ID, Alias string; Main bool }`; `func Load(path string) (List, error)`; `type List []Account`; methods `Main() Account`, `Find(id string) (Account, bool)`, `ByAlias(alias string) (Account, bool)`, `Display(id string) string` (alias plus id as in Decision 3). Load refuses: no `main` line, a `main` naming an unknown alias, a bad or reserved alias (`main`, `a`, `b`), a repeated id, an id not shaped `^U[0-9]{5,9}$`.
-- Owning module broker: `Account.ID string` replaces `Alias`.
-- Owning module store: every `Reader`/`Writer` method that takes or returns `alias string` takes `accountID string`; `StoredAccounts(ctx) ([]string, error)`.
-- Owning module sources: `sources.FlexConfig` carries tokens only; the statement's `AccountID` is already on `Statement`.
-- Owning module pyside: `AccountResponse.account` and `ExecutionsResponse.account` carry the id; the file `pyside/src/optdesk/ibkr/api.py` updates its docstrings.
+- (interface) `internal/accounts/api.go`, owner accounts: `type Book interface { Alias(id string) (alias string, ok bool); Main() string; Aliases() []string }` and `type ErrUnknownAccount`; `Load` is in `internal/accounts/toml`. Consumed by `cmd/ot` only.
+- File `$OT_HOME/accounts.toml` (Decision 1).
+- Wire: `AccountResponse.account`, `ExecutionsResponse.account` carry the IBKR account id (contracts comment, implemented by pyside, consumed by grpcbroker and the resolver).
+- (interface) `internal/broker/api.go`: comment of `Account.Alias` and `Executions.Alias` only: the value the gateway reports, replaced by the owner alias before a job sees it.
+- Store, jobs, pages, web, datasets: unchanged.
 
 ## Issues
 
-### 1 account-identity-interface (interface)
-Design line: this file. Files: `internal/accounts/api.go`, `internal/accounts/api_test.go`, `internal/broker/api.go`, `internal/broker/api_test.go`, `contracts/proto/ibkr/v1/account.proto` and its generated output, `pyside/src/optdesk/ibkr/api.py`, `pyside/tests/contracts/test_ibkr_api.py`, `internal/store/api.go`, `internal/store/api_test.go`, `docs/contracts/broker.md`, `docs/contracts/store.md`.
-Acceptance:
-1. `internal/accounts/api.go` declares exactly the types and methods of Interface and no logic; its test checks the contract from both sides with fake ids.
-2. `broker.Account` has `ID` and no `Alias`; the comment on it and in `account.proto` says the field is the account id the gateway reports.
-3. `internal/store/api.go` has no identifier or comment word "alias" for an account; `StoredAccounts` replaces `StoredAliases`.
-4. The generated proto output matches the proto source (same commit).
+Entries 1 to 6 are the smallest cut (file, reader, rename, held lists, Flex edge, page join); 7 to 11 follow.
 
-### 2 accounts-config
-Order: after 1. Files: `internal/accounts/**` (not `api.go`), `docs/contracts/accounts.md`.
+### 1 accounts-interface (interface)
+Design line: this file, Decisions 2, 6. Files: `internal/accounts/api.go`, `internal/accounts/api_test.go`.
 Acceptance:
-1. `Load` implements Decision 2 and refuses each case listed in Interface, each with an error that names the line number and never the id.
-2. A test per refusal and one with the reserved aliases `a`, `b`, `main`; all ids in the test files are `U0000001`-style.
-3. No file under the repo other than tests holds a string shaped like an account id (the existing scan passes).
+1. `api.go` declares exactly `Book` and `ErrUnknownAccount` of Interface, no logic; its test checks the contract from both sides with a fake and run-time built invented ids.
 
-### 3 pyside-real-id
-Order: after 1. Files: `pyside/src/optdesk/ibkr/**`, `pyside/tests/**`, `pyside/examples/gateways.example.toml`.
+### 2 accounts-file
+Order: after 1. Files: `internal/accounts/toml/**`, `docs/contracts/accounts.md`.
 Acceptance:
-1. The account servicers put the single managed account id of the gateway in `account` of both responses; the gateways file no longer has or accepts an `account` key (unknown-key refusal test).
-2. A test builds a fake id from two pieces at run time, as before, and asserts it is in the serialized response and in no log record at any level (`test_account_log_has_no_values` keeps its whitelist).
-3. `ruff`, `mypy --strict` and `pytest` are listed under "## Checked by CI".
+1. `Load(path)` refuses, naming the line number and never the id: a missing file, a missing `main`, a `main` naming no alias, a bad alias, the key `main` as an alias, a repeated id, a bad id shape; one test per refusal, files written to `t.TempDir()`.
+2. `Alias` of an id not in the file returns `ok == false`; the doc states the format with `<U-number>` as the example and the window order of Decision 9; no file of the issue holds a digit string shaped like an id.
 
-### 4 store-account-id
-Order: after 1. Files: `migrations/0028_account_id.sql` (next free number), `internal/store/**`.
+### 3 repo-accounts-component
+Order: after 1. Files: `arch.toml`, `.go-arch-lint.yml`.
 Acceptance:
-1. The migration renames `alias` to `account_id` in each table and recreates each view of the list in "What main holds today", and deletes all rows of those tables (Decision 7); a pg test of the rename is under the `pg` tag.
-2. `grep -rniw alias internal/store migrations` after the migration (new file excluded) finds no account column; primary keys keep the same column order with `account_id` in place of `alias`.
-3. Every writer and reader method of the interface takes `accountID`; `StoredAccounts` returns ascending distinct ids.
+1. Both name the component `accounts` (root and implementation package) and allow `cmd/ot` to import it and no other component; the owner's `modules.md` row and `ot` depends cell are the input.
 
-### 5 sources-flex-no-accounts
-Order: after 1. Files: `internal/sources/**`, `docs/contracts/sources.md`.
+### 4 store-rename-function
+Order: none. Files: `migrations/0037_account_alias_rename.sql`, `internal/store/**` tests that list migrations (found by grep for `0036`).
 Acceptance:
-1. `flex.Load` accepts a file with `[[login]]` only and refuses a `[[account]]` table with an unknown-key error; `FlexAccount` is gone from `internal/sources/api.go`.
-2. A statement's `AccountID` is passed through unchanged; the source decides nothing about accounts.
+1. The migration creates only `ops.rename_account_alias(text, text)`, which updates `alias` from old to new in `account.capture`, `account.position`, `account.value`, `account.execution` (`0019`), `account.position_mark` (`0026`), `candidates.option_candidate` (`0018`, `0027`), `optionledger.flex_fetch`, `optionledger.flex_trade_row` (`0022`), `optionledger.flex_section_row`, `optionledger.flex_section_status` (`0024`), and `ops.capture_expected_key` only if its table holds the alias as a column; each named in the file; no table, column or view changes.
+2. The file has a `-- +goose Down` that drops the function.
 
-### 6 jobs-account-id
-Order: after 2, 4, 5 and the broker issue is part of 1 (Go client adapter in this issue). Files: `internal/jobs/accountcapture/**`, `internal/jobs/positionmarks/**`, `internal/jobs/optioncandidates/**`, `internal/jobs/optionledger/**`, `internal/broker/grpcbroker/**`, `docs/contracts/jobs/**`.
+### 5 jobs-held-aliases
+Order: none. Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/**` tests that use `heldAliases`, `internal/jobs/optionopen/inputs.go`, `internal/jobs/optionopen/**` tests that use `heldAliases` (found by grep).
 Acceptance:
-1. The grpc client sets `Account.ID` from the response `account`; no `Alias` remains in `internal/broker/**`.
-2. `accountcapture.Config` takes `Accounts accounts.List` and readers as a list; a row is written under `Account.ID` of the reader's answer; a reader whose id is not in the list is skipped and counted as not usable but not failed; main absent is Retryable (as today).
-3. `optionledger.OptionLedgerConfig` has `Accounts []string`; `sections.go` keeps a statement when `st.AccountID` is in it and refuses it otherwise; Plan has one key per id, sorted.
-4. Job keys, hashes, typed-error texts and result attributes carry `account_id`/the id only where they carried the alias before; no text carries an owner alias.
-5. positionmarks and optioncandidates read and write `account_id` and take `Accounts` from config; no function has a parameter named `alias`.
+1. The two package variables `heldAliases` are gone; each package takes the alias list from its constructor input or `Stored`; unset means no held names.
+2. A test per package gives one alias and shows its positions are read, and gives none and shows no read.
 
-### 7 pages-account-id
-Order: after 2, 4. Files: `internal/pages/**`, `docs/contracts/pages.md`, `contracts/schemas/**` and generated types for the page fields that carry the scope (only if a field name `alias` appears; a rename carries source and output together).
+### 6 ot-flex-edge-and-pages
+Order: after 2, 3, 4, 5. Files: `cmd/ot/accounts.go` (new), `cmd/ot/accounts_test.go` (new), `cmd/ot/optionledger.go`, `cmd/ot/optionledger_test.go`, `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/accountimport.go`, `cmd/ot/accountimport_test.go`, `cmd/ot/ledgerimport.go`, `cmd/ot/ledgerimport_test.go`, the `cmd/ot` files that construct `optioneod` and `optionopen` (found by grep for `NewWithHeld` and `Stored{`), `cmd/ot/testdata/**` holding a flex `[[account]]` (found by grep), `docs/contracts/ot/accounts.md`. `cmd/ot/wire.go` is 795 lines: if wiring needs it, report, do not edit.
 Acceptance:
-1. `positions_page.Build`, `household_page.Build`, `option_tracking_page.Build` and `home_options` take `Config.Accounts accounts.List`; scope strings in the pages are ids; `alias ""` resolves to `Accounts.Main().ID`.
-2. Every place that printed `alias` prints `Accounts.Display(id)`; the page of an id not in the list is the unknown-account gap page as today.
-3. `home_options` and the tracking builder read `StoredAccounts` filtered by the list; no account is merged with another.
+1. `optionledger.go` builds `Accounts map[number]alias` from the book (`internal/jobs/optionledger/map.go` is untouched and keeps mapping `st.AccountID`); it no longer reads `ff.Accounts` or `AccountEnv`; a test shows a statement whose id is not in the book stores no row and is the refused state.
+2. The account pages take the alias list from `book.Aliases()`, main first; the demo profile keeps `["main"]`.
+3. `optioneod` and `optionopen` get `book.Aliases()`.
+4. The importers refuse a `--map` target that is not an alias of the book.
+5. The no-id test of Decision 8 passes for the ledger wiring and the page JSON.
 
-### 8 ot-wiring
-Order: after 3, 6, 7. Files: `cmd/**`, `docs/contracts/ot.md`, `docs/contracts/ot/**`, `tools/ot-flex-export/**`.
+### 7 ot-gateway-resolver
+Order: after 6. Files: `cmd/ot/account.go`, `cmd/ot/account_test.go`, `cmd/ot/accounts.go`, `cmd/ot/accounts_test.go`, `cmd/ot/testdata/**` holding `OT_ACCOUNT_SOCKETS` (found by grep).
 Acceptance:
-1. `accountAliases`, `accountMain`, `siteAliasList` and `parseAccountSockets` are gone; `ot` loads `$OT_HOME/accounts.toml` once through `accounts.Load` for the jobs, the site and the CLI; a missing or invalid file stops `serve` and the jobs with a one-line error naming the file, not an id (the demo profile uses a built-in list of `U0000001`, `U0000002`).
-2. `OT_ACCOUNT_SOCKETS` is a comma list of paths; `OT_IBKR_GATEWAYS` is no longer read by `ot`.
-3. `ot ledger` has `--account <id>` in place of `--alias`; the ledger table prints `Display(id)`.
-4. `cmd/ot/optionledger.go` no longer reads `account_env` values from `.env`.
+1. `OT_ACCOUNT_SOCKETS` parses as a plain list; a `label=` form is refused; `accountAliases`, `accountMain` and `siteAliasList` no longer read the gateways file.
+2. The resolver gives `accountcapture.Config.Readers` one reader per alias whose answers carry the alias; tests with fake readers cover a match, an id not in the book (named state `unknown_account`, nothing stored, no id in the text) and a socket down.
+3. The no-id test of Decision 8 passes for the account wiring.
 
-### 9 docs-glossary
-Order: after 8. Files: `docs/design/pyside-account-b.md` is owner-only and left alone; `docs/contracts/**` is edited in the issues above. This issue edits `docs/glossary.md` (if present) only: "account" is the IBKR account id, "alias" is the owner's name for an account, defined only in `accounts.toml`; `a`/`b`/`mine_account` are retired.
+### 8 pyside-reports-account-id
+Order: after 7. Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/src/optdesk/ibkr/accounts.py` (only if needed), `pyside/examples/gateways.example.toml`, tests under `pyside/tests/` that assert `account` of a gateway or no id in a response (found by grep for `_alias` and `account must be an alias`).
 Acceptance:
-1. The glossary defines account, alias and main, and has no gateway alias or Flex alias entry.
+1. Both servicers answer `str(managedAccounts()[0])` in `account` and no longer read `self._alias`; two managed accounts is still `MultipleAccounts`.
+2. `gateways.py` neither requires nor rejects `account`; no code path uses it.
+3. A test with a fake `ib` shows the id in both responses and in no log record; the existing scrub tests are unchanged.
+
+### 9 contracts-account-field-comment
+Files: `contracts/proto/ibkr/v1/account.proto` and its generated output (`internal/contracts/genpb/ibkr/v1/*`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/*`, same commit).
+Acceptance:
+1. The comments of `account` in both messages say it is the IBKR account id the gateway reports; "never the account id" is gone. No field, number or type changes; the PR body says `Contracts: comment only`, not `unchanged`.
+
+### 10 broker-account-comment (interface)
+Design line: this file, Interface. Order: after 9. Files: `internal/broker/api.go`, `internal/broker/api_test.go`, `internal/broker/grpcbroker/account.go`, `internal/broker/grpcbroker/convert.go`, `internal/broker/grpcbroker/convert_test.go`, `internal/broker/grpcbroker/account_test.go`.
+Acceptance:
+1. The comments of `Account.Alias`, `Executions.Alias` and `AccountClient.Account` say what Interface says; no signature changes; the `permanent(...)` texts say "answer has no account" and the tests match.
+
+### 11 sources-flex-no-account-table
+Order: after 6. Files: `internal/sources/flex/config.go`, `internal/sources/flex/config_test.go`, `internal/sources/flex/testdata/**` holding `[[account]]` (found by grep), `internal/sources/api.go` (the `FlexAccount` type: an interface change, Design line this file), `docs/contracts/sources.md`.
+Acceptance:
+1. `flex.toml` parses with `[[login]]` and token env names only; `FlexConfig` and `api.go` have no `FlexAccount`; a file with `[[account]]` is refused as an unknown table; `parse.go` is untouched.
+
+## Checked by CI
+
+- `scripts/hygiene` (checks.yml): no committed file holds an id-shaped string; the tests of issues 2, 6, 7 build their ids at run time.
+- `go test`, `go-arch-lint` (issue 3 and the `accounts` row), `buf` and generated-output check (issue 9), `go test -tags pg` for the migration of issue 4 (GitHub CI only).
+- `ruff check`, `mypy --strict`, `pytest -n auto` for issue 8.
 
 ## Left out
 
-- Mapping old alias rows to ids: deleted instead (Decision 7). Past gateway captures and marks are lost; Flex rows return by backfill.
-- Account ids in push and morning reports: stay out (ADR 0010).
-- Editing `accounts.toml` from a page: later; the file is the one place for now.
-- `docs/design/pyside-account-b.md` and older designs that say "alias": not rewritten (history); this design supersedes their naming.
-- Gateways with two managed accounts (FA/master): refused as today.
+- Keying the store by id; if an IBKR number changes, the owner edits the id in `accounts.toml`, history keeps its alias.
+- Old run-ledger and expected-key rows of `account_capture` and `option_ledger` (hashed alias keys) are not renamed; if they show as gaps, a follow-up deletes them.
+- Gateway `name` slugs of pyside, flex `[[login]]` names and socket paths stay: they name logins and sockets, not accounts. A gateway with several managed accounts stays refused by pyside.
+- Showing the id on pages; an `ot` command for the rename (the window calls the function).
+
+## Adversarial
+
+Full review: `account-identity-adversarial.md` in the designer's scratchpad (a local file, not committed).
+
+1. Gap against the goal (datasets, web, surviving names, importers, run rows): adopted by keeping the column, so datasets and web need no change (Decision 10); importers in Issue 6.4; run rows in Left out; `name` slugs in Left out.
+2. Id in logs, jobs, page JSON: adopted. Decision 8 and the test in Issues 6 and 7.
+3. Simpler way: adopted, cut A, with the coordinator's change that the reader is one owned module (Decision 2) and the rename replaces the delete. Cut B (id as key) not adopted: it costs eight tables and every page for no owner-visible gain.
+4. Lock-in: the id is not a key, so the case disappears (Left out).
+5. False claims: migration number is 0037; `internal/accounts` gets its row and the `ot` depends cell (Modules) and `arch.toml` entries (issue 3); hygiene scan and held lists are Decisions 1, 10; no issue spans modules; `wire.go` (795) is not edited.
+6. Slip cause: the 6-module interface issue is gone; chain is 1, then 2 and 3, 4, 5 in parallel, then 6, 7, 8; the migration and deploy order is Decision 9.
