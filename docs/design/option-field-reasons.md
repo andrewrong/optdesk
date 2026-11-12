@@ -35,7 +35,7 @@ Meaning, fixed here so the three sides agree: NOT_RECEIVED_RELEASE: no tick for 
     type MissingField struct { Field string; Reason MissingReason; ErrorCode int }
     // Quote gets: Missing []MissingField (nil when pyside reported none)
 
-`grpcbroker.fromQuote` fills it; an UNSPECIFIED reason is a Permanent error, as an unspecified status is. No other interface file changes: `runview` (`internal/store/runview/api.go`) is used as declared. New, outside the interface files:
+`grpcbroker.fromQuote` fills it; an UNSPECIFIED reason is a Permanent error, as an unspecified status is. `String()` is a method body and lives in `internal/broker/missing.go`, not in `api.go`. No other interface file changes: `runview` (`internal/store/runview/api.go`) is used as declared. Two seams are interface entries of the cut (entries 5 and 6 of `## Issues`): they land with entries 1 and 2, before any module issue, and declare:
 
     // internal/jobs/optioneod: hands the job a writer; nil keeps no reason rows.
     func WithReasons(j contracts.Job, w runview.ReasonWriter) (contracts.Job, error) // error when j is not an option_eod job of this package
@@ -53,7 +53,7 @@ Meaning, fixed here so the three sides agree: NOT_RECEIVED_RELEASE: no tick for 
 7. **Where the owner reads it.** `option_data_page.Build` reads `Reasons.ReasonsOn(ctx, chainDay)` where `chainDay` is the session day of the chain it shows, keeps the rows with code `field_missing` or `fields_complete` and `Subject` equal to `Config.Symbol`, and puts each `Detail` first in `notes`, ahead of `Config.Notes`, within the 20 notes of `maxNotes`. When the chain exists, `Reasons` is set, `Symbol` is not empty and no such row exists, the first note is `no field reasons recorded for <chainDay>`. A reader error is an error of `Build`. The schema does not change. The page shows the stored text and computes nothing. The record is the last run of the key; the chain may hold rows of several runs of that day, so a count can differ from the rows shown (see Left out).
 8. **ops_today_page.** `runRow` takes the first reason code of a run as the run's `reason_code`; it skips `field_missing` and `fields_complete` for that choice and keeps their details. The page is not wired in `cmd/ot` today, so this is a guard.
 9. **Wiring.** A new file `cmd/ot/option_field_reasons.go` holds all new code: opening `ops.OpenRuns` with the runner DSN (writer) and with the pages DSN (reader), the wrap with `WithReasons` (declared by the jobs seam entry) and the page field (declared by the pages seam entry), so the ot entry needs only the seams and the migration, never an unmerged tally or page logic. Edits of `runonce.go` (586 lines), `wire.go` (790 of 800) and `site.go` (603) are at most one added line each for a field or a call (three lines for `site.go`); `wire_optioneod.go` (139 lines) takes the wrap. A file that would pass 800 lines is reported, not split.
-10. **pyside file size: an edit whose net line count fits, no split.** `pyside/src/optdesk/ibkr/ibgateway.py` has 799 lines, no ceiling is listed in `docs/design/ratchet.json` (owner-only) and a worker cannot add one. The edit of `_quote`: `_open_interest` (lines 102 to 113, 12 lines) moves to the new `missing.py` and `ibgateway.py` imports it (+1); a variable `grace_ended` is set before the waits (+1) and set where the grace timeout is today a bare `pass` (that line is replaced, net 0); one line computes the missing list (+1); three `missing=` arguments go to the three rows built after the ticker is read, the complete, the error and the timed-out quote (+3). Net 799 - 12 + 1 + 1 + 1 + 3 = 793 lines, an acceptance result of the pyside issue (at most 795). No file is split. The decision for a field is made in `missing.py` from the facts passed: the error code, the market data type, `grace_ended`, the raw ticker values and the fields got. The RECEIVED_ZERO decision is made in the moved `_open_interest`, where the tick is seen. `transport.py` (789) takes one loop of three lines.
+10. **pyside file size: an edit whose net line count fits, no split.** `pyside/src/optdesk/ibkr/ibgateway.py` has 799 lines, no ceiling is listed in `docs/design/ratchet.json` (owner-only) and a worker cannot add one. The edit of `_quote`: `_open_interest` (lines 102 to 113, 12 lines) moves to the new `missing.py` together with `_number` and `UNSET_DOUBLE`, which it calls, so `missing.py` imports nothing from `ibgateway.py` (no circular import); `ibgateway.py` imports the three names from `missing.py` (+1, and the moved `_number` lines only lower the count); a variable `grace_ended` is set before the waits (+1) and set where the grace timeout is today a bare `pass` (that line is replaced, net 0); one line computes the missing list (+1); three `missing=` arguments go to the three rows built after the ticker is read, the complete, the error and the timed-out quote (+3). Net at most 799 - 12 + 1 + 1 + 1 + 3 = 793 lines, an acceptance result of the pyside issue (at most 795). No file is split. The decision for a field is made in `missing.py` from the facts passed: the error code, the market data type, `grace_ended`, the raw ticker values and the fields got. The RECEIVED_ZERO decision is made in the moved `_open_interest`, where the tick is seen. `transport.py` (789) takes one loop of three lines.
 11. **Found cause on 2026-11-12:** a read-only probe on port 4001 at about 14:40Z (US market open; `reqMarketDataType(2)` asked but market data type 1 (live) seen on all; generic ticks `100,101`) found: AAPL 20261204 C355 had `callOpenInterest` 2073 after 1.0 s and `putOpenInterest` 0.0 (the placeholder of the other side); P250 had `putOpenInterest` 856 after 1.0 s and `callOpenInterest` 0.0; P355 had both NaN for all 30 s although bid, ask and greeks arrived. So during US hours open interest arrives in about 1 s for most contracts, the 0.0 is only the wrong-side placeholder (already handled), and some contracts never get it. The cause of the all-NULL day (the stored 11-12 rows were collected about 10:08Z, US market closed; whether open interest arrives outside US hours is untested) is not yet found; this design records it per field and reason at the next collection.
 
 ## Issues
@@ -62,13 +62,13 @@ Meaning, fixed here so the three sides agree: NOT_RECEIVED_RELEASE: no tick for 
 2. broker (interface): `broker.Quote.Missing`, `fromQuote`. Order: after 1.
 3. pyside: `missing.py`, the row and the conversion (Decision 10). `transport.py` is an owner-only path, the owner merges. Order: after 1.
 4. store: migration 0038; pull request 1855 (migration 0037) merges before it is attached. Order: first.
-5. jobs seam: `optioneod.WithReasons` and the writer field of the job, declared and stored, not yet used. Order: independent.
-6. pages seam: the field `Config.Reasons` of `option_data_page`, declared, not yet used. Order: independent.
+5. jobs seam (interface): `optioneod.WithReasons` and the writer field of the job, declared and stored, not yet used. Order: first.
+6. pages seam (interface): the field `Config.Reasons` of `option_data_page`, declared, not yet used. Order: first.
 7. jobs/optioneod: Decisions 3 to 6 (the tally and the writes). Order: after 2 and 5.
 8. pages: `option_data_page` notes (Decision 7) and `ops_today_page` (Decision 8). Order: after 6.
 9. ot: Decision 9. Order: after 4, 5, 6. The migration 0038 holds auto-deploy: the window runs migrate after the merge of entry 4, and entry 9 merges after it. Pull request 1855 (0037) lands first, else entry 4 is renumbered. Rows appear once 7 has landed and notes once 8 has.
 
-Entries 3 to 8 run in parallel once 1 and 2 have landed (5 and 6 need nothing); entry 9 needs only the seams 5 and 6 and the migration, no sibling's unmerged logic.
+The interface entries 1, 2, 5 and 6 land first. Entries 3, 4, 7 and 8 then run in parallel; entry 9 follows 4, 5 and 6 and needs only the seams and the migration, no sibling's unmerged logic.
 
 ## Left out
 
@@ -93,7 +93,7 @@ Read of the first draft: `scratchpad/design/option-field-reasons-adversarial.md`
 
 Advisor review r1 of the pull request (B1 to B3):
 
-- B1 (ibgateway.py at 799 lines, no offset): adopted, Decision 10 names the offset and the result of 792 lines.
+- B1 (ibgateway.py at 799 lines, no offset): adopted, Decision 10 names the offset and the result of at most 793 lines (Decision 10).
 - B2 (order of the ot entry, a writer error failing collection): adopted, Issues entry 9 (after 4, 5, 6; migrate by the window) and Decision 6 (a writer error is logged, never fails the run).
 - B3 (vocabulary: NOT_REQUESTED cannot happen, a received 0.0 is dropped, market data type): adopted, Interface and Decision 11 (the cause found by the live probe is filled in before judgement).
 
