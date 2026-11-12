@@ -68,6 +68,68 @@ type BackfillResult struct {
 	// InWindow keys were missing or no_value but were not run: their window had not
 	// closed.
 	InWindow []contracts.ExpectedKey
+	// Keys is one line per key the call looked at, in the order of the plan.
+	Keys []KeyRun
+}
+
+// The group of a KeyRun: what the call did with the key.
+const (
+	// GroupAlreadyPresent: the key was present and a plain backfill did not run it.
+	GroupAlreadyPresent = "already_present"
+	// GroupNotDue: the window of the key had not closed; it was not run.
+	GroupNotDue = "not_due"
+	// GroupRerun: the key was present and a forced call ran it again.
+	GroupRerun = "rerun"
+	// GroupRan: the key was missing or no_value and was run.
+	GroupRan = "ran"
+	// GroupLeaseHeld: another run held the key's lease; it was not run.
+	GroupLeaseHeld = "lease_held"
+	// GroupNotReached: the call ended (a hold, a cancel or an error) before the key.
+	GroupNotReached = "not_reached"
+)
+
+// KeyRun is the line of one key in BackfillResult.Keys. Status is the string form of
+// store.RunStatus for GroupRan and empty otherwise; Mark is the string form of the
+// mark of the key after the call; DueAt is the instant the key becomes due.
+type KeyRun struct {
+	Key                                 contracts.ExpectedKey
+	Group                               string
+	DueAt                               time.Time
+	Status, ErrorCode, ReasonCode, Mark string
+	Returned, Usable, Attempt           int
+}
+
+// BackfillOptions narrows and forces a backfill.
+type BackfillOptions struct {
+	// Force runs a key that is already present.
+	Force bool
+	// Job limits the call to the keys of one job; empty means every job of the
+	// listed datasets.
+	Job string
+	// Hold, when set, is asked before every key after the first; a true answer ends
+	// the call and the keys left are listed as GroupNotReached.
+	Hold SlotHold
+}
+
+// SlotHold tells whether a scheduled start is near. bound is how far ahead to look.
+// The first start of an enabled job in (now, now+bound], or an earlier start not yet
+// marked covered, answers held true with that job and instant; a schedule that has not
+// been read answers held true with an empty job.
+type SlotHold func(bound time.Duration) (jobID string, at time.Time, held bool)
+
+// ForceBackfiller is a Backfiller that can force present keys, narrow the call to one
+// job and hold before each key. A key refused for want of a key on the day comes back
+// as RefusedNoKey with a nil error.
+type ForceBackfiller interface {
+	BackfillWith(ctx context.Context, day contracts.Day, datasets []string, opt BackfillOptions) (BackfillResult, error)
+}
+
+// ConsoleTurner is the optional method of the Reconciler given to NewSchedulerFunc: one
+// turn of the console's request queue. It runs on the worker, so it never overlaps a
+// Reconcile, and took tells whether a request was handled. A cancelled ctx ends the turn
+// interrupted. The turn has no bound of its own; each key has the RunBound of its job.
+type ConsoleTurner interface {
+	ConsoleTurn(ctx context.Context, hold SlotHold) (took bool, err error)
 }
 
 // BackfillRefusal names why a day was refused before any write. The empty value
@@ -78,6 +140,8 @@ type BackfillRefusal string
 const (
 	// RefusedNoPlan: the stored plan of the day is empty.
 	RefusedNoPlan BackfillRefusal = "no_plan"
+	// RefusedNoKey: a selected dataset has no key on the day.
+	RefusedNoKey BackfillRefusal = "no_key"
 )
 
 // NewBackfillerWithRuleFunc is the constructor of the backfiller with an explicit
