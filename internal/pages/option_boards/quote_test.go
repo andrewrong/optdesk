@@ -178,7 +178,7 @@ func TestStockPageQuotePerRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := compileSchema(t, "page.stock_option_page.v2.json").Validate(v); err != nil {
+	if err := compileSchema(t, "page.stock_option_page.v3.json").Validate(v); err != nil {
 		t.Fatal(err)
 	}
 }
