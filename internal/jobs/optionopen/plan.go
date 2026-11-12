@@ -185,24 +185,7 @@ func (j *planJob) run(ctx context.Context, day contracts.Day, keys []contracts.E
 	if err != nil {
 		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
 	}
-	budget := time.Duration(j.m.BudgetMinutes) * time.Minute
-	var names []NameInput
-	var fails []nameFail
-	failed := map[string]bool{}
-	for _, s := range stocks {
-		if j.d.Clock.Now().Sub(start) >= budget {
-			fails = append(fails, nameFail{s.Symbol, reasonFetchFailed, newErr(contracts.Retryable, "plan budget of %d minutes ended before %s", j.m.BudgetMinutes, s.Symbol)})
-			failed[s.Symbol] = true
-			continue
-		}
-		n, nf := j.nameInput(ctx, t, s, pos, marks)
-		if nf != nil {
-			fails = append(fails, *nf)
-			failed[s.Symbol] = true
-			continue
-		}
-		names = append(names, n)
-	}
+	names, fails, failed := j.nameInputs(ctx, t, start, stocks, pos, marks)
 	plan := j.d.Func(t, j.m.params, names)
 	var res contracts.JobResult
 	for _, s := range stocks {
@@ -235,6 +218,32 @@ func (j *planJob) run(ctx context.Context, day contracts.Day, keys []contracts.E
 	}
 	res.Err = j.endOf(day, fails)
 	return res
+}
+
+// nameInputs reads the input of every stock inside the budget: the names that have one, the failures, and the
+// symbols that failed.
+func (j *planJob) nameInputs(ctx context.Context, t, start time.Time, stocks []stock, pos []store.Position,
+	marks map[string]bool) ([]NameInput, []nameFail, map[string]bool) {
+	budget := time.Duration(j.m.BudgetMinutes) * time.Minute
+	var names []NameInput
+	var fails []nameFail
+	failed := map[string]bool{}
+	for _, s := range stocks {
+		if j.d.Clock.Now().Sub(start) >= budget {
+			err := newErr(contracts.Retryable, "plan budget of %d minutes ended before %s", j.m.BudgetMinutes, s.Symbol)
+			fails = append(fails, nameFail{s.Symbol, reasonFetchFailed, err})
+			failed[s.Symbol] = true
+			continue
+		}
+		n, nf := j.nameInput(ctx, t, s, pos, marks)
+		if nf != nil {
+			fails = append(fails, *nf)
+			failed[s.Symbol] = true
+			continue
+		}
+		names = append(names, n)
+	}
+	return names, fails, failed
 }
 
 // writeReasons replaces the reason rows of the day with one row per failed name; no failure clears them.
