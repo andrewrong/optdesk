@@ -44,6 +44,8 @@ from optdesk.contracts.api import (
     ExecutionsResponse,
     ListChainsRequest,
     ListChainsResponse,
+    ListContractsRequest,
+    ListContractsResponse,
     MarketDataServiceServicer,
     MarketDataServiceStub,
     Position,
@@ -108,6 +110,27 @@ class _FakeContracts(ContractsServiceServicer):
         return ResolveContractResponse(
             status=RESOLVE_STATUS_FOUND, contract=request.contract
         )
+
+    async def ListContracts(
+        self,
+        request: ListContractsRequest,
+        context: grpc.aio.ServicerContext[ListContractsRequest, ListContractsResponse],
+    ) -> ListContractsResponse:
+        return ListContractsResponse(
+            contracts=[ContractSpec(symbol=request.underlying.symbol, con_id=7)]
+        )
+
+
+def test_fake_servicer_lists_contracts() -> None:
+    request = ListContractsRequest(
+        underlying=ContractSpec(symbol="SPY"), expiry="20260116", trading_class="SPY"
+    )
+
+    async def run() -> ListContractsResponse:
+        return await _FakeContracts().ListContracts(request, MagicMock())
+
+    response = asyncio.run(run())
+    assert [(c.symbol, c.con_id) for c in response.contracts] == [("SPY", 7)]
 
 
 def test_fake_servicer_satisfies_base() -> None:

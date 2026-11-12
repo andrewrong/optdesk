@@ -71,6 +71,125 @@ func (ResolveStatus) EnumDescriptor() ([]byte, []int) {
 	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{0}
 }
 
+// ListContractsRequest names a stock or index with its con_id (as ListChains),
+// one expiry (YYYYMMDD) and a trading class. right unspecified means both
+// rights in one answer.
+type ListContractsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Underlying    *ContractSpec          `protobuf:"bytes,1,opt,name=underlying,proto3" json:"underlying,omitempty"`
+	Expiry        string                 `protobuf:"bytes,2,opt,name=expiry,proto3" json:"expiry,omitempty"`
+	Right         Right                  `protobuf:"varint,3,opt,name=right,proto3,enum=ibkr.v1.Right" json:"right,omitempty"`
+	TradingClass  string                 `protobuf:"bytes,4,opt,name=trading_class,json=tradingClass,proto3" json:"trading_class,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListContractsRequest) Reset() {
+	*x = ListContractsRequest{}
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListContractsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListContractsRequest) ProtoMessage() {}
+
+func (x *ListContractsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListContractsRequest.ProtoReflect.Descriptor instead.
+func (*ListContractsRequest) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ListContractsRequest) GetUnderlying() *ContractSpec {
+	if x != nil {
+		return x.Underlying
+	}
+	return nil
+}
+
+func (x *ListContractsRequest) GetExpiry() string {
+	if x != nil {
+		return x.Expiry
+	}
+	return ""
+}
+
+func (x *ListContractsRequest) GetRight() Right {
+	if x != nil {
+		return x.Right
+	}
+	return Right_RIGHT_UNSPECIFIED
+}
+
+func (x *ListContractsRequest) GetTradingClass() string {
+	if x != nil {
+		return x.TradingClass
+	}
+	return ""
+}
+
+// ListContractsResponse holds every contract the gateway lists, with con_id,
+// right, strike (canonical decimal text), multiplier and trading class. A
+// timeout, a disconnect or a gateway error is a gRPC error, never a partial
+// list.
+type ListContractsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Contracts     []*ContractSpec        `protobuf:"bytes,1,rep,name=contracts,proto3" json:"contracts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListContractsResponse) Reset() {
+	*x = ListContractsResponse{}
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListContractsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListContractsResponse) ProtoMessage() {}
+
+func (x *ListContractsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListContractsResponse.ProtoReflect.Descriptor instead.
+func (*ListContractsResponse) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ListContractsResponse) GetContracts() []*ContractSpec {
+	if x != nil {
+		return x.Contracts
+	}
+	return nil
+}
+
 // ResolveContractRequest holds a stock, index or option, fully specified, with
 // con_id zero.
 type ResolveContractRequest struct {
@@ -82,7 +201,7 @@ type ResolveContractRequest struct {
 
 func (x *ResolveContractRequest) Reset() {
 	*x = ResolveContractRequest{}
-	mi := &file_ibkr_v1_resolve_proto_msgTypes[0]
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -94,7 +213,7 @@ func (x *ResolveContractRequest) String() string {
 func (*ResolveContractRequest) ProtoMessage() {}
 
 func (x *ResolveContractRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_ibkr_v1_resolve_proto_msgTypes[0]
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -107,7 +226,7 @@ func (x *ResolveContractRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveContractRequest.ProtoReflect.Descriptor instead.
 func (*ResolveContractRequest) Descriptor() ([]byte, []int) {
-	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{0}
+	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ResolveContractRequest) GetContract() *ContractSpec {
@@ -133,7 +252,7 @@ type ResolveContractResponse struct {
 
 func (x *ResolveContractResponse) Reset() {
 	*x = ResolveContractResponse{}
-	mi := &file_ibkr_v1_resolve_proto_msgTypes[1]
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -145,7 +264,7 @@ func (x *ResolveContractResponse) String() string {
 func (*ResolveContractResponse) ProtoMessage() {}
 
 func (x *ResolveContractResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ibkr_v1_resolve_proto_msgTypes[1]
+	mi := &file_ibkr_v1_resolve_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -158,7 +277,7 @@ func (x *ResolveContractResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveContractResponse.ProtoReflect.Descriptor instead.
 func (*ResolveContractResponse) Descriptor() ([]byte, []int) {
-	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{1}
+	return file_ibkr_v1_resolve_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ResolveContractResponse) GetStatus() ResolveStatus {
@@ -193,7 +312,16 @@ var File_ibkr_v1_resolve_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_resolve_proto_rawDesc = "" +
 	"\n" +
-	"\x15ibkr/v1/resolve.proto\x12\aibkr.v1\x1a\x14ibkr/v1/chains.proto\x1a\x16ibkr/v1/contract.proto\"K\n" +
+	"\x15ibkr/v1/resolve.proto\x12\aibkr.v1\x1a\x14ibkr/v1/chains.proto\x1a\x16ibkr/v1/contract.proto\"\xb0\x01\n" +
+	"\x14ListContractsRequest\x125\n" +
+	"\n" +
+	"underlying\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\n" +
+	"underlying\x12\x16\n" +
+	"\x06expiry\x18\x02 \x01(\tR\x06expiry\x12$\n" +
+	"\x05right\x18\x03 \x01(\x0e2\x0e.ibkr.v1.RightR\x05right\x12#\n" +
+	"\rtrading_class\x18\x04 \x01(\tR\ftradingClass\"L\n" +
+	"\x15ListContractsResponse\x123\n" +
+	"\tcontracts\x18\x01 \x03(\v2\x15.ibkr.v1.ContractSpecR\tcontracts\"K\n" +
 	"\x16ResolveContractRequest\x121\n" +
 	"\bcontract\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\"\xba\x01\n" +
 	"\x17ResolveContractResponse\x12.\n" +
@@ -206,11 +334,12 @@ const file_ibkr_v1_resolve_proto_rawDesc = "" +
 	"\rResolveStatus\x12\x1e\n" +
 	"\x1aRESOLVE_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14RESOLVE_STATUS_FOUND\x10\x01\x12\x1d\n" +
-	"\x19RESOLVE_STATUS_NOT_LISTED\x10\x022\xaf\x01\n" +
+	"\x19RESOLVE_STATUS_NOT_LISTED\x10\x022\xff\x01\n" +
 	"\x10ContractsService\x12E\n" +
 	"\n" +
 	"ListChains\x12\x1a.ibkr.v1.ListChainsRequest\x1a\x1b.ibkr.v1.ListChainsResponse\x12T\n" +
-	"\x0fResolveContract\x12\x1f.ibkr.v1.ResolveContractRequest\x1a .ibkr.v1.ResolveContractResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
+	"\x0fResolveContract\x12\x1f.ibkr.v1.ResolveContractRequest\x1a .ibkr.v1.ResolveContractResponse\x12N\n" +
+	"\rListContracts\x12\x1d.ibkr.v1.ListContractsRequest\x1a\x1e.ibkr.v1.ListContractsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
 var (
 	file_ibkr_v1_resolve_proto_rawDescOnce sync.Once
@@ -225,28 +354,36 @@ func file_ibkr_v1_resolve_proto_rawDescGZIP() []byte {
 }
 
 var file_ibkr_v1_resolve_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_ibkr_v1_resolve_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_ibkr_v1_resolve_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_ibkr_v1_resolve_proto_goTypes = []any{
 	(ResolveStatus)(0),              // 0: ibkr.v1.ResolveStatus
-	(*ResolveContractRequest)(nil),  // 1: ibkr.v1.ResolveContractRequest
-	(*ResolveContractResponse)(nil), // 2: ibkr.v1.ResolveContractResponse
-	(*ContractSpec)(nil),            // 3: ibkr.v1.ContractSpec
-	(*ListChainsRequest)(nil),       // 4: ibkr.v1.ListChainsRequest
-	(*ListChainsResponse)(nil),      // 5: ibkr.v1.ListChainsResponse
+	(*ListContractsRequest)(nil),    // 1: ibkr.v1.ListContractsRequest
+	(*ListContractsResponse)(nil),   // 2: ibkr.v1.ListContractsResponse
+	(*ResolveContractRequest)(nil),  // 3: ibkr.v1.ResolveContractRequest
+	(*ResolveContractResponse)(nil), // 4: ibkr.v1.ResolveContractResponse
+	(*ContractSpec)(nil),            // 5: ibkr.v1.ContractSpec
+	(Right)(0),                      // 6: ibkr.v1.Right
+	(*ListChainsRequest)(nil),       // 7: ibkr.v1.ListChainsRequest
+	(*ListChainsResponse)(nil),      // 8: ibkr.v1.ListChainsResponse
 }
 var file_ibkr_v1_resolve_proto_depIdxs = []int32{
-	3, // 0: ibkr.v1.ResolveContractRequest.contract:type_name -> ibkr.v1.ContractSpec
-	0, // 1: ibkr.v1.ResolveContractResponse.status:type_name -> ibkr.v1.ResolveStatus
-	3, // 2: ibkr.v1.ResolveContractResponse.contract:type_name -> ibkr.v1.ContractSpec
-	4, // 3: ibkr.v1.ContractsService.ListChains:input_type -> ibkr.v1.ListChainsRequest
-	1, // 4: ibkr.v1.ContractsService.ResolveContract:input_type -> ibkr.v1.ResolveContractRequest
-	5, // 5: ibkr.v1.ContractsService.ListChains:output_type -> ibkr.v1.ListChainsResponse
-	2, // 6: ibkr.v1.ContractsService.ResolveContract:output_type -> ibkr.v1.ResolveContractResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 0: ibkr.v1.ListContractsRequest.underlying:type_name -> ibkr.v1.ContractSpec
+	6, // 1: ibkr.v1.ListContractsRequest.right:type_name -> ibkr.v1.Right
+	5, // 2: ibkr.v1.ListContractsResponse.contracts:type_name -> ibkr.v1.ContractSpec
+	5, // 3: ibkr.v1.ResolveContractRequest.contract:type_name -> ibkr.v1.ContractSpec
+	0, // 4: ibkr.v1.ResolveContractResponse.status:type_name -> ibkr.v1.ResolveStatus
+	5, // 5: ibkr.v1.ResolveContractResponse.contract:type_name -> ibkr.v1.ContractSpec
+	7, // 6: ibkr.v1.ContractsService.ListChains:input_type -> ibkr.v1.ListChainsRequest
+	3, // 7: ibkr.v1.ContractsService.ResolveContract:input_type -> ibkr.v1.ResolveContractRequest
+	1, // 8: ibkr.v1.ContractsService.ListContracts:input_type -> ibkr.v1.ListContractsRequest
+	8, // 9: ibkr.v1.ContractsService.ListChains:output_type -> ibkr.v1.ListChainsResponse
+	4, // 10: ibkr.v1.ContractsService.ResolveContract:output_type -> ibkr.v1.ResolveContractResponse
+	2, // 11: ibkr.v1.ContractsService.ListContracts:output_type -> ibkr.v1.ListContractsResponse
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_ibkr_v1_resolve_proto_init() }
@@ -262,7 +399,7 @@ func file_ibkr_v1_resolve_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ibkr_v1_resolve_proto_rawDesc), len(file_ibkr_v1_resolve_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

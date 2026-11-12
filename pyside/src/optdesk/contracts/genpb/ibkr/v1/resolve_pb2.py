@@ -26,7 +26,7 @@ from optdesk.contracts.genpb.ibkr.v1 import chains_pb2 as ibkr_dot_v1_dot_chains
 from optdesk.contracts.genpb.ibkr.v1 import contract_pb2 as ibkr_dot_v1_dot_contract__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15ibkr/v1/resolve.proto\x12\x07ibkr.v1\x1a\x14ibkr/v1/chains.proto\x1a\x16ibkr/v1/contract.proto\"A\n\x16ResolveContractRequest\x12\'\n\x08\x63ontract\x18\x01 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\"\x92\x01\n\x17ResolveContractResponse\x12&\n\x06status\x18\x01 \x01(\x0e\x32\x16.ibkr.v1.ResolveStatus\x12\'\n\x08\x63ontract\x18\x02 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\x12\x12\n\nerror_code\x18\x03 \x01(\x05\x12\x12\n\nerror_text\x18\x04 \x01(\t*h\n\rResolveStatus\x12\x1e\n\x1aRESOLVE_STATUS_UNSPECIFIED\x10\x00\x12\x18\n\x14RESOLVE_STATUS_FOUND\x10\x01\x12\x1d\n\x19RESOLVE_STATUS_NOT_LISTED\x10\x02\x32\xaf\x01\n\x10\x43ontractsService\x12\x45\n\nListChains\x12\x1a.ibkr.v1.ListChainsRequest\x1a\x1b.ibkr.v1.ListChainsResponse\x12T\n\x0fResolveContract\x12\x1f.ibkr.v1.ResolveContractRequest\x1a .ibkr.v1.ResolveContractResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15ibkr/v1/resolve.proto\x12\x07ibkr.v1\x1a\x14ibkr/v1/chains.proto\x1a\x16ibkr/v1/contract.proto\"\x87\x01\n\x14ListContractsRequest\x12)\n\nunderlying\x18\x01 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\x12\x0e\n\x06\x65xpiry\x18\x02 \x01(\t\x12\x1d\n\x05right\x18\x03 \x01(\x0e\x32\x0e.ibkr.v1.Right\x12\x15\n\rtrading_class\x18\x04 \x01(\t\"A\n\x15ListContractsResponse\x12(\n\tcontracts\x18\x01 \x03(\x0b\x32\x15.ibkr.v1.ContractSpec\"A\n\x16ResolveContractRequest\x12\'\n\x08\x63ontract\x18\x01 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\"\x92\x01\n\x17ResolveContractResponse\x12&\n\x06status\x18\x01 \x01(\x0e\x32\x16.ibkr.v1.ResolveStatus\x12\'\n\x08\x63ontract\x18\x02 \x01(\x0b\x32\x15.ibkr.v1.ContractSpec\x12\x12\n\nerror_code\x18\x03 \x01(\x05\x12\x12\n\nerror_text\x18\x04 \x01(\t*h\n\rResolveStatus\x12\x1e\n\x1aRESOLVE_STATUS_UNSPECIFIED\x10\x00\x12\x18\n\x14RESOLVE_STATUS_FOUND\x10\x01\x12\x1d\n\x19RESOLVE_STATUS_NOT_LISTED\x10\x02\x32\xff\x01\n\x10\x43ontractsService\x12\x45\n\nListChains\x12\x1a.ibkr.v1.ListChainsRequest\x1a\x1b.ibkr.v1.ListChainsResponse\x12T\n\x0fResolveContract\x12\x1f.ibkr.v1.ResolveContractRequest\x1a .ibkr.v1.ResolveContractResponse\x12N\n\rListContracts\x12\x1d.ibkr.v1.ListContractsRequest\x1a\x1e.ibkr.v1.ListContractsResponseB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,12 +34,16 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ibkr.v1.resolve_pb2', _glob
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z6github.com/andrewrong/optdesk/internal/contracts/genpb'
-  _globals['_RESOLVESTATUS']._serialized_start=296
-  _globals['_RESOLVESTATUS']._serialized_end=400
-  _globals['_RESOLVECONTRACTREQUEST']._serialized_start=80
-  _globals['_RESOLVECONTRACTREQUEST']._serialized_end=145
-  _globals['_RESOLVECONTRACTRESPONSE']._serialized_start=148
-  _globals['_RESOLVECONTRACTRESPONSE']._serialized_end=294
-  _globals['_CONTRACTSSERVICE']._serialized_start=403
-  _globals['_CONTRACTSSERVICE']._serialized_end=578
+  _globals['_RESOLVESTATUS']._serialized_start=501
+  _globals['_RESOLVESTATUS']._serialized_end=605
+  _globals['_LISTCONTRACTSREQUEST']._serialized_start=81
+  _globals['_LISTCONTRACTSREQUEST']._serialized_end=216
+  _globals['_LISTCONTRACTSRESPONSE']._serialized_start=218
+  _globals['_LISTCONTRACTSRESPONSE']._serialized_end=283
+  _globals['_RESOLVECONTRACTREQUEST']._serialized_start=285
+  _globals['_RESOLVECONTRACTREQUEST']._serialized_end=350
+  _globals['_RESOLVECONTRACTRESPONSE']._serialized_start=353
+  _globals['_RESOLVECONTRACTRESPONSE']._serialized_end=499
+  _globals['_CONTRACTSSERVICE']._serialized_start=608
+  _globals['_CONTRACTSSERVICE']._serialized_end=863
 # @@protoc_insertion_point(module_scope)

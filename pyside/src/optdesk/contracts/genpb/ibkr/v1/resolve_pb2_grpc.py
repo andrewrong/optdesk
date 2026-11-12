@@ -46,6 +46,11 @@ class ContractsServiceStub:
                 request_serializer=ibkr_dot_v1_dot_resolve__pb2.ResolveContractRequest.SerializeToString,
                 response_deserializer=ibkr_dot_v1_dot_resolve__pb2.ResolveContractResponse.FromString,
                 _registered_method=True)
+        self.ListContracts = channel.unary_unary(
+                '/ibkr.v1.ContractsService/ListContracts',
+                request_serializer=ibkr_dot_v1_dot_resolve__pb2.ListContractsRequest.SerializeToString,
+                response_deserializer=ibkr_dot_v1_dot_resolve__pb2.ListContractsResponse.FromString,
+                _registered_method=True)
 
 
 class ContractsServiceServicer:
@@ -66,6 +71,14 @@ class ContractsServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListContracts(self, request, context):
+        """ListContracts lists the real option contracts of one underlying, expiry and
+        trading class, with their con_ids: one contract-details request, no strike.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ContractsServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -78,6 +91,11 @@ def add_ContractsServiceServicer_to_server(servicer, server):
                     servicer.ResolveContract,
                     request_deserializer=ibkr_dot_v1_dot_resolve__pb2.ResolveContractRequest.FromString,
                     response_serializer=ibkr_dot_v1_dot_resolve__pb2.ResolveContractResponse.SerializeToString,
+            ),
+            'ListContracts': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListContracts,
+                    request_deserializer=ibkr_dot_v1_dot_resolve__pb2.ListContractsRequest.FromString,
+                    response_serializer=ibkr_dot_v1_dot_resolve__pb2.ListContractsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -135,6 +153,33 @@ class ContractsService:
             '/ibkr.v1.ContractsService/ResolveContract',
             ibkr_dot_v1_dot_resolve__pb2.ResolveContractRequest.SerializeToString,
             ibkr_dot_v1_dot_resolve__pb2.ResolveContractResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListContracts(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ibkr.v1.ContractsService/ListContracts',
+            ibkr_dot_v1_dot_resolve__pb2.ListContractsRequest.SerializeToString,
+            ibkr_dot_v1_dot_resolve__pb2.ListContractsResponse.FromString,
             options,
             channel_credentials,
             insecure,

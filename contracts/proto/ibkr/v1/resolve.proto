@@ -20,6 +20,27 @@ service ContractsService {
   rpc ListChains(ListChainsRequest) returns (ListChainsResponse);
   // ResolveContract resolves one fully specified contract.
   rpc ResolveContract(ResolveContractRequest) returns (ResolveContractResponse);
+  // ListContracts lists the real option contracts of one underlying, expiry and
+  // trading class, with their con_ids: one contract-details request, no strike.
+  rpc ListContracts(ListContractsRequest) returns (ListContractsResponse);
+}
+
+// ListContractsRequest names a stock or index with its con_id (as ListChains),
+// one expiry (YYYYMMDD) and a trading class. right unspecified means both
+// rights in one answer.
+message ListContractsRequest {
+  ContractSpec underlying = 1;
+  string expiry = 2;
+  Right right = 3;
+  string trading_class = 4;
+}
+
+// ListContractsResponse holds every contract the gateway lists, with con_id,
+// right, strike (canonical decimal text), multiplier and trading class. A
+// timeout, a disconnect or a gateway error is a gRPC error, never a partial
+// list.
+message ListContractsResponse {
+  repeated ContractSpec contracts = 1;
 }
 
 // ResolveContractRequest holds a stock, index or option, fully specified, with
