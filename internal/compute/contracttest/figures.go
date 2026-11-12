@@ -59,6 +59,20 @@ type figureIn struct {
 	Den    seriesIn    `json:"den"`
 	Rate   *dayPoint   `json:"rate"`
 	Chain  []chainItem `json:"chain"`
+	Parts  []partIn    `json:"parts"`
+}
+
+// partIn is one input Figure of a Combine case.
+type partIn struct {
+	Status  compute.Status `json:"status"`
+	Reason  compute.Reason `json:"reason"`
+	Value   float64        `json:"value"`
+	DataDay string         `json:"data_day"`
+}
+
+func (p partIn) figure() compute.Figure {
+	return compute.Figure{ID: "part", Version: 1, Day: contracts.Day(p.DataDay), DataDay: contracts.Day(p.DataDay),
+		Value: p.Value, Status: p.Status, Reason: p.Reason, Observations: 1}
 }
 
 type chainItem struct {
@@ -159,6 +173,13 @@ func Figures(t T, newFigures compute.NewFiguresFunc, stats compute.Stats, rollin
 		}),
 		"PercentileInYears": call(func(f compute.Figures, in figureIn, asOf contracts.Day, t T) compute.Figure {
 			return f.PercentileInYears(in.Rule.ID, in.Series.series(t), asOf)
+		}),
+		"Combine": call(func(f compute.Figures, in figureIn, asOf contracts.Day, t T) compute.Figure {
+			parts := make([]compute.Figure, len(in.Parts))
+			for i, p := range in.Parts {
+				parts[i] = p.figure()
+			}
+			return f.Combine(in.Rule.ID, parts, asOf)
 		}),
 		"Ratio": call(func(f compute.Figures, in figureIn, asOf contracts.Day, t T) compute.Figure {
 			return f.Ratio(in.Rule.ID, in.Num.series(t), in.Den.series(t), asOf)

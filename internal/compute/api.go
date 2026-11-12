@@ -181,6 +181,9 @@ type Figures interface {
 	PercentileInYears(id string, s Series, asOf contracts.Day) Figure
 	// Ratio is num over den on the same day; a zero denominator is bad_input.
 	Ratio(id string, num, den Series, asOf contracts.Day) Figure
+	// Combine joins the figures of one subject and day by the convention of the rule: vol_blend_v1 is the mean of
+	// the parts, vol_diff_v1 is parts[0] minus parts[1]. A part that is not ok makes the result missing (no_input).
+	Combine(id string, parts []Figure, asOf contracts.Day) Figure
 }
 
 // Constructor function types of the implementations.

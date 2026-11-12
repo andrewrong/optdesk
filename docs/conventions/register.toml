@@ -1719,6 +1719,121 @@ agreed_in = "owner approval in the optdesk dispatcher window, 2026-11-11 (docs/d
 history = ["2026-11-11 v1: registered by docs/design/market-rv20.md Decision 7; no page reads it yet."]
 
 [[figure]]
+id = "market.rv60"
+version = 1
+title_zh = "60 日已实现波动率"
+pages = []
+formula = """
+Convention rv60_v1: close-to-close log returns of consecutive stored closes, their sample standard deviation (ddof 1) over the last 60 returns (n 60), times the square root of 252 (trading days per year). An annual fraction: 0.16 is 16 percent. Needs 61 closes above zero."""
+inputs = """
+The stored daily trades closes of the underlying, oldest first, the last 61 of them; the newest close no older than 4 calendar days."""
+period_date = "The as-of day of the newest input used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's own volatility figure as a fallback; adjusted closes; any fill or extrapolation of a missing input."""
+gap_text = """
+Fewer than 61 closes: missing, short_history. No close: missing, no_input. A newest close older than 4 calendar days: missing, stale_input. A close not above zero: missing, bad_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).HistoricalVol",
+]
+source_hash = "9c408eb8cdb769c3a61653b4a5be35316d7fcc414b1afcb458cebec97df65c5a"
+agreed_on = "2026-11-12"
+agreed_in = "docs/design/vol-edge.md Decisions 2, 3 and 6 (entry 1)"
+history = ["2026-11-12 v1: registered by docs/design/vol-edge.md entry 1; no page reads it yet."]
+
+[[figure]]
+id = "market.rv120"
+version = 1
+title_zh = "120 日已实现波动率"
+pages = []
+formula = """
+Convention rv120_v1: close-to-close log returns of consecutive stored closes, their sample standard deviation (ddof 1) over the last 120 returns (n 120), times the square root of 252 (trading days per year). An annual fraction: 0.16 is 16 percent. Needs 121 closes above zero."""
+inputs = """
+The stored daily trades closes of the underlying, oldest first, the last 121 of them; the newest close no older than 4 calendar days."""
+period_date = "The as-of day of the newest input used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's own volatility figure as a fallback; adjusted closes; any fill or extrapolation of a missing input."""
+gap_text = """
+Fewer than 121 closes: missing, short_history. No close: missing, no_input. A newest close older than 4 calendar days: missing, stale_input. A close not above zero: missing, bad_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).HistoricalVol",
+]
+source_hash = "bab0df1b86e9aa78c3439a4a91942f71e8a8492d15008851b7641df3afe53a3a"
+agreed_on = "2026-11-12"
+agreed_in = "docs/design/vol-edge.md Decisions 2, 3 and 6 (entry 1)"
+history = ["2026-11-12 v1: registered by docs/design/vol-edge.md entry 1; no page reads it yet."]
+
+[[figure]]
+id = "market.vol_forecast"
+version = 1
+title_zh = "波动率预测（三个窗口的均值）"
+pages = []
+formula = """
+Convention vol_blend_v1: the plain mean of three figures of the same subject and day, market.rv20, market.rv60 and market.rv120. An annual fraction: 0.18 is 18 percent."""
+inputs = """
+The three stored realised-volatility figures of the underlying; the newest of their data days no older than 4 calendar days before the as-of day."""
+period_date = "The as-of day of the newest input used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's own volatility figure as a fallback; adjusted closes; any fill or extrapolation of a missing input."""
+gap_text = """
+Not three parts: missing, bad_input. A part that is not ok: missing, no_input. The newest part older than 4 calendar days: missing, stale_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).Combine",
+]
+source_hash = "ff9dc06583c7f26cade8e833c8708b55c152a1a438d5ca98f1064b0957497d9f"
+agreed_on = "2026-11-12"
+agreed_in = "docs/design/vol-edge.md Decisions 2, 3 and 6 (entry 1)"
+history = ["2026-11-12 v1: registered by docs/design/vol-edge.md entry 1; no page reads it yet."]
+
+[[figure]]
+id = "market.vol_edge"
+version = 1
+title_zh = "隐含波动率减预测"
+pages = []
+formula = """
+Convention vol_diff_v1: the first figure minus the second, here market.iv_ibkr minus market.vol_forecast of the same day. An annual fraction: 0.03 is 3 volatility points; negative when implied is below the forecast."""
+inputs = """
+The stored market.iv_ibkr and market.vol_forecast of the underlying; the newest of their data days no older than 4 calendar days before the as-of day."""
+period_date = "The as-of day of the newest input used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's own volatility figure as a fallback; adjusted closes; any fill or extrapolation of a missing input."""
+gap_text = """
+Not two parts: missing, bad_input. A part that is not ok: missing, no_input. The newest part older than 4 calendar days: missing, stale_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).Combine",
+]
+source_hash = "dd0aca2429127f91e91ec8db49c63fd64b9a5c30c0743ab7ea5986b637d3ead2"
+agreed_on = "2026-11-12"
+agreed_in = "docs/design/vol-edge.md Decisions 2, 3 and 6 (entry 1)"
+history = ["2026-11-12 v1: registered by docs/design/vol-edge.md entry 1; no page reads it yet."]
+
+[[figure]]
+id = "market.vol_forecast_err"
+version = 1
+title_zh = "波动率预测的事后误差"
+pages = []
+formula = """
+Convention vol_diff_v1: the first figure minus the second, here the forecast made 20 sessions ago (the mean of rv20, rv60 and rv120 on the closes up to then) minus today's market.rv20 (the realised volatility of the 20 sessions since). An annual fraction: positive means the forecast was too high."""
+inputs = """
+The stored daily trades closes of the underlying, at least 141 of them; the newest no older than 4 calendar days."""
+period_date = "The as-of day of the newest input used."
+currency = "Unit decimal, stored as decimal text, rounded half-even to 6 places."
+excludes = """
+IBKR's own volatility figure as a fallback; adjusted closes; any fill or extrapolation of a missing input."""
+gap_text = """
+Not two parts: missing, bad_input. A part that is not ok: missing, no_input (its reason is not carried). The newest part older than 4 calendar days: missing, stale_input. A missing input is stored as missing with a reason code (no_input, short_history, stale_input or bad_input), never as a zero."""
+implemented_by = [
+  "internal/compute/figures.(*calc).Combine",
+]
+source_hash = "96295998fea65fb964d2728e40d474209be5cdb5ff953fe6e4d04261bb5e73e7"
+agreed_on = "2026-11-12"
+agreed_in = "docs/design/vol-edge.md Decisions 2, 3 and 6 (entry 1)"
+history = ["2026-11-12 v1: registered by docs/design/vol-edge.md entry 1; no page reads it yet."]
+
+[[figure]]
 id = "market.ivp_own"
 version = 1
 title_zh = "自有 IV 百分位"
