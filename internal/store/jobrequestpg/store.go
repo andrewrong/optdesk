@@ -45,14 +45,14 @@ func scanRow(r pgx.Row) (jobrequest.Row, error) {
 		return jobrequest.Row{}, err
 	}
 	row.State = jobrequest.State(state)
-	row.StartedAt, row.FinishedAt, row.HoldAt, row.WithdrawnAt = zero(started), zero(finished), zero(hold), zero(wdr)
+	row.StartedAt, row.FinishedAt, row.HoldAt, row.WithdrawnAt = orZero(started), orZero(finished), orZero(hold), orZero(wdr)
 	if row.Lines, err = decodeKeys(keys); err != nil {
 		return jobrequest.Row{}, err
 	}
 	return row, nil
 }
 
-func zero(t *time.Time) time.Time {
+func orZero(t *time.Time) time.Time {
 	if t == nil {
 		return time.Time{}
 	}

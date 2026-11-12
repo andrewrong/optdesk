@@ -142,19 +142,7 @@ func TestSettingsDownKeepsRunnerReadOfOtherViews(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = inDB.Close(ctx) })
-	// 0033 puts a table into schema settings, which the Down of 0025 drops: take it back first, as goose would.
-	raw33, err := os.ReadFile(filepath.Join(migrationsDir, "0033_underlying.sql"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, down33, ok := strings.Cut(string(raw33), "-- +goose Down")
-	if !ok {
-		t.Fatal("no Down section in 0033")
-	}
-	if _, err := inDB.Exec(ctx, down33); err != nil {
-		t.Fatalf("down 0033: %v", err)
-	}
-	// The job request migration puts two tables into schema settings too: its Down goes before both.
+	// The job request migration puts two tables into schema settings too: its Down goes before that of 0033 and of 0025, as goose rolls back the newest first.
 	jobFiles, err := filepath.Glob(filepath.Join(migrationsDir, "*_job_request.sql"))
 	if err != nil || len(jobFiles) != 1 {
 		t.Fatalf("job request migration = %v, %v", jobFiles, err)
@@ -169,6 +157,18 @@ func TestSettingsDownKeepsRunnerReadOfOtherViews(t *testing.T) {
 	}
 	if _, err := inDB.Exec(ctx, downJob); err != nil {
 		t.Fatalf("down job request: %v", err)
+	}
+	// 0033 puts a table into schema settings, which the Down of 0025 drops: take it back first, as goose would.
+	raw33, err := os.ReadFile(filepath.Join(migrationsDir, "0033_underlying.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, down33, ok := strings.Cut(string(raw33), "-- +goose Down")
+	if !ok {
+		t.Fatal("no Down section in 0033")
+	}
+	if _, err := inDB.Exec(ctx, down33); err != nil {
+		t.Fatalf("down 0033: %v", err)
 	}
 	if _, err := inDB.Exec(ctx, down); err != nil {
 		t.Fatalf("down: %v", err)
