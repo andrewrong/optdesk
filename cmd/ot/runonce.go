@@ -158,23 +158,13 @@ func runOnce(a *app, args []string) error {
 
 // reconcileDay opens the stores, wires the jobs and reconciles day, closing the stores on every path. No fence: Reconcile holds the run lease.
 func reconcileDay(ctx context.Context, a *app, clk clock.Clock, cfg runOnceConfig, day contracts.Day) error {
-	check := func(ledger store.OpsLedger) error {
-		cur, err := ledger.Cursor(ctx)
-		if err != nil {
-			return errors.New("read reconcile cursor failed")
-		}
-		if cur.Day != "" && day <= cur.Day {
-			return fmt.Errorf("day %s is at or before the cursor %s: nothing to reconcile; use ot backfill --day %s", day, cur.Day, day)
-		}
-		return nil
-	}
 	fw := a.deps.newFwClock()
 	sl, err := a.deps.openSchedulerLedger(ctx, cfg.runnerDSN)
 	if err != nil {
 		return fmt.Errorf("open scheduler ledger with %s failed", store.DSNEnvRunner)
 	}
 	defer func() { _ = sl.Close() }()
-	return withWiring(ctx, a, clk, cfg, check, func(w wiring) error {
+	return withWiring(ctx, a, clk, cfg, nil, func(w wiring) error {
 		js := w.runnable(a.log)
 		rec, _ := a.deps.newReconciler(w.ledger, sl, w.cal, fw, js, runner.WindowRule{}, a.deps.newKeyRunner(w.ledger, sl, fw))
 		if err := rec.Reconcile(ctx, day); err != nil {

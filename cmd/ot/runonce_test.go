@@ -362,21 +362,16 @@ func withCursor(a *app, opened, closed *atomic.Int32, day contracts.Day, err err
 	}
 }
 
-func TestRunOnceDayBehindCursor(t *testing.T) {
+func TestRunOnceDayAtCursorRuns(t *testing.T) {
 	t.Parallel()
 	for _, day := range []string{"2026-03-03", "2026-03-04"} {
-		a, errb := testApp(t, fullEnv)
+		a, _ := testApp(t, fullEnv)
 		var opened, closed atomic.Int32
 		var got contracts.Day
 		runOnceFakes(a, &opened, &closed, &got)
 		withCursor(a, &opened, &closed, "2026-03-04", nil)
-		err := runOnce(a, []string{"--day", day})
-		if err == nil || !strings.Contains(err.Error(), day) || !strings.Contains(err.Error(), "2026-03-04") ||
-			!strings.Contains(err.Error(), "use ot backfill --day "+day) {
-			t.Fatalf("day %s: err %v", day, err)
-		}
-		if got != "" || strings.Contains(errb.String(), "status=ok") {
-			t.Fatalf("day %s: reconciled %q, log %q", day, got, errb.String())
+		if err := runOnce(a, []string{"--day", day}); err != nil || got != contracts.Day(day) {
+			t.Fatalf("day %s: reconciled %q err %v", day, got, err)
 		}
 		if opened.Load() != closed.Load() || opened.Load() == 0 {
 			t.Fatalf("day %s: opened %d closed %d", day, opened.Load(), closed.Load())
@@ -411,15 +406,9 @@ func TestRunOnceCursorEmptyAndError(t *testing.T) {
 		}
 	}
 	got = ""
-	opened.Store(0)
-	closed.Store(0)
 	withCursor(a, &opened, &closed, "", errors.New("secret-ledger-text"))
-	err := runOnce(a, []string{"--day", "2026-03-04"})
-	if err == nil || !strings.Contains(err.Error(), "cursor") || strings.Contains(err.Error(), "secret-ledger-text") {
-		t.Fatalf("err %v", err)
-	}
-	if got != "" || opened.Load() != closed.Load() || opened.Load() == 0 {
-		t.Fatalf("reconciled %q opened %d closed %d", got, opened.Load(), closed.Load())
+	if err := runOnce(a, []string{"--day", "2026-03-04"}); err != nil || got != "2026-03-04" {
+		t.Fatalf("reconciled %q err %v", got, err)
 	}
 }
 

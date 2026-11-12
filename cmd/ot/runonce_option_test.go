@@ -497,7 +497,6 @@ func TestRunOnceErrors(t *testing.T) {
 
 func TestRunOnceErrorsRefused(t *testing.T) {
 	t.Parallel()
-	const sentinel = "sentinel-secret"
 	env := fullEnv
 	t.Run("bad day", func(t *testing.T) {
 		r := newRig(t, env)
@@ -512,13 +511,16 @@ func TestRunOnceErrorsRefused(t *testing.T) {
 			t.Fatalf("err %v events %v", err, r.ev.list())
 		}
 	})
+}
+
+func TestRunOnceBehindCursorRuns(t *testing.T) {
+	t.Parallel()
 	for _, day := range []string{"2026-11-03", "2026-11-04"} {
-		t.Run("cursor "+day, func(t *testing.T) {
-			r := newRig(t, env)
+		t.Run(day, func(t *testing.T) {
+			r := newRig(t, fullEnv)
 			r.cursor = "2026-11-04"
-			err := runOnce(r.a, []string{"--day", day})
-			if err == nil || !strings.Contains(err.Error(), "2026-11-04") || r.reconciled != 0 || strings.Contains(err.Error(), sentinel) {
-				t.Fatalf("err %v", err)
+			if err := runOnce(r.a, []string{"--day", day}); err != nil || r.reconciled != 1 {
+				t.Fatalf("err %v reconciled %d", err, r.reconciled)
 			}
 		})
 	}
