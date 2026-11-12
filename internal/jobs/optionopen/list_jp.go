@@ -4,11 +4,13 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 // The list job over its two other manifests (docs/design/option-open-gap-jp.md, Decisions 7 and 13): the JP list
@@ -72,5 +74,43 @@ func NewListPreopenJP(d ListDeps) (contracts.Job, error) {
 
 // NewListZone builds option_list_zone from the embedded job_list_zone.toml: the US zone slot before the open.
 func NewListZone(d ListDeps) (contracts.Job, error) {
-	return newListPreopen(listManifestZone, usRules(), d)
+	j, err := newListPreopen(listManifestZone, usRules(), d)
+	if err != nil {
+		return nil, err
+	}
+	return &zoneJob{j.(*listJob)}, nil
+}
+
+// codeLateStart is the reason of a zone run that starts after its stop_time.
+const codeLateStart = "late_start"
+
+// zoneJob is the zone slot: the list job, except that a run which starts after the stop_time of its manifest
+// lists nothing and writes one reason row late_start, so that the slot is never silently absent (Decision 13).
+// Its key is present whenever it ran, as the zone mode's is.
+type zoneJob struct{ *listJob }
+
+func (z *zoneJob) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	t, err := dayTime(day)
+	m := z.m
+	if err != nil || len(keys) == 0 || keys[0].DatasetID != m.Dataset || keys[0].SubjectKey != m.Subject {
+		return z.listJob.Run(ctx, day, keys)
+	}
+	stopAt := time.Date(t.Year(), t.Month(), t.Day(), m.stopH, m.stopM, 0, 0, m.loc)
+	now := z.d.Clock.Now()
+	if now.Before(stopAt) {
+		return z.listJob.Run(ctx, day, keys)
+	}
+	r := &listRun{j: z.listJob, day: day, t: t}
+	detail := fmt.Sprintf("started %s, after the stop time %s", now.In(m.loc).Format("15:04"), m.StopTime)
+	if err := r.writeReasons(ctx, []runview.Reason{{Scope: m.ID, Code: codeLateStart, Detail: detail}}); err != nil {
+		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
+	}
+	z.log(fmt.Sprintf("%s day=%s late_start", m.ID, day))
+	return contracts.JobResult{}
+}
+
+func (z *zoneJob) log(s string) {
+	if z.d.Log != nil {
+		z.d.Log(s)
+	}
 }

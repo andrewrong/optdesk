@@ -169,7 +169,7 @@ func TestNewListZoneUsesZoneToml(t *testing.T) {
 	j, err := NewListZone(g.deps())
 	require.NoError(t, err)
 	require.Equal(t, "option_list_zone", j.ID())
-	lj := j.(*listJob)
+	lj := j.(*zoneJob).listJob
 	_, _, _, off := lj.Schedule()
 	require.Equal(t, -75*time.Minute, off)
 	keys, _, err := lj.Plan(context.Background(), g.day)
@@ -242,7 +242,7 @@ func TestZoneOutsideRangeWritesReasonAndIsPresent(t *testing.T) {
 	require.Equal(t, "outside_range", rows[0].Code)
 	require.Equal(t, string(g.exp(22))+","+string(g.exp(29)), rows[0].Detail)
 	require.Zero(t, g.ls.puts, "no option_list_run row")
-	ok, err := j.(*listJob).Postcondition(context.Background(), string(g.day), ListDatasetID, "zone")
+	ok, err := j.(*zoneJob).Postcondition(context.Background(), string(g.day), ListDatasetID, "zone")
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, g.exp(-2), g.group("AAA", 22).ListedSession, "the stored plan is kept")
@@ -300,4 +300,24 @@ func TestJPListerWithoutChainsIsRefused(t *testing.T) {
 	g.tweak = func(d *ListDeps) { inner(d); d.Lister = onlyContracts{g.lst} }
 	_, err := NewListPreopenJP(g.deps())
 	require.Error(t, err, "an index would be sent as a stock")
+}
+
+func TestZoneLateStartWritesLateStartAndIsPresent(t *testing.T) {
+	t.Parallel()
+	g := zoneRig(t, "AAA")
+	rs := &fakeReasons{}
+	g.tweak = func(d *ListDeps) { d.ReasonWriter = rs; d.Spot = &fakeSpot{} }
+	g.seedGroup("AAA", 22, 2, "90", "115")
+	g.clk.Advance(2*time.Hour + 30*time.Minute) // 08:45 ET, after the stop time 08:40
+	j, err := NewListZone(g.deps())
+	require.NoError(t, err)
+	require.NoError(t, errOf(j.Run(context.Background(), g.day, zoneKey())))
+	rows := rs.of(g.day, ListDatasetID, "zone")
+	require.Len(t, rows, 1)
+	require.Equal(t, "late_start", rows[0].Code)
+	require.Empty(t, g.lst.calls, "a late zone run lists nothing")
+	require.Zero(t, g.ls.puts)
+	ok, err := j.(*zoneJob).Postcondition(context.Background(), string(g.day), ListDatasetID, "zone")
+	require.NoError(t, err)
+	require.True(t, ok)
 }
