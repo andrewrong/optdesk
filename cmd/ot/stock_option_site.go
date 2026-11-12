@@ -24,7 +24,8 @@ func init() {
 // stockBuild builds stock_option_page per request for the company key (the issuer of a stored row; "" takes the
 // first ok row of the data day) and the day of dayFlag or today, from the candidate, option_eod and name readers
 // of the site and the reading reader of the site (rd.view, for vol_view), with the overlay reader of the open and
-// refresh rows (rd.openQuotes) and the state of the refresh button of its stock; a nil reader gives the page its own gap. A nil zone is an error.
+// refresh rows (rd.openQuotes) and the state of the refresh button of its stock; a nil reader gives the page its
+// own gap. A nil zone is an error.
 func stockBuild(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders, key string) ([]byte, error) {
 	if a.profile.Zone == nil {
 		return nil, errors.New("stock_option_page: no zone")

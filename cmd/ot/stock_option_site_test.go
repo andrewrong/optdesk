@@ -128,11 +128,11 @@ func TestStockRouteCarriesTheRefreshState(t *testing.T) {
 	}
 }
 
-// okView is a fake ReadingViewReader answering one ok reading for the names it holds, whatever the subject.
+// okView is a fake ReadingViewReader answering one ok reading for the name market.rv20 and the subject DEMO only.
 type okView struct{ store.ReadingViewReader }
 
-func (okView) WinnerReadings(_ context.Context, name, _, _ string, _, to contracts.Day) ([]contracts.ReadingRecord, error) {
-	if name != "market.rv20" {
+func (okView) WinnerReadings(_ context.Context, name, _, subject string, _, to contracts.Day) ([]contracts.ReadingRecord, error) {
+	if name != "market.rv20" || subject != "DEMO" {
 		return nil, nil
 	}
 	d, err := time.Parse("2006-01-02", string(to))
@@ -193,4 +193,29 @@ func TestStockPageNoViewReader(t *testing.T) {
 			t.Fatalf("row %+v: want a gap and no text", r)
 		}
 	}
+}
+
+type demoOnlyView struct{ store.ReadingViewReader }
+
+func (demoOnlyView) WinnerReadings(_ context.Context, name, _, subject string, _, to contracts.Day) ([]contracts.ReadingRecord, error) {
+	if name != "market.rv20" || subject != "DEMO" {
+		return nil, nil
+	}
+	d, _ := time.Parse("2006-01-02", string(to))
+	v := "0.31"
+	var rec contracts.ReadingRecord
+	rec.Name, rec.State, rec.Value = name, "ok", &v
+	rec.Day.Time = d
+	return []contracts.ReadingRecord{rec}, nil
+}
+
+func TestStockPageVolViewBySubject(t *testing.T) {
+	t.Parallel()
+	p := stockVolRows(t, siteReaders{cands: demoCandidates{}, view: demoOnlyView{}})
+	for _, r := range p.VolView.Rows {
+		if r.Label == "rv20" && r.Text == "0.31" {
+			return
+		}
+	}
+	t.Fatalf("readings of DEMO's subject did not reach the page: %+v", p.VolView.Rows)
 }
