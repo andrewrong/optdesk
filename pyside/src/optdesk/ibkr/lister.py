@@ -39,7 +39,6 @@ class ListingGateway(IbGateway):
         right: str,
         trading_class: str,
     ) -> Sequence[ListedContract]:
-        ib, generation = self._session()
         contract = Contract(
             secType="OPT",
             symbol=symbol,
@@ -51,6 +50,7 @@ class ListingGateway(IbGateway):
         )
         await self._list_lock.acquire()
         try:
+            ib, generation = self._session()  # after the wait: the current session
             details = await self._send_details(
                 generation, lambda: ib.reqContractDetailsAsync(contract)
             )
