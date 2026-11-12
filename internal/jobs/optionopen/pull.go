@@ -25,8 +25,8 @@ import (
 //go:embed job_pull.toml
 var pullManifest []byte
 
-// pullDataset is the dataset of the keys of the pull.
-const pullDataset = "obs.option_open"
+// PullDatasetID is the dataset id of the keys of the US pull: the stored table the pull writes.
+const PullDatasetID = "obs.option_open"
 
 // PlanReader is the read side of openquote.OptionOpenPlanStore: the pull never writes a plan.
 type PlanReader interface {
@@ -78,13 +78,14 @@ type pullTable struct {
 }
 
 type pull struct {
-	m        pullTable
-	d        PullDeps
-	loc      *time.Location
-	stop     int // stop_after in minutes after midnight, local
-	offset   time.Duration
-	runBound time.Duration
-	retry    map[Class]bool
+	datasetID string // the dataset id of the keys the pull plans
+	m         pullTable
+	d         PullDeps
+	loc       *time.Location
+	stop      int // stop_after in minutes after midnight, local
+	offset    time.Duration
+	runBound  time.Duration
+	retry     map[Class]bool
 }
 
 // NewPull builds the option_open job from the embedded job_pull.toml.
@@ -100,7 +101,7 @@ func NewPull(d PullDeps) (contracts.Job, error) {
 	if err != nil {
 		return nil, errors.New("optionopen: pull manifest: zone is unknown")
 	}
-	p := &pull{m: m, d: d, loc: loc, retry: map[Class]bool{}}
+	p := &pull{datasetID: PullDatasetID, m: m, d: d, loc: loc, retry: map[Class]bool{}}
 	if m.ID == "" || len(m.Slot) != 4 || m.Chunk < 1 || m.MaxPerKey < 1 || m.BudgetMinutes < 1 || m.MinOKShare < 0 || m.MinOKShare > 1 {
 		return nil, errors.New("optionopen: pull manifest: id, slot, chunk, max_per_key, budget_minutes and min_ok_share are out of range")
 	}
@@ -133,6 +134,11 @@ func (p *pull) ID() string { return p.m.ID }
 // Schedule is the slot of the manifest as plain values; the scheduler turns it into start instants.
 func (p *pull) Schedule() (calendarID, anchor, zone string, offset time.Duration) {
 	return p.m.Schedule.Calendar, p.m.Schedule.Anchor, "", p.offset
+}
+
+// Window is the calendar of the schedule and no offsets: the window of the keys opens and closes with the session.
+func (p *pull) Window() (calendarID string, openOffset, closeOffset time.Duration) {
+	return p.m.Schedule.Calendar, 0, 0
 }
 
 // RunBound is the longest time one run may take.
@@ -189,7 +195,7 @@ func (p *pull) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expecte
 	h := sha256.New()
 	keys := make([]contracts.ExpectedKey, len(bs))
 	for i, b := range bs {
-		keys[i] = contracts.ExpectedKey{DatasetID: pullDataset, SubjectKey: b.subject}
+		keys[i] = contracts.ExpectedKey{DatasetID: p.datasetID, SubjectKey: b.subject}
 		fmt.Fprintf(h, "%s|%s|%d\n", b.subject, b.items[0].PlanID, len(b.items))
 	}
 	return keys, fmt.Sprintf("%x", h.Sum(nil)), nil
