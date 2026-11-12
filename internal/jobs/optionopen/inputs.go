@@ -5,12 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/atombender/go-jsonschema/pkg/types"
+	"math"
 	"math/big"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -119,6 +121,45 @@ func (s Stored) lastClose(ctx context.Context, id int64, through time.Time) (flo
 		}
 	}
 	return 0, false, nil
+}
+
+// rv20Closes is the closes of a 20-day realised vol, and rv20Lookback the calendar days searched for them.
+const (
+	rv20Closes   = 21
+	rv20Lookback = 45
+)
+
+// rv20 is the 20-day realised vol of the stored daily closes on or before through: the sample standard deviation
+// of the 20 log returns of the last 21 closes, times sqrt(252). ok is false with fewer than 21 closes.
+func (s Stored) rv20(ctx context.Context, id int64, through time.Time) (float64, bool, error) {
+	bars, err := s.Bars.PriceBars(ctx, id, "trades",
+		contracts.Day(through.AddDate(0, 0, -rv20Lookback).Format(time.DateOnly)), contracts.Day(through.Format(time.DateOnly)))
+	if err != nil {
+		return 0, false, err
+	}
+	var closes []float64
+	for _, b := range bars {
+		if v, err := strconv.ParseFloat(b.Close, 64); err == nil && v > 0 {
+			closes = append(closes, v)
+		}
+	}
+	if len(closes) < rv20Closes {
+		return 0, false, nil
+	}
+	closes = closes[len(closes)-rv20Closes:]
+	rets := make([]float64, 0, rv20Closes-1)
+	mean := 0.0
+	for i := 1; i < len(closes); i++ {
+		r := math.Log(closes[i] / closes[i-1])
+		rets = append(rets, r)
+		mean += r
+	}
+	mean /= float64(len(rets))
+	ss := 0.0
+	for _, r := range rets {
+		ss += (r - mean) * (r - mean)
+	}
+	return math.Sqrt(ss/float64(len(rets)-1)) * math.Sqrt(252), true, nil
 }
 
 func strikeValue(s string) float64 {
@@ -243,4 +284,77 @@ func sessionDate(d time.Time) types.SerializableDate { return types.Serializable
 func hashOf(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])
+}
+
+// spotOf is the prior close of the name from the stored bars; a missing bar is asked of the gateway once. A name
+// with neither has no spot and the run ends Retryable.
+func (r *listRun) spotOf(ctx context.Context, n *listName) (float64, bool, contracts.TypedError) {
+	if n.spotSt != spotUnknown {
+		return n.spot, n.spotSt == spotKnown, nil
+	}
+	v, ok, err := r.j.d.lastClose(ctx, n.id, r.t.AddDate(0, 0, -1))
+	if err != nil {
+		return 0, false, asTyped(err, contracts.Retryable)
+	}
+	if !ok {
+		v, ok = r.historySpot(ctx, n)
+	}
+	if ok {
+		n.spot, n.spotSt = v, spotKnown
+	} else {
+		n.spotSt, r.noSpot = spotNone, true
+	}
+	return n.spot, ok, nil
+}
+
+// historySpot asks the gateway for the last daily bar of the name, once.
+func (r *listRun) historySpot(ctx context.Context, n *listName) (float64, bool) {
+	h := r.j.d.History
+	if h == nil {
+		return 0, false
+	}
+	bars, err := h.Bars(ctx, broker.BarQuery{Contract: r.underlying(n), Kind: broker.BarTrades, DurationDays: 5,
+		End: r.t.AddDate(0, 0, -1).Format(time.DateOnly)})
+	if err != nil {
+		return 0, false
+	}
+	for i := len(bars) - 1; i >= 0; i-- {
+		if v, err := strconv.ParseFloat(bars[i].Close, 64); err == nil && v > 0 {
+			return v, true
+		}
+	}
+	return 0, false
+}
+
+// sigmaOf is the sigma of the band of the name: the larger of the stored ATM implied vol and the 20-day realised
+// vol of the stored closes, else DefaultSigma with the source default.
+func (r *listRun) sigmaOf(ctx context.Context, n *listName, spot float64) (float64, string, contracts.TypedError) {
+	if n.sigmaSet {
+		return n.sigma, n.sigSrc, nil
+	}
+	if terr := r.loadRefs(ctx, n); terr != nil {
+		return 0, "", terr
+	}
+	prior, last, err := r.j.d.sigmas(ctx, n.id, n.refs, spot, r.t)
+	if err != nil {
+		return 0, "", asTyped(err, contracts.Retryable)
+	}
+	iv := prior
+	if iv <= 0 {
+		iv = last
+	}
+	rv, _, err := r.j.d.rv20(ctx, n.id, r.t.AddDate(0, 0, -1))
+	if err != nil {
+		return 0, "", asTyped(err, contracts.Retryable)
+	}
+	switch {
+	case iv <= 0 && rv <= 0:
+		n.sigma, n.sigSrc = DefaultSigma, "default"
+	case iv >= rv:
+		n.sigma, n.sigSrc = iv, "iv"
+	default:
+		n.sigma, n.sigSrc = rv, "rv20"
+	}
+	n.sigmaSet = true
+	return n.sigma, n.sigSrc, nil
 }
