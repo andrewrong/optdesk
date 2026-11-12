@@ -32,7 +32,7 @@ from optdesk.ibkr.gateways import (
     positive_int,
 )
 from optdesk.ibkr.health import PROBE_DEADLINE_S, HealthServer, Probe, start_health
-from optdesk.ibkr.ibgateway import IbGateway
+from optdesk.ibkr.lister import ListingGateway
 from optdesk.ibkr.model import Gateway, SessionState
 from optdesk.ibkr.timing import Clock, SystemClock
 from optdesk.ibkr.transport import (
@@ -155,7 +155,7 @@ GatewayFactory = Callable[[GatewaySpec], Gateway]
 
 
 def gateway_factory(
-    config: Config, clock: Clock, build: Callable[..., Gateway] = IbGateway
+    config: Config, clock: Clock, build: Callable[..., Gateway] = ListingGateway
 ) -> GatewayFactory:
     """Return the factory that builds a guarded gateway for a spec."""
 

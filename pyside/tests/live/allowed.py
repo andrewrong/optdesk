@@ -9,6 +9,7 @@ ALLOWED_RPCS: frozenset[str] = frozenset(
         "Executions",
         "ResolveContract",
         "ListChains",
+        "ListContracts",
         "Snapshot",
         "Dividends",
         "Bars",

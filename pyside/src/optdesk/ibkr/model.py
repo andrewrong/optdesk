@@ -72,6 +72,24 @@ class QuoteTarget:
     sec_type: str = ""
 
 
+@dataclass(frozen=True)
+class ListedContract:
+    """One real option contract of a list: its con_id and its key fields.
+
+    expiry is YYYYMMDD, strike is canonical decimal text, right is "C" or "P".
+    """
+
+    con_id: int
+    symbol: str
+    exchange: str
+    currency: str
+    expiry: str
+    strike: str
+    right: str
+    multiplier: str
+    trading_class: str
+
+
 class SessionState(NamedTuple):
     """State of the broker session."""
 
@@ -230,5 +248,26 @@ class ExecutionsGateway(Protocol):
         """Read the executions of the day with their commissions.
 
         Raise MultipleAccounts for a login of several.
+        """
+        ...
+
+
+class ListerGateway(Protocol):
+    """A broker that lists the real option contracts of one expiry and class."""
+
+    async def list_contracts(
+        self,
+        *,
+        symbol: str,
+        exchange: str,
+        currency: str,
+        expiry: str,
+        right: str,
+        trading_class: str,
+    ) -> Sequence[ListedContract]:
+        """List every contract of the expiry and class with one request, no strike.
+
+        right is "C", "P" or empty for both. A timeout, a lost session or a
+        gateway error is raised; a list is never partial. Not listed is empty.
         """
         ...
