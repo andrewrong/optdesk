@@ -227,9 +227,6 @@ func TestDryRunRejectsOtherJobs(t *testing.T) {
 			t.Errorf("error %q does not name %s", err, n)
 		}
 	}
-	if err := runOnce(a, []string{"--job", "option_eod"}); err == nil {
-		t.Error("--job without --dry-run accepted")
-	}
 	if out.Len() != 0 || len(ran) != 0 {
 		t.Errorf("something ran: %q %v", out.String(), ran)
 	}

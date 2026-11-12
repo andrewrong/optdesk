@@ -162,6 +162,10 @@ func dryRunJob(ctx context.Context, a *app, brk broker.Broker, name string, day 
 	wall := a.deps.newClock()
 	clk := &setClock{}
 	sink := &memSink{}
+	if name == jobOptionEodJP {
+		// The scheduler's entryFix: a JP stock entry without a con_id gets the one the broker answers.
+		watch = resolveJPConIDs(ctx, brk, watch, a.log, jobOptionEodJP)
+	}
 	job, err := dryRunBuild(a.deps, name, brk, &memResolver{}, sink, watch, clk)
 	if err != nil {
 		return 0, 0, err

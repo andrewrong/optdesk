@@ -118,19 +118,25 @@ func runOnce(a *app, args []string) error {
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
 	dryRun := fs.Bool("dry-run", false, "capture through the live broker into memory; no store, no guard, no write")
+	force := fs.Bool("force", false, "with --job: run a key that is already present again")
 	var jobNames []string
-	fs.Func("job", "with --dry-run: option_eod, option_eod_jp or quote_snapshot (repeatable)", func(v string) error {
-		if !slices.Contains(dryRunJobs, v) {
-			return fmt.Errorf("--job %q is not one of %s", v, strings.Join(dryRunJobs, ", "))
-		}
+	fs.Func("job", "job id to run (one for a real run; with --dry-run repeatable: option_eod, option_eod_jp, quote_snapshot)", func(v string) error {
 		jobNames = append(jobNames, v)
 		return nil
 	})
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if len(jobNames) > 0 && !*dryRun {
-		return fmt.Errorf("--job needs --dry-run")
+	for _, n := range jobNames {
+		if *dryRun && !slices.Contains(dryRunJobs, n) {
+			return fmt.Errorf("--job %q is not one of %s", n, strings.Join(dryRunJobs, ", "))
+		}
+		if _, ok := jobRowOf(n); !*dryRun && !ok {
+			return unknownJobError(n)
+		}
+	}
+	if err := checkJobCount(len(jobNames), *dryRun, *force); err != nil {
+		return err
 	}
 	if *dryRun {
 		return runDryRun(context.Background(), a, jobNames, *dayFlag)
@@ -146,6 +152,12 @@ func runOnce(a *app, args []string) error {
 	day, err := dayOrDefault(clk, *dayFlag)
 	if err != nil {
 		return err
+	}
+	if len(jobNames) == 1 && !*dryRun {
+		if err := runOnceJob(ctx, a, clk, cfg, day, jobNames[0], *force); err != nil {
+			return runOnceErr(err, day)
+		}
+		return nil
 	}
 	if err := reconcileDay(ctx, a, clk, cfg, day); err != nil {
 		if ref := refusal(""); errors.As(err, &ref) {
