@@ -233,17 +233,29 @@ func (p *pull) fault(day contracts.Day, keys []contracts.ExpectedKey, res contra
 	return res
 }
 
-func (p *pull) run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
-	now := p.d.Clock.Now()
-	local := now.In(p.loc)
-	// Development mode: the quotes are of today, so a past day runs with the clock's date as its day.
-	day := contracts.Day(local.Format(time.DateOnly))
+// runPlan reads the plan that made the keys: the plan of day, else the plan of the clock's date (the local date of
+// p.loc). Both empty is the Retryable "the plan of <day> is gone"; a store error is returned as it is.
+func (p *pull) runPlan(ctx context.Context, day contracts.Day) ([]batch, contracts.TypedError) {
 	bs, err := p.batches(ctx, day)
 	if errors.Is(err, errNoPlan) {
-		return contracts.JobResult{Err: newErr(contracts.Retryable, "the plan of %s is gone", day)}
+		today := contracts.Day(p.d.Clock.Now().In(p.loc).Format(time.DateOnly))
+		if today != day {
+			bs, err = p.batches(ctx, today)
+		}
+	}
+	if errors.Is(err, errNoPlan) {
+		return nil, newErr(contracts.Retryable, "the plan of %s is gone", day)
 	}
 	if err != nil {
-		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
+		return nil, asTyped(err, contracts.Retryable)
+	}
+	return bs, nil
+}
+
+func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	bs, terr := p.runPlan(ctx, day)
+	if terr != nil {
+		return contracts.JobResult{Err: terr}
 	}
 	byKey := map[string]batch{}
 	for _, b := range bs {
