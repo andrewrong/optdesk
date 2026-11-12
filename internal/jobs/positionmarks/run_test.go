@@ -46,16 +46,20 @@ func (f *fakeAcct) Executions(context.Context, string, string, string) ([]store.
 
 type fakeMarket struct {
 	broker.Broker
-	clk     *clockwork.FakeClock
-	mu      sync.Mutex
-	calls   [][]broker.Contract
-	kinds   []broker.Kind
-	quote   func(c broker.Contract) broker.Quote
-	err     error
-	advance time.Duration
+	clk        *clockwork.FakeClock
+	mu         sync.Mutex
+	calls      [][]broker.Contract
+	kinds      []broker.Kind
+	quote      func(c broker.Contract) broker.Quote
+	err        error
+	resolveErr error
+	advance    time.Duration
 }
 
 func (m *fakeMarket) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+	if m.resolveErr != nil {
+		return broker.Resolved{}, m.resolveErr
+	}
 	return broker.Resolved{Listed: true, Contract: broker.Contract{Exchange: "TSEJ"}}, nil
 }
 
@@ -339,6 +343,22 @@ func TestRunJPYPositionAndUnsupportedSecType(t *testing.T) {
 		t.Fatalf("sent = %+v", sent)
 	}
 	if r := e.w.rows[2]; r.ConID != 3 || r.Basis != mark.BasisNone || r.Status != "no_data" {
+		t.Fatalf("row = %+v", r)
+	}
+}
+
+func TestRunJPYStockWithFailingLookupIsQuoted(t *testing.T) {
+	t.Parallel()
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 7, "JPY")}})
+	e.m.resolveErr = errors.New("ambiguous")
+	res := e.run()
+	if res.Err != nil || res.Returned != 1 || res.Usable != 1 {
+		t.Fatalf("res = %+v", res)
+	}
+	if len(e.m.calls) != 1 || len(e.m.calls[0]) != 1 || e.m.calls[0][0].Exchange != "TSEJ" || e.m.calls[0][0].ConID != 7 {
+		t.Fatalf("sent = %+v", e.m.calls)
+	}
+	if r := e.w.rows[0]; r.Basis == mark.BasisNone || r.Status == "error" {
 		t.Fatalf("row = %+v", r)
 	}
 }
