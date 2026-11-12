@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
@@ -32,6 +33,9 @@ func grow[E any](s *[]E) *E {
 	*s = append(*s, z)
 	return &(*s)[len(*s)-1]
 }
+
+// isNoData reports a broker answer of "no data" (error 162). The code is only in the error text of Bars.
+func isNoData(err error) bool { return strings.Contains(err.Error(), "broker error 162") }
 
 func isOk(r contracts.ReadingRecord) bool { return string(r.State) == stateOk }
 
@@ -76,7 +80,7 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 		days = j.m.BackfillDays
 	}
 	bars, err := j.h.Bars(ctx, broker.BarQuery{Contract: j.contract[name], Kind: broker.BarOptionImpliedVol, DurationDays: days})
-	if err != nil {
+	if err != nil && !isNoData(err) {
 		return 0, 0, asTyped(err, contracts.Retryable)
 	}
 	now := j.clk.Now().UTC()

@@ -120,14 +120,58 @@ func TestBuyPriceBoundary(t *testing.T) {
 	}
 }
 
-func TestNoBuyPriceBlocks(t *testing.T) {
+func hasMark(c compute.Candidate, m string) bool {
+	for _, x := range c.Marks {
+		if x == m {
+			return true
+		}
+	}
+	return false
+}
+
+func TestNoBuyPriceIsMarkNotBlock(t *testing.T) {
 	t.Parallel()
 	in := baseInput()
 	in.BuyPrice = ""
 	c := only(t, eval(in))
-	wantGate(t, c, "buy_price", compute.GateBlock, "no_buy_price")
-	if c.Status != "blocked" {
-		t.Errorf("status %s", c.Status)
+	wantGate(t, c, "buy_price", compute.GatePass, "")
+	if !hasMark(c, "no_buy_price") || c.Status != "ok" || c.Rank != 1 {
+		t.Errorf("marks %v status %s rank %d", c.Marks, c.Status, c.Rank)
+	}
+}
+
+func TestBuyPriceSetStillBlocks(t *testing.T) {
+	t.Parallel()
+	in := baseInput()
+	in.BuyPrice = "98.00"
+	in.Quotes[0].Strike, in.Quotes[0].Bid = "100", "1.99"
+	c := only(t, eval(in))
+	wantGate(t, c, "buy_price", compute.GateBlock, "above_buy_price")
+	if hasMark(c, "no_buy_price") {
+		t.Errorf("marks %v", c.Marks)
+	}
+}
+
+func TestOpenInterestAbsentIsMark(t *testing.T) {
+	t.Parallel()
+	in := baseInput()
+	in.Quotes[0].OpenInterest = 0
+	c := only(t, eval(in))
+	wantGate(t, c, "quote", compute.GatePass, "")
+	if !hasMark(c, "no_open_interest") || c.Status != "ok" {
+		t.Errorf("marks %v status %s", c.Marks, c.Status)
+	}
+	in.Quotes[0].OpenInterest = 9
+	c = only(t, eval(in))
+	wantGate(t, c, "quote", compute.GateBlock, "low_open_interest")
+	if hasMark(c, "no_open_interest") {
+		t.Errorf("marks %v", c.Marks)
+	}
+	in.Quotes[0].OpenInterest = 10
+	c = only(t, eval(in))
+	wantGate(t, c, "quote", compute.GatePass, "")
+	if hasMark(c, "no_open_interest") {
+		t.Errorf("marks %v", c.Marks)
 	}
 }
 
@@ -153,7 +197,7 @@ func TestQuoteGate(t *testing.T) {
 		{"open interest at limit", func(q *compute.OptionQuote) { q.OpenInterest = 10 }, compute.GatePass, ""},
 		{"delayed", func(q *compute.OptionQuote) { q.MarketDataType = 3 }, compute.GateUnknown, "delayed_data"},
 		{"frozen", func(q *compute.OptionQuote) { q.MarketDataType = 2 }, compute.GatePass, ""},
-		{"block outranks delayed", func(q *compute.OptionQuote) { q.MarketDataType = 4; q.OpenInterest = 0 }, compute.GateBlock, "low_open_interest"},
+		{"block outranks delayed", func(q *compute.OptionQuote) { q.MarketDataType = 4; q.OpenInterest = 9 }, compute.GateBlock, "low_open_interest"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -190,7 +234,23 @@ func TestFundingPerAlias(t *testing.T) {
 	in.Accounts = []compute.AliasFunds{{Alias: "A", Funds: "20000", Currency: "USD", CaptureDay: "2026-11-05"}}
 	wantGate(t, only(t, eval(in)), "funding", compute.GateUnknown, "stale_account")
 	in.Accounts = nil
-	wantGate(t, only(t, eval(in)), "funding", compute.GateUnknown, "no_account")
+	wantGate(t, only(t, eval(in)), "funding", compute.GatePass, "")
+}
+
+func TestNoAccountIsMarkNotUnknown(t *testing.T) {
+	t.Parallel()
+	in := baseInput()
+	in.Accounts = nil
+	c := only(t, eval(in))
+	if c.Status != "ok" || c.Rank != 1 || !hasMark(c, "no_account") || len(c.Fits) != 0 {
+		t.Errorf("status %s rank %d marks %v fits %v", c.Status, c.Rank, c.Marks, c.Fits)
+	}
+	in.Accounts = []compute.AliasFunds{{Alias: "A", Funds: "20000", Currency: "USD", CaptureDay: "2026-11-05"}}
+	c = only(t, eval(in))
+	wantGate(t, c, "funding", compute.GateUnknown, "stale_account")
+	if hasMark(c, "no_account") {
+		t.Errorf("marks %v", c.Marks)
+	}
 }
 
 func TestNoFxIsUnknown(t *testing.T) {

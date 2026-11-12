@@ -1,7 +1,6 @@
 package optioneod
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -121,16 +120,13 @@ func TestChainOfClassRule(t *testing.T) {
 	}
 }
 
-func TestStopAfterReturnsNoValue(t *testing.T) {
+func TestRunAfterStopAfterStores(t *testing.T) {
 	t.Parallel()
-	late := newJPRig(t, "2026-11-09 17:00")
-	res := late.run(jpDay, jpKey)
-	if kindOf(res) != contracts.NoValue || res.Err.Error() != "after session" || late.b.calls() != 0 {
-		t.Fatalf("late: %v calls %d", res.Err, late.b.calls())
-	}
-	ok := newJPRig(t, "2026-11-09 16:59")
-	if res := ok.run(jpDay, jpKey); res.Err != nil || ok.b.calls() == 0 {
-		t.Fatalf("16:59: %v calls %d", res.Err, ok.b.calls())
+	for _, at := range []string{"2026-11-09 17:00", "2026-11-09 23:30"} {
+		late := newJPRig(t, at)
+		if res := late.run(jpDay, jpKey); res.Err != nil || late.b.calls() == 0 {
+			t.Fatalf("%s: %v calls %d", at, res.Err, late.b.calls())
+		}
 	}
 }
 
@@ -148,14 +144,5 @@ func TestJPRowsCurrencyJPY(t *testing.T) {
 		if row.Currency != "JPY" {
 			t.Fatalf("currency %q", row.Currency)
 		}
-	}
-}
-
-func TestJPWrongDayNoRows(t *testing.T) {
-	t.Parallel()
-	r := newJPRig(t, "2026-11-09 16:00")
-	res := r.job.Run(context.Background(), "2026-11-08", []contracts.ExpectedKey{jpKey})
-	if kindOf(res) != contracts.NoValue || r.b.calls() != 0 || len(r.w.all()) != 0 {
-		t.Fatalf("%v calls %d", res.Err, r.b.calls())
 	}
 }

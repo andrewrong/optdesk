@@ -21,16 +21,15 @@ var (
 )
 
 type job struct {
-	m      manifest
-	b      broker.Broker
-	res    store.InstrumentResolver
-	sym    symbol.Translator   // nil: no translation, the symbol is its own option root
-	acct   store.AccountReader // nil: no held short calls are captured
-	w      store.OptionEodWriter
-	clk    clock.Clock
-	loc    *time.Location
-	freeze int // minutes after midnight, local
-	stop   int // stop_after in minutes after midnight, local; -1 when unset
+	m    manifest
+	b    broker.Broker
+	res  store.InstrumentResolver
+	sym  symbol.Translator   // nil: no translation, the symbol is its own option root
+	acct store.AccountReader // nil: no held short calls are captured
+	w    store.OptionEodWriter
+	clk  clock.Clock
+	loc  *time.Location
+	stop int // stop_after in minutes after midnight, local; -1 when unset
 
 	cal         string
 	open, close time.Duration
@@ -93,12 +92,11 @@ func build(data []byte, b broker.Broker, res store.InstrumentResolver, w store.O
 	if err != nil {
 		return nil, errors.New("optioneod: manifest: zone is unknown")
 	}
-	freeze, _ := parseHHMM(m.FreezeAfter)
 	stop := -1
 	if m.StopAfter != "" {
 		stop, _ = parseHHMM(m.StopAfter)
 	}
-	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, freeze: freeze, stop: stop, cal: cal, open: open, close: closeOff}, nil
+	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, stop: stop, cal: cal, open: open, close: closeOff}, nil
 }
 
 // root is the option root of symbol: the translator's OSIRoot, or symbol itself without a translator.
@@ -113,19 +111,11 @@ func (j *job) root(symbol string) string {
 func (j *job) ID() string { return j.m.ID }
 
 // Run collects the keys of day: it stops with Retryable once budget_minutes have passed, keeping the rows written.
-func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+func (j *job) Run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	now := j.clk.Now()
 	local := now.In(j.loc)
-	if string(day) != local.Format(time.DateOnly) {
-		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
-	}
-	minutes := local.Hour()*60 + local.Minute()
-	if j.stop >= 0 && minutes >= j.stop {
-		return contracts.JobResult{Err: newErr(contracts.NoValue, "after session")}
-	}
-	if minutes < j.freeze {
-		return contracts.JobResult{}
-	}
+	// Development mode: the broker answers for today, so a past day or an early run uses the clock's date.
+	day := contracts.Day(local.Format(time.DateOnly))
 	dayTime, err := time.Parse(time.DateOnly, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}

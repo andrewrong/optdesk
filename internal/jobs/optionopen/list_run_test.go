@@ -27,7 +27,7 @@ func TestRunCallOrderAcrossNamesUnderOneBudgetClock(t *testing.T) {
 	t.Parallel()
 	g := newLRig(t, "AAA", "BBB", "CCC", "DDD")
 	g.acc.calls = map[string]int{}
-	g.acc.pos = []store.Position{{SecType: "STK", Symbol: "CCC", ConID: 102, Quantity: "100"}}
+	g.acc.pos = []store.Position{{SecType: "stock", Symbol: "CCC", ConID: 102, Quantity: "100"}}
 	j := g.job(nil)
 	j.d.Watch[1].BuyPrice = "50"
 	for _, s := range g.watch {
@@ -121,54 +121,18 @@ func TestCompletePassThenCrashedRerunIsPresentWithoutCalls(t *testing.T) {
 	require.Equal(t, puts, g.ls.puts, "and writes no row")
 }
 
-func TestLateStartMakesNoCallAndIsNotPresent(t *testing.T) {
+func TestListPastStopTimeLists(t *testing.T) {
 	t.Parallel()
 	g := newLRig(t, "AAA", "BBB")
 	g.clk.Advance(76 * time.Minute) // 07:31
 	j := g.job(nil)
-	for i := 0; i < 2; i++ {
-		require.Nil(t, g.run(j).Err)
-		require.Empty(t, g.lst.calls)
-		require.False(t, g.present(j))
-		for _, s := range g.watch {
-			require.Equal(t, reasonStopTime, g.row(s).Reason)
-			require.Nil(t, g.row(s).Expected)
-		}
-	}
-}
-
-func TestPartialPassThenRerunAfterStopTimeIsPresent(t *testing.T) {
-	t.Parallel()
-	g := newLRig(t, "AAA", "BBB")
-	g.lst.list = func(_ int, sym string, _ contracts.Day, class string) ([]broker.Contract, error) {
-		if sym == "BBB" {
-			return nil, errors.New("rejected")
-		}
-		return g.lst.sample(class, ""), nil
-	}
-	j := g.job(nil)
 	require.Nil(t, g.run(j).Err)
-	require.Equal(t, reasonAllShort, g.row("BBB").Reason)
-	g.clk.Advance(2 * time.Hour)
-	g.lst.reset()
-	require.Nil(t, g.run(j).Err)
-	require.Empty(t, g.lst.calls)
+	require.NotEmpty(t, g.lst.calls)
 	require.True(t, g.present(j))
-}
-
-func TestPreopenStopsAtStopTime(t *testing.T) {
-	t.Parallel()
-	g := newLRig(t, "AAA")
-	g.clk.Advance(74*time.Minute + 55*time.Second) // 07:29:55
-	g.lst.dur = 10 * time.Second
-	g.seed("AAA", reasonNotFinished, 0, 22, 29)
-	j := g.job(nil)
-	res := g.run(j)
-	require.Nil(t, res.Err)
-	require.Len(t, g.lst.only("list:"), 1, "the second request is not made")
-	require.Equal(t, reasonStopTime, g.row("AAA").Reason)
-	require.Equal(t, 1, g.row("AAA").Listed)
-	require.True(t, g.present(j))
+	for _, s := range g.watch {
+		require.Greater(t, g.row(s).Listed, 0)
+	}
+	require.Contains(t, g.logs[len(g.logs)-1], "past_stop_time=true")
 }
 
 func TestRerunAfterCrashBetweenListRowAndRunRowCountsIt(t *testing.T) {

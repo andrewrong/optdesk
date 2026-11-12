@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optdesk.invalid/schemas/page.job_console.v1.json",
+  "title": "JobConsole",
+  "description": "View model of the job console page: every job, the form that runs one, the newest requests with one line per key. Every visible string is a field; the view computes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "title", "sentence", "form", "gaps", "jobs", "requests", "selected", "refresh_seconds"],
+  "properties": {
+    "schema": {"const": "job_console"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "title": {"$ref": "#/$defs/Text"},
+    "sentence": {"type": "string", "maxLength": 300},
+    "form": {"oneOf": [{"$ref": "#/$defs/Form"}, {"type": "null"}]},
+    "gaps": {"type": "array", "items": {"$ref": "#/$defs/Gap"}},
+    "jobs": {"type": "array", "items": {"$ref": "#/$defs/Job"}},
+    "requests": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/Request"}},
+    "selected": {"type": ["integer", "null"], "minimum": 1},
+    "refresh_seconds": {"enum": [0, 5]}
+  },
+  "$defs": {
+    "Text": {"type": "string", "minLength": 1, "maxLength": 600},
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reason", "text"],
+      "properties": {
+        "kind": {"const": "gap"},
+        "reason": {"enum": ["job_requests_unavailable", "no_such_request"]},
+        "text": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "Optional": {"type": "string", "maxLength": 600},
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_path", "expires", "mac"],
+      "properties": {
+        "post_path": {"const": "/owner-job-console"},
+        "expires": {"$ref": "#/$defs/Text"},
+        "mac": {"$ref": "#/$defs/Text"}
+      }
+    },
+    "Job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "today", "note", "force", "force_why", "why_text", "needs_text"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+        "kind": {"enum": ["any_day", "today_only", "listed_only"]},
+        "today": {"type": "string", "format": "date"},
+        "note": {"type": ["string", "null"], "maxLength": 1000},
+        "force": {"type": "boolean"},
+        "force_why": {"$ref": "#/$defs/Optional"},
+        "why_text": {"$ref": "#/$defs/Optional"},
+        "needs_text": {"$ref": "#/$defs/Optional"}
+      }
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "job", "day", "force", "state", "state_text", "at_text", "reason", "keys"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 1},
+        "job": {"type": "string", "pattern": "^[a-z0-9_]{1,40}$"},
+        "day": {"type": "string", "format": "date"},
+        "force": {"type": "boolean"},
+        "state": {"enum": ["queued", "running", "done", "refused", "failed", "interrupted", "withdrawn"]},
+        "state_text": {"$ref": "#/$defs/Text"},
+        "at_text": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} UTC$"},
+        "reason": {"$ref": "#/$defs/Optional"},
+        "keys": {"type": "array", "items": {"$ref": "#/$defs/Key"}}
+      }
+    },
+    "Key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset", "subject", "outcome", "outcome_text", "present", "reason"],
+      "properties": {
+        "dataset": {"$ref": "#/$defs/Text"},
+        "subject": {"$ref": "#/$defs/Text"},
+        "outcome": {"enum": ["already_present", "waiting", "skipped", "not_run", "failed", "partial", "produced", "unconfirmed", "nothing_found"]},
+        "outcome_text": {"$ref": "#/$defs/Text"},
+        "present": {"$ref": "#/$defs/Optional"},
+        "reason": {"$ref": "#/$defs/Optional"}
+      }
+    }
+  }
+}

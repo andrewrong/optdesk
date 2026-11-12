@@ -580,8 +580,8 @@ func TestBackfillOfTodayWithHeldJobReturnsEveryKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Refused != "" || len(res.InWindow) != 2 || res.InWindow[0] != keyA || res.InWindow[1] != keyB {
-		t.Fatalf("res = %+v, want both keys, the held one included, in the window", res)
+	if res.Refused != "" || len(res.InWindow) != 0 || len(res.Filled)+len(res.Absent)+len(res.Missing) != 2 {
+		t.Fatalf("res = %+v, want both keys, the held one included, run", res)
 	}
 }
 

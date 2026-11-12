@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from pathlib import Path
 
 import pytest
+from ib_async import OptionChain
 from kit.fakeclock import FakeClock
-from test_ibgateway import FakeIb, fill, make, spin
+from test_ibgateway import FakeIb, _found, _spec, fill, make, over, spin
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.gateways import ConfigError, from_env, load_gateways
@@ -250,3 +252,112 @@ def test_client_id_0_of_the_single_gateway_keys_is_rejected() -> None:
     env = {"OT_IBKR_GATEWAY_PORT": "4002", "OT_IBKR_CLIENT_ID": "0"}
     with pytest.raises(ConfigError, match="reserved for the read-only probe"):
         from_env(env)
+
+
+def test_1100_during_open_session_then_1102_leaves_the_session_usable() -> None:
+    async def run() -> tuple[object, ...]:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+
+        async def lost_while_probing() -> None:
+            fake.errorEvent.emit(-1, 1100, "lost", None)
+
+        gateway = IbGateway(
+            lambda client: None,
+            host="127.0.0.1",
+            port=4002,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: fake,
+            readonly_probe=lost_while_probing,
+        )
+        await gateway.open_session()
+        generation = (await gateway.status()).generation
+        fake.errorEvent.emit(-1, 1102, "restored, data kept", None)
+        fake.chain_rows = [OptionChain("SMART", 1, "SPY", "100", ["20260116"], [100.0])]
+        state = await gateway.status()
+        rows = await gateway.chains(sec_type="STK", symbol="SPY", con_id=1)
+        return (
+            state.connected,
+            state.generation == generation,
+            gateway._lost.is_set(),
+            len(rows),
+        )
+
+    assert asyncio.run(run()) == (True, True, False, 1)
+
+
+def test_1100_reconnect_1102_then_every_session_guarded_call_works() -> None:
+    async def run() -> None:
+        clock = FakeClock()
+        first, second = FakeIb(clock), FakeIb(clock)
+        gateway = over([first, second], clock)
+        await gateway.open_session()
+        for handler in list(first.client.apiEnd.handlers):
+            handler()
+        await gateway.open_session()
+        second.errorEvent.emit(-1, 1100, "lost", None)
+        second.errorEvent.emit(-1, 1102, "restored, data kept", None)
+        second.chain_rows = [
+            OptionChain("SMART", 1, "SPY", "100", ["20260116"], [100.0])
+        ]
+        second.details = lambda contract: _found(5)
+        second.autofill = True
+        await gateway.chains(sec_type="STK", symbol="SPY", con_id=1)
+        task = asyncio.ensure_future(gateway.resolve(**_spec()))
+        await spin()
+        await task
+        # FakeIb has no managedAccounts: past the session guard it stops there
+        with contextlib.suppress(AttributeError):
+            await gateway.executions()
+
+    asyncio.run(run())
+
+
+def test_1100_during_open_session_leaves_the_session_not_connected() -> None:
+    async def run() -> tuple[bool, bool]:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+
+        async def lost_while_probing() -> None:
+            fake.errorEvent.emit(-1, 1100, "lost", None)
+
+        gateway = IbGateway(
+            lambda client: None,
+            host="127.0.0.1",
+            port=4002,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: fake,
+            readonly_probe=lost_while_probing,
+        )
+        await gateway.open_session()
+        return (await gateway.status()).connected, gateway._lost.is_set()
+
+    connected, lost = asyncio.run(run())
+    assert not (connected and lost)
+
+
+def test_apiend_during_open_session_does_not_report_connected() -> None:
+    async def run() -> bool:
+        clock = FakeClock()
+        fake = FakeIb(clock)
+
+        async def ended_while_probing() -> None:
+            for handler in list(fake.client.apiEnd.handlers):
+                handler()
+
+        gateway = IbGateway(
+            lambda client: None,
+            host="127.0.0.1",
+            port=4002,
+            client_id=33,
+            clock=clock,
+            ib_factory=lambda: fake,
+            readonly_probe=ended_while_probing,
+        )
+        await gateway.open_session()
+        fake.errorEvent.emit(-1, 1102, "restored, data kept", None)
+        return (await gateway.status()).connected
+
+    assert asyncio.run(run()) is False

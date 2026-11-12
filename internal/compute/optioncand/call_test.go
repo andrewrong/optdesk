@@ -162,3 +162,14 @@ func TestCallKindsAreSeparate(t *testing.T) {
 		t.Fatalf("rows %+v", rows)
 	}
 }
+
+func TestCoveredCallZeroOpenInterestMark(t *testing.T) {
+	t.Parallel()
+	in := callInput()
+	in.Quotes[0].OpenInterest = 0
+	c := only(t, eval(in))
+	wantGate(t, c, "quote", compute.GatePass, "")
+	if c.Status != "ok" || !hasMark(c, "no_open_interest") {
+		t.Errorf("status %s marks %v", c.Status, c.Marks)
+	}
+}

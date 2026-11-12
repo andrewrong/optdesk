@@ -30,9 +30,11 @@ type pullStores struct {
 	written  [][]contracts.OptionOpen
 	writeErr error
 	planErr  error
+	planDay  contracts.Day // the day of the last Plan read
 }
 
-func (s *pullStores) Plan(_ context.Context, _ contracts.Day, slot string, _ ...int64) ([]contracts.OptionOpenItem, error) {
+func (s *pullStores) Plan(_ context.Context, day contracts.Day, slot string, _ ...int64) ([]contracts.OptionOpenItem, error) {
+	s.planDay = day
 	if slot != "0945" {
 		return nil, nil
 	}
@@ -259,35 +261,36 @@ func TestPostconditionOkShareOfTheItemsNotDeferred(t *testing.T) {
 	}
 }
 
-func TestNoNewKeyAfterTheStopTime(t *testing.T) {
+func TestPullPastStopAfterRuns(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 3)
 	b := newFake(100)
 	b.clk.Advance(15 * time.Minute) // 15:00Z is 10:00 ET
-	res := runAll(t, newPull(t, s, b))
-	if res.Err == nil || len(s.written) != 0 || len(b.optCalls) != 0 {
-		t.Errorf("err %v written %d calls %d; a key started after 10:00 ET", res.Err, len(s.written), len(b.optCalls))
+	var buf bytes.Buffer
+	j, err := NewPull(PullDeps{Broker: b, Plans: s, Contracts: s, Writer: s, Instruments: s, Clock: b.clk, Log: slog.New(slog.NewTextHandler(&buf, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := runAll(t, j)
+	if res.Err != nil || len(s.written) != 1 || len(b.optCalls) == 0 {
+		t.Errorf("err %v written %d calls %d; keys started after 10:00 ET run", res.Err, len(s.written), len(b.optCalls))
+	}
+	if n := strings.Count(buf.String(), "started after stop_after"); n == 0 {
+		t.Errorf("no health line: %q", buf.String())
 	}
 }
 
-func TestStopTimeBetweenKeys(t *testing.T) {
-	t.Parallel()
-	s := seed(2, 60) // two keys
-	b := newFake(100)
-	b.step = 20 * time.Minute // the first key ends after 10:00 ET
-	res := runAll(t, newPull(t, s, b))
-	if len(s.written) != 1 || res.Err == nil {
-		t.Errorf("written %d err %v; want the first key written and the second not started", len(s.written), res.Err)
-	}
-}
-
-func TestWrongDayAndWriteFailure(t *testing.T) {
+func TestPullPastDayRunsToday(t *testing.T) {
 	t.Parallel()
 	s := seed(1, 3)
 	j := newPull(t, s, newFake(100))
 	keys, _, _ := j.Plan(context.Background(), pullDay)
-	if res := j.Run(context.Background(), "2026-11-10", keys); res.Err == nil || res.Err.Kind() != contracts.NoValue {
-		t.Errorf("wrong day: %v", res.Err)
+	res := j.Run(context.Background(), "2026-11-10", keys)
+	if res.Err != nil || len(s.written) != 1 {
+		t.Fatalf("past day: err %v written %d", res.Err, len(s.written))
+	}
+	if s.planDay != pullDay {
+		t.Errorf("plan read for %s, want the clock's date %s", s.planDay, pullDay)
 	}
 	s.writeErr = errors.New("db down")
 	if res := j.Run(context.Background(), pullDay, keys); res.Err == nil || res.Err.Kind() != contracts.Retryable {

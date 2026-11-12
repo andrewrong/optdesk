@@ -1,0 +1,310 @@
+{
+  "schema": "job_console",
+  "schema_version": 1,
+  "generated_at": "2026-11-12T14:06:00Z",
+  "title": "Job console",
+  "sentence": "Run a job for one day; the scheduler does the work.",
+  "form": {
+    "post_path": "/owner-job-console",
+    "expires": "2026-11-12T15:06:00Z",
+    "mac": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "gaps": [],
+  "jobs": [
+    {
+      "id": "compute_figures",
+      "kind": "any_day",
+      "today": "2026-11-12",
+      "note": null,
+      "force": false,
+      "force_why": "revision rows: a forced run adds a revision that the reader does not prefer; run missing only",
+      "why_text": "",
+      "needs_text": ""
+    },
+    {
+      "id": "calendar_refresh",
+      "kind": "today_only",
+      "today": "2026-11-12",
+      "note": null,
+      "force": true,
+      "force_why": "",
+      "why_text": "",
+      "needs_text": ""
+    },
+    {
+      "id": "quote_snapshot",
+      "kind": "today_only",
+      "today": "2026-11-12",
+      "note": "its three keys, 09:45, 12:30 and 15:30 ET, share one scheduled instant, 15:30 ET, so all three wait for it",
+      "force": false,
+      "force_why": "a present key is never replaced; run missing only",
+      "why_text": "",
+      "needs_text": ""
+    },
+    {
+      "id": "option_eod_jp",
+      "kind": "today_only",
+      "today": "2026-11-13",
+      "note": null,
+      "force": false,
+      "force_why": "a present key is never replaced; run missing only",
+      "why_text": "",
+      "needs_text": ""
+    },
+    {
+      "id": "listed_example",
+      "kind": "listed_only",
+      "today": "2026-11-12",
+      "note": null,
+      "force": false,
+      "force_why": "",
+      "why_text": "its row depends on the broker state of the moment",
+      "needs_text": "a change of the job so that its run answers for the day it is given"
+    }
+  ],
+  "requests": [
+    {
+      "id": 20,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "done",
+      "state_text": "done",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "completed",
+      "keys": [
+        {
+          "dataset": "figures",
+          "subject": "US:AAPL",
+          "outcome": "produced",
+          "outcome_text": "returned 12 rows",
+          "present": "the key is present now",
+          "reason": ""
+        },
+        {
+          "dataset": "figures",
+          "subject": "US:MSFT",
+          "outcome": "already_present",
+          "outcome_text": "the key was present before this run",
+          "present": "the key is present now",
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "job": "calendar_refresh",
+      "day": "2026-11-12",
+      "force": true,
+      "state": "done",
+      "state_text": "done",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "completed",
+      "keys": [
+        {
+          "dataset": "calendar",
+          "subject": "US:2026-11-12",
+          "outcome": "unconfirmed",
+          "outcome_text": "re-run returned 12 rows; the key was already present and the page cannot tell whether anything new was stored",
+          "present": "the key is present now",
+          "reason": "rerun_unknown"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "job": "calendar_refresh",
+      "day": "2026-11-12",
+      "force": true,
+      "state": "done",
+      "state_text": "done",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "completed",
+      "keys": [
+        {
+          "dataset": "calendar",
+          "subject": "US:2026-11-12",
+          "outcome": "nothing_found",
+          "outcome_text": "the job answered no value (for example outside its slot); the key stays present",
+          "present": "the key is present now",
+          "reason": "no_value"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "done",
+      "state_text": "done",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "completed",
+      "keys": [
+        {
+          "dataset": "figures",
+          "subject": "US:AAPL",
+          "outcome": "unconfirmed",
+          "outcome_text": "returned 12 rows but the key is not marked present",
+          "present": "the key is missing",
+          "reason": "postcondition"
+        },
+        {
+          "dataset": "figures",
+          "subject": "US:MSFT",
+          "outcome": "partial",
+          "outcome_text": "cut after 3 of 7 rows; counts shown",
+          "present": "the key is missing",
+          "reason": "cut"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "refused",
+      "state_text": "no stored plan for this day (not a session, or the plan was not made)",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "no_plan",
+      "keys": []
+    },
+    {
+      "id": 15,
+      "job": "calendar_refresh",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "refused",
+      "state_text": "not a session of this job's calendar",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "no_key",
+      "keys": []
+    },
+    {
+      "id": 14,
+      "job": "calendar_refresh",
+      "day": "2026-11-11",
+      "force": false,
+      "state": "refused",
+      "state_text": "the day is not today any more in the job's zone",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "not_today",
+      "keys": []
+    },
+    {
+      "id": 13,
+      "job": "quote_snapshot",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "refused",
+      "state_text": "the job's slot has not come: runs at 15:30 UTC",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "not_due",
+      "keys": [
+        {
+          "dataset": "quotes",
+          "subject": "US:AAPL",
+          "outcome": "waiting",
+          "outcome_text": "runs at 15:30 UTC",
+          "present": "the key is missing",
+          "reason": "not_due"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "failed",
+      "state_text": "stopped before the next key because a slot starts at 15:30 UTC; press Run again after it",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "slot_near",
+      "keys": [
+        {
+          "dataset": "figures",
+          "subject": "US:AAPL",
+          "outcome": "produced",
+          "outcome_text": "returned 12 rows",
+          "present": "the key is present now",
+          "reason": ""
+        },
+        {
+          "dataset": "figures",
+          "subject": "US:MSFT",
+          "outcome": "not_run",
+          "outcome_text": "not reached",
+          "present": "the key is missing",
+          "reason": "slot_near"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "queued",
+      "state_text": "starts after 15:30 UTC (the slot of quote_snapshot)",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "",
+      "keys": []
+    },
+    {
+      "id": 10,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "queued",
+      "state_text": "withdrawal pending: it takes effect when the scheduler's worker is next free (a running reconcile can take up to two hours)",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "",
+      "keys": []
+    },
+    {
+      "id": 9,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "interrupted",
+      "state_text": "interrupted by a stop or a deploy; press Run again",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "stopped",
+      "keys": [
+        {
+          "dataset": "figures",
+          "subject": "US:AAPL",
+          "outcome": "produced",
+          "outcome_text": "returned 12 rows",
+          "present": "the key is present now",
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "withdrawn",
+      "state_text": "withdrawn",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "withdrawn",
+      "keys": []
+    },
+    {
+      "id": 7,
+      "job": "compute_figures",
+      "day": "2026-11-12",
+      "force": false,
+      "state": "running",
+      "state_text": "running since 2026-11-12 14:05 UTC",
+      "at_text": "2026-11-12 14:05 UTC",
+      "reason": "",
+      "keys": []
+    }
+  ],
+  "selected": 12,
+  "refresh_seconds": 5
+}

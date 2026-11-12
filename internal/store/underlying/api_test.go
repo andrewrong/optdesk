@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +27,41 @@ type fakeStore struct {
 	now    time.Time
 }
 
-var _ underlying.Store = (*fakeStore)(nil)
+var (
+	_ underlying.Store     = (*fakeStore)(nil)
+	_ underlying.HeldAdder = (*fakeStore)(nil)
+)
+
+var heldMarket = map[string]string{"USD": "US", "JPY": "JP"}
+
+// Check keeps the promise of HeldAdder.Check.
+func (f *fakeStore) Check(symbol, currency string) (string, error) {
+	m, ok := heldMarket[currency]
+	if !ok {
+		return "", invalidErr{field: "currency", why: "no market for currency " + currency}
+	}
+	if symbol == "" || strings.ToUpper(symbol) != symbol {
+		return "", invalidErr{field: "symbol", why: "does not match the pattern of market " + m}
+	}
+	return m + ":" + symbol, nil
+}
+
+// Add keeps the promise of HeldAdder.Add.
+func (f *fakeStore) Add(_ context.Context, symbol, currency string) (bool, error) {
+	key, err := f.Check(symbol, currency)
+	if err != nil {
+		return false, err
+	}
+	for _, r := range f.rows {
+		if r.Symbol == symbol {
+			return false, nil
+		}
+	}
+	m := heldMarket[currency]
+	f.insert(underlying.Row{Key: key, Symbol: symbol, Market: m, Kind: underlying.KindStock, Exchange: "SMART",
+		Currency: currency, Status: underlying.StatusPending, Options: true, Note: underlying.NoteHeld})
+	return true, nil
+}
 
 func (f *fakeStore) insert(r underlying.Row) {
 	f.nextID++
@@ -107,6 +142,13 @@ func (f *fakeStore) Pending(ctx context.Context, retryBefore time.Time) ([]under
 			out = append(out, r)
 		}
 	}
+	sort.SliceStable(out, func(i, j int) bool {
+		hi, hj := out[i].Note == underlying.NoteHeld, out[j].Note == underlying.NoteHeld
+		if hi != hj {
+			return hi
+		}
+		return out[i].Key < out[j].Key
+	})
 	return out, nil
 }
 
@@ -269,5 +311,68 @@ func wantInvalid(t *testing.T, err error) {
 	var ie underlying.InvalidError
 	if !errors.As(err, &ie) || ie.Field() == "" {
 		t.Errorf("error = %v; want an InvalidError naming a field", err)
+	}
+}
+
+func TestHeldAdderContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newFake()
+	var h underlying.HeldAdder = f
+	key, err := h.Check("AAPL", "USD")
+	if err != nil || key != "US:AAPL" {
+		t.Fatalf("Check = %q, %v; want US:AAPL", key, err)
+	}
+	if len(f.rows) != 0 {
+		t.Fatalf("Check wrote %d rows", len(f.rows))
+	}
+	if added, err := h.Add(ctx, "AAPL", "USD"); err != nil || !added {
+		t.Fatalf("Add = %v, %v; want true", added, err)
+	}
+	r, _ := f.newest("US:AAPL")
+	if r.Status != underlying.StatusPending || r.Kind != underlying.KindStock || !r.Options || r.ConID != 0 ||
+		r.Note != underlying.NoteHeld || r.Fundamentals || r.Issuer != "" {
+		t.Errorf("written row = %+v", r)
+	}
+	if added, err := h.Add(ctx, "AAPL", "USD"); err != nil || added || len(f.rows) != 1 {
+		t.Fatalf("second Add = %v, %v with %d rows; want false, nothing written", added, err, len(f.rows))
+	}
+	retired := underlying.StatusRetired
+	if _, err := f.Apply(ctx, underlying.Change{Edits: []underlying.Edit{{Key: "US:AAPL", Status: &retired}}}); err != nil {
+		t.Fatal(err)
+	}
+	before := len(f.rows)
+	if added, err := h.Add(ctx, "AAPL", "USD"); err != nil || added || len(f.rows) != before {
+		t.Errorf("Add after retire = %v, %v; want false", added, err)
+	}
+	wantGBPInvalid(t, h)
+}
+
+// wantGBPInvalid fails the test unless Check and Add refuse a currency with no market with a reason.
+func wantGBPInvalid(t *testing.T, h underlying.HeldAdder) {
+	t.Helper()
+	_, errCheck := h.Check("AAPL", "GBP")
+	_, errAdd := h.Add(context.Background(), "AAPL", "GBP")
+	for _, err := range []error{errCheck, errAdd} {
+		var ie underlying.InvalidError
+		if !errors.As(err, &ie) || ie.Field() == "" || ie.Why() == "" {
+			t.Errorf("error = %v; want an InvalidError with Why", err)
+		}
+	}
+}
+
+func TestPendingHeldFirst(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := newFake()
+	if _, err := f.Apply(ctx, underlying.Change{Adds: []underlying.Add{{Symbol: "AAA", Market: "US"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Add(ctx, "ZZZ", "USD"); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ := f.Pending(ctx, time.Time{})
+	if len(rows) != 2 || rows[0].Key != "US:ZZZ" || rows[1].Key != "US:AAA" {
+		t.Errorf("Pending = %+v; want the held row first", rows)
 	}
 }

@@ -45,6 +45,7 @@ var serveRoutes = []serveRoute{
 	{"option_data_page", "/options/data", "option_data_page"},
 	{"settings_page", "/" + siteSettingsRoute, "settings_page"},
 	{"underlyings", "/" + siteUnderlyingsRoute, "underlyings"},
+	{"job_console", "/" + siteJobConsoleRoute, "job_console"},
 	{"flex_import", "/" + siteFlexImportRoute, "flex_import"},
 }
 
@@ -119,6 +120,8 @@ func buildRoute(ctx context.Context, a *app, clk clock.Clock, rd siteReaders, rt
 		return buildSettings(ctx, a, clk, "", rd, savedNotice(url.Values{}))
 	case "underlyings":
 		return buildUnderlyingsPage(ctx, a, clk, "", rd, underlyingsExtras{})
+	case "job_console":
+		return buildJobConsolePage(ctx, clk, rd, 0)
 	case "flex_import":
 		return buildFlexImportPage(ctx, a, clk, rd, flexImportResult{recent: true})
 	}

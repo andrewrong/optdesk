@@ -20,10 +20,6 @@ type fixedClock struct{}
 
 func (fixedClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC) }
 
-type nextDayClock struct{}
-
-func (nextDayClock) Now() time.Time { return time.Date(2026, 11, 10, 21, 30, 0, 0, time.UTC) }
-
 // memStore is a writer and a reader over one slice; a key that exists is left as it is.
 type memStore struct {
 	mu       sync.Mutex
@@ -217,28 +213,31 @@ func TestSecondRunSameDayMakesNoCall(t *testing.T) {
 	}
 }
 
-func TestErrorDayNotRetried(t *testing.T) {
+func TestErrorRowIsFetchedAgain(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: codedErr{"network"}}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
-	j.Run(context.Background(), day, nil)
-	j.Run(context.Background(), day, nil)
-	if src.calls != 1 || len(st.rows) != 1 {
-		t.Fatalf("calls %d rows %d", src.calls, len(st.rows))
+	if res := j.Run(context.Background(), day, nil); res.Err == nil {
+		t.Fatal("first run must fail")
 	}
-	// the next day starts again
-	j2, err := New(map[string]sources.EarningsSource{"US": src}, st, st, []jobs.WatchEntry{us("cik:1", "A")}, nextDayClock{})
-	if err != nil {
-		t.Fatal(err)
+	if r := byIssuer(st, "cik:1"); len(r) != 1 || r[0].Status != "error" || r[0].Attempt != 1 {
+		t.Fatalf("first rows %+v", r)
 	}
-	j2.Run(context.Background(), "2026-11-10", nil)
-	if src.calls != 2 {
-		t.Fatalf("next day calls %d", src.calls)
+	src.err, src.listings, src.calls = nil, []sources.EarningsListing{{Symbol: "A", ReportDate: "2026-11-12"}}, 0
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatalf("second run: %v", res.Err)
+	}
+	if src.calls != 1 {
+		t.Fatalf("calls %d", src.calls)
+	}
+	r := byIssuer(st, "cik:1")
+	if len(r) != 2 || r[1].Status != "listed" || r[1].Attempt != 2 {
+		t.Fatalf("rows %+v", r)
 	}
 }
 
-func TestRateLimitedRecordedNoRetry(t *testing.T) {
+func TestRateLimitedRecordedAsError(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: codedErr{"rate_limited"}}
 	st := &memStore{}
@@ -264,18 +263,19 @@ func TestSecondRunWritesNoRow(t *testing.T) {
 	}
 }
 
-func TestSecondRunAfterErrorReturnsPermanent(t *testing.T) {
+func TestSecondRunStillFailingStoresNextAttempt(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: errors.New("down")}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
 	first := j.Run(context.Background(), day, nil)
 	second := j.Run(context.Background(), day, nil)
-	if first.Err == nil || second.Err == nil || second.Err.Kind() != contracts.Permanent || second.Err.Error() != first.Err.Error() {
+	if first.Err == nil || second.Err == nil || second.Err.Kind() != contracts.Permanent {
 		t.Fatalf("first %v second %v", first.Err, second.Err)
 	}
-	if src.calls != 1 || len(st.rows) != 1 || st.rows[0].ErrorCode != "unknown" {
-		t.Fatalf("calls %d rows %+v", src.calls, st.rows)
+	r := byIssuer(st, "cik:1")
+	if src.calls != 2 || len(r) != 2 || r[0].Attempt != 1 || r[1].Attempt != 2 || r[1].Status != "error" {
+		t.Fatalf("calls %d rows %+v", src.calls, r)
 	}
 }
 
@@ -498,26 +498,16 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 	}
 }
 
-func TestWrongDay(t *testing.T) {
+func TestPastDayRunsClockDay(t *testing.T) {
 	t.Parallel()
-	for _, other := range []contracts.Day{"2026-11-08", "2026-11-10"} {
-		usSrc, jpSrc := &fakeSource{}, &fakeSource{}
-		st := &memStore{}
-		j := build(t, map[string]sources.EarningsSource{"US": usSrc, "JP": jpSrc}, st, us("cik:1", "A"), jp("edinet:E1", "1111"))
-		res := j.Run(context.Background(), other, nil)
-		var te contracts.TypedError
-		if !errors.As(res.Err, &te) || te.Kind() != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") {
-			t.Fatalf("day %s: err %v", other, res.Err)
-		}
-		if usSrc.calls != 0 || jpSrc.calls != 0 || len(st.rows) != 0 {
-			t.Fatalf("day %s: calls %d %d rows %d", other, usSrc.calls, jpSrc.calls, len(st.rows))
-		}
-	}
-	// the clock's New York date is the day: the job runs
 	usSrc := &fakeSource{}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": usSrc}, st, us("cik:1", "A"))
-	if res := j.Run(context.Background(), day, nil); res.Err != nil || usSrc.calls != 1 || len(st.rows) != 1 {
-		t.Fatalf("same day: err %v calls %d rows %d", res.Err, usSrc.calls, len(st.rows))
+	res := j.Run(context.Background(), "2026-11-06", nil)
+	if res.Err != nil || usSrc.calls != 1 || len(st.rows) != 1 {
+		t.Fatalf("past day: err %v calls %d rows %d", res.Err, usSrc.calls, len(st.rows))
+	}
+	if got := st.rows[0].ObservedOn.Format(dayLayout); got != string(day) {
+		t.Fatalf("ObservedOn = %s, want the clock's date %s", got, day)
 	}
 }

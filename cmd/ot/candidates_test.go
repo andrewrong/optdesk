@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/jonboulle/clockwork"
 	"io"
 	"slices"
 	"strings"
@@ -100,11 +101,15 @@ func TestCandidatesRegisteredAfterInputs(t *testing.T) {
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
-	a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, _ runner.WindowRule) runner.Reconciler {
+	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	a.deps.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	a.deps.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		for _, j := range js {
 			ids = append(ids, j.ID())
 		}
-		return recRunner{&day}
+		return recRunner{&day}, nil
 	}
 	if err := runOnce(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
@@ -134,11 +139,15 @@ func TestMissingCandidateDSNDisablesOnlyIt(t *testing.T) {
 		return candJobStub{id: jobOptionCandidates}, nil
 	}
 	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
-	a.deps.newRunner = func(_ store.OpsLedger, _ clock.Calendar, _ clock.Clock, js []contracts.Job, _ runner.WindowRule) runner.Reconciler {
+	a.deps.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return &fakeSchedLedger{}, nil }
+	a.deps.newKeyRunner = func(store.OpsLedger, store.SchedulerLedger, clockwork.Clock) runner.KeyRunner { return nil }
+	a.deps.newReconciler = func(
+		_ store.OpsLedger, _ store.SchedulerLedger, _ clock.Calendar, _ clockwork.Clock, js []contracts.Job, _ runner.WindowRule, _ runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
 		for _, j := range js {
 			ids = append(ids, j.ID())
 		}
-		return recRunner{&day}
+		return recRunner{&day}, nil
 	}
 	if err := runOnce(a, nil); err != nil {
 		t.Fatalf("%v\n%s", err, logs)
@@ -244,5 +253,79 @@ func TestCandidatesReadsThroughPagesDSN(t *testing.T) {
 	}
 	if err := candidatesCmd(a, []string{"--day", "2026-11-05"}); err != nil || got != "pages-dsn" {
 		t.Fatalf("err %v dsn %q", err, got)
+	}
+}
+
+const gwMineWife = "[[gateway]]\nname = \"g1\"\naccount = \"mine\"\nrequired = true\n[[gateway]]\nname = \"g2\"\naccount = \"wife\"\nrequired = false\n"
+
+// candAliasRun runs candidateJob over a .env body and returns the stores newOptionCandidates received and the log.
+func candAliasRun(t *testing.T, envBody string) (optioncandidates.CandidateStores, string) {
+	t.Helper()
+	a, logs := testApp(t, envBody)
+	var cl atomic.Int32
+	var got optioncandidates.CandidateStores
+	var built bool
+	a.deps.openCandidateRW = func(context.Context, string) (candidateRW, error) { return &fakeCandidateRW{closed: &cl}, nil }
+	a.deps.openAccount = func(context.Context, string) (store.AccountStore, error) { return fakeAcctStore{n: &cl}, nil }
+	a.deps.newCandidateRule = func() compute.OptionCandidates { return fakeRule{} }
+	a.deps.newOptionCandidates = func(st optioncandidates.CandidateStores, _ compute.OptionCandidates, _ []jobs.WatchEntry, _ clock.Clock) (contracts.Job, error) {
+		got, built = st, true
+		return candJobStub{id: jobOptionCandidates}, nil
+	}
+	f := jobFactory{d: a.deps}.withList(listRowsOf(jobs.WatchEntry{Market: "US", Contract: broker.Contract{Symbol: "AAA"}})...)
+	cfg := runOnceConfig{candidateDSN: "cand-dsn"}
+	if strings.Contains(envBody, "OT_PG_DSN_ACCOUNT") {
+		cfg.accountDSN = "acct-dsn"
+	}
+	if _, err := a.candidateJob(context.Background(), cfg, &f, &closerSet{}); err != nil {
+		t.Fatalf("candidateJob: %v\n%s", err, logs)
+	}
+	if !built {
+		t.Fatalf("job not built\n%s", logs)
+	}
+	return got, logs.String()
+}
+
+func TestCandidateJobGetsAccountAliases(t *testing.T) {
+	t.Parallel()
+	gw := t.TempDir() + "/gateways.toml"
+	if err := writeFile(gw, gwMineWife); err != nil {
+		t.Fatal(err)
+	}
+	st, _ := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\nOT_IBKR_GATEWAYS="+gw+"\n")
+	if !slices.Equal(st.Aliases, []string{"mine", "wife"}) || st.Accounts == nil {
+		t.Fatalf("aliases %v accounts %v", st.Aliases, st.Accounts)
+	}
+}
+
+func TestCandidateJobAliasesNilWithoutGateways(t *testing.T) {
+	t.Parallel()
+	bad := t.TempDir() + "/bad.toml"
+	if err := writeFile(bad, "not = [valid"); err != nil {
+		t.Fatal(err)
+	}
+	for name, line := range map[string]string{"unset": "", "invalid": "OT_IBKR_GATEWAYS=" + bad + "\n"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			st, logs := candAliasRun(t, candidateEnv+"OT_PG_DSN_ACCOUNT=acct-dsn\n"+line)
+			if st.Aliases != nil {
+				t.Fatalf("aliases %v", st.Aliases)
+			}
+			if n := strings.Count(logs, "WARN"); n != 1 || strings.Contains(logs, bad) {
+				t.Fatalf("log %q", logs)
+			}
+		})
+	}
+}
+
+func TestCandidateJobAliasesNilWithoutAccountDSN(t *testing.T) {
+	t.Parallel()
+	gw := t.TempDir() + "/gateways.toml"
+	if err := writeFile(gw, gwMineWife); err != nil {
+		t.Fatal(err)
+	}
+	st, _ := candAliasRun(t, candidateEnv+"OT_IBKR_GATEWAYS="+gw+"\n")
+	if st.Aliases != nil || st.Accounts != nil {
+		t.Fatalf("aliases %v accounts %v", st.Aliases, st.Accounts)
 	}
 }

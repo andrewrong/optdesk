@@ -183,19 +183,20 @@ func TestBackfillPutsMissingWindow(t *testing.T) {
 	job := &fakeJob{keys: []contracts.ExpectedKey{keyA}}
 	b := newBackfiller(l, clk, job)
 	res, err := b.Backfill(ctx, bfDay, nil)
-	if err != nil || len(res.InWindow) != 1 || res.InWindow[0] != keyA || len(job.calls) != 0 {
+	if err != nil || len(res.InWindow) != 0 || len(res.Filled)+len(res.Absent)+len(res.Missing) != 1 || len(job.calls) != 1 {
 		t.Fatalf("res %+v err %v", res, err)
 	}
 	if l.windowsPut.Load() != 1 || l.expecteds.Load() != 0 {
 		t.Fatalf("windows %d expected %d", l.windowsPut.Load(), l.expecteds.Load())
 	}
-	if _, marked := l.present[bfDay][keyA]; marked {
+	if l.present[bfDay][keyA] != store.StatusPresent {
 		t.Fatalf("marked %q", l.present[bfDay][keyA])
 	}
+	writes := l.writes()
 	if _, err := b.Backfill(ctx, bfDay, nil); err != nil {
 		t.Fatal(err)
 	}
-	if l.windowsPut.Load() != 1 || l.writes() != 0 {
+	if l.windowsPut.Load() != 1 || l.writes() != writes {
 		t.Fatalf("second call wrote: windows %d writes %d", l.windowsPut.Load(), l.writes())
 	}
 }

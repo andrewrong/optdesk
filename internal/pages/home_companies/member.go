@@ -17,8 +17,10 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const (
@@ -49,6 +51,8 @@ const (
 // it is shown as it is and never parsed or changed. cmd/ot fills the rows from companiesSubjects.
 type Row struct {
 	Issuer, Market, Symbol, HandPrice string
+	// InstrumentID is the instrument of the symbol; 0 means none.
+	InstrumentID int64
 }
 
 // Config holds the inputs of Build. A nil Read gives a gap on every figure, never a guess. Rows are
@@ -62,6 +66,12 @@ type Config struct {
 	Scope   string
 	Rows    []Row
 	Read    store.ReadingViewReader
+	// Earnings reads the stored earnings dates; nil gives a no_reader gap in the earnings cell.
+	Earnings store.EarningsDateReader
+	// Bars reads the stored daily closes and Figures makes the compute of the changes; either nil
+	// gives a no_reader gap in the day change and the five-day change.
+	Bars    bar.PriceBarReader
+	Figures blockapi.NewPageFiguresFunc
 }
 
 type gap struct {
@@ -172,7 +182,7 @@ const (
 
 // Build returns the page.held_companies_summary.v3 JSON read through cfg. Each row has the buy band
 // reading (valuation.buy_band) as its price with the owner's hand price beside it, and the owner's own
-// HV30, IV30 and IV percentile readings. Earnings, the day changes and the sharp marks have no stored
+// HV30, IV30 and IV percentile readings. The day changes are read from the stored daily bars; the sharp marks have no stored
 // source, so they are gaps, and so is the sharp-move note while no sharpmove readings exist.
 // generatedAt is written in +08:00 (the zone of cfg when it is that). A reader error is an error of
 // Build, never a gap.
@@ -250,10 +260,13 @@ func Build(ctx context.Context, cfg Config, generatedAt time.Time) ([]byte, erro
 func (c Config) rowOf(ctx context.Context, r Row, currency string, day time.Time) (out rowOut, hasPrice bool, seen time.Time, err error) {
 	out = rowOut{
 		Symbol: r.Symbol, Currency: currency,
-		Earnings:      mkGap("no_data", "earnings date: not read by this card yet"),
-		DayChange:     mkGap("no_data", "day change: not read by this card yet"),
-		FiveDayChange: mkGap("no_data", "5-day change: not read by this card yet"),
-		DaySharp:      sharpMark{Kind: "none"}, FiveDaySharp: sharpMark{Kind: "none"},
+		DaySharp: sharpMark{Kind: "none"}, FiveDaySharp: sharpMark{Kind: "none"},
+	}
+	if out.Earnings, err = c.earningsCell(ctx, r.Issuer, day); err != nil {
+		return out, false, seen, err
+	}
+	if out.DayChange, out.FiveDayChange, err = c.changeCells(ctx, r, day); err != nil {
+		return out, false, seen, err
 	}
 	hand := ""
 	if r.HandPrice != "" {

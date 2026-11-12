@@ -56,18 +56,18 @@
         },
         "earnings": {
           "kind": "gap",
-          "reason": "no_data",
-          "text": "earnings date: not read by this card yet"
+          "reason": "no_reader",
+          "text": "earnings date: reader not set"
         },
         "day_change": {
           "kind": "gap",
-          "reason": "no_data",
-          "text": "day change: not read by this card yet"
+          "reason": "no_reader",
+          "text": "day change: reader not set"
         },
         "five_day_change": {
           "kind": "gap",
-          "reason": "no_data",
-          "text": "5-day change: not read by this card yet"
+          "reason": "no_reader",
+          "text": "5-day change: reader not set"
         },
         "day_sharp": {
           "kind": "none"

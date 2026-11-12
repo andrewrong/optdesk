@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from typing import Any
 
 import pytest
 from kit.fakeclock import FakeClock
 
-from optdesk.ibkr.api import HistoryBar, HistoryKey, HistoryPaced, HistoryRequest
+from optdesk.ibkr import spec
+from optdesk.ibkr.api import HistoryBar, HistoryKey, HistoryRequest
 from optdesk.ibkr.history import HistoryReader, WireRequest
 
 KEY = HistoryKey("SPY", "STK", "SMART", "USD", 756733)
@@ -38,7 +40,7 @@ def setup() -> tuple[FakeClock, FakeGateway, HistoryReader]:
     return clock, FakeGateway(clock), HistoryReader(clock)
 
 
-async def drain(clock: FakeClock, task: asyncio.Future[object]) -> None:
+async def drain(clock: FakeClock, task: asyncio.Future[Any]) -> None:
     """Advance the fake time in steps until the task is done."""
     for _ in range(200):
         if task.done():
@@ -46,26 +48,115 @@ async def drain(clock: FakeClock, task: asyncio.Future[object]) -> None:
         await clock.advance(5)
 
 
-def test_pacer_limits_to_55_per_10_minutes() -> None:
+def test_starts_are_one_at_a_time_11_seconds_apart() -> None:
     async def run() -> list[float]:
         clock, gateway, reader = setup()
-        for i in range(30):
-            await reader.bars(request(con_id=i + 1), gateway.fetch)
-        await clock.advance(300)
-        for i in range(25):
-            await reader.bars(request(con_id=i + 100), gateway.fetch)
-        assert len(gateway.sent) == 55
-        late = await_later(reader, gateway, request(con_id=500))
-        await clock.advance(299)  # 599 s: the window still holds 55 starts
-        assert len(gateway.sent) == 55
+        tasks = [await_later(reader, gateway, request(con_id=i + 1)) for i in range(3)]
+        await asyncio.sleep(0)
+        await clock.advance(10)
+        assert len(gateway.sent) == 1
         await clock.advance(1)
-        await late
+        assert len(gateway.sent) == 2
+        await clock.advance(11)
+        await asyncio.gather(*tasks)
+        return [t for t, _ in gateway.sent]
+
+    assert asyncio.run(run()) == [0.0, 11.0, 22.0]
+
+
+def test_no_cap_after_55_requests() -> None:
+    async def run() -> list[float]:
+        clock, gateway, reader = setup()
+        for i in range(70):
+            task = await_later(reader, gateway, request(con_id=i + 1))
+            await drain(clock, task)
+            assert task.done()
+            task.result()
         return [t for t, _ in gateway.sent]
 
     times = asyncio.run(run())
-    assert times[:30] == [0.0] * 30
-    assert times[30:55] == [300.0] * 25
-    assert times[55] == 600.0
+    assert len(times) == 70
+    assert times[69] == 11.0 * 69
+
+
+class PacingGateway:
+    """Answers the first `codes` sends with a BrokerError of that code, then bars."""
+
+    def __init__(
+        self, clock: FakeClock, codes: list[int], text: str = "pacing violation"
+    ) -> None:
+        self.clock = clock
+        self.codes = codes
+        self.text = text
+        self.sent: list[float] = []
+
+    async def fetch(self, words: WireRequest) -> list[HistoryBar]:
+        self.sent.append(self.clock.monotonic())
+        if len(self.sent) <= len(self.codes):
+            raise spec.BrokerError(self.codes[len(self.sent) - 1], self.text)
+        return [HistoryBar("2026-01-02", "1", "2", "0.5", "1.5", None)]
+
+
+def test_pacing_answer_162_is_retried_after_60_seconds() -> None:
+    async def run() -> tuple[list[float], int]:
+        clock = FakeClock()
+        gateway = PacingGateway(clock, [162])
+        task = asyncio.ensure_future(
+            HistoryReader(clock).bars(request(), gateway.fetch)
+        )
+        await drain(clock, task)
+        return gateway.sent, len(task.result())
+
+    sent, n = asyncio.run(run())
+    assert sent == [0.0, 60.0]
+    assert n == 1
+
+
+def test_162_without_pacing_text_is_raised_at_once() -> None:
+    async def run() -> list[float]:
+        clock = FakeClock()
+        gateway = PacingGateway(clock, [162], "HMDS query returned no data")
+        task = asyncio.ensure_future(
+            HistoryReader(clock).bars(request(), gateway.fetch)
+        )
+        await drain(clock, task)
+        with pytest.raises(spec.BrokerError) as info:
+            task.result()
+        assert info.value.code == 162
+        return gateway.sent
+
+    assert asyncio.run(run()) == [0.0]
+
+
+def test_pacing_violation_text_is_case_insensitive() -> None:
+    async def run() -> list[float]:
+        clock = FakeClock()
+        gateway = PacingGateway(clock, [162], "Pacing Violation: too many requests")
+        task = asyncio.ensure_future(
+            HistoryReader(clock).bars(request(), gateway.fetch)
+        )
+        await drain(clock, task)
+        task.result()
+        return gateway.sent
+
+    assert asyncio.run(run()) == [0.0, 60.0]
+
+
+@pytest.mark.parametrize("codes", [[162, 162], [200]])
+def test_second_162_and_other_codes_are_raised(codes: list[int]) -> None:
+    async def run() -> list[float]:
+        clock = FakeClock()
+        gateway = PacingGateway(clock, codes)
+        task = asyncio.ensure_future(
+            HistoryReader(clock).bars(request(), gateway.fetch)
+        )
+        await drain(clock, task)
+        with pytest.raises(spec.BrokerError) as info:
+            task.result()
+        assert info.value.code == codes[-1]
+        return gateway.sent
+
+    assert len(asyncio.run(run())) == len(codes)
 
 
 def test_identical_request_waits_15_seconds() -> None:
@@ -74,36 +165,19 @@ def test_identical_request_waits_15_seconds() -> None:
         await reader.bars(request(), gateway.fetch)
         other = await_later(reader, gateway, request(con_id=2))
         same = await_later(reader, gateway, request())
-        await clock.advance(14)
-        assert len(gateway.sent) == 2
-        await clock.advance(1)
+        await clock.advance(10)
+        assert len(gateway.sent) == 1
+        await clock.advance(12)
         await asyncio.gather(other, same)
         return [t for t, _ in gateway.sent]
 
-    assert asyncio.run(run()) == [0.0, 0.0, 15.0]
+    assert asyncio.run(run()) == [0.0, 11.0, 22.0]
 
 
 def await_later(
     reader: HistoryReader, gateway: FakeGateway, req: HistoryRequest
 ) -> asyncio.Future[object]:
     return asyncio.ensure_future(reader.bars(req, gateway.fetch))
-
-
-def test_wait_over_300_seconds_is_paced() -> None:
-    async def run() -> tuple[int, str]:
-        clock, gateway, reader = setup()
-        for i in range(55):
-            await reader.bars(request(con_id=i + 1), gateway.fetch)
-        await clock.advance(299)  # the 56th would wait 301 s
-        with pytest.raises(HistoryPaced):
-            await reader.bars(request(con_id=99), gateway.fetch)
-        sent = len(gateway.sent)
-        await clock.advance(1)  # now it waits exactly 300 s: allowed
-        task = await_later(reader, gateway, request(con_id=99))
-        await drain(clock, task)
-        return sent, "done" if task.done() else "open"
-
-    assert asyncio.run(run()) == (55, "done")
 
 
 @pytest.mark.parametrize(

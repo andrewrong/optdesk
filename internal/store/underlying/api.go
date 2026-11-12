@@ -24,6 +24,9 @@ const (
 	KindETF   = "etf"
 )
 
+// NoteHeld is the Note of a row HeldAdder.Add writes; Settler.Pending returns such rows first.
+const NoteHeld = "Added: held position; check the con_id"
+
 // DSNEnvResolve names the line that holds the DSN of the role ot_w_underlying_resolve, the role of the resolve job.
 // The page route and the import use ownerset.DSNEnvSettings, passed by cmd/ot.
 const DSNEnvResolve = "OT_PG_DSN_UNDERLYING_RESOLVE"
@@ -100,12 +103,25 @@ type Writer interface {
 
 // Settler is held by the resolve job (role ot_w_underlying_resolve): read and Settle only, so it cannot call Apply.
 type Settler interface {
-	// Pending returns the newest rows that are pending, or unresolved with SetAt before retryBefore.
+	// Pending returns the newest rows that are pending, or unresolved with SetAt before retryBefore. Rows with Note
+	// NoteHeld come first, so a cut of the list does not starve them; the rest follow in Key order.
 	Pending(ctx context.Context, retryBefore time.Time) ([]Row, error)
 	// Settle inserts the outcome only if the newest row of o.Key still has ID o.AfterID and status pending or
 	// unresolved; otherwise it writes nothing and returns written false with no error.
 	Settle(ctx context.Context, o Outcome) (written bool, err error)
 	Close() error
+}
+
+// HeldAdder has two holders in cmd/ot: the held-name wrapper over the resolve store (role ot_w_underlying_resolve),
+// which calls Check and Add, and the underlyings page route on its own store and role, which calls Check only.
+type HeldAdder interface {
+	// Check applies the rules of Add without writing and returns the key (market:SYMBOL), or an InvalidError
+	// whose Why says the reason (currency with no market, symbol refused).
+	Check(symbol, currency string) (key string, err error)
+	// Add writes one pending stock row (Options true, Note NoteHeld) for symbol in the market of currency. It writes
+	// nothing and returns added false when a row of the symbol exists in any status under either market. It returns
+	// an InvalidError for a currency with no market or a symbol the market refuses.
+	Add(ctx context.Context, symbol, currency string) (added bool, err error)
 }
 
 // Store is all three.

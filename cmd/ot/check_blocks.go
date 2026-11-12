@@ -37,6 +37,7 @@ var pageDayKeys = map[string]string{
 	"option_tracking_page":   "as_of",
 	"settings_page":          "as_of",
 	"underlyings":            "session_day",
+	"job_console":            "generated_at",
 }
 
 // pageMetaKeys are the top-level keys of a flat page that are not blocks: the fields of its schema besides the
@@ -58,6 +59,7 @@ var pageMetaKeys = map[string][]string{
 		"schema", "schema_version", "scope", "title"},
 	"flex_import": {"form", "gaps", "schema", "schema_version", "scope_note", "sentence", "title"},
 	"underlyings": {"confirm", "form", "gaps", "generated_at", "notice", "schema", "schema_version", "sentence", "session_day", "title"},
+	"job_console": {"form", "gaps", "generated_at", "refresh_seconds", "schema", "schema_version", "selected", "sentence", "title"},
 }
 
 // blockNames are the top-level block names of a page body: the keys of its `blocks` object when it has one

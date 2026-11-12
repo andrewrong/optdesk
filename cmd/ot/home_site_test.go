@@ -8,8 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/atombender/go-jsonschema/pkg/types"
+
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/contracts/gen"
 )
 
 func homeFixture(t *testing.T, demo bool) http.Handler {
@@ -96,12 +100,82 @@ func TestHomePageNamed(t *testing.T) {
 func TestHomeCompaniesRowsFromStore(t *testing.T) {
 	t.Parallel()
 	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd := siteReaders{underlying: companiesStore(), account: holdsAAA{}, aliases: []string{"main"}}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `"AAA"`) || strings.Contains(string(body), `"BBB"`) {
+		t.Fatalf("only the held name belongs in the card: %s", body)
+	}
+	if !strings.Contains(string(body), "Held companies: 1") {
+		t.Fatalf("say is not the held count: %s", body)
+	}
+}
+
+func TestHomeCompaniesNoAccountNoRows(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
 	rd := siteReaders{underlying: companiesStore()}
 	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), `"BBB"`) {
-		t.Fatalf("stored names missing: %s", body)
+	if strings.Contains(string(body), `"AAA"`) || !strings.Contains(string(body), "Held companies: 0") {
+		t.Fatalf("no account reader must give no rows: %s", body)
+	}
+}
+
+type fakeEarningsDates struct{ rows []contracts.EarningsDate }
+
+func (f fakeEarningsDates) EarningsDates(context.Context, string, contracts.Day, contracts.Day) ([]contracts.EarningsDate, error) {
+	return f.rows, nil
+}
+
+func homeEarningsCell(t *testing.T, rd siteReaders) (kind, reason, text string) {
+	t.Helper()
+	a, _ := testApp(t, "OT_UNUSED=1\n")
+	rd.underlying, rd.account, rd.aliases = companiesStore(), holdsAAA{}, []string{"main"}
+	body, err := buildHome(t.Context(), a, fakeClock{time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)}, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Companies struct {
+			Card struct {
+				Rows []struct {
+					Earnings struct {
+						Kind   string `json:"kind"`
+						Reason string `json:"reason"`
+						Text   string `json:"text"`
+					} `json:"earnings"`
+				} `json:"rows"`
+			} `json:"card"`
+		} `json:"companies"`
+	}
+	if err := json.Unmarshal(body, &p); err != nil || len(p.Companies.Card.Rows) != 1 {
+		t.Fatalf("rows %d, err %v: %s", len(p.Companies.Card.Rows), err, body)
+	}
+	e := p.Companies.Card.Rows[0].Earnings
+	return e.Kind, e.Reason, e.Text
+}
+
+func TestHomeCompaniesEarningsFromStore(t *testing.T) {
+	t.Parallel()
+	report := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	rd := siteReaders{earnings: fakeEarningsDates{rows: []contracts.EarningsDate{{
+		Status: gen.EarningsDateStatus("listed"), ReportDate: &types.SerializableDate{Time: report},
+	}}}}
+	kind, reason, text := homeEarningsCell(t, rd)
+	if kind != "value" || text != "11-20" || reason == "no_reader" {
+		t.Fatalf("earnings cell must carry the stored date and no no_reader gap: %q %q %q", kind, reason, text)
+	}
+}
+
+func TestHomeCompaniesNoEarningsReaderIsGap(t *testing.T) {
+	t.Parallel()
+	kind, reason, _ := homeEarningsCell(t, siteReaders{})
+	if kind != "gap" || reason != "no_reader" {
+		t.Fatalf("a site without an earnings reader keeps the no_reader gap: %q %q", kind, reason)
 	}
 }

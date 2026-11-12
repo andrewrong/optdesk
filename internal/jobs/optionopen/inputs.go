@@ -89,7 +89,7 @@ func (s Stored) stocks(ctx context.Context, day time.Time) ([]stock, []store.Pos
 		out = append(out, stock{Symbol: c.Symbol, Exchange: c.Exchange, Currency: c.Currency, ConID: c.ConID})
 	}
 	for _, p := range pos {
-		if p.SecType != "STK" || p.ConID == 0 || seen[p.Symbol] || !nonzero(p.Quantity) {
+		if p.SecType != "stock" || p.ConID == 0 || seen[p.Symbol] || !nonzero(p.Quantity) {
 			continue
 		}
 		seen[p.Symbol] = true
@@ -210,7 +210,7 @@ func heldRefs(pos []store.Position, symbol string, refs []openquote.OptionRef) (
 	}
 	seen := map[int64]bool{}
 	for _, p := range pos {
-		if p.SecType != "OPT" || p.Symbol != symbol || !nonzero(p.Quantity) {
+		if p.SecType != "option" || p.Symbol != symbol || !nonzero(p.Quantity) {
 			continue
 		}
 		right := "P"
