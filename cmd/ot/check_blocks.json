@@ -9,6 +9,7 @@
     "option_data_page": ["chain", "quote_series"],
     "settings_page": ["params", "rows", "history"],
     "underlyings": ["rows", "history"],
-    "job_console": ["jobs", "requests"]
+    "job_console": ["jobs", "requests"],
+    "flex_import": ["files", "recent"]
   }
 }
