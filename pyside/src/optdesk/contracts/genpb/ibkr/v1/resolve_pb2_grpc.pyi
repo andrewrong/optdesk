@@ -38,6 +38,10 @@ class ContractsServiceStub:
     """ListChains lists the chains of an underlying."""
     ResolveContract: _grpc.UnaryUnaryMultiCallable[_resolve_pb2.ResolveContractRequest, _resolve_pb2.ResolveContractResponse]
     """ResolveContract resolves one fully specified contract."""
+    ListContracts: _grpc.UnaryUnaryMultiCallable[_resolve_pb2.ListContractsRequest, _resolve_pb2.ListContractsResponse]
+    """ListContracts lists the real option contracts of one underlying, expiry and
+    trading class, with their con_ids: one contract-details request, no strike.
+    """
 
 @_typing.type_check_only
 class ContractsServiceAsyncStub(ContractsServiceStub):
@@ -48,6 +52,10 @@ class ContractsServiceAsyncStub(ContractsServiceStub):
     """ListChains lists the chains of an underlying."""
     ResolveContract: _aio.UnaryUnaryMultiCallable[_resolve_pb2.ResolveContractRequest, _resolve_pb2.ResolveContractResponse]  # type: ignore[assignment]
     """ResolveContract resolves one fully specified contract."""
+    ListContracts: _aio.UnaryUnaryMultiCallable[_resolve_pb2.ListContractsRequest, _resolve_pb2.ListContractsResponse]  # type: ignore[assignment]
+    """ListContracts lists the real option contracts of one underlying, expiry and
+    trading class, with their con_ids: one contract-details request, no strike.
+    """
 
 class ContractsServiceServicer(metaclass=_abc_1.ABCMeta):
     """ContractsService answers what contracts exist."""
@@ -67,5 +75,15 @@ class ContractsServiceServicer(metaclass=_abc_1.ABCMeta):
         context: _ServicerContext,
     ) -> _typing.Union[_resolve_pb2.ResolveContractResponse, _abc.Awaitable[_resolve_pb2.ResolveContractResponse]]:
         """ResolveContract resolves one fully specified contract."""
+
+    @_abc_1.abstractmethod
+    def ListContracts(
+        self,
+        request: _resolve_pb2.ListContractsRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_resolve_pb2.ListContractsResponse, _abc.Awaitable[_resolve_pb2.ListContractsResponse]]:
+        """ListContracts lists the real option contracts of one underlying, expiry and
+        trading class, with their con_ids: one contract-details request, no strike.
+        """
 
 def add_ContractsServiceServicer_to_server(servicer: ContractsServiceServicer, server: _typing.Union[_grpc.Server, _aio.Server]) -> None: ...

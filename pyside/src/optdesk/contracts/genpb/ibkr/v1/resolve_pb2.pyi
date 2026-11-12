@@ -3,8 +3,10 @@
 isort:skip_file
 """
 
+from collections import abc as _abc
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
+from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from optdesk.contracts.genpb.ibkr.v1 import contract_pb2 as _contract_pb2
 import builtins as _builtins
@@ -35,6 +37,66 @@ RESOLVE_STATUS_UNSPECIFIED: ResolveStatus.ValueType  # 0
 RESOLVE_STATUS_FOUND: ResolveStatus.ValueType  # 1
 RESOLVE_STATUS_NOT_LISTED: ResolveStatus.ValueType  # 2
 Global___ResolveStatus: _TypeAlias = ResolveStatus  # noqa: Y015
+
+@_typing.final
+class ListContractsRequest(_message.Message):
+    """ListContractsRequest names a stock or index with its con_id (as ListChains),
+    one expiry (YYYYMMDD) and a trading class. right unspecified means both
+    rights in one answer.
+    """
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    UNDERLYING_FIELD_NUMBER: _builtins.int
+    EXPIRY_FIELD_NUMBER: _builtins.int
+    RIGHT_FIELD_NUMBER: _builtins.int
+    TRADING_CLASS_FIELD_NUMBER: _builtins.int
+    expiry: _builtins.str
+    right: _contract_pb2.Right.ValueType
+    trading_class: _builtins.str
+    @_builtins.property
+    def underlying(self) -> _contract_pb2.ContractSpec: ...
+    def __init__(
+        self,
+        *,
+        underlying: _contract_pb2.ContractSpec | None = ...,
+        expiry: _builtins.str = ...,
+        right: _contract_pb2.Right.ValueType = ...,
+        trading_class: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _typing.Literal["underlying", b"underlying"]  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["expiry", b"expiry", "right", b"right", "trading_class", b"trading_class", "underlying", b"underlying"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___ListContractsRequest: _TypeAlias = ListContractsRequest  # noqa: Y015
+
+@_typing.final
+class ListContractsResponse(_message.Message):
+    """ListContractsResponse holds every contract the gateway lists, with con_id,
+    right, strike (canonical decimal text), multiplier and trading class. A
+    timeout, a disconnect or a gateway error is a gRPC error, never a partial
+    list.
+    """
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    CONTRACTS_FIELD_NUMBER: _builtins.int
+    @_builtins.property
+    def contracts(self) -> _containers.RepeatedCompositeFieldContainer[_contract_pb2.ContractSpec]: ...
+    def __init__(
+        self,
+        *,
+        contracts: _abc.Iterable[_contract_pb2.ContractSpec] | None = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["contracts", b"contracts"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___ListContractsResponse: _TypeAlias = ListContractsResponse  # noqa: Y015
 
 @_typing.final
 class ResolveContractRequest(_message.Message):

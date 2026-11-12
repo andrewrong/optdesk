@@ -47,6 +47,16 @@ class LiveClient:
             api.ListChainsRequest(underlying=underlying), timeout=CHAINS_TIMEOUT_S
         )
 
+    def list_contracts(
+        self, underlying: api.ContractSpec, expiry: str, trading_class: str
+    ) -> api.ListContractsResponse:
+        return self._contracts.ListContracts(
+            api.ListContractsRequest(
+                underlying=underlying, expiry=expiry, trading_class=trading_class
+            ),
+            timeout=CHAINS_TIMEOUT_S,
+        )
+
     def snapshot(
         self, kind: api.QuoteKind.ValueType, contracts: Iterable[api.ContractSpec]
     ) -> list[api.SnapshotResponse]:

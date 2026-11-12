@@ -19,7 +19,7 @@ from typing import Any, TextIO, cast
 import grpc
 
 from optdesk.contracts import api as pb
-from optdesk.ibkr import spec
+from optdesk.ibkr import list_rpc, spec
 from optdesk.ibkr.api import (
     DividendKey,
     DividendReading,
@@ -40,6 +40,7 @@ from optdesk.ibkr.model import (
     ExecutionRows,
     ExecutionsGateway,
     Gateway,
+    ListerGateway,
     MultipleAccounts,
     PositionRow,
     QuoteRow,
@@ -118,6 +119,7 @@ WORDS = frozenset(
     {
         "ping",
         "list_chains",
+        "list_contracts",
         "resolve_contract",
         "snapshot",
         "account",
@@ -437,6 +439,22 @@ class ContractsServicer(pb.ContractsServiceServicer):
             response.contract.trading_class = result.trading_class or c.trading_class
             response.contract.multiplier = result.multiplier or c.multiplier
         return response
+
+    async def ListContracts(
+        self, request: pb.ListContractsRequest, context: Context
+    ) -> pb.ListContractsResponse:
+        gateway = self._shared.gateway
+        if not hasattr(gateway, "list_contracts"):
+            await context.abort(grpc.StatusCode.UNIMPLEMENTED, "no contract lists")
+        if why := list_rpc.problem(request):
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, why)
+        rows = await self._shared.call(
+            "list_contracts",
+            context,
+            list_rpc.answer(cast(ListerGateway, gateway), request),
+            len,
+        )
+        return list_rpc.to_response(rows)
 
 
 class MarketDataServicer(pb.MarketDataServiceServicer):
