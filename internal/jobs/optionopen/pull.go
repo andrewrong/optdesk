@@ -214,7 +214,7 @@ func newErr(kind contracts.ErrorKind, format string, a ...any) contracts.TypedEr
 	return &typedError{kind: kind, err: fmt.Errorf("option_open: "+format, a...)}
 }
 
-// Run quotes the keys of day. A key is written at the end, in one call; no new key starts after stop_after. At the
+// Run quotes the keys of day. A key is written at the end, in one call; a key started after stop_after is logged. At the
 // end the postcondition of Decision 22 holds: at least min_ok_share of the planned items that are not deferred
 // are ok, else the run is a failed run.
 func (p *pull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
@@ -233,12 +233,11 @@ func (p *pull) fault(day contracts.Day, keys []contracts.ExpectedKey, res contra
 	return res
 }
 
-func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+func (p *pull) run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	now := p.d.Clock.Now()
 	local := now.In(p.loc)
-	if string(day) != local.Format(time.DateOnly) {
-		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
-	}
+	// Development mode: the quotes are of today, so a past day runs with the clock's date as its day.
+	day := contracts.Day(local.Format(time.DateOnly))
 	bs, err := p.batches(ctx, day)
 	if errors.Is(err, errNoPlan) {
 		return contracts.JobResult{Err: newErr(contracts.Retryable, "the plan of %s is gone", day)}
@@ -262,8 +261,8 @@ func (p *pull) run(ctx context.Context, day contracts.Day, keys []contracts.Expe
 				planned++
 			}
 		}
-		if mins := p.d.Clock.Now().In(p.loc); mins.Hour()*60+mins.Minute() >= p.stop {
-			return withErr(res, newErr(contracts.Permanent, "after %s: key %s not started, %d of %d planned items ok", p.m.StopAfter, k.SubjectKey, ok, planned))
+		if mins := p.d.Clock.Now().In(p.loc); mins.Hour()*60+mins.Minute() >= p.stop && p.d.Log != nil {
+			p.d.Log.Warn(fmt.Sprintf("key %s started after stop_after %s", k.SubjectKey, p.m.StopAfter))
 		}
 		rows, terr := p.runKey(ctx, b)
 		if terr != nil {

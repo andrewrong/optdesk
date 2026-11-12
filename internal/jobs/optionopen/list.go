@@ -322,6 +322,6 @@ func (r *listRun) summary(runErr contracts.TypedError) {
 	if stop == "" {
 		stop = "none"
 	}
-	r.log(fmt.Sprintf("%s day=%s names=%d groups_listed=%d new_contracts=%d stop=%s reasons=%s open=%s run_err=%s",
-		r.j.m.ID, r.day, len(r.names), r.groups, r.written, stop, strings.Join(reasons, ","), strings.Join(open, ","), runErrText(runErr)))
+	r.log(fmt.Sprintf("%s day=%s names=%d groups_listed=%d new_contracts=%d stop=%s reasons=%s open=%s past_stop_time=%t run_err=%s",
+		r.j.m.ID, r.day, len(r.names), r.groups, r.written, stop, strings.Join(reasons, ","), strings.Join(open, ","), !r.start.Before(r.stopAt), runErrText(runErr)))
 }

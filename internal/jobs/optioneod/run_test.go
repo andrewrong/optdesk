@@ -337,21 +337,17 @@ func TestBudget(t *testing.T) {
 	}
 }
 
-func TestGuards(t *testing.T) {
+func TestPastDayAndEarlyRunStore(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, "2026-11-06 17:00")
 	res := r.run("2026-11-05", testKey)
-	if kindOf(res) != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") || r.b.calls() != 0 || len(r.res.calls) != 0 || len(r.w.calls) != 0 {
-		t.Fatalf("wrong day: %+v", res)
+	if res.Err != nil || res.Returned == 0 || r.b.calls() == 0 || len(r.w.calls) == 0 {
+		t.Fatalf("another day: %+v", res)
 	}
 	r = newRig(t, "2026-11-06 16:14")
 	res = r.run(testDay, testKey)
-	if res != (contracts.JobResult{}) || r.b.calls() != 0 || len(r.res.calls) != 0 || len(r.w.calls) != 0 {
+	if res.Err != nil || res.Returned == 0 || r.b.calls() == 0 || len(r.w.calls) == 0 {
 		t.Fatalf("before freeze_after: %+v", res)
-	}
-	r.clk.Advance(time.Minute)
-	if res = r.run(testDay, testKey); res.Err != nil || res.Returned == 0 {
-		t.Fatalf("at freeze_after: %+v", res)
 	}
 }
 

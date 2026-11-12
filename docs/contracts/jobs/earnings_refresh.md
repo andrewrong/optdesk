@@ -9,7 +9,7 @@
 - Id `earnings_refresh`; schedule `XNYS`, `session_close`, offset 30 minutes; key `{obs.earnings_date, <issuer>}` per entry.
 - One row per entry, attempt 1: `listed` (earliest date on or after the day) or `absent` from the source of its market; `unsupported` with source `none` for a market with no source; for an entry with a `report_date_override` only a `listed` row with source `owner` and no vendor row.
 - One `Fetch` per source per run. A market that has a vendor row of the day (`error` included) is not fetched; a second run of the day writes no row for an entry that has one. A source error writes an `error` row (`error_code` of the source, `unknown` when it gives none) for each entry of that market only, the other market's rows are still written, and the run returns a `Permanent` error with a fixed text; a second run returns the same error. No retry the same day.
-- The vendors answer for today only: a day other than the clock's date in the manifest zone (`America/New_York`) returns `NoValue` "wrong day" before any read, source call or write, so the key of a past day is an explained gap (`Absent`), as `option_eod` does.
+- The vendors answer for today only: in development mode (owner decision 2026-11-12) a day other than the clock's date in the manifest zone (`America/New_York`) runs with the clock's date as its day. Test: `TestPastDayRunsClockDay`.
 - `Returned` is the rows written, `Usable` those that are not `error`. `received_at` comes from the injected clock.
 
 ## Contract tests

@@ -231,10 +231,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 		j.logFailure("bad_day", te)
 		return contracts.JobResult{Err: te}
 	}
-	// The vendors answer for today only: a day other than the clock's date in the manifest zone is an explained gap.
-	if string(day) != j.clk.Now().In(j.loc).Format(dayLayout) {
-		return contracts.JobResult{Err: &typedError{contracts.NoValue, "earningsrefresh: wrong day"}}
-	}
+	// Development mode: the vendors answer for today, so a past day runs with the clock's date in the manifest zone.
+	day = contracts.Day(j.clk.Now().In(j.loc).Format(dayLayout))
+	observed, _ = date(string(day))
 	have, vendorRow, failedBefore, err := j.readDay(ctx, day)
 	if err != nil {
 		j.logFailure("read_day", err)
