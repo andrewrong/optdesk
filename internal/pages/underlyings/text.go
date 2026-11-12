@@ -125,3 +125,43 @@ func historyText(h underlying.Row, older []underlying.Row) string {
 	}
 	return prefix + strings.Join(parts, ", ")
 }
+
+const (
+	heldReadText = "Held names could not be read from the positions; held names may be missing here"
+	heldTextMax  = 200
+)
+
+// clip cuts s to at most n runes.
+func clip(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
+}
+
+// heldText joins a head and a reason so the whole is at most heldTextMax runes; the reason is cut, not the head.
+func heldText(head, reason string) string {
+	return head + clip(reason, heldTextMax-len([]rune(head)))
+}
+
+func heldNoRowText(sym string) string { return clip(sym+": held, not on the list", heldTextMax) }
+
+func heldPendingText(sym string) string {
+	return clip(sym+": pending; the first option chain comes at least one session day after the resolve", heldTextMax)
+}
+
+func heldUnresolvedText(sym, reason string) string {
+	return heldText(sym+": unresolved, no option chain: ", reason)
+}
+
+func heldRefusedText(sym, reason string) string {
+	return heldText(sym+": held, not added to the list: ", reason)
+}
+
+// rowNote is the note column: the resolved text for a held-added row with a con_id, else the stored note.
+func rowNote(r underlying.Row) string {
+	if r.Note == underlying.NoteHeld && r.ConID > 0 {
+		return fmt.Sprintf("Resolved as %s stock %s, con_id %d; check the con_id", r.Market, r.Symbol, r.ConID)
+	}
+	return r.Note
+}

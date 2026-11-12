@@ -2,10 +2,12 @@ package underlyings
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -206,3 +208,135 @@ func mustBuild(t *testing.T, in Input) []byte {
 }
 
 func bytesReader(b []byte) *bytes.Reader { return bytes.NewReader(b) }
+
+func heldGapTexts(t *testing.T, in Input) []string {
+	t.Helper()
+	out, err := Build(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct {
+		Gaps []gapJSON `json:"gaps"`
+	}
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	var texts []string
+	for _, g := range p.Gaps {
+		if g.Reason == "no_data" {
+			texts = append(texts, g.Text)
+		}
+	}
+	return texts
+}
+
+func heldInput(rows ...underlying.Row) Input {
+	return Input{Rows: rows, Now: fixedNow, Zone: time.UTC, Form: &Form{}}
+}
+
+func TestHeldNameWithoutRowIsAGap(t *testing.T) {
+	t.Parallel()
+	in := heldInput()
+	in.Held = map[string]bool{"ZZZ": true}
+	in.HeldOptions = map[string]bool{"AAA": true, "ZZZ": true}
+	got := heldGapTexts(t, in)
+	want := []string{"AAA: held, not on the list", "ZZZ: held, not on the list"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestHeldPendingRowIsAGap(t *testing.T) {
+	t.Parallel()
+	in := heldInput(underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "pending"})
+	in.Held = map[string]bool{"AAA": true}
+	want := []string{"AAA: pending; the first option chain comes at least one session day after the resolve"}
+	if got := heldGapTexts(t, in); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestHeldUnresolvedRowIsAGap(t *testing.T) {
+	t.Parallel()
+	in := heldInput(underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "unresolved", Reason: "not listed"})
+	in.HeldOptions = map[string]bool{"AAA": true}
+	want := []string{"AAA: unresolved, no option chain: not listed"}
+	if got := heldGapTexts(t, in); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestHeldRefusedNameShowsItsReason(t *testing.T) {
+	t.Parallel()
+	in := heldInput()
+	in.Held = map[string]bool{"BBB": true}
+	in.HeldRefused = map[string]string{"BBB": "currency GBP has no market"}
+	got := heldGapTexts(t, in)
+	if len(got) != 1 || !strings.Contains(got[0], "BBB") || !strings.Contains(got[0], "currency GBP has no market") ||
+		strings.Contains(got[0], "held, not on the list") {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestHeldActiveRowGivesNoGap(t *testing.T) {
+	t.Parallel()
+	in := heldInput(underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "active"})
+	in.Held = map[string]bool{"AAA": true}
+	in.HeldOptions = map[string]bool{"AAA": true}
+	if got := heldGapTexts(t, in); len(got) != 0 {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestHeldReadFailureIsAGap(t *testing.T) {
+	t.Parallel()
+	in := heldInput()
+	in.HeldError = true
+	want := []string{"Held names could not be read from the positions; held names may be missing here"}
+	if got := heldGapTexts(t, in); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestHeldTextsAtMost200Chars(t *testing.T) {
+	t.Parallel()
+	sym, reason := strings.Repeat("S", 20), strings.Repeat("r", 300)
+	texts := map[string]string{
+		"norow": heldNoRowText(sym), "pending": heldPendingText(sym),
+		"unresolved": heldUnresolvedText(sym, reason), "refused": heldRefusedText(sym, reason),
+	}
+	for name, s := range texts {
+		if n := len([]rune(s)); n > 200 || n == 0 {
+			t.Errorf("%s: length %d", name, n)
+		}
+	}
+	if !strings.Contains(texts["pending"], "at least one session day") {
+		t.Errorf("pending text %q", texts["pending"])
+	}
+}
+
+func TestHeldAddedRowShowsResolvedText(t *testing.T) {
+	t.Parallel()
+	in := heldInput(
+		underlying.Row{Key: "US:AAA", Symbol: "AAA", Market: "US", Status: "active", ConID: 42, Note: underlying.NoteHeld},
+		underlying.Row{Key: "JP:7203", Symbol: "7203", Market: "JP", Status: "active", ConID: 7, Note: underlying.NoteHeld},
+		underlying.Row{Key: "US:BBB", Symbol: "BBB", Market: "US", Status: "pending", Note: underlying.NoteHeld},
+	)
+	out, err := Build(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p struct{ Rows []rowJSON }
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	notes := map[string]string{}
+	for _, r := range p.Rows {
+		notes[r.Key] = r.Note
+	}
+	if notes["US:AAA"] != "Resolved as US stock AAA, con_id 42; check the con_id" ||
+		notes["JP:7203"] != "Resolved as JP stock 7203, con_id 7; check the con_id" ||
+		notes["US:BBB"] != underlying.NoteHeld {
+		t.Fatalf("notes %q", notes)
+	}
+}
