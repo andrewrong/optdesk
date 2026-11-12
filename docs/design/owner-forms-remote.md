@@ -25,7 +25,9 @@ None changed. `Contracts: unchanged`.
    but `OT_OWNER_TOKEN` unset or under 32 bytes, every owner POST answers `403` with the line `owner token not set:
    set OT_OWNER_TOKEN`. `serve.go` calls `newOwnerEdit` (`settings.go`; it drops the form key and the listen address and stays nil without the
    DSN line) on every start, not only under `--owner-edit`, and drops the loopback `--addr` test; `--owner-edit` is still accepted and ignored (one log line) so no launcher breaks; it no
-   longer gates anything.
+   longer gates anything. This turns the write forms ON wherever the DSN line exists: today they also need
+   `--owner-edit` (`serve.go:74`) and `OT_FORM_KEY` of 32 bytes (`env.go:70-81`). After this change the token is the
+   only gate: with `OT_OWNER_TOKEN` unset or under 32 bytes every owner POST and the login answer 403.
 2. **No network guard.** `hostNameOK`, `ownerLoopbackNames`, the `Check` and `CheckUpload` calls (the latter in
    `postOwnerFlexImport`, `flex_import_post.go`, which also reads `expires`/`mac` from the multipart fields), the
    remote-address, Host and Origin checks and the loopback `--addr` requirement for owner routes are gone from `cmd/ot`. Content type and the 64 KiB
@@ -41,13 +43,15 @@ None changed. `Contracts: unchanged`.
    (`crypto/subtle.ConstantTimeCompare` over equal-length SHA-256 sums). No match: `403 forbidden`, no store read, no
    write. `Secure` is left off (loopback is plain http; `tailscale serve` encrypts the tailnet leg).
 5. **CSRF** is `SameSite=Strict` on the cookie plus the token. No Origin check (`tailscale serve` may rewrite Host
-   and default ports differ, so an Origin-equals-Host test could refuse every phone post).
+   and default ports differ, so an Origin-equals-Host test could refuse every phone post). Accepted risk, for the
+   owner: `SameSite=Strict` protects by site, not by origin. A page served from another port of the same host
+   (`127.0.0.1:x`, or the same tailnet name on another port) is same-site, and its POST carries the cookie.
 6. **Page form fields stay, inert.** The page contracts require `expires` and `mac` (schemas, builders, web).
    `cmd/ot` passes a constant well-formed dummy (`expires` `0`, `mac` 64 zeros) where it passed `form.Token(now)`
    and ignores the posted values. `readUploadFields` no longer reads `expires`/`mac` and no longer refuses a file part
    that comes before the fields, so `TestFIFileBeforeFieldsRefused` (`flex_import_limits_test.go`) is deleted. This covers `flex_import_site.go`, which builds its token with `form.Token`, as
    the three other pages do. `form.Parse` is still used (it verifies no MAC; it takes the key `OT_FORM_KEY` named
-   today, and that argument goes with the key). Retiring the fields is Left out. The gap texts that
+   today; `Parse` never uses the key, so the argument is dead). Retiring the fields is Left out. The gap texts that
    mention `--owner-edit` are left alone (Left out).
 7. **Overrides** (named; the owner's merge of this file stands for them, those files are owner-only):
    `settings-form.md` Decision 5 (loopback remote address, loopback Host and Origin, MAC and expiry, loopback
@@ -60,8 +64,11 @@ None changed. `Contracts: unchanged`.
    too, but reads a 64 KiB urlencoded form, which a multipart upload is not, so the flex post calls `ownerCookieOK`
    directly) before `MultipartReader` is called, so no
    part is read, no file parsed and nothing imported without it: 403.
-9. **Named smaller points.** `site.go` is 621 lines on main (not 603): the one login registration line is the only
-   growth. `wire.go` is 790 lines and must stay under 800 (the key plumbing it holds is deleted, none added).
+9. **Named smaller points.** The diff adds at most 3 lines to `site.go` (the login registration) and the file stays
+   under 800 (it has no ratchet entry). `wire.go` (790 lines on main) does not grow: it holds only
+   `d.newSettingsForm = settingsform.New` (`wire.go:251`), which stays. Once `OT_FORM_KEY` is gone `cmd/ot` passes
+   a nil key to `NewSettingsFormFunc(key, ttl, p)` (`settingsapi/api.go:77`, module compute, not edited): `New`
+   only copies it, `Token` (the one user of the key, via `sign`) is no longer called, and `Parse` does not read it.
    `GET /owner-login` and `POST /owner-login` without a DSN answer 404 like the other owner routes (they are
    registered under `rd.edit != nil`); with the DSN and no token, the login answers 403 with the same
    `owner token not set` line. `settingsform/upload.go` and `settingsapi.UploadChecker` stay, unused (Left out).
@@ -85,6 +92,11 @@ None changed. `Contracts: unchanged`.
    - `grep -n "hostNameOK\|ownerLoopbackNames\|form\.Check\|CheckUpload\|OT_FORM_KEY\|envFormKey" cmd/ot/*.go | grep -v _test`
      prints nothing, and `form.Token` is not called in `cmd/ot` outside the dummy helper;
      `serve.go` has no loopback test for the owner routes and a test starts with and without `--owner-edit`.
+   - `guardOwnerPost` redoes the content-type check `settingsform.Check` does today (media type
+     `application/x-www-form-urlencoded`, else refused) next to the 64 KiB cap, the cookie check and `ParseForm`; a test
+     posts a right cookie with another content type and gets a refusal, and a test posts the right cookie to
+     `/owner-flex-import` with no file part (replacing the "no file" case of the deleted `TestFIFileBeforeFieldsRefused`)
+     and gets a non-2xx refusal with nothing imported and nothing stored (the test names the status the code gives).
    - `tokenMatches` is called by the `/owner-login` handler and by `ownerCookieOK` and by nothing else; every owner
      POST handler calls `guardOwnerPost` first, except `postOwnerFlexImport`, which calls `ownerCookieOK` first
      (`TestOwnerPostsAllGuarded` posts to
@@ -104,8 +116,8 @@ None changed. `Contracts: unchanged`.
      wrong one answers 403.
    - The pages of the three routes carry `expires` `0` and a 64-zero `mac` and validate against their schemas.
    - Tests generate the token; no file in the diff holds a token value.
-   - New files under 600 lines; `site.go` (621 lines) gets one registration line for the login route and
-     is at most 622 lines.
+   - New files under 600 lines; the diff adds at most 3 lines to `site.go` and the file stays under 800; `wire.go`
+     does not grow.
    Contracts: unchanged.
 
 ## Left out
@@ -135,7 +147,7 @@ Review file: owner-forms-remote-adversarial.md.
   jobconsole_site.go, underlyings_site.go, flex_import_site.go) finds each in Files.
 - Env file wording (`CREW_SECRETS`): adopted (Decision 3).
 - `form.Parse` still used, `form.Token` not in the grep: adopted (Decision 6, acceptance grep).
-- wire.go, rewritten test helpers, login in `ownertoken.go`, site.go 603 lines: adopted in Files and acceptance.
+- wire.go, rewritten test helpers, login in `ownertoken.go`, site.go growth: adopted in Files and acceptance.
 - Point 2 (no `--addr 0.0.0.0` stop): adopted as stated risk: the token is the only barrier, 32-byte minimum.
 - Point 3(a) (keep the page MAC): not adopted, it keeps `OT_FORM_KEY` and misses "one token".
 - Point 4 (dead `Check` code left): accepted, named in Left out.
