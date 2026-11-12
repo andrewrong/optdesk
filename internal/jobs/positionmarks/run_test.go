@@ -539,3 +539,56 @@ func TestAfterIsAccountCapture(t *testing.T) {
 		t.Fatalf("After() = %v", got)
 	}
 }
+
+func TestRunLogsStatusCountsPerMarket(t *testing.T) {
+	t.Parallel()
+	ps := []store.Position{
+		pos("acct-secret", "c1", 1, "USD"), pos("acct-secret", "c1", 2, "USD"), pos("acct-secret", "c1", 3, "USD"),
+		pos("acct-secret", "c1", 4, "USD"), pos("acct-secret", "c1", 5, "JPY"), pos("acct-secret", "c1", 6, "JPY"),
+	}
+	e := setup(t, []string{"acct-secret"}, map[string][]store.Position{"acct-secret": ps})
+	status := map[int64]broker.Status{
+		1: broker.StatusOK, 2: broker.StatusOK, 3: broker.StatusNoData, 4: broker.StatusNoSubscription,
+		5: broker.StatusOK, 6: broker.StatusNoSubscription,
+	}
+	e.m.quote = func(c broker.Contract) broker.Quote {
+		if status[c.ConID] == broker.StatusOK {
+			return okQuote(c)
+		}
+		return broker.Quote{Contract: c, Status: status[c.ConID]}
+	}
+	res := e.run()
+	if res.Err != nil || res.Returned != 6 || res.Usable != 3 {
+		t.Fatalf("res = %+v", res)
+	}
+	out := e.log.String()
+	if n := strings.Count(out, "position_marks status counts"); n != 1 {
+		t.Fatalf("want one count line, got %d in %q", n, out)
+	}
+	want := `marks="JPY no_subscription=1 ok=1; USD no_data=1 no_subscription=1 ok=2"`
+	if !strings.Contains(out, want) || !strings.Contains(out, "level=INFO") {
+		t.Fatalf("log = %q, want %s", out, want)
+	}
+	if strings.Contains(out, "acct-secret") {
+		t.Fatalf("log carries the alias: %q", out)
+	}
+}
+
+func TestRunGatewayFailureKeepsTypedErrorAndFakeClock(t *testing.T) {
+	t.Parallel()
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "USD")}})
+	e.m.err = errors.New("socket down")
+	res := e.run()
+	if res.Err == nil || res.Err.Error() != "position_marks: status disconnected alias a" || kindOf(res) != contracts.Retryable {
+		t.Fatalf("err = %v", res.Err)
+	}
+	if res.Returned != 0 || res.Usable != 0 {
+		t.Fatalf("res = %+v", res)
+	}
+	if !e.clk.Now().Equal(t0) {
+		t.Fatalf("fake clock moved: %v", e.clk.Now())
+	}
+	if strings.Count(e.log.String(), "position_marks status counts") != 1 {
+		t.Fatalf("log = %q", e.log.String())
+	}
+}
