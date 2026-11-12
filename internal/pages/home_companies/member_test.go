@@ -8,13 +8,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/andrewrong/optdesk/internal/compute"
+	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/pages/home_companies"
@@ -360,20 +364,127 @@ func TestHVNotOkRowWithReasonNamesIt(t *testing.T) {
 	}
 }
 
-func TestChangeGapsSayNotReadByThisCard(t *testing.T) {
+type fakeBars struct {
+	bars  []contracts.PriceBar
+	err   error
+	calls atomic.Int32
+}
+
+func (f *fakeBars) PriceBars(context.Context, int64, string, contracts.Day, contracts.Day) ([]contracts.PriceBar, error) {
+	f.calls.Add(1)
+	return f.bars, f.err
+}
+
+type fakeFigures struct {
+	blockapi.PageFigures
+	d1, d5 compute.FigureValue
+}
+
+func (f fakeFigures) Moves(in []blockapi.CloseIn) []blockapi.MoveLine {
+	return []blockapi.MoveLine{{Name: in[0].Name, D1: f.d1, D5: f.d5}}
+}
+
+func sixBars() []contracts.PriceBar {
+	var out []contracts.PriceBar
+	for i := 0; i < 6; i++ {
+		d := time.Date(2026, 11, 3+i, 0, 0, 0, 0, time.UTC)
+		out = append(out, contracts.PriceBar{Close: strconv.Itoa(100 + i), SessionDay: types.SerializableDate{Time: d}})
+	}
+	return out
+}
+
+func changeRow(t *testing.T, bars *fakeBars, figs blockapi.NewPageFiguresFunc, id int64) map[string]any {
+	t.Helper()
+	cfg := home_companies.Config{
+		Rows:    []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB", InstrumentID: id}},
+		Figures: figs,
+	}
+	if bars != nil {
+		cfg.Bars = bars
+	}
+	m, _ := build(t, config(cfg))
+	return m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+}
+
+func fakeFiguresFunc(d1, d5 compute.FigureValue) blockapi.NewPageFiguresFunc {
+	return func() blockapi.PageFigures { return fakeFigures{d1: d1, d5: d5} }
+}
+
+func TestChangeFigures(t *testing.T) {
 	t.Parallel()
-	m, _ := build(t, config(home_companies.Config{
-		Rows: []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB"}},
-		Read: fakeView{},
-	}))
-	row := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)
+	row := changeRow(t, &fakeBars{bars: sixBars()}, fakeFiguresFunc(
+		compute.FigureValue{Value: "0.99"}, compute.FigureValue{Value: "-5.00"}), 7)
+	d1 := row["day_change"].(map[string]any)
+	if d1["kind"] != "value" || d1["value"] != 0.99 || d1["text"] != "+0.99%" ||
+		d1["unit"] != "percent" || d1["tone"] != "none" {
+		t.Errorf("day_change = %v", d1)
+	}
+	d5 := row["five_day_change"].(map[string]any)
+	if d5["text"] != "-5.00%" || d5["unit"] != "percent" {
+		t.Errorf("five_day_change = %v", d5)
+	}
+}
+
+func TestChangeGapFromFigure(t *testing.T) {
+	t.Parallel()
+	row := changeRow(t, &fakeBars{bars: sixBars()}, fakeFiguresFunc(
+		compute.FigureValue{Value: "1.00"}, compute.FigureValue{Gap: "no_data"}), 7)
+	if row["day_change"].(map[string]any)["kind"] != "value" {
+		t.Errorf("day_change = %v, want a figure", row["day_change"])
+	}
+	g := row["five_day_change"].(map[string]any)
+	text, _ := g["text"].(string)
+	if g["kind"] != "gap" || g["reason"] != "no_data" || !strings.Contains(text, "5-day change") || !strings.Contains(text, "no data") {
+		t.Errorf("five_day_change = %v", g)
+	}
+}
+
+func TestChangeNoReader(t *testing.T) {
+	t.Parallel()
+	row := changeRow(t, nil, fakeFiguresFunc(compute.FigureValue{}, compute.FigureValue{}), 7)
 	for k, want := range map[string]string{
-		"day_change":      "day change: not read by this card yet",
-		"five_day_change": "5-day change: not read by this card yet",
+		"day_change":      "day change: reader not set",
+		"five_day_change": "5-day change: reader not set",
 	} {
-		if got := row[k].(map[string]any)["text"]; got != want {
-			t.Errorf("%s text = %v, want %q", k, got, want)
+		g := row[k].(map[string]any)
+		if g["reason"] != "no_reader" || g["text"] != want {
+			t.Errorf("%s = %v, want no_reader %q", k, g, want)
 		}
+	}
+	row = changeRow(t, &fakeBars{}, nil, 7)
+	if row["day_change"].(map[string]any)["reason"] != "no_reader" {
+		t.Errorf("nil Figures: day_change = %v", row["day_change"])
+	}
+}
+
+func TestChangeNoInstrument(t *testing.T) {
+	t.Parallel()
+	bars := &fakeBars{bars: sixBars()}
+	row := changeRow(t, bars, fakeFiguresFunc(compute.FigureValue{}, compute.FigureValue{}), 0)
+	for k, want := range map[string]string{
+		"day_change":      "day change: no instrument",
+		"five_day_change": "5-day change: no instrument",
+	} {
+		g := row[k].(map[string]any)
+		if g["reason"] != "no_data" || g["text"] != want {
+			t.Errorf("%s = %v, want no_data %q", k, g, want)
+		}
+	}
+	if n := bars.calls.Load(); n != 0 {
+		t.Errorf("PriceBars called %d times, want 0", n)
+	}
+}
+
+func TestChangeReaderError(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	_, err := home_companies.Build(t.Context(), config(home_companies.Config{
+		Rows:    []home_companies.Row{{Market: "US", Symbol: "DEMOB", InstrumentID: 7}},
+		Bars:    &fakeBars{err: boom},
+		Figures: fakeFiguresFunc(compute.FigureValue{}, compute.FigureValue{}),
+	}), fixedAt)
+	if !errors.Is(err, boom) || !strings.Contains(err.Error(), "DEMOB") {
+		t.Errorf("err = %v, want boom naming DEMOB", err)
 	}
 }
 
