@@ -263,16 +263,21 @@ func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess da
 	if err != nil {
 		return false, err
 	}
-	order, groups, complete := dueJobs(p, present)
-	done, err := r.runJobs(ctx, newDayCtx(day, p, sess, false), order, groups, closes)
+	due, complete := dueJobsOf(p, present)
+	done, err := r.runJobs(ctx, newDayCtx(day, p, sess, false), due, closes)
 	return complete && done, err
 }
 
-// dueJobs groups the keys that are missing and not held by their job, the jobs in the order of their first
-// key; complete is false when a held key is missing.
-func dueJobs(p plan, present map[contracts.ExpectedKey]store.PresentStatus) (order []contracts.Job, groups map[string][]contracts.ExpectedKey, complete bool) {
+// dueJobs are the jobs with a missing key that is not held, in the order of their first key, and the keys of each by job id.
+type dueJobs struct {
+	order []contracts.Job
+	keys  map[string][]contracts.ExpectedKey
+}
+
+// dueJobsOf groups the keys that are missing and not held by their job; complete is false when a held key is missing.
+func dueJobsOf(p plan, present map[contracts.ExpectedKey]store.PresentStatus) (due dueJobs, complete bool) {
 	complete = true
-	groups = map[string][]contracts.ExpectedKey{}
+	due.keys = map[string][]contracts.ExpectedKey{}
 	for _, k := range p.keys {
 		if _, ok := present[k]; ok {
 			continue
@@ -282,29 +287,29 @@ func dueJobs(p plan, present map[contracts.ExpectedKey]store.PresentStatus) (ord
 			continue
 		}
 		id := p.job[k].ID()
-		if _, seen := groups[id]; !seen {
-			order = append(order, p.job[k])
+		if _, seen := due.keys[id]; !seen {
+			due.order = append(due.order, p.job[k])
 		}
-		groups[id] = append(groups[id], k)
+		due.keys[id] = append(due.keys[id], k)
 	}
-	return order, groups, complete
+	return due, complete
 }
 
 // runJobs runs one goroutine per due job, the keys of a job in order, and returns when all of them and the
 // dependents they triggered have returned; it reports whether every key of the jobs is marked.
 func (r *reconciler) runJobs(
-	ctx context.Context, dc *dayCtx, order []contracts.Job, groups map[string][]contracts.ExpectedKey, closes map[string]time.Time,
+	ctx context.Context, dc *dayCtx, due dueJobs, closes map[string]time.Time,
 ) (bool, error) {
-	for _, j := range order {
+	for _, j := range due.order {
 		dc.setPending(j.ID())
 	}
-	turns := make([]jobTurn, len(order))
+	turns := make([]jobTurn, len(due.order))
 	var wg sync.WaitGroup
-	for i, j := range order {
+	for i, j := range due.order {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			turns[i] = r.reconcileJob(ctx, dc, j, groups[j.ID()], closes)
+			turns[i] = r.reconcileJob(ctx, dc, j, due.keys[j.ID()], closes)
 		}()
 	}
 	wg.Wait()
@@ -321,7 +326,7 @@ func (r *reconciler) runJobs(
 		if !t.skipped {
 			complete = complete && t.complete
 		} else {
-			skipped = append(skipped, groups[order[i].ID()]...)
+			skipped = append(skipped, due.keys[due.order[i].ID()]...)
 		}
 	}
 	if len(skipped) == 0 {
