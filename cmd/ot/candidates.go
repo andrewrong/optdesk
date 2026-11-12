@@ -71,7 +71,7 @@ func (c runOnceConfig) candidatesOff() string {
 func (f jobFactory) optionCandidates() (contracts.Job, error) {
 	st := optioncandidates.CandidateStores{
 		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
-		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Candidates: f.candidates,
+		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases, Candidates: f.candidates,
 		SessionDays: f.compute.SessionDays,
 	}
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
@@ -108,9 +108,23 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 			}
 			extra.addCloser(acct)
 			f.accounts = acct
+			a.candidateAliases(f)
 		}
 	}
 	return f.optionCandidates()
+}
+
+// candidateAliases sets f.candAliases from the gateways file named in .env. An unreadable .env or gateways file logs
+// one WARN line, without the path or an account, and leaves the list nil: the job then reads no account.
+func (a *app) candidateAliases(f *jobFactory) {
+	env, err := a.envFile()
+	if err == nil {
+		f.candAliases, err = accountAliases(env[envIbkrGateways])
+	}
+	if err != nil {
+		f.candAliases = nil
+		a.log.Warn("option_candidates reads no account: gateways file unusable", "component", "ot", "job", jobOptionCandidates)
+	}
 }
 
 // candidatesCmd is `ot candidates [--day DAY] [--all]`: it opens the candidate store with OT_PG_DSN_PAGES (role ot_ro_pages, the view rd.option_candidate_r1),
