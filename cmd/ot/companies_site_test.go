@@ -181,6 +181,16 @@ func (h heldAccount) Positions(_ context.Context, _, day string) ([]store.Positi
 	return h.byDay[day], h.err
 }
 
+// aliasAccount is an account reader whose position rows are keyed by alias and day.
+type aliasAccount struct {
+	store.AccountReader
+	rows map[string]map[string][]store.Position
+}
+
+func (h aliasAccount) Positions(_ context.Context, alias, day string) ([]store.Position, error) {
+	return h.rows[alias][day], nil
+}
+
 type heldPage struct {
 	Header struct {
 		HeldCount *int `json:"held_count"`
@@ -200,7 +210,7 @@ type heldPage struct {
 func buildHeld(t *testing.T, acc store.AccountReader) (heldPage, string) {
 	t.Helper()
 	a := companiesApp(t)
-	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{noticeAccount: acc, underlying: companiesStore()})
+	body, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", siteReaders{account: acc, aliases: []string{"main"}, underlying: companiesStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,9 +265,46 @@ func TestCompaniesHeldNilWithoutReader(t *testing.T) {
 func TestCompaniesHeldReaderErrorIsReturned(t *testing.T) {
 	t.Parallel()
 	a := companiesApp(t)
-	rd := siteReaders{noticeAccount: heldAccount{err: errors.New("boom")}, underlying: companiesStore()}
+	rd := siteReaders{account: heldAccount{err: errors.New("boom")}, aliases: []string{"main"}, underlying: companiesStore()}
 	_, err := buildCompanies(t.Context(), a, companiesClock, "2026-11-05", rd)
 	if err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("%v", err)
+	}
+}
+
+func buildHeldAliases(t *testing.T, acc store.AccountReader, aliases []string) heldPage {
+	t.Helper()
+	rd := siteReaders{account: acc, aliases: aliases, underlying: companiesStore()}
+	body, err := buildCompanies(t.Context(), companiesApp(t), companiesClock, "2026-11-05", rd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p heldPage
+	if err := json.Unmarshal(body, &p); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestCompaniesHeldUnionOfAliases(t *testing.T) {
+	t.Parallel()
+	acc := aliasAccount{rows: map[string]map[string][]store.Position{
+		"main": {"2026-11-05": {stk("AAA", "stock", "100")}},
+		"wife": {"2026-11-05": {stk("BBB", "stock", "5")}},
+	}}
+	p := buildHeldAliases(t, acc, []string{"main", "wife"})
+	if p.Header.HeldCount == nil || *p.Header.HeldCount != 2 || p.Holdings == nil || len(p.Holdings.Rows) != 2 {
+		t.Fatalf("held: %+v", p)
+	}
+}
+
+func TestCompaniesHeldSecondAliasOnly(t *testing.T) {
+	t.Parallel()
+	acc := aliasAccount{rows: map[string]map[string][]store.Position{
+		"wife": {"2026-11-05": {stk("AAA", "stock", "5")}},
+	}}
+	p := buildHeldAliases(t, acc, []string{"main", "wife"})
+	if p.Header.HeldCount == nil || *p.Header.HeldCount != 1 {
+		t.Fatalf("held: %+v", p)
 	}
 }
