@@ -1,0 +1,17 @@
+{
+  "schema": "flex_import",
+  "schema_version": 1,
+  "title": "Flex import",
+  "sentence": "The import is off.",
+  "scope_note": "Only trades of level EXECUTION are read, from the same Flex query that option_ledger uses for trades (the TradeQueries entry of its login in flex.toml); cash, positions, NAV and the other sections of the file are not imported.",
+  "form": null,
+  "gaps": [
+    {
+      "kind": "gap",
+      "reason": "no_reader",
+      "text": "Import is off: start ot serve with --owner-edit and the option ledger line to upload files."
+    }
+  ],
+  "files": [],
+  "recent": []
+}
