@@ -240,3 +240,52 @@ func TestBarOptionImpliedVolFake(t *testing.T) {
 		t.Fatalf("midpoint got %+v", bars)
 	}
 }
+
+// permanentWrap is a Permanent error that wraps another, as the client of grpcbroker returns it.
+type permanentWrap struct{ err error }
+
+func (e permanentWrap) Error() string             { return "permanent: " + e.err.Error() }
+func (e permanentWrap) Kind() contracts.ErrorKind { return contracts.Permanent }
+func (e permanentWrap) Unwrap() error             { return e.err }
+
+// fakeLister answers the contracts it holds, or a Retryable error when down is set, or ErrNotServed.
+type fakeLister struct {
+	down, old bool
+	held      []broker.Contract
+}
+
+func (f fakeLister) ListContracts(_ context.Context, _ broker.Contract, _ contracts.Day, _, class string) ([]broker.Contract, error) {
+	if f.down {
+		return nil, typedErr{contracts.Retryable}
+	}
+	if f.old {
+		return nil, permanentWrap{broker.ErrNotServed}
+	}
+	var out []broker.Contract
+	for _, c := range f.held {
+		if class == "" || c.TradingClass == class {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+var _ broker.ContractLister = fakeLister{}
+
+func TestContractListerFromTheCaller(t *testing.T) {
+	t.Parallel()
+	und := broker.Contract{SecType: "STK", Symbol: "KO", ConID: 8894}
+	held := []broker.Contract{{ConID: 1, TradingClass: "KO"}, {ConID: 2, TradingClass: "KO1"}}
+	got, err := broker.ContractLister(fakeLister{held: held}).ListContracts(context.Background(), und, "20261120", "", "KO")
+	if err != nil || len(got) != 1 || got[0].ConID != 1 {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	_, err = broker.ContractLister(fakeLister{down: true}).ListContracts(context.Background(), und, "20261120", "", "KO")
+	if !retryable(err) {
+		t.Fatalf("a down lister must be Retryable, got %v", err)
+	}
+	_, err = broker.ContractLister(fakeLister{old: true}).ListContracts(context.Background(), und, "20261120", "", "KO")
+	if !errors.Is(err, broker.ErrNotServed) || retryable(err) {
+		t.Fatalf("an old service must match ErrNotServed and not be Retryable, got %v", err)
+	}
+}
