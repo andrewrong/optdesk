@@ -476,3 +476,15 @@ func TestJPPlanAndResolveHaveTheirOwnDatasetAndWindow(t *testing.T) {
 		t.Errorf("US resolve keys %v", uk)
 	}
 }
+
+func TestPullJPAfterIsThePlanJP(t *testing.T) {
+	t.Parallel()
+	j := newPullJP(t, seed(1, 1), clockwork.NewFakeClockAt(time.Date(2026, 11, 11, 0, 5, 0, 0, time.UTC)))
+	d, ok := j.(runner.Dependent)
+	if !ok {
+		t.Fatal("option_open_jp is not a runner.Dependent")
+	}
+	if got := d.After(); len(got) != 1 || got[0] != "option_open_plan_jp" {
+		t.Fatalf("After() = %v", got)
+	}
+}

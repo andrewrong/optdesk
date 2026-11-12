@@ -489,3 +489,15 @@ func TestIssuerlessEntrySkippedByName(t *testing.T) {
 		t.Fatalf("skipped %v", sk)
 	}
 }
+
+func TestAfterIsComputeFigures(t *testing.T) {
+	t.Parallel()
+	f := newFakes()
+	d, ok := build(t, f.stores(), f, usEntry()).(interface{ After() []string })
+	if !ok {
+		t.Fatal("option_candidates has no After")
+	}
+	if got := d.After(); len(got) != 1 || got[0] != "compute_figures" {
+		t.Fatalf("After() = %v", got)
+	}
+}
