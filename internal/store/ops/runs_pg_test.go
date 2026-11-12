@@ -16,19 +16,19 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
-// newRunsDatabase is newDatabase plus the table and the views of 0035. That migration also alters
+// newRunsDatabase is newDatabase plus the table and the views of 0036. That migration also alters
 // master.option_list, which this database lacks: only the part from the reason table on applies here.
 func newRunsDatabase(t *testing.T) string {
 	t.Helper()
 	name := newDatabase(t)
-	raw, err := os.ReadFile("../../../migrations/0035_option_list_band_run_view.sql")
+	raw, err := os.ReadFile("../../../migrations/0036_option_list_band_run_view.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
 	_, tail, ok := strings.Cut(up, "CREATE TABLE ops.option_run_reason")
 	if !ok {
-		t.Fatal("0035 has no reason table section")
+		t.Fatal("0036 has no reason table section")
 	}
 	up = "CREATE TABLE ops.option_run_reason" + tail
 	ctx := context.Background()
@@ -38,7 +38,7 @@ func newRunsDatabase(t *testing.T) string {
 	}
 	defer func() { _ = c.Close(ctx) }()
 	if _, err := c.Exec(ctx, up); err != nil {
-		t.Fatalf("apply 0035: %v", err)
+		t.Fatalf("apply 0036: %v", err)
 	}
 	return name
 }
