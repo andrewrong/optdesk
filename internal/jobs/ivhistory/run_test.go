@@ -181,7 +181,8 @@ func TestUnknownKeyIsPermanent(t *testing.T) {
 	}
 }
 
-const noData162 = "broker: bars: Unknown: broker error 162: Historical Market Data Service error message:HMDS query returned no data: X.T@SMART Option_Implied_Volatility"
+const noData162 = "broker: bars: Unknown: broker error 162: Historical Market Data Service error message:" +
+	"HMDS query returned no data: X.T@SMART Option_Implied_Volatility"
 
 func noDataFor(sym string, errText string) *fakeHistory {
 	return &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
