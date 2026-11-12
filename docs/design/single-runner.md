@@ -61,12 +61,14 @@ No row of `docs/design/modules.md` changes.
 
 4. runner: `PlanDay` implemented.
    Files: `internal/runner/reconcile/planday.go` (new), `internal/runner/reconcile/planday_test.go` (new)
-   Order: after 2, 1915.
+   Order: after 2.
+   The issue also waits for issue #1915 (per-job try-lock) to merge.
    Acceptance: (a) the reconciler type of `reconcile` implements `runner.DayPlanner` (compile-time check); (b) `PlanDay` obtains the day's sessions as `Reconcile` does for one day, calls `plan`, `PutExpected` when the stored hash differs and `putWindows`, exactly as `reconcileOn` does before `Present`, and then returns: it calls no `runJobs`, no `SetCursor` and takes no lease; (c) a test with a fake ledger and two jobs shows an unplanned day gets its expected keys and windows stored, no job `Run` was called and the cursor is unchanged; (d) a second call with an unchanged plan writes no `PutExpected`.
 
 5. ot: the scheduler closes `running` rows at start; `run-once` and `backfill` enqueue.
    Files: `cmd/ot/scheduler.go`, `cmd/ot/jobconsole_turn.go`, `cmd/ot/jobconsole_turn_test.go`, `cmd/ot/runonce.go`, `cmd/ot/backfill.go`, `cmd/ot/enqueue_wait.go` (new), `cmd/ot/backfill_report.go`, `cmd/ot/scheduler_test.go`, `cmd/ot/runonce_test.go`, `cmd/ot/runonce_option_test.go`, `cmd/ot/runonce_lease_test.go` (deleted), `cmd/ot/backfill_test.go`, `cmd/ot/backfill_report_test.go`, `cmd/ot/enqueue_wait_test.go` (new), `docs/contracts/ot.md`
-   Order: after 1, 3, 4, 1918.
+   Order: after 1, 3, 4.
+   The issue also waits for issue #1918 to merge.
    Acceptance: (a) in `scheduler.go` the assertion to `store.RunCloser` and the call `CloseRunning(ctx, now, "crashed")` follow the successful `inst.TryLock` and precedes the first ticker turn, is not reachable when `TryLock` failed, and its error is returned by `schedulerCmd` before the ticker is built; (b) `runonce.go` and `backfill.go` (non-dry-run path) call none of `newReconciler`, `Reconcile`, `Backfill`, `openSchedulerLedger`, `withWiring`; `leaseRefusal` and `reconcileDay` are gone; (c) both commands call `Poster.Enqueue` with `{JobID, Day, Force}` and print the request id and the `EnqueueOutcome`; (d) `--wait` uses the injected clock (no `time.Sleep`) and the exit status follows Decision 2; (e) `--dataset` is rejected as an unknown flag; (f) `jobconsole_turn.go` calls `Expected(day)` and, for an empty plan on a day after `Cursor`, asserts the `ForceBackfiller` to `runner.DayPlanner` and calls `PlanDay(ctx, day)` once before `BackfillWith`, and calls no `Reconcile`; for a day at or before the cursor, or without a `DayPlanner`, the `no_plan` refusal stands ((new) test: a console turn on an unplanned day stores the plan and runs only the requested job, with a fake planner and backfiller recording their calls; (new) test: a day at or before the cursor is refused `no_plan` and `PlanDay` is not called); (g) the enqueue-all of `run-once` skips `listed_only` jobs and `today_only` jobs for another day, with a test per kind; (h) `--wait` past `--timeout` prints the console-off line and exits non-zero (test with the fake clock); (i) tests use a fake `Poster` and `Reader`; (j) `runonce.go` stays under its present line count.
 
 6. docs: the deploy runbook states the new rule.
@@ -77,7 +79,8 @@ No row of `docs/design/modules.md` changes.
 
 7. runner: no lease, a `running` row is live.
    Files: `internal/runner/reconcile/reconcile.go`, `internal/runner/reconcile/backfill.go`, `internal/runner/reconcile/backfill_force.go`, `internal/runner/reconcile/runkey.go`, `internal/runner/reconcile/fakes_test.go`, `internal/runner/reconcile/reconcile_test.go`, `internal/runner/reconcile/backfill_test.go`, `internal/runner/reconcile/backfill_force_test.go`, `internal/runner/reconcile/backfill_window_test.go`, `internal/runner/reconcile/runkey_test.go`, `internal/runner/reconcile/count_test.go`, `internal/runner/sched/gaps.go`, `internal/runner/sched/gaps_test.go`, `internal/runner/sched/gaps_stop_test.go`, `internal/runner/sched/ticker_restart_test.go`, `docs/contracts/runner.md`
-   Order: after 1915, 5. Migration 0039 must be applied first (Decision 9).
+   Order: after 5.
+   The issue also waits for issue #1915 to merge, and migration 0039 is applied first (Decision 9).
    Acceptance: (a) `reconcile.go`, `backfill.go`, `backfill_force.go` and `runkey.go` contain none of `holdLease`, `leaseTTL`, `backfillOwner`, `closeExpired`, `RenewLease`, `Acquire`, `Release`, `LeaseUntil`; (b) `nextAttempt` skips a key whose latest row is `running` and takes no clock for it; (c) `sched/gaps.go` counts a `running` row as running, never as crashed by lease; (d) the reason `crashed` is still written by no runner code and read by `isCrash` for rows `CloseRunning` and old runs wrote; (e) every removed test is replaced by one that fails when the code of (b) or (c) is reverted; (f) `docs/contracts/runner.md` names no lease use.
 
 ## Left out
