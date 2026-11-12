@@ -92,9 +92,14 @@ func buildOpenPlan(ctx context.Context, a *app, jc *jobCtx, id string,
 	if !ok {
 		return nil, "", nil
 	}
-	j, err := jc.f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+	// The JP plan reads the con_id from the entry: a name the list holds without one is asked of the broker, as option_eod_jp does.
+	f := *jc.f
+	if id == jobOptionOpenPlanJP && jc.brk != nil {
+		f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, jc.brk, es, a.log, id) }
+	}
+	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		return newJob(optionopen.PlanDeps{
-			Stored: openStored(jc, stores, entries), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
+			Stored: openStored(jc, stores, f.fixedEntries(entries)), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
 		})
 	})
 	return held(a, id, j, reason, err)
@@ -132,9 +137,14 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 			brk = c
 		}
 	}
-	j, err := jc.f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+	// The JP resolve asks the broker of the job for the con_id of a name the list holds without one.
+	f := *jc.f
+	if id == jobOptionOpenResolveJP && brk != nil {
+		f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, brk, es, a.log, id) }
+	}
+	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		d := optionopen.ResolveDeps{
-			Stored: openStored(jc, stores, entries), Broker: brk, Marks: stores, Clock: jc.f.clk,
+			Stored: openStored(jc, stores, f.fixedEntries(entries)), Broker: brk, Marks: stores, Clock: jc.f.clk,
 			Log: func(line string) { a.log.Info(line, "component", "ot", "job", id) },
 		}
 		if withPull {
