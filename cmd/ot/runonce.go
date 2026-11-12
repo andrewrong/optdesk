@@ -36,7 +36,7 @@ const maxSocketPath = 104
 // runOnceConfig is what run-once needs from $OT_HOME/.env and the home; its values are never printed.
 type runOnceConfig struct {
 	runnerDSN, seriesDSN, optionEodDSN, quoteSnapshotDSN, masterDSN, fredKey string
-	pagesDSN, readingsDSN, loaderDSN, calendarUV                             string
+	pagesDSN, readingsDSN, loaderDSN, calendarUV, calendarProject            string
 	// eventsDSN and alphaKey belong to earnings_refresh alone: an empty one leaves that job out, never the run.
 	eventsDSN, alphaKey string
 	// candidateDSN belongs to option_candidates alone: an empty one leaves that job out, never the run.
@@ -79,6 +79,7 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 		readingsDSN:      env[store.DSNEnvReadings],
 		loaderDSN:        env[store.DSNEnvLoader],
 		calendarUV:       env[envCalendarUV],
+		calendarProject:  env[envCalendarProject],
 		eventsDSN:        env[store.DSNEnvEvents],
 		alphaKey:         env[envAlphaKey],
 		jquantsKey:       env[envJQuantsKey],
@@ -277,6 +278,8 @@ type jobFactory struct {
 	// compute holds the stores of compute_figures.
 	compute computefigures.ComputeStores
 	uv      string
+	// project is the line OT_CALENDAR_PROJECT; empty means the pyside directory of the working directory.
+	project string
 	log     *slog.Logger
 	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
 	loader store.SessionDayStore
@@ -371,7 +374,8 @@ func withWiring(
 	var extra closerSet
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
-		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV, log: a.log,
+		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV,
+			project: cfg.calendarProject, log: a.log,
 			events: events, earn: earn, jp: jp}, ledger)
 }
 

@@ -42,6 +42,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 		}},
 		{"calendar_refresh", func(_ *testing.T, cause error) error {
 			d := newDeps()
+			d.hasProject = testHasProject
 			d.newCalendarRefresh = func(
 				clock.SessionSource,
 				store.SessionDayStore,

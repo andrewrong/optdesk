@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -22,15 +24,51 @@ func init() {
 	})
 }
 
+// envCalendarProject names the optional line of .env that sets the directory of the pyside project.
+const envCalendarProject = "OT_CALENDAR_PROJECT"
+
+// calendarCommand is the command of calendar_refresh up to the arguments calendarcli adds:
+// `uv run --locked --project <project> python -m optdesk.calendar`; project must be absolute so that
+// the child starts from any working directory.
+func calendarCommand(uv, project string) []string {
+	return []string{uv, "run", "--locked", "--project", project, "python", "-m", "optdesk.calendar"}
+}
+
+// hasPyproject is the real deps.hasProject.
+func hasPyproject(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "pyproject.toml"))
+	return err == nil
+}
+
+// calendarProjectDir returns the absolute pyside project directory: the line OT_CALENDAR_PROJECT, or
+// pyside under the working directory of ot. It fails when the directory holds no pyproject.toml.
+func (f jobFactory) calendarProjectDir() (string, error) {
+	dir := f.project
+	if dir == "" {
+		dir = "pyside"
+	}
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("calendar_refresh: resolve the project directory failed, set %s: %w", envCalendarProject, err)
+	}
+	if !f.d.hasProject(dir) {
+		return "", fmt.Errorf("calendar_refresh: the pyside project has no pyproject.toml, set the line %s or run ot from the checkout", envCalendarProject)
+	}
+	return dir, nil
+}
+
 // calendarRefresh builds calendar_refresh over the loader store; the command is the uv program of the .env
-// line (default uv) and calendarArgs, run by calendarcli.Exec in the default temporary directory.
+// line (default uv) and calendarCommand, run by calendarcli.Exec in the default temporary directory.
 func (f jobFactory) calendarRefresh() (contracts.Job, error) {
 	uv := f.uv
 	if uv == "" {
 		uv = "uv"
 	}
-	argv := append([]string{uv}, calendarArgs...)
-	src := f.d.newCommandSessionSource(argv, "", calendarcli.Exec)
+	dir, err := f.calendarProjectDir()
+	if err != nil {
+		return nil, err
+	}
+	src := f.d.newCommandSessionSource(calendarCommand(uv, dir), "", calendarcli.Exec)
 	// The log handler passes only the keys of profile.logFields, so the change is one value of "status".
 	obs := func(c clock.SessionDayChange) {
 		f.log.Info("calendar change", "component", "ot", "job", "calendar_refresh",

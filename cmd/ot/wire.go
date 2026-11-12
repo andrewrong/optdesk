@@ -220,14 +220,11 @@ type deps struct {
 	newHistory     broker.NewHistoryFunc
 	// readFile reads watch.toml; nil means os.ReadFile.
 	readFile func(string) ([]byte, error)
+	// hasProject tells whether dir holds the pyproject.toml of the calendar generator.
+	hasProject func(dir string) bool
 	// ext holds the deps of each command by name, filled from extDeps; read it with depsOf.
 	ext map[string]any
 }
-
-// calendarArgs is what follows the uv program in the command of calendar_refresh, that is
-// `run --locked --project pyside python -m optdesk.calendar`; calendarcli adds the
-// calendar, the days and the output file. The program is the line OT_CALENDAR_UV, or uv on PATH.
-var calendarArgs = []string{"run", "--locked", "--project", "pyside", "python", "-m", "optdesk.calendar"}
 
 // envCalendarUV names the line of .env that sets the path of uv.
 const envCalendarUV = "OT_CALENDAR_UV"
@@ -342,7 +339,7 @@ func newBaseDeps() deps {
 		newAlphaVantage:         alphavantage.New,
 		newJQuants:              jquants.New,
 		openEarningsDates:       eventstore.OpenEarningsDate,
-		readFile:                os.ReadFile, openIndexIDs: openIndexIDsDefault,
+		readFile:                os.ReadFile, openIndexIDs: openIndexIDsDefault, hasProject: hasPyproject,
 	}
 }
 
