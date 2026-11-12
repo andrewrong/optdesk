@@ -41,11 +41,13 @@ const stopAfterTimeouts = 2
 type ResolveDeps struct {
 	Stored
 	Broker broker.Broker
-	Marks  openquote.OptionNotListedStore
-	Pull   openquote.OptionOpenReader
-	Clock  clock.Clock
-	Log    func(line string)
-	Rand   func() float64
+	// History asks the gateway for the last daily bar of a name that has no stored close (nil: nothing is asked).
+	History broker.HistoryClient
+	Marks   openquote.OptionNotListedStore
+	Pull    openquote.OptionOpenReader
+	Clock   clock.Clock
+	Log     func(line string)
+	Rand    func() float64
 }
 
 // ResolveOptions are the options of NewResolve and NewGap. MaxNew above 0 overrides max_new of the manifest;
@@ -55,28 +57,29 @@ type ResolveOptions struct {
 }
 
 type resolveJob struct {
-	m      manifest
-	d      ResolveDeps
-	maxNew int
-	mu     sync.Mutex
-	day    contracts.Day // the day the counter below belongs to
-	used   int           // new resolves of that day, over every key of the job
+	dataset string // the dataset of the keys
+	m       manifest
+	d       ResolveDeps
+	maxNew  int
+	mu      sync.Mutex
+	day     contracts.Day // the day the counter below belongs to
+	used    int           // new resolves of that day, over every key of the job
 }
 
 // NewResolve builds option_open_resolve (US) from the embedded job_resolve.toml. It puts every contract it
 // finds into master.option_contract, marks the contracts IBKR answered none for, and turns the not_listed rows of
 // the pull into marks. It is the only writer of marks.
 func NewResolve(d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
-	return newListed(resolveManifest, d, o)
+	return newListed(resolveManifest, ResolveDatasetID, d, o)
 }
 
 // NewGap builds option_open_resolve_gap (US) from the embedded job_gap.toml: the same code, a gap-only pass that
 // reads no pull rows and resolves only what neither the cache nor the marks hold.
 func NewGap(d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
-	return newListed(gapManifest, d, o)
+	return newListed(gapManifest, GapDatasetID, d, o)
 }
 
-func newListed(data []byte, d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
+func newListed(data []byte, dataset string, d ResolveDeps, o ResolveOptions) (contracts.Job, error) {
 	if d.Broker == nil || d.Marks == nil || d.Instruments == nil || d.Bars == nil || d.Options == nil || d.Clock == nil {
 		return nil, errors.New("optionopen: broker, marks, instruments, bars, options and clock are required")
 	}
@@ -91,7 +94,7 @@ func newListed(data []byte, d ResolveDeps, o ResolveOptions) (contracts.Job, err
 	if o.MaxNew > 0 {
 		limit = o.MaxNew
 	}
-	return &resolveJob{m: m, d: d, maxNew: limit}, nil
+	return &resolveJob{dataset: dataset, m: m, d: d, maxNew: limit}, nil
 }
 
 func (j *resolveJob) ID() string { return j.m.ID }
@@ -118,15 +121,11 @@ func (j *resolveJob) Plan(ctx context.Context, day contracts.Day) ([]contracts.E
 	if err != nil {
 		return nil, "", err
 	}
-	dataset := ResolveDatasetID
-	if j.m.GapOnly {
-		dataset = GapDatasetID
-	}
 	keys := make([]contracts.ExpectedKey, 0, len(stocks))
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n%s", day, j.m.ID)
 	for _, s := range stocks {
-		keys = append(keys, contracts.ExpectedKey{DatasetID: dataset, SubjectKey: s.Symbol})
+		keys = append(keys, contracts.ExpectedKey{DatasetID: j.dataset, SubjectKey: s.Symbol})
 		b.WriteString("\n" + s.Symbol)
 	}
 	return keys, hashOf(b.String()), nil
@@ -191,8 +190,20 @@ func differs(got, req broker.Contract) bool {
 	return got.Strike != "" && strikeKey(got.Strike) != strikeKey(req.Strike)
 }
 
-// Run resolves the stocks of keys. Each call logs one summary line.
+// Run resolves the stocks of keys. Each call logs one summary line, and a Retryable end one fault line.
 func (j *resolveJob) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	res := j.run(ctx, day, keys)
+	if res.Err != nil && res.Err.Kind() == contracts.Retryable {
+		key := ""
+		if len(keys) > 0 {
+			key = keys[0].SubjectKey
+		}
+		j.logf("fault stage=%s day=%s key=%s reason=%s", j.m.ID, day, key, res.Err.Error())
+	}
+	return res
+}
+
+func (j *resolveJob) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	t, err := dayTime(day)
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
@@ -325,7 +336,13 @@ func (r *keyRun) run(ctx context.Context) contracts.TypedError {
 		return asTyped(err, contracts.Retryable)
 	}
 	if !ok {
-		return newErr(contracts.NoValue, "no stored close of %s", r.st.Symbol)
+		// A missing stored input is no answer of the gateway: ask for the last daily bar once.
+		if spot, ok, err = fetchClose(ctx, j.d.History, r.st); err != nil {
+			return newErr(contracts.Retryable, "%s: no stored close of %s and the fetch failed: %v", reasonFetchFailed, r.st.Symbol, err)
+		}
+		if !ok {
+			return newErr(contracts.Permanent, "%s: no close of %s", reasonNoClose, r.st.Symbol)
+		}
 	}
 	refs, err := j.d.Options.ListOptions(ctx, id)
 	if err != nil {

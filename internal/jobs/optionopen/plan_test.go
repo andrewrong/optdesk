@@ -2,12 +2,16 @@ package optionopen
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
 
+	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
@@ -55,10 +59,15 @@ func (r *planRig) seed(t *testing.T, conID int64, strikes ...string) int64 {
 
 func (r *planRig) job(t *testing.T, symbols ...string) contracts.Job {
 	t.Helper()
-	j, err := NewPlan(PlanDeps{
-		Stored: Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod},
-		Marks:  r.marks, Plans: r.plans, Clock: r.clk,
-	})
+	return r.jobWith(t, PlanDeps{}, symbols...)
+}
+
+// jobWith builds the plan job with the rig's ports and the optional ports of d.
+func (r *planRig) jobWith(t *testing.T, d PlanDeps, symbols ...string) contracts.Job {
+	t.Helper()
+	d.Stored = Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod}
+	d.Marks, d.Plans, d.Clock = r.marks, r.plans, r.clk
+	j, err := NewPlan(d)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,37 +121,26 @@ func TestPlanLeavesOutAMarkedContract(t *testing.T) {
 	}
 }
 
-func TestPlanOfAStockWithNoStoredChainIsNoValue(t *testing.T) {
-	t.Parallel()
-	r := newPlanRig()
-	r.seed(t, 100, putStrikes...)
-	j := r.job(t, "AAPL", "MSFT")
-	res := r.run(t, j)
-	if res.Err == nil || res.Err.Kind() != contracts.NoValue || res.Err.Error() != "option_open: no resolved chain of MSFT" {
-		t.Fatalf("err=%v", res.Err)
-	}
-	if len(r.plans.items) == 0 {
-		t.Fatal("the stock that has a chain is still planned")
-	}
-}
-
-func TestPlanKeysAreOneStockEachAndIncludeHeldStocks(t *testing.T) {
+func TestPlanKeyIsOneFixedKeyAndRunPlansEveryStock(t *testing.T) {
 	t.Parallel()
 	r := newPlanRig()
 	r.acct = fakeAccounts{pos: []store.Position{{SecType: "STK", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"}}}
-	keys, hash, err := r.job(t, "MSFT", "AAPL").Plan(context.Background(), runDay)
-	if err != nil || hash == "" {
-		t.Fatal(err)
+	a := r.seed(t, 100, putStrikes...)
+	b := r.seed(t, 101, putStrikes...)
+	j := r.job(t, "MSFT", "AAPL")
+	keys, hash, err := j.Plan(context.Background(), runDay)
+	if err != nil || hash == "" || len(keys) != 1 || keys[0].DatasetID != PlanDatasetID || keys[0].SubjectKey != "us" {
+		t.Fatalf("keys %v hash %q err %v", keys, hash, err)
 	}
-	var got []string
-	for _, k := range keys {
-		if k.DatasetID != PlanDatasetID {
-			t.Fatalf("dataset %s", k.DatasetID)
-		}
-		got = append(got, k.SubjectKey)
+	if res := j.Run(context.Background(), runDay, keys); res.Err != nil {
+		t.Fatal(res.Err)
 	}
-	if len(got) != 3 || got[0] != "AAPL" || got[1] != "MSFT" || got[2] != "NVDA" {
-		t.Fatalf("keys %v", got)
+	seen := map[int]bool{}
+	for _, it := range r.plans.items {
+		seen[it.UnderlyingID] = true
+	}
+	if !seen[int(a)] || !seen[int(b)] {
+		t.Fatalf("items of %v, want both stocks", seen)
 	}
 }
 
@@ -165,32 +163,21 @@ func TestPlanIsTheSameOnASecondRun(t *testing.T) {
 	}
 }
 
-func TestPlanWritesOnlyTheItemsOfItsKeys(t *testing.T) {
-	t.Parallel()
-	r := newPlanRig()
-	a := r.seed(t, 100, putStrikes...)
-	r.seed(t, 101, putStrikes...)
-	j := r.job(t, "AAPL", "MSFT")
-	res := j.Run(context.Background(), runDay, []contracts.ExpectedKey{{DatasetID: PlanDatasetID, SubjectKey: "AAPL"}})
-	if res.Err != nil || len(r.plans.items) == 0 {
-		t.Fatalf("err=%v", res.Err)
-	}
-	for _, it := range r.plans.items {
-		if int64(it.UnderlyingID) != a {
-			t.Fatalf("item of another stock: %+v", it)
-		}
-	}
-}
-
-func TestPlanBudgetEndsAsAGapAndNotAThinnerPlan(t *testing.T) {
+func TestPlanBudgetEndsAsAReasonRowForTheNameNotReached(t *testing.T) {
 	t.Parallel()
 	r := newPlanRig()
 	r.seed(t, 100, putStrikes...)
 	r.seed(t, 101, putStrikes...)
+	rs := &fakeReasons{}
 	r.inst.adv = func() { r.clk.Advance(41 * time.Minute) }
-	res := r.run(t, r.job(t, "AAPL", "MSFT"))
-	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
-		t.Fatalf("a stock not finished in the budget is a retryable gap, got %v", res.Err)
+	j := r.jobWith(t, PlanDeps{Reasons: rs}, "AAPL", "MSFT")
+	res := r.run(t, j)
+	if res.Err != nil {
+		t.Fatalf("one name stored: no error, got %v", res.Err)
+	}
+	got := rs.of(runDay, PlanDatasetID, "us")
+	if len(got) != 1 || got[0].Scope != "MSFT" || got[0].Code != "fetch_failed" {
+		t.Fatalf("reasons %+v", got)
 	}
 }
 
@@ -233,5 +220,185 @@ func TestPlanSlotIsFortyFiveMinutesBeforeTheOpen(t *testing.T) {
 	}).Schedule()
 	if j.ID() != "option_open_plan" || cal != "XNYS" || anchor != "session_open" || off != -45*time.Minute {
 		t.Fatalf("%s %s %s %v", j.ID(), cal, anchor, off)
+	}
+}
+
+func TestEmptyPlanStoresReasonCode(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		code string
+	}{{"no_con_id", "no_con_id"}, {"no_close", "no_close"}, {"no_chain", "no_chain"}} {
+		r := newPlanRig()
+		r.seed(t, 100, putStrikes...)
+		rs := &fakeReasons{}
+		j := r.jobWith(t, PlanDeps{Reasons: rs, History: &fakeHistory{}}, "AAPL")
+		pj := j.(*planJob)
+		switch tc.name {
+		case "no_con_id":
+			pj.d.Watch = watchOf("AAPL")
+			pj.d.Watch[0].Contract.ConID = 0
+		case "no_close":
+			pj.d.Bars = fakeBars{}
+		case "no_chain":
+			pj.d.Options = &fakeOptions{}
+		}
+		res := r.run(t, j)
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Returned != 0 {
+			t.Fatalf("%s: err=%v returned=%d", tc.name, res.Err, res.Returned)
+		}
+		got := rs.of(runDay, PlanDatasetID, "us")
+		if len(got) != 1 || got[0].Code != tc.code || got[0].Scope != "AAPL" || got[0].Dataset != PlanDatasetID || got[0].Subject != "us" {
+			t.Fatalf("%s: reasons %+v", tc.name, got)
+		}
+	}
+}
+
+func TestOnlyFetchFailedIsRetryable(t *testing.T) {
+	t.Parallel()
+	r := newPlanRig()
+	r.seed(t, 100, putStrikes...)
+	var logs []string
+	rs := &fakeReasons{}
+	h := &fakeHistory{err: errors.New("gateway down")}
+	j := r.jobWith(t, PlanDeps{Reasons: rs, History: h, Log: func(l string) { logs = append(logs, l) }}, "AAPL")
+	j.(*planJob).d.Bars = fakeBars{}
+	res := r.run(t, j)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || h.asked != 1 {
+		t.Fatalf("err=%v asked=%d", res.Err, h.asked)
+	}
+	if got := rs.of(runDay, PlanDatasetID, "us"); len(got) != 1 || got[0].Code != "fetch_failed" {
+		t.Fatalf("reasons %+v", got)
+	}
+	if len(logs) != 1 || !strings.HasPrefix(logs[0], "fault stage=option_open_plan day=2026-11-10 key=us reason=") {
+		t.Fatalf("logs %q", logs)
+	}
+	// A good fetch with no bar is no_close, Permanent; a good fetch with a bar plans the name.
+	h.err, h.bars = nil, nil
+	if res := r.run(t, j); res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("empty fetch: %v", res.Err)
+	}
+	h.bars = []broker.Bar{{Close: "100"}}
+	if res := r.run(t, j); res.Err != nil || res.Returned == 0 {
+		t.Fatalf("fetched close: %v", res.Err)
+	}
+}
+
+func TestListedZeroGroupIsNoValue(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		rows func(id int64) fakeListRows
+		kind contracts.ErrorKind
+	}{
+		{"zero group", func(id int64) fakeListRows {
+			return fakeListRows{groups: map[int64][]openquote.ListRecord{id: {{UnderlyingID: id, ListedSession: runDay, Outcome: "listed", Count: 0}}}}
+		}, contracts.NoValue},
+		{"no_expiry_in_window", func(id int64) fakeListRows {
+			return fakeListRows{runs: []openquote.ListRunRecord{{UnderlyingID: id, Session: runDay, Reason: "no_expiry_in_window"}}}
+		}, contracts.NoValue},
+		{"stale zero group", func(id int64) fakeListRows {
+			return fakeListRows{groups: map[int64][]openquote.ListRecord{id: {{UnderlyingID: id, ListedSession: "2026-11-01", Outcome: "listed"}}}}
+		}, contracts.Permanent},
+	} {
+		r := newPlanRig()
+		id, _ := r.inst.ResolveInstrument(context.Background(), store.Identifier{Scheme: "ibkr_conid", Value: "100"}, store.InstrumentSpec{}, nil)
+		rs := &fakeReasons{}
+		j := r.jobWith(t, PlanDeps{Reasons: rs, ListRows: tc.rows(id)}, "AAPL")
+		res := r.run(t, j)
+		if res.Err == nil || res.Err.Kind() != tc.kind {
+			t.Fatalf("%s: %v", tc.name, res.Err)
+		}
+		got := rs.of(runDay, PlanDatasetID, "us")
+		if tc.kind == contracts.NoValue && len(got) != 0 {
+			t.Fatalf("%s: a name with no options writes a reason: %+v", tc.name, got)
+		}
+		if tc.kind == contracts.Permanent && (len(got) != 1 || got[0].Code != "no_chain") {
+			t.Fatalf("%s: %+v", tc.name, got)
+		}
+	}
+}
+
+func TestMixedRunStoresItemsAndReasonsForFailedNames(t *testing.T) {
+	t.Parallel()
+	r := newPlanRig()
+	var symbols []string
+	for i := 0; i < 44; i++ {
+		symbols = append(symbols, fmt.Sprintf("S%02d", i))
+		r.seed(t, int64(100+i), putStrikes...)
+	}
+	symbols = append(symbols, "ZZZ") // conid 144, no stored contract
+	rs := &fakeReasons{}
+	j := r.jobWith(t, PlanDeps{Reasons: rs}, symbols...)
+	res := r.run(t, j)
+	if res.Err != nil || res.Returned == 0 {
+		t.Fatalf("err=%v returned=%d", res.Err, res.Returned)
+	}
+	got := rs.of(runDay, PlanDatasetID, "us")
+	if len(got) != 1 || got[0].Scope != "ZZZ" || got[0].Code != "no_chain" {
+		t.Fatalf("reasons %+v", got)
+	}
+	// A clean run clears the reason.
+	r.seed(t, 144, putStrikes...)
+	if res := r.run(t, j); res.Err != nil || len(rs.of(runDay, PlanDatasetID, "us")) != 0 {
+		t.Fatalf("err=%v reasons %+v", res.Err, rs.of(runDay, PlanDatasetID, "us"))
+	}
+}
+
+func TestFetchFailedBecomesPermanentAfterFourRuns(t *testing.T) {
+	t.Parallel()
+	r := newPlanRig()
+	r.seed(t, 100, putStrikes...)
+	rs := &fakeReasons{}
+	j := r.jobWith(t, PlanDeps{Reasons: rs, History: &fakeHistory{err: errors.New("no answer")}}, "AAPL")
+	j.(*planJob).d.Bars = fakeBars{}
+	for i := 1; i <= maxFetchFailedRuns; i++ {
+		if res := r.run(t, j); res.Err == nil || res.Err.Kind() != contracts.Retryable {
+			t.Fatalf("run %d: %v", i, res.Err)
+		}
+	}
+	res := r.run(t, j)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("run 5: %v", res.Err)
+	}
+	if got := rs.of(runDay, PlanDatasetID, "us"); len(got) != 1 || got[0].Code != "fetch_failed" {
+		t.Fatalf("the reason stays fetch_failed: %+v", got)
+	}
+	// Another day starts the count again.
+	r.clk.Advance(24 * time.Hour)
+	keys, _, _ := j.Plan(context.Background(), "2026-11-11")
+	if res := j.Run(context.Background(), "2026-11-11", keys); res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("next day: %v", res.Err)
+	}
+}
+
+func TestPlanWindowsPerCalendar(t *testing.T) {
+	t.Parallel()
+	r := newPlanRig()
+	us := r.job(t, "AAPL").(interface {
+		Window() (string, time.Duration, time.Duration)
+	})
+	_, jp := jpPlanRig(t, planManifestJP)
+	jpw := jp.(interface {
+		Window() (string, time.Duration, time.Duration)
+	})
+	if c, _, _ := us.Window(); c != "XNYS" {
+		t.Errorf("US plan window %s", c)
+	}
+	if c, _, _ := jpw.Window(); c != "XTKS" {
+		t.Errorf("JP plan window %s", c)
+	}
+	rr := newRig(oneChain())
+	usR, _ := NewResolve(rr.deps("AAPL"), ResolveOptions{})
+	jpR, _ := NewResolveJP(rr.deps("AAPL"), ResolveOptions{})
+	if c, _, _ := usR.(interface {
+		Window() (string, time.Duration, time.Duration)
+	}).Window(); c != "XNYS" {
+		t.Errorf("US resolve window %s", c)
+	}
+	if c, _, _ := jpR.(interface {
+		Window() (string, time.Duration, time.Duration)
+	}).Window(); c != "XTKS" {
+		t.Errorf("JP resolve window %s", c)
 	}
 }
