@@ -1,0 +1,43 @@
+# Manifest of option_list_preopen_jp: the JP list pass that stores the real contract list of every JP name with options.
+# Design: docs/design/option-open-gap-jp.md Decision 7.
+version = 1
+id = "option_list_preopen_jp"
+zone = "Asia/Tokyo"
+# 09:00 to 09:20 JST; a last call of at most 25 s and one 30 s wait may follow.
+list_budget_minutes = 20
+# The key of the job.
+dataset = "master.option_list.jp"
+subject = "preopen"
+# A group listed in the last 7 calendar days (D-6 to D) is fresh; a band of the default sigma is fresh for its day.
+list_ttl_days = 7
+# The band of an expiry: spot*exp(-+band_k*s), at least band_floor_pct of spot each side and min_strikes_side
+# listed strikes each side. The target zone of the re-check runs from zone_near to zone_far of s.
+band_k = 1.5
+band_floor_pct = 0.10
+min_strikes_side = 3
+zone_near = 0.5
+zone_far = 1.05
+# A list with fewer than this share of the stored contracts of its group is short.
+list_min_ratio = 0.5
+# New contracts written per run.
+list_max_new = 60000
+# The run stops asking at this clock time (zone above), before the pull's stop_after of 09:30.
+stop_time = "09:20"
+
+# Expiries 14 to 90 calendar days out are listed; one table per window.
+[[window_dte]]
+min_dte = 14
+max_dte = 90
+
+[window]
+rule = "after_close"
+lateness_hours = 0
+calendar = "XTKS"
+
+# At the session open: 09:00 JST. A slot before the open belongs to the previous UTC day and has no key.
+[schedule]
+calendar = "XTKS"
+anchor = "session_open"
+offset = "0m"
+run_bound = "22m"
+restart_sensitive = false
