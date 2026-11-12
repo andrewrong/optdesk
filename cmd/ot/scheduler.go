@@ -130,6 +130,8 @@ func lockFence(ctx context.Context, a *app, clk clockwork.Clock, cfg runOnceConf
 }
 
 // runScheduler builds the scheduler over the open stores and runs it until it stops.
+//
+//nolint:funlen // one flat sequence of opens and builds, each with its fail line; splitting it would hide the close order
 func runScheduler(
 	ctx context.Context, a *app, fw clockwork.Clock, cfg runOnceConfig, fence store.Fence, ln net.Listener, sender notify.Sender, w wiring,
 	alertsDSN string, rules compute.AlertRules,
@@ -153,12 +155,22 @@ func runScheduler(
 		enabled = append(enabled, j)
 	}
 	kr := d.newKeyRunner(w.ledger, sl, fw)
+	host, closeConsole := openConsoleHost(ctx, a, cfg.runnerDSN, d.newKeyGapSyncer, w.ledger, sl, fw)
+	defer closeConsole()
 	build := func(jobs []contracts.Job) runner.Reconciler {
-		rec, _ := d.newReconciler(w.ledger, sl, w.cal, fw, jobs, runner.WindowRule{}, kr)
+		rec, bf := d.newReconciler(w.ledger, sl, w.cal, fw, jobs, runner.WindowRule{}, kr)
+		if host != nil {
+			fb, _ := bf.(runner.ForceBackfiller)
+			if fb == nil {
+				consoleOff(a, "the backfiller cannot force")
+			}
+			host.set(jobs, fb)
+		}
 		return rec
 	}
 	p := &prober{w: w, log: a.log, hasKey: cfg.fredKey != ""}
-	rec := newSwapReconciler(enabled, build, candidateProbe(w, p.probe), a.log)
+	swap := newSwapReconciler(enabled, build, candidateProbe(w, p.probe), a.log)
+	rec := &consoleReconciler{sw: swap, host: host}
 	nf, err := newNotifier(a, ledgerGaps{sl}, sender, fw, true)
 	if err != nil {
 		return err
@@ -179,6 +191,13 @@ func runScheduler(
 	}
 	defer closeMorning()
 	gaps := notifyingGaps{inner: d.newGapSyncer(w.ledger, sl, fw), n: nf, alerts: an, morn: mn, log: a.log}
+	if host != nil {
+		sctx, cancel := clockTimeout(ctx, fw, startPhase)
+		if err := host.Start(sctx); err != nil {
+			consoleOff(a, "start failed")
+		}
+		cancel()
+	}
 	s := d.newScheduler(fence, sl, w.ledger, w.cal, fw, rec, gaps, w.jobs, disabled, execIdentity)
 
 	srv := &http.Server{Handler: healthHandler(s, fw), ReadHeaderTimeout: 5 * time.Second}
@@ -191,6 +210,12 @@ func runScheduler(
 		return err
 	}
 	return errors.New("scheduler stopped with an error; its text is withheld because it may hold a DSN or a key")
+}
+
+// consoleOff turns the job console down with one warn line; the scheduler goes on. The line holds no error
+// text, which may hold a DSN.
+func consoleOff(a *app, why string) {
+	a.log.Warn("job console unavailable: "+why, "component", "ot", "status", "console off")
 }
 
 // execIdentity is the runner.ExecIdentityFunc: size, mtime and inode of the running executable as one string.

@@ -8,6 +8,7 @@
     "option_tracking_page": ["accounts"],
     "option_data_page": ["chain", "quote_series"],
     "settings_page": ["params", "rows", "history"],
-    "underlyings": ["rows", "history"]
+    "underlyings": ["rows", "history"],
+    "job_console": ["jobs", "requests"]
   }
 }
