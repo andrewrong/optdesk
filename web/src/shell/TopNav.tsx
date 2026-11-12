@@ -14,6 +14,7 @@ const POSITION_LINKS: readonly Record<'label' | 'path', string>[] = [
   { label: 'Result', path: '/options/result' },
   { label: 'Notices', path: '/options/notices' },
   { label: 'Tracking', path: '/options/tracking' },
+  { label: 'Runs', path: '/ops/today' },
 ]
 
 // Ten of the eleven items (Decision 3 of docs/design/unified-site.md), in order; the eleventh is the menu after them. Fixed shell text: no payload field is read.
