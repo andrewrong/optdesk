@@ -100,12 +100,10 @@ func (j *job) Plan(_ context.Context, day contracts.Day) ([]contracts.ExpectedKe
 }
 
 // Run captures every alias for every key. Returned counts the aliases tried and Usable those that ended ok.
-// A day other than the New York date of the clock is NoValue: the live account cannot show a past
-// day, so nothing is read and nothing is written.
-func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
-	if string(day) != j.clk.Now().In(j.loc).Format(time.DateOnly) {
-		return contracts.JobResult{Err: &typedError{kind: contracts.NoValue, text: "wrong day"}}
-	}
+// A day other than the New York date of the clock runs with the clock's date as its day (development
+// mode): the live account is of today, so every row carries today.
+func (j *job) Run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	day := contracts.Day(j.clk.Now().In(j.loc).Format(time.DateOnly))
 	var res contracts.JobResult
 	for _, k := range keys {
 		for _, alias := range j.aliases {

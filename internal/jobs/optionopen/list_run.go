@@ -19,7 +19,6 @@ const (
 	reasonNoExpiry    = "no_expiry_in_window"
 	reasonChainsFail  = "listchains_failed"
 	reasonBudget      = "budget"
-	reasonStopTime    = "stop_time"
 	reasonTimeouts    = "timeouts"
 	reasonUnserved    = "unserved"
 	reasonBrokerDown  = "broker_down"
@@ -86,7 +85,7 @@ func (j *listJob) Run(ctx context.Context, day contracts.Day, keys []contracts.E
 	listed, err := r.anyListed(ctx)
 	if err != nil {
 		res.Err = asTyped(err, contracts.Retryable)
-	} else if !listed && r.stop != reasonStopTime && r.stop != reasonUnserved {
+	} else if !listed && r.stop != reasonUnserved {
 		res.Err = newErr(contracts.Retryable, "list_preopen: nothing was listed (%s)", r.mainReason())
 	}
 	r.summary(res.Err)
@@ -112,13 +111,9 @@ func (r *listRun) anyListed(ctx context.Context) (bool, error) {
 }
 
 func (r *listRun) run(ctx context.Context) contracts.TypedError {
-	guard, late, terr := r.load(ctx)
+	guard, terr := r.load(ctx)
 	if terr != nil {
 		return terr
-	}
-	if late {
-		r.stop = reasonStopTime
-		return nil
 	}
 	for _, n := range r.names {
 		if terr := r.settle(ctx, n, guard); terr != nil {
@@ -148,19 +143,19 @@ func (r *listRun) run(ctx context.Context) contracts.TypedError {
 }
 
 // load builds the names, reads the rows of the session and writes a row for each name without one. guard is true
-// when nothing is listed for the session; late is true when the run starts after stop_time.
-func (r *listRun) load(ctx context.Context) (guard, late bool, terr contracts.TypedError) {
+// when nothing is listed for the session.
+func (r *listRun) load(ctx context.Context) (guard bool, terr contracts.TypedError) {
 	d := r.j.d
 	stocks, pos, err := d.stocks(ctx, r.t)
 	if err != nil {
-		return false, false, asTyped(err, contracts.Retryable)
+		return false, asTyped(err, contracts.Retryable)
 	}
 	rows, err := d.ListStore.ListRuns(ctx, r.day)
 	if err != nil {
-		return false, false, asTyped(err, contracts.Retryable)
+		return false, asTyped(err, contracts.Retryable)
 	}
 	prior := map[int64]openquote.ListRunRecord{}
-	guard, late = true, !r.start.Before(r.stopAt)
+	guard = true
 	for _, row := range rows {
 		prior[row.UnderlyingID] = row
 		guard = guard && row.Listed == 0
@@ -169,7 +164,7 @@ func (r *listRun) load(ctx context.Context) (guard, late bool, terr contracts.Ty
 	for _, st := range stocks {
 		id, err := d.underlyingID(ctx, st)
 		if err != nil {
-			return false, false, asTyped(err, contracts.Retryable)
+			return false, asTyped(err, contracts.Retryable)
 		}
 		n := &listName{st: st, id: id, rank: 2, reason: reasonNotFinished}
 		if hasPosition(pos, st.Symbol) {
@@ -180,23 +175,20 @@ func (r *listRun) load(ctx context.Context) (guard, late bool, terr contracts.Ty
 		if row, has := prior[id]; has {
 			n.reason, n.expected = row.Reason, row.Expected
 		} else {
-			if late {
-				n.reason = reasonStopTime
-			}
 			fresh = append(fresh, openquote.ListRunRecord{UnderlyingID: id, Session: r.day, Reason: n.reason, UpdatedAt: r.start.UTC()})
 		}
 		if terr := r.recount(ctx, n); terr != nil {
-			return false, false, terr
+			return false, terr
 		}
 		guard = guard && n.listed == 0
 		r.names = append(r.names, n)
 	}
 	if len(fresh) > 0 {
 		if err := d.ListStore.PutListRuns(context.WithoutCancel(ctx), fresh); err != nil {
-			return false, false, asTyped(err, contracts.Retryable)
+			return false, asTyped(err, contracts.Retryable)
 		}
 	}
-	return guard, late, nil
+	return guard, nil
 }
 
 // settle ends, before any call, a name that has nothing to ask: its groups are all listed for the session (a
@@ -266,8 +258,6 @@ func (r *listRun) halt() string {
 	switch {
 	case r.abort != nil:
 		return "aborted"
-	case !now.Before(r.stopAt):
-		return reasonStopTime
 	case now.Sub(r.start) >= time.Duration(r.j.m.BudgetMinutes)*time.Minute:
 		return reasonBudget
 	}

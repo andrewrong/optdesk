@@ -269,11 +269,9 @@ func (p *jpPull) Run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 	return p.fault(day, keys, p.run(ctx, day, keys))
 }
 
-func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+func (p *jpPull) run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	local := p.d.Clock.Now().In(p.loc)
-	if string(day) != local.Format(time.DateOnly) {
-		return contracts.JobResult{Err: newErr(contracts.NoValue, "wrong day")}
-	}
+	day := contracts.Day(local.Format(time.DateOnly))
 	bs, err := p.batches(ctx, day)
 	if errors.Is(err, errNoPlan) {
 		return contracts.JobResult{Err: newErr(contracts.Retryable, "the plan of %s is gone", day)}
@@ -297,8 +295,8 @@ func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.Ex
 				planned++
 			}
 		}
-		if mins := p.d.Clock.Now().In(p.loc); mins.Hour()*60+mins.Minute() >= p.stop {
-			return withErr(res, newErr(contracts.Permanent, "after %s: key %s not started, %d of %d planned items ok", p.m.StopAfter, k.SubjectKey, ok, planned))
+		if mins := p.d.Clock.Now().In(p.loc); mins.Hour()*60+mins.Minute() >= p.stop && p.d.Log != nil {
+			p.d.Log.Warn(fmt.Sprintf("key %s started after stop_after %s", k.SubjectKey, p.m.StopAfter))
 		}
 		rows, terr := p.runKey(ctx, b)
 		if terr != nil {

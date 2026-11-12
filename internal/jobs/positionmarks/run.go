@@ -116,12 +116,10 @@ type outcome struct {
 // Run marks every alias, the main one first. Returned counts the rows written and Usable those with a price.
 // Only the main alias without marks, the market-data gateway down, or positions not reached end it with an
 // error; another alias that has no capture or whose positions are not marked is logged and skipped.
-func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
+func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	start := j.clk.Now()
-	// A live snapshot cannot observe a past day: any day but today's market date is an explained gap.
-	if string(day) != start.In(j.loc).Format(time.DateOnly) {
-		return contracts.JobResult{Err: &typedError{kind: contracts.NoValue, text: "position_marks: wrong day"}}
-	}
+	// Development mode: a live snapshot is of today, so a past day runs with the clock's market date as its day.
+	day := contracts.Day(start.In(j.loc).Format(time.DateOnly))
 	var res contracts.JobResult
 	var quotes, down, unreached int
 	setErr := func(e contracts.TypedError) {
