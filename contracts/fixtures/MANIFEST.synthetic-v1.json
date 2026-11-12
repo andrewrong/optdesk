@@ -50,6 +50,8 @@
     {"path": "page.flex_import.v1.golden.json", "sha256": "d5013721cb42b4dfd6e9f906b082b6f838aa9c7cb4bd819ed8d44d0263b6889b"},
     {"path": "page.flex_import.v1.result.json", "sha256": "db31a2c8a2afe1d1d1cfc5551c132a18af0c366563fa5435fcb53c02399a272b"},
     {"path": "page.flex_import.v1.disabled.json", "sha256": "c3f2deb4c555d536b63cf3c49082a01b02fa1d22b347e293a2e0b3e837097d06"},
-    {"path": "page.flex_import.v1.bad-version.json", "sha256": "b3a4892723a25018ef3a3870c0db8ff776402dc297d7286fe8441737140b6ac4"}
+    {"path": "page.flex_import.v1.bad-version.json", "sha256": "b3a4892723a25018ef3a3870c0db8ff776402dc297d7286fe8441737140b6ac4"},
+    {"path": "page.job_console.v1.golden.json", "sha256": "af0794ce496b1c1056e26379fe34434bd18be059cfd98bd6e940e62f299b4883"},
+    {"path": "page.job_console.v1.bad-version.json", "sha256": "aa3537057a56a595d9fc0a6aaff7c624c8a29888cfe63c98929a6ff803e9c48e"}
   ]
 }
