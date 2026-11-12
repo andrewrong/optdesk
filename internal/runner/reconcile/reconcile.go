@@ -263,16 +263,16 @@ func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess da
 	if err != nil {
 		return false, err
 	}
-	runs, err := r.ledger.Runs(ctx, day)
-	if err != nil {
-		return false, err
-	}
-	byKey := map[contracts.ExpectedKey][]store.Run{}
-	for _, run := range runs {
-		byKey[run.Key] = append(byKey[run.Key], run)
-	}
+	order, groups, complete := dueJobs(p, present)
+	done, err := r.runJobs(ctx, newDayCtx(day, p, sess, false), order, groups, closes)
+	return complete && done, err
+}
 
-	complete := true
+// dueJobs groups the keys that are missing and not held by their job, the jobs in the order of their first
+// key; complete is false when a held key is missing.
+func dueJobs(p plan, present map[contracts.ExpectedKey]store.PresentStatus) (order []contracts.Job, groups map[string][]contracts.ExpectedKey, complete bool) {
+	complete = true
+	groups = map[string][]contracts.ExpectedKey{}
 	for _, k := range p.keys {
 		if _, ok := present[k]; ok {
 			continue
@@ -281,28 +281,61 @@ func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess da
 			complete = false
 			continue
 		}
-		closeAt := closes[k.DatasetID]
-		if expired, err := r.expireIfClosed(ctx, byKey[k], closeAt, day, k); err != nil {
-			return false, err
-		} else if expired {
-			continue
+		id := p.job[k].ID()
+		if _, seen := groups[id]; !seen {
+			order = append(order, p.job[k])
 		}
-		crashed, start, reason := r.nextAttempt(byKey[k], closeAt)
-		// A lapsed run is closed as crashed even when the brake stops the key.
-		if crashed != nil {
-			if err := r.markCrashed(ctx, *crashed); err != nil {
-				return false, err
-			}
+		groups[id] = append(groups[id], k)
+	}
+	return order, groups, complete
+}
+
+// runJobs runs one goroutine per due job, the keys of a job in order, and returns when all of them and the
+// dependents they triggered have returned; it reports whether every key of the jobs is marked.
+func (r *reconciler) runJobs(
+	ctx context.Context, dc *dayCtx, order []contracts.Job, groups map[string][]contracts.ExpectedKey, closes map[string]time.Time,
+) (bool, error) {
+	for _, j := range order {
+		dc.setPending(j.ID())
+	}
+	turns := make([]jobTurn, len(order))
+	var wg sync.WaitGroup
+	for i, j := range order {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			turns[i] = r.reconcileJob(ctx, dc, j, groups[j.ID()], closes)
+		}()
+	}
+	wg.Wait()
+	dc.wg.Wait()
+	if err := dc.firstErr(); err != nil {
+		return false, err
+	}
+	complete := true
+	var skipped []contracts.ExpectedKey
+	for i, t := range turns {
+		if t.err != nil {
+			return false, t.err
 		}
-		if !start {
+		if !t.skipped {
+			complete = complete && t.complete
+		} else {
+			skipped = append(skipped, groups[order[i].ID()]...)
+		}
+	}
+	if len(skipped) == 0 {
+		return complete, nil
+	}
+	// A job left to the end of its upstream or found locked may have been run by that trigger.
+	now, err := r.ledger.Present(ctx, dc.day)
+	if err != nil {
+		return false, err
+	}
+	for _, k := range skipped {
+		if _, ok := now[k]; !ok {
 			complete = false
-			continue
 		}
-		_, ok, err := r.run(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, reason)
-		if err != nil {
-			return false, err
-		}
-		complete = complete && ok
 	}
 	return complete, nil
 }
