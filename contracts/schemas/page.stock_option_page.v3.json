@@ -1,0 +1,241 @@
+{
+  "$defs": {
+    "VolRow": {
+      "additionalProperties": false,
+      "description": "One line of the volatility view; a ready row has an empty gap, a gap row an empty text.",
+      "properties": {
+        "data_day": {
+          "type": "string",
+          "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"
+        },
+        "gap": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "label": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{1,32}$"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "label",
+        "text",
+        "data_day",
+        "gap"
+      ],
+      "title": "VolRow",
+      "type": "object"
+    },
+    "VolView": {
+      "additionalProperties": false,
+      "properties": {
+        "coaching": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/VolRow"
+          },
+          "maxItems": 20,
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "method",
+        "rows",
+        "coaching"
+      ],
+      "title": "VolView",
+      "type": "object"
+    }
+  },
+  "$id": "https://optdesk.invalid/schemas/page.stock_option_page.v3.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Build Id",
+      "type": "string"
+    },
+    "cards": {
+      "items": {
+        "$ref": "page.stock_option_page.v2.json#/$defs/ChosenCard"
+      },
+      "maxItems": 2000,
+      "title": "Cards",
+      "type": "array"
+    },
+    "contracts": {
+      "$ref": "page.stock_option_page.v2.json#/$defs/ContractsBlock"
+    },
+    "data_times": {
+      "items": {
+        "$ref": "page.stock_option_page.v2.json#/$defs/SourceTime"
+      },
+      "maxItems": 20,
+      "title": "Data Times",
+      "type": "array"
+    },
+    "footer": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Footer",
+      "type": "string"
+    },
+    "generated_at": {
+      "pattern": "^(?:\\d{4}-(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|\\d{4}-(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|\\d{4}-02-(?:0[1-9]|1\\d|2[0-8])|(?:\\d\\d(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\+08:00$",
+      "title": "Generated At",
+      "type": "string",
+      "x-timezone": "owner"
+    },
+    "held": {
+      "items": {
+        "$ref": "page.stock_option_page.v2.json#/$defs/HeldItem"
+      },
+      "maxItems": 50,
+      "title": "Held",
+      "type": "array"
+    },
+    "maps": {
+      "items": {
+        "$ref": "page.stock_option_page.v2.json#/$defs/PriceMap"
+      },
+      "maxItems": 30,
+      "title": "Maps",
+      "type": "array"
+    },
+    "matrix": {
+      "$ref": "page.stock_option_page.v2.json#/$defs/MatrixBlock"
+    },
+    "no_card": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "No Card"
+    },
+    "notice": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Notice"
+    },
+    "refresh": {
+      "$ref": "page.stock_option_page.v2.json#/$defs/Refresh"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_status": {
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ],
+      "title": "Run Status",
+      "type": "string"
+    },
+    "schema": {
+      "const": "stock_option_page",
+      "title": "Schema",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 3,
+      "type": "integer"
+    },
+    "scope": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "shared_gap": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Shared Gap"
+    },
+    "stale": {
+      "anyOf": [
+        {
+          "$ref": "page.stock_option_page.v2.json#/$defs/StaleLabel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "top": {
+      "$ref": "page.stock_option_page.v2.json#/$defs/TopBar"
+    },
+    "vol_view": {
+      "$ref": "#/$defs/VolView"
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "run_id",
+    "build_id",
+    "scope",
+    "generated_at",
+    "data_times",
+    "run_status",
+    "title",
+    "stale",
+    "top",
+    "notice",
+    "shared_gap",
+    "maps",
+    "matrix",
+    "cards",
+    "no_card",
+    "held",
+    "contracts",
+    "footer",
+    "refresh",
+    "vol_view"
+  ],
+  "title": "StockOptionPage",
+  "type": "object"
+}
