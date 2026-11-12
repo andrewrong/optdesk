@@ -104,8 +104,7 @@ func postOwnerFlexImport(a *app, clk clock.Clock, rd siteReaders, newHandler pag
 
 // refuseUpload answers a post that failed before the guard passed: 413 for a stream over the cap, else 403.
 func refuseUpload(w http.ResponseWriter, err error) {
-	var tooBig *http.MaxBytesError
-	if errors.As(err, &tooBig) {
+	if isCapErr(err) {
 		http.Error(w, tooLargeText, http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -148,8 +147,7 @@ func readUploadFields(mr *multipart.Reader) (settingsapi.FormToken, *multipart.P
 
 // errUploadOr is the error of a failed read of a leading part: the cap error as it is, else a refusal.
 func errUploadOr(err error) error {
-	var tooBig *http.MaxBytesError
-	if errors.As(err, &tooBig) {
+	if isCapErr(err) {
 		return err
 	}
 	return errUploadRefused
@@ -262,11 +260,16 @@ func (p *flexImportRun) readFiles(mr *multipart.Reader, part *multipart.Part) ([
 // capErr is the error of a failed read of the next part: the cap error, else nil (the post ends with the files
 // read so far).
 func capErr(err error) error {
-	var tooBig *http.MaxBytesError
-	if errors.As(err, &tooBig) {
+	if isCapErr(err) {
 		return err
 	}
 	return nil
+}
+
+// isCapErr is true for the error of http.MaxBytesReader.
+func isCapErr(err error) bool {
+	var tooBig *http.MaxBytesError
+	return errors.As(err, &tooBig)
 }
 
 // failFile leaves a failed record for the file ref with the reason code and returns its result.
