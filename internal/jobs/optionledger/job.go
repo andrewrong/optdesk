@@ -166,9 +166,10 @@ type run struct {
 
 // Run fetches every query of every login once per window, once per day whatever the keys: the keys are
 // the aliases of Plan and every one of them gets the result of the day's one fetch, a retry of a key
-// included, so a failed window is not retried that day. A failed window stops that query for the run. A
-// failure of a login without Required is one degraded log record and leaves the result ok; a failure of a
-// Required login fails the result. A run cut by ctx is not remembered.
+// included. A failed window stops that query for the run. A failure of a login without Required is one
+// degraded log record and leaves the result ok; a failure of a Required login fails the result. Only a
+// result without Err is remembered: a failed run, or one cut by ctx, is fetched again by the next Run of
+// that day.
 //
 // With one key the result carries that alias's own returned count and a Usable of 0: the store counts new
 // and revised rows for the whole report, not per alias. With no key it is the job-wide result.
@@ -181,7 +182,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 		var rba map[string]int
 		res, rba = j.fetchAll(ctx)
 		rows = rba
-		if ctx.Err() == nil {
+		if ctx.Err() == nil && res.Err == nil {
 			j.done[day] = res
 			j.aliasRows[day] = rba
 		}
