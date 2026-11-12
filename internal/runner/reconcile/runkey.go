@@ -337,11 +337,19 @@ type dayCtx struct {
 	mu      sync.Mutex
 	pending map[string]bool // jobs due in this call whose turn has not ended
 	busy    map[string]bool // jobs whose turn found them locked by another run
+	recheck map[string]recheck
 	err     error
 }
 
+// recheck is a trigger of a dependent that found the dependent's lock held: the end of upstream up (ok
+// tells whether it was ok). The turn that holds the lock honours it when it unlocks.
+type recheck struct {
+	up string
+	ok bool
+}
+
 func newDayCtx(day contracts.Day, p plan, sess daySessions, console bool) *dayCtx {
-	return &dayCtx{day: day, p: p, sess: sess, console: console, pending: map[string]bool{}, busy: map[string]bool{}}
+	return &dayCtx{day: day, p: p, sess: sess, console: console, pending: map[string]bool{}, busy: map[string]bool{}, recheck: map[string]recheck{}}
 }
 
 func (dc *dayCtx) setPending(id string) {
@@ -358,6 +366,22 @@ func (dc *dayCtx) finish(id string, busy bool) {
 		dc.busy[id] = true
 	}
 	dc.mu.Unlock()
+}
+
+// want records a trigger of job id before it asks for the lock, so a turn that unlocks later sees it.
+func (dc *dayCtx) want(id string, c recheck) {
+	dc.mu.Lock()
+	dc.recheck[id] = c
+	dc.mu.Unlock()
+}
+
+// take removes and returns the trigger recorded for job id.
+func (dc *dayCtx) take(id string) (recheck, bool) {
+	dc.mu.Lock()
+	defer dc.mu.Unlock()
+	c, ok := dc.recheck[id]
+	delete(dc.recheck, id)
+	return c, ok
 }
 
 func (dc *dayCtx) running(id string) bool {
@@ -402,6 +426,13 @@ func (e *jobEnd) add(rec store.Run) {
 	case rec.ErrorCode != "":
 		e.failed = true
 	}
+}
+
+// merge folds the end of another run of the same job into e.
+func (e *jobEnd) merge(o jobEnd) {
+	e.ran = e.ran || o.ran
+	e.cut = e.cut || o.cut
+	e.failed = e.failed || o.failed
 }
 
 // ended reports whether the job's runs all came to an end, ok or failed (a cut run is no end).
@@ -534,7 +565,7 @@ func (r *reconciler) consoleMark(ctx context.Context, dc *dayCtx, job contracts.
 
 // trigger starts, in goroutines of dc.wg under ctx, each dependent of the job up that has a session on
 // the day, whose slot has passed and that has not run for the day. The caller waits for dc.wg.
-func (r *reconciler) trigger(ctx context.Context, dc *dayCtx, up string, upOK bool) {
+func (r *reconciler) trigger(ctx context.Context, dc *dayCtx, up string, upEndedOK bool) {
 	for _, d := range r.jobs {
 		dep, ok := d.(runner.Dependent)
 		if !ok || ctx.Err() != nil || !slices.Contains(dep.After(), up) {
@@ -549,44 +580,58 @@ func (r *reconciler) trigger(ctx context.Context, dc *dayCtx, up string, upOK bo
 		dc.wg.Add(1)
 		go func() {
 			defer dc.wg.Done()
-			r.runDependent(ctx, dc, d, up, upOK)
+			r.runDependent(ctx, dc, d, up, upEndedOK)
 		}()
 	}
 }
 
 // runDependent runs the keys of d after the end of its upstream up, under d's try-lock, unless d is
 // running, already ran for the day, or another upstream is still running. Its own dependents follow.
-func (r *reconciler) runDependent(ctx context.Context, dc *dayCtx, d contracts.Job, up string, upOK bool) {
+func (r *reconciler) runDependent(ctx context.Context, dc *dayCtx, d contracts.Job, up string, upEndedOK bool) {
+	// Recorded before the lock is asked: a turn of d that holds it and leaves d to its upstream sees the
+	// trigger when it unlocks and runs d itself.
+	dc.want(d.ID(), recheck{up: up, ok: upEndedOK})
 	unlock, ok := r.locks.TryLock(d.ID())
 	if !ok {
 		return
 	}
+	dc.take(d.ID())
+	end, ok := r.dependentRun(ctx, dc, d, up, upEndedOK, unlock)
+	if ok && end.ended() && ctx.Err() == nil {
+		r.trigger(ctx, dc, d.ID(), !end.failed)
+	}
+}
+
+// dependentRun runs the keys of d under its lock, which it releases on every return.
+func (r *reconciler) dependentRun(
+	ctx context.Context, dc *dayCtx, d contracts.Job, up string, upEndedOK bool, unlock func(),
+) (jobEnd, bool) {
 	defer unlock()
 	present, byKey, err := r.dayState(ctx, dc.day)
 	if err != nil {
 		dc.fail(err)
-		return
+		return jobEnd{}, false
 	}
 	keys := dc.keysOf(d.ID())
 	for _, k := range keys {
 		if _, ok := present[k]; ok || len(byKey[k]) > 0 {
-			return // it ran for the day
+			return jobEnd{}, false // it ran for the day
 		}
 	}
-	mark, leave, err := r.gate(ctx, dc, d, map[string]bool{up: upOK})
+	mark, leave, err := r.gate(ctx, dc, d, map[string]bool{up: upEndedOK})
 	if err != nil {
 		dc.fail(err)
-		return
+		return jobEnd{}, false
 	}
 	if leave {
-		return
+		return jobEnd{}, false
 	}
 	var end jobEnd
 	for _, k := range keys {
 		closeAt, err := r.closeOf(ctx, k.DatasetID, dc.day)
 		if err != nil {
 			dc.fail(err)
-			return
+			return jobEnd{}, false
 		}
 		now := r.clk.Now()
 		reason, deadline := mark, deadlineFor(d, closeAt, now)
@@ -599,14 +644,11 @@ func (r *reconciler) runDependent(ctx context.Context, dc *dayCtx, d contracts.J
 		rec, err := r.kr.RunKey(ctx, d, dc.day, k, len(byKey[k])+1, closeAt, deadline, reason)
 		if err != nil {
 			dc.fail(err)
-			return
+			return jobEnd{}, false
 		}
 		end.add(rec)
 	}
-	unlock()
-	if end.ended() && ctx.Err() == nil {
-		r.trigger(ctx, dc, d.ID(), !end.failed)
-	}
+	return end, true
 }
 
 // plainReason is the reason of a run with no mark: backfill for a console call, late after the close.
@@ -637,16 +679,29 @@ func (r *reconciler) reconcileJob(ctx context.Context, dc *dayCtx, job contracts
 		dc.finish(id, true)
 		return jobTurn{skipped: true}
 	}
-	defer unlock()
-	t, end := r.reconcileKeys(ctx, dc, job, keys, closes)
-	unlock()
+	t, end := r.lockedTurn(ctx, dc, job, keys, closes, unlock)
 	dc.finish(id, false)
 	// A turn that ended with no run (a key the brake stops, a key already counted) is an end without ok too:
 	// the dependents left to it start marked. A turn left to its own upstream, or cut, is no end.
 	if t.err == nil && !t.skipped && !end.cut && ctx.Err() == nil {
 		r.trigger(ctx, dc, id, !end.failed && t.complete)
 	}
+	// The upstream of a job this turn left may have ended while the turn held the lock: its trigger found
+	// the job locked and recorded itself; the job starts now.
+	if t.skipped && t.err == nil && ctx.Err() == nil {
+		if c, ok := dc.take(id); ok {
+			r.runDependent(ctx, dc, job, c.up, c.ok)
+		}
+	}
 	return t
+}
+
+// lockedTurn is reconcileKeys under the job's lock, which it releases on every return.
+func (r *reconciler) lockedTurn(
+	ctx context.Context, dc *dayCtx, job contracts.Job, keys []contracts.ExpectedKey, closes map[string]time.Time, unlock func(),
+) (jobTurn, jobEnd) {
+	defer unlock()
+	return r.reconcileKeys(ctx, dc, job, keys, closes)
 }
 
 func (r *reconciler) reconcileKeys(

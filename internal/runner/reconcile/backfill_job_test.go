@@ -183,3 +183,20 @@ func TestUpstreamMissingMark(t *testing.T) {
 		t.Fatalf("line %+v", line)
 	}
 }
+
+func TestLeftDependentRunsWhenUpstreamEndsDuringItsTurn(t *testing.T) {
+	t.Parallel()
+	// The dependent's turn leaves it to its upstream and still holds the dependent's lock when the
+	// upstream ends: the trigger finds the lock held, and the turn runs the dependent when it unlocks.
+	locks := &holdLocks{JobLocks: shared.NewJobLocks(), id: "dep", unlocking: make(chan struct{}), failed: make(chan struct{})}
+	up := afterJob{fakeJob: upJob(keyA), ready: locks.unlocking}
+	d := dep(0, keyC)
+	rec := dueRec(dueLedger(), "2026-11-05T21:30:00Z", up, d)
+	WithJobLocks(rec, locks)
+	if err := rec.Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.calls) != 1 {
+		t.Fatalf("the dependent left to its upstream ran %d times in the call, want 1", len(d.calls))
+	}
+}

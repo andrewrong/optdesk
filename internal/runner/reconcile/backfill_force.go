@@ -89,9 +89,7 @@ func (r *reconciler) BackfillWith(
 				ends[id] = &jobEnd{}
 				order = append(order, id)
 			}
-			ends[id].ran = true
-			ends[id].cut = ends[id].cut || end.cut
-			ends[id].failed = ends[id].failed || end.failed
+			ends[id].merge(end)
 		}
 	}
 	tctx, stop := consoleCtx(ctx)

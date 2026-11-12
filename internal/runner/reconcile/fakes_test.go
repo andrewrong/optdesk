@@ -9,6 +9,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -309,4 +310,53 @@ func rowOf(t *testing.T, l *fakeLedger, day contracts.Day, k contracts.ExpectedK
 	}
 	t.Fatalf("no run row for %v", k)
 	return store.Run{}
+}
+
+// holdLocks wraps a lock set. The first unlock of job id waits until a TryLock of id has failed, so the
+// turn that holds the job's lock is still holding it when a trigger asks for it; unlocking is closed
+// when that unlock starts. No sleep: both are channels.
+type holdLocks struct {
+	runner.JobLocks
+	id        string
+	unlocking chan struct{}
+	failed    chan struct{}
+	mu        sync.Mutex
+	held      bool
+	seen      bool
+}
+
+func (h *holdLocks) TryLock(id string) (func(), bool) {
+	unlock, ok := h.JobLocks.TryLock(id)
+	if id != h.id {
+		return unlock, ok
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !ok {
+		if !h.seen {
+			h.seen = true
+			close(h.failed)
+		}
+		return unlock, ok
+	}
+	if h.held {
+		return unlock, ok
+	}
+	h.held = true
+	return func() {
+		close(h.unlocking)
+		<-h.failed
+		unlock()
+	}, ok
+}
+
+// afterJob is a job whose run waits for ready to be closed.
+type afterJob struct {
+	*fakeJob
+	ready chan struct{}
+}
+
+func (j afterJob) Run(ctx context.Context, d contracts.Day, k []contracts.ExpectedKey) contracts.JobResult {
+	<-j.ready
+	return j.fakeJob.Run(ctx, d, k)
 }
