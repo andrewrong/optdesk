@@ -13,7 +13,8 @@ const (
 	daysPerYear   = 365
 )
 
-// buyPriceGate: with no usable buy price it passes (owner 2026-11-12); otherwise strike minus bid (a missing bid counts as no premium) is at most the buy price.
+// buyPriceGate: with no usable buy price it passes (owner 2026-11-12, marked by evaluatePut);
+// otherwise strike minus bid (a missing bid counts as no premium) is at most the buy price.
 func buyPriceGate(in compute.CandidateInput, strike, bid *big.Rat) compute.GateResult {
 	buy, ok := parseDec(in.BuyPrice)
 	if !ok {
