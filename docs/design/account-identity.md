@@ -114,7 +114,7 @@ Acceptance:
 1. The comments of `Account.Alias`, `Executions.Alias` and `AccountClient.Account` say what Interface says; no signature changes; the `permanent(...)` texts say "answer has no account" and the tests match.
 
 ### 10 sources-flex-no-account-table
-Order: after 5. Files: `internal/sources/flex/config.go`, `internal/sources/flex/config_test.go`, `internal/sources/flex/testdata/**` holding `[[account]]` (found by grep), `internal/sources/api.go` (the `FlexAccount` type: an interface change, Design line this file), `docs/contracts/sources.md`.
+Order: after 5, 6. Files: `internal/sources/flex/config.go`, `internal/sources/flex/config_test.go`, `internal/sources/flex/testdata/**` holding `[[account]]` (found by grep), `internal/sources/api.go` (the `FlexAccount` type: an interface change, Design line this file), `docs/contracts/sources.md`.
 Acceptance:
 1. `flex.toml` parses with `[[login]]` and token env names only; `FlexConfig` and `api.go` have no `FlexAccount`; a file with `[[account]]` is refused as an unknown table; `parse.go` is untouched.
 
