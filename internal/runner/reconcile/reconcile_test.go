@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -626,4 +627,34 @@ func TestReconcileSkipsJobWhosePlanFails(t *testing.T) {
 	if strings.Contains(out, planFailMarker) {
 		t.Fatalf("log holds the error text: %q", out)
 	}
+}
+
+func TestSharedJobLocksAcrossReconcilers(t *testing.T) {
+	t.Parallel()
+	locks := shared.NewJobLocks()
+	a := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	b := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	WithJobLocks(a, locks)
+	WithJobLocks(b, locks)
+	unlock, ok := a.locks.TryLock("job")
+	if !ok {
+		t.Fatal("first lock refused")
+	}
+	if _, ok := b.locks.TryLock("job"); ok {
+		t.Fatal("second reconciler locked a job the first holds")
+	}
+	unlock()
+	if _, ok := b.locks.TryLock("job"); !ok {
+		t.Fatal("released job not lockable through the other reconciler")
+	}
+	c := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	if _, ok := c.locks.TryLock("job"); !ok {
+		t.Fatal("a reconciler without the set shares it")
+	}
+}
+
+type stubKeyRunner struct{}
+
+func (stubKeyRunner) RunKey(context.Context, contracts.Job, contracts.Day, contracts.ExpectedKey, int, time.Time, time.Time, string) (store.Run, error) {
+	return store.Run{}, nil
 }

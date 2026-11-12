@@ -55,6 +55,8 @@ type reconciler struct {
 	// jobs, any other calendar's error is returned.
 	known map[string]bool
 	log   *slog.Logger
+	// locks is the per-job lock set; WithJobLocks replaces the private one.
+	locks runner.JobLocks
 }
 
 // New builds the reconciler with the default window rule (DefaultCalendarID, no offsets).
@@ -84,9 +86,18 @@ func newReconciler(
 	if kr == nil {
 		kr = NewKeyRunner(l, sched, fclk)
 	}
-	r := &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default()}
+	r := &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default(), locks: shared.NewJobLocks()}
 	r.known = r.probeKnown()
 	return r
+}
+
+// WithJobLocks sets the per-job lock set of a reconciler or backfiller built by this package;
+// reconcilers given one set share it. Without it a reconciler has a private set. Any other
+// value is left unchanged.
+func WithJobLocks(r any, locks runner.JobLocks) {
+	if rec, ok := r.(*reconciler); ok && locks != nil {
+		rec.locks = locks
+	}
 }
 
 // Reconcile handles every session day after the cursor up to day, in order. A day that is
