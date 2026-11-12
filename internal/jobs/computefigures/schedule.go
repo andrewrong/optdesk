@@ -48,6 +48,9 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 	return j.sched.calendar, j.sched.anchor, j.sched.zone, j.sched.offset
 }
 
+// After is the ids of the jobs of the same day that compute_figures reads.
+func (j *job) After() []string { return []string{"option_eod", "option_eod_jp", "quote_snapshot"} }
+
 // RunBound is the longest time one run may take.
 func (j *job) RunBound() time.Duration { return j.sched.runBound }
 

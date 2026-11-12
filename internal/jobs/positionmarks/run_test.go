@@ -524,3 +524,18 @@ func TestPastDayMarksClockDay(t *testing.T) {
 		t.Fatalf("positions read for day %q, want the clock's date 2026-11-06", e.a.lastDay)
 	}
 }
+
+func TestAfterIsAccountCapture(t *testing.T) {
+	t.Parallel()
+	j, err := New(&fakeMarket{}, []string{"a"}, &fakeAcct{}, &fakeWriter{}, clockwork.NewFakeClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, ok := j.(interface{ After() []string })
+	if !ok {
+		t.Fatal("position_marks has no After")
+	}
+	if got := d.After(); len(got) != 1 || got[0] != "account_capture" {
+		t.Fatalf("After() = %v", got)
+	}
+}

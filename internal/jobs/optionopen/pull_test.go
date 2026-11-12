@@ -392,3 +392,14 @@ func TestRunWithNoPlanOfEitherDayIsRetryable(t *testing.T) {
 		t.Fatalf("err %v", res.Err)
 	}
 }
+
+func TestPullAfterIsThePlan(t *testing.T) {
+	t.Parallel()
+	d, ok := newPull(t, seed(1, 1), newFake(100)).(runner.Dependent)
+	if !ok {
+		t.Fatal("option_open is not a runner.Dependent")
+	}
+	if got := d.After(); len(got) != 1 || got[0] != "option_open_plan" {
+		t.Fatalf("After() = %v", got)
+	}
+}

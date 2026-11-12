@@ -264,6 +264,9 @@ type jpPull struct {
 	rules  jpRules
 }
 
+// After is the ids of the jobs of the same day that the JP pull reads.
+func (p *jpPull) After() []string { return []string{"option_open_plan_jp"} }
+
 // Run is pull.Run with runKey of jpPull.
 func (p *jpPull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	return p.fault(day, keys, p.run(ctx, day, keys))

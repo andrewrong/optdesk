@@ -136,6 +136,9 @@ func (p *pull) Schedule() (calendarID, anchor, zone string, offset time.Duration
 	return p.m.Schedule.Calendar, p.m.Schedule.Anchor, "", p.offset
 }
 
+// After is the ids of the jobs of the same day that the pull reads.
+func (p *pull) After() []string { return []string{"option_open_plan"} }
+
 // Window is the calendar of the schedule and no offsets: the window of the keys opens and closes with the session.
 func (p *pull) Window() (calendarID string, openOffset, closeOffset time.Duration) {
 	return p.m.Schedule.Calendar, 0, 0
