@@ -45,7 +45,8 @@ Goal: on a JP session day, a watched JP name that has no stored option contract 
    - No cap and no backoff of the runner: `nextAttempt` does not count a retryable run before the window close (`reconcile.go:349`), so the key is run again at every Reconcile turn, that is every 15 minutes (`sched/ticker.go:32`, the first tick 10 minutes after start) and at every published slot instant (`ticker.go:229`), until the close of its dataset window. The close is the XTKS session close with the offsets of the job: 15:30 JST for the three JP datasets (the gap and the plan state lateness 0; the pull has no `Window` method, so the reconciler's zero offsets apply to its calendar). From 07:30 JST the gap key can be run at most about 32 times (8 hours at 15 minutes), the plan key from 08:15 about 29 times; the pull key is Retryable only until `stop_after = "0930"`, after which `Run` returns `Permanent` "key not started" (`jp.go`, `pull.go`), so at most 2 or 3 re-runs from 09:05. For the US chain the gap at 08:00 ET to the 16:00 close is about 32.
    - The per-day cap bounds the gateway, and a re-run after the cap is spent must cost nothing. On main a re-run with the cap spent still calls `ListChains` first (`listed.go`, `keyRun.run` before `resolveAll`) and only then defers every contract at `take` (`listed.go:364`). The design therefore adds a check at the top of the key run (entry 2): when `usedOn(day) >= maxNew`, return `Retryable` ("cap spent") at once, with no broker call, in milliseconds. A key whose cap is spent cannot fill that day: the counter belongs to the job and the day (`take` resets it at the next day), not to the key. The per-name cap is also per day and per name (a map in the job, entry 2), not per run, otherwise each re-run would spend another `max_per_name`: a name that fails (every resolve times out) costs at most 60 asks that day, counted when asked (`take` is called before `ResolveContract`), so 5 failing names spend the whole 300. The two-timeouts stop (`listed.go`) ends the run early for a sick gateway.
    - The turn: one worker runs the keys of a turn in order of dataset id and then subject (`reconcile.go:183-190`, `reconcileOn` is a plain loop). `master.option_contract.gap_jp` sorts before `obs.option_open` and `plan.option_open_item`, so on the turn that finds the plan due (08:15 JST) a retried gap key runs before the plan key and the plan reads what that run stored; the pull keys of a turn are those of the plan rows read at the start of the turn (`pull.go` `Plan`), so the pull never runs in the turn that stores the plan. A gap run delays the plan of its turn by at most its run bound (10 minutes per key, `run_bound`); the plan job keeps its own `Retryable` for a stock with stored 0 until the gap stage has filled it.
-   - Same-day visibility is the weak point and is stated as such: on main a missing key becomes an ops gap only at the window close (`sched/gaps.go` `keyKind`: `!closed || running` gives no gap, except the crash brake), and the Telegram gap notifier (`cmd/ot/notify.go`, `NotifyGaps`) reads the same open gaps. So the page and the notice show a Retryable stage at 15:30 JST as an `expired` gap (row 3 of the Close table: `retryableLast` gives `gapExpired`). For the same morning the one path the code gives is the fault line of Decision 10, written by each re-run to the scheduler log (`wire_optionopen.go` passes `a.log.Info(line, "component", "ot", "job", id)` as `Log`). A same-morning gap on the ops page needs a change in `internal/runner/sched/gaps.go` (a key whose latest run is Retryable with reason `stored_zero` is a gap before the close), which is another module and is not in this design (Left out, owner call).
+   - Same-day visibility (owner ask 2940, "not the next morning"): on main a missing key becomes an ops gap only at the window close (`sched/gaps.go` `keyKind`: `!closed || running` gives no gap, except the crash brake), and the Telegram gap notifier (`cmd/ot/notify.go`, `NotifyGaps`) reads the same open gaps. So entry 5 changes `keyKind`: before the close, a missing key whose last two counted-or-retryable runs both ended `Retryable` (about 30 minutes of retrying; a single transient error is retried silently) is an open gap with the new reason `retrying`, ranked below `expired` in `gapRank`. The existing gap path carries it: `Lines` (`internal/pages/gaps/lines.go`) prints the reason as it is, and `NotifyGaps` reports every open gap, so the ops page and Telegram show `retrying` in the morning with no change in `pages` or `notify`. At the close the same key becomes `expired` (row 3 of the Close table: `retryableLast` gives `gapExpired`), which replaces the record, and a key that fills clears it (`applyKeys`). The runner does not know that a Retryable run is a stored-zero run (a `JobResult` carries no reason code), so any key of any job that retries twice shows `retrying`; this is the intended signal for a stage that is not filling. `gaps.go` is not the interface file of the runner row (`internal/runner/api.go`, `docs/design/modules.md`), so there is no interface change.
+
 10. One fault line per Retryable or NoValue run that ended on stored = 0, through the `Log` the jobs have (`ResolveDeps.Log`, a `func(string)`; `PullDeps.Log`, a `*slog.Logger`; the new `PlanDeps.Log`, a `func(string)`): `fault stage=<job id> day=<day> key=<key> names=<n> stored=<m> asked=<k>`. One builder returns the text, each job writes it with its own sink (`Info` on the logger). The line names the stage and the count. It is written by every re-run, so a stage stuck all morning leaves one line per 15 minutes, not one.
 
 ### The pull states per name
@@ -63,7 +64,7 @@ None. The post-run check is inside `Run` (no new method of `contracts.Job`), `Ne
 
 ## Issues
 
-The entries are in one module each, in wave order. Entry 1 carries no interface change and is first because the other two use its fault line and its test helpers.
+The entries are in one module each, in wave order. Entry 1 carries no interface change and is first because the others use its fault line and its test helpers.
 
 ### 1 optionopen-post-run-check
 
@@ -135,6 +136,22 @@ Acceptance:
 7. The result matches docs/design/option-open-gap-jp.md#the-rule-stated-once-for-both-chains.
 Checked by CI: ci-go; `go test ./cmd/ot -race -count=1` (the family list holds the new id at its order; a missing socket or DSN leaves it out with the reason of its siblings).
 
+### 5 sched-retrying-gap
+
+Module: runner. Size: S.
+Files: `internal/runner/sched/gaps.go`, `internal/runner/sched/gaps_test.go`
+Design: docs/design/option-open-gap-jp.md#the-post-run-check-one-mechanism-run-returns-the-outcome
+Order: after 1 (the stored-zero run it shows is the `Retryable` of entry 1); independent of 2, 3 and 4.
+Goal: Decision 9, last bullet: `keyKind` returns `retrying` for a key that is missing before its window close and whose last two runs (not counting `empty_before_close` and crashed runs) ended `done` with `ErrorCode` `retryable`; `gapRank` gets the kind below `expired`; the close, the clear and the "already open with the same kind is not written again" rules are unchanged.
+Acceptance:
+1. `grep -c "gapRetrying" internal/runner/sched/gaps.go` prints at least 3 (the constant, `gapRank` and `keyKind`) and `grep -c '"retrying"' internal/runner/sched/gaps.go` prints 1.
+2. `grep -rhE "^func (TestKeyKindRetryingTwoRetryableBeforeClose|TestKeyKindOneRetryableIsNoGap|TestKeyKindRetryingBecomesExpiredAtClose|TestKeyKindRetryingClearsWhenPresent|TestSyncWritesRetryingGap|TestRetryingRankBelowExpired)\(" internal/runner/sched | wc -l` prints 6.
+3. `grep -c "t.Parallel()" internal/runner/sched/gaps_test.go` is at least `grep -c "^func Test" internal/runner/sched/gaps_test.go`, and `grep -c "time.Sleep" internal/runner/sched/gaps_test.go` prints 0.
+4. `git diff origin/main -- internal/runner/api.go docs/contracts/runner.md internal/pages internal/notify | wc -l` prints 0 (no interface, page or notifier change).
+5. `git diff --name-only origin/main` lists no path outside the Files line.
+6. The result matches docs/design/option-open-gap-jp.md#the-post-run-check-one-mechanism-run-returns-the-outcome.
+Checked by CI: ci-go; `go test ./internal/runner/sched -race -count=1` with a fake clock and fake ledgers (two Retryable runs before the close give one `retrying` gap; one gives none; after the close it is `expired`; a present key clears it).
+
 ## Checked by CI
 
 ci-go runs `go test ./internal/jobs/optionopen ./cmd/ot -race -count=1` for entries 1 to 4. Nothing in these entries needs PostgreSQL, a live broker or a sleep. The first live check is the owner's: at 07:30 JST of a JP session day the line `option_open_resolve_gap_jp ... asked=` appears, and the line `fault stage=` appears for no stage when the chain is whole.
@@ -146,7 +163,7 @@ ci-go runs `go test ./internal/jobs/optionopen ./cmd/ot -race -count=1` for entr
 - A notification to Telegram for a fault line: the line goes to the same log as the summary, and the ops page shows the gap; a channel is the owner's to add.
 - Calendar rules of the JP expiry (monthly European, last trading day the business day before the second Friday): the chain definition of `ListChains` carries the expiry, so the stage computes no date.
 - A page column for the state of a name: Decision 12; the verdict path already shows a gap.
-- Stopping or skipping the next stage on a stored-zero run (the stages are ordered by the clock only), and a same-morning gap on the ops page (a key with a Retryable latest run is a gap only at the close, `sched/gaps.go`; a gap before the close is a change of `internal/runner/sched`, another module), and a repair of a missing stored close (the plan keeps its `NoValue`) or of the underlying con_id (draft A).
+- Stopping or skipping the next stage on a stored-zero run (the stages are ordered by the clock only), and a repair of a missing stored close (the plan keeps its `NoValue`) or of the underlying con_id (draft A).
 - A US-only change of the gap pass beyond the shared hooks of entry 2: the US pass is not tuned here.
 
 ## Doubts
@@ -158,7 +175,7 @@ ci-go runs `go test ./internal/jobs/optionopen ./cmd/ot -race -count=1` for entr
 - The store recounts `Listed` of a `ListRunRecord` from `master.option_list` (`openquote/api.go`), so the `Listed` of a `gap_live` row may be overwritten; the pull reads `Reason` only. `option_list_run` gets a second meaning (a gap record) beside the list run of the pull design.
 - The window of the dataset `master.option_contract.gap_jp` is not registered anywhere on main; entry 4 or the runner's dataset table may need the XTKS window (unverified: not read in `internal/runner`).
 - `store()` in the optionopen package creates the instrument of an option with `CalendarID: "XNYS"`; for JP options the calendar is wrong. Not changed here (unverified whether any reader uses it).
-- The Retryable gap shows on the ops page and in Telegram only at 15:30 JST; the fault line in the scheduler log is the only same-morning signal. `crew fault` is not part of this repository and is not used by the design. The design also relies on each re-run being cheap: a pull re-run asks the whole batch again (at most 120 contracts, until 09:30); a pull with `ok` rows is not Retryable, so no row is asked twice.
+- A `retrying` gap shows for any key that retries twice, not only a stored-zero key (the runner sees no reason). `crew fault` is not part of this repository and is not used. Each re-run is cheap by Decision 9: a pull re-run asks the whole batch again (at most 120 contracts, until 09:30), and a pull with `ok` rows is not Retryable, so no row is asked twice.
 
 ## Adversarial
 
