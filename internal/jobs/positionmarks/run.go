@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"log/slog"
+	"maps"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -109,7 +112,8 @@ type outcome struct {
 	unreached    int  // positions left without a row by the budget
 	hasMarks     bool // some position of the alias has a priced mark (this run or an earlier one)
 	positions    int
-	stop         bool // the gateway call or the write failed: the run ends whichever alias met it
+	stop         bool                      // the gateway call or the write failed: the run ends whichever alias met it
+	counts       map[string]map[string]int // rows written per currency and status, for the log only
 	err          contracts.TypedError
 }
 
@@ -122,6 +126,8 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 	day := contracts.Day(start.In(j.loc).Format(time.DateOnly))
 	var res contracts.JobResult
 	var quotes, down, unreached int
+	counts := map[string]map[string]int{}
+	defer func() { j.log.Info("position_marks status counts", "marks", formatCounts(counts)) }()
 	setErr := func(e contracts.TypedError) {
 		if res.Err == nil {
 			res.Err = e
@@ -134,6 +140,14 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 		quotes += o.quotes
 		down += o.down
 		unreached += o.unreached
+		for cur, byStatus := range o.counts {
+			if counts[cur] == nil {
+				counts[cur] = map[string]int{}
+			}
+			for st, n := range byStatus {
+				counts[cur][st] += n
+			}
+		}
 		main := i == 0
 		switch {
 		case o.err != nil && (main || o.stop):
@@ -154,6 +168,33 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, _ []contracts.ExpectedKe
 		setErr(fail(contracts.Retryable, "partial", ""))
 	}
 	return res
+}
+
+// formatCounts renders "USD no_data=1 ok=2; JPY ok=1": one market after the other, each with its status=count
+// pairs, both sorted; a status without rows is not listed.
+func formatCounts(counts map[string]map[string]int) string {
+	var parts []string
+	for _, cur := range slices.Sorted(maps.Keys(counts)) {
+		part := cur
+		for _, st := range slices.Sorted(maps.Keys(counts[cur])) {
+			if n := counts[cur][st]; n > 0 {
+				part += " " + st + "=" + strconv.Itoa(n)
+			}
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, "; ")
+}
+
+// count adds one written row to the per-market, per-status counts of the log.
+func (o *outcome) count(r mark.PositionMark) {
+	if o.counts == nil {
+		o.counts = map[string]map[string]int{}
+	}
+	if o.counts[r.Currency] == nil {
+		o.counts[r.Currency] = map[string]int{}
+	}
+	o.counts[r.Currency][r.Status]++
 }
 
 // runAlias marks one alias: the newest capture of the day, the positions that still need a mark, in batches.
@@ -212,6 +253,7 @@ func (j *job) runAlias(ctx context.Context, alias, day string, start time.Time) 
 		o.down += down
 		for _, r := range rows {
 			o.rows++
+			o.count(r)
 			if r.Basis != mark.BasisNone {
 				o.priced++
 				o.hasMarks = true
