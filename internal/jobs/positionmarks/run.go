@@ -303,7 +303,7 @@ func (j *job) markBatch(ctx context.Context, alias string, batch []store.Positio
 			if q.Status == broker.StatusDisconnected {
 				down++
 			}
-			if q.Status == broker.StatusOK {
+			if q.Status == broker.StatusOK || q.Status == broker.StatusPartial {
 				r.Price, r.Basis = MarkOf(q)
 			}
 		}

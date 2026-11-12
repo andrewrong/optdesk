@@ -592,3 +592,53 @@ func TestRunGatewayFailureKeepsTypedErrorAndFakeClock(t *testing.T) {
 		t.Fatalf("log = %q", e.log.String())
 	}
 }
+
+func TestRunPartialQuoteIsPricedFromLastThenClose(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "JPY"), pos("a", "c1", 2, "JPY"), pos("a", "c1", 3, "JPY")}})
+	e.m.quote = func(c broker.Contract) broker.Quote {
+		q := broker.Quote{Contract: c, Status: broker.StatusPartial}
+		switch c.ConID {
+		case 1:
+			q.Last = f(101)
+		case 2:
+			q.Close = f(99)
+		}
+		return q
+	}
+	if res := e.run(); res.Err != nil || res.Returned != 3 {
+		t.Fatalf("res = %+v", res)
+	}
+	want := []struct{ price, basis string }{{"101", mark.BasisLast}, {"99", mark.BasisClose}, {"", mark.BasisNone}}
+	for i, w := range want {
+		r := e.w.rows[i]
+		if r.Status != "partial" || r.Price != w.price || r.Basis != w.basis {
+			t.Fatalf("row %d = %+v, want price %q basis %q", i, r, w.price, w.basis)
+		}
+	}
+	if e.w.rows[0].Last != "101" || e.w.rows[1].Close != "99" {
+		t.Fatalf("texts lost: %+v %+v", e.w.rows[0], e.w.rows[1])
+	}
+}
+
+func TestRetrySnapshotsOnlyTheUnpricedPartialPosition(t *testing.T) {
+	t.Parallel()
+	last := 101.0
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "JPY"), pos("a", "c1", 2, "JPY")}})
+	e.m.quote = func(c broker.Contract) broker.Quote {
+		q := broker.Quote{Contract: c, Status: broker.StatusPartial}
+		if c.ConID == 1 {
+			q.Last = &last
+		}
+		return q
+	}
+	e.run()
+	res := e.run()
+	if res.Err != nil || res.Returned != 1 || len(e.m.calls) != 2 || len(e.m.calls[1]) != 1 || e.m.calls[1][0].ConID != 2 {
+		t.Fatalf("res = %+v calls = %+v", res, e.m.calls)
+	}
+	if r := e.w.rows[len(e.w.rows)-1]; r.ConID != 2 || r.Attempt != 2 {
+		t.Fatalf("row = %+v", r)
+	}
+}
