@@ -38,20 +38,21 @@ type jcFinish struct {
 }
 
 type jcQueue struct {
-	log         *jcLog
-	rows        []jobrequest.Row
-	queuedErr   error
-	queuedBlock bool
-	claimHook   func(id int64)
-	failErrs    []error // one per FailRunning call; nil after the list ends
-	failCalls   int
-	finishes    []jcFinish
-	onFinish    func(ctx context.Context)
+	log       *jcLog
+	rows      []jobrequest.Row
+	queuedErr error
+	queuedIn  chan struct{} // when set, Queued signals it by closing and blocks until its context ends
+	claimHook func(id int64)
+	failErrs  []error // one per FailRunning call; nil after the list ends
+	failCalls int
+	finishes  []jcFinish
+	onFinish  func(ctx context.Context)
 }
 
 func (q *jcQueue) Queued(ctx context.Context, _ int) ([]jobrequest.Row, error) {
 	q.log.add("queued")
-	if q.queuedBlock {
+	if q.queuedIn != nil {
+		close(q.queuedIn)
 		<-ctx.Done()
 		return nil, ctx.Err()
 	}
@@ -289,12 +290,10 @@ func TestHoldBoundIsTurnMax(t *testing.T) {
 func TestStartPhaseTimesOutAfterAMinute(t *testing.T) {
 	t.Parallel()
 	r := jcOne(t, "fred_series")
-	r.q.queuedBlock = true
+	r.q.queuedIn = make(chan struct{})
 	done := make(chan bool, 1)
 	go func() { took, err := r.host.ConsoleTurn(t.Context(), jcNever); done <- took || err != nil }()
-	if err := r.fc.BlockUntilContext(t.Context(), 1); err != nil {
-		t.Fatal(err)
-	}
+	<-r.q.queuedIn // the one-minute timer of the Queued call is armed before the call
 	r.fc.Advance(59 * time.Second)
 	if len(done) != 0 {
 		t.Fatal("the turn ended before a minute")
