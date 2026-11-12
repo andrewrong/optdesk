@@ -120,6 +120,40 @@ describe('stock option view', () => {
     expect(page).not.toContain(ok.notice)
   })
 
+  it('renders the vol view', async () => {
+    const page = await show(ok)
+    for (const row of ok.vol_view.rows.slice(0, 7)) {
+      expect(page).toContain(row.label)
+      expect(page).toContain(row.text)
+      expect(page).toContain(row.data_day)
+    }
+    expect(page).toContain(ok.vol_view.method)
+    expect(page).toContain(ok.vol_view.coaching)
+  })
+
+  it('shows a gap row with its reason', async () => {
+    const page = await show(ok)
+    const last = ok.vol_view.rows[7]
+    expect(last.gap).toBe('no_input')
+    expect(page).toContain(last.label)
+    expect(page).toContain('no_input')
+  })
+
+  it('renders a vol view of gap rows', async () => {
+    const page = await show(gap)
+    expect(gap.vol_view.rows).toHaveLength(8)
+    for (const row of gap.vol_view.rows) {
+      expect(page).toContain(row.label)
+      expect(row.gap).toBe('no_input')
+    }
+    expect(page).toContain(gap.vol_view.coaching)
+    expect(page).toContain(gap.title)
+  })
+
+  it('validates a version 3 payload', () => {
+    expect(validate({ ...ok, schema_version: 3 }).ok).toBe(true)
+  })
+
   it('refuses a schema_version it does not read', () => {
     const result = validate(badVersion)
     expect(result.ok).toBe(false)

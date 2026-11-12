@@ -48,6 +48,7 @@ type StockConfig struct {
 	Quotes                openquote.OptionOpenReader
 	Refresh               RefreshState
 	Key                   string
+	Readings              store.ReadingViewReader // nil: every row of the volatility view is a gap
 }
 
 // NewOptionPage is the option_page page for c; its Build ignores the series reader and reads those of c.
@@ -63,7 +64,7 @@ func NewOptionPage(c OptionConfig) pages.Page {
 // NewStockPage is the stock_option_page page for c; its Build ignores the series reader and reads those of c.
 func NewStockPage(c StockConfig) pages.Page {
 	return pages.Page{
-		Meta: pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v2"},
+		Meta: pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v3"},
 		Build: func(ctx context.Context, r store.SeriesReader, day contracts.Day, generatedAt time.Time) ([]byte, error) {
 			return BuildStock(ctx, c, r, day, generatedAt)
 		},

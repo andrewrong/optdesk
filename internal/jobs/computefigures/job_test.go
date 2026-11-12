@@ -166,8 +166,8 @@ func TestRunStoresOkAndMissing(t *testing.T) {
 	f.addPoint("VXVCLS", dayD, 22)
 	j := rvJob(t, f, newFigs())
 	res := runAll(t, j)
-	if res.Err != nil || res.Returned != 14 || res.Usable != 14 {
-		t.Fatalf("result %+v, want 14 of 14 and no error", res)
+	if res.Err != nil || res.Returned != 20 || res.Usable != 20 {
+		t.Fatalf("result %+v, want 20 of 20 and no error", res)
 	}
 	iv := reading(t, f, "market.iv30_own", "underlying", "SPY")
 	if iv.State != "ok" || iv.Value == nil || *iv.Value != "0.200000" || iv.Rev != 1 {
@@ -176,6 +176,9 @@ func TestRunStoresOkAndMissing(t *testing.T) {
 	vr := reading(t, f, "market.vix_term_ratio", "market", "VIXCLS")
 	if vr.State != "ok" || tagOf(vr, "data_day") != string(dayD) {
 		t.Fatalf("vix ratio %+v", vr)
+	}
+	if rv := reading(t, f, "market.rv60", "underlying", "SPY"); rv.State != "missing_input" {
+		t.Fatalf("rv60 %+v, want missing (no closes)", rv)
 	}
 	sp := reading(t, f, "market.sp500_vs_200d", "market", "SP500")
 	if sp.State != "missing_input" || sp.Value != nil || sp.ReasonCode == nil || *sp.ReasonCode != 1 {

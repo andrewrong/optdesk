@@ -43,19 +43,24 @@ type easeSpec struct {
 }
 
 type manifest struct {
-	ID          string        `toml:"id"`
-	RateSeries  string        `toml:"rate_series"`
-	Iv30        string        `toml:"iv30"`
-	IvIbkr      string        `toml:"iv_ibkr"`
-	Ivp         string        `toml:"ivp"`
-	IvpIbkr     string        `toml:"ivp_ibkr"`
-	Ivr         string        `toml:"ivr"`
-	Hv30        string        `toml:"hv30"`
-	Rv20        string        `toml:"rv20"`
-	Rv20Indices []string      `toml:"rv20_indices"`
-	Market      []marketSpec  `toml:"market"`
-	Ease        easeSpec      `toml:"ease"`
-	Schedule    scheduleTable `toml:"schedule"`
+	ID             string        `toml:"id"`
+	RateSeries     string        `toml:"rate_series"`
+	Iv30           string        `toml:"iv30"`
+	IvIbkr         string        `toml:"iv_ibkr"`
+	Ivp            string        `toml:"ivp"`
+	IvpIbkr        string        `toml:"ivp_ibkr"`
+	Ivr            string        `toml:"ivr"`
+	Hv30           string        `toml:"hv30"`
+	Rv20           string        `toml:"rv20"`
+	Rv20Indices    []string      `toml:"rv20_indices"`
+	Rv60           string        `toml:"rv60"`
+	Rv120          string        `toml:"rv120"`
+	VolForecast    string        `toml:"vol_forecast"`
+	VolEdge        string        `toml:"vol_edge"`
+	VolForecastErr string        `toml:"vol_forecast_err"`
+	Market         []marketSpec  `toml:"market"`
+	Ease           easeSpec      `toml:"ease"`
+	Schedule       scheduleTable `toml:"schedule"`
 }
 
 type job struct {
@@ -140,6 +145,11 @@ func (j *job) findRules() error {
 			return errors.New("computefigures: manifest: no hv30 id")
 		}
 		ids = append(ids, j.m.Hv30)
+		volIDs, err := j.volRuleIDs()
+		if err != nil {
+			return err
+		}
+		ids = append(ids, volIDs...)
 	}
 	if j.m.Rv20 == "" || len(j.m.Rv20Indices) == 0 {
 		return errors.New("computefigures: manifest: no rv20 id or rv20_indices")
@@ -191,6 +201,9 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 	if j.hvOn() {
 		for _, s := range subs {
 			keys = append(keys, keyOf(j.m.Hv30, kindUnderlying, s.name))
+			for _, id := range j.volIDs(s.name) {
+				keys = append(keys, keyOf(id, kindUnderlying, s.name))
+			}
 		}
 	}
 	for _, n := range j.m.Rv20Indices {
@@ -219,7 +232,7 @@ type target struct {
 	spec marketSpec
 }
 
-// Run runs the steps in order: IV30, the HV30 (only with PriceBars), the RV20 of the indices, the market
+// Run runs the steps in order: IV30, the HV30 and the vol step (only with PriceBars), the RV20 of the indices, the market
 // figures, IVP and IVR on the stored IV30, then the ease.
 // A key that fails does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
@@ -265,6 +278,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r.returned = len(keys)
 	r.runIv30(l.iv30)
 	r.runHv30(l.hvs)
+	r.runVol(l.vols)
 	r.runRv20(rvs)
 	r.runMarket(market)
 	r.runIvStats(l.ivs)
@@ -282,7 +296,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 }
 
 // underlyingLists are the underlying targets of a Run by step.
-type underlyingLists struct{ iv30, hvs, ivs []target }
+type underlyingLists struct{ iv30, hvs, vols, ivs []target }
 
 // add puts t in the list of its step: IV30, HV30 (only with PriceBars), else IVP and IVR.
 func (l *underlyingLists) add(j *job, t target) {
@@ -291,6 +305,8 @@ func (l *underlyingLists) add(j *job, t target) {
 		l.iv30 = append(l.iv30, t)
 	case j.hvOn() && name == j.m.Hv30:
 		l.hvs = append(l.hvs, t)
+	case j.hvOn() && j.isVolID(name):
+		l.vols = append(l.vols, t)
 	default:
 		l.ivs = append(l.ivs, t)
 	}

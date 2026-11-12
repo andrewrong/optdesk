@@ -3,7 +3,7 @@ package option_boards
 
 import "encoding/json"
 
-// The typed payloads of page.option_page.v2 and page.stock_option_page.v2. Money and percentages are
+// The typed payloads of page.option_page.v2 and page.stock_option_page.v3. Money and percentages are
 // json.Number of a stored decimal text, never a float. Builders fill these structs and edit none of them.
 
 // optionPayload is page.option_page.v2.
@@ -122,7 +122,7 @@ type chain struct {
 	Table   table  `json:"table"`
 }
 
-// stockPayload is page.stock_option_page.v2. Stale is null when the data is fresh.
+// stockPayload is page.stock_option_page.v3. Stale is null when the data is fresh.
 type stockPayload struct {
 	Schema        string         `json:"schema"`
 	SchemaVersion int            `json:"schema_version"`
@@ -145,6 +145,23 @@ type stockPayload struct {
 	Contracts     contractsBlock `json:"contracts"`
 	Footer        string         `json:"footer"`
 	Refresh       refreshObject  `json:"refresh"`
+	VolView       volView        `json:"vol_view"`
+}
+
+// volView is the name-level volatility block of the stock page; it is never null.
+type volView struct {
+	Name     string   `json:"name"`
+	Method   string   `json:"method"`
+	Rows     []volRow `json:"rows"`
+	Coaching string   `json:"coaching"`
+}
+
+// volRow is one line of the view: Text is the stored decimal of a ready row, Gap the reason code of a gap row.
+type volRow struct {
+	Label   string `json:"label"`
+	Text    string `json:"text"`
+	DataDay string `json:"data_day"`
+	Gap     string `json:"gap"`
 }
 
 type topBar struct {

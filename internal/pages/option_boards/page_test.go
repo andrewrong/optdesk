@@ -48,7 +48,7 @@ func TestPageMeta(t *testing.T) {
 	if got, want := NewOptionPage(optionConfig()).Meta, (pages.Meta{Name: "option_page", Schema: "page.option_page.v2"}); got != want {
 		t.Fatalf("option meta = %+v", got)
 	}
-	if got, want := NewStockPage(stockConfig()).Meta, (pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v2"}); got != want {
+	if got, want := NewStockPage(stockConfig()).Meta, (pages.Meta{Name: "stock_option_page", Schema: "page.stock_option_page.v3"}); got != want {
 		t.Fatalf("stock meta = %+v", got)
 	}
 }
