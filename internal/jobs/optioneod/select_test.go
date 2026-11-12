@@ -165,3 +165,25 @@ func TestSelectWideBandExpiries(t *testing.T) {
 		t.Fatalf("expiries %v", seen)
 	}
 }
+
+func TestValidateRefusesNegativeStrikeBand(t *testing.T) {
+	t.Parallel()
+	for name, m := range map[string]manifest{
+		"below": {StrikeBandBelow: -0.01},
+		"above": {StrikeBandAbove: -0.01},
+	} {
+		if err := m.validate(); err == nil {
+			t.Errorf("%s: negative band accepted", name)
+		}
+	}
+}
+
+func TestSelectWideBandOneKeyFallsBackToStrikeBand(t *testing.T) {
+	t.Parallel()
+	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, StrikeBandBelow: 0.20}
+	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	// 284.41 .. 391.06 (above falls back to 0.10), no cap by side
+	if want := seq(285, 390, 5); !reflect.DeepEqual(callStrikes(got), want) {
+		t.Fatalf("strikes %v, want %v", callStrikes(got), want)
+	}
+}
