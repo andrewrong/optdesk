@@ -92,9 +92,10 @@ func buildOpenPlan(ctx context.Context, a *app, jc *jobCtx, id string,
 	if !ok {
 		return nil, "", nil
 	}
-	j, err := jc.f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+	f := openEntryFix(ctx, a, jc.f, id, jc.brk)
+	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		return newJob(optionopen.PlanDeps{
-			Stored: openStored(jc, stores, entries), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
+			Stored: openStored(jc, stores, f.fixedEntries(entries)), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
 		})
 	})
 	return held(a, id, j, reason, err)
@@ -132,9 +133,10 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 			brk = c
 		}
 	}
-	j, err := jc.f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
+	f := openEntryFix(ctx, a, jc.f, id, brk)
+	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		d := optionopen.ResolveDeps{
-			Stored: openStored(jc, stores, entries), Broker: brk, Marks: stores, Clock: jc.f.clk,
+			Stored: openStored(jc, stores, f.fixedEntries(entries)), Broker: brk, Marks: stores, Clock: jc.f.clk,
 			Log: func(line string) { a.log.Info(line, "component", "ot", "job", id) },
 		}
 		if withPull {
@@ -143,6 +145,17 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 		return newJob(d, optionopen.ResolveOptions{MaxNew: openResolveMaxNew(a)})
 	})
 	return held(a, id, j, reason, err)
+}
+
+// openEntryFix is a copy of f for the job id. For the Japan resolve and plan, whose watch entries may carry no
+// con_id, the copy asks the broker b for it (resolveJPConIDs) on every Plan, as option_eod_jp does; any other id,
+// or a nil broker, leaves entryFix as f has it.
+func openEntryFix(ctx context.Context, a *app, f *jobFactory, id string, b broker.Broker) jobFactory {
+	c := *f
+	if (id == jobOptionOpenResolveJP || id == jobOptionOpenPlanJP) && b != nil {
+		c.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, b, es, a.log, id) }
+	}
+	return c
 }
 
 // openResolveMaxNew is the value of OT_OPEN_RESOLVE_MAX_NEW; unset, 0, negative or not a number is 0 (the manifest).
