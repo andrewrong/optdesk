@@ -130,6 +130,8 @@ type ForceBackfiller interface {
 // turn of the console's request queue. It runs on the worker, so it never overlaps a
 // Reconcile, and took tells whether a request was handled. A cancelled ctx ends the turn
 // interrupted. The turn has no bound of its own; each key has the RunBound of its job.
+//
+// Deprecated: replaced by ConsoleClaimer; it runs on the worker and never overlaps a Reconcile.
 type ConsoleTurner interface {
 	ConsoleTurn(ctx context.Context, hold SlotHold) (took bool, err error)
 }
@@ -249,3 +251,28 @@ type NewKeyRunnerFunc func(ops store.OpsLedger, sched store.SchedulerLedger, clk
 
 // NewReconcilerFunc is the constructor of the reconciler and backfiller pair (internal/runner/reconcile.NewReconciler).
 type NewReconcilerFunc func(ops store.OpsLedger, sched store.SchedulerLedger, cal clock.Calendar, clk clockwork.Clock, jobs []contracts.Job, rule WindowRule, kr KeyRunner) (Reconciler, Backfiller) //nolint:lll // the issue fixes the full signature on one line
+
+// Dependent is the optional method of a job: After gives the ids of the jobs of the same
+// day that the job reads.
+type Dependent interface {
+	After() []string
+}
+
+// JobLocks is the set of per-job locks. TryLock never blocks: ok is false while the job
+// is locked, and otherwise unlock releases it.
+type JobLocks interface {
+	TryLock(jobID string) (unlock func(), ok bool)
+}
+
+// ConsoleRun is one claimed console request, run to its end under ctx.
+type ConsoleRun func(ctx context.Context)
+
+// ConsoleClaimer is the optional method of the Reconciler given to NewSchedulerFunc: it
+// claims the requests of the console queue. ClaimConsole reads the queue, claims requests
+// and returns one ConsoleRun per claimed request; it starts no goroutine. The ticker owns
+// every goroutine: it calls ClaimConsole on a console goroutine of its own, one call at a
+// time, and runs each ConsoleRun in a goroutine of its own under a console context that it
+// drains and cancels.
+type ConsoleClaimer interface {
+	ClaimConsole(ctx context.Context) ([]ConsoleRun, error)
+}

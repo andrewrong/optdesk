@@ -22,7 +22,7 @@ type consoleReconciler struct {
 
 var _ runner.Reconciler = (*consoleReconciler)(nil)
 var _ runner.Prober = (*consoleReconciler)(nil)
-var _ runner.ConsoleTurner = (*consoleReconciler)(nil)
+var _ runner.ConsoleTurner = (*consoleReconciler)(nil) //nolint:staticcheck // SA1019: ConsoleTurner stays until a later design deletes it
 
 func (c *consoleReconciler) Reconcile(ctx context.Context, day contracts.Day) error {
 	return c.sw.Reconcile(ctx, day)

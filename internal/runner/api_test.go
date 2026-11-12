@@ -427,3 +427,59 @@ func TestConsoleTurnerPassesSlotHold(t *testing.T) {
 		t.Fatal("hold not passed through")
 	}
 }
+
+type fakeLocks struct{ asked []string }
+
+func (f *fakeLocks) TryLock(id string) (func(), bool) {
+	f.asked = append(f.asked, id)
+	return func() {}, true
+}
+
+type fakeDependent struct{}
+
+func (fakeDependent) After() []string { return []string{"fred_daily"} }
+
+// fakeClaimer implements ConsoleClaimer and ConsoleTurner at once.
+type fakeClaimer struct{ ran int }
+
+func (f *fakeClaimer) ClaimConsole(context.Context) ([]runner.ConsoleRun, error) {
+	return []runner.ConsoleRun{func(context.Context) { f.ran++ }}, nil
+}
+
+func (f *fakeClaimer) ConsoleTurn(context.Context, runner.SlotHold) (bool, error) { return false, nil }
+
+func TestJobLocksContract(t *testing.T) {
+	t.Parallel()
+	f := &fakeLocks{}
+	var l runner.JobLocks = f
+	unlock, ok := l.TryLock("j")
+	if !ok || unlock == nil || len(f.asked) != 1 || f.asked[0] != "j" {
+		t.Fatalf("TryLock = %v %v", ok, f.asked)
+	}
+}
+
+func TestDependentContract(t *testing.T) {
+	t.Parallel()
+	var d runner.Dependent = fakeDependent{}
+	if got := d.After(); len(got) != 1 || got[0] != "fred_daily" {
+		t.Fatalf("After = %v", got)
+	}
+}
+
+func TestConsoleClaimerAndTurnerOnOneType(t *testing.T) {
+	t.Parallel()
+	f := &fakeClaimer{}
+	var c runner.ConsoleClaimer = f
+	var turner runner.ConsoleTurner = f
+	runs, err := c.ClaimConsole(context.Background())
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("ClaimConsole = %v %v", runs, err)
+	}
+	runs[0](context.Background())
+	if f.ran != 1 {
+		t.Fatalf("ran = %d", f.ran)
+	}
+	if took, err := turner.ConsoleTurn(context.Background(), nil); took || err != nil {
+		t.Fatalf("ConsoleTurn = %v %v", took, err)
+	}
+}

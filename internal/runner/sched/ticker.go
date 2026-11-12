@@ -62,7 +62,7 @@ func New(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, ca
 	if t.disabled == nil {
 		t.disabled = map[string]string{}
 	}
-	t.turner, _ = rec.(runner.ConsoleTurner)
+	t.turner, _ = rec.(runner.ConsoleTurner) //nolint:staticcheck // SA1019: ConsoleTurner stays until a later design deletes it
 	t.log = slog.Default()
 	t.known = t.probeKnown()
 	t.lastTick.Store(clk.Now().UnixNano())
@@ -84,7 +84,7 @@ type ticker struct {
 	cal    clock.Calendar
 	clk    clockwork.Clock
 	rec    runner.Reconciler
-	turner runner.ConsoleTurner // rec when it has the optional method, else nil
+	turner runner.ConsoleTurner //nolint:staticcheck // SA1019: ConsoleTurner stays until a later design deletes it; rec when it has the optional method, else nil
 	gaps   runner.GapSyncer
 	jobs   []contracts.Job
 	exe    runner.ExecIdentityFunc
