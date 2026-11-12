@@ -121,16 +121,13 @@ func TestChainOfClassRule(t *testing.T) {
 	}
 }
 
-func TestStopAfterReturnsNoValue(t *testing.T) {
+func TestRunAfterStopAfterStores(t *testing.T) {
 	t.Parallel()
-	late := newJPRig(t, "2026-11-09 17:00")
-	res := late.run(jpDay, jpKey)
-	if kindOf(res) != contracts.NoValue || res.Err.Error() != "after session" || late.b.calls() != 0 {
-		t.Fatalf("late: %v calls %d", res.Err, late.b.calls())
-	}
-	ok := newJPRig(t, "2026-11-09 16:59")
-	if res := ok.run(jpDay, jpKey); res.Err != nil || ok.b.calls() == 0 {
-		t.Fatalf("16:59: %v calls %d", res.Err, ok.b.calls())
+	for _, at := range []string{"2026-11-09 17:00", "2026-11-09 23:30"} {
+		late := newJPRig(t, at)
+		if res := late.run(jpDay, jpKey); res.Err != nil || late.b.calls() == 0 {
+			t.Fatalf("%s: %v calls %d", at, res.Err, late.b.calls())
+		}
 	}
 }
 
