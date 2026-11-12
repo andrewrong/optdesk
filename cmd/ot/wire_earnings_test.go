@@ -217,7 +217,7 @@ func TestJQuantsOneCallPerDay(t *testing.T) {
 	}
 }
 
-func TestJQuantsErrorDayNotRetried(t *testing.T) {
+func TestJQuantsErrorDayIsFetchedAgain(t *testing.T) {
 	t.Parallel()
 	r, src, _ := jqRig(t, jqEnv())
 	src.err = jqErr{}
@@ -229,9 +229,9 @@ func TestJQuantsErrorDayNotRetried(t *testing.T) {
 	j.Run(t.Context(), "2026-11-09", nil)
 	before := src.calls.Load()
 	if res := j.Run(t.Context(), "2026-11-09", nil); res.Err == nil {
-		t.Fatal("a second run after an error must return the Permanent error")
+		t.Fatal("a second run that fails again must return the Permanent error")
 	}
-	if src.calls.Load() != before || before != 1 {
-		t.Fatalf("calls %d then %d: no call after an error", before, src.calls.Load())
+	if src.calls.Load() == before || before != 1 {
+		t.Fatalf("calls %d then %d: an error row must be fetched again", before, src.calls.Load())
 	}
 }
