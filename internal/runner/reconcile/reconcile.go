@@ -55,6 +55,8 @@ type reconciler struct {
 	// jobs, any other calendar's error is returned.
 	known map[string]bool
 	log   *slog.Logger
+	// locks is the per-job lock set; WithJobLocks replaces the private one.
+	locks runner.JobLocks
 }
 
 // New builds the reconciler with the default window rule (DefaultCalendarID, no offsets).
@@ -84,9 +86,18 @@ func newReconciler(
 	if kr == nil {
 		kr = NewKeyRunner(l, sched, fclk)
 	}
-	r := &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default()}
+	r := &reconciler{ledger: l, cal: cal, clk: clk, jobs: jobs, rule: rule, kr: kr, sched: sched, fclk: fclk, log: slog.Default(), locks: shared.NewJobLocks()}
 	r.known = r.probeKnown()
 	return r
+}
+
+// WithJobLocks sets the per-job lock set of a reconciler or backfiller built by this package;
+// reconcilers given one set share it. Without it a reconciler has a private set. Any other
+// value is left unchanged.
+func WithJobLocks(r any, locks runner.JobLocks) {
+	if rec, ok := r.(*reconciler); ok && locks != nil {
+		rec.locks = locks
+	}
 }
 
 // Reconcile handles every session day after the cursor up to day, in order. A day that is
@@ -252,16 +263,21 @@ func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess da
 	if err != nil {
 		return false, err
 	}
-	runs, err := r.ledger.Runs(ctx, day)
-	if err != nil {
-		return false, err
-	}
-	byKey := map[contracts.ExpectedKey][]store.Run{}
-	for _, run := range runs {
-		byKey[run.Key] = append(byKey[run.Key], run)
-	}
+	due, complete := dueJobsOf(p, present)
+	done, err := r.runJobs(ctx, newDayCtx(day, p, sess, false), due, closes)
+	return complete && done, err
+}
 
-	complete := true
+// dueJobs are the jobs with a missing key that is not held, in the order of their first key, and the keys of each by job id.
+type dueJobs struct {
+	order []contracts.Job
+	keys  map[string][]contracts.ExpectedKey
+}
+
+// dueJobsOf groups the keys that are missing and not held by their job; complete is false when a held key is missing.
+func dueJobsOf(p plan, present map[contracts.ExpectedKey]store.PresentStatus) (due dueJobs, complete bool) {
+	complete = true
+	due.keys = map[string][]contracts.ExpectedKey{}
 	for _, k := range p.keys {
 		if _, ok := present[k]; ok {
 			continue
@@ -270,28 +286,61 @@ func (r *reconciler) reconcileOn(ctx context.Context, day contracts.Day, sess da
 			complete = false
 			continue
 		}
-		closeAt := closes[k.DatasetID]
-		if expired, err := r.expireIfClosed(ctx, byKey[k], closeAt, day, k); err != nil {
-			return false, err
-		} else if expired {
-			continue
+		id := p.job[k].ID()
+		if _, seen := due.keys[id]; !seen {
+			due.order = append(due.order, p.job[k])
 		}
-		crashed, start, reason := r.nextAttempt(byKey[k], closeAt)
-		// A lapsed run is closed as crashed even when the brake stops the key.
-		if crashed != nil {
-			if err := r.markCrashed(ctx, *crashed); err != nil {
-				return false, err
-			}
+		due.keys[id] = append(due.keys[id], k)
+	}
+	return due, complete
+}
+
+// runJobs runs one goroutine per due job, the keys of a job in order, and returns when all of them and the
+// dependents they triggered have returned; it reports whether every key of the jobs is marked.
+func (r *reconciler) runJobs(
+	ctx context.Context, dc *dayCtx, due dueJobs, closes map[string]time.Time,
+) (bool, error) {
+	for _, j := range due.order {
+		dc.setPending(j.ID())
+	}
+	turns := make([]jobTurn, len(due.order))
+	var wg sync.WaitGroup
+	for i, j := range due.order {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			turns[i] = r.reconcileJob(ctx, dc, j, due.keys[j.ID()], closes)
+		}()
+	}
+	wg.Wait()
+	dc.wg.Wait()
+	if err := dc.firstErr(); err != nil {
+		return false, err
+	}
+	complete := true
+	var skipped []contracts.ExpectedKey
+	for i, t := range turns {
+		if t.err != nil {
+			return false, t.err
 		}
-		if !start {
+		if !t.skipped {
+			complete = complete && t.complete
+		} else {
+			skipped = append(skipped, due.keys[due.order[i].ID()]...)
+		}
+	}
+	if len(skipped) == 0 {
+		return complete, nil
+	}
+	// A job left to the end of its upstream or found locked may have been run by that trigger.
+	now, err := r.ledger.Present(ctx, dc.day)
+	if err != nil {
+		return false, err
+	}
+	for _, k := range skipped {
+		if _, ok := now[k]; !ok {
 			complete = false
-			continue
 		}
-		_, ok, err := r.run(ctx, p.job[k], day, k, len(byKey[k])+1, closeAt, reason)
-		if err != nil {
-			return false, err
-		}
-		complete = complete && ok
 	}
 	return complete, nil
 }

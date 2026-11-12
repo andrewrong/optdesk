@@ -224,11 +224,6 @@ type deps struct {
 	ext map[string]any
 }
 
-// calendarArgs is what follows the uv program in the command of calendar_refresh, that is
-// `run --locked --project pyside python -m optdesk.calendar`; calendarcli adds the
-// calendar, the days and the output file. The program is the line OT_CALENDAR_UV, or uv on PATH.
-var calendarArgs = []string{"run", "--locked", "--project", "pyside", "python", "-m", "optdesk.calendar"}
-
 // envCalendarUV names the line of .env that sets the path of uv.
 const envCalendarUV = "OT_CALENDAR_UV"
 
@@ -390,7 +385,7 @@ func newOptionTrackingPage(zone *time.Location, runID, buildID, scope string, r 
 	return option_tracking_page.NewPage(option_tracking_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone,
 		Ledger: r.Ledger, Account: r.Account, Candidates: r.Candidates, Eod: r.Eod, Catalog: r.Catalog,
-		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions,
+		Names: r.Names, Terms: r.Terms, Sessions: r.Sessions, Marks: r.Marks,
 		Tracker: optiontrack.New(), Replay: optionledger.New(),
 		Params:     trackapi.TrackParams{MarkMaxAgeSessions: 3, RecentDays: 30},
 		CalendarID: "XNYS",

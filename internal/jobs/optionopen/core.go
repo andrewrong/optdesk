@@ -524,7 +524,7 @@ func (c *Core) row(t Target, a answer, requested time.Time) contracts.OptionOpen
 	}
 	r.Generation, r.ConnectionGeneration, r.MarketDataType = int(q.Generation), int(q.Generation), q.MarketDataType
 	r.Bid, r.Ask, r.BidSize, r.AskSize, r.Last, r.Volume = q.Bid, q.Ask, q.BidSize, q.AskSize, q.Last, q.Volume
-	r.IvDecimal, r.Delta, r.Gamma = q.ImpliedVol, q.Delta, q.Gamma
+	r.IvDecimal, r.Delta, r.Gamma = q.ImpliedVol, roundDelta(q.Delta), q.Gamma
 	r.ThetaPerCalendarDay, r.VegaPerVolPoint = q.Theta, q.Vega
 	r.UnderlyingPrice = q.UndPrice
 	return r
@@ -559,4 +559,21 @@ func Refresh(ctx context.Context, b broker.Broker, clk clock.Clock, targets []Ta
 		}
 	}
 	return res
+}
+
+// roundDelta rounds a delta to 4 places, half-even on the exact value of the float, through its decimal text so
+// that no float arithmetic runs and the shortest text of the result has at most 4 places. NaN and infinities
+// pass through; nil stays nil.
+func roundDelta(v *float64) *float64 {
+	if v == nil {
+		return nil
+	}
+	if math.IsNaN(*v) || math.IsInf(*v, 0) {
+		return v
+	}
+	r, err := strconv.ParseFloat(strconv.FormatFloat(*v, 'f', 4, 64), 64)
+	if err != nil {
+		return v
+	}
+	return &r
 }

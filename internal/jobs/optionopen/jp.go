@@ -264,20 +264,18 @@ type jpPull struct {
 	rules  jpRules
 }
 
+// After is the ids of the jobs of the same day that the JP pull reads.
+func (p *jpPull) After() []string { return []string{"option_open_plan_jp"} }
+
 // Run is pull.Run with runKey of jpPull.
 func (p *jpPull) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	return p.fault(day, keys, p.run(ctx, day, keys))
 }
 
-func (p *jpPull) run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
-	local := p.d.Clock.Now().In(p.loc)
-	day := contracts.Day(local.Format(time.DateOnly))
-	bs, err := p.batches(ctx, day)
-	if errors.Is(err, errNoPlan) {
-		return contracts.JobResult{Err: newErr(contracts.Retryable, "the plan of %s is gone", day)}
-	}
-	if err != nil {
-		return contracts.JobResult{Err: asTyped(err, contracts.Retryable)}
+func (p *jpPull) run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	bs, terr := p.runPlan(ctx, day)
+	if terr != nil {
+		return contracts.JobResult{Err: terr}
 	}
 	byKey := map[string]batch{}
 	for _, b := range bs {

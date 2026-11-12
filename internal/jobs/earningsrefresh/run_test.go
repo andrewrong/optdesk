@@ -20,10 +20,6 @@ type fixedClock struct{}
 
 func (fixedClock) Now() time.Time { return time.Date(2026, 11, 9, 21, 30, 0, 0, time.UTC) }
 
-type nextDayClock struct{}
-
-func (nextDayClock) Now() time.Time { return time.Date(2026, 11, 10, 21, 30, 0, 0, time.UTC) }
-
 // memStore is a writer and a reader over one slice; a key that exists is left as it is.
 type memStore struct {
 	mu       sync.Mutex
@@ -217,28 +213,31 @@ func TestSecondRunSameDayMakesNoCall(t *testing.T) {
 	}
 }
 
-func TestErrorDayNotRetried(t *testing.T) {
+func TestErrorRowIsFetchedAgain(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: codedErr{"network"}}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
-	j.Run(context.Background(), day, nil)
-	j.Run(context.Background(), day, nil)
-	if src.calls != 1 || len(st.rows) != 1 {
-		t.Fatalf("calls %d rows %d", src.calls, len(st.rows))
+	if res := j.Run(context.Background(), day, nil); res.Err == nil {
+		t.Fatal("first run must fail")
 	}
-	// the next day starts again
-	j2, err := New(map[string]sources.EarningsSource{"US": src}, st, st, []jobs.WatchEntry{us("cik:1", "A")}, nextDayClock{})
-	if err != nil {
-		t.Fatal(err)
+	if r := byIssuer(st, "cik:1"); len(r) != 1 || r[0].Status != "error" || r[0].Attempt != 1 {
+		t.Fatalf("first rows %+v", r)
 	}
-	j2.Run(context.Background(), "2026-11-10", nil)
-	if src.calls != 2 {
-		t.Fatalf("next day calls %d", src.calls)
+	src.err, src.listings, src.calls = nil, []sources.EarningsListing{{Symbol: "A", ReportDate: "2026-11-12"}}, 0
+	if res := j.Run(context.Background(), day, nil); res.Err != nil {
+		t.Fatalf("second run: %v", res.Err)
+	}
+	if src.calls != 1 {
+		t.Fatalf("calls %d", src.calls)
+	}
+	r := byIssuer(st, "cik:1")
+	if len(r) != 2 || r[1].Status != "listed" || r[1].Attempt != 2 {
+		t.Fatalf("rows %+v", r)
 	}
 }
 
-func TestRateLimitedRecordedNoRetry(t *testing.T) {
+func TestRateLimitedRecordedAsError(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: codedErr{"rate_limited"}}
 	st := &memStore{}
@@ -264,18 +263,19 @@ func TestSecondRunWritesNoRow(t *testing.T) {
 	}
 }
 
-func TestSecondRunAfterErrorReturnsPermanent(t *testing.T) {
+func TestSecondRunStillFailingStoresNextAttempt(t *testing.T) {
 	t.Parallel()
 	src := &fakeSource{err: errors.New("down")}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": src}, st, us("cik:1", "A"))
 	first := j.Run(context.Background(), day, nil)
 	second := j.Run(context.Background(), day, nil)
-	if first.Err == nil || second.Err == nil || second.Err.Kind() != contracts.Permanent || second.Err.Error() != first.Err.Error() {
+	if first.Err == nil || second.Err == nil || second.Err.Kind() != contracts.Permanent {
 		t.Fatalf("first %v second %v", first.Err, second.Err)
 	}
-	if src.calls != 1 || len(st.rows) != 1 || st.rows[0].ErrorCode != "unknown" {
-		t.Fatalf("calls %d rows %+v", src.calls, st.rows)
+	r := byIssuer(st, "cik:1")
+	if src.calls != 2 || len(r) != 2 || r[0].Attempt != 1 || r[1].Attempt != 2 || r[1].Status != "error" {
+		t.Fatalf("calls %d rows %+v", src.calls, r)
 	}
 }
 
@@ -486,7 +486,14 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 				t.Fatalf("records = %v", recs)
 			}
 			m := recs[0]
-			if m["msg"] != "run failed" || m["level"] != "WARN" || m["step"] != c.step || m["kind"] != c.kind || len(m) != 4 {
+			wantLen := 4
+			if c.step == "source_failed" {
+				wantLen = 6
+				if m["market"] != "us" || m["code"] != "unknown" {
+					t.Fatalf("record = %v", m)
+				}
+			}
+			if m["msg"] != "run failed" || m["level"] != "WARN" || m["step"] != c.step || m["kind"] != c.kind || len(m) != wantLen {
 				t.Fatalf("record = %v", m)
 			}
 			for _, v := range m {
@@ -509,5 +516,75 @@ func TestPastDayRunsClockDay(t *testing.T) {
 	}
 	if got := st.rows[0].ObservedOn.Format(dayLayout); got != string(day) {
 		t.Fatalf("ObservedOn = %s, want the clock's date %s", got, day)
+	}
+}
+
+func perMarketJob(t *testing.T, usSrc, jpSrc *fakeSource) (contracts.Job, *memStore) {
+	t.Helper()
+	st := &memStore{}
+	j := build(t, map[string]sources.EarningsSource{"US": usSrc, "JP": jpSrc}, st,
+		us("cik:1", "AAPL"), jp("edinet:E1", "7203"))
+	return j, st
+}
+
+func keyOf(issuer string) []contracts.ExpectedKey {
+	return []contracts.ExpectedKey{{DatasetID: datasetID, SubjectKey: issuer}}
+}
+
+func TestPerMarketUSOkJPFails(t *testing.T) {
+	t.Parallel()
+	mk := func() (contracts.Job, *memStore) {
+		return perMarketJob(t,
+			&fakeSource{listings: []sources.EarningsListing{{Symbol: "AAPL", ReportDate: "2026-11-12"}}},
+			&fakeSource{err: codedErr{"http_status"}})
+	}
+	j, st := mk()
+	if res := j.Run(context.Background(), day, keyOf("cik:1")); res.Err != nil {
+		t.Fatalf("US subject: %v", res.Err)
+	}
+	if r := byIssuer(st, "cik:1"); len(r) != 1 || r[0].Status != "listed" {
+		t.Fatalf("US rows %+v", r)
+	}
+	j, st = mk()
+	res := j.Run(context.Background(), day, keyOf("edinet:E1"))
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "earningsrefresh: jp: http_status" {
+		t.Fatalf("JP subject err %v", res.Err)
+	}
+	if r := byIssuer(st, "edinet:E1"); len(r) != 1 || r[0].Status != "error" || r[0].ErrorCode != "http_status" {
+		t.Fatalf("JP rows %+v", r)
+	}
+}
+
+func TestPerMarketBothOk(t *testing.T) {
+	t.Parallel()
+	j, _ := perMarketJob(t,
+		&fakeSource{listings: []sources.EarningsListing{{Symbol: "AAPL", ReportDate: "2026-11-12"}}},
+		&fakeSource{listings: []sources.EarningsListing{{Symbol: "7203", ReportDate: "2026-11-12"}}})
+	for _, k := range [][]contracts.ExpectedKey{keyOf("cik:1"), keyOf("edinet:E1"), nil} {
+		if res := j.Run(context.Background(), day, k); res.Err != nil {
+			t.Fatalf("keys %v: %v", k, res.Err)
+		}
+	}
+}
+
+func TestPerMarketBothFail(t *testing.T) {
+	t.Parallel()
+	mk := func() contracts.Job {
+		j, _ := perMarketJob(t, &fakeSource{err: codedErr{"rate_limited"}}, &fakeSource{err: codedErr{"network"}})
+		return j
+	}
+	cases := []struct {
+		keys []contracts.ExpectedKey
+		want string
+	}{
+		{keyOf("cik:1"), "earningsrefresh: us: rate_limited"},
+		{keyOf("edinet:E1"), "earningsrefresh: jp: network"},
+		{nil, "earningsrefresh: us: rate_limited; jp: network"},
+	}
+	for _, c := range cases {
+		res := mk().Run(context.Background(), day, c.keys)
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != c.want {
+			t.Fatalf("keys %v: err %v, want %q", c.keys, res.Err, c.want)
+		}
 	}
 }

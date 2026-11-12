@@ -310,3 +310,31 @@ func TestHeldKeysListsStoredOptionRow(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+// With an account line the resolve job is wrapped, and a store that cannot add held names is a start-up error.
+func TestResolveRefusesStoreWithoutHeldAdder(t *testing.T) {
+	t.Parallel()
+	fam := jobFamilies[jobUnderlyingResolve]
+	build := func(st underlying.Store) (contracts.Job, error) {
+		r := newRig(t, fullEnv+underlying.DSNEnvResolve+"=resolve-dsn\n")
+		r.a.deps.openUnderlying = func(context.Context, string) (underlying.Store, error) { return st, nil }
+		r.a.deps.openAccount = func(context.Context, string) (store.AccountStore, error) { return nil, errors.New("not opened") }
+		jc := &jobCtx{
+			f: &jobFactory{d: r.a.deps, clk: fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)}}, brk: unreachableBroker{},
+			cfg: runOnceConfig{resolveDSN: "resolve-dsn", accountDSN: "account-dsn"}, extra: &closerSet{},
+		}
+		j, _, err := fam.build(context.Background(), r.a, jc)
+		return j, err
+	}
+	j, err := build(struct{ underlying.Store }{&heldFakeStore{}})
+	if j != nil || err == nil || err.Error() != "underlying store cannot add held names" {
+		t.Fatalf("job %v err %v", j, err)
+	}
+	j, err = build(&heldFakeStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := j.(*heldRowsJob); !ok || j.ID() != jobUnderlyingResolve {
+		t.Fatalf("job is %T", j)
+	}
+}

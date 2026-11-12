@@ -240,50 +240,13 @@ func TestOrderOfTurn(t *testing.T) {
 	r.add(2, "quote_snapshot", jcDay, false)
 	r.add(3, "fred_series", jcDay, false)
 	r.bf.res = jcLines(runner.GroupRan)
-	hold := func(b time.Duration) (string, time.Time, bool) {
-		return "slot_job", r.fc.Now().Add(time.Hour), b == 19*time.Minute+30*time.Second
-	}
-	if !r.turn(hold) {
+	if !r.turn(jcNever) {
 		t.Fatal("took false")
 	}
 	want := []string{jcStart, "queued", "finish:1:withdrawn:withdrawn",
-		"hold:2:slot_job:2026-11-12T16:00:00Z", "claim:3", "backfill", "finish:3:done:completed", "sync:" + jcDay}
+		"claim:2", "backfill", "finish:2:done:completed", "sync:" + jcDay}
 	if got := r.log.items; !slices.Equal(got, want) {
 		t.Fatalf("order %v, want %v", got, want)
-	}
-}
-
-func TestHeldRequestGetsHoldWrittenAndNextIsTaken(t *testing.T) {
-	t.Parallel()
-	r := newJCRig(t, "fred_series", "fundamentals")
-	r.add(1, "fred_series", jcDay, false)
-	r.add(2, "fundamentals", jcDay, false)
-	at, calls := r.fc.Now().Add(20*time.Minute), 0
-	r.turn(func(time.Duration) (string, time.Time, bool) { calls++; return "slot_job", at, calls == 1 })
-	want := []string{jcStart, "queued", "hold:1:slot_job:2026-11-12T15:20:00Z", "claim:2", "backfill", "finish:2:done:completed"}
-	if got := r.log.items; !slices.Equal(got, want) {
-		t.Fatalf("calls %v, want %v", got, want)
-	}
-}
-
-func TestHoldBoundIsTurnMax(t *testing.T) {
-	t.Parallel()
-	r := newJCRig(t)
-	r.host.set([]contracts.Job{
-		jcBounded{jcJob{id: "quote_snapshot", keys: jcKey}, 16 * time.Minute},
-		jcJob{id: "fundamentals", keys: jcKey},
-		jcBounded{jcJob{id: "fred_series", keys: jcKey}, 5 * time.Minute},
-	}, r.bf)
-	for i, id := range []string{"quote_snapshot", "fundamentals", "fred_series"} {
-		r.add(int64(i+1), id, jcDay, false)
-	}
-	var bounds []time.Duration
-	r.turn(func(b time.Duration) (string, time.Time, bool) {
-		bounds = append(bounds, b)
-		return "x", r.fc.Now(), true
-	})
-	if want := []time.Duration{19*time.Minute + 30*time.Second, 33*time.Minute + 30*time.Second, 8*time.Minute + 30*time.Second}; !slices.Equal(bounds, want) {
-		t.Fatalf("bounds %v, want %v", bounds, want)
 	}
 }
 
@@ -300,18 +263,6 @@ func TestStartPhaseTimesOutAfterAMinute(t *testing.T) {
 	}
 	if r.fc.Advance(time.Second); <-done {
 		t.Fatal("took a request or failed")
-	}
-}
-
-func TestHoldPassedToBackfillWith(t *testing.T) {
-	t.Parallel()
-	r := jcOne(t, "fred_series")
-	at := r.fc.Now().Add(time.Hour)
-	r.turn(func(time.Duration) (string, time.Time, bool) { return "sj", at, false })
-	if opt := r.bf.opts[0]; opt.Hold == nil {
-		t.Fatal("no Hold given")
-	} else if job, got, held := opt.Hold(time.Minute); job != "sj" || !got.Equal(at) || held {
-		t.Fatalf("Hold answered %q %v %v", job, got, held)
 	}
 }
 
@@ -337,12 +288,15 @@ func TestWithdrawalAfterQueueReadBeforeClaimStillRuns(t *testing.T) {
 	r.wantEnd(jobrequest.StateDone, "completed")
 }
 
-func TestForceForForceNoJobRefusedNotRunnable(t *testing.T) {
+func TestForceOnJobWithoutForceRuns(t *testing.T) {
 	t.Parallel()
 	r := newJCRig(t, "fred_series")
 	r.add(1, "fred_series", jcDay, true)
 	r.turn(jcNever)
-	r.wantEnd(jobrequest.StateRefused, "not_runnable")
+	r.wantEnd(jobrequest.StateDone, "completed")
+	if n := r.log.count("backfill"); n != 1 {
+		t.Fatalf("backfiller ran %d times", n)
+	}
 }
 
 func TestStartRetriedOnEveryTurn(t *testing.T) {
@@ -371,18 +325,6 @@ func TestStartErrorWarnsOncePerMinute(t *testing.T) {
 	}
 }
 
-func TestHoldClearedWhenTaken(t *testing.T) {
-	t.Parallel()
-	r := newJCRig(t, "fred_series")
-	row := r.add(1, "fred_series", jcDay, false)
-	row.HoldJob, row.HoldAt = "slot_job", r.fc.Now()
-	r.turn(jcNever)
-	want := []string{jcStart, "queued", "hold:1::0001-01-01T00:00:00Z", "claim:1", "backfill", "finish:1:done:completed"}
-	if got := r.log.items; !slices.Equal(got, want) {
-		t.Fatalf("calls %v, want %v", got, want)
-	}
-}
-
 func TestWithdrawalFinishesWithdrawn(t *testing.T) {
 	t.Parallel()
 	r := newJCRig(t, "fred_series")
@@ -404,36 +346,48 @@ func TestWithdrawalOfRunningIgnored(t *testing.T) {
 
 func TestLeftOutAndNotRunnable(t *testing.T) {
 	t.Parallel()
-	for job, reason := range map[string]string{"calendar_refresh": "left_out", "no_such_job": "not_runnable", "option_ledger": "not_runnable"} {
+	for job, c := range map[string]struct {
+		state  jobrequest.State
+		reason string
+		calls  int
+	}{
+		"calendar_refresh": {jobrequest.StateRefused, "left_out", 0},
+		"no_such_job":      {jobrequest.StateRefused, "not_runnable", 0},
+		"option_ledger":    {jobrequest.StateDone, "completed", 1},
+	} {
 		r := newJCRig(t, "fred_series", "option_ledger") // calendar_refresh is in the table and not in the set
 		r.add(1, job, jcDay, false)
 		r.turn(jcNever)
-		if r.wantEnd(jobrequest.StateRefused, reason); r.log.count("backfill") != 0 {
-			t.Fatalf("%s: the backfiller ran", job)
+		r.wantEnd(c.state, c.reason)
+		if n := r.log.count("backfill"); n != c.calls {
+			t.Fatalf("%s: backfiller ran %d times, want %d", job, n, c.calls)
 		}
 	}
 }
 
-func TestNotTodayRefusedAtClaim(t *testing.T) {
+func TestListedOnlyJobRunsWithAndWithoutForce(t *testing.T) {
 	t.Parallel()
-	r := newJCRig(t, "calendar_refresh")
-	r.add(1, "calendar_refresh", jcDay, false)
-	r.fc.Advance(15 * time.Hour) // past midnight in New York
-	r.turn(jcNever)
-	r.wantEnd(jobrequest.StateRefused, "not_today")
+	for _, force := range []bool{true, false} {
+		r := newJCRig(t, "option_open_plan")
+		r.add(1, "option_open_plan", jcDay, force)
+		r.turn(jcNever)
+		r.wantEnd(jobrequest.StateDone, "completed")
+		if n := r.log.count("backfill"); n != 1 {
+			t.Fatalf("force %v: backfiller ran %d times", force, n)
+		}
+	}
 }
 
-func TestTodayOnlyUsesTheJobsZone(t *testing.T) {
+func TestDayThatIsNotTodayRuns(t *testing.T) {
 	t.Parallel()
 	// At 20:00 UTC it is 15:00 on the 12th in New York and 05:00 on the 13th in Tokyo.
-	for _, c := range [][3]string{{"option_eod_jp", "2026-11-13", "ran"}, {"option_eod_jp", "2026-11-12", "not_today"},
-		{"option_eod", "2026-11-13", "not_today"}, {"option_eod", "2026-11-12", "ran"}} {
+	for _, c := range [][2]string{{"calendar_refresh", jcDay}, {"option_eod_jp", "2026-11-12"}, {"option_eod", "2026-11-13"}, {"option_eod", "2026-11-01"}} {
 		r := newJCRig(t, c[0])
-		r.fc.Advance(5 * time.Hour)
+		r.fc.Advance(15 * time.Hour)
 		r.add(1, c[0], c[1], false)
 		r.turn(jcNever)
-		if c[2] == "ran" && r.log.count("backfill") != 1 || c[2] != "ran" && r.wantEnd(jobrequest.StateRefused, c[2]).id != 1 {
-			t.Errorf("%s %s: calls %v", c[0], c[1], r.log.items)
+		if n := r.log.count("backfill"); n != 1 {
+			t.Errorf("%s %s: backfiller ran %d times, calls %v", c[0], c[1], n, r.log.items)
 		}
 	}
 }
@@ -594,5 +548,114 @@ func TestJobFilterPassedToBackfillWith(t *testing.T) {
 	}
 	if got := r.bf.datasets[0]; !slices.Equal(got, []string{"ds.a", "ds.b"}) || r.bf.days[0] != jcDay {
 		t.Fatalf("datasets %v day %s", got, r.bf.days[0])
+	}
+}
+
+// jcErrorLines returns the lines of the log buffer of the rig at level ERROR.
+func jcErrorLines(r *jcRig) []string {
+	var out []string
+	for _, l := range strings.Split(strings.TrimSpace(r.out.String()), "\n") {
+		if strings.Contains(l, "level=ERROR") {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+func TestFailedBackfillLogsErrorLine(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	r.bf.err = errors.New("dayState: boom")
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "error")
+	got := jcErrorLines(r)
+	if len(got) != 1 {
+		t.Fatalf("ERROR lines %q, want one", got)
+	}
+	for _, w := range []string{`msg="console request failed"`, "component=ot", "status=failed", "job=fred_series", "day=" + jcDay, `error="dayState: boom"`} {
+		if !strings.Contains(got[0], w) {
+			t.Fatalf("line %q lacks %s", got[0], w)
+		}
+	}
+}
+
+func TestPlanFailedLogsErrorLine(t *testing.T) {
+	t.Parallel()
+	r := newJCRig(t)
+	r.host.set([]contracts.Job{jcJob{id: "fred_series", keys: jcKey, planFn: func() error { return errors.New("plan: boom") }}}, r.bf)
+	r.add(1, "fred_series", jcDay, false)
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "plan_failed")
+	got := jcErrorLines(r)
+	if len(got) != 1 {
+		t.Fatalf("ERROR lines %q, want one", got)
+	}
+	for _, w := range []string{`msg="console request failed"`, "job=fred_series", "day=" + jcDay, `error="plan: boom"`} {
+		if !strings.Contains(got[0], w) {
+			t.Fatalf("line %q lacks %s", got[0], w)
+		}
+	}
+}
+
+func TestLeaseHeldWritesNoErrorLine(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	r.bf.err = jcTyped{contracts.Retryable}
+	r.turn(jcNever)
+	r.wantEnd(jobrequest.StateFailed, "lease_held")
+	if got := jcErrorLines(r); len(got) != 0 {
+		t.Fatalf("ERROR lines %q, want none", got)
+	}
+}
+
+func TestClassifyJobRunning(t *testing.T) {
+	t.Parallel()
+	busy := func(g string, code string) runner.KeyRun {
+		return runner.KeyRun{Key: jcKey[0], Group: g, ReasonCode: code}
+	}
+	cases := []struct {
+		name   string
+		keys   []runner.KeyRun
+		state  jobrequest.State
+		reason string
+	}{
+		{"only job_running", []runner.KeyRun{busy(runner.GroupLeaseHeld, "job_running")}, jobrequest.StateRefused, "job_running"},
+		{"other lease_held", []runner.KeyRun{busy(runner.GroupLeaseHeld, "")}, jobrequest.StateDone, "completed"},
+		{"job_running with a ran line", []runner.KeyRun{busy(runner.GroupRan, ""), busy(runner.GroupLeaseHeld, "job_running")}, jobrequest.StateDone, "completed"},
+		{"job_running with a rerun line", []runner.KeyRun{busy(runner.GroupRerun, ""), busy(runner.GroupLeaseHeld, "job_running")},
+			jobrequest.StateDone, "completed"},
+	}
+	for _, c := range cases {
+		out := classify(t.Context(), runner.BackfillResult{Keys: c.keys}, nil)
+		if out.state != c.state || out.reason != c.reason {
+			t.Errorf("%s: %s/%s, want %s/%s", c.name, out.state, out.reason, c.state, c.reason)
+		}
+	}
+}
+
+func TestClaimConsoleClaimsFirstRequestWithoutRunningIt(t *testing.T) {
+	t.Parallel()
+	r := newJCRig(t, "fred_series")
+	r.add(1, "fred_series", jcDay, false)
+	r.add(2, "fred_series", jcDay, false)
+	runs, err := r.host.ClaimConsole(t.Context())
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("runs %d, err %v", len(runs), err)
+	}
+	if got, want := r.log.items, []string{jcStart, "queued", "claim:1"}; !slices.Equal(got, want) {
+		t.Fatalf("before the run %v, want %v", got, want)
+	}
+	runs[0](t.Context())
+	r.wantEnd(jobrequest.StateDone, "completed")
+	if r.log.count("hold:1") != 0 || len(r.bf.opts) != 1 || r.bf.opts[0].Hold != nil {
+		t.Fatalf("the run held a slot: %v %+v", r.log.items, r.bf.opts)
+	}
+}
+
+func TestClaimConsoleEmptyQueueReturnsNone(t *testing.T) {
+	t.Parallel()
+	r := newJCRig(t, "fred_series")
+	if runs, err := r.host.ClaimConsole(t.Context()); err != nil || len(runs) != 0 {
+		t.Fatalf("runs %d, err %v", len(runs), err)
 	}
 }

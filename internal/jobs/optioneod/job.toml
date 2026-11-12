@@ -6,8 +6,10 @@ max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
 # Used only with a watch list (NewWithWatch): DTE window of the expiries and the cap of strikes per buy-price range.
-min_dte = 21
-max_dte = 45
+strike_band_below = 0.20
+strike_band_above = 0.05
+min_dte = 14
+max_dte = 56
 max_strikes = 24
 chunk = 50
 budget_minutes = 8

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -51,18 +52,23 @@ const (
 // New builds the scheduler ticker; it has the type runner.NewSchedulerFunc. fence is held already
 // (cmd/ot took it): the ticker never locks, it watches Lost and closes the fence on drain. The loop
 // goroutine only reads the clock and the published schedule; every ledger, calendar, probe,
-// Reconcile and Sync call runs on the one worker goroutine under its own timeout.
+// Reconcile and Sync call runs on the one worker goroutine under its own timeout. A ConsoleClaimer reconciler's
+// ClaimConsole runs on a console goroutine of its own, never on the loop or the worker, and each ConsoleRun in a goroutine under the console context.
 func New(fence store.Fence, sched store.SchedulerLedger, ops store.OpsLedger, cal clock.Calendar, clk clockwork.Clock, rec runner.Reconciler, gaps runner.GapSyncer, jobs []contracts.Job, disabled map[string]string, exe runner.ExecIdentityFunc) runner.Scheduler { //nolint:lll // the signature is fixed by runner.NewSchedulerFunc
 	t := &ticker{
 		fence: fence, sched: sched, ops: ops, cal: cal, clk: clk, rec: rec, gaps: gaps, jobs: jobs, exe: exe,
-		disabled: maps.Clone(disabled),
-		tasks:    make(chan turn, 1),
-		wake:     make(chan struct{}, 1),
+		disabled:   maps.Clone(disabled),
+		tasks:      make(chan turn, 1),
+		wake:       make(chan struct{}, 1),
+		consoleSig: make(chan struct{}, 1),
 	}
 	if t.disabled == nil {
 		t.disabled = map[string]string{}
 	}
-	t.turner, _ = rec.(runner.ConsoleTurner)
+	t.claimer, _ = rec.(runner.ConsoleClaimer)
+	if t.claimer == nil { // the claimer wins when the reconciler has both
+		t.turner, _ = rec.(runner.ConsoleTurner) //nolint:staticcheck // SA1019: ConsoleTurner stays until a later design deletes it
+	}
 	t.log = slog.Default()
 	t.known = t.probeKnown()
 	t.lastTick.Store(clk.Now().UnixNano())
@@ -78,16 +84,17 @@ type turn struct {
 }
 
 type ticker struct {
-	fence  store.Fence
-	sched  store.SchedulerLedger
-	ops    store.OpsLedger
-	cal    clock.Calendar
-	clk    clockwork.Clock
-	rec    runner.Reconciler
-	turner runner.ConsoleTurner // rec when it has the optional method, else nil
-	gaps   runner.GapSyncer
-	jobs   []contracts.Job
-	exe    runner.ExecIdentityFunc
+	fence   store.Fence
+	sched   store.SchedulerLedger
+	ops     store.OpsLedger
+	cal     clock.Calendar
+	clk     clockwork.Clock
+	rec     runner.Reconciler
+	turner  runner.ConsoleTurner  //nolint:staticcheck // SA1019: ConsoleTurner stays until a later design deletes it; rec when it has it and no claimer
+	claimer runner.ConsoleClaimer // rec when it has the optional method; the console goroutine calls it
+	gaps    runner.GapSyncer
+	jobs    []contracts.Job
+	exe     runner.ExecIdentityFunc
 
 	known map[string]bool // the calendars of the jobs, other than defaultCalendar, that answered at construction
 	log   *slog.Logger
@@ -102,6 +109,9 @@ type ticker struct {
 	covered  atomic.Int64            // UnixNano of the loop's mark, published for the slot hold
 	tasks    chan turn
 	wake     chan struct{} // the worker published a new schedule
+	// consoleSig is the loop's console turn for the console goroutine: a non-blocking send, so a signal
+	// during a claim is kept as one pending signal.
+	consoleSig chan struct{}
 }
 
 func (t *ticker) LastTick() time.Time { return time.Unix(0, t.lastTick.Load()).UTC() }
@@ -119,12 +129,17 @@ func (t *ticker) Run(ctx context.Context) error {
 	defer stop()
 	workCtx, cancelWork := context.WithCancel(context.WithoutCancel(ctx))
 	defer cancelWork()
+	// The console context outlives runCtx like workCtx: the drain below cancels it, a lost fence at once.
+	consoleCtx, cancelConsole := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancelConsole()
 
 	fail := make(chan error, 4)
-	go t.watchFence(runCtx, stop, fail)
+	go t.watchFence(runCtx, stop, cancelConsole, fail)
 	go t.watchdog(runCtx, fail)
 	workerDone := make(chan struct{})
 	go t.worker(runCtx, workCtx, workerDone)
+	consoleDone := make(chan struct{})
+	go t.console(runCtx, consoleCtx, consoleDone)
 	loopDone := make(chan error, 1)
 	go func() { loopDone <- t.loop(runCtx, start, first) }()
 
@@ -141,12 +156,20 @@ func (t *ticker) Run(ctx context.Context) error {
 	stop()
 	if errors.Is(runErr, ErrLoopFrozen) {
 		cancelWork()
+		cancelConsole()
 		return t.finish(runErr)
 	}
-	// Drain: the worker finishes its task within the grace, then it is cancelled.
-	if !t.waitDone(workerDone, drainGrace) {
+	// Drain: the worker and the console runs finish within the grace, then they are cancelled.
+	allDone := make(chan struct{})
+	go func() {
+		<-workerDone
+		<-consoleDone
+		close(allDone)
+	}()
+	if !t.waitDone(allDone, drainGrace) {
 		cancelWork()
-		t.waitDone(workerDone, killGrace)
+		cancelConsole()
+		t.waitDone(allDone, killGrace)
 	}
 	return t.finish(runErr)
 }
@@ -171,10 +194,11 @@ func (t *ticker) waitDone(done <-chan struct{}, d time.Duration) bool {
 	}
 }
 
-func (t *ticker) watchFence(ctx context.Context, stop context.CancelFunc, fail chan<- error) {
+func (t *ticker) watchFence(ctx context.Context, stop, cancelConsole context.CancelFunc, fail chan<- error) {
 	select {
 	case <-t.fence.Lost():
 		t.held.Store(false)
+		cancelConsole() // no job runs after the fence is lost
 		fail <- ErrFenceLost
 		stop()
 	case <-ctx.Done():
@@ -240,6 +264,12 @@ func (t *ticker) loop(ctx context.Context, start time.Time, first string) error 
 		skipped = false
 		reconcile := tickDue || slotDue
 		// A due slot or tick goes before a waiting request: the request turn is for a wake with neither.
+		if t.claimer != nil {
+			select { // the console turn: a signal, no ledger call here
+			case t.consoleSig <- struct{}{}:
+			default:
+			}
+		}
 		if !t.submit(turn{reconcile: reconcile, day: dayOf(now), console: !reconcile && t.turner != nil}) {
 			skipped = reconcile
 			continue
@@ -322,6 +352,33 @@ func (t *ticker) worker(runCtx, workCtx context.Context, done chan<- struct{}) {
 		case tn := <-t.tasks:
 			t.runTurn(workCtx, tn)
 			t.busy.Store(false)
+		}
+	}
+}
+
+// console is the console goroutine. On each signal of the loop it calls ClaimConsole under ctx, one
+// call at a time, and runs every ConsoleRun it returns in a goroutine of its own under ctx. After
+// runCtx ends it returns once the runs have returned (Run bounds the wait by cancelling ctx). A
+// ConsoleRun touches nothing the worker owns.
+func (t *ticker) console(runCtx, ctx context.Context, done chan<- struct{}) {
+	defer close(done)
+	if t.claimer == nil {
+		return
+	}
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	for {
+		select {
+		case <-runCtx.Done():
+			return
+		case <-t.consoleSig:
+		}
+		runs, err := t.claimer.ClaimConsole(ctx)
+		if err != nil {
+			t.log.Error("console claim failed", slog.String("kind", "error"))
+		}
+		for _, r := range runs {
+			wg.Go(func() { r(ctx) })
 		}
 	}
 }

@@ -7,18 +7,18 @@ injected Clock. Nothing here logs.
 
 from __future__ import annotations
 
-from collections import deque
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 
-from optdesk.ibkr.api import HistoryBar, HistoryPaced, HistoryRequest
+from optdesk.ibkr import spec
+from optdesk.ibkr.api import HistoryBar, HistoryRequest
 from optdesk.ibkr.timing import Clock
 
-MAX_REQUESTS = 55  # IBKR: 55 historical requests per 10 minutes
-WINDOW_S = 600.0
+MIN_GAP_S = 11.0  # every start waits this long after the previous one (bars of 1 min and larger)
 IDENTICAL_S = 15.0  # IBKR refuses an identical request within 15 seconds
-MAX_WAIT_S = 300.0  # a longer wait is a paced answer
+PACING_RETRY_S = 60.0  # wait after an IBKR pacing answer before the one retry
+PACING_CODE = 162
 MAX_DAYS_AS_D = 365
 
 BAR_SIZE = "1 day"
@@ -68,7 +68,9 @@ def wire_request(request: HistoryRequest) -> WireRequest:
     try:
         what = _WHAT_TO_SHOW[request.kind]
     except KeyError:
-        raise ValueError("kind is not one of trades, adjusted_last, midpoint or option_implied_vol") from None
+        raise ValueError(
+            "kind is not one of trades, adjusted_last, midpoint or option_implied_vol"
+        ) from None
     return WireRequest(
         end_date=end_date_text(request.end_day),
         duration=duration_text(request.duration_days),
@@ -81,37 +83,28 @@ def wire_request(request: HistoryRequest) -> WireRequest:
 class HistoryReader:
     """Paces historical requests on one clock and sends them through a fetch function.
 
-    At most 55 starts per 10 minutes and no identical request within 15 seconds.
-    A request that would have to wait more than 300 seconds raises HistoryPaced
-    and takes no slot.
+    Starts are one at a time, in the order callers arrive, at least 11 seconds
+    apart, and no identical request starts within 15 seconds. A pacing violation
+    (code 162 with that text) is waited out for 60 seconds and fetched once more;
+    any other answer, 162 with other text included, is raised at once.
     """
 
     def __init__(self, clock: Clock) -> None:
         self._clock = clock
-        self._starts: deque[float] = deque()
+        self._next_start = 0.0
         self._last: dict[HistoryRequest, float] = {}
 
-    def _wait(self, request: HistoryRequest) -> float:
+    async def _take_slot(self, request: HistoryRequest) -> None:
         now = self._clock.monotonic()
-        while self._starts and now - self._starts[0] >= WINDOW_S:
-            self._starts.popleft()
-        wait = 0.0
-        if len(self._starts) >= MAX_REQUESTS:
-            wait = self._starts[0] + WINDOW_S - now
+        start = max(now, self._next_start)
         sent = self._last.get(request)
         if sent is not None:
-            wait = max(wait, sent + IDENTICAL_S - now)
-        return wait
-
-    async def _take_slot(self, request: HistoryRequest) -> None:
-        while (wait := self._wait(request)) > 0:
-            if wait > MAX_WAIT_S:
-                raise HistoryPaced("historical requests are paced")
-            await self._clock.sleep(wait)
-        now = self._clock.monotonic()
-        self._starts.append(now)
-        self._last = {r: t for r, t in self._last.items() if now - t < IDENTICAL_S}
-        self._last[request] = now
+            start = max(start, sent + IDENTICAL_S)
+        self._next_start = start + MIN_GAP_S
+        self._last = {r: t for r, t in self._last.items() if start - t < IDENTICAL_S}
+        self._last[request] = start
+        if start > now:
+            await self._clock.sleep(start - now)
 
     async def bars(
         self,
@@ -120,5 +113,12 @@ class HistoryReader:
     ) -> Sequence[HistoryBar]:
         """Wait for a slot, then fetch; ValueError for a request with no words."""
         words = wire_request(request)
+        await self._take_slot(request)
+        try:
+            return await fetch(words)
+        except spec.BrokerError as exc:
+            if exc.code != PACING_CODE or "pacing violation" not in exc.text.lower():
+                raise
+        await self._clock.sleep(PACING_RETRY_S)
         await self._take_slot(request)
         return await fetch(words)

@@ -77,6 +77,9 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day) (tra
 	} else if in.Quotes, err = quotesOf(ctx, c, d, in.Positions); err != nil {
 		return in, gs, err
 	}
+	if in.Quotes, err = withMarks(ctx, c, alias, day, in); err != nil {
+		return in, gs, err
+	}
 	if c.Candidates == nil {
 		gs = append(gs, gapNoCandidates)
 	} else if c.Names == nil {
@@ -90,6 +93,15 @@ func gather(ctx context.Context, c Config, alias string, day contracts.Day) (tra
 		return in, gs, err
 	}
 	return in, gs, nil
+}
+
+// withMarks is in.Quotes followed by the quotes of the position marks; a nil Config.Marks adds none.
+func withMarks(ctx context.Context, c Config, alias string, day contracts.Day, in trackapi.TrackInput) ([]trackapi.TrackQuote, error) {
+	if c.Marks == nil {
+		return in.Quotes, nil
+	}
+	mq, err := markQuotes(ctx, c, alias, day, in.Positions)
+	return append(in.Quotes, mq...), err
 }
 
 func dayText(d time.Time, back int) contracts.Day {

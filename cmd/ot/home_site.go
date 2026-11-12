@@ -52,15 +52,28 @@ func (noSeries) SeriesPoints(context.Context, string, contracts.Day, contracts.D
 	return nil, nil
 }
 
-// homeBuild builds the five members and composes the page for day.
-func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day contracts.Day, now time.Time) ([]byte, error) {
-	if a.profile.Zone == nil {
-		return nil, errors.New(homeName + ": no zone")
+// homeResolver is the symbol resolver of the Companies rows: nil in the demo profile or without a catalog or names.
+func homeResolver(a *app, rd siteReaders) *symbolIDs {
+	if a.profile.Name == "demo" || rd.catalog == nil || rd.names == nil {
+		return nil
 	}
-	const scope = "home"
-	build := buildIDOf(version)
-	zone := a.profile.Zone
-	read := homeReadings(a, rd)
+	return &symbolIDs{catalog: rd.catalog, names: rd.names}
+}
+
+// homeInstrumentID is the instrument of symbol, 0 with no resolver or no match.
+func homeInstrumentID(ctx context.Context, ids *symbolIDs, symbol string) (int64, error) {
+	if ids == nil {
+		return 0, nil
+	}
+	id, ok, err := ids.ID(ctx, symbol)
+	if err != nil || !ok {
+		return 0, err
+	}
+	return id, nil
+}
+
+// homeRows are the Companies rows: the held subjects (every subject in the demo profile), each with its instrument.
+func homeRows(ctx context.Context, a *app, rd siteReaders, now time.Time) ([]home_companies.Row, error) {
 	rows := []home_companies.Row{}
 	subjects, err := companiesSubjects(ctx, a, rd)
 	if err != nil {
@@ -72,11 +85,32 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 			return nil, err
 		}
 	}
+	ids := homeResolver(a, rd)
 	for _, s := range subjects {
 		if a.profile.Name != "demo" && !held[s.Symbol] {
 			continue
 		}
-		rows = append(rows, home_companies.Row{Issuer: s.Issuer, Market: s.Market, Symbol: s.Symbol, HandPrice: s.HandPrice})
+		id, err := homeInstrumentID(ctx, ids, s.Symbol)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, home_companies.Row{Issuer: s.Issuer, Market: s.Market, Symbol: s.Symbol, HandPrice: s.HandPrice, InstrumentID: id})
+	}
+	return rows, nil
+}
+
+// homeBuild builds the five members and composes the page for day.
+func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day contracts.Day, now time.Time) ([]byte, error) {
+	if a.profile.Zone == nil {
+		return nil, errors.New(homeName + ": no zone")
+	}
+	const scope = "home"
+	build := buildIDOf(version)
+	zone := a.profile.Zone
+	read := homeReadings(a, rd)
+	rows, err := homeRows(ctx, a, rd, now)
+	if err != nil {
+		return nil, err
 	}
 	hh, err := home_household.Build(ctx, home_household.Config{
 		RunID: runID, BuildID: build, Scope: scope, Zone: zone, Alias: rd.aliasList()[0],
@@ -85,9 +119,18 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	if err != nil {
 		return nil, err
 	}
-	cc := home_companies.Config{Zone: zone, Today: func() contracts.Day { return day }, RunID: runID, BuildID: build, Scope: scope, Rows: rows}
+	cc := home_companies.Config{
+		Zone: zone, Today: func() contracts.Day { return day }, RunID: runID, BuildID: build, Scope: scope, Rows: rows,
+		Figures: pagefig.New,
+	}
+	if rd.bars != nil {
+		cc.Bars = rd.bars
+	}
 	if rd.view != nil {
 		cc.Read = rd.view
+	}
+	if rd.earnings != nil {
+		cc.Earnings = rd.earnings
 	}
 	co, err := home_companies.Build(ctx, cc, now)
 	if err != nil {

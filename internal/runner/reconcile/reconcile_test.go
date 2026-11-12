@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/jonboulle/clockwork"
 )
@@ -625,5 +627,137 @@ func TestReconcileSkipsJobWhosePlanFails(t *testing.T) {
 	}
 	if strings.Contains(out, planFailMarker) {
 		t.Fatalf("log holds the error text: %q", out)
+	}
+}
+
+func TestSharedJobLocksAcrossReconcilers(t *testing.T) {
+	t.Parallel()
+	locks := shared.NewJobLocks()
+	a := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	b := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	WithJobLocks(a, locks)
+	WithJobLocks(b, locks)
+	unlock, ok := a.locks.TryLock("job")
+	if !ok {
+		t.Fatal("first lock refused")
+	}
+	if _, ok := b.locks.TryLock("job"); ok {
+		t.Fatal("second reconciler locked a job the first holds")
+	}
+	unlock()
+	if _, ok := b.locks.TryLock("job"); !ok {
+		t.Fatal("released job not lockable through the other reconciler")
+	}
+	c := newReconciler(nil, nil, nil, nil, nil, runner.WindowRule{}, stubKeyRunner{})
+	if _, ok := c.locks.TryLock("job"); !ok {
+		t.Fatal("a reconciler without the set shares it")
+	}
+}
+
+type stubKeyRunner struct{}
+
+func (stubKeyRunner) RunKey(context.Context, contracts.Job, contracts.Day, contracts.ExpectedKey, int, time.Time, time.Time, string) (store.Run, error) {
+	return store.Run{}, nil
+}
+
+func TestReconcileJobsParallelPerDay(t *testing.T) {
+	t.Parallel()
+	l := bfSetup("2026-11-03")
+	a, b := newBlockJob(contracts.JobResult{Returned: 1, Usable: 1}), newBlockJob(contracts.JobResult{Returned: 1, Usable: 1})
+	a.id, b.id = "a", "b"
+	b.keys = []contracts.ExpectedKey{keyC}
+	rc := NewWithRule(l, oneDay(), afterClose(), []contracts.Job{a, b}, runner.WindowRule{CalendarID: "XNYS"})
+	done := make(chan error, 1)
+	go func() { done <- rc.Reconcile(context.Background(), bfDay) }()
+	<-a.started // both jobs run at once: neither waits for the other to end
+	<-b.started
+	if cur, _ := l.Cursor(context.Background()); cur.Day != "2026-11-03" {
+		t.Fatalf("cursor %q moved before the jobs ended", cur.Day)
+	}
+	close(a.release)
+	close(b.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if cur, _ := l.Cursor(context.Background()); cur.Day != bfDay {
+		t.Fatalf("cursor %q after the day", cur.Day)
+	}
+	if l.acquired.Load() != 1 || l.released.Load() != 1 {
+		t.Fatalf("lease: acquired %d released %d", l.acquired.Load(), l.released.Load())
+	}
+}
+
+func TestDependentWaitsForItsSlot(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	led := dueLedger()
+	up, d := upJob(keyA), dep(0, keyC)
+	if err := dueRec(led, "2026-11-05T20:59:00Z", up, d).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(up.calls) != 1 || len(d.calls) != 0 {
+		t.Fatalf("before the slot: up %d dep %d", len(up.calls), len(d.calls))
+	}
+	if err := dueRec(led, "2026-11-05T21:00:00Z", up, d).Reconcile(ctx, dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(up.calls) != 1 || len(d.calls) != 1 {
+		t.Fatalf("at the slot: up %d dep %d", len(up.calls), len(d.calls))
+	}
+	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode == "upstream_missing" {
+		t.Fatalf("upstream was ok: row %+v", r)
+	}
+}
+
+func TestDependentAfterUpstreamInSameTick(t *testing.T) {
+	t.Parallel()
+	log := &evLog{}
+	led := dueLedger()
+	up := logJob{fakeJob: upJob(keyA), log: log}
+	d := logDep{depJob: dep(0, keyC), log: log}
+	if err := dueRec(led, "2026-11-05T21:30:00Z", up, d).Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := log.all(), []string{"start:up", "end:up", "start:dep", "end:dep"}; !slices.Equal(got, want) {
+		t.Fatalf("events %v, want %v", got, want)
+	}
+	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode == "upstream_missing" {
+		t.Fatalf("marked although the upstream ended ok: %+v", r)
+	}
+	if cur, _ := led.Cursor(context.Background()); cur.Day != dueDay {
+		t.Fatalf("cursor %q: the day is complete", cur.Day)
+	}
+}
+
+func TestDependentRunsWithMarkWhenUpstreamFailed(t *testing.T) {
+	t.Parallel()
+	led := dueLedger()
+	// The upstream's only run ended with a permanent error: the key is missing and nothing retries it.
+	led.runs[dueDay] = []store.Run{{ID: "2026-11-05|ds|a|1", Day: dueDay, Key: keyA, Status: store.RunDone, ErrorCode: string(contracts.Permanent)}}
+	up, d := upJob(keyA), dep(-10*time.Minute, keyC)
+	if err := dueRec(led, "2026-11-05T20:55:00Z", up, d).Reconcile(context.Background(), dueDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(up.calls) != 0 || len(d.calls) != 1 {
+		t.Fatalf("up %d dep %d", len(up.calls), len(d.calls))
+	}
+	if r := rowOf(t, led, dueDay, keyC); r.ReasonCode != "upstream_missing" {
+		t.Fatalf("row %+v", r)
+	}
+}
+
+func TestDependentLeftWhileUpstreamRunsAndRunsWhenItEnds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	l := bfSetup(bfDay, keyA, keyC)
+	up, d := upJob(keyA), dep(0, keyC)
+	// A live run of the upstream: at the slot the dependent is left, with no wait.
+	l.runs[bfDay] = []store.Run{{ID: "2026-11-04|ds|a|1", Day: bfDay, Key: keyA, Status: store.RunRunning, LeaseUntil: afterClose().Now().Add(time.Hour)}}
+	rec := NewWithRule(l, oneDay(), afterClose(), []contracts.Job{up, d}, runner.WindowRule{CalendarID: "XNYS"})
+	if err := rec.Reconcile(ctx, bfDay); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.calls) != 0 {
+		t.Fatalf("dependent ran beside a running upstream: %d", len(d.calls))
 	}
 }

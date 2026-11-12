@@ -74,6 +74,29 @@ def test_oi_after_release_is_ok() -> None:
     assert cancelled == [9]
 
 
+def test_oi_late_inside_item_timeout_is_ok() -> None:
+    async def run() -> tuple[QuoteRow, list[int]]:
+        clock = FakeClock()
+        gateway, ib = await opened(clock, lines=1)
+        rows, task = start(gateway)
+        await spin(50)
+        await clock.advance(1)
+        ticker = await feed_settled(ib)
+        await clock.advance(12)
+        await spin(50)
+        assert not rows and not ib.cancelled
+        ticker.callOpenInterest = 777.0
+        ticker.updateEvent.emit(ticker)
+        await spin(50)
+        await task
+        return rows[0], ib.cancelled
+
+    row, cancelled = asyncio.run(run())
+    assert row.status == "ok"
+    assert dict(row.fields)["open_interest"] == 777.0
+    assert cancelled == [9]
+
+
 def test_oi_missing_is_partial() -> None:
     async def run() -> tuple[QuoteRow, list[int]]:
         clock = FakeClock()

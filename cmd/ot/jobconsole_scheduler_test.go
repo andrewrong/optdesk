@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/runner"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/jobrequest"
 	"github.com/jonboulle/clockwork"
@@ -142,7 +143,7 @@ func TestHostSeesJobBroughtBackByProbe(t *testing.T) {
 	}
 }
 
-func (r *jcRig) turnOf(c runner.ConsoleTurner) bool {
+func (r *jcRig) turnOf(c runner.ConsoleTurner) bool { //nolint:staticcheck // SA1019: kept until deleted
 	r.t.Helper()
 	took, err := c.ConsoleTurn(r.t.Context(), jcNever)
 	if err != nil {
@@ -210,7 +211,7 @@ func TestSchedulerRunsWithConsoleOffWhenStartFails(t *testing.T) {
 		t.Fatalf("%d console-off lines: %q", n, r.errb.String())
 	}
 	// the host tries Start again at the next turn and so needs no restart once the table exists.
-	if took, err := r.sched.rec.(runner.ConsoleTurner).ConsoleTurn(t.Context(), jcNever); err != nil || took {
+	if took, err := r.sched.rec.(runner.ConsoleTurner).ConsoleTurn(t.Context(), jcNever); err != nil || took { //nolint:staticcheck // SA1019: kept until deleted
 		t.Fatalf("turn %v %v", took, err)
 	}
 	if q.log.count("fail_running") != 2 {
@@ -224,7 +225,7 @@ func TestSchedulerRunsWithZeroOpenerAndNilBackfiller(t *testing.T) {
 	done := r.start()
 	r.waitStarted(t, done)
 	r.tick()
-	turner, ok := r.sched.rec.(runner.ConsoleTurner)
+	turner, ok := r.sched.rec.(runner.ConsoleTurner) //nolint:staticcheck // SA1019: kept until deleted
 	if !ok {
 		t.Fatal("the reconciler cannot turn the console")
 	}
@@ -233,5 +234,51 @@ func TestSchedulerRunsWithZeroOpenerAndNilBackfiller(t *testing.T) {
 	}
 	if err := r.stop(t, done); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWrapperForwardsClaimConsole(t *testing.T) {
+	t.Parallel()
+	r := jcOne(t, "fred_series")
+	build := func([]contracts.Job) runner.Reconciler { return noopRec{} }
+	sw := newSwapReconciler([]contracts.Job{jcJob{id: "fred_series", keys: jcKey}}, build, nil, slog.New(slog.DiscardHandler))
+	rec := &consoleReconciler{sw: sw, host: r.host}
+	runs, err := rec.ClaimConsole(t.Context())
+	if err != nil || len(runs) != 1 || r.log.count("claim:1") != 1 {
+		t.Fatalf("runs %d, err %v, calls %v", len(runs), err, r.log.items)
+	}
+	off := &consoleReconciler{sw: sw}
+	if runs, err := off.ClaimConsole(t.Context()); len(runs) != 0 || err != nil {
+		t.Fatalf("console off: %v %v", runs, err)
+	}
+}
+
+type lockRec struct{ noopRec }
+
+func TestSwapDuringRunKeepsJobLock(t *testing.T) {
+	t.Parallel()
+	newRec := func(
+		store.OpsLedger, store.SchedulerLedger, clock.Calendar, clockwork.Clock, []contracts.Job, runner.WindowRule, runner.KeyRunner,
+	) (runner.Reconciler, runner.Backfiller) {
+		return lockRec{}, nil
+	}
+	var seen []runner.JobLocks
+	withLocks := func(_ runner.Reconciler, _ runner.Backfiller, l runner.JobLocks) { seen = append(seen, l) }
+	build := newBuild(newRec, withLocks, shared.NewJobLocks(), nil, nil, nil, clockwork.NewFakeClock(), nil, nil)
+	build(nil)
+	build(nil) // a swap
+	if len(seen) != 2 || seen[0] == nil || seen[1] == nil {
+		t.Fatalf("sets %v", seen)
+	}
+	unlock, ok := seen[0].TryLock("job_a")
+	if !ok {
+		t.Fatal("the first set refused a free job")
+	}
+	if _, ok := seen[1].TryLock("job_a"); ok {
+		t.Fatal("the second set took a job the first one holds")
+	}
+	unlock()
+	if _, ok := seen[1].TryLock("job_a"); !ok {
+		t.Fatal("the job stayed locked after unlock")
 	}
 }

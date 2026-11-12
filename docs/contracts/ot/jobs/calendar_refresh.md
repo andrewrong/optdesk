@@ -11,7 +11,8 @@ The job states its own window through `runner.Windowed`; `ot` passes the zero `r
 ## Lines it reads
 
 - `OT_PG_DSN_LOADER`: the only line of the store it opens (role `ot_loader`).
-- `OT_CALENDAR_UV` (optional, default `uv`): it runs `uv run --no-sync --project pyside python -m optdesk.calendar` through `calendarcli.Exec`.
+- `OT_CALENDAR_UV` (optional, default `uv`): it runs `uv run --locked --project <dir> python -m optdesk.calendar` through `calendarcli.Exec`.
+- `OT_CALENDAR_PROJECT` (optional): `<dir>`, the pyside project; empty means `pyside` made absolute against the working directory of `ot`. A directory without `pyproject.toml` fails the build of the job with a text that names this line.
 
 ## Left out
 

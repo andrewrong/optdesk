@@ -22,7 +22,8 @@ type consoleReconciler struct {
 
 var _ runner.Reconciler = (*consoleReconciler)(nil)
 var _ runner.Prober = (*consoleReconciler)(nil)
-var _ runner.ConsoleTurner = (*consoleReconciler)(nil)
+var _ runner.ConsoleClaimer = (*consoleReconciler)(nil)
+var _ runner.ConsoleTurner = (*consoleReconciler)(nil) //nolint:staticcheck // SA1019: ConsoleTurner stays until a later design deletes it
 
 func (c *consoleReconciler) Reconcile(ctx context.Context, day contracts.Day) error {
 	return c.sw.Reconcile(ctx, day)
@@ -39,6 +40,17 @@ func (c *consoleReconciler) ConsoleTurn(ctx context.Context, hold runner.SlotHol
 		return false, nil
 	}
 	return c.host.ConsoleTurn(ctx, hold)
+}
+
+// ClaimConsole claims the requests of the queue through the host; it returns none when the console is off.
+func (c *consoleReconciler) ClaimConsole(ctx context.Context) ([]runner.ConsoleRun, error) {
+	if c.host == nil {
+		return nil, nil
+	}
+	if _, on := c.sw.current(); !on {
+		return nil, nil
+	}
+	return c.host.ClaimConsole(ctx)
 }
 
 // openConsoleHost opens the consumer with the runner DSN and builds the host over it and the key gap syncer.

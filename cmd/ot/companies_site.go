@@ -88,26 +88,18 @@ func openCompaniesFacts(ctx context.Context, a *app, track func(io.Closer, error
 // heldLookbackDays is how many days before the page day the positions are looked for when the day has none.
 const heldLookbackDays = 6
 
-// heldIssuers gives the Held function of the page: the issuers of the subjects whose symbol is the symbol of a
-// stock position (SecType STK, non-zero Quantity) of alias, read for the newest of day and the six days before it
-// that has any position row. A reader error is returned.
-func heldIssuers(acc store.AccountReader, alias string, day contracts.Day, subjects []companies_page.Subject) func(context.Context) (map[string]bool, error) {
+// heldIssuers gives the Held function of the page: the issuers of the subjects whose symbol is held as stock in any
+// alias of the site readers (heldSymbols), read for the newest of day and the days before it that has positions.
+// A reader error is returned.
+func heldIssuers(rd siteReaders, day contracts.Day, subjects []companies_page.Subject) func(context.Context) (map[string]bool, error) {
 	return func(ctx context.Context) (map[string]bool, error) {
 		t, err := time.Parse(dayLayout, string(day))
 		if err != nil {
 			return nil, err
 		}
-		var rows []store.Position
-		for i := 0; i <= heldLookbackDays && len(rows) == 0; i++ {
-			if rows, err = acc.Positions(ctx, alias, t.AddDate(0, 0, -i).Format(dayLayout)); err != nil {
-				return nil, err
-			}
-		}
-		symbols := map[string]bool{}
-		for _, p := range rows {
-			if p.SecType == "stock" && !isZeroQuantity(p.Quantity) {
-				symbols[p.Symbol] = true
-			}
+		symbols, err := heldSymbols(ctx, rd, t)
+		if err != nil {
+			return nil, err
 		}
 		held := map[string]bool{}
 		for _, s := range subjects {
@@ -139,8 +131,8 @@ func buildCompaniesAt(ctx context.Context, a *app, rd siteReaders, day contracts
 	if rd.view != nil {
 		cfg.Read = rd.view
 	}
-	if rd.noticeAccount != nil && a.profile.Name != "demo" {
-		cfg.Held = heldIssuers(rd.noticeAccount, rd.aliasList()[0], day, subjects)
+	if rd.account != nil && a.profile.Name != "demo" {
+		cfg.Held = heldIssuers(rd, day, subjects)
 	}
 	if fd, ok := fundamentalsOf(a.deps); ok {
 		facts, _ := siteReaderOf[store.FactReader](rd, siteFactsKey)

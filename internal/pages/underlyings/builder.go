@@ -21,6 +21,7 @@ const (
 	dayLayout    = "2006-01-02"
 	gapKind      = "gap"
 	gapNoReader  = "no_reader"
+	gapNoData    = "no_data"
 	editableBase = "status name issuer options fundamentals buy_price sale_price report_date_override note"
 )
 
@@ -45,13 +46,18 @@ type Confirm struct {
 
 // Input is everything Build reads.
 type Input struct {
-	Rows    []underlying.Row // underlying.Reader.Current, sorted by Key by Build again
-	Held    map[string]bool  // held symbols
-	History []underlying.Row // newest first; at most the first 20 are listed
-	Form    *Form            // nil: read-only
-	Confirm *Confirm         // nil: confirm is null
-	Notice  string
-	Now     time.Time // generated_at, UTC; the page reads no clock
+	Rows []underlying.Row // underlying.Reader.Current, sorted by Key by Build again
+	Held map[string]bool  // held symbols (shares)
+	// HeldOptions are the symbols held through options; HeldRefused maps a held symbol that cannot be added to the
+	// reason; HeldError is set when the positions could not be read.
+	HeldOptions map[string]bool
+	HeldRefused map[string]string
+	HeldError   bool
+	History     []underlying.Row // newest first; at most the first 20 are listed
+	Form        *Form            // nil: read-only
+	Confirm     *Confirm         // nil: confirm is null
+	Notice      string
+	Now         time.Time // generated_at, UTC; the page reads no clock
 	// SessionDay is session_day, YYYY-MM-DD; empty means the day of Now in Zone.
 	SessionDay string
 	Zone       *time.Location // owner zone of set_at; nil is UTC
@@ -168,6 +174,7 @@ func Build(in Input) ([]byte, error) {
 	} else {
 		p.Gaps = append(p.Gaps, gapJSON{Kind: gapKind, Reason: gapNoReader, Text: readOnlyText})
 	}
+	p.Gaps = append(p.Gaps, heldGaps(in, rows)...)
 	if in.Confirm != nil {
 		p.Confirm = buildConfirm(*in.Confirm)
 	}
@@ -203,7 +210,7 @@ func buildRow(r underlying.Row, in Input, zone *time.Location) rowJSON {
 		Key: r.Key, Symbol: r.Symbol, Market: r.Market, Kind: r.Kind, Name: name,
 		Status: r.Status, StatusText: statusText(r.Status, r.Reason, stale), Reason: r.Reason,
 		Issuer: r.Issuer, ConID: conID, Options: r.Options, Fundamentals: r.Fundamentals, Held: held,
-		BuyPrice: r.BuyPrice, SalePrice: r.SalePrice, ReportDateOverride: r.ReportDateOverride, Note: r.Note,
+		BuyPrice: r.BuyPrice, SalePrice: r.SalePrice, ReportDateOverride: r.ReportDateOverride, Note: rowNote(r),
 		FollowedBy: groups, FollowedText: followedText(groups),
 		SetAt:    r.SetAt.In(zone).Format(timeLayout),
 		Editable: editable(r.Status, in.Form != nil),
@@ -237,4 +244,55 @@ func buildConfirm(c Confirm) *confirmJSON {
 		out.Stops = append(out.Stops, refillText)
 	}
 	return out
+}
+
+// heldGaps names every held symbol (shares or options) that is not followed, sorted by symbol; with HeldError it is
+// the one read-failure gap. A row of any market counts for the symbol; an active row ends the gap, a paused or
+// retired row is the owner's choice and gives none.
+func heldGaps(in Input, rows []underlying.Row) []gapJSON {
+	if in.HeldError {
+		return []gapJSON{{Kind: gapKind, Reason: gapNoData, Text: heldReadText}}
+	}
+	status := map[string]string{} // best status per symbol: active > pending > unresolved > other
+	rank := map[string]int{underlying.StatusActive: 3, underlying.StatusPending: 2, underlying.StatusUnresolved: 1}
+	reason := map[string]string{}
+	for _, r := range rows {
+		if _, ok := status[r.Symbol]; !ok || rank[r.Status] > rank[status[r.Symbol]] {
+			status[r.Symbol] = r.Status
+			reason[r.Symbol] = r.Reason
+		}
+	}
+	syms := map[string]bool{}
+	for s, ok := range in.Held {
+		syms[s] = syms[s] || ok
+	}
+	for s, ok := range in.HeldOptions {
+		syms[s] = syms[s] || ok
+	}
+	var names []string
+	for s, ok := range syms {
+		if ok {
+			names = append(names, s)
+		}
+	}
+	slices.Sort(names)
+	var gaps []gapJSON
+	for _, s := range names {
+		text := ""
+		switch st, has := status[s]; {
+		case has && st == underlying.StatusPending:
+			text = heldPendingText(s)
+		case has && st == underlying.StatusUnresolved:
+			text = heldUnresolvedText(s, reason[s])
+		case has:
+		case in.HeldRefused[s] != "":
+			text = heldRefusedText(s, in.HeldRefused[s])
+		default:
+			text = heldNoRowText(s)
+		}
+		if text != "" {
+			gaps = append(gaps, gapJSON{Kind: gapKind, Reason: gapNoData, Text: text})
+		}
+	}
+	return gaps
 }
