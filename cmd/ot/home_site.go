@@ -66,7 +66,16 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	if err != nil {
 		return nil, err
 	}
+	held := map[string]bool{}
+	if a.profile.Name != "demo" {
+		if held, err = heldSymbols(ctx, rd, now); err != nil {
+			return nil, err
+		}
+	}
 	for _, s := range subjects {
+		if a.profile.Name != "demo" && !held[s.Symbol] {
+			continue
+		}
 		rows = append(rows, home_companies.Row{Issuer: s.Issuer, Market: s.Market, Symbol: s.Symbol, HandPrice: s.HandPrice})
 	}
 	hh, err := home_household.Build(ctx, home_household.Config{
