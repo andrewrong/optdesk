@@ -124,7 +124,7 @@ func TestPlanLeavesOutAMarkedContract(t *testing.T) {
 func TestPlanKeyIsOneFixedKeyAndRunPlansEveryStock(t *testing.T) {
 	t.Parallel()
 	r := newPlanRig()
-	r.acct = fakeAccounts{pos: []store.Position{{SecType: "STK", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"}}}
+	r.acct = fakeAccounts{pos: []store.Position{{SecType: "stock", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"}}}
 	a := r.seed(t, 100, putStrikes...)
 	b := r.seed(t, 101, putStrikes...)
 	j := r.job(t, "MSFT", "AAPL")
@@ -201,7 +201,7 @@ func TestPlanHeldContractIsAlwaysPlannedAsHeld(t *testing.T) {
 	// A far put the band does not hold, held.
 	_ = r.opts.PutOption(context.Background(), openquote.OptionRef{UnderlyingID: id, Currency: "USD", Exchange: "SMART", TradingClass: "X",
 		Multiplier: "100", Expiry: expiry30Day, Strike: "60.0", Right: "P", InstrumentID: 999})
-	r.acct = fakeAccounts{pos: []store.Position{{SecType: "OPT", Symbol: "AAPL", Expiry: "2026-12-10", Strike: "60.0", Right: "put", Quantity: "-1"}}}
+	r.acct = fakeAccounts{pos: []store.Position{{SecType: "option", Symbol: "AAPL", Expiry: "2026-12-10", Strike: "60.0", Right: "put", Quantity: "-1"}}}
 	r.run(t, r.job(t, "AAPL"))
 	for _, it := range r.plans.items {
 		if it.InstrumentID == 999 && it.Class == "held" && !it.Deferred {
@@ -400,5 +400,34 @@ func TestPlanWindowsPerCalendar(t *testing.T) {
 		Window() (string, time.Duration, time.Duration)
 	}).Window(); c != "XTKS" {
 		t.Errorf("JP resolve window %s", c)
+	}
+}
+
+// Position rows carry the sec types the account table stores: "stock", "index" and "option".
+
+func TestHeldStockRowEntersTheWatchedStocks(t *testing.T) {
+	t.Parallel()
+	s := Stored{Accounts: fakeAccounts{pos: []store.Position{
+		{SecType: "stock", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"},
+		{SecType: "stock", Symbol: "ZERO", ConID: 78, Quantity: "0"},
+	}}}
+	got, _, err := s.stocks(context.Background(), time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(got) != 1 || got[0].Symbol != "NVDA" || got[0].ConID != 77 {
+		t.Fatalf("stocks %v err %v, want NVDA only", got, err)
+	}
+}
+
+func TestHeldOptionRowIsReadForItsQuoteRef(t *testing.T) {
+	t.Parallel()
+	ref := openquote.OptionRef{Expiry: "2026-12-10", Strike: "60.0", Right: "P", InstrumentID: 999}
+	row := store.Position{SecType: "option", Symbol: "AAPL", Expiry: "2026-12-10", Strike: "60.0", Right: "put", Quantity: "-1"}
+	held, missing := heldRefs([]store.Position{row}, "AAPL", []openquote.OptionRef{ref})
+	if len(held) != 1 || held[0].InstrumentID != 999 || missing != 0 {
+		t.Fatalf("held %v missing %d", held, missing)
+	}
+	row.Quantity = "0"
+	held, missing = heldRefs([]store.Position{row}, "AAPL", []openquote.OptionRef{ref})
+	if len(held) != 0 || missing != 0 {
+		t.Fatalf("a zero-quantity row is not held: %v missing %d", held, missing)
 	}
 }

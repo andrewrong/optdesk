@@ -432,7 +432,7 @@ func TestGapPassReadsNoPullRows(t *testing.T) {
 func TestHeldOptionContractIsResolvedWhateverItsExpiry(t *testing.T) {
 	t.Parallel()
 	r := newRig(chainOf("AAPL", 990, 1010, expiry30, "20270219"))
-	r.acct = fakeAccounts{pos: []store.Position{{SecType: "OPT", Symbol: "AAPL", Expiry: "2027-02-19", Strike: "95.0", Right: "put", Quantity: "-1",
+	r.acct = fakeAccounts{pos: []store.Position{{SecType: "option", Symbol: "AAPL", Expiry: "2027-02-19", Strike: "95.0", Right: "put", Quantity: "-1",
 		Multiplier: "100"}}}
 	r.run(t, NewResolve, ResolveOptions{}, "AAPL")
 	found := false
@@ -600,5 +600,20 @@ func TestResolveMissingCloseAsksTheGatewayOnce(t *testing.T) {
 	h.bars = []broker.Bar{{Close: "100"}}
 	if res := j.Run(context.Background(), runDay, keys); res.Err != nil {
 		t.Fatalf("fetched close: %v", res.Err)
+	}
+}
+
+func TestHeldOptionRowIsKeptAsHeldCandidate(t *testing.T) {
+	t.Parallel()
+	chains := []broker.Chain{{Expirations: []string{"20270219"}, Multiplier: "100"}}
+	count := func(qty string) int {
+		r := &keyRun{st: stock{Symbol: "AAPL"}, pos: []store.Position{{SecType: "option", Symbol: "AAPL", Expiry: "2027-02-19",
+			Strike: "95.0", Right: "put", Quantity: qty, Multiplier: "100"}}}
+		n := 0
+		r.heldCandidates(chains, func(broker.Chain, string, string, string, bool) candidate { return candidate{} }, func(candidate) { n++ })
+		return n
+	}
+	if count("-1") != 1 || count("0") != 0 {
+		t.Fatalf("held row candidates: qty -1 → %d, qty 0 → %d", count("-1"), count("0"))
 	}
 }

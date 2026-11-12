@@ -61,7 +61,7 @@ func (r *keyRun) candidates(chains []broker.Chain, spot, sigma float64, held boo
 // their expiry.
 func (r *keyRun) heldCandidates(chains []broker.Chain, mk func(broker.Chain, string, string, string, bool) candidate, add func(candidate)) {
 	for _, pos := range r.pos {
-		if pos.SecType != "OPT" || pos.Symbol != r.st.Symbol || !nonzero(pos.Quantity) {
+		if pos.SecType != "option" || pos.Symbol != r.st.Symbol || !nonzero(pos.Quantity) {
 			continue
 		}
 		right := "P"
