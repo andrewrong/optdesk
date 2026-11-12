@@ -498,26 +498,16 @@ func TestRunFailureLogsStepKind(t *testing.T) {
 	}
 }
 
-func TestWrongDay(t *testing.T) {
+func TestPastDayRunsClockDay(t *testing.T) {
 	t.Parallel()
-	for _, other := range []contracts.Day{"2026-11-08", "2026-11-10"} {
-		usSrc, jpSrc := &fakeSource{}, &fakeSource{}
-		st := &memStore{}
-		j := build(t, map[string]sources.EarningsSource{"US": usSrc, "JP": jpSrc}, st, us("cik:1", "A"), jp("edinet:E1", "1111"))
-		res := j.Run(context.Background(), other, nil)
-		var te contracts.TypedError
-		if !errors.As(res.Err, &te) || te.Kind() != contracts.NoValue || !strings.Contains(res.Err.Error(), "wrong day") {
-			t.Fatalf("day %s: err %v", other, res.Err)
-		}
-		if usSrc.calls != 0 || jpSrc.calls != 0 || len(st.rows) != 0 {
-			t.Fatalf("day %s: calls %d %d rows %d", other, usSrc.calls, jpSrc.calls, len(st.rows))
-		}
-	}
-	// the clock's New York date is the day: the job runs
 	usSrc := &fakeSource{}
 	st := &memStore{}
 	j := build(t, map[string]sources.EarningsSource{"US": usSrc}, st, us("cik:1", "A"))
-	if res := j.Run(context.Background(), day, nil); res.Err != nil || usSrc.calls != 1 || len(st.rows) != 1 {
-		t.Fatalf("same day: err %v calls %d rows %d", res.Err, usSrc.calls, len(st.rows))
+	res := j.Run(context.Background(), "2026-11-06", nil)
+	if res.Err != nil || usSrc.calls != 1 || len(st.rows) != 1 {
+		t.Fatalf("past day: err %v calls %d rows %d", res.Err, usSrc.calls, len(st.rows))
+	}
+	if got := st.rows[0].ObservedOn.Format(dayLayout); got != string(day) {
+		t.Fatalf("ObservedOn = %s, want the clock's date %s", got, day)
 	}
 }

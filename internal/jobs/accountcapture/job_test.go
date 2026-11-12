@@ -504,41 +504,25 @@ func TestStoreSecTypeRejectsEmptyWord(t *testing.T) {
 	}
 }
 
-func TestWrongDay(t *testing.T) {
+func TestPastDayStoresClockDay(t *testing.T) {
 	t.Parallel()
-	for name, tc := range map[string]struct {
-		now     time.Time
-		wantErr bool
-	}{
-		"past day":                 {time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC), true},
-		"same New York day":        {time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC), false},
-		"UTC is next day, NY same": {time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC), false},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			rd := goodReader("a")
-			w := newWriter()
-			j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClockAt(tc.now)},
-				slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
-			if err != nil {
-				t.Fatal(err)
-			}
-			keys, _, _ := j.Plan(context.Background(), testDay)
-			res := j.Run(context.Background(), testDay, keys)
-			if tc.wantErr {
-				var k interface{ Kind() contracts.ErrorKind }
-				if res.Err == nil || !errors.As(res.Err, &k) || k.Kind() != contracts.NoValue || res.Err.Error() != "wrong day" {
-					t.Fatalf("err = %v, want NoValue wrong day", res.Err)
-				}
-				if rd.calls != 0 || rd.exCalls != 0 || res.Returned != 0 || w.writes != 0 {
-					t.Fatalf("read or wrote after wrong day: %d %d %d %d", rd.calls, rd.exCalls, res.Returned, w.writes)
-				}
-				return
-			}
-			if res.Err != nil || rd.calls != 1 || w.writes == 0 {
-				t.Fatalf("same day: err %v calls %d writes %d", res.Err, rd.calls, w.writes)
-			}
-		})
+	rd := goodReader("a")
+	w := newWriter()
+	now := time.Date(2026, 11, 10, 15, 0, 0, 0, time.UTC)
+	j, err := newJob(Config{Main: "a", Readers: map[string]broker.AccountReader{"a": rd}, Writer: w, Clock: clockwork.NewFakeClockAt(now)},
+		slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, _, _ := j.Plan(context.Background(), testDay)
+	res := j.Run(context.Background(), testDay, keys)
+	if res.Err != nil || rd.calls != 1 || w.writes == 0 {
+		t.Fatalf("past day: err %v calls %d writes %d", res.Err, rd.calls, w.writes)
+	}
+	for _, c := range w.captures {
+		if c.SessionDay != "2026-11-10" {
+			t.Fatalf("SessionDay = %q, want the clock's date 2026-11-10", c.SessionDay)
+		}
 	}
 }
 
