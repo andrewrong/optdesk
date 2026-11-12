@@ -166,3 +166,36 @@ func TestListContractsStrikeTextEqualsResolveContract(t *testing.T) {
 		t.Fatalf("strike %q vs %q", listed[0].Strike, res.Contract.Strike)
 	}
 }
+
+func TestListContractsSendsExpiryAsYYYYMMDD(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[contracts.Day]string{"2026-12-11": "20261211", "20261211": "20261211"} {
+		var got *pb.ListContractsRequest
+		c := serveLister(t, listFake(func(r *pb.ListContractsRequest) (*pb.ListContractsResponse, error) {
+			got = r
+			return &pb.ListContractsResponse{}, nil
+		}))
+		if _, err := c.ListContracts(context.Background(), ko(), in, "", "KO"); err != nil {
+			t.Fatal(err)
+		}
+		if got.GetExpiry() != want {
+			t.Fatalf("day %q sent as %q, want %q", in, got.GetExpiry(), want)
+		}
+	}
+}
+
+func TestListContractsBadDayIsPermanentWithoutRPC(t *testing.T) {
+	t.Parallel()
+	for _, in := range []contracts.Day{"2026-13-40", "", "2026-1-1", "20261340", "x"} {
+		calls := 0
+		c := serveLister(t, listFake(func(*pb.ListContractsRequest) (*pb.ListContractsResponse, error) {
+			calls++
+			return &pb.ListContractsResponse{}, nil
+		}))
+		out, err := c.ListContracts(context.Background(), ko(), in, "", "KO")
+		var te contracts.TypedError
+		if err == nil || out != nil || !errors.As(err, &te) || te.Kind() != contracts.Permanent || calls != 0 {
+			t.Fatalf("day %q: out=%v err=%v calls=%d", in, out, err, calls)
+		}
+	}
+}
