@@ -12,11 +12,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/atombender/go-jsonschema/pkg/types"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/contracts/gen"
 	"github.com/andrewrong/optdesk/internal/pages/home_companies"
+	"github.com/andrewrong/optdesk/internal/store"
 )
 
 const schemaHost = "https://optdesk.invalid/schemas/"
@@ -366,12 +368,93 @@ func TestChangeGapsSayNotReadByThisCard(t *testing.T) {
 	}))
 	row := m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)
 	for k, want := range map[string]string{
-		"earnings":        "earnings date: not read by this card yet",
 		"day_change":      "day change: not read by this card yet",
 		"five_day_change": "5-day change: not read by this card yet",
 	} {
 		if got := row[k].(map[string]any)["text"]; got != want {
 			t.Errorf("%s text = %v, want %q", k, got, want)
 		}
+	}
+}
+
+type fakeEarnings struct {
+	rows []contracts.EarningsDate
+	err  error
+}
+
+func (f fakeEarnings) EarningsDates(context.Context, string, contracts.Day, contracts.Day) ([]contracts.EarningsDate, error) {
+	return f.rows, f.err
+}
+
+func earnRow(status, report string) contracts.EarningsDate {
+	r := contracts.EarningsDate{Status: gen.EarningsDateStatus(status)}
+	if report != "" {
+		d, err := time.Parse("2006-01-02", report)
+		if err != nil {
+			panic(err)
+		}
+		r.ReportDate = &types.SerializableDate{Time: d}
+	}
+	return r
+}
+
+func earningsOf(t *testing.T, er store.EarningsDateReader) map[string]any {
+	t.Helper()
+	m, _ := build(t, config(home_companies.Config{
+		Rows:     []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB"}},
+		Read:     fakeView{},
+		Earnings: er,
+	}))
+	return m["card"].(map[string]any)["rows"].([]any)[0].(map[string]any)["earnings"].(map[string]any)
+}
+
+func TestEarningsCell(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		er   store.EarningsDateReader
+		want map[string]any
+	}{
+		{"future", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-10"), earnRow("listed", "2026-11-28")}},
+			map[string]any{"kind": "value", "date": "2026-11-28", "text": "11-28"}},
+		{"today", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-10")}},
+			map[string]any{"kind": "value", "date": "2026-11-10", "text": "11-10"}},
+		{"past", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "2026-11-03")}},
+			map[string]any{"kind": "value", "date": "2026-11-03", "text": "已公布 11-03"}},
+		{"no row", fakeEarnings{},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: none listed"}},
+		{"not listed", fakeEarnings{rows: []contracts.EarningsDate{earnRow("none", "")}},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: none listed"}},
+		{"listed without date", fakeEarnings{rows: []contracts.EarningsDate{earnRow("listed", "")}},
+			map[string]any{"kind": "gap", "reason": "no_data", "text": "earnings date: none listed"}},
+		{"nil reader", nil,
+			map[string]any{"kind": "gap", "reason": "no_reader", "text": "earnings date: reader not set"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := earningsOf(t, tc.er)
+			if len(got) != len(tc.want) {
+				t.Errorf("cell = %v, want %v", got, tc.want)
+			}
+			for k, w := range tc.want {
+				if got[k] != w {
+					t.Errorf("cell = %v, want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestEarningsReaderErrorFailsBuild(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	_, err := home_companies.Build(t.Context(), config(home_companies.Config{
+		Rows:     []home_companies.Row{{Issuer: "cik:0000000003", Market: "US", Symbol: "DEMOB"}},
+		Read:     fakeView{},
+		Earnings: fakeEarnings{err: boom},
+	}), fixedAt)
+	if !errors.Is(err, boom) {
+		t.Errorf("Build error = %v, want %v", err, boom)
 	}
 }
