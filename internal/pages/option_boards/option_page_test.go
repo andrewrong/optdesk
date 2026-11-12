@@ -368,3 +368,38 @@ func TestOptionTableMissingBidIsGap(t *testing.T) {
 		t.Errorf("bid_ask = %v", c)
 	}
 }
+
+func TestDeltaCellKeepsFourPlaces(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name  string
+		delta *string
+		text  string
+		value any
+	}{
+		{"four places", sp("-0.2446"), "−0.2446", float64(-2446)},
+		{"two places", sp("-0.15"), "−0.15", float64(-1500)},
+		{"one place", sp("-0.1"), "−0.1", float64(-1000)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			one := candRow(1, "NOB", 1, "ok")
+			one.Delta = tc.delta
+			m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
+			c := cellOf(t, tableRowsOf(m)[0], "delta")
+			if c["text"] != tc.text || c["value"] != tc.value {
+				t.Errorf("delta cell = %v, want text %q value %v", c, tc.text, tc.value)
+			}
+		})
+	}
+	t.Run("nil delta", func(t *testing.T) {
+		t.Parallel()
+		one := candRow(1, "NOB", 1, "ok")
+		one.Delta = nil
+		m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {one}}}, nil, buildDay))
+		if c := cellOf(t, tableRowsOf(m)[0], "delta"); c["reason"] != "no_data" {
+			t.Errorf("delta cell = %v", c)
+		}
+	})
+}
