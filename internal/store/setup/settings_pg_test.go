@@ -142,6 +142,22 @@ func TestSettingsDownKeepsRunnerReadOfOtherViews(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = inDB.Close(ctx) })
+	// The job request migration puts two tables into schema settings too: its Down goes before that of 0033 and of 0025, as goose rolls back the newest first.
+	jobFiles, err := filepath.Glob(filepath.Join(migrationsDir, "*_job_request.sql"))
+	if err != nil || len(jobFiles) != 1 {
+		t.Fatalf("job request migration = %v, %v", jobFiles, err)
+	}
+	rawJob, err := os.ReadFile(jobFiles[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, downJob, ok := strings.Cut(string(rawJob), "-- +goose Down")
+	if !ok {
+		t.Fatal("no Down section in the job request migration")
+	}
+	if _, err := inDB.Exec(ctx, downJob); err != nil {
+		t.Fatalf("down job request: %v", err)
+	}
 	// 0033 puts a table into schema settings, which the Down of 0025 drops: take it back first, as goose would.
 	raw33, err := os.ReadFile(filepath.Join(migrationsDir, "0033_underlying.sql"))
 	if err != nil {
@@ -167,6 +183,128 @@ func TestSettingsDownKeepsRunnerReadOfOtherViews(t *testing.T) {
 		}
 		if role == roleRoPages && !view {
 			t.Errorf("%s lost SELECT on rd.option_candidate_r1", role)
+		}
+	}
+}
+
+// webConn returns a connection of the web role to the migrated scratch database.
+func webConn(ctx context.Context, t *testing.T, s scratch) *pgx.Conn {
+	t.Helper()
+	if _, err := s.admin.Exec(ctx, `SELECT pg_advisory_lock(962)`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.admin.Exec(ctx, "ALTER ROLE ot_w_settings PASSWORD "+literal(testPassword))
+	var w *pgx.Conn
+	if err == nil {
+		w = connectAs(ctx, t, adminDSN(t, s.db), roleSettings, testPassword)
+	}
+	_, _ = s.admin.Exec(ctx, `SELECT pg_advisory_unlock(962)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return w
+}
+
+// TestWebRoleInsertsJobRequest (new): the web role inserts a request and a withdrawal, reads the view, reads nothing
+// in schema ops, cannot insert a running row or keys, and cannot update or delete in either table.
+func TestWebRoleInsertsJobRequest(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newScratch(t, true)
+	if err := migrateWith(ctx, s.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), quietLog()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	w := webConn(ctx, t, s)
+
+	var id int64
+	if err := w.QueryRow(ctx, `INSERT INTO settings.job_request (job_id, session_day, force)
+		VALUES ('calendar_refresh', '2026-11-11', false) RETURNING id`).Scan(&id); err != nil {
+		t.Fatalf("insert request: %v", err)
+	}
+	if _, err := w.Exec(ctx, `INSERT INTO settings.job_request_withdraw (request_id) VALUES ($1)`, id); err != nil {
+		t.Fatalf("insert withdrawal: %v", err)
+	}
+	var state string
+	var withdrawn bool
+	if err := w.QueryRow(ctx, `SELECT state, withdrawn_at IS NOT NULL FROM rd.job_request_r1`).Scan(&state, &withdrawn); err != nil || state != "queued" || !withdrawn {
+		t.Errorf("view = %q, %v, %v; want queued, true", state, withdrawn, err)
+	}
+	var n int
+	for _, q := range []string{`SELECT count(*) FROM settings.job_request`, `SELECT count(*) FROM settings.job_request_withdraw`} {
+		if err := w.QueryRow(ctx, q).Scan(&n); err != nil || n != 1 {
+			t.Errorf("%s = %d, %v; want 1", q, n, err)
+		}
+	}
+	for _, q := range []string{
+		`INSERT INTO settings.job_request (job_id, session_day, force, state) VALUES ('x', '2026-11-11', true, 'running')`,
+		`INSERT INTO settings.job_request (job_id, session_day, keys) VALUES ('x', '2026-11-11', '{}')`,
+		`INSERT INTO settings.job_request_withdraw (request_id, withdrawn_at) VALUES (1, now())`,
+		`UPDATE settings.job_request SET state = 'running'`,
+		`UPDATE settings.job_request_withdraw SET withdrawn_at = now()`,
+		`DELETE FROM settings.job_request`,
+		`DELETE FROM settings.job_request_withdraw`,
+		`SELECT 1 FROM ops.capture_run`,
+	} {
+		if _, err := w.Exec(ctx, q); !isPermissionError(err) {
+			t.Errorf("%s: want a permission error, got %v", q, err)
+		}
+	}
+}
+
+// TestRunnerRoleUpdatesJobRequestColumns (new): the runner role updates the seven columns of a request, cannot
+// update job_id or the withdrawal table, cannot delete, and still cannot read rule_param and option_exclusion.
+func TestRunnerRoleUpdatesJobRequestColumns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newScratch(t, true)
+	if err := migrateWith(ctx, s.openAs(t, testPassword), gooseUp, os.DirFS(migrationsDir), quietLog()); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	w := webConn(ctx, t, s)
+	var id int64
+	if err := w.QueryRow(ctx, `INSERT INTO settings.job_request (job_id, session_day, force)
+		VALUES ('calendar_refresh', '2026-11-11', false) RETURNING id`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Exec(ctx, `INSERT INTO settings.job_request_withdraw (request_id) VALUES ($1)`, id); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.admin.Exec(ctx, `SELECT pg_advisory_lock(54)`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.admin.Exec(ctx, "ALTER ROLE ot_runner PASSWORD "+literal(testPassword))
+	var r *pgx.Conn
+	if err == nil {
+		r = connectAs(ctx, t, adminDSN(t, s.db), roleRunner, testPassword)
+	}
+	_, _ = s.admin.Exec(ctx, `SELECT pg_advisory_unlock(54)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := r.Exec(ctx, `UPDATE settings.job_request SET state = 'running', started_at = now(), finished_at = now(),
+		reason = 'r', keys = '{"v":1,"lines":[]}', hold_job = 'j', hold_at = now() WHERE id = $1`, id); err != nil {
+		t.Fatalf("update of the seven columns: %v", err)
+	}
+	var n int
+	for _, q := range []string{`SELECT count(*) FROM settings.job_request`, `SELECT count(*) FROM settings.job_request_withdraw`, `SELECT count(*) FROM rd.job_request_r1`} {
+		if err := r.QueryRow(ctx, q).Scan(&n); err != nil || n != 1 {
+			t.Errorf("%s = %d, %v; want 1", q, n, err)
+		}
+	}
+	for _, q := range []string{
+		`UPDATE settings.job_request SET job_id = 'x'`,
+		`UPDATE settings.job_request SET force = true`,
+		`UPDATE settings.job_request_withdraw SET withdrawn_at = now()`,
+		`DELETE FROM settings.job_request`,
+		`DELETE FROM settings.job_request_withdraw`,
+		`INSERT INTO settings.job_request (job_id, session_day, force) VALUES ('x', '2026-11-11', false)`,
+		`SELECT 1 FROM settings.rule_param`,
+		`SELECT 1 FROM settings.option_exclusion`,
+	} {
+		if _, err := r.Exec(ctx, q); !isPermissionError(err) {
+			t.Errorf("%s: want a permission error, got %v", q, err)
 		}
 	}
 }
