@@ -260,9 +260,9 @@ func (posAcctStore) Close() error { return nil }
 func TestHeldKeysOptionPositions(t *testing.T) {
 	t.Parallel()
 	st := posAcctStore{rows: []store.Position{
-		{Symbol: "AAA", SecType: "OPT", Quantity: "-2"},
-		{Symbol: "BBB", SecType: "OPT", Quantity: "0"},
-		{Symbol: "CCC", SecType: "STK", Quantity: "100"},
+		{Symbol: "AAA", SecType: "option", Quantity: "-2"},
+		{Symbol: "BBB", SecType: "option", Quantity: "0"},
+		{Symbol: "CCC", SecType: "stock", Quantity: "100"},
 	}}
 	d := deps{openAccount: func(context.Context, string) (store.AccountStore, error) { return st, nil }}
 	cfg := runOnceConfig{accountDSN: "dsn"}
@@ -280,5 +280,33 @@ func TestHeldKeysOptionPositions(t *testing.T) {
 		if !got[k] {
 			t.Errorf("missing %s in %v", k, got)
 		}
+	}
+}
+
+func heldKeysOf(t *testing.T, rows ...store.Position) map[string]bool {
+	t.Helper()
+	d := deps{openAccount: func(context.Context, string) (store.AccountStore, error) { return posAcctStore{rows: rows}, nil }}
+	var extra closerSet
+	now := func() time.Time { return time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC) }
+	got, err := heldKeys(d, runOnceConfig{accountDSN: "dsn"}, now, &extra)(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func TestHeldKeysListsStoredStockRow(t *testing.T) {
+	t.Parallel()
+	got := heldKeysOf(t, store.Position{Symbol: "CCC", SecType: "stock", Quantity: "100"})
+	if !got["US:CCC"] || !got["JP:CCC"] || len(got) != 2 {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestHeldKeysListsStoredOptionRow(t *testing.T) {
+	t.Parallel()
+	got := heldKeysOf(t, store.Position{Symbol: "AAA", SecType: "option", Quantity: "-2"})
+	if !got["option:US:AAA"] || !got["option:JP:AAA"] || len(got) != 2 {
+		t.Fatalf("got %v", got)
 	}
 }

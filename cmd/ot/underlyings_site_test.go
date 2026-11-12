@@ -61,7 +61,7 @@ func (s *fakeUnderlyingStore) calls() int {
 type holdsAAA struct{}
 
 func (holdsAAA) Positions(context.Context, string, string) ([]store.Position, error) {
-	return []store.Position{{Symbol: "AAA", SecType: "STK", Quantity: "10"}}, nil
+	return []store.Position{{Symbol: "AAA", SecType: "stock", Quantity: "10"}}, nil
 }
 
 func (holdsAAA) Values(context.Context, string, string) ([]store.AccountValue, error) {
