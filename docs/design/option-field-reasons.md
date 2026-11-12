@@ -61,7 +61,7 @@ Meaning, fixed here so the three sides agree: NOT_RECEIVED_RELEASE: no tick for 
 1. contracts (interface): the proto change and the generated Go and Python. Owner-only path, the owner merges. Order: first.
 2. broker (interface): `broker.Quote.Missing`, `fromQuote`. Order: after 1.
 3. pyside: `missing.py`, the row and the conversion (Decision 10). `transport.py` is an owner-only path, the owner merges. Order: after 1.
-4. store: migration 0038. Order: after the pull request that adds 0037 (1855) has landed.
+4. store: migration 0038; pull request 1855 (migration 0037) merges before it is attached. Order: first.
 5. jobs seam: `optioneod.WithReasons` and the writer field of the job, declared and stored, not yet used. Order: independent.
 6. pages seam: the field `Config.Reasons` of `option_data_page`, declared, not yet used. Order: independent.
 7. jobs/optioneod: Decisions 3 to 6 (the tally and the writes). Order: after 2 and 5.
