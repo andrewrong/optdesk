@@ -17,6 +17,12 @@ type fakeDB struct {
 	execArgs [][]any
 	rows     [][]any
 	events   []string
+	affected int64
+}
+
+func (f *fakeDB) ExecRows(ctx context.Context, sql string, args ...any) (int64, error) {
+	err := f.Exec(ctx, sql, args...)
+	return f.affected, err
 }
 
 func (f *fakeDB) Exec(_ context.Context, sql string, args ...any) error {
@@ -164,5 +170,26 @@ func TestBadDayIsPermanent(t *testing.T) {
 	_, err := (&ledger{db: &fakeDB{}}).Runs(context.Background(), "nope")
 	if k := kind(t, err); k != contracts.Permanent {
 		t.Errorf("kind = %v, want Permanent", k)
+	}
+}
+
+func TestCloseRunningIsOneUpdateAndReturnsRowsAffected(t *testing.T) {
+	t.Parallel()
+	f := &fakeDB{affected: 3}
+	var c store.RunCloser = &ledger{db: f}
+	now := time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC)
+	n, err := c.CloseRunning(context.Background(), now, "crashed")
+	if err != nil || n != 3 {
+		t.Fatalf("closed %d, err %v; want 3, nil", n, err)
+	}
+	if len(f.execSQL) != 1 {
+		t.Fatalf("%d statements, want 1", len(f.execSQL))
+	}
+	want := "UPDATE ops.capture_run SET status = 'done', finished_at = $1, reason_code = $2 WHERE status = 'running'"
+	if f.execSQL[0] != want {
+		t.Errorf("sql = %s", f.execSQL[0])
+	}
+	if a := f.execArgs[0]; len(a) != 2 || a[0] != now || a[1] != "crashed" {
+		t.Errorf("args = %v", a)
 	}
 }
