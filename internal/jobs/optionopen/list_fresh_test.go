@@ -233,7 +233,7 @@ func TestMissingBarAsksGateway(t *testing.T) {
 // heldRig has AAA held and BBB a name of the watch list, one expiry each.
 func heldRig(t *testing.T) *lrig {
 	g := newLRig(t, "AAA", "BBB")
-	g.acc.pos = []store.Position{{SecType: "stock", Symbol: "AAA", ConID: 100, Quantity: "100"}}
+	g.acc.pos = []store.Position{{SecType: "stock", Currency: "USD", Symbol: "AAA", ConID: 100, Quantity: "100"}}
 	g.offs["AAA"], g.offs["BBB"] = []int{22}, []int{22}
 	return g
 }
