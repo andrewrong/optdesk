@@ -16,7 +16,7 @@ const deepenSlackDays = 30
 // due (so a name is asked at most once a week) and only when the 400-day backfill was complete before
 // this run (backfilled). While the oldest stored trades day is newer than the run day minus
 // deepen_days plus 30 days it asks pieces of at most deepen_piece_days days ending on the day before
-// the oldest stored day, and inserts the older rows of each under the current epoch; it stops when
+// the oldest stored day, and upserts the older rows of each; it stops when
 // the oldest day reaches the target or a piece holds no older day. There is no diff test: a piece
 // overlaps no stored row.
 //
@@ -53,7 +53,6 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 	if !r.claimDeepen(key) {
 		return true, nil
 	}
-	epoch := max(maxEpoch(stored), 1)
 	for oldest.After(reach) {
 		days := min(m.DeepenPieceDays, int(oldest.Sub(target).Hours()/24))
 		bars, err := r.j.h.Bars(ctx, broker.BarQuery{
@@ -80,12 +79,12 @@ func (r *runState) deepen(ctx context.Context, key string, id int64, c broker.Co
 		if len(older) == 0 {
 			return false, nil
 		}
-		rows, terr := r.rows(older, nil, id, epoch, c.Currency)
+		rows, terr := r.rows(older, id, c.Currency)
 		if terr != nil {
 			return false, terr
 		}
-		if _, err := r.j.w.InsertPriceBars(ctx, rows); err != nil {
-			return false, asTyped(err, contracts.Retryable)
+		if terr := r.upsert(ctx, rows); terr != nil {
+			return false, terr
 		}
 		oldest = next
 	}
