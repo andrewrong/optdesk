@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -55,6 +56,7 @@ type sitePageInput struct {
 	Quotes       store.QuoteSnapshotReader
 	Terms        store.OptionTermsReader
 	Choices      []siteChoice
+	Reasons      runview.Reader // the stored reasons of the day (nil: none)
 }
 
 // openOptionOpenStores opens the option open stores with a DSN (a test replaces it).
@@ -123,6 +125,9 @@ type siteReaders struct {
 	// bars is the daily bar reader of the home Companies card, opened with the pages line (nil: no opener, the demo
 	// profile or a site with no bar line; the day change stays the gap no_reader).
 	bars bar.PriceBarReader
+
+	// fx is the stored FX rate reader of household_page, from the same bar store as bars (nil when bars is nil).
+	fx bar.FxRateReader
 
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
@@ -256,22 +261,22 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
-	under := openUnderlyingReader(ctx, a, dsn, track)
+	under, ok := openUnderlyingReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
+	}
 	jobReq := openJobRequestReader(ctx, a, dsn, track)
 	sessions, ok := openSessionReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
-	var bars bar.PriceBarReader
-	if a.deps.openBar != nil {
-		bs, err := a.deps.openBar(ctx, dsn)
-		if !track(bs, err) {
-			return fail()
-		}
-		bars = bs
+	bars, fx, ok := openBarReader(ctx, a, dsn, track)
+	if !ok {
+		return fail()
 	}
 	rd := siteReaders{
-		bars: bars, marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
+		bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
+		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if oos != nil {
@@ -573,7 +578,7 @@ func buildSite(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd 
 	}
 	page := a.deps.optionDataPage(a.profile.Zone, buildIDOf(version), sitePageInput{
 		UnderlyingID: id, Label: label, Symbol: symbol, Notes: notes,
-		Eod: rd.eod, Quotes: rd.quotes, Terms: rd.terms, Choices: choices,
+		Eod: rd.eod, Quotes: rd.quotes, Terms: rd.terms, Choices: choices, Reasons: optionReasonReader(rd),
 	})
 	return page.Build(ctx, nil, day, clk.Now().UTC())
 }
@@ -618,4 +623,17 @@ func openMarkReader(ctx context.Context, a *app, dsn string, track func(io.Close
 		return nil
 	}
 	return ms
+}
+
+// openBarReader opens the bar store when deps has an opener and returns it as the price bar reader and the FX
+// rate reader (both nil without an opener); a failed open is false.
+func openBarReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (bar.PriceBarReader, bar.FxRateReader, bool) {
+	if a.deps.openBar == nil {
+		return nil, nil, true
+	}
+	bs, err := a.deps.openBar(ctx, dsn)
+	if !track(bs, err) {
+		return nil, nil, false
+	}
+	return bs, bs, true
 }

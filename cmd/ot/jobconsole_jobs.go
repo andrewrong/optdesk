@@ -74,7 +74,7 @@ func listedOnly(id, reason, text, needs string) jobRow {
 	return jobRow{ID: id, Kind: kindListedOnly, Reason: reason, Text: text, Needs: needs}
 }
 
-// jobTable is the table of the 24 jobs, in the order of the page.
+// jobTable is the table of the 25 jobs, in the order of the page.
 var jobTable = []jobRow{
 	anyDay("fred_series", "revision_rows", textRevisionRows),
 	anyDay("fundamentals", "quota", textQuota),
@@ -91,6 +91,9 @@ var jobTable = []jobRow{
 	todayOnly("underlying_resolve", "not_proved", textNotProved),
 	todayOnly("fx_refresh", "not_proved", textNotProved),
 	todayOnly("iv_history", "not_proved", textNotProved),
+	todayOnly("option_list_preopen", "not_proved", textNotProved),
+	todayOnly("option_list_zone", "not_proved", textNotProved),
+	{ID: "option_list_preopen_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: textNotProved},
 	todayOnly("bars_refresh", "epoch_and_caps", textEpochAndCaps),
 	listedOnly("option_open", "no_lower_time_bound", textNoLowerBound, needsLowerBound),
 	listedOnly("option_open_jp", "no_lower_time_bound", textNoLowerBound, needsLowerBound),

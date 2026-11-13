@@ -10,6 +10,7 @@ import { validate, type Payload } from '@/types/stock_option_page'
 import { ChosenCards, TopBlock } from './Cards'
 import { HeldBlock, PriceMaps } from './Maps'
 import { ContractsTable, MatrixTable } from './Tables'
+import { VolBlock } from './Vol'
 
 export function StockOptionView({ payload }: { payload: Payload }) {
   return (
@@ -32,6 +33,7 @@ export function StockOptionView({ payload }: { payload: Payload }) {
       ) : null}
       <TopBlock top={payload.top} />
       {payload.no_card ? <p data-no-card>{payload.no_card}</p> : <ChosenCards cards={payload.cards} />}
+      {'vol_view' in payload ? <VolBlock vol={payload.vol_view} /> : null}
       <MatrixTable matrix={payload.matrix} />
       <PriceMaps maps={payload.maps} />
       <ContractsTable contracts={payload.contracts} />

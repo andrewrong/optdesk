@@ -34,7 +34,7 @@ func jpPlanRig(t *testing.T, manifest []byte, codes ...string) (*planRig, contra
 	}
 	j, err := newPlanJP(manifest, PlanDeps{
 		Stored: Stored{Watch: append(jpWatch(codes...), watchOf("AAPL")...), Instruments: r.inst, Bars: r.bars, Options: r.opts,
-			Accounts: r.acct, Eod: r.eod},
+			Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod},
 		Marks: r.marks, Plans: r.plans, Clock: r.clk,
 	})
 	if err != nil {
@@ -326,7 +326,7 @@ func TestPlanJPPlansTheIndexOfTheWatchList(t *testing.T) {
 	r.seed(t, 100, putStrikes...)
 	j, err := NewPlanJP(PlanDeps{
 		Stored: Stored{Watch: []jobs.WatchEntry{{Market: "JP", Contract: broker.Contract{SecType: "IND", Symbol: "N225", Exchange: "OSE.JPN",
-			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod},
+			Currency: "JPY", ConID: 100}}}, Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod},
 		Marks: r.marks, Plans: r.plans, Clock: r.clk,
 	})
 	if err != nil {
@@ -486,5 +486,49 @@ func TestPullJPAfterIsThePlanJP(t *testing.T) {
 	}
 	if got := d.After(); len(got) != 1 || got[0] != "option_open_plan_jp" {
 		t.Fatalf("After() = %v", got)
+	}
+}
+
+func TestHeldJPYStockIsAJPNameAndNotAUSOne(t *testing.T) {
+	t.Parallel()
+	held := fakeAccounts{pos: []store.Position{
+		{SecType: "stock", Symbol: "7203", ConID: 79, Exchange: "TSEJ", Currency: "JPY", Quantity: "100"},
+		{SecType: "stock", Symbol: "AAPL", ConID: 80, Exchange: "SMART", Currency: "USD", Quantity: "10"},
+	}}
+	day := time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC)
+	rules, err := parseJPRules(planManifestJP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := rules.stored(Stored{Accounts: held, HeldAliases: ownerAliases}).stocks(context.Background(), day)
+	if err != nil || len(got) != 1 || got[0].Symbol != "7203" {
+		t.Fatalf("JP stocks %v err %v, want 7203 only", got, err)
+	}
+
+	jp := newRig(oneChain())
+	jp.acct = held
+	jres, err := NewResolveJP(jp.deps(), ResolveOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	jk, _, err := jres.Plan(context.Background(), runDay)
+	if err != nil || len(jk) != 1 || jk[0].DatasetID != "master.option_contract.jp" || jk[0].SubjectKey != "7203" {
+		t.Fatalf("JP resolve keys %v err %v", jk, err)
+	}
+
+	us := newRig(oneChain())
+	us.acct = held
+	ures, err := NewResolve(us.deps(), ResolveOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	uk, _, err := ures.Plan(context.Background(), runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range uk {
+		if k.SubjectKey == "7203" {
+			t.Errorf("US resolve plans the JP key %v", k)
+		}
 	}
 }

@@ -50,11 +50,11 @@ func TestJPManifestSlotAndWindow(t *testing.T) {
 		t.Fatalf("zone %q id %q", jj.m.Zone, j.ID())
 	}
 	cal, anchor, zone, off := jj.Schedule()
-	if cal != "XTKS" || anchor != "time" || zone != "Asia/Tokyo" || off != 15*time.Hour+50*time.Minute {
+	if cal != "XTKS" || anchor != "session_open" || zone != "" || off != 90*time.Minute {
 		t.Fatalf("schedule %s %s %s %s", cal, anchor, zone, off)
 	}
 	wc, open, closeOff := jj.Window()
-	if wc != "XTKS" || open != 0 || closeOff != 2*time.Hour {
+	if wc != "XTKS" || open != 90*time.Minute || closeOff != 0 {
 		t.Fatalf("window %s %s %s", wc, open, closeOff)
 	}
 }
@@ -120,9 +120,9 @@ func TestChainOfClassRule(t *testing.T) {
 	}
 }
 
-func TestRunAfterStopAfterStores(t *testing.T) {
+func TestJPRunStoresAtAnyTimeOfDay(t *testing.T) {
 	t.Parallel()
-	for _, at := range []string{"2026-11-09 17:00", "2026-11-09 23:30"} {
+	for _, at := range []string{"2026-11-09 10:30", "2026-11-09 17:00", "2026-11-09 23:30"} {
 		late := newJPRig(t, at)
 		if res := late.run(jpDay, jpKey); res.Err != nil || late.b.calls() == 0 {
 			t.Fatalf("%s: %v calls %d", at, res.Err, late.b.calls())

@@ -126,12 +126,16 @@ type HTTPDoer interface {
 
 // EarningsConfig holds the arguments of NewEarningsFunc. APIKey is passed in by the caller; this package
 // reads no environment. Symbols are the JP codes of the J-Quants source; Alpha Vantage ignores them.
-// Doer is optional: nil means an http.Client that follows no redirect.
+// Doer is optional: nil means an http.Client that follows no redirect. Sleep is the wait of the J-Quants
+// client between calls and before its one retry; nil means a real wait that returns ctx.Err() on cancel,
+// and Alpha Vantage ignores it.
 type EarningsConfig struct {
 	BaseURL string
 	APIKey  string
 	Symbols []string
 	Doer    HTTPDoer
+
+	Sleep func(ctx context.Context, d time.Duration) error
 }
 
 // EarningsListing is one parsed row of an earnings calendar. Dates are YYYY-MM-DD; Estimate is decimal
@@ -145,7 +149,8 @@ type EarningsListing struct {
 }
 
 // EarningsSource fetches the earnings calendar of one outside service. One Fetch makes the calls the
-// service's budget allows (Alpha Vantage: exactly one request), follows no redirect and never retries.
+// service's budget allows (Alpha Vantage: exactly one request), follows no redirect and never retries on its
+// own. Alpha Vantage never retries; J-Quants spaces its calls and retries a 429 once.
 // It returns CodedError values only; none holds the key or an address. Only parsed rows are returned.
 type EarningsSource interface {
 	Fetch(ctx context.Context) ([]EarningsListing, error)
@@ -162,7 +167,8 @@ type CodedError interface {
 }
 
 // NewJQuantsFunc is the constructor of the J-Quants earnings source (internal/sources/jquants.New). It
-// reads EarningsConfig.Symbols (4-digit JP codes) and makes one call per symbol per Fetch.
+// reads EarningsConfig.Symbols (4-digit JP codes) and makes one call per symbol per Fetch, waiting through
+// EarningsConfig.Sleep (12 s between calls, 61 s before the one retry of a 429).
 type NewJQuantsFunc func(EarningsConfig) (EarningsSource, error)
 
 // Cursor is the position of a fact fetch: the last day already fetched. The file that holds it is the

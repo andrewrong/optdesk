@@ -1,6 +1,7 @@
 package grpcbroker
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -171,5 +172,76 @@ func TestUnmappedSecTypeRefused(t *testing.T) {
 	_, err := toSpec(broker.Contract{SecType: "FUT"})
 	if err == nil || !strings.Contains(err.Error(), "unknown sec type") {
 		t.Fatalf("err = %v, want unknown sec type", err)
+	}
+}
+
+func okQuote(missing ...*pb.MissingField) *pb.Quote {
+	return &pb.Quote{Status: pb.QuoteStatus_QUOTE_STATUS_OK, Missing: missing}
+}
+
+func TestFromQuoteMissing(t *testing.T) {
+	t.Parallel()
+	got, err := fromQuote(okQuote(
+		&pb.MissingField{Field: "open_interest", Reason: pb.MissingReason_MISSING_REASON_NOT_RECEIVED_GRACE},
+		&pb.MissingField{Field: "bid", Reason: pb.MissingReason_MISSING_REASON_ERROR, ErrorCode: 200},
+	), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []broker.MissingField{
+		{Field: "open_interest", Reason: broker.MissingNotReceivedGrace},
+		{Field: "bid", Reason: broker.MissingError, ErrorCode: 200},
+	}
+	if len(got.Missing) != 2 || got.Missing[0] != want[0] || got.Missing[1] != want[1] {
+		t.Fatalf("got %+v", got.Missing)
+	}
+}
+
+func TestFromQuoteMissingMapsEveryReason(t *testing.T) {
+	t.Parallel()
+	cases := map[pb.MissingReason]broker.MissingReason{
+		pb.MissingReason_MISSING_REASON_NOT_RECEIVED_RELEASE: broker.MissingNotReceivedRelease,
+		pb.MissingReason_MISSING_REASON_NOT_RECEIVED_GRACE:   broker.MissingNotReceivedGrace,
+		pb.MissingReason_MISSING_REASON_INVALID:              broker.MissingInvalid,
+		pb.MissingReason_MISSING_REASON_ERROR:                broker.MissingError,
+		pb.MissingReason_MISSING_REASON_RECEIVED_ZERO:        broker.MissingReceivedZero,
+		pb.MissingReason_MISSING_REASON_MARKET_DATA_TYPE:     broker.MissingMarketDataType,
+	}
+	for in, want := range cases {
+		got, err := fromQuote(okQuote(&pb.MissingField{Field: "f", Reason: in}), nil)
+		if err != nil || len(got.Missing) != 1 || got.Missing[0].Reason != want {
+			t.Fatalf("%s: got %+v, %v", in, got.Missing, err)
+		}
+	}
+}
+
+func TestFromQuoteMissingUnspecified(t *testing.T) {
+	t.Parallel()
+	_, err := fromQuote(okQuote(&pb.MissingField{Field: "bid"}), nil)
+	var te contracts.TypedError
+	if !errors.As(err, &te) || te.Kind() != contracts.Permanent {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFromQuoteNoMissingIsNil(t *testing.T) {
+	t.Parallel()
+	for _, q := range []*pb.Quote{okQuote(), {Status: pb.QuoteStatus_QUOTE_STATUS_OK, Missing: []*pb.MissingField{}}} {
+		got, err := fromQuote(q, nil)
+		if err != nil || got.Missing != nil {
+			t.Fatalf("got %#v, %v", got.Missing, err)
+		}
+	}
+}
+
+func TestFromAccountAndExecutionsNoAccountText(t *testing.T) {
+	t.Parallel()
+	_, err := fromAccount(&pb.AccountResponse{Generation: 1})
+	if err == nil || !strings.Contains(err.Error(), "account: answer has no account") {
+		t.Fatalf("account: got %v", err)
+	}
+	_, err = fromExecutions(&pb.ExecutionsResponse{Generation: 1, Collected: true})
+	if err == nil || !strings.Contains(err.Error(), "executions: answer has no account") {
+		t.Fatalf("executions: got %v", err)
 	}
 }

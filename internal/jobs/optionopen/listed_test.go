@@ -44,7 +44,7 @@ func newRig(chains ...broker.Chain) *rig {
 
 func (r *rig) deps(symbols ...string) ResolveDeps {
 	return ResolveDeps{
-		Stored: Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct},
+		Stored: Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases},
 		Broker: r.brk, Marks: r.marks, Pull: r.pull, Clock: r.clk,
 		Log:  func(l string) { r.logs = append(r.logs, l) },
 		Rand: func() float64 { return 0.5 },

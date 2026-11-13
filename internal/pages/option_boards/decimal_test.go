@@ -123,3 +123,29 @@ func TestDaysBack(t *testing.T) {
 		t.Errorf("daysBack = %q, %v", got, err)
 	}
 }
+
+func TestRoundDecimal(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		in, want string
+		bad      bool
+	}{
+		{in: "-0.31495717239425247", want: "-0.315"},
+		{in: "0.12345", want: "0.1235"},
+		{in: "-0.12345", want: "-0.1235"},
+		{in: "-0.00001", want: "0"},
+		{in: "0.99999999", want: "1"},
+		{in: "-0.2446", want: "-0.2446"},
+		{in: "-0.15", want: "-0.15"},
+		{in: "-0.1", want: "-0.1"},
+		{in: "0.12344", want: "0.1234"},
+		{in: "abc", bad: true},
+		{in: "1e-3", bad: true},
+	}
+	for _, tc := range cases {
+		got, ok := roundDecimal(tc.in, 4)
+		if ok == tc.bad || got != tc.want {
+			t.Errorf("roundDecimal(%q, 4) = %q, %v; want %q, ok=%v", tc.in, got, ok, tc.want, !tc.bad)
+		}
+	}
+}

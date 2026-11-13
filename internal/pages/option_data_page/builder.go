@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 const (
@@ -59,6 +60,8 @@ type Config struct {
 	Fx bar.FxRateReader
 	// VolLine fills underlying.vol_line (IV of the at-the-money contract, HV30 and IVP missing); false: absent.
 	VolLine bool
+	// Reasons reads the stored field reasons of the chain's session day for the notes; nil: none.
+	Reasons runview.Reader
 }
 
 type sourceTime struct {
@@ -100,6 +103,7 @@ type underlying struct {
 	EarningsText string `json:"earnings_text,omitempty"`
 	EarningsTone string `json:"earnings_tone,omitempty"`
 	VolLine      string `json:"vol_line,omitempty"`
+	OffSession   bool   `json:"off_session,omitempty"`
 }
 
 type chain struct {
@@ -213,6 +217,9 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
 	setPrice(&vm.Underlying, sessionDay, latest)
 	vm.Chain.SessionDay = &sessionDay
+	if vm.Notes, err = pageNotes(ctx, c, contracts.Day(sessionDay)); err != nil {
+		return nil, err
+	}
 	var eodTime time.Time
 	for _, r := range rows {
 		vm.Chain.Rows = append(vm.Chain.Rows, toRow(r))
@@ -255,6 +262,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 // decorate fills the optional fields of the chain rows and the underlying: terms, earnings, approximate US dollars.
 func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string,
 	latest contracts.OptionEod, rows []contracts.OptionEod, vm *viewModel) error {
+	vm.Underlying.OffSession = allOffSession(rows)
 	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
 		return err
 	}
@@ -314,6 +322,13 @@ func selectRows(eod []contracts.OptionEod) ([]contracts.OptionEod, contracts.Opt
 		return cmp.Compare(a.InstrumentID, b.InstrumentID)
 	})
 	return limit(rows, maxRows), latest, nil
+}
+
+// allOffSession is true when every picked row is an off-session capture (frozen or delayed quote).
+func allOffSession(rows []contracts.OptionEod) bool {
+	return len(rows) > 0 && !slices.ContainsFunc(rows, func(r contracts.OptionEod) bool {
+		return r.SnapshotKind != "off_session"
+	})
 }
 
 // setPrice writes the session day, the price and the currency (when the row has one) of latest.

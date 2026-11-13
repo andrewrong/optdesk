@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -29,7 +31,8 @@ type job struct {
 	w    store.OptionEodWriter
 	clk  clock.Clock
 	loc  *time.Location
-	stop int // stop_after in minutes after midnight, local; -1 when unset
+
+	reasons runview.ReasonWriter // nil: no reasons are written; set by WithReasons
 
 	cal         string
 	open, close time.Duration
@@ -93,11 +96,7 @@ func build(data []byte, b broker.Broker, res store.InstrumentResolver, w store.O
 	if err != nil {
 		return nil, errors.New("optioneod: manifest: zone is unknown")
 	}
-	stop := -1
-	if m.StopAfter != "" {
-		stop, _ = parseHHMM(m.StopAfter)
-	}
-	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, stop: stop, cal: cal, open: open, close: closeOff}, nil
+	return &job{m: m, b: b, res: res, w: w, clk: clk, loc: loc, cal: cal, open: open, close: closeOff}, nil
 }
 
 // root is the option root of symbol: the translator's OSIRoot, or symbol itself without a translator.
@@ -112,11 +111,12 @@ func (j *job) root(symbol string) string {
 func (j *job) ID() string { return j.m.ID }
 
 // Run collects the keys of day: it stops with Retryable once budget_minutes have passed, keeping the rows written.
-func (j *job) Run(ctx context.Context, _ contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	now := j.clk.Now()
-	local := now.In(j.loc)
-	// Development mode: the broker answers for today, so a past day or an early run uses the clock's date.
-	day := contracts.Day(local.Format(time.DateOnly))
+	// The broker answers for the present only: a day other than the clock's local date cannot be collected.
+	if string(day) != now.In(j.loc).Format(time.DateOnly) {
+		return contracts.JobResult{Err: newErr(contracts.Permanent, "option_eod: day %s is not the current day; a past option chain cannot be collected", day)}
+	}
 	dayTime, err := time.Parse(time.DateOnly, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
@@ -198,14 +198,29 @@ func (r *runState) runKey(ctx context.Context, k contracts.ExpectedKey, res *con
 	if err != nil {
 		return asTyped(err, contracts.Permanent)
 	}
-	capture := captureID(r.day, k)
+	capture := captureID(r.day, k, r.start)
+	var tl tally
+	var chunkErr contracts.TypedError
 	for i := 0; i < len(listed); i += r.j.m.Chunk {
 		end := min(i+r.j.m.Chunk, len(listed))
-		if terr := r.chunk(ctx, u, undID, price, capture, listed[i:end], res); terr != nil {
-			return terr
+		if chunkErr = r.chunk(ctx, u, undID, price, capture, listed[i:end], res, &tl); chunkErr != nil {
+			break
 		}
 	}
-	return nil
+	r.writeReasons(ctx, k, &tl)
+	return chunkErr
+}
+
+// writeReasons replaces the reason rows of the key with its tally; a key that stored nothing, or a job without a
+// writer, writes nothing. A writer error is logged: it never fails the run.
+func (r *runState) writeReasons(ctx context.Context, k contracts.ExpectedKey, tl *tally) {
+	if r.j.reasons == nil || tl.total == 0 {
+		return
+	}
+	rows := tl.reasons(r.day, k.DatasetID, k.SubjectKey, r.j.clk.Now().UTC())
+	if err := r.j.reasons.ReplaceReasons(ctx, r.day, k.DatasetID, k.SubjectKey, rows); err != nil {
+		slog.Warn("optioneod: reasons not written", "dataset", k.DatasetID, "subject", k.SubjectKey, "err", err)
+	}
 }
 
 // price is Last of the underlying's snapshot, else Close, else UndPrice; none is Retryable.
@@ -328,7 +343,7 @@ func (r *runState) listed(ctx context.Context, pairs []broker.Contract) ([]broke
 
 // chunk resolves the instruments of cs, asks their quotes and writes the rows; price fills underlying_price where a quote has none.
 func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price float64, capture jobs.CaptureID, cs []broker.Contract,
-	res *contracts.JobResult) contracts.TypedError {
+	res *contracts.JobResult, tl *tally) contracts.TypedError {
 	ids := make([]int64, len(cs))
 	for i, c := range cs {
 		osi, err := osiSymbolWith(c, r.j.root(c.Symbol))
@@ -368,6 +383,9 @@ func (r *runState) chunk(ctx context.Context, u underlying, undID int64, price f
 	if err := r.j.w.InsertOptionEod(ctx, rows); err != nil {
 		res.Usable = 0
 		return asTyped(err, contracts.Retryable)
+	}
+	for i, q := range qs {
+		tl.add(q, rows[i].Status)
 	}
 	res.Returned += len(rows)
 	res.Usable += usable

@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/jobs/barsrefresh"
 	"github.com/andrewrong/optdesk/internal/pages/underlyings"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
@@ -40,17 +42,23 @@ type underlyingsExtras struct {
 }
 
 // openUnderlyingReader opens the underlying reader with the pages line when deps has an opener, else it is nil
-// (the page shows the gap no_reader). A failed open leaves it nil with one log line; the site still starts.
-func openUnderlyingReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) underlying.Reader {
+// (the page shows the gap no_reader). A failed open leaves it nil with one log line; the site still starts. A store
+// that is not an underlying.HeldAdder is a start-up error: the result is false, with one Warn line and the store closed.
+func openUnderlyingReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (underlying.Reader, bool) {
 	if a.deps.openUnderlying == nil {
-		return nil
+		return nil, true
 	}
 	st, err := a.deps.openUnderlying(ctx, dsn)
 	if !track(st, err) {
 		a.log.Warn("underlying store not opened", "component", "ot", "status", "failed")
-		return nil
+		return nil, true
 	}
-	return st
+	if _, ok := st.(underlying.HeldAdder); !ok {
+		a.log.Warn("underlying store cannot check held names", "component", "ot", "status", "failed")
+		_ = st.Close()
+		return nil, false
+	}
+	return st, true
 }
 
 // buildUnderlyingsPage builds page.underlyings.v1 per request over the reader of the site (a nil reader gives no
@@ -74,8 +82,15 @@ func buildUnderlyingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag 
 		if in.History, err = rd.underlying.History(ctx, 20); err != nil {
 			return nil, err
 		}
-		if in.Held, err = heldSymbols(ctx, rd, now); err != nil {
-			return nil, err
+		positions, perr := heldPositions(ctx, rd, now)
+		if perr != nil {
+			in.HeldError = true
+		} else {
+			in.Held, in.HeldOptions = map[string]bool{}, map[string]bool{}
+			addHeld(in.Held, positions)
+			addHeldOptions(in.HeldOptions, positions)
+			adder, _ := rd.underlying.(underlying.HeldAdder)
+			in.HeldRefused = heldRefused(positions, in.Rows, adder)
 		}
 	}
 	if rd.edit != nil {
@@ -95,25 +110,73 @@ func heldSymbols(ctx context.Context, rd siteReaders, now time.Time) (map[string
 // heldSets reads the newest positions of each alias once and returns the stock symbols held (shares) and the symbols
 // with an option position of nonzero quantity.
 func heldSets(ctx context.Context, rd siteReaders, now time.Time) (shares, options map[string]bool, err error) {
+	rows, err := heldPositions(ctx, rd, now)
+	if err != nil {
+		return nil, nil, err
+	}
 	shares, options = map[string]bool{}, map[string]bool{}
+	addHeld(shares, rows)
+	addHeldOptions(options, rows)
+	return shares, options, nil
+}
+
+// heldPositions is the newest positions of each alias of the site, searched back from now, with their currency. No
+// account reader gives none.
+func heldPositions(ctx context.Context, rd siteReaders, now time.Time) ([]store.Position, error) {
+	var all []store.Position
 	if rd.account == nil {
-		return shares, options, nil
+		return nil, nil
 	}
 	for _, alias := range rd.aliases {
 		for back := 0; back <= heldLookbackDays; back++ {
 			rows, err := rd.account.Positions(ctx, alias, now.AddDate(0, 0, -back).Format(time.DateOnly))
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			if len(rows) == 0 {
 				continue
 			}
-			addHeld(shares, rows)
-			addHeldOptions(options, rows)
+			all = append(all, rows...)
 			break
 		}
 	}
-	return shares, options, nil
+	return all, nil
+}
+
+// heldRefused maps each held symbol (shares or options) with no row to the reason it cannot be added: the text of an
+// index option for an option on an index symbol, else the Why of the InvalidError of adder.Check. A nil adder gives
+// no reason for a name that is not an index option.
+func heldRefused(positions []store.Position, rows []underlying.Row, adder underlying.HeldAdder) map[string]string {
+	have := map[string]bool{}
+	for _, r := range rows {
+		have[strings.ToUpper(r.Symbol)] = true
+	}
+	indexes := map[string]bool{}
+	if m, err := barsrefresh.DefaultManifest(); err == nil {
+		for _, i := range m.Indexes {
+			indexes[strings.ToUpper(i.Symbol)] = true
+		}
+	}
+	out := map[string]string{}
+	for _, p := range positions {
+		if (p.SecType != heldSecStock && p.SecType != heldSecOption) || isZeroQuantity(p.Quantity) || have[strings.ToUpper(p.Symbol)] {
+			continue
+		}
+		if p.SecType == heldSecOption && indexes[strings.ToUpper(p.Symbol)] {
+			out[p.Symbol] = heldIndexText(p.Currency)
+			continue
+		}
+		if adder == nil {
+			continue
+		}
+		if _, err := adder.Check(p.Symbol, p.Currency); err != nil {
+			var ie underlying.InvalidError
+			if errors.As(err, &ie) {
+				out[p.Symbol] = ie.Why()
+			}
+		}
+	}
+	return out
 }
 
 func addHeld(held map[string]bool, rows []store.Position) {

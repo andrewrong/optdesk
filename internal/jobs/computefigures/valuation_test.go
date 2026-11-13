@@ -205,8 +205,15 @@ func TestValuationKeepsOtherKeys(t *testing.T) {
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
 	j := valuationJobOf(t, f, fk.deps(&vFacts{}, []jobs.WatchEntry{entry(vIssuer, vSymbol)}))
-	if keys := plan(t, j); len(keys) != 4+1+3+len(marketIDs)+3 {
-		t.Fatalf("keys %d, want the 14 of the plain job (with bars) and 3 valuation keys", len(keys))
+	if keys := plan(t, j); len(keys) != 4+1+6+3+len(marketIDs)+3 {
+		t.Fatalf("keys %d, want the 20 of the plain job (with bars) and 3 valuation keys", len(keys))
+	}
+	found := false
+	for _, k := range plan(t, j) {
+		found = found || k.SubjectKey == "market.rv60|underlying|SPY"
+	}
+	if !found {
+		t.Fatal("plan has no market.rv60 key of SPY")
 	}
 	runAll(t, j)
 	if r := reading(t, f, "market.iv30_own", "underlying", "SPY"); r.State == "" {

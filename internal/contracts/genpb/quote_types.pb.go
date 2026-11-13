@@ -221,6 +221,80 @@ func (QuoteStatus) EnumDescriptor() ([]byte, []int) {
 	return file_ibkr_v1_quote_types_proto_rawDescGZIP(), []int{2}
 }
 
+// MissingReason says why an optional Quote field is unset.
+type MissingReason int32
+
+const (
+	MissingReason_MISSING_REASON_UNSPECIFIED MissingReason = 0
+	// No tick for the field by the time the quote ended or was released (the
+	// item timeout of the kind, or the release of the line for a field no wait
+	// holds back).
+	MissingReason_MISSING_REASON_NOT_RECEIVED_RELEASE MissingReason = 1
+	// The field is a grace field of the kind (open_interest of OPTION_EOD) and
+	// its grace wait ended without it.
+	MissingReason_MISSING_REASON_NOT_RECEIVED_GRACE MissingReason = 2
+	// The ticker held a value pyside drops (a negative or other sentinel, not
+	// NaN, which is "not yet set").
+	MissingReason_MISSING_REASON_INVALID MissingReason = 3
+	// The quote ended with an IBKR error; error_code is its code.
+	MissingReason_MISSING_REASON_ERROR MissingReason = 4
+	// Ticks arrived for the field but every one is 0.0 (both call and put open
+	// interest are 0.0).
+	MissingReason_MISSING_REASON_RECEIVED_ZERO MissingReason = 5
+	// The market data type of the quote at the end is not 1 (live), i.e. delayed,
+	// frozen or delayed frozen (2, 3, 4), and the field is missing.
+	MissingReason_MISSING_REASON_MARKET_DATA_TYPE MissingReason = 6
+)
+
+// Enum value maps for MissingReason.
+var (
+	MissingReason_name = map[int32]string{
+		0: "MISSING_REASON_UNSPECIFIED",
+		1: "MISSING_REASON_NOT_RECEIVED_RELEASE",
+		2: "MISSING_REASON_NOT_RECEIVED_GRACE",
+		3: "MISSING_REASON_INVALID",
+		4: "MISSING_REASON_ERROR",
+		5: "MISSING_REASON_RECEIVED_ZERO",
+		6: "MISSING_REASON_MARKET_DATA_TYPE",
+	}
+	MissingReason_value = map[string]int32{
+		"MISSING_REASON_UNSPECIFIED":          0,
+		"MISSING_REASON_NOT_RECEIVED_RELEASE": 1,
+		"MISSING_REASON_NOT_RECEIVED_GRACE":   2,
+		"MISSING_REASON_INVALID":              3,
+		"MISSING_REASON_ERROR":                4,
+		"MISSING_REASON_RECEIVED_ZERO":        5,
+		"MISSING_REASON_MARKET_DATA_TYPE":     6,
+	}
+)
+
+func (x MissingReason) Enum() *MissingReason {
+	p := new(MissingReason)
+	*p = x
+	return p
+}
+
+func (x MissingReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MissingReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_ibkr_v1_quote_types_proto_enumTypes[3].Descriptor()
+}
+
+func (MissingReason) Type() protoreflect.EnumType {
+	return &file_ibkr_v1_quote_types_proto_enumTypes[3]
+}
+
+func (x MissingReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MissingReason.Descriptor instead.
+func (MissingReason) EnumDescriptor() ([]byte, []int) {
+	return file_ibkr_v1_quote_types_proto_rawDescGZIP(), []int{3}
+}
+
 var File_ibkr_v1_quote_types_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_quote_types_proto_rawDesc = "" +
@@ -246,7 +320,15 @@ const file_ibkr_v1_quote_types_proto_rawDesc = "" +
 	"\x1cQUOTE_STATUS_NO_SUBSCRIPTION\x10\x04\x12\x18\n" +
 	"\x14QUOTE_STATUS_TIMEOUT\x10\x05\x12\x16\n" +
 	"\x12QUOTE_STATUS_ERROR\x10\x06\x12\x1d\n" +
-	"\x19QUOTE_STATUS_DISCONNECTED\x10\aB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
+	"\x19QUOTE_STATUS_DISCONNECTED\x10\a*\xfc\x01\n" +
+	"\rMissingReason\x12\x1e\n" +
+	"\x1aMISSING_REASON_UNSPECIFIED\x10\x00\x12'\n" +
+	"#MISSING_REASON_NOT_RECEIVED_RELEASE\x10\x01\x12%\n" +
+	"!MISSING_REASON_NOT_RECEIVED_GRACE\x10\x02\x12\x1a\n" +
+	"\x16MISSING_REASON_INVALID\x10\x03\x12\x18\n" +
+	"\x14MISSING_REASON_ERROR\x10\x04\x12 \n" +
+	"\x1cMISSING_REASON_RECEIVED_ZERO\x10\x05\x12#\n" +
+	"\x1fMISSING_REASON_MARKET_DATA_TYPE\x10\x06B8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
 var (
 	file_ibkr_v1_quote_types_proto_rawDescOnce sync.Once
@@ -260,11 +342,12 @@ func file_ibkr_v1_quote_types_proto_rawDescGZIP() []byte {
 	return file_ibkr_v1_quote_types_proto_rawDescData
 }
 
-var file_ibkr_v1_quote_types_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_ibkr_v1_quote_types_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_ibkr_v1_quote_types_proto_goTypes = []any{
 	(MarketDataType)(0), // 0: ibkr.v1.MarketDataType
 	(QuoteKind)(0),      // 1: ibkr.v1.QuoteKind
 	(QuoteStatus)(0),    // 2: ibkr.v1.QuoteStatus
+	(MissingReason)(0),  // 3: ibkr.v1.MissingReason
 }
 var file_ibkr_v1_quote_types_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -284,7 +367,7 @@ func file_ibkr_v1_quote_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ibkr_v1_quote_types_proto_rawDesc), len(file_ibkr_v1_quote_types_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      4,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

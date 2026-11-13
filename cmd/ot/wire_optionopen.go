@@ -10,6 +10,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/optionopen"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 )
@@ -97,9 +99,15 @@ func buildOpenPlan(ctx context.Context, a *app, jc *jobCtx, id string,
 	if id == jobOptionOpenPlanJP && jc.brk != nil {
 		f.entryFix = func(es []jobs.WatchEntry) []jobs.WatchEntry { return resolveJPConIDs(ctx, jc.brk, es, a.log, id) }
 	}
+	rw, err := jc.reasonsFor(id)
+	if err != nil {
+		return nil, "", err
+	}
+	rows, _ := any(stores).(optionopen.ListRows)
 	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		return newJob(optionopen.PlanDeps{
 			Stored: openStored(jc, stores, f.fixedEntries(entries)), Marks: stores, Plans: stores, Clock: jc.f.clk, Func: optionopen.BuildPlan,
+			Reasons: rw, History: historyOf(jc.brk), ListRows: rows,
 		})
 	})
 	return held(a, id, j, reason, err)
@@ -144,7 +152,7 @@ func buildOpenResolve(ctx context.Context, a *app, jc *jobCtx, id string,
 	}
 	j, err := f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		d := optionopen.ResolveDeps{
-			Stored: openStored(jc, stores, f.fixedEntries(entries)), Broker: brk, Marks: stores, Clock: jc.f.clk,
+			Stored: openStored(jc, stores, f.fixedEntries(entries)), Broker: brk, History: historyOf(brk), Marks: stores, Clock: jc.f.clk,
 			Log: func(line string) { a.log.Info(line, "component", "ot", "job", id) },
 		}
 		if withPull {
@@ -162,6 +170,13 @@ func openResolveMaxNew(a *app) int {
 		return 0
 	}
 	return n
+}
+
+// historyOf is the HistoryClient of a broker (the dialled client implements both; the stand-in of a dead socket
+// does not, and its job is held by startOff).
+func historyOf(b broker.Broker) broker.HistoryClient {
+	h, _ := b.(broker.HistoryClient)
+	return h
 }
 
 // held logs the one startup line of a job that is held and returns it with its reason, so that the scheduler
@@ -207,17 +222,19 @@ func openStored(jc *jobCtx, stores openquote.Stores, entries []jobs.WatchEntry) 
 // A store that cannot be opened is held with its reason.
 func openOptionOpen(ctx context.Context, a *app, jc *jobCtx, id string, needBars bool) (stores openquote.Stores, reason string, ok bool) {
 	dsn := jc.cfg.openDSN
-	left := func(why string) (openquote.Stores, string, bool) {
+	// left logs the sentence and records the NAME of the key apart from it (never a value).
+	left := func(key, why string) (openquote.Stores, string, bool) {
 		a.log.Warn("option open job not wired", "component", "ot", "job", id, "status", why)
+		jc.notWired.record(id, key)
 		return nil, "", false
 	}
 	switch {
 	case dsn == "":
-		return left(reasonNoOpenDSN)
+		return left(openquote.DSNEnvOptionOpen, reasonNoOpenDSN)
 	case jc.f.inst == nil:
-		return left(reasonBuildJob)
+		return left(store.DSNEnvMaster, reasonBuildJob)
 	case needBars && jc.f.bars == nil:
-		return left(reasonNoBarDSN)
+		return left(bar.DSNEnvBar, reasonNoBarDSN)
 	}
 	s, err := optionopenpg.Open(ctx, dsn)
 	if err != nil {

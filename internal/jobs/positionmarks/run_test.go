@@ -539,3 +539,106 @@ func TestAfterIsAccountCapture(t *testing.T) {
 		t.Fatalf("After() = %v", got)
 	}
 }
+
+func TestRunLogsStatusCountsPerMarket(t *testing.T) {
+	t.Parallel()
+	ps := []store.Position{
+		pos("acct-secret", "c1", 1, "USD"), pos("acct-secret", "c1", 2, "USD"), pos("acct-secret", "c1", 3, "USD"),
+		pos("acct-secret", "c1", 4, "USD"), pos("acct-secret", "c1", 5, "JPY"), pos("acct-secret", "c1", 6, "JPY"),
+	}
+	e := setup(t, []string{"acct-secret"}, map[string][]store.Position{"acct-secret": ps})
+	status := map[int64]broker.Status{
+		1: broker.StatusOK, 2: broker.StatusOK, 3: broker.StatusNoData, 4: broker.StatusNoSubscription,
+		5: broker.StatusOK, 6: broker.StatusNoSubscription,
+	}
+	e.m.quote = func(c broker.Contract) broker.Quote {
+		if status[c.ConID] == broker.StatusOK {
+			return okQuote(c)
+		}
+		return broker.Quote{Contract: c, Status: status[c.ConID]}
+	}
+	res := e.run()
+	if res.Err != nil || res.Returned != 6 || res.Usable != 3 {
+		t.Fatalf("res = %+v", res)
+	}
+	out := e.log.String()
+	if n := strings.Count(out, "position_marks status counts"); n != 1 {
+		t.Fatalf("want one count line, got %d in %q", n, out)
+	}
+	want := `marks="JPY no_subscription=1 ok=1; USD no_data=1 no_subscription=1 ok=2"`
+	if !strings.Contains(out, want) || !strings.Contains(out, "level=INFO") {
+		t.Fatalf("log = %q, want %s", out, want)
+	}
+	if strings.Contains(out, "acct-secret") {
+		t.Fatalf("log carries the alias: %q", out)
+	}
+}
+
+func TestRunGatewayFailureKeepsTypedErrorAndFakeClock(t *testing.T) {
+	t.Parallel()
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "USD")}})
+	e.m.err = errors.New("socket down")
+	res := e.run()
+	if res.Err == nil || res.Err.Error() != "position_marks: status disconnected alias a" || kindOf(res) != contracts.Retryable {
+		t.Fatalf("err = %v", res.Err)
+	}
+	if res.Returned != 0 || res.Usable != 0 {
+		t.Fatalf("res = %+v", res)
+	}
+	if !e.clk.Now().Equal(t0) {
+		t.Fatalf("fake clock moved: %v", e.clk.Now())
+	}
+	if strings.Count(e.log.String(), "position_marks status counts") != 1 {
+		t.Fatalf("log = %q", e.log.String())
+	}
+}
+
+func TestRunPartialQuoteIsPricedFromLastThenClose(t *testing.T) {
+	t.Parallel()
+	f := func(v float64) *float64 { return &v }
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "JPY"), pos("a", "c1", 2, "JPY"), pos("a", "c1", 3, "JPY")}})
+	e.m.quote = func(c broker.Contract) broker.Quote {
+		q := broker.Quote{Contract: c, Status: broker.StatusPartial}
+		switch c.ConID {
+		case 1:
+			q.Last = f(101)
+		case 2:
+			q.Close = f(99)
+		}
+		return q
+	}
+	if res := e.run(); res.Err != nil || res.Returned != 3 {
+		t.Fatalf("res = %+v", res)
+	}
+	want := []struct{ price, basis string }{{"101", mark.BasisLast}, {"99", mark.BasisClose}, {"", mark.BasisNone}}
+	for i, w := range want {
+		r := e.w.rows[i]
+		if r.Status != "partial" || r.Price != w.price || r.Basis != w.basis {
+			t.Fatalf("row %d = %+v, want price %q basis %q", i, r, w.price, w.basis)
+		}
+	}
+	if e.w.rows[0].Last != "101" || e.w.rows[1].Close != "99" {
+		t.Fatalf("texts lost: %+v %+v", e.w.rows[0], e.w.rows[1])
+	}
+}
+
+func TestRetrySnapshotsOnlyTheUnpricedPartialPosition(t *testing.T) {
+	t.Parallel()
+	last := 101.0
+	e := setup(t, []string{"a"}, map[string][]store.Position{"a": {pos("a", "c1", 1, "JPY"), pos("a", "c1", 2, "JPY")}})
+	e.m.quote = func(c broker.Contract) broker.Quote {
+		q := broker.Quote{Contract: c, Status: broker.StatusPartial}
+		if c.ConID == 1 {
+			q.Last = &last
+		}
+		return q
+	}
+	e.run()
+	res := e.run()
+	if res.Err != nil || res.Returned != 1 || len(e.m.calls) != 2 || len(e.m.calls[1]) != 1 || e.m.calls[1][0].ConID != 2 {
+		t.Fatalf("res = %+v calls = %+v", res, e.m.calls)
+	}
+	if r := e.w.rows[len(e.w.rows)-1]; r.ConID != 2 || r.Attempt != 2 {
+		t.Fatalf("row = %+v", r)
+	}
+}

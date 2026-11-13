@@ -27,6 +27,14 @@ var (
 		broker.KindSnapshot:     pb.QuoteKind_QUOTE_KIND_SNAPSHOT,
 		broker.KindOptionOpen:   pb.QuoteKind_QUOTE_KIND_OPTION_OPEN,
 	}
+	missingOfProto = map[pb.MissingReason]broker.MissingReason{
+		pb.MissingReason_MISSING_REASON_NOT_RECEIVED_RELEASE: broker.MissingNotReceivedRelease,
+		pb.MissingReason_MISSING_REASON_NOT_RECEIVED_GRACE:   broker.MissingNotReceivedGrace,
+		pb.MissingReason_MISSING_REASON_INVALID:              broker.MissingInvalid,
+		pb.MissingReason_MISSING_REASON_ERROR:                broker.MissingError,
+		pb.MissingReason_MISSING_REASON_RECEIVED_ZERO:        broker.MissingReceivedZero,
+		pb.MissingReason_MISSING_REASON_MARKET_DATA_TYPE:     broker.MissingMarketDataType,
+	}
 	statusOfProto = map[pb.QuoteStatus]broker.Status{
 		pb.QuoteStatus_QUOTE_STATUS_OK:              broker.StatusOK,
 		pb.QuoteStatus_QUOTE_STATUS_PARTIAL:         broker.StatusPartial,
@@ -114,6 +122,13 @@ func fromQuote(q *pb.Quote, now clock.Clock) (broker.Quote, error) {
 		Theta: q.Theta, UndPrice: q.UndPrice,
 		ErrorCode: int(q.GetErrorCode()), ErrorText: q.GetErrorText(),
 	}
+	for _, m := range q.GetMissing() {
+		r, ok := missingOfProto[m.GetReason()]
+		if !ok {
+			return broker.Quote{}, permanent(fmt.Sprintf("quote missing reason %s", m.GetReason()))
+		}
+		out.Missing = append(out.Missing, broker.MissingField{Field: m.GetField(), Reason: r, ErrorCode: int(m.GetErrorCode())})
+	}
 	switch {
 	case q.GetReceivedAt() != nil:
 		out.ReceivedAt = q.GetReceivedAt().AsTime().UTC()
@@ -127,10 +142,10 @@ func fromQuote(q *pb.Quote, now clock.Clock) (broker.Quote, error) {
 	return out, nil
 }
 
-// fromAccount converts an account answer; no alias or a negative generation is a Permanent error.
+// fromAccount converts an account answer; no account or a negative generation is a Permanent error.
 func fromAccount(r *pb.AccountResponse) (broker.Account, error) {
 	if r.GetAccount() == "" {
-		return broker.Account{}, permanent("account: answer has no alias")
+		return broker.Account{}, permanent("account: answer has no account")
 	}
 	if r.GetGeneration() < 0 {
 		return broker.Account{}, permanent("account: negative generation")
@@ -153,11 +168,11 @@ func fromAccount(r *pb.AccountResponse) (broker.Account, error) {
 	return out, nil
 }
 
-// fromExecutions converts an executions answer; no alias, a negative generation or a time that is
+// fromExecutions converts an executions answer; no account, a negative generation or a time that is
 // not RFC 3339 is a Permanent error. The time is returned in UTC; decimals stay text.
 func fromExecutions(r *pb.ExecutionsResponse) (broker.Executions, error) {
 	if r.GetAccount() == "" {
-		return broker.Executions{}, permanent("executions: answer has no alias")
+		return broker.Executions{}, permanent("executions: answer has no account")
 	}
 	if r.GetGeneration() < 0 {
 		return broker.Executions{}, permanent("executions: negative generation")

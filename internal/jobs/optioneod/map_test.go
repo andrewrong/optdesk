@@ -77,7 +77,7 @@ func TestMapRow(t *testing.T) {
 	r := mapRow(q, 11, 22, time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), cid, "USD")
 	got := []any{r.InstrumentID, r.UnderlyingID, r.Generation, r.MarketDataType, r.Status, r.ErrorCode == nil, r.SnapshotKind, r.Currency,
 		r.UnderlyingCcy, r.CaptureID, r.SessionDay.Format(time.DateOnly), r.EventTs.Equal(ev)}
-	want := []any{11, 22, 7, 2, 1, true, "eod", "USD", "USD", cid.String(), "2026-11-06", true}
+	want := []any{11, 22, 7, 2, 1, true, "off_session", "USD", "USD", cid.String(), "2026-11-06", true}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("row %v, want %v", got, want)
 	}
@@ -171,8 +171,20 @@ func TestChainOfShareClass(t *testing.T) {
 func TestCaptureIDValue(t *testing.T) {
 	t.Parallel()
 	k := contracts.ExpectedKey{DatasetID: "obs.option_eod", SubjectKey: "TEST"}
-	want := uuid.NewSHA1(uuid.NameSpaceOID, []byte("2026-11-06|obs.option_eod|TEST"))
-	if captureID("2026-11-06", k) != want {
-		t.Fatal("capture id is the SHA1 uuid of day|dataset|subject")
+	start := time.Date(2026, 11, 6, 15, 0, 0, 0, time.UTC)
+	want := uuid.NewSHA1(uuid.NameSpaceOID, []byte("2026-11-06|obs.option_eod|TEST|2026-11-06T15:00:00Z"))
+	if captureID("2026-11-06", k, start) != want {
+		t.Fatal("capture id is the SHA1 uuid of day|dataset|subject|start")
+	}
+}
+
+func TestSnapshotKindFromQuote(t *testing.T) {
+	t.Parallel()
+	for mdt, want := range map[int]string{1: "session", 2: "off_session", 3: "off_session", 4: "off_session"} {
+		q := broker.Quote{MarketDataType: mdt, ReceivedAt: time.Date(2026, 11, 6, 15, 0, 0, 0, time.UTC)}
+		row := mapRow(q, 1, 2, time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC), captureID("2026-11-06", testKey, q.ReceivedAt), "USD")
+		if row.SnapshotKind != want {
+			t.Fatalf("market data type %d: snapshot_kind %q, want %q", mdt, row.SnapshotKind, want)
+		}
 	}
 }

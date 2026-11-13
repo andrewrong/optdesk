@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 // deadEnv names a port that refuses at once: the store cannot be opened.
@@ -50,6 +51,28 @@ type openHarness struct {
 	mu     sync.Mutex
 	dialed []broker.Options
 	closed int
+	// reasons is the reason writer of the jobCtx, which records every ReplaceReasons.
+	reasons *fakeReasons
+}
+
+// fakeReasons is a runview.ReasonWriter that records its calls.
+type fakeReasons struct {
+	mu    sync.Mutex
+	calls []reasonCall
+	err   error
+}
+
+type reasonCall struct {
+	day              contracts.Day
+	dataset, subject string
+	rows             []runview.Reason
+}
+
+func (f *fakeReasons) ReplaceReasons(_ context.Context, day contracts.Day, dataset, subject string, rows []runview.Reason) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, reasonCall{day, dataset, subject, rows})
+	return f.err
 }
 
 func newOpenHarness(t *testing.T, env map[string]string, brokerUp bool, dialErr error) *openHarness {
@@ -58,7 +81,7 @@ func newOpenHarness(t *testing.T, env map[string]string, brokerUp bool, dialErr 
 	var buf bytes.Buffer
 	a.log = slog.New(slog.NewTextHandler(&buf, nil))
 	a.getenv = func(k string) string { return env[k] }
-	h := &openHarness{a: a, log: &buf}
+	h := &openHarness{a: a, log: &buf, reasons: &fakeReasons{}}
 	a.deps.dialBroker = func(_ context.Context, _ string, o broker.Options) (broker.Broker, error) {
 		h.mu.Lock()
 		defer h.mu.Unlock()
@@ -73,7 +96,8 @@ func newOpenHarness(t *testing.T, env map[string]string, brokerUp bool, dialErr 
 		f:        &f,
 		brk:      closeBroker{mu: &h.mu, closed: &h.closed},
 		brokerUp: brokerUp, extra: &closerSet{},
-		cfg: runOnceConfig{openDSN: env[openquote.DSNEnvOptionOpen]},
+		cfg:     runOnceConfig{openDSN: env[openquote.DSNEnvOptionOpen]},
+		reasons: h.reasons,
 	}
 	return h
 }
@@ -426,5 +450,27 @@ func TestOpenResolveUSEntriesUntouched(t *testing.T) {
 	}
 	if c := b.calls(); len(c) != 0 {
 		t.Fatalf("resolve calls %v, want none", c)
+	}
+}
+
+func TestLedgerReasonWriterReachesPlanAndListJobs(t *testing.T) {
+	t.Parallel()
+	for _, id := range []string{jobOptionOpenPlan, jobOptionOpenPlanJP, jobOptionListPreopen, jobOptionListZone, jobOptionListPreopenJP} {
+		h := listHarness(t, deadEnv, true, true)
+		// The writer a ledger that is a ReasonWriter gives wireJobs reaches the job through jc.reasons.
+		rw, _ := any(h.reasons).(runview.ReasonWriter)
+		jc := newJobCtx(h.jc.cfg, h.jc.f, h.jc.brk, true, nil, &closerSet{}, rw)
+		got, err := jc.reasonsFor(id)
+		if err != nil || got != rw {
+			t.Fatalf("%s: writer %v err %v", id, got, err)
+		}
+		if j, _, err := jobFamilies[id].build(t.Context(), h.a, jc); err != nil || j == nil {
+			t.Fatalf("%s: job %v err %v", id, j, err)
+		}
+		// A ledger that is not a ReasonWriter: the build is an error naming the job, never a nil port.
+		jc = newJobCtx(h.jc.cfg, h.jc.f, h.jc.brk, true, nil, &closerSet{}, nil)
+		if _, _, err := jobFamilies[id].build(t.Context(), h.a, jc); err == nil || !strings.Contains(err.Error(), id) {
+			t.Fatalf("%s: err %v", id, err)
+		}
 	}
 }

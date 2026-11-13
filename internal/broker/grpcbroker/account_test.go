@@ -174,7 +174,7 @@ func TestDialAccountRefuses(t *testing.T) {
 func TestAccountEmptyAliasRefused(t *testing.T) {
 	t.Parallel()
 	for name, r := range map[string]*pb.AccountResponse{
-		"no alias":            {Generation: 1},
+		"no account":          {Generation: 1},
 		"negative generation": {Account: "gw-b", Generation: -1},
 	} {
 		c, _ := serveAccount(t, respOf(r), broker.Options{})
@@ -249,7 +249,7 @@ func TestExecutionsNotCollected(t *testing.T) {
 func TestExecutionsRefused(t *testing.T) {
 	t.Parallel()
 	for name, r := range map[string]*pb.ExecutionsResponse{
-		"no alias":            {Generation: 1, Collected: true},
+		"no account":          {Generation: 1, Collected: true},
 		"negative generation": {Account: "gw-b", Generation: -1, Collected: true},
 		"bad time":            {Account: "gw-b", Collected: true, Executions: []*pb.Execution{{ExecId: "1", Time: "yesterday"}}},
 	} {

@@ -6,9 +6,9 @@ Revision: 1
 
 Source: restart plan v2.5, parts 2 (three layers), 4 and 4.1 (module table), 8 (repository). The plan text
 says "ten modules" and its table lists eleven rows (contracts, clock, broker, sources, store, compute, runner,
-jobs, notify, pages, web); this map follows the table. The rows pyside, ci, deploy, repo, ot and docs are added so that every
+jobs, notify, pages, web); this map follows the table. The rows pyside, ci, deploy, repo, ot and docs are added, and `accounts` is a library module outside the layers that only `ot` depends on, so that every
 path of the planned tree belongs to a row; they are not layer modules and no Go package depends on them, except that
-`cmd/ot` (row ot) imports `internal/profile` of repo.
+`cmd/ot` (row ot) imports `internal/profile` of repo and `internal/accounts` of accounts.
 
 How the table is read (`crew issue check`, `crew ask draft`): the table under `## Modules` has the columns
 module, paths, entry, tests, depends. A path belongs to the first row one of whose globs matches it (`**` is any
@@ -87,7 +87,8 @@ rows above name every other top-level path of the planned tree.
 | sources | internal/sources/** docs/contracts/sources.md | internal/sources/api.go | internal/sources/api_test.go | contracts clock |
 | gaphistory | internal/gaphistory/** docs/contracts/gaphistory.md | internal/gaphistory/api.go | internal/gaphistory/api_test.go | contracts |
 | symbol | internal/symbol/** docs/contracts/symbol.md | internal/symbol/api.go internal/symbol/contracttest | internal/symbol/api_test.go internal/symbol/contracttest |  |
-| store | internal/store/** migrations/** docs/contracts/store.md docs/contracts/store/** | internal/store/api.go internal/store/jobrequest internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend internal/store/openquote internal/store/runview internal/store/underlying internal/store/optionledger/api.go | internal/store/api_test.go | contracts gaphistory |
+| accounts | internal/accounts/** docs/contracts/accounts.md | internal/accounts/api.go | internal/accounts/api_test.go |  |
+| store | internal/store/** migrations/** docs/contracts/store.md docs/contracts/store/** | internal/store/api.go internal/store/jobrequest internal/store/hoursnotice internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend internal/store/openquote internal/store/runview internal/store/underlying internal/store/optionledger/api.go | internal/store/api_test.go | contracts gaphistory |
 | compute | internal/compute/** docs/contracts/compute.md docs/contracts/compute/** tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest internal/compute/trackapi internal/compute/settingsapi internal/compute/blockapi internal/compute/valuationapi | internal/compute/api_test.go internal/compute/contracttest | contracts |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
 | jobs | internal/jobs/** docs/contracts/jobs.md docs/contracts/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute symbol |
@@ -98,7 +99,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory symbol |
+| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory symbol accounts |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
@@ -114,6 +115,7 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | sources | data | FRED, SEC, HTTP, Stooq responses | typed records with source revision and published_at | opening the database; knowing the runner or pages | docs/contracts/sources.md |
 | gaphistory | data | the rows of the view rd.job_gap_r1 as read by store | one read interface, `GapsSince`, with its own `Gap` row type | opening the database, arithmetic, writing | docs/contracts/gaphistory.md |
 | symbol | data | a stock symbol of the IBKR contract | the spelling of a vendor, the option root | opening anything, any network, any state | docs/contracts/symbol.md |
+| accounts | outside the layers | the file `$OT_HOME/accounts.toml` | the map from an IBKR account id to the owner alias, `Book` | any other file, any network, opening the database, logging an id | docs/contracts/accounts.md |
 | store | data | records | one Writer and one Reader per dataset, migrations, roles rw and ro | being bypassed: only store imports pgx (depguard) | docs/contracts/store.md and docs/contracts/datasets/ |
 | compute | data | typed records | figure values with register id and version | any I/O | docs/contracts/compute.md (first issue: week 8-9) |
 | runner | scheduling | job manifests (window rules), the key set each job Plan returns, the run table | run, attempt, job_event; ops.capture_expected_key and ops.dataset_window; control socket | knowing dataset content (keys are opaque) | docs/contracts/runner.md |

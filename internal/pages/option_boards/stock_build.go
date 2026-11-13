@@ -29,14 +29,14 @@ type stockRow struct {
 
 func (r stockRow) ok() bool { return r.C.Status == "ok" }
 
-// BuildStock builds page.stock_option_page.v2. r is unused; at is given in UTC and written in c.Zone as generated_at.
+// BuildStock builds page.stock_option_page.v3. r is unused; at is given in UTC and written in c.Zone as generated_at.
 // The company is c.Key, or for a bare key the display name of the first ok row of the data day, else of the first row.
 func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day contracts.Day, at time.Time) ([]byte, error) {
 	if c.Zone == nil {
 		return nil, errors.New("option_boards: nil zone")
 	}
 	p := stockPayload{
-		Schema: "stock_option_page", SchemaVersion: 2, RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
+		Schema: "stock_option_page", SchemaVersion: 3, RunID: c.RunID, BuildID: c.BuildID, Scope: c.Scope,
 		GeneratedAt: zoneTime(at, c.Zone), DataTimes: []sourceTime{}, Title: stockTitle,
 		Maps: []priceMap{}, Cards: []chosenCard{}, Held: []heldItem{}, Footer: footerText, Refresh: refreshOf(c.Refresh),
 		Matrix:    matrixBlock{Expiries: []matrixExpiry{}, Strikes: []string{}, Cells: []matrixCell{}, Legend: matrixLegend},
@@ -81,6 +81,10 @@ func BuildStock(ctx context.Context, c StockConfig, _ store.SeriesReader, day co
 			gaps = append(gaps, mkGap("no_data", noMatrixText))
 			p.SharedGap = strPtr(noMatrixText)
 		}
+	}
+	var err error
+	if p.VolView, err = buildVolView(ctx, c.Readings, volSubject(key, c.Key, mine, names), day); err != nil {
+		return nil, err
 	}
 	if len(mine) > 0 {
 		key = names.of(mine[0])

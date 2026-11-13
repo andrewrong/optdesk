@@ -3,6 +3,7 @@ package optionopen
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -249,6 +250,8 @@ type lrig struct {
 	offs   map[string][]int // expiry offsets in days per symbol, default 22 and 29
 	pauses []time.Duration
 	logs   []string
+	closes map[string]string // the stored closes by day; nil: 100 on the day before
+	tweak  func(*ListDeps)
 }
 
 var newYork = func() *time.Location { l, _ := time.LoadLocation("America/New_York"); return l }()
@@ -309,13 +312,22 @@ func (g *lrig) deps() ListDeps {
 	if g.acc.fakeAccount() {
 		acct = g.acc
 	}
-	return ListDeps{Stored: Stored{Watch: w, Instruments: g.ins, Options: g.opts, Accounts: acct}, Lister: g.lst, ListStore: g.ls, Clock: g.clk,
+	bars := fakeBars{closes: map[string]string{string(g.exp(-1)): "100"}}
+	if g.closes != nil {
+		bars = fakeBars{closes: g.closes}
+	}
+	d := ListDeps{Stored: Stored{Watch: w, Instruments: g.ins, Options: g.opts, Accounts: acct,
+		HeldAliases: ownerAliases, Bars: bars}, Lister: g.lst, ListStore: g.ls, Clock: g.clk,
 		Log: func(s string) { g.logs = append(g.logs, s) },
 		Pause: func(_ context.Context, d time.Duration) error {
 			g.pauses = append(g.pauses, d)
 			g.clk.Advance(d)
 			return nil
 		}}
+	if g.tweak != nil {
+		g.tweak(&d)
+	}
+	return d
 }
 
 func (c *countingAccounts) fakeAccount() bool { return len(c.pos) > 0 }
@@ -326,7 +338,7 @@ func (g *lrig) job(data []byte) *listJob {
 	if data == nil {
 		data = listManifest
 	}
-	j, err := newListPreopen(data, g.deps())
+	j, err := newListPreopen(data, usRules(), g.deps())
 	require.NoError(g.t, err)
 	return j.(*listJob)
 }
@@ -361,7 +373,7 @@ func (g *lrig) seed(sym string, reason string, listed int, offs ...int) {
 		exp = append(exp, string(g.exp(o))+"|"+sym)
 		if i < listed {
 			require.NoError(g.t, g.ls.PutLists(context.Background(), []openquote.ListRecord{{UnderlyingID: id, Expiry: g.exp(o), Class: sym,
-				ListedSession: g.day, Outcome: "listed", Count: 6}}))
+				ListedSession: g.day, Outcome: "listed", Count: 6, BandLo: "50", BandHi: "200", Sigma: 0.3, SigmaSource: "iv", InBand: 6}}))
 		}
 	}
 	require.NoError(g.t, g.ls.PutListRuns(context.Background(), []openquote.ListRunRecord{{UnderlyingID: id, Session: g.day, Expected: exp, Reason: reason}}))
@@ -381,8 +393,7 @@ func TestListManifestHasItsOwnParser(t *testing.T) {
 	m, err := parseList(listManifest)
 	require.NoError(t, err)
 	require.Equal(t, 45, m.BudgetMinutes)
-	require.Equal(t, 21, m.DTEMin)
-	require.Equal(t, 45, m.DTEMax)
+	require.Equal(t, []windowTableDTE{{MinDTE: 21, MaxDTE: 45}}, m.Windows)
 	require.Equal(t, 0.5, m.MinRatio)
 	require.Equal(t, 60000, m.MaxNew)
 	require.Equal(t, []int{7, 30}, []int{m.stopH, m.stopM})
@@ -441,7 +452,7 @@ func TestListJobNeedsChains(t *testing.T) {
 	g := newLRig(t, "AAA")
 	d := g.deps()
 	d.Lister = onlyLister{}
-	_, err := newListPreopen(listManifest, d)
+	_, err := newListPreopen(listManifest, usRules(), d)
 	require.Error(t, err)
 	d.Lister = nil
 	_, err = NewListPreopen(d)
@@ -454,4 +465,131 @@ type onlyLister struct{}
 
 func (onlyLister) ListContracts(context.Context, broker.Contract, contracts.Day, string, string) ([]broker.Contract, error) {
 	return nil, nil
+}
+
+func TestBandFloorTenPercent(t *testing.T) {
+	t.Parallel()
+	lo, hi := ListBand(100, 0.01, 30, nil, BandParams{K: 1.5, FloorPct: 0.10, MinSide: 3})
+	require.InDelta(t, 90, lo, 1e-9)
+	require.InDelta(t, 110, hi, 1e-9)
+	lo, hi = ListBand(100, 0.50, 30, nil, BandParams{K: 1.5, FloorPct: 0.10})
+	s := 0.50 * math.Sqrt(30.0/365)
+	require.InDelta(t, 100*math.Exp(-1.5*s), lo, 1e-9, "a wide sigma is the band, not the floor")
+	require.InDelta(t, 100*math.Exp(1.5*s), hi, 1e-9)
+}
+
+func TestMinThreeStrikesPerSide(t *testing.T) {
+	t.Parallel()
+	p := BandParams{K: 1.5, FloorPct: 0.10, MinSide: 3}
+	lo, hi := ListBand(100, 0.01, 30, []float64{50, 60, 70, 80, 85, 95, 105, 130, 140, 150}, p)
+	require.Equal(t, []float64{80, 140}, []float64{lo, hi}, "the third nearest listed strike on each side")
+	lo, hi = ListBand(100, 0.01, 30, []float64{95, 105}, p)
+	require.InDelta(t, 90, lo, 1e-9, "fewer listed than asked: the floor stands")
+	require.InDelta(t, 110, hi, 1e-9)
+}
+
+func TestHalfStrikeIsListed(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA")
+	g.offs["AAA"] = []int{22}
+	g.lst.list = func(_ int, _ string, _ contracts.Day, class string) ([]broker.Contract, error) {
+		return g.lst.sample(class, "", "97.5", "100", "102.5"), nil
+	}
+	require.NoError(t, errOf(g.run(g.job(nil))))
+	got := map[string]bool{}
+	refs, _ := g.opts.ListOptions(context.Background(), g.id("AAA"))
+	for _, r := range refs {
+		got[r.Strike] = true
+	}
+	require.Equal(t, map[string]bool{"97.5": true, "100": true, "102.5": true}, got)
+}
+
+func TestSecondWindowIsConfigOnly(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA")
+	g.offs["AAA"] = []int{10, 22, 60}
+	data := replaceKey(t, "[window]", "[[window_dte]]\nmin_dte = 7\nmax_dte = 14\n\n[window]")
+	require.NoError(t, errOf(g.run(g.job(data))))
+	require.Equal(t, []string{fmt.Sprintf("list:AAA@%s", g.exp(10)), fmt.Sprintf("list:AAA@%s", g.exp(22))}, g.lst.only("list:"),
+		"the expiries of both pairs are listed, 60 is in neither")
+}
+
+func TestWindowCloseIsSessionClose(t *testing.T) {
+	t.Parallel()
+	data := replaceKey(t, "[window]", "[[window_dte]]\nmin_dte = 7\nmax_dte = 14\n\n[window]")
+	for _, d := range [][]byte{nil, data} {
+		cal, open, closeOff := newLRig(t, "AAA").job(d).Window()
+		require.Equal(t, []any{"XNYS", time.Duration(0), time.Duration(0)}, []any{cal, open, closeOff})
+	}
+}
+
+func TestKeyReadsDatasetAndSubject(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA")
+	g.offs["AAA"] = []int{22}
+	data := replaceKey(t, `dataset = "master.option_list"`, `dataset = "master.option_list.jp"`)
+	j := g.job(data)
+	keys, _, err := j.Plan(context.Background(), g.day)
+	require.NoError(t, err)
+	require.Equal(t, []contracts.ExpectedKey{{DatasetID: "master.option_list.jp", SubjectKey: "preopen"}}, keys)
+	res := j.Run(context.Background(), g.day, []contracts.ExpectedKey{{DatasetID: ListDatasetID, SubjectKey: ListSubject}})
+	require.NotNil(t, res.Err, "the US key is not the key of this job")
+	require.Equal(t, contracts.Permanent, res.Err.Kind())
+	require.NoError(t, errOf(j.Run(context.Background(), g.day, keys)))
+}
+
+func TestNameFilterFromRules(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA", "BBB")
+	g.lst.chains = func(sym string) ([]broker.Chain, error) {
+		ch := g.chainsOf(sym)
+		ch[0].TradingClass = "C" + sym
+		return ch, nil
+	}
+	rules := usRules()
+	all := rules.Names
+	rules.Names = func(ctx context.Context, s Stored, day time.Time) ([]stock, []store.Position, error) {
+		sts, pos, err := all(ctx, s, day)
+		var out []stock
+		for _, st := range sts {
+			if st.Symbol == "BBB" {
+				out = append(out, st)
+			}
+		}
+		return out, pos, err
+	}
+	rules.Class = func(st stock) string { return "C" + st.Symbol }
+	rules.Multiplier = "100"
+	j, err := newListPreopen(listManifest, rules, g.deps())
+	require.NoError(t, err)
+	require.NoError(t, errOf(g.run(j.(*listJob))))
+	require.Empty(t, g.lst.only("chains:AAA"), "a name the rules drop is not asked")
+	require.Len(t, g.lst.only("list:BBB"), 2)
+	l, _ := g.ls.Lists(context.Background(), g.id("BBB"))
+	require.Equal(t, "CBBB", l[0].Class)
+}
+
+func TestPostconditionScopedToOwnNames(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA", "BBB")
+	g.seed("AAA", reasonNone, 2, 22, 29)
+	g.seed("BBB", reasonNotFinished, 0, 22)
+	require.NoError(t, g.ls.PutListRuns(context.Background(), []openquote.ListRunRecord{
+		{UnderlyingID: g.id("AAA"), Session: g.day, Listed: 2, Reason: reasonNone}}))
+	require.True(t, g.present(g.job(nil)))
+	rules := usRules()
+	all := rules.Names
+	rules.Names = func(ctx context.Context, s Stored, day time.Time) ([]stock, []store.Position, error) {
+		sts, pos, err := all(ctx, s, day)
+		var out []stock
+		for _, st := range sts {
+			if st.Symbol == "BBB" {
+				out = append(out, st)
+			}
+		}
+		return out, pos, err
+	}
+	j, err := newListPreopen(listManifest, rules, g.deps())
+	require.NoError(t, err)
+	require.False(t, g.present(j.(*listJob)), "the rows of the other names of the day are not read")
 }

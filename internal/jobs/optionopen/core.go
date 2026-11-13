@@ -115,6 +115,36 @@ func (c *Core) Pull(ctx context.Context, targets []Target) Result {
 	return Result{Rows: st.rows, Summary: c.summary(st)}
 }
 
+// logNotOk says which asked row ended partial or no_data and which of its fields are absent.
+func (c *Core) logNotOk(t Target, r contracts.OptionOpen) {
+	name := ""
+	switch r.Status {
+	case stPartial:
+		name = "partial"
+	case stNoData:
+		name = "no_data"
+	default:
+		return
+	}
+	c.logger().Info("option_open row not ok", "symbol", t.Symbol, "expiry", t.Expiry.Format(time.DateOnly),
+		"strike", t.Strike, "right", string(t.Right), "status", name, "absent", absentFields(r),
+		"market_data_type", r.MarketDataType)
+}
+
+// absentFields lists the fields of bid, ask, last and iv that the row lacks, in that order.
+func absentFields(r contracts.OptionOpen) []string {
+	out := []string{}
+	for _, f := range []struct {
+		name string
+		v    *float64
+	}{{"bid", r.Bid}, {"ask", r.Ask}, {"last", r.Last}, {"iv", r.IvDecimal}} {
+		if f.v == nil {
+			out = append(out, f.name)
+		}
+	}
+	return out
+}
+
 func (c *Core) logger() *slog.Logger {
 	if c.Log != nil {
 		return c.Log
@@ -346,6 +376,7 @@ func (c *Core) group(ctx context.Context, st *runState, g []Target, start float6
 	for i, t := range g {
 		r := c.row(t, as[i], requested)
 		r.Skew, r.UnderlyingPrice, r.UnderlyingEventTs = skew, &end, endTs
+		c.logNotOk(t, r)
 		c.add(st, t, r)
 	}
 	return end, endTs

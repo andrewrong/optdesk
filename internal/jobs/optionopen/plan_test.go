@@ -65,7 +65,7 @@ func (r *planRig) job(t *testing.T, symbols ...string) contracts.Job {
 // jobWith builds the plan job with the rig's ports and the optional ports of d.
 func (r *planRig) jobWith(t *testing.T, d PlanDeps, symbols ...string) contracts.Job {
 	t.Helper()
-	d.Stored = Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod}
+	d.Stored = Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod}
 	d.Marks, d.Plans, d.Clock = r.marks, r.plans, r.clk
 	j, err := NewPlan(d)
 	if err != nil {
@@ -407,12 +407,24 @@ func TestPlanWindowsPerCalendar(t *testing.T) {
 
 func TestHeldStockRowEntersTheWatchedStocks(t *testing.T) {
 	t.Parallel()
-	s := Stored{Accounts: fakeAccounts{pos: []store.Position{
+	s := Stored{HeldAliases: ownerAliases, Accounts: fakeAccounts{pos: []store.Position{
 		{SecType: "stock", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"},
-		{SecType: "stock", Symbol: "ZERO", ConID: 78, Quantity: "0"},
+		{SecType: "stock", Symbol: "ZERO", ConID: 78, Currency: "USD", Quantity: "0"},
 	}}}
 	got, _, err := s.stocks(context.Background(), time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC))
 	if err != nil || len(got) != 1 || got[0].Symbol != "NVDA" || got[0].ConID != 77 {
+		t.Fatalf("stocks %v err %v, want NVDA only", got, err)
+	}
+}
+
+func TestHeldJPYStockRowIsNotAUSStock(t *testing.T) {
+	t.Parallel()
+	s := Stored{HeldAliases: ownerAliases, Accounts: fakeAccounts{pos: []store.Position{
+		{SecType: "stock", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"},
+		{SecType: "stock", Symbol: "7203", ConID: 79, Exchange: "TSEJ", Currency: "JPY", Quantity: "100"},
+	}}}
+	got, _, err := s.stocks(context.Background(), time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(got) != 1 || got[0].Symbol != "NVDA" {
 		t.Fatalf("stocks %v err %v, want NVDA only", got, err)
 	}
 }
@@ -429,5 +441,16 @@ func TestHeldOptionRowIsReadForItsQuoteRef(t *testing.T) {
 	held, missing = heldRefs([]store.Position{row}, "AAPL", []openquote.OptionRef{ref})
 	if len(held) != 0 || missing != 0 {
 		t.Fatalf("a zero-quantity row is not held: %v missing %d", held, missing)
+	}
+}
+
+func TestHeldZeroQuantityUSDStockIsSkipped(t *testing.T) {
+	t.Parallel()
+	s := Stored{HeldAliases: ownerAliases, Accounts: fakeAccounts{pos: []store.Position{
+		{SecType: "stock", Symbol: "ZERO", ConID: 78, Currency: "USD", Quantity: "0"},
+	}}}
+	got, _, err := s.stocks(context.Background(), time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(got) != 0 {
+		t.Fatalf("stocks %v err %v, want none", got, err)
 	}
 }

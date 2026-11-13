@@ -81,7 +81,7 @@ func BuildOption(ctx context.Context, c OptionConfig, _ store.SeriesReader, day 
 
 	pane := marketPane{
 		Market: "US", Label: "US stocks", Currency: "USD",
-		Headline:        fmt.Sprintf("%d worth a look.", len(cards)),
+		Headline:        fmt.Sprintf("%d worth a look.", worthCount(cards)),
 		CardsTitle:      "Today's opportunities",
 		Cards:           buildOptionCards(cards, eod, names),
 		CandidatesTitle: "Candidates",

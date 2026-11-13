@@ -60,7 +60,10 @@ type Quote struct {
 	AskSize  *float64 `protobuf:"fixed64,25,opt,name=ask_size,json=askSize,proto3,oneof" json:"ask_size,omitempty"`
 	LastSize *float64 `protobuf:"fixed64,26,opt,name=last_size,json=lastSize,proto3,oneof" json:"last_size,omitempty"`
 	// event_ts is the exchange's event time; sent_at and received_at stay ours.
-	EventTs       *timestamppb.Timestamp `protobuf:"bytes,27,opt,name=event_ts,json=eventTs,proto3" json:"event_ts,omitempty"`
+	EventTs *timestamppb.Timestamp `protobuf:"bytes,27,opt,name=event_ts,json=eventTs,proto3" json:"event_ts,omitempty"`
+	// missing lists the fields pyside did not deliver and why, for the kinds
+	// OPTION_EOD and OPTION_OPEN; the other kinds send an empty list.
+	Missing       []*MissingField `protobuf:"bytes,28,rep,name=missing,proto3" json:"missing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -284,11 +287,83 @@ func (x *Quote) GetEventTs() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Quote) GetMissing() []*MissingField {
+	if x != nil {
+		return x.Missing
+	}
+	return nil
+}
+
+// MissingField names one Quote field that is unset and the reason.
+type MissingField struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// field is the Quote field name (bid, ask, last, volume, open_interest,
+	// implied_vol, delta, gamma, vega, theta).
+	Field  string        `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	Reason MissingReason `protobuf:"varint,2,opt,name=reason,proto3,enum=ibkr.v1.MissingReason" json:"reason,omitempty"`
+	// error_code is the IBKR code when reason is MISSING_REASON_ERROR.
+	ErrorCode     int32 `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MissingField) Reset() {
+	*x = MissingField{}
+	mi := &file_ibkr_v1_quote_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MissingField) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MissingField) ProtoMessage() {}
+
+func (x *MissingField) ProtoReflect() protoreflect.Message {
+	mi := &file_ibkr_v1_quote_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MissingField.ProtoReflect.Descriptor instead.
+func (*MissingField) Descriptor() ([]byte, []int) {
+	return file_ibkr_v1_quote_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *MissingField) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
+func (x *MissingField) GetReason() MissingReason {
+	if x != nil {
+		return x.Reason
+	}
+	return MissingReason_MISSING_REASON_UNSPECIFIED
+}
+
+func (x *MissingField) GetErrorCode() int32 {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return 0
+}
+
 var File_ibkr_v1_quote_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_quote_proto_rawDesc = "" +
 	"\n" +
-	"\x13ibkr/v1/quote.proto\x12\aibkr.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16ibkr/v1/contract.proto\x1a\x19ibkr/v1/quote_types.proto\"\xe4\t\n" +
+	"\x13ibkr/v1/quote.proto\x12\aibkr.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16ibkr/v1/contract.proto\x1a\x19ibkr/v1/quote_types.proto\"\x95\n" +
+	"\n" +
 	"\x05Quote\x121\n" +
 	"\bcontract\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\x12,\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x14.ibkr.v1.QuoteStatusR\x06status\x12A\n" +
@@ -324,7 +399,8 @@ const file_ibkr_v1_quote_proto_rawDesc = "" +
 	"\bbid_size\x18\x18 \x01(\x01H\x0eR\abidSize\x88\x01\x01\x12\x1e\n" +
 	"\bask_size\x18\x19 \x01(\x01H\x0fR\aaskSize\x88\x01\x01\x12 \n" +
 	"\tlast_size\x18\x1a \x01(\x01H\x10R\blastSize\x88\x01\x01\x125\n" +
-	"\bevent_ts\x18\x1b \x01(\v2\x1a.google.protobuf.TimestampR\aeventTsB\x06\n" +
+	"\bevent_ts\x18\x1b \x01(\v2\x1a.google.protobuf.TimestampR\aeventTs\x12/\n" +
+	"\amissing\x18\x1c \x03(\v2\x15.ibkr.v1.MissingFieldR\amissingB\x06\n" +
 	"\x04_bidB\x06\n" +
 	"\x04_askB\a\n" +
 	"\x05_lastB\b\n" +
@@ -343,7 +419,12 @@ const file_ibkr_v1_quote_proto_rawDesc = "" +
 	"\t_bid_sizeB\v\n" +
 	"\t_ask_sizeB\f\n" +
 	"\n" +
-	"_last_sizeB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
+	"_last_size\"s\n" +
+	"\fMissingField\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\x12.\n" +
+	"\x06reason\x18\x02 \x01(\x0e2\x16.ibkr.v1.MissingReasonR\x06reason\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\x03 \x01(\x05R\terrorCodeB8Z6github.com/andrewrong/optdesk/internal/contracts/genpbb\x06proto3"
 
 var (
 	file_ibkr_v1_quote_proto_rawDescOnce sync.Once
@@ -357,27 +438,31 @@ func file_ibkr_v1_quote_proto_rawDescGZIP() []byte {
 	return file_ibkr_v1_quote_proto_rawDescData
 }
 
-var file_ibkr_v1_quote_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_ibkr_v1_quote_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_ibkr_v1_quote_proto_goTypes = []any{
 	(*Quote)(nil),                 // 0: ibkr.v1.Quote
-	(*ContractSpec)(nil),          // 1: ibkr.v1.ContractSpec
-	(QuoteStatus)(0),              // 2: ibkr.v1.QuoteStatus
-	(MarketDataType)(0),           // 3: ibkr.v1.MarketDataType
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(*MissingField)(nil),          // 1: ibkr.v1.MissingField
+	(*ContractSpec)(nil),          // 2: ibkr.v1.ContractSpec
+	(QuoteStatus)(0),              // 3: ibkr.v1.QuoteStatus
+	(MarketDataType)(0),           // 4: ibkr.v1.MarketDataType
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(MissingReason)(0),            // 6: ibkr.v1.MissingReason
 }
 var file_ibkr_v1_quote_proto_depIdxs = []int32{
-	1, // 0: ibkr.v1.Quote.contract:type_name -> ibkr.v1.ContractSpec
-	2, // 1: ibkr.v1.Quote.status:type_name -> ibkr.v1.QuoteStatus
-	3, // 2: ibkr.v1.Quote.market_data_type:type_name -> ibkr.v1.MarketDataType
-	4, // 3: ibkr.v1.Quote.requested_at:type_name -> google.protobuf.Timestamp
-	4, // 4: ibkr.v1.Quote.sent_at:type_name -> google.protobuf.Timestamp
-	4, // 5: ibkr.v1.Quote.received_at:type_name -> google.protobuf.Timestamp
-	4, // 6: ibkr.v1.Quote.event_ts:type_name -> google.protobuf.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2, // 0: ibkr.v1.Quote.contract:type_name -> ibkr.v1.ContractSpec
+	3, // 1: ibkr.v1.Quote.status:type_name -> ibkr.v1.QuoteStatus
+	4, // 2: ibkr.v1.Quote.market_data_type:type_name -> ibkr.v1.MarketDataType
+	5, // 3: ibkr.v1.Quote.requested_at:type_name -> google.protobuf.Timestamp
+	5, // 4: ibkr.v1.Quote.sent_at:type_name -> google.protobuf.Timestamp
+	5, // 5: ibkr.v1.Quote.received_at:type_name -> google.protobuf.Timestamp
+	5, // 6: ibkr.v1.Quote.event_ts:type_name -> google.protobuf.Timestamp
+	1, // 7: ibkr.v1.Quote.missing:type_name -> ibkr.v1.MissingField
+	6, // 8: ibkr.v1.MissingField.reason:type_name -> ibkr.v1.MissingReason
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_ibkr_v1_quote_proto_init() }
@@ -394,7 +479,7 @@ func file_ibkr_v1_quote_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ibkr_v1_quote_proto_rawDesc), len(file_ibkr_v1_quote_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -54,9 +54,18 @@ func errorCode(q broker.Quote, name string) *string {
 	return &name
 }
 
-// captureID is the capture of one key: uuid.NewSHA1(OID, day|dataset|subject).
-func captureID(day contracts.Day, k contracts.ExpectedKey) jobs.CaptureID {
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+k.DatasetID+"|"+k.SubjectKey))
+// captureID is the capture of one key in one run: uuid.NewSHA1(OID, day|dataset|subject|start), start being the
+// run's start instant from the job clock (RFC 3339, nanoseconds, UTC), so each run has its own capture.
+func captureID(day contracts.Day, k contracts.ExpectedKey, start time.Time) jobs.CaptureID {
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+k.DatasetID+"|"+k.SubjectKey+"|"+start.UTC().Format(time.RFC3339Nano)))
+}
+
+// snapshotKind is "session" for live quotes (market data type 1) and "off_session" for frozen or delayed ones.
+func snapshotKind(marketDataType int) string {
+	if marketDataType == 1 {
+		return "session"
+	}
+	return "off_session"
 }
 
 // mapRow turns a quote into a row; a column the quote does not carry stays nil.
@@ -80,7 +89,7 @@ func mapRow(q broker.Quote, instrumentID, underlyingID int64, day time.Time, cap
 		ErrorCode:           code,
 		Currency:            ccy,
 		UnderlyingCcy:       ccy,
-		SnapshotKind:        "eod",
+		SnapshotKind:        snapshotKind(q.MarketDataType),
 		Bid:                 q.Bid,
 		Ask:                 q.Ask,
 		BidSize:             q.BidSize,

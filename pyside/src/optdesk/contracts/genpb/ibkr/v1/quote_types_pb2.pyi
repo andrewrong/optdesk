@@ -110,3 +110,63 @@ QUOTE_STATUS_TIMEOUT: QuoteStatus.ValueType  # 5
 QUOTE_STATUS_ERROR: QuoteStatus.ValueType  # 6
 QUOTE_STATUS_DISCONNECTED: QuoteStatus.ValueType  # 7
 Global___QuoteStatus: _TypeAlias = QuoteStatus  # noqa: Y015
+
+class _MissingReason:
+    ValueType = _typing.NewType("ValueType", _builtins.int)
+    V: _TypeAlias = ValueType  # noqa: Y015
+
+class _MissingReasonEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_MissingReason.ValueType], _builtins.type):
+    DESCRIPTOR: _descriptor.EnumDescriptor
+    MISSING_REASON_UNSPECIFIED: _MissingReason.ValueType  # 0
+    MISSING_REASON_NOT_RECEIVED_RELEASE: _MissingReason.ValueType  # 1
+    """No tick for the field by the time the quote ended or was released (the
+    item timeout of the kind, or the release of the line for a field no wait
+    holds back).
+    """
+    MISSING_REASON_NOT_RECEIVED_GRACE: _MissingReason.ValueType  # 2
+    """The field is a grace field of the kind (open_interest of OPTION_EOD) and
+    its grace wait ended without it.
+    """
+    MISSING_REASON_INVALID: _MissingReason.ValueType  # 3
+    """The ticker held a value pyside drops (a negative or other sentinel, not
+    NaN, which is "not yet set").
+    """
+    MISSING_REASON_ERROR: _MissingReason.ValueType  # 4
+    """The quote ended with an IBKR error; error_code is its code."""
+    MISSING_REASON_RECEIVED_ZERO: _MissingReason.ValueType  # 5
+    """Ticks arrived for the field but every one is 0.0 (both call and put open
+    interest are 0.0).
+    """
+    MISSING_REASON_MARKET_DATA_TYPE: _MissingReason.ValueType  # 6
+    """The market data type of the quote at the end is not 1 (live), i.e. delayed,
+    frozen or delayed frozen (2, 3, 4), and the field is missing.
+    """
+
+class MissingReason(_MissingReason, metaclass=_MissingReasonEnumTypeWrapper):
+    """MissingReason says why an optional Quote field is unset."""
+
+MISSING_REASON_UNSPECIFIED: MissingReason.ValueType  # 0
+MISSING_REASON_NOT_RECEIVED_RELEASE: MissingReason.ValueType  # 1
+"""No tick for the field by the time the quote ended or was released (the
+item timeout of the kind, or the release of the line for a field no wait
+holds back).
+"""
+MISSING_REASON_NOT_RECEIVED_GRACE: MissingReason.ValueType  # 2
+"""The field is a grace field of the kind (open_interest of OPTION_EOD) and
+its grace wait ended without it.
+"""
+MISSING_REASON_INVALID: MissingReason.ValueType  # 3
+"""The ticker held a value pyside drops (a negative or other sentinel, not
+NaN, which is "not yet set").
+"""
+MISSING_REASON_ERROR: MissingReason.ValueType  # 4
+"""The quote ended with an IBKR error; error_code is its code."""
+MISSING_REASON_RECEIVED_ZERO: MissingReason.ValueType  # 5
+"""Ticks arrived for the field but every one is 0.0 (both call and put open
+interest are 0.0).
+"""
+MISSING_REASON_MARKET_DATA_TYPE: MissingReason.ValueType  # 6
+"""The market data type of the quote at the end is not 1 (live), i.e. delayed,
+frozen or delayed frozen (2, 3, 4), and the field is missing.
+"""
+Global___MissingReason: _TypeAlias = MissingReason  # noqa: Y015

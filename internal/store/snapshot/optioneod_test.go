@@ -288,7 +288,7 @@ func TestReaderRangeAndOrder(t *testing.T) {
 	for _, r := range got {
 		order = append(order, fmt.Sprintf("%s %d", r.CaptureID, r.InstrumentID))
 	}
-	if !reflect.DeepEqual(order, []string{"c1 1", "c2 1", "c1 2"}) {
+	if !reflect.DeepEqual(order, []string{"c2 1", "c1 2"}) {
 		t.Fatalf("order %v", order)
 	}
 	if got[0].ReceivedAt.Location() != time.UTC || got[0].SessionDay.Time != d || *got[0].Bid != 1 {
@@ -305,5 +305,86 @@ func TestClose(t *testing.T) {
 	f := &fakeDB{}
 	if err := newStore(f).Close(); err != nil || !f.closed {
 		t.Fatal("not closed")
+	}
+}
+
+// pickRow is one stored capture row of the pick cases.
+type pickRow struct {
+	day, capture string
+	inst, status int
+	kind         string
+	minute       int // received_at is 21:00 UTC plus this many minutes
+}
+
+type pickCase struct {
+	name string
+	in   []pickRow
+	want []string // "day instrument capture" in the order of the result
+}
+
+func pickCases() []pickCase {
+	const d1, d2 = "2026-11-06", "2026-11-09"
+	return []pickCase{
+		{"a session row beats a later off_session row", []pickRow{
+			{d1, "a", 1, 1, "session", 0}, {d1, "b", 1, 1, "off_session", 30}}, []string{d1 + " 1 a"}},
+		{"only off_session rows give the newest", []pickRow{
+			{d1, "a", 1, 1, "off_session", 0}, {d1, "b", 1, 1, "off_session", 10}, {d1, "c", 1, 1, "off_session", 5}},
+			[]string{d1 + " 1 b"}},
+		{"a legacy eod row ranks as session", []pickRow{
+			{d1, "a", 1, 1, "eod", 0}, {d1, "b", 1, 1, "off_session", 30}}, []string{d1 + " 1 a"}},
+		{"a legacy eod row and a session row tie on received_at then capture_id", []pickRow{
+			{d1, "a", 1, 1, "eod", 5}, {d1, "b", 1, 1, "session", 5}, {d1, "c", 1, 1, "session", 4}},
+			[]string{d1 + " 1 b"}},
+		{"the later received_at wins before capture_id", []pickRow{
+			{d1, "z", 1, 1, "session", 1}, {d1, "a", 1, 1, "session", 2}}, []string{d1 + " 1 a"}},
+		{"a non-ok row is not picked while an ok row exists", []pickRow{
+			{d1, "a", 1, 1, "off_session", 0}, {d1, "b", 1, 2, "session", 30}}, []string{d1 + " 1 a"}},
+		{"only non-ok rows give the newest of them", []pickRow{
+			{d1, "a", 1, 2, "session", 0}, {d1, "b", 1, 3, "off_session", 10}, {d1, "c", 1, 5, "session", 5}},
+			[]string{d1 + " 1 b"}},
+		{"two days and two instruments stay separate and ordered", []pickRow{
+			{d2, "d", 1, 1, "session", 0}, {d1, "b", 2, 2, "session", 0}, {d1, "a", 2, 1, "off_session", 9},
+			{d1, "c", 1, 1, "off_session", 0}, {d1, "e", 3, 4, "off_session", 0}, {d1, "f", 3, 2, "off_session", 1}},
+			[]string{d1 + " 1 c", d1 + " 2 a", d1 + " 3 f", d2 + " 1 d"}},
+	}
+}
+
+func (r pickRow) values(t *testing.T) []any {
+	t.Helper()
+	day, err := time.Parse(time.DateOnly, r.day)
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 11, 6, 21, r.minute, 0, 0, time.UTC)
+	var nilF *float64
+	var nilS *string
+	var nilT *time.Time
+	var nilI *int
+	return []any{day, r.capture, r.inst, 8, 1, 1, at, nilT, r.status, nilS, "USD", r.kind, nilI,
+		fp(1), nilF, nilF, nilF, nilF, nilF, nilF, nilT, nilF, "USD", nilT,
+		nilF, nilF, nilF, nilF, nilF, nilF, nilF, nilF}
+}
+
+func TestOptionEodPick(t *testing.T) {
+	t.Parallel()
+	for _, c := range pickCases() {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := &fakeDB{}
+			for _, r := range c.in {
+				f.rows = append(f.rows, r.values(t))
+			}
+			got, err := newStore(f).OptionEod(context.Background(), 8, "2026-11-01", "2026-11-30")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var have []string
+			for _, r := range got {
+				have = append(have, fmt.Sprintf("%s %d %s", r.SessionDay.Format(time.DateOnly), r.InstrumentID, r.CaptureID))
+			}
+			if !reflect.DeepEqual(have, c.want) {
+				t.Fatalf("got %v, want %v", have, c.want)
+			}
+		})
 	}
 }

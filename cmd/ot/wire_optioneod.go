@@ -81,7 +81,8 @@ func resolveJPConIDs(ctx context.Context, b broker.Broker, watch []jobs.WatchEnt
 
 func (f jobFactory) optionEod(b broker.Broker) (contracts.Job, error) {
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
-		return buildOptionEod(f.d, b, f.inst, f.eod, entries, f.clk)
+		j, err := buildOptionEod(f.d, b, f.inst, f.eod, entries, f.clk)
+		return withOptionEodReasons(j, err, f.reasons)
 	})
 }
 
@@ -108,7 +109,8 @@ func buildOptionEod(d deps, b broker.Broker, r store.InstrumentResolver, w store
 // set, is applied to the names of each Plan.
 func (f jobFactory) optionEodJP(b broker.Broker) (contracts.Job, error) {
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
-		return buildOptionEodJP(f.d, b, f.inst, f.eod, f.fixedEntries(entries), f.clk)
+		j, err := buildOptionEodJP(f.d, b, f.inst, f.eod, f.fixedEntries(entries), f.clk)
+		return withOptionEodReasons(j, err, f.reasons)
 	})
 }
 

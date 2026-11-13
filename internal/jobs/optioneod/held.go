@@ -25,8 +25,25 @@ type NewOptionEodHeldSymbolsFunc func(
 
 var _ NewOptionEodHeldSymbolsFunc = NewWithHeldSymbols
 
-// heldAliases are the two IBKR accounts of the owner (docs/design/option-candidates.md, alias A and B).
-var heldAliases = []string{"A", "B"}
+// aliasedAccount is the reader of a job together with the owner aliases whose positions it reads; a job whose
+// reader is not one has no held names.
+type aliasedAccount struct {
+	store.AccountReader
+	aliases []string
+}
+
+// WithHeldAliases wraps a held constructor so that the job reads the positions of the given aliases
+// (docs/design/account-identity.md, Decision 10). A nil or empty list means no held names, as a nil reader.
+func WithHeldAliases(ctor NewOptionEodHeldSymbolsFunc, aliases []string) NewOptionEodHeldSymbolsFunc {
+	aliases = append([]string(nil), aliases...)
+	return func(b broker.Broker, res store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
+		acct store.AccountReader, clk clock.Clock, t symbol.Translator) (contracts.Job, error) {
+		if acct != nil {
+			acct = aliasedAccount{AccountReader: acct, aliases: aliases}
+		}
+		return ctor(b, res, w, watch, acct, clk, t)
+	}
+}
 
 // heldLookbackDays is how many calendar days before the run day the newest position capture is searched.
 const heldLookbackDays = 7
@@ -68,7 +85,11 @@ type heldCall struct {
 // searching back from day.
 func (j *job) heldCalls(ctx context.Context, symbol string, day time.Time) ([]heldCall, error) {
 	var out []heldCall
-	for _, alias := range heldAliases {
+	var aliases []string
+	if a, ok := j.acct.(aliasedAccount); ok {
+		aliases = a.aliases
+	}
+	for _, alias := range aliases {
 		for back := 0; back <= heldLookbackDays; back++ {
 			d := day.AddDate(0, 0, -back).Format(time.DateOnly)
 			rows, err := j.acct.Positions(ctx, alias, d)

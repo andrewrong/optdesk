@@ -41,8 +41,8 @@ func TestManifestDefaults(t *testing.T) {
 		t.Fatalf("defaults wrong: %+v", m)
 	}
 	cal, open, closeOff, err := windowOf(m)
-	if err != nil || cal != "" || open != 0 || closeOff != 5*time.Hour {
-		t.Fatalf("window = %q %v %v %v, want lateness 5h", cal, open, closeOff, err)
+	if err != nil || cal != "" || open != 90*time.Minute || closeOff != 0 {
+		t.Fatalf("window = %q %v %v %v, want open 90m, close 0", cal, open, closeOff, err)
 	}
 	if _, err := build(manifestBytes, nil, nil, nil, nil); err != nil {
 		t.Fatalf("embedded manifest: %v", err)
@@ -66,6 +66,24 @@ func TestManifestErrors(t *testing.T) {
 		if err == nil {
 			t.Errorf("%s: want an error", name)
 		}
+	}
+}
+
+func TestWindowOfRejectsOtherRules(t *testing.T) {
+	t.Parallel()
+	m, err := parseManifest([]byte(minimalToml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rule := range []string{"session_close", "other"} {
+		m.Window.Rule = rule
+		if _, _, _, err := windowOf(m); err == nil {
+			t.Errorf("rule %q: windowOf must return an error", rule)
+		}
+	}
+	m.Window.Rule = "in_session"
+	if _, open, closeOff, err := windowOf(m); err != nil || open != 90*time.Minute || closeOff != 0 {
+		t.Fatalf("in_session: open %v close %v err %v", open, closeOff, err)
 	}
 }
 

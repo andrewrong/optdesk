@@ -160,9 +160,11 @@ type (
 	plainQuote contracts.QuoteSnapshot
 )
 
-func loadInput(t *testing.T) input {
+func loadInput(t *testing.T) input { return loadInputNamed(t, "input") }
+
+func loadInputNamed(t *testing.T, name string) input {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "page.option_data_page.v1.input.json"))
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "page.option_data_page.v1."+name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,6 +243,77 @@ func TestBuildGolden(t *testing.T) {
 		g, _ := json.MarshalIndent(got, "", " ")
 		w, _ := json.MarshalIndent(want, "", " ")
 		t.Fatalf("page differs\n got: %s\nwant: %s", g, w)
+	}
+}
+
+func TestBuildOffSessionGolden(t *testing.T) {
+	t.Parallel()
+	in := loadInputNamed(t, "off-session-input")
+	e, q := fromInput(in)
+	c := inputCfg(in, e, q)
+	c.Notes = []string{"Synthetic fixture."}
+	b, err := Build(t.Context(), c, contracts.Day(in.Day), fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateBytes(t, b); err != nil {
+		t.Fatalf("%v\n%s", err, b)
+	}
+	var got, want map[string]any
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "page.option_data_page.v1.off-session.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		g, _ := json.MarshalIndent(got, "", " ")
+		w, _ := json.MarshalIndent(want, "", " ")
+		t.Fatalf("page differs\n got: %s\nwant: %s", g, w)
+	}
+	if got["underlying"].(map[string]any)["off_session"] != true {
+		t.Fatalf("off_session not true: %v", got["underlying"])
+	}
+}
+
+func TestBuildOffSessionMark(t *testing.T) {
+	t.Parallel()
+	row := func(id int, kind, recv string) contracts.OptionEod {
+		r := eodRow(t, id, nil, recv)
+		r.SnapshotKind = kind
+		return r
+	}
+	has := func(m map[string]any) bool {
+		_, ok := m["underlying"].(map[string]any)["off_session"]
+		return ok
+	}
+	tests := []struct {
+		name string
+		rows []contracts.OptionEod
+		want bool
+	}{
+		{"all off session", []contracts.OptionEod{row(1, "off_session", "2026-11-06T21:00:00Z"), row(2, "off_session", "2026-11-06T21:00:00Z")}, true},
+		{"mixed", []contracts.OptionEod{row(1, "off_session", "2026-11-06T21:00:00Z"), row(2, "session", "2026-11-06T21:00:00Z")}, false},
+		{"all session", []contracts.OptionEod{row(1, "session", "2026-11-06T21:00:00Z")}, false},
+		{"legacy eod", []contracts.OptionEod{row(1, "eod", "2026-11-06T21:00:00Z")}, false},
+		{"picked capture decides", []contracts.OptionEod{row(1, "session", "2026-11-06T20:00:00Z"), row(1, "off_session", "2026-11-06T21:00:00Z")}, true},
+		{"no rows", nil, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			m := buildMap(t, cfg(&fakeEod{rows: tc.rows}, &fakeQuotes{}))
+			if has(m) != tc.want {
+				t.Fatalf("off_session present = %v, want %v", has(m), tc.want)
+			}
+			if tc.want && m["underlying"].(map[string]any)["off_session"] != true {
+				t.Fatal("off_session is not true")
+			}
+		})
 	}
 }
 

@@ -54,3 +54,26 @@ enum QuoteStatus {
   QUOTE_STATUS_ERROR = 6;
   QUOTE_STATUS_DISCONNECTED = 7;
 }
+
+// MissingReason says why an optional Quote field is unset.
+enum MissingReason {
+  MISSING_REASON_UNSPECIFIED = 0;
+  // No tick for the field by the time the quote ended or was released (the
+  // item timeout of the kind, or the release of the line for a field no wait
+  // holds back).
+  MISSING_REASON_NOT_RECEIVED_RELEASE = 1;
+  // The field is a grace field of the kind (open_interest of OPTION_EOD) and
+  // its grace wait ended without it.
+  MISSING_REASON_NOT_RECEIVED_GRACE = 2;
+  // The ticker held a value pyside drops (a negative or other sentinel, not
+  // NaN, which is "not yet set").
+  MISSING_REASON_INVALID = 3;
+  // The quote ended with an IBKR error; error_code is its code.
+  MISSING_REASON_ERROR = 4;
+  // Ticks arrived for the field but every one is 0.0 (both call and put open
+  // interest are 0.0).
+  MISSING_REASON_RECEIVED_ZERO = 5;
+  // The market data type of the quote at the end is not 1 (live), i.e. delayed,
+  // frozen or delayed frozen (2, 3, 4), and the field is missing.
+  MISSING_REASON_MARKET_DATA_TYPE = 6;
+}

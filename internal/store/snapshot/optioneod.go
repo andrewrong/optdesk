@@ -3,6 +3,7 @@ package snapshot
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/atombender/go-jsonschema/pkg/types"
@@ -89,7 +90,8 @@ func optionEodArgs(r contracts.OptionEod) []any {
 }
 
 // OptionEod returns the rows of underlyingID with session_day between from and to, both inclusive, ordered by
-// session_day, instrument_id and capture_id. No row in the range gives an empty slice and no error.
+// session_day, instrument_id and capture_id: one picked row per session_day and instrument_id (see
+// pickOptionEod). No row in the range gives an empty slice and no error.
 // Instants are returned in UTC.
 func (s *optionEodStore) OptionEod(ctx context.Context, underlyingID int64, from, to contracts.Day) ([]contracts.OptionEod, error) {
 	f, err := parseDay(from)
@@ -126,7 +128,60 @@ func (s *optionEodStore) OptionEod(ctx context.Context, underlyingID int64, from
 	if err != nil {
 		return nil, retryable(fmt.Errorf("option_eod: select: %w", err))
 	}
-	return out, nil
+	return pickOptionEod(out), nil
+}
+
+// optionEodOK is the status of a row that holds a quote.
+const optionEodOK = 1
+
+type optionEodKey struct {
+	day        time.Time
+	instrument int
+}
+
+// optionEodBetter reports whether a beats b. It orders the candidates of one key, the greater the better: an ok row beats a non-ok row, a
+// session row (a legacy eod row included) beats an off_session row, then the greater received_at, then the
+// greater capture_id. A non-ok row ranks by received_at and capture_id alone.
+func optionEodBetter(a, b contracts.OptionEod) bool {
+	if aok, bok := a.Status == optionEodOK, b.Status == optionEodOK; aok != bok {
+		return aok
+	}
+	if a.Status == optionEodOK {
+		if as, bs := a.SnapshotKind != "off_session", b.SnapshotKind != "off_session"; as != bs {
+			return as
+		}
+	}
+	if !a.ReceivedAt.Equal(b.ReceivedAt) {
+		return a.ReceivedAt.After(b.ReceivedAt)
+	}
+	return a.CaptureID > b.CaptureID
+}
+
+// pickOptionEod keeps one row per (session_day, instrument_id) and returns them ordered by session_day,
+// instrument_id and capture_id.
+func pickOptionEod(rows []contracts.OptionEod) []contracts.OptionEod {
+	best := map[optionEodKey]contracts.OptionEod{}
+	for _, r := range rows {
+		k := optionEodKey{r.SessionDay.Time, r.InstrumentID}
+		if cur, ok := best[k]; !ok || optionEodBetter(r, cur) {
+			best[k] = r
+		}
+	}
+	out := make([]contracts.OptionEod, 0, len(best))
+	for _, r := range best {
+		out = append(out, r)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if !a.SessionDay.Equal(b.SessionDay.Time) {
+			return a.SessionDay.Before(b.SessionDay.Time)
+		}
+		if a.InstrumentID != b.InstrumentID {
+			return a.InstrumentID < b.InstrumentID
+		}
+		return a.CaptureID < b.CaptureID
+	})
+	return out
 }
 
 func utc(t *time.Time) *time.Time {

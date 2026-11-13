@@ -1,6 +1,6 @@
 {
   "schema": "stock_option_page",
-  "schema_version": 2,
+  "schema_version": 3,
   "run_id": "run1",
   "build_id": "b1",
   "scope": "stock-options",
@@ -68,5 +68,60 @@
     "notice": null,
     "fresh_count": 0,
     "total_count": 0
+  },
+  "vol_view": {
+    "name": "NOPE",
+    "method": "Implied is IBKR's implied volatility of the name; its horizon is not stated. The forecast is the plain mean of the realised volatility of the last 20, 60 and 120 sessions, each annualised with 252 sessions. Implied and the forecast are not the same horizon, so the edge is a difference of two numbers of possibly different tenor. The figures belong to the name, not to a strike or an expiry, and are read the same for a short put and a covered call.",
+    "rows": [
+      {
+        "label": "iv_name",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "rv20",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "rv60",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "rv120",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "forecast",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "edge",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "ivp",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      },
+      {
+        "label": "forecast_err",
+        "text": "",
+        "data_day": "",
+        "gap": "no_input"
+      }
+    ],
+    "coaching": "No edge is shown because an input is missing; the rows name it. This page does not know the next earnings move, the skew, how well this forecast has fitted this name (see the error row), early assignment, or the horizon of implied. One past error is shown, not a track record."
   }
 }

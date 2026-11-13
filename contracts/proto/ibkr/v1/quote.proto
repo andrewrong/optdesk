@@ -46,4 +46,17 @@ message Quote {
   optional double last_size = 26;
   // event_ts is the exchange's event time; sent_at and received_at stay ours.
   google.protobuf.Timestamp event_ts = 27;
+  // missing lists the fields pyside did not deliver and why, for the kinds
+  // OPTION_EOD and OPTION_OPEN; the other kinds send an empty list.
+  repeated MissingField missing = 28;
+}
+
+// MissingField names one Quote field that is unset and the reason.
+message MissingField {
+  // field is the Quote field name (bid, ask, last, volume, open_interest,
+  // implied_vol, delta, gamma, vega, theta).
+  string field = 1;
+  MissingReason reason = 2;
+  // error_code is the IBKR code when reason is MISSING_REASON_ERROR.
+  int32 error_code = 3;
 }

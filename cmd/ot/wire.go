@@ -140,6 +140,7 @@ type deps struct {
 	openAccount             store.OpenAccountFunc
 	newAccountCapture       newAccountCaptureFunc
 	openMark                mark.OpenFunc
+	openRuns                openRunsFunc // ops_today_page and the reason writer of the ledger
 	newPositionMarks        newPositionMarksFunc
 	openReading             store.OpenReadingFunc
 	openReadingView         store.OpenReadingViewFunc
@@ -244,6 +245,7 @@ func newDeps() deps {
 	d.newOptionEodHeld, d.newOptionCandidatesCalls = optioneod.NewWithHeldSymbols, optioncandidates.NewWithCalls
 	d.dialAccount, d.openAccount, d.newAccountCapture = dialAccountClient, account.Open, accountcapture.New
 	realMarkDeps(&d) // position_marks
+	realOpsTodayDeps(&d)
 	d.optionNoticesPage, d.newOptionNotices, d.noticeParams = newOptionNoticesPage, optionnotice.New, optionnotice.DefaultParams
 	d.openOptionLedgerStore, d.newOptionLedgerJob, d.importOptionTrader = openOptionLedgerStore, optionledgerjob.New, optionledgerjob.ImportOptionTrader
 	d.loadFlexFile, d.newFlexSource = flex.Load, flex.New
@@ -453,6 +455,7 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 		Quotes:       in.Quotes,
 		Terms:        in.Terms,
 		Choices:      choices,
+		Reasons:      in.Reasons,
 	})
 }
 

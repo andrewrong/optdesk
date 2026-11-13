@@ -628,7 +628,6 @@ func TestTickerLogsReconcileFailure(t *testing.T) {
 			buf := &lockedBuf{}
 			h.log = slog.New(slog.NewTextHandler(buf, nil))
 			h.run()
-			h.step(10 * time.Minute)
 			h.until("reconcile:2025-11-26")
 			for tk := h.s.(*ticker); tk.busy.Load(); {
 				runtime.Gosched()
