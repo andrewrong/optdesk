@@ -136,24 +136,47 @@ func TestBuildNoReaderGap(t *testing.T) {
 func TestBuildFixedFields(t *testing.T) {
 	t.Parallel()
 	in := base()
-	in.Saved, in.Error = "Saved 1 row(s).", ""
 	o, _ := build(t, in)
+	in.Saved, in.Error = "Saved 1 row(s).", ""
 	if o.RunStatus != "ok" || len(o.Gaps) != 0 || o.Stale != nil || len(o.Notes) != 0 {
 		t.Fatalf("%+v", o)
 	}
-	if o.Saved == nil || *o.Saved != "Saved 1 row(s)." || o.Error != nil {
-		t.Fatalf("saved %v error %v", o.Saved, o.Error)
+	o2, _ := build(t, in)
+	if o2.Saved == nil || *o2.Saved != "Saved 1 row(s)." || o2.Error != nil {
+		t.Fatalf("saved %v error %v", o2.Saved, o2.Error)
 	}
 	if o.Form.PostPath != "/plan/price-lines" || o.Form.Expires != "0" || o.Form.MAC != string(bytes.Repeat([]byte("0"), 64)) {
 		t.Fatalf("form %+v", o.Form)
 	}
-	if o.GeneratedAt != "2026-11-14T09:00:00Z" || o.Title != "Price lines" || len(o.Add.Markets) != 2 {
-		t.Fatalf("%+v", o)
+	if o.GeneratedAt != "2026-11-14T09:00:00Z" {
+		t.Fatalf("generated_at = %s", o.GeneratedAt)
 	}
 	in.Form = &Form{Expires: "17", MAC: string(bytes.Repeat([]byte("a"), 64))}
 	o, _ = build(t, in)
 	if o.Form.Expires != "17" || o.Form.MAC[0] != 'a' {
 		t.Fatalf("form %+v", o.Form)
+	}
+}
+
+func TestBuildFixedTexts(t *testing.T) {
+	t.Parallel()
+	o, _ := build(t, base())
+	for name, p := range map[string][2]string{
+		"title":    {o.Title, "Price lines"},
+		"sentence": {o.Sentence, "Your buy price for each name you keep. The put gate reads it."},
+		"intro":    {o.Intro, "A saved price applies to the next option candidate run; clearing it removes the check for that name."},
+		"add.hint": {o.Add.Hint, "Type the code and market of a name on the underlying list."},
+		"footnote": {o.Footnote, "The price is the buy_price of the name on the underlyings page; the note is shared with it."},
+	} {
+		if p[0] != p[1] {
+			t.Errorf("%s = %q, want %q", name, p[0], p[1])
+		}
+	}
+	if len(o.Add.Markets) != 2 || o.Add.Markets[0] != "US" || o.Add.Markets[1] != "JP" {
+		t.Fatalf("markets = %v", o.Add.Markets)
+	}
+	if o.Saved != nil || o.Error != nil {
+		t.Fatalf("empty saved/error not null: %v %v", o.Saved, o.Error)
 	}
 }
 
