@@ -126,6 +126,13 @@ type ForceBackfiller interface {
 	BackfillWith(ctx context.Context, day contracts.Day, datasets []string, opt BackfillOptions) (BackfillResult, error)
 }
 
+// DayPlanner is the optional method of the backfiller that NewReconcilerFunc returns,
+// asserted like ConsoleClaimer. PlanDay stores the plan and the windows of one day; it
+// runs no job and moves no cursor.
+type DayPlanner interface {
+	PlanDay(ctx context.Context, day contracts.Day) error
+}
+
 // ConsoleTurner is the optional method of the Reconciler given to NewSchedulerFunc: one
 // turn of the console's request queue. It runs on the worker, so it never overlaps a
 // Reconcile, and took tells whether a request was handled. A cancelled ctx ends the turn
