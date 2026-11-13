@@ -37,6 +37,21 @@ type HouseholdInput struct {
 	History      []DayValue
 	Obligations  []ObligationIn
 	UsdJpy       string
+	// Positions are the held stocks and options of the capture; PositionsRead is false when no position source
+	// exists, which keeps the Stock value and Option value cells the gap missing_quote. True with no positions gives
+	// 0.00. A cell sums quantity x multiplier x mark in the NetLiquidation currency: a JPY position converts with a
+	// positive UsdJpy against a USD net and is the gap unsupported_currency without one, any other pair is that gap;
+	// an empty Mark makes the cell the gap missing_quote and the Note names the symbols (at most five, then
+	// "and <M> more"); a position of another SecType makes both cells missing_input and the Note names it.
+	Positions     []PositionIn
+	PositionsRead bool
+}
+
+// PositionIn is one held stock or option of the capture, all numbers decimal text. SecType is the store's value
+// ("stock", "option"; any other value is a gap). Mark is the price per unit, empty when the position has none.
+// Multiplier is 1 for a stock. Quantity is signed.
+type PositionIn struct {
+	Underlying, SecType, Currency, Quantity, Multiplier, Mark string
 }
 
 // HouseholdResult holds the lines of the blocks this design builds, in display order.
@@ -102,16 +117,18 @@ type HoldingIn struct{ Underlying, SecType, Currency, Quantity, Multiplier, Cost
 
 // HoldingsIn is the held positions of one account in one currency. NetLiquidation is the NetLiquidation tag of the
 // capture values in Currency, the denominator of every share; empty gives the gap no_data for shares.
+// UsdJpy is the USD/JPY rate (empty without one): with a positive rate a JPY row converts against a USD Currency.
 type HoldingsIn struct {
-	Currency, NetLiquidation string
-	Rows                     []HoldingIn
+	Currency, NetLiquidation, UsdJpy string
+	Rows                             []HoldingIn
 }
 
 // HoldingLine is the value, unrealised profit and share of one position. A row with an empty Mark has the gap
-// missing_quote in all three, never a zero.
+// missing_quote in all three, never a zero. Currency is the currency of Value and Unrealised: USD when a JPY row
+// was converted, the row's own otherwise.
 type HoldingLine struct {
-	Underlying, SecType      string
-	Value, Unrealised, Share compute.FigureValue
+	Underlying, SecType, Currency string
+	Value, Unrealised, Share      compute.FigureValue
 }
 
 // HoldingsResult holds one line per input row, in input order. A total that left a position out carries a gap.
