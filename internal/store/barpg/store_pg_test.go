@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const rolePassword = "pg-test-only"
@@ -64,6 +65,27 @@ var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
 // newDatabase makes a throwaway database with the roles, the schema rd and migration 0021, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
+	t.Helper()
+	name := newBaseDatabase(t)
+	applyUp(t, name, "0039_fx_rate_repair.sql")
+	return name
+}
+
+// applyUp runs the Up part of one migration file as the administrator.
+func applyUp(t *testing.T, name, file string) {
+	t.Helper()
+	raw, err := os.ReadFile("../../../migrations/" + file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+	if _, err := pgxAs(t, name).Exec(context.Background(), strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
+		t.Fatalf("apply %s: %v", file, err)
+	}
+}
+
+// newBaseDatabase makes a database with 0021_bars.sql applied (the schema before the fx repair).
+func newBaseDatabase(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
 	admin, err := pgx.Connect(ctx, connURL(t, adminDatabase(t), ""))
@@ -276,6 +298,9 @@ func TestBarRoleGrants(t *testing.T) {
 	}
 	denied("bad basis", `INSERT INTO obs.price_bar VALUES (1, '2026-11-02', 'other', 1, '1', '1', '1', '1', NULL, 'USD', 'ibkr', now())`)
 	denied("epoch 0", `INSERT INTO obs.price_bar VALUES (1, '2026-11-02', 'trades', 0, '1', '1', '1', '1', NULL, 'USD', 'ibkr', now())`)
+	denied("update key", `UPDATE obs.fx_rate SET rate_day = '2026-11-03'`)
+	denied("update received_at", `UPDATE obs.fx_rate SET received_at = now()`)
+	denied("select received_at", `SELECT received_at FROM obs.fx_rate`)
 	denied("bad pair", `INSERT INTO obs.fx_rate VALUES ('usdjpy', '2026-11-02', '1', 'ibkr_midpoint', now())`)
 	denied("zero rate", `INSERT INTO obs.fx_rate VALUES ('USDJPY', '2026-11-02', '0', 'ibkr_midpoint', now())`)
 
@@ -298,4 +323,125 @@ func pgxAsUser(t *testing.T, name, user string) *pgx.Conn {
 	}
 	t.Cleanup(func() { _ = c.Close(context.Background()) })
 	return c
+}
+
+func fxRow(d, rate string) contracts.FxRate {
+	r := contracts.FxRate{Pair: "USDJPY", Rate: rate, ReceivedAt: time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)}
+	r.RateDay.Time, _ = time.Parse(time.DateOnly, d)
+	setText(&r.Source, "ibkr_midpoint")
+	return r
+}
+
+func openWriter(ctx context.Context, t *testing.T, name string) *Store {
+	t.Helper()
+	st, err := Open(ctx, connURL(t, name, "ot_w_bar"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	return st
+}
+
+func TestFxRateUpsertAsWriterRole(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, admin := openWriter(ctx, t, name), pgxAs(t, name)
+	up := func(rate, by string) bar.FxWriteCount {
+		t.Helper()
+		c, err := st.UpsertFxRates(ctx, []contracts.FxRate{fxRow("2026-11-05", rate)}, by)
+		if err != nil {
+			t.Fatalf("upsert %s: %v", rate, err)
+		}
+		return c
+	}
+	stored := func() (rate, by string, rec, upd time.Time) {
+		t.Helper()
+		err := admin.QueryRow(ctx, `SELECT rate::text, written_by, received_at, updated_at FROM obs.fx_rate`).Scan(&rate, &by, &rec, &upd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if c := up("153.4250", "run1"); c != (bar.FxWriteCount{Written: 1}) {
+		t.Fatalf("insert = %+v", c)
+	}
+	_, _, rec0, upd0 := stored()
+	if c := up("153.4250", "run2"); c != (bar.FxWriteCount{Unchanged: 1}) {
+		t.Errorf("same value = %+v", c)
+	}
+	if c := up("153.425", "run2"); c != (bar.FxWriteCount{Unchanged: 1}) {
+		t.Errorf("equal numeric = %+v", c)
+	}
+	if rate, by, _, upd := stored(); rate != "153.4250" || by != "run1" || !upd.Equal(upd0) {
+		t.Errorf("unchanged row moved: %s %s %v", rate, by, upd)
+	}
+	if c := up("154.5", "run3"); c != (bar.FxWriteCount{Written: 1}) {
+		t.Errorf("different value = %+v", c)
+	}
+	if rate, by, rec, upd := stored(); rate != "154.5" || by != "run3" || !rec.Equal(rec0) || !upd.After(upd0) {
+		t.Errorf("replaced row: %s %s %v %v", rate, by, rec, upd)
+	}
+	if _, err := admin.Exec(ctx, `UPDATE obs.fx_rate SET status = 'void', rate = NULL`); err != nil {
+		t.Fatal(err)
+	}
+	if c := up("154.5", "run4"); c != (bar.FxWriteCount{Written: 1}) {
+		t.Errorf("void row answered = %+v", c)
+	}
+	var status string
+	if err := admin.QueryRow(ctx, `SELECT status FROM obs.fx_rate`).Scan(&status); err != nil || status != "ok" {
+		t.Errorf("status = %q, %v", status, err)
+	}
+}
+
+func TestFxRateViewHidesVoid(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	st, admin := openWriter(ctx, t, name), pgxAs(t, name)
+	if _, err := st.UpsertFxRates(ctx, []contracts.FxRate{fxRow("2026-11-04", "150.5")}, "r"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Exec(ctx, `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, received_at, status)
+		VALUES ('USDJPY', '2026-11-05', NULL, 'ibkr_midpoint', now(), 'void')`); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(t, admin, "rd.fx_rate_r1"); n != 1 {
+		t.Errorf("view rows = %d, want 1", n)
+	}
+	if r, found, err := st.LatestFxRate(ctx, "USDJPY", "2026-11-09"); err != nil || !found || r.Rate != "150.5" {
+		t.Errorf("latest = %+v %v %v", r, found, err)
+	}
+}
+
+func TestFxRateMigrationKeepsOldRows(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newBaseDatabase(t)
+	admin := pgxAs(t, name)
+	if _, err := admin.Exec(ctx, `INSERT INTO obs.fx_rate VALUES ('USDJPY', '2026-11-05', '153.4250', 'ibkr_midpoint', '2026-11-06T21:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	applyUp(t, name, "0039_fx_rate_repair.sql")
+	var rate, status string
+	var rec, upd time.Time
+	err := admin.QueryRow(ctx, `SELECT v.rate, t.status, t.received_at, t.updated_at
+		FROM rd.fx_rate_r1 v JOIN obs.fx_rate t USING (pair, rate_day)`).Scan(&rate, &status, &rec, &upd)
+	if err != nil || rate != "153.4250" || status != "ok" || !upd.Equal(rec) {
+		t.Errorf("old row = %q %q %v %v, %v", rate, status, rec, upd, err)
+	}
+}
+
+func TestFxOldInsertSQLWorksOnMigratedTable(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	name := newDatabase(t)
+	w := pgxAsUser(t, name, "ot_w_bar")
+	args := []any{"USDJPY", "2026-11-05", "151.25", "ibkr_midpoint", time.Date(2026, 11, 6, 21, 0, 0, 0, time.UTC)}
+	for i, want := range []int64{1, 0} {
+		tag, err := w.Exec(ctx, insertFxRateSQL, args...)
+		if err != nil || tag.RowsAffected() != want {
+			t.Errorf("insert %d: rows %d, %v; want %d", i, tag.RowsAffected(), err, want)
+		}
+	}
 }

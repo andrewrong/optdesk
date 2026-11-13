@@ -23,14 +23,15 @@ type call struct {
 }
 
 type fakeDB struct {
-	events  []string
-	calls   []call
-	failAt  int   // 1-based statement that fails, 0 for none
-	failErr error // returned by the failing statement instead of a plain error, when set
-	selSQL  string
-	selArgs []any
-	rows    [][]any
-	closed  bool
+	events   []string
+	calls    []call
+	affected []int64 // rows each statement reports, by call; 1 when absent
+	failAt   int     // 1-based statement that fails, 0 for none
+	failErr  error   // returned by the failing statement instead of a plain error, when set
+	selSQL   string
+	selArgs  []any
+	rows     [][]any
+	closed   bool
 }
 
 type fakeTx struct{ f *fakeDB }
@@ -42,6 +43,9 @@ func (t fakeTx) Exec(_ context.Context, sql string, args ...any) (int64, error) 
 			return 0, t.f.failErr
 		}
 		return 0, errors.New("boom")
+	}
+	if n := len(t.f.calls); n <= len(t.f.affected) {
+		return t.f.affected[n-1], nil
 	}
 	return 1, nil
 }
@@ -236,5 +240,78 @@ func TestInsertConstraintViolationIsPermanent(t *testing.T) {
 	}
 	if isConstraintViolation(nil) {
 		t.Error("nil is not a constraint violation")
+	}
+}
+
+var _ bar.FxRateUpserter = (*Store)(nil)
+
+func fxRows(n int) []contracts.FxRate {
+	out := make([]contracts.FxRate, n)
+	for i := range out {
+		out[i] = contracts.FxRate{Pair: "USDJPY", Rate: "151.25", Source: "ibkr_midpoint"}
+		out[i].RateDay.Time = time.Date(2026, 11, 2+i, 0, 0, 0, 0, time.UTC)
+	}
+	return out
+}
+
+func TestUpsertFxSQLReplacesOnlyWhenDifferent(t *testing.T) {
+	t.Parallel()
+	sql := upsertFxRateSQL
+	for _, w := range []string{"ON CONFLICT (pair, rate_day) DO UPDATE", "IS DISTINCT FROM", "RETURNING pair", "::numeric", "'ok'"} {
+		if !strings.Contains(sql, w) {
+			t.Errorf("statement lacks %q: %s", w, sql)
+		}
+	}
+	doUpdate := sql[strings.Index(sql, "DO UPDATE"):]
+	for _, w := range []string{"received_at", "pair =", "rate_day ="} {
+		if strings.Contains(doUpdate, w) {
+			t.Errorf("update part holds %q", w)
+		}
+	}
+	if strings.Contains(sql, "DELETE") {
+		t.Error("statement deletes")
+	}
+}
+
+func TestUpsertFxEmptyMakesNoCall(t *testing.T) {
+	t.Parallel()
+	f := &fakeDB{}
+	c, err := (&Store{db: f}).UpsertFxRates(context.Background(), nil, "x")
+	if err != nil || c != (bar.FxWriteCount{}) || len(f.events) != 0 || len(f.calls) != 0 {
+		t.Fatalf("count %+v, err %v, events %v", c, err, f.events)
+	}
+}
+
+func TestUpsertFxCountsWrittenUnchanged(t *testing.T) {
+	t.Parallel()
+	f := &fakeDB{affected: []int64{1, 0, 1}}
+	c, err := (&Store{db: f}).UpsertFxRates(context.Background(), fxRows(3), "fx_refresh:2026-11-04")
+	if err != nil || c != (bar.FxWriteCount{Written: 2, Unchanged: 1}) {
+		t.Fatalf("count %+v, err %v", c, err)
+	}
+	if len(f.calls) != 3 || len(f.events) != 2 || f.events[1] != "commit" {
+		t.Errorf("calls %d, events %v", len(f.calls), f.events)
+	}
+	if a := f.calls[0].args; a[0] != "USDJPY" || a[1] != "2026-11-02" || a[2] != "151.25" || a[3] != "ibkr_midpoint" || a[len(a)-1] != "fx_refresh:2026-11-04" {
+		t.Errorf("args = %v", a)
+	}
+}
+
+func TestUpsertFxWrapsErrors(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		err  error
+		want contracts.ErrorKind
+	}{
+		"constraint": {&pgconn.PgError{Code: "23514"}, contracts.Permanent},
+		"other":      {&pgconn.PgError{Code: "40001"}, contracts.Retryable},
+		"plain":      {errors.New("boom"), contracts.Retryable},
+	} {
+		f := &fakeDB{failAt: 1, failErr: tc.err}
+		_, err := (&Store{db: f}).UpsertFxRates(context.Background(), fxRows(1), "x")
+		var te contracts.TypedError
+		if !errors.As(err, &te) || te.Kind() != tc.want {
+			t.Errorf("%s: err = %v", name, err)
+		}
 	}
 }
