@@ -1,0 +1,222 @@
+# strategy risk, step 3: the book stress at the FINRA moves, and the capital fit of every candidate
+
+Author: the optdesk designer (draft)
+Owner approved: (pending)
+Date: 2026-11-14
+Revision: 2
+Revision note: revision 2 answers the adversarial read of revision 1: the types sit in the root package `internal/strategy` and `cmd/ot` injects the implementation (Decision 11); the loader is described as `risk_page/load.go` really reads (Decision 4); no "cushion" is printed from `ExcessLiquidity` (Decision 5); cash-settled European options are never assigned (Decision 6); a stale mark is a reason word (Decision 3); partial totals are "incomplete" (Decision 4); the FINRA ladder per class replaces the joint scenarios and the concentration check is out (Decisions 2 and 7, Left out).
+
+Source: owner 2026-11-13 (record `optdesk-owner-2026-11-13.md`, P2 to P4): every rule from professional practice with a source, every number tagged; the three accounts are `mine`, `wife`, `daughter`; advisor plan `option-strategy-plan.md` section 6 step 3, with sections 2 (rows "Portfolio-margin stress", "Cash-secured put ... Short broad-index option", "Buying power of a short strangle"), 3, 4 (capital column), 8 and 9.
+Tags: **[V]** read on the source, **[S]** snippet or memory of a secondary page, not confirmed, **[O]** the owner's own decision as recorded in the repo, **[T]** trial: our choice, **[NF]** looked for, no source found. The tags are the advisor's and the adversarial reader's; this design re-read no source.
+Existing design: `strategy-framework.md` (module `strategy`, `strategy.result` r1; its "Left out" names this step), `option-positions.md`, `option-ledger.md`, `position-marks.md`, `account-data.md`, `account-identity.md`, `option-candidates.md` (the `funding` gate of `put_v1`). Nothing of them changes behaviour.
+
+Goal: (1) one pure stress of an alias's open positions over the FINRA portfolio-margin ladder, per alias and for the household; (2) one pure capital fit, which says for every ok candidate and every alias with funds what capital it needs by the exchange formulas, and what it adds to the book's worst loss; (3) a job that stores both in `strategy.result` beside the candidates, so a page later shows "worst loss of the book X, cash needed for assignments Y" and what a candidate adds. No page here, no new table, no new source or secret.
+
+## Today
+
+All paths at origin/main 832c799b.
+
+- Open positions: `compute.OptionStructures` groups one alias's positions into `Structure` values (`Legs` with `Strike`, `Expiry`, `Quantity`, `Multiplier`, `Mid`, `MarkStatus`). Its input is built by `internal/pages/risk_page/load.go` (`load`): ledger trade rows (`FlexTradeRows`) go through `Ledgers().Replay` with `MarkMaxAgeSessions` 5 and no marks, giving `Positions` and `Cycles`; `capture` reads `Account.Positions(alias, day)` of the newest of the last session days and keeps the rows with `SecType` OPTION as `Held` and STOCK as stocks with their `ConID`; `quotes` joins each position to a chain row of `obs.option_eod` through the stored option terms (`store.OptionTerms`, which carries `ExerciseStyle` and `SettlementType`) and returns `StructureQuote` with bid, ask, `UnderlyingClose`, delta, gamma, theta, vega of one day. So an option's price today is the chain mid of a day and the spot beside it is that same row's `UnderlyingClose`. A job cannot import a page.
+- Store `store/mark` (`account.position_mark`: `Price`, `Basis`, `Status`, `MarkedAt`, keyed by `ConID`) is not read by `risk_page`; only the stock lines would use it.
+- Funds: `Account.Values(alias, day)` tags NetLiquidation, TotalCashValue, AvailableFunds, ExcessLiquidity, MaintMarginReq, InitMarginReq (and others), each row with a currency. The `daughter` alias comes from Flex only (owner O4): ledger positions and no `account.value` rows.
+- Candidates: `strategy.result` rows of strategy `short_put` (`legs` JSON; `facts` `spot`, `iv`, `delta`, `bid`, `ask`, `underlying_id`; `internal/strategy/shortput/map.go`), read by `strategyresult.Reader.Results(day, strategy)`, written by `Writer.InsertResults`.
+- `funding` exists inside the put rule (`strike x multiplier` at most `AvailableFunds`); it stays and this step adds nothing to `put_v1` rows.
+- Jobs import only the root package of `strategy` (`docs/design/modules.md`, interface cell of row strategy: `internal/strategy/api.go`); the short put is built in `cmd/ot/strategy_wire.go` and handed to the job. `internal/compute/api.go` is at its ceiling of 840 lines and is not touched.
+
+## Decisions
+
+1. **The moves are FINRA's, not ours.** FINRA Rule 4210(g)(2)(F) [V]: the portfolio-margin valuation uses ten equidistant valuation points over the range of each product class; the range is +6 percent / -8 percent for a high-capitalization broad-based index, +-10 percent for a non-high-capitalization broad-based index, +-15 percent for equity, narrow-based index and ETF (the catch-all). The class of an underlying is a table of the job manifest (`[[class]] symbol, class`; owner config [O]): SPX, XSP, NDX `broad_high`, RUT `broad_other`, every other symbol `equity`; that RUT is "other broad" and NDX "high cap" is [S] (the rule's capitalization test was not read). The owner trades SPX, XSP and the Russell 2000 index, not NDX (P5 [O]).
+2. **The figure is the worst point of the ladder per class.** For each class the stress moves every underlying of that class by the same percentage at each of the ten points, ends included [S: whether the ends are among the ten], sums the profit and loss of the alias's holdings, and the class's figure is the worst (lowest) point; the alias's figure `worst_loss` is the sum of the class worsts, with no offset between classes [S: that the rule sums classes without offset across unrelated classes; here it is also the conservative choice]. The household figure is the sum of the aliases' class worsts (never smaller than the worst of the summed book) [T]. The ten points and their profit and loss are stored (`ladder_<class>`) so a page can draw them; the worst point of each class is stored (`worst_<class>`, with its move). A volatility shift has no standard [NF] and is not modelled; a page says "volatility held at the implied level of the mark".
+3. **Revaluation, not a Taylor sum.** At +-15 percent a delta-gamma sum misprices a short option, so each option leg is repriced at the moved spot with Black-Scholes-Merton and the volatility implied by the leg's own price (bisection on `Mid`). Both the price and the spot of a leg come from the same chain row, so they are of one day; the leg is rejected as `stale_mark` when that row's day is older than `max_mark_age_sessions` sessions before the run day (the value `risk_page` uses, 5 [O]) or when the leg's status is not a usable mark; shares valued from `store/mark` are rejected as `stale_mark` when `Status` is not ok, `Basis` is `none`, or `MarkedAt` is of an earlier session day than the run day. With no volatility the leg is `no_vol`. A rejected holding is listed, never dropped silently. Rate is DGS3MO as the put rule reads it; dividend yield zero [T]; the shock is instantaneous, no time passes [T]. American equity options are priced as European, which understates a short put's loss a little [S]; index options are European [V, Cboe index-options page]. Own implementation, because no mainstream maintained Go option-pricing library with a permissive licence and few dependencies is known to the advisor [NF]; it sits behind the `Pricer` interface of package `stress` so a library can replace it (owner 2026-11-08). `float64` and `math.Erf` are used only inside package `bsm`; every sum of profit and loss in `stress` and every capital in `fit` is `math/big` `Rat` (as `internal/compute/optionstruct/rat.go` does), and every text that leaves is rounded to cents.
+4. **What is stressed, and what the loader reads.** Per alias: its open option legs from `OptionStructures`, built by the same sequence as `risk_page/load.go` (ledger rows, `Replay`, capture of OPTION and STOCK rows, `quotes` through the option terms), plus its shares (quantity of the STOCK capture rows times the spot of the symbol: the `UnderlyingClose` of a chain row of that symbol when there is one, else the mark of `store/mark` joined to the STOCK row by `ConID`; this join is new in this job). A position of the capture that is not in the ledger is not stressed and is counted (`excluded` reason `not_in_ledger`); `daughter` has no capture and is stressed from the ledger alone. Excluded lines (`no_class`, `no_vol`, `stale_mark`, `other_currency`, `expired`, `not_in_ledger`) make the alias's row `status` unknown and its totals **incomplete**: an incomplete total is not a lower bound, because an excluded line may hold a loss or a gain. Pages must say "incomplete" and list the exclusions; the household row is `incomplete` when any alias row is. Non-US underlyings and other currencies are excluded today (Left out).
+5. **No invented cushion.** The broker's `ExcessLiquidity` already deducts the margin of the current shorts and the broker's requirement grows in a fall, so `ExcessLiquidity - loss` is not a cushion. Stored instead, labelled by the key name: `equity_loss_vs_excess_liquidity` = `worst_loss` as text beside `ExcessLiquidity`, with the fact `margin_change_not_modelled` = `true` [T: our reading; margin at stress is not modelled because the broker's model (TIMS, OCC) was not read, 403 [NF]]. No check passes or blocks on it. An alias with no `account.value` of the day or the day before (today `daughter`) has no such pair, reason `no_funds`.
+6. **Assignment cash by exercise style.** In each ladder point, each short put with strike above the moved spot is assigned and needs `strike x multiplier x quantity`; the sum is `assignment_cash` of the worst point of its class. A leg is never assigned when it is European and cash settled: the job sets `RiskLeg.CashSettled` from `store.OptionTerms` (`ExerciseStyle` European and `SettlementType` cash), the fields the quotes join already reads [V for the rule: index options are European and cash settled, Cboe index-options page]. When either field is empty the leg counts as assignable [T: the cash need is then overstated, not understated]. So SPX, XSP and RUT legs add to the loss and never to assignment cash.
+7. **Capital of a candidate is the exchange's formula.** `Capital`: cash-secured short put: strike times multiplier times quantity [V, Cboe strategy-based margin page]; short equity option, uncovered: option value plus 20 percent of the underlying less the out-of-the-money amount, floor option value plus 10 percent of the underlying (puts: of the strike) [V for 20 percent and the 10 percent minimum as the plan records them; the OTM deduction and the put floor [S]]; short broad-index option: 15 percent of the index value less the out-of-the-money amount, minimum 10 percent [V, Cboe, FINRA 4210]; put credit spread: width less credit, times multiplier [arithmetic]; covered call: nil, the shares are the cover. A structure none of them covers has `Gap` `no_rule`. The account's real requirement is `MaintMarginReq` and `InitMarginReq` of `account.value`; the formula is for a candidate not yet in the account.
+8. **Account fit is one check and two facts, written as a result row.** For each ok candidate row of the day and each alias with funds, a row `fit`, key `<candidate key>:<alias>`, carries one check `fit_capital`: `Capital` at most `AvailableFunds`, else `block capital`. `RiskFunds` carries its `Currency` and the candidate its currency; a different one is `unknown no_fx` (as the put's `funding` gate does); no funds is `unknown no_funds`. Facts: `capital`, and `worst_loss_with` (the alias's `worst_loss` with the candidate's legs added to the same class ladder, repriced with the same `Pricer`, from the row's `spot`, `iv` and `legs`; `no_vol` when the row has no `iv`). There is no concentration check (Left out).
+9. **One job, runnable alone and idempotent.** `book_risk` runs once per XNYS session day, offset 45 minutes after the close against 30 for `option_candidates` [T]; it reads stores only; it writes `strategy.result` rows with `Strategy` `book_risk` (keys `<alias>` and `household`) and `fit`, insert-only under one run id per run; a rerun writes a new run id and readers take the newest run (`Reader.Results`). With no candidate rows it writes book rows only; with no positions it writes zero rows and succeeds. It reads no live source and calls no broker.
+10. **Front end computes nothing.** The facts carry every figure; their keys are in `docs/contracts/strategy.md`. A page is Left out.
+11. **Where the code lives, and the module rule.** Other modules use a module through the root package only, so the types are declared in the existing interface file `internal/strategy/api.go` (an interface change: issue 1 carries the Design line), prefixed `Risk`, and the implementations are packages `internal/strategy/risk/bsm`, `risk/stress` and `risk/fit` that the job never imports. `cmd/ot` builds them and hands the job a `strategy.RiskStresser` and `strategy.RiskFitter`, as `cmd/ot/strategy_wire.go` hands over the short put. This needs no change of `docs/design/modules.md` (owner-only) and the fewest files: the other way, a declarations-only `internal/strategy/risk/api.go` named in the interface cell of the strategy row, costs a modules.md edit and a second interface file. The job never sees `Pricer`; it lives in `stress`. No file of `internal/strategy/replayapi` (design `strategy-replay`, PR 2307) is touched.
+
+## Modules
+
+| module | change |
+|---|---|
+| strategy | `internal/strategy/api.go` (types), `risk/bsm`, `risk/stress`, `risk/fit`, `docs/contracts/strategy.md` |
+| jobs | `internal/jobs/bookrisk` |
+| ot | `cmd/ot/bookrisk.go` |
+
+`strategy` imports `contracts` and `compute` only; the risk packages import neither store nor jobs. After the interface, entries 2 and 3 are buildable in parallel; entry 4 follows entry 3.
+
+## Interface
+
+Owner: module `strategy`, file `internal/strategy/api.go` (declarations added; existing ones unchanged). All numbers are decimal text.
+
+```go
+type RiskClass string // "equity", "broad_high", "broad_other"
+
+// RiskLeg is the option part of a holding; CashSettled is true when the leg is European and cash settled.
+type RiskLeg struct {
+	Right, Strike, Expiry, QuoteIV string
+	CashSettled                    bool
+}
+
+// RiskHolding is one open line: a share line (Option nil) or one option leg.
+type RiskHolding struct {
+	Underlying, Currency string
+	Class                RiskClass // "" when the symbol has no class
+	Option               *RiskLeg
+	Quantity, Multiplier string // quantity negative when short
+	Spot, Mark           string // Mark "" when unknown
+	MarkDay, SpotDay     contracts.Day
+	MarkUsable           bool // false for a status or basis that is not a usable mark
+}
+
+type RiskFunds struct{ Currency, NetLiquidation, Available, ExcessLiquidity string }
+
+// RiskBook is one alias on one run day; Funds is nil with no account.value of the day or the day before.
+type RiskBook struct {
+	Alias, Currency string
+	RunDay          contracts.Day
+	Rate            string
+	Holdings        []RiskHolding
+	Funds           *RiskFunds
+	SessionsOld     func(contracts.Day) int // sessions between a day and RunDay, supplied by the caller
+}
+
+type RiskPoint struct{ Move, PnL, AssignmentCash string }
+type RiskClassResult struct {
+	Class  RiskClass
+	Ladder []RiskPoint // ten points
+	Worst  RiskPoint
+}
+type RiskExcluded struct{ Underlying, Reason string } // no_class, no_vol, stale_mark, other_currency, expired, not_in_ledger
+
+// RiskOutcome is the stress of one book. Incomplete is true when anything is excluded.
+type RiskOutcome struct {
+	Alias      string
+	Classes    []RiskClassResult
+	WorstLoss  string // sum of the class worsts, as a loss (positive number)
+	Excluded   []RiskExcluded
+	Incomplete bool
+}
+
+// RiskStresser revalues a book over the FINRA ladder, purely.
+type RiskStresser interface{ Stress(RiskBook) RiskOutcome }
+
+// RiskCandidate is the structure of one ok candidate row; Spot and QuoteIV come from its facts.
+type RiskCandidate struct {
+	Key   string
+	Class RiskClass
+	Legs  []RiskHolding
+}
+
+// RiskFit is the verdict of one candidate in one book: the check and the facts.
+type RiskFit struct {
+	Check Check // Name "fit_capital"
+	Facts map[string]string
+}
+
+// RiskFitter is the capital fit, purely.
+type RiskFitter interface{ Fit(RiskBook, RiskOutcome, RiskCandidate) RiskFit }
+```
+
+`SessionsOld` is the one injected function so the packages hold no calendar. Reason words: `no_class`, `no_vol`, `stale_mark`, `other_currency`, `expired`, `not_in_ledger`, `no_funds`, `no_fx`, `no_rule`, `capital`.
+
+## Issues
+
+### 1 risk-types (interface)
+
+Module: strategy. Size: S.
+Order: first.
+Files: `internal/strategy/api.go`, `internal/strategy/api_test.go`, `docs/contracts/strategy.md`
+Design: docs/design/strategy-risk.md#Interface
+Acceptance:
+1. `internal/strategy/api.go` gains exactly the names of the Interface section (`RiskClass`, `RiskLeg`, `RiskHolding`, `RiskFunds`, `RiskBook`, `RiskPoint`, `RiskClassResult`, `RiskExcluded`, `RiskOutcome`, `RiskStresser`, `RiskCandidate`, `RiskFit`, `RiskFitter`) as declarations and doc comments only; every existing declaration of the file is unchanged.
+2. `api_test.go` gains the new tests `TestRiskAPINewFakeSatisfiesStresserAndFitter` (a fake implements both interfaces, checked by assignment) and `TestRiskAPINewCallerUsesOnlyTheInterface` (a caller runs one `Stress` and one `Fit` against fakes), `t.Parallel()`.
+3. `docs/contracts/strategy.md` gains a section "Book risk" that quotes Rule 4210(g)(2)(F) for the three ranges and the ten valuation points with their tags, lists the fact keys of the rows `book_risk` (`worst_loss`, `ladder_<class>`, `worst_<class>`, `assignment_cash`, `excluded`, `incomplete`, `equity_loss_vs_excess_liquidity`, `margin_change_not_modelled`) and `fit` (`capital`, `worst_loss_with`) and the reason words; the rest of the file is unchanged.
+4. No file outside the Files line changes; `Contracts: unchanged`.
+5. The result matches docs/design/strategy-risk.md, Interface.
+
+### 2 stress
+
+Module: strategy. Size: M.
+Order: after 1.
+Files: `internal/strategy/risk/bsm/bsm.go`, `internal/strategy/risk/bsm/bsm_test.go`, `internal/strategy/risk/stress/stress.go`, `internal/strategy/risk/stress/ladder.go`, `internal/strategy/risk/stress/stress_test.go`, `internal/strategy/risk/stress/testdata/**`
+Design: docs/design/strategy-risk.md#Decisions (1, 2, 3, 6)
+Acceptance:
+1. `bsm.New()` implements the `Pricer` interface declared in `stress` (`Value`, `Implied`, decimal text in and out); the package comment says "own implementation, because no mainstream Go library fits" and that `float64` is used only in this package; a price below intrinsic or an expired option is an error.
+2. `stress.New(p Pricer)` returns a `strategy.RiskStresser`; `ladder.go` holds the three ranges as constants each with the comment "Rule 4210(g)(2)(F) [V]" (high cap +6/-8, other broad +-10, equity +-15) and builds ten equidistant points; every sum in the package is `math/big` `Rat` and `float64` does not appear in `stress`.
+3. `Stress` gives for each class present the ten points and the worst point, `WorstLoss` as the sum of the class worsts, and `AssignmentCash` per point as the sum of `strike x multiplier x quantity` of short puts with strike above the moved spot whose `Option.CashSettled` is false.
+4. A holding is excluded with the reason `no_class`, `other_currency`, `expired`, `no_vol`, or `stale_mark` (mark or spot day more than the caller's allowed sessions old by `SessionsOld`, `MarkUsable` false, or `MarkDay` different from `SpotDay`); `Incomplete` is true when any is excluded; excluded holdings are in no sum.
+5. `stress_test.go` has the new tests `TestStressNewShortPutWorstPointEqualsHandValue` (the expected number written in the test from the closed form), `TestStressNewWorstPointOfBroadHighIsTheMinusEightEnd`, `TestStressNewClassesAreSummedWithoutOffset`, `TestStressNewCashSettledIndexLegHasNoAssignmentCash`, `TestStressNewEmptyExerciseFieldsCountAsAssignable`, `TestStressNewStaleMarkIsExcludedNotPriced`, `TestStressNewMarkDayOtherThanSpotDayIsStale`, `TestStressNewExcludedMakesIncomplete`, `TestStressNewSharesOnlyBookIsLinear`; `bsm_test.go` has `TestBsmNewPutCallParity` and `TestBsmNewImpliedRoundTripsToFourDecimals`; all `t.Parallel()`, no clock, no file outside `testdata`.
+6. The change edits only the paths of this entry's Files; new files under 600 lines; `Contracts: unchanged`.
+7. The result matches docs/design/strategy-risk.md, Decisions 1 to 3 and 6.
+
+### 3 fit
+
+Module: strategy. Size: S.
+Order: after 1.
+Files: `internal/strategy/risk/fit/fit.go`, `internal/strategy/risk/fit/capital.go`, `internal/strategy/risk/fit/fit_test.go`, `internal/strategy/risk/fit/testdata/**`
+Design: docs/design/strategy-risk.md#Decisions (7, 8)
+Acceptance:
+1. `fit.New(st strategy.RiskStresser)` returns a `strategy.RiskFitter`; `capital.go` holds `capital` with one comment per formula naming its tag and source from Decision 7 (cash-secured put, uncovered equity option, short broad-index option, put credit spread, covered call); a structure none covers gives the reason `no_rule`; all arithmetic is `math/big` `Rat`.
+2. `Fit` returns the one check `fit_capital`: `capital` at most `Funds.Available` passes, over blocks with the reason `capital`, `Funds` nil is `unknown no_funds`, a `Currency` of the funds different from the book's currency is `unknown no_fx`; `Facts` holds `capital` and `worst_loss_with`, the latter from `Stress` of the book with the candidate's legs added, and no check is made on it.
+3. `fit_test.go` has the new tests `TestFitNewCashSecuredPutCapitalIsStrikeTimesMultiplier`, `TestFitNewIndexShortOptionUsesFifteenPercentLessOtm`, `TestFitNewEquityNakedUsesTwentyPercentWithTenPercentFloor`, `TestFitNewSpreadCapitalIsWidthLessCredit`, `TestFitNewCoveredCallNeedsNoCapital`, `TestFitNewNoFundsIsUnknownNotBlock`, `TestFitNewOtherCurrencyIsUnknownNoFx`, `TestFitNewCapitalOverAvailableBlocks`, `TestFitNewWorstLossWithAddsTheCandidateToItsClass`; expected numbers written in the tests from the formulas; fake stresser; `t.Parallel()`.
+4. The change edits only the paths of this entry's Files; `Contracts: unchanged`.
+5. The result matches docs/design/strategy-risk.md, Decisions 7 and 8.
+
+### 4 job-bookrisk-and-wire
+
+Module: jobs. Size: M.
+Order: after 1.
+Files: `internal/jobs/bookrisk/job.go`, `internal/jobs/bookrisk/load.go`, `internal/jobs/bookrisk/rows.go`, `internal/jobs/bookrisk/job.toml`, `internal/jobs/bookrisk/job_test.go`, `internal/jobs/bookrisk/load_test.go`, `internal/jobs/bookrisk/testdata/**`, `docs/contracts/jobs/book_risk.md`
+Design: docs/design/strategy-risk.md#Decisions (4, 5, 8, 9, 11)
+Acceptance:
+1. `job.toml` has `id = "book_risk"`, calendar `XNYS`, anchor `session_close`, offset `45m`, `restart_sensitive = false`, `max_mark_age_sessions` with the comment that 5 is the value of `risk_page`, a `[[class]]` table (SPX, XSP, NDX `broad_high`; RUT `broad_other`) with a tag comment per number, and no `[[need]]` row.
+2. The job holds a `strategy.RiskStresser` and a `strategy.RiskFitter` in its stores or config type and imports from `internal/strategy` only the root package; a grep for `internal/strategy/` with a sub-path, for `internal/pages` and for another `internal/jobs` package finds nothing in the job.
+3. `load.go` builds one `strategy.RiskBook` per alias that has a ledger row or a capture, in the sequence of `internal/pages/risk_page/load.go` (ledger rows, `Replay` with the structure marks rule, capture of OPTION and STOCK rows, quotes through `store.OptionTerms`), groups with `compute.OptionStructures`, sets `RiskLeg.CashSettled` from `ExerciseStyle` European and `SettlementType` cash, takes share prices from the quote `UnderlyingClose` or else from `store/mark` joined to the STOCK row by `ConID`, lists a capture position absent from the ledger as `not_in_ledger`, and sets `Funds` with its `Currency` from the newest `account.value` of the day or the day before, nil otherwise.
+4. `job.go` writes one `book_risk` row per alias and one `household` row (sum of the aliases' class worsts; `incomplete` when any alias row is) and, for each ok row of `Reader.Results(day, "short_put")` and each alias with funds, one `fit` row, through `strategyresult.Writer.InsertResults` with one run id per run, `legs`, `checks` and `facts` as JSON text with the keys of `docs/contracts/strategy.md`; with no candidate rows only book rows; a failed read of one alias is recorded on its row (`status` unknown, reason `read_failed`) and the others still run; no broker and no network source is used.
+5. `job_test.go` and `load_test.go` have the new tests `TestBookRiskNewWritesOneRowPerAliasAndHousehold`, `TestBookRiskNewHouseholdIsSumOfAliasClassWorsts`, `TestBookRiskNewIncompleteAliasMakesHouseholdIncomplete`, `TestBookRiskNewFitRowsOnlyForOkCandidates`, `TestBookRiskNewAliasWithoutValuesGetsNoFitRow`, `TestBookRiskNewOneAliasReadFailureKeepsTheOthers`, `TestBookRiskNewRerunWritesANewRunId`, `TestBookRiskNewCashSettledFromTermsFields`, `TestBookRiskNewCaptureOnlyPositionIsNotInLedger`, `TestBookRiskNewLegsEqualRiskPageStructureLegs` (the same fake stores through this loader and through the `risk_page` sequence give the same legs; the page package is named only in the test as a copy of its sequence, not imported); fakes, `t.Parallel()`, fake clock, `t.TempDir()`.
+6. `docs/contracts/jobs/book_risk.md` states the manifest keys, the reads and the rows; the change edits only this entry's Files; new files under 600 lines; `Contracts: unchanged`.
+7. The result matches docs/design/strategy-risk.md, Decisions 4, 5, 8, 9 and 11.
+
+### 5 ot-wire
+
+Module: ot. Size: S.
+Order: after 2, 3 and 4.
+Files: `cmd/ot/bookrisk.go`, `cmd/ot/bookrisk_test.go`, `cmd/ot/runonce.go`, `cmd/ot/wire.go`, `docs/contracts/ot.md`
+Design: docs/design/strategy-risk.md#Decisions (9, 11)
+Acceptance:
+1. `cmd/ot/bookrisk.go` builds `bsm.New()`, `stress.New(...)` and `fit.New(...)` (the only place that imports the three risk packages), hands the job the stresser and the fitter, and opens the stores as `candidates.go` does (a failed open names the key, never a value); `runonce.go` gains the job id and nothing else, `wire.go` at most two lines (795 lines; if more is needed the pull request says so and leaves it).
+2. `ot run-once book_risk` and `--dry-run` work, the dry run writing nothing; the demo profile refuses the job as `candidates` is refused.
+3. `bookrisk_test.go` has the new tests `TestBookRiskNewIsRegisteredByRunOnce`, `TestBookRiskNewDryRunWritesNothing`, `TestBookRiskNewMissingDSNNamesTheKeyOnly`; fakes, `t.Parallel()`.
+4. `docs/contracts/ot.md` names the id; the change edits only this entry's Files; `Contracts: unchanged`.
+5. The result matches docs/design/strategy-risk.md, Decisions 9 and 11.
+
+## Checked by CI
+
+`go build ./...`, `go vet ./...`, the Go tests of `internal/strategy/...`, `internal/jobs/bookrisk` and `cmd/ot`, the architecture lint (jobs reach `strategy` through its root package only), `internal/jobs/api_users_test.go`, the size check against `docs/design/ratchet.json`.
+
+## Left out
+
+- A page or block for the book risk (the facts are stored so it computes nothing).
+- A concentration check (an underlying's share of the stress loss against a limit): no source for any limit [NF], the tastylive 25 to 50 percent of buying power is one firm's line [S]. If the owner names a number it is a later entry on the same facts; until then nothing is shown.
+- A cushion from `ExcessLiquidity` and margin at stress (Decision 5); a volatility shift [NF]; the broker's margin model; early-exercise value of American options; dividends in the pricer; non-US underlyings and other currencies (excluded and counted); Flex cash and margin of `daughter` (owner: not now), so her fit is `unknown no_funds`.
+- Moving the `funding` gate out of `put_v1`; beta-weighted delta of single names; sizing from the stress; automatic blocking; replay of the stress over past days (the replay design owns `internal/strategy/replayapi`).
+- Fit for strategies other than `short_put`: the job reads the rows of `short_put` only; a strategy added later is one more name in its list.
+
+## Doubts
+
+1. When an alias is incomplete (a gateway down, a position without a mark), should the page show the household total? a) show it, labelled "incomplete" with the exclusions; b) show the per-alias figures that are complete and no household total. Recommend b): an incomplete sum is not a bound, so a labelled number invites being read as one.
+
+## Adversarial
+
+A fresh read-only read of the first draft (the file `risk-adversarial.md` in the dispatcher window's scratchpad) raised six blocking points and a simpler way; all are adopted in this text.
+
+1. Module rule (jobs may import only the root `strategy` package): adopted. The `Risk*` types live in `internal/strategy/api.go`; `cmd/ot` builds the implementation and hands it to the job, as `strategy_wire.go` does for the short put. No `modules.md` change.
+2. The loader as `internal/pages/risk_page/load.go` really reads (chain mid through the option terms, `Replay` with no marks, capture OPTION and STOCK rows): adopted; `store/mark` only for share prices, joined by ConID, named as new.
+3. No cushion figure from `ExcessLiquidity − loss`: adopted; the row carries `equity_loss_vs_excess_liquidity` with `margin_change_not_modelled` [T] and no check on it.
+4. Cash-settled European index options are never assigned: adopted, from `store.OptionTerms` exercise style and settlement type; empty fields count as assignable [T].
+5. Stale IV: adopted, reason `stale_mark`.
+6. An incomplete total is never a lower bound: adopted; `RiskFunds` carries `Currency`, a mismatch gives `unknown no_fx`.
+Simpler way: the joint scenarios are replaced by the FINRA ten-point ladder per class, the concentration check and unused interface types are dropped. Not adopted: five entries remain (types, stress, fit, job, wiring), because each is one module and the job cannot hold the pricer.
