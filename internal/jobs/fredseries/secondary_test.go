@@ -7,6 +7,9 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/atombender/go-jsonschema/pkg/types"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -79,7 +82,9 @@ func TestFallbackNotRunWhenPrimaryHasValue(t *testing.T) {
 	t.Parallel()
 	w := &registryWriter{defs: defOf("SOFR", "nyfed")}
 	second := &fakeSource{}
-	runSecond(t, &fakeSource{results: []fetchResult{{points: []contracts.SeriesPoint{sofr(4.1)}}}}, second, w)
+	today := sofr(4.1)
+	today.ObservationDate = types.SerializableDate{Time: time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)}
+	runSecond(t, &fakeSource{results: []fetchResult{{points: []contracts.SeriesPoint{today}}}}, second, w)
 	if len(second.plans) != 0 || len(w.fills) != 0 {
 		t.Fatalf("fallback ran with a value: %v", second.plans)
 	}
@@ -128,5 +133,17 @@ func TestSecondSourceErrorKeepsResultAndIsLogged(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "second source failed") || !strings.Contains(buf.String(), "nyfed down") {
 		t.Fatalf("log = %q", buf.String())
+	}
+}
+
+func TestFallbackFillsMissingDateInWindow(t *testing.T) {
+	t.Parallel()
+	w := &registryWriter{defs: defOf("SOFR", "nyfed")}
+	second := &fakeSource{results: []fetchResult{{points: []contracts.SeriesPoint{sofr(4.3)}}}}
+	yesterday := sofr(4.2)
+	yesterday.ObservationDate = types.SerializableDate{Time: time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC)} // run day 2026-11-05 missing from FRED
+	runSecond(t, &fakeSource{results: []fetchResult{{points: []contracts.SeriesPoint{yesterday}}}}, second, w)
+	if len(second.plans) != 1 || len(w.fills) != 1 {
+		t.Fatalf("missing run day not filled: plans=%v fills=%v", second.plans, w.fills)
 	}
 }

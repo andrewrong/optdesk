@@ -11,8 +11,6 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/seriesdef"
 )
 
-var _ = NewWithSecondary
-
 // secondaryNYFed is the registry value of secondary_source this job can ask.
 const secondaryNYFed = "nyfed"
 
@@ -23,8 +21,8 @@ type fetchGroup struct {
 }
 
 // NewWithSecondary builds the job like New and, when second is not nil, lets Run
-// ask second for a series whose registry row names "nyfed" and that the primary
-// fetch gave no value for. The points are written with FillSeriesPoints only.
+// ask second for a series whose registry row names "nyfed" and whose run day the primary
+// fetch gave no value for (missing or no_value). The points are written with FillSeriesPoints only.
 func NewWithSecondary(src, second sources.Source, w store.SeriesWriter, clk clock.Clock) (contracts.Job, error) {
 	if src == nil || w == nil || clk == nil {
 		return nil, errors.New("fredseries: source, writer and clock are required")
@@ -60,7 +58,7 @@ func (j *job) fillGaps(ctx context.Context, day contracts.Day, groups []fetchGro
 	}
 	hasValue := map[string]bool{}
 	for _, p := range primary {
-		if p.Value != nil {
+		if p.Value != nil && p.ObservationDate.Format("2006-01-02") == string(day) {
 			hasValue[p.SeriesID] = true
 		}
 	}

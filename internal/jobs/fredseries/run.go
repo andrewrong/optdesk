@@ -94,11 +94,10 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			res.Usable++
 		}
 	}
+	defer j.fillGaps(ctx, day, groups, points)
 	if len(points) == 0 {
-		j.fillGaps(ctx, day, groups, points)
 		return res
 	}
-	defer j.fillGaps(ctx, day, groups, points)
 	up, ok := j.w.(seriesdef.SeriesUpserter)
 	if !ok {
 		res.Usable = 0
