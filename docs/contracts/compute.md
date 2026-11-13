@@ -124,6 +124,13 @@ Pure figures. `internal/compute` turns typed series into `Figure`s through seven
 
 - Each total is one exact sum rounded once: `Value` to cents half away from zero, `Dollars` to whole dollars half up. A figure that cannot be formed has a gap reason (`no_data`, `unsupported_currency`), never zero. Pure: no I/O, no clock.
 
+## Global asset figures
+
+`GlobalFigures` (method `Global(GlobalIn) GlobalResult`), `NewGlobalFiguresFunc`, `GlobalIn`, `SectorLine`, `RotationLine` and `GlobalResult` are declared in `internal/compute/blockapi/api.go`, additive to `PageFigures`, which keeps its six methods. The implementation is `pagefig.NewGlobal`. Design: `docs/design/report-global-assets.md#Interface`. Tests: `TestGlobalContract` (`blockapi`) and `global_test.go` (`TestProxyFormulaIsMarketMove`, `TestProxyOneDayBeforeDayGivesFigures`, `TestWeekendDayShowsFridayClose`, `TestProxyStaleAfterThreeWeekdays`, `TestProxyDifferentC0IsMissingInput`, `TestSectorExcessUsesUnroundedChanges`, `TestSectorNeedsSameDays`, `TestSectorStaleBenchmark`, `TestSectorC0DiffersFromSpy`, `TestNoSpyIsNoDataEverywhere`, `TestSectorTwentyNeeds21Closes`, `TestEmptySeriesIsNoData`, `TestNonPositiveCloseIsMissingInput`, `TestSectorsSortedByD5GapsLast`, `TestRotationFacts`, `TestRotationOmittedBelowSixRows`, `TestRotationOmittedWithoutD20`).
+
+- The reference close c0 is the newest benchmark (SPY) close; every other series must have the same c0, and a sector row the same c5 and c20 days, else the gap `missing_input`. A benchmark c0 more than three weekdays behind `Day` is `stale_input` in every cell; no benchmark close is `no_data`.
+- A sector cell is the change of the fund minus the change of the benchmark, each unrounded, the difference rounded half-even to 2 places (percentage points). Sectors are sorted by d5 descending, gap rows last, ties in input order; `Rotation` is nil with fewer than 6 rows that have a d5 or when no row has a d20. Pure: no I/O, no clock.
+
 ## Version history
 
 - v1: the seven interfaces, the types and the constructor function types.

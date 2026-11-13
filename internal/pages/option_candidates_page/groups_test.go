@@ -111,7 +111,7 @@ func TestColumnsPerKind(t *testing.T) {
 	}
 	p := buildPage(t, rows, buildDay)
 	want := [][]string{
-		{"rank", "company", "expiry", "dte", "strike", "bid", "yield", "break_even", "delta", "iv", "marks", "fit", "next_earnings"},
+		{"rank", "company", "expiry", "dte", "strike", "bid", "yield", "excess", "break_even", "delta", "iv", "itm", "marks", "fit", "next_earnings"},
 		{"rank", "company", "alias", "expiry", "dte", "strike", "bid", "yield", "break_even", "delta", "iv", "extrinsic",
 			"marks", "next_earnings", "next_ex_date", "ex_amount"},
 		{"company", "alias", "expiry", "strike", "extrinsic", "next_ex_date", "ex_amount", "status", "guard"},
