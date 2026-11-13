@@ -4,12 +4,19 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
 // Needs returns the declarations of the [[need]] rows of the embedded job.toml, DTE from [params].
 func Needs() ([]jobs.Need, error) {
 	return needsOf(manifestBytes)
+}
+
+// Params returns the [params] of the embedded job.toml, as parseManifest reads them.
+func Params() (compute.CandidateParams, error) {
+	_, _, p, err := parseManifest(manifestBytes)
+	return p, err
 }
 
 func needsOf(b []byte) ([]jobs.Need, error) {
