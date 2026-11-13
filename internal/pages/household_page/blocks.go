@@ -29,6 +29,7 @@ type moneyRow struct {
 	Amount moneyCell    `json:"amount"`
 	Note   string       `json:"note,omitempty"`
 	Share  *shareFigure `json:"share,omitempty"`
+	Scope  string       `json:"scope,omitempty"`
 }
 
 type shareFigure struct {
@@ -46,8 +47,6 @@ type moneyBlock struct {
 	Gap     *gapJSON    `json:"gap,omitempty"`
 }
 
-type emptyRow struct{}
-
 type allocationRow struct {
 	Name   string    `json:"name"`
 	Amount moneyCell `json:"amount"`
@@ -61,13 +60,25 @@ type allocationBlock struct {
 	Gap     *gapJSON        `json:"gap,omitempty"`
 }
 
+// moverRow is one line of the stock or option table; Previous and Current are a priceCell or a gap.
+type moverRow struct {
+	Name     string     `json:"name"`
+	Previous any        `json:"previous"`
+	Current  any        `json:"current"`
+	Amount   *moneyCell `json:"amount"`
+	Note     string     `json:"note,omitempty"`
+	Scope    string     `json:"scope"`
+	Account  accountTag `json:"account"`
+}
+
 type moversBlock struct {
 	Title   string      `json:"title"`
 	Meaning string      `json:"meaning"`
+	Columns []string    `json:"columns,omitempty"`
 	Rows    []moneyRow  `json:"rows"`
 	Totals  []moneyCell `json:"totals"`
-	Stocks  []emptyRow  `json:"stocks"`
-	Options []emptyRow  `json:"options"`
+	Stocks  []moverRow  `json:"stocks"`
+	Options []moverRow  `json:"options"`
 	Gap     *gapJSON    `json:"gap,omitempty"`
 }
 
@@ -183,7 +194,6 @@ type pageJSON struct {
 	Obligations   moneyBlock      `json:"obligations"`
 	Concentration moneyBlock      `json:"concentration"`
 	Allocation    allocationBlock `json:"allocation"`
-	LongTerm      moneyBlock      `json:"long_term"`
 	Accounts      *accountsBlock  `json:"accounts"`
 	Notes         []string        `json:"notes"`
 	Gaps          []gapJSON       `json:"gaps"`
