@@ -1,0 +1,11 @@
+# Manifest of the statement_capture job. It holds no identity or value: the aliases come from the wiring.
+version = 1
+id = "statement_capture"
+
+# Daily anchor on the close of the session, after option_ledger's 60 minutes and its 30 minute bound (Decision 9 of docs/design/statement-account.md).
+[schedule]
+calendar = "XNYS"
+anchor = "session_close"
+offset = "95m"
+run_bound = "10m"
+restart_sensitive = false
