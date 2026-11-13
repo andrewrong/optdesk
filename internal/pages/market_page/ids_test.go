@@ -42,11 +42,11 @@ func TestIdsExistInRulesAndJob(t *testing.T) {
 	for _, m := range job.Market {
 		inJob[m.ID] = m.Series
 	}
-	for _, id := range []string{figVixPctile, figVxnPctile, figRvxPctile, figSp500Vs200d, figVixTerm, figRv20} {
+	for _, id := range []string{figVixPctile, figVxnPctile, figRvxPctile, figSp500Vs200d, figVixTerm, figRv20, figIvRv20} {
 		if !inRules[id] {
 			t.Errorf("%s is not in rules.json", id)
 		}
-		if _, ok := inJob[id]; !ok && id != figRv20 { // market.rv20 is keyed by rv20, not [[market]]
+		if _, ok := inJob[id]; !ok && id != figRv20 && id != figIvRv20 { // market.rv20 is keyed by rv20, not [[market]]; iv_rv20 is not read here
 			t.Errorf("%s is not in job.toml", id)
 		}
 	}

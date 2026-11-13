@@ -16,6 +16,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/contracts/gen"
 )
 
 var testZone = time.FixedZone("test", 8*3600)
@@ -58,8 +59,8 @@ func reading(day, state, value string) contracts.ReadingRecord {
 	return r
 }
 
-// readings answers market.iv_ibkr from iv and market.rv20 from rv, both keyed by subject.
-func readings(iv, rv map[string]contracts.ReadingRecord) compute.ReadingFunc {
+// readings answers market.iv_ibkr from iv, market.rv20 from rv and market.iv_rv20 from diff, all keyed by subject.
+func readings(iv, rv, diff map[string]contracts.ReadingRecord) compute.ReadingFunc {
 	return func(_ context.Context, name, kind, subject string, _, _ contracts.Day) ([]contracts.ReadingRecord, error) {
 		m := iv
 		switch {
@@ -67,6 +68,8 @@ func readings(iv, rv map[string]contracts.ReadingRecord) compute.ReadingFunc {
 			return nil, errors.New("unexpected reading " + name + " " + kind)
 		case name == figRv20:
 			m = rv
+		case name == figIvRv20:
+			m = diff
 		case name != figIV:
 			return nil, errors.New("unexpected reading " + name + " " + kind)
 		}
@@ -79,8 +82,25 @@ func readings(iv, rv map[string]contracts.ReadingRecord) compute.ReadingFunc {
 
 func config(m map[string]contracts.ReadingRecord) Config { return configRv(m, nil) }
 
-func configRv(iv, rv map[string]contracts.ReadingRecord) Config {
-	return Config{RunID: "run1", BuildID: "b1", Scope: "market", Zone: testZone, Readings: readings(iv, rv)}
+func configRv(iv, rv map[string]contracts.ReadingRecord) Config { return configAll(iv, rv, nil) }
+
+func configAll(iv, rv, diff map[string]contracts.ReadingRecord) Config {
+	return Config{RunID: "run1", BuildID: "b1", Scope: "market", Zone: testZone, Readings: readings(iv, rv, diff)}
+}
+
+// diffReading is an ok market.iv_rv20 reading of day with the data_day parameter.
+func diffReading(day, value string) contracts.ReadingRecord {
+	r := reading(day, "ok", value)
+	r.Parameters = []gen.ReadingRecordParametersElem{{Param: "data_day", ValueTag: &day}}
+	return r
+}
+
+func diffAll() map[string]contracts.ReadingRecord {
+	return map[string]contracts.ReadingRecord{
+		"SPX": diffReading("2026-11-06", "0.032000"),
+		"NDX": diffReading("2026-11-06", "0.041000"),
+		"RUT": diffReading("2026-11-06", "-0.014000"),
+	}
 }
 
 var at = time.Date(2026, 11, 6, 21, 30, 0, 0, time.UTC)
@@ -137,7 +157,7 @@ func build(t *testing.T, c Config, r fakeSeries) []byte {
 
 func TestGolden(t *testing.T) {
 	t.Parallel()
-	c := configRv(map[string]contracts.ReadingRecord{
+	c := configAll(map[string]contracts.ReadingRecord{
 		"SPX": reading("2026-11-06", "ok", "0.201234"),
 		"NDX": reading("2026-11-06", "ok", "0.245"),
 		"RUT": reading("2026-11-06", "ok", "0.2175"),
@@ -145,7 +165,7 @@ func TestGolden(t *testing.T) {
 		"SPX": reading("2026-11-06", "ok", "0.162060"),
 		"NDX": reading("2026-11-06", "ok", "0.162500"),
 		"RUT": reading("2026-11-06", "ok", "0.163500"),
-	})
+	}, diffAll())
 	got := build(t, c, fullSeries())
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, got, "", "  "); err != nil {
@@ -207,7 +227,7 @@ func TestNoSeriesIsGap(t *testing.T) {
 			t.Errorf("iv = %v", row["iv"])
 		}
 	}
-	if len(d.Card.Gaps) != 3+3+1+3+1 {
+	if len(d.Card.Gaps) != 3+3+3+3+1 {
 		t.Errorf("gaps = %d", len(d.Card.Gaps))
 	}
 }
@@ -230,8 +250,8 @@ func TestGapTextsAreDistinctAndNameTheirIndex(t *testing.T) {
 				n++
 			}
 		}
-		if n != 2 {
-			t.Errorf("%s: %d gap texts start with its name, want 2 (iv, rv20)", name, n)
+		if n != 3 {
+			t.Errorf("%s: %d gap texts start with its name, want 3 (iv, rv20, diff)", name, n)
 		}
 	}
 }
@@ -324,48 +344,83 @@ func cell(row map[string]any, key string) map[string]any {
 	return m
 }
 
-func rowsFor(t *testing.T, names ...string) []indexRow {
-	t.Helper()
-	var rows []indexRow
-	for _, n := range names {
-		row, _, err := buildRow(context.Background(), config(nil), n, time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
-		if err != nil {
-			t.Fatal(err)
-		}
-		rows = append(rows, row)
-	}
-	return rows
-}
-
-func countGaps(gs []gap, text string) int {
+func notBuiltGaps(gs []gap) int {
 	n := 0
 	for _, g := range gs {
-		if g.Text == text && g.Reason == "not_built" {
+		if g.Reason == "not_built" {
 			n++
 		}
 	}
 	return n
 }
 
-func TestIndexGapsOnePerFeature(t *testing.T) {
+func TestIndexDiffReadingGivesNoNotBuiltGap(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct {
-		names []string
-		list  string
-	}{
-		{[]string{"SPX", "NDX", "RUT"}, "SPX, NDX, RUT"},
-		{[]string{"SPX"}, "SPX"},
-	} {
-		rows := rowsFor(t, tc.names...)
-		gs := collectGaps(card{IndexTable: indexTable{Rows: rows}})
-		if n := countGaps(gs, "Implied minus realised not built yet for "+tc.list); n != 1 {
-			t.Errorf("%s: diff gaps = %d", tc.list, n)
+	b := build(t, configAll(nil, nil, diffAll()), fullSeries())
+	d := parse(t, b)
+	if n := notBuiltGaps(decodeGaps(t, b)); n != 0 {
+		t.Fatalf("not_built gaps = %d", n)
+	}
+	want := []string{"+3.2", "+4.1", "-1.4"}
+	for i, r := range d.Card.IndexTable.Rows {
+		c := cell(r, "iv_minus_rv20")
+		if c["kind"] != "value" || c["text"] == nil || c["unit"] != "vol_points" {
+			t.Errorf("row %d cell = %v", i, c)
 		}
-		for _, r := range rows {
-			if g, ok := r.IVMinusRV20.(gap); !ok || g.Reason != "not_built" || g.Text != "not built yet" {
-				t.Errorf("%s cell = %v", r.Name, r.IVMinusRV20)
-			}
+		if got, _ := c["text"].(string); got != want[i] {
+			t.Errorf("row %d text = %q", i, got)
 		}
+	}
+}
+
+func decodeGaps(t *testing.T, b []byte) []gap {
+	t.Helper()
+	var v struct {
+		Card struct {
+			Gaps []gap `json:"gaps"`
+		} `json:"card"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		t.Fatal(err)
+	}
+	return v.Card.Gaps
+}
+
+func TestIndexNoDiffReadingGivesThreeNoDataGaps(t *testing.T) {
+	t.Parallel()
+	b := build(t, config(nil), fullSeries())
+	n := 0
+	for _, g := range decodeGaps(t, b) {
+		if g.Reason == "no_data" && strings.Contains(g.Text, "Implied minus realised") {
+			n++
+		}
+		if g.Reason == "not_built" {
+			t.Errorf("not_built gap %q", g.Text)
+		}
+	}
+	if n != 3 {
+		t.Fatalf("no_data diff gaps = %d, want 3", n)
+	}
+}
+
+func TestDiffNegativeValueMatchesSchema(t *testing.T) {
+	t.Parallel()
+	b := build(t, configAll(nil, nil, diffAll()), fullSeries()) // build validates against the schema
+	row := parse(t, b).Card.IndexTable.Rows[2]
+	c := cell(row, "iv_minus_rv20")
+	if c["text"] != "-1.4" || c["value"] != -1.4 {
+		t.Fatalf("RUT cell = %v", c)
+	}
+}
+
+func TestDiffGapKeepsRunStatusOk(t *testing.T) {
+	t.Parallel()
+	iv := map[string]contracts.ReadingRecord{}
+	for _, n := range indexNames {
+		iv[n] = reading("2026-11-06", "ok", "0.2")
+	}
+	if got := parse(t, build(t, configAll(iv, nil, nil), fullSeries())).RunStatus; got != "ok" {
+		t.Fatalf("run_status = %s", got)
 	}
 }
 

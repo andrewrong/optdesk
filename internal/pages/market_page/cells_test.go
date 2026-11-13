@@ -81,11 +81,14 @@ func TestN225RvStaysNotBuilt(t *testing.T) {
 	if g := rv20Of(t, m, 3); g["kind"] != "gap" || g["reason"] != "not_built" || g["text"] != "N225 20-day realised volatility: not built yet" {
 		t.Errorf("N225 rv20 = %v", g)
 	}
-	for i := range 4 {
-		g := at(t, m, "indices", "rows", i, "iv_minus_rv20").(map[string]any)
-		name := []string{"SPX", "NDX", "RUT", "N225"}[i]
-		if g["kind"] != "gap" || g["reason"] != "not_built" || g["text"] != name+" implied minus realised: not built yet" {
-			t.Errorf("row %d iv_minus_rv20 = %v", i, g)
+	g := at(t, m, "indices", "rows", 3, "iv_minus_rv20").(map[string]any)
+	if g["kind"] != "gap" || g["reason"] != "not_built" || g["text"] != "N225 implied minus realised: not built yet" {
+		t.Errorf("N225 iv_minus_rv20 = %v", g)
+	}
+	for i, want := range []string{"+3.2", "+7.2", "-1.4"} {
+		c := at(t, m, "indices", "rows", i, "iv_minus_rv20").(map[string]any)
+		if c["kind"] != "value" || c["text"] != want || c["unit"] != "vol_points" {
+			t.Errorf("row %d iv_minus_rv20 = %v", i, c)
 		}
 	}
 	if g := at(t, m, "indices", "rows", 3, "iv").(map[string]any); g["reason"] != "not_built" {
@@ -96,11 +99,11 @@ func TestN225RvStaysNotBuilt(t *testing.T) {
 func TestIndicesHeaderNamesTheUnbuiltColumn(t *testing.T) {
 	t.Parallel()
 	s, _ := at(t, allOK().page(t), "indices", "sentence").(string)
-	if !strings.Contains(s, "implied-minus-realised column is not built yet") || strings.Contains(s, "realised columns") {
+	if !strings.Contains(s, "implied minus realised is built for SPX, NDX and RUT, not the Nikkei") || strings.Contains(s, "realised columns") {
 		t.Errorf("indices sentence = %q", s)
 	}
 	p, _ := allOK().page(t)["sentence"].(string)
-	if strings.Contains(p, "realised columns") || !strings.Contains(p, "implied minus realised") {
+	if strings.Contains(p, "realised columns") || strings.Contains(p, "implied minus realised") {
 		t.Errorf("page sentence = %q", p)
 	}
 }
