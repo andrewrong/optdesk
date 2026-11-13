@@ -65,7 +65,7 @@ func (r *planRig) job(t *testing.T, symbols ...string) contracts.Job {
 // jobWith builds the plan job with the rig's ports and the optional ports of d.
 func (r *planRig) jobWith(t *testing.T, d PlanDeps, symbols ...string) contracts.Job {
 	t.Helper()
-	d.Stored = Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, Eod: r.eod}
+	d.Stored = Stored{Watch: watchOf(symbols...), Instruments: r.inst, Bars: r.bars, Options: r.opts, Accounts: r.acct, HeldAliases: ownerAliases, Eod: r.eod}
 	d.Marks, d.Plans, d.Clock = r.marks, r.plans, r.clk
 	j, err := NewPlan(d)
 	if err != nil {
@@ -407,7 +407,7 @@ func TestPlanWindowsPerCalendar(t *testing.T) {
 
 func TestHeldStockRowEntersTheWatchedStocks(t *testing.T) {
 	t.Parallel()
-	s := Stored{Accounts: fakeAccounts{pos: []store.Position{
+	s := Stored{HeldAliases: ownerAliases, Accounts: fakeAccounts{pos: []store.Position{
 		{SecType: "stock", Symbol: "NVDA", ConID: 77, Exchange: "SMART", Currency: "USD", Quantity: "10"},
 		{SecType: "stock", Symbol: "ZERO", ConID: 78, Quantity: "0"},
 	}}}

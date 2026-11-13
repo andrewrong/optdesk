@@ -316,7 +316,8 @@ func (g *lrig) deps() ListDeps {
 	if g.closes != nil {
 		bars = fakeBars{closes: g.closes}
 	}
-	d := ListDeps{Stored: Stored{Watch: w, Instruments: g.ins, Options: g.opts, Accounts: acct, Bars: bars}, Lister: g.lst, ListStore: g.ls, Clock: g.clk,
+	d := ListDeps{Stored: Stored{Watch: w, Instruments: g.ins, Options: g.opts, Accounts: acct,
+		HeldAliases: ownerAliases, Bars: bars}, Lister: g.lst, ListStore: g.ls, Clock: g.clk,
 		Log: func(s string) { g.logs = append(g.logs, s) },
 		Pause: func(_ context.Context, d time.Duration) error {
 			g.pauses = append(g.pauses, d)
