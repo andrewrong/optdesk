@@ -15,13 +15,13 @@ Goal: when IBKR's hours of SPY or Toyota differ from our `master.session_day` on
 |---|---|
 | hours | `tradingHours`, `liquidHours` and `timeZoneId` of `ContractDetails` are read by nothing: `ibgateway.py` (`resolve`, ~:424) takes `conId`, `exchange`, `tradingClass`, `multiplier` from the details and drops the rest; `ResolveContractResponse` carries `status`, `contract`, `error_code`, `error_text` |
 | calendar | `calendar_refresh` (XNYS only, anchor `session_open`, `-30m`) refreshes `master.session_day` from the pinned library and logs one line per changed day; it has no broker and no IBKR comparison (`compute-calendar.md` Decision 2). XTKS rows are refreshed by no job: the generator supports XTKS (`SUPPORTED_CALENDARS`) and the rows land by `ot calendar load` of a generated file (`calendarrefresh` for XTKS is Left out of `option-capture-jp-stocks.md`) |
-| notices | there is no notice table. The home overview has a typed list `overview.gaps` of `{card, text}` (`internal/pages/home_page/overview.go:27-30`, page schema v3, rendered by the web overview card), empty today by comment; `gap_line` is a count text from the cards; `ops.job_gap` (`0012_scheduler.sql`) holds scheduler gaps for notify and is written by the runner only, with no CHECK on `reason` |
+| notices | there is no notice table. The home overview has a typed list `overview.gaps` of `{card, text}` (`internal/pages/home_page/overview.go:25-28`, page schema v3, rendered by the web overview card), empty today by comment; `gap_line` is a count text from the cards; `ops.job_gap` (`0012_scheduler.sql`) holds scheduler gaps for notify and is written by the runner only, with no CHECK on `reason` |
 | modules | the depends cell of `jobs` already names `broker` (`modules.md` row jobs), so a jobs package may import `internal/broker`; #1929 concerns only the `ot` component and is not needed here |
 
 ## Decisions
 
 1. Carrier: three optional strings on `ResolveContractResponse`, `trading_hours = 5`, `liquid_hours = 6`, `time_zone_id = 7`, filled on FOUND and empty otherwise. Not a new rpc, because the resolve already holds the `ContractDetails` and a new rpc would add a handler, a client method, a fake and a service entry for the same one request; added fields keep old clients working (proto3). Python, `Resolved` in Go and `grpcbroker` pass them through unchanged.
-2. Reference contracts: SPY (stock, SMART, USD) for XNYS and 7203 (stock, TSEJ, JPY) for XTKS, constants of the job package, one `ResolveContract` each per run. Each job has one market, so a gateway or resolve failure fails that job only (the error names market and code, as `earnings_refresh` does) and leaves its rows as they were.
+2. Reference contracts: SPY (stock, SMART, USD) for XNYS and 7203 (stock, TSEJ, JPY) for XTKS, constants of the job package, one `ResolveContract` each per run. Each job has one market, so a gateway or resolve failure fails that job only (the error names market and code, as `earnings_refresh` does) and leaves its rows as they were: a stale notice stays until the next good run, and the owner sees "could not compare" as the failed run on the ops page.
 3. Which string: `liquid_hours` (the regular session), not `trading_hours` (it includes extended hours). A day's IBKR open is the first segment's start and its close the last segment's end, so the Tokyo lunch break is ignored, as our calendar has one open and one close per day. `CLOSED` is a closed day. Times are read in `time_zone_id`, then compared as instants with our `open_at` and `close_at`.
 4. Compare: for each day IBKR lists (about 4 to 5 days; the horizon is IBKR's, not 7) and each market, ours = the `master.session_day` row, IBKR's = the parsed day. It differs when `IsSession` differs, or both are open and `open_at` or `close_at` differ by one minute or more. A day with no row of ours (XTKS rows are loaded by hand, no job refreshes them) is "not compared", never a notice; a day IBKR does not list is not compared either. Our XTKS rows must say 15:30 for the close (IBKR's 7203 ends 15:30), else every Tokyo day differs; this is read from the rows and not changed here.
 5. Parser behind an interface: `clock.IBKRHours` (`Parse(liquidHours, timeZoneID string) ([]clock.HoursDay, error)`; `HoursDay{Day, IsSession, OpenAt, CloseAt}`), implementation `internal/clock/ibkrhours`. The parser splits on `;` and groups tokens by start date (one day may hold two segments). Own implementation, because no maintained Go library parses IBKR's session strings [unverified]; about 60 lines, and a library may replace it behind the interface. A string it cannot read is an error naming the market, never a guess.
@@ -36,7 +36,7 @@ contracts (proto and generated output), broker (`Resolved` and `grpcbroker`), cl
 
 ## Interface
 
-Owning modules, in this order: contracts (entry 1: the three fields), broker (entry 2: `Resolved.TradingHours`, `LiquidHours`, `TimeZoneID` strings), clock (entry 3: `IBKRHours` and `HoursDay` in `internal/clock/api.go`), store (entry 5: `HoursNoticeStore`, `HoursNoticeReader` and `HoursNotice{Market, Day, Ours, IBKR string}` in `internal/store/api.go`); entries 1 and 3 do not depend on each other and come first. Python `api.py` of ibkr declares no resolve call (resolve lives in `model.py`), so `pyside/src/optdesk/ibkr/api.py` and `test_ibkr_api.py` stay unchanged; the pyside interface is the proto.
+Owning modules, in this order: contracts (entry 1: the three fields), broker (entry 2: `Resolved.TradingHours`, `LiquidHours`, `TimeZoneID` strings), clock (entry 3: `IBKRHours` and `HoursDay` in `internal/clock/api.go`), store (entry 5: `Store`, `Reader` and `Notice{Market, Day, Ours, IBKR string}` in `internal/store/hoursnotice/api.go`, a declarations-only package like `internal/store/jobrequest`, because `internal/store/api.go` is at its 800 lines; the store interface cell of `docs/design/modules.md` names the package); entries 1 and 3 do not depend on each other and come first. Python `api.py` of ibkr declares no resolve call (resolve lives in `model.py`), so `pyside/src/optdesk/ibkr/api.py` and `test_ibkr_api.py` stay unchanged; the pyside interface is the proto.
 
 ## Issues
 
@@ -73,20 +73,21 @@ Acceptance:
 
 ### 4 pyside-fill-hours
 
-Module: pyside. Order: after 1.
+Module: pyside. Order: after 1. Owner-only: `transport.py` is an owner-only path, so the gate needs the owner's word and the owner merges this pull request.
 Files: `pyside/src/optdesk/ibkr/model.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_ibgateway.py`, `pyside/tests/ibkr/test_transport.py`
 Acceptance:
 1. `ResolveResult` gains `trading_hours`, `liquid_hours`, `time_zone_id` strings with default `""`; `ibgateway.resolve` fills them from `details[0].tradingHours`, `liquidHours`, `timeZoneId` on the found path only.
 2. `transport.py` copies them into `pb.ResolveContractResponse` on found; the not-listed response leaves them empty; one test of each in `test_transport.py`, and `test_ibgateway.py` checks a fake `ContractDetails` carrying the three strings.
 3. No call is added: the one `reqContractDetailsAsync` of the resolve is the only broker call (read in `ibgateway.py`).
+4. Size: `ibgateway.py` (799 lines) gains one line, a call of a field helper written in `model.py`; `transport.py` (789 lines) and `ibgateway.py` each stay under 800 lines, read by `wc -l`; neither is split here.
 
 ### 5 store-hours-notice (interface)
 
 Module: store. Order: after 1.
-Files: `internal/store/api.go`, `internal/store/api_test.go`, `internal/store/hoursnotice/store.go`, `internal/store/hoursnotice/store_test.go`, `migrations/0039_session_hours_notice.sql`, `docs/contracts/store.md`
+Files: `internal/store/hoursnotice/api.go`, `internal/store/hoursnotice/api_test.go`, `internal/store/hoursnotice/store.go`, `internal/store/hoursnotice/store_test.go`, `migrations/0039_session_hours_notice.sql`, `docs/contracts/store.md`, `docs/design/modules.md` (the store interface cell gains `internal/store/hoursnotice`; owner-only, so the owner merges)
 Design: docs/design/calendar-ibkr-hours.md#decisions (Decisions 6, 7, 9)
 Acceptance:
-1. `api.go` declares `HoursNotice`, `HoursNoticeReader` (rows ordered by market and day) and `HoursNoticeStore` (`Replace(ctx, market string, rows []HoursNotice)`: deletes the market's rows and inserts the given ones in one transaction); its test checks the contract with a fake from both sides.
+1. `internal/store/hoursnotice/api.go` (declarations only; `internal/store/api.go` is not edited, it is at 800 lines) declares `Notice`, `Reader` (rows ordered by market and day) and `Store` (`Replace(ctx, market string, rows []HoursNotice)`: deletes the market's rows and inserts the given ones in one transaction); its test checks the contract with a fake from both sides.
 2. The migration creates `master.session_hours_notice`, the view `rd.session_hours_notice_r1` and grants to `ot_w_master` (INSERT, DELETE, SELECT) and `ot_ro_pages` (SELECT on the view only), with a Down; it changes no CHECK and no other table, and its number is the next free one at merge time (0039 today); the `pg` test reads the file by that name.
 3. Store tests with the build tag `pg` replace, repeat and replace with fewer rows; a test without a database reads the SQL text for the grants.
 
@@ -95,7 +96,7 @@ Acceptance:
 Module: jobs. Order: after 2, 3, 5.
 Files: `internal/jobs/calendarhours/job.go`, `internal/jobs/calendarhours/job_us.toml`, `internal/jobs/calendarhours/job_jp.toml`, `internal/jobs/calendarhours/types.go`, `internal/jobs/calendarhours/job_test.go`, `docs/contracts/jobs/calendar_hours.md`
 Acceptance:
-1. `New` takes a market (`XNYS` or `XTKS`), a `broker.Broker`, a `clock.SessionSource`, a `clock.IBKRHours`, a `store.HoursNoticeStore`, a `clock.Clock` and a logger; it imports no other jobs package and `scripts/arch --check` passes.
+1. `New` takes a market (`XNYS` or `XTKS`), a `broker.Broker`, a `clock.SessionSource`, a `clock.IBKRHours`, a `hoursnotice.Store`, a `clock.Clock` and a logger; it imports no other jobs package and `scripts/arch --check` passes.
 2. The job writes no dataset: its `Plan` and `ExpectedKey` follow what `calendarrefresh` does for its dataset id `master.session_day` (read in `job.go`), and the manifest ids are `calendar_hours_us` and `calendar_hours_jp`, so neither names a dataset key of its own.
 3. Tests with fakes and a fake clock: equal days write no row and log nothing; an IBKR `CLOSED` against our open day, an early close and a differing open time each log one line of Decision 6 and write one row; a day with no row of ours is not compared; a day that no longer differs is gone after the next run; a failed `ResolveContract` keeps the rows and the error names market and code; an unparsable string fails the run.
 4. The only broker method the job calls is `ResolveContract`, and it holds no `SessionDayWriter` (read in `job.go`).
@@ -106,17 +107,17 @@ Acceptance:
 Module: pages. Order: after 5.
 Files: `internal/pages/home_page/overview.go`, `internal/pages/home_page/compose.go`, `internal/pages/home_page/overview_test.go`, `internal/pages/home_page/compose_test.go`
 Acceptance:
-1. `Input` gains the rows (`[]store.HoursNotice`); `overview.Gaps` holds one `{card: "calendar", text}` per row (the comment at `overview.go:48-50` is updated), and `gapLine` and `gapline_test.go` are unchanged.
+1. `Input` gains the rows (`[]hoursnotice.Notice`); `overview.Gaps` holds one `{card: "calendar", text}` per row (the comment at `overview.go:48-50` is updated), and `gapLine` and `gapline_test.go` are unchanged.
 2. A test with two rows shows both in `overview.gaps`, and the page validates against its schema with no schema or web file changed; with no rows the list is empty as today.
 
 ### 8 ot-wire-calendar-hours
 
 Module: ot. Order: after 6 and 7.
-Files: `cmd/ot/wire.go`, `cmd/ot/wire_calendar.go`, `cmd/ot/runonce.go`, `cmd/ot/jobconsole_jobs.go`, `cmd/ot/jobconsole_jobs_test.go`, `cmd/ot/jobreg_test.go`, `cmd/ot/home_site.go` (the caller of `home_page.Compose`), `cmd/ot/wire_test.go`, `docs/contracts/ot/jobs/calendar_hours.md` (new), `docs/contracts/ot.md`, `docs/contracts/jobs.md`
+Files: `cmd/ot/wire_calendar.go`, `cmd/ot/runonce.go`, `cmd/ot/jobconsole_jobs.go`, `cmd/ot/jobconsole_jobs_test.go`, `cmd/ot/jobreg_test.go`, `cmd/ot/home_site.go` (the caller of `home_page.Compose`), `cmd/ot/wire_test.go`, `docs/contracts/ot/jobs/calendar_hours.md` (new), `docs/contracts/ot.md`, `docs/contracts/jobs.md`
 Acceptance:
-1. `calendar_hours_us` and `calendar_hours_jp` are registered with the broker, the loader session reader, `ibkrhours` and the `hoursnotice` store of the master line, each with its own unique `order` number; neither is `Force` in the job console, so `TestForceYesIsExactlyCalendarRefresh` stays as it is, and `jobconsole_jobs_test.go` has its row count and its list updated.
+1. `calendar_hours_us` and `calendar_hours_jp` are registered with the broker, the loader session reader, `ibkrhours` and the `hoursnotice` store of the master line, the broker being the default socket as `earnings_refresh` reads it (`runonce.go:113`), never the account resolver, so the jobs stay on gateway 4001; each with its own unique `order` number; neither is `Force` in the job console, so `TestForceYesIsExactlyCalendarRefresh` stays as it is, and `jobconsole_jobs_test.go` has its row count, `TestTodayOnlyIsExactlyTheTwelve` and `TestOnlyOptionEodJpIsInTheTokyoZone` updated. The constructors are called from the new code in `wire_calendar.go`; `wire.go` (793 lines) is not edited, and `runonce.go`, `jobconsole_jobs.go` and `wire_calendar.go` each stay under 800 lines, read by `wc -l`.
 2. `docs/contracts/ot/jobs/calendar_hours.md` has the Order line and Version heading that `TestJobDocsExist` reads, and `docs/contracts/ot.md` and `docs/contracts/jobs.md` list the jobs.
-3. The home site reads `HoursNoticeReader` and fills the `Input` field; a nil reader gives an empty list.
+3. The home site reads `hoursnotice.Reader` and fills the `Input` field; a nil reader gives an empty list.
 
 ## Checked by CI
 
