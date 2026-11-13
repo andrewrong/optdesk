@@ -82,11 +82,11 @@ Build order: every entry compiles and its tests pass against main. BASE is `git 
 
 Module: store. Size: S.
 Order: first.
-Files: `internal/store/seriesdef/api.go`, `internal/store/seriesdef/api_test.go`, `docs/design/modules.md`
+Files: `internal/store/seriesdef/api.go`, `internal/store/seriesdef/api_test.go`
 Design: docs/design/series-registry.md#Interface
 Acceptance:
 1. `api.go` declares `SeriesDefinition`, `WriteCount`, `SeriesUpserter`, `SeriesFiller` and `SeriesRegistry` as in the Interface section, with docs and no function body, and is the only non-test `.go` file of the package.
-2. `git diff BASE -- docs/design/modules.md` shows one changed line, the `store` row, with `internal/store/seriesdef` added to its entry cell and nothing else changed; `git diff --name-only BASE -- internal/store/api.go internal/store/api_test.go` prints nothing.
+2. `grep -c 'internal/store/seriesdef' docs/design/modules.md` prints 1 (the line is already on BASE); `git diff --name-only BASE -- docs/design/modules.md internal/store/api.go internal/store/api_test.go` prints nothing.
 3. `api_test.go` has a new contract test `TestSeriesUpserterContract` (`t.Parallel()`): a fake counts a written and an unchanged row and the caller reads both back, an empty list returns zero counts; a second new test `TestSeriesRegistryContract` reads definitions through a fake.
 4. `git diff --name-only BASE` lists only paths of the Files line.
 
