@@ -28,7 +28,9 @@ func DialAccount(ctx context.Context, socketPath string, o broker.Options) (*Acc
 	return &AccountClient{conn: conn, acc: pb.NewAccountServiceClient(conn), timeout: o.CallTimeout}, nil
 }
 
-// Account makes the one call, with no retry. An answer with no alias or a negative generation is Permanent.
+// Account makes the one call, with no retry. The Alias of the answer is the value the gateway
+// reports, replaced by the owner alias before a job sees it. An answer with no account or a negative
+// generation is Permanent.
 func (c *AccountClient) Account(ctx context.Context) (broker.Account, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -39,7 +41,7 @@ func (c *AccountClient) Account(ctx context.Context) (broker.Account, error) {
 	return fromAccount(resp)
 }
 
-// Executions makes the one call, with no retry. An answer with no alias, a negative generation or
+// Executions makes the one call, with no retry. An answer with no account, a negative generation or
 // an execution whose time is not RFC 3339 is Permanent.
 func (c *AccountClient) Executions(ctx context.Context) (broker.Executions, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)

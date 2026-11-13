@@ -67,44 +67,44 @@ Acceptance:
 2. `Alias` of an id not in the file returns `ok == false`; the doc states the format with `<U-number>` as the example and the window order of Decision 9; no file of the issue holds a digit string shaped like an id.
 
 ### 3 store-rename-function
-Order: none. Files: `migrations/0037_account_alias_rename.sql`, `internal/store/**` tests that list migrations (found by grep for `0036`).
+Order: none. Files: `migrations/0037_account_alias_rename.sql`, `internal/store/**` (tests that list migrations, found by grep for `0036`).
 Acceptance:
 1. The migration creates only `ops.rename_account_alias(text, text)`, which in one transaction updates `alias` from old to new in `account.capture`, `account.position`, `account.value`, `account.execution` (`0019`), `account.position_mark` (`0026`), `candidates.option_candidate` (`0018`, `0027`), `optionledger.flex_trade_row` (`0022`), `optionledger.flex_section_row`, `optionledger.flex_section_status` (`0024`), these nine tables only (`optionledger.flex_fetch` and `ops.capture_expected_key` have no `alias` column); each named in the file; no table, column or view changes.
 2. In the function body the existence check of a new-alias row with the key of an old-alias row, for every table, comes before the first UPDATE, and its `RAISE EXCEPTION` names the table.
 3. The file has a `-- +goose Down` that drops the function.
 
 ### 4 jobs-held-aliases
-Order: after 3. Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/**` tests that use `heldAliases`, `internal/jobs/optionopen/inputs.go`, `internal/jobs/optionopen/**` tests that use `heldAliases` (found by grep).
+Order: after 3. Files: `internal/jobs/optioneod/held.go`, `internal/jobs/optioneod/**` (tests that use `heldAliases`), `internal/jobs/optionopen/inputs.go`, `internal/jobs/optionopen/**` (tests that use `heldAliases`, found by grep).
 Acceptance:
 1. The two package variables `heldAliases` are gone. Every existing constructor signature in both packages is unchanged (`NewWithHeldSymbols` and the `deps` types of `cmd/ot` still compile). The list is a new optional input whose zero value means no held names: `optionopen.Stored.HeldAliases []string`, and in `optioneod` a new function `WithHeldAliases(NewOptionEodHeldSymbolsFunc, []string) NewOptionEodHeldSymbolsFunc`.
 2. A test per package gives one alias and shows its positions are read, and gives none and shows no read.
 
 ### 5 ot-flex-edge-and-pages
-Order: after 2, 3, 4. Files: `cmd/ot/accounts.go` (new), `cmd/ot/accounts_test.go` (new), `cmd/ot/optionledger.go`, `cmd/ot/optionledger_test.go`, `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/accountimport.go`, `cmd/ot/accountimport_test.go`, `cmd/ot/ledgerimport.go`, `cmd/ot/ledgerimport_test.go`, `cmd/ot/wire_optionopen.go` (`openStored` sets `Stored.HeldAliases`), `cmd/ot/wire.go` (only `wireHeldCalls` wraps the held constructor with `optioneod.WithHeldAliases(held, book.Aliases())`: at most 4 added lines, the file stays under 800), `cmd/ot/testdata/**` holding a flex `[[account]]` (found by grep), `docs/contracts/ot/accounts.md`. Any other edit of `wire.go` (795 lines) is reported, not made.
+Order: after 2, 3, 4. Files: `cmd/ot/accounts.go` (new), `cmd/ot/accounts_test.go` (new), `cmd/ot/optionledger.go`, `cmd/ot/optionledger_test.go`, `cmd/ot/flex_import_post.go` (its one call of `flexAccounts`), `cmd/ot/flex_import_kit_test.go`, `cmd/ot/flex_import_post_test.go`, `cmd/ot/flex_import_site_test.go` (the tests that build `FlexAccount` rows), `cmd/ot/site_positions.go`, `cmd/ot/site_positions_test.go`, `cmd/ot/accountimport.go`, `cmd/ot/accountimport_test.go`, `cmd/ot/ledgerimport.go`, `cmd/ot/ledgerimport_test.go`, `cmd/ot/wire_optionopen.go` (`openStored` sets `Stored.HeldAliases`), `cmd/ot/wire.go` (only `wireHeldCalls` wraps the held constructor with `optioneod.WithHeldAliases(held, book.Aliases())`: at most 4 added lines, the file stays under 800), `cmd/ot/testdata/**` (holding a flex `[[account]]`, found by grep), `docs/contracts/ot/accounts.md` (any other edit of `wire.go`, 795 lines, is reported, not made).
 Acceptance:
-1. `optionledger.go` builds `Accounts map[number]alias` from the book (`internal/jobs/optionledger/map.go` is untouched and keeps mapping `st.AccountID`); it no longer reads `ff.Accounts` or `AccountEnv`; a test shows a statement whose id is not in the book stores no row and is the refused state.
+1. `optionledger.go` builds `Accounts map[number]alias` from the book (`internal/jobs/optionledger/map.go` is untouched and keeps mapping `st.AccountID`); it no longer reads `ff.Accounts` or `AccountEnv` (`flexAccounts` takes the book, and the web import in `flex_import_post.go` takes its alias list from `accounts.toml` the same way, as the same `map[number]alias` from the book, so one rule maps both); a test shows a statement whose id is not in the book stores no row and is the refused state.
 2. The account pages take the alias list from `book.Aliases()`, main first; the demo profile keeps `["main"]`.
 3. `optioneod` (through `wireHeldCalls`) and `optionopen` (through `openStored`) get `book.Aliases()`.
 4. The importers refuse a `--map` target that is not an alias of the book.
-5. `serve` and every job that needs the alias list refuse to start when `accounts.toml` cannot be loaded, except under the demo profile (the missing-file refusal of issue 2), so nothing collects under a new alias before the file is written (Decision 9).
-6. The no-id test of Decision 8 passes for the ledger wiring and the page JSON.
+5. The no-id test of Decision 8 passes for the ledger wiring and the page JSON.
 
 ### 6 ot-gateway-resolver
-Order: after 5. Files: `cmd/ot/account.go`, `cmd/ot/account_test.go`, `cmd/ot/accounts.go`, `cmd/ot/accounts_test.go`, `cmd/ot/candidates.go` (`candidateAliases`, which calls `accountAliases` on main since #1896), `cmd/ot/notices_site.go`, `cmd/ot/positionmarks.go`, `cmd/ot/wire_underlying.go` (the callers of `accountAliases`/`accountMain` and the third `heldAliases`), `cmd/ot/testdata/**` holding `OT_ACCOUNT_SOCKETS` (found by grep).
+Order: after 5. Files: `cmd/ot/account.go`, `cmd/ot/account_test.go`, `cmd/ot/accounts.go`, `cmd/ot/accounts_test.go`, `cmd/ot/serve_test.go`, `cmd/ot/site_test.go`, `cmd/ot/candidates_test.go`, `cmd/ot/notices_site_test.go`, `cmd/ot/positionmarks_test.go`, `cmd/ot/wire_underlying_test.go`, `cmd/ot/candidates.go` (`candidateAliases`, which calls `accountAliases` on main since #1896), `cmd/ot/notices_site.go`, `cmd/ot/positionmarks.go`, `cmd/ot/serve.go`, `cmd/ot/site.go` (where serve starts and `site.go` builds the page aliases), `cmd/ot/wire_underlying.go` (the callers of `accountAliases`/`accountMain` and the third `heldAliases`), `cmd/ot/testdata/**` (holding `OT_ACCOUNT_SOCKETS`, found by grep).
 Acceptance:
 1. `OT_ACCOUNT_SOCKETS` parses as a plain list; a `label=` form is refused; `accountAliases`, `accountMain` and `siteAliasList` no longer read the gateways file, and neither do their callers in `candidates.go`, `notices_site.go` and `positionmarks.go`; `wire_underlying.go` takes the held list from `book.Aliases()` in place of its `heldAliases` variable.
 2. The resolver gives `accountcapture.Config.Readers` one reader per alias whose answers carry the alias; tests with fake readers cover a match, an id not in the book (named state `unknown_account`, nothing stored, no id in the text) and a socket down.
-3. The no-id test of Decision 8 passes for the account wiring.
+3. `serve` (`serve.go`, `site.go`) and the builders of this entry that take the alias list (`candidates.go`, `notices_site.go`, `positionmarks.go`, `wire_underlying.go`) refuse to start when `accounts.toml` cannot be loaded, except under the demo profile (the missing-file refusal of issue 2), so nothing collects under a new alias before the file is written (Decision 9).
+4. The no-id test of Decision 8 passes for the account wiring.
 
 ### 7 pyside-reports-account-id
-Order: after 6. Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/src/optdesk/ibkr/accounts.py` (only if needed), `pyside/examples/gateways.example.toml`, tests under `pyside/tests/` that assert `account` of a gateway or no id in a response (found by grep for `_alias` and `account must be an alias`).
+Order: after 6. Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/src/optdesk/ibkr/accounts.py` (only if needed), `pyside/examples/gateways.example.toml`, `pyside/tests/` (tests that assert `account` of a gateway or no id in a response, found by grep for `_alias` and `account must be an alias`).
 Acceptance:
 1. Both servicers answer `str(managedAccounts()[0])` in `account` and no longer read `self._alias`; two managed accounts is still `MultipleAccounts`.
 2. `gateways.py` neither requires nor rejects `account`; no code path uses it.
 3. A test with a fake `ib` shows the id in both responses and in no log record; the existing scrub tests are unchanged.
 
 ### 8 contracts-account-field-comment
-Files: `contracts/proto/ibkr/v1/account.proto` and its generated output (`internal/contracts/genpb/account.pb.go`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.pyi`, and `account_pb2.py` beside it when the generator rewrites it; same commit).
+Files: `contracts/proto/ibkr/v1/account.proto`, `internal/contracts/genpb/account.pb.go`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/account_pb2.pyi` (the generated output in the same commit, and `account_pb2.py` beside it when the generator rewrites it).
 Acceptance:
 1. The comments of `account` in both messages say it is the IBKR account id the gateway reports; "never the account id" is gone. No field, number or type changes; the PR body says `Contracts: comment only`, not `unchanged`.
 
@@ -114,7 +114,7 @@ Acceptance:
 1. The comments of `Account.Alias`, `Executions.Alias` and `AccountClient.Account` say what Interface says; no signature changes; the `permanent(...)` texts say "answer has no account" and the tests match.
 
 ### 10 sources-flex-no-account-table
-Order: after 5, 6. Files: `internal/sources/flex/config.go`, `internal/sources/flex/config_test.go`, `internal/sources/flex/testdata/**` holding `[[account]]` (found by grep), `internal/sources/api.go` (the `FlexAccount` type: an interface change, Design line this file), `docs/contracts/sources.md`.
+Order: after 5, 6. Files: `internal/sources/flex/config.go`, `internal/sources/flex/config_test.go`, `internal/sources/flex/testdata/**` (holding `[[account]]`, found by grep), `internal/sources/api.go` (the `FlexAccount` type: an interface change, Design line this file), `docs/contracts/sources.md`.
 Acceptance:
 1. `flex.toml` parses with `[[login]]` and token env names only; `FlexConfig` and `api.go` have no `FlexAccount`; a file with `[[account]]` is refused as an unknown table; `parse.go` is untouched.
 

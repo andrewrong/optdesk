@@ -296,7 +296,9 @@ type jobFactory struct {
 	list underlying.Reader
 	// entryFix, when set, rewrites the entries of each Plan of option_eod_jp (it resolves con_ids).
 	entryFix func([]jobs.WatchEntry) []jobs.WatchEntry
-	held     func(context.Context) (map[string]bool, error)
+	// reasons is the reason writer of the ledger of the run (nil: the option_eod jobs write no reasons).
+	reasons runview.ReasonWriter
+	held    func(context.Context) (map[string]bool, error)
 	// candidates, accounts and earnRd are what option_candidates (optioncandidates.New) gets besides the compute stores;
 	// the last two may be nil.
 	candidates store.CandidateWriter
@@ -395,6 +397,7 @@ func wireJobs(
 		return err
 	}
 	rw, _ := ledger.(runview.ReasonWriter) // nil: the families that write reasons answer an error naming the job
+	f.reasons = rw
 	jc := newJobCtx(cfg, &f, brk, brokerUp, cal, extra, rw)
 	w := wiring{ledger: ledger, cal: cal, brokerUp: brokerUp, off: startDisabled(cfg, brokerUp), held: map[string]contracts.Job{}}
 	steps := slices.Clone(jobSteps)

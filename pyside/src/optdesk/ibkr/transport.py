@@ -289,6 +289,8 @@ def quote_to_proto(row: QuoteRow) -> pb.Quote:
             setattr(quote, name, value)
         elif name == "event_ts":
             quote.event_ts.FromNanoseconds(int(value * 1e9))
+    for name, reason, code in row.missing:
+        quote.missing.add(field=name, reason=cast(Any, reason), error_code=code)
     if row.status in _ERROR_STATUSES:
         quote.error_text = scrub(row.error_text)
     return quote
