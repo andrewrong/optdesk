@@ -190,7 +190,7 @@ func TestMissingBarDSNDisablesOnlyBars(t *testing.T) {
 	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
+	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}
 	if got := jobIDs(r.jobs); !slices.Equal(got, want) {
 		t.Fatalf("jobs %v, want %v", got, want)
 	}

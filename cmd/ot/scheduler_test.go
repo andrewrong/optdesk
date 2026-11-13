@@ -323,7 +323,7 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 
 // jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
 // never name them.
-var allSixJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+var allSixJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobOptionEodIndex, jobQuoteSnapshot}
 
 // allSevenJobs is allSixJobs with option_eod_jp, in id order.
 var allSevenJobs = slices.Sorted(slices.Values(append(slices.Clone(allSixJobs), jobOptionEodJP)))
@@ -512,7 +512,7 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	r := newSchedRig(t, noKeyEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobOptionEod, jobQuoteSnapshot}) {
+	if got := r.lastBuild(); !slices.Equal(got, noFredJobs) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	if got := ids(r.sched.jobs); !slices.Equal(got, allSixJobs) {
@@ -537,11 +537,11 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries}) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); len(got) != 7 {
+	if got := ids(r.sched.jobs); len(got) != 8 {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	d := r.sched.disabled
-	if len(d) != 3 || d[jobOptionEodJP] == "" || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
+	if len(d) != 4 || d[jobOptionEodIndex] == "" || d[jobOptionEodJP] == "" || d[jobOptionEod] == "" || d[jobQuoteSnapshot] == "" || d[jobFredSeries] != "" {
 		t.Fatalf("disabled %v", d)
 	}
 	if err := r.stop(t, done); err != nil {
@@ -561,7 +561,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	}
 	done := r.start()
 	r.waitStarted(t, done)
-	if d := r.sched.disabled; len(d) != 3 {
+	if d := r.sched.disabled; len(d) != 4 {
 		t.Fatalf("disabled after start %v", d)
 	}
 	r.tick()
@@ -588,7 +588,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 		t.Fatalf("a second tick dialed: %d", r.dials.Load())
 	}
 	_ = r.stop(t, done)
-	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 3 {
+	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 4 {
 		t.Fatalf("re-enabled lines %d: %q", n, r.errb.String())
 	}
 }
@@ -604,7 +604,7 @@ func TestSchedulerFredStaysDisabledUntilRestart(t *testing.T) {
 		if got := r.sched.disabled[jobFredSeries]; got != first || got == "" {
 			t.Fatalf("reason %q, first %q", got, first)
 		}
-		if got := r.lastBuild(); !slices.Equal(got, []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobOptionEod, jobQuoteSnapshot}) {
+		if got := r.lastBuild(); !slices.Equal(got, noFredJobs) {
 			t.Fatalf("reconciler jobs %v", got)
 		}
 		if len(r.sched.disabled) != 1 {

@@ -391,7 +391,7 @@ func TestRunOnceWiresOptionJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}) {
 		t.Errorf("jobs %v", ids)
 	}
 }
@@ -407,7 +407,7 @@ func TestRunOnceRule(t *testing.T) {
 	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 6 {
+	if r.rule != (runner.WindowRule{}) || r.backRule != (runner.WindowRule{}) || len(r.jobs) != 7 {
 		t.Fatalf("rules %+v %+v, jobs %d", r.rule, r.backRule, len(r.jobs))
 	}
 }
@@ -533,7 +533,7 @@ func TestRunOnceDialFails(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "from reconcile") {
 		t.Fatalf("err %v, want what Reconcile returned", err)
 	}
-	if len(r.jobs) != 6 {
+	if len(r.jobs) != 7 {
 		t.Fatalf("Reconcile got %d jobs", len(r.jobs))
 	}
 	for _, j := range r.jobs[1:3] {
@@ -600,7 +600,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	for _, j := range r.jobs {
 		ids = append(ids, j.ID())
 	}
-	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}) {
+	if !slices.Equal(ids, []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}) {
 		t.Fatalf("jobs %v", ids)
 	}
 	c := r.compute
@@ -612,7 +612,7 @@ func TestRunOnceWiresFourJobs(t *testing.T) {
 	}
 	// backfill hands the runner the same four jobs.
 	r.jobs = nil
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 6 {
+	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 7 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }

@@ -17,6 +17,7 @@ var wantTwelve = map[string]string{
 	"earnings_refresh":       "America/New_York",
 	"dividend_capture":       "America/New_York",
 	"option_eod":             "America/New_York",
+	"option_eod_index":       "America/New_York",
 	"option_eod_jp":          "Asia/Tokyo",
 	"quote_snapshot":         "America/New_York",
 	"calendar_refresh":       "America/New_York",
@@ -54,7 +55,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 27 {
+	if !slices.Equal(got, want) || len(got) != 28 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -88,8 +89,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 17 {
-		t.Fatalf("%d force-no jobs, want 17", n)
+	if n != 18 {
+		t.Fatalf("%d force-no jobs, want 18", n)
 	}
 }
 
