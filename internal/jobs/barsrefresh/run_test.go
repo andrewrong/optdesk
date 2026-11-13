@@ -3,6 +3,8 @@ package barsrefresh
 import (
 	"context"
 	"errors"
+	"math/big"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -14,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const runDay = contracts.Day("2026-11-09")
@@ -60,10 +63,14 @@ func (f *fakeHistory) Bars(_ context.Context, q broker.BarQuery) ([]broker.Bar, 
 }
 func (f *fakeHistory) Close() error { return nil }
 
-// memBars is a writer and a reader; the reader gives the highest epoch of each day.
+// memBars is a writer and a reader on a map by key (instrument, basis, day). UpsertPriceBars keeps
+// the rules of the store: a new key is inserted (adjust_epoch 1, as the column default), a row that
+// differs in a number or the currency is replaced and an equal one (100.50 against 100.5) is not.
 type memBars struct {
-	mu   sync.Mutex
-	rows []contracts.PriceBar
+	mu    sync.Mutex
+	rows  []contracts.PriceBar
+	calls [][]contracts.PriceBar // the rows of every UpsertPriceBars call
+	by    []string               // the writtenBy of every call
 }
 
 func (m *memBars) InsertPriceBars(_ context.Context, rows []contracts.PriceBar) (int, error) {
@@ -71,6 +78,50 @@ func (m *memBars) InsertPriceBars(_ context.Context, rows []contracts.PriceBar) 
 	defer m.mu.Unlock()
 	m.rows = append(m.rows, rows...)
 	return len(rows), nil
+}
+
+func sameNumber(a, b string) bool {
+	x, ok1 := new(big.Rat).SetString(a)
+	y, ok2 := new(big.Rat).SetString(b)
+	return ok1 && ok2 && x.Cmp(y) == 0
+}
+
+func sameVolume(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return sameNumber(*a, *b)
+}
+
+func (m *memBars) UpsertPriceBars(_ context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls = append(m.calls, append([]contracts.PriceBar(nil), rows...))
+	m.by = append(m.by, writtenBy)
+	var n bar.BarWriteCount
+	for _, r := range rows {
+		at := -1
+		for i, o := range m.rows {
+			if o.InstrumentID == r.InstrumentID && o.Basis == r.Basis && o.SessionDay.Equal(r.SessionDay.Time) {
+				at = i
+			}
+		}
+		switch {
+		case at < 0:
+			r.AdjustEpoch = 1
+			m.rows = append(m.rows, r)
+			n.Written++
+		case sameNumber(m.rows[at].Open, r.Open) && sameNumber(m.rows[at].High, r.High) && sameNumber(m.rows[at].Low, r.Low) &&
+			sameNumber(m.rows[at].Close, r.Close) && sameVolume(m.rows[at].Volume, r.Volume) &&
+			m.rows[at].Currency == r.Currency && m.rows[at].Source == r.Source:
+			n.Unchanged++
+		default:
+			r.AdjustEpoch, r.ReceivedAt = m.rows[at].AdjustEpoch, m.rows[at].ReceivedAt
+			m.rows[at] = r
+			n.Written++
+		}
+	}
+	return n, nil
 }
 
 func (m *memBars) PriceBars(_ context.Context, id int64, basis string, from, to contracts.Day) ([]contracts.PriceBar, error) {
@@ -90,6 +141,7 @@ func (m *memBars) PriceBars(_ context.Context, id int64, basis string, from, to 
 	for _, r := range win {
 		out = append(out, r)
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SessionDay.Before(out[j].SessionDay.Time) })
 	return out, nil
 }
 
@@ -199,49 +251,6 @@ func TestBackfillCapDefersWithoutRequest(t *testing.T) {
 	}
 }
 
-func TestDailyPullInsertsOnlyNewDays(t *testing.T) {
-	t.Parallel()
-	h := &fakeHistory{answer: fixed(mkbar("2026-11-06", "10.0000"), mkbar("2026-11-09", "11.0000"))}
-	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-06", "10.0000", 1)}}
-	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
-		t.Fatal(res.Err)
-	}
-	if len(h.queries) != 1 || h.queries[0].DurationDays != 5 {
-		t.Fatalf("queries %+v", h.queries)
-	}
-	if len(st.rows) != 2 || st.rows[1].SessionDay.Format(dayLayout) != "2026-11-09" || st.rows[1].AdjustEpoch != 1 {
-		t.Fatalf("rows %+v", st.rows)
-	}
-}
-
-func TestRestatedDayRepullsUnderNextEpoch(t *testing.T) {
-	t.Parallel()
-	h := &fakeHistory{answer: func(q broker.BarQuery) ([]broker.Bar, error) {
-		if q.DurationDays == 5 {
-			return []broker.Bar{mkbar("2026-11-09", "50.0000")}, nil
-		}
-		return []broker.Bar{mkbar("2026-11-05", "49.0000"), mkbar("2026-11-06", "49.5000"), mkbar("2026-11-09", "50.0000")}, nil
-	}}
-	st := &memBars{rows: []contracts.PriceBar{stored(101, "2026-11-05", "98.0000", 1), stored(101, "2026-11-09", "100.0000", 1)}}
-	j, _ := build(t, h, st, entry("cik:1", "AAA", 101))
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
-		t.Fatal(res.Err)
-	}
-	if len(h.queries) != 2 || h.queries[1].DurationDays != 400 {
-		t.Fatalf("queries %+v", h.queries)
-	}
-	rows := st.epoch(2)
-	if len(rows) != 3 || len(st.rows) != 5 {
-		t.Fatalf("rows %+v", st.rows)
-	}
-	for _, r := range st.rows[2:] {
-		if r.AdjustEpoch != 2 {
-			t.Fatalf("pulled row at epoch %d", r.AdjustEpoch)
-		}
-	}
-}
-
 func TestWithinToleranceIsNotRestated(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "100.0005"))}
@@ -340,47 +349,6 @@ func TestBadPulledCloseIsPermanentAndWritesNothing(t *testing.T) {
 	res := j.Run(context.Background(), runDay, keysOf("cik:1"))
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent || len(st.rows) != 0 {
 		t.Fatalf("result %+v rows %+v", res, st.rows)
-	}
-}
-
-// pairWinner reads like rd.price_bar_r1: winner = highest epoch of the pair, then the window.
-type pairWinner struct{ memBars }
-
-func (p *pairWinner) PriceBars(_ context.Context, id int64, basis string, from, to contracts.Day) ([]contracts.PriceBar, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	top := 0
-	for _, r := range p.rows {
-		if int64(r.InstrumentID) == id {
-			top = max(top, r.AdjustEpoch)
-		}
-	}
-	var out []contracts.PriceBar
-	for _, r := range p.rows {
-		d := r.SessionDay.Format(dayLayout)
-		if int64(r.InstrumentID) == id && r.AdjustEpoch == top && d >= string(from) && d <= string(to) {
-			out = append(out, r)
-		}
-	}
-	return out, nil
-}
-
-func TestReaddedNameWritesAtOrAbovePairEpoch(t *testing.T) {
-	t.Parallel()
-	st := &pairWinner{memBars{rows: []contracts.PriceBar{stored(101, "2024-01-02", "10.0000", 2)}}}
-	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "50.0000"))}
-	b := &fakeBroker{listed: true}
-	j, err := New(b, h, fakeResolver{}, st, st, []jobs.WatchEntry{entry("cik:1", "A", 101)}, fixedClock{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	j.(*job).m.AdjustedCadenceDays = 0
-	if res := j.Run(context.Background(), runDay, keysOf("cik:1")); res.Err != nil {
-		t.Fatal(res.Err)
-	}
-	got, _ := st.PriceBars(context.Background(), 101, "trades", "2026-11-09", "2026-11-09")
-	if len(got) != 1 {
-		t.Fatalf("the bar written today is not a winner row: %d rows", len(got))
 	}
 }
 

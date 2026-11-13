@@ -23,6 +23,7 @@ dev = [
     "grpcio-tools>=1.85.1,<2",
     "types-grpcio",
     "mypy-protobuf",
+    "import-linter>=2.16",
 ]
 
 [tool.mypy]
@@ -39,3 +40,24 @@ extend-exclude = ["src/optdesk/contracts/genpb"]
 testpaths = ["tests"]
 pythonpath = ["tests"]
 addopts = "-n auto"
+
+[tool.importlinter]
+root_package = "optdesk"
+
+[[tool.importlinter.contracts]]
+name = "the generated package is reached only through optdesk.contracts.api"
+type = "forbidden"
+source_modules = ["optdesk.calendar", "optdesk.ibkr"]
+forbidden_modules = ["optdesk.contracts.genpb"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "calendar and ibkr do not import each other"
+type = "independence"
+modules = ["optdesk.calendar", "optdesk.ibkr"]
+
+[[tool.importlinter.contracts]]
+name = "contracts imports neither calendar nor ibkr"
+type = "forbidden"
+source_modules = ["optdesk.contracts"]
+forbidden_modules = ["optdesk.calendar", "optdesk.ibkr"]
