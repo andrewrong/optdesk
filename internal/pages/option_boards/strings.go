@@ -15,10 +15,11 @@ const (
 	staleDaySuffix = ", before today"
 	gapStale       = "Candidate rows are not from today"
 
-	verdictWorth   = "Worth a look"
-	verdictPending = "Incomplete data"
-	verdictSkip    = "Not eligible"
-	gatesPassed    = "All gates passed"
+	verdictWorth    = "Worth a look"
+	verdictPending  = "Incomplete data"
+	verdictSkip     = "Not eligible"
+	gatesPassed     = "All gates passed"
+	passedWithMarks = "Passed, with marks: "
 
 	ivUnknown   = "n/a"
 	earnAbsent  = "E none"
