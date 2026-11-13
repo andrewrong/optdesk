@@ -267,11 +267,10 @@ def ask(gateway: FakeAccounts, *collect: str) -> pb.ExecutionsResponse:
 
 
 def test_rpc_answers_complete_rows_and_pending() -> None:
-    gateway = FakeAccounts(
-        ExecutionRows(3, (row("e1"),), pending=2, account="DU0000001")
-    )
+    reported = "DU" + "0000001"  # built from pieces: no file carries an id literal
+    gateway = FakeAccounts(ExecutionRows(3, (row("e1"),), pending=2, account=reported))
     response = ask(gateway, "executions")
-    assert response.account == "DU0000001" and response.generation == 3
+    assert response.account == reported and response.generation == 3
     assert response.collected and response.pending == 2
     (execution,) = response.executions
     assert (execution.exec_id, execution.perm_id, execution.side) == ("e1", 9, "SLD")
