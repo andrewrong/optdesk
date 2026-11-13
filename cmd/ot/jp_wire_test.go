@@ -22,6 +22,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/runner/sched"
+	"github.com/andrewrong/optdesk/internal/runner/shared"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/symbol"
@@ -149,7 +150,7 @@ func TestJPJobDisabledWhenBrokerDown(t *testing.T) {
 	_ = r.stop(t, done)
 }
 
-func TestJPJobSlotAtTokyoAfterClose(t *testing.T) {
+func TestJPJobSlotFromItsSchedule(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	cal := &jpCal{last: jpLastDay}
@@ -157,7 +158,7 @@ func TestJPJobSlotAtTokyoAfterClose(t *testing.T) {
 	r.a.deps.newOptionEodJP = optioneod.NewJP
 	r.a.deps.newOptionEodJPWatch = nil
 	r.a.deps.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 9, 1, 0, 0, 0, time.UTC)} }
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runOnce(r.a, []string{"--day", "2026-11-09"}); err != nil {
 		t.Fatal(err)
 	}
 	var slots []runner.Slot
@@ -171,13 +172,31 @@ func TestJPJobSlotAtTokyoAfterClose(t *testing.T) {
 	if len(slots) != 1 {
 		t.Fatalf("jobs %v", jobIDs(r.jobs))
 	}
+	if slots[0].Zone != "Asia/Tokyo" {
+		t.Fatalf("zone %q, want Asia/Tokyo", slots[0].Zone)
+	}
+	sess, err := cal.Session(t.Context(), slots[0].CalendarID, "2026-11-09")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := shared.At(slots[0], sess)
+	if err != nil {
+		t.Fatal(err)
+	}
 	from := time.Date(2026, 11, 9, 0, 0, 0, 0, time.UTC)
 	starts, err := sched.NextStarts(t.Context(), cal, slots, from, 2)
 	if err != nil || len(starts) == 0 {
 		t.Fatalf("starts %v, err %v", starts, err)
 	}
-	if want := time.Date(2026, 11, 9, 6, 50, 0, 0, time.UTC); !starts[0].At.Equal(want) || starts[0].JobID != jobOptionEodJP {
+	if !starts[0].At.Equal(want) || starts[0].JobID != jobOptionEodJP {
 		t.Fatalf("first start %+v, want %s", starts[0], want)
+	}
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if y, m, d := starts[0].At.In(tokyo).Date(); y != 2026 || m != time.November || d != 9 {
+		t.Fatalf("first start %s is not on 2026-11-09 in Tokyo", starts[0].At.In(tokyo))
 	}
 }
 
