@@ -35,6 +35,9 @@ func TestFxRefreshContract(t *testing.T) {
 	}
 }
 
+// fakeSource is a non-nil source to tell apart from the zero value.
+type fakeSource struct{ sources.Source }
+
 // recordingJob is a fake job that keeps the source attached to it.
 type recordingJob struct {
 	fakeJob
@@ -52,7 +55,7 @@ func TestAttachSecondaryContract(t *testing.T) {
 		r.got = second
 		return true
 	}
-	var src sources.Source
+	var src sources.Source = fakeSource{}
 	if !f(known, src) {
 		t.Fatal("known job: got false, want true")
 	}
