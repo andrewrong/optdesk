@@ -723,7 +723,7 @@ func wireHeldCalls(cfg runOnceConfig, f *jobFactory, extra *closerSet, log *slog
 			return s, nil
 		}}}
 		extra.addCloser(rd)
-		held := f.d.newOptionEodHeld
+		held := optioneod.WithHeldAliases(f.d.newOptionEodHeld, f.bookAliases())
 		f.d.newOptionEodWatch = func(b broker.Broker, r store.InstrumentResolver, w store.OptionEodWriter, watch []jobs.WatchEntry,
 			clk clock.Clock, tr symbol.Translator) (contracts.Job, error) {
 			return held(b, r, w, watch, rd, clk, tr)

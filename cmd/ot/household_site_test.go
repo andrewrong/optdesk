@@ -5,8 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -70,15 +68,10 @@ func householdReaders(asked *[]string) siteReaders {
 	}
 }
 
-func TestHouseholdRouteReadsAliasesOfGatewaysFile(t *testing.T) {
+func TestHouseholdRouteReadsAliasesOfTheBook(t *testing.T) {
 	t.Parallel()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "gateways.toml")
-	body := "[[gateway]]\naccount = \"acct-a\"\nrequired = true\n\n[[gateway]]\naccount = \"acct-b\"\n"
-	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	a, _ := testApp(t, envIbkrGateways+"="+path+"\n")
+	a, _ := testApp(t, "")
+	writeBook(t, a, "acct-a", "acct-b")
 	var asked []string
 	rd := householdReaders(&asked)
 	rd.aliases = siteAliasList(a)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +13,12 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/accounts"
+	"github.com/andrewrong/optdesk/internal/broker"
+	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
 // testAcctID is the invented account id of the default book; built from pieces so that no id-shaped string is
@@ -195,3 +202,54 @@ func TestNoAccountIDLeavesTheWiring(t *testing.T) {
 }
 
 var _ accounts.Book = demoBook{}
+
+// fixedBook is a book of the given aliases, main first listed, for the wiring tests.
+type fixedBook struct{ demoBook }
+
+func (fixedBook) Aliases() []string { return []string{"mine", "wife"} }
+func (fixedBook) Main() string      { return "mine" }
+
+func TestOpenStoredHeldAliasesComeFromTheBook(t *testing.T) {
+	t.Parallel()
+	jc := &jobCtx{f: &jobFactory{book: fixedBook{}}}
+	if got := openStored(jc, nil, nil).HeldAliases; !slices.Equal(got, []string{"mine", "wife"}) {
+		t.Fatalf("HeldAliases = %v, want the aliases of the book", got)
+	}
+	if got := openStored(&jobCtx{f: &jobFactory{}}, nil, nil).HeldAliases; len(got) != 0 {
+		t.Fatalf("HeldAliases = %v without a book, want none", got)
+	}
+}
+
+func TestWireHeldCallsWrapsTheHeldConstructorWithTheBook(t *testing.T) {
+	t.Parallel()
+	var got store.AccountReader
+	f := &jobFactory{book: fixedBook{}}
+	f.d.openAccount = func(context.Context, string) (store.AccountStore, error) { return nil, errors.New("unused") }
+	f.d.newOptionEodHeld = func(
+		_ broker.Broker, _ store.InstrumentResolver, _ store.OptionEodWriter, _ []jobs.WatchEntry, acct store.AccountReader, _ clock.Clock, _ symbol.Translator,
+	) (contracts.Job, error) {
+		got = acct
+		return nil, nil
+	}
+	var extra closerSet
+	wireHeldCalls(runOnceConfig{accountDSN: "x"}, f, &extra, slog.New(slog.DiscardHandler))
+	if _, err := f.d.newOptionEodWatch(nil, nil, nil, nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("the held constructor got no reader")
+	}
+	if _, raw := got.(*lazyAccountReader); raw {
+		t.Fatal("the held constructor got the bare reader, not one carrying the aliases of the book")
+	}
+}
+
+func TestRunOnceRefusedWithoutBookBeforeAnyJobIsWired(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	removeBook(t, r.a)
+	err := runOnce(r.a, []string{"--day", "2026-11-04"})
+	if !errors.Is(err, errAccountsBook) {
+		t.Fatalf("run-once without accounts.toml gave %v", err)
+	}
+}

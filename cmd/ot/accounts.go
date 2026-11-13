@@ -90,3 +90,12 @@ func checkAliasMap(b accounts.Book, m map[string]string) error {
 	}
 	return nil
 }
+
+// bookAliases is the alias list of the held lists: every alias of the book in the order of the file. A factory
+// without a book (a test) gives none, which reads no held names.
+func (f *jobFactory) bookAliases() []string {
+	if f.book == nil {
+		return nil
+	}
+	return f.book.Aliases()
+}

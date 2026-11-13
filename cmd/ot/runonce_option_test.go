@@ -578,7 +578,8 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 		}
 		err := runOnce(r.a, nil)
 		if tc.ok {
-			if err != nil || len(r.socket) != tc.n {
+			// the home is a path that does not exist, so the book cannot load: the run stops after the dial
+			if (err != nil && !errors.Is(err, errAccountsBook)) || len(r.socket) != tc.n {
 				t.Fatalf("%d bytes: err %v, dialled %d", tc.n, err, len(r.socket))
 			}
 			continue
