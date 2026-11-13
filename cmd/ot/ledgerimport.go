@@ -26,11 +26,7 @@ func ledgerImport(a *app, args []string) error {
 	if a.profile.Name == "demo" {
 		return errors.New("ledger-import needs a real profile; the demo profile opens no store")
 	}
-	book, err := a.loadBook()
-	if err != nil {
-		return err
-	}
-	if err := checkAliasMap(book, aliasMap); err != nil {
+	if err := a.checkImportMap(aliasMap); err != nil {
 		return err
 	}
 	f, err := os.Open(file) //nolint:gosec // the path is an argument chosen by the owner

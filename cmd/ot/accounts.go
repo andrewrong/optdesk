@@ -68,6 +68,15 @@ func bookAliasList(b accounts.Book) []string {
 	return list
 }
 
+// checkImportMap loads the book and refuses an importer `--map` whose target is not one of its aliases.
+func (a *app) checkImportMap(m map[string]string) error {
+	book, err := a.loadBook()
+	if err != nil {
+		return err
+	}
+	return checkAliasMap(book, m)
+}
+
 // checkAliasMap refuses a `--map from=to` whose `to` is not an alias of the book.
 func checkAliasMap(b accounts.Book, m map[string]string) error {
 	known := map[string]bool{}
