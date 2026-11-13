@@ -172,8 +172,9 @@ func TestJPJobSlotFromItsSchedule(t *testing.T) {
 	if len(slots) != 1 {
 		t.Fatalf("jobs %v", jobIDs(r.jobs))
 	}
-	if slots[0].Zone != "Asia/Tokyo" {
-		t.Fatalf("zone %q, want Asia/Tokyo", slots[0].Zone)
+	// A session anchor takes its instant from the calendar session; the zone stays empty.
+	if slots[0].Anchor != "session_open" || slots[0].Zone != "" || slots[0].Offset != 90*time.Minute {
+		t.Fatalf("slot %+v, want session_open, no zone, 90m", slots[0])
 	}
 	sess, err := cal.Session(t.Context(), slots[0].CalendarID, "2026-11-09")
 	if err != nil {
