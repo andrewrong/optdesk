@@ -12,6 +12,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 const (
@@ -39,35 +40,73 @@ func isNoData(err error) bool { return strings.Contains(err.Error(), "broker err
 
 func isOk(r contracts.ReadingRecord) bool { return string(r.State) == stateOk }
 
-// Run pulls and stores the bars of the names of keys. A key's failure does not stop the others; the result
-// carries the first failure, a Retryable one before a Permanent one. Returned is the number of keys that hold
-// a reading of the day (ok or missing) and Usable those whose reading of the day is ok.
+// keyRun is what runKey leaves for one key: the rows to write, the stored readings it saw and its failure.
+type keyRun struct {
+	rows []contracts.ReadingRecord
+	have map[string]contracts.ReadingRecord
+	err  contracts.TypedError
+}
+
+// Run pulls the bars of the names of keys and stores the readings of all of them in one UpsertReadings call.
+// A key's failure does not stop the others; the result carries the first failure, a Retryable one before a
+// Permanent one. Returned is the number of keys that hold a reading of the day (ok or missing) and Usable those
+// whose reading of the day is ok. A failed write fails the keys that had rows in it.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	up, ok := j.w.(readingkey.ReadingUpserter)
+	if !ok {
+		return contracts.JobResult{Err: newErr(contracts.Retryable, "ivhistory: the readings store has no UpsertReadings method")}
+	}
 	dayTime, err := time.Parse(dayLayout, string(day))
 	if err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
 	}
 	var res contracts.JobResult
-	for _, k := range keys {
-		returned, usable, kerr := j.runKey(ctx, day, dayTime, k)
-		res.Returned += returned
-		res.Usable += usable
-		if kerr != nil && (res.Err == nil || (res.Err.Kind() != contracts.Retryable && kerr.Kind() == contracts.Retryable)) {
-			res.Err = kerr
+	fail := func(e contracts.TypedError) {
+		if e != nil && (res.Err == nil || (res.Err.Kind() != contracts.Retryable && e.Kind() == contracts.Retryable)) {
+			res.Err = e
+		}
+	}
+	runs := make([]keyRun, len(keys))
+	var all []contracts.ReadingRecord
+	for i, k := range keys {
+		runs[i] = j.runKey(ctx, day, dayTime, k)
+		all = append(all, runs[i].rows...)
+	}
+	var werr contracts.TypedError
+	if len(all) > 0 {
+		if _, err := up.UpsertReadings(ctx, all); err != nil {
+			werr = asTyped(err, contracts.Retryable)
+		}
+	}
+	for _, kr := range runs {
+		if kr.err != nil {
+			fail(kr.err)
+			continue
+		}
+		if werr != nil && len(kr.rows) > 0 {
+			fail(werr)
+			continue
+		}
+		for _, r := range kr.rows {
+			kr.have[r.Day.Format(dayLayout)] = r
+		}
+		res.Returned++
+		if today, ok := kr.have[string(day)]; ok && isOk(today) {
+			res.Usable++
 		}
 	}
 	return res
 }
 
-func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, k contracts.ExpectedKey) (returned, usable int, terr contracts.TypedError) {
+func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, k contracts.ExpectedKey) keyRun {
 	name, ok := j.nameOf(k)
 	if !ok {
-		return 0, 0, newErr(contracts.Permanent, "unknown key %q", k.SubjectKey)
+		return keyRun{err: newErr(contracts.Permanent, "unknown key %q", k.SubjectKey)}
 	}
 	from := contracts.Day(dayTime.AddDate(0, 0, -j.m.LookbackDays).Format(dayLayout))
 	stored, err := j.r.LatestReadings(ctx, j.m.Reading, kindUnderlying, name, from, day)
 	if err != nil {
-		return 0, 0, asTyped(err, contracts.Retryable)
+		return keyRun{err: asTyped(err, contracts.Retryable)}
 	}
 	have := map[string]contracts.ReadingRecord{}
 	anyOk := false
@@ -81,7 +120,7 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 	}
 	bars, err := j.h.Bars(ctx, broker.BarQuery{Contract: j.contract[name], Kind: broker.BarOptionImpliedVol, DurationDays: days})
 	if err != nil && !isNoData(err) {
-		return 0, 0, asTyped(err, contracts.Retryable)
+		return keyRun{err: asTyped(err, contracts.Retryable)}
 	}
 	now := j.clk.Now().UTC()
 	runID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(string(day)+"|"+j.m.ID+"|"+cutoff)).String()
@@ -90,7 +129,7 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 	for _, b := range bars {
 		d, err := time.Parse(dayLayout, b.Day)
 		if err != nil {
-			return 0, 0, newErr(contracts.Permanent, "bad bar day")
+			return keyRun{err: newErr(contracts.Permanent, "bad bar day")}
 		}
 		if b.Day > string(day) {
 			continue
@@ -101,22 +140,12 @@ func (j *job) runKey(ctx context.Context, day contracts.Day, dayTime time.Time, 
 	if !arrived {
 		rows = j.add(rows, have, j.missing(name, dayTime, "", reasonNoIn, now, runID))
 	}
-	if len(rows) > 0 {
-		if _, err := j.w.InsertReadings(ctx, rows); err != nil {
-			return 0, 0, asTyped(err, contracts.Retryable)
-		}
-		for _, r := range rows {
-			have[r.Day.Format(dayLayout)] = r
-		}
-	}
-	if today, ok := have[string(day)]; ok && isOk(today) {
-		return 1, 1, nil
-	}
-	return 1, 0, nil
+	return keyRun{rows: rows, have: have}
 }
 
 // add appends rec unless a reading of its day is stored already: a stored ok one is kept, a stored missing
-// one is replaced by an ok one at the next rev, and a missing one is never stored over a missing one.
+// one is replaced by an ok one at the next rev, and a missing one is never stored over a missing one. A day
+// is pending once: a later bar of a day replaces the pending row of that day, so no key is twice in a call.
 func (j *job) add(rows []contracts.ReadingRecord, have map[string]contracts.ReadingRecord, rec contracts.ReadingRecord) []contracts.ReadingRecord {
 	old, ok := have[rec.Day.Format(dayLayout)]
 	if ok {
@@ -124,6 +153,12 @@ func (j *job) add(rows []contracts.ReadingRecord, have map[string]contracts.Read
 			return rows
 		}
 		rec.Rev = old.Rev + 1
+	}
+	for i, r := range rows {
+		if r.Day.Equal(rec.Day.Time) {
+			rows[i] = rec
+			return rows
+		}
 	}
 	return append(rows, rec)
 }
