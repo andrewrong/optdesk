@@ -44,16 +44,16 @@ SET symbol = CASE
     ELSE i.name
 END;
 
--- 5. Backfill of the stock rows and the issuers (Decision 7). Of settings.underlying (read through rd.underlying_r1,
+-- 5. Backfill of the stock rows and the issuers (Decision 7); two scratch tables in master, dropped below (the database revokes TEMP from PUBLIC). Of settings.underlying (read through rd.underlying_r1,
 -- which passes every version) the newest row of each name_key by set_at, then id, is taken first; only then the
 -- rows whose con_id is the instrument's ibkr_conid and whose name is not empty are matched, so an older version of a
 -- name never wins over the newest. When two name_keys match one instrument the smaller name_key (byte order) is used.
-CREATE TEMP TABLE underlying_newest AS
+CREATE TABLE master.underlying_newest_0044 AS
 SELECT DISTINCT ON (name_key) name_key, market, exchange, name, issuer, con_id
 FROM rd.underlying_r1
 ORDER BY name_key, set_at DESC, id DESC;
 
-CREATE TEMP TABLE stock_seed AS
+CREATE TABLE master.stock_seed_0044 AS
 SELECT i.instrument_id,
        COALESCE(s.name, i.name) AS name,
        CASE i.currency WHEN 'USD' THEN 'US' WHEN 'JPY' THEN 'JP' WHEN 'EUR' THEN 'EU' END AS market,
@@ -66,7 +66,7 @@ SELECT i.instrument_id,
 FROM master.instrument i
 LEFT JOIN LATERAL (
     SELECT n.*
-    FROM underlying_newest n
+    FROM master.underlying_newest_0044 n
     JOIN master.instrument_identifier d
       ON d.instrument_id = i.instrument_id AND d.scheme = 'ibkr_conid' AND d.valid_to IS NULL
     WHERE n.con_id::text = d.value AND n.name <> ''
@@ -79,21 +79,21 @@ WHERE i.instrument_type IN ('stock', 'etf', 'index');
 -- issuer text carries one code, so a company with a US and a JP line stays two issuers.
 INSERT INTO master.issuer (name, country, cik)
 SELECT DISTINCT ON (cik) issuer_name, issuer_country, cik
-FROM stock_seed WHERE cik IS NOT NULL
+FROM master.stock_seed_0044 WHERE cik IS NOT NULL
 ORDER BY cik, name_key COLLATE "C", instrument_id;
 
 INSERT INTO master.issuer (name, country, edinet_code)
 SELECT DISTINCT ON (edinet_code) issuer_name, issuer_country, edinet_code
-FROM stock_seed WHERE edinet_code IS NOT NULL
+FROM master.stock_seed_0044 WHERE edinet_code IS NOT NULL
 ORDER BY edinet_code, name_key COLLATE "C", instrument_id;
 
 INSERT INTO master.stock (instrument_id, name, market, primary_exchange, issuer_id)
 SELECT s.instrument_id, s.name, s.market, s.primary_exchange, c.issuer_id
-FROM stock_seed s
+FROM master.stock_seed_0044 s
 LEFT JOIN master.issuer c ON (s.cik IS NOT NULL AND c.cik = s.cik) OR (s.edinet_code IS NOT NULL AND c.edinet_code = s.edinet_code);
 
-DROP TABLE stock_seed;
-DROP TABLE underlying_newest;
+DROP TABLE master.stock_seed_0044;
+DROP TABLE master.underlying_newest_0044;
 
 -- 6. The foreign key and the check of Decision 1; the issuer_id of the instrument and of the stock are one value.
 UPDATE master.instrument i SET issuer_id = s.issuer_id
@@ -130,7 +130,7 @@ WHERE i.instrument_type = 'option';
 ALTER VIEW rd.stock OWNER TO ot_owner;
 ALTER VIEW rd.option OWNER TO ot_owner;
 
--- 9. Grants (Decision 11): no DELETE, no TRUNCATE, no close of an identifier row.
+-- 9. Grants (Decision 11): no delete, no truncate, no close of an identifier row.
 GRANT SELECT, INSERT, UPDATE ON master.stock TO ot_w_master;
 GRANT SELECT, INSERT, UPDATE ON master.issuer TO ot_w_master;
 GRANT UPDATE (symbol, issuer_id) ON master.instrument TO ot_w_master;
