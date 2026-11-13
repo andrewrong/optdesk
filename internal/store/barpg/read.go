@@ -10,7 +10,7 @@ import (
 
 // The readers read the views of the schema rd and never a base table; dates come back as text.
 const (
-	// selectPriceBarSQL arguments: instrument_id, basis, first day, last day. The view holds the winner epoch.
+	// selectPriceBarSQL arguments: instrument_id, basis, first day, last day. The view holds the rows with status ok, one per key.
 	selectPriceBarSQL = `SELECT instrument_id, session_day::text, basis, adjust_epoch, open, high, low, close, volume, ` +
 		`currency, source, received_at FROM rd.price_bar_r1 ` +
 		`WHERE instrument_id = $1 AND basis = $2 AND session_day >= $3::date AND session_day <= $4::date ` +
