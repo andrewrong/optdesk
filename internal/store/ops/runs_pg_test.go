@@ -113,3 +113,54 @@ func TestReasonsReplaceAndNotWiredPG(t *testing.T) {
 		t.Error("an unknown code was stored")
 	}
 }
+
+// TestFieldReasonCodesPG: the codes field_missing and fields_complete of migration 0038 are stored and read back,
+// an empty replace clears them, and a code outside the thirteen is still refused.
+func TestFieldReasonCodesPG(t *testing.T) {
+	t.Parallel()
+	name := newRunsDatabase(t)
+	ctx := context.Background()
+	raw, err := os.ReadFile("../../../migrations/0038_option_run_reason_fields.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+	c, err := pgx.Connect(ctx, connURL(t, name, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close(ctx) }()
+	if _, err := c.Exec(ctx, up); err != nil {
+		t.Fatalf("apply 0038: %v", err)
+	}
+	w, err := OpenRuns(ctx, connURL(t, name, "ot_runner"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = w.Close() })
+	at := time.Date(2026, 11, 12, 21, 5, 0, 0, time.UTC)
+	set := []runview.Reason{{Scope: "field:open_interest", Code: "field_missing", At: at}, {Scope: "fields", Code: "fields_complete", At: at}}
+	if err := w.ReplaceReasons(ctx, "2026-11-12", "obs.option_open", "k", set); err != nil {
+		t.Fatal(err)
+	}
+	got, err := w.ReasonsOn(ctx, "2026-11-12")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("stored: %+v, %v", got, err)
+	}
+	codes := map[string]string{}
+	for _, r := range got {
+		codes[r.Scope] = r.Code
+	}
+	if codes["field:open_interest"] != "field_missing" || codes["fields"] != "fields_complete" {
+		t.Fatalf("read back: %+v", got)
+	}
+	if err := w.ReplaceReasons(ctx, "2026-11-12", "obs.option_open", "k", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := w.ReasonsOn(ctx, "2026-11-12"); err != nil || len(got) != 0 {
+		t.Fatalf("after empty replace: %+v, %v", got, err)
+	}
+	if err := w.ReplaceReasons(ctx, "2026-11-12", "obs.option_open", "k", []runview.Reason{{Scope: "x", Code: "bogus", At: at}}); err == nil {
+		t.Error("a code outside the thirteen was stored")
+	}
+}
