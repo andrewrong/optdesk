@@ -33,3 +33,18 @@ type WatchEntry struct {
 type ImportResult struct {
 	Lines, Inserted, Same, Conflict int
 }
+
+// Need is what one strategy needs of the stored option chains (docs/design/option-capture-need.md). Group names
+// the underlyings: a watch.toml group as watch:<group>. Ref is what Low and High multiply, buy_price or spot, and
+// the reach is the strike range Low x Ref to High x Ref, both decimal text. Expiry is all or monthly. Every number
+// of a declaration is trial unless the manifest row names its source.
+type Need struct {
+	Strategy       string
+	Group          string
+	Rights         []string
+	MinDTE, MaxDTE int
+	Ref            string
+	Low, High      string
+	Expiry         string
+	TradingClass   string
+}

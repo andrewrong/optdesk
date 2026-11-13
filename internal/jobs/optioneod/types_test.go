@@ -215,3 +215,31 @@ func TestSymbolCtorTypes(t *testing.T) {
 		t.Fatalf("translators passed through: %v", got)
 	}
 }
+
+type fakeCloses struct{ got []string }
+
+func (f fakeCloses) IndexCloses(_ context.Context, index string, from, to contracts.Day) ([]string, error) {
+	return append(append([]string(nil), f.got...), index, string(from), string(to)), nil
+}
+
+func TestIndexCloseReaderFromBothSides(t *testing.T) {
+	t.Parallel()
+	var r optioneod.IndexCloseReader = fakeCloses{got: []string{"7500.5"}}
+	got, err := r.IndexCloses(context.Background(), "SPX", "2026-11-01", "2026-11-12")
+	if err != nil || len(got) != 4 || got[0] != "7500.5" || got[1] != "SPX" || got[2] != "2026-11-01" || got[3] != "2026-11-12" {
+		t.Fatalf("got %v, %v", got, err)
+	}
+}
+
+func TestNewIndexStubBuildsAndRunsPermanent(t *testing.T) {
+	t.Parallel()
+	var f optioneod.NewOptionEodIndexFunc = optioneod.NewIndex
+	j, err := f(&fakeBroker{}, &fakeResolver{}, &fakeEodWriter{}, nil, nil)
+	if err != nil || j == nil {
+		t.Fatalf("job %v, err %v", j, err)
+	}
+	res := j.Run(context.Background(), "2026-11-13", nil)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("result %+v", res)
+	}
+}
