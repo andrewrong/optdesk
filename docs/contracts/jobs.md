@@ -26,6 +26,7 @@ The jobs the binary runs. `fredseries.New` builds the `fred_series` job: one FRE
 - [docs/contracts/jobs/fx_refresh.md](jobs/fx_refresh.md)
 - [docs/contracts/jobs/fundamentals.md](jobs/fundamentals.md)
 - [docs/contracts/jobs/position_marks.md](jobs/position_marks.md)
+- [docs/contracts/jobs/statement_capture.md](jobs/statement_capture.md)
 
 ## Schedule
 
