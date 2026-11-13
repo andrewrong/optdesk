@@ -45,19 +45,19 @@ Decisions 1 to 8 are the advisor's definitions A1 to A7 and A9, in his order; 9 
 
 ## Modules
 
-No row of `docs/design/modules.md` changes. Entry 1 is a judged two-module entry, compute plus docs (`internal/compute/**` for `rules.json`, `rules_test.go` and `own/testdata/stored_text.json`; `docs/**` for `register.toml`), because the register entry and its rule row must be one pull request. Entry 2 is jobs (`internal/jobs/**`, `docs/contracts/jobs/**`); entries 3 and 4 are pages (`internal/pages/**`, `docs/contracts/pages.md`). `cmd/ot` is not edited (the manifest is embedded; `wire.go` at 793 of 800 is untouched).
+No row of `docs/design/modules.md` changes. Entry 1 is a judged two-module entry, compute plus docs, and the (interface) entry (its rule and register entry are what the others read by id) (`internal/compute/**` for `rules.json`, `rules_test.go` and `own/testdata/stored_text.json`; `docs/**` for `register.toml`), because the register entry and its rule row must be one pull request. Entry 2 is jobs (`internal/jobs/**`, `docs/contracts/jobs/**`); entries 3 and 4 are pages (`internal/pages/**`, `docs/contracts/pages.md`). `cmd/ot` is not edited (the manifest is embedded; `wire.go` at 793 of 800 is untouched).
 
 ## Interface
 
-No interface changes. `compute.Figures.Combine` (`internal/compute/api.go`), `computefigures.ComputeStores`, `internal/jobs/api.go` and `internal/pages/api.go` keep their declarations. No entry is marked (interface).
+One shared item changes: entry 1 adds the rule `market.iv_rv20` to the rules table and its register entry, which entries 2, 3 and 4 read by id (entry 2 through `findRules`, entry 3 through `ids_test.go`, entry 4 by name only). Entry 1 is marked (interface) and lands before them. No Go declaration changes: `compute.Figures.Combine` (`internal/compute/api.go`), `computefigures.ComputeStores`, `internal/jobs/api.go` and `internal/pages/api.go` keep their declarations.
 
 `Contracts: unchanged` (no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto` changes; the pages already declare `iv_minus_rv20` as a figure or a gap).
 
 ## Issues
 
-Build order: every entry compiles and its tests pass against main. BASE is `git merge-base origin/main HEAD`. Entries 2 and 3 read the files of entry 1 (`computefigures` finds the rule in `findRules`; `ids_test.go` reads `rules.json` and `job.toml`), so they come after it; entry 3 also reads `job.toml`, so it comes after 2.
+Build order: every entry compiles and its tests pass against main. BASE is `git merge-base origin/main HEAD`. Entries 2 and 3 read the rule of entry 1 (`computefigures` finds it in `findRules`; `ids_test.go` reads `rules.json`), so they come after it and after nothing else; entry 3 does not read `job.toml` for the new id. Entries 2, 3 and 4 share no file and may run in any order once entry 1 has landed.
 
-### 1 market-iv-rv20-rule
+### 1 market-iv-rv20-rule (interface)
 
 Modules: compute and docs (one entry: the register entry and the rule row are one pull request). Size: S.
 Order: first.
@@ -86,11 +86,11 @@ Acceptance:
 ### 3 market-iv-rv20-market-page
 
 Module: pages. Size: M.
-Order: after 2.
+Order: after 1.
 Files: `internal/pages/market_page/ids.go`, `internal/pages/market_page/ids_test.go`, `internal/pages/market_page/cells.go`, `internal/pages/market_page/ivrv.go`, `internal/pages/market_page/ivrv_test.go`, `internal/pages/market_page/strings.go`, `internal/pages/market_page/cells_test.go`, `internal/pages/market_page/builder_test.go`, `docs/contracts/pages.md`
 Design: docs/design/market-iv-rv20.md#decisions (5, 6, 7)
 Acceptance:
-1. `ids.go` declares `figIvRv20 = "market.iv_rv20"`; `ids_test.go` includes it in the ids it finds in the rules table and in the `compute_figures` manifest (`git grep -n 'figIvRv20' -- internal/pages/market_page/ids_test.go` prints a line).
+1. `ids.go` declares `figIvRv20 = "market.iv_rv20"`; `ids_test.go` includes it in the ids it finds in the rules table only, with the exemption for the manifest that `figRv20` has (`id != figRv20`), so the test does not read the manifest key of entry 2 (`git grep -n 'figIvRv20' -- internal/pages/market_page/ids_test.go` prints a line).
 2. `buildIndices` sets `IVMinusRV20` of SPX, NDX and RUT from the reading of `market.iv_rv20` (kind `underlying`, the row name) through `ivRvCell` in `ivrv.go`; the N225 row keeps `mkGap(reasonNotBuilt, "N225 implied minus realised: not built yet")`; `git diff BASE -- internal/pages/market_page/builder.go` is empty; `purity_test.go` is unchanged.
 3. `ivrv_test.go` names `TestIvRvCellSigned` (literals: stored `0.032000` gives value `3.2`, text `+3.2`, unit `vol_points`; `-0.014000` gives text `-1.4`; `0.000000` gives text `0.0`), `TestIvRvCellNamesDayWhenNotPageDay` (`data_day` D-1 gives text `+3.2 (11-12)` for page day 11-13; `data_day` equal to the page's day gives no suffix), `TestIvRvCellStaleBeyondFiveDays` (6 days before the page's day: Gap `stale_input` naming the day; 5 days: a value), `TestIvRvCellStoredCode3IsStale` (state `missing_input`, reason code 3, with and without `data_day`: Gap `stale_input`), `TestIvRvCellNoRowIsNoData`, `TestIvRvCellMissingIsMissingInput` (state `missing_input` with another code, or ok without `data_day`) and `TestIvRvCellHasNoThreshold` (values -5.0, 0.0 and +9.0 all give a plain figure with no tone or colour field); each calls `t.Parallel()`.
 4. `cells_test.go`: `TestN225RvStaysNotBuilt` checks `iv_minus_rv20` not_built for row 3 (N225) only and a figure for rows 0 to 2 of `allOK()`; the test at `:99-103` expects the new `indicesSentence` of `strings.go` (the column is built for the three Cboe indices and not for the Nikkei); `pageSentence` no longer lists implied minus realised among the unbuilt blocks; `ivRvNotBuilt` is used for N225 only.
@@ -141,7 +141,7 @@ Source: the author's adversarial notes (scratchpad) and the advisor's review r1 
 
 1. Retryable only when rv20 of S exists (advisor B1): adopted. Keys run alone in `SubjectKey` order and iv_rv20 sorts first (`reconcile.go:194-198`); Decision 10 now fails the key whenever the stored `data_day` is before S, and `TestIvRv20Rv20OfDayAbsent` pins it.
 2. rv20 `data_day` never checked (advisor B2, adversarial 2): adopted. Decision 3 requires the newest-rev rv20 row of D' to be ok with `data_day` = D'; `LatestReadings` gives the newest rev per day in any state and `WinnerReadings` prefers the highest ok rev, so the job uses the first and says so; `TestIvRv20Rv20DataDayMustMatch`.
-3. Owner step is wrong, entry order (advisor B3, adversarial 5 and must-fix 1): adopted. Entry 1 is the compute plus docs rule entry (Modules names it), entries 2 and 3 come after it, 3 after 2; Decision 12 deletes the owner step. The new entry is numbered 1, not 0.
+3. Owner step is wrong, entry order (advisor B3, adversarial 5 and must-fix 1): adopted. Entry 1 is the compute plus docs rule entry (Modules names it), entries 2, 3 and 4 come after it and after nothing else (the manifest check of `ids_test.go` is dropped for the new id so entry 3 does not need entry 2); Decision 12 deletes the owner step. The new entry is numbered 1, not 0.
 4. Routing of the key (advisor B4): adopted. Decision 9 and entry 2 item 2, `TestPlanHasIvRv20Keys` and `TestIvRv20KeyIsNotAnUnderlyingKey`.
 5. Age 5 calendar days (advisor, secondary): adopted for rule, job and both cells; it replaces the advisor's first definition A5 (4), which the advisor itself widened to 5 in its review.
 6. Same-package tests (adversarial 6): adopted. `hv_test.go`, `rv_test.go`, `ease_test.go` and `ivp_ibkr_test.go` are in entry 2 Files with `job_test.go:264`; `ivinput_test.go` was checked and not added (it runs single keys, `:334`) and `types_test.go` uses a stub. Not adopted: dropping the Retryable wait or aligning it with `runMarket` (adversarial 3), for the reason in Doubt 4.
