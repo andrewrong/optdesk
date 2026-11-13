@@ -25,7 +25,6 @@ var wantTwelve = map[string]string{
 	"calendar_hours_jp":      "Asia/Tokyo",
 	"underlying_resolve":     "America/New_York",
 	"iv_history":             "America/New_York",
-	"bars_refresh":           "America/New_York",
 	"option_list_preopen":    "America/New_York",
 	"option_list_zone":       "America/New_York",
 	"option_list_preopen_jp": "Asia/Tokyo",
@@ -62,7 +61,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesIsCalendarRefreshAndFxRefresh(t *testing.T) {
+func TestForceYesIsCalendarFxAndBars(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -70,14 +69,14 @@ func TestForceYesIsCalendarRefreshAndFxRefresh(t *testing.T) {
 			yes = append(yes, r.ID)
 		}
 	}
-	if !slices.Equal(yes, []string{"calendar_refresh", "fx_refresh"}) {
+	if !slices.Equal(yes, []string{"calendar_refresh", "fx_refresh", "bars_refresh"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
 
 func TestEveryForceNoJobHasReason(t *testing.T) {
 	t.Parallel()
-	codes := []string{"moment_mix", "append_only", "revision_rows", "attempt_rows", "epoch_and_caps", "new_run_id", "quota", "not_proved", "insert_only"}
+	codes := []string{"moment_mix", "append_only", "revision_rows", "attempt_rows", "new_run_id", "quota", "not_proved", "insert_only"}
 	n := 0
 	for _, r := range jobTable {
 		if !r.runnable() || r.Force {
@@ -91,8 +90,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 21 {
-		t.Fatalf("%d force-no jobs, want 21", n)
+	if n != 20 {
+		t.Fatalf("%d force-no jobs, want 20", n)
 	}
 }
 
@@ -114,9 +113,9 @@ func TestZoneOfEachTodayOnlyJobIsTheJobsOwn(t *testing.T) {
 	}
 }
 
-func TestAnyDayIsExactlyTheFive(t *testing.T) {
+func TestAnyDayIsExactlyTheSeven(t *testing.T) {
 	t.Parallel()
-	want := []string{"compute_figures", "fred_series", "fundamentals", "fx_refresh", "option_candidates", "statement_capture"}
+	want := []string{"bars_refresh", "compute_figures", "fred_series", "fundamentals", "fx_refresh", "option_candidates", "statement_capture"}
 	if got := idsOfKind(kindAnyDay); !slices.Equal(got, want) {
 		t.Fatalf("any_day %v", got)
 	}
@@ -190,7 +189,23 @@ func TestFxRefreshRunValidatesPastDayWithForce(t *testing.T) {
 	if _, ok := post("fx_refresh", "2026-11-14", "on"); ok {
 		t.Error("a day after today was accepted")
 	}
-	if _, ok := post("bars_refresh", "2026-11-13", "on"); ok {
+	if _, ok := post("fred_series", "2026-11-13", "on"); ok {
 		t.Error("force on a force-no job was accepted")
+	}
+}
+
+func TestBarsRefreshRunValidatesPastDayWithForce(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 11, 13, 15, 0, 0, 0, time.UTC)
+	post := func(day string) (jobRun, bool) {
+		r := &http.Request{PostForm: url.Values{"job": {"bars_refresh"}, "day": {day}, "force": {"on"}}}
+		return readJobRun(r, now)
+	}
+	run, ok := post("2026-11-10")
+	if !ok || !run.force || run.day != "2026-11-10" || run.job.ID != "bars_refresh" {
+		t.Fatalf("past day with force: %+v %v", run, ok)
+	}
+	if _, ok := post("2026-11-14"); ok {
+		t.Error("a day after today was accepted")
 	}
 }
