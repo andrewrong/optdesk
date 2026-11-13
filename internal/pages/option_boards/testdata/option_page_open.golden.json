@@ -59,7 +59,7 @@
             "label": "Worth a look",
             "tone": "good"
           },
-          "reason": "All gates passed · Earnings date not confirmed",
+          "reason": "Passed, with marks: Earnings date not confirmed",
           "annualised": {
             "value": 12.3456,
             "text": "12.3456%",
