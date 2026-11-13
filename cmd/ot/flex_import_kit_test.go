@@ -32,7 +32,7 @@ const (
 	fiLedgerDSN = "postgres://ledger-sentinel-dsn"
 	fiPagesDSN  = "postgres://pages-sentinel-dsn"
 	fiFlexToken = "flex-token-sentinel"
-	fiEnv       = "OT_FORM_KEY=" + "abababababababababababababababab" + "\nOT_PG_DSN_SETTINGS=postgres://settings-sentinel-dsn\n" +
+	fiEnv       = "OT_PG_DSN_SETTINGS=postgres://settings-sentinel-dsn\n" +
 		"OT_PG_DSN_PAGES=" + fiPagesDSN + "\nOT_FLEX_TOKEN=" + fiFlexToken + "\nOT_FLEX_ACCT_MAIN=" + fiAccount + "\n"
 	fiLedgerLine = "OT_PG_DSN_OPTION_LEDGER=" + fiLedgerDSN + "\n"
 )
@@ -211,10 +211,10 @@ func newFISite(t *testing.T, o fiOpts) *fiSite {
 		}
 		return sources.FlexFile{Accounts: []sources.FlexAccount{{Alias: fiAlias, AccountEnv: "OT_FLEX_ACCT_MAIN"}}}, nil
 	}
-	form := d.newSettingsForm([]byte(postKey), ownerTokenTTL, a.deps.newRuleParams())
+	form := d.newSettingsForm(nil, ownerTokenTTL, a.deps.newRuleParams())
 	var rd siteReaders
 	if !o.noEdit {
-		rd.edit = &ownerEdit{form: form, listen: postListen}
+		rd.edit = &ownerEdit{form: form, token: postKey}
 	}
 	return &fiSite{h: siteHandler(a, fakeClock{postNow}, "", rd, echoHandler, http.NotFoundHandler()), st: o.st, form: form, logs: logs}
 }
@@ -253,27 +253,22 @@ func fiBody(t *testing.T, parts []fiPart) (string, []byte) {
 	return mw.FormDataContentType(), buf.Bytes()
 }
 
-// fiTokenParts are the two hidden fields of the form with a fresh token, as the view puts them before the file.
-func (s *fiSite) tokenParts() []fiPart {
-	tok := s.form.Token(postNow)
-	return []fiPart{{field: "expires", body: []byte(tok.Expires)}, {field: "mac", body: []byte(tok.MAC)}}
-}
-
-// request is a well-formed upload: loopback peer and Host, the content type of the body, its length declared.
+// fiRequest is a well-formed upload: tailnet peer and Host, the owner cookie, the content type of the body, its length declared.
 func fiRequest(t *testing.T, parts []fiPart) *http.Request {
 	t.Helper()
 	ct, body := fiBody(t, parts)
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/"+flexImportPostRoute, bytes.NewReader(body))
 	r.Header.Set("Content-Type", ct)
-	r.RemoteAddr = "127.0.0.1:5555"
-	r.Host = postListen
+	r.RemoteAddr = postPeer
+	r.Host = postHost
+	withOwnerCookie(r, postKey)
 	return r
 }
 
-// upload posts the fields of a fresh token and then the files.
+// upload posts the files.
 func (s *fiSite) upload(t *testing.T, files ...fiPart) *httptest.ResponseRecorder {
 	t.Helper()
-	return serve(s.h, fiRequest(t, append(s.tokenParts(), files...)))
+	return serve(s.h, fiRequest(t, files))
 }
 
 func (s *fiSite) get(t *testing.T) *httptest.ResponseRecorder {

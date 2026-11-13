@@ -44,13 +44,10 @@ func runServe(a *app, args []string) error {
 	fs.SetOutput(io.Discard)
 	dayFlag := fs.String("day", "", "day YYYY-MM-DD (default: today in "+marketZone+")")
 	addr := fs.String("addr", "127.0.0.1:8080", "listen address")
-	edit := fs.Bool("owner-edit", false, "serve POST /owner-settings (loopback address only)")
+	edit := fs.Bool("owner-edit", false, "accepted and ignored: the owner forms are on whenever the settings DSN line exists")
 	live := fs.Bool("live-quotes", false, "serve POST /options/refresh, live quotes through pyside (loopback address only)")
 	if err := fs.Parse(args); err != nil {
 		return err
-	}
-	if *edit && !loopbackListen(*addr) {
-		return errors.New("serve: --owner-edit needs a loopback --addr")
 	}
 	if *live && !loopbackListen(*addr) {
 		return errors.New("serve: --live-quotes needs a loopback --addr")
@@ -72,14 +69,15 @@ func runServe(a *app, args []string) error {
 		return fmt.Errorf("serve: cannot listen on %s", *addr)
 	}
 	if *edit {
-		oe, closeEdit, err := newOwnerEdit(ctx, a, ln.Addr().String())
-		if err != nil {
-			_ = ln.Close()
-			return err
-		}
-		defer closeEdit()
-		rd.edit = oe
+		a.log.Info("--owner-edit is ignored", "component", "ot", "status", "ignored")
 	}
+	oe, closeEdit, err := newOwnerEdit(ctx, a)
+	if err != nil {
+		_ = ln.Close()
+		return err
+	}
+	defer closeEdit()
+	rd.edit = oe
 	if *live && a.profile.Name != "demo" {
 		lq, closeLive, err := newLiveQuotes(ctx, a, clk, rd)
 		if err != nil {

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
-	"github.com/andrewrong/optdesk/internal/compute/settingsapi"
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
 	"github.com/andrewrong/optdesk/internal/pages"
 	flexpage "github.com/andrewrong/optdesk/internal/pages/flex_import"
@@ -26,14 +25,12 @@ import (
 const (
 	// flexImportMax is the cap of one post, declared and read (Decision 9).
 	flexImportMax = 64 << 20
-	// flexFieldMax is the cap of one leading field (expires, mac) of the form.
-	flexFieldMax = 512
 	// flexNameMax is the bytes of a file name kept for display.
 	flexNameMax = 64
 	// flexMoreFiles is the entry that stands for the files of a post past the eighth.
 	flexMoreFiles = "(more files)"
 
-	refusedText  = "upload refused: the form is not valid or has expired, load the page again"
+	refusedText  = "upload refused: the form is not valid, log in and load the page again"
 	tooLargeText = "upload too large: at most 64 MiB"
 )
 
@@ -43,8 +40,8 @@ var errBrokenUpload = errors.New("flex import: upload broke")
 // errUploadRefused ends a post whose guard failed: 403 and the fixed text.
 var errUploadRefused = errors.New("flex import: upload refused")
 
-// postOwnerFlexImport serves POST /owner-flex-import: the declared length against 64 MiB, the leading fields
-// expires and mac, CheckUpload, then at most 8 file parts one at a time, each parsed, imported or left as a failed
+// postOwnerFlexImport serves POST /owner-flex-import: the declared length against 64 MiB, the owner
+// cookie (ownerCookieOK, before any part is read), then at most 8 file parts one at a time, each parsed, imported or left as a failed
 // record, and the page of the results. Nothing is written before the guard passes.
 func postOwnerFlexImport(a *app, clk clock.Clock, rd siteReaders, newHandler pages.NewHandlerFunc, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -56,6 +53,10 @@ func postOwnerFlexImport(a *app, clk clock.Clock, rd siteReaders, newHandler pag
 		http.Error(w, tooLargeText, http.StatusRequestEntityTooLarge)
 		return
 	}
+	if !ownerCookieOK(r, rd.edit) {
+		refuseOwner(w, rd.edit)
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, flexImportMax)
 	now := clk.Now().UTC()
 	mr, err := r.MultipartReader()
@@ -63,17 +64,12 @@ func postOwnerFlexImport(a *app, clk clock.Clock, rd siteReaders, newHandler pag
 		http.Error(w, refusedText, http.StatusForbidden)
 		return
 	}
-	tok, first, err := readUploadFields(mr)
+	first, err := readUploadFields(mr)
 	if err != nil {
 		refuseUpload(w, err)
 		return
 	}
-	up, ok := rd.edit.form.(settingsapi.UploadChecker)
-	req := settingsapi.FormRequest{
-		RemoteAddr: r.RemoteAddr, Host: r.Host, Origin: r.Header.Get("Origin"), Listen: rd.edit.listen,
-		ContentType: r.Header.Get("Content-Type"), BodySize: r.ContentLength, Token: tok,
-	}
-	if !ok || up.CheckUpload(req, flexImportMax, now) != nil {
+	if first == nil {
 		http.Error(w, refusedText, http.StatusForbidden)
 		return
 	}
@@ -111,36 +107,19 @@ func refuseUpload(w http.ResponseWriter, err error) {
 	http.Error(w, refusedText, http.StatusForbidden)
 }
 
-// readUploadFields reads the leading parts of the form up to the first file part, which it returns unread. The
-// fields expires and mac must both come first: a file part before them, or a stream with no file part and
-// without them, is refused. A part of another name is dropped.
-func readUploadFields(mr *multipart.Reader) (settingsapi.FormToken, *multipart.Part, error) {
-	var tok settingsapi.FormToken
-	var haveExpires, haveMAC bool
+// readUploadFields reads parts up to the first file part, which it returns unread; a part of another name is
+// dropped. A stream that ends with no file part gives a nil part and no error.
+func readUploadFields(mr *multipart.Reader) (*multipart.Part, error) {
 	for {
 		p, err := mr.NextPart()
+		if err == io.EOF {
+			return nil, nil
+		}
 		if err != nil {
-			return tok, nil, errUploadOr(err)
+			return nil, errUploadOr(err)
 		}
-		switch p.FormName() {
-		case "expires", "mac":
-			b, err := io.ReadAll(io.LimitReader(p, flexFieldMax+1))
-			if err != nil || len(b) > flexFieldMax {
-				return tok, nil, errUploadOr(err)
-			}
-			if p.FormName() == "expires" {
-				tok.Expires, haveExpires = string(b), true
-			} else {
-				tok.MAC, haveMAC = string(b), true
-			}
-		case "files":
-			if !haveExpires || !haveMAC {
-				return tok, nil, errUploadRefused
-			}
-			return tok, p, nil
-		}
-		if haveExpires && haveMAC {
-			return tok, nil, nil
+		if p.FormName() == "files" {
+			return p, nil
 		}
 	}
 }
