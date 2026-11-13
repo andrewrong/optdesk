@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -231,15 +232,14 @@ func TestIndexCloseReaderFromBothSides(t *testing.T) {
 	}
 }
 
-func TestNewIndexStubBuildsAndRunsPermanent(t *testing.T) {
+func TestNewIndexBuildsTheIndexJob(t *testing.T) {
 	t.Parallel()
 	var f optioneod.NewOptionEodIndexFunc = optioneod.NewIndex
-	j, err := f(&fakeBroker{}, &fakeResolver{}, &fakeEodWriter{}, nil, nil)
+	j, err := f(&fakeBroker{}, &fakeResolver{}, &fakeEodWriter{}, nil, clockwork.NewFakeClock())
 	if err != nil || j == nil {
 		t.Fatalf("job %v, err %v", j, err)
 	}
-	res := j.Run(context.Background(), "2026-11-13", nil)
-	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
-		t.Fatalf("result %+v", res)
+	if j.ID() != "option_eod_index" {
+		t.Fatalf("job id %s", j.ID())
 	}
 }

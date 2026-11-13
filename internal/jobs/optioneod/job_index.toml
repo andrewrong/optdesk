@@ -1,0 +1,87 @@
+# Manifest of the option_eod_index job: the monthly chains of SPX, XSP and RUT as call-put pairs around the money.
+# Every number is trial (docs/design/option-capture-need.md, Decisions 5 to 10); none is sourced.
+version = 1
+id = "option_eod_index"
+zone = "America/New_York"
+ledger_dataset = "obs.option_eod_index"
+min_dte = 0             # trial
+max_dte = 60            # trial
+max_expiries = 2        # trial
+chunk = 50              # trial
+budget_minutes = 8      # trial
+freeze_after = "1615"
+option_price_increment = "0.01"
+sigma_days = 20         # trial: log returns of the stored closes
+sigma_fallback = 0.20   # trial: used with no reader, too few closes or a reader error
+band_k = 1.8            # trial: half-width of the band is spot x band_k x sigma x sqrt(T)
+
+[window]
+rule = "in_session"
+open_after_minutes = 90
+calendar = "XNYS"
+
+[[underlying]]
+symbol = "SPX"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+con_id = 416904
+mic = "XCBO"
+calendar_id = "XNYS"
+
+[[underlying]]
+symbol = "XSP"
+sec_type = "IND"
+exchange = "CBOE"
+currency = "USD"
+con_id = 137851301
+mic = "XCBO"
+calendar_id = "XNYS"
+
+# The MIC is the one of the SPX row; the selection does not read it.
+[[underlying]]
+symbol = "RUT"
+sec_type = "IND"
+exchange = "RUSSELL"
+currency = "USD"
+con_id = 416888
+mic = "XCBO"
+calendar_id = "XNYS"
+
+[[index]]
+symbol = "SPX"
+trading_class = "SPX"
+strike_multiple = 50     # trial: the probes show steps of 5 and 1 near the money; the multiple thins the rest
+max_contracts = 80       # trial: the probes show steps of 5 and 1 near the money; the cap is per class and day
+expiry_kind = "listed"
+sigma_index = "SPX"
+spot_index = "SPX"
+spot_divisor = 1         # trial
+
+[[index]]
+symbol = "XSP"
+trading_class = "XSP"
+strike_multiple = 5      # trial: the probes show steps of 5 and 1 near the money
+max_contracts = 80       # trial
+expiry_kind = "third_friday"
+sigma_index = "SPX"
+spot_index = "SPX"
+spot_divisor = 10        # trial: XSP is a tenth of SPX
+
+[[index]]
+symbol = "RUT"
+trading_class = "RUT"
+strike_multiple = 5      # trial: the probes show steps of 5
+max_contracts = 80       # trial
+expiry_kind = "listed"
+sigma_index = "RUT"
+spot_index = "RUT"
+spot_divisor = 1         # trial
+
+# Slot of the US job: 90 minutes after the open, inside the session; the bound is 8 minutes plus the job's own budget_minutes.
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+offset = "90m"
+run_bound = "16m"
+restart_sensitive = true

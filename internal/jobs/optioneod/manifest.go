@@ -60,6 +60,24 @@ type stockTable struct {
 	MaxStrikesPerSide int    `toml:"max_strikes_per_side"`
 }
 
+// indexRow is one [[index]] row of job_index.toml: the class table of an index underlying (Decision 9 of
+// docs/design/option-capture-need.md). SpotDivisor divides the stored close that stands in for a missing spot.
+type indexRow struct {
+	Symbol         string `toml:"symbol"`
+	TradingClass   string `toml:"trading_class"`
+	StrikeMultiple int    `toml:"strike_multiple"`
+	MaxContracts   int    `toml:"max_contracts"`
+	ExpiryKind     string `toml:"expiry_kind"`
+	SigmaIndex     string `toml:"sigma_index"`
+	SpotIndex      string `toml:"spot_index"`
+	SpotDivisor    int    `toml:"spot_divisor"`
+}
+
+const (
+	expiryListed      = "listed"
+	expiryThirdFriday = "third_friday"
+)
+
 type manifest struct {
 	Version              int           `toml:"version"`
 	ID                   string        `toml:"id"`
@@ -84,9 +102,14 @@ type manifest struct {
 	// a BuyPrice (decimal text, low below high). Without them such an entry keeps the band only.
 	BuyLow  string `toml:"buy_low"`
 	BuyHigh string `toml:"buy_high"`
+	// SigmaDays, SigmaFallback and BandK are the index band keys (all trial); they apply to the [[index]] rows.
+	SigmaDays     int     `toml:"sigma_days"`
+	SigmaFallback float64 `toml:"sigma_fallback"`
+	BandK         float64 `toml:"band_k"`
 	// LedgerDataset is the dataset id of the plan keys; default obs.option_eod.
 	LedgerDataset string       `toml:"ledger_dataset"`
 	Underlying    []underlying `toml:"underlying"`
+	Index         []indexRow   `toml:"index"`
 	// Stock is the [stock] table; it applies to the stock underlyings a watch constructor adds (see isStock).
 	Stock stockTable `toml:"stock"`
 
@@ -113,7 +136,10 @@ func parseManifest(data []byte) (manifest, error) {
 		return manifest{}, err
 	}
 	m.sched = sched
-	sort.Slice(m.Underlying, func(i, j int) bool { return m.Underlying[i].Symbol < m.Underlying[j].Symbol })
+	// An index manifest keeps the order of its file: the last key is the one a spent budget cuts.
+	if len(m.Index) == 0 {
+		sort.Slice(m.Underlying, func(i, j int) bool { return m.Underlying[i].Symbol < m.Underlying[j].Symbol })
+	}
 	return m, nil
 }
 
@@ -175,7 +201,56 @@ func (m manifest) validate() error {
 			return err
 		}
 	}
+	return m.validateIndex()
+}
+
+// validateIndex checks the [[index]] rows and the band keys they use; a manifest without a row has nothing to check.
+func (m manifest) validateIndex() error {
+	if len(m.Index) == 0 {
+		return nil
+	}
+	if !(m.BandK > 0) {
+		return fmt.Errorf("optioneod: manifest: band_k must be above 0")
+	}
+	if !(m.SigmaFallback > 0) {
+		return fmt.Errorf("optioneod: manifest: sigma_fallback must be above 0")
+	}
+	if m.SigmaDays < 2 {
+		return fmt.Errorf("optioneod: manifest: sigma_days must be at least 2")
+	}
+	for _, r := range m.Index {
+		has := false
+		for _, u := range m.Underlying {
+			has = has || u.Symbol == r.Symbol
+		}
+		switch {
+		case !has:
+			return fmt.Errorf("optioneod: manifest: [[index]] %q has no matching [[underlying]]", r.Symbol)
+		case r.StrikeMultiple < 1:
+			return fmt.Errorf("optioneod: manifest: [[index]] %s: strike_multiple must be at least 1", r.Symbol)
+		case r.MaxContracts < 1:
+			return fmt.Errorf("optioneod: manifest: [[index]] %s: max_contracts must be at least 1", r.Symbol)
+		case r.SpotDivisor < 1:
+			return fmt.Errorf("optioneod: manifest: [[index]] %s: spot_divisor must be at least 1", r.Symbol)
+		case r.ExpiryKind != expiryListed && r.ExpiryKind != expiryThirdFriday:
+			return fmt.Errorf("optioneod: manifest: [[index]] %s: expiry_kind must be listed or third_friday", r.Symbol)
+		case r.SigmaIndex == "":
+			return fmt.Errorf("optioneod: manifest: [[index]] %s: sigma_index must not be empty", r.Symbol)
+		case r.SpotIndex == "":
+			return fmt.Errorf("optioneod: manifest: [[index]] %s: spot_index must not be empty", r.Symbol)
+		}
+	}
 	return nil
+}
+
+// indexOf is the [[index]] row of symbol.
+func (m manifest) indexOf(symbol string) (indexRow, bool) {
+	for _, r := range m.Index {
+		if r.Symbol == symbol {
+			return r, true
+		}
+	}
+	return indexRow{}, false
 }
 
 // validateBuyKeys wants buy_low and buy_high both or neither, each a positive decimal, low below high.
@@ -271,6 +346,12 @@ func (m manifest) canonical() string {
 	}
 	if m.BuyLow != "" {
 		fmt.Fprintf(&b, "|buyband%s-%s", m.BuyLow, m.BuyHigh)
+	}
+	if len(m.Index) > 0 {
+		fmt.Fprintf(&b, "|index%d-%g-%g", m.SigmaDays, m.SigmaFallback, m.BandK)
+		for _, r := range m.Index {
+			fmt.Fprintf(&b, "\n%+v", r)
+		}
 	}
 	hasStock := false
 	for _, u := range m.Underlying {
