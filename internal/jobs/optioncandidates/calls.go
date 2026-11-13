@@ -68,8 +68,9 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 	}
 	rc := runCtx{day: day, days: days, rate: rate, rateDay: rateDay, now: j.clk.Now().UTC()}
 	var puts, calls, guards []store.Candidate
+	shadow := newShadow(j.st)
 	for _, ul := range ulist {
-		rows, failed := j.underlying(ctx, rc, entryOf(us, ul.issuer), ul)
+		rows, failed := j.underlying(ctx, rc, entryOf(us, ul.issuer), ul, shadow)
 		if failed != nil {
 			return *failed
 		}
@@ -96,6 +97,7 @@ func (j *callsJob) Run(ctx context.Context, day contracts.Day, _ []contracts.Exp
 	if _, err := j.st.Candidates.InsertCandidates(ctx, rows); err != nil {
 		return fail("write_candidates_failed", err)
 	}
+	shadow.write(ctx, rows)
 	res := contracts.JobResult{Returned: len(rows)}
 	for _, r := range rows {
 		if r.Status == "ok" {
@@ -116,7 +118,9 @@ type runCtx struct {
 
 // underlying reads the stores of one underlying, evaluates the three kinds and maps the rows; a failure is the
 // result the run returns.
-func (j *callsJob) underlying(ctx context.Context, rc runCtx, entry jobs.WatchEntry, ul underlyingRef) ([]store.Candidate, *contracts.JobResult) {
+func (j *callsJob) underlying(
+	ctx context.Context, rc runCtx, entry jobs.WatchEntry, ul underlyingRef, shadow *shadowRun,
+) ([]store.Candidate, *contracts.JobResult) {
 	failWith := func(code string, err error) ([]store.Candidate, *contracts.JobResult) {
 		res := fail(code, err)
 		return nil, &res
@@ -157,6 +161,7 @@ func (j *callsJob) underlying(ctx context.Context, rc runCtx, entry jobs.WatchEn
 		Dividend: div, Rate: rc.rate, RateDay: rc.rateDay, Accounts: accts, OpenShortIDs: held,
 		Kinds: []compute.CandidateKind{compute.KindShortPut, compute.KindCoveredCall, compute.KindHeldCallGuard},
 	}
+	shadow.add(in, ul, ev)
 	var rows []store.Candidate
 	for _, c := range j.rule.Evaluate(in, j.params) {
 		row, err := toStoreRow(c, rc.day, ul, ev, rc.now)
