@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -250,5 +251,38 @@ func TestCandidatesNamesReaderPassed(t *testing.T) {
 	b, err := buildCandidates(t.Context(), a, candidatesClock, "2026-11-05", siteReaders{cands: demoCandidates{}, names: names})
 	if err != nil || !strings.Contains(string(b), "ZZZ") {
 		t.Fatalf("%v: ticker missing: %s", err, b)
+	}
+}
+
+// rateSeries records the series ids it is asked for.
+type rateSeries struct {
+	mu  sync.Mutex
+	ids []string
+}
+
+func (r *rateSeries) SeriesPoints(_ context.Context, id string, _, _ contracts.Day) ([]contracts.SeriesPoint, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ids = append(r.ids, id)
+	return nil, nil
+}
+
+func TestBuildCandidatesReadsRateSeries(t *testing.T) {
+	t.Parallel()
+	a, _ := testApp(t, "")
+	a.deps.optionCandidatesPage = newOptionCandidatesPage
+	rs := &rateSeries{}
+	if _, err := buildCandidates(t.Context(), a, candidatesClock, "2026-11-05", siteReaders{cands: demoCandidates{}, series: rs}); err != nil {
+		t.Fatal(err)
+	}
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+	if len(rs.ids) == 0 {
+		t.Fatal("series reader never asked")
+	}
+	for _, id := range rs.ids {
+		if id != "DGS3MO" {
+			t.Fatalf("series asked for %v, want only DGS3MO", rs.ids)
+		}
 	}
 }
