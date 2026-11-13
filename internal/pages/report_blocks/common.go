@@ -1,4 +1,4 @@
-// Package report_blocks writes the actions, account_moves and market_watch blocks of the report page v2
+// Package report_blocks writes the actions, account_moves, market_watch and global_assets blocks of the report page v2
 // as block JSON. It copies the decimal text of the figures of blockapi.PageFigures and computes
 // nothing, sorts no figure, reads no clock and sends no notification: the meters are on the web
 // page only.
@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const (
@@ -43,6 +44,12 @@ type Config struct {
 	Series   store.SeriesReader
 	Sessions store.SessionDayReader
 	Figures  blockapi.NewPageFiguresFunc
+
+	// The global assets block: the stored bars, the names of the stock instruments, the listed assets and the figures.
+	Bars     bar.PriceBarReader
+	StockIDs StockIDReader
+	Assets   []Asset
+	Global   blockapi.NewGlobalFiguresFunc
 }
 
 type gapJSON struct {

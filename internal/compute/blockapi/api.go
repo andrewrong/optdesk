@@ -166,10 +166,43 @@ type RiskResult struct {
 	DeltaTotal, VegaTotal compute.FigureValue
 }
 
+// MoverIn is one contract held on both days, all numbers decimal text. Quantity is q_prev, signed; Multiplier is
+// 1 for a stock and empty only when the store has none; a price is empty when that day has no mark; BasisPrev and
+// BasisLast are the mark bases of D0 and D1. Right is "put", "call" or "" (a stock).
+type MoverIn struct {
+	Name, SecType, Right, Strike, Expiry, Currency, Quantity, Multiplier string
+	PricePrev, PriceLast, BasisPrev, BasisLast                           string
+}
+
+// MoversIn is the input of household.movers. Prev and Last are D0 and D1. NetPrev and NetLast are the
+// NetLiquidation of each day, in their own Currency; a Value of "" is missing. UsdJpy is the D1 rate, empty
+// without one.
+type MoversIn struct {
+	Prev, Last       contracts.Day
+	UsdJpy           string
+	NetPrev, NetLast ValueIn
+	Rows             []MoverIn
+}
+
+// MoverLine is one line. Amount is USD, 2 places, signed, or a gap; PricePrev and PriceLast are 4 places in
+// Currency, or the gap missing_quote. Note is the position in words.
+type MoverLine struct {
+	Name, SecType, Currency, Note string
+	PricePrev, PriceLast, Amount  compute.FigureValue
+}
+
+// MoversResult holds the two tables, each by absolute amount (a line without an amount last), at most 60 lines
+// each, and the total and Other of Decisions 8 and 15, both in USD.
+type MoversResult struct {
+	Stocks, Options []MoverLine
+	Total, Other    compute.FigureValue
+}
+
 // HoldingFigures evaluates the figures of held positions, no I/O, no clock.
 type HoldingFigures interface {
 	Holdings(HoldingsIn) HoldingsResult
 	Risk(RiskIn) RiskResult
+	Movers(MoversIn) MoversResult
 }
 
 // NewHoldingFiguresFunc constructs the implementation (internal/compute/pagefig.NewHoldings).

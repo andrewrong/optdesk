@@ -387,3 +387,46 @@ func TestRisksBlockUnchanged(t *testing.T) {
 		}
 	}
 }
+
+func globalFunc(calls *int) BlockFunc {
+	return func(context.Context, contracts.Day, time.Time) ([]byte, error) {
+		*calls++
+		return []byte(`{"key":"global_assets","marker":"g"}`), nil
+	}
+}
+
+func TestGlobalAssetsFuncReplacesBlockForUSClose(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	c := cfg("US", "close", riskFile(t, "gap"))
+	c.GlobalAssets = globalFunc(&calls)
+	bl := blocksOf(build(t, c))
+	want := map[string]any{"key": "global_assets", "marker": "g"}
+	if !reflect.DeepEqual(bl["global_assets"], want) || calls != 1 {
+		t.Errorf("global_assets = %v after %d calls, want %v after 1", bl["global_assets"], calls, want)
+	}
+	c.GlobalAssets = func(context.Context, contracts.Day, time.Time) ([]byte, error) { return nil, errors.New("boom") }
+	if _, err := Build(context.Background(), c, day, at); err == nil {
+		t.Error("an error of the global assets function must be an error of Build")
+	}
+}
+
+func TestGlobalAssetsNotCalledForJPOrOpen(t *testing.T) {
+	t.Parallel()
+	for _, mk := range [][2]string{{"JP", "close"}, {"US", "open"}, {"JP", "open"}} {
+		calls := 0
+		c := cfg(mk[0], mk[1], riskFile(t, "gap"))
+		c.GlobalAssets = globalFunc(&calls)
+		got := build(t, c)
+		want := build(t, cfg(mk[0], mk[1], riskFile(t, "gap")))
+		if calls != 0 {
+			t.Errorf("%v: function called %d times", mk, calls)
+		}
+		if !reflect.DeepEqual(blocksOf(got)["global_assets"], blocksOf(want)["global_assets"]) {
+			t.Errorf("%v: block differs from the not_built block", mk)
+		}
+		if g := blocksOf(got)["global_assets"].(map[string]any)["gaps"].([]any)[0].(map[string]any)["reason"]; g != "not_built" {
+			t.Errorf("%v: reason = %v", mk, g)
+		}
+	}
+}

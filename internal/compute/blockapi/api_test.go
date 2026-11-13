@@ -185,6 +185,27 @@ func (fakeHoldings) Risk(in blockapi.RiskIn) blockapi.RiskResult {
 	return out
 }
 
+// Movers echoes every input field into the output: the first row becomes a stock line, the second an option line.
+func (fakeHoldings) Movers(in blockapi.MoversIn) blockapi.MoversResult {
+	out := blockapi.MoversResult{
+		Total: fv(string(in.Prev) + string(in.Last) + in.UsdJpy),
+		Other: fv(in.NetPrev.Tag + in.NetPrev.Value + in.NetPrev.Currency + in.NetLast.Tag + in.NetLast.Value + in.NetLast.Currency),
+	}
+	for i, r := range in.Rows {
+		l := blockapi.MoverLine{
+			Name: r.Name, SecType: r.SecType, Currency: r.Currency,
+			Note:      r.Right + r.Strike + r.Expiry + r.Quantity + r.Multiplier + r.BasisPrev + r.BasisLast,
+			PricePrev: fv(r.PricePrev), PriceLast: fv(r.PriceLast), Amount: fv(r.Quantity),
+		}
+		if i == 0 {
+			out.Stocks = append(out.Stocks, l)
+		} else {
+			out.Options = append(out.Options, l)
+		}
+	}
+	return out
+}
+
 var newHoldings blockapi.NewHoldingFiguresFunc = func() blockapi.HoldingFigures { return fakeHoldings{} }
 
 func TestHoldingsContract(t *testing.T) {
@@ -309,5 +330,40 @@ func TestGlobalContract(t *testing.T) {
 	rot := r.Rotation
 	if rot == nil || rot.Leaders5[0] != "Energy" || rot.Laggard != "XLE" || rot.LaggardD5 != "9" || rot.Leader20 != "SPY" {
 		t.Fatalf("rotation %+v", rot)
+	}
+}
+
+func TestMoversInOutRoundTrip(t *testing.T) {
+	t.Parallel()
+	got := newHoldings().Movers(blockapi.MoversIn{
+		Prev: "2026-11-11", Last: "2026-11-12", UsdJpy: "150",
+		NetPrev: blockapi.ValueIn{Tag: "NetLiquidation", Value: "100", Currency: "USD"},
+		NetLast: blockapi.ValueIn{Tag: "NetLiquidation", Value: "101", Currency: "JPY"},
+		Rows: []blockapi.MoverIn{
+			{
+				Name: "AAA", SecType: "stock", Currency: "USD", Quantity: "100", Multiplier: "1",
+				PricePrev: "1.5", PriceLast: "1.6", BasisPrev: "last", BasisLast: "close",
+			},
+			{
+				Name: "BBB", SecType: "option", Right: "put", Strike: "240", Expiry: "2026-11-20", Currency: "JPY",
+				Quantity: "-2", Multiplier: "100", PricePrev: "3.1", PriceLast: "2.4", BasisPrev: "mid", BasisLast: "mid",
+			},
+		},
+	})
+	if got.Total != fv("2026-11-112026-11-12150") {
+		t.Fatalf("Total = %+v", got.Total)
+	}
+	if got.Other != fv("NetLiquidation100USDNetLiquidation101JPY") {
+		t.Fatalf("Other = %+v", got.Other)
+	}
+	wantS := blockapi.MoverLine{Name: "AAA", SecType: "stock", Currency: "USD", Note: "1001lastclose",
+		PricePrev: fv("1.5"), PriceLast: fv("1.6"), Amount: fv("100")}
+	if len(got.Stocks) != 1 || got.Stocks[0] != wantS {
+		t.Fatalf("Stocks = %+v", got.Stocks)
+	}
+	wantO := blockapi.MoverLine{Name: "BBB", SecType: "option", Currency: "JPY", Note: "put2402026-11-20-2100midmid",
+		PricePrev: fv("3.1"), PriceLast: fv("2.4"), Amount: fv("-2")}
+	if len(got.Options) != 1 || got.Options[0] != wantO {
+		t.Fatalf("Options = %+v", got.Options)
 	}
 }

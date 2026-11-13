@@ -383,3 +383,65 @@ func TestReaddedNameWritesAtOrAbovePairEpoch(t *testing.T) {
 		t.Fatalf("the bar written today is not a winner row: %d rows", len(got))
 	}
 }
+
+func TestStockKeyStoresTradesBarsAsStockInstrument(t *testing.T) {
+	t.Parallel()
+	var specs []store.InstrumentSpec
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "90.0000"))}
+	st := &memBars{}
+	j, err := New(&fakeBroker{listed: true}, h, specRecorder{specs: &specs}, st, st, nil, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.(*job).m.AdjustedCadenceDays = 0
+	res := j.Run(context.Background(), runDay, keysOf("stock:XLE"))
+	if res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].Contract.SecType != "STK" || h.queries[0].Contract.Symbol != "XLE" || h.queries[0].Kind != broker.BarTrades {
+		t.Fatalf("queries %+v", h.queries)
+	}
+	if len(specs) != 1 || specs[0].Type != "stock" || specs[0].Name != "XLE" {
+		t.Fatalf("specs %+v", specs)
+	}
+	if rows := st.epoch(1); len(rows) != 1 || rows[0].Basis != "trades" {
+		t.Fatalf("rows %+v", st.rows)
+	}
+}
+
+// specRecorder is a resolver that keeps the spec of every instrument it creates.
+type specRecorder struct{ specs *[]store.InstrumentSpec }
+
+func (s specRecorder) ResolveInstrument(_ context.Context, k store.Identifier, spec store.InstrumentSpec, _ []store.Identifier) (int64, error) {
+	*s.specs = append(*s.specs, spec)
+	return strconv.ParseInt(k.Value, 10, 64)
+}
+
+// unlistedBroker finds every contract except the symbol it does not list.
+type unlistedBroker struct {
+	broker.Broker
+	unlisted string
+}
+
+func (u unlistedBroker) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
+	c.ConID = 9000 + int64(len(c.Symbol))*10 + int64(c.Symbol[len(c.Symbol)-1]-'A')
+	return broker.Resolved{Listed: c.Symbol != u.unlisted, Contract: c}, nil
+}
+
+func TestUnresolvedStockFailsOnlyItsOwnKey(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{answer: fixed(mkbar("2026-11-09", "90.0000"))}
+	st := &memBars{}
+	j, err := New(unlistedBroker{unlisted: "XLK"}, h, fakeResolver{}, st, st, nil, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.(*job).m.AdjustedCadenceDays = 0
+	res := j.Run(context.Background(), runDay, keysOf("stock:XLE", "stock:XLK", "stock:XLU"))
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent {
+		t.Fatalf("err %v", res.Err)
+	}
+	if len(st.rows) != 2 || res.Usable != 2 || len(h.queries) != 2 {
+		t.Fatalf("rows %+v result %+v queries %d", st.rows, res, len(h.queries))
+	}
+}

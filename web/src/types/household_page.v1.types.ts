@@ -200,7 +200,6 @@ data_times: DataTimes
 gaps: Gaps
 generated_at: GeneratedAt
 income: MoneyBlock
-long_term: MoneyBlock
 month_change: WaterfallBlock
 movers: MoversBlock
 notes: Notes
