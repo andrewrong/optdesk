@@ -2,9 +2,12 @@ package option_data_page
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 func TestNewPage(t *testing.T) {
@@ -55,5 +58,44 @@ func TestNewPageCopiesNotes(t *testing.T) {
 	}
 	if !bytes.Contains(got, []byte(`"notes":["kept"]`)) {
 		t.Fatalf("notes changed: %s", got)
+	}
+}
+
+// panicReader fails the test if the page reads it: nothing reads Config.Reasons yet.
+type panicReader struct {
+	runview.Reader
+	t *testing.T
+}
+
+func (r panicReader) RunsOn(context.Context, contracts.Day) ([]runview.Row, error) {
+	r.t.Error("RunsOn called")
+	return nil, nil
+}
+
+func (r panicReader) ReasonsOn(context.Context, contracts.Day) ([]runview.Reason, error) {
+	r.t.Error("ReasonsOn called")
+	return nil, nil
+}
+
+func (r panicReader) NotWired(context.Context) ([]runview.Reason, error) {
+	r.t.Error("NotWired called")
+	return nil, nil
+}
+
+func TestConfigReasonsIsOptional(t *testing.T) {
+	t.Parallel()
+	with := cfg(&fakeEod{}, &fakeQuotes{})
+	with.Reasons = panicReader{t: t}
+	without := cfg(&fakeEod{}, &fakeQuotes{})
+	a, err := Build(t.Context(), with, "2026-11-06", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Build(t.Context(), without, "2026-11-06", fixedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a, b) {
+		t.Fatalf("reader changed the page:\n%s\n%s", a, b)
 	}
 }
