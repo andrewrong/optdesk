@@ -246,6 +246,9 @@ func (c Config) assemble(alias, label string, snap capture, ledgerAt time.Time, 
 	if skipped > 0 {
 		p.Notes = append(p.Notes, textSkippedStart+strconv.Itoa(skipped)+textSkippedEnd)
 	}
+	if slices.Contains(c.Statement, alias) {
+		p.Notes = append(p.Notes, textStatementFrom+snap.day+textStatementNote)
+	}
 	captured := at
 	if len(snap.positions) > 0 && !snap.positions[0].CapturedAt.IsZero() {
 		captured = snap.positions[0].CapturedAt.In(c.Zone)

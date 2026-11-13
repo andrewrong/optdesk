@@ -32,11 +32,13 @@ const (
 	textSkippedStart = "Skipped: "
 	textSkippedEnd   = " rows whose quantity cannot be shown are not listed"
 
-	sentenceStocks  = "Stocks "
-	sentenceRows    = " rows, options "
-	sentenceLegs    = " legs."
-	sentenceNothing = "No positions."
-	textNoHeld      = "No positions"
+	sentenceStocks    = "Stocks "
+	sentenceRows      = " rows, options "
+	sentenceLegs      = " legs."
+	sentenceNothing   = "No positions."
+	textStatementNote = "; this account has no live gateway."
+	textStatementFrom = "From the broker statement of "
+	textNoHeld        = "No positions"
 
 	actionSellOpen  = "Sell to open"
 	actionBuyOpen   = "Buy to open"

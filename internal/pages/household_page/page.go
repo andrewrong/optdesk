@@ -36,6 +36,10 @@ type Config struct {
 	// Fx reads the stored USDJPY rate of the capture day, only when the capture holds JPY; nil, not
 	// found and an error all leave the JPY rows in yen with a gap.
 	Fx bar.FxRateReader
+	// Statement lists the aliases whose capture comes from the broker statement; Build adds the note
+	// "From the broker statement of <data day>" to the page of such an alias when a capture was found.
+	// Read only by Build.
+	Statement []string
 }
 
 // NewPage is the household_page page of one account; alias "" means the main account.

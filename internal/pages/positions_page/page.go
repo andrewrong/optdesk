@@ -31,6 +31,9 @@ type Config struct {
 	Ledgers        compute.NewOptionLedgerFunc
 	Figures        blockapi.NewPageFiguresFunc
 	Holdings       blockapi.NewHoldingFiguresFunc
+	// Statement lists the aliases whose capture comes from the broker statement; Build adds the note
+	// textStatementNote to the page of such an alias when a capture was found. Read only by Build.
+	Statement []string
 }
 
 // NewPage is the positions_page page of one account; alias "" means the main account.
