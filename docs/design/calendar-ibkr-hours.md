@@ -44,7 +44,7 @@ Order: 1 and 3 first; 2, 4, 5 after 1; 6 after 2, 3, 5; 7 after 5; 8 after 6 and
 
 ### 1 resolve-hours-fields (interface)
 
-Module: contracts. Order: first.
+Module: contracts. Order: first. Owner-only: `contracts/proto/**` is an owner-only path, so the gate needs the owner's word and the owner merges this pull request.
 Files: `contracts/proto/ibkr/v1/resolve.proto`, `internal/contracts/genpb/resolve.pb.go`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2.py`, `pyside/src/optdesk/contracts/genpb/ibkr/v1/resolve_pb2.pyi`, `internal/contracts/genpb/resolve_proto_test.go`, `pyside/tests/contracts/test_contracts_api.py`
 Design: docs/design/calendar-ibkr-hours.md#decisions (Decision 1)
 Acceptance:
@@ -74,12 +74,12 @@ Acceptance:
 ### 4 pyside-fill-hours
 
 Module: pyside. Order: after 1. Owner-only: `transport.py` is an owner-only path, so the gate needs the owner's word and the owner merges this pull request.
-Files: `pyside/src/optdesk/ibkr/model.py`, `pyside/src/optdesk/ibkr/spec.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_ibgateway.py`, `pyside/tests/ibkr/test_transport.py`
+Files: `pyside/src/optdesk/ibkr/model.py`, `pyside/src/optdesk/ibkr/spec.py`, `pyside/src/optdesk/ibkr/ibgateway.py`, `pyside/src/optdesk/ibkr/transport.py`, `pyside/tests/ibkr/test_ibgateway_hours.py` (new), `pyside/tests/ibkr/test_transport.py`
 Acceptance:
 1. `ResolveResult` gains `trading_hours`, `liquid_hours`, `time_zone_id` strings with default `""`; `ibgateway.resolve` fills them from `details[0].tradingHours`, `liquidHours`, `timeZoneId` on the found path only.
-2. `transport.py` copies them into `pb.ResolveContractResponse` on found; the not-listed response leaves them empty; one test of each in `test_transport.py`, and `test_ibgateway.py` checks a fake `ContractDetails` carrying the three strings.
+2. `transport.py` copies them into `pb.ResolveContractResponse` on found; the not-listed response leaves them empty; one test of each in `test_transport.py`, and the new `test_ibgateway_hours.py` checks a fake `ContractDetails` carrying the three strings (`test_ibgateway.py`, 793 lines, is not edited).
 3. No call is added: the one `reqContractDetailsAsync` of the resolve is the only broker call (read in `ibgateway.py`).
-4. Size: `ibgateway.py` (799 lines) gains one line, a call of a field helper written in `spec.py` (`model.py` holds declarations only); `transport.py` (789 lines) and `ibgateway.py` each stay at most 800 lines (the ratchet limit is a file over 800), read by `wc -l`; neither is split here.
+4. Size: `ibgateway.py` (785 lines on main at this writing) gains one line, a call of a field helper written in `spec.py` (`model.py` holds declarations only); `transport.py` (791 lines on main at this writing) and `ibgateway.py` each stay at most 800 lines (the ratchet limit is a file over 800), read by `wc -l`; neither is split here.
 
 ### 5 store-hours-notice (interface)
 
@@ -107,17 +107,17 @@ Acceptance:
 Module: pages. Order: after 5.
 Files: `internal/pages/home_page/overview.go`, `internal/pages/home_page/compose.go`, `internal/pages/home_page/overview_test.go`, `internal/pages/home_page/compose_test.go`
 Acceptance:
-1. `Input` gains the rows (`[]hoursnotice.Notice`); `overview.Gaps` holds one `{card: "calendar", text}` per row (the comment at `overview.go:48-50` is updated), and `gapLine` and `gapline_test.go` are unchanged.
+1. `Input` gains the rows (`[]hoursnotice.Notice`); `overview.Gaps` holds one `{card: "calendar", text}` per row (the comment of `overview.go` that says "overview.gaps holds only gaps no card shows" is updated), and `gapLine` and `gapline_test.go` are unchanged.
 2. A test with two rows shows both in `overview.gaps`, and the page validates against its schema with no schema or web file changed; with no rows the list is empty as today.
 
 ### 8 ot-wire-calendar-hours
 
 Module: ot. Order: after 6 and 7.
-Files: `cmd/ot/wire_calendar.go`, `cmd/ot/runonce.go`, `cmd/ot/jobconsole_jobs.go`, `cmd/ot/jobconsole_jobs_test.go`, `cmd/ot/jobreg_test.go`, `cmd/ot/home_site.go` (the caller of `home_page.Compose`), `cmd/ot/site.go` (declares `siteReaders` and `openSiteReaders`), `cmd/ot/site_test.go`, `cmd/ot/wire_test.go`, `docs/contracts/ot/jobs/calendar_hours_us.md` (new), `docs/contracts/ot/jobs/calendar_hours_jp.md` (new), `docs/contracts/ot.md`
+Files: `cmd/ot/wire_calendar.go`, `cmd/ot/runonce.go`, `cmd/ot/jobconsole_jobs.go`, `cmd/ot/jobconsole_jobs_test.go`, `cmd/ot/jobreg_test.go`, `cmd/ot/home_site.go` (the caller of `home_page.Compose`), `cmd/ot/site.go` (declares `siteReaders` and `openSiteReaders`), `cmd/ot/site_hours_test.go` (new), `cmd/ot/wire_test.go`, `docs/contracts/ot/jobs/calendar_hours_us.md` (new), `docs/contracts/ot/jobs/calendar_hours_jp.md` (new), `docs/contracts/ot.md`
 Acceptance:
 1. `calendar_hours_us` and `calendar_hours_jp` are registered with the broker, the loader session reader, `ibkrhours` and the `hoursnotice` store of the master line, the broker being the default socket as `earnings_refresh` reads it (`runonce.go:113`), never the account resolver, so the jobs stay on gateway 4001; each with its own unique `order` number; neither is `Force` in the job console, so `TestForceYesIsExactlyCalendarRefresh` stays as it is, and `jobconsole_jobs_test.go` has its row count, `TestTodayOnlyIsExactlyTheTwelve`, `TestOnlyOptionEodJpIsInTheTokyoZone` and `TestEveryForceNoJobHasReason` (18 force-no jobs become 20, each new row with the reason code `not_proved` and its text) updated. The constructors are called from the new code in `wire_calendar.go`; `wire.go` (793 lines) is not edited, and `runonce.go`, `jobconsole_jobs.go` and `wire_calendar.go` each stay under 800 lines, read by `wc -l`.
 2. `docs/contracts/ot/jobs/calendar_hours_us.md` and `calendar_hours_jp.md` each have the Order line and Version heading that `TestJobDocsExist` reads for its id, and `docs/contracts/ot.md` lists the jobs.
-3. `siteReaders` gains the `hoursnotice.Reader` and `openSiteReaders` opens it with the pages line; the home site fills the `Input` field from it; a nil reader gives an empty list.
+3. `siteReaders` gains the `hoursnotice.Reader` and `openSiteReaders` opens it with the pages line; the home site fills the `Input` field from it; a nil reader gives an empty list. Both are tested in the new `cmd/ot/site_hours_test.go` (`site_test.go`, 796 lines, is not edited).
 
 ## Checked by CI
 
@@ -141,7 +141,7 @@ Acceptance:
 The answer file is `cih-adversarial.md` (the read of revision 1, with a live read-only probe).
 
 1. Horizon of 7 days: adopted. IBKR lists about 4 to 5 days; the goal and Decision 4 say so and a day with no row of ours is "not compared".
-2. Unnamed risk (who keeps XTKS fresh; US holidays blind the Tokyo check): adopted. XTKS rows are loaded by hand and this design says so; one job per market on its own calendar (Decision 8); plan and key of a job with no dataset follow `calendarrefresh` (entry 6).
+2. Unnamed risk (who keeps XTKS fresh; US holidays blind the Tokyo check): adopted. XTKS rows are loaded by hand and this design says so; one job per market on its own calendar (Decision 8); the job has its own key `{master.session_hours_notice, <calendar id>}` (entry 6).
 3. Simpler way (typed `overview.gaps`, no `gapLine` change): adopted (Decision 7, entry 7); the table has no `cleared_at` and is replaced per market (Decision 6).
 4. Lock-in (field numbers, `r1` names, job ids, order numbers): accepted as low; the order numbers are unique (entry 8).
 5. False claims: adopted. The role sentence is fixed (master line, not loader), the string uses `;` for days and segments, fixtures use `US/Eastern` and `Japan`, and the migration is one rule: the next free number at merge time, 0039 today.
