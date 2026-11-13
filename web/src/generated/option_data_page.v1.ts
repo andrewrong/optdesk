@@ -99,6 +99,10 @@ export interface Underlying {
   vol_line?: string;
   earnings_text?: Text1;
   earnings_tone?: "in_term" | "outside" | "none";
+  /**
+   * True when the underlying's quotes were taken off session (MarketDataType 2, 3, 4); absent means false.
+   */
+  off_session?: boolean;
 }
 export interface Figure {
   kind: "value";

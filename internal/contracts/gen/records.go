@@ -2082,8 +2082,8 @@ func (j *OptionCandidate) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// obs.option_eod r1: one option contract on one session day, frozen after the
-// close.
+// obs.option_eod r1: in-session daily chain snapshot of one option contract on
+// one session day.
 type OptionEod struct {
 	// Ask price. Null when absent.
 	Ask *float64 `json:"ask" yaml:"ask" mapstructure:"ask"`
@@ -2155,7 +2155,9 @@ type OptionEod struct {
 	// Market-zone session date.
 	SessionDay types.SerializableDate `json:"session_day" yaml:"session_day" mapstructure:"session_day"`
 
-	// Kind of the snapshot, for example eod.
+	// Kind of the in-session daily chain snapshot: session (quote live,
+	// MarketDataType 1), off_session (MarketDataType 2, 3, 4; new) or eod
+	// (legacy, rows written before).
 	SnapshotKind string `json:"snapshot_kind" yaml:"snapshot_kind" mapstructure:"snapshot_kind"`
 
 	// Status of the row: 1 ok, 2 no quote, 3 not listed, 4 stale, 5 error.
