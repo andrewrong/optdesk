@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -33,14 +34,19 @@ func (p *posAccount) Positions(_ context.Context, alias, d string) ([]store.Posi
 	return p.positions, nil
 }
 
+// fakeMarks answers byDay[day] for a day it holds and rows for any other day.
 type fakeMarks struct {
-	rows []mark.PositionMark
-	err  error
-	asks []string
+	rows  []mark.PositionMark
+	byDay map[string][]mark.PositionMark
+	err   error
+	asks  []string
 }
 
 func (f *fakeMarks) Marks(_ context.Context, alias, d string) ([]mark.PositionMark, error) {
 	f.asks = append(f.asks, alias+" "+d)
+	if rows, ok := f.byDay[d]; ok {
+		return rows, f.err
+	}
 	return f.rows, f.err
 }
 
@@ -69,7 +75,10 @@ func twoStocks() []store.Position {
 
 func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 	t.Parallel()
-	marks := &fakeMarks{rows: []mark.PositionMark{markOf(1, "250"), markOf(2, "100")}}
+	marks := &fakeMarks{byDay: map[string][]mark.PositionMark{
+		"2026-11-10": {markOf(1, "250"), markOf(2, "100")},
+		"2026-11-09": {markOf(1, "240"), markOf(2, "105")},
+	}}
 	c, acc := holdingsConfig(twoStocks(), marks)
 	m, b := build(t, c, "main")
 	validate(t, b)
@@ -78,16 +87,15 @@ func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 			t.Fatalf("%s has a gap: %v", blk, m[blk])
 		}
 	}
-	if m["long_term"].(map[string]any)["gap"].(map[string]any)["reason"] != "not_built" ||
-		m["movers"].(map[string]any)["gap"].(map[string]any)["reason"] != "no_data" {
-		t.Fatalf("long_term or movers: %s", b)
+	if m["movers"].(map[string]any)["gap"] != nil || len(m["movers"].(map[string]any)["rows"].([]any)) != 2 {
+		t.Fatalf("movers: %s", b)
 	}
 	if m["run_status"] != "partial" {
 		t.Fatalf("run_status = %v", m["run_status"])
 	}
-	const read = "main 2026-11-10"
-	if len(acc.asked) != 1 || acc.asked[0] != read || len(marks.asks) != 1 || marks.asks[0] != read {
-		t.Fatalf("reads: %v %v", acc.asked, marks.asks)
+	wantReads := []string{"main 2026-11-10", "main 2026-11-10", "main 2026-11-09"}
+	if !slices.Equal(acc.asked, wantReads) || !slices.Equal(marks.asks, wantReads) {
+		t.Fatalf("reads: %v %v, want %v", acc.asked, marks.asks, wantReads)
 	}
 	golden := filepath.Join("testdata", "holdings.golden.json")
 	if os.Getenv("UPDATE_GOLDEN") != "" {
