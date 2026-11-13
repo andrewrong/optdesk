@@ -420,3 +420,12 @@ func TestMoversOptionMultiplierPassedAsStored(t *testing.T) {
 		t.Fatalf("empty multiplier gave an amount: %v", row)
 	}
 }
+
+func TestMoversFxErrorOnCaptureDayIsBuildError(t *testing.T) {
+	t.Parallel()
+	c, _ := moversConfig(jpyDays()) // capture day = D1 = 2026-11-10, JPY rows and NetLiquidation
+	c.Fx = &fakeFx{err: errors.New("boom")}
+	if _, err := household_page.NewPage(c, "main").Build(context.Background(), nil, "2026-11-10", at); err == nil {
+		t.Fatal("an Fx read failure must be an error of Build")
+	}
+}

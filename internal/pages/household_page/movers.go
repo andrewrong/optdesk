@@ -212,15 +212,14 @@ func holdsJPY(in blockapi.MoversIn) bool {
 	return jpy
 }
 
-// moversRate is the USDJPY rate of D1 when a row or a NetLiquidation of either day is in yen. When D1
-// is the capture day and the capture holds yen, the holdings block has read the rate (found or not)
-// and its result is reused; otherwise Fx is read once. Empty without a rate; an Fx read error is an
-// error of Build.
+// moversRate is the USDJPY rate of D1 when a row or a NetLiquidation of either day is in yen. The rate
+// the holdings block already read is reused when D1 is the capture day; otherwise (or when that read
+// found none) Fx is read here. Empty without a rate; every Fx read error is an error of Build.
 func (c Config) moversRate(ctx context.Context, in blockapi.MoversIn, cp capture, h held) (string, error) {
 	if !holdsJPY(in) {
 		return "", nil
 	}
-	if string(in.Last) == cp.day && captureHoldsJPY(cp, h) {
+	if string(in.Last) == cp.day && h.usdJpy != "" {
 		return h.usdJpy, nil
 	}
 	if c.Fx == nil {
@@ -234,21 +233,6 @@ func (c Config) moversRate(ctx context.Context, in blockapi.MoversIn, cp capture
 		return "", nil
 	}
 	return r.Rate, nil
-}
-
-// captureHoldsJPY is the test readHeld uses to read the rate of the capture day.
-func captureHoldsJPY(cp capture, h held) bool {
-	for _, v := range cp.values {
-		if v.Currency == currencyJPY {
-			return true
-		}
-	}
-	for _, p := range h.positions {
-		if p.Currency == currencyJPY {
-			return true
-		}
-	}
-	return false
 }
 
 // moversTotalGap is the block gap when the total and Other have no number, else nil.

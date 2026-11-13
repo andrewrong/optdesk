@@ -79,9 +79,10 @@ func TestHoldingBlocksAreBuiltFromPositionsAndMarks(t *testing.T) {
 		"2026-11-10": {markOf(1, "250"), markOf(2, "100")},
 		"2026-11-09": {markOf(1, "240"), markOf(2, "105")},
 	}}
-	for _, rows := range marks.byDay {
+	for d, rows := range marks.byDay {
+		at, _ := time.Parse("2006-01-02", d)
 		for i := range rows {
-			rows[i].MarkedAt = time.Date(2026, 11, 9, 23, 0, 0, 0, time.UTC)
+			rows[i].MarkedAt = at.Add(23 * time.Hour)
 		}
 	}
 	c, acc := holdingsConfig(twoStocks(), marks)
@@ -241,7 +242,6 @@ func TestJpyStockWithoutRateStaysYenWithGap(t *testing.T) {
 	for name, c := range map[string]household_page.Config{
 		"not found": jpyConfig(&fakeFx{}),
 		"nil fx":    jpyConfig(nil),
-		"error":     jpyConfig(&fakeFx{err: errors.New("down")}),
 	} {
 		m, b := build(t, c, "main")
 		validate(t, b)
