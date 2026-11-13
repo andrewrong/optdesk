@@ -53,3 +53,23 @@ func TestListContractsRoundTrip(t *testing.T) {
 		t.Fatal("ListChains of the embedded Unimplemented server should fail")
 	}
 }
+
+func TestResolveContractResponseHoursFields(t *testing.T) {
+	t.Parallel()
+	set := &ResolveContractResponse{
+		Status:       ResolveStatus_RESOLVE_STATUS_FOUND,
+		TradingHours: "20261116:0930-20261116:1600",
+		LiquidHours:  "20261116:0930-20261116:1600",
+		TimeZoneId:   "US/Eastern",
+	}
+	if set.GetTradingHours() == "" || set.GetLiquidHours() == "" || set.GetTimeZoneId() != "US/Eastern" {
+		t.Fatalf("hours fields not read back: %v", set)
+	}
+	if set.ProtoReflect().Descriptor().Fields().ByName("time_zone_id").Number() != 7 {
+		t.Fatal("time_zone_id is not field 7")
+	}
+	unset := &ResolveContractResponse{Status: ResolveStatus_RESOLVE_STATUS_NOT_LISTED}
+	if unset.GetTradingHours() != "" || unset.GetLiquidHours() != "" || unset.GetTimeZoneId() != "" {
+		t.Fatalf("unset hours fields not empty: %v", unset)
+	}
+}
