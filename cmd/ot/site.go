@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/optionopenpg"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -55,6 +56,7 @@ type sitePageInput struct {
 	Quotes       store.QuoteSnapshotReader
 	Terms        store.OptionTermsReader
 	Choices      []siteChoice
+	Reasons      runview.Reader // the stored reasons of the day (nil: none)
 }
 
 // openOptionOpenStores opens the option open stores with a DSN (a test replaces it).
@@ -572,7 +574,7 @@ func buildSite(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd 
 	}
 	page := a.deps.optionDataPage(a.profile.Zone, buildIDOf(version), sitePageInput{
 		UnderlyingID: id, Label: label, Symbol: symbol, Notes: notes,
-		Eod: rd.eod, Quotes: rd.quotes, Terms: rd.terms, Choices: choices,
+		Eod: rd.eod, Quotes: rd.quotes, Terms: rd.terms, Choices: choices, Reasons: optionReasonReader(rd),
 	})
 	return page.Build(ctx, nil, day, clk.Now().UTC())
 }

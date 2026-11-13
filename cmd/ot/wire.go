@@ -455,6 +455,7 @@ func newOptionDataPage(zone *time.Location, buildID string, in sitePageInput) pa
 		Quotes:       in.Quotes,
 		Terms:        in.Terms,
 		Choices:      choices,
+		Reasons:      in.Reasons,
 	})
 }
 
