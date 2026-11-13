@@ -39,7 +39,7 @@ func jobIDs(js []contracts.Job) []string {
 func TestRunOnceWiresSixJobs(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
@@ -57,7 +57,7 @@ func TestRunOnceNeedsLoaderDSN(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := newRig(t, env)
-			err := runOnce(r.a, nil)
+			err := runWired(r.a, nil)
 			if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || len(r.ev.list()) != 0 {
 				t.Fatalf("err %v events %v", err, r.ev.list())
 			}
@@ -66,7 +66,7 @@ func TestRunOnceNeedsLoaderDSN(t *testing.T) {
 	// The value of the line never reaches the error when its open fails.
 	r := newRig(t, strings.Replace(fullEnv, "loader-dsn", sentinel, 1))
 	r.fail["sd-loader"] = errorString("dial " + sentinel)
-	err := runOnce(r.a, nil)
+	err := runWired(r.a, nil)
 	if err == nil || !strings.Contains(err.Error(), store.DSNEnvLoader) || strings.Contains(err.Error(), sentinel) {
 		t.Fatalf("err %v", err)
 	}
@@ -79,8 +79,8 @@ func (e errorString) Error() string { return string(e) }
 func TestDemoProfileOpensNoStore(t *testing.T) {
 	t.Parallel()
 	for name, run := range map[string]func(*app) error{
-		"run-once": func(a *app) error { return runOnce(a, nil) },
-		"backfill": func(a *app) error { return backfill(a, []string{"--day", "2026-03-04"}) },
+		"run-once": func(a *app) error { return runWired(a, nil) },
+		"backfill": func(a *app) error { return backfillWired(a, []string{"--day", "2026-03-04"}) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			a, _ := testApp(t, fullEnv)
@@ -101,7 +101,7 @@ func TestEarningsRefreshRegistered(t *testing.T) {
 	r := newRig(t, fullEnv)
 	body := "[[underlying]]\nissuer = \"cik:0000320193\"\nmarket = \"US\"\nsymbol = \"AAPL\"\nbuy_price = \"150\"\n"
 	r.list.rows = listRowsFromWatch(t, body)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	got := jobIDs(r.jobs)
@@ -125,7 +125,7 @@ func TestEarningsRefreshRegistered(t *testing.T) {
 	}
 
 	// backfill takes the same six jobs.
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 6 {
+	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 6 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }
@@ -137,7 +137,7 @@ func TestRunOnceRefusesBadWatchList(t *testing.T) {
 	if err := writeFile(r.a.getenv("OT_HOME")+"/watch.toml", body); err != nil {
 		t.Fatal(err)
 	}
-	err := runOnce(r.a, nil)
+	err := runWired(r.a, nil)
 	if err == nil || !strings.Contains(err.Error(), "cik:0000320193") || strings.Contains(err.Error(), r.a.getenv("OT_HOME")) || len(r.ev.list()) != 0 {
 		t.Fatalf("err %v events %v", err, r.ev.list())
 	}

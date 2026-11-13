@@ -47,7 +47,7 @@ func buildS(t *testing.T, logins []FlexRun, sec flexsection.Writer) (*job, *fake
 	logs := &bytes.Buffer{}
 	cfg := OptionLedgerConfig{Logins: logins, Accounts: map[string]string{"ACCT1": "a"}, HistoryFrom: "2025-12-01"}
 	stores := OptionLedgerStores{Ledger: w, Read: &fakeReader{aliases: []string{"a"}}, Sections: sec}
-	j, err := newJob(stores, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(logs, nil)))
+	j, err := newJob(stores, cfg, fixedClock{testNow}, slog.New(slog.NewTextHandler(logs, testLogOpts)))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -306,3 +306,85 @@ func sameRun(a, b store.Run) bool {
 func sameWindow(a, b store.Window) bool {
 	return a.DatasetID == b.DatasetID && a.Day == b.Day && a.OpenAt.Equal(b.OpenAt) && a.CloseAt.Equal(b.CloseAt)
 }
+
+func TestCloseRunningKeepsClosedRowsClosedPG(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	l, _ := openRunner(t)
+	day := contracts.Day("2026-11-05")
+	key := contracts.ExpectedKey{DatasetID: "obs.series_point", SubjectKey: "DGS10"}
+	base := time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC)
+	live := time.Now().UTC().Add(time.Hour).Truncate(time.Microsecond)
+	lapsed := base
+	fin := base.Add(time.Minute)
+	for _, r := range []store.Run{
+		{ID: "live", Day: day, Key: key, Status: store.RunRunning, LeaseUntil: live},
+		{ID: "lapsed", Day: day, Key: key, Status: store.RunRunning, LeaseUntil: lapsed},
+		{ID: "done", Day: day, Key: key, Status: store.RunDone, FinishedAt: fin, ReasonCode: "ok"},
+	} {
+		if err := l.RecordRun(ctx, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lease, err := l.Acquire(ctx, "a", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := base.Add(time.Hour)
+	n, err := l.(store.RunCloser).CloseRunning(ctx, now, "restart")
+	if err != nil || n != 2 {
+		t.Fatalf("closed %d, %v; want 2", n, err)
+	}
+	runs := func() map[string]store.Run {
+		got, err := l.Runs(ctx, day)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := map[string]store.Run{}
+		for _, r := range got {
+			m[r.ID] = r
+		}
+		return m
+	}
+	got := runs()
+	for _, id := range []string{"live", "lapsed"} {
+		r := got[id]
+		if r.Status != store.RunDone || !r.FinishedAt.Equal(now) || r.ReasonCode != "restart" {
+			t.Errorf("%s = %+v, want done at %v for restart", id, r, now)
+		}
+	}
+	if !got["live"].LeaseUntil.Equal(live) || !got["lapsed"].LeaseUntil.Equal(lapsed) {
+		t.Errorf("lease_until changed: %+v %+v", got["live"], got["lapsed"])
+	}
+	if r := got["done"]; r.Status != store.RunDone || !r.FinishedAt.Equal(fin) || r.ReasonCode != "ok" {
+		t.Errorf("done row changed: %+v", r)
+	}
+	if _, err := l.Acquire(ctx, "b", time.Hour); err == nil {
+		t.Error("run lease was released by CloseRunning")
+	}
+	_ = lease
+
+	// the reason of a closed row is rewritten when status and finish are kept
+	r := got["live"]
+	r.ReasonCode = "crashed_repeatedly"
+	if err := l.RecordRun(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+	if g := runs()["live"]; g.ReasonCode != "crashed_repeatedly" || g.Status != store.RunDone || !g.FinishedAt.Equal(now) {
+		t.Errorf("reason rewrite: %+v", g)
+	}
+	// a reopen or a later finish leaves the row as CloseRunning wrote it
+	want := got["lapsed"]
+	reopen := want
+	reopen.Status, reopen.FinishedAt, reopen.LeaseUntil, reopen.ReasonCode = store.RunRunning, time.Time{}, live, "x"
+	later := want
+	later.FinishedAt, later.ReasonCode = now.Add(time.Hour), "y"
+	for _, w := range []store.Run{reopen, later} {
+		if err := l.RecordRun(ctx, w); err != nil {
+			t.Fatal(err)
+		}
+		if g := runs()["lapsed"]; !sameRun(g, want) {
+			t.Errorf("row changed by %+v: %+v, want %+v", w, g, want)
+		}
+	}
+}
