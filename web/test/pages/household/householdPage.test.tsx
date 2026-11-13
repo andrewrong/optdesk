@@ -40,7 +40,6 @@ const BLOCKS = [
   'obligations',
   'concentration',
   'allocation',
-  'long_term',
 ] as const
 beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({ addEventListener: () => {}, removeEventListener: () => {} }))
@@ -388,12 +387,12 @@ it('draws the month change as a transparent base stacked under the visible heigh
   )
 })
 
-// Issue #1444: the page keeps the payload order in a grid; seven blocks are wide, six are half from lg.
-it('puts the blocks in cells in payload order, the seven wide ones spanning two columns from lg', async () => {
+// Issue #1444: the page keeps the payload order in a grid; eight blocks are wide, four are half from lg.
+it('puts the blocks in cells in payload order, the eight wide ones spanning two columns from lg', async () => {
   await show(<HouseholdPage payload={fixture('ok.json')} />)
   const cells = [...host.querySelectorAll('[data-cell]')]
   expect(cells.map((el) => el.getAttribute('data-cell'))).toEqual([...BLOCKS])
-  const wide = ['overview', 'accounts', 'composition', 'movers', 'income', 'obligations', 'concentration']
+  const wide = ['overview', 'accounts', 'composition', 'movers', 'income', 'obligations', 'concentration', 'allocation']
   cells.forEach((el) => {
     const name = el.getAttribute('data-cell')!
     expect(el.classList.contains('lg:col-span-2')).toBe(wide.includes(name))

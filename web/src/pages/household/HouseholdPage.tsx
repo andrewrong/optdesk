@@ -246,11 +246,8 @@ export function HouseholdPage({ payload }: { payload: Payload }) {
       <Cell name="concentration" wide>
         <ConcentrationSection block={payload.concentration} scopes={payload.scopes} />
       </Cell>
-      <Cell name="allocation">
+      <Cell name="allocation" wide>
         <AllocationSection block={payload.allocation} />
-      </Cell>
-      <Cell name="long_term">
-        <MoneySection name="long_term" block={payload.long_term} />
       </Cell>
       </div>
       <CardNotes notes={payload.notes} gaps={payload.gaps} />
