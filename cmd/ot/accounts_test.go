@@ -186,7 +186,10 @@ func TestNoAccountIDLeavesTheWiring(t *testing.T) {
 	t.Run("page wiring", func(t *testing.T) {
 		t.Parallel()
 		a, errb := bookApp(t, "OT_UNUSED=1\n")
-		aliases := siteAliasList(a)
+		aliases, err := siteAliasList(a)
+		if err != nil {
+			t.Fatal(err)
+		}
 		var asked []string
 		rd := householdReaders(&asked)
 		rd.aliases = aliases
@@ -251,5 +254,23 @@ func TestRunOnceRefusedWithoutBookBeforeAnyJobIsWired(t *testing.T) {
 	err := runOnce(r.a, []string{"--day", "2026-11-04"})
 	if !errors.Is(err, errAccountsBook) {
 		t.Fatalf("run-once without accounts.toml gave %v", err)
+	}
+}
+
+func TestServeRefusesWithoutBook(t *testing.T) {
+	t.Parallel()
+	a, _ := bookApp(t, store.DSNEnvPages+"=pages-dsn\n")
+	a.profile.Name = "real"
+	removeBook(t, a)
+	opened := false
+	a.deps.openSeries = func(context.Context, string) (store.SeriesStore, error) {
+		opened = true
+		return nil, errors.New("unused")
+	}
+	if _, err := siteAliasList(a); !errors.Is(err, errAccountsBook) {
+		t.Fatalf("page aliases without accounts.toml gave %v", err)
+	}
+	if _, _, err := openSiteReaders(context.Background(), a); !errors.Is(err, errAccountsBook) || opened {
+		t.Fatalf("serve readers without accounts.toml gave %v (store opened: %v)", err, opened)
 	}
 }

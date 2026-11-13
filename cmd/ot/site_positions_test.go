@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -256,7 +257,7 @@ func TestSiteAliasList(t *testing.T) {
 		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if got := siteAliasList(a); !slices.Equal(got, []string{"acct-a", "zz", "bb"}) {
+		if got, err := siteAliasList(a); err != nil || !slices.Equal(got, []string{"acct-a", "zz", "bb"}) {
 			t.Fatalf("%v", got)
 		}
 	})
@@ -264,19 +265,19 @@ func TestSiteAliasList(t *testing.T) {
 		t.Parallel()
 		a, _ := bookApp(t, "OT_UNUSED=1\n")
 		a.profile.Name = "demo"
-		if got := siteAliasList(a); !slices.Equal(got, []string{"main"}) {
+		if got, err := siteAliasList(a); err != nil || !slices.Equal(got, []string{"main"}) {
 			t.Fatalf("%v", got)
 		}
 	})
-	t.Run("a file that cannot be loaded gives main and one warning", func(t *testing.T) {
+	t.Run("a file that cannot be loaded is refused without the path", func(t *testing.T) {
 		t.Parallel()
-		a, errb := bookApp(t, "OT_UNUSED=1\n")
+		a, _ := bookApp(t, "OT_UNUSED=1\n")
 		if err := os.Remove(filepath.Join(a.getenv("OT_HOME"), accountsFileName)); err != nil {
 			t.Fatal(err)
 		}
-		got := siteAliasList(a)
-		if !slices.Equal(got, []string{"main"}) || strings.Count(errb.String(), "level=WARN") != 1 || strings.Contains(errb.String(), a.getenv("OT_HOME")) {
-			t.Fatalf("%v %q", got, errb)
+		got, err := siteAliasList(a)
+		if got != nil || !errors.Is(err, errAccountsBook) || strings.Contains(err.Error(), a.getenv("OT_HOME")) {
+			t.Fatalf("%v %v", got, err)
 		}
 	})
 }

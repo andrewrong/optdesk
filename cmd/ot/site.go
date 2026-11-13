@@ -200,6 +200,11 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 			noticeAccount: demoNoticeAccount{}, optionLedger: demoTrackingLedger{}}
 		return withPositionsRules(a, rd), func() {}, nil
 	}
+	// no store opens before accounts.toml is known: serve refuses to start without it (Decision 9)
+	aliases, err := siteAliasList(a)
+	if err != nil {
+		return siteReaders{}, nil, err
+	}
 	env, err := a.envFile()
 	if err != nil {
 		return siteReaders{}, nil, err
@@ -278,7 +283,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
-		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
+		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: aliases}
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
 	}
