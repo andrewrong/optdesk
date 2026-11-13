@@ -43,9 +43,6 @@ func TestConfigLoads(t *testing.T) {
 	if f.Logins[1].TradeQueries[1] != "3333333" || f.Logins[0].TokenEnv != "OPTDESK_FLEX_TOKEN_MAIN" {
 		t.Fatalf("logins %+v", f.Logins)
 	}
-	if len(f.Accounts) != 2 || f.Accounts[1].Alias != "b" {
-		t.Fatalf("accounts %+v", f.Accounts)
-	}
 }
 
 func TestConfigRefusesOpenMode(t *testing.T) {
@@ -123,43 +120,35 @@ func TestConfigHoldsNoTokenOrAccountValue(t *testing.T) {
 	}
 	// The loaded value carries the NAMES of the variables, exactly as the file gives them; the
 	// loader has no field for a token or an account number.
-	if f.Logins[0].TokenEnv != "OPTDESK_FLEX_TOKEN_MAIN" || f.Logins[1].TokenEnv != "OPTDESK_FLEX_TOKEN_SECOND" ||
-		f.Accounts[0].AccountEnv != "OPTDESK_FLEX_ACCOUNT_A" || f.Accounts[1].AccountEnv != "OPTDESK_FLEX_ACCOUNT_B" {
+	if f.Logins[0].TokenEnv != "OPTDESK_FLEX_TOKEN_MAIN" || f.Logins[1].TokenEnv != "OPTDESK_FLEX_TOKEN_SECOND" {
 		t.Fatalf("file %+v", f)
 	}
 }
 
-func TestConfigAcceptsThirdAlias(t *testing.T) {
+func TestConfigRefusesAccountTable(t *testing.T) {
 	t.Parallel()
-	p := writeConf(t, t.TempDir(), "flex_alias_c.toml", 0o600)
-	f, err := Load(p)
+	b, err := os.ReadFile(filepath.Join("testdata", "flex_ok.toml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(f.Accounts) != 3 || f.Accounts[2].Alias != "c" {
-		t.Fatalf("accounts = %+v", f.Accounts)
+	src := string(b) + "\n[[account]]\nalias = \"a\"\naccount_env = \"OPTDESK_FLEX_ACCOUNT_A\"\n"
+	_, err = Load(writeBytes(t, t.TempDir(), src, 0o600))
+	if !errors.Is(err, sources.ErrFlexConfig) || !strings.Contains(err.Error(), "unknown table") {
+		t.Fatalf("err = %v", err)
 	}
 }
 
-func TestConfigRefusesBadAlias(t *testing.T) {
+func TestConfigLoadsLoginsOnlyFiles(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct{ file, alias string }{
-		{"flex_alias_upper.toml", "C"},
-		{"flex_alias_empty.toml", ""},
-	} {
-		t.Run(tc.file, func(t *testing.T) {
+	for _, file := range []string{"flex_alias_c.toml", "flex_alias_empty.toml", "flex_alias_upper.toml"} {
+		t.Run(file, func(t *testing.T) {
 			t.Parallel()
-			p := writeConf(t, t.TempDir(), tc.file, 0o600)
-			_, err := Load(p)
-			if !errors.Is(err, sources.ErrFlexConfig) {
-				t.Fatalf("err = %v", err)
+			f, err := Load(writeConf(t, t.TempDir(), file, 0o600))
+			if err != nil {
+				t.Fatal(err)
 			}
-			msg := err.Error()
-			if !strings.Contains(msg, "account[") || !strings.Contains(msg, "alias") {
-				t.Fatalf("error does not name entry and field: %v", msg)
-			}
-			if tc.alias != "" && strings.Contains(msg, tc.alias) {
-				t.Fatalf("error carries the alias value: %v", msg)
+			if len(f.Logins) != 2 {
+				t.Fatalf("logins %+v", f.Logins)
 			}
 		})
 	}
