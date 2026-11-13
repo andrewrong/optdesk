@@ -15,7 +15,10 @@ func (e typedErr) Error() string             { return "unavailable" }
 func (e typedErr) Kind() contracts.ErrorKind { return e.kind }
 
 // fakeBroker answers one Quote per contract, or a Retryable error when down is set.
-type fakeBroker struct{ down, refuseUnknown bool }
+type fakeBroker struct {
+	down, refuseUnknown bool
+	missing             []broker.MissingField
+}
 
 var errUnknownKind = errors.New("unknown kind")
 
@@ -36,7 +39,7 @@ func (f fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.Co
 	}
 	out := make([]broker.Quote, len(cs))
 	for i, c := range cs {
-		out[i] = broker.Quote{Contract: c, Status: broker.StatusOK}
+		out[i] = broker.Quote{Contract: c, Status: broker.StatusOK, Missing: f.missing}
 	}
 	return out, nil
 }
@@ -287,5 +290,18 @@ func TestContractListerFromTheCaller(t *testing.T) {
 	_, err = broker.ContractLister(fakeLister{old: true}).ListContracts(context.Background(), und, "20261120", "", "KO")
 	if !errors.Is(err, broker.ErrNotServed) || retryable(err) {
 		t.Fatalf("an old service must match ErrNotServed and not be Retryable, got %v", err)
+	}
+}
+
+func TestQuoteMissingContract(t *testing.T) {
+	t.Parallel()
+	m := []broker.MissingField{{Field: "bid", Reason: broker.MissingError, ErrorCode: 200}, {Field: "open_interest", Reason: broker.MissingReceivedZero}}
+	qs, err := broker.Broker(fakeBroker{missing: m}).Snapshot(context.Background(), broker.KindOptionEod, []broker.Contract{{Symbol: "A"}})
+	if err != nil || len(qs) != 1 || len(qs[0].Missing) != 2 || qs[0].Missing[0] != m[0] || qs[0].Missing[1] != m[1] {
+		t.Fatalf("got %+v, %v", qs, err)
+	}
+	qs, _ = broker.Broker(fakeBroker{}).Snapshot(context.Background(), broker.KindOptionEod, []broker.Contract{{Symbol: "A"}})
+	if qs[0].Missing != nil {
+		t.Fatalf("no report must stay nil, got %#v", qs[0].Missing)
 	}
 }

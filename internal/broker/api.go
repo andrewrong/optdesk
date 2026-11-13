@@ -81,6 +81,29 @@ type Quote struct {
 	UndPrice       *float64
 	ErrorCode      int
 	ErrorText      string
+	// Missing lists why a nil field is nil, in the order pyside reported; nil when none was reported.
+	Missing []MissingField
+}
+
+// MissingReason is why a quote field is nil, as pyside reports it.
+type MissingReason int
+
+// The reasons of a missing field; the zero value is not a reason.
+const (
+	MissingNotReceivedRelease MissingReason = iota + 1
+	MissingNotReceivedGrace
+	MissingInvalid
+	MissingError
+	MissingReceivedZero
+	MissingMarketDataType
+)
+
+// MissingField names one nil field of a Quote (the Quote field name, as `implied_vol`), its reason and,
+// for MissingError, the IBKR error code (0 otherwise).
+type MissingField struct {
+	Field     string
+	Reason    MissingReason
+	ErrorCode int
 }
 
 // Resolved is the answer of ResolveContract; Listed false is the proto's NOT_LISTED.
