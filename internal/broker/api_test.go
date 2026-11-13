@@ -27,7 +27,7 @@ func (f fakeBroker) ListChains(context.Context, broker.Contract) ([]broker.Chain
 }
 
 func (f fakeBroker) ResolveContract(_ context.Context, c broker.Contract) (broker.Resolved, error) {
-	return broker.Resolved{Listed: true, Contract: c}, nil
+	return broker.Resolved{Listed: true, Contract: c, TradingHours: "th", LiquidHours: "lh", TimeZoneID: "tz"}, nil
 }
 
 func (f fakeBroker) Snapshot(_ context.Context, kind broker.Kind, cs []broker.Contract) ([]broker.Quote, error) {
@@ -303,5 +303,14 @@ func TestQuoteMissingContract(t *testing.T) {
 	qs, _ = broker.Broker(fakeBroker{}).Snapshot(context.Background(), broker.KindOptionEod, []broker.Contract{{Symbol: "A"}})
 	if qs[0].Missing != nil {
 		t.Fatalf("no report must stay nil, got %#v", qs[0].Missing)
+	}
+}
+
+func TestResolvedCarriesHoursThroughThePort(t *testing.T) {
+	t.Parallel()
+	var b broker.Broker = fakeBroker{}
+	r, err := b.ResolveContract(context.Background(), broker.Contract{Symbol: "SPY"})
+	if err != nil || !r.Listed || r.TradingHours != "th" || r.LiquidHours != "lh" || r.TimeZoneID != "tz" {
+		t.Fatalf("got %+v, %v", r, err)
 	}
 }

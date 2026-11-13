@@ -120,7 +120,8 @@ func (c *client) ResolveContract(ctx context.Context, k broker.Contract) (broker
 	}
 	switch resp.GetStatus() {
 	case pb.ResolveStatus_RESOLVE_STATUS_FOUND:
-		return broker.Resolved{Listed: true, Contract: fromSpec(resp.GetContract()), ErrorCode: int(resp.GetErrorCode()), ErrorText: resp.GetErrorText()}, nil
+		return broker.Resolved{Listed: true, Contract: fromSpec(resp.GetContract()), ErrorCode: int(resp.GetErrorCode()), ErrorText: resp.GetErrorText(),
+			TradingHours: resp.GetTradingHours(), LiquidHours: resp.GetLiquidHours(), TimeZoneID: resp.GetTimeZoneId()}, nil
 	case pb.ResolveStatus_RESOLVE_STATUS_NOT_LISTED:
 		return broker.Resolved{Listed: false, Contract: k, ErrorCode: int(resp.GetErrorCode()), ErrorText: resp.GetErrorText()}, nil
 	case pb.ResolveStatus_RESOLVE_STATUS_UNSPECIFIED:

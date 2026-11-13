@@ -108,11 +108,16 @@ type MissingField struct {
 
 // Resolved is the answer of ResolveContract; Listed false is the proto's NOT_LISTED.
 // ErrorCode and ErrorText are the error_code and error_text of the response (0 and "" when none).
+// TradingHours, LiquidHours and TimeZoneID are the IBKR strings passed through unchanged; they are
+// empty unless Listed.
 type Resolved struct {
-	Listed    bool
-	Contract  Contract
-	ErrorCode int
-	ErrorText string
+	Listed       bool
+	Contract     Contract
+	ErrorCode    int
+	ErrorText    string
+	TradingHours string
+	LiquidHours  string
+	TimeZoneID   string
 }
 
 // Broker is the client of the IBKR service. Every error is a contracts.TypedError:
