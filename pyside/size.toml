@@ -1,0 +1,8 @@
+# Size guard for pyside/src/optdesk (tests/guards/test_size.py).
+# A file stays at or under `limit` lines. A file already over it is listed
+# below with a ceiling. A ceiling is never raised: the file is split instead.
+limit = 600
+
+[ceilings]
+"src/optdesk/ibkr/transport.py" = 800
+"src/optdesk/ibkr/ibgateway.py" = 800
