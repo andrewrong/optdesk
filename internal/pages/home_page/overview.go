@@ -42,7 +42,9 @@ type cardView struct {
 
 // buildOverview copies one line per card (macro, market, household, companies,
 // options) from the members and counts the gaps of the five cards, each of which
-// shows its own; overview.gaps holds only gaps no card shows, so it stays empty.
+// shows its own; overview.gaps holds only gaps no card shows: one gap with card
+// "calendar" per row of in.HoursNotices, in the order of the rows (empty with no
+// rows).
 // The text of a line is card.say, else card.subtitle; a card with neither is an
 // error naming its slot, and nothing is invented.
 func buildOverview(in Input) (overview, int, error) {
@@ -58,6 +60,12 @@ func buildOverview(in Input) (overview, int, error) {
 	}
 	ov := overview{Items: []overviewLine{}, Gaps: []gapItem{}}
 	gaps := 0
+	for _, n := range in.HoursNotices {
+		ov.Gaps = append(ov.Gaps, gapItem{
+			Card: "calendar",
+			Text: fmt.Sprintf("%s %s ours %s, IBKR %s", n.Market, n.Day, n.Ours, n.IBKR),
+		})
+	}
 	for _, p := range parts {
 		if !strings.HasPrefix(p.href, "/") {
 			return overview{}, 0, fmt.Errorf("home_page: %s: card link %q does not start with /", p.name, p.href)

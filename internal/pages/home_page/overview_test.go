@@ -9,6 +9,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/andrewrong/optdesk/internal/pages/home_page"
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 )
 
 type overviewOut struct {
@@ -244,5 +245,51 @@ func TestStaleAfterFallbackValidates(t *testing.T) {
 	validateV3(t, b)
 	if m["stale_after"] == "" {
 		t.Error("stale_after empty")
+	}
+}
+
+func TestOverviewHoursNoticeGaps(t *testing.T) {
+	t.Parallel()
+	in := inputFrom(t, "overview_ok")
+	in.HoursNotices = []hoursnotice.Notice{
+		{Market: "XNYS", Day: "2026-11-27", Ours: "0930-1300", IBKR: "closed"},
+		{Market: "XTKS", Day: "2026-12-30", Ours: "0900-1500", IBKR: "0900-1130"},
+	}
+	o, b := composeOverview(t, in)
+	validateV3(t, b)
+	want := []string{
+		"XNYS 2026-11-27 ours 0930-1300, IBKR closed",
+		"XTKS 2026-12-30 ours 0900-1500, IBKR 0900-1130",
+	}
+	if len(o.Overview.Gaps) != 2 {
+		t.Fatalf("gaps = %v, want 2", o.Overview.Gaps)
+	}
+	for i, w := range want {
+		if g := o.Overview.Gaps[i]; g.Card != "calendar" || g.Text != w {
+			t.Errorf("gap %d = %+v, want calendar %q", i, g, w)
+		}
+	}
+	if o.GapLine != "No gaps today" {
+		t.Errorf("gap_line = %q, want unchanged count of the cards", o.GapLine)
+	}
+}
+
+func TestOverviewEmptyHoursNoticesKeepEmptyList(t *testing.T) {
+	t.Parallel()
+	for name, rows := range map[string][]hoursnotice.Notice{"nil": nil, "empty": {}} {
+		in := inputFrom(t, "overview_ok")
+		in.HoursNotices = rows
+		_, b := composeOverview(t, in)
+		var raw struct {
+			Overview struct {
+				Gaps json.RawMessage `json:"gaps"`
+			} `json:"overview"`
+		}
+		if err := json.Unmarshal(b, &raw); err != nil {
+			t.Fatal(err)
+		}
+		if string(raw.Overview.Gaps) != "[]" {
+			t.Errorf("%s: overview.gaps = %s, want []", name, raw.Overview.Gaps)
+		}
 	}
 }
