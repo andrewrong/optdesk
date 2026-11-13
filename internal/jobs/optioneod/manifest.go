@@ -15,7 +15,7 @@ import (
 const (
 	defaultZone        = "America/New_York"
 	defaultFreezeAfter = "1615"
-	defaultLateness    = 5
+	defaultOpenAfter   = 90
 	defaultIncrement   = "0.01"
 	defaultMaxExpiries = 3
 	defaultBand        = 0.10
@@ -26,9 +26,9 @@ const (
 )
 
 type window struct {
-	Rule          string `toml:"rule"`
-	LatenessHours *int   `toml:"lateness_hours"`
-	Calendar      string `toml:"calendar"`
+	Rule             string `toml:"rule"`
+	OpenAfterMinutes *int   `toml:"open_after_minutes"`
+	Calendar         string `toml:"calendar"`
 }
 
 type underlying struct {
@@ -80,10 +80,8 @@ type manifest struct {
 	// TradingClass, when set, makes the chain choice take the chain of that trading class on the underlying's exchange.
 	TradingClass string `toml:"trading_class"`
 	// LedgerDataset is the dataset id of the plan keys; default obs.option_eod.
-	LedgerDataset string `toml:"ledger_dataset"`
-	// StopAfter (HHMM in the zone) makes a run at or after that local time return NoValue; unset when empty.
-	StopAfter  string       `toml:"stop_after"`
-	Underlying []underlying `toml:"underlying"`
+	LedgerDataset string       `toml:"ledger_dataset"`
+	Underlying    []underlying `toml:"underlying"`
 	// Stock is the [stock] table; it applies to the stock underlyings a watch constructor adds (see isStock).
 	Stock stockTable `toml:"stock"`
 
@@ -119,11 +117,11 @@ func (m *manifest) applyDefaults() {
 		m.Zone = defaultZone
 	}
 	if m.Window.Rule == "" {
-		m.Window.Rule = "after_close"
+		m.Window.Rule = "in_session"
 	}
-	if m.Window.LatenessHours == nil {
-		v := defaultLateness
-		m.Window.LatenessHours = &v
+	if m.Window.OpenAfterMinutes == nil {
+		v := defaultOpenAfter
+		m.Window.OpenAfterMinutes = &v
 	}
 	if m.MaxExpiries == 0 {
 		m.MaxExpiries = defaultMaxExpiries
@@ -164,11 +162,6 @@ func (m manifest) validate() error {
 	if _, err := parseHHMM(m.FreezeAfter); err != nil {
 		return fmt.Errorf("optioneod: manifest: freeze_after must be HHMM")
 	}
-	if m.StopAfter != "" {
-		if _, err := parseHHMM(m.StopAfter); err != nil {
-			return fmt.Errorf("optioneod: manifest: stop_after must be HHMM")
-		}
-	}
 	for _, u := range m.Underlying {
 		if err := m.validateUnderlying(u); err != nil {
 			return err
@@ -207,7 +200,7 @@ func parseHHMM(s string) (int, error) {
 // canonical is a deterministic text of every setting, for the plan hash.
 func (m manifest) canonical() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d|%s|%s|%s|%d|%s|%d|%g|%d|%d|%d|%s|%s", m.Version, m.ID, m.Zone, m.Window.Rule, *m.Window.LatenessHours,
+	fmt.Fprintf(&b, "%d|%s|%s|%s|%d|%s|%d|%g|%d|%d|%d|%s|%s", m.Version, m.ID, m.Zone, m.Window.Rule, *m.Window.OpenAfterMinutes,
 		m.Window.Calendar, m.MaxExpiries, m.StrikeBand, m.MaxStrikesPerSide, m.Chunk, m.BudgetMinutes, m.FreezeAfter, m.OptionPriceIncrement)
 	if m.StrikeBandBelow != 0 || m.StrikeBandAbove != 0 {
 		fmt.Fprintf(&b, "|band%g-%g", m.StrikeBandBelow, m.StrikeBandAbove)
@@ -220,9 +213,6 @@ func (m manifest) canonical() string {
 	}
 	if m.LedgerDataset != datasetID {
 		fmt.Fprintf(&b, "|ledger%s", m.LedgerDataset)
-	}
-	if m.StopAfter != "" {
-		fmt.Fprintf(&b, "|stop%s", m.StopAfter)
 	}
 	hasStock := false
 	for _, u := range m.Underlying {

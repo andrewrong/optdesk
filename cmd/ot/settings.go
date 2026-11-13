@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -22,7 +21,7 @@ import (
 )
 
 // siteSettingsRoute is the address of the page settings_page under the site root. It is read-only unless the
-// route /owner-settings is on (--owner-edit), when the page carries the token of the form.
+// route /owner-settings is on when the page carries the inert form token.
 const siteSettingsRoute = "settings"
 
 // ownerPostRoute is the address of the settings form post, under the site root.
@@ -36,25 +35,22 @@ const (
 	ownerTokenTTL = 15 * time.Minute // life of a form token
 )
 
-// ownerLoopbackNames are the three names a request to /owner-settings may carry in Host: 127.0.0.1, localhost and
-// [::1]. settingsform checks the same names with the port; this is the first of the two checks.
-var ownerLoopbackNames = []string{"127.0.0.1", "localhost", "[::1]"}
-
-// ownerEdit is the write side of the settings page: the form guard and the store, opened once with --owner-edit.
+// ownerEdit is the write side of the owner forms: the form parser, the store, and the owner token (empty or short
+// when unset: every owner POST is then 403). Opened once per start when the DSN line exists.
 type ownerEdit struct {
 	form   settingsapi.SettingsForm
 	writer ownerset.Writer
-	listen string // the address the listener holds, with its port
+	token  string
 }
 
 // newOwnerEdit builds the write side from the env file. It is nil, with one log line naming the reason, when the
-// route is left out: a line unset, the key short, or no opener or form constructor in deps. The returned func
-// closes the store.
-func newOwnerEdit(ctx context.Context, a *app, listen string) (*ownerEdit, func(), error) {
+// routes are left out: the DSN line unset, or no opener or form constructor in deps. The returned func closes the
+// store.
+func newOwnerEdit(ctx context.Context, a *app) (*ownerEdit, func(), error) {
 	noop := func() {}
-	key, dsn, reason, err := a.ownerEditSecrets()
+	token, dsn, reason, err := a.ownerEditSecrets()
 	if err != nil {
-		return nil, noop, errors.New("serve: cannot read the env file for --owner-edit")
+		return nil, noop, errors.New("serve: cannot read the env file for the owner forms")
 	}
 	if reason == "" && (a.deps.openOwnerSet == nil || a.deps.newSettingsForm == nil) {
 		reason = "no settings store in this build"
@@ -68,8 +64,8 @@ func newOwnerEdit(ctx context.Context, a *app, listen string) (*ownerEdit, func(
 		return nil, noop, errors.New("serve: cannot open the settings store")
 	}
 	return &ownerEdit{
-		form:   a.deps.newSettingsForm(key, ownerTokenTTL, a.deps.newRuleParams()),
-		writer: st, listen: listen,
+		form:   a.deps.newSettingsForm(nil, ownerTokenTTL, a.deps.newRuleParams()),
+		writer: st, token: token,
 	}, func() { _ = st.Close() }, nil
 }
 
@@ -118,7 +114,7 @@ func buildSettingsPage(ctx context.Context, a *app, clk clock.Clock, dayFlag str
 		Confirm:  x.confirm,
 	}
 	if rd.edit != nil {
-		tok := rd.edit.form.Token(now)
+		tok := ownerDummyToken()
 		c.Form = &tok
 	}
 	return a.deps.settingsPage(c).Build(ctx, nil, day, now)
@@ -161,21 +157,8 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// hostNameOK reports whether the Host header carries one of ownerLoopbackNames.
-func hostNameOK(hostport string) bool {
-	h, _, err := net.SplitHostPort(hostport)
-	if err != nil {
-		return false
-	}
-	if ip := net.ParseIP(h); ip != nil && ip.To4() == nil {
-		h = "[" + h + "]"
-	}
-	return slices.Contains(ownerLoopbackNames, h)
-}
-
-// postOwnerSettings serves POST /owner-settings: the guard, then the preview (no confirm field) or the save
-// (confirm=1). The token sits in the body, so the form is read, under a 64 KiB cap, before Check sees it; nothing
-// is written before Check passes.
+// postOwnerSettings serves POST /owner-settings: the guard (guardOwnerPost: cookie, content type, caps), then the preview (no confirm field) or the save
+// (confirm=1). Nothing is written before the guard passes.
 func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHandler pages.NewHandlerFunc, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
@@ -184,8 +167,7 @@ func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, 
 	}
 	e := rd.edit
 	now := clk.Now().UTC()
-	if !guardOwnerPost(w, r, e, now) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	if !guardOwnerPost(w, r, e) {
 		return
 	}
 	fail := func() {
@@ -229,7 +211,7 @@ func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, 
 			fail()
 			return
 		}
-		page(http.StatusOK, settingsExtras{confirm: &settings_page.Confirm{Rows: rows, Form: e.form.Token(now)}})
+		page(http.StatusOK, settingsExtras{confirm: &settings_page.Confirm{Rows: rows, Form: ownerDummyToken()}})
 		return
 	}
 	n, err := e.writer.Apply(ctx, ownerChange(ch))
@@ -239,23 +221,6 @@ func postOwnerSettings(a *app, clk clock.Clock, dayFlag string, rd siteReaders, 
 		return
 	}
 	http.Redirect(w, r, "/"+siteSettingsRoute+"?saved="+strconv.Itoa(n), http.StatusSeeOther)
-}
-
-// guardOwnerPost reads the form of r under the 64 KiB cap and applies the guard; false means 403 and no write.
-func guardOwnerPost(w http.ResponseWriter, r *http.Request, e *ownerEdit, now time.Time) bool {
-	if !hostNameOK(r.Host) || r.ContentLength < 0 || r.ContentLength > ownerBodyMax {
-		return false
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, ownerBodyMax)
-	if err := r.ParseForm(); err != nil {
-		return false
-	}
-	req := settingsapi.FormRequest{
-		RemoteAddr: r.RemoteAddr, Host: r.Host, Origin: r.Header.Get("Origin"), Listen: e.listen,
-		ContentType: r.Header.Get("Content-Type"), BodySize: r.ContentLength,
-		Token: settingsapi.FormToken{Expires: r.PostForm.Get("expires"), MAC: r.PostForm.Get("mac")},
-	}
-	return e.form.Check(req, now) == nil
 }
 
 // unknownField reports a posted param.<key> that is not in the registry, or a row or excluded id that is not

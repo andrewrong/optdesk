@@ -76,6 +76,7 @@ type env struct {
 	readings map[string][]contracts.ReadingRecord
 	iv       map[string][]contracts.ReadingRecord // market.iv_ibkr rows by subject
 	rv       map[string][]contracts.ReadingRecord // market.rv20 rows by subject
+	ivrv     map[string][]contracts.ReadingRecord // market.iv_rv20 rows by subject
 	series   map[string][]contracts.SeriesPoint
 	rerr     error
 	serr     error
@@ -91,7 +92,7 @@ func (e env) config(t *testing.T) Config {
 	return Config{RunID: "run1", BuildID: "b1", Scope: "s1", Zone: zone,
 		Readings: func(_ context.Context, name, kind, subject string, from, to contracts.Day) ([]contracts.ReadingRecord, error) {
 			wantKind := "market"
-			if name == figIVIbkr || name == figRv20 {
+			if name == figIVIbkr || name == figRv20 || name == figIvRv20 {
 				wantKind = "underlying"
 			}
 			if kind != wantKind {
@@ -109,6 +110,9 @@ func (e env) config(t *testing.T) Config {
 			}
 			if name == figRv20 {
 				return e.rv[subject], e.rerr
+			}
+			if name == figIvRv20 {
+				return e.ivrv[subject], e.rerr
 			}
 			return e.readings[name], e.rerr
 		}}
@@ -185,6 +189,9 @@ func allOK() env {
 		},
 		rv: map[string][]contracts.ReadingRecord{
 			"SPX": ok("0.162060"), "NDX": ok("0.162500"), "RUT": ok("0.163500"),
+		},
+		ivrv: map[string][]contracts.ReadingRecord{
+			"SPX": ok("0.032000"), "NDX": ok("0.072000"), "RUT": ok("-0.014000"),
 		},
 		series: map[string][]contracts.SeriesPoint{
 			seriesVIX: {pt("2026-11-06", 21.5), pt("2026-10-30", 19.25)},
@@ -390,7 +397,13 @@ func TestBuildMatchesSchema(t *testing.T) {
 	everyKind.readings[figRvxPctile] = []contracts.ReadingRecord{rec("2026-11-06", "ok", "abc", nil, "")}
 	everyKind.readings[figSp500Vs200d] = nil
 	everyKind.readings[figVixTerm] = nil
+	ivrvGaps := allOK()
+	ivrvGaps.ivrv = map[string][]contracts.ReadingRecord{
+		"SPX": {rec("2026-11-06", "missing_input", "", intp(3), "2026-10-30")},
+		"NDX": {rec("2026-11-06", "ok", "0.01", nil, "")},
+	}
 	cases := map[string]env{
+		"negative iv minus rv": allOK(), "iv minus rv gaps": ivrvGaps,
 		"all ok": allOK(), "short history": gapVix(intp(2), "missing_input"), "stale input": gapVix(intp(3), "missing_input"),
 		"missing input": gapVix(intp(1), "missing_input"), "no code": gapVix(nil, "missing_input"),
 		"no readings": {}, "no term series": noSeries, "one point": oneSeriesPoint, "stale series": staleSeries,
@@ -512,8 +525,8 @@ func TestEnvelopeGapsEqualBlockGaps(t *testing.T) {
 		m := e.page(t)
 		want := pageGaps(t, m)
 		got := at(t, m, "gaps").([]any)
-		if len(got) != len(want) || len(got) < 9 {
-			t.Fatalf("%s: %d gaps, want %d (at least 9)", name, len(got), len(want))
+		if len(got) != len(want) || len(got) < 6 {
+			t.Fatalf("%s: %d gaps, want %d (at least 6)", name, len(got), len(want))
 		}
 		for i := range want {
 			if fmt.Sprint(got[i]) != fmt.Sprint(want[i]) {
@@ -548,6 +561,23 @@ func TestIvShowsStoredIbkrValue(t *testing.T) {
 	}
 	if m["run_status"] != "ok" {
 		t.Errorf("run_status = %v", m["run_status"])
+	}
+}
+
+func TestIvRvGapsLeaveRunStatusOk(t *testing.T) {
+	t.Parallel()
+	e := allOK()
+	e.ivrv = nil
+	m := e.page(t)
+	if m["run_status"] != "ok" {
+		t.Errorf("run_status = %v", m["run_status"])
+	}
+	if g := at(t, m, "indices", "rows", 0, "iv_minus_rv20").(map[string]any); g["reason"] != "no_data" {
+		t.Errorf("SPX iv_minus_rv20 = %v", g)
+	}
+	c := at(t, allOK().page(t), "indices", "rows", 2, "iv_minus_rv20").(map[string]any)
+	if c["kind"] != "value" || c["text"] != "-1.4" {
+		t.Errorf("RUT iv_minus_rv20 = %v", c)
 	}
 }
 

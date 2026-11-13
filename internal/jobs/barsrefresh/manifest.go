@@ -23,6 +23,23 @@ type Index struct {
 	ConID    int64 // 0 is resolved once per run
 }
 
+// Stock is one [[stock]] table: a stock or fund whose bars are pulled under the key stock:<symbol>.
+type Stock struct {
+	Symbol   string
+	Label    string
+	Group    string // GroupProxy or GroupSector
+	SecType  string
+	Exchange string
+	Currency string
+	ConID    int64 // 0 is resolved once per run
+}
+
+// The two groups of a [[stock]] table.
+const (
+	GroupProxy  = "proxy"
+	GroupSector = "sector"
+)
+
 // Schedule is the [schedule] table.
 type Schedule struct {
 	Calendar string
@@ -44,11 +61,23 @@ type Manifest struct {
 	DeepenPieceDays     int
 	DeepenNamesPerRun   int // 0 is no cap
 	Indexes             []Index
+	Stocks              []Stock
+	Benchmark           string // a symbol of Stocks
 	Schedule            Schedule
 }
 
 type rawIndex struct {
 	Symbol   string `toml:"symbol"`
+	SecType  string `toml:"sec_type"`
+	Exchange string `toml:"exchange"`
+	Currency string `toml:"currency"`
+	ConID    int64  `toml:"con_id"`
+}
+
+type rawStock struct {
+	Symbol   string `toml:"symbol"`
+	Label    string `toml:"label"`
+	Group    string `toml:"group"`
 	SecType  string `toml:"sec_type"`
 	Exchange string `toml:"exchange"`
 	Currency string `toml:"currency"`
@@ -67,6 +96,10 @@ type rawManifest struct {
 	DeepenPieceDays     int        `toml:"deepen_piece_days"`
 	DeepenNamesPerRun   int        `toml:"deepen_names_per_run"`
 	Index               []rawIndex `toml:"index"`
+	Stock               []rawStock `toml:"stock"`
+	GlobalAssets        struct {
+		Benchmark string `toml:"benchmark"`
+	} `toml:"global_assets"`
 	Schedule            struct {
 		Calendar string `toml:"calendar"`
 		Anchor   string `toml:"anchor"`
@@ -136,11 +169,15 @@ func LoadManifest(data []byte) (Manifest, error) {
 		}
 		m.Indexes = append(m.Indexes, Index(ix))
 	}
+	stocks, err := loadStocks(r.Stock, r.GlobalAssets.Benchmark)
+	if err != nil {
+		return Manifest{}, err
+	}
+	m.Stocks, m.Benchmark = stocks, r.GlobalAssets.Benchmark
 	if r.Schedule.Calendar == "" {
 		return Manifest{}, refuse("schedule.calendar", "is missing")
 	}
 	s := Schedule{Calendar: r.Schedule.Calendar, Anchor: r.Schedule.Anchor}
-	var err error
 	if r.Schedule.Offset != "" {
 		if s.Offset, err = time.ParseDuration(r.Schedule.Offset); err != nil {
 			return Manifest{}, refuse("schedule.offset", "is not a duration")
@@ -153,4 +190,30 @@ func LoadManifest(data []byte) (Manifest, error) {
 	}
 	m.Schedule = s
 	return m, nil
+}
+
+func loadStocks(raws []rawStock, benchmark string) ([]Stock, error) {
+	var out []Stock
+	seen := map[string]bool{}
+	for _, s := range raws {
+		for _, f := range []struct{ key, v string }{
+			{"stock.symbol", s.Symbol}, {"stock.label", s.Label}, {"stock.exchange", s.Exchange}, {"stock.currency", s.Currency},
+		} {
+			if f.v == "" {
+				return nil, refuse(f.key, "is missing")
+			}
+		}
+		if s.Group != GroupProxy && s.Group != GroupSector {
+			return nil, refuse("stock.group", "must be proxy or sector")
+		}
+		if seen[s.Symbol] {
+			return nil, refuse("stock.symbol", "is repeated")
+		}
+		seen[s.Symbol] = true
+		out = append(out, Stock(s))
+	}
+	if !seen[benchmark] {
+		return nil, refuse("global_assets.benchmark", "is not a listed stock")
+	}
+	return out, nil
 }

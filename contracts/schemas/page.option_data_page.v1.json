@@ -232,6 +232,10 @@
             "outside",
             "none"
           ]
+        },
+        "off_session": {
+          "type": "boolean",
+          "description": "True when the underlying's quotes were taken off session (MarketDataType 2, 3, 4); absent means false."
         }
       },
       "required": [

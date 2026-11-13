@@ -483,3 +483,36 @@ func TestConsoleClaimerAndTurnerOnOneType(t *testing.T) {
 		t.Fatalf("ConsoleTurn = %v %v", took, err)
 	}
 }
+
+// fakePlanner implements DayPlanner and ForceBackfiller at once, as the backfiller does.
+type fakePlanner struct{ planned []contracts.Day }
+
+func (f *fakePlanner) PlanDay(_ context.Context, day contracts.Day) error {
+	f.planned = append(f.planned, day)
+	return nil
+}
+
+func (f *fakePlanner) BackfillWith(context.Context, contracts.Day, []string, runner.BackfillOptions) (runner.BackfillResult, error) {
+	return runner.BackfillResult{}, nil
+}
+
+// planOne is a caller of DayPlanner: it asserts the optional method on a ForceBackfiller.
+func planOne(b runner.ForceBackfiller, day contracts.Day) (planned bool, err error) {
+	p, ok := b.(runner.DayPlanner)
+	if !ok {
+		return false, nil
+	}
+	return true, p.PlanDay(context.Background(), day)
+}
+
+func TestDayPlannerIsAnOptionalMethodOfTheBackfiller(t *testing.T) {
+	t.Parallel()
+	f := &fakePlanner{}
+	planned, err := planOne(f, "2026-11-06")
+	if !planned || err != nil || len(f.planned) != 1 || f.planned[0] != "2026-11-06" {
+		t.Fatalf("planOne = %v %v %v", planned, err, f.planned)
+	}
+	if planned, _ := planOne(&fakeConsole{}, "2026-11-06"); planned {
+		t.Fatal("a backfiller without PlanDay must not assert to DayPlanner")
+	}
+}

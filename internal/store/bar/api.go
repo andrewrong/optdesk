@@ -38,6 +38,21 @@ type FxRateWriter interface {
 	InsertFxRates(ctx context.Context, rows []contracts.FxRate) (inserted int, err error)
 }
 
+// FxWriteCount is what one UpsertFxRates call did to the rows it was given:
+// Written rows were inserted or replaced, Unchanged rows were equal to the
+// stored one.
+type FxWriteCount struct {
+	Written, Unchanged int
+}
+
+// FxRateUpserter writes daily FX rates by the key (pair, RateDay): a differing
+// row replaces the stored one, an equal row changes nothing, and no old value
+// is kept. writtenBy names the run (job and day). It is an optional method of
+// the value OpenBarFunc returns; the job asserts it at Run.
+type FxRateUpserter interface {
+	UpsertFxRates(ctx context.Context, rows []contracts.FxRate, writtenBy string) (FxWriteCount, error)
+}
+
 // FxRateReader reads daily FX rates.
 type FxRateReader interface {
 	// FxRates returns the rates of pair (six capitals, for example USDJPY) with

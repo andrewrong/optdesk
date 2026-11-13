@@ -24,7 +24,6 @@ const (
 	pair           = "USDJPY"
 	sourceMidpoint = "ibkr_midpoint"
 	dayLayout      = "2006-01-02"
-	firstDay       = contracts.Day("1900-01-01")
 )
 
 //go:embed job.toml
@@ -79,7 +78,7 @@ type job struct {
 
 // New builds the fx_refresh job from the embedded job.toml: one key, {obs.fx_rate, USDJPY}.
 func New(b broker.Broker, h broker.HistoryClient, w bar.FxRateWriter, r bar.FxRateReader, clk clock.Clock) (contracts.Job, error) {
-	if b == nil || h == nil || w == nil || r == nil || clk == nil {
+	if b == nil || h == nil || w == nil || r == nil || clk == nil { // r is kept for the signature only
 		return nil, errors.New("fxrefresh: broker, history client, writer, reader and clock are required")
 	}
 	var m manifest
@@ -111,7 +110,7 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 // RunBound is the longest time one run may take.
 func (j *job) RunBound() time.Duration { return j.runBound }
 
-// RestartSensitive is false: a rerun inserts only what is missing.
+// RestartSensitive is false: a rerun is idempotent.
 func (j *job) RestartSensitive() bool { return false }
 
 // Plan returns the one key and the hash of the plan.
@@ -120,17 +119,22 @@ func (j *job) Plan(_ context.Context, day contracts.Day) ([]contracts.ExpectedKe
 	return []contracts.ExpectedKey{{DatasetID: datasetID, SubjectKey: pair}}, hex.EncodeToString(sum[:]), nil
 }
 
-// Run stores the days of the MIDPOINT answer that are not stored yet. An empty answer writes nothing.
+// Run upserts the days of the MIDPOINT answer that end on day, by key, with writtenBy "fx_refresh:<day>".
+// A differing stored rate is replaced, an equal one is untouched, an empty answer replaces nothing.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	if _, err := time.Parse(dayLayout, string(day)); err != nil {
 		return contracts.JobResult{Err: newErr(contracts.Permanent, "bad day")}
+	}
+	up, ok := j.w.(bar.FxRateUpserter)
+	if !ok {
+		return contracts.JobResult{Err: newErr(contracts.Retryable, "the bar store is not available (%s is not set): no rate can be written", bar.DSNEnvBar)}
 	}
 	var res contracts.JobResult
 	for _, k := range keys {
 		if k.SubjectKey != pair {
 			return contracts.JobResult{Err: newErr(contracts.Permanent, "unknown key %q", k.SubjectKey)}
 		}
-		returned, terr := j.runPair(ctx, day)
+		returned, terr := j.runPair(ctx, up, day)
 		res.Returned += returned
 		if returned > 0 {
 			res.Usable++
@@ -142,7 +146,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	return res
 }
 
-func (j *job) runPair(ctx context.Context, day contracts.Day) (int, contracts.TypedError) {
+func (j *job) runPair(ctx context.Context, up bar.FxRateUpserter, day contracts.Day) (int, contracts.TypedError) {
 	got, err := j.b.ResolveContract(ctx, broker.Contract{SecType: "CASH", Symbol: "USD", Exchange: "IDEALPRO", Currency: "JPY"})
 	if err != nil {
 		return 0, asTyped(err, contracts.Retryable)
@@ -150,22 +154,15 @@ func (j *job) runPair(ctx context.Context, day contracts.Day) (int, contracts.Ty
 	if !got.Listed || got.Contract.ConID == 0 {
 		return 0, newErr(contracts.Permanent, "%s is not listed", pair)
 	}
-	bars, err := j.h.Bars(ctx, broker.BarQuery{Contract: got.Contract, Kind: broker.BarMidpoint, DurationDays: j.m.DurationDays})
-	if err != nil {
-		return 0, asTyped(err, contracts.Retryable)
-	}
-	if len(bars) == 0 {
-		return 0, nil
-	}
-	stored, err := j.r.FxRates(ctx, pair, firstDay, day)
-	if err != nil {
-		return 0, asTyped(err, contracts.Retryable)
-	}
-	have := make(map[string]bool, len(stored))
-	for _, s := range stored {
-		have[s.RateDay.Format(dayLayout)] = true
-	}
 	now := j.clk.Now().UTC()
+	q := broker.BarQuery{Contract: got.Contract, Kind: broker.BarMidpoint, DurationDays: j.m.DurationDays}
+	if string(day) < now.Format(dayLayout) {
+		q.End = string(day)
+	}
+	bars, err := j.h.Bars(ctx, q)
+	if err != nil {
+		return 0, asTyped(err, contracts.Retryable)
+	}
 	var rows []contracts.FxRate
 	for _, b := range bars {
 		d, err := time.Parse(dayLayout, b.Day)
@@ -175,19 +172,19 @@ func (j *job) runPair(ctx context.Context, day contracts.Day) (int, contracts.Ty
 		if v, ok := new(big.Rat).SetString(b.Close); !ok || v.Sign() <= 0 {
 			return 0, newErr(contracts.Permanent, "bar close is not a positive decimal")
 		}
-		if have[b.Day] {
+		if b.Day > string(day) {
 			continue
 		}
-		have[b.Day] = true
 		rows = append(rows, contracts.FxRate{
 			Pair: pair, Rate: b.Close, RateDay: types.SerializableDate{Time: d}, ReceivedAt: now,
 			Source: sourceMidpoint,
 		})
 	}
-	if len(rows) > 0 {
-		if _, err := j.w.InsertFxRates(ctx, rows); err != nil {
-			return 0, asTyped(err, contracts.Retryable)
-		}
+	if len(rows) == 0 {
+		return 0, nil
 	}
-	return len(bars), nil
+	if _, err := up.UpsertFxRates(ctx, rows, "fx_refresh:"+string(day)); err != nil {
+		return 0, asTyped(err, contracts.Retryable)
+	}
+	return len(rows), nil
 }

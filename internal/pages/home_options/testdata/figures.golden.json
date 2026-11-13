@@ -1,0 +1,167 @@
+{
+  "schema": "options_summary",
+  "schema_version": 4,
+  "run_id": "run-test",
+  "build_id": "build-test",
+  "scope": "scope-test",
+  "currency": "USD",
+  "generated_at": "2026-11-06T09:30:00+08:00",
+  "stale_after": "2026-11-08T09:30:00+08:00",
+  "data_times": [
+    {
+      "source": "option_ledger",
+      "data_time": "2026-11-04T00:00:00+08:00"
+    }
+  ],
+  "run_status": "partial",
+  "card": {
+    "title": "Options overview",
+    "say": "Ledger: no closed sold records yet.",
+    "subtitle": "From the trade ledger",
+    "stale": {
+      "data_time": "2026-11-04T00:00:00+08:00",
+      "text": "Ledger as of 11-04",
+      "is_stale": false
+    },
+    "tiles": {
+      "sold_count_month": {
+        "label": "Sold this month",
+        "figure": {
+          "kind": "value",
+          "value": 3,
+          "text": "3",
+          "unit": "structures"
+        },
+        "caption": "Ledger as of 11-04, all accounts combined; lots opened this month"
+      },
+      "premium_month_usd": {
+        "label": "Closed premium",
+        "figure": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Ledger: no closed sold records"
+        }
+      },
+      "open_premium_usd": {
+        "label": "Open premium",
+        "figure": {
+          "kind": "value",
+          "value": 1234.50,
+          "text": "$1,235",
+          "unit": "usd"
+        },
+        "caption": "Ledger as of 11-04, all accounts combined; remaining part of each lot"
+      },
+      "max_loss_usd": {
+        "label": "Max loss",
+        "figure": {
+          "kind": "value",
+          "value": 4000.00,
+          "text": "$4,000",
+          "unit": "usd"
+        },
+        "caption": "Ledger as of 11-04, all accounts combined"
+      }
+    },
+    "premium_series_6m": [
+      {
+        "month": "2026-06",
+        "label": "Jun",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No sold records closed this month"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Monthly closed P/L is not given on this page"
+        }
+      },
+      {
+        "month": "2026-07",
+        "label": "Jul",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No sold records closed this month"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Monthly closed P/L is not given on this page"
+        }
+      },
+      {
+        "month": "2026-08",
+        "label": "Aug",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No sold records closed this month"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Monthly closed P/L is not given on this page"
+        }
+      },
+      {
+        "month": "2026-09",
+        "label": "Sep",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No sold records closed this month"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Monthly closed P/L is not given on this page"
+        }
+      },
+      {
+        "month": "2026-10",
+        "label": "Oct",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No sold records closed this month"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Monthly closed P/L is not given on this page"
+        }
+      },
+      {
+        "month": "2026-11",
+        "label": "Nov",
+        "premium": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "No sold records closed this month"
+        },
+        "closed": {
+          "kind": "gap",
+          "reason": "no_data",
+          "text": "Monthly closed P/L is not given on this page"
+        }
+      }
+    ],
+    "premium_series_text": "Settled premium by closing month; expiry, exercise, assignment and buy-back count, fees are not deducted; year and month of the closing day, no time zone conversion; by account alias, not merged",
+    "closed_series_text": "Closed P/L, last six months: no data yet, monthly closed P/L is not given on this page",
+    "premium_series_caption": "USD, by closing month: expiry, exercise, assignment and buy-back included, fees are not deducted; the year and month of the closing day; no time zone conversion; by account alias, never merged",
+    "notes": [
+      "Premium counts opening trade cash, fees excluded; sold is positive, bought is negative.",
+      "Premium and realised P/L count only closed sold positions, all accounts combined."
+    ],
+    "gaps": [
+      {
+        "kind": "gap",
+        "reason": "no_data",
+        "text": "Settled premium by closing month: no data yet"
+      }
+    ]
+  }
+}

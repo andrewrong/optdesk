@@ -110,7 +110,7 @@ func household(in blockapi.HouseholdInput) blockapi.HouseholdResult {
 	cash, cashR, cashOK := tagValue(in.Values, "TotalCashValue")
 	r := blockapi.HouseholdResult{
 		Overview:    overview(net, netR, netOK, in.UsdJpy),
-		Accounts:    accounts(net, netR, netOK, cash, cashR, cashOK, in.UsdJpy),
+		Accounts:    accounts(net, netR, netOK, cash, cashR, cashOK, in),
 		Obligations: obligations(in),
 		Income:      income(in.Obligations, in.UsdJpy),
 		Trend:       trend(in.History, string(in.Day)),
@@ -131,8 +131,11 @@ func overview(net blockapi.ValueIn, r *big.Rat, ok bool, usdJpy string) []blocka
 }
 
 // accounts is the figure household.accounts: net liquidation and cash from the summary; the
-// stock and option cells need quotes this input does not carry, so they are the gap missing_quote.
-func accounts(net blockapi.ValueIn, netR *big.Rat, netOK bool, cash blockapi.ValueIn, cashR *big.Rat, cashOK bool, usdJpy string) []blockapi.MoneyLine {
+// stock and option cells come from the marked positions (exposure.go), or are the gap
+// missing_quote when no positions were read.
+func accounts(net blockapi.ValueIn, netR *big.Rat, netOK bool,
+	cash blockapi.ValueIn, cashR *big.Rat, cashOK bool, in blockapi.HouseholdInput) []blockapi.MoneyLine {
+	usdJpy := in.UsdJpy
 	netLine := gapLine("Net liquidation", net.Currency, "missing_input")
 	if netOK {
 		netLine = line("Net liquidation", net.Currency, netR, usdJpy)
@@ -145,11 +148,11 @@ func accounts(net blockapi.ValueIn, netR *big.Rat, netOK bool, cash blockapi.Val
 			cashLine.Share = compute.FigureValue{Value: money(share)}
 		}
 	}
-	return []blockapi.MoneyLine{
-		netLine, cashLine,
-		gapLine("Stock value", net.Currency, "missing_quote"),
-		gapLine("Option value", net.Currency, "missing_quote"),
+	stock, option := gapLine("Stock value", net.Currency, "missing_quote"), gapLine("Option value", net.Currency, "missing_quote")
+	if in.PositionsRead {
+		stock, option = exposure(net.Currency, in.UsdJpy, in.Positions)
 	}
+	return []blockapi.MoneyLine{netLine, cashLine, stock, option}
 }
 
 // cashAfter is the figure household.cash_after: TotalCashValue minus the gross put notional of

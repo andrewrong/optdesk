@@ -67,3 +67,20 @@ type CommandFunc func(ctx context.Context, argv []string) (exitCode int, err err
 // generator as a command (internal/clock/calendarcli.New). argv is the command prefix and workDir
 // the directory for its temporary file.
 type NewCommandSessionSourceFunc func(argv []string, workDir string, run CommandFunc) SessionSource
+
+// HoursDay is one day of IBKR's own hours of a contract: Day is the start date of the day's
+// segments, OpenAt the first segment's start and CloseAt the last segment's end (UTC instants);
+// IsSession is false for a CLOSED day, and OpenAt and CloseAt are then zero.
+type HoursDay struct {
+	Day       contracts.Day
+	IsSession bool
+	OpenAt    time.Time
+	CloseAt   time.Time
+}
+
+// IBKRHours reads the liquid-hours string of an IBKR contract (internal/clock/ibkrhours.Parser).
+// Days come in the order they are listed. A string it cannot read (empty or unknown zone, a
+// segment ending before it starts, a malformed token) is an error naming the token; it never guesses.
+type IBKRHours interface {
+	Parse(liquidHours, timeZoneID string) ([]HoursDay, error)
+}

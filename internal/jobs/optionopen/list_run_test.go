@@ -27,7 +27,7 @@ func TestRunCallOrderAcrossNamesUnderOneBudgetClock(t *testing.T) {
 	t.Parallel()
 	g := newLRig(t, "AAA", "BBB", "CCC", "DDD")
 	g.acc.calls = map[string]int{}
-	g.acc.pos = []store.Position{{SecType: "stock", Symbol: "CCC", ConID: 102, Quantity: "100"}}
+	g.acc.pos = []store.Position{{SecType: "stock", Currency: "USD", Symbol: "CCC", ConID: 102, Quantity: "100"}}
 	j := g.job(nil)
 	j.d.Watch[1].BuyPrice = "50"
 	for _, s := range g.watch {
@@ -500,4 +500,20 @@ func TestAnswerWithOneRightIsError(t *testing.T) {
 	require.Equal(t, "error", rows[0].Outcome)
 	require.Zero(t, g.opts.puts)
 	require.Equal(t, reasonAllShort, g.row("AAA").Reason)
+}
+
+func TestNothingListedNamesEveryReasonWithItsCount(t *testing.T) {
+	t.Parallel()
+	g := newLRig(t, "AAA", "BBB", "CCC")
+	g.offs["AAA"], g.offs["BBB"] = []int{3}, []int{3}
+	g.lst.chains = func(sym string) ([]broker.Chain, error) {
+		if sym == "CCC" {
+			return nil, nil
+		}
+		return g.chainsOf(sym), nil
+	}
+	res := g.run(g.job(nil))
+	require.NotNil(t, res.Err)
+	require.Equal(t, contracts.Retryable, res.Err.Kind())
+	require.Equal(t, "option_open: list_preopen: nothing was listed: no_expiry_in_window 2, listchains_failed 1", res.Err.Error())
 }

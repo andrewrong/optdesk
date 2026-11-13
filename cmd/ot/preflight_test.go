@@ -31,7 +31,7 @@ func TestMissingKeyDisablesOnlyEarnings(t *testing.T) {
 		t.Run(name+" run-once", func(t *testing.T) {
 			t.Parallel()
 			r := newRig(t, tc.env)
-			if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+			if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 				t.Fatal(err)
 			}
 			want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh"}
@@ -65,7 +65,7 @@ func TestMissingKeyDisablesOnlyEarnings(t *testing.T) {
 
 	// Neither a value nor a path reaches the log line.
 	r := newRig(t, strings.Replace(strings.Replace(fullEnv, "OT_PG_DSN_EVENTS=events-dsn\n", "", 1), "-test-alpha", "-secret-key", 1))
-	if err := runOnce(r.a, nil); err != nil {
+	if err := runWired(r.a, nil); err != nil {
 		t.Fatal(err)
 	}
 	if log := r.log.String(); strings.Contains(log, "-secret-key") || strings.Contains(log, r.a.getenv("OT_HOME")) {

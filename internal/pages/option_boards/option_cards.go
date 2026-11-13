@@ -2,6 +2,7 @@ package option_boards
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -107,8 +108,8 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 	if marks, err := parseMarks(r.Marks); err == nil {
 		badges := markBadges(marks)
 		tags = append(tags, badges...)
-		for _, b := range badges {
-			reason += " · " + b
+		if len(badges) > 0 {
+			reason = passedWithMarks + strings.Join(badges, ", ")
 		}
 	}
 	return opportunity{
@@ -125,4 +126,17 @@ func buildCard(r store.Candidate, eod map[int]contracts.OptionEod, names display
 		IvLine:         ivLine(r.Iv),
 		PremiumLine:    fmt.Sprintf("Premium %s (close bid est.) · Breakeven %s · in-the-money probability at expiry n/a · above cash n/a", r.BidEod, r.BreakEven),
 	}
+}
+
+// worthCount is the number of cards that are not in the money with no buy price.
+func worthCount(rows []store.Candidate) int {
+	n := 0
+	for _, r := range rows {
+		marks, err := parseMarks(r.Marks)
+		if err == nil && slices.Contains(marks, "itm") && slices.Contains(marks, "no_buy_price") {
+			continue
+		}
+		n++
+	}
+	return n
 }

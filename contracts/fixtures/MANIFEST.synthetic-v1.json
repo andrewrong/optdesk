@@ -17,6 +17,8 @@
     {"path": "page.option_data_page.v1.choices.json", "sha256": "d42c113e890ee715e45e9ee064dd7cd402d9ac64688b90bf97e53007e473c3c3"},
     {"path": "page.option_data_page.v1.terms-input.json", "sha256": "9dc22422ce0653fa7abe47efb08a78408d065949e11dfd20db05e9bba7cafe6e"},
     {"path": "page.option_data_page.v1.jpy.json", "sha256": "53930288e44e2540e690d95be9989f5055b136780541d378e84fef1bf8f32d16"},
+    {"path": "page.option_data_page.v1.off-session-input.json", "sha256": "a56f1404137d29c06b6a9f71baad3180281e4286825caa334105028d197fb67f"},
+    {"path": "page.option_data_page.v1.off-session.json", "sha256": "5a60e56533182faae977b2e936f26c5d632e6ae91d0bf2b1789acdfdbae29981"},
     {"path": "page.macro_rates.v2.golden.json", "sha256": "6969354073660dd36b21fd9930ce564ca75261579293bf98f2b437301996ee6f"},
     {"path": "page.macro_rates.v2.gap.json", "sha256": "93a55508c79ccf2ba49b05899388c046e786c95c033152f3f838269a74a95dc9"},
     {"path": "page.macro_rates.v2.stale.json", "sha256": "d9b224f2632c152d16b0b8cfc6b1db2a56407c79e6577567fc7302524399f38a"},

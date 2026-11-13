@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	fiRefused  = "upload refused: the form is not valid or has expired, load the page again"
+	fiRefused  = "upload refused: the form is not valid, log in and load the page again"
 	fiTooLarge = "upload too large: at most 64 MiB"
 )
 
@@ -31,7 +31,7 @@ func fiNothingKept(t *testing.T, s *fiSite) {
 func TestFIDeclaredLengthOver413(t *testing.T) {
 	t.Parallel()
 	s := newFISite(t, fiOpts{})
-	r := fiRequest(t, append(s.tokenParts(), fiFile("a.xml", fiXML(fiAccount, "1"))))
+	r := fiRequest(t, []fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))})
 	r.ContentLength = 64<<20 + 1
 	rec := serve(s.h, r)
 	if rec.Code != http.StatusRequestEntityTooLarge || !strings.Contains(rec.Body.String(), fiTooLarge) {
@@ -43,7 +43,7 @@ func TestFIDeclaredLengthOver413(t *testing.T) {
 func TestFIUnknownLength413(t *testing.T) {
 	t.Parallel()
 	s := newFISite(t, fiOpts{})
-	r := fiRequest(t, append(s.tokenParts(), fiFile("a.xml", fiXML(fiAccount, "1"))))
+	r := fiRequest(t, []fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))})
 	r.ContentLength = -1
 	rec := serve(s.h, r)
 	if rec.Code != http.StatusRequestEntityTooLarge || !strings.Contains(rec.Body.String(), fiTooLarge) {
@@ -58,11 +58,6 @@ func TestFIStreamOver413(t *testing.T) {
 	// the declared length is the cap, the stream is longer: a file of zeros whose end is never reached
 	var head bytes.Buffer
 	mw := multipart.NewWriter(&head)
-	for _, p := range s.tokenParts() {
-		if err := mw.WriteField(p.field, string(p.body)); err != nil {
-			t.Fatal(err)
-		}
-	}
 	fw, err := mw.CreateFormFile("files", "big.xml")
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +66,8 @@ func TestFIStreamOver413(t *testing.T) {
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/"+flexImportPostRoute,
 		io.MultiReader(&head, &hugeReader{n: 66 << 20}))
 	r.Header.Set("Content-Type", mw.FormDataContentType())
-	r.RemoteAddr, r.Host, r.ContentLength = "127.0.0.1:5555", postListen, 64<<20
+	r.RemoteAddr, r.Host, r.ContentLength = postPeer, postHost, 64<<20
+	withOwnerCookie(r, postKey)
 	rec := serve(s.h, r)
 	if rec.Code != http.StatusRequestEntityTooLarge || !strings.Contains(rec.Body.String(), fiTooLarge) {
 		t.Fatalf("%d %.200q", rec.Code, rec.Body)
@@ -128,29 +124,16 @@ func TestFINineFilesTooMany(t *testing.T) {
 	}
 }
 
-func TestFIFileBeforeFieldsRefused(t *testing.T) {
+// TestFIPostWithoutFilePartIs403 posts the right cookie and a body with no file part: the code answers 403 with
+// the fixed refusal text, and nothing is imported or stored.
+func TestFIPostWithoutFilePartIs403(t *testing.T) {
 	t.Parallel()
-	for name, order := range map[string]func(*fiSite) []fiPart{
-		"file first": func(s *fiSite) []fiPart {
-			return append([]fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))}, s.tokenParts()...)
-		},
-		"between fields": func(s *fiSite) []fiPart {
-			tp := s.tokenParts()
-			return []fiPart{tp[0], fiFile("a.xml", fiXML(fiAccount, "1")), tp[1]}
-		},
-		"no fields": func(*fiSite) []fiPart { return []fiPart{fiFile("a.xml", fiXML(fiAccount, "1"))} },
-		"no file":   func(s *fiSite) []fiPart { return s.tokenParts()[:1] },
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			s := newFISite(t, fiOpts{})
-			rec := serve(s.h, fiRequest(t, order(s)))
-			if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), fiRefused) {
-				t.Fatalf("%d %.200q", rec.Code, rec.Body)
-			}
-			fiNothingKept(t, s)
-		})
+	s := newFISite(t, fiOpts{})
+	rec := serve(s.h, fiRequest(t, []fiPart{{field: "note", body: []byte("hello")}}))
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), fiRefused) {
+		t.Fatalf("%d %.200q", rec.Code, rec.Body)
 	}
+	fiNothingKept(t, s)
 }
 
 func TestFILedgerUnsetPostRefused(t *testing.T) {
@@ -243,7 +226,6 @@ func TestFIUnknownPartsIgnored(t *testing.T) {
 	s := newFISite(t, fiOpts{})
 	var parts []fiPart
 	parts = append(parts, fiPart{field: "note", body: []byte("hello")})
-	parts = append(parts, s.tokenParts()...)
 	for i := 1; i <= 8; i++ {
 		parts = append(parts, fiPart{field: "extra", file: "x.xml", body: []byte("<big/>")},
 			fiFile(fmt.Sprintf("f%d.xml", i), fiXML(fiAccount, fmt.Sprint(i))))
@@ -283,8 +265,10 @@ func TestFINoSecretInAnyBody(t *testing.T) {
 	check("unconfigured", s, s.upload(t, fiFile("o.xml", other)))
 	check("refused file", s, s.upload(t, fiFile("n.xml", []byte("junk"))))
 	check("get after", s, s.get(t))
-	check("forged", s, serve(s.h, fiRequest(t, []fiPart{{field: "expires", body: []byte("1")}, {field: "mac", body: []byte("x")}, fiFile("a.xml", good)})))
-	over := fiRequest(t, append(s.tokenParts(), fiFile("a.xml", good)))
+	noCookie := fiRequest(t, []fiPart{fiFile("a.xml", good)})
+	noCookie.Header.Del("Cookie")
+	check("no cookie", s, serve(s.h, noCookie))
+	over := fiRequest(t, []fiPart{fiFile("a.xml", good)})
 	over.ContentLength = 65 << 20
 	check("over", s, serve(s.h, over))
 	check("405", s, serve(s.h, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/"+flexImportPostRoute, nil)))

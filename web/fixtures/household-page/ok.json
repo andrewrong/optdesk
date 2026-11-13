@@ -478,29 +478,6 @@
       }
     ]
   },
-  "long_term": {
-    "meaning": "Amount of the long-term account.",
-    "rows": [
-      {
-        "amount": {
-          "currency": "USD",
-          "text": "$80,000.00",
-          "unit": "usd",
-          "value": 80000.0
-        },
-        "name": "Retirement account"
-      }
-    ],
-    "title": "Long-term account",
-    "totals": [
-      {
-        "currency": "USD",
-        "text": "$80,000.00",
-        "unit": "usd",
-        "value": 80000.0
-      }
-    ]
-  },
   "month_change": {
     "meaning": "The change from month start to month end, step by step.",
     "result": "Month start $200,000.00, month end $205,999.50.",

@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/mark"
 )
 
@@ -32,6 +33,9 @@ type Config struct {
 	// positions of the capture day; either nil leaves them the gap missing_quote.
 	Marks    mark.Reader
 	Holdings blockapi.NewHoldingFiguresFunc
+	// Fx reads the stored USDJPY rate of the capture day, only when the capture holds JPY; nil, not
+	// found and an error all leave the JPY rows in yen with a gap.
+	Fx bar.FxRateReader
 }
 
 // NewPage is the household_page page of one account; alias "" means the main account.

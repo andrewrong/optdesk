@@ -690,3 +690,15 @@ func TestVolRuleNumbers(t *testing.T) {
 		}
 	}
 }
+
+func TestIvRv20RuleNumbers(t *testing.T) {
+	t.Parallel()
+	r, ok := New().Rule("market.iv_rv20")
+	if !ok {
+		t.Fatal("market.iv_rv20 not found")
+	}
+	if r.Version != 1 || r.Convention != "vol_diff_v1" || r.Unit != "decimal" || r.Scale != 6 ||
+		r.TradingDays != 252 || r.MaxAgeDays != 5 || r.Compare != "" {
+		t.Errorf("market.iv_rv20: %+v", r)
+	}
+}

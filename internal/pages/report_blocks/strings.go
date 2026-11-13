@@ -5,12 +5,27 @@ const (
 	keyActions   = "actions"
 	keyMoves     = "account_moves"
 	keyWatch     = "market_watch"
+	keyGlobal    = "global_assets"
 	titleActions = "Actions"
 	titleMoves   = "Account moves"
 	titleWatch   = "Market watch"
 	subActions   = "Executed trades and pending actions."
 	subMoves     = "Net value and day move of each account."
 	subWatch     = "Main indices and focus companies."
+	titleGlobal  = "Global assets"
+	subGlobal    = "Proxy assets and sector rotation."
+
+	sayGlobal        = "Stocks, bonds, gold, commodities and oil, and the sector funds against SPY, from stored closes."
+	sayGlobalGap     = "Global assets data cannot be read now."
+	dataTimesGlobal  = "Closes of "
+	chartAriaGlobal  = "Day and five-day change of five proxy assets, and sector excess over SPY in percentage points"
+	headingSector    = "Sector excess over SPY"
+	titleRotation    = "Sector leaders"
+	rotationLeaders  = "5-day leaders: "
+	rotationLaggard  = "; laggard: "
+	rotationLeader20 = "; 20-day leader: "
+	unitPoints       = " pt"
+	benchmarkSymbol  = "SPY"
 
 	noDataTimes = "no data yet"
 
@@ -53,6 +68,7 @@ var (
 	columnsTrades   = []string{"Time", "Account", "Action", "Contract", "Quantity", "Price"}
 	columnsAccounts = []string{"Account", "Net value", "Day amount", "Day percent", "Largest move"}
 	columnsIndices  = []string{"Index", "Close", "Day change", "Five-day change"}
+	columnsSector   = []string{"Sector", "ETF", "1d", "5d", "20d"}
 )
 
 // gapText is the text of a Gap by its reason; the reasons are those of a figure.

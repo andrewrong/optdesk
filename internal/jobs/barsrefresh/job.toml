@@ -38,6 +38,154 @@ exchange = "OSE.JPN"
 currency = "JPY"
 con_id = 0
 
+# The stocks and funds of the report block (global_assets); the report reads this list too.
+[[stock]]
+symbol = "SPY"
+label = "Stocks"
+group = "proxy"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "TLT"
+label = "Bonds"
+group = "proxy"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "GLD"
+label = "Gold"
+group = "proxy"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "DBC"
+label = "Commodities"
+group = "proxy"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "USO"
+label = "Oil"
+group = "proxy"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLB"
+label = "Materials"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLC"
+label = "Communication Services"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLE"
+label = "Energy"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLF"
+label = "Financials"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLI"
+label = "Industrials"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLK"
+label = "Technology"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLP"
+label = "Consumer Staples"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLRE"
+label = "Real Estate"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLU"
+label = "Utilities"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLV"
+label = "Health Care"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[[stock]]
+symbol = "XLY"
+label = "Consumer Discretionary"
+group = "sector"
+sec_type = "STK"
+exchange = "SMART"
+currency = "USD"
+con_id = 0
+
+[global_assets]
+benchmark = "SPY"
+
 [schedule]
 calendar = "XNYS"
 anchor = "session_close"
