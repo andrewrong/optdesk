@@ -216,7 +216,6 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
 	setPrice(&vm.Underlying, sessionDay, latest)
-	vm.Underlying.OffSession = allOffSession(rows)
 	vm.Chain.SessionDay = &sessionDay
 	if vm.Notes, err = pageNotes(ctx, c, contracts.Day(sessionDay)); err != nil {
 		return nil, err
@@ -263,6 +262,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 // decorate fills the optional fields of the chain rows and the underlying: terms, earnings, approximate US dollars.
 func decorate(ctx context.Context, c Config, d time.Time, day contracts.Day, sessionDay string,
 	latest contracts.OptionEod, rows []contracts.OptionEod, vm *viewModel) error {
+	vm.Underlying.OffSession = allOffSession(rows)
 	if err := applyTerms(ctx, c.Terms, rows, vm.Chain.Rows); err != nil {
 		return err
 	}
