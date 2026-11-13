@@ -136,7 +136,8 @@ func newWith(
 		}
 		seen[e.Issuer] = true
 	}
-	return &job{m: m, passed: p, offset: off, runBound: bound, ref: ref, res: res, w: w, r: r, entries: entries, clk: clk, loc: loc, memo: map[contracts.Day]contracts.JobResult{}}, nil
+	return &job{m: m, passed: p, offset: off, runBound: bound, ref: ref, res: res, w: w, r: r, entries: entries, clk: clk, loc: loc,
+		memo: map[contracts.Day]contracts.JobResult{}}, nil
 }
 
 // ID is the job id of the manifest.
