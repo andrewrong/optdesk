@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/strategyresultpg"
 )
 
@@ -52,7 +53,7 @@ func strategyCompareCmd(a *app, args []string) error {
 		return fmt.Errorf("open strategy results with %s failed", pagesDSNName)
 	}
 	defer func() { _ = res.Close() }()
-	lines, err := strategyresultpg.Compare(old, res, day)
+	lines, err := strategyresultpg.Compare(oldReader(old), res, day)
 	if err != nil {
 		return errors.New("compare strategy results failed")
 	}
@@ -69,3 +70,7 @@ func strategyCompareCmd(a *app, args []string) error {
 	_, _ = fmt.Fprintf(a.stdout, "equal rows=%d\n", len(rows))
 	return nil
 }
+
+// oldReader hands the candidate store to Compare as the store interface it is asked for, so the package-private
+// type of cmd/ot does not cross into the store package.
+func oldReader(c candidateStore) store.CandidateReader { return c }
