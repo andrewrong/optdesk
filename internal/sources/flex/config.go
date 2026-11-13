@@ -18,7 +18,6 @@ var (
 	loginNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 	envNameRE   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	queryIDRE   = regexp.MustCompile(`^[0-9]+$`)
-	aliasRE     = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 )
 
 var _ sources.LoadFlexFileFunc = Load
@@ -87,7 +86,7 @@ func inGitWorkTree(path string) bool {
 func validate(doc map[string]any) (sources.FlexFile, error) {
 	var out sources.FlexFile
 	for k := range doc {
-		if k != "login" && k != "account" {
+		if k != "login" {
 			return out, bad("unknown table %q", k)
 		}
 	}
@@ -113,22 +112,6 @@ func validate(doc map[string]any) (sources.FlexFile, error) {
 	}
 	if required != 1 {
 		return out, bad("login: exactly one entry must have required = true, found %d", required)
-	}
-	accts, err := entries(doc, "account")
-	if err != nil {
-		return out, err
-	}
-	aliases := map[string]bool{}
-	for i, e := range accts {
-		a, err := account(i, e)
-		if err != nil {
-			return out, err
-		}
-		if aliases[a.Alias] {
-			return out, bad("account[%d] alias: duplicate", i)
-		}
-		aliases[a.Alias] = true
-		out.Accounts = append(out.Accounts, a)
 	}
 	return out, nil
 }
@@ -207,17 +190,4 @@ func login(i int, m map[string]any) (sources.FlexLogin, error) {
 		l.Required = b
 	}
 	return l, nil
-}
-
-func account(i int, m map[string]any) (sources.FlexAccount, error) {
-	var a sources.FlexAccount
-	if err := checkKeys("account", i, m, "alias", "account_env"); err != nil {
-		return a, err
-	}
-	var err error
-	if a.Alias, err = str("account", i, m, "alias", aliasRE); err != nil {
-		return a, err
-	}
-	a.AccountEnv, err = str("account", i, m, "account_env", envNameRE)
-	return a, err
 }

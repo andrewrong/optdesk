@@ -60,6 +60,8 @@ type manifest struct {
 	VolForecast    string            `toml:"vol_forecast"`
 	VolEdge        string            `toml:"vol_edge"`
 	VolForecastErr string            `toml:"vol_forecast_err"`
+	Tech           string            `toml:"tech"`
+	TechIndices    []string          `toml:"tech_indices"`
 	Market         []marketSpec      `toml:"market"`
 	Ease           easeSpec          `toml:"ease"`
 	Schedule       scheduleTable     `toml:"schedule"`
@@ -74,6 +76,7 @@ type job struct {
 	units  compute.Units
 	ops    compute.SeriesOps
 	ease   compute.Ease // nil: the job stores no ease
+	tech   *techStep    // nil: the job has no tech step (WithTech sets it)
 	clk    clock.Clock
 	rule   map[string]compute.Rule
 }
@@ -187,6 +190,14 @@ func parseKey(k string) (name, kind, subj string, ok bool) {
 	return p[0], p[1], p[2], true
 }
 
+// parseReadingKey is parseKey for a key of the readings dataset; any other dataset is not ok.
+func parseReadingKey(k contracts.ExpectedKey) (name, kind, subj string, ok bool) {
+	if k.DatasetID != datasetReadings {
+		return "", "", "", false
+	}
+	return parseKey(k.SubjectKey)
+}
+
 func dayValue(d string) contracts.Day { return contracts.Day(d) }
 
 // Plan lists one key per rule and subject, sorted, and the hash of the plan.
@@ -224,6 +235,9 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 	if j.ease != nil {
 		keys = append(keys, keyOf(j.m.Ease.ID, kindMarket, j.m.Ease.Series[0]))
 	}
+	if j.tech != nil {
+		keys = append(keys, keyOf(j.m.Tech, kindMarket, j.techSubject()))
+	}
 	sort.Slice(keys, func(a, b int) bool { return keys[a].SubjectKey < keys[b].SubjectKey })
 	h := sha256.New()
 	fmt.Fprintf(h, "%s\n%s\n", j.m.ID, day)
@@ -249,16 +263,18 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	var market []target
 	var l underlyingLists
 	var rvs, ivrvs []string
-	var ease *target
+	var ease, tech *target
 	var under map[string]subject
 	for _, k := range keys {
-		name, kind, subj, ok := parseKey(k.SubjectKey)
-		if !ok || k.DatasetID != datasetReadings {
+		name, kind, subj, ok := parseReadingKey(k)
+		if !ok {
 			r.fail(contracts.Permanent, fmt.Errorf("computefigures: bad key %q", k.SubjectKey))
 			continue
 		}
 		rule, known := j.rule[name]
 		switch {
+		case j.isTechKey(name, kind, subj):
+			tech = &target{rule: j.rule[name], subj: subject{kind: kind, name: subj}}
 		case known && kind == kindMarket && j.isEaseKey(name, subj):
 			ease = &target{rule: rule, subj: subject{kind: kind, name: subj}}
 		case known && kind == kindMarket:
@@ -292,6 +308,9 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r.runVol(l.vols)
 	r.runRv20(rvs)
 	r.runMarket(market)
+	if tech != nil {
+		r.runTech(*tech)
+	}
 	r.runIvRv20(ivrvs)
 	r.runIvStats(l.ivs)
 	if ease != nil {

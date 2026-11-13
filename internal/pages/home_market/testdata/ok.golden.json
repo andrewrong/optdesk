@@ -183,7 +183,13 @@
     "notes": [
       "The chart draws only the stored S\u0026P 500 closes; the 200-day average and range are not built yet."
     ],
-    "gaps": [],
+    "gaps": [
+      {
+        "kind": "gap",
+        "reason": "no_data",
+        "text": "Tech state: no data, not stored yet"
+      }
+    ],
     "data_times_text": "Data time 11-06"
   }
 }

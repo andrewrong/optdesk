@@ -329,13 +329,13 @@ def test_reference_service_dividends_stream() -> None:
 def test_account_servicer_executions_stub() -> None:
     from optdesk.ibkr.transport import AccountServicer
 
-    servicer = AccountServicer(MagicMock(), "B", ())
+    servicer = AccountServicer(MagicMock(), ())
 
     async def run() -> ExecutionsResponse:
         return await servicer.Executions(ExecutionsRequest(), MagicMock())
 
     response = asyncio.run(run())
-    assert response.account == "B"
+    assert response.account == ""  # nothing was read, so no id is known
     assert response.collected is False
     assert len(response.executions) == 0
 
