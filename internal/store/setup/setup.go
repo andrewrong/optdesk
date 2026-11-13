@@ -26,6 +26,7 @@ const Database = "optdesk"
 
 // The roles. Their grants on tables are in migrations/0002_series.sql to 0005_session_day_loader.sql,
 // which goose runs as ot_owner; later issues add the other roles with their tables.
+// ot_w_series_fred has INSERT and column UPDATE on obs.series_* since migrations/0043_series_registry.sql.
 const (
 	roleOwner      = "ot_owner"
 	roleRunner     = "ot_runner"
@@ -49,7 +50,10 @@ const (
 
 	// roleBar: INSERT on obs.price_bar and obs.fx_rate, SELECT on rd.price_bar_r1 and rd.fx_rate_r1
 	// (migrations/0021_bars.sql); UPDATE on the columns rate, source, status, updated_at and written_by of obs.fx_rate and
-	// SELECT on its columns pair, rate_day, rate, source and status (migrations/0039_fx_rate_repair.sql).
+	// SELECT on its columns pair, rate_day, rate, source and status (migrations/0039_fx_rate_repair.sql); UPDATE on the
+	// columns open, high, low, close, volume, currency, source, status, updated_at and written_by of obs.price_bar and
+	// SELECT on its columns instrument_id, basis, session_day, open, high, low, close, volume, currency, source and
+	// status (migrations/0041_price_bar_repair.sql).
 	roleBar          = "ot_w_bar"
 	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0022_optionledger.sql)
 

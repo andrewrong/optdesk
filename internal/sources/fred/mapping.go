@@ -68,6 +68,10 @@ var seriesUnits = map[string]unitRow{
 	"RRPONTSYD":    {unit: ccyAmount, currency: "USD", shift: 9, pinVintage: true},
 	"DFF":          {unit: percent, pinVintage: true},
 	"BAMLH0A0HYM2": {unit: percent, pinVintage: true},
+	"BAMLC0A0CM":   {unit: percent, pinVintage: true},
+	"BAA10Y":       {unit: percent, pinVintage: true},
+	"SOFR":         {unit: percent, pinVintage: true},
+	"WRESBAL":      {unit: ccyAmount, currency: "USD", shift: 6, pinVintage: true},
 }
 
 // shiftDecimalText moves the decimal point of a plain decimal text n places right, on the text,

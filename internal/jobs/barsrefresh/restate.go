@@ -1,8 +1,10 @@
 package barsrefresh
 
 import (
+	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -53,11 +55,68 @@ func restated(stored []contracts.PriceBar, pulled []broker.Bar, tol *big.Rat) (b
 	return out, nil
 }
 
-// maxEpoch is the highest AdjustEpoch of rows, 0 for none.
-func maxEpoch(rows []contracts.PriceBar) int {
-	e := 0
-	for _, r := range rows {
-		e = max(e, r.AdjustEpoch)
+// olderThanWindow pulls again the stored days older than the oldest day of window: pieces of at most
+// deepen_piece_days ending the day before the oldest pulled day, down to the oldest stored day. A piece
+// with no older day stops the loop. It returns the rows of every piece and writes nothing, so that the
+// restatement is written in one call after the last pull.
+func (r *runState) olderThanWindow(
+	ctx context.Context, c broker.Contract, id int64, stored []contracts.PriceBar, window []broker.Bar,
+) ([]contracts.PriceBar, contracts.TypedError) {
+	if len(window) == 0 || len(stored) == 0 {
+		return nil, nil
 	}
-	return e
+	oldest, err := time.Parse(dayLayout, window[0].Day)
+	if err != nil {
+		return nil, newErr(contracts.Permanent, "bad bar day")
+	}
+	for _, b := range window {
+		d, err := time.Parse(dayLayout, b.Day)
+		if err != nil {
+			return nil, newErr(contracts.Permanent, "bad bar day")
+		}
+		if d.Before(oldest) {
+			oldest = d
+		}
+	}
+	floor := oldestDay(stored)
+	var out []contracts.PriceBar
+	for oldest.After(floor) {
+		days := min(r.j.m.DeepenPieceDays, int(oldest.Sub(floor).Hours()/24))
+		bars, err := r.j.h.Bars(ctx, broker.BarQuery{
+			Contract: c, Kind: broker.BarTrades, DurationDays: days, End: oldest.AddDate(0, 0, -1).Format(dayLayout),
+		})
+		if err != nil {
+			return nil, asTyped(err, contracts.Retryable)
+		}
+		older := make([]broker.Bar, 0, len(bars))
+		next := oldest
+		for _, b := range bars {
+			d, err := time.Parse(dayLayout, b.Day)
+			if err != nil {
+				return nil, newErr(contracts.Permanent, "bad bar day")
+			}
+			if !d.Before(oldest) {
+				continue
+			}
+			older = append(older, b)
+			next = minTime(next, d)
+		}
+		if len(older) == 0 {
+			break
+		}
+		rows, terr := r.rows(older, false, id, c.Currency)
+		if terr != nil {
+			return nil, terr
+		}
+		out = append(out, rows...)
+		oldest = next
+	}
+	return out, nil
+}
+
+func minTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
 }

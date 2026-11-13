@@ -20,6 +20,7 @@ import (
 type fakeDB struct {
 	points      map[string][]any
 	definitions map[string][]any
+	upserts     [][]any // arguments of each upsertPointSQL statement, in order
 	events      []string
 	rows        [][]any // canned rows for Select
 	selSQL      string
@@ -49,6 +50,14 @@ func (t fakeTx) Exec(_ context.Context, sql string, args ...any) error {
 		return fmt.Errorf("unexpected SQL %q", sql)
 	}
 	return nil
+}
+
+func (t fakeTx) ExecReturning(_ context.Context, sql string, args ...any) (int, error) {
+	if sql != upsertPointSQL {
+		return 0, fmt.Errorf("unexpected SQL %q", sql)
+	}
+	t.f.upserts = append(t.f.upserts, args)
+	return 1, nil
 }
 
 func (f *fakeDB) InTx(_ context.Context, fn func(execer) error) error {
@@ -104,6 +113,8 @@ func point(t *testing.T, v *float64, status string) contracts.SeriesPoint {
 const (
 	argValue  = 4
 	argStatus = 5
+	// argWrittenBy is the position of written_by in upsertPointSQL.
+	argWrittenBy = 11
 )
 
 func TestSentinelRejected(t *testing.T) {
@@ -236,4 +247,55 @@ func TestSeriesPointsRange(t *testing.T) {
 func TestOpenFuncShape(t *testing.T) {
 	t.Parallel()
 	var _ store.SeriesStore = &seriesStore{}
+}
+
+func TestUpsertOneStatementPerRowInOneTransaction(t *testing.T) {
+	t.Parallel()
+	f := newFakeDB()
+	s := &seriesStore{db: f}
+	v := 4.25
+	a := point(t, &v, "present")
+	b := point(t, &v, "present")
+	b.ObservationDate = date(t, "2026-11-03")
+	got, err := s.UpsertSeriesPoints(context.Background(), []contracts.SeriesPoint{a, b}, "fred_series:2026-11-05")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Written != 2 || got.Unchanged != 0 {
+		t.Errorf("count = %+v, want 2 written", got)
+	}
+	if !reflect.DeepEqual(f.events, []string{"begin", "commit"}) {
+		t.Errorf("events = %v, want one transaction", f.events)
+	}
+	if len(f.upserts) != 2 {
+		t.Fatalf("statements = %d, want 2", len(f.upserts))
+	}
+	for _, args := range f.upserts {
+		if args[argWrittenBy] != "fred_series:2026-11-05" {
+			t.Errorf("writtenBy = %v", args[argWrittenBy])
+		}
+	}
+}
+
+func TestUpsertSentinelStoredAsNull(t *testing.T) {
+	t.Parallel()
+	f := newFakeDB()
+	s := &seriesStore{db: f}
+	v := -1.0
+	if _, err := s.UpsertSeriesPoints(context.Background(), []contracts.SeriesPoint{point(t, &v, "present")}, "w"); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.upserts) != 1 || f.upserts[0][argValue] != nil || f.upserts[0][argStatus] != StatusSentinelRejected {
+		t.Errorf("upserts = %v, want NULL with %q", f.upserts, StatusSentinelRejected)
+	}
+}
+
+func TestUpsertEmptyListMakesNoCall(t *testing.T) {
+	t.Parallel()
+	f := newFakeDB()
+	s := &seriesStore{db: f}
+	got, err := s.UpsertSeriesPoints(context.Background(), nil, "w")
+	if err != nil || got.Written != 0 || got.Unchanged != 0 || len(f.events) != 0 {
+		t.Errorf("got %+v, %v, events %v; want zero counts and no call", got, err, f.events)
+	}
 }

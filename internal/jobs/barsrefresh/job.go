@@ -136,5 +136,5 @@ func (j *job) Schedule() (calendarID, anchor, zone string, offset time.Duration)
 // RunBound is the longest time one run of a key may take.
 func (j *job) RunBound() time.Duration { return j.m.Schedule.RunBound }
 
-// RestartSensitive is false: a rerun inserts only what is missing.
+// RestartSensitive is false: a re-run is idempotent: it upserts the same keys and an equal row changes nothing.
 func (j *job) RestartSensitive() bool { return false }

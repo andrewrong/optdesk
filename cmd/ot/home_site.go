@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/pages/home_options"
 	"github.com/andrewrong/optdesk/internal/pages/home_page"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 )
 
 // Design: docs/design/pages-real-data.md#17 ot-home-route.
@@ -156,6 +157,13 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 	if err != nil {
 		return nil, err
 	}
+	var notices []hoursnotice.Notice
+	if rd.hours != nil {
+		// A failed read leaves the overview without notices; the page is built as it is without the reader.
+		if n, err := rd.hours.Notices(ctx); err == nil {
+			notices = n
+		}
+	}
 	return home_page.Compose(home_page.Input{
 		RunID: runID, BuildID: build, Scope: scope, Zone: zone,
 		Title: "Today", Say: "Five cards, one page.",
@@ -164,7 +172,7 @@ func homeBuild(ctx context.Context, a *app, runID string, rd siteReaders, day co
 			Companies: "/" + siteCompaniesRoute, Options: "/" + siteOptionRoute,
 		},
 		ReportLinks: []home_page.Link{},
-		Household:   hh, Companies: co, Macro: ma, Market: mk, Options: op,
+		Household:   hh, Companies: co, Macro: ma, Market: mk, Options: op, HoursNotices: notices,
 	}, now)
 }
 

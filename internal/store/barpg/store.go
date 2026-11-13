@@ -1,8 +1,9 @@
 // Package barpg is the bar store over pgx for the DSN line OT_PG_DSN_BAR (role ot_w_bar): the writer of obs.price_bar
 // and obs.fx_rate, and the reader of the views rd.price_bar_r1 and rd.fx_rate_r1
 // (docs/design/market-bars.md Decisions 4 and 8). It imports contracts and the interface package internal/store/bar (for bar.FxWriteCount); its test asserts
-// that *Store satisfies bar.BarStore. obs.price_bar is insert-only; obs.fx_rate is upserted by UpsertFxRates
-// (docs/design/data-repair-fx.md Decisions 3 and 4). No statement of this package deletes a row.
+// that *Store satisfies bar.BarStore. obs.price_bar is upserted by UpsertPriceBars (docs/design/data-repair-bars.md
+// Decisions 5 and 6) and obs.fx_rate by UpsertFxRates (docs/design/data-repair-fx.md Decisions 3 and 4). No statement of
+// this package deletes a row.
 package barpg
 
 import (
@@ -39,6 +40,20 @@ const upsertFxRateSQL = `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, 
 	`rate = EXCLUDED.rate, source = EXCLUDED.source, status = 'ok', updated_at = now(), ` +
 	`written_by = $6 WHERE (obs.fx_rate.rate, obs.fx_rate.source, obs.fx_rate.status) ` +
 	`IS DISTINCT FROM (EXCLUDED.rate, EXCLUDED.source, EXCLUDED.status) RETURNING pair`
+
+// upsertPriceBarSQL arguments: instrument_id, session_day, basis, open, high, low, close, volume, currency, source,
+// received_at, written_by. A stored row is replaced only when its prices, volume (numeric equality), currency, source or
+// status differs; received_at, the key and adjust_epoch are never set.
+const upsertPriceBarSQL = `INSERT INTO obs.price_bar (instrument_id, session_day, basis, open, high, low, close, volume, ` +
+	`currency, source, received_at, status, updated_at, written_by) ` +
+	`VALUES ($1, $2::date, $3, $4::numeric, $5::numeric, $6::numeric, $7::numeric, $8::numeric, $9, $10, $11, 'ok', now(), $12) ` +
+	`ON CONFLICT (instrument_id, basis, session_day) DO UPDATE SET open = EXCLUDED.open, high = EXCLUDED.high, ` +
+	`low = EXCLUDED.low, close = EXCLUDED.close, volume = EXCLUDED.volume, currency = EXCLUDED.currency, ` +
+	`source = EXCLUDED.source, status = 'ok', updated_at = now(), written_by = $12 ` +
+	`WHERE (obs.price_bar.open, obs.price_bar.high, obs.price_bar.low, obs.price_bar.close, obs.price_bar.volume, ` +
+	`obs.price_bar.currency, obs.price_bar.source, obs.price_bar.status) ` +
+	`IS DISTINCT FROM (EXCLUDED.open, EXCLUDED.high, EXCLUDED.low, EXCLUDED.close, EXCLUDED.volume, EXCLUDED.currency, ` +
+	`EXCLUDED.source, EXCLUDED.status) RETURNING instrument_id`
 
 // execer runs one statement inside a transaction and reports the rows it added.
 type execer interface {
@@ -118,6 +133,23 @@ func (s *Store) InsertFxRates(ctx context.Context, rows []contracts.FxRate) (int
 	return insertAll(ctx, s.db, insertFxRateSQL, rows, func(r contracts.FxRate) []any {
 		return []any{r.Pair, r.RateDay.Format(time.DateOnly), r.Rate, string(r.Source), r.ReceivedAt}
 	}, "insert fx rates")
+}
+
+var _ bar.PriceBarUpserter = (*Store)(nil)
+
+// UpsertPriceBars writes the rows in one transaction, one statement per row, by the key (instrument, basis, session
+// day): a differing row replaces the stored one, an equal one touches nothing, and no old value is kept. AdjustEpoch
+// is ignored. Written is the rows inserted or replaced, Unchanged the rows given minus those. An empty input makes no
+// database call.
+func (s *Store) UpsertPriceBars(ctx context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
+	n, err := insertAll(ctx, s.db, upsertPriceBarSQL, rows, func(r contracts.PriceBar) []any {
+		return []any{int64(r.InstrumentID), r.SessionDay.Format(time.DateOnly), string(r.Basis), r.Open, r.High, r.Low,
+			r.Close, r.Volume, r.Currency, string(r.Source), r.ReceivedAt, writtenBy}
+	}, "upsert price bars")
+	if err != nil {
+		return bar.BarWriteCount{}, err
+	}
+	return bar.BarWriteCount{Written: n, Unchanged: len(rows) - n}, nil
 }
 
 var _ bar.FxRateUpserter = (*Store)(nil)
