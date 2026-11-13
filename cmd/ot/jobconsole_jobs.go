@@ -76,7 +76,7 @@ func listedOnly(id, reason, text, needs string) jobRow {
 
 // jobTable is the table of the 31 jobs, in the order of the page.
 var jobTable = []jobRow{
-	anyDay("fred_series", "revision_rows", textRevisionRows),
+	{ID: "fred_series", Kind: kindAnyDay, Force: true},
 	anyDay("fundamentals", "quota", textQuota),
 	anyDay("compute_figures", "revision_rows", textRevisionRows),
 	anyDay("option_candidates", "new_run_id", textNewRunID),
