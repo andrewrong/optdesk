@@ -92,6 +92,8 @@ var jobTable = []jobRow{
 	todayOnly("fx_refresh", "not_proved", textNotProved),
 	todayOnly("iv_history", "not_proved", textNotProved),
 	todayOnly("option_list_preopen", "not_proved", textNotProved),
+	todayOnly("option_list_zone", "not_proved", textNotProved),
+	{ID: "option_list_preopen_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "not_proved", ForceText: textNotProved},
 	todayOnly("bars_refresh", "epoch_and_caps", textEpochAndCaps),
 	listedOnly("option_open", "no_lower_time_bound", textNoLowerBound, needsLowerBound),
 	listedOnly("option_open_jp", "no_lower_time_bound", textNoLowerBound, needsLowerBound),

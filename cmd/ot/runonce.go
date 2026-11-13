@@ -25,6 +25,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -57,6 +58,8 @@ type runOnceConfig struct {
 	// leaves only them out, never the run.
 	factDSN, secAgent string
 	socketPath        string
+	// scheduler is set by ot scheduler alone: the jobs it leaves out are recorded (not_wired.go).
+	scheduler bool
 }
 
 func loadRunOnceConfig(a *app) (runOnceConfig, error) { return loadConfig(a, false) }
@@ -327,11 +330,11 @@ func withWiring(
 		return err
 	}
 	defer closeDays()
-	ledger, err := d.openLedger(ctx, cfg.runnerDSN)
+	ledger, closeLedger, err := openLedgerWithReasons(ctx, d, cfg.runnerDSN)
 	if err != nil {
-		return fmt.Errorf("open ledger with %s failed", store.DSNEnvRunner)
+		return err
 	}
-	defer func() { _ = ledger.Close() }()
+	defer closeLedger()
 	if check != nil {
 		if err := check(ledger); err != nil {
 			return err
@@ -391,7 +394,8 @@ func wireJobs(
 	if err := openJobList(ctx, a, cfg, &f, extra); err != nil {
 		return err
 	}
-	jc := &jobCtx{cfg: cfg, f: &f, brk: brk, brokerUp: brokerUp, cal: cal, extra: extra}
+	rw, _ := ledger.(runview.ReasonWriter) // nil: the families that write reasons answer an error naming the job
+	jc := newJobCtx(cfg, &f, brk, brokerUp, cal, extra, rw)
 	w := wiring{ledger: ledger, cal: cal, brokerUp: brokerUp, off: startDisabled(cfg, brokerUp), held: map[string]contracts.Job{}}
 	steps := slices.Clone(jobSteps)
 	runSteps := func(below int) error {
@@ -423,6 +427,9 @@ func wireJobs(
 	}
 	if err := runSteps(-1); err != nil {
 		return err
+	}
+	if err := jc.notWired.flush(ctx); err != nil {
+		a.log.Warn("not wired set not stored", "component", "ot", "status", "failed")
 	}
 	w.factory = f
 	w.barsDSNOff = cfg.barsOff()
