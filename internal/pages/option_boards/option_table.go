@@ -103,8 +103,10 @@ func buildRow(r store.Candidate, eod map[int]contracts.OptionEod, names displayN
 		ask = "$" + *askText
 	}
 	var delta any = mkGap("no_data", gapText)
-	if deltaStr != nil && decimalPattern.MatchString(*deltaStr) {
-		delta = textCell{Kind: "text", Text: signedText(*deltaStr), Value: keyValue(*deltaStr, 4)}
+	if deltaStr != nil {
+		if rounded, ok := roundDecimal(*deltaStr, 4); ok {
+			delta = textCell{Kind: "text", Text: signedText(rounded), Value: keyValue(rounded, 4)}
+		}
 	}
 	cells := []cellAt{
 		{Column: "symbol", Cell: textCell{Kind: "text", Text: symbol, Value: symbol}},
