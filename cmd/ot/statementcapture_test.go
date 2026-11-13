@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
@@ -114,6 +116,21 @@ func TestMissingAccountDsnLeavesJobOut(t *testing.T) {
 	}
 	log := r.log.String()
 	if r.opened.Load() != 0 || !bytes.Contains(r.log.Bytes(), []byte(store.DSNEnvAccount+" is not set")) || bytes.Contains(r.log.Bytes(), []byte("ledger-dsn")) {
+		t.Fatalf("opened %d; log %s", r.opened.Load(), log)
+	}
+}
+
+func TestMissingAccountsBookLeavesJobOut(t *testing.T) {
+	t.Parallel()
+	r := newStatementRig(t, statementEnv, "")
+	if err := os.Remove(filepath.Join(r.a.getenv("OT_HOME"), accountsFileName)); err != nil {
+		t.Fatal(err)
+	}
+	if _, built := r.build(t); built {
+		t.Fatal("job built without accounts.toml")
+	}
+	log := r.log.String()
+	if r.opened.Load() != 0 || !bytes.Contains(r.log.Bytes(), []byte("job left out")) || !bytes.Contains(r.log.Bytes(), []byte(reasonNoBook)) {
 		t.Fatalf("opened %d; log %s", r.opened.Load(), log)
 	}
 }
