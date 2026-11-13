@@ -2,12 +2,38 @@
 
 from __future__ import annotations
 
+import logging
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
+import pytest
 from importlinter.cli import lint_imports
 
 PYPROJECT = Path(__file__).resolve().parents[2] / "pyproject.toml"
+
+
+@pytest.fixture(autouse=True)
+def _keep_logging_config() -> Iterator[None]:
+    """lint_imports calls logging.config.dictConfig, which disables every
+    existing logger and replaces the root handlers; undo that for other tests."""
+    root = logging.getLogger()
+    handlers, level = list(root.handlers), root.level
+    loggers = [
+        lg
+        for lg in logging.Logger.manager.loggerDict.values()
+        if isinstance(lg, logging.Logger)
+    ]
+    state = [
+        (lg, lg.disabled, lg.level, list(lg.handlers), lg.propagate) for lg in loggers
+    ]
+    yield
+    root.handlers[:] = handlers
+    root.setLevel(level)
+    for lg, disabled, lvl, hs, prop in state:
+        lg.disabled, lg.propagate = disabled, prop
+        lg.setLevel(lvl)
+        lg.handlers[:] = hs
 
 
 def test_import_contracts_hold() -> None:
