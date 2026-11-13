@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/strategy"
 )
 
 func TestNeedsAreTheTwoRows(t *testing.T) {
@@ -95,5 +96,31 @@ expiry = "` + r.Expiry + `"
 				t.Fatalf("error carries a value: %v", err)
 			}
 		})
+	}
+}
+
+type ghostStrategy struct{ strategy.Strategy }
+
+func (ghostStrategy) ID() string { return "ghost" }
+
+func TestEveryStrategyHasANeedRow(t *testing.T) {
+	t.Parallel()
+	needs, err := Needs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// the registered strategy of today has its row; covered_call has a row and no registered strategy: not an error
+	if err := checkStrategyNeeds([]string{"short_put"}, needs); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkStrategyNeeds([]string{"short_put", "ghost"}, needs); err == nil || !strings.Contains(err.Error(), "ghost") {
+		t.Fatalf("err %v", err)
+	}
+	// the constructor refuses a strategy with no row
+	f := newFakes()
+	st := f.stores()
+	st.Strategy, st.Results = ghostStrategy{}, &fakeResults{}
+	if _, err := New(st, f, nil, fixedClock{}); err == nil {
+		t.Fatal("a strategy without a need row was accepted")
 	}
 }

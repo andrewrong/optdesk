@@ -1,8 +1,8 @@
 # Manifest of the fred_series job.
 version = 1
 id = "fred_series"
-series = ["DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS", "WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2"]
-windowed = ["WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2"]
+series = ["DGS10", "DGS3MO", "SP500", "VIXCLS", "VXNCLS", "RVXCLS", "VXVCLS", "WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL"]
+windowed = ["WALCL", "WDTGAL", "RRPONTSYD", "DFF", "BAMLH0A0HYM2", "BAMLC0A0CM", "BAA10Y", "SOFR", "WRESBAL"]
 lookback_days = 14
 
 [window]
