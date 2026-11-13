@@ -100,7 +100,8 @@ Acceptance:
 ### 3 household-figures-wire
 
 Module: ot. Size: S.
-Order: after 2. `cmd/ot/site.go` is also edited by account-identity entry 6 (issue 2030 was open on 2026-11-13); if it is not merged when this entry is cut, add "after" it (read-only check: `gh issue list --repo andrewrong/optdesk --search "account-identity"`).
+Composition-root step: this entry only wires, in `cmd/ot`, what entries 1 and 2 add (`household_page.Config.Fx` and the labelling come from entry 2), so it is ordered after both; entries 1 and 2 need no sibling's unmerged work.
+Order: after 1, 2. `cmd/ot/site.go` is also edited by account-identity entry 6 (issue 2030 was open on 2026-11-13); if it is not merged when this entry is cut, add "after" it (read-only check: `gh issue list --repo andrewrong/optdesk --search "account-identity"`).
 Files: `cmd/ot/site.go`, `cmd/ot/household_site.go`, `cmd/ot/household_site_test.go`
 Design: docs/design/household-figures.md (Decision 10)
 Acceptance:
