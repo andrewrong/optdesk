@@ -22,6 +22,22 @@ type PriceBarWriter interface {
 	InsertPriceBars(ctx context.Context, rows []contracts.PriceBar) (inserted int, err error)
 }
 
+// BarWriteCount is what one UpsertPriceBars call did to the rows it was given:
+// Written rows were inserted or replaced, Unchanged rows were equal to the
+// stored one.
+type BarWriteCount struct {
+	Written, Unchanged int
+}
+
+// PriceBarUpserter writes daily bars by the key (InstrumentID, Basis,
+// SessionDay): a differing row replaces the stored one, an equal row changes
+// nothing, no old value is kept, and the row's AdjustEpoch is ignored.
+// writtenBy names the run (job and day). It is an optional method of the value
+// OpenBarFunc returns; the job asserts it at Run.
+type PriceBarUpserter interface {
+	UpsertPriceBars(ctx context.Context, rows []contracts.PriceBar, writtenBy string) (BarWriteCount, error)
+}
+
 // PriceBarReader reads price bars.
 type PriceBarReader interface {
 	// PriceBars returns the winner rows of one instrument and basis ("trades" or

@@ -2,6 +2,7 @@ package bar_test
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -244,6 +245,64 @@ func TestFxRateUpserterContract(t *testing.T) {
 	b := a
 	b.Rate = "158.0"
 	c, err := u.UpsertFxRates(ctx, []contracts.FxRate{a, b}, "x")
+	if err != nil || c.Written != 1 || c.Unchanged != 1 {
+		t.Fatalf("second upsert = %+v, %v; want 1 written, 1 unchanged", c, err)
+	}
+}
+
+// barUpsertFake keeps the promises of bar.PriceBarUpserter: the key is
+// (InstrumentID, Basis, SessionDay), a differing row replaces the stored one, an
+// equal row changes nothing, and AdjustEpoch is ignored.
+type barUpsertFake struct {
+	closes    map[string]string
+	writtenBy string
+}
+
+var (
+	_ bar.PriceBarWriter   = (*barUpsertFake)(nil)
+	_ bar.PriceBarUpserter = (*barUpsertFake)(nil)
+)
+
+func (f *barUpsertFake) InsertPriceBars(context.Context, []contracts.PriceBar) (int, error) {
+	return 0, nil
+}
+
+func (f *barUpsertFake) UpsertPriceBars(_ context.Context, rows []contracts.PriceBar, writtenBy string) (bar.BarWriteCount, error) {
+	var c bar.BarWriteCount
+	if len(rows) == 0 {
+		return c, nil
+	}
+	if f.closes == nil {
+		f.closes = map[string]string{}
+	}
+	f.writtenBy = writtenBy
+	for _, r := range rows {
+		k := fmt.Sprintf("%d/%s/%s", r.InstrumentID, r.Basis, r.SessionDay.Format("2006-01-02"))
+		if old, ok := f.closes[k]; ok && old == r.Close {
+			c.Unchanged++
+			continue
+		}
+		f.closes[k] = r.Close
+		c.Written++
+	}
+	return c, nil
+}
+
+func TestPriceBarUpserterContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := &barUpsertFake{}
+	var u bar.PriceBarUpserter = f
+	if c, err := u.UpsertPriceBars(ctx, nil, "job"); err != nil || c != (bar.BarWriteCount{}) {
+		t.Fatalf("empty list = %+v, %v; want zero counts", c, err)
+	}
+	a := priceBar(t, 7, "2026-01-05", 1, "10")
+	if c, err := u.UpsertPriceBars(ctx, []contracts.PriceBar{a}, "bars_refresh 2026-01-05"); err != nil || c.Written != 1 || c.Unchanged != 0 {
+		t.Fatalf("first upsert = %+v, %v; want 1 written", c, err)
+	}
+	b := a
+	b.Close = "11"
+	c, err := u.UpsertPriceBars(ctx, []contracts.PriceBar{a, b}, "x")
 	if err != nil || c.Written != 1 || c.Unchanged != 1 {
 		t.Fatalf("second upsert = %+v, %v; want 1 written, 1 unchanged", c, err)
 	}

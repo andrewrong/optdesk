@@ -88,10 +88,11 @@ rows above name every other top-level path of the planned tree.
 | gaphistory | internal/gaphistory/** docs/contracts/gaphistory.md | internal/gaphistory/api.go | internal/gaphistory/api_test.go | contracts |
 | symbol | internal/symbol/** docs/contracts/symbol.md | internal/symbol/api.go internal/symbol/contracttest | internal/symbol/api_test.go internal/symbol/contracttest |  |
 | accounts | internal/accounts/** docs/contracts/accounts.md | internal/accounts/api.go | internal/accounts/api_test.go |  |
-| store | internal/store/** migrations/** docs/contracts/store.md docs/contracts/store/** | internal/store/api.go internal/store/jobrequest internal/store/hoursnotice internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend internal/store/openquote internal/store/runview internal/store/underlying internal/store/readingkey internal/store/optionledger/api.go | internal/store/api_test.go | contracts gaphistory |
+| store | internal/store/** migrations/** docs/contracts/store.md docs/contracts/store/** | internal/store/api.go internal/store/jobrequest internal/store/hoursnotice internal/store/bar internal/store/ownerset internal/store/mark internal/store/flexsection internal/store/dividend internal/store/openquote internal/store/runview internal/store/underlying internal/store/readingkey internal/store/optionledger/api.go internal/store/strategyresult | internal/store/api_test.go | contracts gaphistory |
 | compute | internal/compute/** docs/contracts/compute.md docs/contracts/compute/** tools/compute-golden/** | internal/compute/api.go internal/compute/contracttest internal/compute/trackapi internal/compute/settingsapi internal/compute/blockapi internal/compute/valuationapi | internal/compute/api_test.go internal/compute/contracttest | contracts |
+| strategy | internal/strategy/** docs/contracts/strategy.md | internal/strategy/api.go | internal/strategy/api_test.go | contracts compute |
 | runner | internal/runner/** docs/contracts/runner.md | internal/runner/api.go | internal/runner/api_test.go | contracts clock store |
-| jobs | internal/jobs/** docs/contracts/jobs.md docs/contracts/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute symbol |
+| jobs | internal/jobs/** docs/contracts/jobs.md docs/contracts/jobs/** | internal/jobs/api.go | internal/jobs/api_test.go | contracts clock sources broker store compute strategy symbol |
 | notify | internal/notify/** docs/contracts/notify.md | internal/notify/api.go | internal/notify/api_test.go | contracts store compute gaphistory |
 | pages | internal/pages/** docs/contracts/pages.md | internal/pages/api.go | internal/pages/api_test.go | contracts store compute |
 | web | web/** package.json pnpm-lock.yaml pnpm-workspace.yaml frontend-whitelist.json scripts/check-frontend-deps.mjs docs/adr/0034-frontend-stack.md |  | web/test/** | contracts |
@@ -99,7 +100,7 @@ rows above name every other top-level path of the planned tree.
 | ci | .github/** |  |  |  |
 | deploy | deploy/** |  |  |  |
 | repo | go.mod go.sum Makefile internal/profile/** scripts/** tests/** arch.toml .go-arch-lint.yml .golangci.yml .gitignore AGENTS.md README.md LICENSE | internal/profile/api.go | internal/profile/api_test.go |  |
-| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute gaphistory symbol accounts |
+| ot | cmd/** docs/contracts/ot.md docs/contracts/ot/** tools/ot-flex-export/** tools/ot-history-export/** |  | cmd/ot/main_test.go | contracts clock sources broker store runner jobs notify pages repo compute strategy gaphistory symbol accounts |
 | docs | docs/** |  |  |  |
 
 ## Contracts of the modules
@@ -118,6 +119,7 @@ module under `docs/contracts/` (template of plan 5.1). This table is read by peo
 | accounts | outside the layers | the file `$OT_HOME/accounts.toml` | the map from an IBKR account id to the owner alias, `Book` | any other file, any network, opening the database, logging an id | docs/contracts/accounts.md |
 | store | data | records | one Writer and one Reader per dataset, migrations, roles rw and ro | being bypassed: only store imports pgx (depguard) | docs/contracts/store.md and docs/contracts/datasets/ |
 | compute | data | typed records | figure values with register id and version | any I/O | docs/contracts/compute.md (first issue: week 8-9) |
+| strategy | data | a `Snapshot` of stored inputs and an open `Position` | `Evaluation`, `Action`, `Params` of one strategy; one package per strategy behind `Strategy` | any I/O, any clock, importing store, jobs or pages | docs/contracts/strategy.md |
 | runner | scheduling | job manifests (window rules), the key set each job Plan returns, the run table | run, attempt, job_event; ops.capture_expected_key and ops.dataset_window; control socket | knowing dataset content (keys are opaque) | docs/contracts/runner.md |
 | jobs | scheduling | broker, sources, store, compute | dataset writes and a JobResult | importing another jobs package | job.toml per package and docs/contracts/jobs.md and docs/contracts/jobs/<job>.md |
 | notify | scheduling | job_event, push list | morning report, push | account-derived information (ADR 0010) | docs/contracts/notify.md (first issue: `notify-interface` of `docs/design/notify.md`, stage 1) |
