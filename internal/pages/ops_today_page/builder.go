@@ -111,9 +111,13 @@ func Build(runs []runview.Row, reasons []runview.Reason, now time.Time) ([]byte,
 		rows = append(rows, row{Dataset: re.Dataset, Key: re.Scope, Market: market(re.Dataset), Status: statusFinal,
 			ReasonCode: text(re.Code), Detail: text(re.Detail)})
 	}
+	notes := []string{}
+	if line := coverage(runs); line != "" {
+		notes = append(notes, line)
+	}
 	vm := viewModel{Schema: pageName, SchemaVersion: 1, RunID: idText, BuildID: idText, Scope: idText,
 		GeneratedAt: now.Format(timeLayout), DataTimes: []struct{}{}, RunStatus: "ok", Title: pageTitle,
-		Notes: []string{}, Gaps: []struct{}{}, Day: day, Today: section{Rows: rows}}
+		Notes: notes, Gaps: []struct{}{}, Day: day, Today: section{Rows: rows}}
 	return json.Marshal(vm)
 }
 
