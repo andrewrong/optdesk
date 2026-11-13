@@ -8,8 +8,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/jobs/underlyingresolve"
+	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/ownerset"
+	"github.com/andrewrong/optdesk/internal/store/stockreg"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 	"github.com/andrewrong/optdesk/internal/store/underlyingpg"
 )
@@ -48,11 +52,22 @@ func underlyingCmd(a *app, args []string) error {
 	if err != nil {
 		return err
 	}
-	return underlyingImport(context.Background(), underlyingpg.Open, env[ownerset.DSNEnvSettings], data, check, a.stdout)
+	ctx := context.Background()
+	var reg stockreg.StockRegistrar
+	if !check {
+		var extra closerSet
+		defer extra.closeAll()
+		if reg, err = openStockRegistrar(ctx, a.deps.openInstrument, env[store.DSNEnvMaster], &extra); err != nil {
+			return err
+		}
+	}
+	return underlyingImport(ctx, underlyingpg.Open, env[ownerset.DSNEnvSettings], data, check, a.stdout, reg)
 }
 
-// underlyingImport does the work of the command over the opener open, the DSN and the bytes of the file.
-func underlyingImport(ctx context.Context, open underlying.OpenFunc, dsn string, data []byte, check bool, out io.Writer) error {
+// underlyingImport does the work of the command over the opener open, the DSN and the bytes of the file. A non-nil
+// reg is called for each added entry with a con_id after the write; nil writes no company data.
+func underlyingImport(ctx context.Context, open underlying.OpenFunc, dsn string, data []byte, check bool, out io.Writer,
+	reg stockreg.StockRegistrar) error {
 	if dsn == "" {
 		return errors.New("underlying import needs the line " + ownerset.DSNEnvSettings + " in the env file")
 	}
@@ -111,6 +126,34 @@ func underlyingImport(ctx context.Context, open underlying.OpenFunc, dsn string,
 	_, _ = fmt.Fprintf(out, "underlying import added=%d existing=%d pending=%d\n", added, existing, len(pending))
 	for _, k := range pending {
 		_, _ = fmt.Fprintf(out, "pending %s\n", k)
+	}
+	if reg == nil {
+		_, _ = fmt.Fprintln(out, "no company data is written: "+store.DSNEnvMaster+" is not set or its store cannot register stocks")
+		return nil
+	}
+	return registerAdded(ctx, reg, change.Adds, out)
+}
+
+// registerAdded registers each added entry that has a con_id. A Permanent refusal is printed with its reason and
+// leaves the exit status alone; any other error stops the loop and is returned, naming the entry.
+func registerAdded(ctx context.Context, reg stockreg.StockRegistrar, adds []underlying.Add, out io.Writer) error {
+	for _, a := range adds {
+		if a.ConID == 0 {
+			continue
+		}
+		key := a.Market + ":" + a.Symbol
+		row := underlying.Row{
+			Key: key, Symbol: a.Symbol, Market: a.Market, Kind: a.Kind, Exchange: a.Exchange, Currency: a.Currency,
+			Name: a.Name, Issuer: a.Issuer, ConID: a.ConID,
+		}
+		if _, err := reg.RegisterStock(ctx, underlyingresolve.RegistrationOf(row)); err != nil {
+			var te contracts.TypedError
+			if errors.As(err, &te) && te.Kind() == contracts.Permanent {
+				_, _ = fmt.Fprintf(out, "company registration refused %s: %s\n", key, err.Error())
+				continue
+			}
+			return fmt.Errorf("underlying import: company registration of %s failed", key)
+		}
 	}
 	return nil
 }

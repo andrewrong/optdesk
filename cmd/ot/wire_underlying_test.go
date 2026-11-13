@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/optioncandidates"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/stockreg"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -336,5 +338,79 @@ func TestResolveRefusesStoreWithoutHeldAdder(t *testing.T) {
 	}
 	if _, ok := j.(*heldRowsJob); !ok || j.ID() != jobUnderlyingResolve {
 		t.Fatalf("job is %T", j)
+	}
+}
+
+// regInstrument is a fake instrument store; the embedded interface is never called.
+type regInstrument struct {
+	store.InstrumentStore
+	closed *atomic.Int32
+}
+
+func (r regInstrument) Close() error { r.closed.Add(1); return nil }
+
+// regInstrumentWithMethod also has RegisterStock.
+type regInstrumentWithMethod struct{ regInstrument }
+
+func (regInstrumentWithMethod) RegisterStock(context.Context, stockreg.Registration) (int64, error) {
+	return 1, nil
+}
+
+// buildResolveWithMaster builds the underlying_resolve job with the master line masterDSN and the opener the fake gives.
+func buildResolveWithMaster(t *testing.T, masterDSN string, withMethod bool) (log string, opened []string, closed *atomic.Int32) {
+	t.Helper()
+	r := newRig(t, fullEnv+underlying.DSNEnvResolve+"=resolve-dsn\n")
+	closed = &atomic.Int32{}
+	var mu sync.Mutex
+	r.a.deps.openInstrument = func(_ context.Context, d string) (store.InstrumentStore, error) {
+		mu.Lock()
+		opened = append(opened, d)
+		mu.Unlock()
+		base := regInstrument{closed: closed}
+		if withMethod {
+			return regInstrumentWithMethod{base}, nil
+		}
+		return base, nil
+	}
+	extra := &closerSet{}
+	jc := &jobCtx{
+		f: &jobFactory{d: r.a.deps, clk: fakeClock{time.Date(2026, 11, 6, 2, 0, 0, 0, time.UTC)}}, brk: unreachableBroker{},
+		cfg: runOnceConfig{resolveDSN: "resolve-dsn", masterDSN: masterDSN}, extra: extra,
+	}
+	j, _, err := jobFamilies[jobUnderlyingResolve].build(context.Background(), r.a, jc)
+	if err != nil || j == nil {
+		t.Fatalf("job %v err %v", j, err)
+	}
+	if closed.Load() != 0 && withMethod {
+		t.Fatal("registrar store closed before the run ends")
+	}
+	extra.closeAll()
+	return r.log.String(), opened, closed
+}
+
+func TestUnderlyingResolveRegistersWithMasterLine(t *testing.T) {
+	t.Parallel()
+	log, opened, closed := buildResolveWithMaster(t, "master-dsn", true)
+	if len(opened) != 1 || opened[0] != "master-dsn" || closed.Load() != 1 {
+		t.Errorf("opened %v closed %d", opened, closed.Load())
+	}
+	if strings.Contains(log, "no company data") {
+		t.Errorf("log %q", log)
+	}
+}
+
+func TestUnderlyingResolveWithoutMasterLineWritesNoCompanyData(t *testing.T) {
+	t.Parallel()
+	log, opened, _ := buildResolveWithMaster(t, "", true)
+	if len(opened) != 0 || !strings.Contains(log, "writes no company data") {
+		t.Errorf("opened %v log %q", opened, log)
+	}
+}
+
+func TestUnderlyingResolveStoreWithoutMethodWritesNoCompanyData(t *testing.T) {
+	t.Parallel()
+	log, opened, closed := buildResolveWithMaster(t, "master-dsn", false)
+	if len(opened) != 1 || closed.Load() != 1 || !strings.Contains(log, "writes no company data") {
+		t.Errorf("opened %v closed %d log %q", opened, closed.Load(), log)
 	}
 }
