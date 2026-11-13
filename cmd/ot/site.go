@@ -200,18 +200,9 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 			noticeAccount: demoNoticeAccount{}, optionLedger: demoTrackingLedger{}}
 		return withPositionsRules(a, rd), func() {}, nil
 	}
-	// no store opens before accounts.toml is known: serve refuses to start without it (Decision 9)
-	aliases, err := siteAliasList(a)
+	aliases, dsn, err := siteStart(a)
 	if err != nil {
 		return siteReaders{}, nil, err
-	}
-	env, err := a.envFile()
-	if err != nil {
-		return siteReaders{}, nil, err
-	}
-	dsn := env[pagesDSNName]
-	if dsn == "" {
-		return siteReaders{}, nil, fmt.Errorf("%s is missing in .env", pagesDSNName)
 	}
 	var closers []func() error
 	closeAll := func() {
@@ -292,6 +283,22 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	return withPositionsRules(a, rd), closeAll, nil
+}
+
+// siteStart reads what serve needs before it opens a store: the alias list of the book (serve refuses to start
+// without accounts.toml, Decision 9) and the pages DSN of the env file.
+func siteStart(a *app) (aliases []string, dsn string, err error) {
+	if aliases, err = siteAliasList(a); err != nil {
+		return nil, "", err
+	}
+	env, err := a.envFile()
+	if err != nil {
+		return nil, "", err
+	}
+	if dsn = env[pagesDSNName]; dsn == "" {
+		return nil, "", fmt.Errorf("%s is missing in .env", pagesDSNName)
+	}
+	return aliases, dsn, nil
 }
 
 // openOptionalStores opens the candidate, account, option ledger (the reader returned apart) and earnings stores that deps has an opener for; a missing
