@@ -230,8 +230,13 @@ func TestResolverUnknownIDIsPermanentUnknownAccount(t *testing.T) {
 	}
 	_, err := rs["b"].Account(context.Background())
 	var te contracts.TypedError
-	if !errors.Is(err, accounts.ErrUnknownAccount) || !errors.As(err, &te) || te.Kind() != contracts.Permanent {
-		t.Fatalf("err %v, want a permanent unknown account", err)
+	if !errors.Is(err, accounts.ErrUnknownAccount) || !errors.As(err, &te) {
+		t.Fatalf("err %v, want the typed unknown account", err)
+	}
+	// The named state is the kind: what a run row stores as its error code and a log record names. It is not
+	// retryable, so the runner never repeats the read.
+	if string(te.Kind()) != "unknown_account" || te.Kind() == contracts.Retryable {
+		t.Fatalf("kind %q, want the named state unknown_account", te.Kind())
 	}
 	if strings.Contains(err.Error(), stranger) || !strings.Contains(err.Error(), "socket 1") {
 		t.Fatalf("text %q must name the socket index and no id", err)

@@ -75,14 +75,18 @@ func parseAccountSockets(v string) ([]string, error) {
 	return out, nil
 }
 
-// unknownAccountError is the permanent typed error of an answer whose id is not in the book. Its text carries the
-// index of the socket and never an id.
+// kindUnknownAccount is the named state of an answer whose id is not in the book: the kind a run row stores as its
+// error code and a log record names. It is not Retryable, so the runner treats it as permanent.
+const kindUnknownAccount contracts.ErrorKind = "unknown_account"
+
+// unknownAccountError is the permanent typed error of an answer whose id is not in the book, of the named state
+// unknown_account. Its text carries the index of the socket and never an id.
 type unknownAccountError struct{ socket int }
 
 func (e unknownAccountError) Error() string {
 	return fmt.Sprintf("unknown account (socket %d)", e.socket)
 }
-func (unknownAccountError) Kind() contracts.ErrorKind { return contracts.Permanent }
+func (unknownAccountError) Kind() contracts.ErrorKind { return kindUnknownAccount }
 func (unknownAccountError) Unwrap() error             { return accounts.ErrUnknownAccount }
 
 // noSocketError is the permanent typed error of an alias that no socket answers for.
