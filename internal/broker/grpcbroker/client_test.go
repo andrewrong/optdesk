@@ -283,3 +283,43 @@ func TestResolveCarriesErrorCodeAndText(t *testing.T) {
 		t.Fatalf("found with error: %+v, %v", r, err)
 	}
 }
+
+func TestResolveFoundCarriesHours(t *testing.T) {
+	t.Parallel()
+	f := &fake{resolve: func(context.Context, *pb.ResolveContractRequest) (*pb.ResolveContractResponse, error) {
+		return &pb.ResolveContractResponse{
+			Status:       pb.ResolveStatus_RESOLVE_STATUS_FOUND,
+			Contract:     &pb.ContractSpec{Symbol: "SPY", ConId: 7},
+			TradingHours: "20261113:0400-20261113:2000;20261114:CLOSED",
+			LiquidHours:  "20261113:0930-20261113:1600;20261114:CLOSED",
+			TimeZoneId:   "US/Eastern",
+		}, nil
+	}}
+	b := serve(t, f, broker.Options{})
+	r, err := b.ResolveContract(context.Background(), opt(0))
+	if err != nil || !r.Listed {
+		t.Fatalf("found: %+v, %v", r, err)
+	}
+	if r.TradingHours != "20261113:0400-20261113:2000;20261114:CLOSED" ||
+		r.LiquidHours != "20261113:0930-20261113:1600;20261114:CLOSED" || r.TimeZoneID != "US/Eastern" {
+		t.Fatalf("hours not carried: %+v", r)
+	}
+}
+
+func TestResolveNotListedHasNoHours(t *testing.T) {
+	t.Parallel()
+	f := &fake{resolve: func(context.Context, *pb.ResolveContractRequest) (*pb.ResolveContractResponse, error) {
+		return &pb.ResolveContractResponse{
+			Status:       pb.ResolveStatus_RESOLVE_STATUS_NOT_LISTED,
+			TradingHours: "x", LiquidHours: "y", TimeZoneId: "z",
+		}, nil
+	}}
+	b := serve(t, f, broker.Options{})
+	r, err := b.ResolveContract(context.Background(), opt(0))
+	if err != nil || r.Listed {
+		t.Fatalf("not listed: %+v, %v", r, err)
+	}
+	if r.TradingHours != "" || r.LiquidHours != "" || r.TimeZoneID != "" {
+		t.Fatalf("hours not empty: %+v", r)
+	}
+}
