@@ -139,7 +139,7 @@ Full review: `account-identity-adversarial.md` in the designer's scratchpad (a l
 2. Id in logs, jobs, page JSON: adopted. Decision 8 and the test in Issues 5 and 6.
 3. Simpler way: adopted, cut A, with the coordinator's change that the reader is one owned module (Decision 2) and the rename replaces the delete. Cut B (id as key) not adopted: it costs eight tables and every page for no owner-visible gain.
 4. Lock-in: the id is not a key, so the case disappears (Left out).
-5. False claims: migration number is 0037; `internal/accounts` gets its row and the `ot` depends cell (Modules); hygiene scan and held lists are Decisions 1, 10; no issue spans modules; `wire.go` (795) is not edited.
+5. False claims: migration number is 0037; `internal/accounts` gets its row and the `ot` depends cell (Modules); hygiene scan and held lists are Decisions 1, 10; no issue spans modules except entry 7, which also holds `pyside/tests/contracts/test_contracts_api.py` (contracts module) because that test constructs `AccountServicer` with an alias and must change with it; `wire.go` (795) is not edited.
 6. Slip cause: the 6-module interface issue is gone; chain is 1, then 2 and 3 in parallel, 4 after 3 (they share the tests of the store package that list migrations), then 5, 6, 7; the migration and deploy order is Decision 9.
 
 ### 11 accounts-ids (interface)
