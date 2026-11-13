@@ -89,6 +89,15 @@ func New(st CandidateStores, rule compute.OptionCandidates, entries []jobs.Watch
 		}
 		seen[e.Issuer] = true
 	}
+	if st.Strategy != nil {
+		needs, err := needsOf(manifestBytes)
+		if err != nil {
+			return nil, err
+		}
+		if err := checkStrategyNeeds([]string{st.Strategy.ID()}, needs); err != nil {
+			return nil, err
+		}
+	}
 	return &job{m: m, slot: sl, params: params, st: st, rule: rule, entries: entries, clk: clk}, nil
 }
 
@@ -147,7 +156,10 @@ func (j *job) Plan(_ context.Context, day contracts.Day) ([]contracts.ExpectedKe
 }
 
 // Run reads the stores, evaluates every watched US underlying and writes the rows of the day under a new run id
-// (one UUID text per Run). Nothing is written when a read fails.
+// (one UUID text per Run). Nothing is written when a read fails. With the shadow set it then also writes the
+// strategy results of the put rows (shadow.go); that never fails the run.
+//
+//nolint:funlen // the shadow adds three statements to a body that is otherwise unchanged
 func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.ExpectedKey) contracts.JobResult {
 	us, skipped := j.split()
 	defer func() {
@@ -172,6 +184,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	}
 	now := j.clk.Now().UTC()
 	var rows []store.Candidate
+	shadow := newShadow(j.st)
 	for _, ul := range ulist {
 		entry := entryOf(us, ul.issuer)
 		spot, quotes, err := j.quotes(ctx, ul)
@@ -198,6 +211,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 			Spot: spot, Quotes: quotes, BuyPrice: entry.BuyPrice, SalePrice: entry.SalePrice, Earnings: info,
 			Rate: rate, RateDay: rateDay, Accounts: accts, Kinds: []compute.CandidateKind{compute.KindShortPut},
 		}
+		shadow.add(in, ul, ev)
 		for _, c := range j.rule.Evaluate(in, j.params) {
 			row, err := toStoreRow(c, day, ul, ev, now)
 			if err != nil {
@@ -213,6 +227,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, _ []contracts.Expected
 	if _, err := j.st.Candidates.InsertCandidates(ctx, rows); err != nil {
 		return fail("write_candidates_failed", err)
 	}
+	shadow.write(ctx, rows)
 	res := contracts.JobResult{Returned: len(rows)}
 	for _, r := range rows {
 		if r.Status == "ok" {
@@ -250,6 +265,9 @@ func WithSettingsVersion(jb contracts.Job, f SettingsVersionFunc) (contracts.Job
 		r := &settingsRun{f: f, clk: base.clk}
 		base.st.SessionDays = settingsDays{inner: base.st.SessionDays, r: r}
 		base.st.Candidates = settingsRows{inner: base.st.Candidates, r: r}
+		if base.st.Results != nil {
+			base.st.Results = settingsResults{inner: base.st.Results, r: r}
+		}
 		base.clk = settingsClock{r: r}
 	}
 	return jb, nil

@@ -2,6 +2,7 @@ package optioncandidates
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/clock"
@@ -10,6 +11,8 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/strategyresult"
+	"github.com/andrewrong/optdesk/internal/strategy"
 )
 
 // CandidateStores is the stores the option_candidates job uses. Earnings, Accounts and Series may be nil: the
@@ -27,6 +30,13 @@ type CandidateStores struct {
 	Aliases     []string
 	Candidates  store.CandidateWriter
 	SessionDays store.SessionDayReader
+	// Strategy and Results are the shadow (docs/design/strategy-framework.md Decision 6): with both set, each run also
+	// evaluates the put through Strategy and inserts the rows into Results after the old insert; a failure of the
+	// shadow is logged and never fails the run. Both nil is the job of today.
+	Strategy strategy.Strategy
+	Results  strategyresult.Writer
+
+	log *slog.Logger // the logger of the shadow; nil is slog.Default(), a test sets its own
 }
 
 // NewOptionCandidatesJobFunc is the constructor of the option_candidates job (internal/jobs/optioncandidates.New),
