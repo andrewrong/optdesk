@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/fredseries"
@@ -28,22 +27,10 @@ func init() {
 	})
 }
 
+// fred builds the job with the NY Fed source as its second source, on every path. The deps hook
+// newFredSeries is not used: wire.go is not edited, so it cannot carry the second source.
 func (f jobFactory) fred() (contracts.Job, error) {
-	if !usesDefaultFredSeries(f.d.newFredSeries) {
-		// A test replaced the constructor; its job is built as it was, without a second source.
-		j, err := f.d.newFredSeries(f.src, f.ser, f.clk)
-		if err != nil {
-			return nil, fmt.Errorf("build fred_series job failed: %w", err)
-		}
-		return j, nil
-	}
 	return f.fredWithSecond(nyfed.Config{Clock: f.clk})
-}
-
-// usesDefaultFredSeries reports whether fn is fredseries.New, the value wire.go puts in deps; wire.go
-// is not edited, so the second source cannot be a new deps field.
-func usesDefaultFredSeries(fn fredseries.NewFredSeriesFunc) bool {
-	return reflect.ValueOf(fn).Pointer() == reflect.ValueOf(fredseries.New).Pointer()
 }
 
 // fredWithSecond builds the job with the NY Fed source made from cfg as its second source.

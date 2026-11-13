@@ -286,10 +286,10 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	d.openLedger = func(context.Context, string) (store.OpsLedger, error) { return cursorLedger{}, nil }
 	pl := &putLedger{puts: make(chan struct{}, 64)}
 	d.openSchedulerLedger = func(context.Context, string) (store.SchedulerLedger, error) { return pl, nil }
+	// the real fred_series job is built now; the rig gives it a source and a store that do nothing
+	d.newFRED = func(sources.FREDConfig) (sources.Source, error) { return emptySource{}, nil }
+	d.openSeries = func(context.Context, string) (store.SeriesStore, error) { return &registrySeries{}, nil }
 	us := func(id string) slotJob { return slotJob{id: id, cal: "XNYS", anchor: "session_close"} }
-	d.newFredSeries = func(_ sources.Source, _ store.SeriesWriter, _ clock.Clock) (contracts.Job, error) {
-		return us(jobFredSeries), nil
-	}
 	d.newOptionEod = func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, clock.Clock, symbol.Translator) (contracts.Job, error) {
 		return us(jobOptionEod), nil
 	}
@@ -334,7 +334,7 @@ func TestJPSlotDroppedWhenXTKSRunsOut(t *testing.T) {
 	// The ticker may not have armed its timer when the clock moved (a waiter on the clock can be another goroutine's,
 	// such as the heartbeat of a run), and a signal of the ledger can belong to an earlier write; so the clock keeps
 	// moving by a minute until the stored states are the ones of a walk after the move.
-	usIDs := []string{jobFredSeries, jobOptionEod, jobQuoteSnapshot, jobComputeFigures, jobCalendarRefresh}
+	usIDs := []string{jobOptionEod, jobQuoteSnapshot, jobComputeFigures, jobCalendarRefresh}
 	for settled := false; !settled; {
 		settled = pl.state(jobOptionEodJP).NextStart.IsZero()
 		for _, id := range usIDs {

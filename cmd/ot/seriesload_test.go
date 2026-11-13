@@ -42,7 +42,7 @@ func seriesLoadApp(t *testing.T, env string, f *fakeLoader) (*app, *bytes.Buffer
 		opened.Add(1)
 		return fakeSeries{n: closed}, nil
 	}
-	a.deps.newFRED = func(sources.FREDConfig) (sources.Source, error) { return nil, nil }
+	a.deps.newFRED = func(sources.FREDConfig) (sources.Source, error) { return emptySource{}, nil }
 	a.deps.newSeriesHistory = func(sources.Source, store.SeriesWriter) (serieshistory.SeriesHistoryLoader, error) { return f, nil }
 	return a, &stdout, opened, closed
 }

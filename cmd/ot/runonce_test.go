@@ -169,7 +169,7 @@ func runOnceFakes(a *app, opened, closed *atomic.Int32, day *contracts.Day) {
 			opened.Add(1)
 			return fakeSeries{n: closed}, nil
 		},
-		newFRED: func(sources.FREDConfig) (sources.Source, error) { return nil, nil },
+		newFRED: func(sources.FREDConfig) (sources.Source, error) { return emptySource{}, nil },
 		newFredSeries: func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 			return fakeJob{}, nil
 		},
@@ -330,7 +330,7 @@ func TestRunOnceFREDPathIsObservations(t *testing.T) {
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
 	var cfg sources.FREDConfig
-	a.deps.newFRED = func(c sources.FREDConfig) (sources.Source, error) { cfg = c; return nil, nil }
+	a.deps.newFRED = func(c sources.FREDConfig) (sources.Source, error) { cfg = c; return emptySource{}, nil }
 	if err := runOnce(a, nil); err != nil {
 		t.Fatal(err)
 	}
