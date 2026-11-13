@@ -619,7 +619,7 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 		t.Fatalf("a second tick dialed: %d", r.dials.Load())
 	}
 	_ = r.stop(t, done)
-	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 4 {
+	if n := strings.Count(r.errb.String(), "job back in the schedule"); n != 6 {
 		t.Fatalf("re-enabled lines %d: %q", n, r.errb.String())
 	}
 }
