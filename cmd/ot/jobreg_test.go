@@ -137,3 +137,15 @@ func TestOffReasonHeld(t *testing.T) {
 		t.Fatalf("unknown id: %v %q", j, r)
 	}
 }
+
+// TestHoursFamilyOrders: the two calendar_hours families sit at the orders 85 and 86.
+func TestHoursFamilyOrders(t *testing.T) {
+	t.Parallel()
+	got := map[string]int{}
+	for _, f := range sortedJobFamilies() {
+		got[f.id] = f.order
+	}
+	if got["calendar_hours_us"] != 85 || got["calendar_hours_jp"] != 86 {
+		t.Fatalf("orders us %d jp %d, want 85 and 86", got["calendar_hours_us"], got["calendar_hours_jp"])
+	}
+}

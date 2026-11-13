@@ -10,7 +10,12 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/clock/calendarcli"
+	"github.com/andrewrong/optdesk/internal/clock/ibkrhours"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs/calendarhours"
+	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
+	"github.com/andrewrong/optdesk/internal/store/hoursnoticepg"
 )
 
 // Design: docs/design/ot-wire-split.md#Decisions 2 and 7.
@@ -23,6 +28,71 @@ func init() {
 			return j, "", err
 		},
 	})
+}
+
+// Design: docs/design/calendar-ibkr-hours.md#8 ot-wire-calendar-hours (Decisions 6, 7, 8 and 9).
+
+// openHoursNotices opens the hours-notice store with the master line; a package variable so that the tests, which
+// have no database, install a fake in an init().
+var openHoursNotices = func(ctx context.Context, dsn string) (hoursnotice.Store, error) {
+	st, err := hoursnoticepg.Open(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return st, nil
+}
+
+func init() {
+	for _, h := range []struct {
+		id, market string
+		order      int
+	}{{"calendar_hours_us", "XNYS", 85}, {"calendar_hours_jp", "XTKS", 86}} {
+		registerJob(jobFamily{
+			id: h.id, order: h.order,
+			// A job whose line is empty is left out whatever the broker does, so the broker reason is for a set line only.
+			startOff: func(cfg runOnceConfig, brokerUp bool) string {
+				if cfg.masterDSN == "" {
+					return ""
+				}
+				return brokerDownOff(cfg, brokerUp)
+			},
+			build: func(ctx context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+				st := jc.hoursStore(ctx, a, h.id)
+				if st == nil {
+					return nil, "", nil
+				}
+				j, err := calendarhours.New(h.market, jc.brk, jc.f.loader, ibkrhours.New(), st, jc.f.clk, a.log)
+				if err != nil {
+					return nil, "", fmt.Errorf("build %s job failed: %w", h.id, err)
+				}
+				return j, "", nil
+			},
+		})
+	}
+}
+
+// hoursStore is the notice store the two calendar_hours families share: opened once with the master line and closed
+// through extra. An empty line or a failed open gives nil and one Warn line that names the job and the line, never
+// the DSN; the job is then left out.
+func (jc *jobCtx) hoursStore(ctx context.Context, a *app, id string) hoursnotice.Store {
+	f := jc.f
+	if !f.hoursTried {
+		f.hoursTried = true
+		if jc.cfg.masterDSN != "" {
+			if st, err := openHoursNotices(ctx, jc.cfg.masterDSN); err == nil {
+				jc.extra.addCloser(st)
+				f.hours = st
+			}
+		}
+	}
+	if f.hours == nil {
+		status := "open of the notice store with " + store.DSNEnvMaster + " failed"
+		if jc.cfg.masterDSN == "" {
+			status = store.DSNEnvMaster + " is not set"
+		}
+		a.log.Warn("calendar hours job not wired", "component", "ot", "job", id, "status", status)
+	}
+	return f.hours
 }
 
 // envCalendarProject names the optional line of .env that sets the directory of the pyside project.
