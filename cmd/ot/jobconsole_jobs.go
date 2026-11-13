@@ -41,6 +41,7 @@ const (
 	textMomentMix      = "force comes with the late-collection design (each pull stored with its own time)"
 	textAppendOnly     = "a forced run adds executions by (alias, exec_id) and never replaces the day's capture"
 	textRevisionRows   = "a second fetch adds revision rows that no reader prefers over the first"
+	textInsertOnly     = "a stored capture of a statement day is never replaced, so a forced run writes nothing new"
 	textAttemptRows    = "a re-run adds one row under the next attempt, which replaces nothing"
 	textEpochAndCaps   = "a restatement writes a new epoch and the first-pull cap is memory that the scheduler's runs share"
 	textNewRunID       = "changed inputs make a new run id and a second run of rows"
@@ -74,13 +75,14 @@ func listedOnly(id, reason, text, needs string) jobRow {
 	return jobRow{ID: id, Kind: kindListedOnly, Reason: reason, Text: text, Needs: needs}
 }
 
-// jobTable is the table of the 25 jobs, in the order of the page.
+// jobTable is the table of the 29 jobs, in the order of the page.
 var jobTable = []jobRow{
 	anyDay("fred_series", "revision_rows", textRevisionRows),
 	anyDay("fundamentals", "quota", textQuota),
 	anyDay("compute_figures", "revision_rows", textRevisionRows),
 	anyDay("option_candidates", "new_run_id", textNewRunID),
 	todayOnly("account_capture", "append_only", textAppendOnly),
+	anyDay("statement_capture", "insert_only", textInsertOnly),
 	todayOnly("position_marks", "attempt_rows", textAttemptRows),
 	todayOnly("earnings_refresh", "attempt_rows", textAttemptRows),
 	todayOnly("dividend_capture", "attempt_rows", textAttemptRows),
