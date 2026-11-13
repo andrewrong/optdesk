@@ -126,6 +126,9 @@ type siteReaders struct {
 	// profile or a site with no bar line; the day change stays the gap no_reader).
 	bars bar.PriceBarReader
 
+	// fx is the stored FX rate reader of household_page, from the same bar store as bars (nil when bars is nil).
+	fx bar.FxRateReader
+
 	// the settings page: the owner reader (nil with no opener in deps, which the page shows as the gap no_reader).
 	owner ownerset.Reader
 
@@ -267,12 +270,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 	if !ok {
 		return fail()
 	}
-	bars, ok := openBarReader(ctx, a, dsn, track)
+	bars, fx, ok := openBarReader(ctx, a, dsn, track)
 	if !ok {
 		return fail()
 	}
 	rd := siteReaders{
-		bars: bars, marks: openMarkReader(ctx, a, dsn, track), series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
+		bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
+		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
 		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if oos != nil {
@@ -621,14 +625,15 @@ func openMarkReader(ctx context.Context, a *app, dsn string, track func(io.Close
 	return ms
 }
 
-// openBarReader opens the price bar reader when deps has an opener, else it is nil; a failed open is false.
-func openBarReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (bar.PriceBarReader, bool) {
+// openBarReader opens the bar store when deps has an opener and returns it as the price bar reader and the FX
+// rate reader (both nil without an opener); a failed open is false.
+func openBarReader(ctx context.Context, a *app, dsn string, track func(io.Closer, error) bool) (bar.PriceBarReader, bar.FxRateReader, bool) {
 	if a.deps.openBar == nil {
-		return nil, true
+		return nil, nil, true
 	}
 	bs, err := a.deps.openBar(ctx, dsn)
 	if !track(bs, err) {
-		return nil, false
+		return nil, nil, false
 	}
-	return bs, true
+	return bs, bs, true
 }
