@@ -13,7 +13,8 @@ import (
 
 // init adds ot strategy-compare to the exclusions of the leak table (env_test.go) from this file.
 func init() {
-	leakExcluded["strategy-compare"] = "the leak deps hold no candidate or results opener; its open errors are fixed texts that name the key and TestStrategyCompareOpenErrorWithheld covers them"
+	leakExcluded["strategy-compare"] = "the leak deps hold no candidate or results opener; " +
+		"its open errors are fixed texts that name the key and TestStrategyCompareOpenErrorWithheld covers them"
 }
 
 // compareRig is an app whose two readers hold the given rows for 2026-11-05.
