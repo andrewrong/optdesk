@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import math
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import replace
 from decimal import Decimal
@@ -21,7 +20,6 @@ from functools import partial
 from typing import Any
 
 from ib_async import IB, Contract, RequestError
-from ib_async.util import UNSET_DOUBLE
 
 from optdesk.ibkr import spec
 from optdesk.ibkr.accounts import read_account, read_executions
@@ -33,6 +31,7 @@ from optdesk.ibkr.api import (
 )
 from optdesk.ibkr.dividends import Release, TickError, TickText, read_dividend
 from optdesk.ibkr.history import HistoryReader, WireRequest
+from optdesk.ibkr.missing import _number, _open_interest, missing_fields
 from optdesk.ibkr.model import (
     AccountRows,
     ChainRow,
@@ -82,32 +81,10 @@ _GREEK_FIELDS = (
 _SIGNED_FIELDS = frozenset({"delta", "gamma", "vega", "theta"})
 
 
-def _number(value: object, *, signed: bool = True) -> float | None:
-    """A number, or None for NaN, UNSET_DOUBLE and, unless signed, a negative."""
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        return None
-    if math.isnan(value) or value == UNSET_DOUBLE or (value < 0 and not signed):
-        return None
-    return float(value)
-
-
 def _first(ticker: Any, *names: str, signed: bool = False) -> float | None:
     for name in names:
         number = _number(getattr(ticker, name, None), signed=signed)
         if number is not None:
-            return number
-    return None
-
-
-def _open_interest(ticker: Any) -> float | None:
-    """The first of call and put open interest that is above zero, else None.
-
-    The target carries no right, so either field may be the one IB fills; a
-    0.0 can be a placeholder, so it counts as absent.
-    """
-    for name in ("callOpenInterest", "putOpenInterest"):
-        number = _number(getattr(ticker, name, None))
-        if number is not None and number > 0:
             return number
     return None
 
@@ -543,6 +520,7 @@ class IbGateway:
             ticker: Any = None
             watch: Callable[..., None] | None = None
             timed_out = False
+            grace_ended = False
             try:
                 ticker = ib.reqMktData(contract, row_spec.generic_ticks, False, False)
                 job.resubscribe = partial(
@@ -569,7 +547,7 @@ class IbGateway:
                         try:
                             await with_timeout(self._clock, job.grace.wait(), grace)
                         except TimeoutError:
-                            pass  # release with what the line has
+                            grace_ended = True  # release with what the line has
                 except TimeoutError:
                     timed_out = True
             finally:
@@ -578,6 +556,9 @@ class IbGateway:
                     ticker.updateEvent -= watch
                 self._pacer.cancel(lambda: self._cancel(ib, contract))
             got = ticker_fields(ticker)
+            missing = missing_fields(
+                row_spec, ticker, got, job.error[0] if job.error else 0, grace_ended
+            )
             data_type = int(getattr(ticker, "marketDataType", self._data_type))
         fields = tuple(sorted(got.items()))
         if spec.is_complete(row_spec, got):
@@ -586,9 +567,12 @@ class IbGateway:
                 sent=sent,
                 data_type=data_type,
                 fields=fields,
+                missing=missing,
             )
         if job.blocked:  # 10197: the line is cancelled, the item is held
-            return row(_HELD, sent=sent, data_type=data_type, fields=fields)
+            return row(
+                _HELD, sent=sent, data_type=data_type, fields=fields, missing=missing
+            )
         if not self._current(generation):
             return row(spec.STATUS_DISCONNECTED, sent=sent)
         if job.error is not None:
@@ -601,6 +585,7 @@ class IbGateway:
                 fields=fields,
                 error_code=code,
                 error_text=text,
+                missing=missing,
             )
         assert timed_out
         return row(
@@ -608,6 +593,7 @@ class IbGateway:
             sent=sent,
             data_type=data_type,
             fields=fields,
+            missing=missing,
         )
 
     # --- dividends --------------------------------------------------------
