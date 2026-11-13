@@ -17,7 +17,7 @@ Goal: `option_eod` and `option_eod_jp` take one chain snapshot a day inside the 
 | slot | `job.toml`: `anchor = "session_close"`, `offset = "0s"`; `job_jp.toml`: `anchor = "time"`, `15h50m` |
 | dead keys | `freeze_after` and `stop_after` (JP "1700") are parsed and hashed (`manifest.go`), stored in `job.stop` (`run.go:100`) and read nowhere, although `docs/contracts/jobs/option_eod.md:13` says a run after `stop_after` is `NoValue` |
 | bug | `Run` ignores its `day` and uses the clock date (`run.go:119-123`); `TestPastDayAndEarlyRunStore` (`run_test.go:355`) pins it; `bareRun` (`runner/reconcile/backfill_force.go:246-256`) calls `Run` with a past day |
-| capture | `map.go:83` writes `SnapshotKind: "eod"`; the column is a free string; each row has its own `MarketDataType` (1 live, 2 frozen, 3 delayed, 4 delayed frozen) |
+| capture | `map.go:83` writes `SnapshotKind: "eod"`; the column is a free string; each row has its own `MarketDataType` (1 live, 2 frozen, 3 delayed, 4 delayed frozen) ; `captureID` (`map.go:57-60`, called at `run.go:204`) is `uuid.NewSHA1(OID, day|dataset|subject)`, the key is (session_day, capture_id, instrument_id) (`migrations/0006_option_eod.sql:42`) and the insert is `ON CONFLICT DO NOTHING` (`store/snapshot/optioneod.go:28`), so a second run of the same day and subject is dropped silently |
 | store read | `OptionEod` (`store/snapshot/optioneod.go:92`, SQL `selectOptionEodSQL`) returns every capture's rows, ordered by day, instrument, capture_id |
 | readers (non-test) | all through `OptionEodReader.OptionEod`: `computefigures/ivinput.go:58` and `subjects.go:47`, `optioncandidates/calls.go:245`, `input.go:135,151`, `optionopen/inputs.go:195`, `pages/option_data_page/builder.go:188`, `option_boards/load.go:71`, `option_tracking_page/context.go:256`, `structures_page/load.go:145`, `risk_page/load.go:151`, `cmd/ot/optionledger.go:458`, `cmd/ot/companies_inputs.go:149`. `OptionEodLatest` (catalog; `subjects.go:41`, `input.go:78`, `settings_page`, `site.go`, `settings.go`, `companies_inputs.go:61`, `optionledger.go:433`, `context.go:186`) answers newest day per underlying and does not depend on the capture. Each reader keeps its own newest-capture pick (greatest capture_id, generation, or received_at); none reads `snapshot_kind` |
 | text | `obs.option_eod.r1.json` and the generated `docs/contracts/datasets/obs.option_eod.md`: "frozen after the close"; `docs/contracts/store.md:7`; migration `0006` comment (not edited) |
@@ -31,7 +31,7 @@ Goal: `option_eod` and `option_eod_jp` take one chain snapshot a day inside the 
 4. Window: new rule `in_session`, key `open_after_minutes = 90` in both files, replaces `lateness_hours`; the window is session open + 90 min to session close, close offset 0. `after_close` is no longer accepted. Only `optioneod/window.go` changes; the runner is unchanged.
 5. `stop_after` is dropped entirely: the key leaves `job_jp.toml`, the manifest field, the `job.stop` field and the contract line. `freeze_after` stays (Left out).
 6. Day (bug): `Run` reads its `day` argument. If `day` is not the clock's local date in the manifest zone, `Run` returns `Permanent` with the reason "option_eod: day D is not the current day; a past option chain cannot be collected" and calls no port and writes nothing. The refusal applies to every caller of `Run`, backfill and force (`bareRun`) included: a past option chain cannot be collected live. No other job gets a time refusal. A non-session date is not refused here (no calendar is read; the broker answers with frozen quotes and Decision 8 marks them).
-7. Several runs on one day: each run is a new `capture_id`; rows are appended, never overwritten (the key holds capture_id; no change).
+7. Several runs on one day: `captureID` also takes the run's start instant from the job clock (`day|dataset|subject|start`), so each run has its own `capture_id` and its rows are appended, never dropped or overwritten. The key, the insert and the migrations are unchanged.
 8. In-session flag from the quote, not a calendar: a row is written with `snapshot_kind = "session"` when its `MarketDataType` is 1 and `"off_session"` when it is 2, 3 or 4. No Calendar parameter, no constructor or `cmd/ot` change. Rows written before this change hold `"eod"` and rank as `"session"`; the after-close legacy rows being ranked as session is an accepted imprecision (Left out). The 2026-11-12 rows (taken mid-session by a console run) are kept as that day's in-session sample.
 9. Pick inside the store read: `OptionEod` returns, per `session_day` and `instrument_id`, the rows of status ok of one capture only: among rows ranked `session` (or `eod`) if any, else among `off_session` rows; the one with the greatest `received_at`, then `capture_id`. A day with no ok row returns its rows as stored. A later off-session run never hides an earlier in-session row. Ordering stays day, instrument, capture_id. The pick is in the reader (`optioneod.go` read path, in Go after the scan or in `selectOptionEodSQL`), not an exported function, so no job or page imports a new symbol (`scripts/arch/main_test.go:183`).
 10. Every reader in the Today row is covered by Decision 9 through the one read; no reader file changes for the pick, and their own newest-pick code stays (it sees one row per key, so it is idempotent; removing it is Left out). `OptionEodLatest` is unchanged. No reader needs a second capture of the same day.
@@ -44,7 +44,7 @@ No row is added or changed in `docs/design/modules.md`. Paths belong to store (`
 
 ## Interface
 
-1. Module store, `internal/store/api.go`: the doc of `OptionEodReader` changes (the returned rows are the picked rows of Decision 9); no signature changes.
+1. Module store: the contract text of `OptionEodReader` in `docs/contracts/store.md` changes (the returned rows are the picked rows of Decision 9); `internal/store/api.go` and every signature are unchanged.
 2. Module contracts: dataset text of `obs.option_eod` (shape unchanged; `snapshot_kind` values `session`, `off_session`, legacy `eod`); page schema `option_data_page` v1 gains optional `off_session`; generated output goes with its source. `Contracts: changed`.
 
 ## Issues
@@ -55,10 +55,10 @@ Build order: every entry compiles and its own tests pass against main. BASE is `
 
 Module: store. Size: S.
 Order: first.
-Files: `internal/store/api.go`, `internal/store/api_test.go`, `internal/store/snapshot/optioneod.go`, `internal/store/snapshot/optioneod_test.go`, `internal/store/snapshot/optioneod_pg_test.go`, `docs/contracts/store.md`
+Files: `internal/store/snapshot/optioneod.go`, `internal/store/snapshot/optioneod_test.go`, `internal/store/snapshot/optioneod_pg_test.go`, `docs/contracts/store.md`
 Design: docs/design/option-chain-daily.md#interface (Decisions 8, 9)
 Acceptance:
-1. The doc of `OptionEodReader` in `api.go` states the rule of Decision 9; `git grep -n "frozen after the close\|after the close" -- docs/contracts/store.md` prints nothing.
+1. `docs/contracts/store.md` states (`internal/store/api.go` is at its 800 lines and is not edited) the rule of Decision 9; `git grep -n "frozen after the close\|after the close" -- docs/contracts/store.md` prints nothing.
 2. `optioneod.go` holds the pick in the read path and exports nothing new: `git diff BASE -- internal/store/snapshot/optioneod.go | grep -c "^+func [A-Z]"` prints 0.
 3. `optioneod_test.go` `TestOptionEodPick` covers: a session row beats a later off_session row of the same instrument and day; a day with only off_session rows returns the newest of them; a legacy `eod` row ranks as session; ties by `received_at` then `capture_id`; a non-ok row is not picked; two days and two instruments stay separate; the order stays day, instrument, capture_id. `optioneod_pg_test.go` (tag `pg`) asserts the same through the database.
 4. `git diff --name-only BASE` lists only paths of the Files line.
@@ -86,6 +86,7 @@ Acceptance:
 2. `windowOf` returns open offset 90 min and close offset 0 for `in_session` and an error for any other rule.
 3. `Run` uses its `day` argument and never formats the clock into a day; a day other than the clock's local date in the zone returns `Permanent` with the text of Decision 6, with no broker call and no write (read in `Run`; the test `TestPastDayRefuses` has a rig with a clock on another date and asserts zero calls and zero writes, for US and JP).
 4. `map.go` writes `session` for `MarketDataType` 1 and `off_session` for 2, 3, 4 (`TestSnapshotKindFromQuote`); two runs on one day write two distinct capture_ids and neither updates the other.
+4a. `captureID` takes the run's start instant from the job clock: `TestCaptureIDStable` becomes stable for one (day, key, start) and different for two starts; two runs of one day and subject (`TestTwoRunsTwoCaptures`, through the fake writer and the rig clock) hand the writer two row sets under two `capture_id`s; no migration.
 5. `TestPastDayAndEarlyRunStore` is replaced: `git grep -n "func TestPastDayAndEarlyRunStore" -- internal/jobs/optioneod` prints nothing. The tests that read the old window, the dropped key or the clock date are updated: `plan_test.go` (lateness), `jp_test.go` (Window values), `jp_stock_test.go` (the clock day of the calls, `TestJPPlanHashUnchanged`: the new JP hash is pinned and the line says the hash changed with the window keys and `stop_after`), `us_hash_test.go` (the US hash), `held_test.go`, `held_aliases_test.go`, `watch_test.go`, `select_test.go`, `types_test.go` (runs on the clock's date).
 6. `docs/contracts/jobs/option_eod.md` and `option_eod_jp.md` state the meaning (in session, not close), the refusal and the flag.
 7. `git diff --name-only BASE` lists only paths of the Files line.
@@ -116,9 +117,12 @@ Acceptance:
 
 ## Doubts
 
+
 1. `OptionEod` now returns one capture per day and instrument; a future reader that needs every capture (a history of captures) needs a new read. None in the Today row does.
 2. `Permanent` for a past-day refusal makes a reconcile of past gaps log one failure per day; `NoValue` would hide it. Chosen `Permanent` because the owner asked for a named refusal.
 3. Live quotes (type 1) after the close, if the broker ever gives them, would rank as session; the 01:06Z probe saw frozen ones.
+4. Delayed data (`MarketDataType` 3) taken in session is stored as `off_session`; if the broker serves only delayed quotes in session, every row is off_session and still readable.
+5. Manual runs rely on the same-job guard `JobLocks.TryLock` (`internal/runner/api.go:264`, type at 261): two runs of one job never overlap, so one capture set at a time.
 
 ## Adversarial
 
