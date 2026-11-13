@@ -21,6 +21,8 @@ const (
 	termTitle        = "Term structure"
 	termSentenceFmt  = "VIX to 3-month VIX ratio "
 	termSentenceNone = "Term structure ratio: nothing stored."
+	// termSentenceStale is followed by MM-DD of the points and a full stop.
+	termSentenceStale = "Term structure ratio: not stored for "
 
 	breadthNotBuilt = "Market breadth: not built yet, no matching data"
 	chartNotBuilt   = "Trend chart: not built yet, only the latest gap to the 200-day average is stored, no daily line"

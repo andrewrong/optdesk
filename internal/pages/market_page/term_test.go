@@ -77,3 +77,26 @@ func TestTermAllGapIsOneGap(t *testing.T) {
 		t.Errorf("run_status = %v", m["run_status"])
 	}
 }
+
+func termSentenceEnv(ratioDay, pointDay string) env {
+	e := allOK()
+	e.day = pointDay
+	e.readings[figVixTerm] = []contracts.ReadingRecord{rec(ratioDay, "ok", "0.905000", nil, ratioDay)}
+	e.series = map[string][]contracts.SeriesPoint{
+		seriesVIX: {pt(pointDay, 17.49)},
+		seriesVXV: {pt(pointDay, 19.24)},
+	}
+	return e
+}
+
+func TestTermSentenceNamesRatioOnlyOfPointsDay(t *testing.T) {
+	t.Parallel()
+	m := termSentenceEnv("2026-11-10", "2026-11-11").page(t)
+	if got, want := at(t, m, "term", "sentence"), "Term structure ratio: not stored for 11-11."; got != want {
+		t.Errorf("older ratio: sentence = %v, want %q", got, want)
+	}
+	m = termSentenceEnv("2026-11-11", "2026-11-11").page(t)
+	if got, want := at(t, m, "term", "sentence"), "VIX to 3-month VIX ratio 0.90"; got != want {
+		t.Errorf("same day: sentence = %v, want %q", got, want)
+	}
+}
