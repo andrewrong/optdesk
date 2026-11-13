@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"math/big"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
 const runDay = contracts.Day("2026-11-09")
@@ -55,9 +57,58 @@ func (f *fakeHistory) Bars(_ context.Context, q broker.BarQuery) ([]broker.Bar, 
 func (f *fakeHistory) Close() error { return nil }
 
 type memFx struct {
-	mu    sync.Mutex
-	rows  []contracts.FxRate
-	calls int
+	mu        sync.Mutex
+	rows      []contracts.FxRate
+	calls     int
+	upserts   int
+	writtenBy []string
+	counts    []bar.FxWriteCount
+}
+
+// UpsertFxRates follows Decision 4 on a map by day: numeric equality decides, a differing row replaces.
+func (m *memFx) UpsertFxRates(_ context.Context, rows []contracts.FxRate, writtenBy string) (bar.FxWriteCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.upserts++
+	m.writtenBy = append(m.writtenBy, writtenBy)
+	var c bar.FxWriteCount
+	for _, r := range rows {
+		idx := -1
+		for i, s := range m.rows {
+			if s.Pair == r.Pair && s.RateDay.Format(dayLayout) == r.RateDay.Format(dayLayout) {
+				idx = i
+			}
+		}
+		if idx < 0 {
+			m.rows = append(m.rows, r)
+			c.Written++
+			continue
+		}
+		old, _ := new(big.Rat).SetString(m.rows[idx].Rate)
+		nv, _ := new(big.Rat).SetString(r.Rate)
+		if old != nil && nv != nil && old.Cmp(nv) == 0 && m.rows[idx].Source == r.Source {
+			c.Unchanged++
+			continue
+		}
+		m.rows[idx].Rate, m.rows[idx].Source = r.Rate, r.Source
+		c.Written++
+	}
+	m.counts = append(m.counts, c)
+	return c, nil
+}
+
+// plainWriter is only an FxRateWriter.
+type plainWriter struct{ calls int }
+
+func (p *plainWriter) InsertFxRates(context.Context, []contracts.FxRate) (int, error) {
+	p.calls++
+	return 0, nil
+}
+
+type failUpsert struct{ memFx }
+
+func (f *failUpsert) UpsertFxRates(context.Context, []contracts.FxRate, string) (bar.FxWriteCount, error) {
+	return bar.FxWriteCount{}, errors.New("db down")
 }
 
 func (m *memFx) InsertFxRates(_ context.Context, rows []contracts.FxRate) (int, error) {
@@ -134,39 +185,133 @@ func TestOneKeyUSDJPY(t *testing.T) {
 	}
 }
 
-func TestInsertsOnlyNewDays(t *testing.T) {
+func TestReplacesDifferingDay(t *testing.T) {
 	t.Parallel()
 	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-05", "151.1000"), mkbar("2026-11-06", "152.2000"), mkbar("2026-11-09", "153.3000")}}
-	st := &memFx{rows: []contracts.FxRate{stored("2026-11-05", "151.1000")}}
+	st := &memFx{rows: []contracts.FxRate{stored("2026-11-06", "999.0000")}}
 	j := build(t, &fakeBroker{listed: true}, h, st)
 	res := j.Run(context.Background(), runDay, usdjpy)
-	if res.Err != nil {
-		t.Fatal(res.Err)
+	if res.Err != nil || res.Returned != 3 || res.Usable != 1 {
+		t.Fatalf("result %+v", res)
 	}
-	if len(st.rows) != 3 {
+	if st.upserts != 1 || st.writtenBy[0] != "fx_refresh:2026-11-09" {
+		t.Fatalf("upserts %d by %v", st.upserts, st.writtenBy)
+	}
+	if st.counts[0] != (bar.FxWriteCount{Written: 3}) {
+		t.Fatalf("counts %+v", st.counts)
+	}
+	if len(st.rows) != 3 || st.rows[0].Rate != "152.2000" {
 		t.Fatalf("rows %+v", st.rows)
 	}
-	for _, r := range st.rows[1:] {
-		if r.Source != sourceMidpoint || r.Pair != "USDJPY" || r.ReceivedAt.IsZero() {
+	for _, r := range st.rows {
+		if r.Source != sourceMidpoint || r.Pair != "USDJPY" {
 			t.Fatalf("row %+v", r)
 		}
 	}
-	if st.rows[1].Rate != "152.2000" || st.rows[2].Rate != "153.3000" || st.rows[2].RateDay.Format(dayLayout) != "2026-11-09" {
-		t.Fatalf("rows %+v", st.rows)
-	}
 }
 
-func TestStoredDayLeftAsIs(t *testing.T) {
+func TestEqualDayNoRewrite(t *testing.T) {
 	t.Parallel()
-	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "999.0000")}}
-	st := &memFx{rows: []contracts.FxRate{stored("2026-11-09", "153.3000")}}
+	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.4250")}}
+	st := &memFx{rows: []contracts.FxRate{stored("2026-11-09", "153.425")}}
 	j := build(t, &fakeBroker{listed: true}, h, st)
 	res := j.Run(context.Background(), runDay, usdjpy)
 	if res.Err != nil || res.Usable != 1 {
 		t.Fatalf("result %+v", res)
 	}
-	if st.calls != 0 || len(st.rows) != 1 || st.rows[0].Rate != "153.3000" {
-		t.Fatalf("rows %+v, calls %d", st.rows, st.calls)
+	if st.counts[0] != (bar.FxWriteCount{Unchanged: 1}) || st.rows[0].Rate != "153.425" {
+		t.Fatalf("counts %+v rows %+v", st.counts, st.rows)
+	}
+}
+
+func TestPastDayAsksEndDay(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-06", "152.2000")}}
+	j := build(t, &fakeBroker{listed: true}, h, &memFx{})
+	if res := j.Run(context.Background(), "2026-11-06", usdjpy); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].End != "2026-11-06" {
+		t.Fatalf("queries %+v", h.queries)
+	}
+}
+
+func TestTodayAsksNoEnd(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.2000")}}
+	j := build(t, &fakeBroker{listed: true}, h, &memFx{})
+	if res := j.Run(context.Background(), runDay, usdjpy); res.Err != nil {
+		t.Fatal(res.Err)
+	}
+	if len(h.queries) != 1 || h.queries[0].End != "" {
+		t.Fatalf("queries %+v", h.queries)
+	}
+}
+
+func TestBarsAfterDayAreDropped(t *testing.T) {
+	t.Parallel()
+	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-05", "151.1000"), mkbar("2026-11-06", "152.2000"), mkbar("2026-11-07", "153.3000")}}
+	st := &memFx{}
+	j := build(t, &fakeBroker{listed: true}, h, st)
+	res := j.Run(context.Background(), "2026-11-06", usdjpy)
+	if res.Err != nil || res.Returned != 2 {
+		t.Fatalf("result %+v", res)
+	}
+	if st.upserts != 1 || len(st.rows) != 2 || st.rows[1].RateDay.Format(dayLayout) != "2026-11-06" {
+		t.Fatalf("rows %+v upserts %d", st.rows, st.upserts)
+	}
+}
+
+func TestEmptyAnswerNeverReplaces(t *testing.T) {
+	t.Parallel()
+	st := &memFx{rows: []contracts.FxRate{stored("2026-11-09", "153.3000")}}
+	j := build(t, &fakeBroker{listed: true}, &fakeHistory{}, st)
+	res := j.Run(context.Background(), runDay, usdjpy)
+	if res.Err != nil || res.Returned != 0 || st.upserts != 0 || len(st.rows) != 1 || st.rows[0].Rate != "153.3000" {
+		t.Fatalf("result %+v rows %+v upserts %d", res, st.rows, st.upserts)
+	}
+}
+
+func TestRunWithoutUpserterIsRetryable(t *testing.T) {
+	t.Parallel()
+	b := &fakeBroker{listed: true}
+	h := &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.2150")}}
+	w := &plainWriter{}
+	j, err := New(b, h, w, &memFx{}, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), runDay, usdjpy)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "bar store") {
+		t.Fatalf("result %+v", res)
+	}
+	if len(b.resolved) != 0 || len(h.queries) != 0 || w.calls != 0 {
+		t.Fatalf("broker %d history %d insert %d", len(b.resolved), len(h.queries), w.calls)
+	}
+}
+
+func TestBadBarIsPermanent(t *testing.T) {
+	t.Parallel()
+	for _, bars := range [][]broker.Bar{{mkbar("2026-11-09", "0")}, {mkbar("2026-11-09", "abc")}, {mkbar("bad", "1.5")}} {
+		st := &memFx{}
+		j := build(t, &fakeBroker{listed: true}, &fakeHistory{bars: bars}, st)
+		res := j.Run(context.Background(), runDay, usdjpy)
+		if res.Err == nil || res.Err.Kind() != contracts.Permanent || st.upserts != 0 {
+			t.Fatalf("%+v: result %+v", bars, res)
+		}
+	}
+}
+
+func TestStoreErrorIsRetryable(t *testing.T) {
+	t.Parallel()
+	st := &failUpsert{}
+	j, err := New(&fakeBroker{listed: true}, &fakeHistory{bars: []broker.Bar{mkbar("2026-11-09", "153.2")}}, st, &st.memFx, fixedClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), runDay, usdjpy)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("result %+v", res)
 	}
 }
 
