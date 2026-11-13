@@ -128,6 +128,8 @@ class ResolveContractResponse(_message.Message):
     Several results, a differing result, a timeout or a connectivity error is a
     gRPC error (FAILED_PRECONDITION for several or differing, DEADLINE_EXCEEDED,
     UNAVAILABLE), never a cached negative.
+    trading_hours, liquid_hours and time_zone_id are the IBKR ContractDetails
+    strings of the resolved contract; they are empty unless the status is FOUND.
     """
 
     DESCRIPTOR: _descriptor.Descriptor
@@ -136,9 +138,15 @@ class ResolveContractResponse(_message.Message):
     CONTRACT_FIELD_NUMBER: _builtins.int
     ERROR_CODE_FIELD_NUMBER: _builtins.int
     ERROR_TEXT_FIELD_NUMBER: _builtins.int
+    TRADING_HOURS_FIELD_NUMBER: _builtins.int
+    LIQUID_HOURS_FIELD_NUMBER: _builtins.int
+    TIME_ZONE_ID_FIELD_NUMBER: _builtins.int
     status: Global___ResolveStatus.ValueType
     error_code: _builtins.int
     error_text: _builtins.str
+    trading_hours: _builtins.str
+    liquid_hours: _builtins.str
+    time_zone_id: _builtins.str
     @_builtins.property
     def contract(self) -> _contract_pb2.ContractSpec: ...
     def __init__(
@@ -148,10 +156,13 @@ class ResolveContractResponse(_message.Message):
         contract: _contract_pb2.ContractSpec | None = ...,
         error_code: _builtins.int = ...,
         error_text: _builtins.str = ...,
+        trading_hours: _builtins.str = ...,
+        liquid_hours: _builtins.str = ...,
+        time_zone_id: _builtins.str = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _typing.Literal["contract", b"contract"]  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["contract", b"contract", "error_code", b"error_code", "error_text", b"error_text", "status", b"status"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["contract", b"contract", "error_code", b"error_code", "error_text", b"error_text", "liquid_hours", b"liquid_hours", "status", b"status", "time_zone_id", b"time_zone_id", "trading_hours", b"trading_hours"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 

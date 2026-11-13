@@ -397,3 +397,17 @@ def test_bars_request_and_response_round_trip() -> None:
 
 def test_sec_type_cash_exists() -> None:
     assert SEC_TYPE_CASH == 4
+
+
+def test_resolve_response_carries_hours_fields() -> None:
+    found = ResolveContractResponse(
+        status=RESOLVE_STATUS_FOUND,
+        trading_hours="20261116:0930-20261116:1600",
+        liquid_hours="20261116:0930-20261116:1600",
+        time_zone_id="US/Eastern",
+    )
+    assert found.trading_hours == "20261116:0930-20261116:1600"
+    assert found.liquid_hours == "20261116:0930-20261116:1600"
+    assert found.time_zone_id == "US/Eastern"
+    bare = ResolveContractResponse(status=RESOLVE_STATUS_FOUND)
+    assert (bare.trading_hours, bare.liquid_hours, bare.time_zone_id) == ("", "", "")

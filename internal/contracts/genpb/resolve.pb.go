@@ -240,12 +240,17 @@ func (x *ResolveContractRequest) GetContract() *ContractSpec {
 // Several results, a differing result, a timeout or a connectivity error is a
 // gRPC error (FAILED_PRECONDITION for several or differing, DEADLINE_EXCEEDED,
 // UNAVAILABLE), never a cached negative.
+// trading_hours, liquid_hours and time_zone_id are the IBKR ContractDetails
+// strings of the resolved contract; they are empty unless the status is FOUND.
 type ResolveContractResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        ResolveStatus          `protobuf:"varint,1,opt,name=status,proto3,enum=ibkr.v1.ResolveStatus" json:"status,omitempty"`
 	Contract      *ContractSpec          `protobuf:"bytes,2,opt,name=contract,proto3" json:"contract,omitempty"`
 	ErrorCode     int32                  `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	ErrorText     string                 `protobuf:"bytes,4,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
+	TradingHours  string                 `protobuf:"bytes,5,opt,name=trading_hours,json=tradingHours,proto3" json:"trading_hours,omitempty"`
+	LiquidHours   string                 `protobuf:"bytes,6,opt,name=liquid_hours,json=liquidHours,proto3" json:"liquid_hours,omitempty"`
+	TimeZoneId    string                 `protobuf:"bytes,7,opt,name=time_zone_id,json=timeZoneId,proto3" json:"time_zone_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -308,6 +313,27 @@ func (x *ResolveContractResponse) GetErrorText() string {
 	return ""
 }
 
+func (x *ResolveContractResponse) GetTradingHours() string {
+	if x != nil {
+		return x.TradingHours
+	}
+	return ""
+}
+
+func (x *ResolveContractResponse) GetLiquidHours() string {
+	if x != nil {
+		return x.LiquidHours
+	}
+	return ""
+}
+
+func (x *ResolveContractResponse) GetTimeZoneId() string {
+	if x != nil {
+		return x.TimeZoneId
+	}
+	return ""
+}
+
 var File_ibkr_v1_resolve_proto protoreflect.FileDescriptor
 
 const file_ibkr_v1_resolve_proto_rawDesc = "" +
@@ -323,14 +349,18 @@ const file_ibkr_v1_resolve_proto_rawDesc = "" +
 	"\x15ListContractsResponse\x123\n" +
 	"\tcontracts\x18\x01 \x03(\v2\x15.ibkr.v1.ContractSpecR\tcontracts\"K\n" +
 	"\x16ResolveContractRequest\x121\n" +
-	"\bcontract\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\"\xba\x01\n" +
+	"\bcontract\x18\x01 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\"\xa4\x02\n" +
 	"\x17ResolveContractResponse\x12.\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x16.ibkr.v1.ResolveStatusR\x06status\x121\n" +
 	"\bcontract\x18\x02 \x01(\v2\x15.ibkr.v1.ContractSpecR\bcontract\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x05R\terrorCode\x12\x1d\n" +
 	"\n" +
-	"error_text\x18\x04 \x01(\tR\terrorText*h\n" +
+	"error_text\x18\x04 \x01(\tR\terrorText\x12#\n" +
+	"\rtrading_hours\x18\x05 \x01(\tR\ftradingHours\x12!\n" +
+	"\fliquid_hours\x18\x06 \x01(\tR\vliquidHours\x12 \n" +
+	"\ftime_zone_id\x18\a \x01(\tR\n" +
+	"timeZoneId*h\n" +
 	"\rResolveStatus\x12\x1e\n" +
 	"\x1aRESOLVE_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14RESOLVE_STATUS_FOUND\x10\x01\x12\x1d\n" +
