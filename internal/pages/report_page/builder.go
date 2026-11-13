@@ -23,8 +23,9 @@ type BlockFunc func(ctx context.Context, day contracts.Day, generatedAt time.Tim
 
 // Config is one report: a market (US or JP), a slot (open or close), the owner's zone
 // (generated_at is written in it), the source of the risks block and the sources of the actions,
-// account_moves and market_watch blocks. A nil one of the three keeps the not_built block; for
-// market JP they are never called and the block is a jp_slice_missing gap.
+// account_moves and market_watch blocks, and the source of the global_assets block. A nil one of the three keeps
+// the not_built block; for market JP they are never called and the block is a jp_slice_missing gap. GlobalAssets is
+// called only for market US and slot close; a nil one, market JP and slot open keep the not_built block.
 type Config struct {
 	Market, Slot string
 	Zone         *time.Location
@@ -32,6 +33,7 @@ type Config struct {
 	Actions      BlockFunc
 	AccountMoves BlockFunc
 	MarketWatch  BlockFunc
+	GlobalAssets BlockFunc
 }
 
 type banner struct {
@@ -40,11 +42,11 @@ type banner struct {
 }
 
 type blocks struct {
-	Actions      json.RawMessage   `json:"actions"`
-	AccountMoves json.RawMessage   `json:"account_moves"`
-	Risks        json.RawMessage   `json:"risks"`
-	MarketWatch  json.RawMessage   `json:"market_watch"`
-	GlobalAssets globalAssetsBlock `json:"global_assets"`
+	Actions      json.RawMessage `json:"actions"`
+	AccountMoves json.RawMessage `json:"account_moves"`
+	Risks        json.RawMessage `json:"risks"`
+	MarketWatch  json.RawMessage `json:"market_watch"`
+	GlobalAssets json.RawMessage `json:"global_assets"`
 }
 
 type page struct {
@@ -99,6 +101,10 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 	if err != nil {
 		return nil, err
 	}
+	global, err := c.globalAssets(ctx, day, generatedAt)
+	if err != nil {
+		return nil, err
+	}
 	p := page{
 		Schema: "report_page", SchemaVersion: 2, Market: c.Market, Slot: c.Slot,
 		SessionDate: day, GeneratedAt: generatedAt.In(c.Zone).Format(timeLayout),
@@ -109,7 +115,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 			AccountMoves: moves,
 			Risks:        risks,
 			MarketWatch:  watch,
-			GlobalAssets: globalAssetsBlock{newGapBlock(textGlobal, notBuilt(textGlobal)), notBuilt(textGlobal), notBuilt(textGlobal), chartAria},
+			GlobalAssets: global,
 		},
 	}
 	out, err := json.Marshal(p)
@@ -132,6 +138,19 @@ func (c Config) block(ctx context.Context, f BlockFunc, day contracts.Day, at ti
 	b, err := f(ctx, day, at)
 	if err != nil {
 		return nil, fmt.Errorf("report_page: %s block: %w", name, err)
+	}
+	return b, nil
+}
+
+// globalAssets is the bytes of GlobalAssets for market US and slot close, otherwise the not_built block.
+func (c Config) globalAssets(ctx context.Context, day contracts.Day, at time.Time) (json.RawMessage, error) {
+	if c.GlobalAssets == nil || c.Market != "US" || c.Slot != "close" {
+		g := notBuilt(textGlobal)
+		return marshalBlock(globalAssetsBlock{newGapBlock(textGlobal, g), g, g, chartAria})
+	}
+	b, err := c.GlobalAssets(ctx, day, at)
+	if err != nil {
+		return nil, fmt.Errorf("report_page: global_assets block: %w", err)
 	}
 	return b, nil
 }
