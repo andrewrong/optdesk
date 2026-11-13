@@ -26,6 +26,7 @@ type book struct {
 	byID    map[string]string
 	main    string
 	aliases []string
+	ids     []string
 }
 
 var _ accounts.Book = (*book)(nil)
@@ -33,6 +34,7 @@ var _ accounts.Book = (*book)(nil)
 func (b *book) Alias(id string) (string, bool) { a, ok := b.byID[id]; return a, ok }
 func (b *book) Main() string                   { return b.main }
 func (b *book) Aliases() []string              { return append([]string(nil), b.aliases...) }
+func (b *book) IDs() []string                  { return append([]string(nil), b.ids...) }
 
 // Load reads the file at path and returns the book it holds. It refuses a missing file, a missing
 // or dangling `main`, a bad or reserved alias, a repeated alias or id and a bad id shape; every
@@ -92,6 +94,7 @@ func Load(path string) (accounts.Book, error) {
 		aliasSeen[key] = true
 		b.byID[val] = key
 		b.aliases = append(b.aliases, key)
+		b.ids = append(b.ids, val)
 	}
 	if err := p.Error(); err != nil {
 		var pe *unstable.ParserError

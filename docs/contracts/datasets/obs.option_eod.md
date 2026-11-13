@@ -2,7 +2,7 @@
 
 # obs.option_eod r1
 
-obs.option_eod r1: one option contract on one session day, frozen after the close.
+obs.option_eod r1: in-session daily chain snapshot of one option contract on one session day.
 
 | column | type | nullable | meaning |
 |---|---|---|---|
@@ -17,7 +17,7 @@ obs.option_eod r1: one option contract on one session day, frozen after the clos
 | status | integer | no | Status of the row: 1 ok, 2 no quote, 3 not listed, 4 stale, 5 error. |
 | error_code | string | yes | Error code of the broker or the capture; null when none. |
 | currency | string | no | Currency of the prices, three upper-case letters. |
-| snapshot_kind | string | no | Kind of the snapshot, for example eod. |
+| snapshot_kind | string | no | Kind of the in-session daily chain snapshot: session (quote live, MarketDataType 1), off_session (MarketDataType 2, 3, 4; new) or eod (legacy, rows written before). |
 | terms_version_id | integer | yes | Version of the contract terms; null when unknown. |
 | bid | number | yes | Bid price. Null when absent. |
 | ask | number | yes | Ask price. Null when absent. |

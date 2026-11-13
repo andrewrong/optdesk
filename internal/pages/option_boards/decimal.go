@@ -56,6 +56,44 @@ func shiftPercent(text string) (string, error) {
 	return sign + out + "%", nil
 }
 
+// roundDecimal rounds the decimal text to places decimal places, half away from zero, exactly (no float). A text
+// with places digits or fewer is returned as written; a rounded text loses its trailing zeros, and a result that
+// is zero carries no sign. ok is false when the text is not a decimal.
+func roundDecimal(text string, places int) (string, bool) {
+	m := decimalPattern.FindStringSubmatch(text)
+	if m == nil || places < 0 {
+		return "", false
+	}
+	sign, whole, frac := m[1], m[2], m[3]
+	if len(frac) <= places {
+		return text, true
+	}
+	digits := []byte(whole + frac[:places])
+	if frac[places] >= '5' {
+		i := len(digits) - 1
+		for ; i >= 0 && digits[i] == '9'; i-- {
+			digits[i] = '0'
+		}
+		if i < 0 {
+			digits = append([]byte{'1'}, digits...)
+		} else {
+			digits[i]++
+		}
+	}
+	w, f := string(digits[:len(digits)-places]), strings.TrimRight(string(digits[len(digits)-places:]), "0")
+	if w = strings.TrimLeft(w, "0"); w == "" {
+		w = "0"
+	}
+	out := w
+	if f != "" {
+		out += "." + f
+	}
+	if strings.Trim(out, "0.") == "" {
+		sign = ""
+	}
+	return sign + out, true
+}
+
 // signedText writes a stored decimal text with the typographic minus "−" for the sign.
 func signedText(text string) string {
 	if rest, ok := strings.CutPrefix(text, minus); ok {

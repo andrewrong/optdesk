@@ -40,6 +40,23 @@ func TestLoadReadsTheBook(t *testing.T) {
 	}
 }
 
+func TestIDsInFileOrderAsACopy(t *testing.T) {
+	t.Parallel()
+	a, b := id("0001"), id("0002")
+	bk, err := toml.Load(write(t, "wife = \""+b+"\"\nmine = \""+a+"\"\nmain = \"mine\"\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := bk.IDs()
+	if len(got) != 2 || got[0] != b || got[1] != a {
+		t.Fatalf("IDs order wrong: %d ids", len(got))
+	}
+	got[0] = "changed"
+	if again := bk.IDs(); again[0] != b {
+		t.Fatal("changing the returned slice changed the book")
+	}
+}
+
 func TestAliasOfUnknownIDIsFalse(t *testing.T) {
 	t.Parallel()
 	bk, err := toml.Load(write(t, "mine = \""+id("0001")+"\"\nmain = \"mine\"\n"))
