@@ -284,6 +284,11 @@ func buildIndices(ctx context.Context, c Config, d time.Time, days dataDays) (in
 				return indices{}, 0, err
 			}
 			row.RV20 = rv20Cell(s.name, rv)
+			ir, err := readNewestKind(ctx, c, figIvRv20, kindUnderlying, s.name, d)
+			if err != nil {
+				return indices{}, 0, err
+			}
+			row.IVMinusRV20 = ivRvCell(s.name, ir, d)
 			row.Rank3Y = percentileCell(r)
 			if _, isGap := row.Rank3Y.(gap); isGap {
 				failed++
