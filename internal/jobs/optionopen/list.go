@@ -396,16 +396,41 @@ func (r *listRun) write(ctx context.Context, n *listName, g listGroup, list []br
 	return false, nil
 }
 
-func (r *listRun) mainReason() string {
-	if r.stop != "" {
-		return r.stop
-	}
+// reasonCounts is the text of a run that listed nothing: each distinct reason of the names that did not end
+// none with its count of names, by count descending then reason ascending. With no such name it is the run's
+// stop, else no_names.
+func (r *listRun) reasonCounts() string {
+	counts := map[string]int{}
 	for _, n := range r.names {
 		if n.reason != reasonNone {
-			return n.reason
+			counts[n.reason]++
 		}
 	}
-	return "no_names"
+	if len(counts) == 0 {
+		if r.stop != "" {
+			return r.stop
+		}
+		return "no_names"
+	}
+	type entry struct {
+		reason string
+		n      int
+	}
+	entries := make([]entry, 0, len(counts))
+	for k, v := range counts {
+		entries = append(entries, entry{k, v})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].n != entries[j].n {
+			return entries[i].n > entries[j].n
+		}
+		return entries[i].reason < entries[j].reason
+	})
+	parts := make([]string, len(entries))
+	for i, e := range entries {
+		parts[i] = fmt.Sprintf("%s %d", e.reason, e.n)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // summary logs the one line of the run: the reasons by count and the names that did not end complete.
