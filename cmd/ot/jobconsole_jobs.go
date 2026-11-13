@@ -40,7 +40,6 @@ func (r jobRow) runnable() bool { return r.Kind == kindAnyDay || r.Kind == kindT
 const (
 	textMomentMix      = "force comes with the late-collection design (each pull stored with its own time)"
 	textAppendOnly     = "a forced run adds executions by (alias, exec_id) and never replaces the day's capture"
-	textRevisionRows   = "a second fetch adds revision rows that no reader prefers over the first"
 	textInsertOnly     = "a stored capture of a statement day is never replaced, so a forced run writes nothing new"
 	textAttemptRows    = "a re-run adds one row under the next attempt, which replaces nothing"
 	textNewRunID       = "changed inputs make a new run id and a second run of rows"
@@ -78,7 +77,7 @@ func listedOnly(id, reason, text, needs string) jobRow {
 var jobTable = []jobRow{
 	{ID: "fred_series", Kind: kindAnyDay, Force: true},
 	anyDay("fundamentals", "quota", textQuota),
-	anyDay("compute_figures", "revision_rows", textRevisionRows),
+	{ID: "compute_figures", Kind: kindAnyDay, Force: true},
 	anyDay("option_candidates", "new_run_id", textNewRunID),
 	todayOnly("account_capture", "append_only", textAppendOnly),
 	anyDay("statement_capture", "insert_only", textInsertOnly),
