@@ -253,3 +253,13 @@ func TestRunOnceRefusedWithoutBookBeforeAnyJobIsWired(t *testing.T) {
 		t.Fatalf("run-once without accounts.toml gave %v", err)
 	}
 }
+
+func TestServeRefusedWithoutBook(t *testing.T) {
+	t.Parallel()
+	r := newRig(t, fullEnv)
+	removeBook(t, r.a)
+	err := runServe(r.a, []string{"--addr", "127.0.0.1:0"})
+	if !errors.Is(err, errAccountsBook) {
+		t.Fatalf("serve started or failed for another reason without accounts.toml: %v", err)
+	}
+}

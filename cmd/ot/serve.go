@@ -52,6 +52,10 @@ func runServe(a *app, args []string) error {
 	if *live && !loopbackListen(*addr) {
 		return errors.New("serve: --live-quotes needs a loopback --addr")
 	}
+	// the account pages take their aliases from accounts.toml: nothing is served before the file is written
+	if _, err := a.loadBook(); err != nil {
+		return err
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	clk := a.deps.newClock()
