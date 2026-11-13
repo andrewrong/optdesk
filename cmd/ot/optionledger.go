@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	optionledgerjob "github.com/andrewrong/optdesk/internal/jobs/optionledger"
@@ -140,7 +141,11 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 	if err != nil {
 		return nil, err
 	}
-	lc, err := a.flexConfig(ff, env, f)
+	book, err := a.loadBook()
+	if err != nil {
+		return nil, err
+	}
+	lc, err := a.flexConfig(ff, env, book, f)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +163,8 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 }
 
 // flexConfig maps the file to the config of the job. A login whose variable is empty gets a nil Source and a
-// logged reason; an account whose variable is empty is left out of the allow-list with one.
-func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactory) (optionledgerjob.OptionLedgerConfig, error) {
+// logged reason. The accounts come from the book (flexAccounts).
+func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, book accounts.Book, f jobFactory) (optionledgerjob.OptionLedgerConfig, error) {
 	var lc optionledgerjob.OptionLedgerConfig
 	for _, l := range ff.Logins {
 		run := optionledgerjob.FlexRun{Name: l.Name, QueryIDs: l.TradeQueries, Required: l.Required}
@@ -177,25 +182,8 @@ func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactor
 		}
 		lc.Logins = append(lc.Logins, run)
 	}
-	lc.Accounts = a.flexAccounts(ff, env)
+	lc.Accounts = flexAccounts(book)
 	return lc, nil
-}
-
-// flexAccounts is the account map of the file: the account number held by the variable of each entry, to its
-// alias. An entry whose variable is empty is left out with one logged reason that names the alias and the
-// variable. The job and the web import share it, so one rule maps both.
-func (a *app) flexAccounts(ff sources.FlexFile, env map[string]string) map[string]string {
-	accounts := map[string]string{}
-	for _, acc := range ff.Accounts {
-		num := env[acc.AccountEnv]
-		if num == "" {
-			a.log.Warn("flex account left out", "component", "ot", "job", jobOptionLedger,
-				"status", fmt.Sprintf("account %s: %s is not set", acc.Alias, acc.AccountEnv))
-			continue
-		}
-		accounts[num] = acc.Alias
-	}
-	return accounts
 }
 
 // ledgerOpts are the parsed arguments of ot ledger.
@@ -521,4 +509,15 @@ func decimalOf(v *float64) string {
 		return ""
 	}
 	return strconv.FormatFloat(*v, 'f', -1, 64)
+}
+
+// flexAccounts of the web import: the account map of the book, empty (every statement unmapped, nothing stored)
+// when the book cannot be loaded. The job and the import share the rule of flexAccounts.
+func (a *app) flexAccounts(_ sources.FlexFile, _ map[string]string) map[string]string {
+	book, err := a.loadBook()
+	if err != nil {
+		a.log.Warn("flex import has no accounts", "component", "ot", "job", jobOptionLedger, "reason", err.Error())
+		return map[string]string{}
+	}
+	return flexAccounts(book)
 }

@@ -27,13 +27,13 @@ import (
 // The shared fakes and builders of the tests of the Flex import route. The values are synthetic: the account
 // number, the token and the DSNs only let a test look for them in a body.
 const (
-	fiAccount   = "ACCT_A"
-	fiAlias     = "main"
+	fiAccount   = "U" + "000" + "0002" // built from pieces: no id-shaped string is committed
+	fiAlias     = "mine"
 	fiLedgerDSN = "postgres://ledger-sentinel-dsn"
 	fiPagesDSN  = "postgres://pages-sentinel-dsn"
 	fiFlexToken = "flex-token-sentinel"
 	fiEnv       = "OT_PG_DSN_SETTINGS=postgres://settings-sentinel-dsn\n" +
-		"OT_PG_DSN_PAGES=" + fiPagesDSN + "\nOT_FLEX_TOKEN=" + fiFlexToken + "\nOT_FLEX_ACCT_MAIN=" + fiAccount + "\n"
+		"OT_PG_DSN_PAGES=" + fiPagesDSN + "\nOT_FLEX_TOKEN=" + fiFlexToken + "\n"
 	fiLedgerLine = "OT_PG_DSN_OPTION_LEDGER=" + fiLedgerDSN + "\n"
 )
 
@@ -196,6 +196,10 @@ func newFISite(t *testing.T, o fiOpts) *fiSite {
 		env += fiLedgerLine
 	}
 	a, logs := testApp(t, env)
+	book := fiAlias + " = \"" + fiAccount + "\"\nmain = \"" + fiAlias + "\"\n"
+	if err := writeFile(a.getenv("OT_HOME")+"/"+accountsFileName, book); err != nil {
+		t.Fatal(err)
+	}
 	d := newDeps()
 	a.deps.newRuleParams, a.deps.newSettingsForm = d.newRuleParams, d.newSettingsForm
 	if o.st == nil {
@@ -209,7 +213,7 @@ func newFISite(t *testing.T, o fiOpts) *fiSite {
 		case o.badFlexFile:
 			return sources.FlexFile{}, fmt.Errorf("%w: entry 1", sources.ErrFlexConfig)
 		}
-		return sources.FlexFile{Accounts: []sources.FlexAccount{{Alias: fiAlias, AccountEnv: "OT_FLEX_ACCT_MAIN"}}}, nil
+		return sources.FlexFile{}, nil
 	}
 	form := d.newSettingsForm(nil, ownerTokenTTL, a.deps.newRuleParams())
 	var rd siteReaders
