@@ -141,7 +141,7 @@ func TestSelectWideBandNoSideCap(t *testing.T) {
 func TestSelectWideBandBuyPrice(t *testing.T) {
 	t.Parallel()
 	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, MaxStrikesPerSide: 8, StrikeBandBelow: 0.20, StrikeBandAbove: 0.05,
-		MaxStrikes: 5, buy: map[string]string{"T": "340"}}
+		MaxStrikes: 5, BuyLow: "0.80", BuyHigh: "1.05", buy: map[string]string{"T": "340"}}
 	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
 	// the 5 nearest 340 are 330..350, all inside the band strikes 285..370
 	if want := seq(285, 370, 5); !reflect.DeepEqual(callStrikes(got), want) {
@@ -190,5 +190,67 @@ func TestSelectWideBandOneKeyFallsBackToStrikeBand(t *testing.T) {
 	// 284.41 .. 391.06 (above falls back to 0.10), no cap by side
 	if want := seq(285, 390, 5); !reflect.DeepEqual(callStrikes(got), want) {
 		t.Fatalf("strikes %v, want %v", callStrikes(got), want)
+	}
+}
+
+func TestValidateRefusesOneBuyKey(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, low, high, key string
+	}{
+		{"low alone", "0.80", "", "buy_high"},
+		{"high alone", "", "1.05", "buy_low"},
+		{"low not below high", "1.05", "1.05", "buy_low"},
+		{"low above high", "1.10", "0.90", "buy_low"},
+		{"low not decimal", "abc", "1.05", "buy_low"},
+		{"high not decimal", "0.80", "x", "buy_high"},
+		{"low not positive", "0", "1.05", "buy_low"},
+		{"high negative", "0.80", "-1", "buy_high"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := parseManifest([]byte(buyKeyManifest(c.low, c.high)))
+			if err == nil || !strings.Contains(err.Error(), c.key) {
+				t.Fatalf("err %v, want one naming %s", err, c.key)
+			}
+		})
+	}
+	for _, ok := range [][2]string{{"0.80", "1.05"}, {"", ""}} {
+		if _, err := parseManifest([]byte(buyKeyManifest(ok[0], ok[1]))); err != nil {
+			t.Fatalf("low %q high %q: %v", ok[0], ok[1], err)
+		}
+	}
+}
+
+func buyKeyManifest(low, high string) string {
+	s := "version = 1\nid = \"x\"\n"
+	if low != "" {
+		s += "buy_low = \"" + low + "\"\n"
+	}
+	if high != "" {
+		s += "buy_high = \"" + high + "\"\n"
+	}
+	return s + "[[underlying]]\nsymbol = \"SPY\"\ncon_id = 1\ncurrency = \"USD\"\n"
+}
+
+func TestSelectBuyPriceWithoutKeysKeepsBand(t *testing.T) {
+	t.Parallel()
+	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, MaxStrikesPerSide: 8, MaxStrikes: 5, buy: map[string]string{"T": "340"}}
+	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	plain := m
+	plain.buy = nil
+	want := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, plain)
+	if !reflect.DeepEqual(callStrikes(got), callStrikes(want)) || len(got) == 0 {
+		t.Fatalf("strikes %v, want the band strikes %v", callStrikes(got), callStrikes(want))
+	}
+}
+
+func TestValidateRefusesNonDecimalPrefixedBuyKey(t *testing.T) {
+	t.Parallel()
+	for _, v := range []string{"0x1", "0x1p-1", "0b1"} {
+		if _, err := parseManifest([]byte(buyKeyManifest("0.80", v))); err == nil || !strings.Contains(err.Error(), "buy_high") {
+			t.Fatalf("buy_high %q: err %v, want an error naming buy_high", v, err)
+		}
 	}
 }

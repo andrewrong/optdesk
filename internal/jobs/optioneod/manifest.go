@@ -2,6 +2,7 @@ package optioneod
 
 import (
 	"fmt"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
@@ -79,6 +80,10 @@ type manifest struct {
 	OptionPriceIncrement string        `toml:"option_price_increment"`
 	// TradingClass, when set, makes the chain choice take the chain of that trading class on the underlying's exchange.
 	TradingClass string `toml:"trading_class"`
+	// BuyLow and BuyHigh, both or neither, are the multiples of a BuyPrice that bound the strikes of an entry with
+	// a BuyPrice (decimal text, low below high). Without them such an entry keeps the band only.
+	BuyLow  string `toml:"buy_low"`
+	BuyHigh string `toml:"buy_high"`
 	// LedgerDataset is the dataset id of the plan keys; default obs.option_eod.
 	LedgerDataset string       `toml:"ledger_dataset"`
 	Underlying    []underlying `toml:"underlying"`
@@ -156,6 +161,9 @@ func (m manifest) validate() error {
 	if m.MinDTE < 0 || m.MaxDTE < 0 || m.MaxStrikes < 0 || (m.MaxDTE > 0 && m.MinDTE > m.MaxDTE) {
 		return fmt.Errorf("optioneod: manifest: min_dte, max_dte and max_strikes must not be negative and min_dte must not exceed max_dte")
 	}
+	if err := m.validateBuyKeys(); err != nil {
+		return err
+	}
 	if _, err := time.LoadLocation(m.Zone); err != nil {
 		return fmt.Errorf("optioneod: manifest: zone is unknown")
 	}
@@ -168,6 +176,53 @@ func (m manifest) validate() error {
 		}
 	}
 	return nil
+}
+
+// validateBuyKeys wants buy_low and buy_high both or neither, each a positive decimal, low below high.
+func (m manifest) validateBuyKeys() error {
+	if m.BuyLow == "" && m.BuyHigh == "" {
+		return nil
+	}
+	if m.BuyLow == "" {
+		return fmt.Errorf("optioneod: manifest: buy_low is missing, buy_high needs it")
+	}
+	if m.BuyHigh == "" {
+		return fmt.Errorf("optioneod: manifest: buy_high is missing, buy_low needs it")
+	}
+	lo, ok := positiveDecimal(m.BuyLow)
+	if !ok {
+		return fmt.Errorf("optioneod: manifest: buy_low must be a positive decimal")
+	}
+	hi, ok := positiveDecimal(m.BuyHigh)
+	if !ok {
+		return fmt.Errorf("optioneod: manifest: buy_high must be a positive decimal")
+	}
+	if lo.Cmp(hi) >= 0 {
+		return fmt.Errorf("optioneod: manifest: buy_low must be below buy_high")
+	}
+	return nil
+}
+
+// positiveDecimal reads s as a decimal number above zero: digits with at most one point, no sign, exponent,
+// fraction or base prefix.
+func positiveDecimal(s string) (*big.Rat, bool) {
+	dots := 0
+	for _, c := range s {
+		switch {
+		case c == '.':
+			dots++
+		case c < '0' || c > '9':
+			return nil, false
+		}
+	}
+	if dots > 1 {
+		return nil, false
+	}
+	r, ok := new(big.Rat).SetString(s)
+	if !ok || r.Sign() <= 0 {
+		return nil, false
+	}
+	return r, true
 }
 
 // validateUnderlying asks a stock underlying for a symbol only (runKey ends one without con_id or currency as
@@ -213,6 +268,9 @@ func (m manifest) canonical() string {
 	}
 	if m.LedgerDataset != datasetID {
 		fmt.Fprintf(&b, "|ledger%s", m.LedgerDataset)
+	}
+	if m.BuyLow != "" {
+		fmt.Fprintf(&b, "|buyband%s-%s", m.BuyLow, m.BuyHigh)
 	}
 	hasStock := false
 	for _, u := range m.Underlying {

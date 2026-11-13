@@ -7,6 +7,9 @@ ledger_dataset = "obs.option_eod_jp"
 max_expiries = 3
 strike_band = 0.10
 max_strikes_per_side = 8
+# Buy-price band of an entry with a BuyPrice: strikes from buy_low x BuyPrice to max(buy_high x BuyPrice, spot). The numbers are trial.
+buy_low = "0.80"
+buy_high = "1.05"
 chunk = 50
 budget_minutes = 8
 freeze_after = "1550"
