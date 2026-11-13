@@ -24,44 +24,43 @@ var (
 )
 
 func same(a, b contracts.SeriesPoint) bool {
-	if a.Status != b.Status || (a.Value == nil) != (b.Value == nil) {
+	if a.Status != b.Status || a.Unit != b.Unit || a.Currency != b.Currency || a.Source != b.Source ||
+		(a.Value == nil) != (b.Value == nil) {
 		return false
 	}
 	return a.Value == nil || *a.Value == *b.Value
 }
 
-func (f *fakeStore) UpsertSeriesPoints(_ context.Context, rows []contracts.SeriesPoint, _ string) (seriesdef.WriteCount, error) {
+// write applies rows by key; replace says whether a stored row may be replaced by r.
+func (f *fakeStore) write(rows []contracts.SeriesPoint, replace func(old, r contracts.SeriesPoint) bool) seriesdef.WriteCount {
 	var c seriesdef.WriteCount
 	if f.rows == nil {
 		f.rows = map[key]contracts.SeriesPoint{}
 	}
 	for _, r := range rows {
 		k := key{r.SeriesID, r.ObservationDate.String()}
-		if old, ok := f.rows[k]; ok && same(old, r) {
+		if old, ok := f.rows[k]; ok && !replace(old, r) {
 			c.Unchanged++
 			continue
 		}
 		f.rows[k] = r
 		c.Written++
 	}
-	return c, nil
+	return c
+}
+
+func (f *fakeStore) UpsertSeriesPoints(_ context.Context, rows []contracts.SeriesPoint, _ string) (seriesdef.WriteCount, error) {
+	return f.write(rows, func(old, r contracts.SeriesPoint) bool { return !same(old, r) }), nil
 }
 
 func (f *fakeStore) FillSeriesPoints(_ context.Context, rows []contracts.SeriesPoint, _ string) (seriesdef.WriteCount, error) {
-	var c seriesdef.WriteCount
-	if f.rows == nil {
-		f.rows = map[key]contracts.SeriesPoint{}
-	}
-	for _, r := range rows {
-		k := key{r.SeriesID, r.ObservationDate.String()}
-		if old, ok := f.rows[k]; ok && old.Status == "present" {
-			c.Unchanged++
-			continue
-		}
-		f.rows[k] = r
-		c.Written++
-	}
-	return c, nil
+	return f.write(rows, func(old, _ contracts.SeriesPoint) bool { return old.Status != "present" }), nil
+}
+
+// stored reads back the row of the key (series, zero date).
+func (f *fakeStore) stored(p contracts.SeriesPoint) (contracts.SeriesPoint, bool) {
+	r, ok := f.rows[key{p.SeriesID, p.ObservationDate.String()}]
+	return r, ok
 }
 
 func (f *fakeStore) ActiveSeries(context.Context) ([]seriesdef.SeriesDefinition, error) {
@@ -86,7 +85,8 @@ func point(t *testing.T, v float64) contracts.SeriesPoint {
 func TestSeriesUpserterContract(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	var u seriesdef.SeriesUpserter = &fakeStore{}
+	fs := &fakeStore{}
+	var u seriesdef.SeriesUpserter = fs
 
 	got, err := u.UpsertSeriesPoints(ctx, nil, "fred_series:2026-11-13")
 	if err != nil || got != (seriesdef.WriteCount{}) {
@@ -103,6 +103,11 @@ func TestSeriesUpserterContract(t *testing.T) {
 	got, err = u.UpsertSeriesPoints(ctx, []contracts.SeriesPoint{p, q}, "w")
 	if err != nil || got.Written != 1 || got.Unchanged != 1 {
 		t.Fatalf("equal+differing: got %+v, %v; want Written 1 Unchanged 1", got, err)
+	}
+	// Read back: the differing row replaced the stored one, no old value is kept.
+	r, ok := fs.stored(p)
+	if !ok || r.Value == nil || *r.Value != 4.2 || len(fs.rows) != 1 {
+		t.Fatalf("read back: got %+v ok=%v rows=%d; want one row with 4.2", r, ok, len(fs.rows))
 	}
 }
 
@@ -131,5 +136,20 @@ func TestSeriesRegistryContract(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].SeriesID != "SOFR" || got[0].SecondarySource != "nyfed" {
 		t.Fatalf("got %+v; want only the active SOFR row", got)
+	}
+}
+
+func TestSeriesUpserterUnitChangeIsWritten(t *testing.T) {
+	t.Parallel()
+	u := &fakeStore{}
+	p := point(t, 4.1)
+	if _, err := u.UpsertSeriesPoints(context.Background(), []contracts.SeriesPoint{p}, "w"); err != nil {
+		t.Fatal(err)
+	}
+	q := p
+	q.Unit = "index_points"
+	got, err := u.UpsertSeriesPoints(context.Background(), []contracts.SeriesPoint{q}, "w")
+	if err != nil || got.Written != 1 {
+		t.Fatalf("unit-only change: got %+v, %v; want Written 1 (Decision 5)", got, err)
 	}
 }
