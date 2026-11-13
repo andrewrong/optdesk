@@ -6,6 +6,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/blockapi"
 	"github.com/andrewrong/optdesk/internal/compute/pagefig"
+	"github.com/andrewrong/optdesk/internal/compute/techstate"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -365,5 +366,37 @@ func TestMoversInOutRoundTrip(t *testing.T) {
 		PricePrev: fv("3.1"), PriceLast: fv("2.4"), Amount: fv("-2")}
 	if len(got.Options) != 1 || got.Options[0] != wantO {
 		t.Fatalf("Options = %+v", got.Options)
+	}
+}
+
+// TestTechContract fills every field of the tech types through a fake TechFunc and reads each back, and checks
+// that techstate.Classify is a TechFunc.
+func TestTechContract(t *testing.T) {
+	t.Parallel()
+	var fake blockapi.TechFunc = func(in blockapi.TechIn) blockapi.TechResult {
+		p := in.Params
+		return blockapi.TechResult{
+			State: in.NDX.Name, Raw: in.SPX.Name, Rank: p.Short, Reason: compute.Reason(p.Band + p.Hard),
+			DataDay: in.Day, RawDays: p.Fold + p.Long + p.MaxAgeDays,
+			NDX1m: in.NDX.Closes[0], SPX1m: in.SPX.Closes[0], Gap1m: string(in.NDX.Days[0]),
+			NDX3m: in.NDX.Symbol, SPX3m: in.SPX.Symbol, Gap3m: string(in.SPX.Days[0]),
+		}
+	}
+	got := fake(blockapi.TechIn{
+		Day:    "2026-11-13",
+		NDX:    blockapi.CloseIn{Name: "n", Symbol: "NDX", Closes: []string{"1"}, Days: []contracts.Day{"2026-11-12"}},
+		SPX:    blockapi.CloseIn{Name: "s", Symbol: "SPX", Closes: []string{"2"}, Days: []contracts.Day{"2026-11-11"}},
+		Params: blockapi.TechParams{Band: "1.00", Hard: "5.00", Short: 21, Long: 63, Fold: 10, MaxAgeDays: 5},
+	})
+	want := blockapi.TechResult{
+		State: "n", Raw: "s", Rank: 21, Reason: "1.005.00", DataDay: "2026-11-13", RawDays: 78,
+		NDX1m: "1", SPX1m: "2", Gap1m: "2026-11-12", NDX3m: "NDX", SPX3m: "SPX", Gap3m: "2026-11-11",
+	}
+	if got != want {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+	var real blockapi.TechFunc = techstate.Classify
+	if real == nil {
+		t.Fatal("Classify is not a TechFunc")
 	}
 }

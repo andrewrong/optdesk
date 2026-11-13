@@ -1,4 +1,5 @@
-// Package blockapi declares the page figures of the household page, the report blocks and the companies blocks.
+// Package blockapi declares the page figures of the household page, the report blocks and the companies blocks,
+// and the tech state (NDX against SPX).
 // Declarations only; the implementation is internal/compute/pagefig.
 package blockapi
 
@@ -281,3 +282,36 @@ type GlobalFigures interface {
 
 // NewGlobalFiguresFunc constructs the implementation (internal/compute/pagefig.NewGlobal).
 type NewGlobalFiguresFunc func() GlobalFigures
+
+// TechParams are the trial constants of the tech state: Band and Hard in percentage points as decimal text,
+// Short and Long the session counts of the two windows, Fold the sessions of the two-close fold, MaxAgeDays the
+// age of c0 in calendar days beyond which the reading is stale. techstate.TrialParams is their one source.
+type TechParams struct {
+	Band, Hard        string
+	Short, Long, Fold int
+	MaxAgeDays        int
+}
+
+// TechIn is the input of the tech state. Day is the as-of day. NDX and SPX are closes newest first with their
+// days (CloseIn).
+type TechIn struct {
+	Day      contracts.Day
+	NDX, SPX CloseIn
+	Params   TechParams
+}
+
+// TechResult: State is LEADING, IN LINE, LAGGING or LAGGING HARD, empty when Reason is set; Rank is 1, 0, -1 or -2;
+// Raw is the raw state of c0; Reason is empty or a missing reason of compute (no_input, short_history,
+// stale_input, bad_input); DataDay is the day of c0 (empty when there is none); RawDays is the number of raw days
+// the fold used. The six returns and gaps are decimal text of percent, 2 places, half-even, signed.
+type TechResult struct {
+	State, Raw                               string
+	Rank                                     int
+	Reason                                   compute.Reason
+	DataDay                                  contracts.Day
+	RawDays                                  int
+	NDX1m, SPX1m, Gap1m, NDX3m, SPX3m, Gap3m string
+}
+
+// TechFunc evaluates the tech state, no I/O, no clock (internal/compute/techstate.Classify).
+type TechFunc func(TechIn) TechResult
