@@ -233,11 +233,7 @@ func TestFxRateUpserterContract(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	f := &upsertFake{}
-	var w bar.FxRateWriter = f
 	var u bar.FxRateUpserter = f
-	if w == nil {
-		t.Fatal("fake does not satisfy FxRateWriter")
-	}
 	if c, err := u.UpsertFxRates(ctx, nil, "job"); err != nil || c != (bar.FxWriteCount{}) {
 		t.Fatalf("empty list = %+v, %v; want zero counts", c, err)
 	}
