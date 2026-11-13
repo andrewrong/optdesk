@@ -16,6 +16,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 )
 
 const (
@@ -59,6 +60,8 @@ type Config struct {
 	Fx bar.FxRateReader
 	// VolLine fills underlying.vol_line (IV of the at-the-money contract, HV30 and IVP missing); false: absent.
 	VolLine bool
+	// Reasons reads the stored reasons of the day; nil: nothing. Nothing reads it yet.
+	Reasons runview.Reader
 }
 
 type sourceTime struct {

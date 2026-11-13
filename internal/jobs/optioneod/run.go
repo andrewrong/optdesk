@@ -12,6 +12,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/symbol"
 )
 
@@ -30,6 +31,8 @@ type job struct {
 	clk  clock.Clock
 	loc  *time.Location
 	stop int // stop_after in minutes after midnight, local; -1 when unset
+
+	reasons runview.ReasonWriter // nil: no reasons are written; set by WithReasons
 
 	cal         string
 	open, close time.Duration
