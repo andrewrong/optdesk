@@ -98,3 +98,22 @@ def test_unknown_kind_is_invalid_argument() -> None:
 
 def test_option_open_is_a_logged_word() -> None:
     assert "option_open" in transport.WORDS
+
+
+def test_quote_row_missing_reaches_proto() -> None:
+    row = QuoteRow(5, "partial", 1, 1, 1.0, 2.0, 3.0)
+    assert list(transport.quote_to_proto(row).missing) == []
+    row = QuoteRow(
+        5,
+        "partial",
+        1,
+        1,
+        1.0,
+        2.0,
+        3.0,
+        missing=(("open_interest", 2, 0), ("bid", 4, 354)),
+    )
+    got = [
+        (m.field, m.reason, m.error_code) for m in transport.quote_to_proto(row).missing
+    ]
+    assert got == [("open_interest", 2, 0), ("bid", 4, 354)]

@@ -56,6 +56,8 @@ class QuoteRow:
     fields: tuple[tuple[str, float], ...] = ()
     error_code: int = 0
     error_text: str = ""
+    # (field, reason number of MissingReason, error code) of each field not delivered
+    missing: tuple[tuple[str, int, int], ...] = ()
 
 
 @dataclass(frozen=True)
