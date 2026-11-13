@@ -2254,3 +2254,52 @@ source_hash = "e1aba0e8803f02e5fb91c7e6bbfd652cd4ff42d56225da505406a621c0c9e8d7"
 agreed_on = "2026-11-13"
 agreed_in = "docs/design/market-iv-rv20.md Decisions 1, 2, 4, 7 and 11 (entry 1)"
 history = ["2026-11-13 v1: registered by docs/design/market-iv-rv20.md entry 1; no page reads it yet."]
+
+[[figure]]
+id = "report.proxy_move"
+version = 1
+title_zh = "报告页：全球资产代理标的日变化与五日变化"
+pages = ["report_page.global_assets"]
+formula = """
+Per listed proxy (SPY, TLT, GLD, DBC, USO), the one-day change is c0 over c1 minus 1 and the five-day change is c0 over c5 minus 1, each times 100, rounded half-even to 2 places, in percent. c0 is the newest stored SPY close on or before the page day; c1 and c5 are the first and fifth stored closes of the same symbol before c0. The tone is the sign of the rounded value."""
+inputs = """
+Stored daily trades bars of a listed proxy (unadjusted closes of obs.price_bar) and of SPY, with their days, read up to the page day."""
+period_date = "The day of SPY's c0 (the data_times of the block)."
+currency = "Percent."
+excludes = """
+Adjusted closes (an ex-dividend day understates the change by the distribution); the S&P 500 row, which stays with report.market_move; any judgement of the move."""
+gap_text = """
+SPY has no stored close: no_data for every cell. SPY's c0 more than three weekdays behind the page day: stale_input for every cell. The symbol has no close or fewer than n+1 closes: no_data. A c0 other than SPY's: missing_input. An unreadable or non-positive close: missing_input. Never a zero."""
+implemented_by = [
+  "internal/compute/pagefig.proxyMove",
+  "internal/compute/pagefig.change",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/report-global-assets.md"
+history = ["2026-11-13 v1: registered by docs/design/report-global-assets.md Decisions 4, 6 and 14 (entry 6)."]
+
+[[figure]]
+id = "report.sector_excess"
+version = 1
+title_zh = "报告页：板块相对SPY的超额涨幅"
+pages = ["report_page.global_assets"]
+formula = """
+Per sector fund, d1, d5 and d20 are change_n(ETF) minus change_n(SPY), n = 1, 5, 20 sessions, each change an unrounded exact ratio (c0 over c_n minus 1, times 100), the difference rounded half-even to 2 places. Rows are sorted by d5 descending, ties in list order, rows whose d5 is a gap last in list order. The rotation facts: the first three rows by d5, the last row with a d5 and its value, and the row with the greatest d20 (a tie by list order); omitted when fewer than 6 rows have a d5 or no row has a d20."""
+inputs = """
+Stored daily trades bars (unadjusted closes) of the 11 sector funds and of SPY, with their days, read up to the page day; d20 needs 21 stored closes."""
+period_date = "The day of SPY's c0 (the data_times of the block)."
+currency = "Percentage points (unit percentage_points), signed."
+excludes = """
+Adjusted closes (a sector excess is off by the difference of the two distributions); any judgement of rotation (no word about defensive sectors or rotation, no classification, no threshold)."""
+gap_text = """
+SPY has no stored close: no_data. SPY's c0 more than three weekdays behind the page day: stale_input. The fund has no close or fewer than n+1 closes: no_data. The fund's c0 other than SPY's, or c_n of the fund and of SPY on different days: missing_input. An unreadable or non-positive close: missing_input. Never a zero."""
+implemented_by = [
+  "internal/compute/pagefig.sectorExcess",
+  "internal/compute/pagefig.ratPercent",
+  "internal/compute/pagefig.rotationOf",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/report-global-assets.md"
+history = ["2026-11-13 v1: registered by docs/design/report-global-assets.md Decisions 5, 8, 9 and 14 (entry 6)."]
