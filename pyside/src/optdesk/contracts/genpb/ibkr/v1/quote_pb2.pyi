@@ -3,19 +3,21 @@
 isort:skip_file
 """
 
+from collections import abc as _abc
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from google.protobuf.internal import containers as _containers
 from optdesk.contracts.genpb.ibkr.v1 import contract_pb2 as _contract_pb2
 from optdesk.contracts.genpb.ibkr.v1 import quote_types_pb2 as _quote_types_pb2
 import builtins as _builtins
 import sys
 import typing as _typing
 
-if sys.version_info >= (3, 10):
-    from typing import TypeAlias as _TypeAlias
+if sys.version_info >= (3, 11):
+    from typing import TypeAlias as _TypeAlias, Never as _Never
 else:
-    from typing_extensions import TypeAlias as _TypeAlias
+    from typing_extensions import TypeAlias as _TypeAlias, Never as _Never
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -52,6 +54,7 @@ class Quote(_message.Message):
     ASK_SIZE_FIELD_NUMBER: _builtins.int
     LAST_SIZE_FIELD_NUMBER: _builtins.int
     EVENT_TS_FIELD_NUMBER: _builtins.int
+    MISSING_FIELD_NUMBER: _builtins.int
     status: _quote_types_pb2.QuoteStatus.ValueType
     market_data_type: _quote_types_pb2.MarketDataType.ValueType
     """The type the gateway reported for this quote."""
@@ -95,6 +98,12 @@ class Quote(_message.Message):
     def event_ts(self) -> _timestamp_pb2.Timestamp:
         """event_ts is the exchange's event time; sent_at and received_at stay ours."""
 
+    @_builtins.property
+    def missing(self) -> _containers.RepeatedCompositeFieldContainer[Global___MissingField]:
+        """missing lists the fields pyside did not deliver and why, for the kinds
+        OPTION_EOD and OPTION_OPEN; the other kinds send an empty list.
+        """
+
     def __init__(
         self,
         *,
@@ -125,10 +134,11 @@ class Quote(_message.Message):
         ask_size: _builtins.float | None = ...,
         last_size: _builtins.float | None = ...,
         event_ts: _timestamp_pb2.Timestamp | None = ...,
+        missing: _abc.Iterable[Global___MissingField] | None = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_ask_size", b"_ask_size", "_bid", b"_bid", "_bid_size", b"_bid_size", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_last_size", b"_last_size", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "ask_size", b"ask_size", "bid", b"bid", "bid_size", b"bid_size", "close", b"close", "contract", b"contract", "delta", b"delta", "event_ts", b"event_ts", "gamma", b"gamma", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "last_size", b"last_size", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_ask_size", b"_ask_size", "_bid", b"_bid", "_bid_size", b"_bid_size", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_last_size", b"_last_size", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "ask_size", b"ask_size", "bid", b"bid", "bid_size", b"bid_size", "close", b"close", "contract", b"contract", "delta", b"delta", "error_code", b"error_code", "error_text", b"error_text", "event_ts", b"event_ts", "gamma", b"gamma", "generation", b"generation", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "last_size", b"last_size", "market_data_type", b"market_data_type", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "status", b"status", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["_ask", b"_ask", "_ask_size", b"_ask_size", "_bid", b"_bid", "_bid_size", b"_bid_size", "_close", b"_close", "_delta", b"_delta", "_gamma", b"_gamma", "_historical_vol", b"_historical_vol", "_implied_vol", b"_implied_vol", "_last", b"_last", "_last_size", b"_last_size", "_open_interest", b"_open_interest", "_option_implied_vol", b"_option_implied_vol", "_theta", b"_theta", "_und_price", b"_und_price", "_vega", b"_vega", "_volume", b"_volume", "ask", b"ask", "ask_size", b"ask_size", "bid", b"bid", "bid_size", b"bid_size", "close", b"close", "contract", b"contract", "delta", b"delta", "error_code", b"error_code", "error_text", b"error_text", "event_ts", b"event_ts", "gamma", b"gamma", "generation", b"generation", "historical_vol", b"historical_vol", "implied_vol", b"implied_vol", "last", b"last", "last_size", b"last_size", "market_data_type", b"market_data_type", "missing", b"missing", "open_interest", b"open_interest", "option_implied_vol", b"option_implied_vol", "received_at", b"received_at", "requested_at", b"requested_at", "sent_at", b"sent_at", "status", b"status", "theta", b"theta", "und_price", b"und_price", "vega", b"vega", "volume", b"volume"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     _WhichOneofReturnType__ask: _TypeAlias = _typing.Literal["ask"]  # noqa: Y015
     _WhichOneofArgType__ask: _TypeAlias = _typing.Literal["_ask", b"_ask"]  # noqa: Y015
@@ -200,3 +210,34 @@ class Quote(_message.Message):
     def WhichOneof(self, oneof_group: _WhichOneofArgType__volume) -> _WhichOneofReturnType__volume | None: ...
 
 Global___Quote: _TypeAlias = Quote  # noqa: Y015
+
+@_typing.final
+class MissingField(_message.Message):
+    """MissingField names one Quote field that is unset and the reason."""
+
+    DESCRIPTOR: _descriptor.Descriptor
+
+    FIELD_FIELD_NUMBER: _builtins.int
+    REASON_FIELD_NUMBER: _builtins.int
+    ERROR_CODE_FIELD_NUMBER: _builtins.int
+    field: _builtins.str
+    """field is the Quote field name (bid, ask, last, volume, open_interest,
+    implied_vol, delta, gamma, vega, theta).
+    """
+    reason: _quote_types_pb2.MissingReason.ValueType
+    error_code: _builtins.int
+    """error_code is the IBKR code when reason is MISSING_REASON_ERROR."""
+    def __init__(
+        self,
+        *,
+        field: _builtins.str = ...,
+        reason: _quote_types_pb2.MissingReason.ValueType = ...,
+        error_code: _builtins.int = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["error_code", b"error_code", "field", b"field", "reason", b"reason"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___MissingField: _TypeAlias = MissingField  # noqa: Y015
