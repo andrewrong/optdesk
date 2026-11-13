@@ -139,3 +139,66 @@ func mustRat(t *testing.T, s string) *big.Rat {
 	}
 	return r
 }
+
+func TestManifestLoadsStocks(t *testing.T) {
+	t.Parallel()
+	m, err := barsrefresh.DefaultManifest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var syms []string
+	for _, s := range m.Stocks {
+		syms = append(syms, s.Symbol+":"+s.Group)
+		if s.SecType != "STK" || s.Exchange != "SMART" || s.Currency != "USD" || s.ConID != 0 || s.Label == "" {
+			t.Fatalf("stock %+v", s)
+		}
+	}
+	want := "SPY:proxy,TLT:proxy,GLD:proxy,DBC:proxy,USO:proxy,XLB:sector,XLC:sector,XLE:sector,XLF:sector,XLI:sector,XLK:sector," +
+		"XLP:sector,XLRE:sector,XLU:sector,XLV:sector,XLY:sector"
+	if strings.Join(syms, ",") != want {
+		t.Fatalf("stocks %v", syms)
+	}
+	if m.Stocks[0].Label != "Stocks" || m.Stocks[7].Label != "Energy" || m.Benchmark != "SPY" {
+		t.Fatalf("label %q %q benchmark %q", m.Stocks[0].Label, m.Stocks[7].Label, m.Benchmark)
+	}
+}
+
+func TestManifestRefusesBadStock(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ name, key, edit string }{
+		{"no symbol", "stock.symbol", "symbol = \"SPY\"\n"},
+		{"no label", "stock.label", "label = \"Stocks\"\n"},
+		{"no exchange", "stock.exchange", "exchange = \"SMART\"\n"},
+		{"no currency", "stock.currency", "currency = \"USD\"\n"},
+	} {
+		full := raw(t)
+		at := strings.Index(full, "[[stock]]")
+		src := full[:at] + strings.Replace(full[at:], c.edit, "", 1)
+		if src == full {
+			t.Fatalf("%s: nothing removed", c.name)
+		}
+		_, err := barsrefresh.LoadManifest([]byte(src))
+		if err == nil || !strings.Contains(err.Error(), c.key) {
+			t.Fatalf("%s: got %v", c.name, err)
+		}
+	}
+	src := strings.Replace(raw(t), `group = "proxy"`, `group = "weird"`, 1)
+	_, err := barsrefresh.LoadManifest([]byte(src))
+	if err == nil || !strings.Contains(err.Error(), "stock.group") || strings.Contains(err.Error(), "weird") {
+		t.Fatalf("group: got %v", err)
+	}
+	src = strings.Replace(raw(t), `symbol = "TLT"`, `symbol = "SPY"`, 1)
+	_, err = barsrefresh.LoadManifest([]byte(src))
+	if err == nil || !strings.Contains(err.Error(), "stock.symbol") || strings.Contains(err.Error(), "SPY") {
+		t.Fatalf("repeat: got %v", err)
+	}
+}
+
+func TestManifestRefusesUnknownBenchmark(t *testing.T) {
+	t.Parallel()
+	src := strings.Replace(raw(t), `benchmark = "SPY"`, `benchmark = "QQQ"`, 1)
+	_, err := barsrefresh.LoadManifest([]byte(src))
+	if err == nil || !strings.Contains(err.Error(), "benchmark") || strings.Contains(err.Error(), "QQQ") {
+		t.Fatalf("got %v", err)
+	}
+}
