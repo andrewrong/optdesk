@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 func dataDayRec(rev int, state, version string) contracts.ReadingRecord {
@@ -27,10 +28,11 @@ func TestViewAgainstRoPages(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = w.Close() }()
-	// ok rev 1 beats missing_input rev 2.
-	if _, err := w.InsertReadings(ctx, []contracts.ReadingRecord{dataDayRec(1, "ok", "2026-11-05"), dataDayRec(2, "missing_input", "2026-11-04")}); err != nil {
+	// ok rev 1 stays when a missing_input rev 2 of the same key is written: the upsert skips it.
+	if _, err := w.InsertReadings(ctx, []contracts.ReadingRecord{dataDayRec(1, "ok", "2026-11-05")}); err != nil {
 		t.Fatal(err)
 	}
+	mustUpsert(t, w, readingkey.WriteCount{Skipped: 1}, dataDayRec(2, "missing_input", "2026-11-04"))
 	v, err := OpenView(ctx, connURL(t, name, "ot_ro_pages"))
 	if err != nil {
 		t.Fatal(err)

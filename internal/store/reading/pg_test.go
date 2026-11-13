@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 const rolePassword = "pg-test-only"
@@ -43,8 +44,14 @@ func connURL(t *testing.T, dbname, user string) string {
 
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
-// newDatabase makes a throwaway database with the roles and migrations 0013 and 0016, dropped in t.Cleanup.
+// newDatabase makes a throwaway database with the roles and migrations 0013, 0016 and 0045, dropped in t.Cleanup.
 func newDatabase(t *testing.T) string {
+	t.Helper()
+	return newDatabaseWith(t, "0013_readings.sql", "0016_reading_parameter_view.sql", "0045_reading_key.sql")
+}
+
+// newDatabaseWith is newDatabase with the migrations named, applied in order.
+func newDatabaseWith(t *testing.T, files ...string) string {
 	t.Helper()
 	ctx := context.Background()
 	admin, err := pgx.Connect(ctx, connURL(t, os.Getenv("PGDATABASE"), ""))
@@ -90,15 +97,8 @@ func newDatabase(t *testing.T) string {
 		t.Fatal(err)
 	}
 	defer func() { _ = c.Close(ctx) }()
-	for _, file := range []string{"0013_readings.sql", "0016_reading_parameter_view.sql"} {
-		raw, err := os.ReadFile("../../../migrations/" + file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		up, _, _ := strings.Cut(string(raw), "-- +goose Down")
-		if _, err := c.Exec(ctx, strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
-			t.Fatalf("apply %s: %v", file, err)
-		}
+	for _, file := range files {
+		applyUp(t, c, file)
 	}
 	// Migration 0009 gives the page role USAGE on schema rd; this database has only 0013.
 	if _, err := c.Exec(ctx, `GRANT USAGE ON SCHEMA rd TO ot_ro_pages`); err != nil {
@@ -132,9 +132,11 @@ func TestInsertAndWinnerPG(t *testing.T) {
 	}
 	two := rec(2, "ok")
 	two.Value = strPtr("0.750000000000")
-	if n, err = st.InsertReadings(ctx, []contracts.ReadingRecord{two}); err != nil || n != 1 {
-		t.Fatalf("rev 2 = %d, %v", n, err)
+	// The key is the day: the old insert adds no row for a stored key, a differing rev 2 included.
+	if n, err = st.InsertReadings(ctx, []contracts.ReadingRecord{two}); err != nil || n != 0 {
+		t.Fatalf("rev 2 insert = %d, %v", n, err)
 	}
+	mustUpsert(t, st, readingkey.WriteCount{Written: 1}, two)
 	got, err := st.LatestReadings(ctx, one.Name, one.SubjectKind, one.Subject, "2026-11-01", "2026-11-30")
 	if err != nil || len(got) != 1 || got[0].Rev != 2 || *got[0].Value != "0.750000000000" {
 		t.Fatalf("latest = %+v, %v", got, err)
@@ -143,13 +145,11 @@ func TestInsertAndWinnerPG(t *testing.T) {
 		t.Errorf("children = %+v %+v", got[0].Inputs, got[0].Parameters)
 	}
 
-	// A missing_input rev 3 is the latest, but the view keeps the ok rev 2.
+	// A missing_input rev 3 does not replace the ok rev 2: the write skips it.
 	three := rec(3, "missing_input")
 	three.Value = nil
-	if _, err = st.InsertReadings(ctx, []contracts.ReadingRecord{three}); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ = st.LatestReadings(ctx, one.Name, one.SubjectKind, one.Subject, "2026-11-01", "2026-11-30"); len(got) != 1 || got[0].Rev != 3 {
+	mustUpsert(t, st, readingkey.WriteCount{Skipped: 1}, three)
+	if got, _ = st.LatestReadings(ctx, one.Name, one.SubjectKind, one.Subject, "2026-11-01", "2026-11-30"); len(got) != 1 || got[0].Rev != 2 {
 		t.Errorf("latest after missing = %+v", got)
 	}
 	admin := pgxAs(t, name, "")
@@ -175,7 +175,7 @@ func TestGrantsPG(t *testing.T) {
 	name := newDatabase(t)
 	w := pgxAs(t, name, "ot_w_readings")
 	for _, sql := range []string{
-		`UPDATE readings.reading SET rev = rev`, `DELETE FROM readings.reading`, `TRUNCATE readings.reading`,
+		`UPDATE readings.reading SET name = name`, `DELETE FROM readings.reading`, `TRUNCATE readings.reading`,
 		`SELECT 1 FROM master.session_day`,
 	} {
 		if _, err := w.Exec(ctx, sql); err == nil {
@@ -199,5 +199,18 @@ func TestGrantsPG(t *testing.T) {
 		if _, err := runner.Exec(ctx, sql); err == nil {
 			t.Errorf("ot_runner may run %s", sql)
 		}
+	}
+}
+
+// applyUp applies the Up part of one migration file on c.
+func applyUp(t *testing.T, c *pgx.Conn, file string) {
+	t.Helper()
+	raw, err := os.ReadFile("../../../migrations/" + file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, _, _ := strings.Cut(string(raw), "-- +goose Down")
+	if _, err := c.Exec(context.Background(), strings.Replace(up, "-- +goose Up", "", 1)); err != nil {
+		t.Fatalf("apply %s: %v", file, err)
 	}
 }

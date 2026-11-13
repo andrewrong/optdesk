@@ -8,12 +8,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/stockreg"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -22,6 +24,8 @@ type job struct {
 	b   broker.Broker
 	s   underlying.Settler
 	clk clock.Clock
+	reg stockreg.StockRegistrar // nil: no company data is written
+	log *slog.Logger
 }
 
 type typedError struct {
@@ -49,7 +53,7 @@ func New(b broker.Broker, s underlying.Settler, clk clock.Clock) (contracts.Job,
 	if err != nil {
 		return nil, err
 	}
-	return &job{m: m, b: b, s: s, clk: clk}, nil
+	return &job{m: m, b: b, s: s, clk: clk, log: slog.Default()}, nil
 }
 
 // ID is the job id of the manifest.
@@ -118,19 +122,24 @@ func (j *job) Run(ctx context.Context, _ contracts.Day, keys []contracts.Expecte
 			continue // settled or changed since Plan: nothing to ask
 		}
 		res.Returned++
-		if err := j.resolve(ctx, row); err != nil {
+		regErr, err := j.resolve(ctx, row)
+		if err != nil {
 			if res.Err == nil {
 				res.Err = asTyped(err, contracts.Retryable)
 			}
 			continue
 		}
-		res.Usable++
+		res.Usable++ // settled, even when the registration below failed: the con_id stays
+		if regErr != nil && res.Err == nil {
+			res.Err = &typedError{contracts.Retryable, regErr.Error()}
+		}
 	}
 	return res
 }
 
-// resolve asks for one name and settles the answer.
-func (j *job) resolve(ctx context.Context, r underlying.Row) error {
+// resolve asks for one name and settles the answer. After a Settle that wrote a con_id it registers the stock; that
+// error is returned apart (regErr) because the settled con_id stands.
+func (j *job) resolve(ctx context.Context, r underlying.Row) (regErr, err error) {
 	exchange := r.Exchange
 	if exchange == "" {
 		exchange = "SMART"
@@ -139,7 +148,7 @@ func (j *job) resolve(ctx context.Context, r underlying.Row) error {
 		SecType: "STK", Symbol: r.Symbol, Exchange: exchange, Currency: r.Currency,
 	})
 	if err != nil {
-		return fmt.Errorf("resolve %s: %w", r.Key, err)
+		return nil, fmt.Errorf("resolve %s: %w", r.Key, err)
 	}
 	o := underlying.Outcome{Key: r.Key, AfterID: r.ID}
 	switch {
@@ -151,10 +160,16 @@ func (j *job) resolve(ctx context.Context, r underlying.Row) error {
 		o.ConID = got.Contract.ConID
 	}
 	// written false: the owner changed the name meanwhile; that is no error and nothing is retried.
-	if _, err := j.s.Settle(ctx, o); err != nil {
-		return fmt.Errorf("settle %s: %w", r.Key, err)
+	written, err := j.s.Settle(ctx, o)
+	if err != nil {
+		return nil, fmt.Errorf("settle %s: %w", r.Key, err)
 	}
-	return nil
+	if written && o.ConID > 0 {
+		if err := j.register(ctx, r, o.ConID); err != nil {
+			return fmt.Errorf("register %s: %w", r.Key, err), nil
+		}
+	}
+	return nil, nil
 }
 
 func reason(what string, got broker.Resolved) string {
