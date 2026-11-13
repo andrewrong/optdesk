@@ -53,9 +53,14 @@ message ResolveContractRequest {
 // Several results, a differing result, a timeout or a connectivity error is a
 // gRPC error (FAILED_PRECONDITION for several or differing, DEADLINE_EXCEEDED,
 // UNAVAILABLE), never a cached negative.
+// trading_hours, liquid_hours and time_zone_id are the IBKR ContractDetails
+// strings of the resolved contract; they are empty unless the status is FOUND.
 message ResolveContractResponse {
   ResolveStatus status = 1;
   ContractSpec contract = 2;
   int32 error_code = 3;
   string error_text = 4;
+  string trading_hours = 5;
+  string liquid_hours = 6;
+  string time_zone_id = 7;
 }
