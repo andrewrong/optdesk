@@ -75,7 +75,7 @@ func TestWindowOfRejectsOtherRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, rule := range []string{"after_close", "other"} {
+	for _, rule := range []string{"session_close", "other"} {
 		m.Window.Rule = rule
 		if _, _, _, err := windowOf(m); err == nil {
 			t.Errorf("rule %q: windowOf must return an error", rule)
