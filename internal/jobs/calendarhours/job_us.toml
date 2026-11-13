@@ -1,0 +1,11 @@
+# Manifest of the calendar_hours_us job (docs/design/calendar-ibkr-hours.md, Decision 8).
+version = 1
+id = "calendar_hours_us"
+
+[schedule]
+calendar = "XNYS"
+anchor = "session_open"
+zone = "America/New_York"
+offset = "-20m"
+run_bound = "5m"
+restart_sensitive = false
