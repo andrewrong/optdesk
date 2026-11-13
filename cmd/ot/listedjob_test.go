@@ -138,12 +138,52 @@ func TestListedRunInFlightRule(t *testing.T) {
 	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "no plan for these keys" {
 		t.Fatalf("unknown keys: %v", res.Err)
 	}
-	// A new day drops the snapshots of the earlier day.
+	// A Plan of a new day keeps the snapshots of the earlier day.
 	if _, _, err := h.job.Plan(ctx, "2026-11-12"); err != nil {
 		t.Fatal(err)
 	}
-	if res := h.job.Run(ctx, "2026-11-11", k1); res.Err == nil || res.Err.Kind() != contracts.Permanent {
+	h.runs = nil
+	if res := h.job.Run(ctx, "2026-11-11", k1); res.Err != nil {
 		t.Fatalf("old day run: %v", res.Err)
+	}
+	if len(h.runs) != 1 || h.runs[0] != first {
+		t.Fatalf("old day run used %v, want plan 1's job", h.runs)
+	}
+	if res := h.job.Run(ctx, "2026-11-13", k1); res.Err == nil || res.Err.Kind() != contracts.Permanent ||
+		res.Err.Error() != "no plan for these keys" {
+		t.Fatalf("never planned day: %v", res.Err)
+	}
+}
+
+func TestListedKeepsDaysBounded(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness(t, groupBars, activeRow("AAA"))
+	start := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	var days []contracts.Day
+	var keys []contracts.ExpectedKey
+	jobsOf := map[contracts.Day]contracts.Job{}
+	for i := 0; i <= listedKeepDays; i++ {
+		d := contracts.Day(start.AddDate(0, 0, i).Format("2006-01-02"))
+		k, _, err := h.job.Plan(ctx, d)
+		if err != nil {
+			t.Fatal(err)
+		}
+		days, keys = append(days, d), k
+		jobsOf[d] = h.job.current()
+	}
+	res := h.job.Run(ctx, days[0], keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Permanent || res.Err.Error() != "no plan for these keys" {
+		t.Fatalf("oldest day: %v", res.Err)
+	}
+	for _, d := range days[1:] {
+		h.runs = nil
+		if res := h.job.Run(ctx, d, keys); res.Err != nil {
+			t.Fatalf("day %s: %v", d, res.Err)
+		}
+		if len(h.runs) != 1 || contracts.Job(h.runs[0]) != jobsOf[d] {
+			t.Fatalf("day %s used another job", d)
+		}
 	}
 }
 
