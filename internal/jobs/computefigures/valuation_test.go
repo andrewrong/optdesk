@@ -129,6 +129,7 @@ func TestStandardFromFacts(t *testing.T) {
 	facts := &vFacts{facts: []contracts.FundamentalFact{{Concept: "AccountingStandard", Unit: "J_GAAP"}}}
 	fk := &vFakes{std: valuationapi.JGAAP, res: okResult()}
 	f := world()
+	addIvRv20Inputs(f) // the iv_rv20 keys find their inputs and end without Retryable
 	j := valuationJobOf(t, f, fk.deps(facts, []jobs.WatchEntry{entry(vIssuer, vSymbol)}))
 	if r := runAll(t, j); r.Err != nil {
 		t.Fatalf("run: %v", r.Err)
@@ -154,6 +155,7 @@ func TestThreeReadingsPerCompany(t *testing.T) {
 	t.Parallel()
 	fk := &vFakes{std: valuationapi.USGAAP, res: okResult()}
 	f := world()
+	addIvRv20Inputs(f) // the iv_rv20 keys find their inputs and end without Retryable
 	j := valuationJobOf(t, f, fk.deps(&vFacts{}, []jobs.WatchEntry{entry(vIssuer, vSymbol), entry("", "NOID")}))
 	if got := valuationKeys(t, j); len(got) != 3 {
 		t.Fatalf("keys %v, want 3 (none for the entry without issuer)", got)
@@ -205,7 +207,7 @@ func TestValuationKeepsOtherKeys(t *testing.T) {
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
 	j := valuationJobOf(t, f, fk.deps(&vFacts{}, []jobs.WatchEntry{entry(vIssuer, vSymbol)}))
-	if keys := plan(t, j); len(keys) != 4+1+6+3+len(marketIDs)+3 {
+	if keys := plan(t, j); len(keys) != 4+1+6+3+3+len(marketIDs)+3 {
 		t.Fatalf("keys %d, want the 20 of the plain job (with bars) and 3 valuation keys", len(keys))
 	}
 	found := false
