@@ -233,3 +233,15 @@ func buyKeyManifest(low, high string) string {
 	}
 	return s + "[[underlying]]\nsymbol = \"SPY\"\ncon_id = 1\ncurrency = \"USD\"\n"
 }
+
+func TestSelectBuyPriceWithoutKeysKeepsBand(t *testing.T) {
+	t.Parallel()
+	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, MaxStrikesPerSide: 8, MaxStrikes: 5, buy: map[string]string{"T": "340"}}
+	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
+	plain := m
+	plain.buy = nil
+	want := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, plain)
+	if !reflect.DeepEqual(callStrikes(got), callStrikes(want)) || len(got) == 0 {
+		t.Fatalf("strikes %v, want the band strikes %v", callStrikes(got), callStrikes(want))
+	}
+}
