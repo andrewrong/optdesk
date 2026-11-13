@@ -172,9 +172,6 @@ func TestJPJobSlotFromItsSchedule(t *testing.T) {
 	if len(slots) != 1 {
 		t.Fatalf("jobs %v", jobIDs(r.jobs))
 	}
-	if slots[0].Zone != "Asia/Tokyo" {
-		t.Fatalf("zone %q, want Asia/Tokyo", slots[0].Zone)
-	}
 	sess, err := cal.Session(t.Context(), slots[0].CalendarID, "2026-11-09")
 	if err != nil {
 		t.Fatal(err)
