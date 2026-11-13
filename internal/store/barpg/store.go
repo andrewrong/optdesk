@@ -1,7 +1,8 @@
 // Package barpg is the bar store over pgx for the DSN line OT_PG_DSN_BAR (role ot_w_bar): the writer of obs.price_bar
-// and obs.fx_rate, insert-only, and the reader of the views rd.price_bar_r1 and rd.fx_rate_r1
-// (docs/design/market-bars.md Decisions 4 and 8). It imports contracts and not internal/store/bar: its test asserts
-// that *Store satisfies bar.BarStore. No statement of this package changes or removes a row.
+// and obs.fx_rate, and the reader of the views rd.price_bar_r1 and rd.fx_rate_r1
+// (docs/design/market-bars.md Decisions 4 and 8). It imports contracts and the interface package internal/store/bar (for bar.FxWriteCount); its test asserts
+// that *Store satisfies bar.BarStore. obs.price_bar is insert-only; obs.fx_rate is upserted by UpsertFxRates
+// (docs/design/data-repair-fx.md Decisions 3 and 4). No statement of this package deletes a row.
 package barpg
 
 import (
@@ -16,9 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/bar"
 )
 
-// Every write below appends: a key that exists is left as it is and adds nothing.
+// The price bar and InsertFxRates statements append: a key that exists is left as it is and adds nothing.
 const (
 	// insertPriceBarSQL arguments: instrument_id, session_day, basis, adjust_epoch, open, high, low, close, volume,
 	// currency, source, received_at.
@@ -29,6 +31,14 @@ const (
 	insertFxRateSQL = `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, received_at) ` +
 		`VALUES ($1, $2::date, $3, $4, $5) ON CONFLICT DO NOTHING`
 )
+
+// upsertFxRateSQL arguments: pair, rate_day, rate, source, received_at, written_by. A stored row is replaced only when
+// its rate (numeric equality), source or status differs; received_at and the key are never set.
+const upsertFxRateSQL = `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, received_at, status, updated_at, written_by) ` +
+	`VALUES ($1, $2::date, $3::numeric, $4, $5, 'ok', now(), $6) ON CONFLICT (pair, rate_day) DO UPDATE SET ` +
+	`rate = EXCLUDED.rate, source = EXCLUDED.source, status = 'ok', updated_at = EXCLUDED.updated_at, ` +
+	`written_by = EXCLUDED.written_by WHERE (obs.fx_rate.rate, obs.fx_rate.source, obs.fx_rate.status) ` +
+	`IS DISTINCT FROM (EXCLUDED.rate, EXCLUDED.source, EXCLUDED.status) RETURNING pair`
 
 // execer runs one statement inside a transaction and reports the rows it added.
 type execer interface {
@@ -108,6 +118,21 @@ func (s *Store) InsertFxRates(ctx context.Context, rows []contracts.FxRate) (int
 	return insertAll(ctx, s.db, insertFxRateSQL, rows, func(r contracts.FxRate) []any {
 		return []any{r.Pair, r.RateDay.Format(time.DateOnly), r.Rate, string(r.Source), r.ReceivedAt}
 	}, "insert fx rates")
+}
+
+var _ bar.FxRateUpserter = (*Store)(nil)
+
+// UpsertFxRates writes the rows in one transaction, one statement per row: a differing value replaces the stored one,
+// an equal one touches nothing, and no old value is kept. Written is the rows inserted or replaced, Unchanged the rows
+// given minus those. An empty input makes no database call.
+func (s *Store) UpsertFxRates(ctx context.Context, rows []contracts.FxRate, writtenBy string) (bar.FxWriteCount, error) {
+	n, err := insertAll(ctx, s.db, upsertFxRateSQL, rows, func(r contracts.FxRate) []any {
+		return []any{r.Pair, r.RateDay.Format(time.DateOnly), r.Rate, string(r.Source), r.ReceivedAt, writtenBy}
+	}, "upsert fx rates")
+	if err != nil {
+		return bar.FxWriteCount{}, err
+	}
+	return bar.FxWriteCount{Written: n, Unchanged: len(rows) - n}, nil
 }
 
 // wrap keeps a typed error as it is, makes a constraint violation (SQLSTATE class 23) Permanent, because the
