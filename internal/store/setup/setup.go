@@ -49,7 +49,10 @@ const (
 
 	// roleBar: INSERT on obs.price_bar and obs.fx_rate, SELECT on rd.price_bar_r1 and rd.fx_rate_r1
 	// (migrations/0021_bars.sql); UPDATE on the columns rate, source, status, updated_at and written_by of obs.fx_rate and
-	// SELECT on its columns pair, rate_day, rate, source and status (migrations/0039_fx_rate_repair.sql).
+	// SELECT on its columns pair, rate_day, rate, source and status (migrations/0039_fx_rate_repair.sql); UPDATE on the
+	// columns open, high, low, close, volume, currency, source, status, updated_at and written_by of obs.price_bar and
+	// SELECT on its columns instrument_id, basis, session_day, open, high, low, close, volume, currency, source and
+	// status (migrations/0041_price_bar_repair.sql).
 	roleBar          = "ot_w_bar"
 	roleOptionLedger = "ot_w_optionledger" // INSERT and SELECT on the optionledger tables, SELECT on rd.flex_*_r1 (migrations/0022_optionledger.sql)
 

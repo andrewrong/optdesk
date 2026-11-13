@@ -25,6 +25,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/store"
 	"github.com/andrewrong/optdesk/internal/store/bar"
 	"github.com/andrewrong/optdesk/internal/store/dividend"
+	"github.com/andrewrong/optdesk/internal/store/hoursnotice"
 	"github.com/andrewrong/optdesk/internal/store/openquote"
 	"github.com/andrewrong/optdesk/internal/store/runview"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
@@ -289,6 +290,10 @@ type jobFactory struct {
 	book accounts.Book
 	// loader is the session-day store opened with the loader line; only calendar_refresh gets it.
 	loader store.SessionDayStore
+	// hours is the notice store of the two calendar_hours families, opened by the first of them (wire_calendar.go);
+	// hoursTried is true once an open was tried, so the second family neither opens again nor retries a failure.
+	hours      hoursnotice.Store
+	hoursTried bool
 	// events and earn are what earnings_refresh gets: its store and the sources of the markets other than JP;
 	// jp builds the J-Quants source over the symbols of one Plan (nil without a key).
 	events store.EarningsDateStore

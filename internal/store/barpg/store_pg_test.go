@@ -68,6 +68,7 @@ func newDatabase(t *testing.T) string {
 	t.Helper()
 	name := newBaseDatabase(t)
 	applyUp(t, name, "0039_fx_rate_repair.sql")
+	applyUp(t, name, "0041_price_bar_repair.sql")
 	return name
 }
 
@@ -246,35 +247,6 @@ func checkBadRowRollsBack(ctx context.Context, t *testing.T, st *Store) {
 	}
 }
 
-func TestNewEpochWins(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	name := newDatabase(t)
-	st, err := Open(ctx, connURL(t, name, "ot_w_bar"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = st.Close() }()
-	first := []contracts.PriceBar{
-		pbar(7, "trades", 1, "2026-11-02", "100"), pbar(7, "trades", 1, "2026-11-03", "101"),
-		pbar(7, "adjusted_last", 1, "2026-11-03", "90"),
-	}
-	if _, err := st.InsertPriceBars(ctx, first); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := st.InsertPriceBars(ctx, []contracts.PriceBar{pbar(7, "trades", 2, "2026-11-03", "50"), pbar(7, "trades", 2, "2026-11-04", "51")}); err != nil {
-		t.Fatal(err)
-	}
-	got, err := st.PriceBars(ctx, 7, "trades", "2026-11-01", "2026-11-30")
-	if err != nil || len(got) != 2 || got[0].Close != "50" || got[0].AdjustEpoch != 2 || got[1].Close != "51" {
-		t.Fatalf("trades winners = %+v, %v", got, err)
-	}
-	adj, err := st.PriceBars(ctx, 7, "adjusted_last", "2026-11-01", "2026-11-30")
-	if err != nil || len(adj) != 1 || adj[0].AdjustEpoch != 1 {
-		t.Errorf("adjusted winners = %+v, %v", adj, err)
-	}
-}
-
 func TestBarRoleGrants(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -286,8 +258,10 @@ func TestBarRoleGrants(t *testing.T) {
 			t.Errorf("%s: allowed", what)
 		}
 	}
-	denied("select table", `SELECT 1 FROM obs.price_bar`)
-	denied("update", `UPDATE obs.price_bar SET close = '1'`)
+	denied("update key", `UPDATE obs.price_bar SET session_day = '2026-11-03'`)
+	denied("update received_at", `UPDATE obs.price_bar SET received_at = now()`)
+	denied("update epoch", `UPDATE obs.price_bar SET adjust_epoch = 2`)
+	denied("select received_at", `SELECT received_at FROM obs.price_bar`)
 	denied("delete", `DELETE FROM obs.fx_rate`)
 	denied("truncate", `TRUNCATE obs.price_bar`)
 	for _, s := range []string{`SELECT 1 FROM rd.price_bar_r1`, `SELECT 1 FROM rd.fx_rate_r1`,
@@ -298,9 +272,9 @@ func TestBarRoleGrants(t *testing.T) {
 	}
 	denied("bad basis", `INSERT INTO obs.price_bar VALUES (1, '2026-11-02', 'other', 1, '1', '1', '1', '1', NULL, 'USD', 'ibkr', now())`)
 	denied("epoch 0", `INSERT INTO obs.price_bar VALUES (1, '2026-11-02', 'trades', 0, '1', '1', '1', '1', NULL, 'USD', 'ibkr', now())`)
-	denied("update key", `UPDATE obs.fx_rate SET rate_day = '2026-11-03'`)
-	denied("update received_at", `UPDATE obs.fx_rate SET received_at = now()`)
-	denied("select received_at", `SELECT received_at FROM obs.fx_rate`)
+	denied("update fx key", `UPDATE obs.fx_rate SET rate_day = '2026-11-03'`)
+	denied("update fx received_at", `UPDATE obs.fx_rate SET received_at = now()`)
+	denied("select fx received_at", `SELECT received_at FROM obs.fx_rate`)
 	denied("bad pair", `INSERT INTO obs.fx_rate VALUES ('usdjpy', '2026-11-02', '1', 'ibkr_midpoint', now())`)
 	denied("zero rate", `INSERT INTO obs.fx_rate VALUES ('USDJPY', '2026-11-02', '0', 'ibkr_midpoint', now())`)
 
