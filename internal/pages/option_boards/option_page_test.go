@@ -428,3 +428,49 @@ func TestDeltaCellRoundsLiveDelta(t *testing.T) {
 		t.Errorf("live delta cell = %v", cell)
 	}
 }
+
+func TestHeadlineExcludesItmWithoutBuyPrice(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		marks string
+		want  string
+	}{
+		"itm with a buy price":      {`["itm"]`, "1 worth a look."},
+		"no_buy_price out of money": {`["no_buy_price"]`, "1 worth a look."},
+		"both marks":                {`["itm","no_buy_price"]`, "0 worth a look."},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := okRow(1, issuerApple, 1, 1, 1)
+			r.Marks = tc.marks
+			m := decodeMap(t, buildOpt(t, &fakeCands{byDay: map[contracts.Day][]store.Candidate{buildDay: {r}}}, nil, buildDay))
+			if got := pane(m)["headline"]; got != tc.want {
+				t.Errorf("headline = %v, want %s", got, tc.want)
+			}
+			if n := len(cardsOf(m)); n != 1 {
+				t.Errorf("cards = %d, the card stays on the page", n)
+			}
+		})
+	}
+}
+
+func TestCardReasonNamesMarks(t *testing.T) {
+	t.Parallel()
+	plain := okRow(1, issuerApple, 1, 1, 1)
+	marked := okRow(2, issuerMsft, 2, 2, 1)
+	marked.Marks = `["itm","no_buy_price","no_open_interest"]`
+	earn := okRow(3, "Other", 3, 3, 1)
+	earn.Marks = `["earnings_unconfirmed"]`
+	for _, tc := range []struct {
+		row  store.Candidate
+		want string
+	}{
+		{plain, "All gates passed"},
+		{marked, "Passed, with marks: itm, no_buy_price, no_open_interest"},
+		{earn, "Passed, with marks: Earnings date not confirmed"},
+	} {
+		if got := buildCard(tc.row, nil, displayNames{}).Reason; got != tc.want {
+			t.Errorf("reason = %q, want %q", got, tc.want)
+		}
+	}
+}
