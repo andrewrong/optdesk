@@ -68,7 +68,7 @@ func TestSiteBuildsPageFromTable(t *testing.T) {
 		by[j.ID] = i
 	}
 	fred := vm.Jobs[by["fred_series"]]
-	if fred.Kind != "any_day" || fred.Force || fred.ForceWhy != textRevisionRows || fred.Today != "2026-11-06" {
+	if fred.Kind != "any_day" || !fred.Force || fred.ForceWhy != "" || fred.Today != "2026-11-06" {
 		t.Errorf("fred_series %+v", fred)
 	}
 	if cal := vm.Jobs[by["calendar_refresh"]]; cal.Kind != "today_only" || !cal.Force {

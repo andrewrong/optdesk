@@ -159,7 +159,6 @@ func TestPostListedOnlyJob422(t *testing.T) {
 
 func TestPostForceOnForceNoJob422(t *testing.T) {
 	t.Parallel()
-	refused422(t, postNow, runFields("fred_series", "2026-11-05", "on"))
 	refused422(t, postNow, runFields("account_capture", "2026-11-06", "on"))
 	refused422(t, postNow, runFields("calendar_refresh", "2026-11-06", "maybe"))
 }
