@@ -312,7 +312,7 @@ func TestCaptureIDStable(t *testing.T) {
 	if captureID("2026-11-09", testKey, start) == captureID(testDay, testKey, start) {
 		t.Fatal("another day must give another capture id")
 	}
-	if captureID(testDay, testKey, start) != captureID(testDay, testKey, start) {
+	if captureID(testDay, testKey, start) != captureID(testDay, testKey, start.Add(0).UTC()) {
 		t.Fatal("one (day, key, start) must give one capture id")
 	}
 	if captureID(testDay, testKey, start) == captureID(testDay, testKey, start.Add(time.Minute)) {
@@ -395,7 +395,7 @@ func TestPastDayRefuses(t *testing.T) {
 		if kindOf(res) != contracts.Permanent || res.Err.Error() != wantText {
 			t.Fatalf("result %+v", res)
 		}
-		if r.b.calls() != 0 || r.b.resolves != 0 || r.res.calls != nil && len(r.res.calls) != 0 || len(r.w.calls) != 0 {
+		if r.b.calls() != 0 || r.b.resolves != 0 || len(r.res.calls) != 0 || len(r.w.calls) != 0 {
 			t.Fatalf("calls %d, resolves %d, writes %d", r.b.calls(), r.b.resolves, len(r.w.calls))
 		}
 	}
