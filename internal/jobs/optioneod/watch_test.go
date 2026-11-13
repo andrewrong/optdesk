@@ -96,7 +96,7 @@ func strikesFor(t *testing.T, step, buy string) []string {
 	}
 	chain := broker.Chain{Expirations: []string{"20261127"}, Strikes: all}
 	m := manifest{MaxExpiries: 3, StrikeBand: 0.1, MaxStrikesPerSide: 8, MinDTE: 21, MaxDTE: 45, MaxStrikes: 24,
-		buy: map[string]string{"T": buy}}
+		BuyLow: "0.80", BuyHigh: "1.05", buy: map[string]string{"T": buy}}
 	var out []string
 	for _, c := range selectContracts(chain, underlying{Symbol: "T", Currency: "USD"}, "2026-11-06", 130, m) {
 		if c.Right == "C" {

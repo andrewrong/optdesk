@@ -10,7 +10,7 @@ func TestUSPlanHashPinned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hash != "312297c3632760f775bf0388ceeec9ff926f85cc52175ce8ea5518d7df62926a" {
+	if hash != "df4e2c47a5997d411867b819f90c0373137e93bdfb623b7a580131227ace7901" {
 		t.Fatalf("hash %s", hash)
 	}
 }

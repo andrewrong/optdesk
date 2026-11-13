@@ -377,7 +377,7 @@ func TestJPPlanHashUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hash != "6f75cf30543b25f799139be93be186e40f38d2995cbf61b9eaa815248ec75ead" {
+	if hash != "121869a001740452f9cf55d24b7095088556584d5b4201ccbf9188399ec2b77c" {
 		t.Fatalf("hash %s", hash)
 	}
 	r := newStockRig(t, nil)

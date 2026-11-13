@@ -134,15 +134,20 @@ func dteExpiries(all []string, day string, min, max int) []string {
 	return keep
 }
 
-// rangeStrikes keeps the strikes from 0.80 x buy to max(1.05 x buy, price) and, when more than limit
-// remain, the limit nearest buy (a tie keeps the lower strike). Arithmetic is exact.
-func rangeStrikes(all []string, buy string, price float64, limit int) []strikeValue {
+// rangeStrikes keeps the strikes from low x buy to max(high x buy, price) (low and high are decimal text, the
+// manifest's buy_low and buy_high) and, when more than limit remain, the limit nearest buy (a tie keeps the lower strike). Arithmetic is exact.
+func rangeStrikes(all []string, buy, low, high string, price float64, limit int) []strikeValue {
 	b, ok := new(big.Rat).SetString(buy)
 	if !ok {
 		return nil
 	}
-	lo := new(big.Rat).Mul(b, big.NewRat(80, 100))
-	hi := new(big.Rat).Mul(b, big.NewRat(105, 100))
+	lowR, ok1 := new(big.Rat).SetString(low)
+	highR, ok2 := new(big.Rat).SetString(high)
+	if !ok1 || !ok2 {
+		return nil
+	}
+	lo := new(big.Rat).Mul(b, lowR)
+	hi := new(big.Rat).Mul(b, highR)
 	if p := new(big.Rat).SetFloat64(price); p != nil && p.Cmp(hi) > 0 {
 		hi = p
 	}

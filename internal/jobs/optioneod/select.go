@@ -47,7 +47,7 @@ func selectContracts(chain broker.Chain, u underlying, day string, price float64
 		lo, hi, perSide = price*(1-below), price*(1+above), 0
 	}
 	var strikes []strikeValue
-	if bp := m.buy[u.Symbol]; bp != "" {
+	if bp := m.buy[u.Symbol]; bp != "" && m.BuyLow != "" {
 		limit := m.MaxStrikes
 		if limit == 0 {
 			limit = defaultMaxStrikes
@@ -56,7 +56,7 @@ func selectContracts(chain broker.Chain, u underlying, day string, price float64
 		if wide {
 			near = 0
 		}
-		strikes = mergeStrikes(rangeStrikes(chain.Strikes, bp, price, limit),
+		strikes = mergeStrikes(rangeStrikes(chain.Strikes, bp, m.BuyLow, m.BuyHigh, price, limit),
 			nearestStrikes(chain.Strikes, price, lo, hi, near))
 	} else {
 		strikes = nearestStrikes(chain.Strikes, price, lo, hi, perSide)

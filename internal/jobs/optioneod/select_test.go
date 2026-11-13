@@ -141,7 +141,7 @@ func TestSelectWideBandNoSideCap(t *testing.T) {
 func TestSelectWideBandBuyPrice(t *testing.T) {
 	t.Parallel()
 	m := manifest{MaxExpiries: 1, StrikeBand: 0.1, MaxStrikesPerSide: 8, StrikeBandBelow: 0.20, StrikeBandAbove: 0.05,
-		MaxStrikes: 5, buy: map[string]string{"T": "340"}}
+		MaxStrikes: 5, BuyLow: "0.80", BuyHigh: "1.05", buy: map[string]string{"T": "340"}}
 	got := selectContracts(wideChain(), underlying{Symbol: "T", Currency: "USD"}, "2026-11-12", 355.51, m)
 	// the 5 nearest 340 are 330..350, all inside the band strikes 285..370
 	if want := seq(285, 370, 5); !reflect.DeepEqual(callStrikes(got), want) {
@@ -191,4 +191,45 @@ func TestSelectWideBandOneKeyFallsBackToStrikeBand(t *testing.T) {
 	if want := seq(285, 390, 5); !reflect.DeepEqual(callStrikes(got), want) {
 		t.Fatalf("strikes %v, want %v", callStrikes(got), want)
 	}
+}
+
+func TestValidateRefusesOneBuyKey(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, low, high, key string
+	}{
+		{"low alone", "0.80", "", "buy_high"},
+		{"high alone", "", "1.05", "buy_low"},
+		{"low not below high", "1.05", "1.05", "buy_low"},
+		{"low above high", "1.10", "0.90", "buy_low"},
+		{"low not decimal", "abc", "1.05", "buy_low"},
+		{"high not decimal", "0.80", "x", "buy_high"},
+		{"low not positive", "0", "1.05", "buy_low"},
+		{"high negative", "0.80", "-1", "buy_high"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := parseManifest([]byte(buyKeyManifest(c.low, c.high)))
+			if err == nil || !strings.Contains(err.Error(), c.key) {
+				t.Fatalf("err %v, want one naming %s", err, c.key)
+			}
+		})
+	}
+	for _, ok := range [][2]string{{"0.80", "1.05"}, {"", ""}} {
+		if _, err := parseManifest([]byte(buyKeyManifest(ok[0], ok[1]))); err != nil {
+			t.Fatalf("low %q high %q: %v", ok[0], ok[1], err)
+		}
+	}
+}
+
+func buyKeyManifest(low, high string) string {
+	s := "version = 1\nid = \"x\"\n"
+	if low != "" {
+		s += "buy_low = \"" + low + "\"\n"
+	}
+	if high != "" {
+		s += "buy_high = \"" + high + "\"\n"
+	}
+	return s + "[[underlying]]\nsymbol = \"SPY\"\ncon_id = 1\ncurrency = \"USD\"\n"
 }
