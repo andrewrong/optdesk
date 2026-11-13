@@ -102,11 +102,11 @@ func newDatabaseBefore0044(t *testing.T) string {
 			t.Fatalf("%s role %s: %v", strings.ToLower(verb), r, err)
 		}
 	}
-	// 0032 and 0033 grant to three roles that the setup tests own (they set the password under their own locks): they
-	// are created here when missing and never altered, so the two packages do not change each other's roles.
+	// 0032 and 0033 grant to three roles that other pg test packages also create: they are created here, as those
+	// do, with the shared password when missing, and never altered.
 	for _, r := range []string{"ot_w_option_open", "ot_w_settings", "ot_w_underlying_resolve"} {
-		const create = `DO $$ BEGIN CREATE ROLE %s LOGIN; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$`
-		if _, err := admin.Exec(ctx, fmt.Sprintf(create, r)); err != nil {
+		const create = `DO $$ BEGIN CREATE ROLE %s LOGIN PASSWORD '%s'; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$`
+		if _, err := admin.Exec(ctx, fmt.Sprintf(create, r, rolePassword)); err != nil {
 			t.Fatalf("create role %s: %v", r, err)
 		}
 	}

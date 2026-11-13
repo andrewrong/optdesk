@@ -100,7 +100,8 @@ func TestBackfillStockRowsPG(t *testing.T) {
 	if len(got) != 6 {
 		t.Fatalf("%d stock rows, want 6 (stock, etf and index)", len(got))
 	}
-	if r := got[apple]; r.name != "Apple Inc" || str(r.market) != "US" || str(r.exchange) != "NASDAQ" || r.issuerName != "Apple Inc" {
+	// AAPL and AAPB carry one cik: the issuer is named after the settings row of the smaller name_key, AAPB.
+	if r := got[apple]; r.name != "Apple Inc" || str(r.market) != "US" || str(r.exchange) != "NASDAQ" || r.issuerName != "Apple Leveraged" {
 		t.Errorf("apple = %+v", r)
 	}
 	if r := got[toyota]; r.name != "Toyota Motor" || str(r.market) != "JP" || r.exchange != nil || r.issuerName != "Toyota Motor" {
