@@ -43,24 +43,26 @@ type easeSpec struct {
 }
 
 type manifest struct {
-	ID             string        `toml:"id"`
-	RateSeries     string        `toml:"rate_series"`
-	Iv30           string        `toml:"iv30"`
-	IvIbkr         string        `toml:"iv_ibkr"`
-	Ivp            string        `toml:"ivp"`
-	IvpIbkr        string        `toml:"ivp_ibkr"`
-	Ivr            string        `toml:"ivr"`
-	Hv30           string        `toml:"hv30"`
-	Rv20           string        `toml:"rv20"`
-	Rv20Indices    []string      `toml:"rv20_indices"`
-	Rv60           string        `toml:"rv60"`
-	Rv120          string        `toml:"rv120"`
-	VolForecast    string        `toml:"vol_forecast"`
-	VolEdge        string        `toml:"vol_edge"`
-	VolForecastErr string        `toml:"vol_forecast_err"`
-	Market         []marketSpec  `toml:"market"`
-	Ease           easeSpec      `toml:"ease"`
-	Schedule       scheduleTable `toml:"schedule"`
+	ID             string            `toml:"id"`
+	RateSeries     string            `toml:"rate_series"`
+	Iv30           string            `toml:"iv30"`
+	IvIbkr         string            `toml:"iv_ibkr"`
+	Ivp            string            `toml:"ivp"`
+	IvpIbkr        string            `toml:"ivp_ibkr"`
+	Ivr            string            `toml:"ivr"`
+	Hv30           string            `toml:"hv30"`
+	Rv20           string            `toml:"rv20"`
+	Rv20Indices    []string          `toml:"rv20_indices"`
+	IvRv20         string            `toml:"iv_rv20"`
+	IvRv20Series   map[string]string `toml:"iv_rv20_series"`
+	Rv60           string            `toml:"rv60"`
+	Rv120          string            `toml:"rv120"`
+	VolForecast    string            `toml:"vol_forecast"`
+	VolEdge        string            `toml:"vol_edge"`
+	VolForecastErr string            `toml:"vol_forecast_err"`
+	Market         []marketSpec      `toml:"market"`
+	Ease           easeSpec          `toml:"ease"`
+	Schedule       scheduleTable     `toml:"schedule"`
 }
 
 type job struct {
@@ -155,6 +157,10 @@ func (j *job) findRules() error {
 		return errors.New("computefigures: manifest: no rv20 id or rv20_indices")
 	}
 	ids = append(ids, j.m.Rv20)
+	if j.m.IvRv20 == "" || len(j.m.IvRv20Series) == 0 {
+		return errNoIvRv20
+	}
+	ids = append(ids, j.m.IvRv20)
 	for _, id := range ids {
 		r, ok := j.rules.Rule(id)
 		if !ok {
@@ -209,6 +215,9 @@ func (j *job) Plan(ctx context.Context, day contracts.Day) ([]contracts.Expected
 	for _, n := range j.m.Rv20Indices {
 		keys = append(keys, keyOf(j.m.Rv20, kindUnderlying, n))
 	}
+	for _, n := range j.ivRv20Names() {
+		keys = append(keys, keyOf(j.m.IvRv20, kindUnderlying, n))
+	}
 	for _, ms := range j.m.Market {
 		keys = append(keys, keyOf(ms.ID, kindMarket, ms.Series[0]))
 	}
@@ -239,7 +248,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r := &runState{j: j, ctx: ctx, day: day}
 	var market []target
 	var l underlyingLists
-	var rvs []string
+	var rvs, ivrvs []string
 	var ease *target
 	var under map[string]subject
 	for _, k := range keys {
@@ -261,6 +270,8 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 			market = append(market, target{rule: rule, subj: subject{kind: kind, name: subj}, spec: spec})
 		case known && j.isRv20Key(name, kind, subj):
 			rvs = append(rvs, subj)
+		case known && j.isIvRv20Key(name, kind, subj):
+			ivrvs = append(ivrvs, subj)
 		case known && kind == kindUnderlying:
 			if under == nil {
 				under = r.underlyings()
@@ -281,12 +292,18 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	r.runVol(l.vols)
 	r.runRv20(rvs)
 	r.runMarket(market)
+	r.runIvRv20(ivrvs)
 	r.runIvStats(l.ivs)
 	if ease != nil {
 		r.runEase(*ease)
 	}
+	return r.result()
+}
+
+// result is the JobResult of the run so far; it logs the option rows dropped for want of current terms.
+func (r *runState) result() contracts.JobResult {
 	if r.noTerms > 0 {
-		slog.Info("computefigures: option rows dropped for want of current terms", "day", string(day), "count", r.noTerms)
+		slog.Info("computefigures: option rows dropped for want of current terms", "day", string(r.day), "count", r.noTerms)
 	}
 	res := contracts.JobResult{Returned: r.returned, Usable: r.usable}
 	if r.firstErr != nil {

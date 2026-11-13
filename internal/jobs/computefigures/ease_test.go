@@ -116,6 +116,7 @@ func checkPartParams(t *testing.T, r contracts.ReadingRecord, p compute.EasePart
 func TestEaseStoresOkReading(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // stores the points and rv20 of the session day, so the iv_rv20 keys end without Retryable
 	fe := &fakeEase{fig: okFigure()}
 	res := runAll(t, easeJobOn(t, f, fe))
 	if res.Err != nil || res.Returned != res.Usable {
@@ -292,11 +293,14 @@ func TestMarketFiguresUnchanged(t *testing.T) {
 func TestEaseRerunSameRowsNoNewRev(t *testing.T) {
 	t.Parallel()
 	f := world()
+	addIvRv20Inputs(f) // stores the points and rv20 of the session day, so the iv_rv20 keys end without Retryable
 	j := easeJobOn(t, f, &fakeEase{fig: okFigure()})
-	runAll(t, j)
+	if first := runAll(t, j); first.Err != nil {
+		t.Fatalf("first run %+v", first)
+	}
 	before := f.inserts
 	res := runAll(t, j)
-	if f.inserts != before || res.Usable != res.Returned {
+	if res.Err != nil || f.inserts != before || res.Usable != res.Returned {
 		t.Fatalf("rerun inserted %d rows (%+v)", f.inserts-before, res)
 	}
 	if r := reading(t, f, "macro.ease", "market", "WALCL"); r.Rev != 1 {
