@@ -136,17 +136,20 @@ func TestIndexFamilyBuildsThroughTheGivenConstructor(t *testing.T) {
 
 func TestIndexFamilyBuildsWithNilStoreOrClock(t *testing.T) {
 	t.Parallel()
-	f := jobFactory{}
-	j, err := f.optionEodIndex(nil, (&idxCtor{}).New, nil)
-	if err != nil || j == nil {
-		t.Fatalf("job %v err %v", j, err)
-	}
-	// The family itself reaches optioneod.NewIndex, which builds with nil stores.
 	fam := jobFamilies[jobOptionEodIndex]
-	log, _ := idxLog()
-	got, _, err := fam.build(context.Background(), &app{log: log}, &jobCtx{f: &f})
-	if err != nil || got == nil {
-		t.Fatalf("family build %v err %v", got, err)
+	log, buf := idxLog()
+	f := jobFactory{}
+	got, reason, err := fam.build(context.Background(), &app{log: log}, &jobCtx{f: &f})
+	if err != nil || got != nil || reason != "" {
+		t.Fatalf("family build %v %q err %v: a nil store must not stop the wiring", got, reason, err)
+	}
+	if !strings.Contains(buf.String(), "job left out") {
+		t.Fatalf("log %q", buf.String())
+	}
+	// The probe of a factory without stores answers a reason and no error either.
+	p := &prober{log: log, w: wiring{factory: f, dial: func(context.Context) (broker.Broker, error) { return struct{ broker.Broker }{}, nil }}}
+	if j, r := p.probe(context.Background(), jobOptionEodIndex); j != nil || r != reasonBuildJob {
+		t.Fatalf("probe %v %q", j, r)
 	}
 }
 

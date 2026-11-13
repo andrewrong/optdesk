@@ -323,10 +323,10 @@ func (r *schedRig) stop(t *testing.T, done <-chan error) error {
 
 // jobComputeFigures and jobCalendarRefresh are the ids of the fourth and fifth job; scheduler.go and preflight.go
 // never name them.
-var allSixJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobOptionEodIndex, jobQuoteSnapshot}
+var allUSJobs = []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobOptionEodIndex, jobQuoteSnapshot}
 
-// allSevenJobs is allSixJobs with option_eod_jp, in id order.
-var allSevenJobs = slices.Sorted(slices.Values(append(slices.Clone(allSixJobs), jobOptionEodJP)))
+// allUSJPJobs is allUSJobs with option_eod_jp, in id order.
+var allUSJPJobs = slices.Sorted(slices.Values(append(slices.Clone(allUSJobs), jobOptionEodJP)))
 
 const (
 	jobComputeFigures  = "compute_figures"
@@ -354,7 +354,7 @@ func TestSchedulerLocksOnce(t *testing.T) {
 	if b, _ := r.sl.build.Load().(string); b != "dev" || r.inst.build != "dev" {
 		t.Fatalf("build %q, lock build %q", b, r.inst.build)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, allSixJobs) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, allUSJobs) {
 		t.Fatalf("jobs %v", got)
 	}
 }
@@ -515,7 +515,7 @@ func TestSchedulerDisablesFredWithoutKey(t *testing.T) {
 	if got := r.lastBuild(); !slices.Equal(got, noFredJobs) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
-	if got := ids(r.sched.jobs); !slices.Equal(got, allSixJobs) {
+	if got := ids(r.sched.jobs); !slices.Equal(got, allUSJobs) {
 		t.Fatalf("scheduler jobs %v", got)
 	}
 	if len(r.sched.disabled) != 1 || r.sched.disabled[jobFredSeries] == "" {
@@ -571,13 +571,13 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if len(r.sched.disabled) != 0 {
 		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, allSevenJobs) {
+	if got := r.lastBuild(); !slices.Equal(got, allUSJPJobs) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, allSevenJobs) {
+	if !slices.Equal(ran, allUSJPJobs) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
 	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
@@ -763,7 +763,7 @@ func TestSchedulerWiresSixJobs(t *testing.T) {
 	r := newSchedRig(t, fullEnv)
 	done := r.start()
 	r.waitStarted(t, done)
-	want := allSixJobs
+	want := allUSJobs
 	if got := ids(r.sched.jobs); !slices.Equal(got, want) {
 		t.Fatalf("scheduler jobs %v, want %v", got, want)
 	}

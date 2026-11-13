@@ -22,11 +22,20 @@ func init() {
 	registerJob(jobFamily{
 		id: jobOptionEodIndex, order: 75, startOff: brokerDownOff,
 		build: func(_ context.Context, a *app, jc *jobCtx) (contracts.Job, string, error) {
+			// The real NewIndex refuses a nil store or clock; a rig that has none is not stopped by that error (it
+			// cannot replace the constructor, which deps does not carry), so the family leaves the job out with one line.
+			if jc.f.indexDepsMissing() {
+				a.log.Warn("job left out", "component", "ot", "job", jobOptionEodIndex, "status", "a store or the clock is missing")
+				return nil, "", nil
+			}
 			j, err := jc.f.optionEodIndex(jc.brk, optioneod.NewIndex, a.log)
 			return j, "", err
 		},
 	})
 }
+
+// indexDepsMissing is true when the instrument store, the option writer or the clock is nil.
+func (f jobFactory) indexDepsMissing() bool { return f.inst == nil || f.eod == nil || f.clk == nil }
 
 // optionEodIndex builds option_eod_index through newIndex over the stores of the factory. The close reader is
 // built when both the price bar reader and the index id reader exist; otherwise the job gets a nil reader and

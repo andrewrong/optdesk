@@ -173,6 +173,9 @@ func (p *prober) probeOptionEodIndex(ctx context.Context) (contracts.Job, string
 	if err != nil {
 		return nil, reasonBrokerDown
 	}
+	if p.w.factory.indexDepsMissing() {
+		return nil, reasonBuildJob
+	}
 	j, err := p.w.factory.optionEodIndex(b, optioneod.NewIndex, nil)
 	return p.built(jobOptionEodIndex, j, err)
 }
