@@ -57,7 +57,7 @@ type Strategy interface {
 	ID() string      // "short_put": the strategy column of a result row and the strategy of its [[need]] row
 	Version() string // the rule version, "put_v1": changes whenever a rule changes
 	Params() Params
-	// Evaluate gives one Evaluation per candidate structure of the snapshot, with Rank and RankInUnderlying unset.
+	// Evaluate gives one Evaluation per candidate structure of the snapshot, with RankInUnderlying set and Rank 0; Rank sets Rank.
 	Evaluate(Snapshot) []Evaluation
 	// Rank sets Rank over the rows of the run and returns them in the strategy's order.
 	Rank([]Evaluation) []Evaluation
@@ -229,7 +229,7 @@ Design: docs/design/strategy-framework.md#Issues (Decisions 7, 8, 9, 10)
 `internal/compute/optioncand` is read through `compute.OptionCandidates` only and is not edited; its fixtures (`put_test.go`) are not imported: the new tests build their own `Snapshot` literals and a real `optioncand.New()` rule in the test files (an import of an implementation package from a test file only). No existing identifier changes, so no same-package test or pinned testdata is edited.
 Acceptance:
 1. `shortput.New(rule compute.OptionCandidates, p compute.CandidateParams, v Values)` returns a `strategy.Strategy` with `ID()` `short_put` and `Version()` `put_v1`; `Params()` holds every key of `compute.CandidateParams` as named text plus `close_mode`, `early_keep` and `early_dte`, and `Hash` from `params.Hash`; a `close_mode` other than `expiry` and `early`, a non-decimal `early_keep` or a non-integer `early_dte` is an error that names the key and never a value.
-2. `Evaluate` builds a `compute.CandidateInput` with `Kinds` equal to `KindShortPut` only, from the `Snapshot` (every field the input has; `Issuer`, `UnderlyingID` and `Context` go to `Facts`, see 3), calls the rule, and maps each `Candidate` to an `Evaluation`: one `short` leg of quantity 1 with right `P`, `Key` the instrument id, `Checks` the gates in the rule's order, `Status` of the candidate, `Rank` and `RankInUnderlying` of the candidate. `map.go` holds the mapping and the module imports no sibling strategy package.
+2. `Evaluate` builds a `compute.CandidateInput` with `Kinds` equal to `KindShortPut` only, from the `Snapshot` (every field the input has; `Issuer`, `UnderlyingID` and `Context` go to `Facts`, see 3), calls the rule, and maps each `Candidate` to an `Evaluation`: one `short` leg of quantity 1 with right `P`, `Key` the instrument id, `Checks` the gates in the rule's order, `Status` of the candidate, `RankInUnderlying` of the candidate and `Rank` 0 (Rank of 4 sets it). `map.go` holds the mapping and the module imports no sibling strategy package.
 3. `Facts` holds, as text and only when the figure is present: `issuer`, `underlying_id`, `dte`, `bid`, `ask`, `spot`, `buy_price`, `sale_price`, `break_even`, `annualized_yield`, `delta`, `iv`, `extrinsic`, `marks` (JSON array text in the format `marksText` of `convert.go` writes; `shortput` writes it itself, it cannot import the job package, and entry 6's equality test fails on a byte difference), `fits` (JSON object text in the format `fitsText` writes, same rule), and every key of `Snapshot.Context` (`earnings_state`, `next_earnings`).
 4. `rank.go` implements `Rank` with the order of `rankRun` (`internal/jobs/optioncandidates/convert.go:187`): ok rows by `annualized_yield` descending as an exact rational, then `dte`, then strike (the leg's `Strike`) ascending, then instrument id; rows that are not ok keep rank 0; `RankInUnderlying` is left as `Evaluate` set it.
 5. `manage.go` implements `Manage`: with `close_mode` `expiry` it answers `{hold, ""}` for every input; with `early` it answers `{close, "early_keep"}` when `(OpenPrice - ask) / OpenPrice` is at least `early_keep` at the ask of the position's contract in `Snapshot.Quotes`, else `{close, "early_dte"}` when the days from `RunDay` to `Expiry` are at most `early_dte`, else hold; a missing quote with the DTE rule not reached is hold; exact arithmetic, no float.
@@ -273,7 +273,7 @@ Acceptance:
 
 Module: ot. Size: M.
 Order: after 4, 5 and 6.
-Files: `cmd/ot/strategy_wire.go`, `cmd/ot/strategy_compare.go`, `cmd/ot/strategy_wire_test.go`, `cmd/ot/strategy_compare_test.go`, `cmd/ot/candidates.go`, `cmd/ot/runonce.go`, `cmd/ot/wire.go`, `cmd/ot/candidates_test.go`, `cmd/ot/buildcause_test.go`, `cmd/ot/env_test.go`, `docs/contracts/ot.md`
+Files: `cmd/ot/strategy_wire.go`, `cmd/ot/strategy_compare.go`, `cmd/ot/strategy_wire_test.go`, `cmd/ot/strategy_compare_test.go`, `cmd/ot/candidates.go`, `cmd/ot/runonce.go`, `cmd/ot/wire.go`, `cmd/ot/wire_test.go`, `cmd/ot/candidates_test.go`, `cmd/ot/buildcause_test.go`, `cmd/ot/env_test.go`, `docs/contracts/ot.md`
 Design: docs/design/strategy-framework.md#Issues (Decisions 1, 6, 11)
 `cmd/ot/wire.go` is 795 lines: this entry adds at most the two lines of the `deps` field and its default and no more; if it needs more it reports it (AGENTS.md, Size). `candidates_test.go` builds a `jobFactory` and gains the new tests. `jobFactory` is declared in `runonce.go` (line 274) and gains one field.
 Acceptance:
