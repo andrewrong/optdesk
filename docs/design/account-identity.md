@@ -53,7 +53,7 @@ Source: owner 2026-11-12 (asks optdesk-3211, optdesk-3212): the owner names each
 
 ## Issues
 
-Entries 1 to 5 are the smallest cut (file, reader, rename, held lists, Flex edge, page join); 6 to 10 follow.
+Entries 1 to 5 and 11 are the smallest cut (file, reader, rename, held lists, book ids, Flex edge, page join); 6 to 10 follow.
 
 ### 1 accounts-interface (interface)
 Design line: this file, Decisions 2, 6. Files: `internal/accounts/api.go`, `internal/accounts/api_test.go`.
@@ -118,6 +118,13 @@ Order: after 5, 6. Files: `internal/sources/flex/config.go`, `internal/sources/f
 Acceptance:
 1. `flex.toml` parses with `[[login]]` and token env names only; `FlexConfig` and `api.go` have no `FlexAccount`; a file with `[[account]]` is refused as an unknown table; `parse.go` is untouched.
 
+### 11 accounts-ids (interface)
+Order: after 1, 2. Design line: this file, Decision 7 and Interface. Files: `internal/accounts/api.go`, `internal/accounts/api_test.go`, `internal/accounts/toml/book.go`, `internal/accounts/toml/book_test.go`, `docs/contracts/accounts.md` (one entry because `Book` gains a method and its only implementers, the toml book and the fake of `api_test.go`, must compile in the same change; no `Book` implementer exists outside `internal/accounts`, found by grep).
+Acceptance:
+1. `api.go` declares `IDs() []string` on `Book` with a comment that it returns every account id in the order of `Aliases()`; nothing else in `api.go` changes. The fake of `api_test.go` implements it and the test checks `len(IDs()) == len(Aliases())` and that `Alias(IDs()[i])` equals `Aliases()[i]`, with run-time built invented ids.
+2. The toml book returns its ids in the order the owner wrote the lines, as a copy: a test loads a file of two accounts written to `t.TempDir()`, checks the order and that changing the returned slice does not change a second call.
+3. `docs/contracts/accounts.md` names `IDs` among the methods of `accounts.Book` and says the ids come in the order of `Aliases()`.
+
 ## Checked by CI
 
 - `scripts/hygiene` (checks.yml): no committed file holds an id-shaped string; the tests of issues 2, 5, 6 build their ids at run time.
@@ -139,12 +146,5 @@ Full review: `account-identity-adversarial.md` in the designer's scratchpad (a l
 2. Id in logs, jobs, page JSON: adopted. Decision 8 and the test in Issues 5 and 6.
 3. Simpler way: adopted, cut A, with the coordinator's change that the reader is one owned module (Decision 2) and the rename replaces the delete. Cut B (id as key) not adopted: it costs eight tables and every page for no owner-visible gain.
 4. Lock-in: the id is not a key, so the case disappears (Left out).
-5. False claims: migration number is 0037; `internal/accounts` gets its row and the `ot` depends cell (Modules); hygiene scan and held lists are Decisions 1, 10; no issue spans modules except entry 7, which also holds `pyside/tests/contracts/test_contracts_api.py` (contracts module) because that test constructs `AccountServicer` with an alias and must change with it; `wire.go` (795) is not edited.
-6. Slip cause: the 6-module interface issue is gone; chain is 1, then 2 and 3 in parallel, 4 after 3 (they share the tests of the store package that list migrations), then 5, 6, 7; the migration and deploy order is Decision 9.
-
-### 11 accounts-ids (interface)
-Order: after 1, 2. Design line: this file, Decision 7 and Interface. Files: `internal/accounts/api.go`, `internal/accounts/api_test.go`, `internal/accounts/toml/book.go`, `internal/accounts/toml/book_test.go`, `docs/contracts/accounts.md` (one entry because `Book` gains a method and its only implementers, the toml book and the fake of `api_test.go`, must compile in the same change; no `Book` implementer exists outside `internal/accounts`, found by grep).
-Acceptance:
-1. `api.go` declares `IDs() []string` on `Book` with a comment that it returns every account id in the order of `Aliases()`; nothing else in `api.go` changes. The fake of `api_test.go` implements it and the test checks `len(IDs()) == len(Aliases())` and that `Alias(IDs()[i])` equals `Aliases()[i]`, with run-time built invented ids.
-2. The toml book returns its ids in the order the owner wrote the lines, as a copy: a test loads a file of two accounts written to `t.TempDir()`, checks the order and that changing the returned slice does not change a second call.
-3. `docs/contracts/accounts.md` names `IDs` among the methods of `accounts.Book` and says the ids come in the order of `Aliases()`.
+5. False claims: migration number is 0037; `internal/accounts` gets its row and the `ot` depends cell (Modules); hygiene scan and held lists are Decisions 1, 10; no issue spans modules except entry 7, which also holds `pyside/tests/contracts/test_contracts_api.py` (contracts module) because that test constructs `AccountServicer` with an alias and must change with it; `wire.go` (795) gets only entry 5's `wireHeldCalls` change (at most 4 lines) and stays under 800.
+6. Slip cause: the 6-module interface issue is gone; chain is 1, then 2 and 3 in parallel, 4 after 3 (they share the tests of the store package that list migrations), 11 after 1 and 2, then 5, 6, 7; the migration and deploy order is Decision 9.
