@@ -14,6 +14,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/rules"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 const (
@@ -34,6 +35,7 @@ type fx struct {
 	series     map[string][]contracts.SeriesPoint
 	readings   []contracts.ReadingRecord
 	inserts    int
+	upserted   []contracts.ReadingRecord
 }
 
 func newFx() *fx {
@@ -123,6 +125,13 @@ func (f *fx) InsertReadings(_ context.Context, rows []contracts.ReadingRecord) (
 	f.readings = append(f.readings, rows...)
 	f.inserts += len(rows)
 	return len(rows), nil
+}
+
+func (f *fx) UpsertReadings(_ context.Context, rows []contracts.ReadingRecord) (readingkey.WriteCount, error) {
+	f.readings = append(f.readings, rows...)
+	f.inserts += len(rows)
+	f.upserted = append(f.upserted, rows...)
+	return readingkey.WriteCount{Written: len(rows)}, nil
 }
 
 func (f *fx) Close() error { return nil }

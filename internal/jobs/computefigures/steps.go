@@ -269,12 +269,14 @@ func (r *runState) store(t target, f compute.Figure, rowsHash string, in []input
 		}
 		rec.Rev = p.Rev + 1
 		if p.State == "ok" && rec.State == "missing_input" {
-			// v3's winner rule keeps showing the earlier ok; the change is only visible here.
-			slog.Warn("computefigures: a missing reading is hidden behind an earlier ok", "name", rec.Name,
-				"subject", rec.Subject, "day", string(r.day), "rev", rec.Rev)
+			// the store keeps an ok against a missing_input: make no call, so no rev is spent on it.
+			slog.Warn("computefigures: the earlier ok is kept against a missing reading", "name", rec.Name,
+				"subject", rec.Subject, "day", string(r.day))
+			r.usable++
+			return
 		}
 	}
-	if _, err := r.j.stores.Readings.InsertReadings(r.ctx, []contracts.ReadingRecord{rec}); err != nil {
+	if _, err := upsertReadings(r.ctx, r.j.stores, []contracts.ReadingRecord{rec}); err != nil {
 		r.failStore(fmt.Errorf("computefigures: insert readings: %w", err))
 		return
 	}

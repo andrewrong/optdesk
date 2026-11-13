@@ -71,6 +71,9 @@ func TestSiteBuildsPageFromTable(t *testing.T) {
 	if fred.Kind != "any_day" || !fred.Force || fred.ForceWhy != "" || fred.Today != "2026-11-06" {
 		t.Errorf("fred_series %+v", fred)
 	}
+	if cf := vm.Jobs[by["compute_figures"]]; cf.Kind != "any_day" || !cf.Force || cf.ForceWhy != "" {
+		t.Errorf("compute_figures %+v", cf)
+	}
 	if cal := vm.Jobs[by["calendar_refresh"]]; cal.Kind != "today_only" || !cal.Force {
 		t.Errorf("calendar_refresh %+v", cal)
 	}

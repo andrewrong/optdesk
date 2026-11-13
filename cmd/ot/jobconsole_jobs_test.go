@@ -61,7 +61,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 }
 
-func TestForceYesIsFredCalendarFxAndBars(t *testing.T) {
+func TestForceYesIsFredCalendarFxBarsAndComputeFigures(t *testing.T) {
 	t.Parallel()
 	var yes []string
 	for _, r := range jobTable {
@@ -69,14 +69,14 @@ func TestForceYesIsFredCalendarFxAndBars(t *testing.T) {
 			yes = append(yes, r.ID)
 		}
 	}
-	if !slices.Equal(yes, []string{"fred_series", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
+	if !slices.Equal(yes, []string{"fred_series", "compute_figures", "calendar_refresh", "fx_refresh", "bars_refresh"}) {
 		t.Fatalf("force yes: %v", yes)
 	}
 }
 
 func TestEveryForceNoJobHasReason(t *testing.T) {
 	t.Parallel()
-	codes := []string{"moment_mix", "append_only", "revision_rows", "attempt_rows", "new_run_id", "quota", "not_proved", "insert_only"}
+	codes := []string{"moment_mix", "append_only", "attempt_rows", "new_run_id", "quota", "not_proved", "insert_only"}
 	n := 0
 	for _, r := range jobTable {
 		if !r.runnable() || r.Force {
@@ -90,8 +90,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 19 {
-		t.Fatalf("%d force-no jobs, want 19", n)
+	if n != 18 {
+		t.Fatalf("%d force-no jobs, want 18", n)
 	}
 }
 
@@ -189,7 +189,7 @@ func TestFxRefreshRunValidatesPastDayWithForce(t *testing.T) {
 	if _, ok := post("fx_refresh", "2026-11-14", "on"); ok {
 		t.Error("a day after today was accepted")
 	}
-	if _, ok := post("compute_figures", "2026-11-13", "on"); ok {
+	if _, ok := post("account_capture", "2026-11-13", "on"); ok {
 		t.Error("force on a force-no job was accepted")
 	}
 }

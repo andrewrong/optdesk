@@ -163,6 +163,18 @@ func TestPostForceOnForceNoJob422(t *testing.T) {
 	refused422(t, postNow, runFields("calendar_refresh", "2026-11-06", "maybe"))
 }
 
+func TestPostForcedPastDayOfComputeFiguresIsAccepted(t *testing.T) {
+	t.Parallel()
+	h, fp, _ := jobConsoleSite(t, true, postNow)
+	rec := jcPost(t, h, postKey, runFields("compute_figures", "2026-11-04", "on"))
+	if rec.Code != http.StatusSeeOther || len(fp.enqueued) != 1 {
+		t.Fatalf("%d %v", rec.Code, fp.enqueued)
+	}
+	if got := fp.enqueued[0]; got.JobID != "compute_figures" || got.Day != "2026-11-04" || !got.Force {
+		t.Fatalf("enqueued %+v", got)
+	}
+}
+
 func TestPostBadDay422(t *testing.T) {
 	t.Parallel()
 	for _, d := range []string{"", "2026-13-01", "2026-11-5", "11/05/2026", "2026-11-05T00:00:00Z", "2026-02-30"} {

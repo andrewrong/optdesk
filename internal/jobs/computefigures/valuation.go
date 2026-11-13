@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -133,6 +134,9 @@ func (v *valuationJob) Run(ctx context.Context, day contracts.Day, keys []contra
 		} else {
 			rest = append(rest, k)
 		}
+	}
+	if err := needUpserter(v.stores); err != nil {
+		return contracts.JobResult{Err: err}
 	}
 	var res contracts.JobResult
 	if len(rest) > 0 {
@@ -363,9 +367,15 @@ func (s *valuationState) store(name, sym string, co *valuationCompany, o valuati
 			s.usable++
 			return
 		}
+		if p.State == "ok" && rec.State == "missing_input" {
+			slog.Warn("computefigures: the earlier ok is kept against a missing reading", "name", rec.Name,
+				"subject", rec.Subject, "day", string(s.day))
+			s.usable++
+			return
+		}
 		rec.Rev = p.Rev + 1
 	}
-	if _, err := s.v.stores.Readings.InsertReadings(s.ctx, []contracts.ReadingRecord{rec}); err != nil {
+	if _, err := upsertReadings(s.ctx, s.v.stores, []contracts.ReadingRecord{rec}); err != nil {
 		s.fail(contracts.Retryable, fmt.Errorf("computefigures: insert readings: %w", err))
 		return
 	}

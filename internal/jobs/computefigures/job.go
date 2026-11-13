@@ -17,6 +17,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 //go:embed job.toml
@@ -89,6 +90,23 @@ type typedError struct {
 func (e *typedError) Error() string             { return e.err.Error() }
 func (e *typedError) Unwrap() error             { return e.err }
 func (e *typedError) Kind() contracts.ErrorKind { return e.kind }
+
+// needUpserter is a Retryable error when the readings store lacks UpsertReadings.
+func needUpserter(s ComputeStores) *typedError {
+	if _, ok := s.Readings.(readingkey.ReadingUpserter); !ok {
+		return &typedError{kind: contracts.Retryable, err: errors.New("computefigures: the readings store has no UpsertReadings method")}
+	}
+	return nil
+}
+
+// upsertReadings writes rows by key through the store's ReadingUpserter.
+func upsertReadings(ctx context.Context, s ComputeStores, rows []contracts.ReadingRecord) (readingkey.WriteCount, error) {
+	u, ok := s.Readings.(readingkey.ReadingUpserter)
+	if !ok {
+		return readingkey.WriteCount{}, needUpserter(s)
+	}
+	return u.UpsertReadings(ctx, rows)
+}
 
 // New is a NewComputeFiguresFunc. It reads the embedded job.toml and finds every rule it names. The job
 // it builds stores no ease.
@@ -259,6 +277,13 @@ type target struct {
 // figures, IVP and IVR on the stored IV30, then the ease.
 // A key that fails does not stop the others.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	if err := needUpserter(j.stores); err != nil {
+		return contracts.JobResult{Err: err}
+	}
+	return j.runKeys(ctx, day, keys)
+}
+
+func (j *job) runKeys(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	r := &runState{j: j, ctx: ctx, day: day}
 	var market []target
 	var l underlyingLists
