@@ -570,7 +570,9 @@ class IbGateway:
                 missing=missing,
             )
         if job.blocked:  # 10197: the line is cancelled, the item is held
-            return row(_HELD, sent=sent, data_type=data_type, fields=fields)
+            return row(
+                _HELD, sent=sent, data_type=data_type, fields=fields, missing=missing
+            )
         if not self._current(generation):
             return row(spec.STATUS_DISCONNECTED, sent=sent)
         if job.error is not None:
