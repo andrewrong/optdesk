@@ -8,9 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
-	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -81,19 +79,16 @@ func TestRunOnceNothingCapturedStatus(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	k := key("fred", "DGS10")
+	k := key("obs.series_point", "DGS10")
 	a.deps.openLedger = func(context.Context, string) (store.OpsLedger, error) {
 		return readLedger{present: map[contracts.ExpectedKey]store.PresentStatus{k: store.StatusNoValue}}, nil
-	}
-	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
-		return planJob{id: "fred_series", keys: []contracts.ExpectedKey{k}}, nil
 	}
 	if err := runWired(a, []string{"--day", "2026-03-05"}); err != nil {
 		t.Fatalf("exit must stay 0: %v", err)
 	}
 	want := []string{
-		"run-once 2026-03-05 status=nothing_captured captured=0 keys=4\n",
-		"job=fred_series day=2026-03-05 dataset=fred subject=DGS10 outcome=no_value reason=no_value\n",
+		"run-once 2026-03-05 status=nothing_captured captured=0 keys=19\n",
+		"job=fred_series day=2026-03-05 dataset=obs.series_point subject=DGS10 outcome=no_value reason=no_value\n",
 	}
 	for _, s := range []string{"SPX", "XSP", "RUT"} {
 		want = append(want, "job=option_eod_index day=2026-03-05 dataset=obs.option_eod_index subject="+s+" outcome=missing\n")

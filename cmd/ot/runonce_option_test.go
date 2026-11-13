@@ -336,7 +336,7 @@ func newRig(t *testing.T, env string) *rig {
 		}
 		return evBroker{c: evc{"broker", r.ev}}, nil
 	}
-	d.newFRED = func(sources.FREDConfig) (sources.Source, error) { return nil, nil }
+	d.newFRED = func(sources.FREDConfig) (sources.Source, error) { return emptySource{}, nil }
 	d.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 		return namedJob{id: "fred_series"}, r.fail["fredjob"]
 	}

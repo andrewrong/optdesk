@@ -13,8 +13,8 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs/calendarrefresh"
 	"github.com/andrewrong/optdesk/internal/runner"
-	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -370,12 +370,17 @@ func (j bfPlanJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKey
 	return j.keys, "", j.err
 }
 
-// jobBackfillApp is backfillApp whose fred_series job is j.
+// jobBackfillApp is backfillApp whose calendar_refresh slot holds j: fred_series is the real job now, so
+// the hook of another job carries the fake.
 func jobBackfillApp(t *testing.T, j bfPlanJob, f *fakeBackfiller, g *fakeKeySyncer) *app {
 	t.Helper()
 	a, _, _, _ := backfillApp(t, fullEnv, f)
 	fakeBackfillDeps(a, f, g)
-	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) { return j, nil }
+	a.deps.newCalendarRefresh = func(
+		clock.SessionSource, store.SessionDayStore, clock.SessionDayDiffer, clock.Clock, calendarrefresh.CalendarObserver,
+	) (contracts.Job, error) {
+		return j, nil
+	}
 	return a
 }
 
