@@ -41,7 +41,7 @@ None. The page builder's input is `underlying.Row` and the held set, both existi
 
 ## Issues
 
-Order: page first, then the route, then the nav item. `Contracts: unchanged` (no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto` changes; `page.price_lines_page.v1.json` is read, not edited). No migration, so no deploy hold. Test runs are in `## Checked by CI`.
+Build order: page first, then the route, then the nav item. `Contracts: unchanged` (no file under `contracts/schemas`, `contracts/datasets` or `contracts/proto` changes; `page.price_lines_page.v1.json` is read, not edited). No migration, so no deploy hold. Test runs are in `## Checked by CI`.
 
 ### 1 price-lines-page
 
@@ -61,7 +61,7 @@ Acceptance:
 ### 2 price-lines-route
 
 Module: ot. Size: M.
-Order: after price-lines-page (entry 1).
+Order: after 1 (price-lines-page).
 Files: `cmd/ot/price_lines_site.go`, `cmd/ot/price_lines_post.go`, `cmd/ot/price_lines_site_test.go`, `cmd/ot/price_lines_post_test.go`, `cmd/ot/site.go`, `docs/contracts/ot.md`
 Design: docs/design/price-lines.md#Decisions (Decisions 3 to 7)
 `site.go` (668 lines) gains one dispatch branch and nothing else. `site_test.go` is 796 lines and is not edited: the new tests are in the two new files, which build the handler through `siteHandler`, whose signature does not change. No `siteOpeners` entry is added (the page reads `rd.underlying`, which the site already opens), so `cmd/ot/ops_today_site_test.go`, which reads `siteOpeners[siteOpsTodayKey]`, stays valid; `cmd/ot/pagereg_test.go` runs on a clone of `pageFamilies`, and the new route has an empty `name` and `order` 0, so no name or order check can clash. `cmd/ot/wire.go` is not edited.
@@ -76,7 +76,7 @@ Acceptance:
 ### 3 price-lines-nav
 
 Module: web. Size: S.
-Order: after price-lines-route (entry 2); `TopNav.tsx` lists live routes only.
+Order: after 2 (price-lines-route); `TopNav.tsx` lists live routes only.
 Files: `web/src/shell/TopNav.tsx`, `web/test/shell/TopNav.test.tsx`
 Design: docs/design/price-lines.md#Decisions (Decision 6)
 按 frontend-stack：用 react 做 TopNav 里的 Price lines 导航项（路由 plan/price-lines，一个 `ITEMS` 条目，无计算）。
