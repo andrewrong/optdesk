@@ -74,7 +74,7 @@ func TestPutGaps(t *testing.T) {
 		{"zero spot", func(in *optionfigapi.PutFigureInput) { in.Spot = "0" }, gapMissing, "", "spot", false},
 		{"zero dte", func(in *optionfigapi.PutFigureInput) { in.DTE = 0 }, gapMissing, "", "DTE", false},
 		{"no rate", func(in *optionfigapi.PutFigureInput) { in.Rate, in.RateDay = "", "" }, gapMissing, gapMissing, "rate", false},
-		{"stale rate", func(in *optionfigapi.PutFigureInput) { in.RateDay = "2026-11-04" }, gapStale, gapStale, "9 days", false},
+		{"stale rate", func(in *optionfigapi.PutFigureInput) { in.RateDay = "2026-11-04" }, gapStale, gapStale, "cash rate is 9 days", false},
 		{"no yield", func(in *optionfigapi.PutFigureInput) { in.AnnualYield = "" }, "", gapMissing, "yield", true},
 	}
 	for _, c := range cases {
