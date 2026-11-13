@@ -69,6 +69,24 @@ func TestManifestErrors(t *testing.T) {
 	}
 }
 
+func TestWindowOfRejectsOtherRules(t *testing.T) {
+	t.Parallel()
+	m, err := parseManifest([]byte(minimalToml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rule := range []string{"after_close", "other"} {
+		m.Window.Rule = rule
+		if _, _, _, err := windowOf(m); err == nil {
+			t.Errorf("rule %q: windowOf must return an error", rule)
+		}
+	}
+	m.Window.Rule = "in_session"
+	if _, open, closeOff, err := windowOf(m); err != nil || open != 90*time.Minute || closeOff != 0 {
+		t.Fatalf("in_session: open %v close %v err %v", open, closeOff, err)
+	}
+}
+
 func TestPlan(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
