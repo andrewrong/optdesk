@@ -21,7 +21,8 @@ var _ store.OpenSeriesFunc = Open
 // (-1, NaN or an infinity); the CHECK series_point_no_sentinel of migrations/0002_series.sql mirrors it.
 const StatusSentinelRejected = "sentinel_rejected"
 
-// insertPointSQL inserts one point; the replay of a capture is a conflict on the primary key and adds no row.
+// insertPointSQL inserts one point; the replay of a capture, or a second vintage of a date, is a conflict on the
+// primary key (series_id, observation_date) and adds no row.
 // Arguments: series_id, observation_date, realtime_start, realtime_end, value, status, unit, currency,
 // published_at, source, source_revision.
 const insertPointSQL = `INSERT INTO obs.series_point (series_id, observation_date, realtime_start, realtime_end, ` +
@@ -35,6 +36,8 @@ const insertDefinitionSQL = `INSERT INTO obs.series_definition (series_id, unit,
 // execer runs one statement inside a transaction.
 type execer interface {
 	Exec(ctx context.Context, sql string, args ...any) error
+	// ExecReturning runs a statement with RETURNING and reports how many rows it returned.
+	ExecReturning(ctx context.Context, sql string, args ...any) (int, error)
 }
 
 // scanner reads the columns of the current row.
@@ -129,6 +132,19 @@ type pgTx struct{ tx pgx.Tx }
 func (t pgTx) Exec(ctx context.Context, sql string, args ...any) error {
 	_, err := t.tx.Exec(ctx, sql, args...)
 	return err
+}
+
+func (t pgTx) ExecReturning(ctx context.Context, sql string, args ...any) (int, error) {
+	rows, err := t.tx.Query(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	n := 0
+	for rows.Next() {
+		n++
+	}
+	return n, rows.Err()
 }
 
 func (d pgDB) InTx(ctx context.Context, fn func(execer) error) error {
