@@ -376,6 +376,9 @@ func siteHandler(a *app, clk clock.Clock, dayFlag string, rd siteReaders, newHan
 			rd.live.ServeHTTP(w, r)
 			return
 		}
+		if rd.edit != nil && ownerLogin(rd, w, r) {
+			return
+		}
 		if strings.TrimPrefix(r.URL.Path, "/") == ownerPostRoute && rd.edit != nil {
 			postOwnerSettings(a, clk, dayFlag, rd, newHandler, w, r)
 			return

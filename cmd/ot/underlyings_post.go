@@ -42,8 +42,7 @@ func postOwnerUnderlyings(a *app, clk clock.Clock, dayFlag string, rd siteReader
 		return
 	}
 	now := clk.Now().UTC()
-	if !guardOwnerPost(w, r, rd.edit, now) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	if !guardOwnerPost(w, r, rd.edit) {
 		return
 	}
 	fail := func(msg string) {
