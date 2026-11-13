@@ -91,9 +91,17 @@ func TestRunOnceNothingCapturedStatus(t *testing.T) {
 	if err := runWired(a, []string{"--day", "2026-03-05"}); err != nil {
 		t.Fatalf("exit must stay 0: %v", err)
 	}
-	if !strings.Contains(out.String(), "run-once 2026-03-05 status=nothing_captured captured=0 keys=1\n") ||
-		!strings.Contains(out.String(), "job=fred_series day=2026-03-05 dataset=fred subject=DGS10 outcome=no_value reason=no_value\n") {
-		t.Fatalf("out %q", out.String())
+	want := []string{
+		"run-once 2026-03-05 status=nothing_captured captured=0 keys=4\n",
+		"job=fred_series day=2026-03-05 dataset=fred subject=DGS10 outcome=no_value reason=no_value\n",
+	}
+	for _, s := range []string{"SPX", "XSP", "RUT"} {
+		want = append(want, "job=option_eod_index day=2026-03-05 dataset=obs.option_eod_index subject="+s+" outcome=missing\n")
+	}
+	for _, w := range want {
+		if !strings.Contains(out.String(), w) {
+			t.Fatalf("missing %q in %q", w, out.String())
+		}
 	}
 }
 
