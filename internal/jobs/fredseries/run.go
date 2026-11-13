@@ -10,6 +10,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/seriesdef"
 )
 
 var _ NewFredSeriesFunc = New
@@ -65,7 +66,7 @@ func build(data []byte, src sources.Source, w store.SeriesWriter, clk clock.Cloc
 // ID is the job id of the manifest.
 func (j *job) ID() string { return j.m.ID }
 
-// Run fetches the series of keys for day and writes the points in one call.
+// Run fetches the series of keys for day and upserts the points in one call.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	var plain, windowed []string
 	for _, k := range keys {
@@ -98,7 +99,13 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if len(points) == 0 {
 		return res
 	}
-	if err := j.w.InsertSeriesPoints(ctx, points); err != nil {
+	up, ok := j.w.(seriesdef.SeriesUpserter)
+	if !ok {
+		res.Usable = 0
+		res.Err = asTyped(errors.New("fredseries: the writer has no UpsertSeriesPoints method"), contracts.Retryable)
+		return res
+	}
+	if _, err := up.UpsertSeriesPoints(ctx, points, "fred_series:"+string(day)); err != nil {
 		res.Usable = 0
 		res.Err = asTyped(err, contracts.Retryable)
 	}

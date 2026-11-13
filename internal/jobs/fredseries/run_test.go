@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/sources"
+	"github.com/andrewrong/optdesk/internal/store/seriesdef"
 )
 
 type fakeClock struct{}
@@ -38,10 +40,27 @@ func (s *fakeSource) Fetch(_ context.Context, p sources.FetchPlan) ([]contracts.
 	return r.points, r.err
 }
 
-type fakeWriter struct{ calls [][]contracts.SeriesPoint }
+// fakeWriter is a store.SeriesWriter with the optional upsert method.
+type fakeWriter struct {
+	calls     [][]contracts.SeriesPoint
+	writtenBy []string
+}
 
-func (w *fakeWriter) InsertSeriesPoints(_ context.Context, rows []contracts.SeriesPoint) error {
+func (w *fakeWriter) InsertSeriesPoints(context.Context, []contracts.SeriesPoint) error {
+	return errors.New("fakeWriter: insert must not be used")
+}
+
+func (w *fakeWriter) UpsertSeriesPoints(_ context.Context, rows []contracts.SeriesPoint, writtenBy string) (seriesdef.WriteCount, error) {
 	w.calls = append(w.calls, rows)
+	w.writtenBy = append(w.writtenBy, writtenBy)
+	return seriesdef.WriteCount{Written: len(rows)}, nil
+}
+
+// insertOnlyWriter has no upsert method.
+type insertOnlyWriter struct{ calls int }
+
+func (w *insertOnlyWriter) InsertSeriesPoints(context.Context, []contracts.SeriesPoint) error {
+	w.calls++
 	return nil
 }
 
@@ -146,7 +165,7 @@ func keysOf(ids ...string) []contracts.ExpectedKey {
 
 var (
 	plainIDs    = []string{"DGS10", "DGS3MO", "RVXCLS", "SP500", "VIXCLS", "VXNCLS", "VXVCLS"}
-	windowedIDs = []string{"BAMLH0A0HYM2", "DFF", "RRPONTSYD", "WALCL", "WDTGAL"}
+	windowedIDs = []string{"BAA10Y", "BAMLC0A0CM", "BAMLH0A0HYM2", "DFF", "RRPONTSYD", "SOFR", "WALCL", "WDTGAL", "WRESBAL"}
 )
 
 func TestRunFetchWindowPerGroup(t *testing.T) {
@@ -161,7 +180,7 @@ func TestRunFetchWindowPerGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ks) != 12 {
+	if len(ks) != 16 {
 		t.Fatalf("keys = %d", len(ks))
 	}
 	j.Run(context.Background(), day, ks)
@@ -209,5 +228,58 @@ func TestRunOnlyWindowedKeysMakeOneCall(t *testing.T) {
 		if p := src.plans[0]; p.From != c.from || p.To != day || len(p.SeriesIDs) != len(c.ids) {
 			t.Fatalf("%s: plan = %+v", name, p)
 		}
+	}
+}
+
+func TestRunWithoutUpsertIsRetryable(t *testing.T) {
+	t.Parallel()
+	w := &insertOnlyWriter{}
+	src := &fakeSource{results: []fetchResult{{points: []contracts.SeriesPoint{val(4.1)}}}}
+	j, err := New(src, w, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), "2026-11-05", keys)
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable {
+		t.Fatalf("err = %v", res.Err)
+	}
+	if !strings.Contains(res.Err.Error(), "UpsertSeriesPoints") {
+		t.Fatalf("error does not name the missing upsert: %v", res.Err)
+	}
+	if res.Usable != 0 || w.calls != 0 {
+		t.Fatalf("usable %d, insert calls %d", res.Usable, w.calls)
+	}
+}
+
+func TestRunUpsertsOnceWithWrittenBy(t *testing.T) {
+	t.Parallel()
+	w := &fakeWriter{}
+	src := &fakeSource{results: []fetchResult{{points: []contracts.SeriesPoint{val(4.1)}}, {points: []contracts.SeriesPoint{val(5.2)}}}}
+	j, err := New(src, w, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), "2026-11-05", keysOf("DGS10", "WALCL"))
+	if res.Err != nil || res.Returned != 2 || res.Usable != 2 {
+		t.Fatalf("result = %+v", res)
+	}
+	if len(w.calls) != 1 || len(w.calls[0]) != 2 {
+		t.Fatalf("calls = %v", w.calls)
+	}
+	if w.writtenBy[0] != "fred_series:2026-11-05" {
+		t.Fatalf("writtenBy = %q", w.writtenBy[0])
+	}
+}
+
+func TestRunEmptyFetchMakesNoUpsert(t *testing.T) {
+	t.Parallel()
+	w := &fakeWriter{}
+	j, err := New(&fakeSource{}, w, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), "2026-11-05", keys)
+	if res.Err != nil || res.Returned != 0 || len(w.calls) != 0 {
+		t.Fatalf("result = %+v, calls %v", res, w.calls)
 	}
 }
