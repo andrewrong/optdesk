@@ -18,6 +18,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 	"github.com/andrewrong/optdesk/internal/symbol"
 	"github.com/jonboulle/clockwork"
 )
@@ -88,11 +89,43 @@ type memEvents struct {
 	rows []contracts.EarningsDate
 }
 
-func (m *memEvents) InsertEarningsDate(_ context.Context, r contracts.EarningsDate) error {
+var _ fundkey.EarningsUpserter = (*memEvents)(nil)
+
+func (m *memEvents) InsertEarningsDate(ctx context.Context, r contracts.EarningsDate) error {
+	_, err := m.UpsertEarnings(ctx, []contracts.EarningsDate{r}, "")
+	return err
+}
+
+// UpsertEarnings keeps the rows by (Issuer, ObservedOn): a row of a stored key replaces it.
+func (m *memEvents) UpsertEarnings(_ context.Context, rows []contracts.EarningsDate, _ string) (fundkey.WriteCount, error) {
+	return m.keep(rows, true), nil
+}
+
+// ReplayEarnings is UpsertEarnings that keeps a stored row of the same key.
+func (m *memEvents) ReplayEarnings(_ context.Context, rows []contracts.EarningsDate, _ string) (fundkey.WriteCount, error) {
+	return m.keep(rows, false), nil
+}
+
+func (m *memEvents) keep(rows []contracts.EarningsDate, replace bool) fundkey.WriteCount {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.rows = append(m.rows, r)
-	return nil
+	var n fundkey.WriteCount
+	for _, r := range rows {
+		i := slices.IndexFunc(m.rows, func(x contracts.EarningsDate) bool {
+			return x.Issuer == r.Issuer && x.ObservedOn.Format("2006-01-02") == r.ObservedOn.Format("2006-01-02")
+		})
+		switch {
+		case i < 0:
+			m.rows = append(m.rows, r)
+			n.Written++
+		case replace:
+			m.rows[i] = r
+			n.Written++
+		default:
+			n.Unchanged++
+		}
+	}
+	return n
 }
 
 func (m *memEvents) EarningsDates(_ context.Context, issuer string, from, to contracts.Day) ([]contracts.EarningsDate, error) {
@@ -109,7 +142,8 @@ func (m *memEvents) EarningsDates(_ context.Context, issuer string, from, to con
 
 func (m *memEvents) Close() error { return nil }
 
-// reconcilerOf runs the jobs it was built with on every Reconcile, as the ticker's reconciler does.
+// reconcilerOf runs the jobs it was built with on every Reconcile, as the ticker's reconciler does:
+// a key whose Postcondition is true for the day is present and is not run.
 type reconcilerOf struct{ jobs []contracts.Job }
 
 func (r reconcilerOf) Reconcile(ctx context.Context, day contracts.Day) error {
@@ -120,6 +154,18 @@ func (r reconcilerOf) Reconcile(ctx context.Context, day contracts.Day) error {
 		keys, _, err := j.Plan(ctx, day)
 		if err != nil {
 			return err
+		}
+		if pc, ok := j.(runner.Postcondition); ok {
+			var todo []contracts.ExpectedKey
+			for _, k := range keys {
+				if has, err := pc.Postcondition(ctx, string(day), k.DatasetID, k.SubjectKey); err != nil || !has {
+					todo = append(todo, k)
+				}
+			}
+			if len(todo) == 0 {
+				continue
+			}
+			keys = todo
 		}
 		_ = j.Run(ctx, day, keys)
 	}
