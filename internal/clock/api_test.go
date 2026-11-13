@@ -2,12 +2,14 @@ package clock_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 
 	"github.com/andrewrong/optdesk/internal/clock"
+	"github.com/andrewrong/optdesk/internal/clock/ibkrhours"
 	"github.com/andrewrong/optdesk/internal/contracts"
 )
 
@@ -165,5 +167,38 @@ func TestCommandSessionSourceContract(t *testing.T) {
 	failing := newFakeCommandSource(nil, t.TempDir(), fakeCommand{err: context.Canceled}.run)
 	if _, err := failing.SessionDays(context.Background(), "XNYS", "2026-11-02", "2026-11-02"); err != context.Canceled {
 		t.Fatalf("want start error, got %v", err)
+	}
+}
+
+var _ clock.IBKRHours = ibkrhours.Parser{}
+
+type fakeHours struct{}
+
+func (fakeHours) Parse(liquidHours, timeZoneID string) ([]clock.HoursDay, error) {
+	if timeZoneID == "" {
+		return nil, errors.New("empty zone")
+	}
+	open := time.Date(2026, 11, 13, 14, 30, 0, 0, time.UTC)
+	return []clock.HoursDay{{Day: "2026-11-13", IsSession: true, OpenAt: open, CloseAt: open.Add(6*time.Hour + 30*time.Minute)}}, nil
+}
+
+func TestIBKRHoursContract(t *testing.T) {
+	t.Parallel()
+	var h clock.IBKRHours = fakeHours{}
+	days, err := h.Parse("20261113:0930-20261113:1600", "US/Eastern")
+	if err != nil || len(days) != 1 || !days[0].IsSession || days[0].Day != "2026-11-13" {
+		t.Fatalf("days %+v err %v", days, err)
+	}
+	if _, err := h.Parse("x", ""); err == nil {
+		t.Fatal("want error for empty zone")
+	}
+	// The real parser satisfies the same interface and meets the same two promises.
+	real := ibkrhours.New()
+	rd, err := real.Parse("20261113:0930-20261113:1600", "US/Eastern")
+	if err != nil || len(rd) != 1 || !rd[0].OpenAt.Equal(days[0].OpenAt) || !rd[0].CloseAt.Equal(days[0].CloseAt) {
+		t.Fatalf("real %+v err %v", rd, err)
+	}
+	if _, err := real.Parse("x", ""); err == nil {
+		t.Fatal("want error for empty zone")
 	}
 }
