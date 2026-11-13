@@ -208,3 +208,43 @@ type OptionTiles interface {
 
 // NewOptionTilesFunc constructs the implementation (internal/compute/pagefig.NewOptionTiles).
 type NewOptionTilesFunc func() OptionTiles
+
+// GlobalIn is the input of the global assets block. Day is the page day. Proxies, Sectors and Benchmark are closes
+// newest first with their days (CloseIn), in list order; Name is the label.
+type GlobalIn struct {
+	Day       contracts.Day
+	Proxies   []CloseIn
+	Benchmark CloseIn
+	Sectors   []CloseIn
+}
+
+// SectorLine is the excess over the benchmark in percentage points over 1, 5 and 20 sessions.
+type SectorLine struct {
+	Name, Symbol string
+	D1, D5, D20  compute.FigureValue
+}
+
+// RotationLine is the facts of the rotation sentence: Leaders5 are the names of the first three rows by d5, Laggard
+// and LaggardD5 the last row with a d5 and its decimal text, Leader20 the name with the greatest d20.
+type RotationLine struct {
+	Leaders5           []string
+	Laggard, LaggardD5 string
+	Leader20           string
+}
+
+// GlobalResult: DataDay is the day of SPY's c0 (empty when SPY has no close); Proxies in input order; Sectors sorted
+// by d5 descending, gap rows last; Rotation nil when omitted.
+type GlobalResult struct {
+	DataDay  contracts.Day
+	Proxies  []MoveLine
+	Sectors  []SectorLine
+	Rotation *RotationLine
+}
+
+// GlobalFigures evaluates the global assets block, no I/O, no clock.
+type GlobalFigures interface {
+	Global(GlobalIn) GlobalResult
+}
+
+// NewGlobalFiguresFunc constructs the implementation (internal/compute/pagefig.NewGlobal).
+type NewGlobalFiguresFunc func() GlobalFigures
