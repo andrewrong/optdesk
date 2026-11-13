@@ -28,8 +28,8 @@ func builtOptionEod(t *testing.T) contracts.Job {
 	return j
 }
 
-// The writer is handed to the job the constructor built, and the same job comes back. (No run reads the writer
-// until the tally of entry 5, so the call count of a run is asserted there.)
+// The writer is handed to the job the constructor built, and the same job comes back. (The call count of a run is
+// asserted by TestOptionEodRunCallsWriterOnce.)
 func TestWrapOptionEodWithWriter(t *testing.T) {
 	t.Parallel()
 	built := builtOptionEod(t)
