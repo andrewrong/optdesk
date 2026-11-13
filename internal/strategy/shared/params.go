@@ -1,5 +1,5 @@
-// Package params hashes the named parameters of a strategy.
-package params
+// Package shared hashes the named parameters of a strategy.
+package shared
 
 import (
 	"crypto/sha1" // #nosec G505 -- an identity of a parameter set, not a secret

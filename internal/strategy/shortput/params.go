@@ -5,7 +5,7 @@ import (
 
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/strategy"
-	"github.com/andrewrong/optdesk/internal/strategy/params"
+	"github.com/andrewrong/optdesk/internal/strategy/shared"
 )
 
 // paramsOf names every key of compute.CandidateParams (the [params] keys of job.toml) and the three management keys.
@@ -24,5 +24,5 @@ func paramsOf(p compute.CandidateParams, v Values) strategy.Params {
 		"early_keep":             v.EarlyKeep,
 		"early_dte":              v.EarlyDTE,
 	}
-	return strategy.Params{Values: values, Hash: params.Hash(values)}
+	return strategy.Params{Values: values, Hash: shared.Hash(values)}
 }
