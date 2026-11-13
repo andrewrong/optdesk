@@ -9,6 +9,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs/optioneod"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/sources"
 )
@@ -122,6 +123,8 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		}
 		j, err := p.w.factory.quoteSnapshot(b)
 		return p.built(id, j, err)
+	case jobOptionEodIndex:
+		return p.probeOptionEodIndex(ctx)
 	case jobOptionEodJP:
 		// option_eod_jp checks the XTKS session for today before the broker
 		if r := xtksReason(ctx, p.w.cal, p.w.factory.clk); r != "" {
@@ -162,6 +165,19 @@ func (p *prober) built(id string, j contracts.Job, err error) (contracts.Job, st
 		return nil, reasonBuildJob
 	}
 	return j, ""
+}
+
+// probeOptionEodIndex answers the broker-down reason when the broker is not up, otherwise the job built anew.
+func (p *prober) probeOptionEodIndex(ctx context.Context) (contracts.Job, string) {
+	b, err := p.broker(ctx)
+	if err != nil {
+		return nil, reasonBrokerDown
+	}
+	if p.w.factory.indexDepsMissing() {
+		return nil, reasonBuildJob
+	}
+	j, err := p.w.factory.optionEodIndex(b, optioneod.NewIndex, nil)
+	return p.built(jobOptionEodIndex, j, err)
 }
 
 func (p *prober) broker(ctx context.Context) (broker.Broker, error) {

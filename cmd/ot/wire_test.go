@@ -42,7 +42,7 @@ func TestRunOnceWiresSixJobs(t *testing.T) {
 	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
+	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}
 	if got := jobIDs(r.jobs); !slices.Equal(got, want) {
 		t.Fatalf("jobs %v, want %v", got, want)
 	}
@@ -125,7 +125,7 @@ func TestEarningsRefreshRegistered(t *testing.T) {
 	}
 
 	// backfill takes the same six jobs.
-	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 6 {
+	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil || len(r.jobs) != 7 {
 		t.Fatalf("backfill err %v jobs %d", err, len(r.jobs))
 	}
 }

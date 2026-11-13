@@ -219,7 +219,7 @@ func TestMissingFlexFileKeepsOtherJobs(t *testing.T) {
 	if l.built || len(l.opened) != 0 {
 		t.Errorf("a missing file still built the job (%v) or opened the store (%v)", l.built, l.opened)
 	}
-	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
+	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}
 	if !slices.Equal(l.jobIDs(), want) {
 		t.Errorf("jobs %v, want %v", l.jobIDs(), want)
 	}
@@ -235,7 +235,7 @@ func TestMissingLedgerDSNKeepsOtherJobs(t *testing.T) {
 	if l.built || len(l.opened) != 0 || l.path != "" {
 		t.Errorf("an empty line still built the job (%v), opened the store (%v) or read the file (%q)", l.built, l.opened, l.path)
 	}
-	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
+	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}
 	if !slices.Equal(l.jobIDs(), want) {
 		t.Errorf("jobs %v, want %v", l.jobIDs(), want)
 	}

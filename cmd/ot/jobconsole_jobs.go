@@ -86,6 +86,7 @@ var jobTable = []jobRow{
 	todayOnly("dividend_capture", "attempt_rows", textAttemptRows),
 	todayOnly("option_eod", "moment_mix", textMomentMix),
 	{ID: "option_eod_jp", Kind: kindTodayOnly, Zone: "Asia/Tokyo", ForceReason: "moment_mix", ForceText: textMomentMix},
+	todayOnly("option_eod_index", "moment_mix", textMomentMix),
 	{ID: "quote_snapshot", Kind: kindTodayOnly, Zone: marketZone, ForceReason: "moment_mix", ForceText: textMomentMix, Note: noteQuoteSnapshot},
 	{ID: "calendar_refresh", Kind: kindTodayOnly, Zone: marketZone, Force: true},
 	todayOnly("underlying_resolve", "not_proved", textNotProved),

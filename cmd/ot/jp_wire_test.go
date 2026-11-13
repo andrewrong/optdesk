@@ -90,7 +90,7 @@ func TestJPJobWiredAfterUS(t *testing.T) {
 	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"fred_series", "option_eod", "option_eod_jp", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
+	want := []string{"fred_series", "option_eod", "option_eod_jp", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}
 	if got := jobIDs(r.jobs); !slices.Equal(got, want) {
 		t.Fatalf("jobs %v, want %v", got, want)
 	}
@@ -105,7 +105,7 @@ func TestJPJobLeftOutWithoutXTKS(t *testing.T) {
 	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
+	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "option_eod_index", "calendar_refresh", "earnings_refresh"}
 	if got := jobIDs(r.jobs); !slices.Equal(got, want) {
 		t.Fatalf("jobs %v, want %v", got, want)
 	}
@@ -421,7 +421,7 @@ func TestJPProbeKeepsJobOutWhenXTKSRunsOut(t *testing.T) {
 		r.mu.Lock()
 		got := slices.Clone(r.reconned)
 		r.mu.Unlock()
-		want := []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+		want := []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobOptionEodIndex, jobQuoteSnapshot}
 		if !slices.Equal(got, want) {
 			t.Fatalf("reconcile %d ran %v, want %v", i, got, want)
 		}
@@ -449,7 +449,7 @@ func TestJPRebuildDropsJobWhenXTKSRunsOut(t *testing.T) {
 	}
 	r.cal.fail.Store(true)
 	r.tick() // quote_snapshot comes back, the reconciler is rebuilt
-	want := []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobQuoteSnapshot}
+	want := []string{jobCalendarRefresh, jobComputeFigures, jobEarningsRefresh, jobFredSeries, jobOptionEod, jobOptionEodIndex, jobQuoteSnapshot}
 	if got := r.lastBuild(); !slices.Equal(got, want) {
 		t.Fatalf("rebuilt with %v, want %v (without option_eod_jp: %v)", got, want, without(r.lastBuild(), jobOptionEodJP))
 	}
