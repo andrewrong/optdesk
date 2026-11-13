@@ -200,9 +200,13 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 			noticeAccount: demoNoticeAccount{}, optionLedger: demoTrackingLedger{}}
 		return withPositionsRules(a, rd), func() {}, nil
 	}
-	aliases, dsn, err := siteStart(a)
+	env, err := a.envFile()
 	if err != nil {
 		return siteReaders{}, nil, err
+	}
+	dsn := env[pagesDSNName]
+	if dsn == "" {
+		return siteReaders{}, nil, fmt.Errorf("%s is missing in .env", pagesDSNName)
 	}
 	var closers []func() error
 	closeAll := func() {
@@ -274,7 +278,7 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		bars: bars, fx: fx, marks: openMarkReader(ctx, a, dsn, track),
 		series: ser, eod: eod, quotes: quotes, catalog: catalog, terms: terms, names: names, view: view,
 		cands: opt.cands, noticeAccount: opt.account, earnings: opt.earn, owner: owner, underlying: under, jobReq: jobReq,
-		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: aliases}
+		optionLedger: ledger, ledger: ledger, account: opt.account, sessions: sessions, aliases: siteAliasList(a)}
 	if oos != nil {
 		rd.open, rd.plan, rd.optContracts = oos, oos, oos
 	}
@@ -283,22 +287,6 @@ func openSiteReaders(ctx context.Context, a *app) (siteReaders, func(), error) {
 		return fail()
 	}
 	return withPositionsRules(a, rd), closeAll, nil
-}
-
-// siteStart reads what serve needs before it opens a store: the alias list of the book (serve refuses to start
-// without accounts.toml, Decision 9) and the pages DSN of the env file.
-func siteStart(a *app) (aliases []string, dsn string, err error) {
-	if aliases, err = siteAliasList(a); err != nil {
-		return nil, "", err
-	}
-	env, err := a.envFile()
-	if err != nil {
-		return nil, "", err
-	}
-	if dsn = env[pagesDSNName]; dsn == "" {
-		return nil, "", fmt.Errorf("%s is missing in .env", pagesDSNName)
-	}
-	return aliases, dsn, nil
 }
 
 // openOptionalStores opens the candidate, account, option ledger (the reader returned apart) and earnings stores that deps has an opener for; a missing

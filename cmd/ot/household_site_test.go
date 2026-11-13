@@ -74,11 +74,7 @@ func TestHouseholdRouteReadsAliasesOfTheBook(t *testing.T) {
 	writeBook(t, a, "acct-a", "acct-b")
 	var asked []string
 	rd := householdReaders(&asked)
-	aliases, err := siteAliasList(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rd.aliases = aliases
+	rd.aliases = siteAliasList(a)
 	h := siteHandler(a, householdClock, "2026-11-05", rd, echoHandler, http.NotFoundHandler())
 	rec := companiesGet(t, h, http.MethodGet, "/"+siteHouseholdRoute)
 	if rec.Code != 200 || len(asked) == 0 {
