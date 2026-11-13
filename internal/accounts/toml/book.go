@@ -62,7 +62,6 @@ func Load(path string) (accounts.Book, error) {
 		stmtItems []string
 	)
 	p.Reset(data)
-	lineOf := func(raw unstable.Range) int { return lineAt(data, int(raw.Offset)) }
 	for p.NextExpression() {
 		n := p.Expression()
 		if n.Kind != unstable.KeyValue {
@@ -72,7 +71,7 @@ func Load(path string) (accounts.Book, error) {
 		it := n.Key()
 		it.Next()
 		kn := it.Node()
-		line := lineOf(p.Range(kn.Data))
+		line := lineAt(data, int(p.Range(kn.Data).Offset))
 		if it.Next() {
 			return nil, fmt.Errorf("accounts: line %d: a dotted key is not allowed", line)
 		}
