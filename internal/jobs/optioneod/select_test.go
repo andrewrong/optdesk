@@ -245,3 +245,12 @@ func TestSelectBuyPriceWithoutKeysKeepsBand(t *testing.T) {
 		t.Fatalf("strikes %v, want the band strikes %v", callStrikes(got), callStrikes(want))
 	}
 }
+
+func TestValidateRefusesNonDecimalPrefixedBuyKey(t *testing.T) {
+	t.Parallel()
+	for _, v := range []string{"0x1", "0x1p-1", "0b1"} {
+		if _, err := parseManifest([]byte(buyKeyManifest("0.80", v))); err == nil || !strings.Contains(err.Error(), "buy_high") {
+			t.Fatalf("buy_high %q: err %v, want an error naming buy_high", v, err)
+		}
+	}
+}

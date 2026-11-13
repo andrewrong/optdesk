@@ -203,9 +203,19 @@ func (m manifest) validateBuyKeys() error {
 	return nil
 }
 
-// positiveDecimal reads s as a decimal number above zero (no fraction or exponent form).
+// positiveDecimal reads s as a decimal number above zero: digits with at most one point, no sign, exponent,
+// fraction or base prefix.
 func positiveDecimal(s string) (*big.Rat, bool) {
-	if strings.ContainsAny(s, "/eE") {
+	dots := 0
+	for _, c := range s {
+		switch {
+		case c == '.':
+			dots++
+		case c < '0' || c > '9':
+			return nil, false
+		}
+	}
+	if dots > 1 {
 		return nil, false
 	}
 	r, ok := new(big.Rat).SetString(s)

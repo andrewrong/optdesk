@@ -20,8 +20,9 @@ type NewOptionEodSymbolsFunc func(broker.Broker, store.InstrumentResolver, store
 // NewOptionEodWatchFunc is the constructor of the option_eod job that takes its underlyings from the watch
 // list (internal/jobs/optioneod.NewWithWatch): the US stock entries, each with a key per symbol. Expiries are
 // those with DTE in min_dte..max_dte of job.toml; the strikes of an entry with a BuyPrice run from
-// buy_low x BuyPrice to max(buy_high x BuyPrice, spot) (the manifest keys buy_low and buy_high), at most max_strikes, the nearest BuyPrice kept; an entry
-// without a BuyPrice, or a manifest without the two keys, keeps the strike_band. The list comes before the clock.
+// buy_low x BuyPrice to max(buy_high x BuyPrice, spot) (the manifest keys buy_low and buy_high), at most
+// max_strikes, the nearest BuyPrice kept; an entry without a BuyPrice, or a manifest without the two keys,
+// keeps the strike_band. The list comes before the clock.
 type NewOptionEodWatchFunc func(broker.Broker, store.InstrumentResolver, store.OptionEodWriter, []jobs.WatchEntry, clock.Clock) (contracts.Job, error)
 
 // NewOptionEodWatchSymbolsFunc is NewOptionEodWatchFunc with a symbol.Translator as the last argument

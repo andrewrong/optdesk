@@ -141,8 +141,8 @@ func rangeStrikes(all []string, buy, low, high string, price float64, limit int)
 	if !ok {
 		return nil
 	}
-	lowR, ok1 := new(big.Rat).SetString(low)
-	highR, ok2 := new(big.Rat).SetString(high)
+	lowR, ok1 := positiveDecimal(low)
+	highR, ok2 := positiveDecimal(high)
 	if !ok1 || !ok2 {
 		return nil
 	}
