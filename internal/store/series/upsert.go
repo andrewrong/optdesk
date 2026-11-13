@@ -21,7 +21,7 @@ const upsertPrefix = `INSERT INTO obs.series_point (series_id, observation_date,
 	`ON CONFLICT (series_id, observation_date) DO UPDATE SET value = EXCLUDED.value, status = EXCLUDED.status, ` +
 	`unit = EXCLUDED.unit, currency = EXCLUDED.currency, realtime_start = EXCLUDED.realtime_start, ` +
 	`realtime_end = EXCLUDED.realtime_end, published_at = EXCLUDED.published_at, source = EXCLUDED.source, ` +
-	`source_revision = EXCLUDED.source_revision, updated_at = now(), written_by = EXCLUDED.written_by ` +
+	`source_revision = EXCLUDED.source_revision, updated_at = now(), written_by = $12 ` +
 	`WHERE (obs.series_point.value, obs.series_point.status, obs.series_point.unit, obs.series_point.currency, ` +
 	`obs.series_point.source) IS DISTINCT FROM (EXCLUDED.value, EXCLUDED.status, EXCLUDED.unit, EXCLUDED.currency, ` +
 	`EXCLUDED.source)`
