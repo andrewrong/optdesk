@@ -212,7 +212,7 @@ func loadStocks(raws []rawStock, benchmark string) ([]Stock, error) {
 		seen[s.Symbol] = true
 		out = append(out, Stock(s))
 	}
-	if benchmark != "" && !seen[benchmark] {
+	if !seen[benchmark] {
 		return nil, refuse("global_assets.benchmark", "is not a listed stock")
 	}
 	return out, nil

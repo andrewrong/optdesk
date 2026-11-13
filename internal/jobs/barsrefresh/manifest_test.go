@@ -202,3 +202,11 @@ func TestManifestRefusesUnknownBenchmark(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestManifestRefusesMissingBenchmark(t *testing.T) {
+	t.Parallel()
+	src := strings.Replace(raw(t), "[global_assets]\nbenchmark = \"SPY\"\n", "", 1)
+	if _, err := barsrefresh.LoadManifest([]byte(src)); err == nil || !strings.Contains(err.Error(), "global_assets.benchmark") {
+		t.Fatalf("got %v", err)
+	}
+}
