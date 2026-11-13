@@ -73,6 +73,7 @@ func (f jobFactory) optionCandidates() (contracts.Job, error) {
 		OptionEod: f.compute.OptionEod, Catalog: f.compute.Catalog, Terms: f.compute.Terms, Names: f.compute.Names,
 		Series: f.compute.Series, Earnings: f.earnRd, Accounts: f.accounts, Aliases: f.candAliases, Candidates: f.candidates,
 		SessionDays: f.compute.SessionDays,
+		Strategy:    f.shadow.strategy, Results: f.shadow.results,
 	}
 	return f.listed(groupOptions, func(entries []jobs.WatchEntry) (contracts.Job, error) {
 		j, err := f.d.newOptionCandidates(st, f.d.newCandidateRule(), entries, f.clk)
@@ -101,6 +102,11 @@ func (a *app) candidateJob(ctx context.Context, cfg runOnceConfig, f *jobFactory
 		}
 		extra.addCloser(w)
 		f.candidates = w
+		sh, err := f.shadowOf(ctx, cfg.candidateDSN, extra)
+		if err != nil {
+			return nil, err
+		}
+		f.shadow = sh
 		if cfg.accountDSN != "" && f.d.openAccount != nil {
 			acct, err := f.d.openAccount(ctx, cfg.accountDSN)
 			if err != nil {
