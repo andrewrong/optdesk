@@ -170,6 +170,8 @@ func TestCommandSessionSourceContract(t *testing.T) {
 	}
 }
 
+var _ clock.IBKRHours = ibkrhours.Parser{}
+
 type fakeHours struct{}
 
 func (fakeHours) Parse(liquidHours, timeZoneID string) ([]clock.HoursDay, error) {
@@ -191,7 +193,7 @@ func TestIBKRHoursContract(t *testing.T) {
 		t.Fatal("want error for empty zone")
 	}
 	// The real parser satisfies the same interface and meets the same two promises.
-	var real clock.IBKRHours = ibkrhours.New()
+	real := ibkrhours.New()
 	rd, err := real.Parse("20261113:0930-20261113:1600", "US/Eastern")
 	if err != nil || len(rd) != 1 || !rd[0].OpenAt.Equal(days[0].OpenAt) || !rd[0].CloseAt.Equal(days[0].CloseAt) {
 		t.Fatalf("real %+v err %v", rd, err)
