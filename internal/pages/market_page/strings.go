@@ -4,8 +4,8 @@ package market_page
 const (
 	pageTitle    = "Market"
 	pageSentence = "Weather, percentile and term come from stored data; " +
-		"the trend chart, market breadth and implied minus realised are not built yet, " +
-		"the Nikkei percentile has no stored series."
+		"the trend chart and market breadth are not built yet, " +
+		"the Nikkei percentile and volatility columns have no stored series."
 
 	weatherHeadline    = "S&P 500 against its 200-day average"
 	weatherSentenceFmt = "Gap to the 200-day average: "
@@ -14,8 +14,8 @@ const (
 	weatherStale       = "Weather data is stale, data day "
 
 	indicesTitle    = "Index volatility"
-	indicesSentence = "Percentile is the index position over 3 years; it and the volatility columns come from stored data, " +
-		"the implied-minus-realised column is not built yet, the Nikkei percentile has no stored series."
+	indicesSentence = "Percentile is the index position over 3 years; the volatility columns are stored data, " +
+		"implied minus realised is built for SPX, NDX and RUT, not the Nikkei."
 	indicesNote = "Percentile comes from the Cboe volatility index, not from at-the-money implied volatility."
 
 	termTitle        = "Term structure"
@@ -33,7 +33,12 @@ const (
 	rv20NoRow       = "20-day realised volatility: no data, not stored yet"
 	rv20Missing     = "20-day realised volatility: no data, inputs incomplete"
 	ivRvNotBuilt    = "implied minus realised: not built yet"
-	n225NoData      = "Nikkei volatility: no data yet, no matching FRED series"
+	ivRvNoRow       = "implied minus realised: no data, not stored yet"
+	ivRvMissing     = "implied minus realised: no data, inputs incomplete"
+	// ivRvStale is followed by MM-DD of the stored data day.
+	ivRvStale      = "implied minus realised data is stale, data day "
+	ivRvStaleNoDay = "implied minus realised data is stale"
+	n225NoData     = "Nikkei volatility: no data yet, no matching FRED series"
 
 	pctShortHistory = "History under 3 years, no percentile"
 	pctStale        = "Percentile data is stale, data day "

@@ -34,7 +34,8 @@ type candidateStore interface {
 type openCandidateFunc func(ctx context.Context, dsn string) (candidateStore, error)
 
 // buildCandidates builds option_candidates_page per request for the day of dayFlag or today, from the
-// candidate reader of the site (rd.cands, opened once per process); the demo profile reads fixed demo rows
+// candidate reader of the site (rd.cands, opened once per process) and its series reader (rd.series, read for
+// the DGS3MO rate of the excess yield); the demo profile reads fixed demo rows
 // and opens nothing. The lookback over earlier days is the builder's. A nil zone is an error.
 func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag string, rd siteReaders) ([]byte, error) {
 	if a.profile.Zone == nil {
@@ -44,7 +45,7 @@ func buildCandidates(ctx context.Context, a *app, clk clock.Clock, dayFlag strin
 	if err != nil {
 		return nil, err
 	}
-	return newCandidatesPage(a, "ot-serve", rd.cands, rd.names).Build(ctx, nil, day, clk.Now().UTC())
+	return newCandidatesPage(a, "ot-serve", rd.cands, rd.names).Build(ctx, rd.series, day, clk.Now().UTC())
 }
 
 // newCandidatesPage calls deps.optionCandidatesPage with the plain arguments (scope "candidates").

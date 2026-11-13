@@ -24,6 +24,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute/figures"
 	"github.com/andrewrong/optdesk/internal/compute/gonumstats"
 	"github.com/andrewrong/optdesk/internal/compute/optioncand"
+	"github.com/andrewrong/optdesk/internal/compute/optionfig"
 	"github.com/andrewrong/optdesk/internal/compute/optionledger"
 	"github.com/andrewrong/optdesk/internal/compute/optionnotice"
 	"github.com/andrewrong/optdesk/internal/compute/optionresult"
@@ -378,6 +379,7 @@ func newMarketPageOf(zone *time.Location, runID, buildID, scope string, readings
 func newOptionCandidatesPage(zone *time.Location, runID, buildID, scope string, cands store.CandidateReader, names store.InstrumentNameReader) pages.Page {
 	return option_candidates_page.NewPage(option_candidates_page.Config{
 		RunID: runID, BuildID: buildID, Scope: scope, Zone: zone, Candidates: cands, Names: names,
+		Figures: optionfig.New(),
 	})
 }
 
