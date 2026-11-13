@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/andrewrong/optdesk/internal/store"
 )
@@ -21,6 +22,16 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, now())
 RETURNING instrument_id`
 
 	insertIdentifierSQL = `INSERT INTO master.instrument_identifier (instrument_id, scheme, value, valid_from) VALUES ($1, $2, $3, now())`
+
+	// setSymbolSQL gives the instrument its symbol; the insert above is the one the previous binary sent, so it stays as it
+	// is and the column keeps its default until this statement runs (migration 0044).
+	setSymbolSQL = `UPDATE master.instrument SET symbol = $2 WHERE instrument_id = $1`
+
+	// insertStockSQL writes the stock side row of a new stock or index; a row that exists (the backfill of 0044) stays.
+	insertStockSQL = `INSERT INTO master.stock (instrument_id, name, market) VALUES ($1, $2, $3) ON CONFLICT (instrument_id) DO NOTHING`
+
+	// emptySymbolSQL answers one row when the instrument was made without a symbol (by the binary of before 0044).
+	emptySymbolSQL = `SELECT instrument_type FROM master.instrument WHERE instrument_id = $1 AND symbol = ''`
 
 	// The terms of a new option run between a savepoint and its release, so a failure costs only the terms row.
 	savepointSQL = `SAVEPOINT option_terms`
@@ -81,7 +92,9 @@ func checkInput(key store.Identifier, spec store.InstrumentSpec, extra []store.I
 // with spec (status "active" when spec has none) and the identifiers key and extra, valid from the database's now(),
 // in one transaction that first takes an advisory lock over key. For a new option with a valid osi identifier it also
 // inserts the current master.option_terms row inside a savepoint; a failure there never fails the call. An extra identifier that already names an
-// instrument is a Permanent error and nothing is written; so is any invalid input, before any statement.
+// instrument is a Permanent error and nothing is written; so is any invalid input, before any statement. A new
+// instrument also gets its symbol and, for a stock or index, its master.stock row; a found stock or index with an empty
+// symbol gets both once (docs/design/instrument-company.md Decision 8a); a JPY symbol with a dot is Permanent.
 func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier) (int64, error) {
 	if err := checkInput(key, spec, extra); err != nil {
 		return 0, err
@@ -92,45 +105,9 @@ func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Ident
 	var id int64
 	var termsClass string // the class of a rolled-back terms insert, "" when none
 	err := s.db.InTx(ctx, func(tx execer) error {
-		if err := tx.Exec(ctx, lockSQL, key.Scheme, key.Value); err != nil {
-			return err
-		}
-		found, err := lookup(ctx, tx, key)
-		if err != nil {
-			return err
-		}
-		if found != 0 {
-			id = found
-			return nil
-		}
-		ids := []store.Identifier{key}
-		for _, e := range extra {
-			if e == key {
-				continue
-			}
-			taken, err := lookup(ctx, tx, e)
-			if err != nil {
-				return err
-			}
-			if taken != 0 {
-				return permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d", e.Scheme, e.Value, taken))
-			}
-			ids = append(ids, e)
-		}
-		err = tx.Query(ctx, insertInstrumentSQL, []any{spec.Type, spec.Name, spec.Currency, spec.MIC, spec.CalendarID,
-			spec.Status, spec.PriceIncrement, spec.LotSize}, func(r scanner) error { return r.Scan(&id) })
-		if err != nil {
-			return err
-		}
-		for _, i := range ids {
-			if err := tx.Exec(ctx, insertIdentifierSQL, id, i.Scheme, i.Value); err != nil {
-				return err
-			}
-		}
-		if spec.Type == "option" {
-			return writeTerms(ctx, tx, id, spec, ids, &termsClass)
-		}
-		return nil
+		var err error
+		id, err = resolveTx(ctx, tx, key, spec, extra, &termsClass)
+		return err
 	})
 	if err != nil {
 		return 0, asTyped(err, "resolve")
@@ -139,6 +116,96 @@ func (s *instrumentStore) ResolveInstrument(ctx context.Context, key store.Ident
 		s.logTermsRolledBack(id, termsClass)
 	}
 	return id, nil
+}
+
+// resolveTx is the body of ResolveInstrument inside the transaction tx; the input is checked and the status set.
+// A new instrument gets its symbol (the osi identifier of an option, else spec.Name) and, for a stock or an index, its
+// master.stock row. A found stock or index whose symbol is empty gets both once; a found option is left alone. A
+// symbol with a dot on a JPY instrument is a Permanent error before any statement.
+func resolveTx(ctx context.Context, tx execer, key store.Identifier, spec store.InstrumentSpec, extra []store.Identifier, termsClass *string) (int64, error) {
+	ids := []store.Identifier{key}
+	for _, e := range extra {
+		if e != key {
+			ids = append(ids, e)
+		}
+	}
+	symbol := spec.Name
+	if osi, ok := firstOSI(ids); ok && spec.Type == "option" {
+		symbol = osi
+	}
+	if spec.Currency == "JPY" && strings.Contains(symbol, ".") {
+		return 0, permanent(fmt.Errorf("instrument: symbol %q of a JPY instrument has a dot; a Tokyo symbol has no suffix", symbol))
+	}
+	if err := tx.Exec(ctx, lockSQL, key.Scheme, key.Value); err != nil {
+		return 0, err
+	}
+	found, err := lookup(ctx, tx, key)
+	if err != nil {
+		return 0, err
+	}
+	if found != 0 {
+		return found, repairSymbol(ctx, tx, found, spec, symbol)
+	}
+	for _, e := range ids[1:] {
+		taken, err := lookup(ctx, tx, e)
+		if err != nil {
+			return 0, err
+		}
+		if taken != 0 {
+			return 0, permanent(fmt.Errorf("instrument: identifier %s %q already names instrument %d", e.Scheme, e.Value, taken))
+		}
+	}
+	var id int64
+	err = tx.Query(ctx, insertInstrumentSQL, []any{spec.Type, spec.Name, spec.Currency, spec.MIC, spec.CalendarID,
+		spec.Status, spec.PriceIncrement, spec.LotSize}, func(r scanner) error { return r.Scan(&id) })
+	if err != nil {
+		return 0, err
+	}
+	if symbol != "" {
+		if err := tx.Exec(ctx, setSymbolSQL, id, symbol); err != nil {
+			return 0, err
+		}
+	}
+	for _, i := range ids {
+		if err := tx.Exec(ctx, insertIdentifierSQL, id, i.Scheme, i.Value); err != nil {
+			return 0, err
+		}
+	}
+	if spec.Type == "option" {
+		return id, writeTerms(ctx, tx, id, spec, ids, termsClass)
+	}
+	return id, tx.Exec(ctx, insertStockSQL, id, spec.Name, marketOf(spec.Currency))
+}
+
+// repairSymbol fills the symbol and the stock row of a found stock or index that has no symbol. Options are not touched.
+func repairSymbol(ctx context.Context, tx execer, id int64, spec store.InstrumentSpec, symbol string) error {
+	if spec.Type == "option" || symbol == "" {
+		return nil
+	}
+	var typ string
+	if err := tx.Query(ctx, emptySymbolSQL, []any{id}, func(r scanner) error { return r.Scan(&typ) }); err != nil {
+		return err
+	}
+	if typ != "stock" && typ != "index" {
+		return nil
+	}
+	if err := tx.Exec(ctx, setSymbolSQL, id, symbol); err != nil {
+		return err
+	}
+	return tx.Exec(ctx, insertStockSQL, id, spec.Name, marketOf(spec.Currency))
+}
+
+// marketOf is the market of a currency: US, JP or EU, nil (NULL) for any other currency.
+func marketOf(currency string) any {
+	switch currency {
+	case "USD":
+		return "US"
+	case "JPY":
+		return "JP"
+	case "EUR":
+		return "EU"
+	}
+	return nil
 }
 
 // writeTerms inserts the current terms row of the new option id from its osi identifier. No osi, or one that does

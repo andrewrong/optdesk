@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/url"
 	"os"
 	"regexp"
@@ -65,10 +66,19 @@ func applyMigration(t *testing.T, dsn, file string) {
 	}
 }
 
-// newDatabase creates a database of a random name with the Timescale extension and the roles, applies 0001 to 0008
-// there (0004 and 0005 need ot_runner and ot_loader), and drops it in t.Cleanup. The roles are shared by the server;
-// advisory lock 54 is held until the admin connection closes, as the other pg tests do.
+// newDatabase is newDatabaseBefore0044 with 0044_instrument_company.sql applied.
 func newDatabase(t *testing.T) string {
+	t.Helper()
+	name := newDatabaseBefore0044(t)
+	applyMigration(t, connURL(t, name, ""), "0044_instrument_company.sql")
+	return name
+}
+
+// newDatabaseBefore0044 creates a database of a random name with the Timescale extension and the roles, applies 0001
+// to 0008 there (0004 and 0005 need ot_runner and ot_loader) and 0032 and 0033, which 0044 reads (option_contract and
+// settings.underlying; they need nothing beyond 0008 and their own roles), and drops it in t.Cleanup. The roles are
+// shared by the server; advisory lock 54 is held until the admin connection closes, as the other pg tests do.
+func newDatabaseBefore0044(t *testing.T) string {
 	t.Helper()
 	ctx := context.Background()
 	admin, err := pgx.Connect(ctx, connURL(t, pgEnv("PGDATABASE"), ""))
@@ -90,6 +100,14 @@ func newDatabase(t *testing.T) string {
 		}
 		if _, err := admin.Exec(ctx, verb+" ROLE "+r+" LOGIN PASSWORD '"+rolePassword+"'"); err != nil {
 			t.Fatalf("%s role %s: %v", strings.ToLower(verb), r, err)
+		}
+	}
+	// 0032 and 0033 grant to three roles that other pg test packages also create: they are created here, as those
+	// do, with the shared password when missing, and never altered.
+	for _, r := range []string{"ot_w_option_open", "ot_w_settings", "ot_w_underlying_resolve"} {
+		const create = `DO $$ BEGIN CREATE ROLE %s LOGIN PASSWORD '%s'; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$`
+		if _, err := admin.Exec(ctx, fmt.Sprintf(create, r, rolePassword)); err != nil {
+			t.Fatalf("create role %s: %v", r, err)
 		}
 	}
 	suffix := make([]byte, 6)
@@ -136,6 +154,9 @@ func newDatabase(t *testing.T) string {
 				t.Fatalf("alter schema owner: %v", err)
 			}
 		}
+	}
+	for _, f := range []string{"0032_option_contract.sql", "0033_underlying.sql"} {
+		applyMigration(t, connURL(t, name, ""), f)
 	}
 	for _, r := range []string{"ot_runner", "ot_ro_pages", "ot_w_master", "ot_w_option_eod", "ot_w_quote_snapshot"} {
 		if _, err := admin.Exec(ctx, `GRANT CONNECT ON DATABASE "`+name+`" TO `+r); err != nil {

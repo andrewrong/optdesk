@@ -27,6 +27,8 @@ type fakeDB struct {
 	closed bool
 	// failTerms makes the terms insert fail.
 	failTerms bool
+	// answer, when set, answers a query the cases below do not know (stock_test.go); it reports whether it did.
+	answer func(sql string, args []any, scan func(scanner) error) (bool, error)
 }
 
 func newFake() *fakeDB { return &fakeDB{ids: map[store.Identifier]int64{}, nextID: 100} }
@@ -56,6 +58,11 @@ func (t fakeTx) Query(_ context.Context, sql string, args []any, scan func(scann
 	case insertInstrumentSQL:
 		t.f.nextID++
 		return scan(valsScanner{t.f.nextID})
+	default:
+		if t.f.answer != nil {
+			_, err := t.f.answer(sql, args, scan)
+			return err
+		}
 	}
 	return nil
 }
