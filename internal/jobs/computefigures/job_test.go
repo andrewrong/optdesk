@@ -15,7 +15,9 @@ import (
 	"github.com/andrewrong/optdesk/internal/compute"
 	"github.com/andrewrong/optdesk/internal/compute/own"
 	"github.com/andrewrong/optdesk/internal/compute/rules"
+	"github.com/andrewrong/optdesk/internal/compute/valuationapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/store"
 )
 
@@ -534,5 +536,97 @@ func TestAfterIsTheThreeUpstreams(t *testing.T) {
 	}
 	if got := d.After(); !reflect.DeepEqual(got, []string{"option_eod", "option_eod_jp", "quote_snapshot"}) {
 		t.Fatalf("After() = %v", got)
+	}
+}
+
+// noUpsert is a readings store that lacks the optional UpsertReadings method.
+type noUpsert struct{ store.ReadingStore }
+
+func upsertedKey(f *fx, name, subj string) []contracts.ReadingRecord {
+	var out []contracts.ReadingRecord
+	for _, r := range f.upserted {
+		if r.Name == name && r.Subject == subj {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func TestRunWithoutUpsertIsRetryable(t *testing.T) {
+	t.Parallel()
+	f := world()
+	f.addPoint("VIXCLS", dayD, 20)
+	st := f.stores()
+	st.Readings = noUpsert{f}
+	j, err := New(st, newFigs(), rules.New(), own.NewUnits(), own.NewSeriesOps(), clockwork.NewFakeClockAt(closeD.Add(20*time.Minute)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), dayD, plan(t, j))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "UpsertReadings") {
+		t.Fatalf("err %v, want Retryable naming UpsertReadings", res.Err)
+	}
+	if len(f.upserted) != 0 || f.inserts != 0 {
+		t.Fatalf("wrote %d rows without an upserter", len(f.upserted))
+	}
+}
+
+func TestUpsertGetsReadingWithRevOfJob(t *testing.T) {
+	t.Parallel()
+	f := world()
+	f.addPoint("VIXCLS", dayD, 20)
+	j := newJob(t, f, newFigs())
+	runAll(t, j)
+	got := upsertedKey(f, "market.vix_pctile_3y", "VIXCLS")
+	if len(got) != 1 || got[0].Rev != 1 || got[0].State != "ok" {
+		t.Fatalf("first run upserts %+v, want one ok at rev 1", got)
+	}
+	f.addPoint("VIXCLS", shiftDay(dayD, -1), 19)
+	runAll(t, j)
+	got = upsertedKey(f, "market.vix_pctile_3y", "VIXCLS")
+	if len(got) != 2 || got[1].Rev != 2 {
+		t.Fatalf("second upsert %+v, want rev 2", got)
+	}
+}
+
+func TestValuationReadingIsUpsertedAtRev(t *testing.T) {
+	t.Parallel()
+	fk := &vFakes{std: valuationapi.USGAAP, res: okResult()}
+	f := world()
+	addIvRv20Inputs(f)
+	j := valuationJobOf(t, f, fk.deps(&vFacts{}, []jobs.WatchEntry{entry(vIssuer, vSymbol)}))
+	runAll(t, j)
+	for _, name := range valuationNames {
+		got := upsertedKey(f, name, vSymbol)
+		if len(got) != 1 || got[0].Rev != 1 {
+			t.Fatalf("%s upserts %+v, want one at rev 1", name, got)
+		}
+	}
+	before := len(f.upserted)
+	runAll(t, j)
+	if len(f.upserted) != before {
+		t.Fatalf("second run upserted %d rows, want none", len(f.upserted)-before)
+	}
+}
+
+func TestStoredOkKeptAgainstMissingInput(t *testing.T) {
+	t.Parallel()
+	f := world()
+	f.addPoint("VIXCLS", dayD, 20)
+	j := newJob(t, f, newFigs())
+	// sp500_vs_200d has no input, so the job computes missing_input; an ok of another input is stored.
+	f.readings = append(f.readings, contracts.ReadingRecord{Name: "market.sp500_vs_200d", SubjectKind: "market", Subject: "SP500",
+		Day: dateOf(dayD), State: "ok", Value: sp("0.5"), Rev: 1, RowsSha256: "old"})
+	res := runAll(t, j)
+	if got := upsertedKey(f, "market.sp500_vs_200d", "SP500"); len(got) != 0 {
+		t.Fatalf("upserted %+v, want no call for a missing against an ok", got)
+	}
+	if r := reading(t, f, "market.sp500_vs_200d", "market", "SP500"); r.Rev != 1 || r.State != "ok" {
+		t.Fatalf("stored %+v, want the ok at rev 1", r)
+	}
+	g := world()
+	g.addPoint("VIXCLS", dayD, 20)
+	if base := runAll(t, newJob(t, g, newFigs())); res.Usable != base.Usable {
+		t.Fatalf("usable %d, want %d as when the missing reading is written", res.Usable, base.Usable)
 	}
 }

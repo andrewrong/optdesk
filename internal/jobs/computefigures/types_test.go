@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/jobs/computefigures"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 // captureOf is the capture id of a key, as the design says: uuid.NewSHA1 over day|dataset|subject.
@@ -55,7 +56,7 @@ func (j computeJob) Plan(context.Context, contracts.Day) ([]contracts.ExpectedKe
 func (j computeJob) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
 	var out contracts.JobResult
 	for range keys {
-		if _, err := j.stores.Readings.InsertReadings(ctx, []contracts.ReadingRecord{{}}); err != nil {
+		if _, err := j.stores.Readings.(readingkey.ReadingUpserter).UpsertReadings(ctx, []contracts.ReadingRecord{{}}); err != nil {
 			return contracts.JobResult{Returned: out.Returned}
 		}
 		out.Returned++
@@ -72,6 +73,11 @@ type fakeReadings struct {
 func (r *fakeReadings) InsertReadings(_ context.Context, rows []contracts.ReadingRecord) (int, error) {
 	r.inserted += len(rows)
 	return len(rows), nil
+}
+
+func (r *fakeReadings) UpsertReadings(_ context.Context, rows []contracts.ReadingRecord) (readingkey.WriteCount, error) {
+	r.inserted += len(rows)
+	return readingkey.WriteCount{Written: len(rows)}, nil
 }
 
 func TestNewComputeFiguresFuncContract(t *testing.T) {
