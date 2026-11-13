@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -241,6 +243,48 @@ func assertEqualRows(t *testing.T, want []contracts.OptionEod, got map[string]st
 	}
 }
 
+// pickedFixture drops the fixture row that the read hides: the first row shares its key and received_at with the
+// fourth, which has the greater capture_id.
+func pickedFixture(rows []contracts.OptionEod) []contracts.OptionEod {
+	return append(append([]contracts.OptionEod{}, rows[1:3]...), rows[3:]...)
+}
+
+func TestOptionEodPickPG(t *testing.T) {
+	t.Parallel()
+	for _, c := range pickCases() {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			name := newDatabase(t)
+			var rows []contracts.OptionEod
+			capture := map[string]string{}
+			for _, p := range c.in {
+				id := fmt.Sprintf("00000000-0000-4000-8000-%012x", p.capture[0])
+				capture[id] = p.capture
+				r := baseRow(t)
+				r.SessionDay = day(t, p.day)
+				r.CaptureID, r.InstrumentID, r.Status, r.SnapshotKind = id, p.inst, p.status, p.kind
+				r.ReceivedAt = r.ReceivedAt.Add(time.Duration(p.minute) * time.Minute)
+				r.ErrorCode, r.TermsVersionID = nil, nil
+				rows = append(rows, r)
+			}
+			if err := openAs(t, name, "ot_w_option_eod").InsertOptionEod(context.Background(), rows); err != nil {
+				t.Fatal(err)
+			}
+			got, err := openAs(t, name, "ot_runner").OptionEod(context.Background(), 8, "2000-01-01", "2100-01-01")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var have []string
+			for _, r := range got {
+				have = append(have, fmt.Sprintf("%s %d %s", r.SessionDay.Format(time.DateOnly), r.InstrumentID, capture[r.CaptureID]))
+			}
+			if !reflect.DeepEqual(have, c.want) {
+				t.Fatalf("got %v, want %v", have, c.want)
+			}
+		})
+	}
+}
+
 func TestOptionEodRoundTripPG(t *testing.T) {
 	t.Parallel()
 	name := newDatabase(t)
@@ -248,7 +292,7 @@ func TestOptionEodRoundTripPG(t *testing.T) {
 	if err := openAs(t, name, "ot_w_option_eod").InsertOptionEod(context.Background(), rows); err != nil {
 		t.Fatal(err)
 	}
-	assertEqualRows(t, rows, readAll(t, openAs(t, name, "ot_runner"), rows))
+	assertEqualRows(t, pickedFixture(rows), readAll(t, openAs(t, name, "ot_runner"), rows))
 }
 
 func TestOptionEodRetryPG(t *testing.T) {
@@ -276,10 +320,7 @@ func TestOptionEodRetryPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = readAll(t, r, []contracts.OptionEod{first})
-	if len(got) != 2 {
-		t.Fatalf("%d rows, want 2", len(got))
-	}
-	assertEqualRows(t, []contracts.OptionEod{first, second}, got)
+	assertEqualRows(t, []contracts.OptionEod{second}, got)
 }
 
 func TestOptionEodCompressPG(t *testing.T) {
@@ -321,7 +362,7 @@ func TestOptionEodCompressPG(t *testing.T) {
 	if compressed == 0 {
 		t.Fatal("no chunk was compressed")
 	}
-	assertEqualRows(t, rows, readAll(t, openAs(t, name, "ot_runner"), rows))
+	assertEqualRows(t, pickedFixture(rows), readAll(t, openAs(t, name, "ot_runner"), rows))
 }
 
 func TestOptionEodGrantsPG(t *testing.T) {
