@@ -21,6 +21,8 @@ var wantTwelve = map[string]string{
 	"option_eod_jp":          "Asia/Tokyo",
 	"quote_snapshot":         "America/New_York",
 	"calendar_refresh":       "America/New_York",
+	"calendar_hours_us":      "America/New_York",
+	"calendar_hours_jp":      "Asia/Tokyo",
 	"underlying_resolve":     "America/New_York",
 	"iv_history":             "America/New_York",
 	"bars_refresh":           "America/New_York",
@@ -55,7 +57,7 @@ func TestTableIsTheWiredJobSet(t *testing.T) {
 	}
 	slices.Sort(want)
 	slices.Sort(got)
-	if !slices.Equal(got, want) || len(got) != 29 {
+	if !slices.Equal(got, want) || len(got) != 31 {
 		t.Fatalf("table %v\nwired %v", got, want)
 	}
 }
@@ -89,8 +91,8 @@ func TestEveryForceNoJobHasReason(t *testing.T) {
 			t.Errorf("%s: reason %q text %q", r.ID, r.ForceReason, r.ForceText)
 		}
 	}
-	if n != 19 {
-		t.Fatalf("%d force-no jobs, want 19", n)
+	if n != 21 {
+		t.Fatalf("%d force-no jobs, want 21", n)
 	}
 }
 
@@ -169,7 +171,7 @@ func TestOnlyOptionEodJpIsInTheTokyoZone(t *testing.T) {
 			tokyo = append(tokyo, r.ID)
 		}
 	}
-	if !slices.Equal(tokyo, []string{"option_eod_jp", "option_list_preopen_jp"}) {
+	if !slices.Equal(tokyo, []string{"option_eod_jp", "calendar_hours_jp", "option_list_preopen_jp"}) {
 		t.Fatalf("Tokyo jobs %v", tokyo)
 	}
 }
