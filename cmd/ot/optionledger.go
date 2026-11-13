@@ -158,7 +158,7 @@ func (a *app) optionLedgerJob(ctx context.Context, cfg runOnceConfig, f jobFacto
 }
 
 // flexConfig maps the file to the config of the job. A login whose variable is empty gets a nil Source and a
-// logged reason; an account whose variable is empty is left out of the allow-list with one.
+// logged reason. The accounts come from the book of the factory (flexAccounts).
 func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactory) (optionledgerjob.OptionLedgerConfig, error) {
 	var lc optionledgerjob.OptionLedgerConfig
 	for _, l := range ff.Logins {
@@ -177,25 +177,8 @@ func (a *app) flexConfig(ff sources.FlexFile, env map[string]string, f jobFactor
 		}
 		lc.Logins = append(lc.Logins, run)
 	}
-	lc.Accounts = a.flexAccounts(ff, env)
+	lc.Accounts = flexAccounts(f.book)
 	return lc, nil
-}
-
-// flexAccounts is the account map of the file: the account number held by the variable of each entry, to its
-// alias. An entry whose variable is empty is left out with one logged reason that names the alias and the
-// variable. The job and the web import share it, so one rule maps both.
-func (a *app) flexAccounts(ff sources.FlexFile, env map[string]string) map[string]string {
-	accounts := map[string]string{}
-	for _, acc := range ff.Accounts {
-		num := env[acc.AccountEnv]
-		if num == "" {
-			a.log.Warn("flex account left out", "component", "ot", "job", jobOptionLedger,
-				"status", fmt.Sprintf("account %s: %s is not set", acc.Alias, acc.AccountEnv))
-			continue
-		}
-		accounts[num] = acc.Alias
-	}
-	return accounts
 }
 
 // ledgerOpts are the parsed arguments of ot ledger.

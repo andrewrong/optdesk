@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -562,7 +563,19 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 		ok bool
 	}{{103, true}, {104, false}, {150, false}} {
 		r := newRig(t, fullEnv)
-		home := "/" + strings.Repeat("h", tc.n-len(tail)-1)
+		// a real directory of the exact length, holding the book that serve and run-once need
+		base, err := os.MkdirTemp("", "ot")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(base) })
+		home := base + "/" + strings.Repeat("h", tc.n-len(tail)-len(base)-1)
+		if err := os.MkdirAll(home, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := writeFile(home+"/"+accountsFileName, "a = \""+testAcctID+"\"\nmain = \"a\"\n"); err != nil {
+			t.Fatal(err)
+		}
 		r.a.getenv = func(k string) string {
 			if k == "OT_HOME" {
 				return home
@@ -576,7 +589,7 @@ func TestRunOnceSocketPathLength(t *testing.T) {
 				"OT_PG_DSN_PAGES": "a", "OT_PG_DSN_READINGS": "a", "OT_PG_DSN_LOADER": "a",
 			}, nil
 		}
-		err := runOnce(r.a, nil)
+		err = runOnce(r.a, nil)
 		if tc.ok {
 			if err != nil || len(r.socket) != tc.n {
 				t.Fatalf("%d bytes: err %v, dialled %d", tc.n, err, len(r.socket))

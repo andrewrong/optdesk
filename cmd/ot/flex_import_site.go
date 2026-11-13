@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"path/filepath"
 	"time"
 
@@ -59,6 +60,8 @@ type flexImportResult struct {
 type flexImportGate struct {
 	env map[string]string
 	ff  sources.FlexFile
+	// book is the account book of accounts.toml: it maps the account number of a statement to its alias.
+	book accounts.Book
 }
 
 // flexImportGate reads the env file and the Flex file. A line that is unset, a file that is missing or not valid
@@ -84,7 +87,11 @@ func (a *app) flexImportGate() (flexImportGate, *flexpage.Gap) {
 	case err != nil:
 		return off(gapReasonInput, reasonBadFlexFile)
 	}
-	return flexImportGate{env: env, ff: ff}, nil
+	book, err := a.loadBook()
+	if err != nil {
+		return off(gapReasonInput, "accounts.toml cannot be loaded")
+	}
+	return flexImportGate{env: env, ff: ff, book: book}, nil
 }
 
 // buildFlexImportPage builds page.flex_import.v1 per request. Without --owner-edit, or with the ledger line unset

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -21,7 +22,7 @@ import (
 const (
 	ledgerDSNLine = "OT_PG_DSN_OPTION_LEDGER=led-dsn-secret\n"
 	tokenA        = "token-a-secret"
-	acctA         = "ACCT-FIXTURE-A"
+	acctA         = testAcctID
 )
 
 // flexTestFile is a file of two logins and one account: login main is required.
@@ -30,7 +31,6 @@ var flexTestFile = sources.FlexFile{
 		{Name: "main", TokenEnv: "TOK_MAIN", TradeQueries: []string{"11"}, Required: true},
 		{Name: "second", TokenEnv: "TOK_SECOND", TradeQueries: []string{"22"}},
 	},
-	Accounts: []sources.FlexAccount{{Alias: "a", AccountEnv: "ACCT_A"}},
 }
 
 // ledgerFakeStore is the option ledger store with no rows.
@@ -374,4 +374,46 @@ func (l *ledgerRig) setSections(open func(context.Context, string) (flexSectionS
 		l.a.deps.ext = map[string]any{}
 	}
 	l.a.deps.ext[extOptionLedger] = optionLedgerDeps{openFlexSections: open}
+}
+
+// TestStatementOutsideTheBookStoresNoRow: the book names another id than the statement carries, so the
+// statement is counted as unmapped, no row is stored and the derived state is unconfigured.
+func TestStatementOutsideTheBookStoresNoRow(t *testing.T) {
+	t.Parallel()
+	env := fullEnv + ledgerDSNLine + "TOK_MAIN=" + tokenA + "\nTOK_SECOND=token-b-secret\n"
+	l := newLedgerRig(t, env, true)
+	other := "U" + "000" + "0002"
+	if other == acctA {
+		t.Fatal("the book id must differ from the statement id")
+	}
+	body := "b = \"" + other + "\"\nmain = \"b\"\n"
+	if err := os.WriteFile(filepath.Join(l.a.getenv("OT_HOME"), accountsFileName), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l.run(t)
+	var job contracts.Job
+	for _, j := range l.jobs {
+		if j.ID() == "option_ledger" {
+			job = j
+		}
+	}
+	if job == nil {
+		t.Fatalf("no option_ledger job: %v", l.jobIDs())
+	}
+	keys, _, err := job.Plan(context.Background(), "2026-11-04")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.Run(context.Background(), "2026-11-04", keys)
+	if len(l.st.records) == 0 {
+		t.Fatal("no fetch record")
+	}
+	for _, rec := range l.st.records {
+		if rec.RowsParsed != 0 || rec.UnmappedStatement != 1 {
+			t.Fatalf("record %+v: want no row and one unmapped statement", rec)
+		}
+		if st, _ := optionledgerjob.DeriveImportStatus(rec); st != optionledgerjob.ImportUnconfigured {
+			t.Errorf("state %q, want %q", st, optionledgerjob.ImportUnconfigured)
+		}
+	}
 }

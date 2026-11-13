@@ -256,7 +256,7 @@ func TestAccountImportMapRefusesUnnamedAlias(t *testing.T) {
 	t.Parallel()
 	st := &impStore{failWrite: true}
 	a, dir := impRig(t, impLine("old", "2026-11-05", "1", "1")+impLine("other", "2026-11-05", "1", "1"), st)
-	err := accountImport(a, []string{dir, "--through", "2026-11-06", "--map", "old=main"})
+	err := accountImport(a, []string{dir, "--through", "2026-11-06", "--map", "old=a"})
 	if err == nil {
 		t.Fatal("unmapped alias accepted")
 	}
@@ -265,14 +265,27 @@ func TestAccountImportMapRefusesUnnamedAlias(t *testing.T) {
 	}
 }
 
+func TestAccountImportMapRefusesTargetOutsideBook(t *testing.T) {
+	t.Parallel()
+	st := &impStore{}
+	a, dir := impRig(t, impLine("old", "2026-11-05", "1", "1"), st)
+	err := accountImport(a, []string{dir, "--through", "2026-11-06", "--map", "old=stranger"})
+	if err == nil || !strings.Contains(err.Error(), "not an alias of accounts.toml") {
+		t.Fatalf("a target outside the book gave %v", err)
+	}
+	if st.writes != 0 || len(st.caps) != 0 {
+		t.Fatal("wrote before refusing")
+	}
+}
+
 func TestAccountImportMapRenames(t *testing.T) {
 	t.Parallel()
 	st := &impStore{}
 	a, dir := impRig(t, impLine("old", "2026-11-05", "1", "1"), st)
-	if err := accountImport(a, []string{dir, "--through", "2026-11-06", "--map", "old=main"}); err != nil {
+	if err := accountImport(a, []string{dir, "--through", "2026-11-06", "--map", "old=a"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := st.caps["main:2026-11-05:import"]; !ok {
+	if _, ok := st.caps["a:2026-11-05:import"]; !ok {
 		t.Fatalf("caps %v", st.caps)
 	}
 }

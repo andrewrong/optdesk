@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/contracts"
@@ -36,6 +37,8 @@ const maxSocketPath = 104
 
 // runOnceConfig is what run-once needs from $OT_HOME/.env and the home; its values are never printed.
 type runOnceConfig struct {
+	// book is the account book of accounts.toml; loading it is part of the config, so a missing file refuses the start.
+	book                                                                     accounts.Book
 	runnerDSN, seriesDSN, optionEodDSN, quoteSnapshotDSN, masterDSN, fredKey string
 	pagesDSN, readingsDSN, loaderDSN, calendarUV, calendarProject            string
 	// eventsDSN and alphaKey belong to earnings_refresh alone: an empty one leaves that job out, never the run.
@@ -71,7 +74,12 @@ func loadConfig(a *app, allowNoFredKey bool) (runOnceConfig, error) {
 	if err != nil {
 		return runOnceConfig{}, err
 	}
+	book, err := a.loadBook()
+	if err != nil {
+		return runOnceConfig{}, err
+	}
 	c := runOnceConfig{
+		book:             book,
 		runnerDSN:        env[store.DSNEnvRunner],
 		seriesDSN:        env[store.DSNEnvSeriesFred],
 		optionEodDSN:     env[store.DSNEnvOptionEod],
@@ -271,7 +279,9 @@ func (w wiring) runnable(log *slog.Logger) []contracts.Job {
 
 // jobFactory builds the jobs over the stores withWiring opened.
 type jobFactory struct {
-	d    deps
+	d deps
+	// book is the owner's account book of $OT_HOME/accounts.toml (accounts.go).
+	book accounts.Book
 	clk  clock.Clock
 	src  sources.Source
 	ser  store.SeriesStore
@@ -381,7 +391,7 @@ func withWiring(
 	var extra closerSet
 	defer extra.closeAll()
 	return wireJobs(ctx, a, cfg, use, brk, brokerUp, &extra, d.newCalendar(sd),
-		jobFactory{d: d, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV,
+		jobFactory{d: d, book: cfg.book, clk: clk, src: src, ser: ser, eod: eod, snap: snap, inst: instr, compute: cs, loader: loader, uv: cfg.calendarUV,
 			project: cfg.calendarProject, log: a.log,
 			events: events, earn: earn, jp: jp}, ledger)
 }

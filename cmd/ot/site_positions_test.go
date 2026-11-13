@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -232,62 +232,54 @@ func TestNoReaderIsGapPage(t *testing.T) {
 	}
 }
 
-// gatewaysAliasApp is a test app whose .env names a gateways file holding body ("" with no file written, the key
-// pointing at a missing file; "-" with no key at all). It returns the app, the log buffer and the file path.
-func gatewaysAliasApp(t *testing.T, body string) (*app, *bytes.Buffer, string) {
+// writeBook replaces the accounts.toml of the app with one alias per name, main = the first; the ids are invented
+// at run time from the position.
+func writeBook(t *testing.T, a *app, names ...string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "gateways.toml")
-	env := envIbkrGateways + "=" + path + "\n"
-	switch body {
-	case "-":
-		env = "OT_UNUSED=1\n"
-	case "":
-	default:
-		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-			t.Fatal(err)
-		}
+	var b strings.Builder
+	for i, n := range names {
+		fmt.Fprintf(&b, "%s = \"%s%06d\"\n", n, "U", i+1)
 	}
-	a, errb := testApp(t, env)
-	return a, errb, path
+	fmt.Fprintf(&b, "main = \"%s\"\n", names[0])
+	if err := os.WriteFile(filepath.Join(a.getenv("OT_HOME"), accountsFileName), []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestSiteAliasList(t *testing.T) {
 	t.Parallel()
-	good := func(entries ...string) string { return strings.Join(entries, "\n") }
-	req := "[[gateway]]\naccount = \"acct-a\"\nrequired = true\n"
-	other := func(acct string) string { return "[[gateway]]\naccount = \"" + acct + "\"\n" }
-	t.Run("main first then the others sorted", func(t *testing.T) {
+	t.Run("main first then the others in the order of the book", func(t *testing.T) {
 		t.Parallel()
-		a, errb, _ := gatewaysAliasApp(t, good(other("zz"), req, other("bb")))
-		if got := siteAliasList(a); !slices.Equal(got, []string{"acct-a", "bb", "zz"}) || errb.Len() != 0 {
-			t.Fatalf("%v %q", got, errb)
+		a, _ := testApp(t, "OT_UNUSED=1\n")
+		path := filepath.Join(a.getenv("OT_HOME"), accountsFileName)
+		body := "zz = \"" + "U" + "000" + "0003\"\nacct-a = \"" + "U" + "000" + "0001\"\nbb = \"" + "U" + "000" + "0002\"\nmain = \"acct-a\"\n"
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got, err := siteAliasList(a)
+		if err != nil || !slices.Equal(got, []string{"acct-a", "zz", "bb"}) {
+			t.Fatalf("%v %v", got, err)
 		}
 	})
-	t.Run("repeats and empty dropped", func(t *testing.T) {
+	t.Run("demo profile keeps main", func(t *testing.T) {
 		t.Parallel()
-		a, _, _ := gatewaysAliasApp(t, good(req, other("bb"), other("bb"), other(""), other("acct-a")))
-		if got := siteAliasList(a); !slices.Equal(got, []string{"acct-a", "bb"}) {
-			t.Fatalf("%v", got)
+		a, _ := testApp(t, "OT_UNUSED=1\n")
+		a.profile.Name = "demo"
+		got, err := siteAliasList(a)
+		if err != nil || !slices.Equal(got, []string{"main"}) {
+			t.Fatalf("%v %v", got, err)
 		}
 	})
-	bad := map[string]string{
-		"missing key":  "-",
-		"missing file": "",
-		"two required": req + req,
-	}
-	for name, body := range bad {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			a, errb, path := gatewaysAliasApp(t, body)
-			got := siteAliasList(a)
-			if !slices.Equal(got, []string{"main"}) {
-				t.Fatalf("%v", got)
-			}
-			if n := strings.Count(errb.String(), "level=WARN"); n != 1 || strings.Contains(errb.String(), path) || strings.Contains(errb.String(), "acct-a") {
-				t.Fatalf("%d warn lines: %q", n, errb)
-			}
-		})
-	}
+	t.Run("a file that cannot be loaded is an error", func(t *testing.T) {
+		t.Parallel()
+		a, _ := testApp(t, "OT_UNUSED=1\n")
+		if err := os.Remove(filepath.Join(a.getenv("OT_HOME"), accountsFileName)); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := siteAliasList(a); err == nil || got != nil {
+			t.Fatalf("%v %v", got, err)
+		}
+	})
 }
 
 // TestOpenedReadersReachPositionsPages checks that the ledger and account readers openSiteReaders opens for

@@ -113,6 +113,9 @@ func newFileHarness(t *testing.T, file map[string]string, brokerUp bool) (*openH
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(home) })
+	if err := writeFile(home+"/"+accountsFileName, "a = \""+testAcctID+"\"\nmain = \"a\"\n"); err != nil {
+		t.Fatal(err)
+	}
 	proc := map[string]string{"OT_HOME": home, "CREW_SECRETS": "/secrets", "CREW_SERVICE": "optdesk"}
 	h.a.getenv = func(k string) string { return proc[k] }
 	lines := map[string]string{"FRED_API_KEY": "k"}
