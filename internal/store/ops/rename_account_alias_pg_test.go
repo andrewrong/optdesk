@@ -20,7 +20,7 @@ var aliasTables = []struct{ table, insert string }{
 	{"candidates.option_candidate", `INSERT INTO candidates.option_candidate (session_day, run_id, kind, instrument_id, alias, rule_version, issuer, underlying_id, expiry, dte, option_right, strike, multiplier, bid_eod, break_even, status, gates, marks, fits, earnings_state, computed_at) VALUES ('2026-11-05', 'r', 'short_put', 1, $1, 'v', 'i', 1, '2026-12-18', 40, 'put', '100', 100, '1', '99', 'ok', '', '', '', '', now())`},
 	{"optionledger.flex_trade_row", `INSERT INTO optionledger.flex_trade_row VALUES ($1, 'EXECUTION', 't1', 1, 'a', 'h', 'flex', now(), 'f', 0)`},
 	{"optionledger.flex_section_row", `INSERT INTO optionledger.flex_section_row VALUES ($1, 's', 'k', 1, 'f', 0, 'a', 'h', now())`},
-	{"optionledger.flex_section_status", `INSERT INTO optionledger.flex_section_status (fetch_id, alias, section, state, row_count, rows_refused, recorded_at) VALUES ('f-' || $1, $1, 's', 'present', 0, 0, now())`},
+	{"optionledger.flex_section_status", `INSERT INTO optionledger.flex_section_status (fetch_id, alias, section, state, row_count, rows_refused, recorded_at) VALUES ('f', $1, 's', 'present', 0, 0, now())`},
 }
 
 // renameDatabase makes a database with the nine tables and the rename function, applied as the owner would.
@@ -75,7 +75,7 @@ func TestRenameAccountAliasCollisionRefusedPG(t *testing.T) {
 	// The keys of the tables whose primary key holds alias collide when both aliases hold the same key.
 	for _, tb := range aliasTables {
 		switch tb.table {
-		case "account.execution", "candidates.option_candidate", "optionledger.flex_trade_row", "optionledger.flex_section_row":
+		case "account.execution", "candidates.option_candidate", "optionledger.flex_trade_row", "optionledger.flex_section_row", "optionledger.flex_section_status":
 		default:
 			continue
 		}

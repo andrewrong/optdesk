@@ -6,7 +6,7 @@
 -- The whole call is one transaction (a function runs inside the caller's). Before the first UPDATE, a row under the
 -- new alias with the key of a row under the old alias (the key with alias replaced) in any table raises and
 -- nothing changes. Where alias is not part of the primary key (account.capture, account.position, account.value,
--- account.position_mark, optionledger.flex_section_status) the key cannot collide and the check finds nothing.
+-- account.position_mark) the key cannot collide and the check finds nothing.
 -- +goose StatementBegin
 CREATE FUNCTION ops.rename_account_alias(old_alias text, new_alias text) RETURNS void
 LANGUAGE plpgsql AS $$
