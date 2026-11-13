@@ -107,7 +107,7 @@ Acceptance:
 ### 3 series-registry-fred
 
 Module: sources. Size: S.
-Order: after 1 (parallel with 2, 4, 5, 6).
+Order: after 1 (parallel with 2, 4 and 5; 6 comes after it, both edit `docs/contracts/sources.md`).
 Files: `internal/sources/fred/mapping.go`, `internal/sources/fred/mapping_test.go`, `internal/sources/fred/testdata/series_units.json`, `docs/contracts/sources.md`
 Design: docs/design/series-registry.md#Issues (Decision 6)
 Acceptance:
@@ -148,7 +148,7 @@ Acceptance:
 ### 6 series-registry-nyfed
 
 Module: sources. Size: M.
-Order: after 1 (parallel with 2 to 5).
+Order: after 1 and 3 (both edit `docs/contracts/sources.md`); parallel with 2, 4 and 5.
 Files: `internal/sources/nyfed/client.go`, `internal/sources/nyfed/parse.go`, `internal/sources/nyfed/client_test.go`, `internal/sources/nyfed/testdata/sofr.json`, `docs/contracts/sources.md`
 Design: docs/design/series-registry.md#Issues (Decision 9)
 Acceptance:
