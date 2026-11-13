@@ -93,8 +93,8 @@ Order: after 5. Files: `cmd/ot/account.go`, `cmd/ot/account_test.go`, `cmd/ot/ac
 Acceptance:
 1. `OT_ACCOUNT_SOCKETS` parses as a plain list; a `label=` form is refused; `accountAliases`, `accountMain` and `siteAliasList` no longer read the gateways file, and neither do their callers in `candidates.go`, `notices_site.go` and `positionmarks.go`; `wire_underlying.go` takes the held list from `book.Aliases()` in place of its `heldAliases` variable.
 2. The resolver gives `accountcapture.Config.Readers` one reader per alias whose answers carry the alias; tests with fake readers cover a match, an id not in the book (named state `unknown_account`, nothing stored, no id in the text) and a socket down.
-4. `serve` and every job that needs the alias list refuse to start when `accounts.toml` cannot be loaded, except under the demo profile (the missing-file refusal of issue 2), so nothing collects under a new alias before the file is written (Decision 9).
-5. The no-id test of Decision 8 passes for the account wiring.
+3. `serve` and every job that needs the alias list refuse to start when `accounts.toml` cannot be loaded (the refusal of a job lives in its builder in the files of this entry), except under the demo profile (the missing-file refusal of issue 2), so nothing collects under a new alias before the file is written (Decision 9).
+4. The no-id test of Decision 8 passes for the account wiring.
 
 ### 7 pyside-reports-account-id
 Order: after 6. Files: `pyside/src/optdesk/ibkr/transport.py`, `pyside/src/optdesk/ibkr/gateways.py`, `pyside/src/optdesk/ibkr/accounts.py` (only if needed), `pyside/examples/gateways.example.toml`, `pyside/tests/` (tests that assert `account` of a gateway or no id in a response, found by grep for `_alias` and `account must be an alias`).
