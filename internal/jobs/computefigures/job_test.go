@@ -137,8 +137,8 @@ func TestPlanKeys(t *testing.T) {
 	t.Parallel()
 	j := newJob(t, world(), newFigs())
 	keys := plan(t, j)
-	if len(keys) != 4+3+len(marketIDs) {
-		t.Fatalf("keys %d, want 13 (4 per underlying, 3 rv20, 6 market)", len(keys))
+	if len(keys) != 4+3+3+len(marketIDs) {
+		t.Fatalf("keys %d, want 16 (4 per underlying, 3 rv20, 3 iv_rv20, 6 market)", len(keys))
 	}
 	if !sort.SliceIsSorted(keys, func(a, b int) bool { return keys[a].SubjectKey < keys[b].SubjectKey }) {
 		t.Fatalf("keys not sorted: %+v", keys)
@@ -164,10 +164,11 @@ func TestRunStoresOkAndMissing(t *testing.T) {
 	f := world()
 	f.addPoint("VIXCLS", dayD, 20)
 	f.addPoint("VXVCLS", dayD, 22)
+	addIvRv20Inputs(f) // a point and an rv20 of the session day: the iv_rv20 keys end without the Retryable error
 	j := rvJob(t, f, newFigs())
 	res := runAll(t, j)
-	if res.Err != nil || res.Returned != 20 || res.Usable != 20 {
-		t.Fatalf("result %+v, want 20 of 20 and no error", res)
+	if res.Err != nil || res.Returned != 23 || res.Usable != 23 {
+		t.Fatalf("result %+v, want 23 of 23 and no error", res)
 	}
 	iv := reading(t, f, "market.iv30_own", "underlying", "SPY")
 	if iv.State != "ok" || iv.Value == nil || *iv.Value != "0.200000" || iv.Rev != 1 {
@@ -251,6 +252,7 @@ func TestFirstRunOnEmptyStores(t *testing.T) {
 	j := rvJob(t, f, newFigs())
 	keys := plan(t, j)
 	res := j.Run(context.Background(), dayD, keys)
+	// the empty world has no session day, so the iv_rv20 keys are not Retryable (Decision 10 needs a known session day)
 	if res.Err != nil || res.Usable != len(keys) {
 		t.Fatalf("result %+v for %d keys", res, len(keys))
 	}
@@ -261,8 +263,8 @@ func TestFirstRunOnEmptyStores(t *testing.T) {
 			t.Fatalf("%s: %+v, want missing with reason 1 or 2", k.SubjectKey, r)
 		}
 	}
-	if len(keys) != len(marketIDs)+3 {
-		t.Fatalf("keys %d, want only the market and the three rv20 keys on empty stores", len(keys))
+	if len(keys) != len(marketIDs)+3+3 {
+		t.Fatalf("keys %d, want only the market, the three rv20 and the three iv_rv20 keys on empty stores", len(keys))
 	}
 }
 
@@ -337,6 +339,9 @@ func TestMarketInputBehindOnHolidayIsDone(t *testing.T) {
 	d5 := shiftDay(dayD, -1)
 	for _, id := range []string{"VIXCLS", "VXVCLS", "VXNCLS", "RVXCLS", "SP500"} {
 		f.addPoint(id, d5, 20)
+	}
+	for _, p := range ivRvPairs { // the rv20 of the last session day, so the iv_rv20 keys are done too
+		f.addRv20(p[0], d5, "0.100000", string(d5))
 	}
 	res := runAll(t, rvJob(t, f, newFigs()))
 	if res.Err != nil {
