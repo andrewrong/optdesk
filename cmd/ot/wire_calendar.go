@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/clock"
 	"github.com/andrewrong/optdesk/internal/clock/calendarcli"
 	"github.com/andrewrong/optdesk/internal/clock/ibkrhours"
@@ -42,11 +44,30 @@ var openHoursNotices = func(ctx context.Context, dsn string) (hoursnotice.Store,
 	return st, nil
 }
 
+// The ids of the two calendar_hours jobs.
+const (
+	jobCalendarHoursUS = "calendar_hours_us"
+	jobCalendarHoursJP = "calendar_hours_jp"
+)
+
+// hoursFamilies are the two calendar_hours families: job id, market and order.
+var hoursFamilies = []struct {
+	id, market string
+	order      int
+}{{jobCalendarHoursUS, "XNYS", 85}, {jobCalendarHoursJP, "XTKS", 86}}
+
+// calendarHours builds the job of the family id over the loader store as the session source, b and the notice store.
+func (f jobFactory) calendarHours(id string, b broker.Broker, st hoursnotice.Store, log *slog.Logger) (contracts.Job, error) {
+	for _, h := range hoursFamilies {
+		if h.id == id {
+			return calendarhours.New(h.market, b, f.loader, ibkrhours.New(), st, f.clk, log)
+		}
+	}
+	return nil, fmt.Errorf("calendar_hours: unknown job %s", id)
+}
+
 func init() {
-	for _, h := range []struct {
-		id, market string
-		order      int
-	}{{"calendar_hours_us", "XNYS", 85}, {"calendar_hours_jp", "XTKS", 86}} {
+	for _, h := range hoursFamilies {
 		registerJob(jobFamily{
 			id: h.id, order: h.order,
 			// A job whose line is empty is left out whatever the broker does, so the broker reason is for a set line only.
@@ -61,7 +82,7 @@ func init() {
 				if st == nil {
 					return nil, "", nil
 				}
-				j, err := calendarhours.New(h.market, jc.brk, jc.f.loader, ibkrhours.New(), st, jc.f.clk, a.log)
+				j, err := jc.f.calendarHours(h.id, jc.brk, st, a.log)
 				if err != nil {
 					return nil, "", fmt.Errorf("build %s job failed: %w", h.id, err)
 				}

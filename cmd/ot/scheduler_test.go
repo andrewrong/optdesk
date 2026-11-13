@@ -550,9 +550,39 @@ func TestSchedulerDisablesBrokerJobsOnDialFailure(t *testing.T) {
 	}
 }
 
+// allWithHours is allUSJPJobs plus the two calendar_hours jobs, which a rig with the notice-store marker line wires.
+var allWithHours = slices.Sorted(slices.Values(append(slices.Clone(allUSJPJobs), jobCalendarHoursUS, jobCalendarHoursJP)))
+
+// TestSchedulerReprobesHoursJobsAfterBrokerDown: the calendar_hours jobs disabled by a broker-down start are probed
+// back in on the next tick, with the gap rows cleared.
+func TestSchedulerReprobesHoursJobsAfterBrokerDown(t *testing.T) {
+	t.Parallel()
+	r := newSchedRig(t, strings.Replace(fullEnv, "master-dsn", hoursMarker, 1))
+	r.a.deps.newCalendar = func(clock.SessionSource) clock.Calendar { return &jpCal{last: jpLastDay} }
+	r.dialErrs = func(n int32) error {
+		if n == 1 {
+			return errors.New("no socket")
+		}
+		return nil
+	}
+	done := r.start()
+	r.waitStarted(t, done)
+	if d := r.sched.disabled; d[jobCalendarHoursUS] == "" || d[jobCalendarHoursJP] == "" {
+		t.Fatalf("hours jobs not disabled after the broker-down start: %v", d)
+	}
+	r.tick()
+	if d := r.sched.disabled; len(d) != 0 {
+		t.Fatalf("still disabled after the broker came back: %v", d)
+	}
+	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
+		t.Fatalf("gaps %v", last)
+	}
+	_ = r.stop(t, done)
+}
+
 func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	t.Parallel()
-	r := newSchedRig(t, fullEnv)
+	r := newSchedRig(t, strings.Replace(fullEnv, "master-dsn", hoursMarker, 1))
 	r.a.deps.newCalendar = func(clock.SessionSource) clock.Calendar { return &jpCal{last: jpLastDay} }
 	r.dialErrs = func(n int32) error {
 		if n == 1 {
@@ -569,20 +599,19 @@ func TestSchedulerReprobesBrokerJobsEachTick(t *testing.T) {
 	if r.dials.Load() != 2 {
 		t.Fatalf("dials %d, want 2 (start and one probe)", r.dials.Load())
 	}
-	// The calendar_hours families have no probe case: they stay out until the process restarts.
-	if d := r.sched.disabled; len(d) != 2 || d["calendar_hours_us"] == "" || d["calendar_hours_jp"] == "" {
-		t.Fatalf("disabled after the tick %v", d)
+	if len(r.sched.disabled) != 0 {
+		t.Fatalf("disabled after the tick %v", r.sched.disabled)
 	}
-	if got := r.lastBuild(); !slices.Equal(got, allUSJPJobs) {
+	if got := r.lastBuild(); !slices.Equal(got, allWithHours) {
 		t.Fatalf("reconciler jobs %v", got)
 	}
 	r.mu.Lock()
 	ran := slices.Clone(r.reconned)
 	r.mu.Unlock()
-	if !slices.Equal(ran, allUSJPJobs) {
+	if !slices.Equal(ran, allWithHours) {
 		t.Fatalf("the swapped reconciler did not run the keys: %v", ran)
 	}
-	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 2 {
+	if last := r.gaps.seen[len(r.gaps.seen)-1]; len(last) != 0 {
 		t.Fatalf("gap syncer got %v", last)
 	}
 	r.tick()

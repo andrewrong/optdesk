@@ -125,6 +125,8 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		return p.built(id, j, err)
 	case jobOptionEodIndex:
 		return p.probeOptionEodIndex(ctx)
+	case jobCalendarHoursUS, jobCalendarHoursJP:
+		return p.probeHours(ctx, id)
 	case jobOptionEodJP:
 		// option_eod_jp checks the XTKS session for today before the broker
 		if r := xtksReason(ctx, p.w.cal, p.w.factory.clk); r != "" {
@@ -145,6 +147,20 @@ func (p *prober) probe(ctx context.Context, id string) (contracts.Job, string) {
 		return nil, reasonBuildJob
 	}
 	return nil, "unknown job"
+}
+
+// probeHours builds a calendar_hours job anew once the broker is up, over the notice store opened at start. A job
+// left out for want of that store stays out until the process restarts.
+func (p *prober) probeHours(ctx context.Context, id string) (contracts.Job, string) {
+	if p.w.factory.hours == nil {
+		return nil, reasonBuildJob
+	}
+	b, err := p.broker(ctx)
+	if err != nil {
+		return nil, reasonBrokerDown
+	}
+	j, err := p.w.factory.calendarHours(id, b, p.w.factory.hours, p.log)
+	return p.built(id, j, err)
 }
 
 // xtksReason is reasonNoXTKS when the XTKS calendar answers an error for today, or when there is no calendar,
