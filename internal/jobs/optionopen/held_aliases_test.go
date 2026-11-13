@@ -27,7 +27,7 @@ func (r *recordingAccounts) Positions(_ context.Context, alias, _ string) ([]sto
 	if alias != "mine" {
 		return nil, nil
 	}
-	return []store.Position{{Symbol: "TEST", SecType: "stock", Quantity: "10", ConID: 7}}, nil
+	return []store.Position{{Symbol: "TEST", SecType: "stock", Currency: "USD", Quantity: "10", ConID: 7}}, nil
 }
 func (r *recordingAccounts) Values(context.Context, string, string) ([]store.AccountValue, error) {
 	return nil, nil
