@@ -103,6 +103,7 @@ type underlying struct {
 	EarningsText string `json:"earnings_text,omitempty"`
 	EarningsTone string `json:"earnings_tone,omitempty"`
 	VolLine      string `json:"vol_line,omitempty"`
+	OffSession   bool   `json:"off_session,omitempty"`
 }
 
 type chain struct {
@@ -215,6 +216,7 @@ func Build(ctx context.Context, c Config, day contracts.Day, generatedAt time.Ti
 
 	sessionDay := rows[0].SessionDay.Format(dayLayout)
 	setPrice(&vm.Underlying, sessionDay, latest)
+	vm.Underlying.OffSession = allOffSession(rows)
 	vm.Chain.SessionDay = &sessionDay
 	if vm.Notes, err = pageNotes(ctx, c, contracts.Day(sessionDay)); err != nil {
 		return nil, err
@@ -320,6 +322,13 @@ func selectRows(eod []contracts.OptionEod) ([]contracts.OptionEod, contracts.Opt
 		return cmp.Compare(a.InstrumentID, b.InstrumentID)
 	})
 	return limit(rows, maxRows), latest, nil
+}
+
+// allOffSession is true when every picked row is an off-session capture (frozen or delayed quote).
+func allOffSession(rows []contracts.OptionEod) bool {
+	return len(rows) > 0 && !slices.ContainsFunc(rows, func(r contracts.OptionEod) bool {
+		return r.SnapshotKind != "off_session"
+	})
 }
 
 // setPrice writes the session day, the price and the currency (when the row has one) of latest.
