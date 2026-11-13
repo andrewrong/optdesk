@@ -3,17 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"slices"
-	"sort"
-	"strings"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/broker/grpcbroker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs/accountcapture"
 	"github.com/andrewrong/optdesk/internal/store"
-	"github.com/pelletier/go-toml/v2"
 )
 
 const jobAccountCapture = "account_capture"
@@ -32,7 +27,6 @@ func init() {
 // values are never printed: an error names the key only.
 const (
 	envAccountSockets = "OT_ACCOUNT_SOCKETS"
-	envIbkrGateways   = "OT_IBKR_GATEWAYS"
 )
 
 // dialAccountFunc dials the account service on one socket (grpcbroker.DialAccount).
@@ -60,72 +54,8 @@ func (r downReader) Executions(context.Context) (broker.Executions, error) {
 }
 func (downReader) Close() error { return nil }
 
-// parseAccountSockets parses the comma list of label=socket path.
-func parseAccountSockets(v string) (map[string]string, error) {
-	out := map[string]string{}
-	for _, part := range strings.Split(v, ",") {
-		label, path, ok := strings.Cut(strings.TrimSpace(part), "=")
-		label, path = strings.TrimSpace(label), strings.TrimSpace(path)
-		if !ok || label == "" || path == "" || len(path) >= maxSocketPath {
-			return nil, fmt.Errorf("%s is not a comma list of label=socket path", envAccountSockets)
-		}
-		if _, dup := out[label]; dup {
-			return nil, fmt.Errorf("%s repeats a label", envAccountSockets)
-		}
-		out[label] = path
-	}
-	return out, nil
-}
-
-// accountMain reads the gateways file at path and returns the `account` field of its one required entry.
-func accountMain(path string) (string, error) {
-	list, err := accountAliases(path)
-	if err != nil {
-		return "", err
-	}
-	return list[0], nil
-}
-
-// accountAliases parses the gateways file at path once and returns main (the `account` of its one required
-// entry) first, then the `account` values of the other entries, non-empty, without repeats, in sorted order.
-func accountAliases(path string) ([]string, error) {
-	if path == "" {
-		return nil, fmt.Errorf("%s is not set", envIbkrGateways)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("%s names a file that cannot be read", envIbkrGateways)
-	}
-	var f struct {
-		Gateway []struct {
-			Account  string `toml:"account"`
-			Required bool   `toml:"required"`
-		} `toml:"gateway"`
-	}
-	if err := toml.Unmarshal(raw, &f); err != nil {
-		return nil, fmt.Errorf("%s names a file that is not valid", envIbkrGateways)
-	}
-	main, n := "", 0
-	for _, g := range f.Gateway {
-		if g.Required {
-			main, n = g.Account, n+1
-		}
-	}
-	if n != 1 || main == "" {
-		return nil, fmt.Errorf("%s needs exactly one required entry with an account", envIbkrGateways)
-	}
-	others := []string{}
-	for _, g := range f.Gateway {
-		if !g.Required && g.Account != "" && g.Account != main && !slices.Contains(others, g.Account) {
-			others = append(others, g.Account)
-		}
-	}
-	sort.Strings(others)
-	return append([]string{main}, others...), nil
-}
-
 // accountCapture builds account_capture from the lines of .env. An unset OT_ACCOUNT_SOCKETS refuses the job
-// like a file with no required entry (Decision 8). Every check comes before a socket is
+// like a missing accounts.toml (Decision 8). Every check comes before a socket is
 // dialed or the store is opened; the job is nil only for a deps without newAccountCapture; what it opens goes to extra, which withWiring closes.
 func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet) (contracts.Job, error) {
 	if f.d.newAccountCapture == nil {
@@ -143,38 +73,31 @@ func (a *app) accountCapture(ctx context.Context, f jobFactory, extra *closerSet
 	if err != nil {
 		return nil, err
 	}
-	main, err := accountMain(env[envIbkrGateways])
+	book, err := a.loadBook()
 	if err != nil {
 		return nil, err
-	}
-	if _, ok := sockets[main]; !ok {
-		return nil, fmt.Errorf("the main label of %s is not in %s", envIbkrGateways, envAccountSockets)
 	}
 	dsn := env[store.DSNEnvAccount]
 	if dsn == "" {
 		return nil, fmt.Errorf("%s is not set", store.DSNEnvAccount)
 	}
-	labels := make([]string, 0, len(sockets))
-	for l := range sockets {
-		labels = append(labels, l)
-	}
-	sort.Strings(labels)
-	readers := make(map[string]broker.AccountReader, len(sockets))
-	for _, l := range labels {
-		r, err := f.d.dialAccount(ctx, sockets[l], broker.Options{})
+	socketReaders := make([]broker.AccountReader, len(sockets))
+	for i, sock := range sockets {
+		r, err := f.d.dialAccount(ctx, sock, broker.Options{})
 		if err != nil {
-			a.log.Warn("dial account failed", "component", "ot", "job", "account_capture", "alias", l, "status", "unreachable")
+			a.log.Warn("dial account failed", "component", "ot", "job", "account_capture", "socket", i, "status", "unreachable")
 			r = downReader{err: err}
 		}
 		extra.addCloser(r)
-		readers[l] = r
+		socketReaders[i] = r
 	}
+	readers := newGatewayResolver(book, socketReaders).Readers()
 	w, err := f.d.openAccount(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open account store with %s failed", store.DSNEnvAccount)
 	}
 	extra.addCloser(w)
-	j, err := f.d.newAccountCapture(accountcapture.Config{Main: main, Readers: readers, Writer: w, Clock: f.clk})
+	j, err := f.d.newAccountCapture(accountcapture.Config{Main: book.Main(), Readers: readers, Writer: w, Clock: f.clk})
 	if err != nil {
 		return nil, fmt.Errorf("build account_capture job failed: %w", err)
 	}

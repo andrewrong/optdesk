@@ -100,7 +100,7 @@ func TestJobBuildErrorKeepsCause(t *testing.T) {
 			return err
 		}},
 		{"account_capture", func(t *testing.T, cause error) error {
-			r := newAcctRig(t, gwMainB, "a=/s/a.sock,b=/s/b.sock")
+			r := newAcctRig(t, bookMainB, "/s/a.sock,/s/b.sock")
 			r.a.deps.newAccountCapture = func(accountcapture.Config) (contracts.Job, error) { return nil, cause }
 			var extra closerSet
 			_, err := r.a.accountCapture(context.Background(), jobFactory{d: r.a.deps}, &extra)

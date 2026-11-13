@@ -250,7 +250,7 @@ type posAcctStore struct {
 }
 
 func (s posAcctStore) Positions(_ context.Context, alias, _ string) ([]store.Position, error) {
-	if alias != "A" {
+	if alias != "a" {
 		return nil, nil
 	}
 	return s.rows, nil
@@ -268,7 +268,7 @@ func TestHeldKeysOptionPositions(t *testing.T) {
 	cfg := runOnceConfig{accountDSN: "dsn"}
 	var extra closerSet
 	now := func() time.Time { return time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC) }
-	got, err := heldKeys(d, cfg, now, &extra)(context.Background())
+	got, err := heldKeys(d, cfg, []string{"a"}, now, &extra)(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func heldKeysOf(t *testing.T, rows ...store.Position) map[string]bool {
 	d := deps{openAccount: func(context.Context, string) (store.AccountStore, error) { return posAcctStore{rows: rows}, nil }}
 	var extra closerSet
 	now := func() time.Time { return time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC) }
-	got, err := heldKeys(d, runOnceConfig{accountDSN: "dsn"}, now, &extra)(context.Background())
+	got, err := heldKeys(d, runOnceConfig{accountDSN: "dsn"}, []string{"a"}, now, &extra)(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -127,7 +127,7 @@ func newHeldRig(t *testing.T, rows ...store.Position) *heldRig {
 		t.Fatal(err)
 	}
 	now := fakeClock{time.Date(2026, 11, 10, 22, 0, 0, 0, time.UTC)}
-	r.job, err = heldRows(r.inner, r.st, r.st, r.acct, now, slog.New(slog.NewTextHandler(r.log, nil)), "ds", 20, zone)
+	r.job, err = heldRows(r.inner, r.st, r.st, r.acct, []string{"A", "B"}, now, slog.New(slog.NewTextHandler(r.log, nil)), "ds", 20, zone)
 	if err != nil {
 		t.Fatal(err)
 	}
