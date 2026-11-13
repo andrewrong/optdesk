@@ -11,6 +11,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs"
 	"github.com/andrewrong/optdesk/internal/sources"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/fundkey"
 )
 
 var _ NewFundamentalsFunc = New
@@ -98,8 +99,12 @@ func (j *job) Skipped() []FundamentalsSkip {
 }
 
 // Run fetches the facts of the issuers of keys with filing days in [day - lookback_days, day] and writes
-// them in one call.
+// them in one UpsertFacts call, so a fact read differently replaces the stored one.
 func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.ExpectedKey) contracts.JobResult {
+	up, ok := j.w.(fundkey.FactUpserter)
+	if !ok {
+		return contracts.JobResult{Err: asTyped(errors.New("fundamentals: the fact writer has no UpsertFacts"), contracts.Retryable)}
+	}
 	subjects := make([]string, 0, len(keys))
 	for _, k := range keys {
 		subjects = append(subjects, k.SubjectKey)
@@ -115,7 +120,7 @@ func (j *job) Run(ctx context.Context, day contracts.Day, keys []contracts.Expec
 	if len(facts) == 0 {
 		return res
 	}
-	if err := j.w.InsertFacts(ctx, facts); err != nil {
+	if _, err := up.UpsertFacts(ctx, facts, "fundamentals:"+string(day)); err != nil {
 		res.Usable = 0
 		res.Err = asTyped(err, contracts.Retryable)
 	}
