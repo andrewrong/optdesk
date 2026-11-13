@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
     from optdesk.ibkr.model import QuoteTarget
@@ -184,6 +184,23 @@ def classify_error(code: int) -> ErrorRule:
     if code == CODE_NO_SUBSCRIPTION:
         return ErrorRule(quote_status=STATUS_NO_SUBSCRIPTION)
     return ErrorRule()
+
+
+class HoursFields(TypedDict):
+    """The keyword arguments of ResolveResult that carry the hours."""
+
+    trading_hours: str
+    liquid_hours: str
+    time_zone_id: str
+
+
+def hours_fields(details: Any) -> HoursFields:
+    """The trading hours, liquid hours and time zone of one ContractDetails, unchanged."""
+    return {
+        "trading_hours": details.tradingHours or "",
+        "liquid_hours": details.liquidHours or "",
+        "time_zone_id": details.timeZoneId or "",
+    }
 
 
 def is_informational(code: int) -> bool:

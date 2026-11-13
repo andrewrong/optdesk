@@ -417,6 +417,7 @@ class IbGateway:
             exchange=found.exchange,
             trading_class=found.tradingClass,
             multiplier=found.multiplier,
+            **spec.hours_fields(details[0]),
         )
 
     # --- account ----------------------------------------------------------
