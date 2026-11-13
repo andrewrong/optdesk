@@ -233,3 +233,15 @@ func TestFromQuoteNoMissingIsNil(t *testing.T) {
 		}
 	}
 }
+
+func TestFromAccountAndExecutionsNoAccountText(t *testing.T) {
+	t.Parallel()
+	_, err := fromAccount(&pb.AccountResponse{Generation: 1})
+	if err == nil || !strings.Contains(err.Error(), "account: answer has no account") {
+		t.Fatalf("account: got %v", err)
+	}
+	_, err = fromExecutions(&pb.ExecutionsResponse{Generation: 1, Collected: true})
+	if err == nil || !strings.Contains(err.Error(), "executions: answer has no account") {
+		t.Fatalf("executions: got %v", err)
+	}
+}

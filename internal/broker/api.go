@@ -190,7 +190,8 @@ type Position struct {
 	AvgCost  string
 }
 
-// Account is the answer of one gateway. Alias is the gateway label, never an account id.
+// Account is the answer of one gateway. Alias is the value the gateway reports (the raw account id),
+// replaced by the owner alias before a job sees it.
 // ValuesCollected and PositionsCollected are false when the gateway does not collect that part;
 // its slice is empty then, which is not the same as collected and empty.
 type Account struct {
@@ -216,7 +217,8 @@ type Execution struct {
 	CommissionCurrency string
 }
 
-// Executions is the answer of one gateway. Collected is false when the gateway does not collect
+// Executions is the answer of one gateway. Alias is the value the gateway reports, replaced by the
+// owner alias before a job sees it. Collected is false when the gateway does not collect
 // executions; Pending counts the fills left out because their commission report had not arrived.
 type Executions struct {
 	Alias      string
