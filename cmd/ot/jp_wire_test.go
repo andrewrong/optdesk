@@ -149,7 +149,7 @@ func TestJPJobDisabledWhenBrokerDown(t *testing.T) {
 	_ = r.stop(t, done)
 }
 
-func TestJPJobSlotAtTokyoAfterClose(t *testing.T) {
+func TestJPJobSlotAtTokyoOpenPlus90(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	cal := &jpCal{last: jpLastDay}
@@ -176,7 +176,7 @@ func TestJPJobSlotAtTokyoAfterClose(t *testing.T) {
 	if err != nil || len(starts) == 0 {
 		t.Fatalf("starts %v, err %v", starts, err)
 	}
-	if want := time.Date(2026, 11, 9, 6, 50, 0, 0, time.UTC); !starts[0].At.Equal(want) || starts[0].JobID != jobOptionEodJP {
+	if want := time.Date(2026, 11, 9, 1, 30, 0, 0, time.UTC); !starts[0].At.Equal(want) || starts[0].JobID != jobOptionEodJP {
 		t.Fatalf("first start %+v, want %s", starts[0], want)
 	}
 }
