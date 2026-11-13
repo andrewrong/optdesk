@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -86,7 +87,7 @@ func parseRate(raw json.RawMessage) (float64, error) {
 		}
 	}
 	v, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
 		return 0, fmt.Errorf("rate is not a number")
 	}
 	return v, nil

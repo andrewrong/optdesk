@@ -12,6 +12,8 @@
     "rate_missing": {"effectiveDate": "2026-11-09", "type": "SOFR"},
     "rate_null": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": null},
     "rate_empty": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": ""},
-    "rate_not_a_number": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "n/a"}
+    "rate_not_a_number": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "n/a"},
+    "rate_nan": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "NaN"},
+    "rate_inf": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "Inf"}
   }
 }

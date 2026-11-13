@@ -138,8 +138,8 @@ func TestTransportFailureIsRetryable(t *testing.T) {
 func TestBadRecordFailsWholeAnswer(t *testing.T) {
 	t.Parallel()
 	_, fx := loadFixture(t)
-	if len(fx.Malformed) != 7 {
-		t.Fatalf("fixture has %d malformed records, want 7", len(fx.Malformed))
+	if len(fx.Malformed) != 9 {
+		t.Fatalf("fixture has %d malformed records, want 9", len(fx.Malformed))
 	}
 	for name, bad := range fx.Malformed {
 		t.Run(name, func(t *testing.T) {
@@ -166,5 +166,15 @@ func TestNewRequiresClock(t *testing.T) {
 	t.Parallel()
 	if _, err := New(Config{}); err == nil || kindOf(t, err) != contracts.Permanent {
 		t.Fatalf("err %v", err)
+	}
+}
+
+func TestNaNRateIsPermanent(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"refRates":[{"effectiveDate":"2026-11-09","percentRate":"NaN"}]}`)
+	src, _ := serve(t, 200, body)
+	pts, err := src.Fetch(context.Background(), sources.FetchPlan{SeriesIDs: []string{"SOFR"}})
+	if err == nil || kindOf(t, err) != contracts.Permanent || pts != nil {
+		t.Fatalf("pts %v err %v; a NaN rate must fail the whole answer", pts, err)
 	}
 }
