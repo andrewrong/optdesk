@@ -76,9 +76,15 @@ func ensureRoles(ctx context.Context, t *testing.T, admin *pgx.Conn) {
 }
 
 // newDatabase creates a database named from the test name and a random suffix, the roles, and applies the
-// migrations of this issue there (0002 and 0003; neither refers to master.session_day). It drops the database in
-// t.Cleanup and returns its name.
+// migrations of this issue there (0002, 0003, 0014 and 0043; none refers to master.session_day). It drops the
+// database in t.Cleanup and returns its name.
 func newDatabase(t *testing.T) string {
+	t.Helper()
+	return newDatabaseWith(t, "0002_series.sql", "0003_ops_ledger.sql", "0014_series_unit_index_points.sql", "0043_series_registry.sql")
+}
+
+// newDatabaseWith is newDatabase with the named migration files applied in the order given.
+func newDatabaseWith(t *testing.T, files ...string) string {
 	t.Helper()
 	ctx := context.Background()
 	admin, err := pgx.Connect(ctx, connURL(t, os.Getenv("PGDATABASE"), ""))
@@ -105,7 +111,7 @@ func newDatabase(t *testing.T) string {
 			t.Errorf("drop database %s: %v", name, err)
 		}
 	})
-	for _, f := range []string{"0002_series.sql", "0003_ops_ledger.sql"} {
+	for _, f := range files {
 		applyMigration(t, connURL(t, name, ""), f)
 	}
 	for _, r := range []string{"ot_runner", "ot_w_series_fred", "ot_ro_pages"} {
@@ -196,7 +202,7 @@ func TestSentinelStoredAsNullPG(t *testing.T) {
 	t.Cleanup(func() { _ = w.Close() })
 	for i, f := range []float64{-1, math.NaN(), math.Inf(1)} {
 		p := point(t, &f, "present")
-		p.RealtimeStart = date(t, time.Date(2026, 11, 5+i, 0, 0, 0, 0, time.UTC).Format(time.DateOnly))
+		p.ObservationDate = date(t, time.Date(2026, 11, 5+i, 0, 0, 0, 0, time.UTC).Format(time.DateOnly))
 		if err := w.InsertSeriesPoints(ctx, []contracts.SeriesPoint{p}); err != nil {
 			t.Fatal(err)
 		}
@@ -242,8 +248,8 @@ func TestChecksAndRolesPG(t *testing.T) {
 	if _, err := fred.Exec(ctx, good); err != nil {
 		t.Fatalf("insert as ot_w_series_fred: %v", err)
 	}
-	// ot_w_series_fred: INSERT on series_point, and REFERENCES and SELECT on ops.capture_run only.
-	mustFail(t, fred, `UPDATE obs.series_point SET status = 'x'`)
+	// ot_w_series_fred: INSERT and column UPDATE on series_point (never the key), and REFERENCES and SELECT on ops.capture_run only.
+	mustFail(t, fred, `UPDATE obs.series_point SET series_id = 'x'`)
 	mustFail(t, fred, `DELETE FROM obs.series_point`)
 	mustFail(t, fred, `INSERT INTO ops.capture_run (run_id, session_day, dataset_id, subject_key, status) VALUES ('r', '2026-11-05', 'd', 's', 'done')`)
 	mustFail(t, fred, `UPDATE ops.capture_run SET status = 'done'`)

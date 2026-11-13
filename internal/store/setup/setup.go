@@ -26,6 +26,7 @@ const Database = "optdesk"
 
 // The roles. Their grants on tables are in migrations/0002_series.sql to 0005_session_day_loader.sql,
 // which goose runs as ot_owner; later issues add the other roles with their tables.
+// ot_w_series_fred has INSERT and column UPDATE on obs.series_* since migrations/0043_series_registry.sql.
 const (
 	roleOwner      = "ot_owner"
 	roleRunner     = "ot_runner"
