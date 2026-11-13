@@ -207,14 +207,26 @@ func weatherSentence(r reading) (string, bool) {
 	return weatherMissing, false
 }
 
-// termSentence is the sentence of the term block; a missing or bad ratio is a fixed text.
-func termSentence(r reading) string {
-	if v, ok := r.usable(); ok {
-		if text, err := shiftRound(v, 0, 2); err == nil {
-			return termSentenceFmt + text
-		}
+// termSentence is the sentence of the term block. The stored ratio is named only when its
+// data_day is the date of the newest VIX and VXV points; a usable ratio of another day or
+// without a day gives a fixed text naming the day of the points; a missing or bad ratio
+// is a fixed text.
+func termSentence(r reading, vixDay, vxvDay time.Time) string {
+	v, ok := r.usable()
+	if !ok {
+		return termSentenceNone
 	}
-	return termSentenceNone
+	if vixDay.IsZero() {
+		return termSentenceNone
+	}
+	if r.dataDay.IsZero() || !r.dataDay.Equal(vixDay) || !vixDay.Equal(vxvDay) {
+		return termSentenceStale + vixDay.Format("01-02") + "."
+	}
+	text, err := shiftRound(v, 0, 2)
+	if err != nil {
+		return termSentenceNone
+	}
+	return termSentenceFmt + text
 }
 
 type indexRow struct {

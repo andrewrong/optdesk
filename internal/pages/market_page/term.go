@@ -41,8 +41,9 @@ var termSeries = []string{seriesVIX, seriesVXV}
 // buildTerm returns the term block (one Gap when all four cells are Gaps), the number of
 // cells that are Gaps and fills days with the newest stored point of each series.
 func buildTerm(ctx context.Context, c Config, r store.SeriesReader, d time.Time, ratio reading, days dataDays) (any, int, error) {
-	t := term{Title: termTitle, Sentence: termSentence(ratio), Points: []termPoint{}}
+	t := term{Title: termTitle, Points: []termPoint{}}
 	gaps := 0
+	var newest []time.Time
 	for i, id := range termSeries {
 		rows, err := r.SeriesPoints(ctx, id, contracts.Day(d.AddDate(0, 0, -termLookbackDays).Format(dayLayout)), contracts.Day(d.Format(dayLayout)))
 		if err != nil {
@@ -58,9 +59,13 @@ func buildTerm(ctx context.Context, c Config, r store.SeriesReader, d time.Time,
 		}
 		if len(pts) > 0 {
 			days.add(id, pts[0].date)
+			newest = append(newest, pts[0].date)
+		} else {
+			newest = append(newest, time.Time{})
 		}
 		t.Points = append(t.Points, tp)
 	}
+	t.Sentence = termSentence(ratio, newest[0], newest[1])
 	if gaps == 2*len(termSeries) {
 		return mkGap(reasonNoData, termNoPoint), gaps, nil
 	}
