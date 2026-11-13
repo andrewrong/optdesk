@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/andrewrong/optdesk/internal/accounts"
 	"github.com/andrewrong/optdesk/internal/accounts/toml"
 )
 
@@ -119,5 +120,97 @@ func TestLoadRefusesATableAtItsLine(t *testing.T) {
 	_, err := toml.Load(write(t, "mine = \""+id("0001")+"\"\n\n[extra]\nmain = \"mine\"\n"))
 	if err == nil || !strings.Contains(err.Error(), "line 3:") {
 		t.Fatalf("error %v does not name line 3", err)
+	}
+}
+
+func loadStatement(t *testing.T, tail string) ([]string, error) {
+	t.Helper()
+	body := "mine = \"" + id("0001") + "\"\nwife = \"" + id("0002") + "\"\ndaughter = \"" + id("0003") + "\"\nmain = \"mine\"\n" + tail
+	bk, err := toml.Load(write(t, body))
+	if err != nil {
+		return nil, err
+	}
+	s, ok := bk.(accounts.Sourced)
+	if !ok {
+		t.Fatal("book is not Sourced")
+	}
+	return s.Statement(), nil
+}
+
+func TestStatementLineIsRead(t *testing.T) {
+	t.Parallel()
+	got, err := loadStatement(t, "statement = [\"wife\", \"daughter\"]\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, ",") != "wife,daughter" {
+		t.Fatalf("Statement = %v", got)
+	}
+	got[0] = "changed"
+	bk, _ := toml.Load(write(t, "mine = \""+id("0001")+"\"\nwife = \""+id("0002")+"\"\nmain = \"mine\"\nstatement = [\"wife\"]\n"))
+	st := bk.(accounts.Sourced).Statement()
+	st[0] = "changed"
+	if bk.(accounts.Sourced).Statement()[0] != "wife" {
+		t.Fatal("changing the returned slice changed the book")
+	}
+}
+
+func TestStatementAbsentIsEmpty(t *testing.T) {
+	t.Parallel()
+	got, err := loadStatement(t, "")
+	if err != nil || len(got) != 0 {
+		t.Fatalf("Statement = %v, %v", got, err)
+	}
+}
+
+func statementRefused(t *testing.T, tail, line string) {
+	t.Helper()
+	_, err := loadStatement(t, tail)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	if !strings.Contains(err.Error(), line+":") {
+		t.Fatalf("error %q lacks %q", err, line)
+	}
+}
+
+func TestStatementUnknownAliasRefused(t *testing.T) {
+	t.Parallel()
+	statementRefused(t, "statement = [\"nobody\"]\n", "line 5")
+}
+
+func TestStatementRepeatedAliasRefused(t *testing.T) {
+	t.Parallel()
+	statementRefused(t, "statement = [\"wife\", \"wife\"]\n", "line 5")
+}
+
+func TestStatementMainRefused(t *testing.T) {
+	t.Parallel()
+	statementRefused(t, "statement = [\"mine\"]\n", "line 5")
+}
+
+func TestStatementNotAnArrayRefused(t *testing.T) {
+	t.Parallel()
+	statementRefused(t, "statement = \"wife\"\n", "line 5")
+	statementRefused(t, "statement = [1]\n", "line 5")
+}
+
+func TestStatementTwiceRefused(t *testing.T) {
+	t.Parallel()
+	statementRefused(t, "statement = [\"wife\"]\nstatement = [\"daughter\"]\n", "line 6")
+}
+
+func TestStatementRefusalNamesNoId(t *testing.T) {
+	t.Parallel()
+	for _, tail := range []string{"statement = [\"nobody\"]\n", "statement = [\"mine\"]\n", "statement = [\"wife\",\"wife\"]\n", "statement = 1\n"} {
+		_, err := loadStatement(t, tail)
+		if err == nil {
+			t.Fatal("want an error")
+		}
+		for _, n := range []string{"0001", "0002", "0003"} {
+			if strings.Contains(err.Error(), id(n)) {
+				t.Fatalf("error names an id: %q", err)
+			}
+		}
 	}
 }
