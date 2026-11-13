@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/compute/optionfigapi"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/pages"
 	"github.com/andrewrong/optdesk/internal/store"
@@ -15,6 +16,7 @@ type Config struct {
 	RunID, BuildID, Scope string
 	Zone                  *time.Location             // generated_at is written in it; nil is an error of Build
 	Candidates            store.CandidateReader      // nil gives the gap no_reader
+	Figures               optionfigapi.OptionFigures // the ITM and excess figures of the short-put rows; nil gives the gap no_reader
 	Names                 store.InstrumentNameReader // the ticker source of the display name; nil gives the stored issuer text
 }
 

@@ -87,7 +87,10 @@ func dayCellPtr(p *contracts.Day) any {
 }
 
 func earningsCell(c store.Candidate) any {
-	cell := dayCellPtr(c.NextEarnings)
+	if c.NextEarnings == nil {
+		return earningsGap(c.EarningsState)
+	}
+	cell := earningsDateCell(*c.NextEarnings)
 	if vc, ok := cell.(valueCell); ok && c.EarningsState != "" {
 		vc.Badges = append(vc.Badges, c.EarningsState)
 		return vc
@@ -181,6 +184,8 @@ type column struct {
 type colDef struct {
 	column
 	cell func(store.Candidate) any
+	// cellAt, when set, is used instead of cell: it reads the cell by the row's position in the table.
+	cellAt func(int, store.Candidate) any
 }
 
 func col(id, label, align string, cell func(store.Candidate) any) colDef {
@@ -207,6 +212,8 @@ var (
 	colBreakEven = col("break_even", "Break-even", "right", func(c store.Candidate) any { return numCell(c.BreakEven) })
 	colDelta     = col("delta", "Delta", "right", func(c store.Candidate) any { return numCellPtr(c.Delta) })
 	colIV        = col("iv", "IV", "right", func(c store.Candidate) any { return numCellPtr(c.Iv) })
+	colITM       = colDef{column: column{ID: itmID, Label: "ITM probability", Align: "right", Hint: ptr(itmHint)}}
+	colExcess    = colDef{column: column{ID: excessID, Label: "Vs cash", Align: "right"}}
 	colMarks     = col("marks", "Marks", "left", marksCell)
 	colFit       = col("fit", "Account cash", "left", fitCell)
 	colEarnings  = col("next_earnings", "Next earnings", "left", earningsCell)
@@ -220,3 +227,5 @@ var (
 )
 
 var otherColumns = []colDef{colCompany, colContract, colAlias, colStatus, colReasons}
+
+func ptr(s string) *string { return &s }
