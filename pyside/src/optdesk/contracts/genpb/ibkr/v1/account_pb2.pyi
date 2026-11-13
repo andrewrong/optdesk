@@ -49,7 +49,7 @@ class AccountResponse(_message.Message):
     VALUES_COLLECTED_FIELD_NUMBER: _builtins.int
     POSITIONS_COLLECTED_FIELD_NUMBER: _builtins.int
     account: _builtins.str
-    """account is the alias of the gateway's entry, never the account id."""
+    """account is the IBKR account id the gateway reports."""
     generation: _builtins.int
     """generation is the session generation of PingResponse, so answers of two
     sessions can be told apart.
@@ -179,7 +179,7 @@ class ExecutionsResponse(_message.Message):
     PENDING_FIELD_NUMBER: _builtins.int
     EXECUTIONS_FIELD_NUMBER: _builtins.int
     account: _builtins.str
-    """account is the alias of the gateway's entry, never the account id."""
+    """account is the IBKR account id the gateway reports."""
     generation: _builtins.int
     """generation is the session generation of PingResponse."""
     collected: _builtins.bool

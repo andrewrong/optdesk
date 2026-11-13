@@ -61,7 +61,7 @@ func (*AccountRequest) Descriptor() ([]byte, []int) {
 // AccountResponse holds the summary values and the positions of one account.
 type AccountResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// account is the alias of the gateway's entry, never the account id.
+	// account is the IBKR account id the gateway reports.
 	Account string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	// generation is the session generation of PingResponse, so answers of two
 	// sessions can be told apart.
@@ -320,7 +320,7 @@ func (*ExecutionsRequest) Descriptor() ([]byte, []int) {
 // ExecutionsResponse holds the complete executions of one account.
 type ExecutionsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// account is the alias of the gateway's entry, never the account id.
+	// account is the IBKR account id the gateway reports.
 	Account string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	// generation is the session generation of PingResponse.
 	Generation int64 `protobuf:"varint,2,opt,name=generation,proto3" json:"generation,omitempty"`

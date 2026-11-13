@@ -21,7 +21,7 @@ message AccountRequest {}
 
 // AccountResponse holds the summary values and the positions of one account.
 message AccountResponse {
-  // account is the alias of the gateway's entry, never the account id.
+  // account is the IBKR account id the gateway reports.
   string account = 1;
   // generation is the session generation of PingResponse, so answers of two
   // sessions can be told apart.
@@ -63,7 +63,7 @@ message ExecutionsRequest {}
 
 // ExecutionsResponse holds the complete executions of one account.
 message ExecutionsResponse {
-  // account is the alias of the gateway's entry, never the account id.
+  // account is the IBKR account id the gateway reports.
   string account = 1;
   // generation is the session generation of PingResponse.
   int64 generation = 2;
