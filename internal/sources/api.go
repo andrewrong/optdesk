@@ -87,10 +87,9 @@ type NewFlexFunc func(FlexConfig) (FlexSource, error)
 // FetchedAt is left zero for the caller. The errors are typed as those of FlexSource.Fetch.
 type ParseFlexFunc func(r io.Reader) (FlexReport, error)
 
-// FlexFile is the content of $OT_HOME/flex.toml: the logins and the account allow-list.
+// FlexFile is the content of $OT_HOME/flex.toml: the logins.
 type FlexFile struct {
-	Logins   []FlexLogin
-	Accounts []FlexAccount
+	Logins []FlexLogin
 }
 
 // FlexLogin is one [[login]] entry. TokenEnv is the NAME of the variable that holds the token.
@@ -101,12 +100,6 @@ type FlexLogin struct {
 	TokenEnv     string
 	TradeQueries []string
 	Required     bool
-}
-
-// FlexAccount is one [[account]] entry. AccountEnv is the NAME of the variable that holds the account number.
-type FlexAccount struct {
-	Alias      string
-	AccountEnv string
 }
 
 // LoadFlexFileFunc reads and validates the file at path. Errors wrap ErrFlexNotConfigured (no file) or
