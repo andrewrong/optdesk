@@ -36,8 +36,8 @@ const (
 // its rate (numeric equality), source or status differs; received_at and the key are never set.
 const upsertFxRateSQL = `INSERT INTO obs.fx_rate (pair, rate_day, rate, source, received_at, status, updated_at, written_by) ` +
 	`VALUES ($1, $2::date, $3::numeric, $4, $5, 'ok', now(), $6) ON CONFLICT (pair, rate_day) DO UPDATE SET ` +
-	`rate = EXCLUDED.rate, source = EXCLUDED.source, status = 'ok', updated_at = EXCLUDED.updated_at, ` +
-	`written_by = EXCLUDED.written_by WHERE (obs.fx_rate.rate, obs.fx_rate.source, obs.fx_rate.status) ` +
+	`rate = EXCLUDED.rate, source = EXCLUDED.source, status = 'ok', updated_at = now(), ` +
+	`written_by = $6 WHERE (obs.fx_rate.rate, obs.fx_rate.source, obs.fx_rate.status) ` +
 	`IS DISTINCT FROM (EXCLUDED.rate, EXCLUDED.source, EXCLUDED.status) RETURNING pair`
 
 // execer runs one statement inside a transaction and reports the rows it added.
