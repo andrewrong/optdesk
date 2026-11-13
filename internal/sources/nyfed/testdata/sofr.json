@@ -1,0 +1,19 @@
+{
+  "_note": "Hand-written from the reading of the NY Fed answer (api/rates/secured/sofr/search.json), not a recorded response. Friday 2026-11-06 and Monday 2026-11-09 are present, the weekend is a missing day.",
+  "refRates": [
+    {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": 4.05, "volumeInBillions": 3100},
+    {"effectiveDate": "2026-11-06", "type": "SOFR", "percentRate": 4.1, "volumeInBillions": 3050},
+    {"effectiveDate": "2026-11-05", "type": "SOFR", "percentRate": 4.12, "volumeInBillions": 3000}
+  ],
+  "malformedRecords": {
+    "date_missing": {"type": "SOFR", "percentRate": 4.05},
+    "date_empty": {"effectiveDate": "", "type": "SOFR", "percentRate": 4.05},
+    "date_not_a_date": {"effectiveDate": "yesterday", "type": "SOFR", "percentRate": 4.05},
+    "rate_missing": {"effectiveDate": "2026-11-09", "type": "SOFR"},
+    "rate_null": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": null},
+    "rate_empty": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": ""},
+    "rate_not_a_number": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "n/a"},
+    "rate_nan": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "NaN"},
+    "rate_inf": {"effectiveDate": "2026-11-09", "type": "SOFR", "percentRate": "Inf"}
+  }
+}
