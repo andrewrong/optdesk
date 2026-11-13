@@ -2279,3 +2279,48 @@ source_hash = "pending-recompute"
 agreed_on = "2026-11-13"
 agreed_in = "docs/design/report-global-assets.md"
 history = ["2026-11-13 v1: registered by docs/design/report-global-assets.md Decisions 5, 8, 9 and 14 (entry 6)."]
+
+[[figure]]
+id = "market.tech_state"
+version = 1
+title_zh = "大盘状态：科技（纳指）相对大盘（标普 500）的近 3 个月状态"
+pages = ["market_summary.card"]
+formula = """
+A description of the last 3 months, trial and not a forecast. On the common days of NDX and SPX \
+(days on which both have a close, newest first; c0 is the newest), for n = 21 and n = 63 sessions: \
+ret_n(X) = (c0 / c_n - 1) * 100 of NDX and of SPX, exact rationals, no float; gap_n = ret_n(NDX) - \
+ret_n(SPX) in percentage points. Raw state of a day, with the trial constants Band 1.00 and Hard 5.00 \
+percentage points: LEADING when gap_21 >= Band and gap_63 >= Band; LAGGING HARD when gap_21 <= -Band \
+and gap_63 <= -Hard; LAGGING when gap_21 <= -Band and gap_63 <= -Band (and not hard); otherwise \
+IN LINE. Two closes to change: the published state of c0 is a fold over the raw states of the newest \
+up to 10 common days (trial) that have 64 closes behind them, oldest first; it starts as the first \
+raw state and takes a raw state only when that raw state equals the previous day's raw state. Band \
+1.00, Hard 5.00 and the fold of 10 sessions are trial values, not backtested; the state is decided on \
+the exact values, texts are rounded half-even to 2 places for the stored evidence only. The state is \
+not a forecast."""
+inputs = """
+The trades closes of NDX and SPX (instruments of type index, obs.price_bar bars of kind trades), as \
+stored, from 140 calendar days before the as-of day to the as-of day; only days on which both have a \
+close count."""
+period_date = "The data day: the newest common day (c0) of the NDX and SPX trades closes, at most 5 calendar days before the as-of day."
+currency = """
+No currency: the value is the rank of the state as decimal text, 1 (LEADING), 0 (IN LINE), -1 \
+(LAGGING) or -2 (LAGGING HARD), and the state name is in the state tag (LEADING, IN LINE, LAGGING, \
+LAGGING HARD). The evidence tags are percent points rounded half-even to 2 places, signed."""
+excludes = """
+Any forecast; adjusted closes (index levels exclude dividends, a price return, not adjusted); sector \
+funds (XLK, SMH, the rank among sectors), QQQ and RSP; a market regime, story heat, a position size \
+or an order."""
+gap_text = """
+Never a made-up state, never a zero; the reading is trial and not a forecast. Four reasons: no close \
+at all for NDX or SPX, no_input (a missing_input reading with no value); fewer than 64 common days, \
+short_history; the newest common day more than 5 calendar days before the as-of day, stale_input; a \
+close that is not a positive decimal, bad_input. No instrument for NDX or SPX stores nothing and the \
+key is retried."""
+implemented_by = [
+  "internal/compute/techstate.Classify",
+]
+source_hash = "pending-recompute"
+agreed_on = "2026-11-13"
+agreed_in = "docs/design/market-state-tech.md"
+history = ["2026-11-13 v1: registered by docs/design/market-state-tech.md Decisions 3 to 5, 7 and 14 (entry 4); Band, Hard and the fold are trial."]
