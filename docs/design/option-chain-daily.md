@@ -117,7 +117,6 @@ Acceptance:
 
 ## Doubts
 
-
 1. `OptionEod` now returns one capture per day and instrument; a future reader that needs every capture (a history of captures) needs a new read. None in the Today row does.
 2. `Permanent` for a past-day refusal makes a reconcile of past gaps log one failure per day; `NoValue` would hide it. Chosen `Permanent` because the owner asked for a named refusal.
 3. Live quotes (type 1) after the close, if the broker ever gives them, would rank as session; the 01:06Z probe saw frozen ones.
