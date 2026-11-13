@@ -40,14 +40,14 @@ func (b *book) Aliases() []string              { return append([]string(nil), b.
 func Load(path string) (accounts.Book, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("accounts: read %s: %w", path, err)
+		return nil, fmt.Errorf("accounts: line 1: cannot read %s: %w", path, err)
 	}
 	var (
-		p        unstable.Parser
-		b        = &book{byID: map[string]string{}}
-		seen     = map[string]bool{}
-		mainName string
-		mainLine int
+		p         unstable.Parser
+		b         = &book{byID: map[string]string{}}
+		aliasSeen = map[string]bool{}
+		mainName  string
+		mainLine  int
 	)
 	p.Reset(data)
 	lineOf := func(raw unstable.Range) int { return lineAt(data, int(raw.Offset)) }
@@ -55,7 +55,7 @@ func Load(path string) (accounts.Book, error) {
 		n := p.Expression()
 		if n.Kind != unstable.KeyValue {
 			return nil, fmt.Errorf("accounts: line %d: only `alias = \"U-number\"` lines are allowed",
-				lineOf(p.Range(n.Data)))
+				headerLine(&p, n, data))
 		}
 		it := n.Key()
 		it.Next()
@@ -80,7 +80,7 @@ func Load(path string) (accounts.Book, error) {
 		if !aliasShape.MatchString(key) {
 			return nil, fmt.Errorf("accounts: line %d: the alias is not %s", line, aliasShape)
 		}
-		if seen[key] {
+		if aliasSeen[key] {
 			return nil, fmt.Errorf("accounts: line %d: the alias is repeated", line)
 		}
 		if !idShape.MatchString(val) {
@@ -89,7 +89,7 @@ func Load(path string) (accounts.Book, error) {
 		if _, dup := b.byID[val]; dup {
 			return nil, fmt.Errorf("accounts: line %d: the id is already given to another alias", line)
 		}
-		seen[key] = true
+		aliasSeen[key] = true
 		b.byID[val] = key
 		b.aliases = append(b.aliases, key)
 	}
@@ -103,7 +103,7 @@ func Load(path string) (accounts.Book, error) {
 	if mainLine == 0 {
 		return nil, errors.New(`accounts: line 1: the line main = "<alias>" is missing`)
 	}
-	if !seen[mainName] {
+	if !aliasSeen[mainName] {
 		return nil, fmt.Errorf("accounts: line %d: main names no alias of the file", mainLine)
 	}
 	b.main = mainName
@@ -128,4 +128,12 @@ func offsetOf(data, sub []byte) int {
 		return 0
 	}
 	return off
+}
+
+// headerLine returns the line of a table header; the node has no Data of its own, so its first key
+// tells where it is.
+func headerLine(p *unstable.Parser, n *unstable.Node, data []byte) int {
+	it := n.Key()
+	it.Next()
+	return lineAt(data, int(p.Range(it.Node().Data).Offset))
 }

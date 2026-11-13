@@ -88,3 +88,19 @@ func TestLoadRefusesMissingFile(t *testing.T) {
 		t.Fatal("want an error")
 	}
 }
+
+func TestLoadRefusesMissingFileNamesALine(t *testing.T) {
+	t.Parallel()
+	_, err := toml.Load(filepath.Join(t.TempDir(), "accounts.toml"))
+	if err == nil || !strings.Contains(err.Error(), "line ") {
+		t.Fatalf("missing-file error %v names no line number", err)
+	}
+}
+
+func TestLoadRefusesATableAtItsLine(t *testing.T) {
+	t.Parallel()
+	_, err := toml.Load(write(t, "mine = \""+id("0001")+"\"\n\n[extra]\nmain = \"mine\"\n"))
+	if err == nil || !strings.Contains(err.Error(), "line 3:") {
+		t.Fatalf("error %v does not name line 3", err)
+	}
+}
