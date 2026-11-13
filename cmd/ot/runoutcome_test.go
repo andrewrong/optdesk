@@ -88,7 +88,7 @@ func TestRunOnceNothingCapturedStatus(t *testing.T) {
 	a.deps.newFredSeries = func(sources.Source, store.SeriesWriter, clock.Clock) (contracts.Job, error) {
 		return planJob{id: "fred_series", keys: []contracts.ExpectedKey{k}}, nil
 	}
-	if err := runOnce(a, []string{"--day", "2026-03-05"}); err != nil {
+	if err := runWired(a, []string{"--day", "2026-03-05"}); err != nil {
 		t.Fatalf("exit must stay 0: %v", err)
 	}
 	if !strings.Contains(out.String(), "run-once 2026-03-05 status=nothing_captured captured=0 keys=1\n") ||
@@ -105,7 +105,7 @@ func TestRunOnceLeftOutLine(t *testing.T) {
 	var opened, closed atomic.Int32
 	var got contracts.Day
 	runOnceFakes(a, &opened, &closed, &got)
-	if err := runOnce(a, []string{"--day", "2026-03-05"}); err != nil {
+	if err := runWired(a, []string{"--day", "2026-03-05"}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "job=earnings_refresh day=2026-03-05 outcome=left_out reason=ALPHA_VANTAGE_API_KEY is not set\n") {

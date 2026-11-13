@@ -129,7 +129,7 @@ func (l *ledgerRig) jobIDs() []string {
 
 func (l *ledgerRig) run(t *testing.T) {
 	t.Helper()
-	if err := runOnce(l.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(l.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 }

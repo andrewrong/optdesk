@@ -115,7 +115,7 @@ func rowsOf(m *memEvents, market string) []contracts.EarningsDate {
 func TestJPSourceWired(t *testing.T) {
 	t.Parallel()
 	r, src, _ := jqRig(t, jqEnv())
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if r.earnSrcs["JP"] != sources.EarningsSource(src) || r.earnSrcs["US"] == nil {
@@ -137,7 +137,7 @@ func TestJPSourceWired(t *testing.T) {
 func TestJPSourceFollowsTheStoredList(t *testing.T) {
 	t.Parallel()
 	r, src, _ := jqRig(t, jqEnv())
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	j := earningsJob(t, r)
@@ -161,7 +161,7 @@ func TestJPSourceFollowsTheStoredList(t *testing.T) {
 func TestMissingJQuantsKeyNamedLine(t *testing.T) {
 	t.Parallel()
 	r, src, mem := jqRig(t, fullEnv)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := r.earnSrcs["JP"]; ok || r.earnSrcs["US"] == nil {
@@ -185,7 +185,7 @@ func TestJQuantsFailureOnlyJPRows(t *testing.T) {
 	t.Parallel()
 	r, src, mem := jqRig(t, jqEnv())
 	src.err = jqErr{}
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	planDay(t, earningsJob(t, r), "2026-11-09")
@@ -202,7 +202,7 @@ func TestJQuantsFailureOnlyJPRows(t *testing.T) {
 func TestJQuantsOneCallPerDay(t *testing.T) {
 	t.Parallel()
 	r, src, _ := jqRig(t, jqEnv())
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	j := earningsJob(t, r)

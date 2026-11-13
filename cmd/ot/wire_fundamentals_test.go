@@ -79,7 +79,7 @@ func TestFundamentalsLeftOutUnset(t *testing.T) {
 	} {
 		r := newRig(t, env)
 		rec := withFundamentalsFakes(&r.a.deps)
-		if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+		if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		if got := jobIDs(r.jobs); slices.Contains(got, jobFundamentals) {
@@ -104,7 +104,7 @@ func TestFundamentalsJobBuiltWhenSet(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv+"OT_PG_DSN_FUNDAMENTAL=fund-dsn\nSEC_USER_AGENT=agent mail\n")
 	rec := withFundamentalsFakes(&r.a.deps)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	got := jobIDs(r.jobs)

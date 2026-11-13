@@ -87,7 +87,7 @@ func TestJPJobWiredAfterUS(t *testing.T) {
 	t.Parallel()
 	r := newRig(t, fullEnv)
 	withCal(r, &jpCal{last: jpLastDay})
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"fred_series", "option_eod", "option_eod_jp", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
@@ -102,7 +102,7 @@ func TestJPJobLeftOutWithoutXTKS(t *testing.T) {
 	c := &jpCal{last: jpLastDay}
 	c.fail.Store(true)
 	withCal(r, c)
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"fred_series", "option_eod", "quote_snapshot", "compute_figures", "calendar_refresh", "earnings_refresh"}
@@ -158,7 +158,7 @@ func TestJPJobSlotFromItsSchedule(t *testing.T) {
 	r.a.deps.newOptionEodJP = optioneod.NewJP
 	r.a.deps.newOptionEodJPWatch = nil
 	r.a.deps.newClock = func() clock.Clock { return fakeClock{time.Date(2026, 11, 9, 1, 0, 0, 0, time.UTC)} }
-	if err := runOnce(r.a, []string{"--day", "2026-11-09"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-09"}); err != nil {
 		t.Fatal(err)
 	}
 	var slots []runner.Slot
@@ -203,10 +203,10 @@ func TestRuleStaysEmptyWithJPJob(t *testing.T) {
 	withCal(r, &jpCal{last: jpLastDay})
 	r.rule = runner.WindowRule{CalendarID: "unset"}
 	r.backRule = runner.WindowRule{CalendarID: "unset"}
-	if err := runOnce(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := runWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := backfill(r.a, []string{"--day", "2026-11-04"}); err != nil {
+	if err := backfillWired(r.a, []string{"--day", "2026-11-04"}); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Contains(jobIDs(r.jobs), jobOptionEodJP) {
