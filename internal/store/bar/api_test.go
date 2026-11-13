@@ -193,3 +193,62 @@ func TestLatestFxRateNotFound(t *testing.T) {
 		t.Fatalf("later day = %+v, %v, %v; want the newest rate on or before", got, ok, err)
 	}
 }
+
+// upsertFake keeps the promises of bar.FxRateUpserter: a differing row replaces
+// the stored one, an equal row changes nothing, no old value is kept.
+type upsertFake struct {
+	rates     map[string]string
+	writtenBy string
+}
+
+var (
+	_ bar.FxRateWriter   = (*upsertFake)(nil)
+	_ bar.FxRateUpserter = (*upsertFake)(nil)
+)
+
+func (f *upsertFake) InsertFxRates(context.Context, []contracts.FxRate) (int, error) { return 0, nil }
+
+func (f *upsertFake) UpsertFxRates(_ context.Context, rows []contracts.FxRate, writtenBy string) (bar.FxWriteCount, error) {
+	var c bar.FxWriteCount
+	if len(rows) == 0 {
+		return c, nil
+	}
+	if f.rates == nil {
+		f.rates = map[string]string{}
+	}
+	f.writtenBy = writtenBy
+	for _, r := range rows {
+		k := r.Pair + r.RateDay.Format("2006-01-02")
+		if old, ok := f.rates[k]; ok && old == r.Rate {
+			c.Unchanged++
+			continue
+		}
+		f.rates[k] = r.Rate
+		c.Written++
+	}
+	return c, nil
+}
+
+func TestFxRateUpserterContract(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	f := &upsertFake{}
+	var w bar.FxRateWriter = f
+	var u bar.FxRateUpserter = f
+	if w == nil {
+		t.Fatal("fake does not satisfy FxRateWriter")
+	}
+	if c, err := u.UpsertFxRates(ctx, nil, "job"); err != nil || c != (bar.FxWriteCount{}) {
+		t.Fatalf("empty list = %+v, %v; want zero counts", c, err)
+	}
+	a := contracts.FxRate{Pair: "USDJPY", RateDay: day(t, "2026-01-05"), Rate: "157.1"}
+	if c, err := u.UpsertFxRates(ctx, []contracts.FxRate{a}, "fx_refresh 2026-01-05"); err != nil || c.Written != 1 || c.Unchanged != 0 {
+		t.Fatalf("first upsert = %+v, %v; want 1 written", c, err)
+	}
+	b := a
+	b.Rate = "158.0"
+	c, err := u.UpsertFxRates(ctx, []contracts.FxRate{a, b}, "x")
+	if err != nil || c.Written != 1 || c.Unchanged != 1 {
+		t.Fatalf("second upsert = %+v, %v; want 1 written, 1 unchanged", c, err)
+	}
+}
