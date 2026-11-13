@@ -2,10 +2,12 @@ package ivhistory
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/jobs"
 )
 
 func fixed(bars ...broker.Bar) *fakeHistory {
@@ -137,12 +139,70 @@ func TestLateBarReplacesMissingMarker(t *testing.T) {
 	if res.Usable != 1 || r.Rev != 2 || string(r.State) != "ok" {
 		t.Fatalf("result %+v reading %+v", res, r)
 	}
-	marker := false
-	for _, s := range st.rows {
-		marker = marker || (s.Day.Format(dayLayout) == "2026-11-09" && s.Rev == 1 && string(s.State) == "missing_input")
+	if len(st.rows) != 2 {
+		t.Fatalf("the marker is replaced, rows: %+v", st.rows)
 	}
-	if !marker {
-		t.Fatalf("missing marker of rev 1 not stored: %+v", st.rows)
+}
+
+func TestRunWithoutUpsertIsRetryable(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j, err := New(fixed(bar("2026-11-09", "0.28")), st, plainWriter{st}, []jobs.WatchEntry{entry("AAA")}, text, fakeClock{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := j.Run(context.Background(), runDay, keysOf("AAA"))
+	if res.Err == nil || res.Err.Kind() != contracts.Retryable || !strings.Contains(res.Err.Error(), "UpsertReadings") || len(st.rows) != 0 {
+		t.Fatalf("result %+v rows %d", res, len(st.rows))
+	}
+}
+
+func TestStoredMissingOfDayIsReplacedInUpsert(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	mk := contracts.ReadingRecord{Name: "market.iv_ibkr", SubjectKind: "underlying", Subject: "AAA", Day: day("2026-11-09"), State: "missing_input", Rev: 1}
+	st.rows = []contracts.ReadingRecord{storedOk("AAA", "2026-11-06", "0.30"), mk}
+	j := build(t, fixed(bar("2026-11-06", "0.30"), bar("2026-11-09", "0.28")), st, "AAA")
+	res := j.Run(context.Background(), runDay, keysOf("AAA"))
+	if res.Err != nil || res.Usable != 1 || len(st.calls) != 1 || len(st.calls[0]) != 1 {
+		t.Fatalf("result %+v calls %+v", res, st.calls)
+	}
+	if r := st.calls[0][0]; r.Day.Format(dayLayout) != "2026-11-09" || string(r.State) != "ok" || r.Rev != 2 {
+		t.Fatalf("sent %+v", r)
+	}
+}
+
+func TestStoredOkIsNotSentAgain(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	st.rows = []contracts.ReadingRecord{storedOk("AAA", "2026-11-06", "0.30"), storedOk("AAA", "2026-11-09", "0.28")}
+	j := build(t, fixed(bar("2026-11-06", "0.30"), bar("2026-11-09", "0.28")), st, "AAA")
+	res := j.Run(context.Background(), runDay, keysOf("AAA"))
+	if res.Err != nil || res.Usable != 1 || len(st.calls) != 0 {
+		t.Fatalf("result %+v calls %+v", res, st.calls)
+	}
+}
+
+func TestRunWritesAllKeysInOneCall(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j := build(t, fixed(bar("2026-11-09", "0.28")), st, "AAA", "BBB")
+	res := j.Run(context.Background(), runDay, keysOf("AAA", "BBB"))
+	if res.Err != nil || res.Usable != 2 || len(st.calls) != 1 || len(st.calls[0]) != 2 {
+		t.Fatalf("result %+v calls %+v", res, st.calls)
+	}
+}
+
+func TestRunRepeatedBarDayKeepsLastBar(t *testing.T) {
+	t.Parallel()
+	st := &memReadings{}
+	j := build(t, fixed(bar("2026-11-09", "0.20"), bar("2026-11-09", "0.28")), st, "AAA")
+	res := j.Run(context.Background(), runDay, keysOf("AAA"))
+	if res.Err != nil || res.Usable != 1 || len(st.calls) != 1 || len(st.calls[0]) != 1 {
+		t.Fatalf("result %+v calls %+v", res, st.calls)
+	}
+	if r := st.calls[0][0]; r.Value == nil || *r.Value != "0.28" {
+		t.Fatalf("sent %+v", r)
 	}
 }
 

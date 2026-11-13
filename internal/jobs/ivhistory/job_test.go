@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/broker"
 	"github.com/andrewrong/optdesk/internal/contracts"
 	"github.com/andrewrong/optdesk/internal/jobs"
+	"github.com/andrewrong/optdesk/internal/store/readingkey"
 )
 
 const runDay = contracts.Day("2026-11-09")
@@ -39,8 +40,56 @@ func (f *fakeHistory) Close() error { return nil }
 
 // memReadings is a fake reading store: insert-only, idempotent on the key, newest rev per day on read.
 type memReadings struct {
-	mu   sync.Mutex
-	rows []contracts.ReadingRecord
+	mu    sync.Mutex
+	rows  []contracts.ReadingRecord
+	calls [][]contracts.ReadingRecord // the batch of every UpsertReadings call
+}
+
+// plainWriter has InsertReadings only: it is a store.ReadingWriter without the upsert.
+type plainWriter struct{ m *memReadings }
+
+func (p plainWriter) InsertReadings(ctx context.Context, rows []contracts.ReadingRecord) (int, error) {
+	return p.m.InsertReadings(ctx, rows)
+}
+
+// UpsertReadings keeps the promises of readingkey.ReadingUpserter: a key twice in a batch is a Permanent error,
+// a differing reading replaces the stored one of its key, an equal one is skipped and a missing_input yields to a
+// stored ok.
+func (m *memReadings) UpsertReadings(_ context.Context, rows []contracts.ReadingRecord) (readingkey.WriteCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls = append(m.calls, append([]contracts.ReadingRecord(nil), rows...))
+	seen := map[string]bool{}
+	for _, r := range rows {
+		k := r.Name + "|" + r.SubjectKind + "|" + r.Subject + "|" + r.Day.Format(dayLayout)
+		if seen[k] {
+			return readingkey.WriteCount{}, newErr(contracts.Permanent, "duplicate key %s", k)
+		}
+		seen[k] = true
+		if r.Rev < 1 {
+			return readingkey.WriteCount{}, newErr(contracts.Permanent, "reading check (rev >= 1) violated by %s", k)
+		}
+	}
+	var wc readingkey.WriteCount
+	for _, r := range rows {
+		at := -1
+		for i, o := range m.rows {
+			if o.Name == r.Name && o.SubjectKind == r.SubjectKind && o.Subject == r.Subject && o.Day.Equal(r.Day.Time) {
+				at = i
+			}
+		}
+		switch {
+		case at < 0:
+			m.rows = append(m.rows, r)
+			wc.Written++
+		case string(m.rows[at].State) == "ok" && string(r.State) != "ok":
+			wc.Skipped++
+		default:
+			m.rows[at] = r
+			wc.Written++
+		}
+	}
+	return wc, nil
 }
 
 func recKey(r contracts.ReadingRecord) string {
