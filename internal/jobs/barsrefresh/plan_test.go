@@ -16,6 +16,7 @@ func TestPlanOneKeyPerEntryAndIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"cik:0000000001", "edinet:E1", "index:SPX", "index:NDX", "index:RUT", "index:N225"}
+	want = append(want, stockKeys()...)
 	if len(keys) != len(want) {
 		t.Fatalf("keys %+v", keys)
 	}
@@ -39,6 +40,7 @@ func TestPlanIssuerlessEntryKeyedBySymbol(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"sym:SPY", "cik:0000000001", "index:SPX", "index:NDX", "index:RUT", "index:N225"}
+	want = append(want, stockKeys()...)
 	if len(keys) != len(want) {
 		t.Fatalf("keys %+v", keys)
 	}
@@ -55,5 +57,29 @@ func TestTwoIssuerlessEntriesOfOneSymbolAreDuplicate(t *testing.T) {
 		[]jobs.WatchEntry{entry("", "SPY", 103), entry("", "SPY", 104)}, fixedClock{})
 	if err == nil {
 		t.Fatal("want a duplicate key error")
+	}
+}
+
+func stockKeys() []string {
+	var ks []string
+	for _, s := range []string{"SPY", "TLT", "GLD", "DBC", "USO", "XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY"} {
+		ks = append(ks, "stock:"+s)
+	}
+	return ks
+}
+
+func TestWatchSPYAndStockSPYBuildTogether(t *testing.T) {
+	t.Parallel()
+	j, _ := build(t, &fakeHistory{answer: fixed()}, &memBars{}, entry("", "SPY", 103))
+	keys, _, err := j.Plan(context.Background(), runDay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, k := range keys {
+		seen[k.SubjectKey] = true
+	}
+	if !seen["sym:SPY"] || !seen["stock:SPY"] {
+		t.Fatalf("keys %+v", keys)
 	}
 }
