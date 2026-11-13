@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -164,7 +165,13 @@ func TestFieldsCompleteRow(t *testing.T) {
 func graceRig(t *testing.T) (*rig, *recordingReasons) {
 	t.Helper()
 	r := newRig(t, "2026-11-06 17:00")
-	r.job.m.Chunk = 1
+	// 100 strikes (50 per side of the price 100) of both rights: 200 contracts, 7 chunks of 30
+	r.job.m.Chunk, r.job.m.MaxStrikesPerSide, r.job.m.StrikeBand = 30, 50, 1
+	strikes := make([]string, 200)
+	for i := range strikes {
+		strikes[i] = strconv.Itoa(i + 1)
+	}
+	r.b.chains[0].Strikes = strikes
 	r.b.full, r.b.noOI = true, true
 	r.b.missing = []broker.MissingField{{Field: "open_interest", Reason: broker.MissingNotReceivedGrace}}
 	rw := &recordingReasons{}
@@ -176,7 +183,7 @@ func TestRunWritesOncePerKey(t *testing.T) {
 	t.Parallel()
 	r, rw := graceRig(t)
 	res := r.run(testDay, testKey)
-	if res.Err != nil || res.Returned != 4 || r.b.optionCalls != 4 {
+	if res.Err != nil || res.Returned != 200 || r.b.optionCalls != 7 {
 		t.Fatalf("result %+v, chunks %d", res, r.b.optionCalls)
 	}
 	if len(rw.calls) != 1 {
@@ -186,7 +193,7 @@ func TestRunWritesOncePerKey(t *testing.T) {
 	if c.day != "2026-11-06" || c.dataset != "obs.option_eod" || c.subject != "TEST" || len(c.rows) != 1 {
 		t.Fatalf("call %+v", c)
 	}
-	if got := c.rows[0]; got.Scope != "field:open_interest" || got.Detail != "open_interest missing 4/4 usable quotes: not_received_grace 4" ||
+	if got := c.rows[0]; got.Scope != "field:open_interest" || got.Detail != "open_interest missing 200/200 usable quotes: not_received_grace 200" ||
 		!got.At.Equal(r.clk.Now().UTC()) || got.At.Location() != time.UTC {
 		t.Fatalf("row %+v", got)
 	}
@@ -214,11 +221,11 @@ func TestRunLaterChunkFailureStillWrites(t *testing.T) {
 		}
 	}
 	res := r.run(testDay, testKey)
-	if kindOf(res) != contracts.Permanent || res.Returned != 2 {
+	if kindOf(res) != contracts.Permanent || res.Returned != 60 {
 		t.Fatalf("result %+v", res)
 	}
 	if len(rw.calls) != 1 || len(rw.calls[0].rows) != 1 ||
-		rw.calls[0].rows[0].Detail != "open_interest missing 2/2 usable quotes: not_received_grace 2" {
+		rw.calls[0].rows[0].Detail != "open_interest missing 60/60 usable quotes: not_received_grace 60" {
 		t.Fatalf("calls %+v", rw.calls)
 	}
 }
@@ -228,11 +235,10 @@ func TestRunWriterErrorDoesNotFailRun(t *testing.T) {
 	r, rw := graceRig(t)
 	rw.err = errors.New("no such table")
 	res := r.run(testDay, testKey)
-	if res.Err != nil || res.Returned != 4 || res.Usable != 4 || len(r.w.all()) != 4 || len(rw.calls) != 1 {
+	if res.Err != nil || res.Returned != 200 || res.Usable != 200 || len(r.w.all()) != 200 || len(rw.calls) != 1 {
 		t.Fatalf("result %+v, calls %d", res, len(rw.calls))
 	}
 	plain := newRig(t, "2026-11-06 17:00")
-	plain.job.m.Chunk = 1
 	if res := plain.run(testDay, testKey); res.Err != nil || res.Returned != 4 {
 		t.Fatalf("without writer %+v", res)
 	}
