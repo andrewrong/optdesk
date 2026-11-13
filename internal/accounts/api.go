@@ -13,6 +13,8 @@ type Book interface {
 	Main() string
 	// Aliases returns every alias of the book in the order the owner wrote them.
 	Aliases() []string
+	// IDs returns every account id of the book in the order of Aliases().
+	IDs() []string
 }
 
 // ErrUnknownAccount is the typed reason for an id the book does not know. Test it with errors.Is.

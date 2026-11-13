@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-The owner's account book. `internal/accounts` declares `accounts.Book` (`Alias`, `Main`, `Aliases`) and the sentinel `ErrUnknownAccount`; `internal/accounts/toml` holds `Load(path)`, which reads `$OT_HOME/accounts.toml` and returns the book. The file lives only under `$OT_HOME` and is never committed. Design: `docs/design/account-identity.md`.
+The owner's account book. `internal/accounts` declares `accounts.Book` (`Alias`, `Main`, `Aliases`, `IDs`) and the sentinel `ErrUnknownAccount`; `internal/accounts/toml` holds `Load(path)`, which reads `$OT_HOME/accounts.toml` and returns the book. The file lives only under `$OT_HOME` and is never committed. Design: `docs/design/account-identity.md`.
 
 ## File format
 
@@ -18,6 +18,7 @@ main = "mine"
 - An id is a `U` and 5 to 9 digits. Each id and each alias appears once.
 - `main` names an alias of the file.
 - `Aliases()` lists the aliases in the order the lines are written; `Alias(id)` returns `false` as its second result for an id the file does not hold.
+- `IDs()` lists the account ids in the order of `Aliases()`, so `Alias(IDs()[i])` is `Aliases()[i]`; `cmd/ot` pairs them to build its id-to-alias map.
 - Comments and blank lines are allowed; tables, dotted keys and non-string values are not.
 
 ## Errors
