@@ -13,6 +13,7 @@ import (
 	"github.com/andrewrong/optdesk/internal/jobs/underlyingresolve"
 	"github.com/andrewrong/optdesk/internal/runner"
 	"github.com/andrewrong/optdesk/internal/store"
+	"github.com/andrewrong/optdesk/internal/store/stockreg"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -59,13 +60,45 @@ func init() {
 				return nil, "", fmt.Errorf("open underlying store with %s failed", underlying.DSNEnvResolve)
 			}
 			jc.extra.addCloser(st)
-			j, err := underlyingresolve.New(jc.brk, st, jc.f.clk)
+			reg, err := openStockRegistrar(ctx, a.deps.openInstrument, jc.cfg.masterDSN, jc.extra)
+			if err != nil {
+				return nil, "", err
+			}
+			var j contracts.Job
+			if reg != nil {
+				j, err = underlyingresolve.NewWithRegistrar(jc.brk, st, reg, jc.f.clk)
+			} else {
+				a.log.Warn("underlying resolve job writes no company data", "component", "ot", "job", jobUnderlyingResolve,
+					"status", store.DSNEnvMaster+" is not set or its store cannot register stocks")
+				j, err = underlyingresolve.New(jc.brk, st, jc.f.clk)
+			}
 			if err != nil {
 				return nil, "", fmt.Errorf("build underlying_resolve job failed: %w", err)
 			}
 			return wrapHeld(a, jc, j, st)
 		},
 	})
+}
+
+// openStockRegistrar opens the instrument store with the master line and asserts it to a stockreg.StockRegistrar. A
+// store that is closed through extra when it is not nil (the closer set of the run) or returned for the caller to close.
+// With no DSN, no opener or a store without the method it returns a nil registrar and nothing stays open. An open
+// error names the line and not the DSN.
+func openStockRegistrar(ctx context.Context, open store.OpenInstrumentFunc, dsn string, extra *closerSet) (stockreg.StockRegistrar, error) {
+	if dsn == "" || open == nil {
+		return nil, nil
+	}
+	st, err := open(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open instrument store with %s failed", store.DSNEnvMaster)
+	}
+	reg, ok := st.(stockreg.StockRegistrar)
+	if !ok {
+		_ = st.Close()
+		return nil, nil
+	}
+	extra.addCloser(st)
+	return reg, nil
 }
 
 // openJobList opens the reader of the stored list with the runner line (the view grant of ot_runner) and gives f the

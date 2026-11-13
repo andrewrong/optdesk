@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewrong/optdesk/internal/contracts"
+	"github.com/andrewrong/optdesk/internal/store/stockreg"
 	"github.com/andrewrong/optdesk/internal/store/underlying"
 )
 
@@ -99,7 +101,7 @@ func uiWrite(t *testing.T, body string) string {
 func uiRun(t *testing.T, s *uiStore, dsn, body string, check bool) (string, error) {
 	t.Helper()
 	var sb strings.Builder
-	err := underlyingImport(context.Background(), s.open, dsn, []byte(body), check, &sb)
+	err := underlyingImport(context.Background(), s.open, dsn, []byte(body), check, &sb, nil)
 	return sb.String(), err
 }
 
@@ -225,5 +227,80 @@ func TestUnderlyingCmdSubcommand(t *testing.T) {
 	p := uiWrite(t, uiFile)
 	if err := underlyingCmd(a, []string{"import", p}); err == nil || !strings.Contains(err.Error(), "OT_PG_DSN_SETTINGS") || strings.Contains(err.Error(), p) {
 		t.Errorf("err = %v", err)
+	}
+}
+
+// fakeReg is a registrar that records the registrations and answers err for each.
+type fakeReg struct {
+	mu   sync.Mutex
+	got  []stockreg.Registration
+	fail error
+}
+
+func (f *fakeReg) RegisterStock(_ context.Context, r stockreg.Registration) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.got = append(f.got, r)
+	return 1, f.fail
+}
+
+type permErr struct{}
+
+func (permErr) Error() string             { return "bad scheme" }
+func (permErr) Kind() contracts.ErrorKind { return contracts.Permanent }
+
+func uiRunReg(t *testing.T, s *uiStore, reg stockreg.StockRegistrar) (string, error) {
+	t.Helper()
+	var sb strings.Builder
+	err := underlyingImport(context.Background(), s.open, "dsn", []byte(uiFile), false, &sb, reg)
+	return sb.String(), err
+}
+
+func TestUnderlyingImportRegistersEntriesWithConID(t *testing.T) {
+	t.Parallel()
+	reg := &fakeReg{}
+	out, err := uiRunReg(t, &uiStore{}, reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reg.got) != 1 || reg.got[0].ConID != 265598 || reg.got[0].Symbol != "AAPL" || reg.got[0].Market != "US" ||
+		reg.got[0].Issuer == nil || reg.got[0].Issuer.CIK != "0000320193" {
+		t.Errorf("got %+v", reg.got)
+	}
+	if strings.Contains(out, "no company data") {
+		t.Errorf("out %q", out)
+	}
+	// A second run adds nothing and registers nothing.
+	s := &uiStore{}
+	_, _ = uiRunReg(t, s, &fakeReg{})
+	reg2 := &fakeReg{}
+	if _, err := uiRunReg(t, s, reg2); err != nil || len(reg2.got) != 0 {
+		t.Errorf("err %v got %+v", err, reg2.got)
+	}
+}
+
+func TestUnderlyingImportWithoutRegistrarSaysNoCompanyData(t *testing.T) {
+	t.Parallel()
+	out, err := uiRunReg(t, &uiStore{}, nil)
+	if err != nil || !strings.Contains(out, "no company data is written") {
+		t.Errorf("err %v out %q", err, out)
+	}
+}
+
+func TestUnderlyingImportPermanentRefusalPrintedExitZero(t *testing.T) {
+	t.Parallel()
+	reg := &fakeReg{fail: permErr{}}
+	out, err := uiRunReg(t, &uiStore{}, reg)
+	if err != nil || !strings.Contains(out, "company registration refused US:AAPL: bad scheme") {
+		t.Errorf("err %v out %q", err, out)
+	}
+}
+
+func TestUnderlyingImportOtherRegistrarErrorFails(t *testing.T) {
+	t.Parallel()
+	reg := &fakeReg{fail: errors.New("dsn=secret down")}
+	_, err := uiRunReg(t, &uiStore{}, reg)
+	if err == nil || strings.Contains(err.Error(), "secret") {
+		t.Errorf("err %v", err)
 	}
 }
